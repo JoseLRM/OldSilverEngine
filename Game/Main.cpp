@@ -1,9 +1,10 @@
-#include <iostream>
-#include <SilverEngine.h>
+#include <SilverEngine>
 
 int main()
 {
-	Hello();
-	system("PAUSE");
+	SV::Engine engine;
+
+	engine.Run();
+
 	return 0;
 }

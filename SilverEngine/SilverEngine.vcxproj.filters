@@ -1,12 +1,44 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClInclude Include="src\core.h" />
-    <ClInclude Include="src\Engine.h" />
     <ClInclude Include="config.h" />
-    <ClInclude Include="SilverEngine.h" />
+    <ClInclude Include="src\Engine.h">
+      <Filter>System</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core.h">
+      <Filter>System</Filter>
+    </ClInclude>
+    <ClInclude Include="SilverEngine" />
+    <ClInclude Include="src\Version.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Window.h">
+      <Filter>System\Window</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Win.h">
+      <Filter>System\Window</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\Engine.cpp" />
+    <Filter Include="System">
+      <UniqueIdentifier>{39fe7b39-88d4-4aec-a14d-bb054c95aae9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Utils">
+      <UniqueIdentifier>{d57fd0ac-336d-445c-bd10-a27b9717adb2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="System\Window">
+      <UniqueIdentifier>{826d9c92-b98b-4198-b025-7abc9453ee50}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\Engine.cpp">
+      <Filter>System</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core.cpp">
+      <Filter>System</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Window.cpp">
+      <Filter>System\Window</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
