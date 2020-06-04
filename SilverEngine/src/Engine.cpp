@@ -44,7 +44,10 @@ namespace SV {
 namespace SV {
 
 	Engine::Engine() : m_EngineState(SV_ENGINE_STATE_NONE)
-	{}
+	{
+		m_Window.SetEngine(this);
+		m_Input.SetEngine(this);
+	}
 	Engine::~Engine()
 	{}
 
@@ -115,7 +118,7 @@ namespace SV {
 	{
 		while (m_Window.UpdateInput())
 		{
-
+			if (m_Input.IsMousePressed(SV_MOUSE_CENTER)) SV::Log("All right");
 		}
 	}
 	bool Engine::Close()

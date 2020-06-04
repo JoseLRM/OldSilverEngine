@@ -2,7 +2,6 @@
 
 int main()
 {
-
 	SV::Initialize();
 
 	SV::Engine engine;

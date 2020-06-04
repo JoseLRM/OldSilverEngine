@@ -26,21 +26,128 @@ namespace SV {
 			auto it = g_WindowsMap.find(handle);
 			if (it != g_WindowsMap.end()) windowPtr = it->second;
 		}
+		if (windowPtr) return Window::WindowProc(*windowPtr, message, wParam, lParam);
+		else return DefWindowProcA(wnd, message, wParam, lParam);
+	}
 
-		if (windowPtr) {
-			SV::Window& window = *windowPtr;
+	i64 Window::WindowProc(Window& window, ui32 message, i64 wParam, i64 lParam)
+	{
+		return window.WindowProc(message, wParam, lParam);
+	}
 
-			switch (message) {
-			case WM_CLOSE:
-				PostQuitMessage(0);
-				return 0;
+	i64 Window::WindowProc(ui32 message, i64 wParam, i64 lParam)
+	{
+		SV::Input& input = GetEngine().GetInput();
 
+		switch (message) {
+		case WM_CLOSE:
+			PostQuitMessage(0);
+			return 0;
+		case WM_SYSKEYDOWN:
+		case WM_KEYDOWN:
+		{
+			// input
+			ui8 keyCode = (ui8)wParam;
+			if (keyCode > 255) {
+				SV::LogW("Unknown keycode: %u", keyCode);
 			}
+			else if (~lParam & (1 << 30)) input.KeyDown(keyCode);
 
-			window.GetWindowHandle();
+			break;
+		}
+		case WM_SYSKEYUP:
+		case WM_KEYUP:
+		{
+			// input
+			ui8 keyCode = (ui8)wParam;
+			if (keyCode > 255) {
+				SV::LogW("Unknown keycode: %u", keyCode);
+				VK_SHIFT;
+			}
+			else input.KeyUp(keyCode);
+
+			break;
+		}
+		case WM_LBUTTONDOWN:
+			input.MouseDown(0);
+			break;
+		case WM_RBUTTONDOWN:
+			input.MouseDown(1);
+			break;
+		case WM_MBUTTONDOWN:
+			input.MouseDown(2);
+			break;
+		case WM_LBUTTONUP:
+			input.MouseUp(0);
+			break;
+		case WM_RBUTTONUP:
+			input.MouseUp(1);
+			break;
+		case WM_MBUTTONUP:
+			input.MouseUp(2);
+			break;
+		case WM_MOUSEMOVE:
+		{
+			ui16 _x = LOWORD(lParam);
+			ui16 _y = HIWORD(lParam);
+
+			float x = (float(_x) / m_Width) - 0.5f;
+			float y = (float(_y) / m_Height) - 0.5f;
+
+			input.MousePos(x, y);
+			break;
 		}
 
-		return DefWindowProcA(wnd, message, wParam, lParam);
+		// RAW MOUSE
+		//case WM_INPUT:
+		//{
+		//	UINT size;
+		//	if (GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, nullptr, &size, sizeof(RAWINPUTHEADER)) == -1) break;
+		//
+		//	rawMouseBuffer.resize(size);
+		//	if (GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, rawMouseBuffer.data(), &size, sizeof(RAWINPUTHEADER)) == -1) break;
+		//
+		//	RAWINPUT& rawInput = reinterpret_cast<RAWINPUT&>(*rawMouseBuffer.data());
+		//	if (rawInput.header.dwType == RIM_TYPEMOUSE) {
+		//		if (rawInput.data.mouse.lLastX != 0 || rawInput.data.mouse.lLastY != 0) {
+		//			jshInput::MouseDragged(rawInput.data.mouse.lLastX, rawInput.data.mouse.lLastY);
+		//		}
+		//	}
+		//}
+		//break;
+
+		case WM_SIZE:
+		{
+			m_Width = LOWORD(lParam);
+			m_Height = HIWORD(lParam);
+			m_Resized = true;
+
+			break;
+		}
+		case WM_MOVE:
+		{
+			m_X = LOWORD(lParam);
+			m_Y = HIWORD(lParam);
+			//jsh::WindowMovedEvent e(screenX, screenY);
+			//jshEvent::Dispatch(e);
+			break;
+		}
+		case WM_SETFOCUS:
+		{
+			//jsh::WindowGainFocusEvent e;
+			//jshEvent::Dispatch(e);
+			break;
+		}
+		case WM_KILLFOCUS:
+		{
+			//jsh::WindowLostFocusEvent e;
+			//jshEvent::Dispatch(e);
+			break;
+		}
+
+		}
+
+		return DefWindowProcA(ToHWND(m_WindowHandle), message, wParam, lParam);
 	}
 
 	void AdjustWindow(int x, int y, int& w, int& h, DWORD style)
@@ -123,6 +230,8 @@ namespace SV {
 
 	bool Window::UpdateInput()
 	{
+		GetEngine().GetInput().Update();
+
 		MSG msg;
 		while (PeekMessageA(&msg, ToHWND(m_WindowHandle), 0u, 0u, PM_REMOVE) > 0) {
 			TranslateMessage(&msg);

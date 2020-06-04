@@ -1,6 +1,8 @@
 #pragma once
 
+#include "core.h"
 #include "Window.h"
+#include "Input.h"
 #include "Version.h"
 
 ///////////////////Initialization Parameters////////////////////////////////
@@ -31,7 +33,8 @@ namespace SV {
 
 		SV::Version m_Version;
 
-		SV::Window m_Window;
+		SV::Window	m_Window;
+		SV::Input	m_Input;
 
 	public:
 		Engine();
@@ -41,6 +44,10 @@ namespace SV {
 		Engine& operator=(Engine&& other) = delete;
 
 		void Run(const SV_ENGINE_INITIALIZATION_DESC* desc = nullptr);
+
+		// Devices Getters
+		inline Window& GetWindow() noexcept { return m_Window; }
+		inline Input& GetInput() noexcept { return m_Input; }
 
 		// State Getters
 		inline bool IsRunning() const noexcept { return m_EngineState != SV_ENGINE_STATE_NONE; }

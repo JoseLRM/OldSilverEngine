@@ -21,6 +21,15 @@
     <ClInclude Include="src\TaskSystem.h">
       <Filter>System\TaskSystem</Filter>
     </ClInclude>
+    <ClInclude Include="src\EngineDevice.h">
+      <Filter>System</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Input.h">
+      <Filter>System</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Math.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="System">
@@ -48,6 +57,9 @@
     </ClCompile>
     <ClCompile Include="src\TaskSystem.cpp">
       <Filter>System\TaskSystem</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Input.cpp">
+      <Filter>System</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

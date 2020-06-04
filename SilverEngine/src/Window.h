@@ -18,8 +18,11 @@ namespace SV {
 	typedef void* WindowHandle;
 
 	class Engine;
-	class Window {
+	class Window : public EngineDevice {
 		WindowHandle m_WindowHandle;
+
+		float m_X, m_Y, m_Width, m_Height;
+		bool m_Resized = false;
 
 	private:
 		Window();
@@ -31,8 +34,12 @@ namespace SV {
 		bool UpdateInput();
 		bool Close();
 
+		i64 WindowProc(ui32 message, i64 wParam, i64 lParam);
+		
 	public:
 		friend Engine;
+
+		static i64 WindowProc(Window& window, ui32 message, i64 wParam, i64 lParam);
 
 		inline WindowHandle GetWindowHandle() const noexcept
 		{

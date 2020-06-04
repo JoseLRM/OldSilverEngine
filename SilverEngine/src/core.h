@@ -12,6 +12,10 @@
 #include <functional>
 #include <mutex>
 #include <atomic>
+#include <math.h>
+#include <DirectXMath.h>
+
+using namespace DirectX;
 
 // types
 typedef uint8_t		ui8;
@@ -48,3 +52,8 @@ namespace SV {
 	void LogW(const char* s, ...);
 	void LogE(const char* s, ...);
 }
+
+// SilverEngine Includes
+#include "Math.h"
+#include "EngineDevice.h"
+#include "Engine.h"
