@@ -16,8 +16,12 @@ struct SV_ENGINE_INITIALIZATION_DESC {
 
 namespace SV {
 
+	bool Initialize();
+	bool Close();
+
 	class Engine {
 
+		ui32 m_InstanceID = 0u;
 		enum {
 			SV_ENGINE_STATE_NONE,
 			SV_ENGINE_STATE_INITIALIZING,
@@ -37,6 +41,16 @@ namespace SV {
 		Engine& operator=(Engine&& other) = delete;
 
 		void Run(const SV_ENGINE_INITIALIZATION_DESC* desc = nullptr);
+
+		// State Getters
+		inline bool IsRunning() const noexcept { return m_EngineState != SV_ENGINE_STATE_NONE; }
+
+	private:
+		void _Run(SV_ENGINE_INITIALIZATION_DESC& desc);
+
+		bool Initialize(SV_ENGINE_INITIALIZATION_DESC& desc);
+		void Loop();
+		bool Close();
 
 	};
 

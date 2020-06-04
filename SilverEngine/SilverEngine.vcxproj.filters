@@ -18,6 +18,9 @@
     <ClInclude Include="src\Win.h">
       <Filter>System\Window</Filter>
     </ClInclude>
+    <ClInclude Include="src\TaskSystem.h">
+      <Filter>System\TaskSystem</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="System">
@@ -29,6 +32,9 @@
     <Filter Include="System\Window">
       <UniqueIdentifier>{826d9c92-b98b-4198-b025-7abc9453ee50}</UniqueIdentifier>
     </Filter>
+    <Filter Include="System\TaskSystem">
+      <UniqueIdentifier>{bfefb0c5-7e7c-485a-bf93-81f58d27c14c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Engine.cpp">
@@ -39,6 +45,9 @@
     </ClCompile>
     <ClCompile Include="src\Window.cpp">
       <Filter>System\Window</Filter>
+    </ClCompile>
+    <ClCompile Include="src\TaskSystem.cpp">
+      <Filter>System\TaskSystem</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

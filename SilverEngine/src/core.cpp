@@ -16,6 +16,11 @@ namespace SV {
 		std::cout << out << std::endl;
 	}
 
+	void LogSeparator()
+	{
+		Log("----------------------------------------------------");
+	}
+
 	void Log(const char* s, ...)
 	{
 		va_list args;

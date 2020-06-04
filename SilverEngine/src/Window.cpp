@@ -16,7 +16,6 @@ namespace SV {
 
 	//////////////////////////////////////GLOBALS//////////////////////////////////////
 	std::map<WindowHandle, Window*> g_WindowsMap;
-	bool g_WindowRegistred = false;
 
 	LRESULT WindowProc(HWND wnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
@@ -56,32 +55,28 @@ namespace SV {
 		w = rect.right - rect.left;
 		h = rect.bottom - rect.top;
 	}
+	namespace _internal {
+		bool RegisterWindowClass()
+		{
+			WNDCLASSA wndClass;
+			wndClass.cbClsExtra = 0;
+			wndClass.cbWndExtra = 0;
+			wndClass.hbrBackground = 0;
+			wndClass.hCursor = 0;
+			wndClass.hIcon = 0;
+			wndClass.hInstance = 0;
+			wndClass.lpfnWndProc = WindowProc;
+			wndClass.lpszClassName = "SilverWindow";
+			wndClass.lpszMenuName = "SilverWindow";
+			wndClass.style = 0;
 
-	bool RegisterWindowClass()
-	{
-		if (g_WindowRegistred) return true;
-
-		WNDCLASSA wndClass;
-		wndClass.cbClsExtra = 0;
-		wndClass.cbWndExtra = 0;
-		wndClass.hbrBackground = 0;
-		wndClass.hCursor = 0;
-		wndClass.hIcon = 0;
-		wndClass.hInstance = 0;
-		wndClass.lpfnWndProc = WindowProc;
-		wndClass.lpszClassName = "SilverWindow";
-		wndClass.lpszMenuName = "SilverWindow";
-		wndClass.style = 0;
-
-		RegisterClassA(&wndClass);
-		g_WindowRegistred = true;
-		return true;
+			RegisterClassA(&wndClass);
+			return true;
+		}
 	}
 
 	bool Window::CreateWindowInstance(SV::Window* window, const SV_WINDOW_INITIALIZATION_DESC* desc)
 	{
-		RegisterWindowClass();
-
 		DWORD style = WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_SIZEBOX;
 
 		int w = desc->width, h = desc->height;
@@ -109,7 +104,11 @@ namespace SV {
 		CreateWindowInstance(this, desc);
 
 		// Show Window
-		ShowWindow(ToHWND(m_WindowHandle), SW_SHOW);
+		ShowWindow(ToHWND(m_WindowHandle), SW_SHOWDEFAULT);
+
+		// Console
+		if (desc->showConsole) ShowWindow(GetConsoleWindow(), SW_SHOWDEFAULT);
+		else ShowWindow(GetConsoleWindow(), SW_HIDE);
 
 		return true;
 	}

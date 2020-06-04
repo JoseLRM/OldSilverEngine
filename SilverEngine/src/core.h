@@ -7,7 +7,11 @@
 #include <sstream>
 #include <vector>
 #include <map>
+#include <queue>
 #include <stdint.h>
+#include <functional>
+#include <mutex>
+#include <atomic>
 
 // types
 typedef uint8_t		ui8;
@@ -22,6 +26,10 @@ typedef int64_t		i64;
 
 typedef wchar_t		wchar;
 
+typedef int			BOOL;
+#define FALSE		0
+#define TRUE		1
+
 // macros
 #ifdef SV_DEBUG
 #define SV_ASSERT(x) do{ if((x) == false) exit(1); }while(false)
@@ -34,6 +42,7 @@ typedef wchar_t		wchar;
 
 // logging
 namespace SV {
+	void LogSeparator();
 	void Log(const char* s, ...);
 	void LogI(const char* s, ...);
 	void LogW(const char* s, ...);

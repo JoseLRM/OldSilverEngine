@@ -5,10 +5,15 @@
 struct SV_WINDOW_INITIALIZATION_DESC
 {
 	ui32 width, height, x, y;
+	bool showConsole;
 	const char* title;
 };
 
 namespace SV {
+
+	namespace _internal {
+		bool RegisterWindowClass();
+	}
 
 	typedef void* WindowHandle;
 

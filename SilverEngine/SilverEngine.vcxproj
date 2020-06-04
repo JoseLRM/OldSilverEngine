@@ -89,6 +89,7 @@
     <ClInclude Include="SilverEngine" />
     <ClInclude Include="src\core.h" />
     <ClInclude Include="src\Engine.h" />
+    <ClInclude Include="src\TaskSystem.h" />
     <ClInclude Include="src\Version.h" />
     <ClInclude Include="src\Win.h" />
     <ClInclude Include="src\Window.h" />
@@ -101,6 +102,7 @@
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">core.h</PrecompiledHeaderFile>
     </ClCompile>
     <ClCompile Include="src\Engine.cpp" />
+    <ClCompile Include="src\TaskSystem.cpp" />
     <ClCompile Include="src\Window.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
