@@ -34,14 +34,27 @@ typedef int			BOOL;
 #define FALSE		0
 #define TRUE		1
 
+// Exception
+namespace SV {
+	namespace _internal {
+		struct Exception {
+			std::string type, desc, file;
+			ui32 line;
+			Exception(const char* type, const char* desc, const char* file, ui32 line)
+				: type(type), desc(desc), file(file), line(line) {}
+		};
+	}
+}
+#define SV_THROW(type, desc) throw SV::_internal::Exception(type, desc, __FILE__, __LINE__)
+
 // macros
 #ifdef SV_DEBUG
-#define SV_ASSERT(x) do{ if((x) == false) exit(1); }while(false)
+#define SV_ASSERT(x) do{ if((x) == false) SV_THROW("Assertion Failed!!", #x); }while(false)
 #else
 #define SV_ASSERT(x)
 #endif
 
-#define SV_FATAL_ERROR(x)
+#define svZeroMemory(dest, size) memset(dest, 0, size)
 #define SV_BIT(x) 1 << x
 
 // logging
@@ -55,5 +68,7 @@ namespace SV {
 
 // SilverEngine Includes
 #include "Math.h"
-#include "EngineDevice.h"
+#include "Utils.h"
+#include "safe_queue.h"
+#include "TaskSystem.h"
 #include "Engine.h"

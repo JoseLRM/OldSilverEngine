@@ -3,7 +3,7 @@
 #include "TaskSystem.h"
 
 namespace SV {
-	namespace task {
+	namespace Task {
 		class ThreadPool {
 			std::vector<std::thread> m_Threads;
 
@@ -95,7 +95,7 @@ namespace SV {
 
 			inline ui32 GetThreadCount() const noexcept
 			{
-				return m_Threads.size();
+				return ui32(m_Threads.size());
 			}
 
 		};

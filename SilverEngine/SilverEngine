@@ -1,5 +1,9 @@
-#pragma once
+#ifndef SILVER_ENGINE
+#define SILVER_ENGINE
 
 #include "src/core.h"
 #include "src/Engine.h"
+#include "src/Math.h"
 #include "src/TaskSystem.h"
+
+#endif

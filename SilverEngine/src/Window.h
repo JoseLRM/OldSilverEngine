@@ -5,7 +5,6 @@
 struct SV_WINDOW_INITIALIZATION_DESC
 {
 	ui32 width, height, x, y;
-	bool showConsole;
 	const char* title;
 };
 
@@ -18,7 +17,9 @@ namespace SV {
 	typedef void* WindowHandle;
 
 	class Engine;
-	class Window : public EngineDevice {
+	class Window : public SV::EngineDevice {
+		static std::mutex s_WindowCreationMutex;
+
 		WindowHandle m_WindowHandle;
 
 		float m_X, m_Y, m_Width, m_Height;
@@ -28,9 +29,10 @@ namespace SV {
 		Window();
 		~Window();
 
-		static bool CreateWindowInstance(SV::Window* window, const SV_WINDOW_INITIALIZATION_DESC* desc);
+		static bool CreateWindowInstance(SV::Window* window, const SV_WINDOW_INITIALIZATION_DESC& desc);
+		static bool DestroyWindowInstance(SV::Window* window);
 
-		bool Initialize(const SV_WINDOW_INITIALIZATION_DESC* desc);
+		bool Initialize(const SV_WINDOW_INITIALIZATION_DESC& desc);
 		bool UpdateInput();
 		bool Close();
 
@@ -47,5 +49,8 @@ namespace SV {
 		}
 
 	};
+
+	void ShowConsole();
+	void HideConsole();
 
 }

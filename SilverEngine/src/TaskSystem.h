@@ -4,7 +4,7 @@
 
 namespace SV {
 
-	namespace task {
+	namespace Task {
 
 		using Task = std::function<void()>;
 

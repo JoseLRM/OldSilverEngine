@@ -87,27 +87,84 @@
   <ItemGroup>
     <ClInclude Include="config.h" />
     <ClInclude Include="SilverEngine" />
+    <ClInclude Include="src\Application.h" />
+    <ClInclude Include="src\Camera.h" />
     <ClInclude Include="src\core.h" />
+    <ClInclude Include="src\Dx11.h" />
+    <ClInclude Include="src\Graphics_dx11.h" />
     <ClInclude Include="src\Engine.h" />
     <ClInclude Include="src\EngineDevice.h" />
+    <ClInclude Include="src\Graphics.h" />
+    <ClInclude Include="src\GraphicsDesc.h" />
     <ClInclude Include="src\Input.h" />
     <ClInclude Include="src\Math.h" />
+    <ClInclude Include="src\PostProcess.h" />
+    <ClInclude Include="src\QuadRenderer.h" />
+    <ClInclude Include="src\Renderer.h" />
+    <ClInclude Include="src\safe_queue.h" />
+    <ClInclude Include="src\RenderQueue2D.h" />
+    <ClInclude Include="src\StateManager_dx11.h" />
     <ClInclude Include="src\TaskSystem.h" />
+    <ClInclude Include="src\Utils.h" />
     <ClInclude Include="src\Version.h" />
     <ClInclude Include="src\Win.h" />
     <ClInclude Include="src\Window.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\Application.cpp" />
+    <ClCompile Include="src\Camera.cpp" />
     <ClCompile Include="src\core.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">core.h</PrecompiledHeaderFile>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">core.h</PrecompiledHeaderFile>
     </ClCompile>
+    <ClCompile Include="src\Graphics_dx11.cpp" />
     <ClCompile Include="src\Engine.cpp" />
+    <ClCompile Include="src\Graphics.cpp" />
     <ClCompile Include="src\Input.cpp" />
+    <ClCompile Include="src\PostProcess.cpp" />
+    <ClCompile Include="src\QuadRenderer.cpp" />
+    <ClCompile Include="src\Renderer.cpp" />
+    <ClCompile Include="src\RenderQueue2D.cpp" />
+    <ClCompile Include="src\StateManager_dx11.cpp" />
     <ClCompile Include="src\TaskSystem.cpp" />
+    <ClCompile Include="src\Utils.cpp" />
     <ClCompile Include="src\Window.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="src\shaders\PPDefaultPixel.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)Game\%(Filename).cso</ObjectFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)Game\%(Filename).cso</ObjectFileOutput>
+    </FxCompile>
+    <FxCompile Include="src\shaders\PPVertex.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)Game\%(Filename).cso</ObjectFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)Game\%(Filename).cso</ObjectFileOutput>
+    </FxCompile>
+    <FxCompile Include="src\shaders\QuadPixel.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)Game\%(Filename).cso</ObjectFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)Game\%(Filename).cso</ObjectFileOutput>
+    </FxCompile>
+    <FxCompile Include="src\shaders\QuadVertex.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)Game\%(Filename).cso</ObjectFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)Game\%(Filename).cso</ObjectFileOutput>
+    </FxCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -417,7 +417,7 @@ namespace SV {
 
 #pragma endregion
 
-	namespace math {
+	namespace Math {
 		inline void QuaternionToEuler(SV::vec4* q, SV::vec3* e)
 		{
 			// roll (x-axis rotation)
@@ -457,4 +457,75 @@ namespace SV {
 		constexpr float ByteColorToFloat(ui8 c) { return float(c) / 255.f; }
 		constexpr ui8 FloatColorToByte(float c) { return ui8(c * 255.f); }
 	}
+}
+
+/////////////////////////////////////////////////////COLORS/////////////////////////////////////////////////////////////////
+namespace SV {
+	typedef Vector4D<ui8>	Color4b;
+	typedef Vector3D<ui8>	Color3b;
+	typedef Vector4D<float> Color4f;
+	typedef Vector3D<float> Color3f;
+	typedef ui32			Color1u;
+}
+
+namespace SVColor4b {
+
+	constexpr SV::Color4b BLACK(0u, 0u, 0u, 255u);
+	constexpr SV::Color4b WHITE(255u);
+	constexpr SV::Color4b RED(255u, 0u, 0u, 255u);
+	constexpr SV::Color4b GREEN(0u, 255u, 0u, 255u);
+	constexpr SV::Color4b BLUE(0u, 0u, 255u, 255u);
+	constexpr SV::Color4b YELLOW(255u, 255u, 0u, 255u);
+	constexpr SV::Color4b ORANGE(255u, 100u, 0u, 255u);
+	constexpr SV::Color4b GREY(ui8 n) { return SV::Color4b(n, n, n, 255u); }
+
+	constexpr SV::Color3b ToColor3b(SV::Color4b c) { return SV::Color3b(c.x, c.y, c.z); }
+	constexpr SV::Color4f ToColor4f(SV::Color4b c) { return SV::Color4f(SV::Math::ByteColorToFloat(c.x), SV::Math::ByteColorToFloat(c.y), SV::Math::ByteColorToFloat(c.z), SV::Math::ByteColorToFloat(c.w)); }
+	constexpr SV::Color3f ToColor3f(SV::Color4b c) { return SV::Color3f(SV::Math::ByteColorToFloat(c.x), SV::Math::ByteColorToFloat(c.y), SV::Math::ByteColorToFloat(c.z)); }
+
+}
+
+namespace SVColor3b {
+
+	constexpr SV::Color3b BLACK(0u, 0u, 0u);
+	constexpr SV::Color3b WHITE(255u);
+	constexpr SV::Color3b RED(255u, 0u, 0u);
+	constexpr SV::Color3b GREEN(0u, 255u, 0u);
+	constexpr SV::Color3b BLUE(0u, 0u, 255u);
+	constexpr SV::Color3b GREY(ui8 n) { return SV::Color3b(n, n, n); }
+
+	constexpr SV::Color4b ToColor4b(SV::Color3b c) { return SV::Color4b(c.x, c.y, c.z, 255u); }
+	constexpr SV::Color4f ToColor4f(SV::Color3b c) { return SV::Color4f(SV::Math::ByteColorToFloat(c.x), SV::Math::ByteColorToFloat(c.y), SV::Math::ByteColorToFloat(c.z), 1.f); }
+	constexpr SV::Color3f ToColor3f(SV::Color3b c) { return SV::Color3f(SV::Math::ByteColorToFloat(c.x), SV::Math::ByteColorToFloat(c.y), SV::Math::ByteColorToFloat(c.z)); }
+
+}
+
+namespace SVColor4f {
+
+	constexpr SV::Color4f BLACK(0.f, 0.f, 0.f, 1.f);
+	constexpr SV::Color4f WHITE(1.f);
+	constexpr SV::Color4f RED(1.f, 0.f, 0.f, 1.f);
+	constexpr SV::Color4f GREEN(0.f, 1.f, 0.f, 1.f);
+	constexpr SV::Color4f BLUE(0.f, 0.f, 1.f, 1.f);
+	constexpr SV::Color4f GREY(float n) { return SV::Color4f(n, n, n, 1.f); }
+			  
+	constexpr SV::Color4b ToColor4b(SV::Color4f c) { return SV::Color4b(SV::Math::FloatColorToByte(c.x), SV::Math::FloatColorToByte(c.y), SV::Math::FloatColorToByte(c.z), SV::Math::FloatColorToByte(c.w)); }
+	constexpr SV::Color3b ToColor3b(SV::Color4f c) { return SV::Color3b(SV::Math::FloatColorToByte(c.x), SV::Math::FloatColorToByte(c.y), SV::Math::FloatColorToByte(c.z)); }
+	constexpr SV::Color3f ToColor3f(SV::Color4f c) { return SV::Color3f(c.x, c.y, c.z); }
+
+}
+
+namespace SVColor3f {
+
+	constexpr SV::Color3f BLACK(0.f, 0.f, 0.f);
+	constexpr SV::Color3f WHITE(1.f);
+	constexpr SV::Color3f RED(1.f, 0.f, 0.f);
+	constexpr SV::Color3f GREEN(0.f, 1.f, 0.f);
+	constexpr SV::Color3f BLUE(0.f, 0.f, 1.f);
+	constexpr SV::Color3f GREY(float n) { return SV::Color3f(n, n, n); }
+
+	constexpr SV::Color4b ToColor4b(SV::Color3f c) { return SV::Color4b(SV::Math::FloatColorToByte(c.x), SV::Math::FloatColorToByte(c.y), SV::Math::FloatColorToByte(c.z), 255u); }
+	constexpr SV::Color3b ToColor3b(SV::Color3f c) { return SV::Color3b(SV::Math::FloatColorToByte(c.x), SV::Math::FloatColorToByte(c.y), SV::Math::FloatColorToByte(c.z)); }
+	constexpr SV::Color4f ToColor4f(SV::Color3f c) { return SV::Color4f(c.x, c.y, c.z, 1.f); }
+
 }

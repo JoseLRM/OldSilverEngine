@@ -30,6 +30,45 @@
     <ClInclude Include="src\Math.h">
       <Filter>Utils</Filter>
     </ClInclude>
+    <ClInclude Include="src\Graphics.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\GraphicsDesc.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\safe_queue.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Graphics_dx11.h">
+      <Filter>Graphics\DirectX11</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Application.h">
+      <Filter>System</Filter>
+    </ClInclude>
+    <ClInclude Include="src\RenderQueue2D.h">
+      <Filter>Graphics\Renderer\2D</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Renderer.h">
+      <Filter>Graphics\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\QuadRenderer.h">
+      <Filter>Graphics\Renderer\2D</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Utils.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Dx11.h">
+      <Filter>Graphics\DirectX11</Filter>
+    </ClInclude>
+    <ClInclude Include="src\StateManager_dx11.h">
+      <Filter>Graphics\DirectX11</Filter>
+    </ClInclude>
+    <ClInclude Include="src\PostProcess.h">
+      <Filter>Graphics\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Camera.h">
+      <Filter>Graphics\Renderer</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="System">
@@ -43,6 +82,21 @@
     </Filter>
     <Filter Include="System\TaskSystem">
       <UniqueIdentifier>{bfefb0c5-7e7c-485a-bf93-81f58d27c14c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Graphics">
+      <UniqueIdentifier>{6d7fa9d7-e600-44fa-8277-2e20f8735590}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Graphics\DirectX11">
+      <UniqueIdentifier>{ae24f3d4-dbb5-45e2-a0f2-1256b39641e5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Graphics\Renderer">
+      <UniqueIdentifier>{6d88f1c6-a6c4-47dd-80d9-1a72b66e94b0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Graphics\Renderer\2D">
+      <UniqueIdentifier>{82776647-a36a-4703-83e2-3c3ff91d85c9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Graphics\shaders">
+      <UniqueIdentifier>{81b6a8ca-2b20-43f9-8da0-6fdbc1e754d3}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -61,5 +115,49 @@
     <ClCompile Include="src\Input.cpp">
       <Filter>System</Filter>
     </ClCompile>
+    <ClCompile Include="src\Graphics.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Graphics_dx11.cpp">
+      <Filter>Graphics\DirectX11</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Application.cpp">
+      <Filter>System</Filter>
+    </ClCompile>
+    <ClCompile Include="src\RenderQueue2D.cpp">
+      <Filter>Graphics\Renderer\2D</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Renderer.cpp">
+      <Filter>Graphics\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\QuadRenderer.cpp">
+      <Filter>Graphics\Renderer\2D</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Utils.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="src\StateManager_dx11.cpp">
+      <Filter>Graphics\DirectX11</Filter>
+    </ClCompile>
+    <ClCompile Include="src\PostProcess.cpp">
+      <Filter>Graphics\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Camera.cpp">
+      <Filter>Graphics\Renderer</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="src\shaders\QuadVertex.hlsl">
+      <Filter>Graphics\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="src\shaders\QuadPixel.hlsl">
+      <Filter>Graphics\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="src\shaders\PPVertex.hlsl">
+      <Filter>Graphics\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="src\shaders\PPDefaultPixel.hlsl">
+      <Filter>Graphics\shaders</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

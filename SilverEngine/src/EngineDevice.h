@@ -1,5 +1,3 @@
-#pragma once
-
 namespace SV {
 	class Engine;
 	class EngineDevice {
@@ -8,5 +6,4 @@ namespace SV {
 		inline void SetEngine(Engine* pEngine) noexcept { m_pEngine = pEngine; }
 		inline Engine& GetEngine() const noexcept { return *m_pEngine; }
 	};
-
 }

@@ -38,8 +38,9 @@ namespace SV {
 	i64 Window::WindowProc(ui32 message, i64 wParam, i64 lParam)
 	{
 		SV::Input& input = GetEngine().GetInput();
-
+		
 		switch (message) {
+		case WM_DESTROY:
 		case WM_CLOSE:
 			PostQuitMessage(0);
 			return 0;
@@ -92,7 +93,7 @@ namespace SV {
 			ui16 _y = HIWORD(lParam);
 
 			float x = (float(_x) / m_Width) - 0.5f;
-			float y = (float(_y) / m_Height) - 0.5f;
+			float y = (1.f - (float(_y) / m_Height)) - 0.5f;
 
 			input.MousePos(x, y);
 			break;
@@ -182,14 +183,18 @@ namespace SV {
 		}
 	}
 
-	bool Window::CreateWindowInstance(SV::Window* window, const SV_WINDOW_INITIALIZATION_DESC* desc)
+	std::mutex Window::s_WindowCreationMutex;
+
+	bool Window::CreateWindowInstance(SV::Window* window, const SV_WINDOW_INITIALIZATION_DESC& desc)
 	{
 		DWORD style = WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_SIZEBOX;
 
-		int w = desc->width, h = desc->height;
-		AdjustWindow(desc->x, desc->y, w, h, style);
+		int w = desc.width, h = desc.height;
+		AdjustWindow(desc.x, desc.y, w, h, style);
 
-		window->m_WindowHandle = CreateWindowExA(0u, "SilverWindow", desc->title, style, desc->x, desc->y, w, h, 0, 0, 0, 0);
+		std::lock_guard<std::mutex> lock(s_WindowCreationMutex);
+
+		window->m_WindowHandle = CreateWindowExA(0u, "SilverWindow", desc.title, style, desc.x, desc.y, w, h, 0, 0, 0, 0);
 
 		if (window->m_WindowHandle == 0) {
 			SV::LogE("Error creating Window class");
@@ -197,35 +202,44 @@ namespace SV {
 		}
 
 		g_WindowsMap[window->m_WindowHandle] = window;
+		return true;
+	}
+
+	bool Window::DestroyWindowInstance(SV::Window* window)
+	{
+		std::lock_guard<std::mutex> lock(s_WindowCreationMutex);
+
+		if (window->m_WindowHandle) {
+			CloseWindow(ToHWND(window->m_WindowHandle));
+			g_WindowsMap.erase(window->m_WindowHandle);
+			window->m_WindowHandle = 0;
+		}
+
+		return true;
 	}
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	Window::Window() : m_WindowHandle(nullptr)
+	Window::Window() : m_WindowHandle(nullptr), m_X(0.f), m_Y(0.f), m_Width(0.f), m_Height(0.f)
 	{}
 	Window::~Window()
 	{}
 
-	bool Window::Initialize(const SV_WINDOW_INITIALIZATION_DESC* desc)
+	bool Window::Initialize(const SV_WINDOW_INITIALIZATION_DESC& desc)
 	{
-		CreateWindowInstance(this, desc);
+		if (!CreateWindowInstance(this, desc)) {
+			SV::LogE("Can't create window class");
+			return false;
+		}
 
 		// Show Window
 		ShowWindow(ToHWND(m_WindowHandle), SW_SHOWDEFAULT);
-
-		// Console
-		if (desc->showConsole) ShowWindow(GetConsoleWindow(), SW_SHOWDEFAULT);
-		else ShowWindow(GetConsoleWindow(), SW_HIDE);
 
 		return true;
 	}
 	bool Window::Close()
 	{
-		if (m_WindowHandle) {
-			CloseWindow(ToHWND(m_WindowHandle));
-			m_WindowHandle = 0;
-		}
-		return true;
+		return DestroyWindowInstance(this);
 	}
 
 	bool Window::UpdateInput()
@@ -233,7 +247,7 @@ namespace SV {
 		GetEngine().GetInput().Update();
 
 		MSG msg;
-		while (PeekMessageA(&msg, ToHWND(m_WindowHandle), 0u, 0u, PM_REMOVE) > 0) {
+		while (PeekMessageA(&msg, 0, 0u, 0u, PM_REMOVE) > 0) {
 			TranslateMessage(&msg);
 			DispatchMessageA(&msg);
 
@@ -241,6 +255,15 @@ namespace SV {
 		}
 
 		return true;
+	}
+
+	void ShowConsole()
+	{
+		ShowWindow(GetConsoleWindow(), SW_SHOWDEFAULT);
+	}
+	void HideConsole()
+	{
+		ShowWindow(GetConsoleWindow(), SW_HIDE);
 	}
 
 }
