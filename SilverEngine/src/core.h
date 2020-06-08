@@ -69,6 +69,7 @@ namespace SV {
 // SilverEngine Includes
 #include "Math.h"
 #include "Utils.h"
+#include "Scene.h"
 #include "safe_queue.h"
 #include "TaskSystem.h"
 #include "Engine.h"

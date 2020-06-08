@@ -91,6 +91,7 @@
     <ClInclude Include="src\Camera.h" />
     <ClInclude Include="src\core.h" />
     <ClInclude Include="src\Dx11.h" />
+    <ClInclude Include="src\Scene.h" />
     <ClInclude Include="src\Graphics_dx11.h" />
     <ClInclude Include="src\Engine.h" />
     <ClInclude Include="src\EngineDevice.h" />
@@ -105,6 +106,7 @@
     <ClInclude Include="src\RenderQueue2D.h" />
     <ClInclude Include="src\StateManager_dx11.h" />
     <ClInclude Include="src\TaskSystem.h" />
+    <ClInclude Include="src\Transform.h" />
     <ClInclude Include="src\Utils.h" />
     <ClInclude Include="src\Version.h" />
     <ClInclude Include="src\Win.h" />
@@ -127,8 +129,10 @@
     <ClCompile Include="src\QuadRenderer.cpp" />
     <ClCompile Include="src\Renderer.cpp" />
     <ClCompile Include="src\RenderQueue2D.cpp" />
+    <ClCompile Include="src\Scene.cpp" />
     <ClCompile Include="src\StateManager_dx11.cpp" />
     <ClCompile Include="src\TaskSystem.cpp" />
+    <ClCompile Include="src\Transform.cpp" />
     <ClCompile Include="src\Utils.cpp" />
     <ClCompile Include="src\Window.cpp" />
   </ItemGroup>

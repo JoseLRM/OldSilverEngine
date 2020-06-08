@@ -69,6 +69,12 @@
     <ClInclude Include="src\Camera.h">
       <Filter>Graphics\Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="src\Scene.h">
+      <Filter>System\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Transform.h">
+      <Filter>System\Scene</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="System">
@@ -97,6 +103,9 @@
     </Filter>
     <Filter Include="Graphics\shaders">
       <UniqueIdentifier>{81b6a8ca-2b20-43f9-8da0-6fdbc1e754d3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="System\Scene">
+      <UniqueIdentifier>{02d92ad5-caab-4843-bb21-8a9604eb094b}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -144,6 +153,12 @@
     </ClCompile>
     <ClCompile Include="src\Camera.cpp">
       <Filter>Graphics\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Scene.cpp">
+      <Filter>System\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Transform.cpp">
+      <Filter>System\Scene</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

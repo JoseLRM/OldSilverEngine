@@ -1,9 +1,45 @@
 #include <SilverEngine>
 
+SVDefineTag(TestTag);
+
+class SystemTest : public SV::System {
+
+public:
+	SystemTest()
+	{
+		AddRequestedComponent(SV::NameComponent::ID);
+		AddOptionalComponent(TestTag::ID);
+
+		SetCollectiveSystem();
+	}
+
+	void UpdateEntity(SV::Entity entity, SV::BaseComponent** comp, SV::Scene& scene, float dt) override
+	{
+		SV::NameComponent* nameComp = reinterpret_cast<SV::NameComponent*>(comp[0]);
+		SV::LogI("Name Comp from system: %s", nameComp->GetName().c_str());
+		if (comp[1]) SV::LogI("Has TestTag :)");
+	}
+
+	void UpdateEntities(std::vector<SV::BaseComponent**>& comp, SV::Scene& scene, float dt) override
+	{
+		for (ui32 i = 0; i < comp.size(); ++i) {
+			SV::NameComponent* nameComp = reinterpret_cast<SV::NameComponent*>(comp[i][0]);
+			//SV::LogI("Name Comp from system: %s", nameComp->GetName().c_str());
+			//if (comp[i][1]) SV::LogI("Has TestTag :)");
+
+			SV::Entity entity = nameComp->entity;
+			SV::LogI("Layer name = %s", scene.GetLayer(entity)->name.c_str());
+		}
+	}
+
+};
+
 class Application : public SV::Application
 {
 	SV::RenderLayer layer;
 	SV::OrthographicCamera camera;
+	SV::Scene scene;
+	SystemTest system;
 
 public:
 	void Initialize() override
@@ -11,9 +47,35 @@ public:
 		GetEngine().GetRenderer().SetCamera(&camera);
 
 		camera.SetDimension(SV::vec2(1280.f, 720.f));
+
+		scene.Initialize();
+
+		scene.CreateLayer("Test", 69);
+
+		SV::Entity entity = scene.CreateEntity();
+		scene.CreateEntity();
+
+		scene.SetLayer(entity, scene.GetLayer("Teste"));
+
+		scene.AddComponent(entity, SV::NameComponent());
+		scene.AddComponent(entity, TestTag());
+
+		std::vector<SV::Entity> entities;
+		scene.CreateEntities(100, entity, &entities);
+
+		scene.AddComponents(entities, SV::NameComponent());
+
+		for (ui32 i = 0; i < entities.size(); ++i) {
+			SV::NameComponent* nameComp = scene.GetComponent<SV::NameComponent>(entities[i]);
+
+			nameComp->SetName(std::string("Hello :) ") + std::to_string(i));
+			SV::LogI("Entity from comp -> %s", nameComp->GetName().c_str());
+		}
 	}
 	void Update(float dt) override
 	{
+		scene.UpdateSystem(&system, dt);
+		SV::LogSeparator();
 	}
 	void Render() override
 	{
@@ -24,12 +86,15 @@ public:
 		SV::Input& input = GetEngine().GetInput();
 
 		SV::vec2 mousePos = camera.GetMousePos(input);
-		
-		float size = 4.f;
+
+		float size = 25.f;
 		float halfSize = size / 2.f;
 
 		ui32 reserve = (camera.GetDimension().x / size) * (camera.GetDimension().y / size);
 		rq.ReserveQuads(reserve, layer);
+
+		float l0 = 50;
+		float l1 = 175.f;
 
 		for (float x = -camera.GetDimension().x / 2.f; x < camera.GetDimension().x / 2.f; x += size) {
 			for (float y = -camera.GetDimension().y / 2.f; y < camera.GetDimension().y / 2.f; y += size) {
@@ -41,9 +106,9 @@ public:
 				SV::vec2 toMouse = mousePos - pos;
 				float distance = toMouse.Mag();
 				
-				if (distance < 100.f) g = 0u;
-				else if (distance < 200.f) {
-					float d = (distance - 100.f) / 100.f;
+				if (distance < l0) g = 0u;
+				else if (distance < l1) {
+					float d = (distance - l0) / (l1 - l0);
 					g = SV::Math::FloatColorToByte(d);
 				}
 
@@ -53,6 +118,7 @@ public:
 	}
 	void Close() override
 	{
+		scene.Close();
 	}
 };
 
@@ -69,17 +135,17 @@ int main()
 	SV::Engine engine;
 	Application app;
 
-	SV::Engine engine2;
-	Application app2;
+	//SV::Engine engine2;
+	//Application app2;
 
 	SV_ENGINE_INITIALIZATION_DESC desc;
 	desc.SetDefault();
-	desc.executeInThisThread = false;
+	desc.executeInThisThread = true;
 
 	engine.Run(&app, &desc);
-	engine2.Run(&app2);
+	//engine2.Run(&app2);
 
 	SV::Close();
-	//system("PAUSE");
+	system("PAUSE");
 	return 0;
 }
