@@ -2,7 +2,7 @@
 
 #include "core.h"
 #include "RenderQueue2D.h"
-#include "QuadRenderer.h"
+#include "Renderer2D.h"
 #include "PostProcess.h"
 #include "Camera.h"
 
@@ -15,7 +15,7 @@ namespace SV {
 	class Renderer : public SV::EngineDevice {
 		RenderQueue2D m_RenderQueue2D;
 		
-		QuadRenderer m_QuadRenderer;
+		Renderer2D m_Renderer2D;
 		PostProcess m_PostProcess;
 
 		FrameBuffer m_Offscreen;

@@ -455,7 +455,7 @@ namespace SV {
 
 	bool Shader_dx11::_Create(SV_GFX_SHADER_TYPE type, const char* filePath, SV::GraphicsDevice& device)
 	{
-		std::wstring wFilePath = SV::ToWString(filePath);
+		std::wstring wFilePath = SV::Utils::ToWString(filePath);
 
 		// Read File
 		dxCheck(D3DReadFileToBlob(wFilePath.c_str(), &m_Blob));
@@ -618,7 +618,7 @@ namespace SV {
 			desc.Format = ParseFormat(format);
 			desc.Width = width;
 			desc.Height = height;
-			desc.MipLevels = 0u;
+			desc.MipLevels = 1u;
 			desc.MiscFlags = 0u;
 			desc.SampleDesc.Count = 1u;
 			desc.SampleDesc.Quality = 0u;
@@ -641,7 +641,7 @@ namespace SV {
 			D3D11_SHADER_RESOURCE_VIEW_DESC desc;
 			svZeroMemory(&desc, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
 			desc.Format = ParseFormat(format);
-			desc.Texture2D.MipLevels = 0u;
+			desc.Texture2D.MipLevels = 1u;
 			desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 
 			dxCheck(dx11.device->CreateShaderResourceView(m_Texture.Get(), &desc, &m_ShaderResouceView));

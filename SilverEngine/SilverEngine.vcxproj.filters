@@ -51,9 +51,6 @@
     <ClInclude Include="src\Renderer.h">
       <Filter>Graphics\Renderer</Filter>
     </ClInclude>
-    <ClInclude Include="src\QuadRenderer.h">
-      <Filter>Graphics\Renderer\2D</Filter>
-    </ClInclude>
     <ClInclude Include="src\Utils.h">
       <Filter>Utils</Filter>
     </ClInclude>
@@ -74,6 +71,15 @@
     </ClInclude>
     <ClInclude Include="src\Transform.h">
       <Filter>System\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="src\TextureAtlas.h">
+      <Filter>Graphics\Renderer\2D</Filter>
+    </ClInclude>
+    <ClInclude Include="src\external\stbi_lib.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Renderer2D.h">
+      <Filter>Graphics\Renderer\2D</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -107,6 +113,12 @@
     <Filter Include="System\Scene">
       <UniqueIdentifier>{02d92ad5-caab-4843-bb21-8a9604eb094b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="External">
+      <UniqueIdentifier>{467742a9-6ef8-4c85-8d3b-d0f491e74e74}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Graphics\shaders\2d">
+      <UniqueIdentifier>{8edd653f-1f45-4fdf-a8e0-a34774921e0e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Engine.cpp">
@@ -139,9 +151,6 @@
     <ClCompile Include="src\Renderer.cpp">
       <Filter>Graphics\Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="src\QuadRenderer.cpp">
-      <Filter>Graphics\Renderer\2D</Filter>
-    </ClCompile>
     <ClCompile Include="src\Utils.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
@@ -160,19 +169,43 @@
     <ClCompile Include="src\Transform.cpp">
       <Filter>System\Scene</Filter>
     </ClCompile>
+    <ClCompile Include="src\TextureAtlas.cpp">
+      <Filter>Graphics\Renderer\2D</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Renderer2D.cpp">
+      <Filter>Graphics\Renderer\2D</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="src\shaders\QuadVertex.hlsl">
-      <Filter>Graphics\shaders</Filter>
-    </FxCompile>
-    <FxCompile Include="src\shaders\QuadPixel.hlsl">
-      <Filter>Graphics\shaders</Filter>
-    </FxCompile>
     <FxCompile Include="src\shaders\PPVertex.hlsl">
       <Filter>Graphics\shaders</Filter>
     </FxCompile>
     <FxCompile Include="src\shaders\PPDefaultPixel.hlsl">
       <Filter>Graphics\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="src\shaders\SpriteVertex.hlsl">
+      <Filter>Graphics\shaders\2d</Filter>
+    </FxCompile>
+    <FxCompile Include="src\shaders\QuadPixel.hlsl">
+      <Filter>Graphics\shaders\2d</Filter>
+    </FxCompile>
+    <FxCompile Include="src\shaders\QuadVertex.hlsl">
+      <Filter>Graphics\shaders\2d</Filter>
+    </FxCompile>
+    <FxCompile Include="src\shaders\SpritePixel.hlsl">
+      <Filter>Graphics\shaders\2d</Filter>
+    </FxCompile>
+    <FxCompile Include="src\shaders\EllipsePixel.hlsl">
+      <Filter>Graphics\shaders\2d</Filter>
+    </FxCompile>
+    <FxCompile Include="src\shaders\EllipseVertex.hlsl">
+      <Filter>Graphics\shaders\2d</Filter>
+    </FxCompile>
+    <FxCompile Include="src\shaders\PointVertex.hlsl">
+      <Filter>Graphics\shaders\2d</Filter>
+    </FxCompile>
+    <FxCompile Include="src\shaders\PointPixel.hlsl">
+      <Filter>Graphics\shaders\2d</Filter>
     </FxCompile>
   </ItemGroup>
 </Project>

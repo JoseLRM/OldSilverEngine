@@ -246,6 +246,7 @@ namespace SV {
 			std::unique_ptr<T> m_Allocation;
 		public:
 			inline T* operator->() const noexcept { return m_Allocation.get(); }
+			inline bool IsValid() const noexcept { return m_Allocation.get(); }
 			inline T* Get() const noexcept { return m_Allocation.get(); }
 			inline void Set(std::unique_ptr<T> alloc) noexcept { m_Allocation = std::move(alloc); }
 

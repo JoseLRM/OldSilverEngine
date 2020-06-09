@@ -21,8 +21,8 @@ namespace SV {
 			return false;
 		}
 
-		if (!m_QuadRenderer.Initialize(device)) {
-			SV::LogE("Can't initialize Quad Renderer");
+		if (!m_Renderer2D.Initialize(device)) {
+			SV::LogE("Can't initialize Renderer2D");
 			return false;
 		}
 
@@ -38,8 +38,8 @@ namespace SV {
 
 	bool Renderer::Close()
 	{
-		if (!m_QuadRenderer.Close()) {
-			SV::LogE("Can't close Quad Renderer");
+		if (!m_Renderer2D.Close()) {
+			SV::LogE("Can't close Renderer2D");
 			return false;
 		}
 
@@ -76,7 +76,11 @@ namespace SV {
 		device.SetViewport(0u, 0.f, 0.f, 1280.f, 720.f, 0.f, 1.f, cmd);
 
 		for (ui32 i = 0; i < m_RenderQueue2D.m_pLayers.size(); ++i) {
-			m_QuadRenderer.Draw(m_RenderQueue2D.m_pLayers[i]->quadInstances, cmd);
+			m_Renderer2D.DrawQuads(m_RenderQueue2D.m_pLayers[i]->quadInstances, cmd);
+			m_Renderer2D.DrawSprites(m_RenderQueue2D.m_pLayers[i]->spriteInstances, cmd);
+			m_Renderer2D.DrawEllipses(m_RenderQueue2D.m_pLayers[i]->ellipseInstances, cmd);
+			m_Renderer2D.DrawPoints(m_RenderQueue2D.m_pLayers[i]->pointInstances, cmd);
+			m_Renderer2D.DrawLines(m_RenderQueue2D.m_pLayers[i]->lineInstances, cmd);
 		}
 
 		m_PostProcess.DefaultPP(m_Offscreen, device.GetMainFrameBuffer(), cmd);

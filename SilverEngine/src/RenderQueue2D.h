@@ -1,14 +1,20 @@
 #pragma once
 
 #include "core.h"
+#include "TextureAtlas.h"
 
 namespace SV {
 
 	struct SpriteInstance {
-		SV::Color4b color;
-		SV::vec4 texCoord;
 		XMMATRIX tm;
-		void* texture;
+		SV::Color4b color;
+		Sprite sprite;
+		SpriteInstance(const XMMATRIX& tm, SV::Color4b col, Sprite spr)
+			: tm(tm), color(col), sprite(spr) {}
+		inline bool operator<(const SpriteInstance& other) const noexcept
+		{
+			return sprite.pTextureAtlas < other.sprite.pTextureAtlas;
+		}
 	};
 	struct QuadInstance {
 		XMMATRIX tm;
@@ -16,14 +22,11 @@ namespace SV {
 		QuadInstance(const XMMATRIX& tm, SV::Color4b col)
 			: tm(tm), color(col) {}
 	};
-	struct LineInstance {
-		SV::Color4b color;
-		SV::vec2 pos0;
-		SV::vec2 pos1;
-	};
 	struct PointInstance {
 		SV::vec2 pos;
 		SV::Color4b color;
+		PointInstance(const SV::vec2& pos, SV::Color4b color) 
+			: pos(pos), color(color) {}
 	};
 
 	class RenderQueue2D;
@@ -36,7 +39,7 @@ namespace SV {
 		std::vector<SpriteInstance> spriteInstances;
 		std::vector<QuadInstance> quadInstances;
 		std::vector<QuadInstance> ellipseInstances;
-		std::vector<LineInstance> lineInstances;
+		std::vector<PointInstance> lineInstances;
 		std::vector<PointInstance> pointInstances;
 
 	public:
@@ -85,12 +88,12 @@ namespace SV {
 		void DrawLine(const SV::vec2& pos, float direction, float distance, SV::Color4b, RenderLayer& layer);
 
 		void ReservePoints(ui32 count, RenderLayer& layer);
-		void DrawPoint(const SV::vec2& pos, RenderLayer& layer);
+		void DrawPoint(const SV::vec2& pos, SV::Color4b color, RenderLayer& layer);
 
-		//void ReserveSprites(ui32 count, SpriteLayer& layer);
-		//void DrawSprite(const SV::vec2& pos, const SV::vec2& size, float rot, SV::Color4b col, SpriteLayer& layer);
-		//void DrawSprite(const SV::vec2& pos, const SV::vec2& size, SV::Color4b col, SpriteLayer& layer);
-		//void DrawSprite(const XMMATRIX& tm, SV::Color4b col, SpriteLayer& layer);
+		void ReserveSprites(ui32 count, RenderLayer& layer);
+		void DrawSprite(const SV::vec2& pos, const SV::vec2& size, float rot, SV::Color4b col, const Sprite& sprite, RenderLayer& layer);
+		void DrawSprite(const SV::vec2& pos, const SV::vec2& size, SV::Color4b col, const Sprite& sprite, RenderLayer& layer);
+		void DrawSprite(const XMMATRIX& tm, SV::Color4b col, const Sprite& sprite, RenderLayer& layer);
 
 		void AddLayer(RenderLayer& layer);
 

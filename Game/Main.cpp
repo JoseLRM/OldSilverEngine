@@ -41,6 +41,11 @@ class Application : public SV::Application
 	SV::Scene scene;
 	SystemTest system;
 
+	SV::TextureAtlas texture;
+	SV::Sprite sprite;
+
+	ui8 mode = 0;
+
 public:
 	void Initialize() override
 	{
@@ -55,7 +60,7 @@ public:
 		SV::Entity entity = scene.CreateEntity();
 		scene.CreateEntity();
 
-		scene.SetLayer(entity, scene.GetLayer("Teste"));
+		scene.SetLayer(entity, scene.GetLayer("Test"));
 
 		scene.AddComponent(entity, SV::NameComponent());
 		scene.AddComponent(entity, TestTag());
@@ -69,13 +74,17 @@ public:
 			SV::NameComponent* nameComp = scene.GetComponent<SV::NameComponent>(entities[i]);
 
 			nameComp->SetName(std::string("Hello :) ") + std::to_string(i));
-			SV::LogI("Entity from comp -> %s", nameComp->GetName().c_str());
 		}
+
+		texture.Create("res/Skybox.jpg", GetEngine().GetGraphics().GetDevice());
+		sprite = texture.CreateSprite(0.f, 0.f, 1.f, 1.f);
 	}
 	void Update(float dt) override
 	{
-		scene.UpdateSystem(&system, dt);
-		SV::LogSeparator();
+		if (GetEngine().GetInput().IsKeyPressed('W')) {
+			mode++;
+			if (mode > 4) mode = 0;
+		}
 	}
 	void Render() override
 	{
@@ -87,11 +96,29 @@ public:
 
 		SV::vec2 mousePos = camera.GetMousePos(input);
 
-		float size = 25.f;
+		float size = 10.f;
 		float halfSize = size / 2.f;
 
 		ui32 reserve = (camera.GetDimension().x / size) * (camera.GetDimension().y / size);
-		rq.ReserveQuads(reserve, layer);
+		
+		switch (mode)
+		{
+		case 0:
+			rq.ReserveQuads(reserve, layer);
+			break;
+		case 1:
+			rq.ReserveSprites(reserve, layer);
+			break;
+		case 2:
+			rq.ReserveEllipse(reserve, layer);
+			break;
+		case 3:
+			rq.ReservePoints(reserve, layer);
+			break;
+		case 4:
+			rq.ReserveLines(reserve, layer);
+			break;
+		}
 
 		float l0 = 50;
 		float l1 = 175.f;
@@ -111,13 +138,31 @@ public:
 					float d = (distance - l0) / (l1 - l0);
 					g = SV::Math::FloatColorToByte(d);
 				}
-
-				rq.DrawQuad(pos, SV::vec2(size * 0.5f), SV::Color4b(r, g, b, 255), layer);
+				
+				switch (mode)
+				{
+				case 0:
+					rq.DrawQuad(pos, SV::vec2(size * 0.5f), SV::Color4b(r,g,b,255u), layer);
+					break;
+				case 1:
+					rq.DrawSprite(pos, SV::vec2(size * 0.5f), SV::Color4b(r,g,b,255u), sprite, layer);
+					break;
+				case 2:
+					rq.DrawEllipse(pos, SV::vec2(size * 0.5f, size), ToRadians(45.f), SV::Color4b(r,g,b,255u), layer);
+					break;
+				case 3:
+					rq.DrawPoint(pos, SV::Color4b(r,g,b,255u), layer);
+					break;
+				case 4:
+					rq.DrawLine(pos, pos + SV::vec2(10.f, 4.f), SV::Color4b(r,g,b,255u), layer);
+					break;
+				}
 			}
 		}
 	}
 	void Close() override
 	{
+		texture.Release();
 		scene.Close();
 	}
 };
@@ -146,6 +191,6 @@ int main()
 	//engine2.Run(&app2);
 
 	SV::Close();
-	system("PAUSE");
+	//system("PAUSE");
 	return 0;
 }
