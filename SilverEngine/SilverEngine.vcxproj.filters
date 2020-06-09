@@ -81,6 +81,33 @@
     <ClInclude Include="src\Renderer2D.h">
       <Filter>Graphics\Renderer\2D</Filter>
     </ClInclude>
+    <ClInclude Include="src\external\ImGui\imstb_truetype.h">
+      <Filter>External\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\external\ImGui\imconfig.h">
+      <Filter>External\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\external\ImGui\imgui.h">
+      <Filter>External\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\external\ImGui\imgui_impl_dx11.h">
+      <Filter>External\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\external\ImGui\imgui_impl_win32.h">
+      <Filter>External\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\external\ImGui\imgui_internal.h">
+      <Filter>External\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\external\ImGui\imstb_rectpack.h">
+      <Filter>External\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\external\ImGui\imstb_textedit.h">
+      <Filter>External\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ImGuiManager.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="System">
@@ -118,6 +145,9 @@
     </Filter>
     <Filter Include="Graphics\shaders\2d">
       <UniqueIdentifier>{8edd653f-1f45-4fdf-a8e0-a34774921e0e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="External\ImGui">
+      <UniqueIdentifier>{d9619fab-113e-4db2-a7f2-3a88f9f9a1eb}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -174,6 +204,27 @@
     </ClCompile>
     <ClCompile Include="src\Renderer2D.cpp">
       <Filter>Graphics\Renderer\2D</Filter>
+    </ClCompile>
+    <ClCompile Include="src\external\ImGui\imgui.cpp">
+      <Filter>External\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\external\ImGui\imgui_demo.cpp">
+      <Filter>External\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\external\ImGui\imgui_draw.cpp">
+      <Filter>External\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\external\ImGui\imgui_impl_dx11.cpp">
+      <Filter>External\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\external\ImGui\imgui_impl_win32.cpp">
+      <Filter>External\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\external\ImGui\imgui_widgets.cpp">
+      <Filter>External\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ImGuiManager.cpp">
+      <Filter>Utils</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

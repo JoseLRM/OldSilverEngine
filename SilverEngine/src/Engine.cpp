@@ -148,6 +148,8 @@ namespace SV {
 			return false;
 		}
 
+		SVImGui::_internal::Initialize(m_Window, m_Graphics);
+
 		// APPLICATION
 		m_Application->Initialize();
 
@@ -180,24 +182,26 @@ namespace SV {
 		SV::LogSeparator();
 		SV::LogI("Closing %s", m_Name.c_str());
 
-		// WINDOW
-		if (!m_Window.Close()) {
-			SV::LogE("Can't close Window");
-		}
+		// APPLICATION
+		m_Application->Close();
+		m_Application = nullptr;
 
 		// RENDERER
 		if (!m_Renderer.Close()) {
 			SV::LogE("Can't close Renderer");
 		}
 
+		SVImGui::_internal::Close();
+
+		// WINDOW
+		if (!m_Window.Close()) {
+			SV::LogE("Can't close Window");
+		}
+
 		// GRAPHICS
 		if (!m_Graphics.Close()) {
 			SV::LogE("Can't close Graphics");
 		}
-
-		// APPLICATION
-		m_Application->Close();
-		m_Application = nullptr;
 
 		return true;
 	}

@@ -36,7 +36,7 @@ namespace SV {
 
 	void Graphics::BeginFrame()
 	{
-
+		SVImGui::_internal::BeginFrame();
 	}
 	void Graphics::EndFrame()
 	{

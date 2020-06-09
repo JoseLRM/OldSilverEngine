@@ -2,6 +2,7 @@
 
 #define SV_PLATFORM_WINDOW
 #define SV_DEBUG
+#define SV_IMGUI
 
 // Graphics
 #define SV_GFX_COMMAND_LIST_COUNT 32

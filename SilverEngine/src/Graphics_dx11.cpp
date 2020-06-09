@@ -156,6 +156,12 @@ namespace SV {
 			freeCommandLists.push(cmdID);
 		}
 
+#ifdef SV_IMGUI
+		FrameBuffer_dx11* backBuffer = reinterpret_cast<FrameBuffer_dx11*>(mainFrameBuffer.Get());
+		immediateContext->OMSetRenderTargets(1, backBuffer->m_RenderTargetView.GetAddressOf(), nullptr);
+		SVImGui::_internal::EndFrame();
+#endif
+
 		swapChain->Present(0u, 0u);
 
 		for (ui32 i = 0; i < SV_GFX_COMMAND_LIST_COUNT; ++i) {

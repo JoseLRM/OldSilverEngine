@@ -96,7 +96,13 @@ public:
 
 		SV::vec2 mousePos = camera.GetMousePos(input);
 
-		float size = 10.f;
+		static float size = 10.f;
+
+		if (ImGui::Begin("Test")) {
+			ImGui::DragFloat("Size", &size, 0.05f);
+		}
+		ImGui::End();
+
 		float halfSize = size / 2.f;
 
 		ui32 reserve = (camera.GetDimension().x / size) * (camera.GetDimension().y / size);

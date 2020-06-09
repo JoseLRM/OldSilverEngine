@@ -37,6 +37,8 @@ namespace SV {
 	i64 Window::WindowProc(ui32 message, i64 wParam, i64 lParam)
 	{
 		SV::Input& input = GetEngine().GetInput();
+
+		SVImGui::_internal::UpdateWindowProc(m_WindowHandle, message, wParam, lParam);
 		
 		switch (message) {
 		case WM_DESTROY:
