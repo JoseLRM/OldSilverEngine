@@ -1,6 +1,7 @@
 #include "core.h"
 
 #include "RenderQueue2D.h"
+#include "Camera.h"
 
 namespace SV {
 

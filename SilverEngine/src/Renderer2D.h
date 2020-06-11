@@ -1,6 +1,8 @@
 #pragma once
 
 #include "core.h"
+#include "RenderQueue2D.h"
+#include "Graphics.h"
 
 namespace SV {
 
@@ -32,7 +34,7 @@ namespace SV {
 		GPUSpriteInstance m_SpriteInstanceData[SV_GFX_QUAD_BATCH_COUNT];
 
 	public:
-		bool Initialize(GraphicsDevice& device);
+		bool Initialize(Graphics& device);
 		bool Close();
 
 		void DrawQuads(std::vector<QuadInstance>& instances, CommandList& cmd);

@@ -1,5 +1,7 @@
 #include "core.h"
 
+#include "Input.h"
+
 namespace SV {
 
 	bool Input::IsKey(ui8 id) {

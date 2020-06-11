@@ -1,5 +1,7 @@
 #include "core.h"
 
+#include "Scene.h"
+
 namespace SV {
 
 	Transform::Transform(SV::Entity entity, SV::Scene* pScene) 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core.h"
+#include "Graphics.h"
 
 namespace SV {
 
@@ -12,7 +12,7 @@ namespace SV {
 		Sampler m_PPSampler;
 
 	public:
-		bool Initialize(GraphicsDevice& device);
+		bool Initialize(Graphics& device);
 		bool Close();
 
 		void DefaultPP(FrameBuffer& input, FrameBuffer& output, CommandList& cmd);

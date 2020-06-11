@@ -181,6 +181,7 @@ namespace SV {
 
 		inline std::vector<SV::Entity>& GetEntityList() noexcept { return m_Entities; }
 		inline std::vector<SV::EntityData>& GetEntityDataList() noexcept { return m_EntityData; }
+		inline std::vector<ui8>& GetComponentsList(CompID ID) noexcept { return m_Components[ID]; }
 
 		void ClearScene();
 
@@ -202,6 +203,11 @@ namespace SV {
 		{
 			return (Component*)GetComponent(entity, Component::ID);
 		}
+
+		BaseComponent* GetComponent(SV::Entity e, CompID componentID) noexcept;
+		void AddComponent(SV::Entity entity, SV::BaseComponent* comp, CompID componentID, size_t componentSize) noexcept;
+		void AddComponents(std::vector<SV::Entity>& entities, SV::BaseComponent* comp, CompID componentID, size_t componentSize) noexcept;
+		void RemoveComponent(SV::Entity entity, CompID componentID, size_t componentSize) noexcept;
 
 		// ENTITY METHODS
 		SV::Entity CreateEntity(SV::Entity parent = SV_INVALID_ENTITY) noexcept;
@@ -237,13 +243,7 @@ namespace SV {
 		SV::Entity GetNewEntity();
 		void UpdateChildsCount(SV::Entity entity, i32 count);
 
-		BaseComponent* GetComponent(SV::Entity e, CompID componentID) noexcept;
 		BaseComponent* GetComponent(const SV::EntityData& e, CompID componentID) noexcept;
-
-		void AddComponent(SV::Entity entity, SV::BaseComponent* comp, CompID componentID, size_t componentSize) noexcept;
-		void AddComponents(std::vector<SV::Entity>& entities, SV::BaseComponent* comp, CompID componentID, size_t componentSize) noexcept;
-
-		void RemoveComponent(SV::Entity entity, CompID componentID, size_t componentSize) noexcept;
 		void RemoveComponents(SV::EntityData& entityData) noexcept;
 
 		// systems

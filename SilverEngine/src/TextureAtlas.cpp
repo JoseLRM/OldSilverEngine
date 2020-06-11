@@ -1,6 +1,7 @@
 #include "core.h"
 
 #include "TextureAtlas.h"
+#include "Graphics.h"
 
 namespace SV {
 
@@ -11,7 +12,7 @@ namespace SV {
 		Release();
 	}
 
-	bool TextureAtlas::Create(const char* filePath, SV::GraphicsDevice& device)
+	bool TextureAtlas::Create(const char* filePath, SV::Graphics& device)
 	{
 		device.ValidateTexture(&m_Texture);
 
@@ -30,6 +31,8 @@ namespace SV {
 
 		m_HasTexture = true;
 
+		delete[] data;
+
 		return true;
 	}
 
@@ -39,7 +42,7 @@ namespace SV {
 		if (m_Sampler.IsValid()) m_Sampler->Release();
 	}
 
-	bool TextureAtlas::SetSamplerState(SV_GFX_TEXTURE_ADDRESS_MODE addressMode, SV_GFX_TEXTURE_FILTER filter, SV::GraphicsDevice& device)
+	bool TextureAtlas::SetSamplerState(SV_GFX_TEXTURE_ADDRESS_MODE addressMode, SV_GFX_TEXTURE_FILTER filter, SV::Graphics& device)
 	{
 		device.ValidateSampler(&m_Sampler);
 
@@ -66,7 +69,7 @@ namespace SV {
 		m_Sampler->Unbind(type, slot, cmd);
 	}
 
-	bool TextureAtlas::CheckPrimitives(SV::GraphicsDevice& device)
+	bool TextureAtlas::CheckPrimitives(SV::Graphics& device)
 	{
 		if (!m_HasTexture) return false;
 		if (!m_HasSampler) SetSamplerState(SV_GFX_TEXTURE_ADDRESS_WRAP, SV_GFX_TEXTURE_FILTER_MIN_MAG_MIP_LINEAR, device);

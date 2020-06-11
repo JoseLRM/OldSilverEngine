@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core.h"
+#include "EngineDevice.h"
 
 namespace SV {
 

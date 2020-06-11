@@ -1,7 +1,8 @@
 #include "core.h"
 
 #include "Engine.h"
-#include "TaskSystem.h"
+
+#include "Graphics_dx11.h"
 
 ///////////////////Initialization Parameters////////////////////////////////
 void SV_ENGINE_INITIALIZATION_DESC::SetDefault()
@@ -12,6 +13,8 @@ void SV_ENGINE_INITIALIZATION_DESC::SetDefault()
 	windowDesc.width = 1280;
 	windowDesc.height = 720;
 	windowDesc.title = "SilverEngine";
+	rendererDesc.windowAttachment.enabled = true;
+	rendererDesc.windowAttachment.resolution = 1280;
 }
 
 /////////////////////Static Initialization///////////////////////////////////////////
@@ -57,7 +60,6 @@ namespace SV {
 	Engine::Engine() : m_EngineState(SV_ENGINE_STATE_NONE), m_Application(nullptr)
 	{
 		m_Window.SetEngine(this);
-		m_Graphics.SetEngine(this);
 		m_Renderer.SetEngine(this);
 		m_Input.SetEngine(this);
 	}
@@ -137,7 +139,9 @@ namespace SV {
 		}
 
 		// GRAPHICS
-		if (!m_Graphics.Initialize(desc.graphicsDesc)) {
+		m_Graphics = std::make_unique<SV::DirectX11Device>();
+		m_Graphics->SetEngine(this);
+		if (!m_Graphics->Initialize(desc.graphicsDesc)) {
 			SV::LogE("Can't initialize Graphics");
 			return false;
 		}
@@ -148,7 +152,7 @@ namespace SV {
 			return false;
 		}
 
-		SVImGui::_internal::Initialize(m_Window, m_Graphics);
+		SVImGui::_internal::Initialize(m_Window, GetGraphics());
 
 		// APPLICATION
 		m_Application->Initialize();
@@ -162,7 +166,7 @@ namespace SV {
 		while (m_Window.UpdateInput() && m_EngineState == SV_ENGINE_STATE_RUNNING)
 		{
 			// Begin
-			m_Graphics.BeginFrame();
+			m_Graphics->BeginFrame();
 			m_Renderer.BeginFrame();
 
 			// Updating
@@ -174,7 +178,7 @@ namespace SV {
 			m_Renderer.Render();
 
 			m_Renderer.EndFrame();
-			m_Graphics.EndFrame();
+			m_Graphics->EndFrame();
 		}
 	}
 	bool Engine::Close()
@@ -199,9 +203,10 @@ namespace SV {
 		}
 
 		// GRAPHICS
-		if (!m_Graphics.Close()) {
+		if (!m_Graphics->Close()) {
 			SV::LogE("Can't close Graphics");
 		}
+		m_Graphics.reset();
 
 		return true;
 	}

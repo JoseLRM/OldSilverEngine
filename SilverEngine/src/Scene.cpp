@@ -1,5 +1,7 @@
 #include "core.h"
 
+#include "Scene.h"
+
 namespace SV {
 
 	using namespace _internal;

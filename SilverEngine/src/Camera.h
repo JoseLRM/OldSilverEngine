@@ -4,6 +4,7 @@
 
 namespace SV {
 
+	class Input;
 	class Camera {
 	public:
 		virtual XMMATRIX GetProjectionMatrix() const = 0;

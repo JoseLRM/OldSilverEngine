@@ -1,6 +1,7 @@
 #include "core.h"
 
 #include "Camera.h"
+#include "Input.h"
 
 namespace SV {
 

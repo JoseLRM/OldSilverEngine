@@ -4,7 +4,7 @@
 
 namespace SV {
 
-	bool PostProcess::Initialize(GraphicsDevice& device)
+	bool PostProcess::Initialize(Graphics& device)
 	{
 		device.ValidateShader(&m_PPVertexShader);
 		device.ValidateShader(&m_DefaultPPPixelShader);
@@ -28,11 +28,11 @@ namespace SV {
 		}
 
 		// Shaders
-		if (!m_PPVertexShader->Create(SV_GFX_SHADER_TYPE_VERTEX, "PPVertex.cso", device)) {
+		if (!m_PPVertexShader->Create(SV_GFX_SHADER_TYPE_VERTEX, "shaders/PPVertex.cso", device)) {
 			SV::LogE("Post Process Vertex Shader not found");
 			return false;
 		}
-		if (!m_DefaultPPPixelShader->Create(SV_GFX_SHADER_TYPE_PIXEL, "PPDefaultPixel.cso", device)) {
+		if (!m_DefaultPPPixelShader->Create(SV_GFX_SHADER_TYPE_PIXEL, "shaders/PPDefaultPixel.cso", device)) {
 			SV::LogE("Post Process Pixel Shader not found");
 			return false;
 		}
@@ -66,7 +66,7 @@ namespace SV {
 
 	void PostProcess::DefaultPP(FrameBuffer& input, FrameBuffer& output, CommandList& cmd)
 	{
-		GraphicsDevice& device = cmd.GetDevice();
+		Graphics& device = cmd.GetDevice();
 
 		device.SetTopology(SV_GFX_TOPOLOGY_TRIANGLESTRIP, cmd);
 		device.SetViewport(0u, 0.f, 0.f, output->GetWidth(), output->GetHeight(), 0.f, 1.f, cmd);

@@ -19,16 +19,17 @@ namespace SV {
 
 		bool LoadImage(const char* filePath, void** pdata, ui32* width, ui32* height, SV_GFX_FORMAT* pformat) {
 
-			int w, h, bits;
-			*pdata = stbi_load(filePath, &w, &h, &bits, 4);
+			int w = 0, h = 0, bits = 0;
+			void* data = stbi_load(filePath, &w, &h, &bits, 4);
 
-			void* data = *pdata;
-
+			*pdata = nullptr;
 			*width = w;
 			*height = h;
 			*pformat = SV_GFX_FORMAT_R8G8B8A8_UNORM;
 
 			if (!data) return false;
+			*pdata = data;
+			return true;
 		}
 	}
 }

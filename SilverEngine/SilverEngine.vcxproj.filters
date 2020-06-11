@@ -13,16 +13,13 @@
       <Filter>Utils</Filter>
     </ClInclude>
     <ClInclude Include="src\Window.h">
-      <Filter>System\Window</Filter>
+      <Filter>Graphics\Window</Filter>
     </ClInclude>
     <ClInclude Include="src\Win.h">
-      <Filter>System\Window</Filter>
+      <Filter>Graphics\Window</Filter>
     </ClInclude>
     <ClInclude Include="src\TaskSystem.h">
       <Filter>System\TaskSystem</Filter>
-    </ClInclude>
-    <ClInclude Include="src\EngineDevice.h">
-      <Filter>System</Filter>
     </ClInclude>
     <ClInclude Include="src\Input.h">
       <Filter>System</Filter>
@@ -108,6 +105,12 @@
     <ClInclude Include="src\ImGuiManager.h">
       <Filter>Utils</Filter>
     </ClInclude>
+    <ClInclude Include="src\SpriteComponent.h">
+      <Filter>Graphics\Renderer\2D</Filter>
+    </ClInclude>
+    <ClInclude Include="src\EngineDevice.h">
+      <Filter>System</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="System">
@@ -115,9 +118,6 @@
     </Filter>
     <Filter Include="Utils">
       <UniqueIdentifier>{d57fd0ac-336d-445c-bd10-a27b9717adb2}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="System\Window">
-      <UniqueIdentifier>{826d9c92-b98b-4198-b025-7abc9453ee50}</UniqueIdentifier>
     </Filter>
     <Filter Include="System\TaskSystem">
       <UniqueIdentifier>{bfefb0c5-7e7c-485a-bf93-81f58d27c14c}</UniqueIdentifier>
@@ -149,6 +149,9 @@
     <Filter Include="External\ImGui">
       <UniqueIdentifier>{d9619fab-113e-4db2-a7f2-3a88f9f9a1eb}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Graphics\Window">
+      <UniqueIdentifier>{826d9c92-b98b-4198-b025-7abc9453ee50}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Engine.cpp">
@@ -158,7 +161,7 @@
       <Filter>System</Filter>
     </ClCompile>
     <ClCompile Include="src\Window.cpp">
-      <Filter>System\Window</Filter>
+      <Filter>Graphics\Window</Filter>
     </ClCompile>
     <ClCompile Include="src\TaskSystem.cpp">
       <Filter>System\TaskSystem</Filter>
@@ -225,6 +228,9 @@
     </ClCompile>
     <ClCompile Include="src\ImGuiManager.cpp">
       <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="src\EngineDevice.cpp">
+      <Filter>System</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

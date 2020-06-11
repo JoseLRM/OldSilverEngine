@@ -1,11 +1,13 @@
 #include "core.h"
 
 #include "Graphics_dx11.h"
+#include "Window.h"
+#include "Engine.h"
 
 #define dxAssert(x) if((x) != 0) SV_THROW("DirectX11 Exception!!", #x);
 #define dxCheck(x) if((x) != 0) return false
 
-inline SV::DirectX11Device& ParseDevice(SV::GraphicsDevice& device)
+inline SV::DirectX11Device& ParseDevice(SV::Graphics& device)
 {
 	return *reinterpret_cast<SV::DirectX11Device*>(&device);
 }
@@ -63,7 +65,7 @@ constexpr D3D11_FILTER ParseTextureFilter(SV_GFX_TEXTURE_FILTER filter)
 
 namespace SV {
 
-	bool DirectX11Device::Initialize(const SV_GRAPHICS_INITIALIZATION_DESC& desc)
+	bool DirectX11Device::_Initialize(const SV_GRAPHICS_INITIALIZATION_DESC& desc)
 	{
 		Window& window = GetEngine().GetWindow();
 
@@ -128,7 +130,7 @@ namespace SV {
 		return true;
 	}
 
-	bool DirectX11Device::Close()
+	bool DirectX11Device::_Close()
 	{
 		// Release Deferred Contexts
 		for (ui32 i = 0; i < SV_GFX_COMMAND_LIST_COUNT; ++i)
@@ -239,7 +241,7 @@ namespace SV {
 		}
 	}
 
-	bool VertexBuffer_dx11::_Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, GraphicsDevice& d)
+	bool VertexBuffer_dx11::_Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, Graphics& d)
 	{
 		D3D11_BUFFER_DESC desc;
 		desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
@@ -283,7 +285,7 @@ namespace SV {
 	}
 
 	///////////////////////////////INDEX BUFFER///////////////////////////////////
-	bool IndexBuffer_dx11::_Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, GraphicsDevice& d)
+	bool IndexBuffer_dx11::_Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, Graphics& d)
 	{
 		D3D11_BUFFER_DESC desc;
 		desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
@@ -322,7 +324,7 @@ namespace SV {
 	}
 
 	///////////////////////////////CONSTANT BUFFER///////////////////////////////////
-	bool ConstantBuffer_dx11::_Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, GraphicsDevice& d)
+	bool ConstantBuffer_dx11::_Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, Graphics& d)
 	{
 		D3D11_BUFFER_DESC desc;
 		desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
@@ -363,7 +365,7 @@ namespace SV {
 
 	///////////////////////////////FRAME BUFFER///////////////////////////////////
 
-	bool FrameBuffer_dx11::_Create(ui32 width, ui32 height, SV_GFX_FORMAT format, bool textureUsage, SV::GraphicsDevice& d)
+	bool FrameBuffer_dx11::_Create(ui32 width, ui32 height, SV_GFX_FORMAT format, bool textureUsage, SV::Graphics& d)
 	{
 		DirectX11Device& dx11 = ParseDevice(d);
 		// Render target view desc
@@ -413,7 +415,7 @@ namespace SV {
 		m_Resource.Reset();
 		m_ShaderResouceView.Reset();
 	}
-	bool FrameBuffer_dx11::_Resize(ui32 width, ui32 height, SV::GraphicsDevice& d)
+	bool FrameBuffer_dx11::_Resize(ui32 width, ui32 height, SV::Graphics& d)
 	{
 		if (width == m_Width && height == m_Height) return true;
 		Release();
@@ -459,7 +461,7 @@ namespace SV {
 		return reinterpret_cast<ID3D11GeometryShader*>(ptr);
 	}
 
-	bool Shader_dx11::_Create(SV_GFX_SHADER_TYPE type, const char* filePath, SV::GraphicsDevice& device)
+	bool Shader_dx11::_Create(SV_GFX_SHADER_TYPE type, const char* filePath, SV::Graphics& device)
 	{
 		std::wstring wFilePath = SV::Utils::ToWString(filePath);
 
@@ -568,7 +570,7 @@ namespace SV {
 	}
 
 	/////////////////////////////////INPUT LAYOUT//////////////////////////////////////////
-	bool InputLayout_dx11::_Create(const SV_GFX_INPUT_ELEMENT_DESC* d, ui32 count, const Shader& vs, SV::GraphicsDevice& device)
+	bool InputLayout_dx11::_Create(const SV_GFX_INPUT_ELEMENT_DESC* d, ui32 count, const Shader& vs, SV::Graphics& device)
 	{
 		SV_ASSERT(count < 16);
 
@@ -612,7 +614,7 @@ namespace SV {
 	}
 
 	/////////////////////////////////TEXTURE//////////////////////////////////////////
-	bool Texture_dx11::_Create(void* data, ui32 width, ui32 height, SV_GFX_FORMAT format, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, SV::GraphicsDevice& device)
+	bool Texture_dx11::_Create(void* data, ui32 width, ui32 height, SV_GFX_FORMAT format, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, SV::Graphics& device)
 	{
 		DirectX11Device& dx11 = ParseDevice(device);
 		// Resource
@@ -676,7 +678,7 @@ namespace SV {
 	}
 
 	/////////////////////////////////SAMPLER//////////////////////////////////////////
-	bool Sampler_dx11::_Create(SV_GFX_TEXTURE_ADDRESS_MODE addressMode, SV_GFX_TEXTURE_FILTER filter, GraphicsDevice& device)
+	bool Sampler_dx11::_Create(SV_GFX_TEXTURE_ADDRESS_MODE addressMode, SV_GFX_TEXTURE_FILTER filter, Graphics& device)
 	{
 		D3D11_SAMPLER_DESC desc;
 		svZeroMemory(&desc, sizeof(D3D11_SAMPLER_DESC));

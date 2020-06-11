@@ -43,11 +43,11 @@ namespace SV {
 
 		static i64 WindowProc(Window& window, ui32 message, i64 wParam, i64 lParam);
 
-		inline WindowHandle GetWindowHandle() const noexcept
-		{
-			return m_WindowHandle;
-		}
+		inline WindowHandle GetWindowHandle() const noexcept { return m_WindowHandle; }
 
+		inline ui32 GetWidth() const noexcept { return m_Width; }
+		inline ui32 GetHeight() const noexcept { return m_Height; }
+		inline float GetAspect() const noexcept { return float(m_Width) / float(m_Height); }
 	};
 
 	void ShowConsole();

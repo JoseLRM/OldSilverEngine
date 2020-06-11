@@ -3,7 +3,9 @@
 
 #include "src/core.h"
 #include "src/Engine.h"
-#include "src/Math.h"
-#include "src/TaskSystem.h"
+#include "src/Scene.h"
+
+// Components
+#include "src/SpriteComponent.h"
 
 #endif

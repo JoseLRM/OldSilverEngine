@@ -9,6 +9,8 @@
 namespace SV {
 	class Window;
 	class Graphics;
+	class Scene;
+	typedef ui32 Entity;
 }
 
 namespace SVImGui {
@@ -21,6 +23,7 @@ namespace SVImGui {
 	}
 
 	void ShowGraphics(const SV::Graphics& graphics, bool* open);
+	void ShowScene(SV::Scene& scene, SV::Entity* selectedEntity, bool* open);
 }
 
 #endif

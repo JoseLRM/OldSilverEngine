@@ -2,6 +2,7 @@
 
 #include "core.h"
 #include "GraphicsDesc.h"
+#include "EngineDevice.h"
 
 struct SV_GRAPHICS_INITIALIZATION_DESC {
 
@@ -9,7 +10,6 @@ struct SV_GRAPHICS_INITIALIZATION_DESC {
 
 namespace SV {
 
-	// Define primitives
 	class VertexBuffer;
 	class IndexBuffer;
 	class ConstantBuffer;
@@ -20,45 +20,14 @@ namespace SV {
 	class Sampler;
 
 	// CommandList
-	class GraphicsDevice;
+	class Graphics;
 	class CommandList {
-		GraphicsDevice* m_pDevice;
+		Graphics* m_pDevice;
 		ui32 m_ID;
 	public:
-		CommandList(GraphicsDevice* pDevice, ui32 ID) : m_pDevice(pDevice), m_ID(ID) {}
+		CommandList(Graphics* pDevice, ui32 ID) : m_pDevice(pDevice), m_ID(ID) {}
 		inline ui32 GetID() const noexcept { return m_ID; }
-		inline GraphicsDevice& GetDevice() const noexcept { return *m_pDevice; }
-	};
-
-	// GraphicsDevice: Specific API functions and primitives creation
-	class GraphicsDevice : public SV::EngineDevice {
-	public:
-		virtual bool Initialize(const SV_GRAPHICS_INITIALIZATION_DESC& desc) = 0;
-		virtual bool Close() = 0;
-
-		virtual void Present() = 0;
-		virtual CommandList BeginCommandList() = 0;
-		virtual void SetViewport(ui32 slot, float x, float y, float w, float h, float n, float f, SV::CommandList& cmd) = 0;
-		virtual void SetTopology(SV_GFX_TOPOLOGY topology, CommandList& cmd) = 0;
-
-		virtual SV::FrameBuffer& GetMainFrameBuffer() = 0;
-
-		// Draw calls
-		virtual void Draw(ui32 vertexCount, ui32 startVertex, CommandList& cmd) = 0;
-		virtual void DrawIndexed(ui32 indexCount, ui32 startIndex, ui32 startVertex, CommandList& cmd) = 0;
-		virtual void DrawInstanced(ui32 verticesPerInstance, ui32 instances, ui32 startVertex, ui32 startInstance, CommandList& cmd) = 0;
-		virtual void DrawIndexedInstanced(ui32 indicesPerInstance, ui32 instances, ui32 startIndex, ui32 startVertex, ui32 startInstance, CommandList& cmd) = 0;
-
-		// Primitives
-		virtual void ValidateVertexBuffer(VertexBuffer* buffer) = 0;
-		virtual void ValidateIndexBuffer(IndexBuffer* buffer) = 0;
-		virtual void ValidateConstantBuffer(ConstantBuffer* buffer) = 0;
-		virtual void ValidateFrameBuffer(FrameBuffer* buffer) = 0;
-		virtual void ValidateShader(Shader* shader) = 0;
-		virtual void ValidateInputLayout(InputLayout* il) = 0;
-		virtual void ValidateTexture(Texture* tex) = 0;
-		virtual void ValidateSampler(Sampler* sam) = 0;
-
+		inline Graphics& GetDevice() const noexcept { return *m_pDevice; }
 	};
 
 	/////////////////////////////PRIMITIVES///////////////////////
@@ -70,7 +39,7 @@ namespace SV {
 			ui32 m_Size;
 
 		public:
-			bool Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, GraphicsDevice& device);
+			bool Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, Graphics& device);
 			void Release();
 
 			void Update(void* data, ui32 size, CommandList& cmd);
@@ -79,7 +48,7 @@ namespace SV {
 			void Unbind(CommandList& cmd);
 
 		protected:
-			virtual bool _Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, GraphicsDevice& device) = 0;
+			virtual bool _Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, Graphics& device) = 0;
 			virtual void _Release() = 0;
 			virtual void _Update(void* data, ui32 size, CommandList& cmd) = 0;
 			virtual void _Bind(ui32 slot, ui32 stride, ui32 offset, CommandList& cmd) = 0;
@@ -89,14 +58,14 @@ namespace SV {
 
 		class IndexBuffer_internal {
 		public:
-			bool Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, GraphicsDevice& device);
+			bool Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, Graphics& device);
 			void Release();
 				 
 			void Bind(SV_GFX_FORMAT format, ui32 offset, CommandList& cmd);
 			void Unbind(CommandList& cmd);
 
 		protected:
-			virtual bool _Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, GraphicsDevice& device) = 0;
+			virtual bool _Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, Graphics& device) = 0;
 			virtual void _Release() = 0;
 			virtual void _Bind(SV_GFX_FORMAT format, ui32 offset, CommandList& cmd) = 0;
 			virtual void _Unbind(CommandList& cmd) = 0;
@@ -108,14 +77,14 @@ namespace SV {
 			ui32 m_LastSlot[3];
 
 		public:
-			bool Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, GraphicsDevice& device);
+			bool Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, Graphics& device);
 			void Release();
 
 			void Bind(ui32 slot, SV_GFX_SHADER_TYPE type, CommandList& cmd);
 			void Unbind(SV_GFX_SHADER_TYPE type, CommandList& cmd);
 
 		protected:
-			virtual bool _Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, GraphicsDevice& device) = 0;
+			virtual bool _Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, Graphics& device) = 0;
 			virtual void _Release() = 0;
 
 			virtual void _Bind(ui32 slot, SV_GFX_SHADER_TYPE type, CommandList& cmd) = 0;
@@ -133,10 +102,10 @@ namespace SV {
 			bool m_TextureUsage;
 
 		public:
-			bool Create(ui32 width, ui32 height, SV_GFX_FORMAT format, bool textureUsage, SV::GraphicsDevice& device);
+			bool Create(ui32 width, ui32 height, SV_GFX_FORMAT format, bool textureUsage, SV::Graphics& device);
 			void Release();
 
-			bool Resize(ui32 width, ui32 height, SV::GraphicsDevice& device);
+			bool Resize(ui32 width, ui32 height, SV::Graphics& device);
 
 			void Clear(SV::Color4f color, CommandList& cmd);
 			void Bind(ui32 slot, CommandList& cmd);
@@ -149,9 +118,9 @@ namespace SV {
 			inline ui32 GetHeight() const noexcept { return m_Height; }
 
 		protected:
-			virtual bool _Create(ui32 width, ui32 height, SV_GFX_FORMAT format, bool textureUsage, SV::GraphicsDevice& device) = 0;
+			virtual bool _Create(ui32 width, ui32 height, SV_GFX_FORMAT format, bool textureUsage, SV::Graphics& device) = 0;
 			virtual void _Release() = 0;
-			virtual bool _Resize(ui32 width, ui32 height, SV::GraphicsDevice& device) = 0;
+			virtual bool _Resize(ui32 width, ui32 height, SV::Graphics& device) = 0;
 			virtual void _Clear(SV::Color4f color, CommandList& cmd) = 0;
 			virtual void _Bind(ui32 slot, CommandList& cmd) = 0;
 			virtual void _Unbind(CommandList& cmd) = 0;
@@ -164,7 +133,7 @@ namespace SV {
 			SV_GFX_SHADER_TYPE m_ShaderType;
 
 		public:
-			bool Create(SV_GFX_SHADER_TYPE type, const char* filePath, SV::GraphicsDevice& device);
+			bool Create(SV_GFX_SHADER_TYPE type, const char* filePath, SV::Graphics& device);
 			void Release();
 
 			void Bind(CommandList& cmd);
@@ -173,7 +142,7 @@ namespace SV {
 			inline SV_GFX_SHADER_TYPE GetType() const noexcept { return m_ShaderType; }
 
 		protected:
-			virtual bool _Create(SV_GFX_SHADER_TYPE type, const char* filePath, SV::GraphicsDevice& device) = 0;
+			virtual bool _Create(SV_GFX_SHADER_TYPE type, const char* filePath, SV::Graphics& device) = 0;
 			virtual void _Release() = 0;
 			virtual void _Bind(CommandList& cmd) = 0;
 			virtual void _Unbind(CommandList& cmd) = 0;
@@ -181,14 +150,14 @@ namespace SV {
 
 		class InputLayout_internal {
 		public:
-			bool Create(const SV_GFX_INPUT_ELEMENT_DESC* desc, ui32 count, const Shader& vs, SV::GraphicsDevice& device);
+			bool Create(const SV_GFX_INPUT_ELEMENT_DESC* desc, ui32 count, const Shader& vs, SV::Graphics& device);
 			void Release();
 
 			void Bind(CommandList& cmd);
 			void Unbind(CommandList& cmd);
 
 		protected:
-			virtual bool _Create(const SV_GFX_INPUT_ELEMENT_DESC* desc, ui32 count, const Shader& vs, SV::GraphicsDevice& device) = 0;
+			virtual bool _Create(const SV_GFX_INPUT_ELEMENT_DESC* desc, ui32 count, const Shader& vs, SV::Graphics& device) = 0;
 			virtual void _Release() = 0;
 			virtual void _Bind(CommandList& cmd) = 0;
 			virtual void _Unbind(CommandList& cmd) = 0;
@@ -206,9 +175,9 @@ namespace SV {
 			ui32 m_Size;
 
 		public:
-			bool Create(void* data, ui32 width, ui32 height, SV_GFX_FORMAT format, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, SV::GraphicsDevice& device);
+			bool Create(void* data, ui32 width, ui32 height, SV_GFX_FORMAT format, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, SV::Graphics& device);
 			void Release();
-			bool Resize(void* data, ui32 width, ui32 height, SV::GraphicsDevice& device);
+			bool Resize(void* data, ui32 width, ui32 height, SV::Graphics& device);
 
 			void Update(void* data, ui32 size, CommandList& cmd);
 
@@ -216,7 +185,7 @@ namespace SV {
 			void Unbind(SV_GFX_SHADER_TYPE type, ui32 slot, CommandList& cmd);
 
 		protected:
-			virtual bool _Create(void* data, ui32 width, ui32 height, SV_GFX_FORMAT format, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, SV::GraphicsDevice& device) = 0;
+			virtual bool _Create(void* data, ui32 width, ui32 height, SV_GFX_FORMAT format, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, SV::Graphics& device) = 0;
 			virtual void _Release() = 0;
 			virtual void _Update(void* data, ui32 size, CommandList& cmd) = 0;
 			virtual void _Bind(SV_GFX_SHADER_TYPE type, ui32 slot, CommandList& cmd) = 0;
@@ -227,14 +196,14 @@ namespace SV {
 		class Sampler_internal {
 		protected:
 		public:
-			bool Create(SV_GFX_TEXTURE_ADDRESS_MODE addressMode, SV_GFX_TEXTURE_FILTER filter, GraphicsDevice& device);
+			bool Create(SV_GFX_TEXTURE_ADDRESS_MODE addressMode, SV_GFX_TEXTURE_FILTER filter, Graphics& device);
 			void Release();
 
 			void Bind(SV_GFX_SHADER_TYPE type, ui32 slot, CommandList& cmd);
 			void Unbind(SV_GFX_SHADER_TYPE type, ui32 slot, CommandList& cmd);
 
 		protected:
-			virtual bool _Create(SV_GFX_TEXTURE_ADDRESS_MODE addressMode, SV_GFX_TEXTURE_FILTER filter, GraphicsDevice& device) = 0;
+			virtual bool _Create(SV_GFX_TEXTURE_ADDRESS_MODE addressMode, SV_GFX_TEXTURE_FILTER filter, Graphics& device) = 0;
 			virtual void _Release() = 0;
 			virtual void _Bind(SV_GFX_SHADER_TYPE type, ui32 slot, CommandList& cmd) = 0;
 			virtual void _Unbind(SV_GFX_SHADER_TYPE type, ui32 slot, CommandList& cmd) = 0;
@@ -264,13 +233,11 @@ namespace SV {
 	class Sampler			: public _internal::Primitive_internal<_internal::Sampler_internal> {};
 
 	class Graphics : public SV::EngineDevice {
-		Graphics();
-		~Graphics();
-
-		std::unique_ptr<GraphicsDevice> m_Device;
 
 		bool Initialize(const SV_GRAPHICS_INITIALIZATION_DESC& desc);
 		bool Close();
+		virtual bool _Initialize(const SV_GRAPHICS_INITIALIZATION_DESC& desc) = 0;
+		virtual bool _Close() = 0;
 
 		void BeginFrame();
 		void EndFrame();
@@ -278,7 +245,31 @@ namespace SV {
 	public:
 		friend Engine;
 
-		inline GraphicsDevice& GetDevice() noexcept { return *m_Device.get(); }
+		Graphics();
+		~Graphics();
+
+		virtual void Present() = 0;
+		virtual CommandList BeginCommandList() = 0;
+		virtual void SetViewport(ui32 slot, float x, float y, float w, float h, float n, float f, SV::CommandList& cmd) = 0;
+		virtual void SetTopology(SV_GFX_TOPOLOGY topology, CommandList& cmd) = 0;
+
+		virtual SV::FrameBuffer& GetMainFrameBuffer() = 0;
+
+		// Draw calls
+		virtual void Draw(ui32 vertexCount, ui32 startVertex, CommandList& cmd) = 0;
+		virtual void DrawIndexed(ui32 indexCount, ui32 startIndex, ui32 startVertex, CommandList& cmd) = 0;
+		virtual void DrawInstanced(ui32 verticesPerInstance, ui32 instances, ui32 startVertex, ui32 startInstance, CommandList& cmd) = 0;
+		virtual void DrawIndexedInstanced(ui32 indicesPerInstance, ui32 instances, ui32 startIndex, ui32 startVertex, ui32 startInstance, CommandList& cmd) = 0;
+
+		// Primitives
+		virtual void ValidateVertexBuffer(VertexBuffer* buffer) = 0;
+		virtual void ValidateIndexBuffer(IndexBuffer* buffer) = 0;
+		virtual void ValidateConstantBuffer(ConstantBuffer* buffer) = 0;
+		virtual void ValidateFrameBuffer(FrameBuffer* buffer) = 0;
+		virtual void ValidateShader(Shader* shader) = 0;
+		virtual void ValidateInputLayout(InputLayout* il) = 0;
+		virtual void ValidateTexture(Texture* tex) = 0;
+		virtual void ValidateSampler(Sampler* sam) = 0;
 
 	};
 

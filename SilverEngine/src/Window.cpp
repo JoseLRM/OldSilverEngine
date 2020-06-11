@@ -1,5 +1,6 @@
 #include "core.h"
 
+#include "Engine.h"
 #include "Win.h"
 
 inline HWND ToHWND(SV::WindowHandle wnd)

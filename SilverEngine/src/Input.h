@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core.h"
+#include "EngineDevice.h"
 
 #define SV_MOUSE_LEFT			0
 #define SV_MOUSE_RIGHT			1

@@ -1,9 +1,10 @@
 #include "core.h"
+
 #include "Renderer2D.h"
 
 namespace SV {
 
-	bool Renderer2D::Initialize(GraphicsDevice& device)
+	bool Renderer2D::Initialize(Graphics& device)
 	{
 		SV::vec2 vertices[] = {
 			{-0.5,  0.5f},
@@ -41,11 +42,11 @@ namespace SV {
 		}
 
 		// QUAD RENDERING
-		if (!m_QuadVertexShader->Create(SV_GFX_SHADER_TYPE_VERTEX, "QuadVertex.cso", device)) {
+		if (!m_QuadVertexShader->Create(SV_GFX_SHADER_TYPE_VERTEX, "shaders/QuadVertex.cso", device)) {
 			SV::LogE("Quad VertexShader not found");
 			return false;
 		}
-		if (!m_QuadPixelShader->Create(SV_GFX_SHADER_TYPE_PIXEL, "QuadPixel.cso", device)) {
+		if (!m_QuadPixelShader->Create(SV_GFX_SHADER_TYPE_PIXEL, "shaders/QuadPixel.cso", device)) {
 			SV::LogE("Quad PixelShader not found");
 			return false;
 		}
@@ -66,11 +67,11 @@ namespace SV {
 		}
 
 		// SPRITE RENDERING
-		if (!m_SpriteVertexShader->Create(SV_GFX_SHADER_TYPE_VERTEX, "SpriteVertex.cso", device)) {
+		if (!m_SpriteVertexShader->Create(SV_GFX_SHADER_TYPE_VERTEX, "shaders/SpriteVertex.cso", device)) {
 			SV::LogE("Sprite VertexShader not found");
 			return false;
 		}
-		if (!m_SpritePixelShader->Create(SV_GFX_SHADER_TYPE_PIXEL, "SpritePixel.cso", device)) {
+		if (!m_SpritePixelShader->Create(SV_GFX_SHADER_TYPE_PIXEL, "shaders/SpritePixel.cso", device)) {
 			SV::LogE("Sprite PixelShader not found");
 			return false;
 		}
@@ -92,21 +93,21 @@ namespace SV {
 		}
 
 		// ELLIPSE RENDERING
-		if (!m_EllipseVertexShader->Create(SV_GFX_SHADER_TYPE_VERTEX, "EllipseVertex.cso", device)) {
+		if (!m_EllipseVertexShader->Create(SV_GFX_SHADER_TYPE_VERTEX, "shaders/EllipseVertex.cso", device)) {
 			SV::LogE("Ellipse VertexShader not found");
 			return false;
 		}
-		if (!m_EllipsePixelShader->Create(SV_GFX_SHADER_TYPE_PIXEL, "EllipsePixel.cso", device)) {
+		if (!m_EllipsePixelShader->Create(SV_GFX_SHADER_TYPE_PIXEL, "shaders/EllipsePixel.cso", device)) {
 			SV::LogE("Ellipse PixelShader not found");
 			return false;
 		}
 
 		// POINT RENDERING
-		if (!m_PointVertexShader->Create(SV_GFX_SHADER_TYPE_VERTEX, "PointVertex.cso", device)) {
+		if (!m_PointVertexShader->Create(SV_GFX_SHADER_TYPE_VERTEX, "shaders/PointVertex.cso", device)) {
 			SV::LogE("Point VertexShader not found");
 			return false;
 		}
-		if (!m_PointPixelShader->Create(SV_GFX_SHADER_TYPE_PIXEL, "PointPixel.cso", device)) {
+		if (!m_PointPixelShader->Create(SV_GFX_SHADER_TYPE_PIXEL, "shaders/PointPixel.cso", device)) {
 			SV::LogE("Point PixelShader not found");
 			return false;
 		}
@@ -148,7 +149,7 @@ namespace SV {
 		ui32 count = ui32(instances.size());
 		if (count == 0) return;
 
-		GraphicsDevice& device = cmd.GetDevice();
+		Graphics& device = cmd.GetDevice();
 
 		device.SetTopology(SV_GFX_TOPOLOGY_TRIANGLESTRIP, cmd);
 
@@ -208,7 +209,7 @@ namespace SV {
 		ui32 count = ui32(instances.size());
 		if (count == 0) return;
 
-		GraphicsDevice& device = cmd.GetDevice();
+		Graphics& device = cmd.GetDevice();
 
 		// Binding
 		device.SetTopology(SV_GFX_TOPOLOGY_TRIANGLESTRIP, cmd);
@@ -257,7 +258,7 @@ namespace SV {
 		ui32 count = ui32(instances.size());
 		if (count == 0) return;
 
-		GraphicsDevice& device = cmd.GetDevice();
+		Graphics& device = cmd.GetDevice();
 
 		// Binding
 		if(point) device.SetTopology(SV_GFX_TOPOLOGY_POINTS, cmd);

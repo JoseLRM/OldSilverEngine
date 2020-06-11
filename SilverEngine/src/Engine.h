@@ -51,11 +51,11 @@ namespace SV {
 		std::string		m_Name;
 
 		// Devices
-		SV::Window			m_Window;
-		SV::Graphics		m_Graphics;
-		SV::Renderer		m_Renderer;
-		SV::Input			m_Input;
-		SV::Application*	m_Application;
+		SV::Window						m_Window;
+		std::unique_ptr<SV::Graphics>	m_Graphics;
+		SV::Renderer					m_Renderer;
+		SV::Input						m_Input;
+		SV::Application*				m_Application;
 
 	public:
 		Engine();
@@ -69,7 +69,7 @@ namespace SV {
 
 		// Devices Getters
 		inline Window&		GetWindow() noexcept { return m_Window; }
-		inline Graphics&	GetGraphics() noexcept { return m_Graphics; }
+		inline Graphics&	GetGraphics() noexcept { return *m_Graphics.get(); }
 		inline Renderer&	GetRenderer() noexcept { return m_Renderer; }
 		inline Input&		GetInput() noexcept { return m_Input; }
 		inline Application& GetApplication() noexcept { return *m_Application; }

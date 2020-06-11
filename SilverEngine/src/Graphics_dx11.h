@@ -2,6 +2,7 @@
 
 #include "core.h"
 #include "StateManager_dx11.h"
+#include "Graphics.h"
 
 namespace SV {
 
@@ -12,7 +13,7 @@ namespace SV {
 		ComPtr<ID3D11Buffer> m_Buffer;
 
 	public:
-		bool _Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, GraphicsDevice& device) override;
+		bool _Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, Graphics& device) override;
 		void _Release() override;
 
 		void _Update(void* data, ui32 size, CommandList& cmd) override;
@@ -26,7 +27,7 @@ namespace SV {
 		ComPtr<ID3D11Buffer> m_Buffer;
 
 	public:
-		bool _Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, GraphicsDevice& device) override;
+		bool _Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, Graphics& device) override;
 		void _Release() override;
 
 		void _Bind(SV_GFX_FORMAT format, ui32 offset, CommandList& cmd) override;
@@ -39,7 +40,7 @@ namespace SV {
 		ComPtr<ID3D11Buffer> m_Buffer;
 
 	public:
-		bool _Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, GraphicsDevice& device) override;
+		bool _Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, Graphics& device) override;
 		void _Release() override;
 
 		void _Bind(ui32 slot, SV_GFX_SHADER_TYPE type, CommandList& cmd) override;
@@ -56,10 +57,10 @@ namespace SV {
 	public:
 		friend DirectX11Device;
 
-		bool _Create(ui32 width, ui32 height, SV_GFX_FORMAT format, bool textureUsage, SV::GraphicsDevice& device) override;
+		bool _Create(ui32 width, ui32 height, SV_GFX_FORMAT format, bool textureUsage, SV::Graphics& device) override;
 		void _Release() override;
 
-		bool _Resize(ui32 width, ui32 height, SV::GraphicsDevice& device) override;
+		bool _Resize(ui32 width, ui32 height, SV::Graphics& device) override;
 
 		void _Clear(SV::Color4f color, CommandList& cmd) override;
 		void _Bind(ui32 slot, CommandList& cmd) override;
@@ -77,7 +78,7 @@ namespace SV {
 		ComPtr<ID3DBlob> m_Blob;
 
 	public:
-		bool _Create(SV_GFX_SHADER_TYPE type, const char* filePath, SV::GraphicsDevice& device) override;
+		bool _Create(SV_GFX_SHADER_TYPE type, const char* filePath, SV::Graphics& device) override;
 		void _Release() override;
 
 		void _Bind(CommandList& cmd) override;
@@ -92,7 +93,7 @@ namespace SV {
 		ComPtr<ID3D11InputLayout> m_InputLayout;
 
 	public:
-		bool _Create(const SV_GFX_INPUT_ELEMENT_DESC* desc, ui32 count, const Shader& vs, SV::GraphicsDevice& device) override;
+		bool _Create(const SV_GFX_INPUT_ELEMENT_DESC* desc, ui32 count, const Shader& vs, SV::Graphics& device) override;
 		void _Release() override;
 
 		void _Bind(CommandList& cmd) override;
@@ -106,7 +107,7 @@ namespace SV {
 		ComPtr<ID3D11ShaderResourceView> m_ShaderResouceView;
 
 	public:
-		bool _Create(void* data, ui32 width, ui32 height, SV_GFX_FORMAT format, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, SV::GraphicsDevice& device) override;
+		bool _Create(void* data, ui32 width, ui32 height, SV_GFX_FORMAT format, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, SV::Graphics& device) override;
 		void _Release() override;
 		void _Update(void* data, ui32 size, CommandList& cmd) override;
 		void _Bind(SV_GFX_SHADER_TYPE type, ui32 slot, CommandList& cmd) override;
@@ -119,7 +120,7 @@ namespace SV {
 		ComPtr<ID3D11SamplerState> m_SamplerState;
 
 	public:
-		bool _Create(SV_GFX_TEXTURE_ADDRESS_MODE addressMode, SV_GFX_TEXTURE_FILTER filter, GraphicsDevice& device) override;
+		bool _Create(SV_GFX_TEXTURE_ADDRESS_MODE addressMode, SV_GFX_TEXTURE_FILTER filter, Graphics& device) override;
 		void _Release() override;
 		void _Bind(SV_GFX_SHADER_TYPE type, ui32 slot, CommandList& cmd) override;
 		void _Unbind(SV_GFX_SHADER_TYPE type, ui32 slot, CommandList& cmd) override;
@@ -127,7 +128,7 @@ namespace SV {
 	};
 
 	/////////////////////////////////DEVICE///////////////////////////////////////////////
-	class DirectX11Device : public SV::GraphicsDevice {
+	class DirectX11Device : public SV::Graphics {
 	public:
 		///////////////////Internal allocation/////////////////////////
 		ComPtr<ID3D11Device> device;
@@ -144,8 +145,8 @@ namespace SV {
 		SV::StateManager_dx11 stateManager[SV_GFX_COMMAND_LIST_COUNT];
 
 		///////////////////////////Methods/////////////////////////
-		bool Initialize(const SV_GRAPHICS_INITIALIZATION_DESC& desc) override;
-		bool Close() override;
+		bool _Initialize(const SV_GRAPHICS_INITIALIZATION_DESC& desc) override;
+		bool _Close() override;
 
 		void Present() override;
 		CommandList BeginCommandList() override;

@@ -1,10 +1,13 @@
 #pragma once
 
 #include "core.h"
+#include "Graphics.h"
 
 namespace SV {
 
 	class TextureAtlas;
+	class Graphics;
+	class CommandList;
 
 	struct Sprite {
 		TextureAtlas* pTextureAtlas;
@@ -24,10 +27,10 @@ namespace SV {
 		TextureAtlas();
 		~TextureAtlas();
 
-		bool Create(const char* filePath, SV::GraphicsDevice& device);
+		bool Create(const char* filePath, SV::Graphics& device);
 		void Release();
 
-		bool SetSamplerState(SV_GFX_TEXTURE_ADDRESS_MODE addressMode, SV_GFX_TEXTURE_FILTER filter, SV::GraphicsDevice& device);
+		bool SetSamplerState(SV_GFX_TEXTURE_ADDRESS_MODE addressMode, SV_GFX_TEXTURE_FILTER filter, SV::Graphics& device);
 
 		void Bind(SV_GFX_SHADER_TYPE type, ui32 slot, SV::CommandList& cmd);
 		void Unbind(SV_GFX_SHADER_TYPE type, ui32 slot, SV::CommandList& cmd);
@@ -36,7 +39,7 @@ namespace SV {
 		SV::vec4 GetSpriteTexCoords(ui32 ID) const noexcept;
 
 	private:
-		bool CheckPrimitives(SV::GraphicsDevice& device);
+		bool CheckPrimitives(SV::Graphics& device);
 
 	};
 

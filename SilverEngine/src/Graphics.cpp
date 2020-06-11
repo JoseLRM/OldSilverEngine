@@ -1,6 +1,6 @@
 #include "core.h"
 
-#include "Graphics_dx11.h"
+#include "Graphics.h"
 
 namespace SV {
 
@@ -11,11 +11,7 @@ namespace SV {
 
 	bool Graphics::Initialize(const SV_GRAPHICS_INITIALIZATION_DESC& desc)
 	{
-		m_Device = std::make_unique<DirectX11Device>();
-
-		m_Device->SetEngine(&GetEngine());
-
-		if (!m_Device->Initialize(desc)) {
+		if (!_Initialize(desc)) {
 			SV::LogE("Can't initialize GraphicsDevice");
 			return false;
 		}
@@ -25,10 +21,8 @@ namespace SV {
 
 	bool Graphics::Close()
 	{
-		if (m_Device.get()) {
-			if (!m_Device->Close()) {
-				SV::LogE("Can't close GraphicsDevice");
-			}
+		if (!_Close()) {
+			SV::LogE("Can't close GraphicsDevice");
 		}
 
 		return true;
@@ -40,13 +34,13 @@ namespace SV {
 	}
 	void Graphics::EndFrame()
 	{
-		m_Device->Present();
+		Present();
 	}
 
 }
 
 // VERTEX BUFFER
-bool SV::_internal::VertexBuffer_internal::Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, GraphicsDevice& device)
+bool SV::_internal::VertexBuffer_internal::Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, Graphics& device)
 {
 	m_Size = size;
 	m_Usage = usage;
@@ -70,7 +64,7 @@ void SV::_internal::VertexBuffer_internal::Unbind(CommandList& cmd)
 	_Unbind(cmd);
 }
 // INDEX BUFFER
-bool SV::_internal::IndexBuffer_internal::Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, GraphicsDevice& device)
+bool SV::_internal::IndexBuffer_internal::Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, Graphics& device)
 {
 	return _Create(size, usage, CPUWriteAccess, CPUReadAccess, data, device);
 }
@@ -87,7 +81,7 @@ void SV::_internal::IndexBuffer_internal::Unbind(CommandList& cmd)
 	_Unbind(cmd);
 }
 // CONSTANT BUFFER
-bool SV::_internal::ConstantBuffer_internal::Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, GraphicsDevice& device)
+bool SV::_internal::ConstantBuffer_internal::Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, Graphics& device)
 {
 	return _Create(size, usage, CPUWriteAccess, CPUReadAccess, data, device);
 }
@@ -105,7 +99,7 @@ void SV::_internal::ConstantBuffer_internal::Unbind(SV_GFX_SHADER_TYPE type, Com
 	_Unbind(type, cmd);
 }
 // FRAME BUFFER
-bool SV::_internal::FrameBuffer_internal::Create(ui32 width, ui32 height, SV_GFX_FORMAT format, bool textureUsage, SV::GraphicsDevice& device)
+bool SV::_internal::FrameBuffer_internal::Create(ui32 width, ui32 height, SV_GFX_FORMAT format, bool textureUsage, SV::Graphics& device)
 {
 	m_Format = format;
 	m_Width = width;
@@ -117,7 +111,7 @@ void SV::_internal::FrameBuffer_internal::Release()
 {
 	_Release();
 }
-bool SV::_internal::FrameBuffer_internal::Resize(ui32 width, ui32 height, SV::GraphicsDevice& device)
+bool SV::_internal::FrameBuffer_internal::Resize(ui32 width, ui32 height, SV::Graphics& device)
 {
 	return _Resize(width, height, device);
 }
@@ -142,7 +136,7 @@ void SV::_internal::FrameBuffer_internal::UnbindAsTexture(SV_GFX_SHADER_TYPE typ
 {
 }
 // SHADER
-bool SV::_internal::Shader_internal::Create(SV_GFX_SHADER_TYPE type, const char* filePath, SV::GraphicsDevice& device)
+bool SV::_internal::Shader_internal::Create(SV_GFX_SHADER_TYPE type, const char* filePath, SV::Graphics& device)
 {
 	m_ShaderType = type;
 	return _Create(type, filePath, device);
@@ -160,7 +154,7 @@ void SV::_internal::Shader_internal::Unbind(CommandList& cmd)
 	_Unbind(cmd);
 }
 // INPUT LAYOUT
-bool SV::_internal::InputLayout_internal::Create(const SV_GFX_INPUT_ELEMENT_DESC* desc, ui32 count, const Shader& vs, SV::GraphicsDevice& device)
+bool SV::_internal::InputLayout_internal::Create(const SV_GFX_INPUT_ELEMENT_DESC* desc, ui32 count, const Shader& vs, SV::Graphics& device)
 {
 	return _Create(desc, count, vs, device);
 }
@@ -177,7 +171,7 @@ void SV::_internal::InputLayout_internal::Unbind(CommandList& cmd)
 	_Unbind(cmd);
 }
 // TEXTURE
-bool SV::_internal::Texture_internal::Create(void* data, ui32 width, ui32 height, SV_GFX_FORMAT format, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, SV::GraphicsDevice& device)
+bool SV::_internal::Texture_internal::Create(void* data, ui32 width, ui32 height, SV_GFX_FORMAT format, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, SV::Graphics& device)
 {	
 	if (CPUWriteAccess && CPUReadAccess) m_CPUAccess = 3;
 	else if (CPUWriteAccess) m_CPUAccess = 1;
@@ -197,7 +191,7 @@ void SV::_internal::Texture_internal::Release()
 {
 	_Release();
 }
-bool SV::_internal::Texture_internal::Resize(void* data, ui32 width, ui32 height, SV::GraphicsDevice& device)
+bool SV::_internal::Texture_internal::Resize(void* data, ui32 width, ui32 height, SV::Graphics& device)
 {
 	Release();
 
@@ -219,7 +213,7 @@ void SV::_internal::Texture_internal::Unbind(SV_GFX_SHADER_TYPE type, ui32 slot,
 	_Unbind(type, slot, cmd);
 }
 // SAMPLER
-bool SV::_internal::Sampler_internal::Create(SV_GFX_TEXTURE_ADDRESS_MODE addressMode, SV_GFX_TEXTURE_FILTER filter, GraphicsDevice& device)
+bool SV::_internal::Sampler_internal::Create(SV_GFX_TEXTURE_ADDRESS_MODE addressMode, SV_GFX_TEXTURE_FILTER filter, Graphics& device)
 {
 	return _Create(addressMode, filter, device);
 }
