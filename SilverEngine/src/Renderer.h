@@ -5,6 +5,7 @@
 #include "Renderer2D.h"
 #include "PostProcess.h"
 #include "Camera.h"
+#include "Renderer2DComponents.h"
 
 struct SV_RENDERER_INITIALIZATION_DESC {
 	ui32 resolutionWidth;

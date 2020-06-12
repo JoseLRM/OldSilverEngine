@@ -85,7 +85,7 @@ namespace SV {
 		void DrawQuad(const SV::vec2& pos, const SV::vec2& size, SV::Color4b col, RenderLayer& layer);
 		void DrawQuad(const XMMATRIX& tm, SV::Color4b col, RenderLayer& layer);
 		
-		void ReserveEllipse(ui32 count, RenderLayer& layer);
+		void ReserveEllipses(ui32 count, RenderLayer& layer);
 		void DrawEllipse(const SV::vec2& pos, const SV::vec2& size, float rot, SV::Color4b col, RenderLayer& layer);
 		void DrawEllipse(const SV::vec2& pos, const SV::vec2& size, SV::Color4b col, RenderLayer& layer);
 		void DrawEllipse(const XMMATRIX& tm, SV::Color4b col, RenderLayer& layer);

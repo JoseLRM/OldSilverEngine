@@ -1,12 +1,11 @@
 #include "core.h"
 
 #include "Engine.h"
-#include "Renderer2DComponents.h"
 
 namespace SV {
 
 	Renderer::Renderer() 
-		: m_DefaultRenderLayer(0, true)
+		: m_DefaultRenderLayer()
 	{
 	}
 
@@ -113,17 +112,17 @@ namespace SV {
 
 	void Renderer::DrawScene(SV::Scene& scene)
 	{
-		// Reset RenderQueues
 		{
-			auto& spriteLayers = scene.GetComponentsList(SpriteLayerComponent::ID);
+			auto& layers = scene.GetComponentsList(SpriteLayerComponent::ID);
 
-			ui32 compSize = SpriteLayerComponent::SIZE;
+			ui32 layerSize = SpriteLayerComponent::SIZE;
 
-			for (ui32 i = 0; i < spriteLayers.size(); i += compSize) {
-				SpriteLayerComponent* layerComp = reinterpret_cast<SpriteLayerComponent*>(&spriteLayers[i]);
-				if (!layerComp->defaultRendering) continue;
-				layerComp->renderLayer->Reset();
-				m_RenderQueue2D.AddLayer(*layerComp->renderLayer.get());
+			for (ui32 i = 0; i < layers.size(); i += layerSize) {
+				SpriteLayerComponent* layerComp = reinterpret_cast<SpriteLayerComponent*>(&layers[i]);
+				if (layerComp->defaultRendering) {
+					layerComp->renderLayer->Reset();
+					m_RenderQueue2D.AddLayer(*layerComp->renderLayer.get());
+				}
 			}
 		}
 

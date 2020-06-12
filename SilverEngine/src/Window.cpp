@@ -248,12 +248,18 @@ namespace SV {
 	{
 		GetEngine().GetInput().Update();
 
+		m_Resized = false;
+
 		MSG msg;
 		while (PeekMessageA(&msg, 0, 0u, 0u, PM_REMOVE) > 0) {
 			TranslateMessage(&msg);
 			DispatchMessageA(&msg);
 
 			if (msg.message == WM_QUIT) return false;
+		}
+
+		if (IsResized()) {
+			GetRenderer().UpdateResolution();
 		}
 
 		return true;

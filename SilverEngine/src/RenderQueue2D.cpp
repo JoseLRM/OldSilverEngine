@@ -60,7 +60,7 @@ namespace SV {
 		layer.quadInstances.emplace_back(XMMatrixTranspose(tm * m_ViewProjectionMatrix), col);
 	}
 
-	void RenderQueue2D::ReserveEllipse(ui32 count, RenderLayer& layer)
+	void RenderQueue2D::ReserveEllipses(ui32 count, RenderLayer& layer)
 	{
 		layer.ellipseInstances.reserve(count);
 	}

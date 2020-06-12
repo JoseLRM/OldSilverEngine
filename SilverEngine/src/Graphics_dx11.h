@@ -153,6 +153,9 @@ namespace SV {
 		void SetViewport(ui32 slot, float x, float y, float w, float h, float n, float f, SV::CommandList& cmd) override;
 		void SetTopology(SV_GFX_TOPOLOGY topology, CommandList& cmd) override;
 
+		void EnableFullscreen() override;
+		void DisableFullscreen() override;
+
 		SV::FrameBuffer& GetMainFrameBuffer() override;
 
 		// Draw calls

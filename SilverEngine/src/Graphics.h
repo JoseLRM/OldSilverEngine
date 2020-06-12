@@ -234,6 +234,8 @@ namespace SV {
 
 	class Graphics : public SV::EngineDevice {
 
+		bool m_Fullscreen = false;
+		
 		bool Initialize(const SV_GRAPHICS_INITIALIZATION_DESC& desc);
 		bool Close();
 		virtual bool _Initialize(const SV_GRAPHICS_INITIALIZATION_DESC& desc) = 0;
@@ -247,6 +249,9 @@ namespace SV {
 
 		Graphics();
 		~Graphics();
+
+		void SetFullscreen(bool fullscreen);
+		inline bool InFullscreen() const noexcept { return m_Fullscreen; }
 
 		virtual void Present() = 0;
 		virtual CommandList BeginCommandList() = 0;
@@ -270,6 +275,10 @@ namespace SV {
 		virtual void ValidateInputLayout(InputLayout* il) = 0;
 		virtual void ValidateTexture(Texture* tex) = 0;
 		virtual void ValidateSampler(Sampler* sam) = 0;
+
+	private:
+		virtual void EnableFullscreen() = 0;
+		virtual void DisableFullscreen() = 0;
 
 	};
 

@@ -37,6 +37,16 @@ namespace SV {
 		Present();
 	}
 
+	void Graphics::SetFullscreen(bool fullscreen)
+	{
+		if (m_Fullscreen == fullscreen) return;
+
+		m_Fullscreen = fullscreen;
+
+		if (fullscreen) EnableFullscreen();
+		else DisableFullscreen();
+	}
+
 }
 
 // VERTEX BUFFER

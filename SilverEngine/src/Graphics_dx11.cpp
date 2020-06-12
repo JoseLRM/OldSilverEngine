@@ -195,6 +195,15 @@ namespace SV {
 		deferredContext[cmd.GetID()]->IASetPrimitiveTopology(ParseTopology(topology));
 	}
 
+	void DirectX11Device::EnableFullscreen()
+	{
+		swapChain->SetFullscreenState(TRUE, nullptr);
+	}
+	void DirectX11Device::DisableFullscreen()
+	{
+		swapChain->SetFullscreenState(FALSE, nullptr);
+	}
+
 	SV::FrameBuffer& DirectX11Device::GetMainFrameBuffer()
 	{
 		return mainFrameBuffer;

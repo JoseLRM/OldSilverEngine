@@ -2,6 +2,7 @@
 
 #include "Camera.h"
 #include "Input.h"
+#include "Window.h"
 
 namespace SV {
 
@@ -13,6 +14,13 @@ namespace SV {
 	{
 		return XMMatrixRotationZ(-m_Rotation) * XMMatrixTranslation(-m_Position.x, -m_Position.y, 0.f);
 	}
+	void OrthographicCamera::Adjust(SV::Window& window)
+	{
+		float mag = m_Dimension.Mag();
+		m_Dimension = vec2(window.GetWidth(), window.GetHeight());
+		m_Dimension.Normalize();
+		m_Dimension *= mag;
+	}
 	float OrthographicCamera::GetAspect() const noexcept
 	{
 		return m_Dimension.x / m_Dimension.y;
@@ -20,7 +28,7 @@ namespace SV {
 	SV::vec2 OrthographicCamera::GetMousePos(SV::Input& input)
 	{
 		SV::vec2 pos = input.MousePos();
-		return pos * m_Dimension;
+		return pos * m_Dimension + m_Position;
 	}
 	void OrthographicCamera::SetPosition(SV::vec2 position) noexcept
 	{

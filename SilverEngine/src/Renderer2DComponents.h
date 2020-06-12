@@ -6,6 +6,8 @@
 
 namespace SV {
 
+	class Renderer;
+
 	struct SpriteComponent : public SV::Component<SpriteComponent> {
 		Sprite sprite;
 		SV::Color4b color = SVColor4b::WHITE;
@@ -13,6 +15,7 @@ namespace SV {
 
 		SpriteComponent() : sprite() {}
 		SpriteComponent(const Sprite& spr) : sprite(spr) {}
+		SpriteComponent(const Sprite& spr, SV::Color4b color) : sprite(spr), color(color) {}
 
 #ifdef SV_IMGUI
 		void ShowInfo(SV::Scene& scene) override;

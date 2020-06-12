@@ -33,6 +33,8 @@ namespace SV {
 		if (desc.showConsole) SV::ShowConsole();
 		else SV::HideConsole();
 
+		SV::Timer::_internal::Initialize();
+
 		SV::Task::_internal::Initialize(desc.minThreadsCount);
 		if (!SV::_internal::RegisterWindowClass()) return false;
 		return true;
@@ -163,15 +165,42 @@ namespace SV {
 	{
 		SV::LogSeparator();
 		SV::LogI("Running %s", m_Name.c_str());
+
+		Time lastTime;
+		Time fixedUpdateTime;
+		Time fixedUpdateFrameRate = 1 / 60.f;
+
+		ui32 frameCount = 0;
+		Time frameCountTime = 0.f;
+
 		while (m_Window.UpdateInput() && m_EngineState == SV_ENGINE_STATE_RUNNING)
 		{
+			Time now = Timer::Now();
+
+			Time deltaTime = lastTime.TimeSince(now);
+			lastTime = now;
+
+			fixedUpdateTime = fixedUpdateTime + deltaTime;
+
+			// FPS Count
+			frameCountTime = frameCountTime + deltaTime;
+			if (frameCountTime >= 1.f) {
+				frameCountTime = frameCountTime - 1.f;
+				SV::LogI("FPS = %u", frameCount);
+				frameCount = 0u;
+			}
+			frameCount++;
+
 			// Begin
 			m_Graphics->BeginFrame();
 			m_Renderer.BeginFrame();
 
 			// Updating
-			m_Application->Update(0.f);
-			m_Application->FixedUpdate();
+			m_Application->Update(deltaTime);
+			if (fixedUpdateTime >= fixedUpdateFrameRate) {
+				m_Application->FixedUpdate();
+				fixedUpdateTime = fixedUpdateTime - fixedUpdateFrameRate;
+			}
 
 			// Rendering
 			m_Application->Render();

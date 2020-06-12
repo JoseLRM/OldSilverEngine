@@ -68,6 +68,7 @@ namespace SV {
 
 // SilverEngine Includes
 #include "ImGuiManager.h"
+#include "Timer.h"
 #include "Math.h"
 #include "Utils.h"
 #include "safe_queue.h"

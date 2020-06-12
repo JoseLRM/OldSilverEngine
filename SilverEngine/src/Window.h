@@ -48,6 +48,8 @@ namespace SV {
 		inline ui32 GetWidth() const noexcept { return m_Width; }
 		inline ui32 GetHeight() const noexcept { return m_Height; }
 		inline float GetAspect() const noexcept { return float(m_Width) / float(m_Height); }
+
+		inline bool IsResized() const noexcept { return m_Resized; }
 	};
 
 	void ShowConsole();

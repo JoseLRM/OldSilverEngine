@@ -9,6 +9,7 @@ namespace SV {
 	public:
 		virtual XMMATRIX GetProjectionMatrix() const = 0;
 		virtual XMMATRIX GetViewMatrix() const = 0;
+		virtual void Adjust(SV::Window& window) = 0;
 	};
 
 	class OrthographicCamera : public SV::Camera {
@@ -19,6 +20,8 @@ namespace SV {
 	public:
 		XMMATRIX GetProjectionMatrix() const override;
 		XMMATRIX GetViewMatrix() const override;
+
+		void Adjust(SV::Window& window) override;
 
 		// getters
 		inline SV::vec2 GetPosition() const noexcept { return m_Position; }
