@@ -29,7 +29,7 @@ namespace SVImGui {
 				return false;
 			}
 
-			if (!ImGui_ImplWin32_Init(window.GetWindowHandle())) {
+			if (!ImGui_ImplWin32_Init(GetDesktopWindow())) {
 				SV::LogE("Can't initialize ImGui Windows Impl");
 				Close();
 				return false;

@@ -120,6 +120,7 @@
     <ClInclude Include="src\TextureAtlas.h" />
     <ClInclude Include="src\Timer.h" />
     <ClInclude Include="src\Transform.h" />
+    <ClInclude Include="src\User.h" />
     <ClInclude Include="src\Utils.h" />
     <ClInclude Include="src\Version.h" />
     <ClInclude Include="src\Win.h" />
@@ -187,6 +188,7 @@
     <ClCompile Include="src\TextureAtlas.cpp" />
     <ClCompile Include="src\Timer.cpp" />
     <ClCompile Include="src\Transform.cpp" />
+    <ClCompile Include="src\User.cpp" />
     <ClCompile Include="src\Utils.cpp" />
     <ClCompile Include="src\Window.cpp" />
   </ItemGroup>

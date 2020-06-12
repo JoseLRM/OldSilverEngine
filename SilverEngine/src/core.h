@@ -73,3 +73,4 @@ namespace SV {
 #include "Utils.h"
 #include "safe_queue.h"
 #include "TaskSystem.h"
+#include "User.h"

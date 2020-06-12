@@ -13,8 +13,9 @@ void SV_ENGINE_INITIALIZATION_DESC::SetDefault()
 	windowDesc.width = 1280;
 	windowDesc.height = 720;
 	windowDesc.title = "SilverEngine";
+
 	rendererDesc.windowAttachment.enabled = true;
-	rendererDesc.windowAttachment.resolution = 1280;
+	rendererDesc.windowAttachment.resolution = 1920u;
 }
 
 /////////////////////Static Initialization///////////////////////////////////////////
@@ -29,6 +30,10 @@ namespace SV {
 		SV_ENGINE_STATIC_INITIALIZATION_DESC desc;
 		if (d) desc = *d;
 		else desc.SetDefault();
+
+		if (!SV::User::_internal::Initialize()) {
+			SV::LogE("Can't initialize User Data");
+		}
 
 		if (desc.showConsole) SV::ShowConsole();
 		else SV::HideConsole();

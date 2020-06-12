@@ -114,6 +114,9 @@
     <ClInclude Include="src\Timer.h">
       <Filter>System</Filter>
     </ClInclude>
+    <ClInclude Include="src\User.h">
+      <Filter>System</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="System">
@@ -239,6 +242,9 @@
       <Filter>Graphics\Renderer\2D</Filter>
     </ClCompile>
     <ClCompile Include="src\Timer.cpp">
+      <Filter>System</Filter>
+    </ClCompile>
+    <ClCompile Include="src\User.cpp">
       <Filter>System</Filter>
     </ClCompile>
   </ItemGroup>

@@ -11,8 +11,40 @@ namespace SV {
 
 	bool Graphics::Initialize(const SV_GRAPHICS_INITIALIZATION_DESC& desc)
 	{
+		// Select adapter
+		{
+			auto& adapters = SV::User::GetAdapters();
+			bool find = false;
+
+			ui32 res = 0u;
+
+			for (ui32 i = 0; i < adapters.size(); ++i) {
+				const SV::Adapter& adapter = adapters[i];
+
+				if (adapter.modes.empty()) continue;
+
+				for (ui32 j = 0; j < adapter.modes.size(); ++j) {
+					const SV::Adapter::OutputMode& outputMode = adapter.modes[j];
+
+					ui32 outputRes = uvec2(outputMode.width, outputMode.height).Mag();
+					if (outputRes > res) {
+						m_OutputModeID = j;
+						m_Adapter = adapter;
+						outputRes = res;
+						find = true;
+					}
+				}
+			}
+
+			if (!find) {
+				SV::LogE("Adapter not found");
+				return false;
+			}
+		}
+
+		// Initialize API
 		if (!_Initialize(desc)) {
-			SV::LogE("Can't initialize GraphicsDevice");
+			SV::LogE("Can't initialize GraphicsAPI");
 			return false;
 		}
 

@@ -234,6 +234,9 @@ namespace SV {
 
 	class Graphics : public SV::EngineDevice {
 
+		SV::Adapter m_Adapter;
+		ui32 m_OutputModeID = 0u;
+
 		bool m_Fullscreen = false;
 		
 		bool Initialize(const SV_GRAPHICS_INITIALIZATION_DESC& desc);
@@ -252,6 +255,9 @@ namespace SV {
 
 		void SetFullscreen(bool fullscreen);
 		inline bool InFullscreen() const noexcept { return m_Fullscreen; }
+
+		inline const SV::Adapter& GetAdapter() const noexcept { return m_Adapter; }
+		inline ui32 GetOutputModeID() const noexcept { return m_OutputModeID; }
 
 		virtual void Present() = 0;
 		virtual CommandList BeginCommandList() = 0;

@@ -62,6 +62,14 @@ constexpr D3D11_FILTER ParseTextureFilter(SV_GFX_TEXTURE_FILTER filter)
 {
 	return (D3D11_FILTER)filter;
 }
+constexpr DXGI_MODE_SCALING ParseScalingMode(SV_GFX_MODE_SCALING mode)
+{
+	return (DXGI_MODE_SCALING)mode;
+}
+constexpr DXGI_MODE_SCANLINE_ORDER ParseScanlineOrder(SV_GFX_MODE_SCANLINE_ORDER order)
+{
+	return (DXGI_MODE_SCANLINE_ORDER)order;
+}
 
 namespace SV {
 
@@ -69,19 +77,22 @@ namespace SV {
 	{
 		Window& window = GetEngine().GetWindow();
 
+		// Get OutputMode
+		const SV::Adapter::OutputMode& outputMode = GetAdapter().modes[GetOutputModeID()];
+
 		// Create swap chain
 		HWND windowHandle = reinterpret_cast<HWND>(window.GetWindowHandle());
 
 		DXGI_SWAP_CHAIN_DESC swapChainDescriptor;
 		svZeroMemory(&swapChainDescriptor, sizeof(DXGI_SWAP_CHAIN_DESC));
 		swapChainDescriptor.BufferCount = 1;
-		swapChainDescriptor.BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-		swapChainDescriptor.BufferDesc.Height = 0;
-		swapChainDescriptor.BufferDesc.Width = 0;
-		swapChainDescriptor.BufferDesc.RefreshRate.Denominator = 1;
-		swapChainDescriptor.BufferDesc.RefreshRate.Numerator = 1;
-		swapChainDescriptor.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
-		swapChainDescriptor.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+		swapChainDescriptor.BufferDesc.Format = ParseFormat(outputMode.format);
+		swapChainDescriptor.BufferDesc.Height = outputMode.height;
+		swapChainDescriptor.BufferDesc.Width = outputMode.width;
+		swapChainDescriptor.BufferDesc.RefreshRate.Denominator = outputMode.refreshRate.denominator;
+		swapChainDescriptor.BufferDesc.RefreshRate.Numerator = outputMode.refreshRate.numerator;
+		swapChainDescriptor.BufferDesc.Scaling = ParseScalingMode(outputMode.scaling);
+		swapChainDescriptor.BufferDesc.ScanlineOrdering = ParseScanlineOrder(outputMode.scanlineOrdering);
 		swapChainDescriptor.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 		swapChainDescriptor.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 		swapChainDescriptor.OutputWindow = windowHandle;
@@ -120,9 +131,9 @@ namespace SV {
 
 		FrameBuffer_dx11* backBuffer = reinterpret_cast<FrameBuffer_dx11*>(mainFrameBuffer.Get());
 
-		backBuffer->m_Width = 1280;
-		backBuffer->m_Height = 720;
-		backBuffer->m_Format = SV_GFX_FORMAT_B8G8R8A8_UNORM;
+		backBuffer->m_Width = outputMode.width;
+		backBuffer->m_Height = outputMode.height;
+		backBuffer->m_Format = outputMode.format;
 
 		dxAssert(swapChain->GetBuffer(0u, __uuidof(ID3D11Resource), &backBuffer->GetResource()));
 		dxAssert(device->CreateRenderTargetView(backBuffer->GetResource().Get(), &backBufferDesc, &backBuffer->GetRTV()));
