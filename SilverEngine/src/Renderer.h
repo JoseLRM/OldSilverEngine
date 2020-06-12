@@ -20,9 +20,11 @@ namespace SV {
 	class Scene;
 
 	class Renderer : public SV::EngineDevice {
-		RenderQueue2D m_RenderQueue2D;
 		
+		RenderQueue2D m_RenderQueue2D;
 		Renderer2D m_Renderer2D;
+		RenderLayer m_DefaultRenderLayer;
+
 		PostProcess m_PostProcess;
 
 		FrameBuffer m_Offscreen;

@@ -130,7 +130,9 @@ namespace SV {
 
 	void RenderQueue2D::End()
 	{
-		std::sort(m_pLayers.begin(), m_pLayers.end());
+		std::sort(m_pLayers.begin(), m_pLayers.end(), [](RenderLayer* l0, RenderLayer* l1) {
+			return l0->operator<(*l1);
+		});
 
 		// sort sprites
 		for (ui32 i = 0; i < m_pLayers.size(); ++i) {

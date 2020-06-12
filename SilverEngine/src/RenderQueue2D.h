@@ -31,6 +31,7 @@ namespace SV {
 
 	class RenderQueue2D;
 	class Renderer;
+	class Renderer2D;
 	class Camera;
 
 	class RenderLayer {
@@ -45,10 +46,14 @@ namespace SV {
 	public:
 		friend RenderQueue2D;
 		friend Renderer;
+		friend Renderer2D;
 
 		RenderLayer() = default;
 		RenderLayer(i32 value, bool transparent) 
 			: m_Value(value), m_Transparent(transparent) {}
+
+		inline void SetValue(i32 value) noexcept { m_Value = value; }
+		inline void SetTransparent(bool trans) noexcept { m_Transparent = trans; }
 
 		inline i32 GetValue() const noexcept { return m_Value; }
 		inline bool IsTransparent() const noexcept { return m_Transparent; }
@@ -56,8 +61,9 @@ namespace SV {
 
 		bool operator<(const RenderLayer& other) const noexcept
 		{
-			if (m_Transparent != other.m_Transparent) return m_Value < other.m_Value;
-			else return !m_Transparent;
+			if (m_Value != other.m_Value) return m_Value < other.m_Value;
+			else if (m_Transparent != other.m_Transparent) return !m_Transparent;
+			else return false;
 		}
 
 	};
@@ -69,6 +75,7 @@ namespace SV {
 
 	public:
 		friend Renderer;
+		friend Renderer2D;
 		RenderQueue2D();
 
 		void Begin(const SV::Camera* camera);

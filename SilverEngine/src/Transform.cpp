@@ -19,6 +19,7 @@ namespace SV {
 		m_LocalRotation = other.m_LocalRotation;
 		m_LocalScale = other.m_LocalScale;
 		entity = other.entity;
+		m_pScene = other.m_pScene;
 		m_Modified = true;
 	}
 

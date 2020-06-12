@@ -92,7 +92,7 @@ namespace SVImGui {
 		bool active;
 		NameComponent* nameComponent = (NameComponent*)scene.GetComponent(entity, NameComponent::ID);
 		if (nameComponent) {
-			active = ImGui::TreeNodeEx((std::string(nameComponent->GetName()) + "[" + std::to_string(entity) + "]").c_str(), treeFlags);
+			active = ImGui::TreeNodeEx((nameComponent->GetName() + "[" + std::to_string(entity) + "]").c_str(), treeFlags);
 		}
 		else {
 			active = ImGui::TreeNodeEx(("Entity[" + std::to_string(entity) + "]").c_str(), treeFlags);
@@ -157,7 +157,7 @@ namespace SVImGui {
 
 					NameComponent* nameComponent = (NameComponent*)scene.GetComponent(selectedEntity, NameComponent::ID);
 					if (nameComponent) {
-						ImGui::Text("%s[%u]", nameComponent->GetName(), selectedEntity);
+						ImGui::Text("%s[%u]", nameComponent->GetName().c_str(), selectedEntity);
 					}
 					else {
 						ImGui::Text("Entity[%u]", selectedEntity);
@@ -176,9 +176,7 @@ namespace SVImGui {
 								if (scene.GetComponent(selectedEntity, ID) != nullptr) continue;
 								size_t SIZE = ECS::GetComponentSize(ID);
 								if (ImGui::Button(NAME)) {
-									BaseComponent* bytes = reinterpret_cast<BaseComponent*>(malloc(SIZE));
-									ECS::ConstructComponent(ID, bytes);
-									scene.AddComponent(selectedEntity, bytes, ID, SIZE);
+									scene.AddComponent(selectedEntity, ID, SIZE);
 								}
 							}
 
@@ -212,15 +210,15 @@ namespace SVImGui {
 						SV::Transform& trans = ed.transform;
 
 						SV::vec3 position = trans.GetLocalPosition();
-						SV::vec3 rotation = trans.GetLocalRotation();
+						SV::vec3 rotation = ToDegrees(trans.GetLocalRotation());
 						SV::vec3 scale = trans.GetLocalScale();
 
 						ImGui::DragFloat3("Position", &position.x, 1.f);
-						ImGui::DragFloat3("Rotation", &rotation.x, 1.f);
+						ImGui::DragFloat3("Rotation", &rotation.x, 0.1f);
 						ImGui::DragFloat3("Scale", &scale.x, 1.f);
 
 						trans.SetPosition(position);
-						trans.SetRotation(rotation);
+						trans.SetRotation(ToRadians(rotation));
 						trans.SetScale(scale);
 
 						ImGui::Separator();
@@ -239,7 +237,7 @@ namespace SVImGui {
 							ImGui::Separator();
 							bool remove = false;
 							if (ImGui::TreeNodeEx(ECS::GetComponentName(compID), flags)) {
-								//TODO: Show Component Data
+								comp->ShowInfo(scene);
 								ImGui::TreePop();
 							}
 

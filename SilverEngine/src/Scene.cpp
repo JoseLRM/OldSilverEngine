@@ -34,6 +34,29 @@ namespace SV {
 		m_OptionalComponents.push_back(ID);
 	}
 
+	///////////////////////////NAME COMPONENT///////////////
+	void NameComponent::ShowInfo(SV::Scene& scene)
+	{
+		constexpr ui32 MAX_LENGTH = 32;
+		char name[MAX_LENGTH];
+
+		// Set actual name into buffer
+		{
+			ui32 i;
+			ui32 size = m_Name.size();
+			if (size >= MAX_LENGTH) size = MAX_LENGTH - 1;
+			for (i = 0; i < size; ++i) {
+				name[i] = m_Name[i];
+			}
+			name[i] = '\0';
+		}
+
+		ImGui::InputText("Name", name, MAX_LENGTH);
+
+		// Set new name into buffer
+		m_Name = name;
+	}
+
 	///////////////////////////SCENE////////////////////////
 	BaseComponent* Scene::GetComponent(SV::Entity e, CompID componentID) noexcept
 	{
@@ -91,6 +114,7 @@ namespace SV {
 		}
 		else {
 			entity = m_FreeEntityData.back();
+			m_FreeEntityData.pop_back();
 		}
 		m_EntityData[entity].transform = Transform(entity, this);
 		m_EntityData[entity].layer = GetLayer("Default");
@@ -346,6 +370,20 @@ namespace SV {
 		m_EntityData[entity].indices[componentID] = index;
 	}
 
+	void Scene::AddComponent(SV::Entity entity, CompID componentID, size_t componentSize) noexcept
+	{
+		auto& list = m_Components[componentID];
+		size_t index = list.size();
+
+		// allocate the component
+		list.resize(list.size() + componentSize);
+		BaseComponent* comp = (BaseComponent*)& list[index];
+		ECS::ConstructComponent(componentID, comp, entity);
+
+		// set index in entity
+		m_EntityData[entity].indices[componentID] = index;
+	}
+
 	void Scene::AddComponents(std::vector<Entity>& entities, BaseComponent* comp, CompID componentID, size_t componentSize) noexcept
 	{
 		auto& list = m_Components[componentID];
@@ -380,6 +418,8 @@ namespace SV {
 
 		auto& list = m_Components[componentID];
 
+		ECS::DestroyComponent(componentID, reinterpret_cast<BaseComponent*>(&list[index]));
+
 		// if the component isn't the last element
 		if (index != list.size() - componentSize) {
 			// set back data in index
@@ -401,6 +441,8 @@ namespace SV {
 			componentSize = ECS::GetComponentSize(componentID);
 			index = it.second;
 			auto& list = m_Components[componentID];
+
+			ECS::DestroyComponent(componentID, reinterpret_cast<BaseComponent*>(&list[index]));
 
 			if (index != list.size() - componentSize) {
 				// set back data in index
@@ -729,7 +771,8 @@ namespace SV {
 		struct ComponentData {
 			const char* name;
 			size_t size;
-			const SV::BaseComponent* constructor;
+			CreateComponentFunction createFn;
+			DestoryComponentFunction destroyFn;
 		};
 
 		ComponentData g_ComponentData[SV_ECS_MAX_COMPONENTS_TYPES];
@@ -748,11 +791,20 @@ namespace SV {
 				g_ComponentData[ID].size = size;
 				return size;
 			}
-			const char* SetComponentNameAndConstructor(CompID ID, const char* name, const SV::BaseComponent* ptr)
+			const char* SetComponentName(CompID ID, const char* name)
 			{
 				g_ComponentData[ID].name = name;
-				g_ComponentData[ID].constructor = ptr;
 				return name;
+			}
+			CreateComponentFunction SetComponentCreateFunction(CompID ID, CreateComponentFunction fn)
+			{
+				g_ComponentData[ID].createFn = fn;
+				return fn;
+			}
+			DestoryComponentFunction SetComponentDestroyFunction(CompID ID, DestoryComponentFunction fn)
+			{
+				g_ComponentData[ID].destroyFn = fn;
+				return fn;
 			}
 		}
 
@@ -768,9 +820,13 @@ namespace SV {
 		{
 			return g_ComponentData[ID].name;
 		}
-		void ConstructComponent(CompID ID, SV::BaseComponent* ptr)
+		void ConstructComponent(CompID ID, SV::BaseComponent* ptr, SV::Entity entity)
 		{
-			memcpy(ptr, g_ComponentData[ID].constructor, g_ComponentData[ID].size);
+			g_ComponentData[ID].createFn(ptr, entity);
+		}
+		void DestroyComponent(CompID ID, SV::BaseComponent* ptr)
+		{
+			g_ComponentData[ID].destroyFn(ptr);
 		}
 
 		std::map<std::string, CompID> g_ComponentNames;
@@ -795,5 +851,5 @@ namespace SV {
 		}
 
 	}
-	
+
 }

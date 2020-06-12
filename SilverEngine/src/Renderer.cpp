@@ -1,11 +1,12 @@
 #include "core.h"
 
 #include "Engine.h"
-#include "SpriteComponent.h"
+#include "Renderer2DComponents.h"
 
 namespace SV {
 
-	Renderer::Renderer()
+	Renderer::Renderer() 
+		: m_DefaultRenderLayer(0, true)
 	{
 	}
 
@@ -63,8 +64,10 @@ namespace SV {
 	void Renderer::BeginFrame()
 	{
 		if (m_pCamera == nullptr) return;
-
+		
 		m_RenderQueue2D.Begin(m_pCamera);
+
+		m_DefaultRenderLayer.Reset();
 	}
 	void Renderer::Render()
 	{
@@ -72,6 +75,8 @@ namespace SV {
 			SV::LogW("Where are the camera ;)");
 			return;
 		}
+
+		m_RenderQueue2D.AddLayer(m_DefaultRenderLayer);
 
 		m_RenderQueue2D.End();
 
@@ -84,13 +89,7 @@ namespace SV {
 		m_Offscreen->Bind(0u, cmd);
 		device.SetViewport(0u, 0.f, 0.f, m_Offscreen->GetWidth(), m_Offscreen->GetHeight(), 0.f, 1.f, cmd);
 
-		for (ui32 i = 0; i < m_RenderQueue2D.m_pLayers.size(); ++i) {
-			m_Renderer2D.DrawQuads(m_RenderQueue2D.m_pLayers[i]->quadInstances, cmd);
-			m_Renderer2D.DrawSprites(m_RenderQueue2D.m_pLayers[i]->spriteInstances, cmd);
-			m_Renderer2D.DrawEllipses(m_RenderQueue2D.m_pLayers[i]->ellipseInstances, cmd);
-			m_Renderer2D.DrawPoints(m_RenderQueue2D.m_pLayers[i]->pointInstances, cmd);
-			m_Renderer2D.DrawLines(m_RenderQueue2D.m_pLayers[i]->lineInstances, cmd);
-		}
+		m_Renderer2D.DrawRenderQueue(m_RenderQueue2D, cmd);
 
 		m_PostProcess.DefaultPP(m_Offscreen, device.GetMainFrameBuffer(), cmd);
 	}
@@ -114,14 +113,48 @@ namespace SV {
 
 	void Renderer::DrawScene(SV::Scene& scene)
 	{
+		// Reset RenderQueues
+		{
+			auto& spriteLayers = scene.GetComponentsList(SpriteLayerComponent::ID);
+
+			ui32 compSize = SpriteLayerComponent::SIZE;
+
+			for (ui32 i = 0; i < spriteLayers.size(); i += compSize) {
+				SpriteLayerComponent* layerComp = reinterpret_cast<SpriteLayerComponent*>(&spriteLayers[i]);
+				if (!layerComp->defaultRendering) continue;
+				layerComp->renderLayer->Reset();
+				m_RenderQueue2D.AddLayer(*layerComp->renderLayer.get());
+			}
+		}
+
+		// Fill RenderQueues
 		auto& sprites = scene.GetComponentsList(SpriteComponent::ID);
 
+		RenderLayer* layer;
 		ui32 CompSize = SpriteComponent::SIZE;
+
 		for (ui32 i = 0; i < sprites.size(); i += CompSize) {
 			SpriteComponent* sprComp = reinterpret_cast<SpriteComponent*>(&sprites[i]);
 
-			if (sprComp->sprite.pTextureAtlas) {
+			// Get sprite layer
+			layer = nullptr;
+			if (sprComp->spriteLayer != SV_INVALID_ENTITY) {
+				SpriteLayerComponent* layerComp = scene.GetComponent<SpriteLayerComponent>(sprComp->spriteLayer);
+				if (layerComp) {
+					if (!layerComp->defaultRendering) continue;
+					layer = layerComp->renderLayer.get();
+				}
+			}
+			if(!layer) layer = &m_DefaultRenderLayer;
 
+			Transform& trans = scene.GetTransform(sprComp->entity);
+
+			// Add instance to the queue
+			if (sprComp->sprite.pTextureAtlas) {
+				m_RenderQueue2D.DrawSprite(trans.GetWorldMatrix(), sprComp->color, sprComp->sprite, *layer);
+			}
+			else {
+				m_RenderQueue2D.DrawQuad(trans.GetWorldMatrix(), sprComp->color, *layer);
 			}
 		}
 	}

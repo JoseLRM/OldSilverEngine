@@ -105,11 +105,11 @@
     <ClInclude Include="src\ImGuiManager.h">
       <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="src\SpriteComponent.h">
-      <Filter>Graphics\Renderer\2D</Filter>
-    </ClInclude>
     <ClInclude Include="src\EngineDevice.h">
       <Filter>System</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Renderer2DComponents.h">
+      <Filter>Graphics\Renderer\2D</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -231,6 +231,9 @@
     </ClCompile>
     <ClCompile Include="src\EngineDevice.cpp">
       <Filter>System</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Renderer2DComponents.cpp">
+      <Filter>Graphics\Renderer\2D</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

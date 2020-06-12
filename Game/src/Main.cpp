@@ -21,15 +21,23 @@ public:
 
 		player = scene.CreateEntity();
 		scene.AddComponent(player, SV::SpriteComponent());
+		scene.AddComponent(player, SV::NameComponent("Player"));
 	}
 	void Update(float dt) override
 	{
+		if (GetInput().IsMouse(SV_MOUSE_LEFT)) {
+			SV::vec3 mousePos = SV::vec3(camera.GetMousePos(GetInput()));
+			SV::Entity entity = scene.CreateEntity();
+			scene.AddComponent(entity, SV::SpriteComponent());
+			scene.AddComponent(entity, SV::NameComponent("Player"));
+			scene.GetTransform(entity).SetPosition(mousePos);
+		}
 	}
 	void Render() override
 	{
 		SV::Renderer& renderer = GetRenderer();
 
-
+		renderer.DrawScene(scene);
 
 		SVImGui::ShowScene(scene, &selectedSceneWindow , &openSceneWindow);
 	}

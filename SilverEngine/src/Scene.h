@@ -10,9 +10,14 @@
 namespace SV {
 
 	class Scene;
+	class EntityData;
+	struct BaseComponent;
 
 	typedef ui16 CompID;
 	typedef ui32 Entity;
+
+	typedef void(*CreateComponentFunction)(BaseComponent*, SV::Entity);
+	typedef void(*DestoryComponentFunction)(BaseComponent*);
 
 }
 
@@ -50,6 +55,10 @@ namespace SV {
 
 	struct BaseComponent {
 		Entity entity = SV_INVALID_ENTITY;
+
+#ifdef SV_IMGUI
+		virtual void ShowInfo(SV::Scene& scene) {}
+#endif
 	};
 
 	template<typename T>
@@ -57,7 +66,8 @@ namespace SV {
 		const static CompID ID;
 		const static size_t SIZE;
 		const static const char* NAME;
-		const static T CONSTRUCTOR;
+		const static CreateComponentFunction CREATE_FUNCTION;
+		const static DestoryComponentFunction DESTROY_FUNCTION;
 	};
 
 	class System {
@@ -122,16 +132,32 @@ namespace SV {
 		namespace _internal {
 			CompID GetComponentID();
 			size_t SetComponentSize(CompID ID, size_t size);
-			const char* SetComponentNameAndConstructor(CompID ID, const char* name, const SV::BaseComponent* ptr);
+			const char* SetComponentName(CompID ID, const char* name);
+			CreateComponentFunction SetComponentCreateFunction(CompID ID, CreateComponentFunction fn);
+			DestoryComponentFunction SetComponentDestroyFunction(CompID ID, DestoryComponentFunction fn);
 		}
 
 		ui16 GetComponentsCount();
 
 		size_t GetComponentSize(CompID ID);
 		const char* GetComponentName(CompID ID);
-		void ConstructComponent(CompID ID, SV::BaseComponent* ptr);
+		void ConstructComponent(CompID ID, SV::BaseComponent* ptr, SV::Entity entity);
+		void DestroyComponent(CompID ID, SV::BaseComponent* ptr);
 
 		bool GetComponentID(const char* name, CompID* id);
+
+		template<typename Component>
+		void CreateComponent(SV::BaseComponent* compPtr, SV::Entity entity)
+		{
+			Component* comp = new(compPtr) Component();
+			compPtr->entity = entity;
+		}
+		template<typename Component>
+		void DestroyComponent(SV::BaseComponent* compPtr)
+		{
+			Component* comp = reinterpret_cast<Component*>(compPtr);
+			comp->~Component();
+		}
 
 	}
 
@@ -141,8 +167,9 @@ namespace SV {
 #define SVDefineComponent(name) template struct SV::Component<name>; \
 const SV::CompID name::ID(SV::ECS::_internal::GetComponentID());\
 const size_t name::SIZE(SV::ECS::_internal::SetComponentSize(name::ID, sizeof(name))); \
-const name name::CONSTRUCTOR; \
-const const char* name::NAME(SV::ECS::_internal::SetComponentNameAndConstructor(name::ID, #name, (SV::BaseComponent*)&name::CONSTRUCTOR));
+const SV::CreateComponentFunction name::CREATE_FUNCTION(SV::ECS::_internal::SetComponentCreateFunction(name::ID, SV::ECS::CreateComponent<name>)); \
+const SV::DestoryComponentFunction name::DESTROY_FUNCTION(SV::ECS::_internal::SetComponentDestroyFunction(name::ID, SV::ECS::DestroyComponent<name>)); \
+const const char* name::NAME(SV::ECS::_internal::SetComponentName(name::ID, #name));
 
 #define SVDefineTag(name) struct name : public SV::Component<name> {}; SVDefineComponent(name)
 
@@ -154,11 +181,17 @@ namespace SV {
 
 	public:
 		NameComponent() : m_Name("Unnamed") {}
+		NameComponent(const char* name) : m_Name(name) {}
 
 		inline void SetName(const char* name) noexcept { m_Name = name; }
 		inline void SetName(const std::string& name) noexcept { m_Name = name; }
 
 		inline const std::string& GetName() const noexcept { return m_Name; }
+
+#ifdef SV_IMGUI
+		void ShowInfo(SV::Scene& scene) override;
+#endif
+
 	};
 	SVDefineComponent(NameComponent);
 
@@ -181,6 +214,7 @@ namespace SV {
 
 		inline std::vector<SV::Entity>& GetEntityList() noexcept { return m_Entities; }
 		inline std::vector<SV::EntityData>& GetEntityDataList() noexcept { return m_EntityData; }
+		
 		inline std::vector<ui8>& GetComponentsList(CompID ID) noexcept { return m_Components[ID]; }
 
 		void ClearScene();
@@ -206,6 +240,7 @@ namespace SV {
 
 		BaseComponent* GetComponent(SV::Entity e, CompID componentID) noexcept;
 		void AddComponent(SV::Entity entity, SV::BaseComponent* comp, CompID componentID, size_t componentSize) noexcept;
+		void AddComponent(SV::Entity entity, CompID componentID, size_t componentSize) noexcept;
 		void AddComponents(std::vector<SV::Entity>& entities, SV::BaseComponent* comp, CompID componentID, size_t componentSize) noexcept;
 		void RemoveComponent(SV::Entity entity, CompID componentID, size_t componentSize) noexcept;
 

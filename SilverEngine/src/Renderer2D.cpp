@@ -126,6 +126,17 @@ namespace SV {
 		return true;
 	}
 
+	void Renderer2D::DrawRenderQueue(RenderQueue2D& rq, CommandList& cmd)
+	{
+		for (ui32 i = 0; i < rq.m_pLayers.size(); ++i) {
+			DrawQuads(rq.m_pLayers[i]->quadInstances, cmd);
+			DrawSprites(rq.m_pLayers[i]->spriteInstances, cmd);
+			DrawEllipses(rq.m_pLayers[i]->ellipseInstances, cmd);
+			DrawPoints(rq.m_pLayers[i]->pointInstances, cmd);
+			DrawLines(rq.m_pLayers[i]->lineInstances, cmd);
+		}
+	}
+
 	void Renderer2D::DrawQuads(std::vector<QuadInstance>& instances, CommandList& cmd)
 	{
 		DrawQuadsOrEllipses(instances, true, cmd);

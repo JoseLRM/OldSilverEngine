@@ -6,6 +6,6 @@
 #include "src/Scene.h"
 
 // Components
-#include "src/SpriteComponent.h"
+#include "src/Renderer2DComponents.h"
 
 #endif

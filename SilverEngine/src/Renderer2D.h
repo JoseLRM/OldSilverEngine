@@ -37,6 +37,8 @@ namespace SV {
 		bool Initialize(Graphics& device);
 		bool Close();
 
+		void DrawRenderQueue(RenderQueue2D& rq, CommandList& cmd);
+
 		void DrawQuads(std::vector<QuadInstance>& instances, CommandList& cmd);
 		void DrawEllipses(std::vector<QuadInstance>& instances, CommandList& cmd);
 		void DrawSprites(std::vector<SpriteInstance>& instances, CommandList& cmd);
