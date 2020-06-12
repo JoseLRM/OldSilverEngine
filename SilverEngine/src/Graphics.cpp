@@ -62,7 +62,9 @@ namespace SV {
 
 	void Graphics::BeginFrame()
 	{
+#ifdef SV_IMGUI
 		SVImGui::_internal::BeginFrame();
+#endif
 	}
 	void Graphics::EndFrame()
 	{

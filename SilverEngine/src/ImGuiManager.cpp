@@ -10,6 +10,8 @@
 
 #ifdef SV_IMGUI
 
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 using namespace SV;
 
 namespace SVImGui {
@@ -19,6 +21,8 @@ namespace SVImGui {
 	namespace _internal {
 		bool Initialize(SV::Window& window, SV::Graphics& graphics)
 		{
+			ImGui_ImplWin32_EnableDpiAwareness();
+
 			SV::DirectX11Device& dx11 = *reinterpret_cast<SV::DirectX11Device*>(&graphics);
 
 			IMGUI_CHECKVERSION();
@@ -29,7 +33,10 @@ namespace SVImGui {
 				return false;
 			}
 
-			if (!ImGui_ImplWin32_Init(GetDesktopWindow())) {
+			auto& io = ImGui::GetIO();
+			io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable | ImGuiConfigFlags_DpiEnableScaleViewports;;
+
+			if (!ImGui_ImplWin32_Init(window.GetWindowHandle())) {
 				SV::LogE("Can't initialize ImGui Windows Impl");
 				Close();
 				return false;
@@ -38,7 +45,7 @@ namespace SVImGui {
 				SV::LogE("Can't initialize ImGui DirectX11 Impl");
 				Close();
 				return false;
-			}			
+			}
 
 			return true;
 		}
@@ -54,9 +61,11 @@ namespace SVImGui {
 		{
 			if (g_ImGuiContext == nullptr) return;
 
-			
 			ImGui::Render();
 			ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+			ImGui::EndFrame();
+			ImGui::UpdatePlatformWindows();
+			ImGui::RenderPlatformWindowsDefault();
 		}
 		i64 UpdateWindowProc(void* handle, ui32 msg, i64 wParam, i64 lParam)
 		{

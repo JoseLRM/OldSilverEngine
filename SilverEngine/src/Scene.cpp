@@ -35,6 +35,7 @@ namespace SV {
 	}
 
 	///////////////////////////NAME COMPONENT///////////////
+#ifdef SV_IMGUI
 	void NameComponent::ShowInfo(SV::Scene& scene)
 	{
 		constexpr ui32 MAX_LENGTH = 32;
@@ -56,6 +57,7 @@ namespace SV {
 		// Set new name into buffer
 		m_Name = name;
 	}
+#endif
 
 	///////////////////////////SCENE////////////////////////
 	BaseComponent* Scene::GetComponent(SV::Entity e, CompID componentID) noexcept

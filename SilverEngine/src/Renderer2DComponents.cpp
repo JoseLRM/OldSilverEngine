@@ -45,6 +45,7 @@ namespace SV {
 	}
 #endif
 
+#ifdef SV_IMGUI
 	void SpriteLayerComponent::ShowInfo(SV::Scene& scene)
 	{
 		i32 value = renderLayer->GetValue();
@@ -58,5 +59,5 @@ namespace SV {
 		ImGui::Checkbox("Sorting", &sortByValue);
 		ImGui::Checkbox("Default Rendering", &defaultRendering);
 	}
-
+#endif
 }

@@ -10,6 +10,7 @@ namespace SV {
 	class Window;
 	class Graphics;
 	class Scene;
+	class FrameBuffer;
 	typedef ui32 Entity;
 }
 
@@ -18,6 +19,7 @@ namespace SVImGui {
 		bool Initialize(SV::Window& window, SV::Graphics& graphics);
 		void BeginFrame();
 		void EndFrame();
+
 		i64 UpdateWindowProc(void* handle, ui32 msg, i64 wParam, i64 lParam);
 		bool Close();
 	}

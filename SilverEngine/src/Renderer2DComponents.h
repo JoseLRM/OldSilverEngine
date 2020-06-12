@@ -32,7 +32,9 @@ namespace SV {
 		SpriteLayerComponent() : renderLayer(std::make_unique<RenderLayer>()) {}
 		SpriteLayerComponent(i32 value, bool transparent) : renderLayer(std::make_unique<RenderLayer>(value, transparent)) {}
 
+#ifdef SV_IMGUI
 		void ShowInfo(SV::Scene& scene) override;
+#endif
 	};
 	SVDefineComponent(SpriteLayerComponent);
 

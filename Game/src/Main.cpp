@@ -63,12 +63,14 @@ public:
 		static float exp = 2.f;
 		static float limit = 10.f;
 
+#ifdef SV_IMGUI
 		if (ImGui::Begin("Camera")) {
 			ImGui::DragFloat("Threshold", &threshold, 0.01f);
 			ImGui::DragFloat("Exponential", &exp, 0.01f);
 			ImGui::DragFloat("Limit", &limit, 0.01f);
 		}
 		ImGui::End();
+#endif
 
 		camera.Adjust(GetWindow());
 
@@ -128,7 +130,9 @@ public:
 
 		renderer.DrawScene(scene);
 
+#ifdef SV_IMGUI
 		SVImGui::ShowScene(scene, &selectedSceneWindow , &openSceneWindow);
+#endif
 	}
 	void Close() override
 	{

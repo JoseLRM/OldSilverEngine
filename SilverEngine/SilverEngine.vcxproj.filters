@@ -78,8 +78,20 @@
     <ClInclude Include="src\Renderer2D.h">
       <Filter>Graphics\Renderer\2D</Filter>
     </ClInclude>
-    <ClInclude Include="src\external\ImGui\imstb_truetype.h">
-      <Filter>External\ImGui</Filter>
+    <ClInclude Include="src\ImGuiManager.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\EngineDevice.h">
+      <Filter>System</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Renderer2DComponents.h">
+      <Filter>Graphics\Renderer\2D</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Timer.h">
+      <Filter>System</Filter>
+    </ClInclude>
+    <ClInclude Include="src\User.h">
+      <Filter>System</Filter>
     </ClInclude>
     <ClInclude Include="src\external\ImGui\imconfig.h">
       <Filter>External\ImGui</Filter>
@@ -102,20 +114,8 @@
     <ClInclude Include="src\external\ImGui\imstb_textedit.h">
       <Filter>External\ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="src\ImGuiManager.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="src\EngineDevice.h">
-      <Filter>System</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Renderer2DComponents.h">
-      <Filter>Graphics\Renderer\2D</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Timer.h">
-      <Filter>System</Filter>
-    </ClInclude>
-    <ClInclude Include="src\User.h">
-      <Filter>System</Filter>
+    <ClInclude Include="src\external\ImGui\imstb_truetype.h">
+      <Filter>External\ImGui</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -214,6 +214,21 @@
     <ClCompile Include="src\Renderer2D.cpp">
       <Filter>Graphics\Renderer\2D</Filter>
     </ClCompile>
+    <ClCompile Include="src\ImGuiManager.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="src\EngineDevice.cpp">
+      <Filter>System</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Renderer2DComponents.cpp">
+      <Filter>Graphics\Renderer\2D</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Timer.cpp">
+      <Filter>System</Filter>
+    </ClCompile>
+    <ClCompile Include="src\User.cpp">
+      <Filter>System</Filter>
+    </ClCompile>
     <ClCompile Include="src\external\ImGui\imgui.cpp">
       <Filter>External\ImGui</Filter>
     </ClCompile>
@@ -231,21 +246,6 @@
     </ClCompile>
     <ClCompile Include="src\external\ImGui\imgui_widgets.cpp">
       <Filter>External\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="src\ImGuiManager.cpp">
-      <Filter>Utils</Filter>
-    </ClCompile>
-    <ClCompile Include="src\EngineDevice.cpp">
-      <Filter>System</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Renderer2DComponents.cpp">
-      <Filter>Graphics\Renderer\2D</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Timer.cpp">
-      <Filter>System</Filter>
-    </ClCompile>
-    <ClCompile Include="src\User.cpp">
-      <Filter>System</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

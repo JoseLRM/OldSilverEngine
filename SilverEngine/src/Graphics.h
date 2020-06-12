@@ -244,11 +244,16 @@ namespace SV {
 		virtual bool _Initialize(const SV_GRAPHICS_INITIALIZATION_DESC& desc) = 0;
 		virtual bool _Close() = 0;
 
+#ifdef SV_IMGUI
+		virtual void ResizeBackBuffer(ui32 width, ui32 height) = 0;
+#endif
+
 		void BeginFrame();
 		void EndFrame();
 
 	public:
 		friend Engine;
+		friend Window;
 
 		Graphics();
 		~Graphics();

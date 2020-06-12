@@ -159,7 +159,9 @@ namespace SV {
 			return false;
 		}
 
+#ifdef SV_IMGUI
 		SVImGui::_internal::Initialize(m_Window, GetGraphics());
+#endif
 
 		// APPLICATION
 		m_Application->Initialize();
@@ -229,7 +231,9 @@ namespace SV {
 			SV::LogE("Can't close Renderer");
 		}
 
+#ifdef SV_IMGUI
 		SVImGui::_internal::Close();
+#endif
 
 		// WINDOW
 		if (!m_Window.Close()) {

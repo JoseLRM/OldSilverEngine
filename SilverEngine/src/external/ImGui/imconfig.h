@@ -1,8 +1,3 @@
-#include "..//..//core.h"
-#ifndef SV_IMGUI
-#define IMGUI_DISABLE
-#endif
-
 //-----------------------------------------------------------------------------
 // COMPILE-TIME OPTIONS FOR DEAR IMGUI
 // Runtime options (clipboard callbacks, enabling various features, etc.) can generally be set via the ImGuiIO structure.
@@ -52,6 +47,9 @@
 
 //---- Pack colors to BGRA8 instead of RGBA8 (to avoid converting from one to another)
 //#define IMGUI_USE_BGRA_PACKED_COLOR
+
+//---- Use 32-bit for ImWchar (default is 16-bit) to support full unicode code points.
+//#define IMGUI_USE_WCHAR32
 
 //---- Avoid multiple STB libraries implementations, or redefine path/filenames to prioritize another version
 // By default the embedded implementations are declared static and not available outside of imgui cpp files.

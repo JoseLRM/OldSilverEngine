@@ -73,6 +73,25 @@ constexpr DXGI_MODE_SCANLINE_ORDER ParseScanlineOrder(SV_GFX_MODE_SCANLINE_ORDER
 
 namespace SV {
 
+	void DirectX11Device::CreateBackBuffer(const SV::Adapter::OutputMode& outputMode, ui32 width, ui32 height)
+	{
+		D3D11_RENDER_TARGET_VIEW_DESC backBufferDesc;
+		backBufferDesc.Format = ParseFormat(outputMode.format);
+		backBufferDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+		backBufferDesc.Texture2D.MipSlice = 0u;
+
+		ValidateFrameBuffer(&mainFrameBuffer);
+
+		FrameBuffer_dx11* backBuffer = reinterpret_cast<FrameBuffer_dx11*>(mainFrameBuffer.Get());
+
+		backBuffer->m_Width = width;
+		backBuffer->m_Height = height;
+		backBuffer->m_Format = outputMode.format;
+
+		dxAssert(swapChain->GetBuffer(0u, __uuidof(ID3D11Resource), &backBuffer->GetResource()));
+		dxAssert(device->CreateRenderTargetView(backBuffer->GetResource().Get(), &backBufferDesc, &backBuffer->GetRTV()));
+	}
+
 	bool DirectX11Device::_Initialize(const SV_GRAPHICS_INITIALIZATION_DESC& desc)
 	{
 		Window& window = GetEngine().GetWindow();
@@ -87,8 +106,13 @@ namespace SV {
 		svZeroMemory(&swapChainDescriptor, sizeof(DXGI_SWAP_CHAIN_DESC));
 		swapChainDescriptor.BufferCount = 1;
 		swapChainDescriptor.BufferDesc.Format = ParseFormat(outputMode.format);
+#ifdef SV_IMGUI
+		swapChainDescriptor.BufferDesc.Height = 0;
+		swapChainDescriptor.BufferDesc.Width = 0;
+#else
 		swapChainDescriptor.BufferDesc.Height = outputMode.height;
 		swapChainDescriptor.BufferDesc.Width = outputMode.width;
+#endif
 		swapChainDescriptor.BufferDesc.RefreshRate.Denominator = outputMode.refreshRate.denominator;
 		swapChainDescriptor.BufferDesc.RefreshRate.Numerator = outputMode.refreshRate.numerator;
 		swapChainDescriptor.BufferDesc.Scaling = ParseScalingMode(outputMode.scaling);
@@ -122,21 +146,11 @@ namespace SV {
 			&immediateContext
 		));
 
-		D3D11_RENDER_TARGET_VIEW_DESC backBufferDesc;
-		backBufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-		backBufferDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
-		backBufferDesc.Texture2D.MipSlice = 0u;
-
-		ValidateFrameBuffer(&mainFrameBuffer);
-
-		FrameBuffer_dx11* backBuffer = reinterpret_cast<FrameBuffer_dx11*>(mainFrameBuffer.Get());
-
-		backBuffer->m_Width = outputMode.width;
-		backBuffer->m_Height = outputMode.height;
-		backBuffer->m_Format = outputMode.format;
-
-		dxAssert(swapChain->GetBuffer(0u, __uuidof(ID3D11Resource), &backBuffer->GetResource()));
-		dxAssert(device->CreateRenderTargetView(backBuffer->GetResource().Get(), &backBufferDesc, &backBuffer->GetRTV()));
+#ifdef SV_IMGUI
+		CreateBackBuffer(outputMode, window.GetWidth(), window.GetHeight());
+#else
+		CreateBackBuffer(outputMode, outputMode.width, outputMode.height);
+#endif
 
 		return true;
 	}
@@ -169,7 +183,7 @@ namespace SV {
 			freeCommandLists.push(cmdID);
 		}
 
-#ifdef SV_IMGUI
+#ifdef SV_IMGUI		
 		FrameBuffer_dx11* backBuffer = reinterpret_cast<FrameBuffer_dx11*>(mainFrameBuffer.Get());
 		immediateContext->OMSetRenderTargets(1, backBuffer->m_RenderTargetView.GetAddressOf(), nullptr);
 		SVImGui::_internal::EndFrame();
@@ -200,6 +214,22 @@ namespace SV {
 	{
 		stateManager[cmd.GetID()].SetViewport({x, y, w, h, n, f}, slot);
 	}
+
+#ifdef SV_IMGUI
+	void DirectX11Device::ResizeBackBuffer(ui32 width, ui32 height)
+	{
+		if (!swapChain.Get()) return;
+
+		// Get OutputMode
+		const SV::Adapter::OutputMode& outputMode = GetAdapter().modes[GetOutputModeID()];
+
+		mainFrameBuffer->Release();
+
+		dxAssert(swapChain->ResizeBuffers(1, width, height, ParseFormat(outputMode.format), DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH));
+
+		CreateBackBuffer(outputMode, width, height);
+	}
+#endif
 
 	void DirectX11Device::SetTopology(SV_GFX_TOPOLOGY topology, CommandList& cmd)
 	{

@@ -39,7 +39,10 @@ namespace SV {
 	{
 		SV::Input& input = GetEngine().GetInput();
 
-		SVImGui::_internal::UpdateWindowProc(m_WindowHandle, message, wParam, lParam);
+#ifdef SV_IMGUI
+		if(SVImGui::_internal::UpdateWindowProc(m_WindowHandle, message, wParam, lParam)) 
+			return true;
+#endif
 		
 		switch (message) {
 		case WM_DESTROY:
@@ -259,6 +262,9 @@ namespace SV {
 		}
 
 		if (IsResized()) {
+#ifdef SV_IMGUI
+			GetGraphics().ResizeBackBuffer(m_Width, m_Height);
+#endif
 			GetRenderer().UpdateResolution();
 		}
 
