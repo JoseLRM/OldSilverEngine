@@ -2,10 +2,15 @@
 
 #include "core.h"
 
+namespace SV {
+	typedef void* WindowHandle;
+}
+
 struct SV_WINDOW_INITIALIZATION_DESC
 {
 	ui32 width, height, x, y;
-	const char* title;
+	const wchar* title;
+	SV::WindowHandle parent;
 };
 
 namespace SV {
@@ -13,8 +18,6 @@ namespace SV {
 	namespace _internal {
 		bool RegisterWindowClass();
 	}
-
-	typedef void* WindowHandle;
 
 	class Engine;
 	class Window : public SV::EngineDevice {

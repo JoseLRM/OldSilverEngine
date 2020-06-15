@@ -22,15 +22,20 @@ namespace SV {
 
 	class Renderer : public SV::EngineDevice {
 		
+		// 2D
 		RenderQueue2D m_RenderQueue2D;
 		Renderer2D m_Renderer2D;
 		RenderLayer m_DefaultRenderLayer;
+
+		std::vector<std::pair<TileMap*, XMMATRIX>> m_TileMaps;
+
 
 		PostProcess m_PostProcess;
 
 		FrameBuffer m_Offscreen;
 
 		SV::Camera* m_pCamera;
+		XMMATRIX m_ViewProjectionMatrix;
 
 		SV::uvec2 m_Resolution;
 		bool m_WindowAttachment;

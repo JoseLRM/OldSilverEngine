@@ -5,22 +5,24 @@
 namespace SV {
 
 	namespace Task {
+		class ThreadPool;
+	}
+
+	class ThreadContext {
+		std::atomic<ui32> executedTasks = 0u;
+		ui32 taskCount = 0u;
+	public:
+		inline void Reset() noexcept
+		{
+			executedTasks = 0u;
+			taskCount = 0u;
+		}
+		friend Task::ThreadPool;
+	};
+
+	namespace Task {
 
 		using Task = std::function<void()>;
-
-		class ThreadPool;
-
-		class ThreadContext {
-			std::atomic<ui32> executedTasks = 0u;
-			ui32 taskCount = 0u;
-		public:
-			inline void Reset() noexcept
-			{
-				executedTasks = 0u;
-				taskCount = 0u;
-			}
-			friend ThreadPool;
-		};
 
 		namespace _internal {
 			void Initialize(ui32 minThreadCount);

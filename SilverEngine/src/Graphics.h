@@ -75,10 +75,14 @@ namespace SV {
 		class ConstantBuffer_internal {
 		protected:
 			ui32 m_LastSlot[3];
+			SV_GFX_USAGE m_Usage;
+			ui32 m_Size;
 
 		public:
 			bool Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, Graphics& device);
 			void Release();
+
+			void Update(void* data, ui32 size, CommandList& cmd);
 
 			void Bind(ui32 slot, SV_GFX_SHADER_TYPE type, CommandList& cmd);
 			void Unbind(SV_GFX_SHADER_TYPE type, CommandList& cmd);
@@ -86,6 +90,8 @@ namespace SV {
 		protected:
 			virtual bool _Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, Graphics& device) = 0;
 			virtual void _Release() = 0;
+
+			virtual void _Update(void* data, ui32 size, CommandList& cmd) = 0;
 
 			virtual void _Bind(ui32 slot, SV_GFX_SHADER_TYPE type, CommandList& cmd) = 0;
 			virtual void _Unbind(SV_GFX_SHADER_TYPE type, CommandList& cmd) = 0;

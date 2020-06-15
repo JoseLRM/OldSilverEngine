@@ -8,11 +8,14 @@
 void SV_ENGINE_INITIALIZATION_DESC::SetDefault()
 {
 	executeInThisThread = true;
+	threadContext = nullptr;
+
 	windowDesc.x = 320;
 	windowDesc.y = 180;
 	windowDesc.width = 1280;
 	windowDesc.height = 720;
-	windowDesc.title = "SilverEngine";
+	windowDesc.title = L"SilverEngine";
+	windowDesc.parent = 0u;
 
 	rendererDesc.windowAttachment.enabled = true;
 	rendererDesc.windowAttachment.resolution = 1920u;
@@ -92,10 +95,10 @@ namespace SV {
 		else {
 			SV::Task::Execute([this, &desc]() {
 				_Run(desc);
-			}, nullptr, true);
+			}, desc.threadContext, true);
 		}
 	}
-	void Engine::_Run(SV_ENGINE_INITIALIZATION_DESC& desc)
+	void Engine::_Run(SV_ENGINE_INITIALIZATION_DESC desc)
 	{
 		m_Name = "SilverEngine ";
 		m_Name += m_Version.ToString();
@@ -199,8 +202,6 @@ namespace SV {
 			frameCount++;
 
 			// Begin
-			m_Graphics->BeginFrame();
-			m_Renderer.BeginFrame();
 
 			// Updating
 			m_Application->Update(deltaTime);
@@ -210,6 +211,9 @@ namespace SV {
 			}
 
 			// Rendering
+			m_Graphics->BeginFrame();
+			m_Renderer.BeginFrame();
+
 			m_Application->Render();
 			m_Renderer.Render();
 
@@ -250,7 +254,7 @@ namespace SV {
 	}
 	void Engine::Exit(bool endFrame)
 	{
-		if (m_EngineState == SV_ENGINE_STATE_NONE || m_EngineState == SV_ENGINE_STATE_CLOSING) exit(1);
+		if (m_EngineState == SV_ENGINE_STATE_CLOSING) exit(1);
 		else {
 			m_EngineState = SV_ENGINE_STATE_CLOSING;
 			if (!endFrame) {

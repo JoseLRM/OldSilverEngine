@@ -3,6 +3,7 @@
 #include "core.h"
 #include "Scene.h"
 #include "Renderer2D.h"
+#include "TileMap.h"
 
 namespace SV {
 
@@ -18,7 +19,7 @@ namespace SV {
 		SpriteComponent(const Sprite& spr, SV::Color4b color) : sprite(spr), color(color) {}
 
 #ifdef SV_IMGUI
-		void ShowInfo(SV::Scene& scene) override;
+		void ShowInfo() override;
 #endif
 
 	};
@@ -33,9 +34,19 @@ namespace SV {
 		SpriteLayerComponent(i32 value, bool transparent) : renderLayer(std::make_unique<RenderLayer>(value, transparent)) {}
 
 #ifdef SV_IMGUI
-		void ShowInfo(SV::Scene& scene) override;
+		void ShowInfo() override;
 #endif
 	};
 	SVDefineComponent(SpriteLayerComponent);
+
+	struct TileMapComponent : public SV::Component<SV::TileMapComponent> {
+
+		std::unique_ptr<TileMap> tileMap;
+
+		SV::ivec2 GetTilePos(SV::vec2 position);
+
+		TileMapComponent() : tileMap(std::make_unique<TileMap>()) {}
+	};
+	SVDefineComponent(TileMapComponent);
 
 }

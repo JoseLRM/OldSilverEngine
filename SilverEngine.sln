@@ -10,6 +10,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Game", "Game\Game.vcxproj",
 		{1170D6F9-3C8F-45BB-9DAA-A39321531875} = {1170D6F9-3C8F-45BB-9DAA-A39321531875}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SilverEditor", "SilverEditor\SilverEditor.vcxproj", "{0CDFE350-A736-435D-B95D-6355098C6BFF}"
+	ProjectSection(ProjectDependencies) = postProject
+		{1170D6F9-3C8F-45BB-9DAA-A39321531875} = {1170D6F9-3C8F-45BB-9DAA-A39321531875}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -24,6 +29,10 @@ Global
 		{F78D8F6E-C35C-4479-BA49-0174CCD2BE4C}.Debug|x64.Build.0 = Debug|x64
 		{F78D8F6E-C35C-4479-BA49-0174CCD2BE4C}.Release|x64.ActiveCfg = Release|x64
 		{F78D8F6E-C35C-4479-BA49-0174CCD2BE4C}.Release|x64.Build.0 = Release|x64
+		{0CDFE350-A736-435D-B95D-6355098C6BFF}.Debug|x64.ActiveCfg = Debug|x64
+		{0CDFE350-A736-435D-B95D-6355098C6BFF}.Debug|x64.Build.0 = Debug|x64
+		{0CDFE350-A736-435D-B95D-6355098C6BFF}.Release|x64.ActiveCfg = Release|x64
+		{0CDFE350-A736-435D-B95D-6355098C6BFF}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -9,8 +9,12 @@
 namespace SV {
 	class Window;
 	class Graphics;
+	class Input;
 	class Scene;
-	class FrameBuffer;
+	class TileMapComponent;
+	class RenderQueue2D;
+	class RenderLayer;
+	class OrthographicCamera;
 	typedef ui32 Entity;
 }
 
@@ -24,8 +28,10 @@ namespace SVImGui {
 		bool Close();
 	}
 
-	void ShowGraphics(const SV::Graphics& graphics, bool* open);
+	void ShowGraphics(SV::Graphics& graphics, bool* open);
 	void ShowScene(SV::Scene& scene, SV::Entity* selectedEntity, bool* open);
+	void ShowTileMapEditor(SV::TileMapComponent* tileMap, SV::Input& input, SV::OrthographicCamera& camera, SV::RenderQueue2D& rq, SV::RenderLayer& layer);
+
 }
 
 #endif

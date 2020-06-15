@@ -370,7 +370,7 @@ namespace SV {
 	void IndexBuffer_dx11::_Unbind(CommandList& cmd)
 	{
 		DirectX11Device& dx11 = ParseDevice(cmd.GetDevice());
-		dx11.deferredContext[cmd.GetID()]->IASetIndexBuffer(nullptr, DXGI_FORMAT_R32G32B32A32_FLOAT, 0u);
+		dx11.deferredContext[cmd.GetID()]->IASetIndexBuffer(nullptr, DXGI_FORMAT_UNKNOWN, 0u);
 	}
 
 	///////////////////////////////CONSTANT BUFFER///////////////////////////////////
@@ -400,6 +400,10 @@ namespace SV {
 	void ConstantBuffer_dx11::_Release()
 	{
 		m_Buffer.Reset();
+	}
+	void ConstantBuffer_dx11::_Update(void* data, ui32 size, CommandList& cmd)
+	{
+		UpdateBuffer(m_Buffer.Get(), m_Usage, m_Size, data, size, cmd);
 	}
 	void ConstantBuffer_dx11::_Bind(ui32 slot, SV_GFX_SHADER_TYPE type, CommandList& cmd)
 	{

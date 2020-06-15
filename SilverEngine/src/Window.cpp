@@ -27,7 +27,7 @@ namespace SV {
 			if (it != g_WindowsMap.end()) windowPtr = it->second;
 		}
 		if (windowPtr) return Window::WindowProc(*windowPtr, message, wParam, lParam);
-		else return DefWindowProcA(wnd, message, wParam, lParam);
+		else return DefWindowProcW(wnd, message, wParam, lParam);
 	}
 
 	i64 Window::WindowProc(Window& window, ui32 message, i64 wParam, i64 lParam)
@@ -121,7 +121,6 @@ namespace SV {
 		//	}
 		//}
 		//break;
-
 		case WM_SIZE:
 		{
 			m_Width = LOWORD(lParam);
@@ -171,7 +170,7 @@ namespace SV {
 	namespace _internal {
 		bool RegisterWindowClass()
 		{
-			WNDCLASSA wndClass;
+			WNDCLASSW wndClass;
 			wndClass.cbClsExtra = 0;
 			wndClass.cbWndExtra = 0;
 			wndClass.hbrBackground = 0;
@@ -179,11 +178,11 @@ namespace SV {
 			wndClass.hIcon = 0;
 			wndClass.hInstance = 0;
 			wndClass.lpfnWndProc = WindowProc;
-			wndClass.lpszClassName = "SilverWindow";
-			wndClass.lpszMenuName = "SilverWindow";
+			wndClass.lpszClassName = L"SilverWindow";
+			wndClass.lpszMenuName = 0;
 			wndClass.style = 0;
 
-			RegisterClassA(&wndClass);
+			RegisterClassW(&wndClass);
 			return true;
 		}
 	}
@@ -192,14 +191,23 @@ namespace SV {
 
 	bool Window::CreateWindowInstance(SV::Window* window, const SV_WINDOW_INITIALIZATION_DESC& desc)
 	{
-		DWORD style = WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_SIZEBOX;
+		DWORD style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_SIZEBOX | WS_VISIBLE;
 
 		int w = desc.width, h = desc.height;
 		AdjustWindow(desc.x, desc.y, w, h, style);
 
 		std::lock_guard<std::mutex> lock(s_WindowCreationMutex);
 
-		window->m_WindowHandle = CreateWindowExA(0u, "SilverWindow", desc.title, style, desc.x, desc.y, w, h, 0, 0, 0, 0);
+		window->m_X = desc.x;
+		window->m_Y = desc.y;
+		window->m_Width = w;
+		window->m_Height = h;
+
+		if (desc.parent) {
+			style |= WS_CHILD;
+		}
+
+		window->m_WindowHandle = CreateWindowW(L"SilverWindow", desc.title, style, desc.x, desc.y, w, h, ToHWND(desc.parent), 0, 0, 0);
 
 		if (window->m_WindowHandle == 0) {
 			SV::LogE("Error creating Window class");
@@ -254,9 +262,9 @@ namespace SV {
 		m_Resized = false;
 
 		MSG msg;
-		while (PeekMessageA(&msg, 0, 0u, 0u, PM_REMOVE) > 0) {
+		while (PeekMessageW(&msg, 0, 0u, 0u, PM_REMOVE) > 0) {
 			TranslateMessage(&msg);
-			DispatchMessageA(&msg);
+			DispatchMessageW(&msg);
 
 			if (msg.message == WM_QUIT) return false;
 		}

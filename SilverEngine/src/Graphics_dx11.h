@@ -43,6 +43,8 @@ namespace SV {
 		bool _Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, Graphics& device) override;
 		void _Release() override;
 
+		void _Update(void* data, ui32 size, CommandList& cmd) override;
+
 		void _Bind(ui32 slot, SV_GFX_SHADER_TYPE type, CommandList& cmd) override;
 		void _Unbind(SV_GFX_SHADER_TYPE type, CommandList& cmd) override;
 

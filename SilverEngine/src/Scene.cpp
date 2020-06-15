@@ -36,7 +36,7 @@ namespace SV {
 
 	///////////////////////////NAME COMPONENT///////////////
 #ifdef SV_IMGUI
-	void NameComponent::ShowInfo(SV::Scene& scene)
+	void NameComponent::ShowInfo()
 	{
 		constexpr ui32 MAX_LENGTH = 32;
 		char name[MAX_LENGTH];
@@ -365,8 +365,9 @@ namespace SV {
 
 		// allocate the component
 		list.resize(list.size() + componentSize);
-		memcpy(&list[index], comp, componentSize);
+		ECS::MoveComponent(componentID, comp, (BaseComponent*)(&list[index]));
 		((BaseComponent*)& list[index])->entity = entity;
+		((BaseComponent*)& list[index])->pScene = this;
 
 		// set index in entity
 		m_EntityData[entity].indices[componentID] = index;
@@ -380,7 +381,7 @@ namespace SV {
 		// allocate the component
 		list.resize(list.size() + componentSize);
 		BaseComponent* comp = (BaseComponent*)& list[index];
-		ECS::ConstructComponent(componentID, comp, entity);
+		ECS::ConstructComponent(componentID, comp, entity, this);
 
 		// set index in entity
 		m_EntityData[entity].indices[componentID] = index;
@@ -400,10 +401,11 @@ namespace SV {
 			currentIndex = index + (i * componentSize);
 			currentEntity = entities[i];
 
-			memcpy(&list[currentIndex], comp, componentSize);
+			ECS::MoveComponent(componentID, comp, (BaseComponent*)(&list[currentIndex]));
 			// set entity in component
 			BaseComponent* component = (BaseComponent*)(&list[currentIndex]);
 			component->entity = currentEntity;
+			component->pScene = this;
 			// set index in entity
 			m_EntityData[currentEntity].indices[componentID] = currentIndex;
 		}
@@ -775,6 +777,7 @@ namespace SV {
 			size_t size;
 			CreateComponentFunction createFn;
 			DestoryComponentFunction destroyFn;
+			MoveComponentFunction moveFn;
 		};
 
 		ComponentData g_ComponentData[SV_ECS_MAX_COMPONENTS_TYPES];
@@ -808,6 +811,11 @@ namespace SV {
 				g_ComponentData[ID].destroyFn = fn;
 				return fn;
 			}
+			MoveComponentFunction SetComponentMoveFunction(CompID ID, MoveComponentFunction fn)
+			{
+				g_ComponentData[ID].moveFn = fn;
+				return fn;
+			}
 		}
 
 		ui16 GetComponentsCount()
@@ -822,13 +830,18 @@ namespace SV {
 		{
 			return g_ComponentData[ID].name;
 		}
-		void ConstructComponent(CompID ID, SV::BaseComponent* ptr, SV::Entity entity)
+		void ConstructComponent(CompID ID, SV::BaseComponent* ptr, SV::Entity entity, SV::Scene* pScene)
 		{
-			g_ComponentData[ID].createFn(ptr, entity);
+			g_ComponentData[ID].createFn(ptr, entity, pScene);
 		}
 		void DestroyComponent(CompID ID, SV::BaseComponent* ptr)
 		{
 			g_ComponentData[ID].destroyFn(ptr);
+		}
+
+		void MoveComponent(CompID ID, SV::BaseComponent* from, SV::BaseComponent* to)
+		{
+			g_ComponentData[ID].moveFn(from, to);
 		}
 
 		std::map<std::string, CompID> g_ComponentNames;

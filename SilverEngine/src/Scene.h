@@ -16,8 +16,9 @@ namespace SV {
 	typedef ui16 CompID;
 	typedef ui32 Entity;
 
-	typedef void(*CreateComponentFunction)(BaseComponent*, SV::Entity);
+	typedef void(*CreateComponentFunction)(BaseComponent*, SV::Entity, SV::Scene*);
 	typedef void(*DestoryComponentFunction)(BaseComponent*);
+	typedef void(*MoveComponentFunction)(BaseComponent* from, BaseComponent* to);
 
 }
 
@@ -55,9 +56,10 @@ namespace SV {
 
 	struct BaseComponent {
 		Entity entity = SV_INVALID_ENTITY;
+		SV::Scene* pScene = nullptr;
 
 #ifdef SV_IMGUI
-		virtual void ShowInfo(SV::Scene& scene) {}
+		virtual void ShowInfo() {}
 #endif
 	};
 
@@ -68,6 +70,7 @@ namespace SV {
 		const static const char* NAME;
 		const static CreateComponentFunction CREATE_FUNCTION;
 		const static DestoryComponentFunction DESTROY_FUNCTION;
+		const static MoveComponentFunction MOVE_FUNCTION;
 	};
 
 	class System {
@@ -135,28 +138,40 @@ namespace SV {
 			const char* SetComponentName(CompID ID, const char* name);
 			CreateComponentFunction SetComponentCreateFunction(CompID ID, CreateComponentFunction fn);
 			DestoryComponentFunction SetComponentDestroyFunction(CompID ID, DestoryComponentFunction fn);
+			MoveComponentFunction SetComponentMoveFunction(CompID ID, MoveComponentFunction fn);
 		}
 
 		ui16 GetComponentsCount();
 
 		size_t GetComponentSize(CompID ID);
 		const char* GetComponentName(CompID ID);
-		void ConstructComponent(CompID ID, SV::BaseComponent* ptr, SV::Entity entity);
+		void ConstructComponent(CompID ID, SV::BaseComponent* ptr, SV::Entity entity, SV::Scene*);
 		void DestroyComponent(CompID ID, SV::BaseComponent* ptr);
+		void MoveComponent(CompID ID, SV::BaseComponent* from, SV::BaseComponent* to);
 
 		bool GetComponentID(const char* name, CompID* id);
 
 		template<typename Component>
-		void CreateComponent(SV::BaseComponent* compPtr, SV::Entity entity)
+		void CreateComponent(SV::BaseComponent* compPtr, SV::Entity entity, SV::Scene* pScene)
 		{
-			Component* comp = new(compPtr) Component();
+			new(compPtr) Component();
 			compPtr->entity = entity;
+			compPtr->pScene = pScene;
 		}
 		template<typename Component>
 		void DestroyComponent(SV::BaseComponent* compPtr)
 		{
 			Component* comp = reinterpret_cast<Component*>(compPtr);
 			comp->~Component();
+		}
+		template<typename Component>
+		void MoveComponent(SV::BaseComponent* fromB, SV::BaseComponent* toB)
+		{
+			Component* from = reinterpret_cast<Component*>(fromB);
+			Component* to	= reinterpret_cast<Component*>(toB);
+			to->~Component();
+			new(toB) Component();
+			to->operator=(std::move(*from));
 		}
 
 	}
@@ -169,6 +184,7 @@ const SV::CompID name::ID(SV::ECS::_internal::GetComponentID());\
 const size_t name::SIZE(SV::ECS::_internal::SetComponentSize(name::ID, sizeof(name))); \
 const SV::CreateComponentFunction name::CREATE_FUNCTION(SV::ECS::_internal::SetComponentCreateFunction(name::ID, SV::ECS::CreateComponent<name>)); \
 const SV::DestoryComponentFunction name::DESTROY_FUNCTION(SV::ECS::_internal::SetComponentDestroyFunction(name::ID, SV::ECS::DestroyComponent<name>)); \
+const SV::MoveComponentFunction name::MOVE_FUNCTION(SV::ECS::_internal::SetComponentMoveFunction(name::ID, SV::ECS::MoveComponent<name>)); \
 const const char* name::NAME(SV::ECS::_internal::SetComponentName(name::ID, #name));
 
 #define SVDefineTag(name) struct name : public SV::Component<name> {}; SVDefineComponent(name)
@@ -189,7 +205,7 @@ namespace SV {
 		inline const std::string& GetName() const noexcept { return m_Name; }
 
 #ifdef SV_IMGUI
-		void ShowInfo(SV::Scene& scene) override;
+		void ShowInfo() override;
 #endif
 
 	};

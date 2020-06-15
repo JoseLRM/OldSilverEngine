@@ -13,6 +13,7 @@
 
 struct SV_ENGINE_INITIALIZATION_DESC {
 	bool executeInThisThread;
+	SV::ThreadContext* threadContext;
 	SV_WINDOW_INITIALIZATION_DESC	windowDesc;
 	SV_GRAPHICS_INITIALIZATION_DESC graphicsDesc;
 	SV_RENDERER_INITIALIZATION_DESC rendererDesc;
@@ -79,7 +80,7 @@ namespace SV {
 		inline bool IsRunning() const noexcept { return m_EngineState != SV_ENGINE_STATE_NONE; }
 
 	private:
-		void _Run(SV_ENGINE_INITIALIZATION_DESC& desc);
+		void _Run(SV_ENGINE_INITIALIZATION_DESC desc);
 
 		bool Initialize(SV_ENGINE_INITIALIZATION_DESC& desc);
 		void Loop();

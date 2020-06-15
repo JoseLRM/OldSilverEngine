@@ -9,12 +9,10 @@
 //  [X] Platform: Gamepad support. Enabled with 'io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad'.
 //  [X] Platform: Multi-viewport support (multiple windows). Enable with 'io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable'.
 
+#include "..//..//Win.h"
+
 #include "imgui.h"
 #include "imgui_impl_win32.h"
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include "..//..//Win.h"
 #include <tchar.h>
 
 // Using XInput library for gamepad (with recent Windows SDK this may leads to executables which won't run on Windows 7)
@@ -612,7 +610,7 @@ static void ImGui_ImplWin32_CreateWindow(ImGuiViewport* viewport)
     RECT rect = { (LONG)viewport->Pos.x, (LONG)viewport->Pos.y, (LONG)(viewport->Pos.x + viewport->Size.x), (LONG)(viewport->Pos.y + viewport->Size.y) };
     ::AdjustWindowRectEx(&rect, data->DwStyle, FALSE, data->DwExStyle);
     data->Hwnd = ::CreateWindowEx(
-        data->DwExStyle, _T("ImGui Platform"), _T("Untitled"), data->DwStyle,   // Style, class name, window name
+        data->DwExStyle, _T(L"ImGui Platform"), _T(L"Untitled"), data->DwStyle,   // Style, class name, window name
         rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,    // Window area
         parent_window, NULL, ::GetModuleHandle(NULL), NULL);                    // Parent window, Menu, Instance, Param
     data->HwndOwned = true;
@@ -834,7 +832,7 @@ static void ImGui_ImplWin32_InitPlatformInterface()
     wcex.hCursor = NULL;
     wcex.hbrBackground = (HBRUSH)(COLOR_BACKGROUND + 1);
     wcex.lpszMenuName = NULL;
-    wcex.lpszClassName = _T("ImGui Platform");
+    wcex.lpszClassName = _T(L"ImGui Platform");
     wcex.hIconSm = NULL;
     ::RegisterClassEx(&wcex);
 
@@ -873,7 +871,7 @@ static void ImGui_ImplWin32_InitPlatformInterface()
 
 static void ImGui_ImplWin32_ShutdownPlatformInterface()
 {
-    ::UnregisterClass(_T("ImGui Platform"), ::GetModuleHandle(NULL));
+    ::UnregisterClass(_T(L"ImGui Platform"), ::GetModuleHandle(NULL));
 }
 
 //---------------------------------------------------------------------------------------------------------

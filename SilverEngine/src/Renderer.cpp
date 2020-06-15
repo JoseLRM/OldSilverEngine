@@ -42,6 +42,11 @@ namespace SV {
 			return false;
 		}
 
+		if (!TileMap::CreateShaders(device)) {
+			SV::LogE("Can't create TileMap shaders");
+			return false;
+		}
+
 		return true;
 	}
 
@@ -63,10 +68,13 @@ namespace SV {
 	void Renderer::BeginFrame()
 	{
 		if (m_pCamera == nullptr) return;
-		
-		m_RenderQueue2D.Begin(m_pCamera);
 
+		m_ViewProjectionMatrix = m_pCamera->GetViewMatrix() * m_pCamera->GetProjectionMatrix();
+		
+		// 2D
+		m_RenderQueue2D.Begin(m_pCamera);
 		m_DefaultRenderLayer.Reset();
+		m_TileMaps.clear();
 	}
 	void Renderer::Render()
 	{
@@ -76,20 +84,37 @@ namespace SV {
 		}
 
 		m_RenderQueue2D.AddLayer(m_DefaultRenderLayer);
-
 		m_RenderQueue2D.End();
 
 		Graphics& device = GetEngine().GetGraphics();
-
 		CommandList cmd = device.BeginCommandList();
 
+		// Clear buffers
 		m_Offscreen->Clear(SVColor4f::BLACK, cmd);
 
+		// Offscreen binding
 		m_Offscreen->Bind(0u, cmd);
 		device.SetViewport(0u, 0.f, 0.f, m_Offscreen->GetWidth(), m_Offscreen->GetHeight(), 0.f, 1.f, cmd);
 
+		// Draw TileMaps
+		if (m_TileMaps.size() > 0) {
+			TileMap::BindShaders(cmd);
+			for (ui32 i = 0; i < m_TileMaps.size(); ++i) {
+				TileMap& tileMap = *m_TileMaps[i].first;
+				XMMATRIX matrix = m_TileMaps[i].second;
+				matrix = XMMatrixTranspose(matrix * m_ViewProjectionMatrix);
+				
+				tileMap.Bind(matrix, cmd);
+				tileMap.Draw(cmd);
+			}
+			m_TileMaps.back().first->Unbind(cmd);
+			TileMap::UnbindShaders(cmd);
+		}
+
+		// Draw 2D primitives
 		m_Renderer2D.DrawRenderQueue(m_RenderQueue2D, cmd);
 
+		// Offscreen to backBuffer
 		m_PostProcess.DefaultPP(m_Offscreen, device.GetMainFrameBuffer(), cmd);
 	}
 	void Renderer::EndFrame()
@@ -156,6 +181,19 @@ namespace SV {
 				m_RenderQueue2D.DrawQuad(trans.GetWorldMatrix(), sprComp->color, *layer);
 			}
 		}
+
+		// Get tileMaps
+		{
+			auto& tileMaps = scene.GetComponentsList(TileMapComponent::ID);
+
+			ui32 compSize = SV::TileMapComponent::SIZE;
+
+			for (ui32 i = 0; i < tileMaps.size(); i += compSize) {
+				SV::TileMapComponent* tileMapComp = reinterpret_cast<TileMapComponent*>(&tileMaps[i]);
+				m_TileMaps.emplace_back(tileMapComp->tileMap.get(), tileMapComp->pScene->GetTransform(tileMapComp->entity).GetWorldMatrix());
+			}
+		}
+
 	}
 
 	void Renderer::UpdateResolution()

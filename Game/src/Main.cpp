@@ -1,4 +1,4 @@
-#include <SilverEngine>
+#include "ColisionSystem.h"
 
 class Application : public SV::Application
 {
@@ -6,6 +6,9 @@ class Application : public SV::Application
 	SV::Scene scene;
 
 	SV::Entity player;
+	SV::Entity ground;
+
+	ColisionSystem colisionsSystem;
 
 	bool openSceneWindow;
 	SV::Entity selectedSceneWindow = SV_INVALID_ENTITY;
@@ -13,11 +16,15 @@ class Application : public SV::Application
 	SV::TextureAtlas texture;
 	SV::Sprite sprite;
 
+	SV::Entity tileMap;
+
+	SV::RenderLayer editorRL;
+
 public:
 	void Initialize() override
 	{
 		GetEngine().GetRenderer().SetCamera(&camera);
-		camera.SetDimension(SV::vec2(10));
+		camera.SetDimension(SV::vec2(1000));
 		camera.SetAspect(GetEngine().GetRenderer().GetResolutionAspect());
 
 		texture.Create("res/Skybox.jpg", GetGraphics());
@@ -28,12 +35,39 @@ public:
 		player = scene.CreateEntity();
 		scene.AddComponent(player, SV::SpriteComponent(sprite));
 		scene.AddComponent(player, SV::NameComponent("Player"));
+		scene.AddComponent(player, PhysicsComponent());
+
+		ground = scene.CreateEntity();
+		scene.AddComponent(ground, SV::SpriteComponent());
+		scene.AddComponent(ground, SV::NameComponent("Ground"));
+		scene.AddComponent(ground, ColisionComponent());
+		scene.GetTransform(ground).SetPosition({0.f, -3.f, 0.f });
+		scene.GetTransform(ground).SetScale({100.f, 2.f, 0.f });
+
+		tileMap = scene.CreateEntity();
+		scene.AddComponent(tileMap, SV::NameComponent("TileMap"));
+		scene.AddComponent(tileMap, SV::TileMapComponent());
+
+		editorRL.SetValue(99999);
+		SV::TileMapComponent* tmComp = scene.GetComponent<SV::TileMapComponent>(tileMap);
+		SV::TileMap& tm = *tmComp->tileMap.get();
+
+		SV::Tile tile = tm.CreateTile(sprite);
+		tm.CreateGrid(1000, 1000);
+
+		for (ui32 y = 0; y < 1000; ++y) {
+			for (ui32 x = 0; x < 1000; ++x)
+			{
+				tm.PutTile(x, y, tile);
+			}
+		}
 	}
 
 	void MovePlayer(float dt)
 	{
 		SV::Input& input = GetInput();
 		SV::Transform& playerTrans = scene.GetTransform(player);
+		PhysicsComponent* physics = scene.GetComponent<PhysicsComponent>(player);
 		float force = 10.f * dt;
 
 		SV::vec3 position = playerTrans.GetLocalPosition();
@@ -44,15 +78,9 @@ public:
 		if (input.IsKey('A')) {
 			position.x -= force;
 		}
-		if (input.IsKey('W')) {
-			position.y += force;
+		if (input.IsKeyPressed(SV_KEY_SPACE)) {
+			physics->vel.y += 20.f;
 		}
-		if (input.IsKey('S')) {
-			position.y -= force;
-		}
-
-		//position.Normalize();
-		//position *= force;
 
 		playerTrans.SetPosition(position);
 	}
@@ -64,12 +92,12 @@ public:
 		static float limit = 10.f;
 
 #ifdef SV_IMGUI
-		if (ImGui::Begin("Camera")) {
-			ImGui::DragFloat("Threshold", &threshold, 0.01f);
-			ImGui::DragFloat("Exponential", &exp, 0.01f);
-			ImGui::DragFloat("Limit", &limit, 0.01f);
-		}
-		ImGui::End();
+		//if (ImGui::Begin("Camera")) {
+		//	ImGui::DragFloat("Threshold", &threshold, 0.01f);
+		//	ImGui::DragFloat("Exponential", &exp, 0.01f);
+		//	ImGui::DragFloat("Limit", &limit, 0.01f);
+		//}
+		//ImGui::End();
 #endif
 
 		camera.Adjust(GetWindow());
@@ -103,14 +131,17 @@ public:
 		MovePlayer(dt);
 		CameraController(dt);
 
+		scene.UpdateSystem(&colisionsSystem, dt);
+
 		if(GetInput().IsKeyPressed(SV_KEY_F11)) GetGraphics().SetFullscreen(!GetGraphics().InFullscreen());
 
-		if (GetInput().IsMousePressed(SV_MOUSE_LEFT)) {
+		if (GetInput().IsMousePressed(SV_MOUSE_CENTER)) {
 			std::vector<SV::Entity> entities;
 			SV::vec3 mousePos = SV::vec3(camera.GetMousePos(GetInput()));
 			scene.CreateEntities(1, 0, &entities);
 			scene.AddComponents(entities, SV::SpriteComponent(sprite));
 			scene.AddComponents(entities, SV::NameComponent("Player"));
+			scene.AddComponents(entities, PhysicsComponent());
 			for (ui32 i = 0; i < entities.size(); ++i) {
 				SV::Entity entity = entities[i];
 				SV::SpriteComponent* sprComp = scene.GetComponent<SV::SpriteComponent>(entity);
@@ -118,8 +149,6 @@ public:
 				float g = (float(rand()) / RAND_MAX);
 				float b = (float(rand()) / RAND_MAX);
 				sprComp->color = SVColor4f::ToColor4b({ r, g, b ,1.f});
-				float r0 = (float(rand()) / RAND_MAX) * 5.f -2.5f;
-				float r1 = (float(rand()) / RAND_MAX) * 5.f -2.5f;
 				scene.GetTransform(entity).SetPosition(mousePos);
 			}
 		}
@@ -129,6 +158,11 @@ public:
 		SV::Renderer& renderer = GetRenderer();
 
 		renderer.DrawScene(scene);
+
+		editorRL.Reset();
+		SV::RenderQueue2D& rq = renderer.GetRenderQueue2D();
+		SVImGui::ShowTileMapEditor(scene.GetComponent<SV::TileMapComponent>(tileMap), GetInput(), camera, rq, editorRL);
+		rq.AddLayer(editorRL);
 
 #ifdef SV_IMGUI
 		SVImGui::ShowScene(scene, &selectedSceneWindow , &openSceneWindow);
@@ -158,6 +192,7 @@ int main()
 
 	SV_ENGINE_INITIALIZATION_DESC desc;
 	desc.SetDefault();
+	desc.rendererDesc.windowAttachment.resolution = 1920u;
 	desc.executeInThisThread = true;
 
 	engine.Run(&app, &desc);

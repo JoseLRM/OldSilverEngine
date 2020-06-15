@@ -77,8 +77,12 @@ namespace SV {
 
 		m_Fullscreen = fullscreen;
 
-		if (fullscreen) EnableFullscreen();
-		else DisableFullscreen();
+		if (fullscreen) {
+			EnableFullscreen();
+		}
+		else {
+			DisableFullscreen();
+		}
 	}
 
 }
@@ -127,11 +131,17 @@ void SV::_internal::IndexBuffer_internal::Unbind(CommandList& cmd)
 // CONSTANT BUFFER
 bool SV::_internal::ConstantBuffer_internal::Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, Graphics& device)
 {
+	m_Size = size;
+	m_Usage = usage;
 	return _Create(size, usage, CPUWriteAccess, CPUReadAccess, data, device);
 }
 void SV::_internal::ConstantBuffer_internal::Release()
 {
 	_Release();
+}
+void SV::_internal::ConstantBuffer_internal::Update(void* data, ui32 size, CommandList& cmd)
+{
+	_Update(data, size, cmd);
 }
 void SV::_internal::ConstantBuffer_internal::Bind(ui32 slot, SV_GFX_SHADER_TYPE type, CommandList& cmd)
 {
