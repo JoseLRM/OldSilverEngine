@@ -24,7 +24,7 @@ public:
 	void Initialize() override
 	{
 		GetEngine().GetRenderer().SetCamera(&camera);
-		camera.SetDimension(SV::vec2(1000));
+		camera.SetDimension(SV::vec2(10));
 		camera.SetAspect(GetEngine().GetRenderer().GetResolutionAspect());
 
 		texture.Create("res/Skybox.jpg", GetGraphics());
@@ -53,10 +53,10 @@ public:
 		SV::TileMap& tm = *tmComp->tileMap.get();
 
 		SV::Tile tile = tm.CreateTile(sprite);
-		tm.CreateGrid(1000, 1000);
+		tm.CreateGrid(10, 10);
 
-		for (ui32 y = 0; y < 1000; ++y) {
-			for (ui32 x = 0; x < 1000; ++x)
+		for (ui32 y = 0; y < 10; ++y) {
+			for (ui32 x = 0; x < 10; ++x)
 			{
 				tm.PutTile(x, y, tile);
 			}

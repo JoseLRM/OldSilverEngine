@@ -31,6 +31,9 @@ namespace SV {
 		device.ValidateShader(&m_PointPixelShader);
 		device.ValidateInputLayout(&m_PointInputLayout);
 
+		device.ValidateBlendState(&m_TransparentBlendState);
+		device.ValidateBlendState(&m_OpaqueBlendState);
+
 		if (!m_InstanceBuffer->Create(SV_GFX_QUAD_BATCH_COUNT * sizeof(GPUSpriteInstance), SV_GFX_USAGE_DYNAMIC, true, false, nullptr, device)) {
 			SV::LogE("Can't create Quad Instance buffer");
 			return false;
@@ -123,39 +126,58 @@ namespace SV {
 			}
 		}
 
+		// BLEND STATES
+
+		// Default
+		if (!m_OpaqueBlendState->Create(device)) {
+			SV::LogE("Can't Create 2D Opaque Blend State");
+			return false;
+		}
+
+		m_TransparentBlendState->SetIndependentRenderTarget(true);
+		m_TransparentBlendState->EnableBlending();
+		m_TransparentBlendState->SetRenderTargetOperation(SV_GFX_BLEND_SRC_ALPHA, SV_GFX_BLEND_ONE,
+			SV_GFX_BLEND_INV_SRC_ALPHA, SV_GFX_BLEND_ONE, SV_GFX_BLEND_OP_ADD, SV_GFX_BLEND_OP_ADD);
+		m_TransparentBlendState->SetWriteMask(SV_GFX_COLOR_WRITE_ENABLE_ALL);
+		if (!m_TransparentBlendState->Create(device)) {
+			SV::LogE("Can't Create 2D Transparent Blend State");
+			return false;
+		}
+
 		return true;
 	}
 
 	void Renderer2D::DrawRenderQueue(RenderQueue2D& rq, CommandList& cmd)
 	{
 		for (ui32 i = 0; i < rq.m_pLayers.size(); ++i) {
-			DrawQuads(rq.m_pLayers[i]->quadInstances, cmd);
-			DrawSprites(rq.m_pLayers[i]->spriteInstances, cmd);
-			DrawEllipses(rq.m_pLayers[i]->ellipseInstances, cmd);
-			DrawPoints(rq.m_pLayers[i]->pointInstances, cmd);
-			DrawLines(rq.m_pLayers[i]->lineInstances, cmd);
+			RenderLayer& layer = *rq.m_pLayers[i];
+			DrawQuads(layer.quadInstances, layer.IsTransparent(), cmd);
+			DrawSprites(layer.spriteInstances, layer.IsTransparent(), cmd);
+			DrawEllipses(layer.ellipseInstances, layer.IsTransparent(), cmd);
+			DrawPoints(layer.pointInstances, layer.IsTransparent(), cmd);
+			DrawLines(layer.lineInstances, layer.IsTransparent(), cmd);
 		}
 	}
 
-	void Renderer2D::DrawQuads(std::vector<QuadInstance>& instances, CommandList& cmd)
+	void Renderer2D::DrawQuads(std::vector<QuadInstance>& instances, bool transparent, CommandList& cmd)
 	{
-		DrawQuadsOrEllipses(instances, true, cmd);
+		DrawQuadsOrEllipses(instances, transparent, true, cmd);
 	}
-	void Renderer2D::DrawEllipses(std::vector<QuadInstance>& instances, CommandList& cmd)
+	void Renderer2D::DrawEllipses(std::vector<QuadInstance>& instances, bool transparent, CommandList& cmd)
 	{
-		DrawQuadsOrEllipses(instances, false, cmd);
-	}
-
-	void Renderer2D::DrawPoints(std::vector<PointInstance>& instances, CommandList& cmd)
-	{
-		DrawPointsOrLines(instances, true, cmd);
-	}
-	void Renderer2D::DrawLines(std::vector<PointInstance>& instances, CommandList& cmd)
-	{
-		DrawPointsOrLines(instances, false, cmd);
+		DrawQuadsOrEllipses(instances, transparent, false, cmd);
 	}
 
-	void Renderer2D::DrawSprites(std::vector<SpriteInstance>& instances, CommandList& cmd) 
+	void Renderer2D::DrawPoints(std::vector<PointInstance>& instances, bool transparent, CommandList& cmd)
+	{
+		DrawPointsOrLines(instances, transparent, true, cmd);
+	}
+	void Renderer2D::DrawLines(std::vector<PointInstance>& instances, bool transparent, CommandList& cmd)
+	{
+		DrawPointsOrLines(instances, transparent, false, cmd);
+	}
+
+	void Renderer2D::DrawSprites(std::vector<SpriteInstance>& instances, bool transparent, CommandList& cmd)
 	{
 		ui32 count = ui32(instances.size());
 		if (count == 0) return;
@@ -163,6 +185,8 @@ namespace SV {
 		Graphics& device = cmd.GetDevice();
 
 		device.SetTopology(SV_GFX_TOPOLOGY_TRIANGLESTRIP, cmd);
+
+		BindBlendState(transparent, cmd);
 
 		m_SpriteVertexShader->Bind(cmd);
 		m_SpritePixelShader->Bind(cmd);
@@ -213,9 +237,11 @@ namespace SV {
 		m_SpritePixelShader->Unbind(cmd);
 		m_VertexBuffer->Unbind(cmd);
 		m_SpriteInputLayout->Unbind(cmd);
+
+		UnbindBlendState(transparent, cmd);
 	}
 
-	void Renderer2D::DrawQuadsOrEllipses(std::vector<QuadInstance>& instances, bool quad, CommandList& cmd)
+	void Renderer2D::DrawQuadsOrEllipses(std::vector<QuadInstance>& instances, bool transparent, bool quad, CommandList& cmd)
 	{
 		ui32 count = ui32(instances.size());
 		if (count == 0) return;
@@ -224,6 +250,8 @@ namespace SV {
 
 		// Binding
 		device.SetTopology(SV_GFX_TOPOLOGY_TRIANGLESTRIP, cmd);
+
+		BindBlendState(transparent, cmd);
 
 		if (quad) {
 			m_QuadVertexShader->Bind(cmd);
@@ -262,9 +290,11 @@ namespace SV {
 			m_EllipseVertexShader->Unbind(cmd);
 			m_EllipsePixelShader->Unbind(cmd);
 		}
+
+		UnbindBlendState(transparent, cmd);
 	}
 
-	void Renderer2D::DrawPointsOrLines(std::vector<PointInstance>& instances, bool point, CommandList& cmd)
+	void Renderer2D::DrawPointsOrLines(std::vector<PointInstance>& instances, bool transparent, bool point, CommandList& cmd)
 	{
 		ui32 count = ui32(instances.size());
 		if (count == 0) return;
@@ -274,6 +304,8 @@ namespace SV {
 		// Binding
 		if(point) device.SetTopology(SV_GFX_TOPOLOGY_POINTS, cmd);
 		else device.SetTopology(SV_GFX_TOPOLOGY_LINES, cmd);
+
+		BindBlendState(transparent, cmd);
 
 		m_PointVertexShader->Bind(cmd);
 		m_PointPixelShader->Bind(cmd);
@@ -300,6 +332,18 @@ namespace SV {
 
 		m_PointVertexShader->Unbind(cmd);
 		m_PointPixelShader->Unbind(cmd);
+
+		UnbindBlendState(transparent, cmd);
+	}
+
+	void Renderer2D::BindBlendState(bool transparent, CommandList& cmd)
+	{
+		if (transparent) m_TransparentBlendState->Bind(cmd);
+		else m_OpaqueBlendState->Bind(cmd);
+	}
+	void Renderer2D::UnbindBlendState(bool transparent, CommandList& cmd)
+	{
+		if (transparent) m_OpaqueBlendState->Bind(cmd);
 	}
 
 	bool Renderer2D::Close()
@@ -321,6 +365,9 @@ namespace SV {
 		m_PointVertexShader->Release();
 		m_PointPixelShader->Release();
 		m_PointInputLayout->Release();
+		
+		m_OpaqueBlendState->Release();
+		m_TransparentBlendState->Release();
 		
 		return true;
 	}

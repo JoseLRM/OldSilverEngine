@@ -326,6 +326,18 @@ void SV::_internal::BlendState_internal::Bind(ui32 sampleMask, const float* blen
 {
 	_Bind(sampleMask, blendFactors, cmd);
 }
+void SV::_internal::BlendState_internal::Bind(ui32 sampleMask, CommandList& cmd)
+{
+	Bind(sampleMask, nullptr, cmd);
+}
+void SV::_internal::BlendState_internal::Bind(const float* blendFactors, CommandList& cmd)
+{
+	Bind(0xffffffff, blendFactors, cmd);
+}
+void SV::_internal::BlendState_internal::Bind(CommandList& cmd)
+{
+	Bind(0xffffffff, nullptr, cmd);
+}
 void SV::_internal::BlendState_internal::Unbind(CommandList& cmd)
 {
 	_Unbind(cmd);

@@ -257,6 +257,9 @@ namespace SV {
 			void Release();
 
 			void Bind(ui32 sampleMask, const float* blendFactors, CommandList& cmd);
+			void Bind(ui32 sampleMask, CommandList& cmd);
+			void Bind(const float* blendFactors, CommandList& cmd);
+			void Bind(CommandList& cmd);
 			void Unbind(CommandList& cmd);
 
 		protected:

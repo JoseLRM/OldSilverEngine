@@ -793,7 +793,7 @@ namespace SV {
 		DirectX11Device& dx11 = ParseDevice(graphics);
 		dxCheck(dx11.device->CreateBlendState(&desc, &m_BlendState));
 
-		return false;
+		return true;
 	}
 	void BlendState_dx11::_Release()
 	{
