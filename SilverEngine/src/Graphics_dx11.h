@@ -129,6 +129,19 @@ namespace SV {
 
 	};
 
+	/////////////////////////////////SAMPLER//////////////////////////////////////////
+	class BlendState_dx11 : public SV::_internal::BlendState_internal {
+		ComPtr<ID3D11BlendState> m_BlendState;
+
+	public:
+		bool _Create(SV::Graphics& graphics) override;
+		void _Release() override;
+
+		void _Bind(ui32 sampleMask, const float* blendFactors, CommandList& cmd) override;
+		void _Unbind(CommandList& cmd) override;
+
+	};
+
 	/////////////////////////////////DEVICE///////////////////////////////////////////////
 	class DirectX11Device : public SV::Graphics {
 	public:
@@ -179,6 +192,7 @@ namespace SV {
 		void ValidateInputLayout(InputLayout* il)			override { il->Set(std::make_unique<InputLayout_dx11>()); }
 		void ValidateTexture(Texture* tex)					override { tex->Set(std::make_unique<Texture_dx11>()); }
 		void ValidateSampler(Sampler* sam)					override { sam->Set(std::make_unique<Sampler_dx11>()); }
+		void ValidateBlendState(BlendState* bs)				override { bs->Set(std::make_unique<BlendState_dx11>()); }
 
 	};
 

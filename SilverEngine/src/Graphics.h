@@ -18,6 +18,7 @@ namespace SV {
 	class InputLayout;
 	class Texture;
 	class Sampler;
+	class BlendState;
 
 	// CommandList
 	class Graphics;
@@ -226,6 +227,46 @@ namespace SV {
 			inline void Set(std::unique_ptr<T> alloc) noexcept { m_Allocation = std::move(alloc); }
 
 		};
+
+		class BlendState_internal {
+		protected:
+			struct RENDER_TARGET_BLEND_DESC {
+				bool enabled = false;
+				SV_GFX_BLEND src = SV_GFX_BLEND_ONE;
+				SV_GFX_BLEND srcAlpha = SV_GFX_BLEND_ONE;
+				SV_GFX_BLEND dest = SV_GFX_BLEND_ZERO;
+				SV_GFX_BLEND destAlpha = SV_GFX_BLEND_ZERO;
+				SV_GFX_BLEND_OP op = SV_GFX_BLEND_OP_ADD;
+				SV_GFX_BLEND_OP opAlpha = SV_GFX_BLEND_OP_ADD;
+				ui8 writeMask = SV_GFX_COLOR_WRITE_ENABLE_ALL;
+			};
+
+			bool m_IndependentRenderTarget = false;
+			RENDER_TARGET_BLEND_DESC m_BlendDesc[8];
+
+		public:
+			// CreateFunctions
+			void SetIndependentRenderTarget(bool enable);
+			void EnableBlending(ui8 renderTarget = 0);
+			void DisableBlending(ui8 renderTarget = 0);
+			void SetRenderTargetOperation(SV_GFX_BLEND src, SV_GFX_BLEND srcAlpha, SV_GFX_BLEND dest, SV_GFX_BLEND destAlpha, SV_GFX_BLEND_OP op, SV_GFX_BLEND_OP opAlpha, ui8 renderTarget = 0);
+			void SetRenderTargetOperation(SV_GFX_BLEND src, SV_GFX_BLEND dest, SV_GFX_BLEND_OP op, ui8 renderTarget = 0);
+			void SetWriteMask(ui8 writeMask, ui8 renderTarget = 0u);
+
+			bool Create(SV::Graphics& graphics);
+			void Release();
+
+			void Bind(ui32 sampleMask, const float* blendFactors, CommandList& cmd);
+			void Unbind(CommandList& cmd);
+
+		protected:
+			virtual bool _Create(SV::Graphics& graphics) = 0;
+			virtual void _Release() = 0;
+
+			virtual void _Bind(ui32 sampleMask, const float* blendFactors, CommandList& cmd) = 0;
+			virtual void _Unbind(CommandList& cmd) = 0;
+
+		};
 	}
 	//////////////////////////////////////////////////////////////
 
@@ -237,6 +278,7 @@ namespace SV {
 	class InputLayout		: public _internal::Primitive_internal<_internal::InputLayout_internal> {};
 	class Texture			: public _internal::Primitive_internal<_internal::Texture_internal> {};
 	class Sampler			: public _internal::Primitive_internal<_internal::Sampler_internal> {};
+	class BlendState		: public _internal::Primitive_internal<_internal::BlendState_internal> {};
 
 	class Graphics : public SV::EngineDevice {
 
@@ -292,6 +334,7 @@ namespace SV {
 		virtual void ValidateInputLayout(InputLayout* il) = 0;
 		virtual void ValidateTexture(Texture* tex) = 0;
 		virtual void ValidateSampler(Sampler* sam) = 0;
+		virtual void ValidateBlendState(BlendState* bs) = 0;
 
 	private:
 		virtual void EnableFullscreen() = 0;

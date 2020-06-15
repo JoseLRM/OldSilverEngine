@@ -283,3 +283,50 @@ void SV::_internal::Sampler_internal::Unbind(SV_GFX_SHADER_TYPE type, ui32 slot,
 {
 	_Unbind(type, slot, cmd);
 }
+
+//BLEND STATE
+void SV::_internal::BlendState_internal::SetIndependentRenderTarget(bool enable)
+{
+	m_IndependentRenderTarget = enable;
+}
+void SV::_internal::BlendState_internal::EnableBlending(ui8 renderTarget)
+{
+	m_BlendDesc[renderTarget].enabled = true;
+}
+void SV::_internal::BlendState_internal::DisableBlending(ui8 renderTarget)
+{
+	m_BlendDesc[renderTarget].enabled = false;
+}
+void SV::_internal::BlendState_internal::SetRenderTargetOperation(SV_GFX_BLEND src, SV_GFX_BLEND srcAlpha, SV_GFX_BLEND dest, SV_GFX_BLEND destAlpha, SV_GFX_BLEND_OP op, SV_GFX_BLEND_OP opAlpha, ui8 renderTarget)
+{
+	m_BlendDesc[renderTarget].src = src;
+	m_BlendDesc[renderTarget].srcAlpha = srcAlpha;
+	m_BlendDesc[renderTarget].dest = dest;
+	m_BlendDesc[renderTarget].destAlpha = destAlpha;
+	m_BlendDesc[renderTarget].op = op;
+	m_BlendDesc[renderTarget].opAlpha = opAlpha;
+}
+void SV::_internal::BlendState_internal::SetRenderTargetOperation(SV_GFX_BLEND src, SV_GFX_BLEND dest, SV_GFX_BLEND_OP op, ui8 renderTarget)
+{
+	SetRenderTargetOperation(src, src, dest, dest, op, op, renderTarget);
+}
+void SV::_internal::BlendState_internal::SetWriteMask(ui8 writeMask, ui8 renderTarget)
+{
+	m_BlendDesc[renderTarget].writeMask = writeMask;
+}
+bool SV::_internal::BlendState_internal::Create(SV::Graphics& graphics)
+{
+	return _Create(graphics);
+}
+void SV::_internal::BlendState_internal::Release()
+{
+	_Release();
+}
+void SV::_internal::BlendState_internal::Bind(ui32 sampleMask, const float* blendFactors, CommandList& cmd)
+{
+	_Bind(sampleMask, blendFactors, cmd);
+}
+void SV::_internal::BlendState_internal::Unbind(CommandList& cmd)
+{
+	_Unbind(cmd);
+}

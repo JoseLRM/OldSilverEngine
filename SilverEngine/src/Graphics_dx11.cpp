@@ -71,6 +71,13 @@ constexpr DXGI_MODE_SCANLINE_ORDER ParseScanlineOrder(SV_GFX_MODE_SCANLINE_ORDER
 	return (DXGI_MODE_SCANLINE_ORDER)order;
 }
 
+constexpr D3D11_BLEND ParseBlendOption(SV_GFX_BLEND opt) {
+	return (D3D11_BLEND)opt;
+}
+constexpr D3D11_BLEND_OP ParseBlendOperation(SV_GFX_BLEND_OP op) {
+	return (D3D11_BLEND_OP)op;
+}
+
 namespace SV {
 
 	void DirectX11Device::CreateBackBuffer(const SV::Adapter::OutputMode& outputMode, ui32 width, ui32 height)
@@ -759,6 +766,48 @@ namespace SV {
 	{
 		DirectX11Device& dx11 = ParseDevice(cmd.GetDevice());
 		dx11.stateManager[cmd.GetID()].UnbindSam(type, slot);
+	}
+
+	/////////////////////////////////DEVICE///////////////////////////////////////////////
+	bool BlendState_dx11::_Create(SV::Graphics& graphics)
+	{
+		D3D11_BLEND_DESC desc;
+
+		desc.AlphaToCoverageEnable = FALSE;
+		desc.IndependentBlendEnable = m_IndependentRenderTarget ? TRUE : FALSE;
+		
+		for (ui8 i = 0; i < 8; ++i) {
+			auto& rt0 = desc.RenderTarget[i];
+			auto& rt1 = m_BlendDesc[i];
+
+			rt0.BlendEnable = rt1.enabled ? TRUE : FALSE;
+			rt0.SrcBlend = ParseBlendOption(rt1.src);
+			rt0.SrcBlendAlpha = ParseBlendOption(rt1.srcAlpha);
+			rt0.DestBlend = ParseBlendOption(rt1.dest);
+			rt0.DestBlendAlpha = ParseBlendOption(rt1.destAlpha);
+			rt0.BlendOp = ParseBlendOperation(rt1.op);
+			rt0.BlendOpAlpha = ParseBlendOperation(rt1.opAlpha);
+			rt0.RenderTargetWriteMask = rt1.writeMask;
+		}
+
+		DirectX11Device& dx11 = ParseDevice(graphics);
+		dxCheck(dx11.device->CreateBlendState(&desc, &m_BlendState));
+
+		return false;
+	}
+	void BlendState_dx11::_Release()
+	{
+		m_BlendState->Release();
+	}
+	void BlendState_dx11::_Bind(ui32 sampleMask, const float* blendFactors, CommandList& cmd)
+	{
+		DirectX11Device& dx11 = ParseDevice(cmd.GetDevice());
+		dx11.deferredContext[cmd.GetID()]->OMSetBlendState(m_BlendState.Get(), blendFactors, sampleMask);
+	}
+	void BlendState_dx11::_Unbind(CommandList& cmd)
+	{
+		DirectX11Device& dx11 = ParseDevice(cmd.GetDevice());
+		dx11.deferredContext[cmd.GetID()]->OMSetBlendState(nullptr, nullptr, 0u);
 	}
 
 }
