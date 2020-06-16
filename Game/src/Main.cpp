@@ -27,14 +27,25 @@ public:
 		camera.SetDimension(SV::vec2(10));
 		camera.SetAspect(GetEngine().GetRenderer().GetResolutionAspect());
 
-		texture.Create("res/Skybox.jpg", GetGraphics());
-		texture.SetSamplerState(SV_GFX_TEXTURE_ADDRESS_WRAP, SV_GFX_TEXTURE_FILTER_MIN_MAG_MIP_LINEAR, GetGraphics());
-		sprite = texture.CreateSprite(0.f, 0.f, 1.f, 1.f);
+		texture.Create("res/Tileset.png", GetGraphics());
+		texture.SetSamplerState(SV_GFX_TEXTURE_ADDRESS_WRAP, SV_GFX_TEXTURE_FILTER_MIN_MAG_MIP_POINT, GetGraphics());
+
+		float sprH = 1.f / 6.f;
+
+		sprite = texture.CreateSprite(0.f, 0.f, 0.1f, sprH);
+		SV::Sprite s0 = texture.CreateSprite(0.1f, sprH, 0.1f, sprH);
+		SV::Sprite s1 = texture.CreateSprite(0.2f, sprH * 2.f, 0.1f, sprH);
+		SV::Sprite s2 = texture.CreateSprite(0.f, 0.f, 0.1f, sprH);
+		SV::Sprite s3 = texture.CreateSprite(0.1f, sprH, 0.1f, sprH);
+		SV::Sprite s4 = texture.CreateSprite(0.2f, sprH * 2.f, 0.1f, sprH);
+		SV::Sprite s5 = texture.CreateSprite(0.f, 0.f, 0.1f, sprH);
+		SV::Sprite s6 = texture.CreateSprite(0.1f, sprH, 0.1f, sprH);
+		SV::Sprite s7 = texture.CreateSprite(0.2f, sprH * 2.f, 0.1f, sprH);
 
 		scene.Initialize();
 
 		player = scene.CreateEntity();
-		scene.AddComponent(player, SV::SpriteComponent(sprite));
+		scene.AddComponent(player, SV::SpriteComponent(s1));
 		scene.AddComponent(player, SV::NameComponent("Player"));
 		scene.AddComponent(player, PhysicsComponent());
 
@@ -54,13 +65,21 @@ public:
 		SV::TileMapComponent* tmComp = scene.GetComponent<SV::TileMapComponent>(tileMap);
 		SV::TileMap& tm = *tmComp->tileMap.get();
 
+		tm.CreateTile(s1);
 		SV::Tile tile = tm.CreateTile(sprite);
+		tm.CreateTile(s0);
+		tm.CreateTile(s2);
+		tm.CreateTile(s3);
+		tm.CreateTile(s4);
+		tm.CreateTile(s5);
+		tm.CreateTile(s6);
+		tm.CreateTile(s7);
 		tm.CreateGrid(10, 10);
 
 		for (ui32 y = 0; y < 10; ++y) {
 			for (ui32 x = 0; x < 10; ++x)
 			{
-				tm.PutTile(x, y, tile);
+				tm.PutTile(x, y, (x % 2 == 0) ? tile : tile-1);
 			}
 		}
 	}
@@ -81,7 +100,7 @@ public:
 			position.x -= force;
 		}
 		if (input.IsKeyPressed(SV_KEY_SPACE)) {
-			physics->vel.y += 20.f;
+			physics->vel.y = 20.f;
 		}
 
 		playerTrans.SetPosition(position);
@@ -89,9 +108,9 @@ public:
 
 	void CameraController(float dt)
 	{
-		static float threshold = 1.f;
-		static float exp = 2.f;
-		static float limit = 10.f;
+		static float threshold = 0.05f;
+		static float exp = 4.f;
+		static float limit = 500.f;
 
 #ifdef SV_IMGUI
 		//if (ImGui::Begin("Camera")) {
@@ -163,11 +182,12 @@ public:
 
 		editorRL.Reset();
 		SV::RenderQueue2D& rq = renderer.GetRenderQueue2D();
-		SVImGui::ShowTileMapEditor(scene.GetComponent<SV::TileMapComponent>(tileMap), GetInput(), camera, rq, editorRL);
 		rq.AddLayer(editorRL);
 
 #ifdef SV_IMGUI
+		SVImGui::ShowTileMapEditor(scene.GetComponent<SV::TileMapComponent>(tileMap), GetInput(), camera, rq, editorRL);
 		SVImGui::ShowScene(scene, &selectedSceneWindow , &openSceneWindow);
+		SVImGui::ShowImGuiDemo();
 #endif
 	}
 	void Close() override

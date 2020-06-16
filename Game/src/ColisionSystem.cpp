@@ -1,5 +1,7 @@
 #include "ColisionSystem.h"
 
+float PhysicsComponent::gravity = 50.f;
+
 ColisionSystem::ColisionSystem()
 {
 	AddRequestedComponent(PhysicsComponent::ID);
@@ -24,7 +26,7 @@ void ColisionSystem::UpdateEntity(SV::Entity entity, SV::BaseComponent** comp, S
 	}
 
 	// Gravity
-	physics->vel.y -= 10.f * dt;
+	physics->vel.y -= PhysicsComponent::gravity * dt;
 
 	// Air frinction
 	physics->vel.y -= physics->vel.y * 0.1f * dt;

@@ -1,5 +1,6 @@
 #include "core.h"
 
+#ifdef SV_IMGUI
 #include "Graphics_dx11.h"
 #include "Window.h"
 #include "Scene.h"
@@ -11,7 +12,6 @@
 #include "external/ImGui/imgui_impl_win32.h"
 #include "ImGuiManager.h"
 
-#ifdef SV_IMGUI
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -24,51 +24,15 @@ namespace SVImGui {
 	namespace _internal {
 		bool Initialize(SV::Window& window, SV::Graphics& graphics)
 		{
-			ImGui_ImplWin32_EnableDpiAwareness();
-
-			SV::DirectX11Device& dx11 = *reinterpret_cast<SV::DirectX11Device*>(&graphics);
-
-			IMGUI_CHECKVERSION();
-			g_ImGuiContext = ImGui::CreateContext();
-
-			if (g_ImGuiContext == nullptr) {
-				SV::LogE("Can't create ImGui Context");
-				return false;
-			}
-
-			auto& io = ImGui::GetIO();
-			io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable | ImGuiConfigFlags_DpiEnableScaleViewports;;
-
-			if (!ImGui_ImplWin32_Init(window.GetWindowHandle())) {
-				SV::LogE("Can't initialize ImGui Windows Impl");
-				Close();
-				return false;
-			}
-			if (!ImGui_ImplDX11_Init(dx11.device.Get(), dx11.immediateContext.Get())) {
-				SV::LogE("Can't initialize ImGui DirectX11 Impl");
-				Close();
-				return false;
-			}
-
-			return true;
+			
 		}
 		void BeginFrame()
 		{
-			if (g_ImGuiContext == nullptr) return;
-
-			ImGui_ImplDX11_NewFrame();
-			ImGui_ImplWin32_NewFrame();
-			ImGui::NewFrame();
+			
 		}
 		void EndFrame()
 		{
-			if (g_ImGuiContext == nullptr) return;
-
-			ImGui::Render();
-			ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
-			ImGui::EndFrame();
-			ImGui::UpdatePlatformWindows();
-			ImGui::RenderPlatformWindowsDefault();
+			
 		}
 		i64 UpdateWindowProc(void* handle, ui32 msg, i64 wParam, i64 lParam)
 		{
@@ -76,10 +40,7 @@ namespace SVImGui {
 		}
 		bool Close()
 		{
-			ImGui_ImplDX11_Shutdown();
-			ImGui_ImplWin32_Shutdown();
-			ImGui::DestroyContext(g_ImGuiContext);
-			return true;
+			
 		}
 	}
 	
@@ -299,22 +260,19 @@ namespace SVImGui {
 			ImGui::Separator();
 			
 			// Tile Selection
+			static Tile selectedTile = 1;
 			ui32 tilesCount = tileMap.GetTilesCount();
+			
 			for (ui32 i = 0; i < tilesCount; ++i) {
 				SV::Sprite spr = tileMap.GetSprite(i);
 				SV::vec4 texCoords = spr.pTextureAtlas->GetSpriteTexCoords(spr.ID);
-				ImGui::Text("Tile0: %f,%f,%f,%f", texCoords.x, texCoords.y, texCoords.z, texCoords.w);
-			}
-
-			static SV::vec4 newTileCoords = { 0.f, 0.f, 1.f, 1.f };
-			ImGui::DragFloat("X coord", &newTileCoords.x, 0.001f);
-			ImGui::DragFloat("Y coord", &newTileCoords.y, 0.001f);
-			ImGui::DragFloat("Spr Width", &newTileCoords.z, 0.001f);
-			ImGui::DragFloat("Spr Height", &newTileCoords.w, 0.001f);
-			if (ImGui::Button("Create Tile")) {
-				Sprite spr;
-				spr.pTextureAtlas = tileMap.GetSprite(0).pTextureAtlas;
-				tileMap.CreateTile(spr.pTextureAtlas->CreateSprite(newTileCoords.x, newTileCoords.y, newTileCoords.z, newTileCoords.w));
+				if (ImGui::Button((std::string("Select") + std::to_string(i + i)).c_str()));
+				{
+					selectedTile = i + 1;
+				}
+				ImGui::SameLine();
+				ImGui::Image(spr.pTextureAtlas->GetTexture()->GetImGuiTexture(), { 50.f, 50.f },
+					{ texCoords.x, texCoords.y }, { texCoords.x + texCoords.z, texCoords.y + texCoords.w });
 			}
 
 			// Edit mode
@@ -366,7 +324,7 @@ namespace SVImGui {
 						for (i32 x = pos0.x; x <= pos1.x; ++x) {
 							for (i32 y = pos0.y; y <= pos1.y; ++y) {
 								if (!tileMap.InBounds(x, y)) continue;
-								if (createMode) tileMap.PutTile(x, y, 1);
+								if (createMode) tileMap.PutTile(x, y, selectedTile);
 								else tileMap.PutTile(x, y, SV_NULL_TILE);
 							}
 						}
@@ -376,7 +334,7 @@ namespace SVImGui {
 						SV::ivec2 pos = tileMapComp->GetTilePos(mousePos);
 
 						if (tileMap.InBounds(pos.x, pos.y)) {
-							if(createMode) tileMap.PutTile(pos.x, pos.y, 1);
+							if(createMode) tileMap.PutTile(pos.x, pos.y, selectedTile);
 							else tileMap.PutTile(pos.x, pos.y, SV_NULL_TILE);
 						}
 					}
@@ -398,6 +356,12 @@ namespace SVImGui {
 
 		}
 		ImGui::End();
+	}
+
+	void ShowImGuiDemo()
+	{
+		static bool open = true;
+		ImGui::ShowDemoWindow(&open);
 	}
 
 }

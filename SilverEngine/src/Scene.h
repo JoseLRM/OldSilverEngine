@@ -54,25 +54,6 @@ namespace SV {
 		EntityData() : transform(0, 0) {}
 	};
 
-	struct BaseComponent {
-		Entity entity = SV_INVALID_ENTITY;
-		SV::Scene* pScene = nullptr;
-
-#ifdef SV_IMGUI
-		virtual void ShowInfo() {}
-#endif
-	};
-
-	template<typename T>
-	struct Component : public BaseComponent {
-		const static CompID ID;
-		const static size_t SIZE;
-		const static const char* NAME;
-		const static CreateComponentFunction CREATE_FUNCTION;
-		const static DestoryComponentFunction DESTROY_FUNCTION;
-		const static MoveComponentFunction MOVE_FUNCTION;
-	};
-
 	class System {
 	private:
 		static ui32 s_SystemCount;
@@ -130,15 +111,23 @@ namespace SV {
 
 	};
 
+	struct BaseComponent {
+		Entity entity = SV_INVALID_ENTITY;
+		SV::Scene* pScene = nullptr;
+	};
+
+	namespace _internal {
+		template<typename T>
+		struct Component : public BaseComponent {
+			const static CompID ID;
+			const static ui32 SIZE;
+		};
+	}
+
 	namespace ECS {
 
 		namespace _internal {
-			CompID GetComponentID();
-			size_t SetComponentSize(CompID ID, size_t size);
-			const char* SetComponentName(CompID ID, const char* name);
-			CreateComponentFunction SetComponentCreateFunction(CompID ID, CreateComponentFunction fn);
-			DestoryComponentFunction SetComponentDestroyFunction(CompID ID, DestoryComponentFunction fn);
-			MoveComponentFunction SetComponentMoveFunction(CompID ID, MoveComponentFunction fn);
+			CompID RegisterComponent(ui32 size, const std::type_info&, CreateComponentFunction createFn, DestoryComponentFunction destroyFn, MoveComponentFunction moveFn);
 		}
 
 		ui16 GetComponentsCount();
@@ -175,23 +164,20 @@ namespace SV {
 		}
 
 	}
-
+	
+	namespace _internal {
+		template<typename T>
+		const CompID Component<T>::ID(SV::ECS::_internal::RegisterComponent(sizeof(T), typeid(T), SV::ECS::CreateComponent<T>, SV::ECS::DestroyComponent<T>, SV::ECS::MoveComponent<T>));
+		template<typename T>
+		const ui32 Component<T>::SIZE(sizeof(T));
+	}
 }
 
-#pragma warning(disable : 4114)
-#define SVDefineComponent(name) template struct SV::Component<name>; \
-const SV::CompID name::ID(SV::ECS::_internal::GetComponentID());\
-const size_t name::SIZE(SV::ECS::_internal::SetComponentSize(name::ID, sizeof(name))); \
-const SV::CreateComponentFunction name::CREATE_FUNCTION(SV::ECS::_internal::SetComponentCreateFunction(name::ID, SV::ECS::CreateComponent<name>)); \
-const SV::DestoryComponentFunction name::DESTROY_FUNCTION(SV::ECS::_internal::SetComponentDestroyFunction(name::ID, SV::ECS::DestroyComponent<name>)); \
-const SV::MoveComponentFunction name::MOVE_FUNCTION(SV::ECS::_internal::SetComponentMoveFunction(name::ID, SV::ECS::MoveComponent<name>)); \
-const const char* name::NAME(SV::ECS::_internal::SetComponentName(name::ID, #name));
-
-#define SVDefineTag(name) struct name : public SV::Component<name> {}; SVDefineComponent(name)
+#define SV_COMPONENT(x, ...) struct x; template SV::_internal::Component<x>; struct x : public SV::_internal::Component<x>, __VA_ARGS__
 
 namespace SV {
 
-	struct NameComponent : public SV::Component<NameComponent> {
+	SV_COMPONENT(NameComponent) {
 	private:
 		std::string m_Name;
 
@@ -204,13 +190,8 @@ namespace SV {
 
 		inline const std::string& GetName() const noexcept { return m_Name; }
 
-#ifdef SV_IMGUI
-		void ShowInfo() override;
-#endif
-
 	};
-	SVDefineComponent(NameComponent);
-
+	
 }
 
 namespace SV {

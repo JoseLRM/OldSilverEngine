@@ -93,6 +93,10 @@ namespace SV {
 			inline ui32 GetHeight() const noexcept { return m_Height; }
 			inline ui32 GetSize() const noexcept { return m_Size; }
 
+#ifdef SV_IMGUI
+			virtual ImTextureID GetImGuiTexture() = 0;
+#endif
+
 		};
 
 		class Sampler_internal {

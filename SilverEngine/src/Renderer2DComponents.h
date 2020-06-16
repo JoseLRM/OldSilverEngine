@@ -9,7 +9,7 @@ namespace SV {
 
 	class Renderer;
 
-	struct SpriteComponent : public SV::Component<SpriteComponent> {
+	SV_COMPONENT(SpriteComponent) {
 		Sprite sprite;
 		SV::Color4b color = SVColor4b::WHITE;
 		SV::Entity spriteLayer = SV_INVALID_ENTITY;
@@ -18,14 +18,9 @@ namespace SV {
 		SpriteComponent(const Sprite& spr) : sprite(spr) {}
 		SpriteComponent(const Sprite& spr, SV::Color4b color) : sprite(spr), color(color) {}
 
-#ifdef SV_IMGUI
-		void ShowInfo() override;
-#endif
-
 	};
-	SVDefineComponent(SpriteComponent);
 
-	struct SpriteLayerComponent : public SV::Component<SpriteLayerComponent> {
+	SV_COMPONENT(SpriteLayerComponent) {
 		std::unique_ptr<RenderLayer> renderLayer;
 		bool sortByValue = false;
 		bool defaultRendering = true;
@@ -33,13 +28,9 @@ namespace SV {
 		SpriteLayerComponent() : renderLayer(std::make_unique<RenderLayer>()) {}
 		SpriteLayerComponent(i32 value, bool transparent) : renderLayer(std::make_unique<RenderLayer>(value, transparent)) {}
 
-#ifdef SV_IMGUI
-		void ShowInfo() override;
-#endif
 	};
-	SVDefineComponent(SpriteLayerComponent);
 
-	struct TileMapComponent : public SV::Component<SV::TileMapComponent> {
+	SV_COMPONENT(TileMapComponent) {
 
 		std::unique_ptr<TileMap> tileMap;
 
@@ -47,6 +38,5 @@ namespace SV {
 
 		TileMapComponent() : tileMap(std::make_unique<TileMap>()) {}
 	};
-	SVDefineComponent(TileMapComponent);
 
 }

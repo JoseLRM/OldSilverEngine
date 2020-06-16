@@ -2,7 +2,6 @@
 
 #define SV_PLATFORM_WINDOW
 #define SV_DEBUG
-#define SV_IMGUI
 
 // Graphics
 #define SV_GFX_COMMAND_LIST_COUNT 32
@@ -15,6 +14,3 @@
 #define SV_GFX_SAMPLER_COUNT 16
 
 #define SV_GFX_QUAD_BATCH_COUNT 5000
-
-// ECS
-#define SV_ECS_MAX_COMPONENTS_TYPES 32

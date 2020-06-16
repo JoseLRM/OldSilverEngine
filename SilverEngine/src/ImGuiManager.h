@@ -31,6 +31,7 @@ namespace SVImGui {
 	void ShowGraphics(SV::Graphics& graphics, bool* open);
 	void ShowScene(SV::Scene& scene, SV::Entity* selectedEntity, bool* open);
 	void ShowTileMapEditor(SV::TileMapComponent* tileMap, SV::Input& input, SV::OrthographicCamera& camera, SV::RenderQueue2D& rq, SV::RenderLayer& layer);
+	void ShowImGuiDemo();
 
 }
 

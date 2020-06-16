@@ -90,30 +90,6 @@
     <ClInclude Include="src\User.h">
       <Filter>System</Filter>
     </ClInclude>
-    <ClInclude Include="src\external\ImGui\imconfig.h">
-      <Filter>External\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="src\external\ImGui\imgui.h">
-      <Filter>External\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="src\external\ImGui\imgui_impl_dx11.h">
-      <Filter>External\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="src\external\ImGui\imgui_impl_win32.h">
-      <Filter>External\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="src\external\ImGui\imgui_internal.h">
-      <Filter>External\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="src\external\ImGui\imstb_rectpack.h">
-      <Filter>External\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="src\external\ImGui\imstb_textedit.h">
-      <Filter>External\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="src\external\ImGui\imstb_truetype.h">
-      <Filter>External\ImGui</Filter>
-    </ClInclude>
     <ClInclude Include="src\TileMap.h">
       <Filter>Graphics\Renderer\2D</Filter>
     </ClInclude>
@@ -151,9 +127,6 @@
     </Filter>
     <Filter Include="Graphics\shaders\2d">
       <UniqueIdentifier>{8edd653f-1f45-4fdf-a8e0-a34774921e0e}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="External\ImGui">
-      <UniqueIdentifier>{d9619fab-113e-4db2-a7f2-3a88f9f9a1eb}</UniqueIdentifier>
     </Filter>
     <Filter Include="Graphics\Window">
       <UniqueIdentifier>{826d9c92-b98b-4198-b025-7abc9453ee50}</UniqueIdentifier>
@@ -225,24 +198,6 @@
     </ClCompile>
     <ClCompile Include="src\User.cpp">
       <Filter>System</Filter>
-    </ClCompile>
-    <ClCompile Include="src\external\ImGui\imgui.cpp">
-      <Filter>External\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="src\external\ImGui\imgui_demo.cpp">
-      <Filter>External\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="src\external\ImGui\imgui_draw.cpp">
-      <Filter>External\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="src\external\ImGui\imgui_impl_dx11.cpp">
-      <Filter>External\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="src\external\ImGui\imgui_impl_win32.cpp">
-      <Filter>External\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="src\external\ImGui\imgui_widgets.cpp">
-      <Filter>External\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="src\TileMap.cpp">
       <Filter>Graphics\Renderer\2D</Filter>

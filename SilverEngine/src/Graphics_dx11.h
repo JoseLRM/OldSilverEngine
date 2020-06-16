@@ -67,6 +67,12 @@ namespace SV {
 	struct Texture_dx11 : public SV::_internal::Texture_internal {
 		ComPtr<ID3D11Texture2D> m_Texture;
 		ComPtr<ID3D11ShaderResourceView> m_ShaderResouceView;
+#ifdef SV_IMGUI
+		ImTextureID GetImGuiTexture() override
+		{
+			return m_ShaderResouceView.Get();
+		}
+#endif
 	};
 
 	/////////////////////////////////SAMPLER//////////////////////////////////////////

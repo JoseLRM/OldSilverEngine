@@ -769,9 +769,7 @@ namespace SV {
 
 	// STATIC
 	namespace ECS {
-
-		CompID g_IDcount = 0;
-
+#define SV_ECS_MAX_COMPONENTS 128
 		struct ComponentData {
 			const char* name;
 			size_t size;
@@ -779,48 +777,38 @@ namespace SV {
 			DestoryComponentFunction destroyFn;
 			MoveComponentFunction moveFn;
 		};
-
-		ComponentData g_ComponentData[SV_ECS_MAX_COMPONENTS_TYPES];
+		ComponentData g_ComponentData[SV_ECS_MAX_COMPONENTS];
+		ui16 g_CompCount = 0u;
 
 		namespace _internal {
-			CompID GetComponentID() {
+			CompID RegisterComponent(ui32 size, const std::type_info& typeInfo, CreateComponentFunction createFn, DestoryComponentFunction destroyFn, MoveComponentFunction moveFn)
+			{
+				SV_ASSERT(g_CompCount < SV_ECS_MAX_COMPONENTS);
 
-				if (g_IDcount == SV_ECS_MAX_COMPONENTS_TYPES) {
-					SV_THROW("Scene Exception!!", "You exceeded components types count, just change 'SV_ECS_MAX_COMPONENTS_TYPES' in 'config.h'");
+				CompID ID = g_CompCount++;
+
+				ComponentData& data = g_ComponentData[ID];
+				data.size = size;
+				data.name = typeInfo.name();
+				data.createFn = createFn;
+				data.destroyFn = destroyFn;
+				data.moveFn = moveFn;
+
+				size_t len = strlen(data.name);
+				char c = data.name[--len];
+				while (c != ' ' && c != ':') {
+					c = data.name[len--];
 				}
 
-				return g_IDcount++;
-			}
-			size_t SetComponentSize(CompID ID, size_t size)
-			{
-				g_ComponentData[ID].size = size;
-				return size;
-			}
-			const char* SetComponentName(CompID ID, const char* name)
-			{
-				g_ComponentData[ID].name = name;
-				return name;
-			}
-			CreateComponentFunction SetComponentCreateFunction(CompID ID, CreateComponentFunction fn)
-			{
-				g_ComponentData[ID].createFn = fn;
-				return fn;
-			}
-			DestoryComponentFunction SetComponentDestroyFunction(CompID ID, DestoryComponentFunction fn)
-			{
-				g_ComponentData[ID].destroyFn = fn;
-				return fn;
-			}
-			MoveComponentFunction SetComponentMoveFunction(CompID ID, MoveComponentFunction fn)
-			{
-				g_ComponentData[ID].moveFn = fn;
-				return fn;
+				data.name += len + 2;
+
+				return ID;
 			}
 		}
 
 		ui16 GetComponentsCount()
 		{
-			return g_IDcount;
+			return g_CompCount;
 		}
 		size_t GetComponentSize(CompID ID)
 		{
