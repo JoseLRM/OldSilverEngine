@@ -10,210 +10,102 @@ struct SV_GRAPHICS_INITIALIZATION_DESC {
 
 namespace SV {
 
-	class VertexBuffer;
-	class IndexBuffer;
-	class ConstantBuffer;
-	class FrameBuffer;
-	class Shader;
-	class InputLayout;
-	class Texture;
-	class Sampler;
-	class BlendState;
-
-	// CommandList
 	class Graphics;
-	class CommandList {
-		Graphics* m_pDevice;
-		ui32 m_ID;
-	public:
-		CommandList(Graphics* pDevice, ui32 ID) : m_pDevice(pDevice), m_ID(ID) {}
-		inline ui32 GetID() const noexcept { return m_ID; }
-		inline Graphics& GetDevice() const noexcept { return *m_pDevice; }
-	};
+	class DirectX11Device;
+	
+	// CommandList
+	typedef ui32 CommandList;
 
 	/////////////////////////////PRIMITIVES///////////////////////
 	namespace _internal {
-		class VertexBuffer_internal {
-		protected:
-			ui32 m_LastSlot;
+
+		class GPUResource {
 			SV_GFX_USAGE m_Usage;
 			ui32 m_Size;
+			SV_GFX_CPU_ACCESS m_CPUAccess;
 
 		public:
-			bool Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, Graphics& device);
-			void Release();
+			friend Graphics;
+			friend DirectX11Device;
 
-			void Update(void* data, ui32 size, CommandList& cmd);
-
-			void Bind(ui32 slot, ui32 stride, ui32 offset, CommandList& cmd);
-			void Unbind(CommandList& cmd);
-
-		protected:
-			virtual bool _Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, Graphics& device) = 0;
-			virtual void _Release() = 0;
-			virtual void _Update(void* data, ui32 size, CommandList& cmd) = 0;
-			virtual void _Bind(ui32 slot, ui32 stride, ui32 offset, CommandList& cmd) = 0;
-			virtual void _Unbind(CommandList& cmd) = 0;
+			inline SV_GFX_USAGE GetUsage() const noexcept { return m_Usage; }
+			inline ui32 GetSize() const noexcept { return m_Size; }
+			inline SV_GFX_CPU_ACCESS GetCPUAccess() const noexcept { return m_CPUAccess; }
 
 		};
 
-		class IndexBuffer_internal {
-		public:
-			bool Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, Graphics& device);
-			void Release();
-				 
-			void Bind(SV_GFX_FORMAT format, ui32 offset, CommandList& cmd);
-			void Unbind(CommandList& cmd);
-
-		protected:
-			virtual bool _Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, Graphics& device) = 0;
-			virtual void _Release() = 0;
-			virtual void _Bind(SV_GFX_FORMAT format, ui32 offset, CommandList& cmd) = 0;
-			virtual void _Unbind(CommandList& cmd) = 0;
-
-		};
-
-		class ConstantBuffer_internal {
-		protected:
-			ui32 m_LastSlot[3];
-			SV_GFX_USAGE m_Usage;
-			ui32 m_Size;
-
-		public:
-			bool Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, Graphics& device);
-			void Release();
-
-			void Update(void* data, ui32 size, CommandList& cmd);
-
-			void Bind(ui32 slot, SV_GFX_SHADER_TYPE type, CommandList& cmd);
-			void Unbind(SV_GFX_SHADER_TYPE type, CommandList& cmd);
-
-		protected:
-			virtual bool _Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, Graphics& device) = 0;
-			virtual void _Release() = 0;
-
-			virtual void _Update(void* data, ui32 size, CommandList& cmd) = 0;
-
-			virtual void _Bind(ui32 slot, SV_GFX_SHADER_TYPE type, CommandList& cmd) = 0;
-			virtual void _Unbind(SV_GFX_SHADER_TYPE type, CommandList& cmd) = 0;
-
-		};
+		class VertexBuffer_internal : public GPUResource {};
+		class IndexBuffer_internal : public GPUResource {};
+		class ConstantBuffer_internal : public GPUResource {};
 
 		class FrameBuffer_internal {
-		protected:
 			ui32 m_Width = 0;
 			ui32 m_Height = 0;
-			ui32 m_LastSlot;
 			SV_GFX_FORMAT m_Format;
-
+			
 			bool m_TextureUsage;
 
 		public:
-			bool Create(ui32 width, ui32 height, SV_GFX_FORMAT format, bool textureUsage, SV::Graphics& device);
-			void Release();
-
-			bool Resize(ui32 width, ui32 height, SV::Graphics& device);
-
-			void Clear(SV::Color4f color, CommandList& cmd);
-			void Bind(ui32 slot, CommandList& cmd);
-			void Unbind(CommandList& cmd);
-
-			void BindAsTexture(SV_GFX_SHADER_TYPE type, ui32 slot, CommandList& cmd);
-			void UnbindAsTexture(SV_GFX_SHADER_TYPE type, ui32 slot, CommandList& cmd);
+			friend Graphics;
+			friend DirectX11Device;
 
 			inline ui32 GetWidth() const noexcept { return m_Width; }
 			inline ui32 GetHeight() const noexcept { return m_Height; }
-
-		protected:
-			virtual bool _Create(ui32 width, ui32 height, SV_GFX_FORMAT format, bool textureUsage, SV::Graphics& device) = 0;
-			virtual void _Release() = 0;
-			virtual bool _Resize(ui32 width, ui32 height, SV::Graphics& device) = 0;
-			virtual void _Clear(SV::Color4f color, CommandList& cmd) = 0;
-			virtual void _Bind(ui32 slot, CommandList& cmd) = 0;
-			virtual void _Unbind(CommandList& cmd) = 0;
-			virtual void _BindAsTexture(SV_GFX_SHADER_TYPE type, ui32 slot, CommandList& cmd) = 0;
+			inline SV_GFX_FORMAT GetFormat() const noexcept { return m_Format; }
+			inline bool HasTextureUsage() const noexcept { return m_TextureUsage; }
 
 		};
 
 		class Shader_internal {
-		protected:
 			SV_GFX_SHADER_TYPE m_ShaderType;
 
 		public:
-			bool Create(SV_GFX_SHADER_TYPE type, const char* filePath, SV::Graphics& device);
-			void Release();
-
-			void Bind(CommandList& cmd);
-			void Unbind(CommandList& cmd);
+			friend Graphics;
+			friend DirectX11Device;
 
 			inline SV_GFX_SHADER_TYPE GetType() const noexcept { return m_ShaderType; }
 
-		protected:
-			virtual bool _Create(SV_GFX_SHADER_TYPE type, const char* filePath, SV::Graphics& device) = 0;
-			virtual void _Release() = 0;
-			virtual void _Bind(CommandList& cmd) = 0;
-			virtual void _Unbind(CommandList& cmd) = 0;
 		};
 
 		class InputLayout_internal {
 		public:
-			bool Create(const SV_GFX_INPUT_ELEMENT_DESC* desc, ui32 count, const Shader& vs, SV::Graphics& device);
-			void Release();
-
-			void Bind(CommandList& cmd);
-			void Unbind(CommandList& cmd);
-
-		protected:
-			virtual bool _Create(const SV_GFX_INPUT_ELEMENT_DESC* desc, ui32 count, const Shader& vs, SV::Graphics& device) = 0;
-			virtual void _Release() = 0;
-			virtual void _Bind(CommandList& cmd) = 0;
-			virtual void _Unbind(CommandList& cmd) = 0;
+			friend Graphics;
+			friend DirectX11Device;
 
 		};
 
 		class Texture_internal {
-		protected:
 			SV_GFX_FORMAT m_Format;
 			SV_GFX_USAGE m_Usage;
-			// 1 -> write, 2 -> read, 3 -> write-read
-			ui8 m_CPUAccess;
+			SV_GFX_CPU_ACCESS m_CPUAccess;
 			ui32 m_Width;
 			ui32 m_Height;
 			ui32 m_Size;
 
 		public:
-			bool Create(void* data, ui32 width, ui32 height, SV_GFX_FORMAT format, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, SV::Graphics& device);
-			void Release();
-			bool Resize(void* data, ui32 width, ui32 height, SV::Graphics& device);
+			friend Graphics;
+			friend DirectX11Device;
 
-			void Update(void* data, ui32 size, CommandList& cmd);
-
-			void Bind(SV_GFX_SHADER_TYPE type, ui32 slot, CommandList& cmd);
-			void Unbind(SV_GFX_SHADER_TYPE type, ui32 slot, CommandList& cmd);
-
-		protected:
-			virtual bool _Create(void* data, ui32 width, ui32 height, SV_GFX_FORMAT format, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, SV::Graphics& device) = 0;
-			virtual void _Release() = 0;
-			virtual void _Update(void* data, ui32 size, CommandList& cmd) = 0;
-			virtual void _Bind(SV_GFX_SHADER_TYPE type, ui32 slot, CommandList& cmd) = 0;
-			virtual void _Unbind(SV_GFX_SHADER_TYPE type, ui32 slot, CommandList& cmd) = 0;
+			inline SV_GFX_FORMAT GetFormat() const noexcept { return m_Format; }
+			inline SV_GFX_USAGE GetUsage() const noexcept { return m_Usage; }
+			inline SV_GFX_CPU_ACCESS GetCPUAccess() const noexcept { return m_CPUAccess; }
+			inline ui32 GetWidth() const noexcept { return m_Width; }
+			inline ui32 GetHeight() const noexcept { return m_Height; }
+			inline ui32 GetSize() const noexcept { return m_Size; }
 
 		};
 
 		class Sampler_internal {
-		protected:
 		public:
-			bool Create(SV_GFX_TEXTURE_ADDRESS_MODE addressMode, SV_GFX_TEXTURE_FILTER filter, Graphics& device);
-			void Release();
+			friend Graphics;
+			friend DirectX11Device;
 
-			void Bind(SV_GFX_SHADER_TYPE type, ui32 slot, CommandList& cmd);
-			void Unbind(SV_GFX_SHADER_TYPE type, ui32 slot, CommandList& cmd);
+		};
 
-		protected:
-			virtual bool _Create(SV_GFX_TEXTURE_ADDRESS_MODE addressMode, SV_GFX_TEXTURE_FILTER filter, Graphics& device) = 0;
-			virtual void _Release() = 0;
-			virtual void _Bind(SV_GFX_SHADER_TYPE type, ui32 slot, CommandList& cmd) = 0;
-			virtual void _Unbind(SV_GFX_SHADER_TYPE type, ui32 slot, CommandList& cmd) = 0;
+		class BlendState_internal {
+		public:
+			friend Graphics;
+			friend DirectX11Device;
 
 		};
 
@@ -228,48 +120,6 @@ namespace SV {
 
 		};
 
-		class BlendState_internal {
-		protected:
-			struct RENDER_TARGET_BLEND_DESC {
-				bool enabled = false;
-				SV_GFX_BLEND src = SV_GFX_BLEND_ONE;
-				SV_GFX_BLEND srcAlpha = SV_GFX_BLEND_ONE;
-				SV_GFX_BLEND dest = SV_GFX_BLEND_ZERO;
-				SV_GFX_BLEND destAlpha = SV_GFX_BLEND_ZERO;
-				SV_GFX_BLEND_OP op = SV_GFX_BLEND_OP_ADD;
-				SV_GFX_BLEND_OP opAlpha = SV_GFX_BLEND_OP_ADD;
-				ui8 writeMask = SV_GFX_COLOR_WRITE_ENABLE_ALL;
-			};
-
-			bool m_IndependentRenderTarget = false;
-			RENDER_TARGET_BLEND_DESC m_BlendDesc[8];
-
-		public:
-			// CreateFunctions
-			void SetIndependentRenderTarget(bool enable);
-			void EnableBlending(ui8 renderTarget = 0);
-			void DisableBlending(ui8 renderTarget = 0);
-			void SetRenderTargetOperation(SV_GFX_BLEND src, SV_GFX_BLEND srcAlpha, SV_GFX_BLEND dest, SV_GFX_BLEND destAlpha, SV_GFX_BLEND_OP op, SV_GFX_BLEND_OP opAlpha, ui8 renderTarget = 0);
-			void SetRenderTargetOperation(SV_GFX_BLEND src, SV_GFX_BLEND dest, SV_GFX_BLEND_OP op, ui8 renderTarget = 0);
-			void SetWriteMask(ui8 writeMask, ui8 renderTarget = 0u);
-
-			bool Create(SV::Graphics& graphics);
-			void Release();
-
-			void Bind(ui32 sampleMask, const float* blendFactors, CommandList& cmd);
-			void Bind(ui32 sampleMask, CommandList& cmd);
-			void Bind(const float* blendFactors, CommandList& cmd);
-			void Bind(CommandList& cmd);
-			void Unbind(CommandList& cmd);
-
-		protected:
-			virtual bool _Create(SV::Graphics& graphics) = 0;
-			virtual void _Release() = 0;
-
-			virtual void _Bind(ui32 sampleMask, const float* blendFactors, CommandList& cmd) = 0;
-			virtual void _Unbind(CommandList& cmd) = 0;
-
-		};
 	}
 	//////////////////////////////////////////////////////////////
 
@@ -317,27 +167,226 @@ namespace SV {
 
 		virtual void Present() = 0;
 		virtual CommandList BeginCommandList() = 0;
-		virtual void SetViewport(ui32 slot, float x, float y, float w, float h, float n, float f, SV::CommandList& cmd) = 0;
-		virtual void SetTopology(SV_GFX_TOPOLOGY topology, CommandList& cmd) = 0;
+		virtual void SetViewport(ui32 slot, float x, float y, float w, float h, float n, float f, SV::CommandList cmd) = 0;
+		virtual void SetTopology(SV_GFX_TOPOLOGY topology, CommandList cmd) = 0;
 
 		virtual SV::FrameBuffer& GetMainFrameBuffer() = 0;
 
 		// Draw calls
-		virtual void Draw(ui32 vertexCount, ui32 startVertex, CommandList& cmd) = 0;
-		virtual void DrawIndexed(ui32 indexCount, ui32 startIndex, ui32 startVertex, CommandList& cmd) = 0;
-		virtual void DrawInstanced(ui32 verticesPerInstance, ui32 instances, ui32 startVertex, ui32 startInstance, CommandList& cmd) = 0;
-		virtual void DrawIndexedInstanced(ui32 indicesPerInstance, ui32 instances, ui32 startIndex, ui32 startVertex, ui32 startInstance, CommandList& cmd) = 0;
+		virtual void Draw(ui32 vertexCount, ui32 startVertex, CommandList cmd) = 0;
+		virtual void DrawIndexed(ui32 indexCount, ui32 startIndex, ui32 startVertex, CommandList cmd) = 0;
+		virtual void DrawInstanced(ui32 verticesPerInstance, ui32 instances, ui32 startVertex, ui32 startInstance, CommandList cmd) = 0;
+		virtual void DrawIndexedInstanced(ui32 indicesPerInstance, ui32 instances, ui32 startIndex, ui32 startVertex, ui32 startInstance, CommandList cmd) = 0;
 
-		// Primitives
-		virtual void ValidateVertexBuffer(VertexBuffer* buffer) = 0;
-		virtual void ValidateIndexBuffer(IndexBuffer* buffer) = 0;
-		virtual void ValidateConstantBuffer(ConstantBuffer* buffer) = 0;
-		virtual void ValidateFrameBuffer(FrameBuffer* buffer) = 0;
-		virtual void ValidateShader(Shader* shader) = 0;
-		virtual void ValidateInputLayout(InputLayout* il) = 0;
-		virtual void ValidateTexture(Texture* tex) = 0;
-		virtual void ValidateSampler(Sampler* sam) = 0;
-		virtual void ValidateBlendState(BlendState* bs) = 0;
+		// PRIMITIVES
+		void ResetState(CommandList cmd);
+
+		// VertexBuffer
+		bool CreateVertexBuffer(ui32 size, SV_GFX_USAGE usage, SV_GFX_CPU_ACCESS cpuAccess, void* data, VertexBuffer& vb);
+		void ReleaseVertexBuffer(VertexBuffer& vb);
+
+		void UpdateVertexBuffer(void* data, ui32 size, VertexBuffer& vb, CommandList cmd);
+
+		void BindVertexBuffer(ui32 slot, ui32 stride, ui32 offset, VertexBuffer& vb, CommandList cmd);
+		void BindVertexBuffers(ui32 slot, ui32 count, const ui32* strides, const ui32* offset, VertexBuffer** vbs, CommandList cmd);
+
+		void UnbindVertexBuffer(ui32 slot, CommandList cmd);
+		void UnbindVertexBuffers(CommandList cmd);
+
+		// IndexBuffer
+		bool CreateIndexBuffer(ui32 size, SV_GFX_USAGE usage, SV_GFX_CPU_ACCESS cpuAccess, void* data, IndexBuffer& ib);
+		void ReleaseIndexBuffer(IndexBuffer& ib);
+
+		void UpdateIndexBuffer(void* data, ui32 size, IndexBuffer& ib, CommandList cmd);
+
+		void BindIndexBuffer(SV_GFX_FORMAT format, ui32 offset, IndexBuffer& ib, CommandList cmd);
+		void UnbindIndexBuffer(CommandList cmd);
+
+		// ConstantBuffer
+		bool CreateConstantBuffer(ui32 size, SV_GFX_USAGE usage, SV_GFX_CPU_ACCESS cpuAccess, void* data, ConstantBuffer& cb);
+		void ReleaseConstantBuffer(ConstantBuffer& cb);
+
+		void UpdateConstantBuffer(void* data, ui32 size, ConstantBuffer& cb, CommandList cmd);
+
+		void BindConstantBuffer(ui32 slot, SV_GFX_SHADER_TYPE type, ConstantBuffer& cb, CommandList cmd);
+		void BindConstantBuffers(ui32 slot, SV_GFX_SHADER_TYPE type, ui32 count, ConstantBuffer** cbs, CommandList cmd);
+
+		void UnbindConstantBuffer(ui32 slot, SV_GFX_SHADER_TYPE type, CommandList cmd);
+		void UnbindConstantBuffers(SV_GFX_SHADER_TYPE type, CommandList cmd);
+		void UnbindConstantBuffers(CommandList cmd);
+
+		// FrameBuffers
+		bool CreateFrameBuffer(ui32 width, ui32 height, SV_GFX_FORMAT format, bool textureUsage, FrameBuffer& fb);
+		void ReleaseFrameBuffer(FrameBuffer& fb);
+
+		bool ResizeFrameBuffer(ui32 width, ui32 height, FrameBuffer& fb);
+
+		void ClearFrameBuffer(SV::Color4f color, FrameBuffer& fb, CommandList cmd);
+
+		void BindFrameBuffer(FrameBuffer& fb, CommandList cmd);
+		void BindFrameBuffers(ui32 count, FrameBuffer** fbs, CommandList cmd);
+
+		void BindFrameBufferAsTexture(ui32 slot, SV_GFX_SHADER_TYPE type, FrameBuffer& fb, CommandList cmd);
+		
+		void UnbindFrameBuffers(CommandList cmd);
+
+		// Shaders
+		bool CreateShader(SV_GFX_SHADER_TYPE type, const char* filePath, Shader& s);
+		void ReleaseShader(Shader& s);
+
+		void BindShader(Shader& s, CommandList cmd);
+		void UnbindShader(SV_GFX_SHADER_TYPE type, CommandList cmd);
+
+		// Input Layout
+		bool CreateInputLayout(const SV_GFX_INPUT_ELEMENT_DESC* desc, ui32 count, const Shader& vs, InputLayout& il);
+		void ReleaseInputLayout(InputLayout& il);
+
+		void BindInputLayout(InputLayout& il, CommandList cmd);
+		void UnbindInputLayout(CommandList cmd);
+
+		// Texture
+		bool CreateTexture(void* data, ui32 width, ui32 height, SV_GFX_FORMAT format, SV_GFX_USAGE usage, SV_GFX_CPU_ACCESS cpuAccess, Texture& t);
+		void ReleaseTexture(Texture& t);
+		
+		bool ResizeTexture(void* data, ui32 width, ui32 height, Texture& t);
+
+		void UpdateTexture(void* data, ui32 size, Texture& t, CommandList cmd);
+
+		void BindTexture(ui32 slot, SV_GFX_SHADER_TYPE type, Texture& t, CommandList cmd);
+		void BindTextures(ui32 slot, SV_GFX_SHADER_TYPE type, ui32 count, Texture** ts, CommandList cmd);
+
+		void UnbindTexture(ui32 slot, SV_GFX_SHADER_TYPE type, CommandList cmd);
+		void UnbindTextures(SV_GFX_SHADER_TYPE type, CommandList cmd);
+		void UnbindTextures(CommandList cmd);
+
+		// Sampler
+		bool CreateSampler(SV_GFX_TEXTURE_ADDRESS_MODE addressMode, SV_GFX_TEXTURE_FILTER filter, Sampler& s);
+		void ReleaseSampler(Sampler& s);
+
+		void BindSampler(ui32 slot, SV_GFX_SHADER_TYPE type, Sampler& s, CommandList cmd);
+		void BindSamplers(ui32 slot, SV_GFX_SHADER_TYPE type, ui32 count, Sampler** ss, CommandList cmd);
+
+		void UnbindSampler(ui32 slot, SV_GFX_SHADER_TYPE type, CommandList cmd);
+		void UnbindSamplers(SV_GFX_SHADER_TYPE type, CommandList cmd);
+		void UnbindSamplers(CommandList cmd);
+		
+		// BlendState
+		bool CreateBlendState(const SV_GFX_BLEND_STATE_DESC* desc, BlendState& bs);
+		void ReleaseBlendState(BlendState& bs);
+
+		void BindBlendState(ui32 sampleMask, const float* blendFactors, BlendState& bs, CommandList cmd);
+		void BindBlendState(ui32 sampleMask, BlendState& bs, CommandList cmd);
+		void BindBlendState(const float* blendFactors, BlendState& bs, CommandList cmd);
+		void BindBlendState(BlendState& bs, CommandList cmd);
+
+		void UnbindBlendState(CommandList cmd);
+
+		// INTERNAL PRIMITIVES
+	private:
+		// Allocate Instances
+		virtual std::unique_ptr<_internal::VertexBuffer_internal> _AllocateVertexBuffer() = 0;
+		virtual std::unique_ptr<_internal::IndexBuffer_internal> _AllocateIndexBuffer() = 0;
+		virtual std::unique_ptr<_internal::ConstantBuffer_internal> _AllocateConstantBuffer() = 0;
+		virtual std::unique_ptr<_internal::FrameBuffer_internal> _AllocateFrameBuffer() = 0;
+		virtual std::unique_ptr<_internal::Shader_internal> _AllocateShader() = 0;
+		virtual std::unique_ptr<_internal::InputLayout_internal> _AllocateInputLayout() = 0;
+		virtual std::unique_ptr<_internal::Texture_internal> _AllocateTexture() = 0;
+		virtual std::unique_ptr<_internal::Sampler_internal> _AllocateSampler() = 0;
+		virtual std::unique_ptr<_internal::BlendState_internal> _AllocateBlendState() = 0;
+
+		virtual void _ResetState(CommandList cmd) = 0;
+
+		// Internal VertexBuffer
+		virtual bool _CreateVertexBuffer(void* data, VertexBuffer& vb) = 0;
+		virtual void _ReleaseVertexBuffer(VertexBuffer& vb) = 0;
+
+		virtual void _UpdateVertexBuffer(void* data, ui32 size, VertexBuffer& vb, CommandList cmd) = 0;
+
+		virtual void _BindVertexBuffer(ui32 slot, ui32 stride, ui32 offset, VertexBuffer& vb, CommandList cmd) = 0;
+		virtual void _BindVertexBuffers(ui32 slot, ui32 count, const ui32* strides, const ui32* offset, VertexBuffer** vbs, CommandList cmd) = 0;
+
+		virtual void _UnbindVertexBuffer(ui32 slot, CommandList cmd) = 0;
+		virtual void _UnbindVertexBuffers(CommandList cmd) = 0;
+
+		// Internal IndexBuffer
+		virtual bool _CreateIndexBuffer(void* data, IndexBuffer& ib) = 0;
+		virtual void _ReleaseIndexBuffer(IndexBuffer& ib) = 0;
+
+		virtual void _UpdateIndexBuffer(void* data, ui32 size, IndexBuffer& ib, CommandList cmd) = 0;
+
+		virtual void _BindIndexBuffer(SV_GFX_FORMAT format, ui32 offset, IndexBuffer& ib, CommandList cmd) = 0;
+		virtual void _UnbindIndexBuffer(CommandList cmd) = 0;
+
+		// Internal ConstantBuffer
+		virtual bool _CreateConstantBuffer(void* data, ConstantBuffer& cb) = 0;
+		virtual void _ReleaseConstantBuffer(ConstantBuffer& cb) = 0;
+
+		virtual void _UpdateConstantBuffer(void* data, ui32 size, ConstantBuffer& cb, CommandList cmd) = 0;
+
+		virtual void _BindConstantBuffer(ui32 slot, SV_GFX_SHADER_TYPE type, ConstantBuffer& cb, CommandList cmd) = 0;
+		virtual void _BindConstantBuffers(ui32 slot, SV_GFX_SHADER_TYPE type, ui32 count, ConstantBuffer** cbs, CommandList cmd) = 0;
+
+		virtual void _UnbindConstantBuffer(ui32 slot, SV_GFX_SHADER_TYPE type, CommandList cmd) = 0;
+		virtual void _UnbindConstantBuffers(SV_GFX_SHADER_TYPE type, CommandList cmd) = 0;
+		virtual void _UnbindConstantBuffers(CommandList cmd) = 0;
+		
+		// Internal FrameBuffers
+		virtual bool _CreateFrameBuffer(FrameBuffer& fb) = 0;
+		virtual void _ReleaseFrameBuffer(FrameBuffer& fb) = 0;
+
+		virtual void _ClearFrameBuffer(SV::Color4f color, FrameBuffer& fb, CommandList cmd) = 0;
+
+		virtual void _BindFrameBuffer(FrameBuffer& fb, CommandList cmd) = 0;
+		virtual void _BindFrameBuffers(ui32 count, FrameBuffer** fbs, CommandList cmd) = 0;
+
+		virtual void _BindFrameBufferAsTexture(ui32 slot, SV_GFX_SHADER_TYPE type, FrameBuffer& fb, CommandList cmd) = 0;
+
+		virtual void _UnbindFrameBuffers(CommandList cmd) = 0;
+
+		// Internal Shaders
+		virtual bool _CreateShader(const char* filePath, Shader& s) = 0;
+		virtual void _ReleaseShader(Shader& s) = 0;
+
+		virtual void _BindShader(Shader& s, CommandList cmd) = 0;
+		virtual void _UnbindShader(SV_GFX_SHADER_TYPE type, CommandList cmd) = 0;
+
+		// Internal Input Layout
+		virtual bool _CreateInputLayout(const SV_GFX_INPUT_ELEMENT_DESC* desc, ui32 count, const Shader& vs, InputLayout& il) = 0;
+		virtual void _ReleaseInputLayout(InputLayout& il) = 0;
+ 
+		virtual void _BindInputLayout(InputLayout& il, CommandList cmd) = 0;
+		virtual void _UnbindInputLayout(CommandList cmd) = 0;
+
+		// Internal Texture
+		virtual bool _CreateTexture(void* data, Texture& t) = 0;
+		virtual void _ReleaseTexture(Texture& t) = 0;
+
+		virtual void _UpdateTexture(void* data, ui32 size, Texture& t, CommandList cmd) = 0;
+
+		virtual void _BindTexture(ui32 slot, SV_GFX_SHADER_TYPE type, Texture& t, CommandList cmd) = 0;
+		virtual void _BindTextures(ui32 slot, SV_GFX_SHADER_TYPE type, ui32 count, Texture** ts, CommandList cmd) = 0;
+
+		virtual void _UnbindTexture(ui32 slot, SV_GFX_SHADER_TYPE type, CommandList cmd) = 0;
+		virtual void _UnbindTextures(SV_GFX_SHADER_TYPE type, CommandList cmd) = 0;
+		virtual void _UnbindTextures(CommandList cmd) = 0;
+
+		// Internal Sampler
+		virtual bool _CreateSampler(SV_GFX_TEXTURE_ADDRESS_MODE addressMode, SV_GFX_TEXTURE_FILTER filter, Sampler& s) = 0;
+		virtual void _ReleaseSampler(Sampler& s) = 0;
+
+		virtual void _BindSampler(ui32 slot, SV_GFX_SHADER_TYPE type, Sampler& s, CommandList cmd) = 0;
+		virtual void _BindSamplers(ui32 slot, SV_GFX_SHADER_TYPE type, ui32 count, Sampler** ss, CommandList cmd) = 0;
+
+		virtual void _UnbindSampler(ui32 slot, SV_GFX_SHADER_TYPE type, CommandList cmd) = 0;
+		virtual void _UnbindSamplers(SV_GFX_SHADER_TYPE type, CommandList cmd) = 0;
+		virtual void _UnbindSamplers(CommandList cmd) = 0;
+
+		// Internal BlendState
+		virtual bool _CreateBlendState(const SV_GFX_BLEND_STATE_DESC* desc, BlendState& bs) = 0;
+		virtual void _ReleaseBlendState(BlendState& bs) = 0;
+
+		virtual void _BindBlendState(ui32 sampleMask, const float* blendFactors, BlendState& bs, CommandList cmd) = 0;
+		virtual void _UnbindBlendState(CommandList cmd) = 0;
 
 	private:
 		virtual void EnableFullscreen() = 0;

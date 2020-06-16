@@ -78,6 +78,11 @@ constexpr D3D11_BLEND_OP ParseBlendOperation(SV_GFX_BLEND_OP op) {
 	return (D3D11_BLEND_OP)op;
 }
 
+constexpr ui32 ParseCPUAccess(ui8 cpuAccess)
+{
+	return ((cpuAccess & SV_GFX_CPU_ACCESS_WRITE) ? D3D11_CPU_ACCESS_WRITE : 0u) | ((cpuAccess & SV_GFX_CPU_ACCESS_READ) ? D3D11_CPU_ACCESS_READ : 0u);
+}
+
 namespace SV {
 
 	void DirectX11Device::CreateBackBuffer(const SV::Adapter::OutputMode& outputMode, ui32 width, ui32 height)
@@ -87,7 +92,7 @@ namespace SV {
 		backBufferDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
 		backBufferDesc.Texture2D.MipSlice = 0u;
 
-		ValidateFrameBuffer(&mainFrameBuffer);
+		mainFrameBuffer.Set(_AllocateFrameBuffer());
 
 		FrameBuffer_dx11* backBuffer = reinterpret_cast<FrameBuffer_dx11*>(mainFrameBuffer.Get());
 
@@ -95,8 +100,8 @@ namespace SV {
 		backBuffer->m_Height = height;
 		backBuffer->m_Format = outputMode.format;
 
-		dxAssert(swapChain->GetBuffer(0u, __uuidof(ID3D11Resource), &backBuffer->GetResource()));
-		dxAssert(device->CreateRenderTargetView(backBuffer->GetResource().Get(), &backBufferDesc, &backBuffer->GetRTV()));
+		dxAssert(swapChain->GetBuffer(0u, __uuidof(ID3D11Resource), &backBuffer->m_Resource));
+		dxAssert(device->CreateRenderTargetView(backBuffer->m_Resource.Get(), &backBufferDesc, &backBuffer->m_RenderTargetView));
 	}
 
 	bool DirectX11Device::_Initialize(const SV_GRAPHICS_INITIALIZATION_DESC& desc)
@@ -170,7 +175,7 @@ namespace SV {
 			deferredContext[i].Reset();
 		}
 
-		mainFrameBuffer->Release();
+		ReleaseFrameBuffer(mainFrameBuffer);
 		immediateContext.Reset();
 		swapChain.Reset();
 		device.Reset();
@@ -198,9 +203,9 @@ namespace SV {
 
 		swapChain->Present(0u, 0u);
 
-		for (ui32 i = 0; i < SV_GFX_COMMAND_LIST_COUNT; ++i) {
-			stateManager[i].Reset();
-		}
+		// Reset state
+		for(ui32 i = 0; i < SV_GFX_COMMAND_LIST_COUNT; ++i) 
+			viewports[i].Reset();
 	}
 
 	CommandList DirectX11Device::BeginCommandList()
@@ -214,12 +219,20 @@ namespace SV {
 		}
 		activeCommandLists.push(ID);
 
-		return CommandList(this, ID);
+		return ID;
 	}
 
-	void DirectX11Device::SetViewport(ui32 slot, float x, float y, float w, float h, float n, float f, SV::CommandList& cmd)
+	void DirectX11Device::SetViewport(ui32 slot, float x, float y, float w, float h, float n, float f, SV::CommandList cmd)
 	{
-		stateManager[cmd.GetID()].SetViewport({x, y, w, h, n, f}, slot);
+		D3D11_VIEWPORT viewport;
+		viewport.TopLeftX = x;
+		viewport.TopLeftY = y;
+		viewport.Width = w;
+		viewport.Height = h;
+		viewport.MinDepth = n;
+		viewport.MaxDepth = f;
+
+		viewports[cmd].SetViewport(slot, viewport);
 	}
 
 #ifdef SV_IMGUI
@@ -230,7 +243,7 @@ namespace SV {
 		// Get OutputMode
 		const SV::Adapter::OutputMode& outputMode = GetAdapter().modes[GetOutputModeID()];
 
-		mainFrameBuffer->Release();
+		ReleaseFrameBuffer(mainFrameBuffer);
 
 		dxAssert(swapChain->ResizeBuffers(1, width, height, ParseFormat(outputMode.format), DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH));
 
@@ -238,9 +251,9 @@ namespace SV {
 	}
 #endif
 
-	void DirectX11Device::SetTopology(SV_GFX_TOPOLOGY topology, CommandList& cmd)
+	void DirectX11Device::SetTopology(SV_GFX_TOPOLOGY topology, CommandList cmd)
 	{
-		deferredContext[cmd.GetID()]->IASetPrimitiveTopology(ParseTopology(topology));
+		deferredContext[cmd]->IASetPrimitiveTopology(ParseTopology(topology));
 	}
 
 	void DirectX11Device::EnableFullscreen()
@@ -257,255 +270,362 @@ namespace SV {
 		return mainFrameBuffer;
 	}
 
-	void DirectX11Device::Draw(ui32 vertexCount, ui32 startVertex, CommandList& cmd)
+	void DirectX11Device::Draw(ui32 vertexCount, ui32 startVertex, CommandList cmd)
 	{
-		stateManager[cmd.GetID()].BindState(deferredContext[cmd.GetID()]);
-		deferredContext[cmd.GetID()]->Draw(vertexCount, startVertex);
+		viewports[cmd].Bind(deferredContext[cmd].Get());
+		deferredContext[cmd]->Draw(vertexCount, startVertex);
 	}
-	void DirectX11Device::DrawIndexed(ui32 indexCount, ui32 startIndex, ui32 startVertex, CommandList& cmd)
+	void DirectX11Device::DrawIndexed(ui32 indexCount, ui32 startIndex, ui32 startVertex, CommandList cmd)
 	{
-		stateManager[cmd.GetID()].BindState(deferredContext[cmd.GetID()]);
-		deferredContext[cmd.GetID()]->DrawIndexed(indexCount, startIndex, startVertex);
+		viewports[cmd].Bind(deferredContext[cmd].Get());
+		deferredContext[cmd]->DrawIndexed(indexCount, startIndex, startVertex);
 	}
-	void DirectX11Device::DrawInstanced(ui32 verticesPerInstance, ui32 instances, ui32 startVertex, ui32 startInstance, CommandList& cmd)
+	void DirectX11Device::DrawInstanced(ui32 verticesPerInstance, ui32 instances, ui32 startVertex, ui32 startInstance, CommandList cmd)
 	{
-		stateManager[cmd.GetID()].BindState(deferredContext[cmd.GetID()]);
-		deferredContext[cmd.GetID()]->DrawInstanced(verticesPerInstance, instances, startVertex, startInstance);
+		viewports[cmd].Bind(deferredContext[cmd].Get());
+		deferredContext[cmd]->DrawInstanced(verticesPerInstance, instances, startVertex, startInstance);
 	}
-	void DirectX11Device::DrawIndexedInstanced(ui32 indicesPerInstance, ui32 instances, ui32 startIndex, ui32 startVertex, ui32 startInstance, CommandList& cmd)
+	void DirectX11Device::DrawIndexedInstanced(ui32 indicesPerInstance, ui32 instances, ui32 startIndex, ui32 startVertex, ui32 startInstance, CommandList cmd)
 	{
-		stateManager[cmd.GetID()].BindState(deferredContext[cmd.GetID()]);
-		deferredContext[cmd.GetID()]->DrawIndexedInstanced(indicesPerInstance, instances, startIndex, startVertex, startInstance);
+		viewports[cmd].Bind(deferredContext[cmd].Get());
+		deferredContext[cmd]->DrawIndexedInstanced(indicesPerInstance, instances, startIndex, startVertex, startInstance);
+	}
+
+
+	void DirectX11Device::_ResetState(CommandList cmd)
+	{
+		deferredContext[cmd]->ClearState();
 	}
 
 	///////////////////////////////VERTEX BUFFER///////////////////////////////////
-	void UpdateBuffer(ID3D11Resource* res, SV_GFX_USAGE usage, ui32 bufferSize, void* data, ui32 size, CommandList& cmd)
+	void UpdateBuffer(DirectX11Device& dx11, ID3D11Resource* res, SV_GFX_USAGE usage, ui32 bufferSize, void* data, ui32 size, CommandList cmd)
 	{
 		SV_ASSERT(usage != SV_GFX_USAGE_STATIC && bufferSize >= size);
 
-		DirectX11Device& dx11 = ParseDevice(cmd.GetDevice());
-
 		if (usage == SV_GFX_USAGE_DYNAMIC) {
 			D3D11_MAPPED_SUBRESOURCE map;
-			dx11.deferredContext[cmd.GetID()]->Map(res, 0u, D3D11_MAP_WRITE_DISCARD, 0u, &map);
+			dx11.deferredContext[cmd]->Map(res, 0u, D3D11_MAP_WRITE_DISCARD, 0u, &map);
 
 			memcpy(map.pData, data, (size == 0u) ? bufferSize : size);
 
-			dx11.deferredContext[cmd.GetID()]->Unmap(res, 0u);
+			dx11.deferredContext[cmd]->Unmap(res, 0u);
 		}
 		else {
-			dx11.deferredContext[cmd.GetID()]->UpdateSubresource(res, 0, nullptr, data, 0, 0);
+			dx11.deferredContext[cmd]->UpdateSubresource(res, 0, nullptr, data, 0, 0);
 		}
 	}
 
-	bool VertexBuffer_dx11::_Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, Graphics& d)
+	bool DirectX11Device::_CreateVertexBuffer(void* data, VertexBuffer& vb)
 	{
+		VertexBuffer_dx11& buffer = ToInternal(vb);
+
 		D3D11_BUFFER_DESC desc;
 		desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-		desc.ByteWidth = size;
-		desc.CPUAccessFlags = (CPUWriteAccess ? D3D11_CPU_ACCESS_WRITE : 0u) | (CPUReadAccess ? D3D11_CPU_ACCESS_READ : 0u);
+		desc.ByteWidth = buffer.GetSize();
+		desc.CPUAccessFlags = ParseCPUAccess(buffer.GetCPUAccess());
 		desc.MiscFlags = 0u;
 		desc.StructureByteStride = 0u;
-		desc.Usage = ParseUsage(usage);
-
-		DirectX11Device& dx11 = ParseDevice(d);
+		desc.Usage = ParseUsage(buffer.GetUsage());
 
 		if (data) {
 			D3D11_SUBRESOURCE_DATA sdata;
 			sdata.pSysMem = data;
-			dxCheck(dx11.device->CreateBuffer(&desc, &sdata, m_Buffer.GetAddressOf()));
+			dxCheck(device->CreateBuffer(&desc, &sdata, buffer.m_Buffer.GetAddressOf()));
 		}
 		else {
-			dxCheck(dx11.device->CreateBuffer(&desc, nullptr, m_Buffer.GetAddressOf()));
+			dxCheck(device->CreateBuffer(&desc, nullptr, buffer.m_Buffer.GetAddressOf()));
 		}
 
 		return true;
 	}
-	void VertexBuffer_dx11::_Release()
+	void DirectX11Device::_ReleaseVertexBuffer(VertexBuffer& vb)
 	{
-		m_Buffer.Reset();
+		VertexBuffer_dx11& buffer = ToInternal(vb);
+		buffer.m_Buffer.Reset();
 	}
-	void VertexBuffer_dx11::_Update(void* data, ui32 size, CommandList& cmd)
+	void DirectX11Device::_UpdateVertexBuffer(void* data, ui32 size, VertexBuffer& vb, CommandList cmd)
 	{
-		UpdateBuffer(m_Buffer.Get(), m_Usage, m_Size, data, size, cmd);
+		VertexBuffer_dx11& buffer = ToInternal(vb);
+		UpdateBuffer(*this, buffer.m_Buffer.Get(), buffer.GetUsage(), buffer.GetSize(), data, size, cmd);
 	}
-	void VertexBuffer_dx11::_Bind(ui32 slot, ui32 stride, ui32 offset, CommandList& cmd)
+	void DirectX11Device::_BindVertexBuffer(ui32 slot, ui32 stride, ui32 offset, VertexBuffer& vb, CommandList cmd)
 	{
-		SV_ASSERT(slot < SV_GFX_VERTEX_BUFFER_COUNT);
-		DirectX11Device& dx11 = ParseDevice(cmd.GetDevice());
-		dx11.stateManager[cmd.GetID()].BindVB(m_Buffer.Get(), slot, stride, offset);
+		VertexBuffer_dx11& buffer = ToInternal(vb);
+		deferredContext[cmd]->IASetVertexBuffers(slot, 1, buffer.m_Buffer.GetAddressOf(), &stride, &offset);
 	}
-	void VertexBuffer_dx11::_Unbind(CommandList& cmd)
+	void DirectX11Device::_BindVertexBuffers(ui32 slot, ui32 count, const ui32* strides, const ui32* offsets, VertexBuffer** vbs, CommandList cmd)
 	{
-		DirectX11Device& dx11 = ParseDevice(cmd.GetDevice());
-		dx11.stateManager[cmd.GetID()].UnbindVB(m_LastSlot);
-	}
+		ID3D11Buffer* buffers[SV_GFX_VERTEX_BUFFER_COUNT];
 
-	///////////////////////////////INDEX BUFFER///////////////////////////////////
-	bool IndexBuffer_dx11::_Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, Graphics& d)
+		for (ui32 i = 0; i < count; ++i) {
+			VertexBuffer_dx11& buffer = ToInternal(*vbs[i]);
+			buffers[i] = buffer.m_Buffer.Get();
+		}
+
+		deferredContext[cmd]->IASetVertexBuffers(slot, count, buffers, strides, offsets);
+	}
+	void DirectX11Device::_UnbindVertexBuffer(ui32 slot, CommandList cmd)
 	{
+		ID3D11Buffer* null[1] = { nullptr };
+		const UINT stride = 1u;
+		const UINT offset = 0u;
+		deferredContext[cmd]->IASetVertexBuffers(slot, 1, null, &stride, &offset);
+	}
+	void DirectX11Device::_UnbindVertexBuffers(CommandList cmd)
+	{
+		ID3D11Buffer* buffers[SV_GFX_VERTEX_BUFFER_COUNT];
+		svZeroMemory(buffers, sizeof(ID3D11Buffer*) * SV_GFX_VERTEX_BUFFER_COUNT);
+		deferredContext[cmd]->IASetVertexBuffers(0, SV_GFX_VERTEX_BUFFER_COUNT, buffers, (const UINT*)buffers, (const UINT*)buffers);
+	}
+	///////////////////////////////INDEX BUFFER///////////////////////////////////
+	bool DirectX11Device::_CreateIndexBuffer(void* data, IndexBuffer& ib)
+	{
+		IndexBuffer_dx11& buffer = ToInternal(ib);
+
 		D3D11_BUFFER_DESC desc;
 		desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-		desc.ByteWidth = size;
-		desc.CPUAccessFlags = (CPUWriteAccess ? D3D11_CPU_ACCESS_WRITE : 0u) | (CPUReadAccess ? D3D11_CPU_ACCESS_READ : 0u);
+		desc.ByteWidth = buffer.GetSize();
+		desc.CPUAccessFlags = ParseCPUAccess(buffer.GetCPUAccess());
 		desc.MiscFlags = 0u;
 		desc.StructureByteStride = 0u;
-		desc.Usage = ParseUsage(usage);
-
-		DirectX11Device& dx11 = ParseDevice(d);
+		desc.Usage = ParseUsage(buffer.GetUsage());
 
 		if (data) {
 			D3D11_SUBRESOURCE_DATA sdata;
 			sdata.pSysMem = data;
-			dxCheck(dx11.device->CreateBuffer(&desc, &sdata, m_Buffer.GetAddressOf()));
+			dxCheck(device->CreateBuffer(&desc, &sdata, buffer.m_Buffer.GetAddressOf()));
 		}
 		else {
-			dxCheck(dx11.device->CreateBuffer(&desc, nullptr, m_Buffer.GetAddressOf()));
+			dxCheck(device->CreateBuffer(&desc, nullptr, buffer.m_Buffer.GetAddressOf()));
 		}
 
 		return true;
 	}
-	void IndexBuffer_dx11::_Release()
+	void DirectX11Device::_ReleaseIndexBuffer(IndexBuffer& ib)
 	{
-		m_Buffer.Reset();
+		IndexBuffer_dx11& buffer = ToInternal(ib);
+		buffer.m_Buffer.Reset();
 	}
-	void IndexBuffer_dx11::_Bind(SV_GFX_FORMAT format, ui32 offset, CommandList& cmd)
+	void DirectX11Device::_UpdateIndexBuffer(void* data, ui32 size, IndexBuffer& ib, CommandList cmd)
 	{
-		DirectX11Device& dx11 = ParseDevice(cmd.GetDevice());
-		dx11.deferredContext[cmd.GetID()]->IASetIndexBuffer(m_Buffer.Get(), ParseFormat(format), offset);
+		IndexBuffer_dx11& buffer = ToInternal(ib);
+		UpdateBuffer(*this, buffer.m_Buffer.Get(), buffer.GetUsage(), buffer.GetSize(), data, size, cmd);
 	}
-	void IndexBuffer_dx11::_Unbind(CommandList& cmd)
+	void DirectX11Device::_BindIndexBuffer(SV_GFX_FORMAT format, ui32 offset, IndexBuffer& ib, CommandList cmd) 
 	{
-		DirectX11Device& dx11 = ParseDevice(cmd.GetDevice());
-		dx11.deferredContext[cmd.GetID()]->IASetIndexBuffer(nullptr, DXGI_FORMAT_UNKNOWN, 0u);
+		IndexBuffer_dx11& buffer = ToInternal(ib);
+		deferredContext[cmd]->IASetIndexBuffer(buffer.m_Buffer.Get(), ParseFormat(format), offset);
+	}
+	void DirectX11Device::_UnbindIndexBuffer(CommandList cmd)
+	{
+		deferredContext[cmd]->IASetIndexBuffer(nullptr, DXGI_FORMAT_UNKNOWN, 0u);
 	}
 
 	///////////////////////////////CONSTANT BUFFER///////////////////////////////////
-	bool ConstantBuffer_dx11::_Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, Graphics& d)
+	bool DirectX11Device::_CreateConstantBuffer(void* data, ConstantBuffer& cb)
 	{
+		ConstantBuffer_dx11& buffer = ToInternal(cb);
+
 		D3D11_BUFFER_DESC desc;
 		desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-		desc.ByteWidth = size;
-		desc.CPUAccessFlags = (CPUWriteAccess ? D3D11_CPU_ACCESS_WRITE : 0u) | (CPUReadAccess ? D3D11_CPU_ACCESS_READ : 0u);
+		desc.ByteWidth = buffer.GetSize();
+		desc.CPUAccessFlags = ParseCPUAccess(buffer.GetCPUAccess());
 		desc.MiscFlags = 0u;
 		desc.StructureByteStride = 0u;
-		desc.Usage = ParseUsage(usage);
-
-		DirectX11Device& dx11 = ParseDevice(d);
+		desc.Usage = ParseUsage(buffer.GetUsage());
 
 		if (data) {
 			D3D11_SUBRESOURCE_DATA sdata;
 			sdata.pSysMem = data;
-			dxCheck(dx11.device->CreateBuffer(&desc, &sdata, m_Buffer.GetAddressOf()));
+			dxCheck(device->CreateBuffer(&desc, &sdata, buffer.m_Buffer.GetAddressOf()));
 		}
 		else {
-			dxCheck(dx11.device->CreateBuffer(&desc, nullptr, m_Buffer.GetAddressOf()));
+			dxCheck(device->CreateBuffer(&desc, nullptr, buffer.m_Buffer.GetAddressOf()));
 		}
 
 		return true;
 	}
-	void ConstantBuffer_dx11::_Release()
+	void DirectX11Device::_ReleaseConstantBuffer(ConstantBuffer& cb)
 	{
-		m_Buffer.Reset();
+		ConstantBuffer_dx11& buffer = ToInternal(cb);
+		buffer.m_Buffer.Reset();
 	}
-	void ConstantBuffer_dx11::_Update(void* data, ui32 size, CommandList& cmd)
+	void DirectX11Device::_UpdateConstantBuffer(void* data, ui32 size, ConstantBuffer& cb, CommandList cmd)
 	{
-		UpdateBuffer(m_Buffer.Get(), m_Usage, m_Size, data, size, cmd);
+		ConstantBuffer_dx11& buffer = ToInternal(cb);
+		UpdateBuffer(*this, buffer.m_Buffer.Get(), buffer.GetUsage(), buffer.GetSize(), data, size, cmd);
 	}
-	void ConstantBuffer_dx11::_Bind(ui32 slot, SV_GFX_SHADER_TYPE type, CommandList& cmd)
+	void DirectX11Device::_BindConstantBuffer(ui32 slot, SV_GFX_SHADER_TYPE type, ConstantBuffer& cb, CommandList cmd)
 	{
-		SV_ASSERT(slot < SV_GFX_CONSTANT_BUFFER_COUNT);
-		DirectX11Device& dx11 = ParseDevice(cmd.GetDevice());
-		dx11.stateManager[cmd.GetID()].BindCB(m_Buffer.Get(), type, slot);
+		ConstantBuffer_dx11& buffer = ToInternal(cb);
+		switch (type)
+		{
+		case SV_GFX_SHADER_TYPE_VERTEX:
+			deferredContext[cmd]->VSSetConstantBuffers(slot, 1, buffer.m_Buffer.GetAddressOf());
+			break;
+		case SV_GFX_SHADER_TYPE_PIXEL:
+			deferredContext[cmd]->PSSetConstantBuffers(slot, 1, buffer.m_Buffer.GetAddressOf());
+			break;
+		case SV_GFX_SHADER_TYPE_GEOMETRY:
+			deferredContext[cmd]->GSSetConstantBuffers(slot, 1, buffer.m_Buffer.GetAddressOf());
+			break;
+		}
 	}
-	void ConstantBuffer_dx11::_Unbind(SV_GFX_SHADER_TYPE type, CommandList& cmd)
+	void DirectX11Device::_BindConstantBuffers(ui32 slot, SV_GFX_SHADER_TYPE type, ui32 count, ConstantBuffer** cbs, CommandList cmd)
 	{
-		DirectX11Device& dx11 = ParseDevice(cmd.GetDevice());
-		dx11.stateManager[cmd.GetID()].UnbindCB(type, m_LastSlot[type]);
+		ID3D11Buffer* buffers[SV_GFX_CONSTANT_BUFFER_COUNT];
+		for (ui32 i = 0; i < count; ++i) {
+			ConstantBuffer_dx11& buffer = ToInternal(*cbs[i]);
+			buffers[i] = buffer.m_Buffer.Get();
+		}
+
+		switch (type)
+		{
+		case SV_GFX_SHADER_TYPE_VERTEX:
+			deferredContext[cmd]->VSSetConstantBuffers(slot, count, buffers);
+			break;
+		case SV_GFX_SHADER_TYPE_PIXEL:
+			deferredContext[cmd]->PSSetConstantBuffers(slot, count, buffers);
+			break;
+		case SV_GFX_SHADER_TYPE_GEOMETRY:
+			deferredContext[cmd]->GSSetConstantBuffers(slot, count, buffers);
+			break;
+		}
+	}
+	void DirectX11Device::_UnbindConstantBuffer(ui32 slot, SV_GFX_SHADER_TYPE type, CommandList cmd)
+	{
+		ID3D11Buffer* null[1] = { nullptr };
+		switch (type)
+		{
+		case SV_GFX_SHADER_TYPE_VERTEX:
+			deferredContext[cmd]->VSSetConstantBuffers(slot, 1, null);
+			break;
+		case SV_GFX_SHADER_TYPE_PIXEL:
+			deferredContext[cmd]->PSSetConstantBuffers(slot, 1, null);
+			break;
+		case SV_GFX_SHADER_TYPE_GEOMETRY:
+			deferredContext[cmd]->GSSetConstantBuffers(slot, 1, null);
+			break;
+		}
+	}
+	void DirectX11Device::_UnbindConstantBuffers(SV_GFX_SHADER_TYPE type, CommandList cmd)
+	{
+		ID3D11Buffer* buffers[SV_GFX_CONSTANT_BUFFER_COUNT];
+		svZeroMemory(buffers, sizeof(ID3D11Buffer) * SV_GFX_CONSTANT_BUFFER_COUNT);
+
+		switch (type)
+		{
+		case SV_GFX_SHADER_TYPE_VERTEX:
+			deferredContext[cmd]->VSSetConstantBuffers(0u, SV_GFX_CONSTANT_BUFFER_COUNT, buffers);
+			break;
+		case SV_GFX_SHADER_TYPE_PIXEL:
+			deferredContext[cmd]->PSSetConstantBuffers(0u, SV_GFX_CONSTANT_BUFFER_COUNT, buffers);
+			break;
+		case SV_GFX_SHADER_TYPE_GEOMETRY:
+			deferredContext[cmd]->GSSetConstantBuffers(0u, SV_GFX_CONSTANT_BUFFER_COUNT, buffers);
+			break;
+		}
+	}
+	void DirectX11Device::_UnbindConstantBuffers(CommandList cmd)
+	{
+		_UnbindConstantBuffers(SV_GFX_SHADER_TYPE_VERTEX, cmd);
+		_UnbindConstantBuffers(SV_GFX_SHADER_TYPE_PIXEL, cmd);
+		_UnbindConstantBuffers(SV_GFX_SHADER_TYPE_GEOMETRY, cmd);
 	}
 
 	///////////////////////////////FRAME BUFFER///////////////////////////////////
-
-	bool FrameBuffer_dx11::_Create(ui32 width, ui32 height, SV_GFX_FORMAT format, bool textureUsage, SV::Graphics& d)
+	bool DirectX11Device::_CreateFrameBuffer(FrameBuffer& fb)
 	{
-		DirectX11Device& dx11 = ParseDevice(d);
+		FrameBuffer_dx11& buffer = ToInternal(fb);
 		// Render target view desc
 		{
 			D3D11_RENDER_TARGET_VIEW_DESC desc;
-			desc.Format = ParseFormat(format);
+			desc.Format = ParseFormat(buffer.GetFormat());
 			desc.Texture2D.MipSlice = 0u;
 			desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
 
 			UINT bindFlags = D3D11_BIND_RENDER_TARGET;
-			if (textureUsage) bindFlags |= D3D11_BIND_SHADER_RESOURCE;
+			if (buffer.HasTextureUsage()) bindFlags |= D3D11_BIND_SHADER_RESOURCE;
 
 			// Resource desc
 			D3D11_TEXTURE2D_DESC resDesc;
 			resDesc.ArraySize = 1u;
 			resDesc.BindFlags = bindFlags;
 			resDesc.CPUAccessFlags = 0u;
-			resDesc.Format = ParseFormat(format);
-			resDesc.Width = width;
-			resDesc.Height = height;
+			resDesc.Format = ParseFormat(buffer.GetFormat());
+			resDesc.Width = buffer.GetWidth();
+			resDesc.Height = buffer.GetHeight();
 			resDesc.MipLevels = 1u;
 			resDesc.MiscFlags = 0u;
 			resDesc.SampleDesc.Count = 1u;
 			resDesc.SampleDesc.Quality = 0u;
 			resDesc.Usage = D3D11_USAGE_DEFAULT;
 
-			dxCheck(dx11.device->CreateTexture2D(&resDesc, nullptr, &m_Resource));
-			dxCheck(dx11.device->CreateRenderTargetView(m_Resource.Get(), &desc, &m_RenderTargetView));
+			dxCheck(device->CreateTexture2D(&resDesc, nullptr, &buffer.m_Resource));
+			dxCheck(device->CreateRenderTargetView(buffer.m_Resource.Get(), &desc, &buffer.m_RenderTargetView));
 		}
 
 		// Shader resouce
-		if (textureUsage) {
+		if (buffer.HasTextureUsage()) {
 			D3D11_SHADER_RESOURCE_VIEW_DESC desc;
 			svZeroMemory(&desc, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
-			desc.Format = ParseFormat(format);
+			desc.Format = ParseFormat(buffer.GetFormat());
 			desc.Texture2D.MipLevels = 1u;
 			desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 
-			dxCheck(dx11.device->CreateShaderResourceView(m_Resource.Get(), &desc, &m_ShaderResouceView));
+			dxCheck(device->CreateShaderResourceView(buffer.m_Resource.Get(), &desc, &buffer.m_ShaderResouceView));
 		}
-		
+
 		return true;
 	}
-	void FrameBuffer_dx11::_Release()
+	void DirectX11Device::_ReleaseFrameBuffer(FrameBuffer& fb)
 	{
-		m_RenderTargetView.Reset();
-		m_Resource.Reset();
-		m_ShaderResouceView.Reset();
+		FrameBuffer_dx11& buffer = ToInternal(fb);
+		buffer.m_RenderTargetView.Reset();
+		buffer.m_Resource.Reset();
+		buffer.m_ShaderResouceView.Reset();
 	}
-	bool FrameBuffer_dx11::_Resize(ui32 width, ui32 height, SV::Graphics& d)
-	{
-		if (width == m_Width && height == m_Height) return true;
-		Release();
-		return Create(width, height, m_Format, m_TextureUsage, d);
-	}
-	void FrameBuffer_dx11::_Clear(SV::Color4f c, CommandList& cmd)
+	void DirectX11Device::_ClearFrameBuffer(SV::Color4f c, FrameBuffer& fb, CommandList cmd)
 	{
 		const FLOAT color[4] = {
 			c.x, c.y, c.z, c.w
 		};
-		DirectX11Device& dx11 = ParseDevice(cmd.GetDevice());
-		dx11.deferredContext[cmd.GetID()]->ClearRenderTargetView(m_RenderTargetView.Get(), color);
+		FrameBuffer_dx11& buffer = ToInternal(fb);
+		deferredContext[cmd]->ClearRenderTargetView(buffer.m_RenderTargetView.Get(), color);
 	}
-	void FrameBuffer_dx11::_Bind(ui32 slot, CommandList& cmd)
+	void DirectX11Device::_BindFrameBuffer(FrameBuffer& fb, CommandList cmd)
 	{
-		SV_ASSERT(slot < SV_GFX_RENDER_TARGET_VIEW_COUNT);
-		DirectX11Device& dx11 = ParseDevice(cmd.GetDevice());
-		dx11.stateManager[cmd.GetID()].BindRTV(m_RenderTargetView.Get(), slot);
+		FrameBuffer_dx11& buffer = ToInternal(fb);
+		deferredContext[cmd]->OMSetRenderTargets(1, buffer.m_RenderTargetView.GetAddressOf(), nullptr);
 	}
-	void FrameBuffer_dx11::_Unbind(CommandList& cmd)
+	void DirectX11Device::_BindFrameBuffers(ui32 count, FrameBuffer** fbs, CommandList cmd)
 	{
-		DirectX11Device& dx11 = ParseDevice(cmd.GetDevice());
-		dx11.stateManager[cmd.GetID()].UnbindRTV(m_LastSlot);
+		ID3D11RenderTargetView* renderTargets[SV_GFX_RENDER_TARGET_VIEW_COUNT];
+		for (ui32 i = 0; i < SV_GFX_RENDER_TARGET_VIEW_COUNT; ++i) {
+			FrameBuffer_dx11& buffer = ToInternal(*fbs[i]);
+			renderTargets[i] = buffer.m_RenderTargetView.Get();
+		}
+		deferredContext[cmd]->OMSetRenderTargets(count, renderTargets, nullptr);
 	}
-
-	void FrameBuffer_dx11::_BindAsTexture(SV_GFX_SHADER_TYPE type, ui32 slot, CommandList& cmd)
+	void DirectX11Device::_BindFrameBufferAsTexture(ui32 slot, SV_GFX_SHADER_TYPE type, FrameBuffer& fb, CommandList cmd)
 	{
-		DirectX11Device& dx11 = ParseDevice(cmd.GetDevice());
-		dx11.stateManager[cmd.GetID()].BindTex(m_ShaderResouceView.Get(), type, slot);
+		FrameBuffer_dx11& buffer = ToInternal(fb);
+		switch (type) {
+		case SV_GFX_SHADER_TYPE_VERTEX:
+			deferredContext[cmd]->VSSetShaderResources(slot, 1, buffer.m_ShaderResouceView.GetAddressOf());
+			break;
+		case SV_GFX_SHADER_TYPE_PIXEL:
+			deferredContext[cmd]->PSSetShaderResources(slot, 1, buffer.m_ShaderResouceView.GetAddressOf());
+			break;
+		case SV_GFX_SHADER_TYPE_GEOMETRY:
+			deferredContext[cmd]->GSSetShaderResources(slot, 1, buffer.m_ShaderResouceView.GetAddressOf());
+			break;
+		}
+	}
+	void DirectX11Device::_UnbindFrameBuffers(CommandList cmd)
+	{
+		ID3D11RenderTargetView* nullRTV = nullptr;
+		deferredContext[cmd]->OMSetRenderTargets(1, &nullRTV, nullptr);
 	}
 
 	/////////////////////////////////SHADER//////////////////////////////////////////
@@ -522,125 +642,124 @@ namespace SV {
 		return reinterpret_cast<ID3D11GeometryShader*>(ptr);
 	}
 
-	bool Shader_dx11::_Create(SV_GFX_SHADER_TYPE type, const char* filePath, SV::Graphics& device)
+	bool DirectX11Device::_CreateShader(const char* filePath, Shader& s)
 	{
 		std::wstring wFilePath = SV::Utils::ToWString(filePath);
 
+		Shader_dx11& shader = ToInternal(s);
+
 		// Read File
-		dxCheck(D3DReadFileToBlob(wFilePath.c_str(), &m_Blob));
+		dxCheck(D3DReadFileToBlob(wFilePath.c_str(), &shader.m_Blob));
 
 		// Create Shader
-		DirectX11Device& dx11 = ParseDevice(device);
-
-		switch (type)
+		switch (shader.GetType())
 		{
 		case SV_GFX_SHADER_TYPE_VERTEX:
-			dxCheck(dx11.device->CreateVertexShader(m_Blob->GetBufferPointer(), m_Blob->GetBufferSize(), nullptr, reinterpret_cast<ID3D11VertexShader**>(&m_Shader)));
+			dxCheck(device->CreateVertexShader(shader.m_Blob->GetBufferPointer(), shader.m_Blob->GetBufferSize(), nullptr, reinterpret_cast<ID3D11VertexShader * *>(&shader.m_Shader)));
 			break;
 		case SV_GFX_SHADER_TYPE_PIXEL:
-			dxCheck(dx11.device->CreatePixelShader(m_Blob->GetBufferPointer(), m_Blob->GetBufferSize(), nullptr, reinterpret_cast<ID3D11PixelShader**>(&m_Shader)));
+			dxCheck(device->CreatePixelShader(shader.m_Blob->GetBufferPointer(), shader.m_Blob->GetBufferSize(), nullptr, reinterpret_cast<ID3D11PixelShader * *>(&shader.m_Shader)));
 			break;
 		case SV_GFX_SHADER_TYPE_GEOMETRY:
-			dxCheck(dx11.device->CreateGeometryShader(m_Blob->GetBufferPointer(), m_Blob->GetBufferSize(), nullptr, reinterpret_cast<ID3D11GeometryShader**>(&m_Shader)));
+			dxCheck(device->CreateGeometryShader(shader.m_Blob->GetBufferPointer(), shader.m_Blob->GetBufferSize(), nullptr, reinterpret_cast<ID3D11GeometryShader * *>(&shader.m_Shader)));
 			break;
 		case SV_GFX_SHADER_TYPE_UNDEFINED:
 		default:
-			SV::LogE("Invalid Shader Type '%u'", type);
+			SV::LogE("Invalid Shader Type '%u'", shader.GetType());
 			return false;
 		}
 
-		if (type != SV_GFX_SHADER_TYPE_VERTEX) m_Blob.Reset();
+		if (shader.GetType() != SV_GFX_SHADER_TYPE_VERTEX) shader.m_Blob.Reset();
 
 		return true;
 	}
-
-	void Shader_dx11::_Release()
+	void DirectX11Device::_ReleaseShader(Shader& s)
 	{
-		if (m_Shader) {
-			switch (m_ShaderType) {
+		Shader_dx11& shader = ToInternal(s);
+
+		if (shader.m_Shader) {
+			switch (shader.GetType()) {
 			case SV_GFX_SHADER_TYPE_VERTEX:
 			{
-				auto vs = ToVS(m_Shader);
+				auto vs = ToVS(shader.m_Shader);
 				vs->Release();
 				break;
 			}
 			case SV_GFX_SHADER_TYPE_PIXEL:
 			{
-				auto ps = ToPS(m_Shader);
+				auto ps = ToPS(shader.m_Shader);
 				ps->Release();
 				break;
 			}
 			case SV_GFX_SHADER_TYPE_GEOMETRY:
 			{
-				auto gs = ToGS(m_Shader);
+				auto gs = ToGS(shader.m_Shader);
 				gs->Release();
 				break;
 			}
 			}
 		}
-		m_Blob.Reset();
+		shader.m_Blob.Reset();
 	}
-
-	void Shader_dx11::_Bind(CommandList& cmd)
+	void DirectX11Device::_BindShader(Shader& s, CommandList cmd)
 	{
-		DirectX11Device& dx11 = ParseDevice(cmd.GetDevice());
+		Shader_dx11& shader = ToInternal(s);
 
-		switch (m_ShaderType) {
+		switch (shader.GetType()) {
 		case SV_GFX_SHADER_TYPE_VERTEX:
 		{
-			auto vs = ToVS(m_Shader);
-			
-			dx11.deferredContext[cmd.GetID()]->VSSetShader(vs, nullptr, 0u);
+			auto vs = ToVS(shader.m_Shader);
+
+			deferredContext[cmd]->VSSetShader(vs, nullptr, 0u);
 
 			break;
 		}
 		case SV_GFX_SHADER_TYPE_PIXEL:
 		{
-			auto ps = ToPS(m_Shader);
-			
-			dx11.deferredContext[cmd.GetID()]->PSSetShader(ps, nullptr, 0u);
+			auto ps = ToPS(shader.m_Shader);
+
+			deferredContext[cmd]->PSSetShader(ps, nullptr, 0u);
 
 			break;
 		}
 		case SV_GFX_SHADER_TYPE_GEOMETRY:
 		{
-			auto gs = ToGS(m_Shader);
+			auto gs = ToGS(shader.m_Shader);
 
-			dx11.deferredContext[cmd.GetID()]->GSSetShader(gs, nullptr, 0u);
-			
+			deferredContext[cmd]->GSSetShader(gs, nullptr, 0u);
+
 			break;
 		}
 		}
 	}
-
-	void Shader_dx11::_Unbind(CommandList& cmd)
+	void DirectX11Device::_UnbindShader(SV_GFX_SHADER_TYPE type, CommandList cmd)
 	{
-		DirectX11Device& dx11 = ParseDevice(cmd.GetDevice());
-
-		switch (m_ShaderType) {
+		switch (type) {
 		case SV_GFX_SHADER_TYPE_VERTEX:
-			dx11.deferredContext[cmd.GetID()]->VSSetShader(nullptr, nullptr, 0u);
+			deferredContext[cmd]->VSSetShader(nullptr, nullptr, 0u);
 			break;
 		case SV_GFX_SHADER_TYPE_PIXEL:
-			dx11.deferredContext[cmd.GetID()]->PSSetShader(nullptr, nullptr, 0u);
+			deferredContext[cmd]->PSSetShader(nullptr, nullptr, 0u);
 			break;
 		case SV_GFX_SHADER_TYPE_GEOMETRY:
-			dx11.deferredContext[cmd.GetID()]->GSSetShader(nullptr, nullptr, 0u);
+			deferredContext[cmd]->GSSetShader(nullptr, nullptr, 0u);
 			break;
 		}
 	}
 
 	/////////////////////////////////INPUT LAYOUT//////////////////////////////////////////
-	bool InputLayout_dx11::_Create(const SV_GFX_INPUT_ELEMENT_DESC* d, ui32 count, const Shader& vs, SV::Graphics& device)
+	bool DirectX11Device::_CreateInputLayout(const SV_GFX_INPUT_ELEMENT_DESC* d, ui32 count, const Shader& vs, InputLayout& il)
 	{
-		SV_ASSERT(count < 16);
+		SV_ASSERT(count < 32);
 
-		if (vs->GetType() != SV_GFX_SHADER_TYPE_VERTEX) {
+#ifdef SV_DEBUG
+		if (vs.IsValid() && vs->GetType() != SV_GFX_SHADER_TYPE_VERTEX) {
 			SV::LogE("To create an input layout must have a vertex shader");
 			return false;
 		}
+#endif
 
-		D3D11_INPUT_ELEMENT_DESC desc[16];
+		D3D11_INPUT_ELEMENT_DESC desc[32];
 
 		for (ui32 i = 0; i < count; ++i) {
 			desc[i].AlignedByteOffset = d[i].AlignedByteOffset;
@@ -652,56 +771,57 @@ namespace SV {
 			desc[i].SemanticName = d[i].SemanticName;
 		}
 
-		DirectX11Device& dx11 = ParseDevice(device);
-		Shader_dx11* shader = reinterpret_cast<Shader_dx11*>(vs.Get());
+		InputLayout_dx11& inputLayout = ToInternal(il);
+		Shader_dx11& shader = ToInternal(const_cast<Shader&>(vs));
 
-		dxCheck(dx11.device->CreateInputLayout(desc, count, shader->GetBlob()->GetBufferPointer(), shader->GetBlob()->GetBufferSize(), &m_InputLayout));
+		dxCheck(device->CreateInputLayout(desc, count, shader.m_Blob->GetBufferPointer(), shader.m_Blob->GetBufferSize(), &inputLayout.m_InputLayout));
 
 		return true;
 	}
-	void InputLayout_dx11::_Release()
+	void DirectX11Device::_ReleaseInputLayout(InputLayout& il)
 	{
-		m_InputLayout.Reset();
+		InputLayout_dx11& inputLayout = ToInternal(il);
+		inputLayout.m_InputLayout.Reset();
 	}
-	void InputLayout_dx11::_Bind(CommandList& cmd)
+	void DirectX11Device::_BindInputLayout(InputLayout& il, CommandList cmd)
 	{
-		DirectX11Device& dx11 = ParseDevice(cmd.GetDevice());
-		dx11.deferredContext[cmd.GetID()]->IASetInputLayout(m_InputLayout.Get());
+		InputLayout_dx11& inputLayout = ToInternal(il);
+		deferredContext[cmd]->IASetInputLayout(inputLayout.m_InputLayout.Get());
 	}
-	void InputLayout_dx11::_Unbind(CommandList& cmd)
+	void DirectX11Device::_UnbindInputLayout(CommandList cmd)
 	{
-		DirectX11Device& dx11 = ParseDevice(cmd.GetDevice());
-		dx11.deferredContext[cmd.GetID()]->IASetInputLayout(nullptr);
+		deferredContext[cmd]->IASetInputLayout(nullptr);
 	}
 
 	/////////////////////////////////TEXTURE//////////////////////////////////////////
-	bool Texture_dx11::_Create(void* data, ui32 width, ui32 height, SV_GFX_FORMAT format, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, SV::Graphics& device)
+	bool DirectX11Device::_CreateTexture(void* data, Texture& t)
 	{
-		DirectX11Device& dx11 = ParseDevice(device);
+		Texture_dx11& texture = ToInternal(t);
+
 		// Resource
 		{
 			D3D11_TEXTURE2D_DESC desc = {};
 			desc.ArraySize = 1u;
 			desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-			desc.CPUAccessFlags = (CPUWriteAccess ? D3D11_CPU_ACCESS_WRITE : 0u) | (CPUReadAccess ? D3D11_CPU_ACCESS_READ : 0u);
-			desc.Format = ParseFormat(format);
-			desc.Width = width;
-			desc.Height = height;
+			desc.CPUAccessFlags = ParseCPUAccess(texture.GetCPUAccess());
+			desc.Format = ParseFormat(texture.GetFormat());
+			desc.Width = texture.GetWidth();
+			desc.Height = texture.GetHeight();
 			desc.MipLevels = 1u;
 			desc.MiscFlags = 0u;
 			desc.SampleDesc.Count = 1u;
 			desc.SampleDesc.Quality = 0u;
-			desc.Usage = ParseUsage(usage);
+			desc.Usage = ParseUsage(texture.GetUsage());
 
 			if (data) {
 				D3D11_SUBRESOURCE_DATA sdata;
 				sdata.pSysMem = data;
-				sdata.SysMemPitch = width * SV::GetFormatSize(format);
+				sdata.SysMemPitch = texture.GetWidth() * SV::GetFormatSize(texture.GetFormat());
 
-				dxCheck(dx11.device->CreateTexture2D(&desc, &sdata, &m_Texture));
+				dxCheck(device->CreateTexture2D(&desc, &sdata, &texture.m_Texture));
 			}
 			else {
-				dxCheck(dx11.device->CreateTexture2D(&desc, nullptr, &m_Texture));
+				dxCheck(device->CreateTexture2D(&desc, nullptr, &texture.m_Texture));
 			}
 		}
 
@@ -709,37 +829,107 @@ namespace SV {
 		{
 			D3D11_SHADER_RESOURCE_VIEW_DESC desc;
 			svZeroMemory(&desc, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
-			desc.Format = ParseFormat(format);
+			desc.Format = ParseFormat(texture.GetFormat());
 			desc.Texture2D.MipLevels = 1u;
 			desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 
-			dxCheck(dx11.device->CreateShaderResourceView(m_Texture.Get(), &desc, &m_ShaderResouceView));
+			dxCheck(device->CreateShaderResourceView(texture.m_Texture.Get(), &desc, &texture.m_ShaderResouceView));
 		}
 
 		return true;
 	}
-	void Texture_dx11::_Release()
+	void DirectX11Device::_ReleaseTexture(Texture& t)
 	{
-		m_Texture.Reset();
-		m_ShaderResouceView.Reset();
+		Texture_dx11& texture = ToInternal(t);
+		texture.m_Texture.Reset();
+		texture.m_ShaderResouceView.Reset();
 	}
-	void Texture_dx11::_Update(void* data, ui32 size, CommandList& cmd)
+	void DirectX11Device::_UpdateTexture(void* data, ui32 size, Texture& t, CommandList cmd)
 	{
-		UpdateBuffer(m_Texture.Get(), m_Usage, m_Size, data, size, cmd);
+		Texture_dx11& texture = ToInternal(t);
+		UpdateBuffer(*this, texture.m_Texture.Get(), texture.GetUsage(), texture.GetSize(), data, size, cmd);
 	}
-	void Texture_dx11::_Bind(SV_GFX_SHADER_TYPE type, ui32 slot, CommandList& cmd)
+	void DirectX11Device::_BindTexture(ui32 slot, SV_GFX_SHADER_TYPE type, Texture& t, CommandList cmd)
 	{
-		DirectX11Device& dx11 = ParseDevice(cmd.GetDevice());
-		dx11.stateManager[cmd.GetID()].BindTex(m_ShaderResouceView.Get(), type, slot);
+		Texture_dx11& texture = ToInternal(t);
+		switch (type)
+		{
+		case SV_GFX_SHADER_TYPE_VERTEX:
+			deferredContext[cmd]->VSSetShaderResources(slot, 1u, texture.m_ShaderResouceView.GetAddressOf());
+			break;
+		case SV_GFX_SHADER_TYPE_PIXEL:
+			deferredContext[cmd]->PSSetShaderResources(slot, 1u, texture.m_ShaderResouceView.GetAddressOf());
+			break;
+		case SV_GFX_SHADER_TYPE_GEOMETRY:
+			deferredContext[cmd]->GSSetShaderResources(slot, 1u, texture.m_ShaderResouceView.GetAddressOf());
+			break;
+		}
 	}
-	void Texture_dx11::_Unbind(SV_GFX_SHADER_TYPE type, ui32 slot, CommandList& cmd)
+	void DirectX11Device::_BindTextures(ui32 slot, SV_GFX_SHADER_TYPE type, ui32 count, Texture** ts, CommandList cmd)
 	{
-		DirectX11Device& dx11 = ParseDevice(cmd.GetDevice());
-		dx11.stateManager[cmd.GetID()].UnbindTex(type, slot);
+		ID3D11ShaderResourceView* textures[SV_GFX_TEXTURE_COUNT];
+
+		for (ui32 i = 0; i < count; ++i) {
+			Texture_dx11& texture = ToInternal(*ts[i]);
+			textures[i] = texture.m_ShaderResouceView.Get();
+		}
+
+		switch (type)
+		{
+		case SV_GFX_SHADER_TYPE_VERTEX:
+			deferredContext[cmd]->VSSetShaderResources(slot, count, textures);
+			break;
+		case SV_GFX_SHADER_TYPE_PIXEL:
+			deferredContext[cmd]->PSSetShaderResources(slot, count, textures);
+			break;
+		case SV_GFX_SHADER_TYPE_GEOMETRY:
+			deferredContext[cmd]->GSSetShaderResources(slot, count, textures);
+			break;
+		}
+	}
+	void DirectX11Device::_UnbindTexture(ui32 slot, SV_GFX_SHADER_TYPE type, CommandList cmd)
+	{
+		ID3D11ShaderResourceView* null[1] = { nullptr };
+		switch (type)
+		{
+		case SV_GFX_SHADER_TYPE_VERTEX:
+			deferredContext[cmd]->VSSetShaderResources(slot, 1u, null);
+			break;
+		case SV_GFX_SHADER_TYPE_PIXEL:
+			deferredContext[cmd]->PSSetShaderResources(slot, 1u, null);
+			break;
+		case SV_GFX_SHADER_TYPE_GEOMETRY:
+			deferredContext[cmd]->GSSetShaderResources(slot, 1u, null);
+			break;
+		}
+	}
+	void DirectX11Device::_UnbindTextures(SV_GFX_SHADER_TYPE type, CommandList cmd)
+	{
+		ID3D11ShaderResourceView* textures[SV_GFX_TEXTURE_COUNT];
+		svZeroMemory(textures, sizeof(ID3D11ShaderResourceView) * SV_GFX_TEXTURE_COUNT);
+
+		switch (type)
+		{
+		case SV_GFX_SHADER_TYPE_VERTEX:
+			deferredContext[cmd]->VSSetShaderResources(0u, SV_GFX_TEXTURE_COUNT, textures);
+			break;
+		case SV_GFX_SHADER_TYPE_PIXEL:
+			deferredContext[cmd]->PSSetShaderResources(0u, SV_GFX_TEXTURE_COUNT, textures);
+			break;
+		case SV_GFX_SHADER_TYPE_GEOMETRY:
+			deferredContext[cmd]->GSSetShaderResources(0u, SV_GFX_TEXTURE_COUNT, textures);
+			break;
+		}
+	}
+	void DirectX11Device::_UnbindTextures(CommandList cmd)
+	{
+		_UnbindTextures(SV_GFX_SHADER_TYPE_VERTEX, cmd);
+		_UnbindTextures(SV_GFX_SHADER_TYPE_PIXEL, cmd);
+		_UnbindTextures(SV_GFX_SHADER_TYPE_GEOMETRY, cmd);
 	}
 
 	/////////////////////////////////SAMPLER//////////////////////////////////////////
-	bool Sampler_dx11::_Create(SV_GFX_TEXTURE_ADDRESS_MODE addressMode, SV_GFX_TEXTURE_FILTER filter, Graphics& device)
+	bool DirectX11Device::_CreateSampler(SV_GFX_TEXTURE_ADDRESS_MODE addressMode, SV_GFX_TEXTURE_FILTER filter, Sampler& s)
 	{
 		D3D11_SAMPLER_DESC desc;
 		svZeroMemory(&desc, sizeof(D3D11_SAMPLER_DESC));
@@ -748,37 +938,103 @@ namespace SV {
 		desc.AddressW = ParseAddressMode(addressMode);
 		desc.Filter = ParseTextureFilter(filter);
 
-		DirectX11Device& dx11 = ParseDevice(device);
-		dxCheck(dx11.device->CreateSamplerState(&desc, &m_SamplerState));
+		Sampler_dx11& sampler = ToInternal(s);
+
+		dxCheck(device->CreateSamplerState(&desc, &sampler.m_SamplerState));
 
 		return true;
 	}
-	void Sampler_dx11::_Release()
+	void DirectX11Device::_ReleaseSampler(Sampler& s)
 	{
-		m_SamplerState.Reset();
+		Sampler_dx11& sampler = ToInternal(s);
+		sampler.m_SamplerState.Reset();
 	}
-	void Sampler_dx11::_Bind(SV_GFX_SHADER_TYPE type, ui32 slot, CommandList& cmd)
+	void DirectX11Device::_BindSampler(ui32 slot, SV_GFX_SHADER_TYPE type, Sampler& s, CommandList cmd)
 	{
-		DirectX11Device& dx11 = ParseDevice(cmd.GetDevice());
-		dx11.stateManager[cmd.GetID()].BindSam(m_SamplerState.Get(), type, slot);
+		Sampler_dx11& sampler = ToInternal(s);
+		switch (type) {
+		case SV_GFX_SHADER_TYPE_VERTEX:
+			deferredContext[cmd]->VSSetSamplers(slot, 1u, sampler.m_SamplerState.GetAddressOf());
+			break;
+		case SV_GFX_SHADER_TYPE_PIXEL:
+			deferredContext[cmd]->PSSetSamplers(slot, 1u, sampler.m_SamplerState.GetAddressOf());
+			break;
+		case SV_GFX_SHADER_TYPE_GEOMETRY:
+			deferredContext[cmd]->GSSetSamplers(slot, 1u, sampler.m_SamplerState.GetAddressOf());
+			break;
+		}
 	}
-	void Sampler_dx11::_Unbind(SV_GFX_SHADER_TYPE type, ui32 slot, CommandList& cmd)
+	void DirectX11Device::_BindSamplers(ui32 slot, SV_GFX_SHADER_TYPE type, ui32 count, Sampler** ss, CommandList cmd)
 	{
-		DirectX11Device& dx11 = ParseDevice(cmd.GetDevice());
-		dx11.stateManager[cmd.GetID()].UnbindSam(type, slot);
+		ID3D11SamplerState* samplers[SV_GFX_SAMPLER_COUNT];
+
+		for (ui32 i = 0; i < count; ++i) {
+			Sampler_dx11& sampler = ToInternal(*ss[i]);
+			samplers[i] = sampler.m_SamplerState.Get();
+		}
+
+		switch (type) {
+		case SV_GFX_SHADER_TYPE_VERTEX:
+			deferredContext[cmd]->VSSetSamplers(slot, count, samplers);
+			break;
+		case SV_GFX_SHADER_TYPE_PIXEL:
+			deferredContext[cmd]->PSSetSamplers(slot, count, samplers);
+			break;
+		case SV_GFX_SHADER_TYPE_GEOMETRY:
+			deferredContext[cmd]->GSSetSamplers(slot, count, samplers);
+			break;
+		}
+	}
+	void DirectX11Device::_UnbindSampler(ui32 slot, SV_GFX_SHADER_TYPE type, CommandList cmd)
+	{
+		ID3D11SamplerState* null[1] = { nullptr };
+		switch (type) {
+		case SV_GFX_SHADER_TYPE_VERTEX:
+			deferredContext[cmd]->VSSetSamplers(slot, 1u, null);
+			break;
+		case SV_GFX_SHADER_TYPE_PIXEL:
+			deferredContext[cmd]->PSSetSamplers(slot, 1u, null);
+			break;
+		case SV_GFX_SHADER_TYPE_GEOMETRY:
+			deferredContext[cmd]->GSSetSamplers(slot, 1u, null);
+			break;
+		}
+	}
+	void DirectX11Device::_UnbindSamplers(SV_GFX_SHADER_TYPE type, CommandList cmd)
+	{
+		ID3D11SamplerState* samplers[SV_GFX_SAMPLER_COUNT];
+		svZeroMemory(samplers, sizeof(ID3D11SamplerState*) * SV_GFX_SAMPLER_COUNT);
+
+		switch (type) {
+		case SV_GFX_SHADER_TYPE_VERTEX:
+			deferredContext[cmd]->VSSetSamplers(0u, SV_GFX_SAMPLER_COUNT, samplers);
+			break;
+		case SV_GFX_SHADER_TYPE_PIXEL:
+			deferredContext[cmd]->PSSetSamplers(0u, SV_GFX_SAMPLER_COUNT, samplers);
+			break;
+		case SV_GFX_SHADER_TYPE_GEOMETRY:
+			deferredContext[cmd]->GSSetSamplers(0u, SV_GFX_SAMPLER_COUNT, samplers);
+			break;
+		}
+	}
+	void DirectX11Device::_UnbindSamplers(CommandList cmd)
+	{
+		_UnbindSamplers(SV_GFX_SHADER_TYPE_VERTEX, cmd);
+		_UnbindSamplers(SV_GFX_SHADER_TYPE_PIXEL, cmd);
+		_UnbindSamplers(SV_GFX_SHADER_TYPE_GEOMETRY, cmd);
 	}
 
 	/////////////////////////////////DEVICE///////////////////////////////////////////////
-	bool BlendState_dx11::_Create(SV::Graphics& graphics)
+	bool DirectX11Device::_CreateBlendState(const SV_GFX_BLEND_STATE_DESC* d, BlendState& bs)
 	{
 		D3D11_BLEND_DESC desc;
 
 		desc.AlphaToCoverageEnable = FALSE;
-		desc.IndependentBlendEnable = m_IndependentRenderTarget ? TRUE : FALSE;
-		
+		desc.IndependentBlendEnable = d->independentRenderTarget ? TRUE : FALSE;
+
 		for (ui8 i = 0; i < 8; ++i) {
 			auto& rt0 = desc.RenderTarget[i];
-			auto& rt1 = m_BlendDesc[i];
+			auto& rt1 = d->renderTargetDesc[i];
 
 			rt0.BlendEnable = rt1.enabled ? TRUE : FALSE;
 			rt0.SrcBlend = ParseBlendOption(rt1.src);
@@ -790,24 +1046,24 @@ namespace SV {
 			rt0.RenderTargetWriteMask = rt1.writeMask;
 		}
 
-		DirectX11Device& dx11 = ParseDevice(graphics);
-		dxCheck(dx11.device->CreateBlendState(&desc, &m_BlendState));
+		BlendState_dx11& blendState = ToInternal(bs);
+		dxCheck(device->CreateBlendState(&desc, &blendState.m_BlendState));
 
 		return true;
 	}
-	void BlendState_dx11::_Release()
+	void DirectX11Device::_ReleaseBlendState(BlendState& bs)
 	{
-		m_BlendState->Release();
+		BlendState_dx11& blendState = ToInternal(bs);
+		blendState.m_BlendState.Reset();
 	}
-	void BlendState_dx11::_Bind(ui32 sampleMask, const float* blendFactors, CommandList& cmd)
+	void DirectX11Device::_BindBlendState(ui32 sampleMask, const float* blendFactors, BlendState& bs, CommandList cmd)
 	{
-		DirectX11Device& dx11 = ParseDevice(cmd.GetDevice());
-		dx11.deferredContext[cmd.GetID()]->OMSetBlendState(m_BlendState.Get(), blendFactors, sampleMask);
+		BlendState_dx11& blendState = ToInternal(bs);
+		deferredContext[cmd]->OMSetBlendState(blendState.m_BlendState.Get(), blendFactors, sampleMask);
 	}
-	void BlendState_dx11::_Unbind(CommandList& cmd)
+	void DirectX11Device::_UnbindBlendState(CommandList cmd)
 	{
-		DirectX11Device& dx11 = ParseDevice(cmd.GetDevice());
-		dx11.deferredContext[cmd.GetID()]->OMSetBlendState(nullptr, nullptr, 0u);
+		deferredContext[cmd]->OMSetBlendState(nullptr, nullptr, 0xffffffff);
 	}
 
 }

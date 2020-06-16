@@ -85,260 +85,332 @@ namespace SV {
 		}
 	}
 
-}
+#define SVAssertValidation(x) SV_ASSERT(x.IsValid())
 
-// VERTEX BUFFER
-bool SV::_internal::VertexBuffer_internal::Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, Graphics& device)
-{
-	m_Size = size;
-	m_Usage = usage;
-	return _Create(size, usage, CPUWriteAccess, CPUReadAccess, data, device);
-}
-void SV::_internal::VertexBuffer_internal::Release()
-{
-	_Release();
-}
-void SV::_internal::VertexBuffer_internal::Update(void* data, ui32 size, CommandList& cmd)
-{
-	_Update(data, size, cmd);
-}
-void SV::_internal::VertexBuffer_internal::Bind(ui32 slot, ui32 stride, ui32 offset, CommandList& cmd)
-{
-	m_LastSlot = slot;
-	_Bind(slot, stride, offset, cmd);
-}
-void SV::_internal::VertexBuffer_internal::Unbind(CommandList& cmd)
-{
-	_Unbind(cmd);
-}
-// INDEX BUFFER
-bool SV::_internal::IndexBuffer_internal::Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, Graphics& device)
-{
-	return _Create(size, usage, CPUWriteAccess, CPUReadAccess, data, device);
-}
-void SV::_internal::IndexBuffer_internal::Release()
-{
-	_Release();
-}
-void SV::_internal::IndexBuffer_internal::Bind(SV_GFX_FORMAT format, ui32 offset, CommandList& cmd)
-{
-	_Bind(format, offset, cmd);
-}
-void SV::_internal::IndexBuffer_internal::Unbind(CommandList& cmd)
-{
-	_Unbind(cmd);
-}
-// CONSTANT BUFFER
-bool SV::_internal::ConstantBuffer_internal::Create(ui32 size, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, void* data, Graphics& device)
-{
-	m_Size = size;
-	m_Usage = usage;
-	return _Create(size, usage, CPUWriteAccess, CPUReadAccess, data, device);
-}
-void SV::_internal::ConstantBuffer_internal::Release()
-{
-	_Release();
-}
-void SV::_internal::ConstantBuffer_internal::Update(void* data, ui32 size, CommandList& cmd)
-{
-	_Update(data, size, cmd);
-}
-void SV::_internal::ConstantBuffer_internal::Bind(ui32 slot, SV_GFX_SHADER_TYPE type, CommandList& cmd)
-{
-	m_LastSlot[type] = slot;
-	_Bind(slot, type, cmd);
-}
-void SV::_internal::ConstantBuffer_internal::Unbind(SV_GFX_SHADER_TYPE type, CommandList& cmd)
-{
-	_Unbind(type, cmd);
-}
-// FRAME BUFFER
-bool SV::_internal::FrameBuffer_internal::Create(ui32 width, ui32 height, SV_GFX_FORMAT format, bool textureUsage, SV::Graphics& device)
-{
-	m_Format = format;
-	m_Width = width;
-	m_Height = height;
-	m_TextureUsage = textureUsage;
-	return _Create(width, height, format, textureUsage, device);
-}
-void SV::_internal::FrameBuffer_internal::Release()
-{
-	_Release();
-}
-bool SV::_internal::FrameBuffer_internal::Resize(ui32 width, ui32 height, SV::Graphics& device)
-{
-	return _Resize(width, height, device);
-}
-void SV::_internal::FrameBuffer_internal::Clear(SV::Color4f color, CommandList& cmd)
-{
-	_Clear(color, cmd);
-}
-void SV::_internal::FrameBuffer_internal::Bind(ui32 slot, CommandList& cmd)
-{
-	m_LastSlot = slot;
-	_Bind(slot, cmd);
-}
-void SV::_internal::FrameBuffer_internal::Unbind(CommandList& cmd)
-{
-	_Unbind(cmd);
-}
-void SV::_internal::FrameBuffer_internal::BindAsTexture(SV_GFX_SHADER_TYPE type, ui32 slot, CommandList& cmd)
-{
-	_BindAsTexture(type, slot, cmd);
-}
-void SV::_internal::FrameBuffer_internal::UnbindAsTexture(SV_GFX_SHADER_TYPE type, ui32 slot, CommandList& cmd)
-{
-}
-// SHADER
-bool SV::_internal::Shader_internal::Create(SV_GFX_SHADER_TYPE type, const char* filePath, SV::Graphics& device)
-{
-	m_ShaderType = type;
-	return _Create(type, filePath, device);
-}
-void SV::_internal::Shader_internal::Release()
-{
-	_Release();
-}
-void SV::_internal::Shader_internal::Bind(CommandList& cmd)
-{
-	_Bind(cmd);
-}
-void SV::_internal::Shader_internal::Unbind(CommandList& cmd)
-{
-	_Unbind(cmd);
-}
-// INPUT LAYOUT
-bool SV::_internal::InputLayout_internal::Create(const SV_GFX_INPUT_ELEMENT_DESC* desc, ui32 count, const Shader& vs, SV::Graphics& device)
-{
-	return _Create(desc, count, vs, device);
-}
-void SV::_internal::InputLayout_internal::Release()
-{
-	_Release();
-}
-void SV::_internal::InputLayout_internal::Bind(CommandList& cmd)
-{
-	_Bind(cmd);
-}
-void SV::_internal::InputLayout_internal::Unbind(CommandList& cmd)
-{
-	_Unbind(cmd);
-}
-// TEXTURE
-bool SV::_internal::Texture_internal::Create(void* data, ui32 width, ui32 height, SV_GFX_FORMAT format, SV_GFX_USAGE usage, bool CPUWriteAccess, bool CPUReadAccess, SV::Graphics& device)
-{	
-	if (CPUWriteAccess && CPUReadAccess) m_CPUAccess = 3;
-	else if (CPUWriteAccess) m_CPUAccess = 1;
-	else if (CPUReadAccess) m_CPUAccess = 2;
-	else m_CPUAccess = 0u;
+	void Graphics::ResetState(CommandList cmd)
+	{
+		_ResetState(cmd);
+	}
 
-	if(!_Create(data, width, height, format, usage, CPUWriteAccess, CPUReadAccess, device)) return false;
+	// VERTEX BUFFER
+	bool Graphics::CreateVertexBuffer(ui32 size, SV_GFX_USAGE usage, SV_GFX_CPU_ACCESS cpuAccess, void* data, VertexBuffer& vb)
+	{
+		if (vb.IsValid()) ReleaseVertexBuffer(vb);
+		else vb.Set(_AllocateVertexBuffer());
+		vb->m_Size = size;
+		vb->m_Usage = usage;
+		vb->m_CPUAccess = cpuAccess;
+		return _CreateVertexBuffer(data, vb);
+	}
+	void Graphics::ReleaseVertexBuffer(VertexBuffer& vb)
+	{
+		if(vb.IsValid()) _ReleaseVertexBuffer(vb);
+	}
+	void Graphics::UpdateVertexBuffer(void* data, ui32 size, VertexBuffer& vb, CommandList cmd)
+	{
+		SVAssertValidation(vb);
+		_UpdateVertexBuffer(data, size, vb, cmd);
+	}
+	void Graphics::BindVertexBuffer(ui32 slot, ui32 stride, ui32 offset, VertexBuffer& vb, CommandList cmd)
+	{
+		SVAssertValidation(vb);
+		SV_ASSERT(slot < SV_GFX_VERTEX_BUFFER_COUNT);
+		_BindVertexBuffer(slot, stride, offset, vb, cmd);
+	}
+	void Graphics::BindVertexBuffers(ui32 slot, ui32 count, const ui32* strides, const ui32* offset, VertexBuffer** vbs, CommandList cmd)
+	{
+		_BindVertexBuffers(slot, count, strides, offset, vbs, cmd);
+	}
+	void Graphics::UnbindVertexBuffer(ui32 slot, CommandList cmd)
+	{
+		_UnbindVertexBuffer(slot, cmd);
+	}
+	void Graphics::UnbindVertexBuffers(CommandList cmd)
+	{
+		_UnbindVertexBuffers(cmd);
+	}
 
-	m_Width = width;
-	m_Height = height;
-	m_Format = format;
-	m_Usage = usage;
-	m_Size = width * height * SV::GetFormatSize(format);
-	return true;
-}
-void SV::_internal::Texture_internal::Release()
-{
-	_Release();
-}
-bool SV::_internal::Texture_internal::Resize(void* data, ui32 width, ui32 height, SV::Graphics& device)
-{
-	Release();
+	// INDEX BUFFER
+	bool Graphics::CreateIndexBuffer(ui32 size, SV_GFX_USAGE usage, SV_GFX_CPU_ACCESS cpuAccess, void* data, IndexBuffer& ib)
+	{
+		if (ib.IsValid()) ReleaseIndexBuffer(ib);
+		else ib.Set(_AllocateIndexBuffer());
+		ib->m_Size = size;
+		ib->m_Usage = usage;
+		ib->m_CPUAccess = cpuAccess;
+		return _CreateIndexBuffer(data, ib);
+	}
+	void Graphics::ReleaseIndexBuffer(IndexBuffer& ib)
+	{
+		if (ib.IsValid()) _ReleaseIndexBuffer(ib);
+	}
+	void Graphics::UpdateIndexBuffer(void* data, ui32 size, IndexBuffer& ib, CommandList cmd)
+	{
+		SVAssertValidation(ib);
+		_UpdateIndexBuffer(data, size, ib, cmd);
+	}
+	void Graphics::BindIndexBuffer(SV_GFX_FORMAT format, ui32 offset, IndexBuffer& ib, CommandList cmd)
+	{
+		SVAssertValidation(ib);
+		_BindIndexBuffer(format, offset, ib, cmd);
+	}
+	void Graphics::UnbindIndexBuffer(CommandList cmd)
+	{
+		_UnbindIndexBuffer(cmd);
+	}
 
-	bool CPUWriteAccess = (m_CPUAccess == 1 || m_CPUAccess == 3);
-	bool CPUReadAccess = (m_CPUAccess == 2 || m_CPUAccess == 3);
+	// CONSTANT BUFFER
+	bool Graphics::CreateConstantBuffer(ui32 size, SV_GFX_USAGE usage, SV_GFX_CPU_ACCESS cpuAccess, void* data, ConstantBuffer& cb)
+	{
+		if (cb.IsValid()) ReleaseConstantBuffer(cb);
+		else cb.Set(_AllocateConstantBuffer());
+		cb->m_Size = size;
+		cb->m_Usage = usage;
+		cb->m_CPUAccess = cpuAccess;
+		return _CreateConstantBuffer(data, cb);
+	}
+	void Graphics::ReleaseConstantBuffer(ConstantBuffer& cb)
+	{
+		if (cb.IsValid()) _ReleaseConstantBuffer(cb);
+	}
+	void Graphics::UpdateConstantBuffer(void* data, ui32 size, ConstantBuffer& cb, CommandList cmd)
+	{
+		SVAssertValidation(cb);
+		_UpdateConstantBuffer(data, size, cb, cmd);
+	}
+	void Graphics::BindConstantBuffer(ui32 slot, SV_GFX_SHADER_TYPE type, ConstantBuffer& cb, CommandList cmd)
+	{
+		SV_ASSERT(slot < SV_GFX_CONSTANT_BUFFER_COUNT);
+		SVAssertValidation(cb);
+		_BindConstantBuffer(slot, type, cb, cmd);
+	}
+	void Graphics::BindConstantBuffers(ui32 slot, SV_GFX_SHADER_TYPE type, ui32 count, ConstantBuffer** cbs, CommandList cmd)
+	{
+		_BindConstantBuffers(slot, type, count, cbs, cmd);
+	}
+	void Graphics::UnbindConstantBuffer(ui32 slot, SV_GFX_SHADER_TYPE type, CommandList cmd)
+	{
+		_UnbindConstantBuffer(slot, type, cmd);
+	}
+	void Graphics::UnbindConstantBuffers(SV_GFX_SHADER_TYPE type, CommandList cmd)
+	{
+		_UnbindConstantBuffers(type, cmd);
+	}
+	void Graphics::UnbindConstantBuffers(CommandList cmd)
+	{
+		_UnbindConstantBuffers(cmd);
+	}
 
-	return Create(data, width, height, m_Format, m_Usage, CPUWriteAccess, CPUReadAccess, device);
-}
-void SV::_internal::Texture_internal::Update(void* data, ui32 size, CommandList& cmd)
-{
-	_Update(data, size, cmd);
-}
-void SV::_internal::Texture_internal::Bind(SV_GFX_SHADER_TYPE type, ui32 slot, CommandList& cmd)
-{
-	_Bind(type, slot, cmd);
-}
-void SV::_internal::Texture_internal::Unbind(SV_GFX_SHADER_TYPE type, ui32 slot, CommandList& cmd)
-{
-	_Unbind(type, slot, cmd);
-}
-// SAMPLER
-bool SV::_internal::Sampler_internal::Create(SV_GFX_TEXTURE_ADDRESS_MODE addressMode, SV_GFX_TEXTURE_FILTER filter, Graphics& device)
-{
-	return _Create(addressMode, filter, device);
-}
-void SV::_internal::Sampler_internal::Release()
-{
-	_Release();
-}
-void SV::_internal::Sampler_internal::Bind(SV_GFX_SHADER_TYPE type, ui32 slot, CommandList& cmd)
-{
-	_Bind(type, slot, cmd);
-}
-void SV::_internal::Sampler_internal::Unbind(SV_GFX_SHADER_TYPE type, ui32 slot, CommandList& cmd)
-{
-	_Unbind(type, slot, cmd);
-}
+	// FRAME BUFFER
+	bool Graphics::CreateFrameBuffer(ui32 width, ui32 height, SV_GFX_FORMAT format, bool textureUsage, FrameBuffer& fb)
+	{
+		if (fb.IsValid()) ReleaseFrameBuffer(fb);
+		else fb.Set(_AllocateFrameBuffer());
 
-//BLEND STATE
-void SV::_internal::BlendState_internal::SetIndependentRenderTarget(bool enable)
-{
-	m_IndependentRenderTarget = enable;
-}
-void SV::_internal::BlendState_internal::EnableBlending(ui8 renderTarget)
-{
-	m_BlendDesc[renderTarget].enabled = true;
-}
-void SV::_internal::BlendState_internal::DisableBlending(ui8 renderTarget)
-{
-	m_BlendDesc[renderTarget].enabled = false;
-}
-void SV::_internal::BlendState_internal::SetRenderTargetOperation(SV_GFX_BLEND src, SV_GFX_BLEND srcAlpha, SV_GFX_BLEND dest, SV_GFX_BLEND destAlpha, SV_GFX_BLEND_OP op, SV_GFX_BLEND_OP opAlpha, ui8 renderTarget)
-{
-	m_BlendDesc[renderTarget].src = src;
-	m_BlendDesc[renderTarget].srcAlpha = srcAlpha;
-	m_BlendDesc[renderTarget].dest = dest;
-	m_BlendDesc[renderTarget].destAlpha = destAlpha;
-	m_BlendDesc[renderTarget].op = op;
-	m_BlendDesc[renderTarget].opAlpha = opAlpha;
-}
-void SV::_internal::BlendState_internal::SetRenderTargetOperation(SV_GFX_BLEND src, SV_GFX_BLEND dest, SV_GFX_BLEND_OP op, ui8 renderTarget)
-{
-	SetRenderTargetOperation(src, src, dest, dest, op, op, renderTarget);
-}
-void SV::_internal::BlendState_internal::SetWriteMask(ui8 writeMask, ui8 renderTarget)
-{
-	m_BlendDesc[renderTarget].writeMask = writeMask;
-}
-bool SV::_internal::BlendState_internal::Create(SV::Graphics& graphics)
-{
-	return _Create(graphics);
-}
-void SV::_internal::BlendState_internal::Release()
-{
-	_Release();
-}
-void SV::_internal::BlendState_internal::Bind(ui32 sampleMask, const float* blendFactors, CommandList& cmd)
-{
-	_Bind(sampleMask, blendFactors, cmd);
-}
-void SV::_internal::BlendState_internal::Bind(ui32 sampleMask, CommandList& cmd)
-{
-	Bind(sampleMask, nullptr, cmd);
-}
-void SV::_internal::BlendState_internal::Bind(const float* blendFactors, CommandList& cmd)
-{
-	Bind(0xffffffff, blendFactors, cmd);
-}
-void SV::_internal::BlendState_internal::Bind(CommandList& cmd)
-{
-	Bind(0xffffffff, nullptr, cmd);
-}
-void SV::_internal::BlendState_internal::Unbind(CommandList& cmd)
-{
-	_Unbind(cmd);
+		fb->m_Width = width;
+		fb->m_Height = height;
+		fb->m_Format = format;
+		fb->m_TextureUsage = textureUsage;
+
+		return _CreateFrameBuffer(fb);
+	}
+	void Graphics::ReleaseFrameBuffer(FrameBuffer& fb)
+	{
+		if(fb.IsValid()) _ReleaseFrameBuffer(fb);
+	}
+	bool Graphics::ResizeFrameBuffer(ui32 width, ui32 height, FrameBuffer& fb)
+	{
+		SVAssertValidation(fb);
+		return CreateFrameBuffer(width, height, fb->m_Format, fb->m_TextureUsage, fb);
+	}
+	void Graphics::ClearFrameBuffer(SV::Color4f color, FrameBuffer& fb, CommandList cmd)
+	{
+		SVAssertValidation(fb);
+		_ClearFrameBuffer(color, fb, cmd);
+	}
+	void Graphics::BindFrameBuffer(FrameBuffer& fb, CommandList cmd)
+	{
+		SVAssertValidation(fb);
+		_BindFrameBuffer(fb, cmd);
+	}
+	void Graphics::BindFrameBuffers(ui32 count, FrameBuffer** fbs, CommandList cmd)
+	{
+		SV_ASSERT(count <= SV_GFX_RENDER_TARGET_VIEW_COUNT);
+		_BindFrameBuffers(count, fbs, cmd);
+	}
+	void Graphics::BindFrameBufferAsTexture(ui32 slot, SV_GFX_SHADER_TYPE type, FrameBuffer& fb, CommandList cmd)
+	{
+		SVAssertValidation(fb);
+		SV_ASSERT(fb->m_TextureUsage);
+		_BindFrameBufferAsTexture(slot, type, fb, cmd);
+	}
+	void Graphics::UnbindFrameBuffers(CommandList cmd)
+	{
+		_UnbindFrameBuffers(cmd);
+	}
+
+	// SHADER
+	bool Graphics::CreateShader(SV_GFX_SHADER_TYPE type, const char* filePath, Shader& s)
+	{
+		if (s.IsValid()) ReleaseShader(s);
+		else s.Set(_AllocateShader());
+
+		s->m_ShaderType = type;
+
+		return _CreateShader(filePath, s);
+	}
+	void Graphics::ReleaseShader(Shader& s)
+	{
+		if (s.IsValid()) _ReleaseShader(s);
+	}
+	void Graphics::BindShader(Shader& s, CommandList cmd)
+	{
+		SVAssertValidation(s);
+		_BindShader(s, cmd);
+	}
+	void Graphics::UnbindShader(SV_GFX_SHADER_TYPE type, CommandList cmd)
+	{
+		_UnbindShader(type, cmd);
+	}
+
+	// INPUT LAYOUT
+	bool Graphics::CreateInputLayout(const SV_GFX_INPUT_ELEMENT_DESC* desc, ui32 count, const Shader& vs, InputLayout& il)
+	{
+		if (il.IsValid()) ReleaseInputLayout(il);
+		else il.Set(_AllocateInputLayout());
+
+		return _CreateInputLayout(desc, count, vs, il);
+	}
+	void Graphics::ReleaseInputLayout(InputLayout& il)
+	{
+		if (il.IsValid()) _ReleaseInputLayout(il);
+	}
+	void Graphics::BindInputLayout(InputLayout& il, CommandList cmd)
+	{
+		SVAssertValidation(il);
+		_BindInputLayout(il, cmd);
+	}
+	void Graphics::UnbindInputLayout(CommandList cmd)
+	{
+		_UnbindInputLayout(cmd);
+	}
+
+	// TEXTURE
+	bool Graphics::CreateTexture(void* data, ui32 width, ui32 height, SV_GFX_FORMAT format, SV_GFX_USAGE usage, SV_GFX_CPU_ACCESS cpuAccess, Texture& t)
+	{
+		if (t.IsValid()) ReleaseTexture(t);
+		else t.Set(_AllocateTexture());
+
+		t->m_Width = width;
+		t->m_Height = height;
+		t->m_Format = format;
+		t->m_Usage = usage;
+		t->m_CPUAccess = cpuAccess;
+
+		return _CreateTexture(data, t);
+	}
+	void Graphics::ReleaseTexture(Texture& t)
+	{
+		if (t.IsValid()) _ReleaseTexture(t);
+	}
+	bool Graphics::ResizeTexture(void* data, ui32 width, ui32 height, Texture& t)
+	{
+		SVAssertValidation(t);
+		return CreateTexture(data, width, height, t->m_Format, t->m_Usage, t->m_CPUAccess, t);
+	}
+	void Graphics::UpdateTexture(void* data, ui32 size, Texture& t, CommandList cmd)
+	{
+		SVAssertValidation(t);
+		_UpdateTexture(data, size, t, cmd);
+	}
+	void Graphics::BindTexture(ui32 slot, SV_GFX_SHADER_TYPE type, Texture& t, CommandList cmd)
+	{
+		SVAssertValidation(t);
+		_BindTexture(slot, type, t, cmd);
+	}
+	void Graphics::BindTextures(ui32 slot, SV_GFX_SHADER_TYPE type, ui32 count, Texture** ts, CommandList cmd)
+	{
+		_BindTextures(slot, type, count, ts, cmd);
+	}
+	void Graphics::UnbindTexture(ui32 slot, SV_GFX_SHADER_TYPE type, CommandList cmd)
+	{
+		_UnbindTexture(slot, type, cmd);
+	}
+	void Graphics::UnbindTextures(SV_GFX_SHADER_TYPE type, CommandList cmd)
+	{
+		_UnbindTextures(type, cmd);
+	}
+	void Graphics::UnbindTextures(CommandList cmd)
+	{
+		_UnbindTextures(cmd);
+	}
+
+	// SAMPLER
+	bool Graphics::CreateSampler(SV_GFX_TEXTURE_ADDRESS_MODE addressMode, SV_GFX_TEXTURE_FILTER filter, Sampler& s)
+	{
+		if (s.IsValid()) ReleaseSampler(s);
+		else s.Set(_AllocateSampler());
+
+		return _CreateSampler(addressMode, filter, s);
+	}
+	void Graphics::ReleaseSampler(Sampler& s)
+	{
+		if (s.IsValid()) _ReleaseSampler(s);
+	}
+	void Graphics::BindSampler(ui32 slot, SV_GFX_SHADER_TYPE type, Sampler& s, CommandList cmd)
+	{
+		SVAssertValidation(s);
+		_BindSampler(slot, type, s, cmd);
+	}
+	void Graphics::BindSamplers(ui32 slot, SV_GFX_SHADER_TYPE type, ui32 count, Sampler** ss, CommandList cmd)
+	{
+		_BindSamplers(slot, type, count, ss, cmd);
+	}
+	void Graphics::UnbindSampler(ui32 slot, SV_GFX_SHADER_TYPE type, CommandList cmd)
+	{
+		_UnbindSampler(slot, type, cmd);
+	}
+	void Graphics::UnbindSamplers(SV_GFX_SHADER_TYPE type, CommandList cmd)
+	{
+		_UnbindSamplers(type, cmd);
+	}
+	void Graphics::UnbindSamplers(CommandList cmd)
+	{
+		_UnbindSamplers(cmd);
+	}
+
+	// BLEND STATE
+	bool Graphics::CreateBlendState(const SV_GFX_BLEND_STATE_DESC* desc, BlendState& bs)
+	{
+		if (bs.IsValid()) ReleaseBlendState(bs);
+		else bs.Set(_AllocateBlendState());
+
+		return _CreateBlendState(desc, bs);
+	}
+	void Graphics::ReleaseBlendState(BlendState& bs)
+	{
+		if (bs.IsValid()) _ReleaseBlendState(bs);
+	}
+	void Graphics::BindBlendState(ui32 sampleMask, const float* blendFactors, BlendState& bs, CommandList cmd)
+	{
+		SVAssertValidation(bs);
+		_BindBlendState(sampleMask, blendFactors, bs, cmd);
+	}
+	void Graphics::BindBlendState(ui32 sampleMask, BlendState& bs, CommandList cmd)
+	{
+		BindBlendState(sampleMask, nullptr, bs, cmd);
+	}
+	void Graphics::BindBlendState(const float* blendFactors, BlendState& bs, CommandList cmd)
+	{
+		BindBlendState(0xffffffff, blendFactors, bs, cmd);
+	}
+	void Graphics::BindBlendState(BlendState& bs, CommandList cmd)
+	{
+		BindBlendState(0xffffffff, nullptr, bs, cmd);
+	}
+	void Graphics::UnbindBlendState(CommandList cmd)
+	{
+		_UnbindBlendState(cmd);
+	}
+
 }

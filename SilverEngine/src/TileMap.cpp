@@ -76,63 +76,66 @@ namespace SV {
 		m_Tiles[x + y * m_Width] = tile;
 	}
 
-	void TileMap::Bind(XMMATRIX matrix, CommandList& cmd)
+	void TileMap::Bind(XMMATRIX matrix, Graphics& gfx, CommandList cmd)
 	{
-		cmd.GetDevice().SetTopology(SV_GFX_TOPOLOGY_TRIANGLES, cmd);
+		gfx.SetTopology(SV_GFX_TOPOLOGY_TRIANGLES, cmd);
 
 		if (m_Modified) {
-			if (!CreateBuffers(cmd.GetDevice())) return;
+			if (!CreateBuffers(gfx)) return;
 		}
 
 		// Bind textures
 		for (ui32 i = 0; i < MAX_TEXTURES; ++i) {
 			TextureAtlas* texture = m_Textures[i];
 			if (texture == nullptr) {
-				s_NullSampler->Bind(SV_GFX_SHADER_TYPE_PIXEL, i, cmd);
+				gfx.BindSampler(i, SV_GFX_SHADER_TYPE_PIXEL, s_NullSampler, cmd);
 			}
-			else texture->Bind(SV_GFX_SHADER_TYPE_PIXEL, i, cmd);
+			else {
+				gfx.BindTexture(i, SV_GFX_SHADER_TYPE_PIXEL, texture->GetTexture(), cmd);
+				gfx.BindSampler(i, SV_GFX_SHADER_TYPE_PIXEL, texture->GetSampler(), cmd);
+			}
 		}
 
 		// Bind buffers
-		m_VertexBuffer->Bind(0u, sizeof(Vertex), 0u, cmd);
-		m_IndexBuffer->Bind(SV_GFX_FORMAT_R32_UINT, 0u, cmd);
-		m_ConstantBuffer->Bind(0u, SV_GFX_SHADER_TYPE_VERTEX, cmd);
+		gfx.BindVertexBuffer(0u, sizeof(Vertex), 0u, m_VertexBuffer, cmd);
+		gfx.BindIndexBuffer(SV_GFX_FORMAT_R32_UINT, 0u, m_IndexBuffer, cmd);
+		gfx.BindConstantBuffer(0u, SV_GFX_SHADER_TYPE_VERTEX, m_ConstantBuffer, cmd);
 
-		m_ConstantBuffer->Update(&matrix, sizeof(XMMATRIX), cmd);
+		gfx.UpdateConstantBuffer(&matrix, sizeof(XMMATRIX), m_ConstantBuffer, cmd);
 	}
-	void TileMap::BindShaders(CommandList& cmd)
+	void TileMap::BindShaders(Graphics& gfx, CommandList cmd)
 	{
-		s_VertexShader->Bind(cmd);
-		s_PixelShader->Bind(cmd);
-		s_InputLayout->Bind(cmd);
+		gfx.BindShader(s_VertexShader, cmd);
+		gfx.BindShader(s_PixelShader, cmd);
+		gfx.BindInputLayout(s_InputLayout, cmd);
 	}
-	void TileMap::Draw(CommandList& cmd)
+	void TileMap::Draw(Graphics& gfx, CommandList cmd)
 	{
-		cmd.GetDevice().DrawIndexed(m_IndexCount, 0u, 0u, cmd);
+		gfx.DrawIndexed(m_IndexCount, 0u, 0u, cmd);
 	}
-	void TileMap::Unbind(CommandList& cmd)
+	void TileMap::Unbind(Graphics& gfx, CommandList cmd)
 	{
 		if (m_Modified) return;
 
 		// Unbind textures
 		for (ui32 i = 0; i < MAX_TEXTURES; ++i) {
 			TextureAtlas* texture = m_Textures[i];
-			if (texture == nullptr) {
-				s_NullSampler->Unbind(SV_GFX_SHADER_TYPE_PIXEL, i, cmd);
+			if (texture) {
+				gfx.UnbindTexture(i, SV_GFX_SHADER_TYPE_PIXEL, cmd);
 			}
-			else texture->Unbind(SV_GFX_SHADER_TYPE_PIXEL, i, cmd);
+			gfx.UnbindSampler(i, SV_GFX_SHADER_TYPE_PIXEL, cmd);
 		}
 
 		// Unbind buffers
-		m_VertexBuffer->Unbind(cmd);
-		m_IndexBuffer->Unbind(cmd);
-		m_ConstantBuffer->Unbind(SV_GFX_SHADER_TYPE_VERTEX, cmd);
+		gfx.UnbindVertexBuffer(0u, cmd);
+		gfx.UnbindIndexBuffer(cmd);
+		gfx.UnbindConstantBuffer(0u, SV_GFX_SHADER_TYPE_VERTEX, cmd);
 	}
-	void TileMap::UnbindShaders(CommandList& cmd)
+	void TileMap::UnbindShaders(Graphics& gfx, CommandList cmd)
 	{
-		s_VertexShader->Unbind(cmd);
-		s_PixelShader->Unbind(cmd);
-		s_InputLayout->Unbind(cmd);
+		gfx.UnbindShader(SV_GFX_SHADER_TYPE_VERTEX, cmd);
+		gfx.UnbindShader(SV_GFX_SHADER_TYPE_PIXEL, cmd);
+		gfx.UnbindInputLayout(cmd);
 	}
 
 	void TileMap::Allocate(ui32 width, ui32 height)
@@ -153,14 +156,8 @@ namespace SV {
 		}
 	}
 
-	bool TileMap::CreateBuffers(Graphics& graphics)
+	bool TileMap::CreateBuffers(Graphics& gfx)
 	{
-		if (m_VertexBuffer.IsValid()) m_VertexBuffer->Release();
-		if (m_IndexBuffer.IsValid()) m_IndexBuffer->Release();
-
-		graphics.ValidateVertexBuffer(&m_VertexBuffer);
-		graphics.ValidateIndexBuffer(&m_IndexBuffer);
-
 		ui32 tileCount = m_Width * m_Height;
 
 		std::vector<Vertex> vertexData;
@@ -210,12 +207,11 @@ namespace SV {
 		if (m_IndexCount == 0) return false;
 		
 		// Create Buffers
-		if(!m_VertexBuffer->Create(vertexData.size() * sizeof(Vertex), SV_GFX_USAGE_DEFAULT, false, false, &vertexData[0], graphics)) return false;
-		if(!m_IndexBuffer->Create(indexData.size() * sizeof(ui32), SV_GFX_USAGE_STATIC, false, false, &indexData[0], graphics)) return false;
+		if(!gfx.CreateVertexBuffer(vertexData.size() * sizeof(Vertex), SV_GFX_USAGE_DEFAULT, SV_GFX_CPU_ACCESS_NONE, &vertexData[0], m_VertexBuffer)) return false;
+		if(!gfx.CreateIndexBuffer(indexData.size() * sizeof(ui32), SV_GFX_USAGE_STATIC, SV_GFX_CPU_ACCESS_NONE, &indexData[0], m_IndexBuffer)) return false;
 
 		if (!m_ConstantBuffer.IsValid()) {
-			graphics.ValidateConstantBuffer(&m_ConstantBuffer);
-			if (!m_ConstantBuffer->Create(sizeof(XMMATRIX), SV_GFX_USAGE_DEFAULT, false, false, nullptr, graphics)) return false;
+			if (!gfx.CreateConstantBuffer(sizeof(XMMATRIX), SV_GFX_USAGE_DEFAULT, SV_GFX_CPU_ACCESS_NONE, nullptr, m_ConstantBuffer)) return false;
 		}
 
 		m_Modified = false;
@@ -223,23 +219,18 @@ namespace SV {
 		return true;
 	}
 
-	bool TileMap::CreateShaders(Graphics& graphics)
+	bool TileMap::CreateShaders(Graphics& gfx)
 	{
 		std::lock_guard<std::mutex> lock(s_CreateMutex);
 
-		graphics.ValidateShader(&s_VertexShader);
-		graphics.ValidateShader(&s_PixelShader);
-		graphics.ValidateInputLayout(&s_InputLayout);
-		graphics.ValidateSampler(&s_NullSampler);
-
 		// Create static Shaders
 		{
-			if (!s_VertexShader->Create(SV_GFX_SHADER_TYPE_VERTEX, "shaders/TileMapVertex.cso", graphics)) {
+			if (!gfx.CreateShader(SV_GFX_SHADER_TYPE_VERTEX, "shaders/TileMapVertex.cso", s_VertexShader)) {
 				SV::LogE("TileMap VertexShader not found");
 				return false;
 			}
 
-			if (!s_PixelShader->Create(SV_GFX_SHADER_TYPE_PIXEL, "shaders/TileMapPixel.cso", graphics)) {
+			if (!gfx.CreateShader(SV_GFX_SHADER_TYPE_PIXEL, "shaders/TileMapPixel.cso", s_PixelShader)) {
 				SV::LogE("TileMap PixelShader not found");
 				return false;
 			}
@@ -252,14 +243,14 @@ namespace SV {
 				{"TexCoord", 0u, SV_GFX_FORMAT_R32G32_FLOAT, 0u, 2 * sizeof(float), false, 0u},
 				{"TextureID", 0u, SV_GFX_FORMAT_R32_UINT, 0u, 4 * sizeof(float), false, 0u}
 			};
-			if (!s_InputLayout->Create(desc, 3, s_VertexShader, graphics)) {
+			if (!gfx.CreateInputLayout(desc, 3, s_VertexShader, s_InputLayout)) {
 				SV::LogE("Can't create TileMap InputLayout");
 				return false;
 			}
 		}
 
 		// Create Null Sampler
-		s_NullSampler->Create(SV_GFX_TEXTURE_ADDRESS_WRAP, SV_GFX_TEXTURE_FILTER_MIN_MAG_MIP_LINEAR, graphics);
+		gfx.CreateSampler(SV_GFX_TEXTURE_ADDRESS_WRAP, SV_GFX_TEXTURE_FILTER_MIN_MAG_MIP_LINEAR, s_NullSampler);
 
 		return true;
 	}

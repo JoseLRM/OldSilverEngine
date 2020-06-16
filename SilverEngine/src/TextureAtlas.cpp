@@ -8,14 +8,10 @@ namespace SV {
 	TextureAtlas::TextureAtlas()
 	{}
 	TextureAtlas::~TextureAtlas()
-	{
-		Release();
-	}
+	{}
 
-	bool TextureAtlas::Create(const char* filePath, SV::Graphics& device)
+	bool TextureAtlas::Create(const char* filePath, SV::Graphics& gfx)
 	{
-		device.ValidateTexture(&m_Texture);
-
 		SV_GFX_FORMAT format;
 		ui32 width, height;
 		void* data;
@@ -26,7 +22,7 @@ namespace SV {
 			return false;
 		}
 
-		if (!m_Texture->Create(data, width, height, format, SV_GFX_USAGE_STATIC, false, false, device))
+		if (!gfx.CreateTexture(data, width, height, format, SV_GFX_USAGE_STATIC, SV_GFX_CPU_ACCESS_NONE, m_Texture))
 			return false;
 
 		m_HasTexture = true;
@@ -36,43 +32,19 @@ namespace SV {
 		return true;
 	}
 
-	void TextureAtlas::Release()
+	void TextureAtlas::Release(Graphics& gfx)
 	{
-		if (m_Texture.IsValid()) m_Texture->Release();
-		if (m_Sampler.IsValid()) m_Sampler->Release();
+		gfx.ReleaseTexture(m_Texture);
+		gfx.ReleaseSampler(m_Sampler);
 	}
 
-	bool TextureAtlas::SetSamplerState(SV_GFX_TEXTURE_ADDRESS_MODE addressMode, SV_GFX_TEXTURE_FILTER filter, SV::Graphics& device)
+	bool TextureAtlas::SetSamplerState(SV_GFX_TEXTURE_ADDRESS_MODE addressMode, SV_GFX_TEXTURE_FILTER filter, SV::Graphics& gfx)
 	{
-		device.ValidateSampler(&m_Sampler);
-
-		if (!m_Sampler->Create(addressMode, filter, device))
+		if (!gfx.CreateSampler(addressMode, filter, m_Sampler))
 			return false;
 
 		m_HasSampler = true;
 
-		return true;
-	}
-
-	void TextureAtlas::Bind(SV_GFX_SHADER_TYPE type, ui32 slot, SV::CommandList& cmd)
-	{
-		if (!CheckPrimitives(cmd.GetDevice())) return;
-
-		m_Texture->Bind(type, slot, cmd);
-		m_Sampler->Bind(type, slot, cmd);
-	}
-	void TextureAtlas::Unbind(SV_GFX_SHADER_TYPE type, ui32 slot, SV::CommandList& cmd)
-	{
-		if (!CheckPrimitives(cmd.GetDevice())) return;
-
-		m_Texture->Unbind(type, slot, cmd);
-		m_Sampler->Unbind(type, slot, cmd);
-	}
-
-	bool TextureAtlas::CheckPrimitives(SV::Graphics& device)
-	{
-		if (!m_HasTexture) return false;
-		if (!m_HasSampler) SetSamplerState(SV_GFX_TEXTURE_ADDRESS_WRAP, SV_GFX_TEXTURE_FILTER_MIN_MAG_MIP_LINEAR, device);
 		return true;
 	}
 

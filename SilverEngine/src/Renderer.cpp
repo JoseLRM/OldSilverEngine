@@ -15,7 +15,7 @@ namespace SV {
 
 	bool Renderer::Initialize(SV_RENDERER_INITIALIZATION_DESC& desc)
 	{
-		SV::Graphics& device = GetEngine().GetGraphics();
+		SV::Graphics& gfx = GetEngine().GetGraphics();
 		SV::Window& window = GetEngine().GetWindow();
 
 		m_Resolution = SV::uvec2(desc.resolutionWidth, desc.resolutionHeight);
@@ -25,24 +25,22 @@ namespace SV {
 			UpdateResolution();
 		}
 
-		if (!m_PostProcess.Initialize(device)) {
+		if (!m_PostProcess.Initialize(gfx)) {
 			SV::LogE("Can't initialize Post Process");
 			return false;
 		}
 
-		if (!m_Renderer2D.Initialize(device)) {
+		if (!m_Renderer2D.Initialize(gfx)) {
 			SV::LogE("Can't initialize Renderer2D");
 			return false;
 		}
 
-		device.ValidateFrameBuffer(&m_Offscreen);
-
-		if (!m_Offscreen->Create(m_Resolution.x, m_Resolution.y, SV_GFX_FORMAT_R8G8B8A8_UNORM, true, device)) {
+		if (!gfx.CreateFrameBuffer(m_Resolution.x, m_Resolution.y, SV_GFX_FORMAT_R8G8B8A8_UNORM, true, m_Offscreen)) {
 			SV::LogE("Can't create offscreen framebuffer");
 			return false;
 		}
 
-		if (!TileMap::CreateShaders(device)) {
+		if (!TileMap::CreateShaders(gfx)) {
 			SV::LogE("Can't create TileMap shaders");
 			return false;
 		}
@@ -52,12 +50,14 @@ namespace SV {
 
 	bool Renderer::Close()
 	{
-		if (!m_Renderer2D.Close()) {
+		SV::Graphics& gfx = GetGraphics();
+
+		if (!m_Renderer2D.Close(gfx)) {
 			SV::LogE("Can't close Renderer2D");
 			return false;
 		}
 
-		if (!m_PostProcess.Close()) {
+		if (!m_PostProcess.Close(gfx)) {
 			SV::LogE("Can't close Post Process");
 			return false;
 		}
@@ -86,36 +86,36 @@ namespace SV {
 		m_RenderQueue2D.AddLayer(m_DefaultRenderLayer);
 		m_RenderQueue2D.End();
 
-		Graphics& device = GetEngine().GetGraphics();
-		CommandList cmd = device.BeginCommandList();
+		Graphics& gfx = GetEngine().GetGraphics();
+		CommandList cmd = gfx.BeginCommandList();
 
 		// Clear buffers
-		m_Offscreen->Clear(SVColor4f::BLACK, cmd);
+		gfx.ClearFrameBuffer(SVColor4f::BLACK, m_Offscreen, cmd);
 
 		// Offscreen binding
-		m_Offscreen->Bind(0u, cmd);
-		device.SetViewport(0u, 0.f, 0.f, m_Offscreen->GetWidth(), m_Offscreen->GetHeight(), 0.f, 1.f, cmd);
+		gfx.BindFrameBuffer(m_Offscreen, cmd);
+		gfx.SetViewport(0u, 0.f, 0.f, m_Offscreen->GetWidth(), m_Offscreen->GetHeight(), 0.f, 1.f, cmd);
 
 		// Draw TileMaps
 		if (m_TileMaps.size() > 0) {
-			TileMap::BindShaders(cmd);
+			TileMap::BindShaders(gfx, cmd);
 			for (ui32 i = 0; i < m_TileMaps.size(); ++i) {
 				TileMap& tileMap = *m_TileMaps[i].first;
 				XMMATRIX matrix = m_TileMaps[i].second;
 				matrix = XMMatrixTranspose(matrix * m_ViewProjectionMatrix);
 				
-				tileMap.Bind(matrix, cmd);
-				tileMap.Draw(cmd);
+				tileMap.Bind(matrix, gfx, cmd);
+				tileMap.Draw(gfx, cmd);
 			}
-			m_TileMaps.back().first->Unbind(cmd);
-			TileMap::UnbindShaders(cmd);
+			m_TileMaps.back().first->Unbind(gfx, cmd);
+			TileMap::UnbindShaders(gfx, cmd);
 		}
 
 		// Draw 2D primitives
-		m_Renderer2D.DrawRenderQueue(m_RenderQueue2D, cmd);
+		m_Renderer2D.DrawRenderQueue(m_RenderQueue2D, gfx, cmd);
 
 		// Offscreen to backBuffer
-		m_PostProcess.DefaultPP(m_Offscreen, device.GetMainFrameBuffer(), cmd);
+		m_PostProcess.DefaultPP(m_Offscreen, gfx.GetMainFrameBuffer(), gfx, cmd);
 	}
 	void Renderer::EndFrame()
 	{
@@ -213,7 +213,7 @@ namespace SV {
 			}
 		}
 
-		if(m_Offscreen.IsValid()) m_Offscreen->Resize(m_Resolution.x, m_Resolution.y, GetEngine().GetGraphics());
+		if(m_Offscreen.IsValid()) GetGraphics().ResizeFrameBuffer(m_Resolution.x, m_Resolution.y, m_Offscreen);
 	}
 
 }

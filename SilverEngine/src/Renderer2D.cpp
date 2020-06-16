@@ -4,7 +4,7 @@
 
 namespace SV {
 
-	bool Renderer2D::Initialize(Graphics& device)
+	bool Renderer2D::Initialize(Graphics& graphics)
 	{
 		SV::vec2 vertices[] = {
 			{-0.5,  0.5f},
@@ -12,44 +12,23 @@ namespace SV {
 			{-0.5, -0.5f},
 			{ 0.5, -0.5f}
 		};
-		
-		device.ValidateVertexBuffer(&m_InstanceBuffer);
-		device.ValidateVertexBuffer(&m_VertexBuffer);
-		
-		device.ValidateShader(&m_QuadVertexShader);
-		device.ValidateShader(&m_QuadPixelShader);
-		device.ValidateInputLayout(&m_QuadInputLayout);
-		
-		device.ValidateShader(&m_SpriteVertexShader);
-		device.ValidateShader(&m_SpritePixelShader);
-		device.ValidateInputLayout(&m_SpriteInputLayout);
-		
-		device.ValidateShader(&m_EllipseVertexShader);
-		device.ValidateShader(&m_EllipsePixelShader);
 
-		device.ValidateShader(&m_PointVertexShader);
-		device.ValidateShader(&m_PointPixelShader);
-		device.ValidateInputLayout(&m_PointInputLayout);
-
-		device.ValidateBlendState(&m_TransparentBlendState);
-		device.ValidateBlendState(&m_OpaqueBlendState);
-
-		if (!m_InstanceBuffer->Create(SV_GFX_QUAD_BATCH_COUNT * sizeof(GPUSpriteInstance), SV_GFX_USAGE_DYNAMIC, true, false, nullptr, device)) {
+		if (!graphics.CreateVertexBuffer(SV_GFX_QUAD_BATCH_COUNT * sizeof(GPUSpriteInstance), SV_GFX_USAGE_DYNAMIC, SV_GFX_CPU_ACCESS_WRITE, nullptr, m_InstanceBuffer)) {
 			SV::LogE("Can't create Quad Instance buffer");
 			return false;
 		}
 
-		if (!m_VertexBuffer->Create(4 * sizeof(SV::vec2), SV_GFX_USAGE_STATIC, false, false, vertices, device)) {
+		if (!graphics.CreateVertexBuffer(4 * sizeof(SV::vec2), SV_GFX_USAGE_STATIC, SV_GFX_CPU_ACCESS_NONE, vertices, m_VertexBuffer)) {
 			SV::LogE("Can't create Quad VertexBuffer");
 			return false;
 		}
 
 		// QUAD RENDERING
-		if (!m_QuadVertexShader->Create(SV_GFX_SHADER_TYPE_VERTEX, "shaders/QuadVertex.cso", device)) {
+		if (!graphics.CreateShader(SV_GFX_SHADER_TYPE_VERTEX, "shaders/QuadVertex.cso", m_QuadVertexShader)) {
 			SV::LogE("Quad VertexShader not found");
 			return false;
 		}
-		if (!m_QuadPixelShader->Create(SV_GFX_SHADER_TYPE_PIXEL, "shaders/QuadPixel.cso", device)) {
+		if (!graphics.CreateShader(SV_GFX_SHADER_TYPE_PIXEL, "shaders/QuadPixel.cso", m_QuadPixelShader)) {
 			SV::LogE("Quad PixelShader not found");
 			return false;
 		}
@@ -63,18 +42,18 @@ namespace SV {
 				{"TM", 3u, SV_GFX_FORMAT_R32G32B32A32_FLOAT, 1u, 12u * sizeof(float), true, 1u},
 				{"Color", 0u, SV_GFX_FORMAT_R8G8B8A8_UNORM, 1u, 16u * sizeof(float), true, 1u}
 			};
-			if (!m_QuadInputLayout->Create(inputs, 6, m_QuadVertexShader, device)) {
+			if (!graphics.CreateInputLayout(inputs, 6, m_QuadVertexShader, m_QuadInputLayout)) {
 				SV::LogE("Can't create Quad InputLayout");
 				return false;
 			}
 		}
 
 		// SPRITE RENDERING
-		if (!m_SpriteVertexShader->Create(SV_GFX_SHADER_TYPE_VERTEX, "shaders/SpriteVertex.cso", device)) {
+		if (!graphics.CreateShader(SV_GFX_SHADER_TYPE_VERTEX, "shaders/SpriteVertex.cso", m_SpriteVertexShader)) {
 			SV::LogE("Sprite VertexShader not found");
 			return false;
 		}
-		if (!m_SpritePixelShader->Create(SV_GFX_SHADER_TYPE_PIXEL, "shaders/SpritePixel.cso", device)) {
+		if (!graphics.CreateShader(SV_GFX_SHADER_TYPE_PIXEL, "shaders/SpritePixel.cso", m_SpritePixelShader)) {
 			SV::LogE("Sprite PixelShader not found");
 			return false;
 		}
@@ -89,28 +68,28 @@ namespace SV {
 				{"TexCoord", 0u, SV_GFX_FORMAT_R32G32B32A32_FLOAT, 1u, 16u * sizeof(float), true, 1u},
 				{"Color", 0u, SV_GFX_FORMAT_R8G8B8A8_UNORM, 1u, 20u * sizeof(float), true, 1u}
 			};
-			if (!m_SpriteInputLayout->Create(inputs, 7, m_SpriteVertexShader, device)) {
+			if (!graphics.CreateInputLayout(inputs, 7, m_SpriteVertexShader, m_SpriteInputLayout)) {
 				SV::LogE("Can't create Sprite InputLayout");
 				return false;
 			}
 		}
 
 		// ELLIPSE RENDERING
-		if (!m_EllipseVertexShader->Create(SV_GFX_SHADER_TYPE_VERTEX, "shaders/EllipseVertex.cso", device)) {
+		if (!graphics.CreateShader(SV_GFX_SHADER_TYPE_VERTEX, "shaders/EllipseVertex.cso", m_EllipseVertexShader)) {
 			SV::LogE("Ellipse VertexShader not found");
 			return false;
 		}
-		if (!m_EllipsePixelShader->Create(SV_GFX_SHADER_TYPE_PIXEL, "shaders/EllipsePixel.cso", device)) {
+		if (!graphics.CreateShader(SV_GFX_SHADER_TYPE_PIXEL, "shaders/EllipsePixel.cso", m_EllipsePixelShader)) {
 			SV::LogE("Ellipse PixelShader not found");
 			return false;
 		}
 
 		// POINT RENDERING
-		if (!m_PointVertexShader->Create(SV_GFX_SHADER_TYPE_VERTEX, "shaders/PointVertex.cso", device)) {
+		if (!graphics.CreateShader(SV_GFX_SHADER_TYPE_VERTEX, "shaders/PointVertex.cso", m_PointVertexShader)) {
 			SV::LogE("Point VertexShader not found");
 			return false;
 		}
-		if (!m_PointPixelShader->Create(SV_GFX_SHADER_TYPE_PIXEL, "shaders/PointPixel.cso", device)) {
+		if (!graphics.CreateShader(SV_GFX_SHADER_TYPE_PIXEL, "shaders/PointPixel.cso", m_PointPixelShader)) {
 			SV::LogE("Point PixelShader not found");
 			return false;
 		}
@@ -120,79 +99,89 @@ namespace SV {
 				{"Position", 0u, SV_GFX_FORMAT_R32G32_FLOAT, 0u, 0u * sizeof(float), true, 1u},
 				{"Color", 0u, SV_GFX_FORMAT_R8G8B8A8_UNORM, 0u, 2.f * sizeof(float), true, 1u}
 			};
-			if (!m_PointInputLayout->Create(inputs, 2, m_PointVertexShader, device)) {
+			if (!graphics.CreateInputLayout(inputs, 2, m_PointVertexShader, m_PointInputLayout)) {
 				SV::LogE("Can't create Point InputLayout");
 				return false;
 			}
 		}
 
-		// BLEND STATES
+		// BLEND STATE
+		{
+			SV_GFX_BLEND_STATE_DESC blendDesc;
+			blendDesc.independentRenderTarget = true;
+			blendDesc.renderTargetDesc[0].enabled = true;
+			blendDesc.renderTargetDesc[0].src = SV_GFX_BLEND_SRC_ALPHA;
+			blendDesc.renderTargetDesc[0].srcAlpha = SV_GFX_BLEND_ONE;
+			blendDesc.renderTargetDesc[0].dest = SV_GFX_BLEND_INV_SRC_ALPHA;
+			blendDesc.renderTargetDesc[0].destAlpha = SV_GFX_BLEND_ONE;
+			blendDesc.renderTargetDesc[0].op = SV_GFX_BLEND_OP_ADD;
+			blendDesc.renderTargetDesc[0].opAlpha = SV_GFX_BLEND_OP_ADD;
+			blendDesc.renderTargetDesc[0].writeMask = SV_GFX_COLOR_WRITE_ENABLE_ALL;
 
-		// Default
-		if (!m_OpaqueBlendState->Create(device)) {
-			SV::LogE("Can't Create 2D Opaque Blend State");
-			return false;
-		}
-
-		m_TransparentBlendState->SetIndependentRenderTarget(true);
-		m_TransparentBlendState->EnableBlending();
-		m_TransparentBlendState->SetRenderTargetOperation(SV_GFX_BLEND_SRC_ALPHA, SV_GFX_BLEND_ONE,
-			SV_GFX_BLEND_INV_SRC_ALPHA, SV_GFX_BLEND_ONE, SV_GFX_BLEND_OP_ADD, SV_GFX_BLEND_OP_ADD);
-		m_TransparentBlendState->SetWriteMask(SV_GFX_COLOR_WRITE_ENABLE_ALL);
-		if (!m_TransparentBlendState->Create(device)) {
-			SV::LogE("Can't Create 2D Transparent Blend State");
-			return false;
+			if (!graphics.CreateBlendState(&blendDesc, m_TransparentBlendState)) {
+				SV::LogE("Can't Create 2D Transparent Blend State");
+				return false;
+			}
 		}
 
 		return true;
 	}
 
-	void Renderer2D::DrawRenderQueue(RenderQueue2D& rq, CommandList& cmd)
+	void Renderer2D::DrawRenderQueue(RenderQueue2D& rq, Graphics& gfx, CommandList cmd)
 	{
 		for (ui32 i = 0; i < rq.m_pLayers.size(); ++i) {
 			RenderLayer& layer = *rq.m_pLayers[i];
-			DrawQuads(layer.quadInstances, layer.IsTransparent(), cmd);
-			DrawSprites(layer.spriteInstances, layer.IsTransparent(), cmd);
-			DrawEllipses(layer.ellipseInstances, layer.IsTransparent(), cmd);
-			DrawPoints(layer.pointInstances, layer.IsTransparent(), cmd);
-			DrawLines(layer.lineInstances, layer.IsTransparent(), cmd);
+			DrawQuads(layer.quadInstances, layer.IsTransparent(), gfx, cmd);
+			DrawSprites(layer.spriteInstances, layer.IsTransparent(), gfx, cmd);
+			DrawEllipses(layer.ellipseInstances, layer.IsTransparent(), gfx, cmd);
+			DrawPoints(layer.pointInstances, layer.IsTransparent(), gfx, cmd);
+			DrawLines(layer.lineInstances, layer.IsTransparent(), gfx, cmd);
 		}
 	}
 
-	void Renderer2D::DrawQuads(std::vector<QuadInstance>& instances, bool transparent, CommandList& cmd)
+	void Renderer2D::DrawQuads(std::vector<QuadInstance>& instances, bool transparent, Graphics& gfx, CommandList cmd)
 	{
-		DrawQuadsOrEllipses(instances, transparent, true, cmd);
+		DrawQuadsOrEllipses(instances, transparent, true, gfx, cmd);
 	}
-	void Renderer2D::DrawEllipses(std::vector<QuadInstance>& instances, bool transparent, CommandList& cmd)
+	void Renderer2D::DrawEllipses(std::vector<QuadInstance>& instances, bool transparent, Graphics& gfx, CommandList cmd)
 	{
-		DrawQuadsOrEllipses(instances, transparent, false, cmd);
-	}
-
-	void Renderer2D::DrawPoints(std::vector<PointInstance>& instances, bool transparent, CommandList& cmd)
-	{
-		DrawPointsOrLines(instances, transparent, true, cmd);
-	}
-	void Renderer2D::DrawLines(std::vector<PointInstance>& instances, bool transparent, CommandList& cmd)
-	{
-		DrawPointsOrLines(instances, transparent, false, cmd);
+		DrawQuadsOrEllipses(instances, transparent, false, gfx, cmd);
 	}
 
-	void Renderer2D::DrawSprites(std::vector<SpriteInstance>& instances, bool transparent, CommandList& cmd)
+	void Renderer2D::DrawPoints(std::vector<PointInstance>& instances, bool transparent, Graphics& gfx, CommandList cmd)
+	{
+		DrawPointsOrLines(instances, transparent, true, gfx, cmd);
+	}
+	void Renderer2D::DrawLines(std::vector<PointInstance>& instances, bool transparent, Graphics& gfx, CommandList cmd)
+	{
+		DrawPointsOrLines(instances, transparent, false, gfx, cmd);
+	}
+
+	void Renderer2D::DrawSprites(std::vector<SpriteInstance>& instances, bool transparent, Graphics& gfx, CommandList cmd)
 	{
 		ui32 count = ui32(instances.size());
 		if (count == 0) return;
 
-		Graphics& device = cmd.GetDevice();
+		gfx.SetTopology(SV_GFX_TOPOLOGY_TRIANGLESTRIP, cmd);
 
-		device.SetTopology(SV_GFX_TOPOLOGY_TRIANGLESTRIP, cmd);
+		BindBlendState(transparent, gfx, cmd);
 
-		BindBlendState(transparent, cmd);
+		gfx.BindShader(m_SpriteVertexShader, cmd);
+		gfx.BindShader(m_SpritePixelShader, cmd);
+		gfx.BindInputLayout(m_SpriteInputLayout, cmd);
 
-		m_SpriteVertexShader->Bind(cmd);
-		m_SpritePixelShader->Bind(cmd);
-		m_VertexBuffer->Bind(0u, sizeof(SV::vec2), 0u, cmd);
-		m_SpriteInputLayout->Bind(cmd);
-		m_InstanceBuffer->Bind(1u, sizeof(GPUSpriteInstance), 0u, cmd);
+		{
+			ui32 strides[] = {
+				sizeof(SV::vec2), sizeof(GPUSpriteInstance)
+			};
+			ui32 offsets[] = {
+				0u, 0u
+			};
+			VertexBuffer* vertexBuffers[] = {
+				&m_VertexBuffer, &m_InstanceBuffer
+			};
+			gfx.BindVertexBuffers(0u, 2u, strides, offsets, vertexBuffers, cmd);
+		}
 
 		for (ui32 i = 0; i < count;) {
 			ui32 batch = count - i;
@@ -206,7 +195,8 @@ namespace SV {
 				ui32 spriteID = instance.sprite.ID;
 				m_SpriteInstanceData[j - i] = { instance.tm, instance.sprite.pTextureAtlas->GetSpriteTexCoords(spriteID), instance.color };
 			}
-			m_InstanceBuffer->Update(m_SpriteInstanceData, batch * sizeof(GPUSpriteInstance), cmd);
+
+			gfx.UpdateVertexBuffer(m_SpriteInstanceData, batch * sizeof(GPUSpriteInstance), m_InstanceBuffer, cmd);
 
 			// Draw calls
 			ui32 j = 0;
@@ -222,9 +212,9 @@ namespace SV {
 					}
 				}
 
-				texAtlas->Bind(SV_GFX_SHADER_TYPE_PIXEL, 0u, cmd);
-				device.DrawInstanced(4, instancesCount, 0u, j, cmd);
-				texAtlas->Unbind(SV_GFX_SHADER_TYPE_PIXEL, 0u, cmd);
+				gfx.BindTexture(0u, SV_GFX_SHADER_TYPE_PIXEL, texAtlas->GetTexture(), cmd);
+				gfx.BindSampler(0u, SV_GFX_SHADER_TYPE_PIXEL, texAtlas->GetSampler(), cmd);
+				gfx.DrawInstanced(4, instancesCount, 0u, j, cmd);
 
 				j += instancesCount;
 			}
@@ -232,142 +222,143 @@ namespace SV {
 			i += batch;
 		}
 
-		m_InstanceBuffer->Unbind(cmd);
-		m_SpriteVertexShader->Unbind(cmd);
-		m_SpritePixelShader->Unbind(cmd);
-		m_VertexBuffer->Unbind(cmd);
-		m_SpriteInputLayout->Unbind(cmd);
+		gfx.UnbindTextures(cmd);
+		gfx.UnbindSamplers(cmd);
 
-		UnbindBlendState(transparent, cmd);
+		gfx.UnbindShader(SV_GFX_SHADER_TYPE_VERTEX, cmd);
+		gfx.UnbindShader(SV_GFX_SHADER_TYPE_PIXEL, cmd);
+		gfx.UnbindInputLayout(cmd);
+		gfx.UnbindVertexBuffers(cmd);
+
+		UnbindBlendState(transparent, gfx, cmd);
 	}
 
-	void Renderer2D::DrawQuadsOrEllipses(std::vector<QuadInstance>& instances, bool transparent, bool quad, CommandList& cmd)
+	void Renderer2D::DrawQuadsOrEllipses(std::vector<QuadInstance>& instances, bool transparent, bool quad, Graphics& gfx, CommandList cmd)
 	{
 		ui32 count = ui32(instances.size());
 		if (count == 0) return;
 
-		Graphics& device = cmd.GetDevice();
-
 		// Binding
-		device.SetTopology(SV_GFX_TOPOLOGY_TRIANGLESTRIP, cmd);
+		gfx.SetTopology(SV_GFX_TOPOLOGY_TRIANGLESTRIP, cmd);
 
-		BindBlendState(transparent, cmd);
+		BindBlendState(transparent, gfx, cmd);
 
 		if (quad) {
-			m_QuadVertexShader->Bind(cmd);
-			m_QuadPixelShader->Bind(cmd);
+			gfx.BindShader(m_QuadVertexShader, cmd);
+			gfx.BindShader(m_QuadPixelShader, cmd);
 		}
 		else {
-			m_EllipseVertexShader->Bind(cmd);
-			m_EllipsePixelShader->Bind(cmd);
+			gfx.BindShader(m_EllipseVertexShader, cmd);
+			gfx.BindShader(m_EllipsePixelShader, cmd);
 		}
 
-		m_VertexBuffer->Bind(0u, sizeof(SV::vec2), 0u, cmd);
-		m_QuadInputLayout->Bind(cmd);
-		m_InstanceBuffer->Bind(1u, sizeof(SV::QuadInstance), 0u, cmd);
+		gfx.BindInputLayout(m_QuadInputLayout, cmd);
+
+		{
+			ui32 strides[] = {
+				sizeof(SV::vec2), sizeof(SV::QuadInstance)
+			};
+			ui32 offsets[] = {
+				0u, 0u
+			};
+			VertexBuffer* vertexBuffers[] = {
+				&m_VertexBuffer, & m_InstanceBuffer
+			};
+
+			gfx.BindVertexBuffers(0u, 2u, strides, offsets, vertexBuffers, cmd);
+		}
 
 		// Draw
 		for (ui32 i = 0; i < count;) {
 			ui32 batch = count - i;
 			if (batch > SV_GFX_QUAD_BATCH_COUNT) batch = SV_GFX_QUAD_BATCH_COUNT;
 
-			m_InstanceBuffer->Update(instances.data() + i, batch * sizeof(QuadInstance), cmd);
-			device.DrawInstanced(4, batch, 0u, 0u, cmd);
+			gfx.UpdateVertexBuffer(instances.data() + i, batch * sizeof(QuadInstance), m_InstanceBuffer, cmd);
+			gfx.DrawInstanced(4, batch, 0u, 0u, cmd);
 
 			i += batch;
 		}
 
 		// Unbind
-		m_InstanceBuffer->Unbind(cmd);
-		m_VertexBuffer->Unbind(cmd);
-		m_QuadInputLayout->Unbind(cmd);
+		gfx.UnbindShader(SV_GFX_SHADER_TYPE_VERTEX, cmd);
+		gfx.UnbindShader(SV_GFX_SHADER_TYPE_PIXEL, cmd);
 
-		if (quad) {
-			m_QuadVertexShader->Unbind(cmd);
-			m_QuadPixelShader->Unbind(cmd);
-		}
-		else {
-			m_EllipseVertexShader->Unbind(cmd);
-			m_EllipsePixelShader->Unbind(cmd);
-		}
+		gfx.UnbindInputLayout(cmd);
+		gfx.UnbindVertexBuffers(cmd);
 
-		UnbindBlendState(transparent, cmd);
+		UnbindBlendState(transparent, gfx, cmd);
 	}
 
-	void Renderer2D::DrawPointsOrLines(std::vector<PointInstance>& instances, bool transparent, bool point, CommandList& cmd)
+	void Renderer2D::DrawPointsOrLines(std::vector<PointInstance>& instances, bool transparent, bool point, Graphics& gfx, CommandList cmd)
 	{
 		ui32 count = ui32(instances.size());
 		if (count == 0) return;
 
-		Graphics& device = cmd.GetDevice();
-
 		// Binding
-		if(point) device.SetTopology(SV_GFX_TOPOLOGY_POINTS, cmd);
-		else device.SetTopology(SV_GFX_TOPOLOGY_LINES, cmd);
+		if(point) gfx.SetTopology(SV_GFX_TOPOLOGY_POINTS, cmd);
+		else gfx.SetTopology(SV_GFX_TOPOLOGY_LINES, cmd);
 
-		BindBlendState(transparent, cmd);
+		BindBlendState(transparent, gfx, cmd);
 
-		m_PointVertexShader->Bind(cmd);
-		m_PointPixelShader->Bind(cmd);
+		gfx.BindShader(m_PointVertexShader, cmd);
+		gfx.BindShader(m_PointPixelShader, cmd);
 
-		m_PointInputLayout->Bind(cmd);
-		m_InstanceBuffer->Bind(0u, sizeof(SV::PointInstance), 0u, cmd);
+		gfx.BindInputLayout(m_PointInputLayout, cmd);
+		gfx.BindVertexBuffer(0u, sizeof(SV::PointInstance), 0u, m_InstanceBuffer, cmd);
 
 		// Draw
 		for (ui32 i = 0; i < count;) {
 			ui32 batch = count - i;
 			if (batch > SV_GFX_QUAD_BATCH_COUNT * 2u) batch = SV_GFX_QUAD_BATCH_COUNT * 2u;
 
-			m_InstanceBuffer->Update(instances.data() + i, batch * sizeof(PointInstance), cmd);
+			gfx.UpdateVertexBuffer(instances.data() + i, batch * sizeof(PointInstance), m_InstanceBuffer, cmd);
 			
-			if(point) device.DrawInstanced(1, batch, 0u, 0u, cmd);
-			else device.DrawInstanced(2, batch, 0u, 0u, cmd);
+			if(point) gfx.DrawInstanced(1, batch, 0u, 0u, cmd);
+			else gfx.DrawInstanced(2, batch, 0u, 0u, cmd);
 
 			i += batch;
 		}
 
 		// Unbind
-		m_InstanceBuffer->Unbind(cmd);
-		m_PointInputLayout->Unbind(cmd);
+		gfx.UnbindShader(SV_GFX_SHADER_TYPE_VERTEX, cmd);
+		gfx.UnbindShader(SV_GFX_SHADER_TYPE_PIXEL, cmd);
 
-		m_PointVertexShader->Unbind(cmd);
-		m_PointPixelShader->Unbind(cmd);
+		gfx.UnbindInputLayout(cmd);
+		gfx.UnbindVertexBuffer(0u, cmd);
 
-		UnbindBlendState(transparent, cmd);
+		UnbindBlendState(transparent, gfx, cmd);
 	}
 
-	void Renderer2D::BindBlendState(bool transparent, CommandList& cmd)
+	void Renderer2D::BindBlendState(bool transparent, Graphics& gfx, CommandList cmd)
 	{
-		if (transparent) m_TransparentBlendState->Bind(cmd);
-		else m_OpaqueBlendState->Bind(cmd);
+		if (transparent) gfx.BindBlendState(m_TransparentBlendState, cmd);
 	}
-	void Renderer2D::UnbindBlendState(bool transparent, CommandList& cmd)
+	void Renderer2D::UnbindBlendState(bool transparent, Graphics& gfx, CommandList cmd)
 	{
-		if (transparent) m_OpaqueBlendState->Bind(cmd);
+		if (transparent) gfx.UnbindBlendState(cmd);
 	}
 
-	bool Renderer2D::Close()
+	bool Renderer2D::Close(Graphics& gfx)
 	{
-		m_VertexBuffer->Release();
-		m_InstanceBuffer->Release();
+		gfx.ReleaseVertexBuffer(m_VertexBuffer);
+		gfx.ReleaseVertexBuffer(m_InstanceBuffer);
 
-		m_QuadVertexShader->Release();
-		m_QuadPixelShader->Release();
-		m_QuadInputLayout->Release();	
+		gfx.ReleaseShader(m_QuadVertexShader);
+		gfx.ReleaseShader(m_QuadPixelShader);
+		gfx.ReleaseInputLayout(m_QuadInputLayout);
 		
-		m_SpriteVertexShader->Release();
-		m_SpritePixelShader->Release();
-		m_SpriteInputLayout->Release();	
+		gfx.ReleaseShader(m_SpriteVertexShader);
+		gfx.ReleaseShader(m_SpritePixelShader);
+		gfx.ReleaseInputLayout(m_SpriteInputLayout);
 
-		m_EllipseVertexShader->Release();
-		m_EllipsePixelShader->Release();
+		gfx.ReleaseShader(m_EllipseVertexShader);
+		gfx.ReleaseShader(m_EllipsePixelShader);
 
-		m_PointVertexShader->Release();
-		m_PointPixelShader->Release();
-		m_PointInputLayout->Release();
+		gfx.ReleaseShader(m_PointVertexShader);
+		gfx.ReleaseShader(m_PointPixelShader);
+		gfx.ReleaseInputLayout(m_PointInputLayout);
 		
-		m_OpaqueBlendState->Release();
-		m_TransparentBlendState->Release();
+		gfx.ReleaseBlendState(m_TransparentBlendState);
 		
 		return true;
 	}

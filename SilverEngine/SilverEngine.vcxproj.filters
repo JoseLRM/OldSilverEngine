@@ -54,9 +54,6 @@
     <ClInclude Include="src\Dx11.h">
       <Filter>Graphics\DirectX11</Filter>
     </ClInclude>
-    <ClInclude Include="src\StateManager_dx11.h">
-      <Filter>Graphics\DirectX11</Filter>
-    </ClInclude>
     <ClInclude Include="src\PostProcess.h">
       <Filter>Graphics\Renderer</Filter>
     </ClInclude>
@@ -195,9 +192,6 @@
     </ClCompile>
     <ClCompile Include="src\Utils.cpp">
       <Filter>Utils</Filter>
-    </ClCompile>
-    <ClCompile Include="src\StateManager_dx11.cpp">
-      <Filter>Graphics\DirectX11</Filter>
     </ClCompile>
     <ClCompile Include="src\PostProcess.cpp">
       <Filter>Graphics\Renderer</Filter>

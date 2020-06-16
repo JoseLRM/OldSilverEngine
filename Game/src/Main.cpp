@@ -28,6 +28,7 @@ public:
 		camera.SetAspect(GetEngine().GetRenderer().GetResolutionAspect());
 
 		texture.Create("res/Skybox.jpg", GetGraphics());
+		texture.SetSamplerState(SV_GFX_TEXTURE_ADDRESS_WRAP, SV_GFX_TEXTURE_FILTER_MIN_MAG_MIP_LINEAR, GetGraphics());
 		sprite = texture.CreateSprite(0.f, 0.f, 1.f, 1.f);
 
 		scene.Initialize();
@@ -49,6 +50,7 @@ public:
 		scene.AddComponent(tileMap, SV::TileMapComponent());
 
 		editorRL.SetValue(99999);
+		editorRL.SetTransparent(true);
 		SV::TileMapComponent* tmComp = scene.GetComponent<SV::TileMapComponent>(tileMap);
 		SV::TileMap& tm = *tmComp->tileMap.get();
 

@@ -6,8 +6,6 @@
 namespace SV {
 
 	class TextureAtlas;
-	class Graphics;
-	class CommandList;
 
 	struct Sprite {
 		TextureAtlas* pTextureAtlas;
@@ -27,19 +25,16 @@ namespace SV {
 		TextureAtlas();
 		~TextureAtlas();
 
-		bool Create(const char* filePath, SV::Graphics& device);
-		void Release();
+		bool Create(const char* filePath, SV::Graphics& gfx);
+		void Release(Graphics& gfx);
 
-		bool SetSamplerState(SV_GFX_TEXTURE_ADDRESS_MODE addressMode, SV_GFX_TEXTURE_FILTER filter, SV::Graphics& device);
+		bool SetSamplerState(SV_GFX_TEXTURE_ADDRESS_MODE addressMode, SV_GFX_TEXTURE_FILTER filter, SV::Graphics& gfx);
 
-		void Bind(SV_GFX_SHADER_TYPE type, ui32 slot, SV::CommandList& cmd);
-		void Unbind(SV_GFX_SHADER_TYPE type, ui32 slot, SV::CommandList& cmd);
+		inline SV::Texture& GetTexture() noexcept { return m_Texture; }
+		inline SV::Sampler& GetSampler() noexcept { return m_Sampler; }
 
 		Sprite CreateSprite(float x0, float y0, float w, float h) noexcept;
 		SV::vec4 GetSpriteTexCoords(ui32 ID) const noexcept;
-
-	private:
-		bool CheckPrimitives(SV::Graphics& device);
 
 	};
 

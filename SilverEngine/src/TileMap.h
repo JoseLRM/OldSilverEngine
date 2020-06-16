@@ -71,11 +71,11 @@ namespace SV {
 		inline Sprite GetSprite(ui32 ID) const noexcept { return m_Sprites[ID].sprite; }
 
 		// Graphics Methods
-		void Bind(XMMATRIX matrix, CommandList& cmd);
-		static void BindShaders(CommandList& cmd);
-		void Draw(CommandList& cmd);
-		void Unbind(CommandList& cmd);
-		static void UnbindShaders(CommandList& cmd);
+		void Bind(XMMATRIX matrix, Graphics& gfx, CommandList cmd);
+		static void BindShaders(Graphics& gfx, CommandList cmd);
+		void Draw(Graphics& gfx, CommandList cmd);
+		void Unbind(Graphics& gfx, CommandList cmd);
+		static void UnbindShaders(Graphics& gfx, CommandList cmd);
 
 		static bool CreateShaders(Graphics& graphics);
 

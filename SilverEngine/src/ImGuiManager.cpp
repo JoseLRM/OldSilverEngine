@@ -390,7 +390,8 @@ namespace SVImGui {
 					SV::vec2 pos = mousePressed + (size / 2.f);
 					size.x = abs(size.x);
 					size.y = abs(size.y);
-					rq.DrawQuad(pos, size, SVColor4b::BLUE, layer);
+					SV::Color4b color = {0u, 150, 220, 150};
+					rq.DrawQuad(pos, size, color, layer);
 				}
 
 			}

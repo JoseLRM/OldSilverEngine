@@ -12,10 +12,10 @@ namespace SV {
 		Sampler m_PPSampler;
 
 	public:
-		bool Initialize(Graphics& device);
-		bool Close();
+		bool Initialize(Graphics& gfx);
+		bool Close(Graphics& gfx);
 
-		void DefaultPP(FrameBuffer& input, FrameBuffer& output, CommandList& cmd);
+		void DefaultPP(FrameBuffer& input, FrameBuffer& output, Graphics& gfx, CommandList cmd);
 
 	};
 

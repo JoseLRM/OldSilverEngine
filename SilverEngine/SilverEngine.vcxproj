@@ -115,7 +115,6 @@
     <ClInclude Include="src\safe_queue.h" />
     <ClInclude Include="src\RenderQueue2D.h" />
     <ClInclude Include="src\Renderer2DComponents.h" />
-    <ClInclude Include="src\StateManager_dx11.h" />
     <ClInclude Include="src\TaskSystem.h" />
     <ClInclude Include="src\TextureAtlas.h" />
     <ClInclude Include="src\TileMap.h" />
@@ -172,7 +171,6 @@
     <ClCompile Include="src\Renderer2DComponents.cpp" />
     <ClCompile Include="src\RenderQueue2D.cpp" />
     <ClCompile Include="src\Scene.cpp" />
-    <ClCompile Include="src\StateManager_dx11.cpp" />
     <ClCompile Include="src\TaskSystem.cpp" />
     <ClCompile Include="src\TextureAtlas.cpp" />
     <ClCompile Include="src\TileMap.cpp" />

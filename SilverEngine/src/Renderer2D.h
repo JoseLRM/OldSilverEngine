@@ -24,7 +24,6 @@ namespace SV {
 		Shader			m_PointPixelShader;
 		InputLayout		m_PointInputLayout;
 
-		BlendState		m_OpaqueBlendState;
 		BlendState		m_TransparentBlendState;
 
 		VertexBuffer m_InstanceBuffer;
@@ -38,22 +37,22 @@ namespace SV {
 
 	public:
 		bool Initialize(Graphics& device);
-		bool Close();
+		bool Close(Graphics& gfx);
 
-		void DrawRenderQueue(RenderQueue2D& rq, CommandList& cmd);
+		void DrawRenderQueue(RenderQueue2D& rq, Graphics& gfx, CommandList cmd);
 
-		void DrawQuads(std::vector<QuadInstance>& instances, bool transparent, CommandList& cmd);
-		void DrawEllipses(std::vector<QuadInstance>& instances, bool transparent, CommandList& cmd);
-		void DrawSprites(std::vector<SpriteInstance>& instances, bool transparent, CommandList& cmd);
-		void DrawPoints(std::vector<PointInstance>& instances, bool transparent, CommandList& cmd);
-		void DrawLines(std::vector<PointInstance>& instances, bool transparent, CommandList& cmd);
+		void DrawQuads(std::vector<QuadInstance>& instances, bool transparent, Graphics& gfx, CommandList cmd);
+		void DrawEllipses(std::vector<QuadInstance>& instances, bool transparent, Graphics& gfx, CommandList cmd);
+		void DrawSprites(std::vector<SpriteInstance>& instances, bool transparent, Graphics& gfx, CommandList cmd);
+		void DrawPoints(std::vector<PointInstance>& instances, bool transparent, Graphics& gfx, CommandList cmd);
+		void DrawLines(std::vector<PointInstance>& instances, bool transparent, Graphics& gfx, CommandList cmd);
 
 	private:
-		void DrawQuadsOrEllipses(std::vector<QuadInstance>& instances, bool transparent, bool quad, CommandList& cmd);
-		void DrawPointsOrLines(std::vector<PointInstance>& instances, bool transparent, bool point, CommandList& cmd);
+		void DrawQuadsOrEllipses(std::vector<QuadInstance>& instances, bool transparent, bool quad, Graphics& gfx, CommandList cmd);
+		void DrawPointsOrLines(std::vector<PointInstance>& instances, bool transparent, bool point, Graphics& gfx, CommandList cmd);
 
-		void BindBlendState(bool transparent, CommandList& cmd);
-		void UnbindBlendState(bool transparent, CommandList& cmd);
+		void BindBlendState(bool transparent, Graphics& gfx, CommandList cmd);
+		void UnbindBlendState(bool transparent, Graphics& gfx, CommandList cmd);
 
 	};
 
