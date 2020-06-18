@@ -6,7 +6,7 @@
 
 namespace SV {
 
-	class DirectX11Device;
+	class Graphics_dx11;
 
 	class ViewportManager {
 		D3D11_VIEWPORT m_Viewports[SV_GFX_VIEWPORT_COUNT];
@@ -50,6 +50,10 @@ namespace SV {
 		ComPtr<ID3D11RenderTargetView> m_RenderTargetView;
 		ComPtr<ID3D11Texture2D> m_Resource;
 		ComPtr<ID3D11ShaderResourceView> m_ShaderResouceView;
+		ui64 GetResouceID() override
+		{
+			return reinterpret_cast<ui64>(m_ShaderResouceView.Get());
+		}
 	};
 
 	/////////////////////////////////SHADER//////////////////////////////////////////
@@ -67,12 +71,10 @@ namespace SV {
 	struct Texture_dx11 : public SV::_internal::Texture_internal {
 		ComPtr<ID3D11Texture2D> m_Texture;
 		ComPtr<ID3D11ShaderResourceView> m_ShaderResouceView;
-#ifdef SV_IMGUI
-		ImTextureID GetImGuiTexture() override
+		ui64 GetResouceID() override
 		{
-			return m_ShaderResouceView.Get();
+			return reinterpret_cast<ui64>(m_ShaderResouceView.Get());
 		}
-#endif
 	};
 
 	/////////////////////////////////SAMPLER//////////////////////////////////////////
@@ -115,7 +117,7 @@ namespace SV {
 	}
 
 	/////////////////////////////////DEVICE///////////////////////////////////////////////
-	class DirectX11Device : public SV::Graphics {
+	class Graphics_dx11 : public SV::Graphics {
 	public:
 		///////////////////Internal allocation/////////////////////////
 		ComPtr<ID3D11Device> device;

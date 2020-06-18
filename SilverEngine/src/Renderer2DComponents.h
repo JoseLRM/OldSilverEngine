@@ -28,6 +28,11 @@ namespace SV {
 		SpriteLayerComponent() : renderLayer(std::make_unique<RenderLayer>()) {}
 		SpriteLayerComponent(i32 value, bool transparent) : renderLayer(std::make_unique<RenderLayer>(value, transparent)) {}
 
+		SpriteLayerComponent(const SpriteLayerComponent& other) { this->operator=(other); }
+		SpriteLayerComponent(SpriteLayerComponent&& other) noexcept { this->operator=(std::move(other)); }
+		SpriteLayerComponent& operator=(const SpriteLayerComponent& other);
+		SpriteLayerComponent& operator=(SpriteLayerComponent&& other) noexcept;
+
 	};
 
 	SV_COMPONENT(TileMapComponent) {
@@ -37,6 +42,10 @@ namespace SV {
 		SV::ivec2 GetTilePos(SV::vec2 position);
 
 		TileMapComponent() : tileMap(std::make_unique<TileMap>()) {}
+		TileMapComponent(const TileMapComponent& other) { this->operator=(other); }
+		TileMapComponent(TileMapComponent&& other) noexcept { this->operator=(std::move(other)); }
+		TileMapComponent& operator=(const TileMapComponent& other);
+		TileMapComponent& operator=(TileMapComponent&& other) noexcept;
 	};
 
 }

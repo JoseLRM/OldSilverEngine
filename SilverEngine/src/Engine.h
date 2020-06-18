@@ -7,6 +7,7 @@
 #include "Graphics.h"
 #include "Renderer.h"
 #include "Application.h"
+#include "StateManager.h"
 #include "Version.h"
 
 ///////////////////Initialization Parameters////////////////////////////////
@@ -56,6 +57,7 @@ namespace SV {
 		std::unique_ptr<SV::Graphics>	m_Graphics;
 		SV::Renderer					m_Renderer;
 		SV::Input						m_Input;
+		SV::StateManager				m_StateManager;
 		SV::Application*				m_Application;
 
 	public:
@@ -69,11 +71,12 @@ namespace SV {
 		void Exit(bool endFrame = true);
 
 		// Devices Getters
-		inline Window&		GetWindow() noexcept { return m_Window; }
-		inline Graphics&	GetGraphics() noexcept { return *m_Graphics.get(); }
-		inline Renderer&	GetRenderer() noexcept { return m_Renderer; }
-		inline Input&		GetInput() noexcept { return m_Input; }
-		inline Application& GetApplication() noexcept { return *m_Application; }
+		inline Window&			GetWindow() noexcept { return m_Window; }
+		inline Graphics&		GetGraphics() noexcept { return *m_Graphics.get(); }
+		inline Renderer&		GetRenderer() noexcept { return m_Renderer; }
+		inline Input&			GetInput() noexcept { return m_Input; }
+		inline StateManager&	GetStateManager() noexcept { return m_StateManager; }
+		inline Application&		GetApplication() noexcept { return *m_Application; }
 
 		// State Getters
 		inline bool IsInitializing() const noexcept { return m_EngineState == SV_ENGINE_STATE_INITIALIZING; }

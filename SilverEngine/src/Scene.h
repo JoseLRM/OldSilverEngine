@@ -19,6 +19,7 @@ namespace SV {
 	typedef void(*CreateComponentFunction)(BaseComponent*, SV::Entity, SV::Scene*);
 	typedef void(*DestoryComponentFunction)(BaseComponent*);
 	typedef void(*MoveComponentFunction)(BaseComponent* from, BaseComponent* to);
+	typedef void(*CopyComponentFunction)(BaseComponent* from, BaseComponent* to);
 
 }
 
@@ -127,7 +128,7 @@ namespace SV {
 	namespace ECS {
 
 		namespace _internal {
-			CompID RegisterComponent(ui32 size, const std::type_info&, CreateComponentFunction createFn, DestoryComponentFunction destroyFn, MoveComponentFunction moveFn);
+			CompID RegisterComponent(ui32 size, const std::type_info&, CreateComponentFunction createFn, DestoryComponentFunction destroyFn, MoveComponentFunction moveFn, CopyComponentFunction copyFn);
 		}
 
 		ui16 GetComponentsCount();
@@ -137,6 +138,7 @@ namespace SV {
 		void ConstructComponent(CompID ID, SV::BaseComponent* ptr, SV::Entity entity, SV::Scene*);
 		void DestroyComponent(CompID ID, SV::BaseComponent* ptr);
 		void MoveComponent(CompID ID, SV::BaseComponent* from, SV::BaseComponent* to);
+		void CopyComponent(CompID ID, SV::BaseComponent* from, SV::BaseComponent* to);
 
 		bool GetComponentID(const char* name, CompID* id);
 
@@ -162,12 +164,20 @@ namespace SV {
 			new(toB) Component();
 			to->operator=(std::move(*from));
 		}
-
+		template<typename Component>
+		void CopyComponent(SV::BaseComponent* fromB, SV::BaseComponent* toB)
+		{
+			Component* from = reinterpret_cast<Component*>(fromB);
+			Component* to = reinterpret_cast<Component*>(toB);
+			to->~Component();
+			new(toB) Component();
+			to->operator=(*from);
+		}
 	}
 	
 	namespace _internal {
 		template<typename T>
-		const CompID Component<T>::ID(SV::ECS::_internal::RegisterComponent(sizeof(T), typeid(T), SV::ECS::CreateComponent<T>, SV::ECS::DestroyComponent<T>, SV::ECS::MoveComponent<T>));
+		const CompID Component<T>::ID(SV::ECS::_internal::RegisterComponent(sizeof(T), typeid(T), SV::ECS::CreateComponent<T>, SV::ECS::DestroyComponent<T>, SV::ECS::MoveComponent<T>, SV::ECS::CopyComponent<T>));
 		template<typename T>
 		const ui32 Component<T>::SIZE(sizeof(T));
 	}
@@ -206,6 +216,8 @@ namespace SV {
 		std::map<std::string, std::unique_ptr<SceneLayer>> m_Layers;
 
 	public:
+		~Scene();
+
 		void Initialize() noexcept;
 		void Close() noexcept;
 

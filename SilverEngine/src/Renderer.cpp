@@ -45,6 +45,10 @@ namespace SV {
 			return false;
 		}
 
+		// Select output
+		if (desc.output) m_pOutput = desc.output;
+		else m_pOutput = &gfx.GetMainFrameBuffer();
+
 		return true;
 	}
 
@@ -114,8 +118,8 @@ namespace SV {
 		// Draw 2D primitives
 		m_Renderer2D.DrawRenderQueue(m_RenderQueue2D, gfx, cmd);
 
-		// Offscreen to backBuffer
-		m_PostProcess.DefaultPP(m_Offscreen, gfx.GetMainFrameBuffer(), gfx, cmd);
+		// Offscreen to output
+		m_PostProcess.DefaultPP(m_Offscreen, *m_pOutput, gfx, cmd);
 	}
 	void Renderer::EndFrame()
 	{

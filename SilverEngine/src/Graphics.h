@@ -11,7 +11,7 @@ struct SV_GRAPHICS_INITIALIZATION_DESC {
 namespace SV {
 
 	class Graphics;
-	class DirectX11Device;
+	class Graphics_dx11;
 	
 	// CommandList
 	typedef ui32 CommandList;
@@ -26,7 +26,7 @@ namespace SV {
 
 		public:
 			friend Graphics;
-			friend DirectX11Device;
+			friend Graphics_dx11;
 
 			inline SV_GFX_USAGE GetUsage() const noexcept { return m_Usage; }
 			inline ui32 GetSize() const noexcept { return m_Size; }
@@ -47,12 +47,14 @@ namespace SV {
 
 		public:
 			friend Graphics;
-			friend DirectX11Device;
+			friend Graphics_dx11;
 
 			inline ui32 GetWidth() const noexcept { return m_Width; }
 			inline ui32 GetHeight() const noexcept { return m_Height; }
 			inline SV_GFX_FORMAT GetFormat() const noexcept { return m_Format; }
 			inline bool HasTextureUsage() const noexcept { return m_TextureUsage; }
+
+			virtual ui64 GetResouceID() = 0;
 
 		};
 
@@ -61,7 +63,7 @@ namespace SV {
 
 		public:
 			friend Graphics;
-			friend DirectX11Device;
+			friend Graphics_dx11;
 
 			inline SV_GFX_SHADER_TYPE GetType() const noexcept { return m_ShaderType; }
 
@@ -70,7 +72,7 @@ namespace SV {
 		class InputLayout_internal {
 		public:
 			friend Graphics;
-			friend DirectX11Device;
+			friend Graphics_dx11;
 
 		};
 
@@ -84,7 +86,7 @@ namespace SV {
 
 		public:
 			friend Graphics;
-			friend DirectX11Device;
+			friend Graphics_dx11;
 
 			inline SV_GFX_FORMAT GetFormat() const noexcept { return m_Format; }
 			inline SV_GFX_USAGE GetUsage() const noexcept { return m_Usage; }
@@ -93,23 +95,21 @@ namespace SV {
 			inline ui32 GetHeight() const noexcept { return m_Height; }
 			inline ui32 GetSize() const noexcept { return m_Size; }
 
-#ifdef SV_IMGUI
-			virtual ImTextureID GetImGuiTexture() = 0;
-#endif
+			virtual ui64 GetResouceID() = 0;
 
 		};
 
 		class Sampler_internal {
 		public:
 			friend Graphics;
-			friend DirectX11Device;
+			friend Graphics_dx11;
 
 		};
 
 		class BlendState_internal {
 		public:
 			friend Graphics;
-			friend DirectX11Device;
+			friend Graphics_dx11;
 
 		};
 

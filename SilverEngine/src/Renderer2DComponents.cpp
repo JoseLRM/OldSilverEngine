@@ -59,6 +59,25 @@ namespace SV {
 	}
 #endif
 
+	SpriteLayerComponent& SpriteLayerComponent::operator=(const SpriteLayerComponent& other)
+	{
+		this->defaultRendering = other.defaultRendering;
+		this->entity = other.entity;
+		this->pScene = other.pScene;
+		this->sortByValue = other.sortByValue;
+		this->renderLayer = std::make_unique<RenderLayer>(*other.renderLayer.get());
+		return *this;
+	}
+	SpriteLayerComponent& SpriteLayerComponent::operator=(SpriteLayerComponent&& other) noexcept
+	{
+		this->defaultRendering = other.defaultRendering;
+		this->entity = other.entity;
+		this->pScene = other.pScene;
+		this->sortByValue = other.sortByValue;
+		this->renderLayer = std::move(other.renderLayer);
+		return *this;
+	}
+
 	SV::ivec2 TileMapComponent::GetTilePos(SV::vec2 position)
 	{
 		SV::vec2 pos = SV::vec2(pScene->GetTransform(entity).GetWorldPosition());
@@ -71,8 +90,24 @@ namespace SV {
 		pos *= SV::vec2(tileMap->GetWidth(), tileMap->GetHeight());
 
 		SV::ivec2 res = SV::ivec2(pos.x, pos.y);
-		if(pos.x < 0.f) res.x = -(res.x + 1);
-		if(pos.y < 0.f) res.y = -(res.y + 1);
+		if (pos.x < 0.f) res.x = -(res.x + 1);
+		if (pos.y < 0.f) res.y = -(res.y + 1);
 		return res;
 	}
+
+	TileMapComponent& TileMapComponent::operator=(const TileMapComponent& other)
+	{
+		this->entity = other.entity;
+		this->pScene = other.pScene;
+		this->tileMap = std::make_unique<TileMap>();
+		return *this;
+	}
+	TileMapComponent& TileMapComponent::operator=(TileMapComponent&& other) noexcept
+	{
+		this->entity = other.entity;
+		this->pScene = other.pScene;
+		this->tileMap = std::move(other.tileMap);
+		return *this;
+	}
+
 }

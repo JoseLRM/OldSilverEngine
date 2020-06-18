@@ -39,10 +39,7 @@ namespace SV {
 	{
 		SV::Input& input = GetEngine().GetInput();
 
-#ifdef SV_IMGUI
-		if(SVImGui::_internal::UpdateWindowProc(m_WindowHandle, message, wParam, lParam)) 
-			return true;
-#endif
+		if (m_UserWindowProc) m_UserWindowProc(ToHWND(GetWindowHandle()), message, wParam, lParam);
 		
 		switch (message) {
 		case WM_DESTROY:
@@ -202,6 +199,8 @@ namespace SV {
 		window->m_Y = desc.y;
 		window->m_Width = w;
 		window->m_Height = h;
+
+		window->m_UserWindowProc = desc.userWindowProc;
 
 		if (desc.parent) {
 			style |= WS_CHILD;

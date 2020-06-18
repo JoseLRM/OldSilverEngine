@@ -7,9 +7,9 @@
 #define dxAssert(x) if((x) != 0) SV_THROW("DirectX11 Exception!!", #x);
 #define dxCheck(x) if((x) != 0) return false
 
-inline SV::DirectX11Device& ParseDevice(SV::Graphics& device)
+inline SV::Graphics_dx11& ParseDevice(SV::Graphics& device)
 {
-	return *reinterpret_cast<SV::DirectX11Device*>(&device);
+	return *reinterpret_cast<SV::Graphics_dx11*>(&device);
 }
 
 // SV format to DX11 format
@@ -85,7 +85,7 @@ constexpr ui32 ParseCPUAccess(ui8 cpuAccess)
 
 namespace SV {
 
-	void DirectX11Device::CreateBackBuffer(const SV::Adapter::OutputMode& outputMode, ui32 width, ui32 height)
+	void Graphics_dx11::CreateBackBuffer(const SV::Adapter::OutputMode& outputMode, ui32 width, ui32 height)
 	{
 		D3D11_RENDER_TARGET_VIEW_DESC backBufferDesc;
 		backBufferDesc.Format = ParseFormat(outputMode.format);
@@ -104,7 +104,7 @@ namespace SV {
 		dxAssert(device->CreateRenderTargetView(backBuffer->m_Resource.Get(), &backBufferDesc, &backBuffer->m_RenderTargetView));
 	}
 
-	bool DirectX11Device::_Initialize(const SV_GRAPHICS_INITIALIZATION_DESC& desc)
+	bool Graphics_dx11::_Initialize(const SV_GRAPHICS_INITIALIZATION_DESC& desc)
 	{
 		Window& window = GetEngine().GetWindow();
 
@@ -167,7 +167,7 @@ namespace SV {
 		return true;
 	}
 
-	bool DirectX11Device::_Close()
+	bool Graphics_dx11::_Close()
 	{
 		// Release Deferred Contexts
 		for (ui32 i = 0; i < SV_GFX_COMMAND_LIST_COUNT; ++i)
@@ -184,7 +184,7 @@ namespace SV {
 		return true;
 	}
 
-	void DirectX11Device::Present()
+	void Graphics_dx11::Present()
 	{
 		// Execute CommandLists
 		ui32 cmdID = 0u;
@@ -208,7 +208,7 @@ namespace SV {
 			viewports[i].Reset();
 	}
 
-	CommandList DirectX11Device::BeginCommandList()
+	CommandList Graphics_dx11::BeginCommandList()
 	{
 		ui32 ID = 0;
 
@@ -222,7 +222,7 @@ namespace SV {
 		return ID;
 	}
 
-	void DirectX11Device::SetViewport(ui32 slot, float x, float y, float w, float h, float n, float f, SV::CommandList cmd)
+	void Graphics_dx11::SetViewport(ui32 slot, float x, float y, float w, float h, float n, float f, SV::CommandList cmd)
 	{
 		D3D11_VIEWPORT viewport;
 		viewport.TopLeftX = x;
@@ -251,54 +251,54 @@ namespace SV {
 	}
 #endif
 
-	void DirectX11Device::SetTopology(SV_GFX_TOPOLOGY topology, CommandList cmd)
+	void Graphics_dx11::SetTopology(SV_GFX_TOPOLOGY topology, CommandList cmd)
 	{
 		deferredContext[cmd]->IASetPrimitiveTopology(ParseTopology(topology));
 	}
 
-	void DirectX11Device::EnableFullscreen()
+	void Graphics_dx11::EnableFullscreen()
 	{
 		swapChain->SetFullscreenState(TRUE, nullptr);
 	}
-	void DirectX11Device::DisableFullscreen()
+	void Graphics_dx11::DisableFullscreen()
 	{
 		swapChain->SetFullscreenState(FALSE, nullptr);
 	}
 
-	SV::FrameBuffer& DirectX11Device::GetMainFrameBuffer()
+	SV::FrameBuffer& Graphics_dx11::GetMainFrameBuffer()
 	{
 		return mainFrameBuffer;
 	}
 
-	void DirectX11Device::Draw(ui32 vertexCount, ui32 startVertex, CommandList cmd)
+	void Graphics_dx11::Draw(ui32 vertexCount, ui32 startVertex, CommandList cmd)
 	{
 		viewports[cmd].Bind(deferredContext[cmd].Get());
 		deferredContext[cmd]->Draw(vertexCount, startVertex);
 	}
-	void DirectX11Device::DrawIndexed(ui32 indexCount, ui32 startIndex, ui32 startVertex, CommandList cmd)
+	void Graphics_dx11::DrawIndexed(ui32 indexCount, ui32 startIndex, ui32 startVertex, CommandList cmd)
 	{
 		viewports[cmd].Bind(deferredContext[cmd].Get());
 		deferredContext[cmd]->DrawIndexed(indexCount, startIndex, startVertex);
 	}
-	void DirectX11Device::DrawInstanced(ui32 verticesPerInstance, ui32 instances, ui32 startVertex, ui32 startInstance, CommandList cmd)
+	void Graphics_dx11::DrawInstanced(ui32 verticesPerInstance, ui32 instances, ui32 startVertex, ui32 startInstance, CommandList cmd)
 	{
 		viewports[cmd].Bind(deferredContext[cmd].Get());
 		deferredContext[cmd]->DrawInstanced(verticesPerInstance, instances, startVertex, startInstance);
 	}
-	void DirectX11Device::DrawIndexedInstanced(ui32 indicesPerInstance, ui32 instances, ui32 startIndex, ui32 startVertex, ui32 startInstance, CommandList cmd)
+	void Graphics_dx11::DrawIndexedInstanced(ui32 indicesPerInstance, ui32 instances, ui32 startIndex, ui32 startVertex, ui32 startInstance, CommandList cmd)
 	{
 		viewports[cmd].Bind(deferredContext[cmd].Get());
 		deferredContext[cmd]->DrawIndexedInstanced(indicesPerInstance, instances, startIndex, startVertex, startInstance);
 	}
 
 
-	void DirectX11Device::_ResetState(CommandList cmd)
+	void Graphics_dx11::_ResetState(CommandList cmd)
 	{
 		deferredContext[cmd]->ClearState();
 	}
 
 	///////////////////////////////VERTEX BUFFER///////////////////////////////////
-	void UpdateBuffer(DirectX11Device& dx11, ID3D11Resource* res, SV_GFX_USAGE usage, ui32 bufferSize, void* data, ui32 size, CommandList cmd)
+	void UpdateBuffer(Graphics_dx11& dx11, ID3D11Resource* res, SV_GFX_USAGE usage, ui32 bufferSize, void* data, ui32 size, CommandList cmd)
 	{
 		SV_ASSERT(usage != SV_GFX_USAGE_STATIC && bufferSize >= size);
 
@@ -315,7 +315,7 @@ namespace SV {
 		}
 	}
 
-	bool DirectX11Device::_CreateVertexBuffer(void* data, VertexBuffer& vb)
+	bool Graphics_dx11::_CreateVertexBuffer(void* data, VertexBuffer& vb)
 	{
 		VertexBuffer_dx11& buffer = ToInternal(vb);
 
@@ -338,22 +338,22 @@ namespace SV {
 
 		return true;
 	}
-	void DirectX11Device::_ReleaseVertexBuffer(VertexBuffer& vb)
+	void Graphics_dx11::_ReleaseVertexBuffer(VertexBuffer& vb)
 	{
 		VertexBuffer_dx11& buffer = ToInternal(vb);
 		buffer.m_Buffer.Reset();
 	}
-	void DirectX11Device::_UpdateVertexBuffer(void* data, ui32 size, VertexBuffer& vb, CommandList cmd)
+	void Graphics_dx11::_UpdateVertexBuffer(void* data, ui32 size, VertexBuffer& vb, CommandList cmd)
 	{
 		VertexBuffer_dx11& buffer = ToInternal(vb);
 		UpdateBuffer(*this, buffer.m_Buffer.Get(), buffer.GetUsage(), buffer.GetSize(), data, size, cmd);
 	}
-	void DirectX11Device::_BindVertexBuffer(ui32 slot, ui32 stride, ui32 offset, VertexBuffer& vb, CommandList cmd)
+	void Graphics_dx11::_BindVertexBuffer(ui32 slot, ui32 stride, ui32 offset, VertexBuffer& vb, CommandList cmd)
 	{
 		VertexBuffer_dx11& buffer = ToInternal(vb);
 		deferredContext[cmd]->IASetVertexBuffers(slot, 1, buffer.m_Buffer.GetAddressOf(), &stride, &offset);
 	}
-	void DirectX11Device::_BindVertexBuffers(ui32 slot, ui32 count, const ui32* strides, const ui32* offsets, VertexBuffer** vbs, CommandList cmd)
+	void Graphics_dx11::_BindVertexBuffers(ui32 slot, ui32 count, const ui32* strides, const ui32* offsets, VertexBuffer** vbs, CommandList cmd)
 	{
 		ID3D11Buffer* buffers[SV_GFX_VERTEX_BUFFER_COUNT];
 
@@ -364,21 +364,21 @@ namespace SV {
 
 		deferredContext[cmd]->IASetVertexBuffers(slot, count, buffers, strides, offsets);
 	}
-	void DirectX11Device::_UnbindVertexBuffer(ui32 slot, CommandList cmd)
+	void Graphics_dx11::_UnbindVertexBuffer(ui32 slot, CommandList cmd)
 	{
 		ID3D11Buffer* null[1] = { nullptr };
 		const UINT stride = 1u;
 		const UINT offset = 0u;
 		deferredContext[cmd]->IASetVertexBuffers(slot, 1, null, &stride, &offset);
 	}
-	void DirectX11Device::_UnbindVertexBuffers(CommandList cmd)
+	void Graphics_dx11::_UnbindVertexBuffers(CommandList cmd)
 	{
 		ID3D11Buffer* buffers[SV_GFX_VERTEX_BUFFER_COUNT];
 		svZeroMemory(buffers, sizeof(ID3D11Buffer*) * SV_GFX_VERTEX_BUFFER_COUNT);
 		deferredContext[cmd]->IASetVertexBuffers(0, SV_GFX_VERTEX_BUFFER_COUNT, buffers, (const UINT*)buffers, (const UINT*)buffers);
 	}
 	///////////////////////////////INDEX BUFFER///////////////////////////////////
-	bool DirectX11Device::_CreateIndexBuffer(void* data, IndexBuffer& ib)
+	bool Graphics_dx11::_CreateIndexBuffer(void* data, IndexBuffer& ib)
 	{
 		IndexBuffer_dx11& buffer = ToInternal(ib);
 
@@ -401,28 +401,28 @@ namespace SV {
 
 		return true;
 	}
-	void DirectX11Device::_ReleaseIndexBuffer(IndexBuffer& ib)
+	void Graphics_dx11::_ReleaseIndexBuffer(IndexBuffer& ib)
 	{
 		IndexBuffer_dx11& buffer = ToInternal(ib);
 		buffer.m_Buffer.Reset();
 	}
-	void DirectX11Device::_UpdateIndexBuffer(void* data, ui32 size, IndexBuffer& ib, CommandList cmd)
+	void Graphics_dx11::_UpdateIndexBuffer(void* data, ui32 size, IndexBuffer& ib, CommandList cmd)
 	{
 		IndexBuffer_dx11& buffer = ToInternal(ib);
 		UpdateBuffer(*this, buffer.m_Buffer.Get(), buffer.GetUsage(), buffer.GetSize(), data, size, cmd);
 	}
-	void DirectX11Device::_BindIndexBuffer(SV_GFX_FORMAT format, ui32 offset, IndexBuffer& ib, CommandList cmd) 
+	void Graphics_dx11::_BindIndexBuffer(SV_GFX_FORMAT format, ui32 offset, IndexBuffer& ib, CommandList cmd) 
 	{
 		IndexBuffer_dx11& buffer = ToInternal(ib);
 		deferredContext[cmd]->IASetIndexBuffer(buffer.m_Buffer.Get(), ParseFormat(format), offset);
 	}
-	void DirectX11Device::_UnbindIndexBuffer(CommandList cmd)
+	void Graphics_dx11::_UnbindIndexBuffer(CommandList cmd)
 	{
 		deferredContext[cmd]->IASetIndexBuffer(nullptr, DXGI_FORMAT_UNKNOWN, 0u);
 	}
 
 	///////////////////////////////CONSTANT BUFFER///////////////////////////////////
-	bool DirectX11Device::_CreateConstantBuffer(void* data, ConstantBuffer& cb)
+	bool Graphics_dx11::_CreateConstantBuffer(void* data, ConstantBuffer& cb)
 	{
 		ConstantBuffer_dx11& buffer = ToInternal(cb);
 
@@ -445,17 +445,17 @@ namespace SV {
 
 		return true;
 	}
-	void DirectX11Device::_ReleaseConstantBuffer(ConstantBuffer& cb)
+	void Graphics_dx11::_ReleaseConstantBuffer(ConstantBuffer& cb)
 	{
 		ConstantBuffer_dx11& buffer = ToInternal(cb);
 		buffer.m_Buffer.Reset();
 	}
-	void DirectX11Device::_UpdateConstantBuffer(void* data, ui32 size, ConstantBuffer& cb, CommandList cmd)
+	void Graphics_dx11::_UpdateConstantBuffer(void* data, ui32 size, ConstantBuffer& cb, CommandList cmd)
 	{
 		ConstantBuffer_dx11& buffer = ToInternal(cb);
 		UpdateBuffer(*this, buffer.m_Buffer.Get(), buffer.GetUsage(), buffer.GetSize(), data, size, cmd);
 	}
-	void DirectX11Device::_BindConstantBuffer(ui32 slot, SV_GFX_SHADER_TYPE type, ConstantBuffer& cb, CommandList cmd)
+	void Graphics_dx11::_BindConstantBuffer(ui32 slot, SV_GFX_SHADER_TYPE type, ConstantBuffer& cb, CommandList cmd)
 	{
 		ConstantBuffer_dx11& buffer = ToInternal(cb);
 		switch (type)
@@ -471,7 +471,7 @@ namespace SV {
 			break;
 		}
 	}
-	void DirectX11Device::_BindConstantBuffers(ui32 slot, SV_GFX_SHADER_TYPE type, ui32 count, ConstantBuffer** cbs, CommandList cmd)
+	void Graphics_dx11::_BindConstantBuffers(ui32 slot, SV_GFX_SHADER_TYPE type, ui32 count, ConstantBuffer** cbs, CommandList cmd)
 	{
 		ID3D11Buffer* buffers[SV_GFX_CONSTANT_BUFFER_COUNT];
 		for (ui32 i = 0; i < count; ++i) {
@@ -492,7 +492,7 @@ namespace SV {
 			break;
 		}
 	}
-	void DirectX11Device::_UnbindConstantBuffer(ui32 slot, SV_GFX_SHADER_TYPE type, CommandList cmd)
+	void Graphics_dx11::_UnbindConstantBuffer(ui32 slot, SV_GFX_SHADER_TYPE type, CommandList cmd)
 	{
 		ID3D11Buffer* null[1] = { nullptr };
 		switch (type)
@@ -508,7 +508,7 @@ namespace SV {
 			break;
 		}
 	}
-	void DirectX11Device::_UnbindConstantBuffers(SV_GFX_SHADER_TYPE type, CommandList cmd)
+	void Graphics_dx11::_UnbindConstantBuffers(SV_GFX_SHADER_TYPE type, CommandList cmd)
 	{
 		ID3D11Buffer* buffers[SV_GFX_CONSTANT_BUFFER_COUNT];
 		svZeroMemory(buffers, sizeof(ID3D11Buffer) * SV_GFX_CONSTANT_BUFFER_COUNT);
@@ -526,7 +526,7 @@ namespace SV {
 			break;
 		}
 	}
-	void DirectX11Device::_UnbindConstantBuffers(CommandList cmd)
+	void Graphics_dx11::_UnbindConstantBuffers(CommandList cmd)
 	{
 		_UnbindConstantBuffers(SV_GFX_SHADER_TYPE_VERTEX, cmd);
 		_UnbindConstantBuffers(SV_GFX_SHADER_TYPE_PIXEL, cmd);
@@ -534,7 +534,7 @@ namespace SV {
 	}
 
 	///////////////////////////////FRAME BUFFER///////////////////////////////////
-	bool DirectX11Device::_CreateFrameBuffer(FrameBuffer& fb)
+	bool Graphics_dx11::_CreateFrameBuffer(FrameBuffer& fb)
 	{
 		FrameBuffer_dx11& buffer = ToInternal(fb);
 		// Render target view desc
@@ -578,14 +578,14 @@ namespace SV {
 
 		return true;
 	}
-	void DirectX11Device::_ReleaseFrameBuffer(FrameBuffer& fb)
+	void Graphics_dx11::_ReleaseFrameBuffer(FrameBuffer& fb)
 	{
 		FrameBuffer_dx11& buffer = ToInternal(fb);
 		buffer.m_RenderTargetView.Reset();
 		buffer.m_Resource.Reset();
 		buffer.m_ShaderResouceView.Reset();
 	}
-	void DirectX11Device::_ClearFrameBuffer(SV::Color4f c, FrameBuffer& fb, CommandList cmd)
+	void Graphics_dx11::_ClearFrameBuffer(SV::Color4f c, FrameBuffer& fb, CommandList cmd)
 	{
 		const FLOAT color[4] = {
 			c.x, c.y, c.z, c.w
@@ -593,12 +593,12 @@ namespace SV {
 		FrameBuffer_dx11& buffer = ToInternal(fb);
 		deferredContext[cmd]->ClearRenderTargetView(buffer.m_RenderTargetView.Get(), color);
 	}
-	void DirectX11Device::_BindFrameBuffer(FrameBuffer& fb, CommandList cmd)
+	void Graphics_dx11::_BindFrameBuffer(FrameBuffer& fb, CommandList cmd)
 	{
 		FrameBuffer_dx11& buffer = ToInternal(fb);
 		deferredContext[cmd]->OMSetRenderTargets(1, buffer.m_RenderTargetView.GetAddressOf(), nullptr);
 	}
-	void DirectX11Device::_BindFrameBuffers(ui32 count, FrameBuffer** fbs, CommandList cmd)
+	void Graphics_dx11::_BindFrameBuffers(ui32 count, FrameBuffer** fbs, CommandList cmd)
 	{
 		ID3D11RenderTargetView* renderTargets[SV_GFX_RENDER_TARGET_VIEW_COUNT];
 		for (ui32 i = 0; i < SV_GFX_RENDER_TARGET_VIEW_COUNT; ++i) {
@@ -607,7 +607,7 @@ namespace SV {
 		}
 		deferredContext[cmd]->OMSetRenderTargets(count, renderTargets, nullptr);
 	}
-	void DirectX11Device::_BindFrameBufferAsTexture(ui32 slot, SV_GFX_SHADER_TYPE type, FrameBuffer& fb, CommandList cmd)
+	void Graphics_dx11::_BindFrameBufferAsTexture(ui32 slot, SV_GFX_SHADER_TYPE type, FrameBuffer& fb, CommandList cmd)
 	{
 		FrameBuffer_dx11& buffer = ToInternal(fb);
 		switch (type) {
@@ -622,7 +622,7 @@ namespace SV {
 			break;
 		}
 	}
-	void DirectX11Device::_UnbindFrameBuffers(CommandList cmd)
+	void Graphics_dx11::_UnbindFrameBuffers(CommandList cmd)
 	{
 		ID3D11RenderTargetView* nullRTV = nullptr;
 		deferredContext[cmd]->OMSetRenderTargets(1, &nullRTV, nullptr);
@@ -642,7 +642,7 @@ namespace SV {
 		return reinterpret_cast<ID3D11GeometryShader*>(ptr);
 	}
 
-	bool DirectX11Device::_CreateShader(const char* filePath, Shader& s)
+	bool Graphics_dx11::_CreateShader(const char* filePath, Shader& s)
 	{
 		std::wstring wFilePath = SV::Utils::ToWString(filePath);
 
@@ -673,7 +673,7 @@ namespace SV {
 
 		return true;
 	}
-	void DirectX11Device::_ReleaseShader(Shader& s)
+	void Graphics_dx11::_ReleaseShader(Shader& s)
 	{
 		Shader_dx11& shader = ToInternal(s);
 
@@ -701,7 +701,7 @@ namespace SV {
 		}
 		shader.m_Blob.Reset();
 	}
-	void DirectX11Device::_BindShader(Shader& s, CommandList cmd)
+	void Graphics_dx11::_BindShader(Shader& s, CommandList cmd)
 	{
 		Shader_dx11& shader = ToInternal(s);
 
@@ -732,7 +732,7 @@ namespace SV {
 		}
 		}
 	}
-	void DirectX11Device::_UnbindShader(SV_GFX_SHADER_TYPE type, CommandList cmd)
+	void Graphics_dx11::_UnbindShader(SV_GFX_SHADER_TYPE type, CommandList cmd)
 	{
 		switch (type) {
 		case SV_GFX_SHADER_TYPE_VERTEX:
@@ -748,7 +748,7 @@ namespace SV {
 	}
 
 	/////////////////////////////////INPUT LAYOUT//////////////////////////////////////////
-	bool DirectX11Device::_CreateInputLayout(const SV_GFX_INPUT_ELEMENT_DESC* d, ui32 count, const Shader& vs, InputLayout& il)
+	bool Graphics_dx11::_CreateInputLayout(const SV_GFX_INPUT_ELEMENT_DESC* d, ui32 count, const Shader& vs, InputLayout& il)
 	{
 		SV_ASSERT(count < 32);
 
@@ -778,23 +778,23 @@ namespace SV {
 
 		return true;
 	}
-	void DirectX11Device::_ReleaseInputLayout(InputLayout& il)
+	void Graphics_dx11::_ReleaseInputLayout(InputLayout& il)
 	{
 		InputLayout_dx11& inputLayout = ToInternal(il);
 		inputLayout.m_InputLayout.Reset();
 	}
-	void DirectX11Device::_BindInputLayout(InputLayout& il, CommandList cmd)
+	void Graphics_dx11::_BindInputLayout(InputLayout& il, CommandList cmd)
 	{
 		InputLayout_dx11& inputLayout = ToInternal(il);
 		deferredContext[cmd]->IASetInputLayout(inputLayout.m_InputLayout.Get());
 	}
-	void DirectX11Device::_UnbindInputLayout(CommandList cmd)
+	void Graphics_dx11::_UnbindInputLayout(CommandList cmd)
 	{
 		deferredContext[cmd]->IASetInputLayout(nullptr);
 	}
 
 	/////////////////////////////////TEXTURE//////////////////////////////////////////
-	bool DirectX11Device::_CreateTexture(void* data, Texture& t)
+	bool Graphics_dx11::_CreateTexture(void* data, Texture& t)
 	{
 		Texture_dx11& texture = ToInternal(t);
 
@@ -838,18 +838,18 @@ namespace SV {
 
 		return true;
 	}
-	void DirectX11Device::_ReleaseTexture(Texture& t)
+	void Graphics_dx11::_ReleaseTexture(Texture& t)
 	{
 		Texture_dx11& texture = ToInternal(t);
 		texture.m_Texture.Reset();
 		texture.m_ShaderResouceView.Reset();
 	}
-	void DirectX11Device::_UpdateTexture(void* data, ui32 size, Texture& t, CommandList cmd)
+	void Graphics_dx11::_UpdateTexture(void* data, ui32 size, Texture& t, CommandList cmd)
 	{
 		Texture_dx11& texture = ToInternal(t);
 		UpdateBuffer(*this, texture.m_Texture.Get(), texture.GetUsage(), texture.GetSize(), data, size, cmd);
 	}
-	void DirectX11Device::_BindTexture(ui32 slot, SV_GFX_SHADER_TYPE type, Texture& t, CommandList cmd)
+	void Graphics_dx11::_BindTexture(ui32 slot, SV_GFX_SHADER_TYPE type, Texture& t, CommandList cmd)
 	{
 		Texture_dx11& texture = ToInternal(t);
 		switch (type)
@@ -865,7 +865,7 @@ namespace SV {
 			break;
 		}
 	}
-	void DirectX11Device::_BindTextures(ui32 slot, SV_GFX_SHADER_TYPE type, ui32 count, Texture** ts, CommandList cmd)
+	void Graphics_dx11::_BindTextures(ui32 slot, SV_GFX_SHADER_TYPE type, ui32 count, Texture** ts, CommandList cmd)
 	{
 		ID3D11ShaderResourceView* textures[SV_GFX_TEXTURE_COUNT];
 
@@ -887,7 +887,7 @@ namespace SV {
 			break;
 		}
 	}
-	void DirectX11Device::_UnbindTexture(ui32 slot, SV_GFX_SHADER_TYPE type, CommandList cmd)
+	void Graphics_dx11::_UnbindTexture(ui32 slot, SV_GFX_SHADER_TYPE type, CommandList cmd)
 	{
 		ID3D11ShaderResourceView* null[1] = { nullptr };
 		switch (type)
@@ -903,7 +903,7 @@ namespace SV {
 			break;
 		}
 	}
-	void DirectX11Device::_UnbindTextures(SV_GFX_SHADER_TYPE type, CommandList cmd)
+	void Graphics_dx11::_UnbindTextures(SV_GFX_SHADER_TYPE type, CommandList cmd)
 	{
 		ID3D11ShaderResourceView* textures[SV_GFX_TEXTURE_COUNT];
 		svZeroMemory(textures, sizeof(ID3D11ShaderResourceView) * SV_GFX_TEXTURE_COUNT);
@@ -921,7 +921,7 @@ namespace SV {
 			break;
 		}
 	}
-	void DirectX11Device::_UnbindTextures(CommandList cmd)
+	void Graphics_dx11::_UnbindTextures(CommandList cmd)
 	{
 		_UnbindTextures(SV_GFX_SHADER_TYPE_VERTEX, cmd);
 		_UnbindTextures(SV_GFX_SHADER_TYPE_PIXEL, cmd);
@@ -929,7 +929,7 @@ namespace SV {
 	}
 
 	/////////////////////////////////SAMPLER//////////////////////////////////////////
-	bool DirectX11Device::_CreateSampler(SV_GFX_TEXTURE_ADDRESS_MODE addressMode, SV_GFX_TEXTURE_FILTER filter, Sampler& s)
+	bool Graphics_dx11::_CreateSampler(SV_GFX_TEXTURE_ADDRESS_MODE addressMode, SV_GFX_TEXTURE_FILTER filter, Sampler& s)
 	{
 		D3D11_SAMPLER_DESC desc;
 		svZeroMemory(&desc, sizeof(D3D11_SAMPLER_DESC));
@@ -944,12 +944,12 @@ namespace SV {
 
 		return true;
 	}
-	void DirectX11Device::_ReleaseSampler(Sampler& s)
+	void Graphics_dx11::_ReleaseSampler(Sampler& s)
 	{
 		Sampler_dx11& sampler = ToInternal(s);
 		sampler.m_SamplerState.Reset();
 	}
-	void DirectX11Device::_BindSampler(ui32 slot, SV_GFX_SHADER_TYPE type, Sampler& s, CommandList cmd)
+	void Graphics_dx11::_BindSampler(ui32 slot, SV_GFX_SHADER_TYPE type, Sampler& s, CommandList cmd)
 	{
 		Sampler_dx11& sampler = ToInternal(s);
 		switch (type) {
@@ -964,7 +964,7 @@ namespace SV {
 			break;
 		}
 	}
-	void DirectX11Device::_BindSamplers(ui32 slot, SV_GFX_SHADER_TYPE type, ui32 count, Sampler** ss, CommandList cmd)
+	void Graphics_dx11::_BindSamplers(ui32 slot, SV_GFX_SHADER_TYPE type, ui32 count, Sampler** ss, CommandList cmd)
 	{
 		ID3D11SamplerState* samplers[SV_GFX_SAMPLER_COUNT];
 
@@ -985,7 +985,7 @@ namespace SV {
 			break;
 		}
 	}
-	void DirectX11Device::_UnbindSampler(ui32 slot, SV_GFX_SHADER_TYPE type, CommandList cmd)
+	void Graphics_dx11::_UnbindSampler(ui32 slot, SV_GFX_SHADER_TYPE type, CommandList cmd)
 	{
 		ID3D11SamplerState* null[1] = { nullptr };
 		switch (type) {
@@ -1000,7 +1000,7 @@ namespace SV {
 			break;
 		}
 	}
-	void DirectX11Device::_UnbindSamplers(SV_GFX_SHADER_TYPE type, CommandList cmd)
+	void Graphics_dx11::_UnbindSamplers(SV_GFX_SHADER_TYPE type, CommandList cmd)
 	{
 		ID3D11SamplerState* samplers[SV_GFX_SAMPLER_COUNT];
 		svZeroMemory(samplers, sizeof(ID3D11SamplerState*) * SV_GFX_SAMPLER_COUNT);
@@ -1017,7 +1017,7 @@ namespace SV {
 			break;
 		}
 	}
-	void DirectX11Device::_UnbindSamplers(CommandList cmd)
+	void Graphics_dx11::_UnbindSamplers(CommandList cmd)
 	{
 		_UnbindSamplers(SV_GFX_SHADER_TYPE_VERTEX, cmd);
 		_UnbindSamplers(SV_GFX_SHADER_TYPE_PIXEL, cmd);
@@ -1025,7 +1025,7 @@ namespace SV {
 	}
 
 	/////////////////////////////////DEVICE///////////////////////////////////////////////
-	bool DirectX11Device::_CreateBlendState(const SV_GFX_BLEND_STATE_DESC* d, BlendState& bs)
+	bool Graphics_dx11::_CreateBlendState(const SV_GFX_BLEND_STATE_DESC* d, BlendState& bs)
 	{
 		D3D11_BLEND_DESC desc;
 
@@ -1051,17 +1051,17 @@ namespace SV {
 
 		return true;
 	}
-	void DirectX11Device::_ReleaseBlendState(BlendState& bs)
+	void Graphics_dx11::_ReleaseBlendState(BlendState& bs)
 	{
 		BlendState_dx11& blendState = ToInternal(bs);
 		blendState.m_BlendState.Reset();
 	}
-	void DirectX11Device::_BindBlendState(ui32 sampleMask, const float* blendFactors, BlendState& bs, CommandList cmd)
+	void Graphics_dx11::_BindBlendState(ui32 sampleMask, const float* blendFactors, BlendState& bs, CommandList cmd)
 	{
 		BlendState_dx11& blendState = ToInternal(bs);
 		deferredContext[cmd]->OMSetBlendState(blendState.m_BlendState.Get(), blendFactors, sampleMask);
 	}
-	void DirectX11Device::_UnbindBlendState(CommandList cmd)
+	void Graphics_dx11::_UnbindBlendState(CommandList cmd)
 	{
 		deferredContext[cmd]->OMSetBlendState(nullptr, nullptr, 0xffffffff);
 	}

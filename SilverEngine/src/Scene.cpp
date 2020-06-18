@@ -76,6 +76,11 @@ namespace SV {
 		return nullptr;
 	}
 
+	Scene::~Scene()
+	{
+		Close();
+	}
+
 	void Scene::Initialize() noexcept
 	{
 		m_Components.reserve(ECS::GetComponentsCount());
@@ -314,9 +319,10 @@ namespace SV {
 			list.resize(index + SIZE);
 
 			BaseComponent* comp = GetComponent(duplicated, ID);
-			memcpy(&list[index], comp, SIZE);
+			BaseComponent* newComp = reinterpret_cast<BaseComponent*>(&list[index]);
+			ECS::CopyComponent(ID, comp, newComp);
 
-			((BaseComponent*)(&list[index]))->entity = copy;
+			newComp->entity = copy;
 			copyEd.indices[ID] = index;
 		}
 
@@ -401,7 +407,7 @@ namespace SV {
 			currentIndex = index + (i * componentSize);
 			currentEntity = entities[i];
 
-			ECS::MoveComponent(componentID, comp, (BaseComponent*)(&list[currentIndex]));
+			ECS::CopyComponent(componentID, comp, (BaseComponent*)(&list[currentIndex]));
 			// set entity in component
 			BaseComponent* component = (BaseComponent*)(&list[currentIndex]);
 			component->entity = currentEntity;
@@ -776,12 +782,13 @@ namespace SV {
 			CreateComponentFunction createFn;
 			DestoryComponentFunction destroyFn;
 			MoveComponentFunction moveFn;
+			CopyComponentFunction copyFn;
 		};
 		ComponentData g_ComponentData[SV_ECS_MAX_COMPONENTS];
 		ui16 g_CompCount = 0u;
 
 		namespace _internal {
-			CompID RegisterComponent(ui32 size, const std::type_info& typeInfo, CreateComponentFunction createFn, DestoryComponentFunction destroyFn, MoveComponentFunction moveFn)
+			CompID RegisterComponent(ui32 size, const std::type_info& typeInfo, CreateComponentFunction createFn, DestoryComponentFunction destroyFn, MoveComponentFunction moveFn, CopyComponentFunction copyFn)
 			{
 				SV_ASSERT(g_CompCount < SV_ECS_MAX_COMPONENTS);
 
@@ -793,6 +800,7 @@ namespace SV {
 				data.createFn = createFn;
 				data.destroyFn = destroyFn;
 				data.moveFn = moveFn;
+				data.copyFn = copyFn;
 
 				size_t len = strlen(data.name);
 				char c = data.name[--len];
@@ -830,6 +838,11 @@ namespace SV {
 		void MoveComponent(CompID ID, SV::BaseComponent* from, SV::BaseComponent* to)
 		{
 			g_ComponentData[ID].moveFn(from, to);
+		}
+
+		void CopyComponent(CompID ID, SV::BaseComponent* from, SV::BaseComponent* to)
+		{
+			g_ComponentData[ID].copyFn(from, to);
 		}
 
 		std::map<std::string, CompID> g_ComponentNames;

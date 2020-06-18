@@ -4,6 +4,7 @@
 
 namespace SV {
 	typedef void* WindowHandle;
+	typedef std::function<ui16(WindowHandle, ui32, ui64, ui64)> WindowProcFn;
 }
 
 struct SV_WINDOW_INITIALIZATION_DESC
@@ -11,6 +12,7 @@ struct SV_WINDOW_INITIALIZATION_DESC
 	ui32 width, height, x, y;
 	const wchar* title;
 	SV::WindowHandle parent;
+	SV::WindowProcFn userWindowProc;
 };
 
 namespace SV {
@@ -24,6 +26,7 @@ namespace SV {
 		static std::mutex s_WindowCreationMutex;
 
 		WindowHandle m_WindowHandle;
+		WindowProcFn m_UserWindowProc;
 
 		float m_X, m_Y, m_Width, m_Height;
 		bool m_Resized = false;

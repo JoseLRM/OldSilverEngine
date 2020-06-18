@@ -14,6 +14,8 @@ struct SV_RENDERER_INITIALIZATION_DESC {
 		bool enabled;
 		ui32 resolution;
 	} windowAttachment;
+
+	SV::FrameBuffer* output = nullptr;
 };
 
 namespace SV {
@@ -33,6 +35,7 @@ namespace SV {
 		PostProcess m_PostProcess;
 
 		FrameBuffer m_Offscreen;
+		FrameBuffer* m_pOutput;
 
 		SV::Camera* m_pCamera;
 		XMMATRIX m_ViewProjectionMatrix;
@@ -60,12 +63,16 @@ namespace SV {
 		inline SV::Camera* GetCamera() const noexcept { return m_pCamera; };
 		inline void SetCamera(SV::Camera* camera) noexcept { m_pCamera = camera; };
 
+		inline void SetOutput(SV::FrameBuffer& output) noexcept { m_pOutput = &output; }
+
 		void SetResolution(ui32 width, ui32 height);
 
 		inline uvec2 GetResolution() const noexcept { return m_Resolution; }
 		inline ui32 GetResolutionWidth() const noexcept { return m_Resolution.x; }
 		inline ui32 GetResolutionHeight() const noexcept { return m_Resolution.y; }
 		inline float GetResolutionAspect() const noexcept { return float(m_Resolution.x) / float(m_Resolution.y); }
+
+		inline PostProcess& GetPostProcess() noexcept { return m_PostProcess; }
 
 		void DrawScene(SV::Scene& scene);
 

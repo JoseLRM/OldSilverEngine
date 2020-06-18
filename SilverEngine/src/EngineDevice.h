@@ -7,6 +7,7 @@ namespace SV {
 	class Renderer;
 	class Window;
 	class Input;
+	class StateManager;
 	class Application;
 
 	class EngineDevice {
@@ -19,6 +20,7 @@ namespace SV {
 		Renderer& GetRenderer() const noexcept;
 		Window& GetWindow() const noexcept;
 		Input& GetInput() const noexcept;
+		StateManager& GetStateManager() const noexcept;
 		Application& GetApplication() const noexcept;
 
 	};

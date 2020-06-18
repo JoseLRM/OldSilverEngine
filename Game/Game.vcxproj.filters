@@ -7,5 +7,6 @@
   <ItemGroup>
     <ClInclude Include="src\Components.h" />
     <ClInclude Include="src\ColisionSystem.h" />
+    <ClInclude Include="src\GameState.h" />
   </ItemGroup>
 </Project>

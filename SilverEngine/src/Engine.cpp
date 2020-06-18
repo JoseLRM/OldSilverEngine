@@ -16,6 +16,7 @@ void SV_ENGINE_INITIALIZATION_DESC::SetDefault()
 	windowDesc.height = 720;
 	windowDesc.title = L"SilverEngine";
 	windowDesc.parent = 0u;
+	windowDesc.userWindowProc = 0u;
 
 	rendererDesc.windowAttachment.enabled = true;
 	rendererDesc.windowAttachment.resolution = 1920u;
@@ -149,7 +150,7 @@ namespace SV {
 		}
 
 		// GRAPHICS
-		m_Graphics = std::make_unique<SV::DirectX11Device>();
+		m_Graphics = std::make_unique<SV::Graphics_dx11>();
 		m_Graphics->SetEngine(this);
 		if (!m_Graphics->Initialize(desc.graphicsDesc)) {
 			SV::LogE("Can't initialize Graphics");
@@ -161,10 +162,6 @@ namespace SV {
 			SV::LogE("Can't initialize Renderer");
 			return false;
 		}
-
-#ifdef SV_IMGUI
-		SVImGui::_internal::Initialize(m_Window, GetGraphics());
-#endif
 
 		// APPLICATION
 		m_Application->Initialize();
@@ -204,8 +201,23 @@ namespace SV {
 			// Begin
 
 			// Updating
+			m_StateManager.Update();
+
+			// Get current state
+			State* state = m_StateManager.GetCurrentState();
+			LoadingState* loadingState = m_StateManager.GetLoadingState();
+
+			// Update state/loadingState and application
+			if (state) state->Update(deltaTime);
+			else loadingState->Update(deltaTime);
+
+			// Fixed update state/loadingState and application
 			m_Application->Update(deltaTime);
 			if (fixedUpdateTime >= fixedUpdateFrameRate) {
+
+				if (state) state->FixedUpdate();
+				else loadingState->FixedUpdate();
+
 				m_Application->FixedUpdate();
 				fixedUpdateTime = fixedUpdateTime - fixedUpdateFrameRate;
 			}
@@ -213,6 +225,9 @@ namespace SV {
 			// Rendering
 			m_Graphics->BeginFrame();
 			m_Renderer.BeginFrame();
+
+			if (state) state->Render();
+			else loadingState->Render();
 
 			m_Application->Render();
 			m_Renderer.Render();
@@ -230,14 +245,12 @@ namespace SV {
 		m_Application->Close();
 		m_Application = nullptr;
 
+		m_StateManager.Close();
+
 		// RENDERER
 		if (!m_Renderer.Close()) {
 			SV::LogE("Can't close Renderer");
 		}
-
-#ifdef SV_IMGUI
-		SVImGui::_internal::Close();
-#endif
 
 		// WINDOW
 		if (!m_Window.Close()) {

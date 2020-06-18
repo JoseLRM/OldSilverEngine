@@ -93,6 +93,9 @@
     <ClInclude Include="src\TileMap.h">
       <Filter>Graphics\Renderer\2D</Filter>
     </ClInclude>
+    <ClInclude Include="src\StateManager.h">
+      <Filter>System</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="System">
@@ -201,6 +204,9 @@
     </ClCompile>
     <ClCompile Include="src\TileMap.cpp">
       <Filter>Graphics\Renderer\2D</Filter>
+    </ClCompile>
+    <ClCompile Include="src\StateManager.cpp">
+      <Filter>System</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
