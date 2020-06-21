@@ -75,10 +75,12 @@ namespace SV {
 			exit(1);
 		}
 
-		m_CurrentState->Unload();
-		m_CurrentState->Close();
-		delete m_CurrentState;
-		m_CurrentState = nullptr;
+		if (m_CurrentState) {
+			m_CurrentState->Unload();
+			m_CurrentState->Close();
+			delete m_CurrentState;
+			m_CurrentState = nullptr;
+		}
 	}
 
 	bool StateManager::IsLoading() const

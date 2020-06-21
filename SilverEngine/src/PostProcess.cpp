@@ -69,7 +69,7 @@ namespace SV {
 		gfx.BindInputLayout(m_PPInputLayout, cmd);
 
 		gfx.BindSampler(0u, SV_GFX_SHADER_TYPE_PIXEL, m_PPSampler, cmd);
-		gfx.BindFrameBuffer(output, cmd);
+		gfx.BindFrameBuffer(output, nullptr, cmd);
 		gfx.BindFrameBufferAsTexture(0u, SV_GFX_SHADER_TYPE_PIXEL, input, cmd);
 
 		gfx.Draw(4u, 0u, cmd);

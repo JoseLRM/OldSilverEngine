@@ -34,31 +34,6 @@ namespace SV {
 		m_OptionalComponents.push_back(ID);
 	}
 
-	///////////////////////////NAME COMPONENT///////////////
-#ifdef SV_IMGUI
-	void NameComponent::ShowInfo()
-	{
-		constexpr ui32 MAX_LENGTH = 32;
-		char name[MAX_LENGTH];
-
-		// Set actual name into buffer
-		{
-			ui32 i;
-			ui32 size = m_Name.size();
-			if (size >= MAX_LENGTH) size = MAX_LENGTH - 1;
-			for (i = 0; i < size; ++i) {
-				name[i] = m_Name[i];
-			}
-			name[i] = '\0';
-		}
-
-		ImGui::InputText("Name", name, MAX_LENGTH);
-
-		// Set new name into buffer
-		m_Name = name;
-	}
-#endif
-
 	///////////////////////////SCENE////////////////////////
 	BaseComponent* Scene::GetComponent(SV::Entity e, CompID componentID) noexcept
 	{

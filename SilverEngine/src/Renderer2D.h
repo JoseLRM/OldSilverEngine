@@ -7,24 +7,25 @@
 namespace SV {
 
 	class Renderer2D {
-		VertexBuffer	m_VertexBuffer;
+		VertexBuffer		m_VertexBuffer;
 
-		Shader			m_QuadVertexShader;
-		Shader			m_QuadPixelShader;
-		InputLayout		m_QuadInputLayout;
+		Shader				m_QuadVertexShader;
+		Shader				m_QuadPixelShader;
+		InputLayout			m_QuadInputLayout;
 
-		Shader			m_EllipseVertexShader;
-		Shader			m_EllipsePixelShader;
+		Shader				m_EllipseVertexShader;
+		Shader				m_EllipsePixelShader;
 
-		Shader			m_SpriteVertexShader;
-		Shader			m_SpritePixelShader;
-		InputLayout		m_SpriteInputLayout;
+		Shader				m_SpriteVertexShader;
+		Shader				m_SpritePixelShader;
+		InputLayout			m_SpriteInputLayout;
 
-		Shader			m_PointVertexShader;
-		Shader			m_PointPixelShader;
-		InputLayout		m_PointInputLayout;
+		Shader				m_PointVertexShader;
+		Shader				m_PointPixelShader;
+		InputLayout			m_PointInputLayout;
 
-		BlendState		m_TransparentBlendState;
+		BlendState			m_TransparentBlendState;
+		DepthStencilState	m_OpaqueDepthStencilState;
 
 		VertexBuffer m_InstanceBuffer;
 
@@ -51,7 +52,7 @@ namespace SV {
 		void DrawQuadsOrEllipses(std::vector<QuadInstance>& instances, bool transparent, bool quad, Graphics& gfx, CommandList cmd);
 		void DrawPointsOrLines(std::vector<PointInstance>& instances, bool transparent, bool point, Graphics& gfx, CommandList cmd);
 
-		void BindBlendState(bool transparent, Graphics& gfx, CommandList cmd);
+		void BindState(bool transparent, Graphics& gfx, CommandList cmd);
 		void UnbindBlendState(bool transparent, Graphics& gfx, CommandList cmd);
 
 	};

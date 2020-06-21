@@ -228,15 +228,17 @@ namespace SV {
 		SVAssertValidation(fb);
 		_ClearFrameBuffer(color, fb, cmd);
 	}
-	void Graphics::BindFrameBuffer(FrameBuffer& fb, CommandList cmd)
+	void Graphics::BindFrameBuffer(FrameBuffer& fb, Texture* dsv, CommandList cmd)
 	{
 		SVAssertValidation(fb);
-		_BindFrameBuffer(fb, cmd);
+		SV_ASSERT(dsv ? dsv->IsValid() : true);
+		_BindFrameBuffer(fb, dsv, cmd);
 	}
-	void Graphics::BindFrameBuffers(ui32 count, FrameBuffer** fbs, CommandList cmd)
+	void Graphics::BindFrameBuffers(ui32 count, FrameBuffer** fbs, Texture* dsv, CommandList cmd)
 	{
 		SV_ASSERT(count <= SV_GFX_RENDER_TARGET_VIEW_COUNT);
-		_BindFrameBuffers(count, fbs, cmd);
+		SV_ASSERT(dsv ? dsv->IsValid() : true);
+		_BindFrameBuffers(count, fbs, dsv, cmd);
 	}
 	void Graphics::BindFrameBufferAsTexture(ui32 slot, SV_GFX_SHADER_TYPE type, FrameBuffer& fb, CommandList cmd)
 	{
@@ -306,8 +308,23 @@ namespace SV {
 		t->m_Format = format;
 		t->m_Usage = usage;
 		t->m_CPUAccess = cpuAccess;
+		t->m_IsDepthStencilView = false;
 
 		return _CreateTexture(data, t);
+	}
+	bool Graphics::CreateTextureDSV(ui32 width, ui32 height, SV_GFX_FORMAT format, SV_GFX_USAGE usage, SV_GFX_CPU_ACCESS cpuAccess, Texture& t)
+	{
+		if (t.IsValid()) ReleaseTexture(t);
+		else t.Set(_AllocateTexture());
+
+		t->m_Width = width;
+		t->m_Height = height;
+		t->m_Format = format;
+		t->m_Usage = usage;
+		t->m_CPUAccess = cpuAccess;
+		t->m_IsDepthStencilView = true;
+
+		return _CreateTexture(nullptr, t);
 	}
 	void Graphics::ReleaseTexture(Texture& t)
 	{
@@ -316,7 +333,21 @@ namespace SV {
 	bool Graphics::ResizeTexture(void* data, ui32 width, ui32 height, Texture& t)
 	{
 		SVAssertValidation(t);
-		return CreateTexture(data, width, height, t->m_Format, t->m_Usage, t->m_CPUAccess, t);
+		
+		bool result;
+		if (t->IsDepthStencilView()) {
+			result = CreateTextureDSV(width, height, t->m_Format, t->m_Usage, t->m_CPUAccess, t);
+		}
+		else {
+			result = CreateTexture(data, width, height, t->m_Format, t->m_Usage, t->m_CPUAccess, t);
+		}
+		return result;
+	}
+	void Graphics::ClearTextureDSV(float depth, ui8 stencil, Texture& t, CommandList cmd)
+	{
+		SVAssertValidation(t);
+		SV_ASSERT(t->IsDepthStencilView());
+		_ClearTextureDSV(depth, stencil, t, cmd);
 	}
 	void Graphics::UpdateTexture(void* data, ui32 size, Texture& t, CommandList cmd)
 	{
@@ -385,7 +416,9 @@ namespace SV {
 		if (bs.IsValid()) ReleaseBlendState(bs);
 		else bs.Set(_AllocateBlendState());
 
-		return _CreateBlendState(desc, bs);
+		bs->m_Desc = *desc;
+
+		return _CreateBlendState(bs);
 	}
 	void Graphics::ReleaseBlendState(BlendState& bs)
 	{
@@ -411,6 +444,35 @@ namespace SV {
 	void Graphics::UnbindBlendState(CommandList cmd)
 	{
 		_UnbindBlendState(cmd);
+	}
+
+	// DEPTH STENCIL STATE
+	bool Graphics::CreateDepthStencilState(const SV_GFX_DEPTH_STENCIL_STATE_DESC* desc, DepthStencilState& dss)
+	{
+		if (dss.IsValid()) ReleaseDepthStencilState(dss);
+		else dss.Set(_AllocateDepthStencilState());
+
+		dss->m_Desc = *desc;
+
+		return _CreateDepthStencilState(dss);
+	}
+	void Graphics::ReleaseDepthStencilState(DepthStencilState& dss)
+	{
+		if (dss.IsValid()) ReleaseDepthStencilState(dss);
+	}
+	void Graphics::BindDepthStencilState(ui32 stencilRef, DepthStencilState& dss, CommandList cmd)
+	{
+		SVAssertValidation(dss);
+		_BindDepthStencilState(stencilRef, dss, cmd);
+	}
+	void Graphics::BindDepthStencilState(DepthStencilState& dss, CommandList cmd)
+	{
+		SVAssertValidation(dss);
+		_BindDepthStencilState(0u, dss, cmd);
+	}
+	void Graphics::UnbindDepthStencilState(CommandList cmd)
+	{
+		_UnbindDepthStencilState(cmd);
 	}
 
 }

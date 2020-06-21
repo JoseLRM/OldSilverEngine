@@ -108,6 +108,8 @@ namespace SV {
 		// BLEND STATE
 		{
 			SV_GFX_BLEND_STATE_DESC blendDesc;
+			blendDesc.SetDefault();
+
 			blendDesc.independentRenderTarget = true;
 			blendDesc.renderTargetDesc[0].enabled = true;
 			blendDesc.renderTargetDesc[0].src = SV_GFX_BLEND_SRC_ALPHA;
@@ -120,6 +122,27 @@ namespace SV {
 
 			if (!graphics.CreateBlendState(&blendDesc, m_TransparentBlendState)) {
 				SV::LogE("Can't Create 2D Transparent Blend State");
+				return false;
+			}
+		}
+
+		// DEPTH STENCIL STATE
+		{
+			SV_GFX_DEPTH_STENCIL_STATE_DESC desc;
+			desc.SetDefault();
+			desc.stencilEnable = true;
+			desc.stencilReadMask = 0xFF;
+			desc.stencilWriteMask = 0xFF;
+			desc.frontFaceOp.stencilDepthFailOp = SV_GFX_STENCIL_OP_KEEP;
+			desc.frontFaceOp.stencilFailOp = SV_GFX_STENCIL_OP_KEEP;
+			desc.frontFaceOp.stencilPassOp = SV_GFX_STENCIL_OP_REPLACE;
+			desc.frontFaceOp.stencilFunction = SV_GFX_COMPARISON_NOT_EQUAL;
+
+			desc.backFaceOp = desc.frontFaceOp;
+
+			if (!graphics.CreateDepthStencilState(&desc, m_OpaqueDepthStencilState))
+			{
+				SV::LogE("Can' create 2D Opaque DepthStencil State");
 				return false;
 			}
 		}
@@ -164,7 +187,7 @@ namespace SV {
 
 		gfx.SetTopology(SV_GFX_TOPOLOGY_TRIANGLESTRIP, cmd);
 
-		BindBlendState(transparent, gfx, cmd);
+		BindState(transparent, gfx, cmd);
 
 		gfx.BindShader(m_SpriteVertexShader, cmd);
 		gfx.BindShader(m_SpritePixelShader, cmd);
@@ -241,7 +264,7 @@ namespace SV {
 		// Binding
 		gfx.SetTopology(SV_GFX_TOPOLOGY_TRIANGLESTRIP, cmd);
 
-		BindBlendState(transparent, gfx, cmd);
+		BindState(transparent, gfx, cmd);
 
 		if (quad) {
 			gfx.BindShader(m_QuadVertexShader, cmd);
@@ -298,7 +321,7 @@ namespace SV {
 		if(point) gfx.SetTopology(SV_GFX_TOPOLOGY_POINTS, cmd);
 		else gfx.SetTopology(SV_GFX_TOPOLOGY_LINES, cmd);
 
-		BindBlendState(transparent, gfx, cmd);
+		BindState(transparent, gfx, cmd);
 
 		gfx.BindShader(m_PointVertexShader, cmd);
 		gfx.BindShader(m_PointPixelShader, cmd);
@@ -329,13 +352,15 @@ namespace SV {
 		UnbindBlendState(transparent, gfx, cmd);
 	}
 
-	void Renderer2D::BindBlendState(bool transparent, Graphics& gfx, CommandList cmd)
+	void Renderer2D::BindState(bool transparent, Graphics& gfx, CommandList cmd)
 	{
 		if (transparent) gfx.BindBlendState(m_TransparentBlendState, cmd);
+		else gfx.BindDepthStencilState(1u, m_OpaqueDepthStencilState, cmd);
 	}
 	void Renderer2D::UnbindBlendState(bool transparent, Graphics& gfx, CommandList cmd)
 	{
 		if (transparent) gfx.UnbindBlendState(cmd);
+		else gfx.UnbindDepthStencilState(cmd);
 	}
 
 	bool Renderer2D::Close(Graphics& gfx)

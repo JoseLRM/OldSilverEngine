@@ -122,17 +122,21 @@ namespace SV {
 		{
 			m_Width = LOWORD(lParam);
 			m_Height = HIWORD(lParam);
+
 			m_Resized = true;
 
 			break;
 		}
-		case WM_MOVE:
+		case WM_WINDOWPOSCHANGED:
 		{
-			m_X = LOWORD(lParam);
-			m_Y = HIWORD(lParam);
+			WINDOWPOS& info = *reinterpret_cast<WINDOWPOS*>(lParam);
+
+			m_X = info.x;
+			m_Y = info.y;
+
 			//jsh::WindowMovedEvent e(screenX, screenY);
 			//jshEvent::Dispatch(e);
-			break;
+			return 0;
 		}
 		case WM_SETFOCUS:
 		{
@@ -269,10 +273,7 @@ namespace SV {
 		}
 
 		if (IsResized()) {
-#ifdef SV_IMGUI
 			GetGraphics().ResizeBackBuffer(m_Width, m_Height);
-#endif
-			GetRenderer().UpdateResolution();
 		}
 
 		return true;

@@ -35,6 +35,7 @@ namespace SV {
 		PostProcess m_PostProcess;
 
 		FrameBuffer m_Offscreen;
+		Texture m_DepthStencilView;
 		FrameBuffer* m_pOutput;
 
 		SV::Camera* m_pCamera;

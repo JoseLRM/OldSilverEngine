@@ -61,9 +61,16 @@ namespace SV {
 
 		bool operator<(const RenderLayer& other) const noexcept
 		{
-			if (m_Value != other.m_Value) return m_Value < other.m_Value;
-			else if (m_Transparent != other.m_Transparent) return !m_Transparent;
-			else return false;
+			if (m_Transparent) {
+				if (m_Value != other.m_Value) return m_Value < other.m_Value;
+				else if (m_Transparent != other.m_Transparent) return !m_Transparent;
+				else return false;
+			}
+			else {
+				if (m_Value != other.m_Value) return m_Value > other.m_Value;
+				else if (m_Transparent != other.m_Transparent) return !m_Transparent;
+				else return false;
+			}
 		}
 
 	};

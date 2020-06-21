@@ -407,19 +407,86 @@ enum SV_GFX_COLOR_WRITE_ENABLE
 	SV_GFX_COLOR_WRITE_ENABLE_ALL = (((SV_GFX_COLOR_WRITE_ENABLE_RED | SV_GFX_COLOR_WRITE_ENABLE_GREEN) | SV_GFX_COLOR_WRITE_ENABLE_BLUE) | SV_GFX_COLOR_WRITE_ENABLE_ALPHA)
 };
 
+enum SV_GFX_COMPARISON_FN
+{
+	SV_GFX_COMPARISON_NEVER = 1,
+	SV_GFX_COMPARISON_LESS = 2,
+	SV_GFX_COMPARISON_EQUAL = 3,
+	SV_GFX_COMPARISON_LESS_EQUAL = 4,
+	SV_GFX_COMPARISON_GREATER = 5,
+	SV_GFX_COMPARISON_NOT_EQUAL = 6,
+	SV_GFX_COMPARISON_GREATER_EQUAL = 7,
+	SV_GFX_COMPARISON_ALWAYS = 8
+};
+
+enum SV_GFX_STENCIL_OP
+{
+	SV_GFX_STENCIL_OP_KEEP = 1,
+	SV_GFX_STENCIL_OP_ZERO = 2,
+	SV_GFX_STENCIL_OP_REPLACE = 3,
+	SV_GFX_STENCIL_OP_INCR_SAT = 4,
+	SV_GFX_STENCIL_OP_DECR_SAT = 5,
+	SV_GFX_STENCIL_OP_INVERT = 6,
+	SV_GFX_STENCIL_OP_INCR = 7,
+	SV_GFX_STENCIL_OP_DECR = 8
+};
+
 struct SV_GFX_BLEND_STATE_DESC {
 	struct {
-		bool enabled = false;
-		SV_GFX_BLEND src = SV_GFX_BLEND_ONE;
-		SV_GFX_BLEND srcAlpha = SV_GFX_BLEND_ONE;
-		SV_GFX_BLEND dest = SV_GFX_BLEND_ZERO;
-		SV_GFX_BLEND destAlpha = SV_GFX_BLEND_ZERO;
-		SV_GFX_BLEND_OP op = SV_GFX_BLEND_OP_ADD;
-		SV_GFX_BLEND_OP opAlpha = SV_GFX_BLEND_OP_ADD;
-		ui8 writeMask = SV_GFX_COLOR_WRITE_ENABLE_ALL;
+		bool enabled;
+		SV_GFX_BLEND src;
+		SV_GFX_BLEND srcAlpha;
+		SV_GFX_BLEND dest;
+		SV_GFX_BLEND destAlpha;
+		SV_GFX_BLEND_OP op;
+		SV_GFX_BLEND_OP opAlpha;
+		ui8 writeMask;
 	} renderTargetDesc[8];
 
-	bool independentRenderTarget = false;
+	bool independentRenderTarget;
+
+	inline void SetDefault() noexcept
+	{
+		independentRenderTarget = false;
+
+		for (ui32 i = 0; i < 8; ++i) {
+			auto& rt = renderTargetDesc[i];
+
+			rt.enabled = false;
+			rt.src = SV_GFX_BLEND_ONE;
+			rt.srcAlpha = SV_GFX_BLEND_ONE;
+			rt.dest = SV_GFX_BLEND_ZERO;
+			rt.destAlpha = SV_GFX_BLEND_ZERO;
+			rt.op = SV_GFX_BLEND_OP_ADD;
+			rt.opAlpha = SV_GFX_BLEND_OP_ADD;
+			rt.writeMask = SV_GFX_COLOR_WRITE_ENABLE_ALL;
+		}
+	}
+};
+
+struct SV_GFX_DEPTH_STENCIL_OP {
+	SV_GFX_STENCIL_OP stencilFailOp;
+	SV_GFX_STENCIL_OP stencilDepthFailOp;
+	SV_GFX_STENCIL_OP stencilPassOp;
+	SV_GFX_COMPARISON_FN stencilFunction;
+};
+struct SV_GFX_DEPTH_STENCIL_STATE_DESC {
+
+	bool depthEnable;
+	bool depthWriteMask;
+	SV_GFX_COMPARISON_FN depthFunction;
+
+	bool stencilEnable;
+	ui8 stencilReadMask;
+	ui8 stencilWriteMask;
+
+	SV_GFX_DEPTH_STENCIL_OP frontFaceOp;
+	SV_GFX_DEPTH_STENCIL_OP backFaceOp;
+
+	inline void SetDefault() noexcept
+	{
+		svZeroMemory(this, sizeof(SV_GFX_DEPTH_STENCIL_STATE_DESC));
+	}
 };
 
 typedef ui8 SV_GFX_CPU_ACCESS;

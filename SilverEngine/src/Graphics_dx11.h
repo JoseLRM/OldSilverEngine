@@ -71,6 +71,7 @@ namespace SV {
 	struct Texture_dx11 : public SV::_internal::Texture_internal {
 		ComPtr<ID3D11Texture2D> m_Texture;
 		ComPtr<ID3D11ShaderResourceView> m_ShaderResouceView;
+		ComPtr<ID3D11DepthStencilView> m_DepthStencilView;
 		ui64 GetResouceID() override
 		{
 			return reinterpret_cast<ui64>(m_ShaderResouceView.Get());
@@ -82,9 +83,14 @@ namespace SV {
 		ComPtr<ID3D11SamplerState> m_SamplerState;
 	};
 
-	/////////////////////////////////SAMPLER//////////////////////////////////////////
+	/////////////////////////////////BLEND STATE//////////////////////////////////////////
 	struct BlendState_dx11 : public SV::_internal::BlendState_internal {
 		ComPtr<ID3D11BlendState> m_BlendState;
+	};
+
+	/////////////////////////////////DEPTH STENCIL STATE//////////////////////////////////////////
+	struct DepthStencilState_dx11 : public SV::_internal::DepthStencilState_internal {
+		ComPtr<ID3D11DepthStencilState> m_DepthStencilState;
 	};
 
 	//TO INTERNAL METHODS
@@ -114,6 +120,9 @@ namespace SV {
 	}
 	inline BlendState_dx11& ToInternal(BlendState& bs) {
 		return *reinterpret_cast<BlendState_dx11*>(bs.Get());
+	}
+	inline DepthStencilState_dx11& ToInternal(DepthStencilState& dss) {
+		return *reinterpret_cast<DepthStencilState_dx11*>(dss.Get());
 	}
 
 	/////////////////////////////////DEVICE///////////////////////////////////////////////
@@ -168,6 +177,7 @@ namespace SV {
 		std::unique_ptr<_internal::Texture_internal> _AllocateTexture() override { return std::make_unique<Texture_dx11>(); }
 		std::unique_ptr<_internal::Sampler_internal> _AllocateSampler() override { return std::make_unique<Sampler_dx11>(); }
 		std::unique_ptr<_internal::BlendState_internal> _AllocateBlendState() override { return std::make_unique<BlendState_dx11>(); }
+		std::unique_ptr<_internal::DepthStencilState_internal> _AllocateDepthStencilState() override { return std::make_unique<DepthStencilState_dx11>(); }
 
 		void _ResetState(CommandList cmd) override;
 
@@ -211,8 +221,8 @@ namespace SV {
 
 		void _ClearFrameBuffer(SV::Color4f color, FrameBuffer& fb, CommandList cmd) override;
 
-		void _BindFrameBuffer(FrameBuffer& fb, CommandList cmd) override;
-		void _BindFrameBuffers(ui32 count, FrameBuffer** fbs, CommandList cmd) override;
+		void _BindFrameBuffer(FrameBuffer& fb, Texture* dsv, CommandList cmd) override;
+		void _BindFrameBuffers(ui32 count, FrameBuffer** fbs, Texture* dsv, CommandList cmd) override;
 
 		void _BindFrameBufferAsTexture(ui32 slot, SV_GFX_SHADER_TYPE type, FrameBuffer& fb, CommandList cmd) override;
 
@@ -236,6 +246,7 @@ namespace SV {
 		void _ReleaseTexture(Texture& t) override;
 
 		void _UpdateTexture(void* data, ui32 size, Texture& t, CommandList cmd) override;
+		void _ClearTextureDSV(float depth, ui8 stencil, Texture& t, CommandList cmd) override;
 
 		void _BindTexture(ui32 slot, SV_GFX_SHADER_TYPE type, Texture& t, CommandList cmd) override;
 		void _BindTextures(ui32 slot, SV_GFX_SHADER_TYPE type, ui32 count, Texture** ts, CommandList cmd) override;
@@ -256,11 +267,18 @@ namespace SV {
 		void _UnbindSamplers(CommandList cmd) override;
 
 		// BlendState
-		bool _CreateBlendState(const SV_GFX_BLEND_STATE_DESC* desc, BlendState& bs) override;
+		bool _CreateBlendState(BlendState& bs) override;
 		void _ReleaseBlendState(BlendState& bs) override;
 
 		void _BindBlendState(ui32 sampleMask, const float* blendFactors, BlendState& bs, CommandList cmd) override;
 		void _UnbindBlendState(CommandList cmd) override;
+
+		// Internal DepthStencilState
+		bool _CreateDepthStencilState(DepthStencilState& dss) override;
+		void _ReleaseDepthStencilState(DepthStencilState& dss) override;
+
+		void _BindDepthStencilState(ui32 stencilRef, DepthStencilState& dss, CommandList cmd) override;
+		void _UnbindDepthStencilState(CommandList cmd) override;
 
 	};
 

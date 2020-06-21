@@ -83,6 +83,15 @@ constexpr ui32 ParseCPUAccess(ui8 cpuAccess)
 	return ((cpuAccess & SV_GFX_CPU_ACCESS_WRITE) ? D3D11_CPU_ACCESS_WRITE : 0u) | ((cpuAccess & SV_GFX_CPU_ACCESS_READ) ? D3D11_CPU_ACCESS_READ : 0u);
 }
 
+constexpr D3D11_COMPARISON_FUNC ParseComparisonFn(SV_GFX_COMPARISON_FN comp)
+{
+	return (D3D11_COMPARISON_FUNC)comp;
+}
+constexpr D3D11_STENCIL_OP ParseStencilOp(SV_GFX_STENCIL_OP op)
+{
+	return (D3D11_STENCIL_OP)op;
+}
+
 namespace SV {
 
 	void Graphics_dx11::CreateBackBuffer(const SV::Adapter::OutputMode& outputMode, ui32 width, ui32 height)
@@ -235,8 +244,7 @@ namespace SV {
 		viewports[cmd].SetViewport(slot, viewport);
 	}
 
-#ifdef SV_IMGUI
-	void DirectX11Device::ResizeBackBuffer(ui32 width, ui32 height)
+	void Graphics_dx11::ResizeBackBuffer(ui32 width, ui32 height)
 	{
 		if (!swapChain.Get()) return;
 
@@ -249,7 +257,6 @@ namespace SV {
 
 		CreateBackBuffer(outputMode, width, height);
 	}
-#endif
 
 	void Graphics_dx11::SetTopology(SV_GFX_TOPOLOGY topology, CommandList cmd)
 	{
@@ -593,19 +600,28 @@ namespace SV {
 		FrameBuffer_dx11& buffer = ToInternal(fb);
 		deferredContext[cmd]->ClearRenderTargetView(buffer.m_RenderTargetView.Get(), color);
 	}
-	void Graphics_dx11::_BindFrameBuffer(FrameBuffer& fb, CommandList cmd)
+	void Graphics_dx11::_BindFrameBuffer(FrameBuffer& fb, Texture* dsv, CommandList cmd)
 	{
 		FrameBuffer_dx11& buffer = ToInternal(fb);
-		deferredContext[cmd]->OMSetRenderTargets(1, buffer.m_RenderTargetView.GetAddressOf(), nullptr);
+		if (dsv) {
+			Texture_dx11& DSV = ToInternal(*dsv);
+			deferredContext[cmd]->OMSetRenderTargets(1, buffer.m_RenderTargetView.GetAddressOf(), DSV.m_DepthStencilView.Get());
+		}
+		else deferredContext[cmd]->OMSetRenderTargets(1, buffer.m_RenderTargetView.GetAddressOf(), nullptr);
 	}
-	void Graphics_dx11::_BindFrameBuffers(ui32 count, FrameBuffer** fbs, CommandList cmd)
+	void Graphics_dx11::_BindFrameBuffers(ui32 count, FrameBuffer** fbs, Texture* dsv, CommandList cmd)
 	{
 		ID3D11RenderTargetView* renderTargets[SV_GFX_RENDER_TARGET_VIEW_COUNT];
 		for (ui32 i = 0; i < SV_GFX_RENDER_TARGET_VIEW_COUNT; ++i) {
 			FrameBuffer_dx11& buffer = ToInternal(*fbs[i]);
 			renderTargets[i] = buffer.m_RenderTargetView.Get();
 		}
-		deferredContext[cmd]->OMSetRenderTargets(count, renderTargets, nullptr);
+
+		if (dsv) {
+			Texture_dx11& DSV = ToInternal(*dsv);
+			deferredContext[cmd]->OMSetRenderTargets(count, renderTargets, DSV.m_DepthStencilView.Get());
+		}
+		else deferredContext[cmd]->OMSetRenderTargets(count, renderTargets, nullptr);
 	}
 	void Graphics_dx11::_BindFrameBufferAsTexture(ui32 slot, SV_GFX_SHADER_TYPE type, FrameBuffer& fb, CommandList cmd)
 	{
@@ -802,7 +818,7 @@ namespace SV {
 		{
 			D3D11_TEXTURE2D_DESC desc = {};
 			desc.ArraySize = 1u;
-			desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+			desc.BindFlags = texture.IsDepthStencilView() ? D3D11_BIND_DEPTH_STENCIL : D3D11_BIND_SHADER_RESOURCE;
 			desc.CPUAccessFlags = ParseCPUAccess(texture.GetCPUAccess());
 			desc.Format = ParseFormat(texture.GetFormat());
 			desc.Width = texture.GetWidth();
@@ -825,8 +841,18 @@ namespace SV {
 			}
 		}
 
-		// Shader resource view
-		{
+		// Depth stencil view
+		if (texture.IsDepthStencilView()) {
+			D3D11_DEPTH_STENCIL_VIEW_DESC desc;
+			desc.Flags = 0u;
+			desc.Format = ParseFormat(texture.GetFormat());
+			desc.Texture2D.MipSlice = 0u;
+			desc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+
+			dxCheck(device->CreateDepthStencilView(texture.m_Texture.Get(), &desc, &texture.m_DepthStencilView));
+		}
+		else {
+			// Shader resource view
 			D3D11_SHADER_RESOURCE_VIEW_DESC desc;
 			svZeroMemory(&desc, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
 			desc.Format = ParseFormat(texture.GetFormat());
@@ -843,11 +869,17 @@ namespace SV {
 		Texture_dx11& texture = ToInternal(t);
 		texture.m_Texture.Reset();
 		texture.m_ShaderResouceView.Reset();
+		texture.m_DepthStencilView.Reset();
 	}
 	void Graphics_dx11::_UpdateTexture(void* data, ui32 size, Texture& t, CommandList cmd)
 	{
 		Texture_dx11& texture = ToInternal(t);
 		UpdateBuffer(*this, texture.m_Texture.Get(), texture.GetUsage(), texture.GetSize(), data, size, cmd);
+	}
+	void Graphics_dx11::_ClearTextureDSV(float depth, ui8 stencil, Texture& t, CommandList cmd)
+	{
+		Texture_dx11& texture = ToInternal(t);
+		deferredContext[cmd]->ClearDepthStencilView(texture.m_DepthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, depth, stencil);
 	}
 	void Graphics_dx11::_BindTexture(ui32 slot, SV_GFX_SHADER_TYPE type, Texture& t, CommandList cmd)
 	{
@@ -1024,17 +1056,18 @@ namespace SV {
 		_UnbindSamplers(SV_GFX_SHADER_TYPE_GEOMETRY, cmd);
 	}
 
-	/////////////////////////////////DEVICE///////////////////////////////////////////////
-	bool Graphics_dx11::_CreateBlendState(const SV_GFX_BLEND_STATE_DESC* d, BlendState& bs)
+	/////////////////////////////////BLEND STATE///////////////////////////////////////////////
+	bool Graphics_dx11::_CreateBlendState(BlendState& bs)
 	{
 		D3D11_BLEND_DESC desc;
+		const SV_GFX_BLEND_STATE_DESC& d = bs->GetDesc();
 
 		desc.AlphaToCoverageEnable = FALSE;
-		desc.IndependentBlendEnable = d->independentRenderTarget ? TRUE : FALSE;
+		desc.IndependentBlendEnable = d.independentRenderTarget ? TRUE : FALSE;
 
 		for (ui8 i = 0; i < 8; ++i) {
 			auto& rt0 = desc.RenderTarget[i];
-			auto& rt1 = d->renderTargetDesc[i];
+			auto& rt1 = d.renderTargetDesc[i];
 
 			rt0.BlendEnable = rt1.enabled ? TRUE : FALSE;
 			rt0.SrcBlend = ParseBlendOption(rt1.src);
@@ -1064,6 +1097,48 @@ namespace SV {
 	void Graphics_dx11::_UnbindBlendState(CommandList cmd)
 	{
 		deferredContext[cmd]->OMSetBlendState(nullptr, nullptr, 0xffffffff);
+	}
+
+	/////////////////////////////////DEPTHSTENCIL STATE///////////////////////////////////////////////
+	bool Graphics_dx11::_CreateDepthStencilState(DepthStencilState& dss)
+	{
+		D3D11_DEPTH_STENCIL_DESC desc;
+		const SV_GFX_DEPTH_STENCIL_STATE_DESC& d = dss->GetDesc();
+
+		desc.DepthEnable = d.depthEnable ? TRUE : FALSE;
+		desc.DepthFunc = ParseComparisonFn(d.depthFunction);
+		desc.DepthWriteMask = d.depthWriteMask ? D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO;
+		desc.StencilEnable = d.stencilEnable ? TRUE : FALSE;
+		desc.StencilReadMask = d.stencilReadMask;
+		desc.StencilWriteMask = d.stencilWriteMask;
+		desc.FrontFace.StencilDepthFailOp = ParseStencilOp(d.frontFaceOp.stencilDepthFailOp);
+		desc.FrontFace.StencilFailOp = ParseStencilOp(d.frontFaceOp.stencilFailOp);
+		desc.FrontFace.StencilPassOp = ParseStencilOp(d.frontFaceOp.stencilPassOp);
+		desc.FrontFace.StencilFunc = ParseComparisonFn(d.frontFaceOp.stencilFunction);
+		desc.BackFace.StencilDepthFailOp = ParseStencilOp(d.backFaceOp.stencilDepthFailOp);
+		desc.BackFace.StencilFailOp = ParseStencilOp(d.backFaceOp.stencilFailOp);
+		desc.BackFace.StencilPassOp = ParseStencilOp(d.backFaceOp.stencilPassOp);
+		desc.BackFace.StencilFunc = ParseComparisonFn(d.backFaceOp.stencilFunction);
+
+		DepthStencilState_dx11& DSS = ToInternal(dss);
+
+		dxCheck(device->CreateDepthStencilState(&desc, &DSS.m_DepthStencilState));
+
+		return true;
+	}
+	void Graphics_dx11::_ReleaseDepthStencilState(DepthStencilState& dss)
+	{
+		DepthStencilState_dx11& DSS = ToInternal(dss);
+		DSS.m_DepthStencilState.Reset();
+	}
+	void Graphics_dx11::_BindDepthStencilState(ui32 stencilRef, DepthStencilState& dss, CommandList cmd)
+	{
+		DepthStencilState_dx11& DSS = ToInternal(dss);
+		deferredContext[cmd]->OMSetDepthStencilState(DSS.m_DepthStencilState.Get(), stencilRef);
+	}
+	void Graphics_dx11::_UnbindDepthStencilState(CommandList cmd)
+	{
+		deferredContext[cmd]->OMSetDepthStencilState(nullptr, 0u);
 	}
 
 }

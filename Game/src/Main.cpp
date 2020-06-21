@@ -36,7 +36,7 @@ public:
 		SV::Color4f maxColor = SVColor4f::RED;
 
 		float adv = 1.f / float(count);
-		for (i32 i = count; i >= 0; --i) {
+		for (ui32 i = 0; i < count; ++i) {
 
 			SV::Color4b color = SVColor4f::ToColor4b((minColor + (maxColor / count) * i) / 2.f);
 

@@ -93,7 +93,6 @@
     <ClInclude Include="src\Dx11.h" />
     <ClInclude Include="src\EngineDevice.h" />
     <ClInclude Include="src\external\stbi_lib.h" />
-    <ClInclude Include="src\ImGuiManager.h" />
     <ClInclude Include="src\Scene.h" />
     <ClInclude Include="src\Graphics_dx11.h" />
     <ClInclude Include="src\Engine.h" />
@@ -132,7 +131,6 @@
     <ClCompile Include="src\Graphics_dx11.cpp" />
     <ClCompile Include="src\Engine.cpp" />
     <ClCompile Include="src\Graphics.cpp" />
-    <ClCompile Include="src\ImGuiManager.cpp" />
     <ClCompile Include="src\Input.cpp" />
     <ClCompile Include="src\PostProcess.cpp" />
     <ClCompile Include="src\Renderer2D.cpp" />

@@ -39,6 +39,10 @@ namespace SV {
 			SV::LogE("Can't create offscreen framebuffer");
 			return false;
 		}
+		if (!gfx.CreateTextureDSV(m_Resolution.x, m_Resolution.y, SV_GFX_FORMAT_D24_UNORM_S8_UINT, SV_GFX_USAGE_DEFAULT, SV_GFX_CPU_ACCESS_NONE, m_DepthStencilView)) {
+			SV::LogE("Can't create DepthStencilView");
+			return false;
+		}
 
 		if (!TileMap::CreateShaders(gfx)) {
 			SV::LogE("Can't create TileMap shaders");
@@ -95,9 +99,10 @@ namespace SV {
 
 		// Clear buffers
 		gfx.ClearFrameBuffer(SVColor4f::BLACK, m_Offscreen, cmd);
+		gfx.ClearTextureDSV(1.f, 0u, m_DepthStencilView, cmd);
 
 		// Offscreen binding
-		gfx.BindFrameBuffer(m_Offscreen, cmd);
+		gfx.BindFrameBuffer(m_Offscreen, &m_DepthStencilView, cmd);
 		gfx.SetViewport(0u, 0.f, 0.f, m_Offscreen->GetWidth(), m_Offscreen->GetHeight(), 0.f, 1.f, cmd);
 
 		// Draw TileMaps
@@ -218,6 +223,7 @@ namespace SV {
 		}
 
 		if(m_Offscreen.IsValid()) GetGraphics().ResizeFrameBuffer(m_Resolution.x, m_Resolution.y, m_Offscreen);
+		if (m_DepthStencilView.IsValid()) GetGraphics().ResizeTexture(nullptr, m_Resolution.x, m_Resolution.y, m_DepthStencilView);
 	}
 
 }

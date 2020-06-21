@@ -84,6 +84,8 @@ namespace SV {
 			ui32 m_Height;
 			ui32 m_Size;
 
+			bool m_IsDepthStencilView;
+
 		public:
 			friend Graphics;
 			friend Graphics_dx11;
@@ -94,6 +96,8 @@ namespace SV {
 			inline ui32 GetWidth() const noexcept { return m_Width; }
 			inline ui32 GetHeight() const noexcept { return m_Height; }
 			inline ui32 GetSize() const noexcept { return m_Size; }
+
+			inline bool IsDepthStencilView() const noexcept { return m_IsDepthStencilView; }
 
 			virtual ui64 GetResouceID() = 0;
 
@@ -107,9 +111,24 @@ namespace SV {
 		};
 
 		class BlendState_internal {
+			SV_GFX_BLEND_STATE_DESC m_Desc;
+
 		public:
 			friend Graphics;
 			friend Graphics_dx11;
+
+			inline const SV_GFX_BLEND_STATE_DESC& GetDesc() const noexcept { return m_Desc; }
+
+		};
+
+		class DepthStencilState_internal {
+			SV_GFX_DEPTH_STENCIL_STATE_DESC m_Desc;
+
+		public:
+			friend Graphics;
+			friend Graphics_dx11;
+
+			inline const SV_GFX_DEPTH_STENCIL_STATE_DESC& GetDesc() const noexcept { return m_Desc; }
 
 		};
 
@@ -136,6 +155,7 @@ namespace SV {
 	class Texture			: public _internal::Primitive_internal<_internal::Texture_internal> {};
 	class Sampler			: public _internal::Primitive_internal<_internal::Sampler_internal> {};
 	class BlendState		: public _internal::Primitive_internal<_internal::BlendState_internal> {};
+	class DepthStencilState	: public _internal::Primitive_internal<_internal::DepthStencilState_internal> {};
 
 	class Graphics : public SV::EngineDevice {
 
@@ -149,10 +169,6 @@ namespace SV {
 		virtual bool _Initialize(const SV_GRAPHICS_INITIALIZATION_DESC& desc) = 0;
 		virtual bool _Close() = 0;
 
-#ifdef SV_IMGUI
-		virtual void ResizeBackBuffer(ui32 width, ui32 height) = 0;
-#endif
-
 		void BeginFrame();
 		void EndFrame();
 
@@ -163,18 +179,17 @@ namespace SV {
 		Graphics();
 		~Graphics();
 
+		// Swap chain
+		virtual void ResizeBackBuffer(ui32 width, ui32 height) = 0;
+
 		void SetFullscreen(bool fullscreen);
 		inline bool InFullscreen() const noexcept { return m_Fullscreen; }
 
+		virtual SV::FrameBuffer& GetMainFrameBuffer() = 0;
+
+		// Adapters
 		inline const SV::Adapter& GetAdapter() const noexcept { return m_Adapter; }
 		inline ui32 GetOutputModeID() const noexcept { return m_OutputModeID; }
-
-		virtual void Present() = 0;
-		virtual CommandList BeginCommandList() = 0;
-		virtual void SetViewport(ui32 slot, float x, float y, float w, float h, float n, float f, SV::CommandList cmd) = 0;
-		virtual void SetTopology(SV_GFX_TOPOLOGY topology, CommandList cmd) = 0;
-
-		virtual SV::FrameBuffer& GetMainFrameBuffer() = 0;
 
 		// Draw calls
 		virtual void Draw(ui32 vertexCount, ui32 startVertex, CommandList cmd) = 0;
@@ -183,6 +198,11 @@ namespace SV {
 		virtual void DrawIndexedInstanced(ui32 indicesPerInstance, ui32 instances, ui32 startIndex, ui32 startVertex, ui32 startInstance, CommandList cmd) = 0;
 
 		// PRIMITIVES
+		virtual void Present() = 0;
+		virtual CommandList BeginCommandList() = 0;
+		virtual void SetViewport(ui32 slot, float x, float y, float w, float h, float n, float f, SV::CommandList cmd) = 0;
+		virtual void SetTopology(SV_GFX_TOPOLOGY topology, CommandList cmd) = 0;
+
 		void ResetState(CommandList cmd);
 
 		// VertexBuffer
@@ -227,8 +247,8 @@ namespace SV {
 
 		void ClearFrameBuffer(SV::Color4f color, FrameBuffer& fb, CommandList cmd);
 
-		void BindFrameBuffer(FrameBuffer& fb, CommandList cmd);
-		void BindFrameBuffers(ui32 count, FrameBuffer** fbs, CommandList cmd);
+		void BindFrameBuffer(FrameBuffer& fb, Texture* dsv, CommandList cmd);
+		void BindFrameBuffers(ui32 count, FrameBuffer** fbs, Texture* dsv, CommandList cmd);
 
 		void BindFrameBufferAsTexture(ui32 slot, SV_GFX_SHADER_TYPE type, FrameBuffer& fb, CommandList cmd);
 		
@@ -250,9 +270,11 @@ namespace SV {
 
 		// Texture
 		bool CreateTexture(void* data, ui32 width, ui32 height, SV_GFX_FORMAT format, SV_GFX_USAGE usage, SV_GFX_CPU_ACCESS cpuAccess, Texture& t);
+		bool CreateTextureDSV(ui32 width, ui32 height, SV_GFX_FORMAT format, SV_GFX_USAGE usage, SV_GFX_CPU_ACCESS cpuAccess, Texture& t);
 		void ReleaseTexture(Texture& t);
 		
 		bool ResizeTexture(void* data, ui32 width, ui32 height, Texture& t);
+		void ClearTextureDSV(float depth, ui8 stencil, Texture& t, CommandList cmd);
 
 		void UpdateTexture(void* data, ui32 size, Texture& t, CommandList cmd);
 
@@ -285,6 +307,15 @@ namespace SV {
 
 		void UnbindBlendState(CommandList cmd);
 
+		// DepthStencilState
+		bool CreateDepthStencilState(const SV_GFX_DEPTH_STENCIL_STATE_DESC* desc, DepthStencilState& dss);
+		void ReleaseDepthStencilState(DepthStencilState& dss);
+
+		void BindDepthStencilState(ui32 stencilRef, DepthStencilState& dss, CommandList cmd);
+		void BindDepthStencilState(DepthStencilState& dss, CommandList cmd);
+
+		void UnbindDepthStencilState(CommandList cmd);
+
 		// INTERNAL PRIMITIVES
 	private:
 		// Allocate Instances
@@ -297,6 +328,7 @@ namespace SV {
 		virtual std::unique_ptr<_internal::Texture_internal> _AllocateTexture() = 0;
 		virtual std::unique_ptr<_internal::Sampler_internal> _AllocateSampler() = 0;
 		virtual std::unique_ptr<_internal::BlendState_internal> _AllocateBlendState() = 0;
+		virtual std::unique_ptr<_internal::DepthStencilState_internal> _AllocateDepthStencilState() = 0;
 
 		virtual void _ResetState(CommandList cmd) = 0;
 
@@ -340,8 +372,8 @@ namespace SV {
 
 		virtual void _ClearFrameBuffer(SV::Color4f color, FrameBuffer& fb, CommandList cmd) = 0;
 
-		virtual void _BindFrameBuffer(FrameBuffer& fb, CommandList cmd) = 0;
-		virtual void _BindFrameBuffers(ui32 count, FrameBuffer** fbs, CommandList cmd) = 0;
+		virtual void _BindFrameBuffer(FrameBuffer& fb, Texture* dsv, CommandList cmd) = 0;
+		virtual void _BindFrameBuffers(ui32 count, FrameBuffer** fbs, Texture* dsv, CommandList cmd) = 0;
 
 		virtual void _BindFrameBufferAsTexture(ui32 slot, SV_GFX_SHADER_TYPE type, FrameBuffer& fb, CommandList cmd) = 0;
 
@@ -366,6 +398,7 @@ namespace SV {
 		virtual void _ReleaseTexture(Texture& t) = 0;
 
 		virtual void _UpdateTexture(void* data, ui32 size, Texture& t, CommandList cmd) = 0;
+		virtual void _ClearTextureDSV(float depth, ui8 stencil, Texture& t, CommandList cmd) = 0;
 
 		virtual void _BindTexture(ui32 slot, SV_GFX_SHADER_TYPE type, Texture& t, CommandList cmd) = 0;
 		virtual void _BindTextures(ui32 slot, SV_GFX_SHADER_TYPE type, ui32 count, Texture** ts, CommandList cmd) = 0;
@@ -386,11 +419,18 @@ namespace SV {
 		virtual void _UnbindSamplers(CommandList cmd) = 0;
 
 		// Internal BlendState
-		virtual bool _CreateBlendState(const SV_GFX_BLEND_STATE_DESC* desc, BlendState& bs) = 0;
+		virtual bool _CreateBlendState(BlendState& bs) = 0;
 		virtual void _ReleaseBlendState(BlendState& bs) = 0;
 
 		virtual void _BindBlendState(ui32 sampleMask, const float* blendFactors, BlendState& bs, CommandList cmd) = 0;
 		virtual void _UnbindBlendState(CommandList cmd) = 0;
+
+		// Internal DepthStencilState
+		virtual bool _CreateDepthStencilState(DepthStencilState& dss) = 0;
+		virtual void _ReleaseDepthStencilState(DepthStencilState& dss) = 0;
+			    
+		virtual void _BindDepthStencilState(ui32 stencilRef, DepthStencilState& dss, CommandList cmd) = 0;
+		virtual void _UnbindDepthStencilState(CommandList cmd) = 0;
 
 	private:
 		virtual void EnableFullscreen() = 0;
