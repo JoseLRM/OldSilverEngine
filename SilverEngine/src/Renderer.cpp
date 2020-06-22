@@ -18,11 +18,16 @@ namespace SV {
 		SV::Graphics& gfx = GetEngine().GetGraphics();
 		SV::Window& window = GetEngine().GetWindow();
 
+		// Initial Resolution
 		m_Resolution = SV::uvec2(desc.resolutionWidth, desc.resolutionHeight);
-		if (desc.windowAttachment.enabled) {
-			m_WindowAttachment = true;
-			m_WindowResolution = desc.windowAttachment.resolution;
-			UpdateResolution();
+
+		if (m_Resolution.x == 0 || m_Resolution.y == 0) {
+			const SV::Adapter::OutputMode& outputMode = GetGraphics().GetAdapter().modes[GetGraphics().GetOutputModeID()];
+
+			if(m_Resolution.x != 0 || m_Resolution.y != 0)
+				SV::LogW("Invalid resolution (%ux%u), setting by default (%ux%u)", m_Resolution.x, m_Resolution.y, outputMode.width, outputMode.height);
+
+			m_Resolution = { outputMode.width, outputMode.height };
 		}
 
 		if (!m_PostProcess.Initialize(gfx)) {
@@ -132,16 +137,11 @@ namespace SV {
 
 	void Renderer::SetResolution(ui32 width, ui32 height)
 	{
-		if (m_WindowAttachment) {
-			ui32 resolution = (height > width) ? height : width;
-			m_WindowResolution = resolution;
-		}
-		else {
-			if (m_Resolution.x == width && m_Resolution.y == height) return;
-			m_Resolution = { width, height };
-		}
+		if (m_Resolution.x == width && m_Resolution.y == height) return;
 
-		UpdateResolution();
+		m_Resolution = SV::uvec2(width, height);
+
+		ResizeBuffers();
 	}
 
 	void Renderer::DrawScene(SV::Scene& scene)
@@ -205,24 +205,9 @@ namespace SV {
 
 	}
 
-	void Renderer::UpdateResolution()
+	void Renderer::ResizeBuffers()
 	{
-		if (m_WindowAttachment) {
-			SV::Window& window = GetEngine().GetWindow();
-
-			float aspect = window.GetAspect();
-
-			if (aspect >= 1.f) {
-				m_Resolution.x = m_WindowResolution;
-				m_Resolution.y = ui32(float(m_WindowResolution) / aspect);
-			}
-			else {
-				m_Resolution.x = ui32(float(m_WindowResolution) * aspect);
-				m_Resolution.y = m_WindowResolution;
-			}
-		}
-
-		if(m_Offscreen.IsValid()) GetGraphics().ResizeFrameBuffer(m_Resolution.x, m_Resolution.y, m_Offscreen);
+		if (m_Offscreen.IsValid()) GetGraphics().ResizeFrameBuffer(m_Resolution.x, m_Resolution.y, m_Offscreen);
 		if (m_DepthStencilView.IsValid()) GetGraphics().ResizeTexture(nullptr, m_Resolution.x, m_Resolution.y, m_DepthStencilView);
 	}
 

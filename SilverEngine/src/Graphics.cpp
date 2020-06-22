@@ -1,6 +1,7 @@
 #include "core.h"
 
 #include "Graphics.h"
+#include "Window.h"
 
 namespace SV {
 
@@ -8,6 +9,15 @@ namespace SV {
 	{}
 	Graphics::~Graphics()
 	{}
+
+	void Graphics::ResizeBackBuffer(ui32 width, ui32 height)
+	{
+		if (m_BackBuffer->GetWidth() == width && m_BackBuffer->GetHeight() == height) return;
+
+		ReleaseFrameBuffer(m_BackBuffer);
+		_ResizeBackBuffer(width, height);
+		SV::LogI("BackBuffer resized: %ux%u", width, height);
+	}
 
 	bool Graphics::Initialize(const SV_GRAPHICS_INITIALIZATION_DESC& desc)
 	{
@@ -76,12 +86,20 @@ namespace SV {
 		if (m_Fullscreen == fullscreen) return;
 
 		m_Fullscreen = fullscreen;
+		SV::Window& window = GetWindow();
 
 		if (fullscreen) {
+			m_LastWindowSize = SV::uvec2(window.GetWidth(), window.GetHeight());
+
+			const SV::Adapter::OutputMode& outputMode = m_Adapter.modes[m_OutputModeID];
+			window.Resize(outputMode.width, outputMode.height);
+
+			ResizeBackBuffer(outputMode.width, outputMode.height);
 			EnableFullscreen();
 		}
 		else {
 			DisableFullscreen();
+			window.Resize(m_LastWindowSize.x, m_LastWindowSize.y);
 		}
 	}
 

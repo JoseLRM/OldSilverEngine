@@ -148,7 +148,7 @@ public:
 		if (GetInput().IsMousePressed(SV_MOUSE_CENTER)) {
 			std::vector<SV::Entity> entities;
 			SV::vec3 mousePos = SV::vec3(camera.GetMousePos(GetInput()));
-			scene.CreateEntities(10000, 0, &entities);
+			scene.CreateEntities(1, 0, &entities);
 			scene.AddComponents(entities, SV::SpriteComponent(sprite));
 			scene.AddComponents(entities, SV::NameComponent("Player"));
 			scene.AddComponents(entities, PhysicsComponent());

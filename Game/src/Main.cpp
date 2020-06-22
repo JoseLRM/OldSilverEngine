@@ -97,7 +97,6 @@ int main()
 
 	SV_ENGINE_INITIALIZATION_DESC desc;
 	desc.SetDefault();
-	desc.rendererDesc.windowAttachment.resolution = 1920u;
 	desc.executeInThisThread = true;
 
 	engine.Run(&app, &desc);

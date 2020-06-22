@@ -17,9 +17,8 @@ void SV_ENGINE_INITIALIZATION_DESC::SetDefault()
 	windowDesc.title = L"SilverEngine";
 	windowDesc.parent = 0u;
 	windowDesc.userWindowProc = 0u;
-
-	rendererDesc.windowAttachment.enabled = true;
-	rendererDesc.windowAttachment.resolution = 1920u;
+	rendererDesc.resolutionWidth = 0u;
+	rendererDesc.resolutionHeight = 0u;
 }
 
 /////////////////////Static Initialization///////////////////////////////////////////
@@ -186,6 +185,8 @@ namespace SV {
 
 			Time deltaTime = lastTime.TimeSince(now);
 			lastTime = now;
+
+			if (deltaTime > 0.1f) deltaTime = 0.1f;
 
 			fixedUpdateTime = fixedUpdateTime + deltaTime;
 

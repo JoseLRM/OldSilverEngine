@@ -10,10 +10,6 @@
 struct SV_RENDERER_INITIALIZATION_DESC {
 	ui32 resolutionWidth;
 	ui32 resolutionHeight;
-	struct {
-		bool enabled;
-		ui32 resolution;
-	} windowAttachment;
 
 	SV::FrameBuffer* output = nullptr;
 };
@@ -42,8 +38,6 @@ namespace SV {
 		XMMATRIX m_ViewProjectionMatrix;
 
 		SV::uvec2 m_Resolution;
-		bool m_WindowAttachment;
-		ui32 m_WindowResolution;
 
 		Renderer();
 		~Renderer();
@@ -78,7 +72,7 @@ namespace SV {
 		void DrawScene(SV::Scene& scene);
 
 	private:
-		void UpdateResolution();
+		void ResizeBuffers();
 
 	};
 

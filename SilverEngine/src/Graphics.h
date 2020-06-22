@@ -158,11 +158,14 @@ namespace SV {
 	class DepthStencilState	: public _internal::Primitive_internal<_internal::DepthStencilState_internal> {};
 
 	class Graphics : public SV::EngineDevice {
-
+	protected:
 		SV::Adapter m_Adapter;
 		ui32 m_OutputModeID = 0u;
 
 		bool m_Fullscreen = false;
+		SV::uvec2 m_LastWindowSize;
+
+		FrameBuffer m_BackBuffer;
 		
 		bool Initialize(const SV_GRAPHICS_INITIALIZATION_DESC& desc);
 		bool Close();
@@ -180,12 +183,18 @@ namespace SV {
 		~Graphics();
 
 		// Swap chain
-		virtual void ResizeBackBuffer(ui32 width, ui32 height) = 0;
+	private:
+		void ResizeBackBuffer(ui32 width, ui32 height);
+		virtual void _ResizeBackBuffer(ui32 width, ui32 height) = 0;
 
+		virtual void EnableFullscreen() = 0;
+		virtual void DisableFullscreen() = 0;
+
+	public:
 		void SetFullscreen(bool fullscreen);
 		inline bool InFullscreen() const noexcept { return m_Fullscreen; }
 
-		virtual SV::FrameBuffer& GetMainFrameBuffer() = 0;
+		inline SV::FrameBuffer& GetMainFrameBuffer() noexcept { return m_BackBuffer; };
 
 		// Adapters
 		inline const SV::Adapter& GetAdapter() const noexcept { return m_Adapter; }
@@ -431,10 +440,6 @@ namespace SV {
 			    
 		virtual void _BindDepthStencilState(ui32 stencilRef, DepthStencilState& dss, CommandList cmd) = 0;
 		virtual void _UnbindDepthStencilState(CommandList cmd) = 0;
-
-	private:
-		virtual void EnableFullscreen() = 0;
-		virtual void DisableFullscreen() = 0;
 
 	};
 

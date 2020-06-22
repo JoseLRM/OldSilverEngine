@@ -22,6 +22,8 @@ namespace SV {
 	}
 
 	class Engine;
+	class Graphics;
+
 	class Window : public SV::EngineDevice {
 		static std::mutex s_WindowCreationMutex;
 
@@ -30,6 +32,7 @@ namespace SV {
 
 		float m_X, m_Y, m_Width, m_Height;
 		bool m_Resized = false;
+		bool m_Minimized = false;
 
 	private:
 		Window();
@@ -46,10 +49,13 @@ namespace SV {
 		
 	public:
 		friend Engine;
+		friend Graphics;
 
 		static i64 WindowProc(Window& window, ui32 message, i64 wParam, i64 lParam);
 
 		inline WindowHandle GetWindowHandle() const noexcept { return m_WindowHandle; }
+
+		void Resize(ui32 width, ui32 height);
 
 		inline ui32 GetWidth() const noexcept { return m_Width; }
 		inline ui32 GetHeight() const noexcept { return m_Height; }

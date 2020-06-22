@@ -140,8 +140,6 @@ namespace SV {
 
 		ViewportManager viewports[SV_GFX_COMMAND_LIST_COUNT];
 
-		FrameBuffer mainFrameBuffer;
-
 		///////////////////////////Methods/////////////////////////
 		void CreateBackBuffer(const SV::Adapter::OutputMode& outputMode, ui32 width, ui32 height);
 		bool _Initialize(const SV_GRAPHICS_INITIALIZATION_DESC& desc) override;
@@ -151,14 +149,12 @@ namespace SV {
 		CommandList BeginCommandList() override;
 		void SetViewport(ui32 slot, float x, float y, float w, float h, float n, float f, SV::CommandList cmd) override;
 
-		void ResizeBackBuffer(ui32 width, ui32 height);
+		void _ResizeBackBuffer(ui32 width, ui32 height) override;
 
 		void SetTopology(SV_GFX_TOPOLOGY topology, CommandList cmd) override;
 
 		void EnableFullscreen() override;
 		void DisableFullscreen() override;
-
-		SV::FrameBuffer& GetMainFrameBuffer() override;
 
 		// Draw calls
 		void Draw(ui32 vertexCount, ui32 startVertex, CommandList cmd) override;

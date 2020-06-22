@@ -101,9 +101,9 @@ namespace SV {
 		backBufferDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
 		backBufferDesc.Texture2D.MipSlice = 0u;
 
-		mainFrameBuffer.Set(_AllocateFrameBuffer());
+		m_BackBuffer.Set(_AllocateFrameBuffer());
 
-		FrameBuffer_dx11* backBuffer = reinterpret_cast<FrameBuffer_dx11*>(mainFrameBuffer.Get());
+		FrameBuffer_dx11* backBuffer = reinterpret_cast<FrameBuffer_dx11*>(m_BackBuffer.Get());
 
 		backBuffer->m_Width = width;
 		backBuffer->m_Height = height;
@@ -127,13 +127,8 @@ namespace SV {
 		svZeroMemory(&swapChainDescriptor, sizeof(DXGI_SWAP_CHAIN_DESC));
 		swapChainDescriptor.BufferCount = 1;
 		swapChainDescriptor.BufferDesc.Format = ParseFormat(outputMode.format);
-#ifdef SV_IMGUI
 		swapChainDescriptor.BufferDesc.Height = 0;
 		swapChainDescriptor.BufferDesc.Width = 0;
-#else
-		swapChainDescriptor.BufferDesc.Height = outputMode.height;
-		swapChainDescriptor.BufferDesc.Width = outputMode.width;
-#endif
 		swapChainDescriptor.BufferDesc.RefreshRate.Denominator = outputMode.refreshRate.denominator;
 		swapChainDescriptor.BufferDesc.RefreshRate.Numerator = outputMode.refreshRate.numerator;
 		swapChainDescriptor.BufferDesc.Scaling = ParseScalingMode(outputMode.scaling);
@@ -167,11 +162,7 @@ namespace SV {
 			&immediateContext
 		));
 
-#ifdef SV_IMGUI
 		CreateBackBuffer(outputMode, window.GetWidth(), window.GetHeight());
-#else
-		CreateBackBuffer(outputMode, outputMode.width, outputMode.height);
-#endif
 
 		return true;
 	}
@@ -184,7 +175,6 @@ namespace SV {
 			deferredContext[i].Reset();
 		}
 
-		ReleaseFrameBuffer(mainFrameBuffer);
 		immediateContext.Reset();
 		swapChain.Reset();
 		device.Reset();
@@ -244,14 +234,12 @@ namespace SV {
 		viewports[cmd].SetViewport(slot, viewport);
 	}
 
-	void Graphics_dx11::ResizeBackBuffer(ui32 width, ui32 height)
+	void Graphics_dx11::_ResizeBackBuffer(ui32 width, ui32 height)
 	{
 		if (!swapChain.Get()) return;
-
+		
 		// Get OutputMode
 		const SV::Adapter::OutputMode& outputMode = GetAdapter().modes[GetOutputModeID()];
-
-		ReleaseFrameBuffer(mainFrameBuffer);
 
 		dxAssert(swapChain->ResizeBuffers(1, width, height, ParseFormat(outputMode.format), DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH));
 
@@ -270,11 +258,6 @@ namespace SV {
 	void Graphics_dx11::DisableFullscreen()
 	{
 		swapChain->SetFullscreenState(FALSE, nullptr);
-	}
-
-	SV::FrameBuffer& Graphics_dx11::GetMainFrameBuffer()
-	{
-		return mainFrameBuffer;
 	}
 
 	void Graphics_dx11::Draw(ui32 vertexCount, ui32 startVertex, CommandList cmd)

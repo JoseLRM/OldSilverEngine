@@ -123,20 +123,29 @@ namespace SV {
 			m_Width = LOWORD(lParam);
 			m_Height = HIWORD(lParam);
 
+			switch (wParam)
+			{
+			case SIZE_MINIMIZED:
+				m_Minimized = true;
+				break;
+			default:
+				m_Minimized = false;
+				break;
+			}
+
 			m_Resized = true;
 
 			break;
 		}
-		case WM_WINDOWPOSCHANGED:
+		case WM_MOVE:
 		{
-			WINDOWPOS& info = *reinterpret_cast<WINDOWPOS*>(lParam);
-
-			m_X = info.x;
-			m_Y = info.y;
+			m_X = LOWORD(lParam);
+			m_Y = HIWORD(lParam);
+			m_Minimized = false;
 
 			//jsh::WindowMovedEvent e(screenX, screenY);
 			//jshEvent::Dispatch(e);
-			return 0;
+			break;
 		}
 		case WM_SETFOCUS:
 		{
@@ -175,7 +184,7 @@ namespace SV {
 			wndClass.cbClsExtra = 0;
 			wndClass.cbWndExtra = 0;
 			wndClass.hbrBackground = 0;
-			wndClass.hCursor = 0;
+			wndClass.hCursor = LoadCursorW(0, IDC_ARROW);
 			wndClass.hIcon = 0;
 			wndClass.hInstance = 0;
 			wndClass.lpfnWndProc = WindowProc;
@@ -258,22 +267,34 @@ namespace SV {
 		return DestroyWindowInstance(this);
 	}
 
+	void Window::Resize(ui32 width, ui32 height)
+	{
+		int w = width, h = height;
+		HWND hwnd = ToHWND(m_WindowHandle);
+
+		DWORD style = GetWindowLongPtrW(hwnd, GWL_STYLE);
+		SV::AdjustWindow(m_X, m_Y, w, h, style);
+		SetWindowPos(hwnd, 0, 0, 0, w, h, SWP_NOMOVE);
+	}
+
 	bool Window::UpdateInput()
 	{
 		GetEngine().GetInput().Update();
 
-		m_Resized = false;
+		if (IsResized())
+		{
+			GetGraphics().ResizeBackBuffer(m_Width, m_Height);
+			m_Resized = false;
+		}
 
 		MSG msg;
-		while (PeekMessageW(&msg, 0, 0u, 0u, PM_REMOVE) > 0) {
+		while (PeekMessageW(&msg, 0, 0u, 0u, PM_REMOVE) > 0 || m_Minimized) {
 			TranslateMessage(&msg);
 			DispatchMessageW(&msg);
 
-			if (msg.message == WM_QUIT) return false;
-		}
+			if (m_Minimized) std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-		if (IsResized()) {
-			GetGraphics().ResizeBackBuffer(m_Width, m_Height);
+			if (msg.message == WM_QUIT) return false;
 		}
 
 		return true;
