@@ -1,3 +1,4 @@
+/*
 #pragma once
 
 #include <d3d11.h>
@@ -13,3 +14,4 @@ using Microsoft::WRL::ComPtr;
 #pragma comment(lib, "DXGI.lib")
 #pragma comment(lib, "D3DCompiler.lib")
 #pragma comment(lib, "shcore.lib")
+*/

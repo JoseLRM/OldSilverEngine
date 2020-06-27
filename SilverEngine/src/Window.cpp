@@ -288,13 +288,17 @@ namespace SV {
 		}
 
 		MSG msg;
+		blocked:
 		while (PeekMessageW(&msg, 0, 0u, 0u, PM_REMOVE) > 0 || m_Minimized) {
 			TranslateMessage(&msg);
 			DispatchMessageW(&msg);
 
-			if (m_Minimized) std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
 			if (msg.message == WM_QUIT) return false;
+		}
+
+		if (m_Minimized) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(500));
+			goto blocked;
 		}
 
 		return true;

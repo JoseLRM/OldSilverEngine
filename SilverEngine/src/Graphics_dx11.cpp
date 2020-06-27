@@ -1,4 +1,5 @@
 #include "core.h"
+/*
 
 #include "Graphics_dx11.h"
 #include "Window.h"
@@ -1125,3 +1126,4 @@ namespace SV {
 	}
 
 }
+*/
