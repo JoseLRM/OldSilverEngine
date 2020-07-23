@@ -2,11 +2,7 @@
 
 class Loading : public SV::LoadingState {
 
-	SV::RenderLayer rl;
-	SV::Engine& engine;
-
 public:
-	Loading(SV::Engine& engine) : engine(engine) {}
 
 	void Initialize() override
 	{
@@ -24,26 +20,6 @@ public:
 
 	void Render()
 	{
-		rl.Reset();
-		SV::RenderQueue2D& queue = engine.GetRenderer().GetRenderQueue2D();
-
-		float time = SV::Timer::Now();
-		float w = sin(time*5.f) * 3.f + 4.f;
-		float h = cos(time*5.f) * 3.f + 4.f;
-
-		ui32 count = 10;
-		SV::Color4f minColor = SVColor4f::WHITE;
-		SV::Color4f maxColor = SVColor4f::RED;
-
-		float adv = 1.f / float(count);
-		for (ui32 i = 0; i < count; ++i) {
-
-			SV::Color4b color = SVColor4f::ToColor4b((minColor + (maxColor / count) * i) / 2.f);
-
-			queue.DrawEllipse({ 0.f, 0.f }, SV::vec2(w * adv * i, h * adv * i), color, rl);
-		}
-
-		queue.AddLayer(rl);
 	}
 
 	void Close() override
@@ -59,16 +35,12 @@ class Application : public SV::Application
 public:
 	void Initialize() override
 	{
-		GetEngine().GetRenderer().SetCamera(&camera);
-		camera.SetDimension(SV::vec2(10));
-		camera.SetAspect(GetEngine().GetRenderer().GetResolutionAspect());
-
-		GetStateManager().LoadState(new GameState(GetEngine()), new Loading(GetEngine()));
+		SV::StateManager::LoadState(new GameState(), new Loading());
 	}
 
 	void Update(float dt) override
 	{
-		if (GetInput().IsKeyPressed(SV_KEY_F11)) GetGraphics().SetFullscreen(!GetGraphics().InFullscreen());
+		//if (GetInput().IsKeyPressed(SV_KEY_F11)) GetGraphics().SetFullscreen(!GetGraphics().InFullscreen());
 	}
 	void Render() override
 	{
@@ -81,28 +53,23 @@ public:
 
 int main()
 {
-	{
-		SV_ENGINE_STATIC_INITIALIZATION_DESC desc;
-		desc.SetDefault();
-		desc.showConsole = true;
-
-		SV::Initialize(&desc);
-	}
-
-	SV::Engine engine;
 	Application app;
 
-	//SV::Engine engine2;
-	//Application app2;
-
 	SV_ENGINE_INITIALIZATION_DESC desc;
-	desc.SetDefault();
-	desc.executeInThisThread = true;
+	desc.rendererDesc.resolutionWidth = 1280u;
+	desc.rendererDesc.resolutionHeight = 720;
+	desc.windowDesc.x = 200u;
+	desc.windowDesc.y = 200u;
+	desc.windowDesc.width = 1280u;
+	desc.windowDesc.height = 720;
+	desc.windowDesc.title = L"SilverEngineTest";
+	desc.showConsole = true;
+	desc.minThreadsCount = 2u;
 
-	engine.Run(&app, &desc);
-	//engine2.Run(&app2);
+	SV::Engine::Initialize(&app, &desc);
+	while (SV::Engine::Loop());
+	SV::Engine::Close();
 
-	SV::Close();
 	system("PAUSE");
 	return 0;
 }

@@ -3,7 +3,25 @@
 #include <iostream>
 #include <stdarg.h>
 
+#ifdef SV_PLATFORM_WINDOWS
+#include "graphics/Win.h"
+#endif
+
 namespace SV {
+
+	namespace _internal {
+
+		void ShowConsole()
+		{
+			ShowWindow(GetConsoleWindow(), SW_SHOWDEFAULT);
+		}
+		void HideConsole()
+		{
+			ShowWindow(GetConsoleWindow(), SW_HIDE);
+		}
+
+	}
+
 	void _Log(const char* s0, const char* s1, va_list args)
 	{
 		char logBuffer[1000];

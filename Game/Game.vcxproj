@@ -83,13 +83,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\ColisionSystem.cpp" />
     <ClCompile Include="src\Main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\ColisionSystem.h" />
-    <ClInclude Include="src\Components.h" />
     <ClInclude Include="src\GameState.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\spv\compile.bat" />
+    <None Include="shaders\spv\DefPostProcess.frag" />
+    <None Include="shaders\spv\DefPostProcess.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

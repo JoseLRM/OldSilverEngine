@@ -1,11 +1,10 @@
 #pragma once
 
 #include "core.h"
-#include "EngineDevice.h"
 
 namespace SV {
 
-	class Application : public SV::EngineDevice {
+	class Application {
 
 	public:
 		Application();

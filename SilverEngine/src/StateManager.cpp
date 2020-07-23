@@ -4,88 +4,96 @@
 #include "Engine.h"
 
 namespace SV {
+	namespace StateManager {
 
-	State::State(SV::Engine& engine)
-	{
-		SetEngine(&engine);
-	}
+		State* g_CurrentState;
 
-	StateManager::StateManager()
-		: m_CurrentState(nullptr), m_OldState(nullptr), m_LoadingState(new LoadingState()), m_NewState(nullptr)
-	{}
+		State* g_OldState;
+		LoadingState* g_LoadingState;
+		State* g_NewState;
 
-	void StateManager::LoadState(State* state, LoadingState* loadingState)
-	{
-		SV_ASSERT(state && !IsLoading());
+		SV::ThreadContext g_UnloadContext;
+		SV::ThreadContext g_LoadContext;
 
-		m_NewState = state;
-		m_OldState = m_CurrentState;
-		m_CurrentState = nullptr;
+		namespace _internal {
 
-		if (!loadingState) loadingState = new LoadingState();
-		m_LoadingState = loadingState;
-		m_LoadingState->Initialize();
-		
-		m_UnloadContext.Reset();
-		m_LoadContext.Reset();
+			void Update()
+			{
+				if (g_CurrentState) return;
 
-		if (m_OldState) {
-			SV::Task::Execute([this]() {
+				if (!IsLoading()) {
 
-				m_OldState->Unload();
+					if (!g_NewState) return;
 
-			}, &m_UnloadContext, true);
-		}
+					if (g_OldState) {
+						g_OldState->Close();
+						delete g_OldState;
+						g_OldState = nullptr;
+					}
 
-		SV::Task::Execute([this]() {
+					g_LoadingState->Close();
+					delete g_LoadingState;
+					g_LoadingState = nullptr;
 
-			m_NewState->Load();
-
-		}, &m_LoadContext, true);
-
-	}
-
-	void StateManager::Update()
-	{
-		if (m_CurrentState) return;
-
-		if (!IsLoading()) {
-
-			if (!m_NewState) return;
-
-			if (m_OldState) {
-				m_OldState->Close();
-				delete m_OldState;
-				m_OldState = nullptr;
+					g_NewState->Initialize();
+					g_CurrentState = g_NewState;
+					g_NewState = nullptr;
+				}
 			}
 
-			m_LoadingState->Close();
-			delete m_LoadingState;
-			m_LoadingState = nullptr;
+			void Close()
+			{
+				if (IsLoading()) {
+					exit(1);
+				}
 
-			m_NewState->Initialize();
-			m_CurrentState = m_NewState;
-			m_NewState = nullptr;
+				if (g_CurrentState) {
+					g_CurrentState->Unload();
+					g_CurrentState->Close();
+					delete g_CurrentState;
+					g_CurrentState = nullptr;
+				}
+			}
+
 		}
-	}
 
-	void StateManager::Close()
-	{
-		if (IsLoading()) {
-			exit(1);
+		void LoadState(State* state, LoadingState* loadingState)
+		{
+			SV_ASSERT(state && !IsLoading());
+
+			g_NewState = state;
+			g_OldState = g_CurrentState;
+			g_CurrentState = nullptr;
+
+			if (!loadingState) loadingState = new LoadingState();
+			g_LoadingState = loadingState;
+			g_LoadingState->Initialize();
+
+			g_UnloadContext.Reset();
+			g_LoadContext.Reset();
+
+			if (g_OldState) {
+				SV::Task::Execute([]() {
+
+					g_OldState->Unload();
+
+				}, &g_UnloadContext, true);
+			}
+
+			SV::Task::Execute([]() {
+
+				g_NewState->Load();
+
+			}, &g_LoadContext, true);
+
 		}
 
-		if (m_CurrentState) {
-			m_CurrentState->Unload();
-			m_CurrentState->Close();
-			delete m_CurrentState;
-			m_CurrentState = nullptr;
+		bool IsLoading()
+		{
+			return SV::Task::Running(g_UnloadContext) || SV::Task::Running(g_LoadContext);
 		}
-	}
 
-	bool StateManager::IsLoading() const
-	{
-		return SV::Task::Running(m_UnloadContext) || SV::Task::Running(m_LoadContext);
+		State* GetCurrentState() noexcept { return g_CurrentState; }
+		LoadingState* GetLoadingState() noexcept { return g_LoadingState; }
 	}
-
 }

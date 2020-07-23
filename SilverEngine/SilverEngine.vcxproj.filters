@@ -2,63 +2,12 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClInclude Include="config.h" />
-    <ClInclude Include="src\Engine.h">
-      <Filter>System</Filter>
-    </ClInclude>
-    <ClInclude Include="src\core.h">
-      <Filter>System</Filter>
-    </ClInclude>
     <ClInclude Include="SilverEngine" />
-    <ClInclude Include="src\Version.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Window.h">
-      <Filter>Graphics\Window</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Win.h">
-      <Filter>Graphics\Window</Filter>
-    </ClInclude>
     <ClInclude Include="src\TaskSystem.h">
       <Filter>System\TaskSystem</Filter>
     </ClInclude>
     <ClInclude Include="src\Input.h">
       <Filter>System</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Math.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Graphics.h">
-      <Filter>Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="src\GraphicsDesc.h">
-      <Filter>Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="src\safe_queue.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Graphics_dx11.h">
-      <Filter>Graphics\DirectX11</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Application.h">
-      <Filter>System</Filter>
-    </ClInclude>
-    <ClInclude Include="src\RenderQueue2D.h">
-      <Filter>Graphics\Renderer\2D</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Renderer.h">
-      <Filter>Graphics\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Utils.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Dx11.h">
-      <Filter>Graphics\DirectX11</Filter>
-    </ClInclude>
-    <ClInclude Include="src\PostProcess.h">
-      <Filter>Graphics\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Camera.h">
-      <Filter>Graphics\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Scene.h">
       <Filter>System\Scene</Filter>
@@ -66,33 +15,99 @@
     <ClInclude Include="src\Transform.h">
       <Filter>System\Scene</Filter>
     </ClInclude>
-    <ClInclude Include="src\TextureAtlas.h">
-      <Filter>Graphics\Renderer\2D</Filter>
-    </ClInclude>
-    <ClInclude Include="src\external\stbi_lib.h">
-      <Filter>External</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Renderer2D.h">
-      <Filter>Graphics\Renderer\2D</Filter>
-    </ClInclude>
-    <ClInclude Include="src\EngineDevice.h">
-      <Filter>System</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Renderer2DComponents.h">
-      <Filter>Graphics\Renderer\2D</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Timer.h">
-      <Filter>System</Filter>
-    </ClInclude>
-    <ClInclude Include="src\User.h">
-      <Filter>System</Filter>
-    </ClInclude>
-    <ClInclude Include="src\TileMap.h">
-      <Filter>Graphics\Renderer\2D</Filter>
-    </ClInclude>
     <ClInclude Include="src\StateManager.h">
       <Filter>System</Filter>
     </ClInclude>
+    <ClInclude Include="external\stbi_lib.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\GraphicsDesc.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\Graphics.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\Window.h">
+      <Filter>Graphics\Window</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\PrimitiveAllocator.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\PlatformWindows.h">
+      <Filter>Graphics\Window\Platform</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\Win.h">
+      <Filter>Graphics\Window</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\ShaderCompiler.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\safe_queue.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\Utils.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\Version.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\SVMath.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\Timer.h">
+      <Filter>System</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Application.h">
+      <Filter>System</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core.h">
+      <Filter>System</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Engine.h">
+      <Filter>System</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Utils\TxtFile.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Utils\BinFile.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\PipelineState.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\renderer\Renderer.h">
+      <Filter>Graphics\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\renderer\Camera.h">
+      <Filter>Graphics\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="external\vk_mem_alloc.h" />
+    <ClInclude Include="src\graphics\vulkan\Graphics_vk.h">
+      <Filter>Graphics\Vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\vulkan\Vulkan.h">
+      <Filter>Graphics\Vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\vulkan\Conversions_vk.h" />
+    <ClInclude Include="src\renderer\PostProcessing.h" />
+    <ClInclude Include="external\sprv\GLSL.std.450.h" />
+    <ClInclude Include="external\sprv\spirv.h" />
+    <ClInclude Include="external\sprv\spirv.hpp" />
+    <ClInclude Include="external\sprv\spirv_cfg.hpp" />
+    <ClInclude Include="external\sprv\spirv_common.hpp" />
+    <ClInclude Include="external\sprv\spirv_cpp.hpp" />
+    <ClInclude Include="external\sprv\spirv_cross.hpp" />
+    <ClInclude Include="external\sprv\spirv_cross_c.h" />
+    <ClInclude Include="external\sprv\spirv_cross_containers.hpp" />
+    <ClInclude Include="external\sprv\spirv_cross_error_handling.hpp" />
+    <ClInclude Include="external\sprv\spirv_cross_parsed_ir.hpp" />
+    <ClInclude Include="external\sprv\spirv_cross_util.hpp" />
+    <ClInclude Include="external\sprv\spirv_glsl.hpp" />
+    <ClInclude Include="external\sprv\spirv_hlsl.hpp" />
+    <ClInclude Include="external\sprv\spirv_msl.hpp" />
+    <ClInclude Include="external\sprv\spirv_parser.hpp" />
+    <ClInclude Include="external\sprv\spirv_reflect.hpp" />
+    <ClInclude Include="src\graphics\GraphicsProperties.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="System">
@@ -113,9 +128,6 @@
     <Filter Include="Graphics\Renderer">
       <UniqueIdentifier>{6d88f1c6-a6c4-47dd-80d9-1a72b66e94b0}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Graphics\Renderer\2D">
-      <UniqueIdentifier>{82776647-a36a-4703-83e2-3c3ff91d85c9}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Graphics\shaders">
       <UniqueIdentifier>{81b6a8ca-2b20-43f9-8da0-6fdbc1e754d3}</UniqueIdentifier>
     </Filter>
@@ -131,46 +143,19 @@
     <Filter Include="Graphics\Window">
       <UniqueIdentifier>{826d9c92-b98b-4198-b025-7abc9453ee50}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Graphics\Vulkan">
+      <UniqueIdentifier>{60fbf60f-26bd-492c-89b1-10c03d39be9a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Graphics\Window\Platform">
+      <UniqueIdentifier>{36804d4b-0e9b-4e1b-9444-f7f30c2e23b3}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\Engine.cpp">
-      <Filter>System</Filter>
-    </ClCompile>
-    <ClCompile Include="src\core.cpp">
-      <Filter>System</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Window.cpp">
-      <Filter>Graphics\Window</Filter>
-    </ClCompile>
     <ClCompile Include="src\TaskSystem.cpp">
       <Filter>System\TaskSystem</Filter>
     </ClCompile>
     <ClCompile Include="src\Input.cpp">
       <Filter>System</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Graphics.cpp">
-      <Filter>Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Graphics_dx11.cpp">
-      <Filter>Graphics\DirectX11</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Application.cpp">
-      <Filter>System</Filter>
-    </ClCompile>
-    <ClCompile Include="src\RenderQueue2D.cpp">
-      <Filter>Graphics\Renderer\2D</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Renderer.cpp">
-      <Filter>Graphics\Renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Utils.cpp">
-      <Filter>Utils</Filter>
-    </ClCompile>
-    <ClCompile Include="src\PostProcess.cpp">
-      <Filter>Graphics\Renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Camera.cpp">
-      <Filter>Graphics\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Scene.cpp">
       <Filter>System\Scene</Filter>
@@ -178,67 +163,72 @@
     <ClCompile Include="src\Transform.cpp">
       <Filter>System\Scene</Filter>
     </ClCompile>
-    <ClCompile Include="src\TextureAtlas.cpp">
-      <Filter>Graphics\Renderer\2D</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Renderer2D.cpp">
-      <Filter>Graphics\Renderer\2D</Filter>
-    </ClCompile>
-    <ClCompile Include="src\EngineDevice.cpp">
-      <Filter>System</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Renderer2DComponents.cpp">
-      <Filter>Graphics\Renderer\2D</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Timer.cpp">
-      <Filter>System</Filter>
-    </ClCompile>
-    <ClCompile Include="src\User.cpp">
-      <Filter>System</Filter>
-    </ClCompile>
-    <ClCompile Include="src\TileMap.cpp">
-      <Filter>Graphics\Renderer\2D</Filter>
-    </ClCompile>
     <ClCompile Include="src\StateManager.cpp">
       <Filter>System</Filter>
     </ClCompile>
+    <ClCompile Include="src\graphics\Graphics.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\Window.cpp">
+      <Filter>Graphics\Window</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\PrimitiveAllocator.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\PlatformWindows.cpp">
+      <Filter>Graphics\Window\Platform</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\ShaderCompiler.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\utils\Utils.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="src\utils\Timer.cpp">
+      <Filter>System</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Application.cpp">
+      <Filter>System</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core.cpp">
+      <Filter>System</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Engine.cpp">
+      <Filter>System</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Utils\TxtFile.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Utils\BinFile.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="src\renderer\Renderer.cpp">
+      <Filter>Graphics\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\renderer\Camera.cpp">
+      <Filter>Graphics\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\vulkan\Graphics_vk.cpp">
+      <Filter>Graphics\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="src\renderer\PostProcessing.cpp" />
+    <ClCompile Include="external\sprv\spirv_cfg.cpp" />
+    <ClCompile Include="external\sprv\spirv_cpp.cpp" />
+    <ClCompile Include="external\sprv\spirv_cross.cpp" />
+    <ClCompile Include="external\sprv\spirv_cross_c.cpp" />
+    <ClCompile Include="external\sprv\spirv_cross_parsed_ir.cpp" />
+    <ClCompile Include="external\sprv\spirv_cross_util.cpp" />
+    <ClCompile Include="external\sprv\spirv_glsl.cpp" />
+    <ClCompile Include="external\sprv\spirv_hlsl.cpp" />
+    <ClCompile Include="external\sprv\spirv_msl.cpp" />
+    <ClCompile Include="external\sprv\spirv_parser.cpp" />
+    <ClCompile Include="external\sprv\spirv_reflect.cpp" />
+    <ClCompile Include="src\graphics\GraphicsProperties.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="src\shaders\PPVertex.hlsl">
-      <Filter>Graphics\shaders</Filter>
-    </FxCompile>
-    <FxCompile Include="src\shaders\PPDefaultPixel.hlsl">
-      <Filter>Graphics\shaders</Filter>
-    </FxCompile>
-    <FxCompile Include="src\shaders\SpriteVertex.hlsl">
-      <Filter>Graphics\shaders\2d</Filter>
-    </FxCompile>
-    <FxCompile Include="src\shaders\QuadPixel.hlsl">
-      <Filter>Graphics\shaders\2d</Filter>
-    </FxCompile>
-    <FxCompile Include="src\shaders\QuadVertex.hlsl">
-      <Filter>Graphics\shaders\2d</Filter>
-    </FxCompile>
-    <FxCompile Include="src\shaders\SpritePixel.hlsl">
-      <Filter>Graphics\shaders\2d</Filter>
-    </FxCompile>
-    <FxCompile Include="src\shaders\EllipsePixel.hlsl">
-      <Filter>Graphics\shaders\2d</Filter>
-    </FxCompile>
-    <FxCompile Include="src\shaders\EllipseVertex.hlsl">
-      <Filter>Graphics\shaders\2d</Filter>
-    </FxCompile>
-    <FxCompile Include="src\shaders\PointVertex.hlsl">
-      <Filter>Graphics\shaders\2d</Filter>
-    </FxCompile>
-    <FxCompile Include="src\shaders\PointPixel.hlsl">
-      <Filter>Graphics\shaders\2d</Filter>
-    </FxCompile>
-    <FxCompile Include="src\shaders\TileMapVertex.hlsl">
-      <Filter>Graphics\shaders\2d</Filter>
-    </FxCompile>
-    <FxCompile Include="src\shaders\TileMapPixel.hlsl">
-      <Filter>Graphics\shaders\2d</Filter>
-    </FxCompile>
+    <CustomBuild Include="src\graphics\sprv_shaders\DefPostProcess.frag" />
+    <CustomBuild Include="src\graphics\sprv_shaders\DefPostProcess.vert" />
+    <CustomBuild Include="src\graphics\sprv_shaders\Triangle.frag" />
+    <CustomBuild Include="src\graphics\sprv_shaders\Triangle.vert" />
   </ItemGroup>
 </Project>

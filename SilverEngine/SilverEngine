@@ -5,7 +5,4 @@
 #include "src/Engine.h"
 #include "src/Scene.h"
 
-// Components
-#include "src/Renderer2DComponents.h"
-
 #endif

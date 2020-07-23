@@ -1,12 +1,9 @@
 #pragma once
 
 #include "core.h"
-#include "EngineDevice.h"
 #include "Scene.h"
 
 namespace SV {
-
-	class Engine;
 
 	class LoadingState {
 
@@ -21,11 +18,8 @@ namespace SV {
 
 	};
 
-	class State : public SV::EngineDevice {
-
+	class State {
 	public:
-		State(SV::Engine& engine);
-
 		virtual void Load() {}
 		virtual void Initialize() {}
 
@@ -38,28 +32,18 @@ namespace SV {
 
 	};
 
-	class StateManager {
-		State* m_CurrentState;
+	namespace StateManager {
 
-		State* m_OldState;
-		LoadingState* m_LoadingState;
-		State* m_NewState;
-
-		SV::ThreadContext m_UnloadContext;
-		SV::ThreadContext m_LoadContext;
-
-	public:
-		StateManager();
+		namespace _internal {
+			void Update();
+			void Close();
+		}
 
 		void LoadState(State* state, LoadingState* loadingState = nullptr);
-		State* GetCurrentState() const noexcept { return m_CurrentState; }
-		LoadingState* GetLoadingState() const noexcept { return m_LoadingState; }
+		State* GetCurrentState() noexcept;
+		LoadingState* GetLoadingState() noexcept;
 
-		void Update();
-		void Close();
+		bool IsLoading();
 
-		bool IsLoading() const;
-
-	};
-
+	}
 }

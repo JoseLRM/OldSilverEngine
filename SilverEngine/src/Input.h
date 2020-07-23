@@ -1,7 +1,6 @@
 #pragma once
 
 #include "core.h"
-#include "EngineDevice.h"
 
 #define SV_MOUSE_LEFT			0
 #define SV_MOUSE_RIGHT			1
@@ -106,22 +105,24 @@
 
 namespace SV {
 
-	class Input : public SV::EngineDevice {
-		bool m_Keys[255];
-		bool m_KeysPressed[255];
-		bool m_KeysReleased[255];
-			 
-		bool m_Mouse[3];
-		bool m_MousePressed[3];
-		bool m_MouseReleased[3];
-			 
-		vec2 m_Pos;
-		vec2 m_RPos;
-		vec2 m_Dragged;
+	namespace Engine {
 
-	public:
-		friend Engine;
-		friend Window;
+		namespace _internal {
+			// Returns if the engine should close
+			bool UpdateInput();
+
+			void AddKeyPressed(ui8 id);
+			void AddKeyReleased(ui8 id);
+
+			void AddMousePressed(ui8 id);
+			void AddMouseReleased(ui8 id);
+
+			void SetMousePos(float x, float y);
+			void SetMouseDragged(int dx, int dy);
+
+		}
+
+		// Getters
 
 		bool IsKey(ui8 id);
 		bool IsKeyPressed(ui8 id);
@@ -131,21 +132,11 @@ namespace SV {
 		bool IsMousePressed(ui8 id);
 		bool IsMouseReleased(ui8 id);
 
-		vec2 MousePos();
-		vec2 MouseRPos();
-		vec2 MouseDragged();
+		vec2 GetMousePos();
+		vec2 GetMouseRPos();
+		vec2 GetMouseDragged();
 
-	private:
-		void Update();
+		void RequestClose() noexcept;
 
-		void KeyDown(ui8 id);
-		void KeyUp(ui8 id);
-
-		void MouseDown(ui8 id);
-		void MouseUp(ui8 id);
-
-		void MousePos(float x, float y);
-		void MouseDragged(int dx, int dy);
-
-	};
+	}
 }

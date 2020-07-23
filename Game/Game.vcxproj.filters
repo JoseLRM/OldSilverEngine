@@ -2,11 +2,13 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="src\Main.cpp" />
-    <ClCompile Include="src\ColisionSystem.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\Components.h" />
-    <ClInclude Include="src\ColisionSystem.h" />
     <ClInclude Include="src\GameState.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\spv\DefPostProcess.vert" />
+    <None Include="shaders\spv\DefPostProcess.frag" />
+    <None Include="shaders\spv\compile.bat" />
   </ItemGroup>
 </Project>
