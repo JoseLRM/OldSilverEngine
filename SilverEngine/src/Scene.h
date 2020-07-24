@@ -64,8 +64,7 @@ namespace SV {
 		ui32 childsCount = 0u;
 		Transform transform;
 		SceneLayer* layer = nullptr;
-
-		std::map<ui16, size_t> indices;
+		std::map<CompID, size_t> indices;
 
 		EntityData() : transform(0, 0) {}
 	};
@@ -165,13 +164,6 @@ namespace SV {
 namespace SV {
 
 	class Scene {
-		std::vector<Entity> m_Entities;
-		std::vector<EntityData> m_EntityData;
-		std::vector<Entity> m_FreeEntityData;
-
-		std::vector<std::vector<ui8>> m_Components;
-
-		std::map<std::string, std::unique_ptr<SceneLayer>> m_Layers;
 
 	public:
 		~Scene();
@@ -179,14 +171,46 @@ namespace SV {
 		void Initialize() noexcept;
 		void Close() noexcept;
 
-		inline std::vector<SV::Entity>& GetEntityList() noexcept { return m_Entities; }
-		inline std::vector<SV::EntityData>& GetEntityDataList() noexcept { return m_EntityData; }
-		
-		inline std::vector<ui8>& GetComponentsList(CompID ID) noexcept { return m_Components[ID]; }
-
 		void ClearScene();
 
-		// COMPONENT METHODS
+		// ENTITIES
+	private:
+		std::vector<Entity> m_Entities;
+		std::vector<EntityData> m_EntityData;
+		std::vector<Entity> m_FreeEntityData;
+
+	public:
+		SV::Entity CreateEntity(SV::Entity parent = SV_INVALID_ENTITY) noexcept;
+		void CreateEntities(ui32 count, SV::Entity parent = SV_INVALID_ENTITY, std::vector<SV::Entity>* entities = nullptr) noexcept;
+		
+		SV::Entity DuplicateEntity(SV::Entity duplicated);
+		bool IsEmpty(SV::Entity entity);
+		void DestroyEntity(SV::Entity entity) noexcept;
+
+		void GetEntitySons(SV::Entity parent, SV::Entity** sonsArray, ui32* size) noexcept;
+		SV::Entity GetEntityParent(SV::Entity entity);
+		SV::Transform& GetTransform(SV::Entity entity);
+
+		void SetLayer(SV::Entity entity, SV::SceneLayer* layer) noexcept;
+		SV::SceneLayer* GetLayer(SV::Entity entity) const noexcept;
+		SV::SceneLayer* GetLayerOf(SV::Entity entity);
+
+		inline std::vector<SV::Entity>& GetEntityList() noexcept { return m_Entities; }
+		inline std::vector<SV::EntityData>& GetEntityDataList() noexcept { return m_EntityData; }
+
+	private:
+		SV::Entity DuplicateEntity(SV::Entity duplicate, SV::Entity parent);
+
+		void ReserveEntityData(ui32 count);
+		SV::Entity GetNewEntity();
+		void UpdateChildsCount(SV::Entity entity, i32 count);
+
+		// COMPONENTS
+
+	private:
+		std::vector<std::vector<ui8>> m_Components;
+
+	public:
 		template<typename Component>
 		inline void AddComponent(SV::Entity entity, const Component& component) {
 			AddComponent(entity, (SV::BaseComponent*) & component, Component::ID, Component::SIZE);
@@ -205,55 +229,41 @@ namespace SV {
 			return (Component*)GetComponent(entity, Component::ID);
 		}
 
+		inline std::vector<ui8>& GetComponentsList(CompID ID) noexcept { return m_Components[ID]; }
+
+	private:
 		BaseComponent* GetComponent(SV::Entity e, CompID componentID) noexcept;
+		BaseComponent* GetComponent(const SV::EntityData& e, CompID componentID) noexcept;
+
 		void AddComponent(SV::Entity entity, SV::BaseComponent* comp, CompID componentID, size_t componentSize) noexcept;
 		void AddComponent(SV::Entity entity, CompID componentID, size_t componentSize) noexcept;
 		void AddComponents(std::vector<SV::Entity>& entities, SV::BaseComponent* comp, CompID componentID, size_t componentSize) noexcept;
+
 		void RemoveComponent(SV::Entity entity, CompID componentID, size_t componentSize) noexcept;
+		void RemoveComponents(SV::EntityData& entityData) noexcept;
 
-		// ENTITY METHODS
-		SV::Entity CreateEntity(SV::Entity parent = SV_INVALID_ENTITY) noexcept;
-		void CreateEntities(ui32 count, SV::Entity parent = SV_INVALID_ENTITY, std::vector<SV::Entity>* entities = nullptr) noexcept;
-
-		SV::Entity DuplicateEntity(SV::Entity duplicated);
-
-		void SetLayer(SV::Entity entity, SV::SceneLayer* layer) noexcept;
-		SV::SceneLayer* GetLayer(SV::Entity entity) const noexcept;
-
-		void GetEntitySons(SV::Entity parent, SV::Entity** sonsArray, ui32* size) noexcept;
-		SV::Entity GetEntityParent(SV::Entity entity);
-		SV::Transform& GetTransform(SV::Entity entity);
-		SV::SceneLayer* GetLayerOf(SV::Entity entity);
-		bool IsEmpty(SV::Entity entity);
-
-		void DestroyEntity(SV::Entity entity) noexcept;
-
-		// systems methods
-
-		void ExecuteSystems(const SV_ECS_SYSTEM_DESC* params, ui32 count, float dt);
-
-		// Layers
+		// LAYERS
+	private:
+		std::map<std::string, std::unique_ptr<SceneLayer>> m_Layers;
+		
+	public:	
 		void CreateLayer(const char* name, ui16 value);
 		SV::SceneLayer* GetLayer(const char* name);
 		void DestroyLayer(const char* name);
 		ui32 GetLayerCount();
 
+		// SYSTEMS
+	public:
+		void ExecuteSystems(const SV_ECS_SYSTEM_DESC* params, ui32 count, float dt);
+
 	private:
-		SV::Entity DuplicateEntity(SV::Entity duplicate, SV::Entity parent);
-
-		void ReserveEntityData(ui32 count);
-		SV::Entity GetNewEntity();
-		void UpdateChildsCount(SV::Entity entity, i32 count);
-
-		BaseComponent* GetComponent(const SV::EntityData& e, CompID componentID) noexcept;
-		void RemoveComponents(SV::EntityData& entityData) noexcept;
-
-		// systems
+		// Linear Systems
 		void UpdateLinearSystem(const SV_ECS_SYSTEM_DESC& desc, float dt);
 
 		void LinearSystem_OneRequest(SV::SystemFunction system, CompID compID, float dt);
 		void LinearSystem(SV::SystemFunction system, CompID* request, ui32 requestCount, CompID* optional, ui32 optionalCount, float dt);
 
+		// MultithreadedSystems
 		void UpdateMultithreadedSystem(const SV_ECS_SYSTEM_DESC& desc, float dt);
 
 		void MultithreadedSystem_OneRequest(SV::SystemFunction system, CompID compID, float dt);

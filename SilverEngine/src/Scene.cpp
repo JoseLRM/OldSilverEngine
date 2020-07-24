@@ -7,26 +7,6 @@ namespace SV {
 	using namespace _internal;
 
 	///////////////////////////SCENE////////////////////////
-	BaseComponent* Scene::GetComponent(SV::Entity e, CompID componentID) noexcept
-	{
-		SV::EntityData& entity = m_EntityData[e];
-		auto it = entity.indices.find(componentID);
-		if (it != entity.indices.end()) return (BaseComponent*)(&(m_Components[componentID][it->second]));
-
-		return nullptr;
-	}
-	BaseComponent* Scene::GetComponent(const SV::EntityData& entity, CompID componentID) noexcept
-	{
-		auto it = entity.indices.find(componentID);
-		if (it != entity.indices.end()) return (BaseComponent*)(&(m_Components[componentID][it->second]));
-
-		return nullptr;
-	}
-
-	Scene::~Scene()
-	{
-		Close();
-	}
 
 	void Scene::Initialize() noexcept
 	{
@@ -50,44 +30,22 @@ namespace SV {
 		m_EntityData.clear();
 	}
 
+	void Scene::ClearScene()
+	{
+		m_Entities.clear();
+		m_EntityData.clear();
+		m_FreeEntityData.clear();
+		for (ui32 i = 0; i < ECS::GetComponentsCount(); ++i) {
+			m_Components[i].clear();
+		}
+	}
+
+	Scene::~Scene()
+	{
+		Close();
+	}
+
 	//////////////////////////////////ENTITIES////////////////////////////////
-	void Scene::ReserveEntityData(ui32 count)
-	{
-		ui32 freeEntityDataCount = ui32(m_FreeEntityData.size());
-
-		if (freeEntityDataCount < count) {
-			m_EntityData.reserve(count - freeEntityDataCount);
-		}
-	}
-	SV::Entity Scene::GetNewEntity()
-	{
-		SV::Entity entity;
-		if (m_FreeEntityData.empty()) {
-			entity = SV::Entity(m_EntityData.size());
-			m_EntityData.emplace_back();
-		}
-		else {
-			entity = m_FreeEntityData.back();
-			m_FreeEntityData.pop_back();
-		}
-		m_EntityData[entity].transform = Transform(entity, this);
-		m_EntityData[entity].layer = GetLayer("Default");
-		return entity;
-	}
-	void Scene::UpdateChildsCount(SV::Entity entity, i32 count)
-	{
-		std::vector<Entity> parentsToUpdate;
-		parentsToUpdate.emplace_back(entity);
-		while (!parentsToUpdate.empty()) {
-
-			Entity parentToUpdate = parentsToUpdate.back();
-			parentsToUpdate.pop_back();
-			EntityData& parentToUpdateEd = m_EntityData[parentToUpdate];
-			parentToUpdateEd.childsCount += count;
-
-			if (parentToUpdateEd.parent != SV_INVALID_ENTITY) parentsToUpdate.emplace_back(parentToUpdateEd.parent);
-		}
-	}
 
 	Entity Scene::CreateEntity(SV::Entity parent) noexcept
 	{
@@ -186,6 +144,16 @@ namespace SV {
 		}
 	}
 
+	SV::Entity Scene::DuplicateEntity(SV::Entity duplicated)
+	{
+		return DuplicateEntity(duplicated, m_EntityData[duplicated].parent);
+	}
+
+	bool Scene::IsEmpty(SV::Entity entity)
+	{
+		return m_EntityData[entity].indices.empty();
+	}
+
 	void Scene::DestroyEntity(Entity entity) noexcept
 	{
 		EntityData& entityData = m_EntityData[entity];
@@ -222,26 +190,33 @@ namespace SV {
 
 	}
 
-	void Scene::ClearScene()
+	void Scene::GetEntitySons(SV::Entity parent, SV::Entity** sonsArray, ui32* size) noexcept
 	{
-		m_Entities.clear();
-		m_EntityData.clear();
-		m_FreeEntityData.clear();
-		for (ui32 i = 0; i < ECS::GetComponentsCount(); ++i) {
-			m_Components[i].clear();
-		}
+		EntityData& ed = m_EntityData[parent];
+		*size = ed.childsCount;
+		if (sonsArray && ed.childsCount != 0)* sonsArray = &m_Entities[ed.handleIndex + 1];
 	}
 
-	SV::Entity Scene::DuplicateEntity(SV::Entity duplicated)
+	SV::Entity Scene::GetEntityParent(SV::Entity entity) {
+		return m_EntityData[entity].parent;
+	}
+
+	SV::Transform& Scene::GetTransform(SV::Entity entity)
 	{
-		return DuplicateEntity(duplicated, m_EntityData[duplicated].parent);
+		return m_EntityData[entity].transform;
 	}
 
 	void Scene::SetLayer(SV::Entity entity, SV::SceneLayer* layer) noexcept
 	{
 		m_EntityData[entity].layer = layer;
 	}
+
 	SV::SceneLayer* Scene::GetLayer(SV::Entity entity) const noexcept
+	{
+		return m_EntityData[entity].layer;
+	}
+
+	SV::SceneLayer* Scene::GetLayerOf(SV::Entity entity)
 	{
 		return m_EntityData[entity].layer;
 	}
@@ -285,32 +260,64 @@ namespace SV {
 		return copy;
 	}
 
-	void Scene::GetEntitySons(SV::Entity parent, SV::Entity** sonsArray, ui32* size) noexcept
+	void Scene::ReserveEntityData(ui32 count)
 	{
-		EntityData& ed = m_EntityData[parent];
-		*size = ed.childsCount;
-		if (sonsArray && ed.childsCount != 0)* sonsArray = &m_Entities[ed.handleIndex + 1];
+		ui32 freeEntityDataCount = ui32(m_FreeEntityData.size());
+
+		if (freeEntityDataCount < count) {
+			m_EntityData.reserve(count - freeEntityDataCount);
+		}
+	}
+	
+	SV::Entity Scene::GetNewEntity()
+	{
+		SV::Entity entity;
+		if (m_FreeEntityData.empty()) {
+			entity = SV::Entity(m_EntityData.size());
+			m_EntityData.emplace_back();
+		}
+		else {
+			entity = m_FreeEntityData.back();
+			m_FreeEntityData.pop_back();
+		}
+		m_EntityData[entity].transform = Transform(entity, this);
+		m_EntityData[entity].layer = GetLayer("Default");
+		return entity;
 	}
 
-	SV::Entity Scene::GetEntityParent(SV::Entity entity) {
-		return m_EntityData[entity].parent;
-	}
+	void Scene::UpdateChildsCount(SV::Entity entity, i32 count)
+	{
+		std::vector<Entity> parentsToUpdate;
+		parentsToUpdate.emplace_back(entity);
+		while (!parentsToUpdate.empty()) {
 
-	SV::Transform& Scene::GetTransform(SV::Entity entity)
-	{
-		return m_EntityData[entity].transform;
-	}
-	SV::SceneLayer* Scene::GetLayerOf(SV::Entity entity)
-	{
-		return m_EntityData[entity].layer;
-	}
+			Entity parentToUpdate = parentsToUpdate.back();
+			parentsToUpdate.pop_back();
+			EntityData& parentToUpdateEd = m_EntityData[parentToUpdate];
+			parentToUpdateEd.childsCount += count;
 
-	bool Scene::IsEmpty(SV::Entity entity)
-	{
-		return m_EntityData[entity].indices.empty();
+			if (parentToUpdateEd.parent != SV_INVALID_ENTITY) parentsToUpdate.emplace_back(parentToUpdateEd.parent);
+		}
 	}
 
 	////////////////////////////////COMPONENTS////////////////////////////////
+
+	BaseComponent* Scene::GetComponent(SV::Entity e, CompID componentID) noexcept
+	{
+		SV::EntityData& entity = m_EntityData[e];
+		auto it = entity.indices.find(componentID);
+		if (it != entity.indices.end()) return (BaseComponent*)(&(m_Components[componentID][it->second]));
+
+		return nullptr;
+	}
+	BaseComponent* Scene::GetComponent(const SV::EntityData& entity, CompID componentID) noexcept
+	{
+		auto it = entity.indices.find(componentID);
+		if (it != entity.indices.end()) return (BaseComponent*)(&(m_Components[componentID][it->second]));
+
+		return nullptr;
+	}
+
 	void Scene::AddComponent(Entity entity, BaseComponent* comp, CompID componentID, size_t componentSize) noexcept
 	{
 		auto& list = m_Components[componentID];
@@ -414,6 +421,63 @@ namespace SV {
 		entityData.indices.clear();
 	}
 
+	//////////////////////////////////LAYERS///////////////////////////////////////
+
+	void Scene::CreateLayer(const char* name, ui16 value)
+	{
+		SceneLayer layer;
+		layer.value = value;
+		layer.name = name;
+
+		auto it = m_Layers.find(name);
+		if (it != m_Layers.end()) {
+			SV::LogW("Repeated Layer '%s'", name);
+			return;
+		}
+
+		m_Layers[name] = std::make_unique<SceneLayer>(layer);
+
+		// SET IDS
+		// sort
+		std::vector<SceneLayer*> layers;
+		layers.reserve(m_Layers.size());
+		for (auto& it : m_Layers) {
+			layers.emplace_back(it.second.get());
+		}
+		std::sort(layers.data(), layers.data() + layers.size() - 1u, [](SceneLayer* layer0, SceneLayer* layer1) {
+			return (*layer0) < (*layer1);
+		});
+
+		// set
+		for (ui16 id = 0; id < layers.size(); ++id) {
+			layers[id]->ID = id;
+		}
+	}
+
+	SV::SceneLayer* Scene::GetLayer(const char* name)
+	{
+		auto it = m_Layers.find(name);
+		if (it == m_Layers.end()) {
+			SV::LogE("Layer not found '%s'", name);
+			return nullptr;
+		}
+		return (*it).second.get();
+	}
+	
+	void Scene::DestroyLayer(const char* name)
+	{
+		auto it = m_Layers.find(name);
+		if (it == m_Layers.end()) {
+			SV::LogE("Layer not found '%s'", name);
+		}
+		m_Layers.erase(it);
+	}
+	
+	ui32 Scene::GetLayerCount()
+	{
+		return ui32(m_Layers.size());
+	}
+
 	////////////////////////////////SYSTEMS////////////////////////////////
 
 	void Scene::ExecuteSystems(const SV_ECS_SYSTEM_DESC* desc, ui32 count, float dt)
@@ -453,17 +517,6 @@ namespace SV {
 
 			Task::Wait(ctx);
 		}
-	}
-
-	ui32 Scene::GetSortestComponentList(CompID* compIDs, ui32 count)
-	{
-		ui32 index = 0;
-		for (ui32 i = 1; i < count; ++i) {
-			if (m_Components[compIDs[i]].size() < m_Components[index].size()) {
-				index = i;
-			}
-		}
-		return index;
 	}
 
 	void Scene::UpdateLinearSystem(const SV_ECS_SYSTEM_DESC& desc, float dt)
@@ -697,57 +750,15 @@ namespace SV {
 		}
 	}
 
-	//////////////////////////////////LAYERS///////////////////////////////////////
-	void Scene::CreateLayer(const char* name, ui16 value)
+	ui32 Scene::GetSortestComponentList(CompID* compIDs, ui32 count)
 	{
-		SceneLayer layer;
-		layer.value = value;
-		layer.name = name;
-
-		auto it = m_Layers.find(name);
-		if (it != m_Layers.end()) {
-			SV::LogW("Repeated Layer '%s'", name);
-			return;
+		ui32 index = 0;
+		for (ui32 i = 1; i < count; ++i) {
+			if (m_Components[compIDs[i]].size() < m_Components[index].size()) {
+				index = i;
+			}
 		}
-
-		m_Layers[name] = std::make_unique<SceneLayer>(layer);
-
-		// SET IDS
-		// sort
-		std::vector<SceneLayer*> layers;
-		layers.reserve(m_Layers.size());
-		for (auto& it : m_Layers) {
-			layers.emplace_back(it.second.get());
-		}
-		std::sort(layers.data(), layers.data() + layers.size() - 1u, [](SceneLayer* layer0, SceneLayer* layer1) {
-			return (*layer0) < (*layer1);
-		});
-
-		// set
-		for (ui16 id = 0; id < layers.size(); ++id) {
-			layers[id]->ID = id;
-		}
-	}
-	SV::SceneLayer* Scene::GetLayer(const char* name)
-	{
-		auto it = m_Layers.find(name);
-		if (it == m_Layers.end()) {
-			SV::LogE("Layer not found '%s'", name);
-			return nullptr;
-		}
-		return (*it).second.get();
-	}
-	void Scene::DestroyLayer(const char* name)
-	{
-		auto it = m_Layers.find(name);
-		if (it == m_Layers.end()) {
-			SV::LogE("Layer not found '%s'", name);
-		}
-		m_Layers.erase(it);
-	}
-	ui32 Scene::GetLayerCount()
-	{
-		return ui32(m_Layers.size());
+		return index;
 	}
 
 	// STATIC
