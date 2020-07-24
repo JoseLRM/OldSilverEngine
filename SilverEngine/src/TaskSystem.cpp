@@ -11,7 +11,7 @@ namespace SV {
 			std::mutex m_SleepMutex;
 			std::mutex m_ExecuteMutex;
 
-			std::queue<std::pair<Task, ThreadContext*>> m_Tasks;
+			std::queue<std::pair<TaskFunction, ThreadContext*>> m_Tasks;
 
 			bool m_Running = true;
 
@@ -25,14 +25,16 @@ namespace SV {
 				for (ui32 i = 0; i < cant; ++i) {
 					ui32 ID = i + lastID;
 					m_Threads.emplace_back([this, ID]() {
-						Task task;
+						TaskFunction task;
 						ThreadContext* pContext;
 
 						while (m_Running) {
 							// sleep - critical section
 							{
-								std::unique_lock<std::mutex> lock(m_SleepMutex);
-								m_ConditionVar.wait(lock, [&]() { return !m_Running || !m_Tasks.empty(); });
+								std::unique_lock<std::mutex> sleepLock(m_SleepMutex);
+								m_ConditionVar.wait(sleepLock, [&]() { return !m_Running || !m_Tasks.empty(); });
+
+								std::lock_guard<std::mutex> executeLock(m_ExecuteMutex);
 
 								if (m_Tasks.empty()) continue;
 
@@ -49,21 +51,21 @@ namespace SV {
 				}
 			}
 
-			inline void Execute(const Task& task, ThreadContext* context = nullptr) noexcept
+			inline void Execute(const TaskFunction& task, ThreadContext* context = nullptr) noexcept
 			{
 				std::lock_guard<std::mutex> lock(m_ExecuteMutex);
 
-				if (context) context->taskCount = 1;
+				if (context) context->taskCount.fetch_add(1);
 
 				m_Tasks.emplace(std::make_pair(std::move(task), context));
 				m_ConditionVar.notify_one();
 			}
 
-			inline void Execute(Task* tasks, ui32 count, ThreadContext* context = nullptr) noexcept
+			inline void Execute(TaskFunction* tasks, ui32 count, ThreadContext* context = nullptr) noexcept
 			{
 				std::lock_guard<std::mutex> lock(m_ExecuteMutex);
 
-				if (context) context->taskCount = count;
+				if (context) context->taskCount.fetch_add(count);
 
 				for (ui32 i = 0; i < count; ++i) {
 					m_Tasks.emplace(std::make_pair(std::move(tasks[i]), context));
@@ -74,7 +76,7 @@ namespace SV {
 
 			inline bool Running(const ThreadContext& pContext) const noexcept
 			{
-				return pContext.executedTasks.load() != pContext.taskCount;
+				return pContext.executedTasks.load() != pContext.taskCount.load();
 			}
 
 			inline void Wait(const ThreadContext& pContext) noexcept
@@ -122,7 +124,7 @@ namespace SV {
 			}
 		}
 
-		void Execute(const Task& task, ThreadContext* context, bool blockingTask)
+		void Execute(const TaskFunction& task, ThreadContext* context, bool blockingTask)
 		{
 			g_ThreadPool.Execute(task, context);
 			
@@ -132,7 +134,7 @@ namespace SV {
 				g_ThreadPool.Reserve(1);
 			}
 		}
-		void Execute(Task* task, ui32 count, ThreadContext* context, bool blockingTask)
+		void Execute(TaskFunction* task, ui32 count, ThreadContext* context, bool blockingTask)
 		{
 			g_ThreadPool.Execute(task, count, context);
 			if (blockingTask)
@@ -148,6 +150,11 @@ namespace SV {
 		bool Running(const ThreadContext& context)
 		{
 			return g_ThreadPool.Running(context);
+		}
+
+		ui32 GetThreadCount() noexcept
+		{
+			return std::thread::hardware_concurrency();
 		}
 
 	}
