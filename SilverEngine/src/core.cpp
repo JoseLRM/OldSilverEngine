@@ -22,6 +22,8 @@ namespace SV {
 
 	}
 
+	std::mutex g_LogMutex;
+
 	void _Log(const char* s0, const char* s1, va_list args)
 	{
 		char logBuffer[1000];
@@ -31,6 +33,7 @@ namespace SV {
 		std::string out = s0;
 		out += logBuffer;
 
+		std::lock_guard<std::mutex> lock(g_LogMutex);
 		std::cout << out << std::endl;
 	}
 
