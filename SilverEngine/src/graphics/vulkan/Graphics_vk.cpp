@@ -117,11 +117,22 @@ namespace SV {
 	{
 		vkDeviceWaitIdle(m_Device);
 
-		// Destroy Allocator
-		vmaDestroyAllocator(m_Allocator);
+		// Destroy Pipelines
+		for (auto& it : m_Pipelines) {
+			auto& pipeline = it.second;
 
-		// Destroy SwapChain
-		svCheck(DestroySwapChain());
+			vkDestroyPipelineLayout(m_Device, pipeline.layout, nullptr);
+			vkDestroyDescriptorSetLayout(m_Device, pipeline.setLayout, nullptr);
+
+			for (ui32 i = 0; i < pipeline.frames.size(); ++i) {
+				vkDestroyDescriptorPool(m_Device, pipeline.frames[i].descPool, nullptr);
+			}
+
+			for (auto& it0 : pipeline.pipelines) {
+				vkDestroyPipeline(m_Device, it0.second, nullptr);
+			}
+		}
+		m_Pipelines.clear();
 
 		// Destroy command pools
 		for (ui32 i = 0; i < m_FrameCount; ++i) {
@@ -130,6 +141,12 @@ namespace SV {
 			vkDestroyCommandPool(m_Device, frame.transientCommandPool, nullptr);
 			vkDestroyFence(m_Device, frame.fence, nullptr);
 		}
+
+		// Destroy Allocator
+		vmaDestroyAllocator(m_Allocator);
+
+		// Destroy SwapChain
+		svCheck(DestroySwapChain());
 
 		// Destroy device and vulkan instance
 		vkDestroyDevice(m_Device, nullptr);
@@ -499,6 +516,8 @@ namespace SV {
 
 			for (ui32 i = 0; i < m_SwapChain.presentModes.size(); ++i) {
 				if (m_SwapChain.presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
+				//if (m_SwapChain.presentModes[i] == VK_PRESENT_MODE_FIFO_KHR) {
+				//if (m_SwapChain.presentModes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR) {
 					presentMode = m_SwapChain.presentModes[i];
 					break;
 				}
@@ -603,7 +622,9 @@ namespace SV {
 		SV::_internal::GraphicsPipelineState& state = SV::Graphics::_internal::GetPipelineState().graphics[cmd_];
 
 		RenderPass_vk& renderPass = *reinterpret_cast<RenderPass_vk*>(state.renderPass);
-		GraphicsPipeline_vk& pipeline = *reinterpret_cast<GraphicsPipeline_vk*>(state.pipeline);
+		GraphicsPipeline_vk& svPipeline = *reinterpret_cast<GraphicsPipeline_vk*>(state.pipeline);
+		size_t pipelineHash = svPipeline.hash;
+		VulkanPipeline& pipeline = m_Pipelines[pipelineHash];
 
 		VkCommandBuffer cmd = GetCMD(cmd_);
 
@@ -741,10 +762,9 @@ namespace SV {
 		if (updatePipeline) {
 
 			// Compute hash
-			size_t hash = 0u;
-			SV::HashCombine(hash, pipeline.ID);
+			size_t hash = pipelineHash;
 			SV::HashCombine(hash, renderPass.renderPass);
-			
+
 			// Find Pipeline
 			VkPipeline vkPipeline = VK_NULL_HANDLE;
 
@@ -756,30 +776,30 @@ namespace SV {
 				VkPipelineShaderStageCreateInfo shaderStages[SV_GFX_SHADER_TYPE_GFX_COUNT] = {};
 				ui32 shaderStagesCount = 0u;
 
-				if (pipeline.GetVertexShader()) {
+				if (svPipeline.GetVertexShader()) {
 					VkPipelineShaderStageCreateInfo& stage = shaderStages[shaderStagesCount++];
 					stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 					stage.flags = 0u;
 					stage.stage = VK_SHADER_STAGE_VERTEX_BIT;
-					stage.module = reinterpret_cast<Shader_vk*>(pipeline.GetVertexShader())->module;
+					stage.module = reinterpret_cast<Shader_vk*>(svPipeline.GetVertexShader())->module;
 					stage.pName = "main";
 					stage.pSpecializationInfo = nullptr;
 				}
-				if (pipeline.GetPixelShader()) {
+				if (svPipeline.GetPixelShader()) {
 					VkPipelineShaderStageCreateInfo& stage = shaderStages[shaderStagesCount++];
 					stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 					stage.flags = 0u;
 					stage.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-					stage.module = reinterpret_cast<Shader_vk*>(pipeline.GetPixelShader())->module;
+					stage.module = reinterpret_cast<Shader_vk*>(svPipeline.GetPixelShader())->module;
 					stage.pName = "main";
 					stage.pSpecializationInfo = nullptr;
 				}
-				if (pipeline.GetGeometryShader()) {
+				if (svPipeline.GetGeometryShader()) {
 					VkPipelineShaderStageCreateInfo& stage = shaderStages[shaderStagesCount++];
 					stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 					stage.flags = 0u;
 					stage.stage = VK_SHADER_STAGE_GEOMETRY_BIT;
-					stage.module = reinterpret_cast<Shader_vk*>(pipeline.GetGeometryShader())->module;
+					stage.module = reinterpret_cast<Shader_vk*>(svPipeline.GetGeometryShader())->module;
 					stage.pName = "main";
 					stage.pSpecializationInfo = nullptr;
 				}
@@ -791,7 +811,7 @@ namespace SV {
 				VkVertexInputBindingDescription bindings[SV_GFX_INPUT_SLOT_COUNT];
 				VkVertexInputAttributeDescription attributes[SV_GFX_INPUT_ELEMENT_COUNT];
 				{
-					SV_GFX_INPUT_LAYOUT_DESC il = pipeline.GetInputLayout();
+					SV_GFX_INPUT_LAYOUT_DESC il = svPipeline.GetInputLayout();
 					for (ui32 i = 0; i < il.slots.size(); ++i) {
 						bindings[i].binding = il.slots[i].slot;
 						bindings[i].inputRate = il.slots[i].instanced ? VK_VERTEX_INPUT_RATE_INSTANCE : VK_VERTEX_INPUT_RATE_VERTEX;
@@ -812,7 +832,7 @@ namespace SV {
 				// Rasterizer State
 				VkPipelineRasterizationStateCreateInfo rasterizerState{};
 				{
-					const SV_GFX_RASTERIZER_STATE_DESC& rDesc = pipeline.GetRasterizerState();
+					const SV_GFX_RASTERIZER_STATE_DESC& rDesc = svPipeline.GetRasterizerState();
 
 					rasterizerState.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 					rasterizerState.flags = 0u;
@@ -832,7 +852,7 @@ namespace SV {
 				VkPipelineColorBlendStateCreateInfo blendState{};
 				VkPipelineColorBlendAttachmentState attachments[SV_GFX_RENDER_TARGET_ATT_COUNT];
 				{
-					const SV_GFX_BLEND_STATE_DESC& bDesc = pipeline.GetBlendState();
+					const SV_GFX_BLEND_STATE_DESC& bDesc = svPipeline.GetBlendState();
 					
 					for (ui32 i = 0; i < bDesc.attachments.size(); ++i)
 					{
@@ -863,7 +883,7 @@ namespace SV {
 				// DepthStencilState
 				VkPipelineDepthStencilStateCreateInfo depthStencilState{};
 				{
-					const SV_GFX_DEPTHSTENCIL_STATE_DESC& dDesc = pipeline.GetDepthStencilState();
+					const SV_GFX_DEPTHSTENCIL_STATE_DESC& dDesc = svPipeline.GetDepthStencilState();
 					depthStencilState.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 					depthStencilState.flags = 0u;
 					depthStencilState.depthTestEnable = dDesc.depthTestEnabled;
@@ -894,7 +914,7 @@ namespace SV {
 				// Topology
 				VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 				inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-				inputAssembly.topology = ParseTopology(pipeline.GetTopology());
+				inputAssembly.topology = ParseTopology(svPipeline.GetTopology());
 
 				// ViewportState
 				VkPipelineViewportStateCreateInfo viewportState{};
@@ -1011,43 +1031,59 @@ namespace SV {
 		// Update Descriptors
 		if (state.flags & (SV_GFX_GRAPHICS_PIPELINE_STATE_CONSTANT_BUFFER | SV_GFX_GRAPHICS_PIPELINE_STATE_SAMPLER | SV_GFX_GRAPHICS_PIPELINE_STATE_IMAGE)) {
 
-			VkDescriptorSet descSet = pipeline.descriptorSets[cmd_];
+			auto& frame = pipeline.frames[m_CurrentFrame];
 
-			auto& writeDesc = pipeline.writeDescriptors;
+			VkDescriptorSet descSet = frame.descSets[cmd_];
 
-			for (ui32 i = 0; i < pipeline.setLayoutBindings.size(); ++i) {
+			VkWriteDescriptorSet writeDesc[SV_GFX_CONSTANT_BUFFER_COUNT + SV_GFX_IMAGE_COUNT + SV_GFX_SAMPLER_COUNT];
 
-				auto& binding = pipeline.setLayoutBindings[i];
+			for (ui32 i = 0; i < pipeline.bindings.size(); ++i) {
 
+				auto& binding = pipeline.bindings[i];
+
+				writeDesc[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				writeDesc[i].pNext = nullptr;
 				writeDesc[i].dstSet = descSet;
+				writeDesc[i].dstBinding = binding.binding;
+				writeDesc[i].dstArrayElement = 0u;
+				writeDesc[i].descriptorCount = 1u;
 
 				switch (binding.descriptorType)
 				{
 				case VK_DESCRIPTOR_TYPE_SAMPLER:
 				{
-					Sampler_vk& sampler = *reinterpret_cast<Sampler_vk*>(state.sampers[ParseShaderType(binding.stageFlags)][pipeline.bindingsLocation[writeDesc[i].dstBinding]]);
+					Sampler_vk& sampler = *reinterpret_cast<Sampler_vk*>(state.sampers[ParseShaderType(binding.stageFlags)][pipeline.bindingsLocation[binding.binding]]);
 					writeDesc[i].pImageInfo = &sampler.image_info;
+					writeDesc[i].pBufferInfo = nullptr;
+					writeDesc[i].pTexelBufferView = nullptr;
+					writeDesc[i].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
 				}
 					break;
 
 				case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
 				{
-					Image_vk& image = *reinterpret_cast<Image_vk*>(state.images[ParseShaderType(binding.stageFlags)][pipeline.bindingsLocation[writeDesc[i].dstBinding]]);
+					Image_vk& image = *reinterpret_cast<Image_vk*>(state.images[ParseShaderType(binding.stageFlags)][pipeline.bindingsLocation[binding.binding]]);
 					writeDesc[i].pImageInfo = &image.image_info;
+					writeDesc[i].pBufferInfo = nullptr;
+					writeDesc[i].pTexelBufferView = nullptr;
+					writeDesc[i].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 				}
 					break;
 
 				case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
 				{
-					Buffer_vk& buffer = *reinterpret_cast<Buffer_vk*>(state.constantBuffers[ParseShaderType(binding.stageFlags)][pipeline.bindingsLocation[writeDesc[i].dstBinding]]);
+					Buffer_vk& buffer = *reinterpret_cast<Buffer_vk*>(state.constantBuffers[ParseShaderType(binding.stageFlags)][pipeline.bindingsLocation[binding.binding]]);
+					writeDesc[i].pImageInfo = nullptr;
 					writeDesc[i].pBufferInfo = &buffer.buffer_info;
+					writeDesc[i].pTexelBufferView = nullptr;
+					writeDesc[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 				}
 				break;
 				}
 
 			}
 
-			vkUpdateDescriptorSets(m_Device, writeDesc.size(), writeDesc.data(), 0u, nullptr);
+			vkUpdateDescriptorSets(m_Device, pipeline.bindings.size(), writeDesc, 0u, nullptr);
 
 			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.layout, 0u, 1u, &descSet, 0u, nullptr);
 		}
@@ -1143,7 +1179,7 @@ namespace SV {
 		switch (usage)
 		{
 		case SV_GFX_USAGE_DEFAULT:
-			if (cpuAccess & (SV_GFX_CPU_ACCESS_ALL) == SV_GFX_CPU_ACCESS_ALL)
+			if ((cpuAccess & SV_GFX_CPU_ACCESS_ALL) == SV_GFX_CPU_ACCESS_ALL)
 				return VMA_MEMORY_USAGE_CPU_TO_GPU;
 			else if (cpuAccess & SV_GFX_CPU_ACCESS_READ)
 				return VMA_MEMORY_USAGE_GPU_TO_CPU;
@@ -1674,7 +1710,45 @@ namespace SV {
 
 		vkCheck(vkCreateShaderModule(m_Device, &create_info, nullptr, &shader.module));
 
-		shader.sprvCode = std::move(data);
+		// Get Layout from sprv code
+		spirv_cross::Compiler comp(reinterpret_cast<const ui32*>(data.data()), data.size() / sizeof(ui32));
+		spirv_cross::ShaderResources sr = comp.get_shader_resources();
+
+		// Semantic Names
+		if (desc.shaderType == SV_GFX_SHADER_TYPE_VERTEX) {
+			LoadSpirv_SemanticNames(comp, sr, shader.semanticNames);
+		}
+
+		// Bindings
+		LoadSpirv_Samplers(comp, sr, desc.shaderType, shader.bindings);
+		LoadSpirv_Images(comp, sr, desc.shaderType, shader.bindings);
+		LoadSpirv_Uniforms(comp, sr, desc.shaderType, shader.bindings);
+
+		// Bindings Locations
+		ui32 samplersCount = 0u;
+		ui32 imagesCount = 0u;
+		ui32 uniformsCount = 0u;
+
+		shader.bindingsLocation.resize(shader.bindings.size());
+
+		for (ui32 i = 0; i < shader.bindings.size(); ++i) {
+
+			switch (shader.bindings[i].descriptorType)
+			{
+			case VK_DESCRIPTOR_TYPE_SAMPLER:
+				shader.bindingsLocation[shader.bindings[i].binding] = samplersCount;
+				samplersCount++;
+				break;
+			case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+				shader.bindingsLocation[shader.bindings[i].binding] = imagesCount;
+				imagesCount++;
+				break;
+			case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+				shader.bindingsLocation[shader.bindings[i].binding] = uniformsCount;
+				uniformsCount++;
+				break;
+			}
+		}
 
 		return true;
 	}
@@ -1755,53 +1829,64 @@ namespace SV {
 
 	bool Graphics_vk::CreateGraphicsPipeline(GraphicsPipeline_vk& pipeline, const SV_GFX_GRAPHICS_PIPELINE_DESC& desc)
 	{
-		pipeline.ID = GetID();
+		// Compute Hash
+		pipeline.hash = 0u;
 
-		// Shader Layout
-		spirv_cross::ShaderResources sr;
+		if (desc.pVertexShader)		SV::HashCombine(pipeline.hash, desc.pVertexShader->GetPtr());
+		if (desc.pPixelShader)		SV::HashCombine(pipeline.hash, desc.pPixelShader->GetPtr());
+		if (desc.pGeometryShader)	SV::HashCombine(pipeline.hash, desc.pGeometryShader->GetPtr());
 
+		SV::HashCombine(pipeline.hash, Graphics::_internal::ComputeInputLayoutHash(desc.pInputLayout));
+		SV::HashCombine(pipeline.hash, Graphics::_internal::ComputeRasterizerStateHash(desc.pRasterizerState));
+		SV::HashCombine(pipeline.hash, Graphics::_internal::ComputeBlendStateHash(desc.pBlendState));
+		SV::HashCombine(pipeline.hash, Graphics::_internal::ComputeDepthStencilStateHash(desc.pDepthStencilState));
+
+		// Get VulkanPipeline
+		m_PipelinesMutex.lock();
+
+		auto it = m_Pipelines.find(pipeline.hash);
+		if (it == m_Pipelines.end()) {
+			m_Pipelines[pipeline.hash] = VulkanPipeline();
+		}
+
+		VulkanPipeline& p = m_Pipelines[pipeline.hash];
+
+		m_PipelinesMutex.unlock();
+
+		// Create
+		std::lock_guard<std::mutex> lock(p.creationMutex);
+
+		// Check if it is created
+		if (p.layout != VK_NULL_HANDLE) return true;
+
+		if (desc.pVertexShader) {
+			Shader_vk& shader = *reinterpret_cast<Shader_vk*>(desc.pVertexShader->GetPtr());
+			p.semanticNames = shader.semanticNames;
+			p.bindings.insert(p.bindings.end(), shader.bindings.begin(), shader.bindings.end());
+			p.bindingsLocation.insert(p.bindingsLocation.end(), shader.bindingsLocation.begin(), shader.bindingsLocation.end());
+		}
+		if (desc.pPixelShader) {
+			Shader_vk& shader = *reinterpret_cast<Shader_vk*>(desc.pPixelShader->GetPtr());
+			p.bindings.insert(p.bindings.end(), shader.bindings.begin(), shader.bindings.end());
+			p.bindingsLocation.insert(p.bindingsLocation.end(), shader.bindingsLocation.begin(), shader.bindingsLocation.end());
+		}
+
+		// Count
 		ui32 samplersCount = 0u;
 		ui32 imagesCount = 0u;
 		ui32 uniformsCount = 0u;
 
-		if (desc.pVertexShader) {
-			Shader_vk& shader = *reinterpret_cast<Shader_vk*>(desc.pVertexShader->GetPtr());
-			spirv_cross::Compiler comp(reinterpret_cast<const ui32*>(shader.sprvCode.data()), shader.sprvCode.size() / sizeof(ui32));
-			sr = comp.get_shader_resources();
+		for (ui32 i = 0; i < p.bindings.size(); ++i) {
 
-			LoadSpirv_SemanticNames(comp, sr, pipeline.semanticNames);
-			LoadSpirv_Samplers(comp, sr, SV_GFX_SHADER_TYPE_VERTEX, pipeline.setLayoutBindings);
-			LoadSpirv_Images(comp, sr, SV_GFX_SHADER_TYPE_VERTEX, pipeline.setLayoutBindings);
-			LoadSpirv_Uniforms(comp, sr, SV_GFX_SHADER_TYPE_VERTEX, pipeline.setLayoutBindings);
-		}
-
-		if (desc.pPixelShader) {
-			Shader_vk& shader = *reinterpret_cast<Shader_vk*>(desc.pPixelShader->GetPtr());
-			spirv_cross::Compiler comp(reinterpret_cast<const ui32*>(shader.sprvCode.data()), shader.sprvCode.size() / sizeof(ui32));
-			sr = comp.get_shader_resources();
-
-			LoadSpirv_Samplers(comp, sr, SV_GFX_SHADER_TYPE_PIXEL, pipeline.setLayoutBindings);
-			LoadSpirv_Images(comp, sr, SV_GFX_SHADER_TYPE_PIXEL, pipeline.setLayoutBindings);
-			LoadSpirv_Uniforms(comp, sr, SV_GFX_SHADER_TYPE_PIXEL, pipeline.setLayoutBindings);
-		}
-
-		// Count and locations
-		pipeline.bindingsLocation.resize(pipeline.setLayoutBindings.size());
-
-		for (ui32 i = 0; i < pipeline.setLayoutBindings.size(); ++i) {
-
-			switch (pipeline.setLayoutBindings[i].descriptorType)
+			switch (p.bindings[i].descriptorType)
 			{
 			case VK_DESCRIPTOR_TYPE_SAMPLER:
-				pipeline.bindingsLocation[pipeline.setLayoutBindings[i].binding] = samplersCount;
 				samplersCount++;
 				break;
 			case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-				pipeline.bindingsLocation[pipeline.setLayoutBindings[i].binding] = imagesCount;
 				imagesCount++;
 				break;
 			case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-				pipeline.bindingsLocation[pipeline.setLayoutBindings[i].binding] = uniformsCount;
 				uniformsCount++;
 				break;
 			}
@@ -1812,85 +1897,69 @@ namespace SV {
 			VkDescriptorSetLayoutCreateInfo layoutInfo{};
 			layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 			layoutInfo.flags = 0u;
-			layoutInfo.bindingCount = pipeline.setLayoutBindings.size();
-			layoutInfo.pBindings = pipeline.setLayoutBindings.data();
+			layoutInfo.bindingCount = p.bindings.size();
+			layoutInfo.pBindings = p.bindings.data();
 
-			vkCheck(vkCreateDescriptorSetLayout(m_Device, &layoutInfo, nullptr, &pipeline.setLayout));
+			vkCheck(vkCreateDescriptorSetLayout(m_Device, &layoutInfo, nullptr, &p.setLayout));
 
 			VkPipelineLayoutCreateInfo layout_info{};
 			layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 			layout_info.setLayoutCount = 1u;
-			layout_info.pSetLayouts = &pipeline.setLayout;
+			layout_info.pSetLayouts = &p.setLayout;
 			layout_info.pushConstantRangeCount = 0u;
 
-			vkCheck(vkCreatePipelineLayout(m_Device, &layout_info, nullptr, &pipeline.layout));
+			vkCheck(vkCreatePipelineLayout(m_Device, &layout_info, nullptr, &p.layout));
 		}
 
-		if (pipeline.setLayoutBindings.size() == 0) return true;
+		if (p.bindings.size() == 0) return true;
+
+		p.frames.resize(m_FrameCount);
 
 		// Create Desc Pool
-		{
-			VkDescriptorPoolSize poolSizes[3];
-			ui32 poolSizesCount = 0u;
+		
+		VkDescriptorPoolSize poolSizes[3];
+		ui32 poolSizesCount = 0u;
 
-			if (imagesCount > 0u) {
-				poolSizes[poolSizesCount].descriptorCount = imagesCount * SV_GFX_COMMAND_LIST_COUNT;
-				poolSizes[poolSizesCount].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-				poolSizesCount++;
-			}
-			
-			if (samplersCount > 0u) {
-				poolSizes[poolSizesCount].descriptorCount = samplersCount * SV_GFX_COMMAND_LIST_COUNT;
-				poolSizes[poolSizesCount].type = VK_DESCRIPTOR_TYPE_SAMPLER;
-				poolSizesCount++;
-			}
-
-			if (uniformsCount > 0u) {
-				poolSizes[poolSizesCount].descriptorCount = uniformsCount * SV_GFX_COMMAND_LIST_COUNT;
-				poolSizes[poolSizesCount].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-				poolSizesCount++;
-			}
-
-			VkDescriptorPoolCreateInfo descPool_info{};
-			descPool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-			descPool_info.flags = 0u;
-			descPool_info.maxSets = SV_GFX_COMMAND_LIST_COUNT;
-			descPool_info.poolSizeCount = poolSizesCount;
-			descPool_info.pPoolSizes = poolSizes;
-			vkCheck(vkCreateDescriptorPool(m_Device, &descPool_info, nullptr, &pipeline.descriptorPool));
+		if (imagesCount > 0u) {
+			poolSizes[poolSizesCount].descriptorCount = imagesCount * SV_GFX_COMMAND_LIST_COUNT * m_FrameCount;
+			poolSizes[poolSizesCount].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+			poolSizesCount++;
 		}
 
-		// Allocate Desc Sets
+		if (samplersCount > 0u) {
+			poolSizes[poolSizesCount].descriptorCount = samplersCount * SV_GFX_COMMAND_LIST_COUNT * m_FrameCount;
+			poolSizes[poolSizesCount].type = VK_DESCRIPTOR_TYPE_SAMPLER;
+			poolSizesCount++;
+		}
+
+		if (uniformsCount > 0u) {
+			poolSizes[poolSizesCount].descriptorCount = uniformsCount * SV_GFX_COMMAND_LIST_COUNT * m_FrameCount;
+			poolSizes[poolSizesCount].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			poolSizesCount++;
+		}
+
+		VkDescriptorPoolCreateInfo descPool_info{};
+		descPool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		descPool_info.flags = 0u;
+		descPool_info.maxSets = SV_GFX_COMMAND_LIST_COUNT;
+		descPool_info.poolSizeCount = poolSizesCount;
+		descPool_info.pPoolSizes = poolSizes;
+
+		// Allocate descriptor Sets
 		{
-			auto& descSets = pipeline.descriptorSets;
-
-			descSets.resize(SV_GFX_COMMAND_LIST_COUNT);
-
 			VkDescriptorSetLayout setLayouts[SV_GFX_COMMAND_LIST_COUNT];
-			for (ui64 i = 0; i < SV_GFX_COMMAND_LIST_COUNT; ++i) setLayouts[i] = pipeline.setLayout;
+			for (ui64 i = 0; i < SV_GFX_COMMAND_LIST_COUNT; ++i) setLayouts[i] = p.setLayout;
 
 			VkDescriptorSetAllocateInfo alloc_info{};
 			alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-			alloc_info.descriptorPool = pipeline.descriptorPool;
 			alloc_info.descriptorSetCount = SV_GFX_COMMAND_LIST_COUNT;
 			alloc_info.pSetLayouts = setLayouts;
 
-			vkCheck(vkAllocateDescriptorSets(m_Device, &alloc_info, descSets.data()));
-		}
-
-		// Fill Write Desc strucs
-		{
-			pipeline.writeDescriptors.resize(pipeline.setLayoutBindings.size());
-			auto& writeDesc = pipeline.writeDescriptors;
-			for (ui32 i = 0; i < writeDesc.size(); ++i) {
-				auto& binding = pipeline.setLayoutBindings[i];
-
-				writeDesc[i] = {};
-				writeDesc[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				writeDesc[i].dstBinding = binding.binding;
-				writeDesc[i].dstArrayElement = 0u;
-				writeDesc[i].descriptorCount = 1u;
-				writeDesc[i].descriptorType = binding.descriptorType;
+			// Allocate Desc Sets
+			for (ui32 i = 0; i < m_FrameCount; ++i) {
+				vkCheck(vkCreateDescriptorPool(m_Device, &descPool_info, nullptr, &p.frames[i].descPool));
+				alloc_info.descriptorPool = p.frames[i].descPool;
+				vkCheck(vkAllocateDescriptorSets(m_Device, &alloc_info, p.frames[i].descSets));
 			}
 		}
 
@@ -1937,12 +2006,6 @@ namespace SV {
 	}
 	bool Graphics_vk::DestroyGraphicsPipeline(GraphicsPipeline_vk& graphicsPipeline)
 	{
-		for (auto& it : graphicsPipeline.pipelines) {
-			vkDestroyPipeline(m_Device, it.second, nullptr);
-		}
-		vkDestroyPipelineLayout(m_Device, graphicsPipeline.layout, nullptr);
-		vkDestroyDescriptorSetLayout(m_Device, graphicsPipeline.setLayout, nullptr);
-		vkDestroyDescriptorPool(m_Device, graphicsPipeline.descriptorPool, nullptr);
 		return true;
 	}
 
@@ -1992,8 +2055,17 @@ namespace SV {
 
 		// End CommandBuffers & RenderPasses
 		for (ui32 i = 0; i < m_ActiveCMDCount; ++i) {
-			if(m_ActiveRenderPass[i]) vkCmdEndRenderPass(GetCMD(i));
-			vkAssert(vkEndCommandBuffer(GetCMD(i)));
+
+			VkCommandBuffer cmd = GetCMD(i);
+
+			if(m_ActiveRenderPass[i]) vkCmdEndRenderPass(cmd);
+
+			if (i == m_ActiveCMDCount - 1) {
+				ImageMemoryBarrier(cmd, m_SwapChain.backBuffer.image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+					VK_IMAGE_ASPECT_COLOR_BIT, 1u);
+			}
+
+			vkAssert(vkEndCommandBuffer(cmd));
 		}
 
 		if (m_ImageFences[m_ImageIndex] != VK_NULL_HANDLE) {
@@ -2022,12 +2094,6 @@ namespace SV {
 	}
 	void Graphics_vk::Present()
 	{
-		VkCommandBuffer cmd;
-		vkAssert(BeginSingleTimeCMD(&cmd));
-		ImageMemoryBarrier(cmd, m_SwapChain.backBuffer.image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 
-			VK_IMAGE_ASPECT_COLOR_BIT, 1u);
-		vkAssert(EndSingleTimeCMD(cmd));
-
 		VkPresentInfoKHR present_info{};
 		present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 		present_info.waitSemaphoreCount = 1u;
@@ -2158,6 +2224,8 @@ namespace SV {
 	bool VulkanDestructor(Primitive& primitive)
 	{
 		Graphics_vk& gfx = *reinterpret_cast<Graphics_vk*>(Graphics::_internal::GetDevice());
+
+		vkDeviceWaitIdle(gfx.GetDevice());
 
 		bool result = false;
 

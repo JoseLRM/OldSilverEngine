@@ -25,3 +25,7 @@ constexpr const char* SV_SRC_PATH = "../SilverEngine/";
 // Graphics Vulkan
 
 #define SV_GFX_VK_VALIDATION_LAYERS 0
+
+// Entity Component System
+
+#define SV_ECS_REQUEST_COMPONENTS_COUNT 16

@@ -29,6 +29,7 @@ namespace SV {
 
 		Application&	GetApplication()	noexcept;
 		SV::Version		GetVersion()		noexcept;
+		float			GetDeltaTime()		noexcept;
 
 	}
 

@@ -190,6 +190,7 @@ namespace SV {
 				Graphics::SetViewports(&viewport, 1u, cmd);
 
 				SV_GFX_SCISSOR scissor = g_Offscreen->GetScissor();
+				scissor.width = (Engine::GetMousePos().x + 0.5f) * g_Offscreen->GetWidth();
 				Graphics::SetScissors(&scissor, 1u, cmd);
 
 				// Temp
@@ -220,7 +221,7 @@ namespace SV {
 				// Update Constant Buffer
 				Global global;
 				global.matrix = XMMatrixRotationZ(ToRadians(g_TriangleRotation));
-				g_TriangleRotation++;
+				g_TriangleRotation+=SV::Engine::GetDeltaTime() * 90.f;
 				Graphics::UpdateBuffer(g_TriangleConstantBuffer, &global, sizeof(Global), 0u, cmd);
 
 				Graphics::DrawIndexed(g_TriangleIndexBuffer->GetSize() / sizeof(ui32), 1u, 0u, 0u, 0u, cmd);

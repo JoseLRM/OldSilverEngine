@@ -62,8 +62,10 @@ namespace SV {
 	};
 	// Shader
 	struct Shader_vk : public _internal::Shader_internal {
-		VkShaderModule module = VK_NULL_HANDLE;
-		std::vector<ui8> sprvCode;
+		VkShaderModule								module				= VK_NULL_HANDLE;
+		std::vector<VkDescriptorSetLayoutBinding>	bindings;
+		std::map<std::string, ui32>					semanticNames;
+		std::vector<ui32>							bindingsLocation;
 	};
 	// RenderPass
 	struct RenderPass_vk : public _internal::RenderPass_internal {
@@ -72,17 +74,7 @@ namespace SV {
 	};
 	// GraphicsPipeline
 	struct GraphicsPipeline_vk : public _internal::GraphicsPipeline_internal {
-		std::map<std::string, ui32>						semanticNames;
-		std::vector<ui32>								bindingsLocation;
-		std::map<size_t, VkPipeline>					pipelines;
-		std::mutex										mutex;
-		VkDescriptorPool								descriptorPool;
-		std::vector<VkDescriptorSet>					descriptorSets;
-		std::vector<VkWriteDescriptorSet>				writeDescriptors;
-		std::vector<VkDescriptorSetLayoutBinding>		setLayoutBindings;
-		VkDescriptorSetLayout							setLayout			= VK_NULL_HANDLE;
-		VkPipelineLayout								layout				= VK_NULL_HANDLE;
-		size_t											ID					= 0u;
+		size_t hash;
 	};
 
 	//////////////////////////////////////////////////////////// CONSTRUCTOR & DESTRUCTOR ////////////////////////////////////////////////////////////
@@ -91,6 +83,38 @@ namespace SV {
 	bool VulkanDestructor(Primitive& primitive);
 
 	//////////////////////////////////////////////////////////// GRAPHICS API ////////////////////////////////////////////////////////////
+	struct VulkanPipeline {
+		VulkanPipeline& operator=(const VulkanPipeline& other)
+		{
+			semanticNames = other.semanticNames;
+			bindingsLocation = other.bindingsLocation;
+			layout = other.layout;
+			setLayout = other.setLayout;
+			pipelines = other.pipelines;
+			frames = other.frames;
+			bindings = other.bindings;
+			return *this;
+		}
+
+		struct Descriptors {
+			VkDescriptorSet		descSets[SV_GFX_COMMAND_LIST_COUNT];
+			VkDescriptorPool	descPool;
+		};
+
+		std::mutex									mutex;
+		std::mutex									creationMutex;
+
+		std::map<std::string, ui32>					semanticNames;
+		std::vector<ui32>							bindingsLocation;
+
+		VkPipelineLayout							layout		= VK_NULL_HANDLE;
+		VkDescriptorSetLayout						setLayout	= VK_NULL_HANDLE;
+		std::map<size_t, VkPipeline>				pipelines;
+		std::vector<Descriptors>					frames;
+
+		std::vector<VkDescriptorSetLayoutBinding>	bindings;
+	};
+
 	struct Frame {
 		VkCommandPool		commandPool;
 		VkCommandBuffer		commandBuffers[SV_GFX_COMMAND_LIST_COUNT];
@@ -160,6 +184,9 @@ namespace SV {
 		// Binding Members
 
 		bool m_ActiveRenderPass[SV_GFX_COMMAND_LIST_COUNT] = {};
+
+		std::map<size_t, VulkanPipeline>	m_Pipelines;
+		std::mutex							m_PipelinesMutex;
 
 	public:
 		bool Initialize(const SV_GRAPHICS_INITIALIZATION_DESC& desc) override;

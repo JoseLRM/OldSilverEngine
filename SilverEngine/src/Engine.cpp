@@ -12,6 +12,7 @@ namespace SV {
 		std::string		g_Name;
 
 		float g_FixedUpdateFrameRate = 1 / 60.f;
+		float g_DeltaTime = 0.f;
 
 		SV::Application*	g_Application;
 
@@ -75,10 +76,10 @@ namespace SV {
 
 				// Calculate DeltaTime
 				SV::Time actualTime = SV::Timer::Now();
-				SV::Time deltaTime = actualTime - lastTime;
+				g_DeltaTime = actualTime - lastTime;
 				lastTime = actualTime;
 
-				if (deltaTime > 0.3f) deltaTime = 0.3f;
+				if (g_DeltaTime > 0.3f) g_DeltaTime = 0.3f;
 
 				// Update Input
 				Window::_internal::Update();
@@ -92,12 +93,12 @@ namespace SV {
 				LoadingState* loadingState = StateManager::GetLoadingState();
 
 				// Update state/loadingState and application
-				if (state) state->Update(deltaTime);
-				else loadingState->Update(deltaTime);
+				if (state) state->Update(g_DeltaTime);
+				else loadingState->Update(g_DeltaTime);
 
 				// Fixed update state/loadingState and application
-				fixedUpdateTime += deltaTime;
-				g_Application->Update(deltaTime);
+				fixedUpdateTime += g_DeltaTime;
+				g_Application->Update(g_DeltaTime);
 				if (fixedUpdateTime >= g_FixedUpdateFrameRate) {
 
 					if (state) state->FixedUpdate();
@@ -120,7 +121,7 @@ namespace SV {
 
 				// Calculate FPS
 				FPS++;
-				showFPSTime += deltaTime;
+				showFPSTime += g_DeltaTime;
 				while (showFPSTime >= 1.f) {
 					showFPSTime -= 1.f;
 					SV::Log("FPS: %u", FPS);
@@ -179,5 +180,6 @@ namespace SV {
 
 		Application& GetApplication() noexcept { return *g_Application; }
 		SV::Version GetVersion() noexcept { return g_Version; }
+		float GetDeltaTime() noexcept { return g_DeltaTime;	}
 	}
 }
