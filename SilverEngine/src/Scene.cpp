@@ -6,34 +6,6 @@ namespace SV {
 
 	using namespace _internal;
 
-	ui32 System::s_SystemCount = 0;
-	std::mutex System::s_SystemCountMutex;
-
-	ui32 System::CreateSystemID()
-	{
-		std::lock_guard<std::mutex> lock(s_SystemCountMutex);
-		return s_SystemCount++;
-	}
-
-	void System::SetIndividualSystem() noexcept { m_IndividualSystem = true; }
-	void System::SetCollectiveSystem() noexcept
-	{
-		m_IndividualSystem = false;
-	}
-	void System::SetExecuteType(ui8 type) noexcept
-	{
-		m_ExecuteType = type;
-	}
-
-	void System::AddRequestedComponent(CompID ID) noexcept
-	{
-		m_RequestedComponents.push_back(ID);
-	}
-	void System::AddOptionalComponent(CompID ID) noexcept
-	{
-		m_OptionalComponents.push_back(ID);
-	}
-
 	///////////////////////////SCENE////////////////////////
 	BaseComponent* Scene::GetComponent(SV::Entity e, CompID componentID) noexcept
 	{
@@ -444,97 +416,93 @@ namespace SV {
 
 	////////////////////////////////SYSTEMS////////////////////////////////
 
-	void Scene::UpdateSystem(System* system, float dt)
+	void Scene::ExecuteSystems(const SV_ECS_SYSTEM_DESC* desc, ui32 count, float dt)
 	{
-		if (system->GetExecuteType() == SV_ECS_SYSTEM_MULTITHREADED) {			
-			UpdateCollectiveSystem(system, dt);
+		if (count == 0) return;
+
+		if (count == 1) {
+			if (desc[0].executionMode == SV_ECS_SYSTEM_EXECUTION_MODE_MULTITHREADED) {
+				UpdateMultithreadedSystem(desc[0], dt);
+			}
+			else {
+				UpdateLinearSystem(*desc, dt);
+			}
 		}
 		else {
-			if (system->IsIndividualSystem()) UpdateIndividualSystem(system, dt);
-			else UpdateCollectiveSystem(system, dt);
+
+			ThreadContext ctx;
+
+			for (ui32 i = 0; i < count; ++i) {
+				if (desc[i].executionMode == SV_ECS_SYSTEM_EXECUTION_MODE_PARALLEL) {
+					Task::Execute([this, desc, i, dt]() {
+						UpdateLinearSystem(desc[i], dt);
+					}, &ctx);
+				}
+			}
+
+			for (ui32 i = 0; i < count; ++i) {
+
+				if (desc[i].executionMode == SV_ECS_SYSTEM_EXECUTION_MODE_MULTITHREADED) {
+					UpdateMultithreadedSystem(desc[i], dt);
+				}
+				else if (desc[i].executionMode == SV_ECS_SYSTEM_EXECUTION_MODE_SAFE) {
+					UpdateLinearSystem(desc[i], dt);
+				}
+
+			}
+
+			Task::Wait(ctx);
 		}
 	}
 
-	void Scene::UpdateSystems(System** systems, ui32 cant, float dt)
-	{
-		System* pSystem;
-
-		// update safe systems
-		for (ui32 i = 0; i < cant; ++i) {
-			pSystem = systems[i];
-			if (pSystem->GetExecuteType() == SV_ECS_SYSTEM_SAFE) {
-				if (pSystem->IsIndividualSystem()) UpdateIndividualSystem(pSystem, dt);
-				else UpdateCollectiveSystem(pSystem, dt);
-			}
-		}
-
-		// update multithreaded systems
-		for (ui32 i = 0; i < cant; ++i) {
-			pSystem = systems[i];
-			if (pSystem->GetExecuteType() == SV_ECS_SYSTEM_MULTITHREADED) {
-				UpdateCollectiveSystem(pSystem, dt);
-			}
-		}
-
-		// update parallel systems
-		for (ui32 i = 0; i < cant; ++i) {
-			pSystem = systems[i];
-			if (pSystem->GetExecuteType() == SV_ECS_SYSTEM_PARALLEL) {
-				if (pSystem->IsIndividualSystem())
-					SV::Task::Execute([pSystem, dt, this]() {
-
-					UpdateIndividualSystem(pSystem, dt);
-
-				});
-				else SV::Task::Execute([pSystem, dt, this]() {
-
-					UpdateCollectiveSystem(pSystem, dt);
-
-				});
-			}
-		}
-	}
-
-	size_t Scene::GetSortestComponentList(std::vector<CompID>& IDs)
+	ui32 Scene::GetSortestComponentList(CompID* compIDs, ui32 count)
 	{
 		ui32 index = 0;
-		for (ui32 i = 1; i < IDs.size(); ++i) {
-			if (m_Components[IDs[i]].size() < m_Components[index].size()) {
+		for (ui32 i = 1; i < count; ++i) {
+			if (m_Components[compIDs[i]].size() < m_Components[index].size()) {
 				index = i;
 			}
 		}
 		return index;
 	}
 
-	void Scene::UpdateIndividualSystem(System* system, float dt)
+	void Scene::UpdateLinearSystem(const SV_ECS_SYSTEM_DESC& desc, float dt)
 	{
-		// system requisites
-		auto& request = system->GetRequestedComponents();
-		auto& optional = system->GetOptionalComponents();
-		ui32 cantOfComponents = Entity(request.size() + optional.size());
+		if (desc.requestedComponentsCount == 0) return;
 
-		if (request.size() == 0) return;
+		// system requisites
+		CompID* request = desc.pRequestedComponents;
+		CompID* optional = desc.pOptionalComponents;
+		ui32 requestCount = desc.requestedComponentsCount;
+		ui32 optionalCount = desc.optionalComponentsCount;
 
 		// Different algorithm if there are only one request and no optionals (optimization reason)
-		else if (request.size() == 1 && optional.size() == 0) {
-
-			CompID compID = request[0];
-			auto& list = m_Components[compID];
-			if (list.empty()) return;
-
-			ui32 compSize = ECS::GetComponentSize(compID);
-			ui32 bytesCount = ui32(list.size());
-
-			for (ui32 i = 0; i < bytesCount; i += compSize) {
-				BaseComponent* comp = reinterpret_cast<BaseComponent*>(&list[i]);
-				system->UpdateEntity(comp->entity, &comp, *this, dt);
-			}
-
-			return;
+		if (optionalCount == 0 && requestCount == 1) {
+			LinearSystem_OneRequest(desc.system, request[0], dt);
 		}
+		else {
+			LinearSystem(desc.system, request, requestCount, optional, optionalCount, dt);
+		}
+	}
 
+	void Scene::LinearSystem_OneRequest(SV::SystemFunction system, CompID compID, float dt)
+	{
+		auto& list = m_Components[compID];
+		if (list.empty()) return;
+
+		ui32 compSize = ECS::GetComponentSize(compID);
+		ui32 bytesCount = ui32(list.size());
+
+		for (ui32 i = 0; i < bytesCount; i += compSize) {
+			BaseComponent* comp = reinterpret_cast<BaseComponent*>(&list[i]);
+			system(*this, comp->entity, &comp, dt);
+		}
+	}
+
+	void Scene::LinearSystem(SV::SystemFunction system, CompID* request, ui32 requestCount, CompID* optional, ui32 optionalCount, float dt)
+	{
 		// for optimization, choose the sortest component list
-		ui32 indexOfBestList = GetSortestComponentList(request);
+		ui32 indexOfBestList = GetSortestComponentList(request, requestCount);
 		CompID idOfBestList = request[indexOfBestList];
 
 		// if one request is empty, exit
@@ -543,8 +511,7 @@ namespace SV {
 		size_t sizeOfBestList = ECS::GetComponentSize(idOfBestList);
 
 		// reserve memory for the pointers
-		std::vector<BaseComponent*> components;
-		components.resize(cantOfComponents);
+		BaseComponent* components[SV_ECS_REQUEST_COMPONENTS_COUNT];
 
 		// for all the entities
 		BaseComponent* compOfBestList;
@@ -562,7 +529,7 @@ namespace SV {
 
 			// allocate requested components
 			ui32 j;
-			for (j = 0; j < request.size(); ++j) {
+			for (j = 0; j < requestCount; ++j) {
 				if (j == indexOfBestList) continue;
 
 				BaseComponent* comp = GetComponent(entityData, request[j]);
@@ -575,125 +542,160 @@ namespace SV {
 
 			if (!isValid) continue;
 			// allocate optional components
-			for (j = 0; j < optional.size(); ++j) {
+			for (j = 0; j < optionalCount; ++j) {
 
 				BaseComponent* comp = GetComponent(entityData, optional[j]);
-				components[j + request.size()] = comp;
+				components[j + requestCount] = comp;
 			}
 
 			// if the entity is valid, call update
-			system->UpdateEntity(entity, components.data(), *this, dt);
+			system(*this, entity, components, dt);
 		}
-		
 	}
 
-	void Scene::UpdateCollectiveSystem(System* system, float dt)
+	void Scene::UpdateMultithreadedSystem(const SV_ECS_SYSTEM_DESC& desc, float dt)
 	{
-		std::vector<BaseComponent**> componentsList;
-		// system requisites
-		auto& request = system->GetRequestedComponents();
-		auto& optional = system->GetOptionalComponents();
-		ui32 cantOfComponents = ui32(request.size() + optional.size());
+		if (desc.requestedComponentsCount == 0) return;
 
-		if (request.size() == 0) return;
+		// system requisites
+		CompID* request = desc.pRequestedComponents;
+		CompID* optional = desc.pOptionalComponents;
+		ui32 requestCount = desc.requestedComponentsCount;
+		ui32 optionalCount = desc.optionalComponentsCount;
 
 		// Different algorithm if there are only one request and no optionals (optimization reason)
-		else if (request.size() == 1 && optional.size() == 0) {
+		if (requestCount == 1 && optionalCount == 0) {
+			MultithreadedSystem_OneRequest(desc.system, request[0], dt);
+		}
+		else {
+			MultithreadedSystem(desc.system, request, requestCount, optional, optionalCount, dt);
+		}
+	}
 
-			CompID compID = request[0];
-			auto& list = m_Components[compID];
-			if (list.empty()) return;
+	void Scene::MultithreadedSystem_OneRequest(SV::SystemFunction system, CompID compID, float dt)
+	{
+		auto& list = m_Components[compID];
+		size_t compSize = ECS::GetComponentSize(compID);
 
-			ui32 compSize = ECS::GetComponentSize(compID);
-			ui32 bytesCount = ui32(list.size());
-			ui32 numOfEntities = bytesCount / compSize;
-			componentsList.resize(numOfEntities);
+		SV::TaskFunction task[20];
+		ui32 threadCount = Task::GetThreadCount();
 
-			BaseComponent** compAllocation = new BaseComponent*[numOfEntities];
+		size_t count = list.size() / compSize;
+		if (count < threadCount) threadCount = count;
+		
+		size_t size = (count / ui64(threadCount)) * compSize;
 
-			for (ui32 i = 0; i < bytesCount; i += compSize) {
-				BaseComponent* comp = reinterpret_cast<BaseComponent*>(&list[i]);
-				ui32 index = i / compSize;
-				componentsList[index] = compAllocation + index;
-				componentsList[index][0] = comp;
+		for (ui32 i = 0; i < threadCount; ++i) {
+
+			size_t currentSize = size;
+			size_t offset = size * i;
+
+			if (i + 1 == threadCount && count % 2 == 1) {
+				currentSize += compSize;
 			}
 
-			system->UpdateEntities(componentsList, *this, dt);
-			
-			delete[] compAllocation;
+			task[i] = [this, system, compID, offset, currentSize, dt]() {
+				PartialSystem_OneRequest(system, compID, offset, currentSize, dt);
+			};
+		}
+		
+		SV::ThreadContext ctx;
+		Task::Execute(task, threadCount, &ctx);
+		Task::Wait(ctx);
+	}
+	
+	void Scene::PartialSystem_OneRequest(SV::SystemFunction system, CompID compID, size_t offset, size_t size, float dt)
+	{
+		std::vector<ui8>& list = m_Components[compID];
+		ui64 compSize = ECS::GetComponentSize(compID);
 
-			return;
+		size_t finalIndex = offset + size;
+
+		for (ui64 i = offset; i < finalIndex; i += compSize) {
+			BaseComponent* comp = reinterpret_cast<BaseComponent*>(&list[i]);
+			system(*this, comp->entity, &comp, dt);
+		}
+	}
+
+	void Scene::MultithreadedSystem(SV::SystemFunction system, CompID* request, ui32 requestCount, CompID* optional, ui32 optionalCount, float dt)
+	{
+		ui32 bestCompIndex = GetSortestComponentList(request, requestCount);
+		CompID bestCompID = request[bestCompIndex];
+
+		auto& list = m_Components[bestCompID];
+		size_t compSize = ECS::GetComponentSize(bestCompID);
+
+		SV::TaskFunction task[20];
+		ui32 threadCount = Task::GetThreadCount();
+
+		size_t count = list.size() / compSize;
+		if (count < threadCount) threadCount = count;
+
+		size_t size = (count / ui64(threadCount)) * compSize;
+
+		for (ui32 i = 0; i < threadCount; ++i) {
+
+			size_t currentSize = size;
+			size_t offset = size * i;
+
+			if (i + 1 == threadCount && count % 2 == 1) {
+				currentSize += compSize;
+			}
+
+			task[i] = [this, system, bestCompIndex, request, requestCount, optional, optionalCount, offset, currentSize, dt]() {
+				PartialSystem(system, bestCompIndex, request, requestCount, optional, optionalCount, offset, currentSize, dt);
+			};
 		}
 
-		// For optimization, choose the sortest component list
-		ui32 indexOfBestList = GetSortestComponentList(request);
-		CompID idOfBestList = request[indexOfBestList];
-		
-		// If one request is empty, exit
-		auto& list = m_Components[idOfBestList];
-		if (list.size() == 0) return;
-		size_t sizeOfBestList = ECS::GetComponentSize(idOfBestList);
+		SV::ThreadContext ctx;
+		Task::Execute(task, threadCount, &ctx);
+		Task::Wait(ctx);
+	}
 
-		// Allocate dynamic memory
-		BaseComponent* compOfBestList;
-		BaseComponent** compAllocation = new BaseComponent*[list.size() / sizeOfBestList * size_t(cantOfComponents)];
+	void Scene::PartialSystem(SV::SystemFunction system, ui32 bestCompIndex, CompID* request, ui32 requestCount, CompID* optional, ui32 optionalCount, size_t offset, size_t size, float dt)
+	{
+		CompID bestCompID = request[bestCompIndex];
+		size_t sizeOfBestComp = ECS::GetComponentSize(bestCompID);
+		auto& bestCompList = m_Components[bestCompID];
+		if (bestCompList.size() == 0) return;
 
-		// for all the entities
-		for (size_t i = 0; i < list.size(); i += sizeOfBestList) {
+		size_t finalSize = offset + size;
 
-			// Dynamic allocation offset
-			ui32 entityComponentIndex = (i / sizeOfBestList) * cantOfComponents;
+		BaseComponent* components[SV_ECS_REQUEST_COMPONENTS_COUNT];
 
-			// Put the component of the best component type
-			compOfBestList = (BaseComponent*)(&list[i]);
-			compAllocation[indexOfBestList + entityComponentIndex] = compOfBestList;
-			EntityData& entityData = m_EntityData[compOfBestList->entity];
+		for (size_t i = offset; i < finalSize; i += sizeOfBestComp) {
+			BaseComponent* bestComp = reinterpret_cast<BaseComponent*>(&bestCompList[i]);
+			components[bestCompIndex] = bestComp;
 
-			bool isValid = true;
+			SV::EntityData& ed = m_EntityData[bestComp->entity];
 
-			// Add requested components
-			ui32 j;
-			for (j = 0; j < request.size(); ++j) {
-				if (j == indexOfBestList) continue;
+			bool valid = true;
 
-				BaseComponent* comp = GetComponent(entityData, request[j]);
+			// requested
+			for (ui32 j = 0; j < requestCount; ++j) {
+				if (j == bestCompIndex) continue;
 
-				if (!comp) {
-					isValid = false;
+				BaseComponent* comp = GetComponent(ed, request[j]);
+				if (comp == nullptr) {
+					valid = false;
 					break;
 				}
 
-				compAllocation[j + entityComponentIndex] = comp;
+				components[j] = comp;
 			}
 
-			if (!isValid) continue;
+			if (!valid) continue;
 
-			// Add optional components
-			for (j = 0; j < optional.size(); ++j) {
-				BaseComponent* comp = GetComponent(entityData, optional[j]);
-				compAllocation[j + request.size() + entityComponentIndex] = comp;
+			// optional
+			for (ui32 j = 0; j < optionalCount; ++j) {
+				BaseComponent* comp = GetComponent(ed, optional[j]);
+				components[j + requestCount] = comp;
 			}
 
-			// Add ptr of ptrs of components
-			componentsList.emplace_back(compAllocation + entityComponentIndex);
+			// call
+			system(*this, bestComp->entity, components, dt);
 		}
-
-		if (system->IsIndividualSystem()) {
-			//jshTask::Async(componentsList.size(), jshTask::ThreadCount(), [&componentsList, system, dt](ThreadArgs args) {
-			//
-			//	system->UpdateEntity(componentsList[args.index][0]->entity, componentsList[args.index], dt);
-			//
-			//});
-		}
-		else {
-			system->UpdateEntities(componentsList, *this, dt);
-		}
-
-		// free dynamic memory
-		delete[] compAllocation;
-
 	}
-	
 
 	//////////////////////////////////LAYERS///////////////////////////////////////
 	void Scene::CreateLayer(const char* name, ui16 value)
@@ -750,7 +752,7 @@ namespace SV {
 
 	// STATIC
 	namespace ECS {
-#define SV_ECS_MAX_COMPONENTS 128
+
 		struct ComponentData {
 			const char* name;
 			size_t size;

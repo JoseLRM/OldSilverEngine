@@ -3,10 +3,6 @@
 #include "core.h"
 #include "Transform.h"
 
-#define SV_ECS_SYSTEM_SAFE				0u
-#define SV_ECS_SYSTEM_PARALLEL			1u
-#define SV_ECS_SYSTEM_MULTITHREADED		2u
-
 namespace SV {
 
 	class Scene;
@@ -21,7 +17,26 @@ namespace SV {
 	typedef void(*MoveComponentFunction)(BaseComponent* from, BaseComponent* to);
 	typedef void(*CopyComponentFunction)(BaseComponent* from, BaseComponent* to);
 
+	typedef void(*SystemFunction)(Scene& scene, Entity entity, BaseComponent** components, float dt);
+
+	
+
 }
+
+enum SV_ECS_SYSTEM_EXECUTION_MODE : ui8 {
+	SV_ECS_SYSTEM_EXECUTION_MODE_SAFE,
+	SV_ECS_SYSTEM_EXECUTION_MODE_PARALLEL,
+	SV_ECS_SYSTEM_EXECUTION_MODE_MULTITHREADED,
+};
+
+struct SV_ECS_SYSTEM_DESC {
+	SV::SystemFunction					system;
+	SV_ECS_SYSTEM_EXECUTION_MODE		executionMode;
+	SV::CompID*							pRequestedComponents;
+	ui32								requestedComponentsCount;
+	SV::CompID*							pOptionalComponents;
+	ui32								optionalComponentsCount;
+};
 
 constexpr SV::Entity SV_INVALID_ENTITY = 0u;
 
@@ -53,63 +68,6 @@ namespace SV {
 		std::map<ui16, size_t> indices;
 
 		EntityData() : transform(0, 0) {}
-	};
-
-	class System {
-	private:
-		static ui32 s_SystemCount;
-		static std::mutex s_SystemCountMutex;
-
-		static ui32 CreateSystemID();
-
-	private:
-		std::vector<CompID> m_RequestedComponents;
-		std::vector<CompID> m_OptionalComponents;
-
-		bool m_IndividualSystem = true;
-		ui8 m_ExecuteType = SV_ECS_SYSTEM_SAFE;
-
-		std::string m_Name;
-		ui32 m_SystemID;
-
-	public:
-		System() {
-			m_SystemID = GetSystemID();
-			m_Name = "System " + std::to_string(m_SystemID);
-		}
-
-		System(const char* name) {
-			m_SystemID = GetSystemID();
-			m_Name = name;
-		}
-
-		// VIRTUAL METHODS
-
-		virtual void UpdateEntity(Entity entity, BaseComponent** components, Scene& scene, float deltaTime) {}
-		virtual void UpdateEntities(std::vector<BaseComponent**>& components, Scene& scene, float deltaTime) {}
-
-		// SETTERS
-		void SetIndividualSystem() noexcept;
-		void SetCollectiveSystem() noexcept;
-		void SetExecuteType(ui8 type) noexcept;
-
-		inline void SetName(const char* name) noexcept { m_Name = name; }
-
-		void AddRequestedComponent(CompID ID) noexcept;
-		void AddOptionalComponent(CompID ID) noexcept;
-
-		// GETTERS
-		inline const char* GetName() const noexcept { return m_Name.c_str(); }
-
-		inline ui8 GetExecuteType() const noexcept { return m_ExecuteType; }
-		inline ui32 GetSystemID() const noexcept { return m_SystemID; }
-
-		inline std::vector<CompID>& GetRequestedComponents() noexcept { return m_RequestedComponents; }
-		inline std::vector<CompID>& GetOptionalComponents() noexcept { return m_OptionalComponents; }
-
-		inline bool IsIndividualSystem() const noexcept { return m_IndividualSystem; }
-		inline bool IsCollectiveSystem() const noexcept { return !m_IndividualSystem; }
-
 	};
 
 	struct BaseComponent {
@@ -270,9 +228,9 @@ namespace SV {
 
 		void DestroyEntity(SV::Entity entity) noexcept;
 
-		// system methods
-		void UpdateSystem(SV::System* system, float dt);
-		void UpdateSystems(SV::System** systems, ui32 cant, float dt);
+		// systems methods
+
+		void ExecuteSystems(const SV_ECS_SYSTEM_DESC* params, ui32 count, float dt);
 
 		// Layers
 		void CreateLayer(const char* name, ui16 value);
@@ -291,11 +249,21 @@ namespace SV {
 		void RemoveComponents(SV::EntityData& entityData) noexcept;
 
 		// systems
-		void UpdateIndividualSystem(SV::System* system, float deltaTime);
-		void UpdateCollectiveSystem(SV::System* system, float deltaTime);
+		void UpdateLinearSystem(const SV_ECS_SYSTEM_DESC& desc, float dt);
+
+		void LinearSystem_OneRequest(SV::SystemFunction system, CompID compID, float dt);
+		void LinearSystem(SV::SystemFunction system, CompID* request, ui32 requestCount, CompID* optional, ui32 optionalCount, float dt);
+
+		void UpdateMultithreadedSystem(const SV_ECS_SYSTEM_DESC& desc, float dt);
+
+		void MultithreadedSystem_OneRequest(SV::SystemFunction system, CompID compID, float dt);
+		void PartialSystem_OneRequest(SV::SystemFunction system, CompID compID, size_t offset, size_t size, float dt);
+
+		void MultithreadedSystem(SV::SystemFunction system, CompID* request, ui32 requestCount, CompID* optional, ui32 optionalCount, float dt);
+		void PartialSystem(SV::SystemFunction system, ui32 bestCompIndex, CompID* request, ui32 requestCount, CompID* optional, ui32 optionalCount, size_t offset, size_t size, float dt);
 
 		// Find the sortest component list and return the index of the list
-		size_t GetSortestComponentList(std::vector<CompID>& IDs);
+		ui32 GetSortestComponentList(CompID* compIDs, ui32 count);
 
 	};
 

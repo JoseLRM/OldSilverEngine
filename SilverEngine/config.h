@@ -28,4 +28,5 @@ constexpr const char* SV_SRC_PATH = "../SilverEngine/";
 
 // Entity Component System
 
+#define SV_ECS_MAX_COMPONENTS 128
 #define SV_ECS_REQUEST_COMPONENTS_COUNT 16

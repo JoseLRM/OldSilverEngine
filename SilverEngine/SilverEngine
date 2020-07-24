@@ -1,8 +1,8 @@
 #ifndef SILVER_ENGINE
 #define SILVER_ENGINE
 
+#include "src/Scene.h"
 #include "src/core.h"
 #include "src/Engine.h"
-#include "src/Scene.h"
 
 #endif
