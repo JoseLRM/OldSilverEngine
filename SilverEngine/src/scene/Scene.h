@@ -144,7 +144,7 @@ namespace SV {
 
 	public:
 		SV::Entity CreateEntity(SV::Entity parent = SV_INVALID_ENTITY) noexcept;
-		void CreateEntities(ui32 count, SV::Entity parent = SV_INVALID_ENTITY, std::vector<SV::Entity>* entities = nullptr) noexcept;
+		void CreateEntities(ui32 count, SV::Entity parent = SV_INVALID_ENTITY, SV::Entity* entities = nullptr) noexcept;
 		
 		SV::Entity DuplicateEntity(SV::Entity duplicated);
 		bool IsEmpty(SV::Entity entity);
@@ -179,8 +179,8 @@ namespace SV {
 			AddComponent(entity, (SV::BaseComponent*) & component, Component::ID, Component::SIZE);
 		}
 		template<typename Component>
-		inline void AddComponents(std::vector<SV::Entity>& entities, const Component& component) {
-			AddComponents(entities, (SV::BaseComponent*) & component, Component::ID, Component::SIZE);
+		inline void AddComponents(SV::Entity* entities, ui32 count, const Component& component) {
+			AddComponents(entities, count, (SV::BaseComponent*) & component, Component::ID, Component::SIZE);
 		}
 		template<typename Component>
 		inline void RemoveComponent(SV::Entity entity) {
@@ -200,7 +200,7 @@ namespace SV {
 
 		void AddComponent(SV::Entity entity, SV::BaseComponent* comp, CompID componentID, size_t componentSize) noexcept;
 		void AddComponent(SV::Entity entity, CompID componentID, size_t componentSize) noexcept;
-		void AddComponents(std::vector<SV::Entity>& entities, SV::BaseComponent* comp, CompID componentID, size_t componentSize) noexcept;
+		void AddComponents(SV::Entity* entities, ui32 count, SV::BaseComponent* comp, CompID componentID, size_t componentSize) noexcept;
 
 		void RemoveComponent(SV::Entity entity, CompID componentID, size_t componentSize) noexcept;
 		void RemoveComponents(SV::EntityData& entityData) noexcept;

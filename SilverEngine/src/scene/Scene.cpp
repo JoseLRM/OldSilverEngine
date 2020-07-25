@@ -82,7 +82,7 @@ namespace SV {
 
 		return entity;
 	}
-	void Scene::CreateEntities(ui32 count, SV::Entity parent, std::vector<Entity>* entities) noexcept
+	void Scene::CreateEntities(ui32 count, SV::Entity parent, Entity* entities) noexcept
 	{
 		ReserveEntityData(count);
 
@@ -122,8 +122,6 @@ namespace SV {
 			}
 
 			// creating entities
-			if (entities) entities->reserve(count);
-
 			for (size_t i = 0; i < count; ++i) {
 				SV::Entity entity = GetNewEntity();
 
@@ -136,10 +134,8 @@ namespace SV {
 
 		// Allocate entities in user list
 		if (entities) {
-			entities->reserve(count);
-
 			for (size_t i = 0; i < count; ++i) {
-				entities->emplace_back(m_Entities[entityIndex + i]);
+				entities[i] = m_Entities[entityIndex + i];
 			}
 		}
 	}
@@ -349,17 +345,17 @@ namespace SV {
 		m_EntityData[entity].indices.AddIndex(componentID, index);
 	}
 
-	void Scene::AddComponents(std::vector<Entity>& entities, BaseComponent* comp, CompID componentID, size_t componentSize) noexcept
+	void Scene::AddComponents(SV::Entity* entities, ui32 count, BaseComponent* comp, CompID componentID, size_t componentSize) noexcept
 	{
 		auto& list = m_Components[componentID];
 		size_t index = list.size();
 
 		// allocate the components
-		list.resize(list.size() + componentSize * entities.size());
+		list.resize(list.size() + componentSize * ui64(count));
 
 		size_t currentIndex;
 		Entity currentEntity;
-		for (ui32 i = 0; i < entities.size(); ++i) {
+		for (ui32 i = 0; i < count; ++i) {
 			currentIndex = index + (i * componentSize);
 			currentEntity = entities[i];
 

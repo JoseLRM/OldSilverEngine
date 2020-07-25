@@ -51,12 +51,15 @@ public:
 		SV::StateManager::LoadState(new GameState(), new Loading());
 		scene.Initialize();
 
-		std::vector<SV::Entity> entities;
-		scene.CreateEntities(100000, SV_INVALID_ENTITY, &entities);
+		constexpr ui32 count = 1000;
+		SV::Entity entities[count];
 
-		for (ui32 i = 0; i < entities.size(); ++i) {
+		scene.CreateEntities(count, SV_INVALID_ENTITY, entities);
+
+		scene.AddComponents(entities, count, TestComponent(10));
+
+		for (ui32 i = 0; i < count; ++i) {
 			ui32 n = ui32(float(rand()) / RAND_MAX * 1000.f);
-			scene.AddComponent(entities[i], TestComponent(n));
 			if(i % 30 == 0)
 				scene.AddComponent(entities[i], PeneComponent(n));
 		}
