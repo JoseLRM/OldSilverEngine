@@ -359,7 +359,13 @@ namespace SV {
 			currentIndex = index + (i * componentSize);
 			currentEntity = entities[i];
 
-			ECS::CopyComponent(componentID, comp, (BaseComponent*)(&list[currentIndex]));
+			if (comp) {
+				ECS::CopyComponent(componentID, comp, (BaseComponent*)(&list[currentIndex]));
+			}
+			else {
+				ECS::ConstructComponent(componentID, (BaseComponent*)(&list[currentIndex]), currentEntity, this);
+			}
+
 			// set entity in component
 			BaseComponent* component = (BaseComponent*)(&list[currentIndex]);
 			component->entity = currentEntity;

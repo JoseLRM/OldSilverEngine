@@ -51,17 +51,18 @@ public:
 		SV::StateManager::LoadState(new GameState(), new Loading());
 		scene.Initialize();
 
-		constexpr ui32 count = 1000;
-		SV::Entity entities[count];
+		constexpr ui32 count = 1000000;
+		std::vector<SV::Entity> entities;
+		entities.resize(count);
 
-		scene.CreateEntities(count, SV_INVALID_ENTITY, entities);
+		scene.CreateEntities(count, SV_INVALID_ENTITY, entities.data());
 
-		scene.AddComponents(entities, count, TestComponent(10));
+		scene.AddComponents<TestComponent>(entities.data(), count);
 
 		for (ui32 i = 0; i < count; ++i) {
 			ui32 n = ui32(float(rand()) / RAND_MAX * 1000.f);
 			if(i % 30 == 0)
-				scene.AddComponent(entities[i], PeneComponent(n));
+				scene.AddComponent<PeneComponent>(entities[i]);
 		}
 	}
 
@@ -81,7 +82,7 @@ public:
 		desc[0].pRequestedComponents = requestedComponents;
 		desc[0].pOptionalComponents = optionalComponents;
 		desc[0].requestedComponentsCount = 1u;
-		desc[0].optionalComponentsCount = 1u;
+		desc[0].optionalComponentsCount = 0u;
 
 		desc[0].system = [](SV::Scene& scene, SV::Entity entity, SV::BaseComponent** comp, float dt) {
 			TestComponent* testComp = reinterpret_cast<TestComponent*>(comp[0]);
@@ -97,7 +98,7 @@ public:
 		desc[1].pRequestedComponents = requestedComponents;
 		desc[1].pOptionalComponents = optionalComponents;
 		desc[1].requestedComponentsCount = 1u;
-		desc[1].optionalComponentsCount = 1u;
+		desc[1].optionalComponentsCount = 0u;
 
 		desc[1].system = [](SV::Scene& scene, SV::Entity entity, SV::BaseComponent** comp, float dt) {
 			TestComponent* testComp = reinterpret_cast<TestComponent*>(comp[0]);

@@ -174,13 +174,23 @@ namespace SV {
 		std::vector<std::vector<ui8>> m_Components;
 
 	public:
-		template<typename Component>
-		inline void AddComponent(SV::Entity entity, const Component& component) {
+		template<typename Component, typename... Args>
+		inline void AddComponent(SV::Entity entity, Args... args) {
+			Component component(std::forward<Args...>(args...));
 			AddComponent(entity, (SV::BaseComponent*) & component, Component::ID, Component::SIZE);
 		}
 		template<typename Component>
-		inline void AddComponents(SV::Entity* entities, ui32 count, const Component& component) {
+		inline void AddComponent(SV::Entity entity) {
+			AddComponent(entity, Component::ID, Component::SIZE);
+		}
+		template<typename Component, typename... Args>
+		inline void AddComponents(SV::Entity* entities, ui32 count, Args... args) {
+			Component component(std::forward<Args...>(args...));
 			AddComponents(entities, count, (SV::BaseComponent*) & component, Component::ID, Component::SIZE);
+		}
+		template<typename Component>
+		inline void AddComponents(SV::Entity* entities, ui32 count) {
+			AddComponents(entities, count, nullptr, Component::ID, Component::SIZE);
 		}
 		template<typename Component>
 		inline void RemoveComponent(SV::Entity entity) {
