@@ -151,7 +151,7 @@ namespace SV {
 
 	bool Scene::IsEmpty(SV::Entity entity)
 	{
-		return m_EntityData[entity].indices.empty();
+		return m_EntityData[entity].indices.Empty();
 	}
 
 	void Scene::DestroyEntity(Entity entity) noexcept
@@ -231,8 +231,8 @@ namespace SV {
 		EntityData& duplicatedEd = m_EntityData[duplicated];
 		EntityData& copyEd = m_EntityData[copy];
 
-		for (auto& it : duplicatedEd.indices) {
-			CompID ID = it.first;
+		for (ui32 i = 0; i < duplicatedEd.indices.Size(); ++i) {
+			CompID ID = duplicatedEd.indices[i];
 			size_t SIZE = ECS::GetComponentSize(ID);
 
 			auto& list = m_Components[ID];
@@ -245,7 +245,7 @@ namespace SV {
 			ECS::CopyComponent(ID, comp, newComp);
 
 			newComp->entity = copy;
-			copyEd.indices[ID] = index;
+			copyEd.indices.AddIndex(ID, index);
 		}
 
 		copyEd.transform = duplicatedEd.transform;
@@ -305,16 +305,18 @@ namespace SV {
 	BaseComponent* Scene::GetComponent(SV::Entity e, CompID componentID) noexcept
 	{
 		SV::EntityData& entity = m_EntityData[e];
-		auto it = entity.indices.find(componentID);
-		if (it != entity.indices.end()) return (BaseComponent*)(&(m_Components[componentID][it->second]));
-
+		size_t index;
+		if (entity.indices.GetIndex(componentID, index)) {
+			return (BaseComponent*)(&(m_Components[componentID][index]));
+		}
 		return nullptr;
 	}
 	BaseComponent* Scene::GetComponent(const SV::EntityData& entity, CompID componentID) noexcept
 	{
-		auto it = entity.indices.find(componentID);
-		if (it != entity.indices.end()) return (BaseComponent*)(&(m_Components[componentID][it->second]));
-
+		size_t index;
+		if (entity.indices.GetIndex(componentID, index)) {
+			return (BaseComponent*)(&(m_Components[componentID][index]));
+		}
 		return nullptr;
 	}
 
@@ -330,7 +332,7 @@ namespace SV {
 		((BaseComponent*)& list[index])->pScene = this;
 
 		// set index in entity
-		m_EntityData[entity].indices[componentID] = index;
+		m_EntityData[entity].indices.AddIndex(componentID, index);
 	}
 
 	void Scene::AddComponent(SV::Entity entity, CompID componentID, size_t componentSize) noexcept
@@ -344,7 +346,7 @@ namespace SV {
 		ECS::ConstructComponent(componentID, comp, entity, this);
 
 		// set index in entity
-		m_EntityData[entity].indices[componentID] = index;
+		m_EntityData[entity].indices.AddIndex(componentID, index);
 	}
 
 	void Scene::AddComponents(std::vector<Entity>& entities, BaseComponent* comp, CompID componentID, size_t componentSize) noexcept
@@ -367,18 +369,20 @@ namespace SV {
 			component->entity = currentEntity;
 			component->pScene = this;
 			// set index in entity
-			m_EntityData[currentEntity].indices[componentID] = currentIndex;
+			m_EntityData[currentEntity].indices.AddIndex(componentID, currentIndex);
 		}
 	}
 
 	void Scene::RemoveComponent(Entity entity, CompID componentID, size_t componentSize) noexcept
 	{
 		EntityData& entityData = m_EntityData[entity];
-		auto it = entityData.indices.find(componentID);
-		if (it == entityData.indices.end()) return;
 
-		size_t index = (*it).second;
-		entityData.indices.erase(it);
+		// Get the index
+		size_t index;
+		if (!entityData.indices.GetIndex(componentID, index)) return;
+
+		// Remove index from index list
+		entityData.indices.RemoveIndex(componentID);
 
 		auto& list = m_Components[componentID];
 
@@ -390,7 +394,7 @@ namespace SV {
 			memcpy(&list[index], &list[list.size() - componentSize], componentSize);
 
 			Entity otherEntity = ((BaseComponent*)(&list[index]))->entity;
-			m_EntityData[otherEntity].indices[componentID] = index;
+			m_EntityData[otherEntity].indices.AddIndex(componentID, index);
 		}
 
 		list.resize(list.size() - componentSize);
@@ -400,10 +404,10 @@ namespace SV {
 	{
 		CompID componentID;
 		size_t componentSize, index;
-		for (auto& it : entityData.indices) {
-			componentID = it.first;
+		for (ui32 i = 0; i < entityData.indices.Size(); ++i) {
+			componentID = entityData.indices[i];
 			componentSize = ECS::GetComponentSize(componentID);
-			index = it.second;
+			entityData.indices.GetIndex(componentID, index);
 			auto& list = m_Components[componentID];
 
 			ECS::DestroyComponent(componentID, reinterpret_cast<BaseComponent*>(&list[index]));
@@ -413,12 +417,12 @@ namespace SV {
 				memcpy(&list[index], &list[list.size() - componentSize], componentSize);
 
 				Entity otherEntity = ((BaseComponent*)(&list[index]))->entity;
-				m_EntityData[otherEntity].indices[componentID] = index;
+				m_EntityData[otherEntity].indices.AddIndex(componentID, index);
 			}
 
 			list.resize(list.size() - componentSize);
 		}
-		entityData.indices.clear();
+		entityData.indices.Clear();
 	}
 
 	//////////////////////////////////LAYERS///////////////////////////////////////

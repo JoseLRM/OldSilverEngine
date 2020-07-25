@@ -6,9 +6,4 @@
   <ItemGroup>
     <ClInclude Include="src\GameState.h" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="shaders\spv\DefPostProcess.vert" />
-    <None Include="shaders\spv\DefPostProcess.frag" />
-    <None Include="shaders\spv\compile.bat" />
-  </ItemGroup>
 </Project>

@@ -88,11 +88,6 @@
   <ItemGroup>
     <ClInclude Include="src\GameState.h" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="shaders\spv\compile.bat" />
-    <None Include="shaders\spv\DefPostProcess.frag" />
-    <None Include="shaders\spv\DefPostProcess.vert" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

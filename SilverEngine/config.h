@@ -4,7 +4,7 @@
 constexpr const char* SV_SRC_PATH = "../SilverEngine/";
 
 #define SV_PLATFORM_WINDOWS
-#define SV_DEBUG
+//#define SV_DEBUG
 
 // Graphics
 

@@ -134,11 +134,13 @@
     <ClInclude Include="src\graphics\ShaderCompiler.h" />
     <ClInclude Include="src\graphics\vulkan\Vulkan.h" />
     <ClInclude Include="src\renderer\PostProcessing.h" />
-    <ClInclude Include="src\Scene.h" />
+    <ClInclude Include="src\scene\ComponentsIndices.h" />
+    <ClInclude Include="src\scene\Scene.h" />
     <ClInclude Include="src\Engine.h" />
     <ClInclude Include="src\graphics\Graphics.h" />
     <ClInclude Include="src\graphics\GraphicsDesc.h" />
     <ClInclude Include="src\Input.h" />
+    <ClInclude Include="src\scene\SceneTypes.h" />
     <ClInclude Include="src\Utils\BinFile.h" />
     <ClInclude Include="src\utils\SVMath.h" />
     <ClInclude Include="src\renderer\Renderer.h" />
@@ -146,7 +148,7 @@
     <ClInclude Include="src\StateManager.h" />
     <ClInclude Include="src\TaskSystem.h" />
     <ClInclude Include="src\utils\Timer.h" />
-    <ClInclude Include="src\Transform.h" />
+    <ClInclude Include="src\scene\Transform.h" />
     <ClInclude Include="src\Utils\TxtFile.h" />
     <ClInclude Include="src\utils\Utils.h" />
     <ClInclude Include="src\utils\Version.h" />
@@ -260,7 +262,8 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\Scene.cpp">
+    <ClCompile Include="src\scene\ComponentsIndices.cpp" />
+    <ClCompile Include="src\scene\Scene.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
@@ -280,7 +283,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\Transform.cpp">
+    <ClCompile Include="src\scene\Transform.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>

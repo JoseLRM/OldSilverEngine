@@ -1,7 +1,6 @@
 #pragma once
 
 #include "core.h"
-#include "Scene.h"
 
 namespace SV {
 

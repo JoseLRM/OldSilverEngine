@@ -52,7 +52,7 @@ public:
 		scene.Initialize();
 
 		std::vector<SV::Entity> entities;
-		scene.CreateEntities(10, SV_INVALID_ENTITY, &entities);
+		scene.CreateEntities(100000, SV_INVALID_ENTITY, &entities);
 
 		for (ui32 i = 0; i < entities.size(); ++i) {
 			ui32 n = ui32(float(rand()) / RAND_MAX * 1000.f);
@@ -72,7 +72,9 @@ public:
 		};
 		
 		SV_ECS_SYSTEM_DESC desc[2];
-		desc[0].executionMode = SV_ECS_SYSTEM_EXECUTION_MODE_MULTITHREADED;
+		if(SV::Engine::IsMouse(SV_MOUSE_LEFT))
+			desc[0].executionMode = SV_ECS_SYSTEM_EXECUTION_MODE_PARALLEL;
+		else desc[0].executionMode = SV_ECS_SYSTEM_EXECUTION_MODE_SAFE;
 		desc[0].pRequestedComponents = requestedComponents;
 		desc[0].pOptionalComponents = optionalComponents;
 		desc[0].requestedComponentsCount = 1u;
@@ -80,15 +82,15 @@ public:
 
 		desc[0].system = [](SV::Scene& scene, SV::Entity entity, SV::BaseComponent** comp, float dt) {
 			TestComponent* testComp = reinterpret_cast<TestComponent*>(comp[0]);
-			SV::Log("1-> Entity %u: %u", entity, testComp->data);
+			//SV::Log("1-> Entity %u: %u", entity, testComp->data);
 
 			PeneComponent* peneComp = reinterpret_cast<PeneComponent*>(comp[1]);
 			if (peneComp) {
-				SV::Log("1-> PeneEntity %u: %u", entity, peneComp->data);
+				//SV::Log("1-> PeneEntity %u: %u", entity, peneComp->data);
 			}
 		};
 
-		desc[1].executionMode = SV_ECS_SYSTEM_EXECUTION_MODE_MULTITHREADED;
+		desc[1].executionMode = SV_ECS_SYSTEM_EXECUTION_MODE_SAFE;
 		desc[1].pRequestedComponents = requestedComponents;
 		desc[1].pOptionalComponents = optionalComponents;
 		desc[1].requestedComponentsCount = 1u;
@@ -96,15 +98,15 @@ public:
 
 		desc[1].system = [](SV::Scene& scene, SV::Entity entity, SV::BaseComponent** comp, float dt) {
 			TestComponent* testComp = reinterpret_cast<TestComponent*>(comp[0]);
-			SV::Log("2-> Entity %u: %u", entity, testComp->data);
+			//SV::Log("2-> Entity %u: %u", entity, testComp->data);
 
 			PeneComponent* peneComp = reinterpret_cast<PeneComponent*>(comp[1]);
 			if (peneComp) {
-				SV::Log("2-> PeneEntity %u: %u", entity, peneComp->data);
+				//SV::Log("2-> PeneEntity %u: %u", entity, peneComp->data);
 			}
 		};
 
-		SV::LogSeparator();
+		//SV::LogSeparator();
 		scene.ExecuteSystems(desc, 2u, dt);
 
 	}
