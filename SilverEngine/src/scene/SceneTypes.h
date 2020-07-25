@@ -10,7 +10,7 @@ namespace SV {
 	typedef ui16 CompID;
 	typedef ui32 Entity;
 
-	typedef void(*CreateComponentFunction)(BaseComponent*, SV::Entity, SV::Scene*);
+	typedef void(*CreateComponentFunction)(BaseComponent*, SV::Entity);
 	typedef void(*DestoryComponentFunction)(BaseComponent*);
 	typedef void(*MoveComponentFunction)(BaseComponent* from, BaseComponent* to);
 	typedef void(*CopyComponentFunction)(BaseComponent* from, BaseComponent* to);

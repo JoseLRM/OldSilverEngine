@@ -186,20 +186,20 @@ namespace SV {
 
 	}
 
-	void Scene::GetEntitySons(SV::Entity parent, SV::Entity** sonsArray, ui32* size) noexcept
+	void Scene::GetEntityChilds(SV::Entity parent, SV::Entity const** childsArray, ui32* size) const noexcept
 	{
-		EntityData& ed = m_EntityData[parent];
+		const EntityData& ed = m_EntityData[parent];
 		*size = ed.childsCount;
-		if (sonsArray && ed.childsCount != 0)* sonsArray = &m_Entities[ed.handleIndex + 1];
+		if (childsArray && ed.childsCount != 0) *childsArray = &m_Entities[ed.handleIndex + 1];
 	}
 
 	SV::Entity Scene::GetEntityParent(SV::Entity entity) {
 		return m_EntityData[entity].parent;
 	}
 
-	SV::Transform& Scene::GetTransform(SV::Entity entity)
+	SV::Transform Scene::GetTransform(SV::Entity entity)
 	{
-		return m_EntityData[entity].transform;
+		return SV::Transform(entity, &m_EntityData[entity].transform, this);
 	}
 
 	void Scene::SetLayer(SV::Entity entity, SV::SceneLayer* layer) noexcept
@@ -245,7 +245,6 @@ namespace SV {
 		}
 
 		copyEd.transform = duplicatedEd.transform;
-		copyEd.transform.entity = copy;
 
 		for (ui32 i = 0; i < m_EntityData[duplicated].childsCount; ++i) {
 			Entity toCopy = m_Entities[m_EntityData[duplicated].handleIndex + i + 1];
@@ -276,7 +275,7 @@ namespace SV {
 			entity = m_FreeEntityData.back();
 			m_FreeEntityData.pop_back();
 		}
-		m_EntityData[entity].transform = Transform(entity, this);
+		m_EntityData[entity].transform = {};
 		m_EntityData[entity].layer = GetLayer("Default");
 		return entity;
 	}
@@ -325,7 +324,6 @@ namespace SV {
 		list.resize(list.size() + componentSize);
 		ECS::MoveComponent(componentID, comp, (BaseComponent*)(&list[index]));
 		((BaseComponent*)& list[index])->entity = entity;
-		((BaseComponent*)& list[index])->pScene = this;
 
 		// set index in entity
 		m_EntityData[entity].indices.AddIndex(componentID, index);
@@ -339,7 +337,7 @@ namespace SV {
 		// allocate the component
 		list.resize(list.size() + componentSize);
 		BaseComponent* comp = (BaseComponent*)& list[index];
-		ECS::ConstructComponent(componentID, comp, entity, this);
+		ECS::ConstructComponent(componentID, comp, entity);
 
 		// set index in entity
 		m_EntityData[entity].indices.AddIndex(componentID, index);
@@ -363,13 +361,12 @@ namespace SV {
 				ECS::CopyComponent(componentID, comp, (BaseComponent*)(&list[currentIndex]));
 			}
 			else {
-				ECS::ConstructComponent(componentID, (BaseComponent*)(&list[currentIndex]), currentEntity, this);
+				ECS::ConstructComponent(componentID, (BaseComponent*)(&list[currentIndex]), currentEntity);
 			}
 
 			// set entity in component
 			BaseComponent* component = (BaseComponent*)(&list[currentIndex]);
 			component->entity = currentEntity;
-			component->pScene = this;
 			// set index in entity
 			m_EntityData[currentEntity].indices.AddIndex(componentID, currentIndex);
 		}
@@ -820,9 +817,9 @@ namespace SV {
 		{
 			return g_ComponentData[ID].name;
 		}
-		void ConstructComponent(CompID ID, SV::BaseComponent* ptr, SV::Entity entity, SV::Scene* pScene)
+		void ConstructComponent(CompID ID, SV::BaseComponent* ptr, SV::Entity entity)
 		{
-			g_ComponentData[ID].createFn(ptr, entity, pScene);
+			g_ComponentData[ID].createFn(ptr, entity);
 		}
 		void DestroyComponent(CompID ID, SV::BaseComponent* ptr)
 		{

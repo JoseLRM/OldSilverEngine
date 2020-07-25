@@ -20,21 +20,19 @@ namespace SV {
 		inline bool operator>=(const SceneLayer& other) const noexcept { return value >= other.value; }
 	};
 
-	class EntityData {
-	public:
+	struct EntityData {
+
 		size_t handleIndex = 0u;
 		Entity parent = SV_INVALID_ENTITY;
 		ui32 childsCount = 0u;
-		Transform transform;
+		_internal::EntityTransform transform;
 		SceneLayer* layer = nullptr;
 		ComponentsIndices indices;
 
-		EntityData() : transform(0, 0) {}
 	};
 
 	struct BaseComponent {
 		Entity entity = SV_INVALID_ENTITY;
-		SV::Scene* pScene = nullptr;
 	};
 
 	namespace _internal {
@@ -55,7 +53,7 @@ namespace SV {
 
 		size_t GetComponentSize(CompID ID);
 		const char* GetComponentName(CompID ID);
-		void ConstructComponent(CompID ID, SV::BaseComponent* ptr, SV::Entity entity, SV::Scene*);
+		void ConstructComponent(CompID ID, SV::BaseComponent* ptr, SV::Entity entity);
 		void DestroyComponent(CompID ID, SV::BaseComponent* ptr);
 		void MoveComponent(CompID ID, SV::BaseComponent* from, SV::BaseComponent* to);
 		void CopyComponent(CompID ID, SV::BaseComponent* from, SV::BaseComponent* to);
@@ -63,11 +61,10 @@ namespace SV {
 		bool GetComponentID(const char* name, CompID* id);
 
 		template<typename Component>
-		void CreateComponent(SV::BaseComponent* compPtr, SV::Entity entity, SV::Scene* pScene)
+		void CreateComponent(SV::BaseComponent* compPtr, SV::Entity entity)
 		{
 			new(compPtr) Component();
 			compPtr->entity = entity;
-			compPtr->pScene = pScene;
 		}
 		template<typename Component>
 		void DestroyComponent(SV::BaseComponent* compPtr)
@@ -150,9 +147,9 @@ namespace SV {
 		bool IsEmpty(SV::Entity entity);
 		void DestroyEntity(SV::Entity entity) noexcept;
 
-		void GetEntitySons(SV::Entity parent, SV::Entity** sonsArray, ui32* size) noexcept;
+		void GetEntityChilds(SV::Entity parent, SV::Entity const** childsArray, ui32* size) const noexcept;
 		SV::Entity GetEntityParent(SV::Entity entity);
-		SV::Transform& GetTransform(SV::Entity entity);
+		SV::Transform GetTransform(SV::Entity entity);
 
 		void SetLayer(SV::Entity entity, SV::SceneLayer* layer) noexcept;
 		SV::SceneLayer* GetLayer(SV::Entity entity) const noexcept;

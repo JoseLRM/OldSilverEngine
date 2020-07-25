@@ -35,9 +35,9 @@ SV_COMPONENT(TestComponent) {
 };
 
 SV_COMPONENT(PeneComponent) {
-	ui32 data;
+	SV::Entity data;
 	PeneComponent() = default;
-	PeneComponent(ui32 d) : data(d) {}
+	PeneComponent(SV::Entity e) : data(e) {}
 };
 
 class Application : public SV::Application
@@ -51,19 +51,20 @@ public:
 		SV::StateManager::LoadState(new GameState(), new Loading());
 		scene.Initialize();
 
-		constexpr ui32 count = 1000000;
-		std::vector<SV::Entity> entities;
-		entities.resize(count);
+		constexpr ui32 count = 1000;
+		constexpr ui32 childsCount = 10;
 
-		scene.CreateEntities(count, SV_INVALID_ENTITY, entities.data());
+		SV::Entity entities[count];
 
-		scene.AddComponents<TestComponent>(entities.data(), count);
+		scene.CreateEntities(count, SV_INVALID_ENTITY, entities);
 
 		for (ui32 i = 0; i < count; ++i) {
-			ui32 n = ui32(float(rand()) / RAND_MAX * 1000.f);
-			if(i % 30 == 0)
-				scene.AddComponent<PeneComponent>(entities[i]);
+			SV::Entity childs[childsCount];
+			scene.CreateEntities(childsCount, entities[i], childs);
+			scene.AddComponents<PeneComponent>(childs, childsCount, entities[i]);
 		}
+
+		scene.AddComponents<TestComponent>(entities, count);
 	}
 
 	void Update(float dt) override
@@ -75,10 +76,11 @@ public:
 			PeneComponent::ID
 		};
 		
-		SV_ECS_SYSTEM_DESC desc[2];
+		SV_ECS_SYSTEM_DESC desc[1];
 		if(SV::Engine::IsMouse(SV_MOUSE_LEFT))
-			desc[0].executionMode = SV_ECS_SYSTEM_EXECUTION_MODE_PARALLEL;
-		else desc[0].executionMode = SV_ECS_SYSTEM_EXECUTION_MODE_SAFE;
+			desc[0].executionMode = SV_ECS_SYSTEM_EXECUTION_MODE_MULTITHREADED;
+		else
+			desc[0].executionMode = SV_ECS_SYSTEM_EXECUTION_MODE_SAFE;
 		desc[0].pRequestedComponents = requestedComponents;
 		desc[0].pOptionalComponents = optionalComponents;
 		desc[0].requestedComponentsCount = 1u;
@@ -88,30 +90,30 @@ public:
 			TestComponent* testComp = reinterpret_cast<TestComponent*>(comp[0]);
 			//SV::Log("1-> Entity %u: %u", entity, testComp->data);
 
-			PeneComponent* peneComp = reinterpret_cast<PeneComponent*>(comp[1]);
-			if (peneComp) {
-				//SV::Log("1-> PeneEntity %u: %u", entity, peneComp->data);
-			}
-		};
+			SV::Transform trans = scene.GetTransform(entity);
+			SV::vec3 p = trans.GetLocalPosition();
+			p.x += dt;
+			p.z -= dt * 2.f;
 
-		desc[1].executionMode = SV_ECS_SYSTEM_EXECUTION_MODE_SAFE;
-		desc[1].pRequestedComponents = requestedComponents;
-		desc[1].pOptionalComponents = optionalComponents;
-		desc[1].requestedComponentsCount = 1u;
-		desc[1].optionalComponentsCount = 0u;
+			trans.SetPosition(p);
 
-		desc[1].system = [](SV::Scene& scene, SV::Entity entity, SV::BaseComponent** comp, float dt) {
-			TestComponent* testComp = reinterpret_cast<TestComponent*>(comp[0]);
-			//SV::Log("2-> Entity %u: %u", entity, testComp->data);
+			// Get Childs
+			SV::Entity const* childs;
+			ui32 childsCount;
+			scene.GetEntityChilds(entity, &childs, &childsCount);
 
-			PeneComponent* peneComp = reinterpret_cast<PeneComponent*>(comp[1]);
-			if (peneComp) {
-				//SV::Log("2-> PeneEntity %u: %u", entity, peneComp->data);
+			for (ui32 i = 0; i < childsCount; ++i) {
+				SV::Transform childTrans = scene.GetTransform(childs[i]);
+
+				SV::vec3 pos = childTrans.GetWorldPosition();
+				//SV::Log("Position: %f %f %f", pos.x, pos.y, pos.z);
+
+				
 			}
 		};
 
 		//SV::LogSeparator();
-		scene.ExecuteSystems(desc, 2u, dt);
+		scene.ExecuteSystems(desc, 1u, dt);
 
 	}
 	void Render() override
