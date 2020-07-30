@@ -1,13 +1,14 @@
 #version 450
 
-// Vertex Shader Input
 layout (location = 0) in vec4 FragColor;
 layout (location = 1) in vec2 FragTexCoord;
 
-// Output
 layout (location = 0) out vec4 outColor;
+
+layout (binding = 0) uniform sampler sam;
+layout (binding = 1) uniform texture2D tex;
 
 void main()
 {
-	outColor = FragColor;
+	outColor = FragColor * texture(sampler2D(tex, sam), FragTexCoord);
 }

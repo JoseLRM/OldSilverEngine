@@ -128,11 +128,8 @@ namespace _sv {
 			auto& pipeline = it.second;
 
 			vkDestroyPipelineLayout(m_Device, pipeline.layout, nullptr);
-			vkDestroyDescriptorSetLayout(m_Device, pipeline.setLayout, nullptr);
-
-			for (ui32 i = 0; i < pipeline.frames.size(); ++i) {
-				vkDestroyDescriptorPool(m_Device, pipeline.frames[i].descPool, nullptr);
-			}
+			
+			pipeline.descriptors.Clear();
 
 			for (auto& it0 : pipeline.pipelines) {
 				vkDestroyPipeline(m_Device, it0.second, nullptr);
@@ -942,9 +939,7 @@ namespace _sv {
 		// Update Descriptors
 		if (state.flags & (SV_GFX_GRAPHICS_PIPELINE_STATE_CONSTANT_BUFFER | SV_GFX_GRAPHICS_PIPELINE_STATE_SAMPLER | SV_GFX_GRAPHICS_PIPELINE_STATE_IMAGE)) {
 
-			auto& frame = pipeline.frames[m_CurrentFrame];
-
-			VkDescriptorSet descSet = frame.descSets[cmd_];
+			VkDescriptorSet descSet = pipeline.descriptors.GetDescriptorSet(m_CurrentFrame, cmd_);
 
 			VkWriteDescriptorSet writeDesc[SV_GFX_CONSTANT_BUFFER_COUNT + SV_GFX_IMAGE_COUNT + SV_GFX_SAMPLER_COUNT];
 
@@ -1192,40 +1187,6 @@ namespace _sv {
 		copy_info.srcOffset = srcOffset;
 		copy_info.size = size;
 		vkCmdCopyBuffer(cmd, srcBuffer, dstBuffer, 1u, &copy_info);
-	}
-
-	VkResult Graphics_vk::MapMemoryUsingStagingBuffer(VkCommandBuffer cmd, VkImage image, VmaAllocation memory, void* data, VkDeviceSize size, ui32 width, ui32 height)
-	{
-		VkBuffer		stagingBuffer = VK_NULL_HANDLE;
-		VmaAllocation	stagingMemory = VK_NULL_HANDLE;
-		
-		void* mapData;
-		graphics_vulkan_memory_create_stagingbuffer(stagingBuffer, stagingMemory, &mapData, size);
-		memcpy(mapData, data, size);
-
-		// Copy StagingBuffer into image
-		{
-			VkBufferImageCopy region{};
-			region.bufferOffset = 0u;
-			region.bufferRowLength = 0u;
-			region.bufferImageHeight = 0u;
-			region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			region.imageSubresource.baseArrayLayer = 0u;
-			region.imageSubresource.layerCount = 1u;
-			region.imageSubresource.mipLevel = 0u;
-			region.imageOffset.x = 0u;
-			region.imageOffset.y = 0u;
-			region.imageOffset.z = 0u;
-			region.imageExtent.width = width;
-			region.imageExtent.height = height;
-			region.imageExtent.depth = 1u;
-
-			vkCmdCopyBufferToImage(cmd, stagingBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1u, &region);
-		}
-
-		// Remove StagingBuffer
-		vmaDestroyBuffer(m_Allocator, stagingBuffer, stagingMemory);
-		return VK_SUCCESS;
 	}
 
 	VkResult Graphics_vk::CreateImageView(VkImage image, VkFormat format, VkImageViewType viewType, VkImageAspectFlags aspectFlags, ui32 layerCount, VkImageView& view)
@@ -1477,8 +1438,6 @@ namespace _sv {
 		VkFormat format = graphics_vulkan_parse_format(desc.format);
 		VkImageUsageFlags imageUsage = 0u;
 		VkImageViewType viewType = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
-		VmaMemoryUsage memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
-		VmaAllocationInfo alloc;
 		
 		{
 			switch (desc.dimension)
@@ -1542,83 +1501,90 @@ namespace _sv {
 			create_info.mipLevels = 1u;
 
 			VmaAllocationCreateInfo alloc_info{};
-			alloc_info.usage = memoryUsage;
-			alloc_info.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+			alloc_info.requiredFlags = VMA_MEMORY_USAGE_GPU_ONLY;
 			
-			vkCheck(vmaCreateImage(m_Allocator, &create_info, &alloc_info, &image.image, &image.allocation, &alloc));
+			vkCheck(vmaCreateImage(m_Allocator, &create_info, &alloc_info, &image.image, &image.allocation, nullptr));
 		}
 
 		// Set Data
 		VkCommandBuffer cmd;
 
-		bool defaultBarrier = true;
-
 		vkCheck(BeginSingleTimeCMD(&cmd));
 		
 		if (desc.pData) {
-			// Mapping Data
-			if (alloc.pUserData) {
-				memcpy(alloc.pMappedData, desc.pData, desc.size);
-			}
-			// Use staging buffer to map data in Device memory
-			else {
 
-				defaultBarrier = false;
+			VkImageAspectFlags aspect = graphics_vulkan_aspect_from_image_layout(desc.layout, desc.format);
 
-				VkImageMemoryBarrier memBarrier{};
-				memBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-				memBarrier.srcAccessMask = graphics_vulkan_access_from_image_layout(SV_GFX_IMAGE_LAYOUT_UNDEFINED);
-				memBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-				memBarrier.oldLayout = graphics_vulkan_parse_image_layout(SV_GFX_IMAGE_LAYOUT_UNDEFINED);
-				memBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-				memBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-				memBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-				memBarrier.image = image.image;
-				memBarrier.subresourceRange.aspectMask = graphics_vulkan_aspect_from_image_layout(desc.layout, desc.format);
-				memBarrier.subresourceRange.layerCount = desc.layers;
-				memBarrier.subresourceRange.levelCount = 1u;
+			// Memory barrier to set the image transfer dst layout
+			VkImageMemoryBarrier memBarrier{};
+			memBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+			memBarrier.srcAccessMask = graphics_vulkan_access_from_image_layout(SV_GFX_IMAGE_LAYOUT_UNDEFINED);
+			memBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			memBarrier.oldLayout = graphics_vulkan_parse_image_layout(SV_GFX_IMAGE_LAYOUT_UNDEFINED);
+			memBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			memBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			memBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			memBarrier.image = image.image;
+			memBarrier.subresourceRange.aspectMask = aspect;
+			memBarrier.subresourceRange.layerCount = desc.layers;
+			memBarrier.subresourceRange.levelCount = 1u;
 
-				vkCmdPipelineBarrier(cmd,
-					graphics_vulkan_stage_from_image_layout(SV_GFX_IMAGE_LAYOUT_UNDEFINED),
-					VK_PIPELINE_STAGE_TRANSFER_BIT,
-					0u,
-					0u,
-					nullptr,
-					0u,
-					nullptr,
-					1u,
-					&memBarrier);
+			vkCmdPipelineBarrier(cmd,
+				graphics_vulkan_stage_from_image_layout(SV_GFX_IMAGE_LAYOUT_UNDEFINED),
+				VK_PIPELINE_STAGE_TRANSFER_BIT,
+				0u,
+				0u,
+				nullptr,
+				0u,
+				nullptr,
+				1u,
+				&memBarrier);
 
-				vkCheck(MapMemoryUsingStagingBuffer(cmd, image.image, image.allocation, desc.pData, desc.size, desc.width, desc.height));
-				
-				VkImageMemoryBarrier memBarrier2{};
-				memBarrier2.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-				memBarrier2.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-				memBarrier2.dstAccessMask = graphics_vulkan_access_from_image_layout(desc.layout);
-				memBarrier2.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-				memBarrier2.newLayout = graphics_vulkan_parse_image_layout(desc.layout);
-				memBarrier2.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-				memBarrier2.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-				memBarrier2.image = image.image;
-				memBarrier2.subresourceRange.aspectMask = graphics_vulkan_aspect_from_image_layout(desc.layout, desc.format);
-				memBarrier2.subresourceRange.layerCount = desc.layers;
-				memBarrier2.subresourceRange.levelCount = 1u;
+			// Create staging buffer and copy desc.pData
+			VkBuffer stagingBuffer;
+			VmaAllocation stagingAllocation;
+			void* mapData;
 
-				vkCmdPipelineBarrier(cmd,
-					VK_PIPELINE_STAGE_TRANSFER_BIT,
-					graphics_vulkan_stage_from_image_layout(desc.layout),
-					0u,
-					0u,
-					nullptr,
-					0u,
-					nullptr,
-					1u,
-					&memBarrier);
-			}
+			graphics_vulkan_memory_create_stagingbuffer(stagingBuffer, stagingAllocation, &mapData, desc.size);
+			memcpy(mapData, desc.pData, desc.size);
+
+			// Copy buffer to image
+			VkBufferImageCopy copy_info{};
+			copy_info.bufferOffset = 0u;
+			copy_info.bufferRowLength = 0u;
+			copy_info.bufferImageHeight = 0u;
+			copy_info.imageSubresource.aspectMask = aspect;
+			copy_info.imageSubresource.baseArrayLayer = 0u;
+			copy_info.imageSubresource.layerCount = desc.layers;
+			copy_info.imageSubresource.mipLevel = 0u;
+			copy_info.imageOffset = { 0, 0, 0 };
+			copy_info.imageExtent = { desc.width, desc.height, desc.depth };
+
+			vkCmdCopyBufferToImage(cmd, stagingBuffer, image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1u, &copy_info);
+			
+			// Set the layout to desc.layout
+			memBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			memBarrier.dstAccessMask = graphics_vulkan_access_from_image_layout(desc.layout);
+			memBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			memBarrier.newLayout = graphics_vulkan_parse_image_layout(desc.layout);
+
+			vkCmdPipelineBarrier(cmd,
+				VK_PIPELINE_STAGE_TRANSFER_BIT,
+				graphics_vulkan_stage_from_image_layout(desc.layout),
+				0u,
+				0u,
+				nullptr,
+				0u,
+				nullptr,
+				1u,
+				&memBarrier);
+
+			vkCheck(EndSingleTimeCMD(cmd));
+
+			// Destroy staging buffer
+			vmaDestroyBuffer(m_Allocator, stagingBuffer, stagingAllocation);
 		}
-		
-
-		if (defaultBarrier) {
+		else {
 
 			VkImageMemoryBarrier memBarrier{};
 			memBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -1645,7 +1611,6 @@ namespace _sv {
 				&memBarrier);
 
 			vkCheck(EndSingleTimeCMD(cmd));
-
 		}
 
 		// TODO: MipMapping
@@ -1928,6 +1893,7 @@ namespace _sv {
 		}
 
 		// Create Pipeline Layout
+		VkDescriptorSetLayout setLayout;
 		{
 			VkDescriptorSetLayoutCreateInfo layoutInfo{};
 			layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -1935,12 +1901,12 @@ namespace _sv {
 			layoutInfo.bindingCount = p.bindings.size();
 			layoutInfo.pBindings = p.bindings.data();
 
-			vkCheck(vkCreateDescriptorSetLayout(m_Device, &layoutInfo, nullptr, &p.setLayout));
+			vkCheck(vkCreateDescriptorSetLayout(m_Device, &layoutInfo, nullptr, &setLayout));
 
 			VkPipelineLayoutCreateInfo layout_info{};
 			layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 			layout_info.setLayoutCount = 1u;
-			layout_info.pSetLayouts = &p.setLayout;
+			layout_info.pSetLayouts = &setLayout;
 			layout_info.pushConstantRangeCount = 0u;
 
 			vkCheck(vkCreatePipelineLayout(m_Device, &layout_info, nullptr, &p.layout));
@@ -1948,55 +1914,7 @@ namespace _sv {
 
 		if (p.bindings.size() == 0) return true;
 
-		p.frames.resize(m_FrameCount);
-
-		// Create Desc Pool
-		
-		VkDescriptorPoolSize poolSizes[3];
-		ui32 poolSizesCount = 0u;
-
-		if (imagesCount > 0u) {
-			poolSizes[poolSizesCount].descriptorCount = imagesCount * SV_GFX_COMMAND_LIST_COUNT * m_FrameCount;
-			poolSizes[poolSizesCount].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-			poolSizesCount++;
-		}
-
-		if (samplersCount > 0u) {
-			poolSizes[poolSizesCount].descriptorCount = samplersCount * SV_GFX_COMMAND_LIST_COUNT * m_FrameCount;
-			poolSizes[poolSizesCount].type = VK_DESCRIPTOR_TYPE_SAMPLER;
-			poolSizesCount++;
-		}
-
-		if (uniformsCount > 0u) {
-			poolSizes[poolSizesCount].descriptorCount = uniformsCount * SV_GFX_COMMAND_LIST_COUNT * m_FrameCount;
-			poolSizes[poolSizesCount].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			poolSizesCount++;
-		}
-
-		VkDescriptorPoolCreateInfo descPool_info{};
-		descPool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		descPool_info.flags = 0u;
-		descPool_info.maxSets = SV_GFX_COMMAND_LIST_COUNT;
-		descPool_info.poolSizeCount = poolSizesCount;
-		descPool_info.pPoolSizes = poolSizes;
-
-		// Allocate descriptor Sets
-		{
-			VkDescriptorSetLayout setLayouts[SV_GFX_COMMAND_LIST_COUNT];
-			for (ui64 i = 0; i < SV_GFX_COMMAND_LIST_COUNT; ++i) setLayouts[i] = p.setLayout;
-
-			VkDescriptorSetAllocateInfo alloc_info{};
-			alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-			alloc_info.descriptorSetCount = SV_GFX_COMMAND_LIST_COUNT;
-			alloc_info.pSetLayouts = setLayouts;
-
-			// Allocate Desc Sets
-			for (ui32 i = 0; i < m_FrameCount; ++i) {
-				vkCheck(vkCreateDescriptorPool(m_Device, &descPool_info, nullptr, &p.frames[i].descPool));
-				alloc_info.descriptorPool = p.frames[i].descPool;
-				vkCheck(vkAllocateDescriptorSets(m_Device, &alloc_info, p.frames[i].descSets));
-			}
-		}
+		p.descriptors.Create(setLayout, m_FrameCount, imagesCount, samplersCount, uniformsCount);
 
 		return true;
 	}
@@ -2076,6 +1994,11 @@ namespace _sv {
 		Frame& frame = GetFrame();
 
 		frame.memory.Reset();
+
+		// Reset Pipeline Descriptors
+		for (auto& it : m_Pipelines) {
+			it.second.descriptors.Reset(m_CurrentFrame);
+		}
 
 		vkAssert(vkWaitForFences(m_Device, 1, &frame.fence, VK_TRUE, UINT64_MAX));
 

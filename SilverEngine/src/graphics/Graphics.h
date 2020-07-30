@@ -155,7 +155,7 @@ namespace sv {
 		Primitive(Primitive&& other) noexcept { this->operator=(std::move(other)); }
 
 		inline bool IsValid() const noexcept { return ptr != nullptr; }
-		inline void* GetPtr() const noexcept { return ptr; }
+   		inline void* GetPtr() const noexcept { return ptr; }
 
 		_sv::Primitive_internal* operator->() const noexcept { return reinterpret_cast<_sv::Primitive_internal*>(ptr); }
 
@@ -246,7 +246,7 @@ namespace sv {
 
 	bool graphics_buffer_create(const SV_GFX_BUFFER_DESC* desc, Buffer& buffer);
 	bool graphics_shader_create(const SV_GFX_SHADER_DESC* desc, Shader& shader);
-	bool graphics_image_create(const SV_GFX_IMAGE_DESC* desc, Image& buffer);
+	bool graphics_image_create(const SV_GFX_IMAGE_DESC* desc, Image& image);
 	bool graphics_sampler_create(const SV_GFX_SAMPLER_DESC* desc, Sampler& sampler);
 	bool graphics_renderpass_create(const SV_GFX_RENDERPASS_DESC* desc, RenderPass& renderPass);
 	bool graphics_pipeline_create(const SV_GFX_GRAPHICS_PIPELINE_DESC* desc, GraphicsPipeline& graphicsPipeline);

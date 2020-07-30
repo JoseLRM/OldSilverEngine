@@ -754,8 +754,7 @@ namespace _sv {
 		case SV_GFX_IMAGE_LAYOUT_GENERAL:
 		case SV_GFX_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY:
 		case SV_GFX_IMAGE_LAYOUT_SHADER_RESOUCE:
-			flags |= VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
-			flags |= VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+			flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 			break;
 		default:
 			sv::log_warning("Undefined Image Layout");

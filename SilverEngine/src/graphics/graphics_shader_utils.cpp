@@ -6,7 +6,7 @@ namespace sv {
 	bool graphics_shader_binpath(const char* filePath, SV_GFX_API api, std::string& binPath)
 	{
 		sv::TxtFile file;
-		if (!file.OpenR((SV_SRC_PATH + std::string(filePath)).c_str())) {
+		if (!file.OpenR(filePath)) {
 			sv::log_error("Shader '%s' not found", filePath);
 			return false;
 		}
@@ -35,7 +35,9 @@ namespace sv {
 			if (found) break;
 		}
 
+#ifdef SV_SRC_PATH
 		binPath = SV_SRC_PATH + binPath;
+#endif
 
 		file.Close();
 		return true;

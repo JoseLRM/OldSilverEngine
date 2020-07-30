@@ -1,7 +1,6 @@
 #pragma once
 
-//constexpr const char* SV_SRC_PATH = "";
-constexpr const char* SV_SRC_PATH = "../SilverEngine/";
+#define SV_SRC_PATH "../SilverEngine/"
 
 #define SV_PLATFORM_WINDOWS
 //#define SV_DEBUG

@@ -90,17 +90,11 @@ namespace _sv {
 			semanticNames = other.semanticNames;
 			bindingsLocation = other.bindingsLocation;
 			layout = other.layout;
-			setLayout = other.setLayout;
 			pipelines = other.pipelines;
-			frames = other.frames;
+			descriptors = other.descriptors;
 			bindings = other.bindings;
 			return *this;
 		}
-
-		struct Descriptors {
-			VkDescriptorSet		descSets[SV_GFX_COMMAND_LIST_COUNT];
-			VkDescriptorPool	descPool;
-		};
 
 		std::mutex									mutex;
 		std::mutex									creationMutex;
@@ -109,9 +103,8 @@ namespace _sv {
 		std::vector<ui32>							bindingsLocation;
 
 		VkPipelineLayout							layout = VK_NULL_HANDLE;
-		VkDescriptorSetLayout						setLayout = VK_NULL_HANDLE;
 		std::map<size_t, VkPipeline>				pipelines;
-		std::vector<Descriptors>					frames;
+		DescriptorsManager							descriptors;
 
 		std::vector<VkDescriptorSetLayoutBinding>	bindings;
 	};
@@ -270,7 +263,6 @@ namespace _sv {
 		// Memory Funtions
 
 		void CopyBuffer(VkCommandBuffer cmd, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize srcOffset, VkDeviceSize dstOffset, VkDeviceSize size);
-		VkResult MapMemoryUsingStagingBuffer(VkCommandBuffer cmd, VkImage image, VmaAllocation memory, void* data, VkDeviceSize size, ui32 width, ui32 height);
 
 		VkResult CreateImageView(VkImage image, VkFormat format, VkImageViewType viewType, VkImageAspectFlags aspectFlags, ui32 layerCount, VkImageView& view);
 

@@ -1,18 +1,20 @@
 #pragma once
 
-#include "core.h"
-#include "scene/Scene.h"
+#include "..//scene/Scene.h"
 #include "renderer_desc.h"
 
 namespace sv {
 
 	SV_COMPONENT(SpriteComponent) {
 
-		Color color = SV_COLOR_WHITE;
 		Entity renderLayer = SV_INVALID_ENTITY;
+		Sprite sprite;
+		Color color = SV_COLOR_WHITE;
 
 		SpriteComponent() = default;
 		SpriteComponent(Color col) : color(col) {}
+		SpriteComponent(Sprite spr) : sprite(spr) {}
+		SpriteComponent(Sprite spr, Color col) : sprite(spr), color(col) {}
 
 	};
 

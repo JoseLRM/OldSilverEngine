@@ -171,8 +171,8 @@ namespace sv {
 
 	public:
 		template<typename Component, typename... Args>
-		inline void AddComponent(Entity entity, Args... args) {
-			Component component(std::forward<Args...>(args...));
+		inline void AddComponent(Entity entity, Args&&... args) {
+			Component component(std::forward<Args>(args)...);
 			AddComponent(entity, (BaseComponent*) & component, Component::ID, Component::SIZE);
 		}
 		template<typename Component>

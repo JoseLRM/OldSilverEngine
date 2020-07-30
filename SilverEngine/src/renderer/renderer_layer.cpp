@@ -3,7 +3,7 @@
 #include "graphics/graphics.h"
 #include "graphics/graphics_properties.h"
 #include "renderer.h"
-#include "scene/Scene.h"
+#include "renderer_components.h"
 #include "DrawData.h"
 
 using namespace sv;
@@ -19,7 +19,8 @@ namespace _sv {
 	static Shader g_SpritePixelShader;
 	static Buffer g_SpriteIndexBuffer;
 	static Buffer g_SpriteVertexBuffer;
-
+	static Image g_SpriteWhiteTexture;
+	static Sampler g_SpriteDefSampler;
 
 	static RenderLayer g_DefRenderLayer;
 
@@ -131,6 +132,38 @@ namespace _sv {
 
 			svCheck(graphics_pipeline_create(&desc, g_SpriteOpaquePipeline));
 		}
+		// Sprite White Image
+		{
+			ui8 bytes[4];
+			for (ui32 i = 0; i < 4; ++i) bytes[i] = 255u;
+
+			SV_GFX_IMAGE_DESC desc;
+			desc.pData = bytes;
+			desc.size = sizeof(ui8) * 4u;
+			desc.format = SV_GFX_FORMAT_R8G8B8A8_UNORM;
+			desc.layout = SV_GFX_IMAGE_LAYOUT_SHADER_RESOUCE;
+			desc.type = SV_GFX_IMAGE_TYPE_SHADER_RESOURCE;
+			desc.usage = SV_GFX_USAGE_STATIC;
+			desc.CPUAccess = SV_GFX_CPU_ACCESS_NONE;
+			desc.dimension = 2u;
+			desc.width = 1u;
+			desc.height = 1u;
+			desc.depth = 1u;
+			desc.layers = 1u;
+
+			svCheck(graphics_image_create(&desc, g_SpriteWhiteTexture));
+		}
+		// Sprite Default Sampler
+		{
+			SV_GFX_SAMPLER_DESC desc;
+			desc.addressModeU = SV_GFX_ADDRESS_MODE_WRAP;
+			desc.addressModeV = SV_GFX_ADDRESS_MODE_WRAP;
+			desc.addressModeW = SV_GFX_ADDRESS_MODE_WRAP;
+			desc.minFilter = SV_GFX_FILTER_NEAREST;
+			desc.magFilter = SV_GFX_FILTER_NEAREST;
+
+			svCheck(graphics_sampler_create(&desc, g_SpriteDefSampler));
+		}
 
 		return true;
 	}
@@ -143,6 +176,9 @@ namespace _sv {
 		svCheck(graphics_destroy(g_SpriteVertexShader));
 		svCheck(graphics_destroy(g_SpritePixelShader));
 		svCheck(graphics_destroy(g_SpriteVertexBuffer));
+		svCheck(graphics_destroy(g_SpriteIndexBuffer));
+		svCheck(graphics_destroy(g_SpriteWhiteTexture));
+		svCheck(graphics_destroy(g_SpriteDefSampler));
 
 		return true;
 	}
@@ -159,11 +195,11 @@ namespace _sv {
 		Transform trans = scene.GetTransform(entity);
 
 		if (sprComp.renderLayer == SV_INVALID_ENTITY) {
-			g_DefRenderLayer.sprites.Emplace(trans.GetWorldMatrix(), sprComp.color);
+			g_DefRenderLayer.sprites.Emplace(trans.GetWorldMatrix(), sprComp.sprite, sprComp.color);
 		}
 		else {
 			RenderLayerComponent& rlComp = *reinterpret_cast<RenderLayerComponent*>(scene.GetComponent<RenderLayerComponent>(sprComp.renderLayer));
-			rlComp.renderLayer.sprites.Emplace(trans.GetWorldMatrix(), sprComp.color);
+			rlComp.renderLayer.sprites.Emplace(trans.GetWorldMatrix(), sprComp.sprite, sprComp.color);
 		}
 	}
 
@@ -229,6 +265,38 @@ namespace _sv {
 
 	}
 
+	void RenderSpriteBatch(ui32 offset, ui32 size, TextureAtlas_DrawData* texture, CommandList cmd)
+	{
+		Buffer* vBuffers[] = {
+			&g_SpriteVertexBuffer,
+		};
+		ui32 offsets[] = {
+			0u,
+		};
+		ui32 strides[] = {
+			size * 4u * sizeof(SpriteVertex),
+		};
+		Image* images[1];
+		Sampler* samplers[1];
+
+		if (texture) {
+			images[0] = &texture->image;
+			samplers[0] = &texture->sampler;
+		}
+		else {
+			images[0] = &g_SpriteWhiteTexture;
+			samplers[0] = &g_SpriteDefSampler;
+		}
+
+		graphics_vertexbuffer_bind(vBuffers, offsets, strides, 1u, cmd);
+
+		graphics_image_bind(images, 1u, SV_GFX_SHADER_TYPE_PIXEL, cmd);
+		graphics_sampler_bind(samplers, 1u, SV_GFX_SHADER_TYPE_PIXEL, cmd);
+
+		graphics_draw_indexed(size * 6u, 1u, offset * 6u, 0u, 0u, cmd);
+
+	}
+
 	void renderer_layer_render(CommandList cmd)
 	{
 		DrawData& drawData = renderer_drawdata_get();
@@ -240,17 +308,8 @@ namespace _sv {
 			drawData.pOutput
 		};
 
-		Buffer* vBuffers[] = {
-			&g_SpriteVertexBuffer,
-		};
-		ui32 offsets[] = {
-			0u,
-		};
-		ui32 strides[] = {
-			0u,
-		};
-
 		bool firstRenderPass = true;
+		TextureAtlas_DrawData* texture = nullptr;
 
 		for (auto it = layers.begin(); it != layers.end(); ++it) {
 			auto& sprites = (*it)->sprites;
@@ -265,6 +324,7 @@ namespace _sv {
 					batchSize = sprites.Size() - i;
 				}
 
+				// Fill Vertex Buffer
 				while (j < batchSize) {
 
 					SpriteInstance& spr = sprites[i + j];
@@ -282,18 +342,22 @@ namespace _sv {
 					pos2 = XMVector4Transform(pos2, matrix);
 					pos3 = XMVector4Transform(pos3, matrix);
 
+					vec4 texCoord;
+					if(spr.sprite.pTexAtlas != nullptr) 
+						texCoord = spr.sprite.pTexAtlas->sprites[spr.sprite.ID];
+
 					ui32 index = j * 4u;
-					g_SpriteData[index + 0] = { pos0, {0.f, 0.f}, spr.color };
-					g_SpriteData[index + 1] = { pos1, {0.f, 0.f}, spr.color };
-					g_SpriteData[index + 2] = { pos2, {0.f, 0.f}, spr.color };
-					g_SpriteData[index + 3] = { pos3, {0.f, 0.f}, spr.color };
+					g_SpriteData[index + 0] = { pos0, {texCoord.x, texCoord.y}, spr.color };
+					g_SpriteData[index + 1] = { pos1, {texCoord.z, texCoord.y}, spr.color };
+					g_SpriteData[index + 2] = { pos2, {texCoord.x, texCoord.w}, spr.color };
+					g_SpriteData[index + 3] = { pos3, {texCoord.z, texCoord.w}, spr.color };
 
 					j++;
 				}
 
-				strides[0] = batchSize * sizeof(SpriteVertex) * 4u;
-
 				graphics_buffer_update(g_SpriteVertexBuffer, g_SpriteData, batchSize * sizeof(SpriteVertex) * 4u, 0u, cmd);
+
+				// Begin rendering
 
 				if (firstRenderPass) {
 					firstRenderPass = false;
@@ -303,10 +367,25 @@ namespace _sv {
 					graphics_renderpass_begin(g_SpriteRenderPass, att, nullptr, 1.f, 0u, cmd);
 
 				graphics_indexbuffer_bind(g_SpriteIndexBuffer, 0u, cmd);
-				graphics_vertexbuffer_bind(vBuffers, offsets, strides, 1u, cmd);
 				graphics_pipeline_bind(g_SpriteOpaquePipeline, cmd);
 
-				graphics_draw_indexed(batchSize * 6u, 1u, 0u, 0u, 0u, cmd);
+				// Draw call per textureAtlas
+				j = 0u;
+				ui32 offset = 0u;
+				texture = sprites[j].sprite.pTexAtlas;
+
+				while (j < batchSize) {
+
+					if (sprites[j].sprite.pTexAtlas != texture) {
+						RenderSpriteBatch(offset, j - offset, texture, cmd);
+						offset += j;
+						texture = sprites[j].sprite.pTexAtlas;
+					}
+					
+					++j;
+				}
+
+				RenderSpriteBatch(offset, j - offset, texture, cmd);
 
 				graphics_renderpass_end(cmd);
 

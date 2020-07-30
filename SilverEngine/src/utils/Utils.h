@@ -16,6 +16,10 @@ namespace sv {
 	std::wstring utils_wstring_parse(const char* c);
 	std::string  utils_string_parse(const wchar* c);
 
+	// Loader
+
+	bool utils_loader_image(const char* filePath, void** pdata, ui32* width, ui32* height);
+
 	// Timer
 
 	class Time {

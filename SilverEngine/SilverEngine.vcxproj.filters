@@ -57,6 +57,7 @@
     <ClInclude Include="external\stbi_lib.h" />
     <ClInclude Include="src\renderer\DrawData.h" />
     <ClInclude Include="src\graphics\vulkan\graphics_vulkan_memory.h" />
+    <ClInclude Include="src\renderer\TextureAtlas.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="external\sprv\spirv_cfg.cpp" />
@@ -95,6 +96,7 @@
     <ClCompile Include="src\scene\Transform.cpp" />
     <ClCompile Include="src\renderer\renderer_layer.cpp" />
     <ClCompile Include="src\graphics\vulkan\graphics_vulkan_memory.cpp" />
+    <ClCompile Include="src\renderer\TextureAtlas.cpp" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="src\graphics\sprv_shaders\DefPostProcess.frag" />

@@ -59,7 +59,48 @@ class Application : public sv::Application
 	sv::Scene scene;
 	sv::Entity entity;
 
+	sv::TextureAtlas texture;
+	sv::Sprite sprite;
+
 public:
+
+	void createEntity()
+	{
+		constexpr ui32 count = 1;
+		sv::Entity entities[count];
+
+		scene.CreateEntities(count, 0u, entities);
+		scene.AddComponents<sv::SpriteComponent>(entities, count, SV_COLOR_BLUE);
+
+		for (ui32 i = 0; i < count; ++i) {
+			sv::Transform trans = scene.GetTransform(entities[i]);
+			sv::SpriteComponent& sprComp = *scene.GetComponent<sv::SpriteComponent>(entities[i]);
+
+			sv::vec3 pos;
+			sv::vec2 mousePos = camera.GetMousePos();
+			pos.x += mousePos.x;
+			pos.y += mousePos.y;
+			//pos.x = (float(rand()) / RAND_MAX) * 800.f - 400.f;
+			//pos.y = (float(rand()) / RAND_MAX) * 400.f - 200.f;
+
+			sv::vec3 scale;
+			scale.x = (float(rand()) / RAND_MAX) + 0.1f;
+			scale.y = (float(rand()) / RAND_MAX) + 0.1f;
+
+			sv::vec3 rot;
+			rot.z = ToRadians((float(rand()) / RAND_MAX) * 360.f);
+
+			sprComp.color.x = ui8((float(rand()) / RAND_MAX) * 255.f);
+			sprComp.color.y = ui8((float(rand()) / RAND_MAX) * 255.f);
+			sprComp.color.z = ui8((float(rand()) / RAND_MAX) * 255.f);
+			sprComp.color.w = 255u;
+
+			trans.SetPosition(pos);
+			trans.SetScale(scale);
+			trans.SetRotation(rot);
+
+		}
+	}
 
 	void createEntities()
 	{
@@ -74,8 +115,8 @@ public:
 			sv::SpriteComponent& sprComp = *scene.GetComponent<sv::SpriteComponent>(entities[i]);
 
 			sv::vec3 pos;
-			pos.x = (float(rand()) / RAND_MAX) * 800.f - 400.f;
-			pos.y = (float(rand()) / RAND_MAX) * 400.f - 200.f;
+			pos.x = (float(rand()) / RAND_MAX) * 400.f - 300.f;
+			pos.y = (float(rand()) / RAND_MAX) * 200.f - 100.f;
 
 			sv::vec3 scale;
 			scale.x = (float(rand()) / RAND_MAX) + 0.1f;
@@ -101,10 +142,11 @@ public:
 		sv::engine_state_load(new GameState(), new Loading());
 		scene.Initialize();
 
-		entity = scene.CreateEntity();
-		scene.AddComponent<sv::SpriteComponent>(entity, SV_COLOR_RED);
+		texture.CreateFromFile("res/CloudsFront.png", true, SV_GFX_ADDRESS_MODE_WRAP);
+		sprite = texture.AddSprite(0.f, 0.f, 1.f, 1.f);
 
-		
+		entity = scene.CreateEntity();
+		scene.AddComponent<sv::SpriteComponent>(entity, sprite, SV_COLOR_WHITE);
 	}
 
 	void Update(float dt) override
@@ -155,6 +197,10 @@ public:
 
 
 		if (sv::input_mouse_pressed(SV_MOUSE_LEFT)) {
+			createEntity();
+			sv::log("Entities: %u", scene.GetEntityList().size());
+		}
+		if (sv::input_mouse_pressed(SV_MOUSE_CENTER)) {
 			createEntities();
 			sv::log("Entities: %u", scene.GetEntityList().size());
 		}

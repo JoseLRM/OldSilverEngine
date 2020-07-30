@@ -47,6 +47,29 @@ namespace sv {
 		return "";
 	}
 
+	// Loader
+
+	bool utils_loader_image(const char* filePath, void** pdata, ui32* width, ui32* height)
+	{
+		int w = 0, h = 0, bits = 0;
+
+#ifdef SV_SRC_PATH
+		std::string filePathStr = SV_SRC_PATH;
+		filePathStr += filePath;
+		void* data = stbi_load(filePathStr.c_str(), &w, &h, &bits, 4);
+#else
+		void* data = stbi_load(filePath, &w, &h, &bits, 4);
+#endif
+
+		*pdata = nullptr;
+		*width = w;
+		*height = h;
+
+		if (!data) return false;
+		*pdata = data;
+		return true;
+	}
+
 	// Timer
 
 	Time timer_now()
@@ -54,20 +77,4 @@ namespace sv {
 		return Time(std::chrono::duration<float>(timer_now_chrono() - g_InitialTime).count());
 	}
 
-	/*
-		bool LoadImage(const char* filePath, void** pdata, ui32* width, ui32* height, SV_GFX_FORMAT* pformat) {
-
-			int w = 0, h = 0, bits = 0;
-			void* data = stbi_load(filePath, &w, &h, &bits, 4);
-
-			*pdata = nullptr;
-			*width = w;
-			*height = h;
-			*pformat = SV_GFX_FORMAT_R8G8B8A8_UNORM;
-
-			if (!data) return false;
-			*pdata = data;
-			return true;
-		}
-		*/
 }

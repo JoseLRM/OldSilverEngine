@@ -3,7 +3,6 @@
 #include "core.h"
 #include "Camera.h"
 #include "renderer_desc.h"
-#include "renderer_components.h"
 #include "graphics/graphics.h"
 
 struct SV_RENDERER_INITIALIZATION_DESC {

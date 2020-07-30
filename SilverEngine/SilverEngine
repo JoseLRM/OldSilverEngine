@@ -6,5 +6,6 @@
 #include "src/engine.h"
 
 #include "src/renderer/renderer.h"
+#include "src/renderer/renderer_components.h"
 
 #endif

@@ -445,11 +445,89 @@ struct SV_GFX_GRAPHICS_PIPELINE_DESC {
 ////////////////////////////////////////////////// FUNCTIONS ////////////////////////////////////////////////
 
 namespace sv {
-	inline bool graphics_format_has_stencil(SV_GFX_FORMAT format)
+	constexpr bool graphics_format_has_stencil(SV_GFX_FORMAT format)
 	{
 		if (format == SV_GFX_FORMAT_D24_UNORM_S8_UINT)
 			return true;
 		else return false;
+	}
+	constexpr ui32 graphics_format_size(SV_GFX_FORMAT format)
+	{
+		switch (format)
+		{
+		case SV_GFX_FORMAT_R32G32B32A32_FLOAT:
+		case SV_GFX_FORMAT_R32G32B32A32_UINT:
+		case SV_GFX_FORMAT_R32G32B32A32_SINT:
+			return 16u;
+
+		case SV_GFX_FORMAT_R32G32B32_FLOAT:
+		case SV_GFX_FORMAT_R32G32B32_UINT:
+		case SV_GFX_FORMAT_R32G32B32_SINT:
+			return 12u;
+		case SV_GFX_FORMAT_R16G16B16A16_FLOAT:
+		case SV_GFX_FORMAT_R16G16B16A16_UNORM:
+		case SV_GFX_FORMAT_R16G16B16A16_UINT:
+		case SV_GFX_FORMAT_R16G16B16A16_SNORM:
+		case SV_GFX_FORMAT_R16G16B16A16_SINT:
+		case SV_GFX_FORMAT_R32G32_FLOAT:
+		case SV_GFX_FORMAT_R32G32_UINT:
+		case SV_GFX_FORMAT_R32G32_SINT:
+			return 8u;
+
+		case SV_GFX_FORMAT_R8G8B8A8_UNORM:
+		case SV_GFX_FORMAT_R8G8B8A8_SRGB:
+		case SV_GFX_FORMAT_R8G8B8A8_UINT:
+		case SV_GFX_FORMAT_R8G8B8A8_SNORM:
+		case SV_GFX_FORMAT_R8G8B8A8_SINT:
+		case SV_GFX_FORMAT_R16G16_FLOAT:
+		case SV_GFX_FORMAT_R16G16_UNORM:
+		case SV_GFX_FORMAT_R16G16_UINT:
+		case SV_GFX_FORMAT_R16G16_SNORM:
+		case SV_GFX_FORMAT_R16G16_SINT:
+		case SV_GFX_FORMAT_D32_FLOAT:
+		case SV_GFX_FORMAT_R32_FLOAT:
+		case SV_GFX_FORMAT_R32_UINT:
+		case SV_GFX_FORMAT_R32_SINT:
+		case SV_GFX_FORMAT_D24_UNORM_S8_UINT:
+		case SV_GFX_FORMAT_B8G8R8A8_UNORM:
+		case SV_GFX_FORMAT_B8G8R8A8_SRGB:
+			return 4u;
+
+		case SV_GFX_FORMAT_R8G8_UNORM:
+		case SV_GFX_FORMAT_R8G8_UINT:
+		case SV_GFX_FORMAT_R8G8_SNORM:
+		case SV_GFX_FORMAT_R8G8_SINT:
+		case SV_GFX_FORMAT_R16_FLOAT:
+		case SV_GFX_FORMAT_D16_UNORM:
+		case SV_GFX_FORMAT_R16_UNORM:
+		case SV_GFX_FORMAT_R16_UINT:
+		case SV_GFX_FORMAT_R16_SNORM:
+		case SV_GFX_FORMAT_R16_SINT:
+			return 2u;
+
+		case SV_GFX_FORMAT_R8_UNORM:
+		case SV_GFX_FORMAT_R8_UINT:
+		case SV_GFX_FORMAT_R8_SNORM:
+		case SV_GFX_FORMAT_R8_SINT:
+			return 1u;
+
+		case SV_GFX_FORMAT_UNKNOWN:
+			return 0u;
+
+		case SV_GFX_FORMAT_BC1_UNORM:
+		case SV_GFX_FORMAT_BC1_SRGB:
+		case SV_GFX_FORMAT_BC2_UNORM:
+		case SV_GFX_FORMAT_BC2_SRGB:
+		case SV_GFX_FORMAT_BC3_UNORM:
+		case SV_GFX_FORMAT_BC3_SRGB:
+		case SV_GFX_FORMAT_BC4_UNORM:
+		case SV_GFX_FORMAT_BC4_SNORM:
+		case SV_GFX_FORMAT_BC5_UNORM:
+		case SV_GFX_FORMAT_BC5_SNORM:
+		default:
+			sv::log_warning("Unknown format size");
+			return 0u;
+		}
 	}
 }
 
