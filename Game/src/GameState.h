@@ -2,9 +2,9 @@
 
 #include <SilverEngine>
 
-class GameState : public SV::State {
+class GameState : public sv::State {
 
-	SV::Scene scene;
+	sv::Scene scene;
 
 public:
 	void Load() override

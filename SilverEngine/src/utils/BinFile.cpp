@@ -2,7 +2,7 @@
 
 #include "BinFile.h"
 
-namespace SV {
+namespace sv {
 
 	BinFile::BinFile() : m_Size(0)
 	{

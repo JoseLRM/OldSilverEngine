@@ -4,25 +4,25 @@
 #include <stdarg.h>
 
 #ifdef SV_PLATFORM_WINDOWS
-#include "graphics/Win.h"
+#include "platform/windows_impl.h"
 #endif
 
-namespace SV {
+namespace _sv {
 
-	namespace _internal {
-
-		void ShowConsole()
-		{
-			ShowWindow(GetConsoleWindow(), SW_SHOWDEFAULT);
-		}
-		void HideConsole()
-		{
-			ShowWindow(GetConsoleWindow(), SW_HIDE);
-		}
-
+	void console_show()
+	{
+		ShowWindow(GetConsoleWindow(), SW_SHOWDEFAULT);
+	}
+	void console_hide()
+	{
+		ShowWindow(GetConsoleWindow(), SW_HIDE);
 	}
 
-	std::mutex g_LogMutex;
+}
+
+namespace sv {
+
+	static std::mutex g_LogMutex;
 
 	void _Log(const char* s0, const char* s1, va_list args)
 	{
@@ -37,12 +37,12 @@ namespace SV {
 		std::cout << out << std::endl;
 	}
 
-	void LogSeparator()
+	void log_separator()
 	{
-		Log("----------------------------------------------------");
+		log("----------------------------------------------------");
 	}
 
-	void Log(const char* s, ...)
+	void log(const char* s, ...)
 	{
 		va_list args;
 		va_start(args, s);
@@ -51,7 +51,7 @@ namespace SV {
 
 		va_end(args);
 	}
-	void LogI(const char* s, ...)
+	void log_info(const char* s, ...)
 	{
 		va_list args;
 		va_start(args, s);
@@ -60,7 +60,7 @@ namespace SV {
 		
 		va_end(args);
 	}
-	void LogW(const char* s, ...)
+	void log_warning(const char* s, ...)
 	{
 		va_list args;
 		va_start(args, s);
@@ -69,7 +69,7 @@ namespace SV {
 
 		va_end(args);
 	}
-	void LogE(const char* s, ...)
+	void log_error(const char* s, ...)
 	{
 		va_list args;
 		va_start(args, s);

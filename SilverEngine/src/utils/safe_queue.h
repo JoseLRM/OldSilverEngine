@@ -2,7 +2,7 @@
 
 #include "core.h"
 
-namespace SV {
+namespace sv {
 
 	template<typename T, size_t SIZE>
 	class safe_queue {

@@ -2,7 +2,7 @@
 
 #include "..//core.h"
 
-namespace SV {
+namespace sv {
 
 	class Camera {
 	public:
@@ -11,9 +11,9 @@ namespace SV {
 		virtual void Adjust() = 0;
 	};
 
-	class OrthographicCamera : public SV::Camera {
-		SV::vec2 m_Position = { 0.f, 0.f };
-		SV::vec2 m_Dimension = { 1.f, 1.f };
+	class OrthographicCamera : public Camera {
+		vec2 m_Position = { 0.f, 0.f };
+		vec2 m_Dimension = { 1.f, 1.f };
 		float m_Rotation = 0.f;
 
 	public:
@@ -23,16 +23,18 @@ namespace SV {
 		void Adjust() override;
 
 		// getters
-		inline SV::vec2 GetPosition() const noexcept { return m_Position; }
-		inline SV::vec2 GetDimension() const noexcept { return m_Dimension; }
+		inline vec2 GetPosition() const noexcept { return m_Position; }
+		inline vec2 GetDimension() const noexcept { return m_Dimension; }
+		inline float GetZoom() const noexcept { return m_Dimension.Mag(); }
 		inline float GetRotation() const noexcept { return m_Rotation; }
 		float GetAspect() const noexcept;
 
-		SV::vec2 GetMousePos();
+		vec2 GetMousePos();
 
 		// setters
-		void SetPosition(SV::vec2 position) noexcept;
-		void SetDimension(SV::vec2 dimension) noexcept;
+		void SetPosition(vec2 position) noexcept;
+		void SetDimension(vec2 dimension) noexcept;
+		void SetZoom(float zoom) noexcept;
 		void SetRotation(float rotation) noexcept;
 		void SetAspect(float aspect) noexcept;
 

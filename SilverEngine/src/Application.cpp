@@ -2,7 +2,7 @@
 
 #include "Application.h"
 
-namespace SV {
+namespace sv {
 
 	Application::Application() 
 	{}

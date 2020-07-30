@@ -2,7 +2,7 @@
 
 #include "TxtFile.h"
 
-namespace SV {
+namespace sv {
 
 	TxtFile::TxtFile() : m_Size(0)
 	{

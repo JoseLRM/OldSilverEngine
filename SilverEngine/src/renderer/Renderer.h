@@ -2,31 +2,70 @@
 
 #include "core.h"
 #include "Camera.h"
-#include "graphics/Graphics.h"
+#include "renderer_desc.h"
+#include "renderer_components.h"
+#include "graphics/graphics.h"
 
 struct SV_RENDERER_INITIALIZATION_DESC {
 	ui32 resolutionWidth;
 	ui32 resolutionHeight;
 };
 
-namespace SV {
-	namespace Renderer {
+namespace sv {
+	class Scene;
+}
 
-		namespace _internal {
-			bool Initialize(const SV_RENDERER_INITIALIZATION_DESC& desc);
-			bool Close();
+namespace _sv {
 
-			void BeginFrame();
-			void Render();
-			void EndFrame();
-		}
+	struct DrawData;
 
-		void SetResolution(ui32 width, ui32 height);
+	bool renderer_initialize(const SV_RENDERER_INITIALIZATION_DESC& desc);
+	bool renderer_close();
+	void renderer_frame_begin();
+	void renderer_frame_end();
 
-		uvec2 GetResolution() noexcept;
-		ui32 GetResolutionWidth() noexcept;
-		ui32 GetResolutionHeight() noexcept;
-		float GetResolutionAspect() noexcept;
+	sv::Image& renderer_offscreen_get();
+	DrawData& renderer_drawdata_get();
 
-	}
+}
+
+namespace sv {
+
+	void renderer_resolution_set(ui32 width, ui32 height);
+	uvec2 renderer_resolution_get() noexcept;
+	ui32 renderer_resolution_get_width() noexcept;
+	ui32 renderer_resolution_get_height() noexcept;
+	float renderer_resolution_get_aspect() noexcept;
+
+	void renderer_scene_begin();
+	void renderer_scene_end();
+	void renderer_draw_scene(Scene& scene);
+	void renderer_present(Camera& camera);
+
+}
+
+namespace _sv {
+
+	// PostProcessing
+
+	bool renderer_postprocessing_initialize();
+	bool renderer_postprocessing_close();
+
+	struct PostProcessing_Default {
+		sv::RenderPass renderPass;
+	};
+
+	bool renderer_postprocessing_default_create(SV_GFX_FORMAT dstFormat, SV_GFX_IMAGE_LAYOUT initialLayout, SV_GFX_IMAGE_LAYOUT finalLayout, PostProcessing_Default& pp);
+	bool renderer_postprocessing_default_destroy(PostProcessing_Default& pp);
+	void renderer_postprocessing_default_render(PostProcessing_Default& pp, sv::Image& src, sv::Image& dst, sv::CommandList cmd);
+
+	// Render Layer (2D)
+
+	bool renderer_layer_initialize();
+	bool renderer_layer_close();
+	void renderer_layer_begin();
+	void renderer_layer_end();
+	void renderer_layer_prepare_scene(sv::Scene& scene);
+	void renderer_layer_render(sv::CommandList cmd);
+
 }

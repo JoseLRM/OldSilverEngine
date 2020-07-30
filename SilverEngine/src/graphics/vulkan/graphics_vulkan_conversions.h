@@ -1,0 +1,799 @@
+#pragma once
+
+namespace _sv {
+
+	constexpr VkFormat graphics_vulkan_parse_format(SV_GFX_FORMAT format)
+	{
+		switch (format)
+		{
+		case SV_GFX_FORMAT_UNKNOWN:
+			return VK_FORMAT_UNDEFINED;
+
+		case SV_GFX_FORMAT_R32G32B32A32_FLOAT:
+			return VK_FORMAT_R32G32B32A32_SFLOAT;
+
+		case SV_GFX_FORMAT_R32G32B32A32_UINT:
+			return VK_FORMAT_R32G32B32A32_UINT;
+
+		case SV_GFX_FORMAT_R32G32B32A32_SINT:
+			return VK_FORMAT_R32G32B32A32_SINT;
+
+		case SV_GFX_FORMAT_R32G32B32_FLOAT:
+			return VK_FORMAT_R32G32B32_SFLOAT;
+
+		case SV_GFX_FORMAT_R32G32B32_UINT:
+			return VK_FORMAT_R32G32B32_UINT;
+
+		case SV_GFX_FORMAT_R32G32B32_SINT:
+			return VK_FORMAT_R32G32B32_SINT;
+
+		case SV_GFX_FORMAT_R16G16B16A16_FLOAT:
+			return VK_FORMAT_R16G16B16A16_SFLOAT;
+
+		case SV_GFX_FORMAT_R16G16B16A16_UNORM:
+			return VK_FORMAT_R16G16B16A16_UNORM;
+
+		case SV_GFX_FORMAT_R16G16B16A16_UINT:
+			return VK_FORMAT_R16G16B16A16_UINT;
+
+		case SV_GFX_FORMAT_R16G16B16A16_SNORM:
+			return VK_FORMAT_R16G16B16A16_SNORM;
+
+		case SV_GFX_FORMAT_R16G16B16A16_SINT:
+			return VK_FORMAT_R16G16B16A16_SINT;
+
+		case SV_GFX_FORMAT_R32G32_FLOAT:
+			return VK_FORMAT_R32G32_SFLOAT;
+
+		case SV_GFX_FORMAT_R32G32_UINT:
+			return VK_FORMAT_R32G32_UINT;
+
+		case SV_GFX_FORMAT_R32G32_SINT:
+			return VK_FORMAT_R32G32_SINT;
+
+		case SV_GFX_FORMAT_R8G8B8A8_UNORM:
+			return VK_FORMAT_R8G8B8A8_UNORM;
+
+		case SV_GFX_FORMAT_R8G8B8A8_SRGB:
+			return VK_FORMAT_R8G8B8A8_SRGB;
+
+		case SV_GFX_FORMAT_R8G8B8A8_UINT:
+			return VK_FORMAT_R8G8B8A8_UINT;
+
+		case SV_GFX_FORMAT_R8G8B8A8_SNORM:
+			return VK_FORMAT_R8G8B8A8_SNORM;
+
+		case SV_GFX_FORMAT_R8G8B8A8_SINT:
+			return VK_FORMAT_R8G8B8A8_SINT;
+
+		case SV_GFX_FORMAT_R16G16_FLOAT:
+			return VK_FORMAT_R16G16_SFLOAT;
+
+		case SV_GFX_FORMAT_R16G16_UNORM:
+			return VK_FORMAT_R16G16_UNORM;
+
+		case SV_GFX_FORMAT_R16G16_UINT:
+			return VK_FORMAT_R16G16_UINT;
+
+		case SV_GFX_FORMAT_R16G16_SNORM:
+			return VK_FORMAT_R16G16_SNORM;
+
+		case SV_GFX_FORMAT_R16G16_SINT:
+			return VK_FORMAT_R16G16_SINT;
+
+		case SV_GFX_FORMAT_D32_FLOAT:
+			return VK_FORMAT_D32_SFLOAT;
+
+		case SV_GFX_FORMAT_R32_FLOAT:
+			return VK_FORMAT_R32_SFLOAT;
+
+		case SV_GFX_FORMAT_R32_UINT:
+			return VK_FORMAT_R32_UINT;
+
+		case SV_GFX_FORMAT_R32_SINT:
+			return VK_FORMAT_R32_SINT;
+
+		case SV_GFX_FORMAT_D24_UNORM_S8_UINT:
+			return VK_FORMAT_D24_UNORM_S8_UINT;
+
+		case SV_GFX_FORMAT_R8G8_UNORM:
+			return VK_FORMAT_R8G8_UNORM;
+
+		case SV_GFX_FORMAT_R8G8_UINT:
+			return VK_FORMAT_R8G8_UINT;
+
+		case SV_GFX_FORMAT_R8G8_SNORM:
+			return VK_FORMAT_R8G8_SNORM;
+
+		case SV_GFX_FORMAT_R8G8_SINT:
+			return VK_FORMAT_R8G8_SINT;
+
+		case SV_GFX_FORMAT_R16_FLOAT:
+			return VK_FORMAT_R16_SFLOAT;
+
+		case SV_GFX_FORMAT_D16_UNORM:
+			return VK_FORMAT_D16_UNORM;
+
+		case SV_GFX_FORMAT_R16_UNORM:
+			return VK_FORMAT_R16_UNORM;
+
+		case SV_GFX_FORMAT_R16_UINT:
+			return VK_FORMAT_R16_UINT;
+
+		case SV_GFX_FORMAT_R16_SNORM:
+			return VK_FORMAT_R16_SNORM;
+
+		case SV_GFX_FORMAT_R16_SINT:
+			return VK_FORMAT_R16_SINT;
+
+		case SV_GFX_FORMAT_R8_UNORM:
+			return VK_FORMAT_R8_UNORM;
+
+		case SV_GFX_FORMAT_R8_UINT:
+			return VK_FORMAT_R8_UINT;
+
+		case SV_GFX_FORMAT_R8_SNORM:
+			return VK_FORMAT_R8_SNORM;
+
+		case SV_GFX_FORMAT_R8_SINT:
+			return VK_FORMAT_R8_SINT;
+
+		case SV_GFX_FORMAT_BC1_UNORM:
+			return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+
+		case SV_GFX_FORMAT_BC1_SRGB:
+			return VK_FORMAT_BC1_RGBA_SRGB_BLOCK;
+
+		case SV_GFX_FORMAT_BC2_UNORM:
+			return VK_FORMAT_BC2_UNORM_BLOCK;
+
+		case SV_GFX_FORMAT_BC2_SRGB:
+			return VK_FORMAT_BC2_SRGB_BLOCK;
+
+		case SV_GFX_FORMAT_BC3_UNORM:
+			return VK_FORMAT_BC3_UNORM_BLOCK;
+
+		case SV_GFX_FORMAT_BC3_SRGB:
+			return VK_FORMAT_BC3_SRGB_BLOCK;
+
+		case SV_GFX_FORMAT_BC4_UNORM:
+			return VK_FORMAT_BC4_UNORM_BLOCK;
+
+		case SV_GFX_FORMAT_BC4_SNORM:
+			return VK_FORMAT_BC4_SNORM_BLOCK;
+
+		case SV_GFX_FORMAT_BC5_UNORM:
+			return VK_FORMAT_BC5_UNORM_BLOCK;
+
+		case SV_GFX_FORMAT_BC5_SNORM:
+			return VK_FORMAT_BC5_SNORM_BLOCK;
+
+		case SV_GFX_FORMAT_B8G8R8A8_UNORM:
+			return VK_FORMAT_B8G8R8A8_UNORM;
+
+		case SV_GFX_FORMAT_B8G8R8A8_SRGB:
+			return VK_FORMAT_B8G8R8A8_SRGB;
+
+		default:
+			sv::log_warning("Invalid Format");
+			return VK_FORMAT_UNDEFINED;
+		}
+	}
+	constexpr SV_GFX_FORMAT graphics_vulkan_parse_format(VkFormat format)
+	{
+		switch (format)
+		{
+		case VK_FORMAT_UNDEFINED:
+			return SV_GFX_FORMAT_UNKNOWN;
+
+		case VK_FORMAT_R32G32B32A32_SFLOAT:
+			return SV_GFX_FORMAT_R32G32B32A32_FLOAT;
+
+		case VK_FORMAT_R32G32B32A32_UINT:
+			return SV_GFX_FORMAT_R32G32B32A32_UINT;
+
+		case VK_FORMAT_R32G32B32A32_SINT:
+			return SV_GFX_FORMAT_R32G32B32A32_SINT;
+
+		case VK_FORMAT_R32G32B32_SFLOAT:
+			return SV_GFX_FORMAT_R32G32B32_FLOAT;
+
+		case VK_FORMAT_R32G32B32_UINT:
+			return SV_GFX_FORMAT_R32G32B32_UINT;
+
+		case VK_FORMAT_R32G32B32_SINT:
+			return SV_GFX_FORMAT_R32G32B32_SINT;
+
+		case VK_FORMAT_R16G16B16A16_SFLOAT:
+			return SV_GFX_FORMAT_R16G16B16A16_FLOAT;
+
+		case VK_FORMAT_R16G16B16A16_UNORM:
+			return SV_GFX_FORMAT_R16G16B16A16_UNORM;
+
+		case VK_FORMAT_R16G16B16A16_UINT:
+			return SV_GFX_FORMAT_R16G16B16A16_UINT;
+
+		case VK_FORMAT_R16G16B16A16_SNORM:
+			return SV_GFX_FORMAT_R16G16B16A16_SNORM;
+
+		case VK_FORMAT_R16G16B16A16_SINT:
+			return SV_GFX_FORMAT_R16G16B16A16_SINT;
+
+		case VK_FORMAT_R32G32_SFLOAT:
+			return SV_GFX_FORMAT_R32G32_FLOAT;
+
+		case VK_FORMAT_R32G32_UINT:
+			return SV_GFX_FORMAT_R32G32_UINT;
+
+		case VK_FORMAT_R32G32_SINT:
+			return SV_GFX_FORMAT_R32G32_SINT;
+
+		case VK_FORMAT_R8G8B8A8_UNORM:
+			return SV_GFX_FORMAT_R8G8B8A8_UNORM;
+
+		case VK_FORMAT_R8G8B8A8_SRGB:
+			return SV_GFX_FORMAT_R8G8B8A8_SRGB;
+
+		case VK_FORMAT_R8G8B8A8_UINT:
+			return SV_GFX_FORMAT_R8G8B8A8_UINT;
+
+		case VK_FORMAT_R8G8B8A8_SNORM:
+			return SV_GFX_FORMAT_R8G8B8A8_SNORM;
+
+		case VK_FORMAT_R8G8B8A8_SINT:
+			return SV_GFX_FORMAT_R8G8B8A8_SINT;
+
+		case VK_FORMAT_R16G16_SFLOAT:
+			return SV_GFX_FORMAT_R16G16_FLOAT;
+
+		case VK_FORMAT_R16G16_UNORM:
+			return SV_GFX_FORMAT_R16G16_UNORM;
+
+		case VK_FORMAT_R16G16_UINT:
+			return SV_GFX_FORMAT_R16G16_UINT;
+
+		case VK_FORMAT_R16G16_SNORM:
+			return SV_GFX_FORMAT_R16G16_SNORM;
+
+		case VK_FORMAT_R16G16_SINT:
+			return SV_GFX_FORMAT_R16G16_SINT;
+
+		case VK_FORMAT_D32_SFLOAT:
+			return SV_GFX_FORMAT_D32_FLOAT;
+
+		case VK_FORMAT_R32_SFLOAT:
+			return SV_GFX_FORMAT_R32_FLOAT;
+
+		case VK_FORMAT_R32_UINT:
+			return SV_GFX_FORMAT_R32_UINT;
+
+		case VK_FORMAT_R32_SINT:
+			return SV_GFX_FORMAT_R32_SINT;
+
+		case VK_FORMAT_D24_UNORM_S8_UINT:
+			return SV_GFX_FORMAT_D24_UNORM_S8_UINT;
+
+		case VK_FORMAT_R8G8_UNORM:
+			return SV_GFX_FORMAT_R8G8_UNORM;
+
+		case VK_FORMAT_R8G8_UINT:
+			return SV_GFX_FORMAT_R8G8_UINT;
+
+		case VK_FORMAT_R8G8_SNORM:
+			return SV_GFX_FORMAT_R8G8_SNORM;
+
+		case VK_FORMAT_R8G8_SINT:
+			return SV_GFX_FORMAT_R8G8_SINT;
+
+		case VK_FORMAT_R16_SFLOAT:
+			return SV_GFX_FORMAT_R16_FLOAT;
+
+		case VK_FORMAT_D16_UNORM:
+			return SV_GFX_FORMAT_D16_UNORM;
+
+		case VK_FORMAT_R16_UNORM:
+			return SV_GFX_FORMAT_R16_UNORM;
+
+		case VK_FORMAT_R16_UINT:
+			return SV_GFX_FORMAT_R16_UINT;
+
+		case VK_FORMAT_R16_SNORM:
+			return SV_GFX_FORMAT_R16_SNORM;
+
+		case VK_FORMAT_R16_SINT:
+			return SV_GFX_FORMAT_R16_SINT;
+
+		case VK_FORMAT_R8_UNORM:
+			return SV_GFX_FORMAT_R8_UNORM;
+
+		case VK_FORMAT_R8_UINT:
+			return SV_GFX_FORMAT_R8_UINT;
+
+		case VK_FORMAT_R8_SNORM:
+			return SV_GFX_FORMAT_R8_SNORM;
+
+		case VK_FORMAT_R8_SINT:
+			return SV_GFX_FORMAT_R8_SINT;
+
+		case VK_FORMAT_BC1_RGBA_UNORM_BLOCK:
+			return SV_GFX_FORMAT_BC1_UNORM;
+
+		case VK_FORMAT_BC1_RGBA_SRGB_BLOCK:
+			return SV_GFX_FORMAT_BC1_SRGB;
+
+		case VK_FORMAT_BC2_UNORM_BLOCK:
+			return SV_GFX_FORMAT_BC2_UNORM;
+
+		case VK_FORMAT_BC2_SRGB_BLOCK:
+			return SV_GFX_FORMAT_BC2_SRGB;
+
+		case VK_FORMAT_BC3_UNORM_BLOCK:
+			return SV_GFX_FORMAT_BC3_UNORM;
+
+		case VK_FORMAT_BC3_SRGB_BLOCK:
+			return SV_GFX_FORMAT_BC3_SRGB;
+
+		case VK_FORMAT_BC4_UNORM_BLOCK:
+			return SV_GFX_FORMAT_BC4_UNORM;
+
+		case VK_FORMAT_BC4_SNORM_BLOCK:
+			return SV_GFX_FORMAT_BC4_SNORM;
+
+		case VK_FORMAT_BC5_UNORM_BLOCK:
+			return SV_GFX_FORMAT_BC5_UNORM;
+
+		case VK_FORMAT_BC5_SNORM_BLOCK:
+			return SV_GFX_FORMAT_BC5_SNORM;
+
+		case VK_FORMAT_B8G8R8A8_UNORM:
+			return SV_GFX_FORMAT_B8G8R8A8_UNORM;
+
+		case VK_FORMAT_B8G8R8A8_SRGB:
+			return SV_GFX_FORMAT_B8G8R8A8_SRGB;
+
+		default:
+			sv::log_warning("Invalid Format");
+			return SV_GFX_FORMAT_UNKNOWN;
+		}
+	}
+	constexpr VkPrimitiveTopology graphics_vulkan_parse_topology(SV_GFX_TOPOLOGY topology)
+	{
+		switch (topology)
+		{
+		case SV_GFX_TOPOLOGY_POINTS:
+			return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+		case SV_GFX_TOPOLOGY_LINES:
+			return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+		case SV_GFX_TOPOLOGY_LINE_STRIP:
+			return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+		case SV_GFX_TOPOLOGY_TRIANGLES:
+			return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		case SV_GFX_TOPOLOGY_TRIANGLE_STRIP:
+			return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+		default:
+			sv::log_warning("Unknown Topology");
+			return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		}
+	}
+	constexpr VkCullModeFlags graphics_vulkan_parse_cullmode(SV_GFX_CULL_MODE mode)
+	{
+		switch (mode)
+		{
+		case SV_GFX_CULL_NONE:
+			return VK_CULL_MODE_NONE;
+		case SV_GFX_CULL_FRONT:
+			return VK_CULL_MODE_FRONT_BIT;
+		case SV_GFX_CULL_BACK:
+			return VK_CULL_MODE_BACK_BIT;
+		case SV_GFX_CULL_FRONT_AND_BACK:
+			return VK_CULL_MODE_FRONT_AND_BACK;
+		default:
+			return VK_CULL_MODE_BACK_BIT;
+		}
+	}
+	constexpr VkAttachmentLoadOp graphics_vulkan_parse_attachment_loadop(SV_GFX_LOAD_OP op)
+	{
+		switch (op)
+		{
+		case SV_GFX_LOAD_OP_DONT_CARE:
+			return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		case SV_GFX_LOAD_OP_LOAD:
+			return VK_ATTACHMENT_LOAD_OP_LOAD;
+		case SV_GFX_LOAD_OP_CLEAR:
+			return VK_ATTACHMENT_LOAD_OP_CLEAR;
+		default:
+			return VK_ATTACHMENT_LOAD_OP_LOAD;
+		}
+	}
+	constexpr VkAttachmentStoreOp graphics_vulkan_parse_attachment_storeop(SV_GFX_STORE_OP op)
+	{
+		switch (op)
+		{
+		case SV_GFX_STORE_OP_DONT_CARE:
+			return VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		case SV_GFX_STORE_OP_STORE:
+			return VK_ATTACHMENT_STORE_OP_STORE;
+		default:
+			return VK_ATTACHMENT_STORE_OP_STORE;
+		}
+	}
+	constexpr VkImageLayout graphics_vulkan_parse_image_layout(SV_GFX_IMAGE_LAYOUT l, SV_GFX_FORMAT format = SV_GFX_FORMAT_UNKNOWN)
+	{
+		switch (l)
+		{
+		case SV_GFX_IMAGE_LAYOUT_UNDEFINED:
+			return VK_IMAGE_LAYOUT_UNDEFINED;
+
+		case SV_GFX_IMAGE_LAYOUT_DEPTH_STENCIL:
+			if (format == SV_GFX_FORMAT_UNKNOWN)	return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+			else {
+
+				if (sv::graphics_format_has_stencil(format)) {
+					return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+				}
+				return VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+			}
+
+		case SV_GFX_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY:
+			if (format == SV_GFX_FORMAT_UNKNOWN) return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+			else {
+				if (sv::graphics_format_has_stencil(format)) {
+					return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+				}
+				return VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL;
+			}
+
+		case SV_GFX_IMAGE_LAYOUT_SHADER_RESOUCE:
+			return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		case SV_GFX_IMAGE_LAYOUT_RENDER_TARGET:
+			return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		default:
+			sv::log_warning("Unknown Image Layout");
+			return VK_IMAGE_LAYOUT_GENERAL;
+		}
+	}
+
+	constexpr VkCompareOp graphics_vulkan_parse_compareop(SV_GFX_COMPARE_OP op)
+	{
+		switch (op)
+		{
+		case SV_GFX_COMPARE_OP_NEVER:
+			return VK_COMPARE_OP_NEVER;
+
+		case SV_GFX_COMPARE_OP_LESS:
+			return VK_COMPARE_OP_LESS;
+
+		case SV_GFX_COMPARE_OP_EQUAL:
+			return VK_COMPARE_OP_EQUAL;
+
+		case SV_GFX_COMPARE_OP_LESS_OR_EQUAL:
+			return VK_COMPARE_OP_LESS_OR_EQUAL;
+
+		case SV_GFX_COMPARE_OP_GREATER:
+			return VK_COMPARE_OP_GREATER;
+
+		case SV_GFX_COMPARE_OP_NOT_EQUAL:
+			return VK_COMPARE_OP_NOT_EQUAL;
+
+		case SV_GFX_COMPARE_OP_GREATER_OR_EQUAL:
+			return VK_COMPARE_OP_GREATER_OR_EQUAL;
+
+		case SV_GFX_COMPARE_OP_ALWAYS:
+			return VK_COMPARE_OP_ALWAYS;
+
+		default:
+			return VK_COMPARE_OP_NEVER;
+		}
+	}
+
+	constexpr VkStencilOp graphics_vulkan_parse_stencilop(SV_GFX_STENCIL_OP op)
+	{
+		switch (op)
+		{
+		case SV_GFX_STENCIL_OP_KEEP:
+			return VK_STENCIL_OP_KEEP;
+
+		case SV_GFX_STENCIL_OP_ZERO:
+			return VK_STENCIL_OP_ZERO;
+
+		case SV_GFX_STENCIL_OP_REPLACE:
+			return VK_STENCIL_OP_REPLACE;
+
+		case SV_GFX_STENCIL_OP_INCREMENT_AND_CLAMP:
+			return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+
+		case SV_GFX_STENCIL_OP_DECREMENT_AND_CLAMP:
+			return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
+
+		case SV_GFX_STENCIL_OP_INVERT:
+			return VK_STENCIL_OP_INVERT;
+
+		case SV_GFX_STENCIL_OP_INCREMENT_AND_WRAP:
+			return VK_STENCIL_OP_INCREMENT_AND_WRAP;
+
+		case SV_GFX_STENCIL_OP_DECREMENT_AND_WRAP:
+			return VK_STENCIL_OP_DECREMENT_AND_WRAP;
+
+		default:
+			return VK_STENCIL_OP_KEEP;
+		}
+	}
+
+	constexpr VkBlendOp graphics_vulkan_parse_blendop(SV_GFX_BLEND_OP op)
+	{
+		switch (op)
+		{
+		case SV_GFX_BLEND_OP_ADD:
+			return VK_BLEND_OP_ADD;
+
+		case SV_GFX_BLEND_OP_SUBTRACT:
+			return VK_BLEND_OP_SUBTRACT;
+
+		case SV_GFX_BLEND_OP_REVERSE_SUBTRACT:
+			return VK_BLEND_OP_REVERSE_SUBTRACT;
+
+		case SV_GFX_BLEND_OP_MIN:
+			return VK_BLEND_OP_MIN;
+
+		case SV_GFX_BLEND_OP_MAX:
+			return VK_BLEND_OP_MAX;
+
+		default:
+			return VK_BLEND_OP_ADD;
+		}
+	}
+
+	inline VkColorComponentFlags graphics_vulkan_parse_colorcomponent(sv::ColorComponentFlags f)
+	{
+		VkColorComponentFlags res = 0u;
+		if (f & SV_GFX_COLOR_COMPONENT_R) res |= VK_COLOR_COMPONENT_R_BIT;
+		if (f & SV_GFX_COLOR_COMPONENT_G) res |= VK_COLOR_COMPONENT_G_BIT;
+		if (f & SV_GFX_COLOR_COMPONENT_B) res |= VK_COLOR_COMPONENT_B_BIT;
+		if (f & SV_GFX_COLOR_COMPONENT_A) res |= VK_COLOR_COMPONENT_A_BIT;
+		return res;
+	}
+
+	constexpr VkBlendFactor graphics_vulkan_parse_blendfactor(SV_GFX_BLEND_FACTOR bf)
+	{
+		switch (bf)
+		{
+		case SV_GFX_BLEND_FACTOR_ZERO:
+			return VK_BLEND_FACTOR_ZERO;
+
+		case SV_GFX_BLEND_FACTOR_ONE:
+			return VK_BLEND_FACTOR_ONE;
+
+		case SV_GFX_BLEND_FACTOR_SRC_COLOR:
+			return VK_BLEND_FACTOR_SRC_COLOR;
+
+		case SV_GFX_BLEND_FACTOR_ONE_MINUS_SRC_COLOR:
+			return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+
+		case SV_GFX_BLEND_FACTOR_DST_COLOR:
+			return VK_BLEND_FACTOR_DST_COLOR;
+
+		case SV_GFX_BLEND_FACTOR_ONE_MINUS_DST_COLOR:
+			return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+
+		case SV_GFX_BLEND_FACTOR_SRC_ALPHA:
+			return VK_BLEND_FACTOR_SRC_ALPHA;
+
+		case SV_GFX_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA:
+			return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+
+		case SV_GFX_BLEND_FACTOR_DST_ALPHA:
+			return VK_BLEND_FACTOR_DST_ALPHA;
+
+		case SV_GFX_BLEND_FACTOR_ONE_MINUS_DST_ALPHA:
+			return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+
+		case SV_GFX_BLEND_FACTOR_CONSTANT_COLOR:
+			return VK_BLEND_FACTOR_CONSTANT_COLOR;
+
+		case SV_GFX_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR:
+			return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
+
+		case SV_GFX_BLEND_FACTOR_CONSTANT_ALPHA:
+			return VK_BLEND_FACTOR_CONSTANT_ALPHA;
+
+		case SV_GFX_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA:
+			return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA;
+
+		case SV_GFX_BLEND_FACTOR_SRC_ALPHA_SATURATE:
+			return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
+
+		case SV_GFX_BLEND_FACTOR_SRC1_COLOR:
+			return VK_BLEND_FACTOR_SRC1_COLOR;
+
+		case SV_GFX_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR:
+			return VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR;
+
+		case SV_GFX_BLEND_FACTOR_SRC1_ALPHA:
+			return VK_BLEND_FACTOR_SRC1_ALPHA;
+
+		case SV_GFX_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA:
+			return VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA;
+
+		default:
+			return VK_BLEND_FACTOR_ZERO;
+		}
+	}
+
+	constexpr VkIndexType graphics_vulkan_parse_indextype(SV_GFX_INDEX_TYPE t)
+	{
+		switch (t)
+		{
+		case SV_GFX_INDEX_TYPE_16_BITS:
+			return VK_INDEX_TYPE_UINT16;
+		case SV_GFX_INDEX_TYPE_32_BITS:
+			return VK_INDEX_TYPE_UINT32;
+		default:
+			return VK_INDEX_TYPE_UINT16;
+		}
+	}
+
+	constexpr VkShaderStageFlags graphics_vulkan_parse_shadertype(SV_GFX_SHADER_TYPE t)
+	{
+		switch (t)
+		{
+		case SV_GFX_SHADER_TYPE_VERTEX:
+			return VK_SHADER_STAGE_VERTEX_BIT;
+		case SV_GFX_SHADER_TYPE_PIXEL:
+			return VK_SHADER_STAGE_FRAGMENT_BIT;
+		case SV_GFX_SHADER_TYPE_GEOMETRY:
+			return VK_SHADER_STAGE_GEOMETRY_BIT;
+		case SV_GFX_SHADER_TYPE_HULL:
+			return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+		case SV_GFX_SHADER_TYPE_DOMAIN:
+			return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+		case SV_GFX_SHADER_TYPE_COMPUTE:
+			return VK_SHADER_STAGE_COMPUTE_BIT;
+		default:
+			return VK_SHADER_STAGE_VERTEX_BIT;
+		}
+	}
+
+	constexpr SV_GFX_SHADER_TYPE graphics_vulkan_parse_shadertype(VkShaderStageFlags t)
+	{
+		switch (t)
+		{
+		case VK_SHADER_STAGE_VERTEX_BIT:
+			return SV_GFX_SHADER_TYPE_VERTEX;
+		case VK_SHADER_STAGE_FRAGMENT_BIT:
+			return SV_GFX_SHADER_TYPE_PIXEL;
+		case VK_SHADER_STAGE_GEOMETRY_BIT:
+			return SV_GFX_SHADER_TYPE_GEOMETRY;
+		case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
+			return SV_GFX_SHADER_TYPE_HULL;
+		case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
+			return SV_GFX_SHADER_TYPE_DOMAIN;
+		case VK_SHADER_STAGE_COMPUTE_BIT:
+			return SV_GFX_SHADER_TYPE_COMPUTE;
+		default:
+			return SV_GFX_SHADER_TYPE_VERTEX;
+		}
+	}
+
+	constexpr VkFilter graphics_vulkan_parse_filter(SV_GFX_FILTER f)
+	{
+		switch (f)
+		{
+		case SV_GFX_FILTER_NEAREST:
+			return VK_FILTER_NEAREST;
+		case SV_GFX_FILTER_LINEAR:
+			return VK_FILTER_LINEAR;
+		default:
+			return VK_FILTER_NEAREST;
+		}
+	}
+
+	constexpr VkSamplerAddressMode graphics_vulkan_parse_addressmode(SV_GFX_ADDRESS_MODE m)
+	{
+		switch (m)
+		{
+		case SV_GFX_ADDRESS_MODE_WRAP:
+			return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		case SV_GFX_ADDRESS_MODE_MIRROR:
+			return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+		case SV_GFX_ADDRESS_MODE_CLAMP:
+			return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		case SV_GFX_ADDRESS_MODE_BORDER:
+			return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+		default:
+			return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		}
+	}
+
+	inline VkAccessFlags graphics_vulkan_access_from_image_layout(SV_GFX_IMAGE_LAYOUT layout)
+	{
+		VkAccessFlags flags = 0u;
+
+		switch (layout)
+		{
+		case SV_GFX_IMAGE_LAYOUT_UNDEFINED:
+			break;
+		case SV_GFX_IMAGE_LAYOUT_GENERAL:
+			flags |= VK_ACCESS_SHADER_WRITE_BIT;
+			flags |= VK_ACCESS_SHADER_READ_BIT;
+			break;
+		case SV_GFX_IMAGE_LAYOUT_RENDER_TARGET:
+			flags |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			break;
+		case SV_GFX_IMAGE_LAYOUT_DEPTH_STENCIL:
+			flags |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			break;
+		case SV_GFX_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY:
+			flags |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+			break;
+		case SV_GFX_IMAGE_LAYOUT_SHADER_RESOUCE:
+			flags |= VK_ACCESS_SHADER_READ_BIT;
+			break;
+		default:
+			sv::log_warning("Undefined Image Layout");
+			break;
+		}
+
+		return flags;
+	}
+
+	inline VkPipelineStageFlags graphics_vulkan_stage_from_image_layout(SV_GFX_IMAGE_LAYOUT layout)
+	{
+		VkPipelineStageFlags flags = 0u;
+
+		switch (layout)
+		{
+		case SV_GFX_IMAGE_LAYOUT_UNDEFINED:
+			flags |= VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+			break;
+		case SV_GFX_IMAGE_LAYOUT_RENDER_TARGET:
+			flags |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			break;
+		case SV_GFX_IMAGE_LAYOUT_DEPTH_STENCIL:
+			flags |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+			break;
+		case SV_GFX_IMAGE_LAYOUT_GENERAL:
+		case SV_GFX_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY:
+		case SV_GFX_IMAGE_LAYOUT_SHADER_RESOUCE:
+			flags |= VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
+			flags |= VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+			break;
+		default:
+			sv::log_warning("Undefined Image Layout");
+			break;
+		}
+
+		return flags;
+	}
+
+	inline VkPipelineStageFlags graphics_vulkan_aspect_from_image_layout(SV_GFX_IMAGE_LAYOUT layout, SV_GFX_FORMAT format = SV_GFX_FORMAT_UNKNOWN)
+	{
+		VkImageAspectFlags flags = 0u;
+
+		switch (layout)
+		{
+		case SV_GFX_IMAGE_LAYOUT_UNDEFINED:
+		case SV_GFX_IMAGE_LAYOUT_GENERAL:
+			flags |= VK_IMAGE_ASPECT_COLOR_BIT;
+			break;
+		case SV_GFX_IMAGE_LAYOUT_RENDER_TARGET:
+		case SV_GFX_IMAGE_LAYOUT_SHADER_RESOUCE:
+			flags |= VK_IMAGE_ASPECT_COLOR_BIT;
+			break;
+		case SV_GFX_IMAGE_LAYOUT_DEPTH_STENCIL:
+		case SV_GFX_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY:
+
+			flags |= VK_IMAGE_ASPECT_DEPTH_BIT;
+
+			if (format == SV_GFX_FORMAT_UNKNOWN || sv::graphics_format_has_stencil(format)) {
+				flags |= VK_IMAGE_ASPECT_STENCIL_BIT;
+			}
+			break;
+		default:
+			sv::log_warning("Undefined Image Layout");
+			break;
+		}
+
+		return flags;
+	}
+
+}

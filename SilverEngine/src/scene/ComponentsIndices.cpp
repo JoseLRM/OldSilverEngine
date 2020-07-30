@@ -2,7 +2,7 @@
 
 #include "ComponentsIndices.h"
 
-namespace SV {
+namespace sv {
 
 	void ComponentsIndices::AddIndex(CompID ID, size_t index)
 	{
@@ -18,8 +18,6 @@ namespace SV {
 			}
 		}
 	}
-
-#define BINARY_SEARCH 1
 
 	bool ComponentsIndices::GetIndex(CompID ID, size_t& index) const
 	{

@@ -1,0 +1,1 @@
+vk:shaders/spv/Sprite.frag

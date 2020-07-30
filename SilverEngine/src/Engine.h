@@ -1,12 +1,13 @@
 #pragma once
 
 #include "core.h"
-#include "Input.h"
-#include "renderer/Renderer.h"
-#include "Application.h"
-#include "StateManager.h"
 #include "utils/Version.h"
-#include "graphics/Window.h"
+#include "Application.h"
+#include "engine_input.h"
+#include "engine_state.h"
+#include "renderer/Renderer.h"
+#include "platform/Window.h"
+#include "graphics/Graphics.h"
 
 ///////////////////Initialization Parameters////////////////////////////////
 
@@ -19,18 +20,15 @@ struct SV_ENGINE_INITIALIZATION_DESC {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-namespace SV {
+namespace sv {
 
-	namespace Engine {
+	bool engine_initialize(Application* app, const SV_ENGINE_INITIALIZATION_DESC* desc);
+	bool engine_loop();
+	bool engine_close();
 
-		bool Initialize(Application* app, const SV_ENGINE_INITIALIZATION_DESC* desc = nullptr);
-		bool Loop();
-		bool Close();
+	Version	engine_version_get() noexcept;
+	float engine_deltatime_get() noexcept;
 
-		Application&	GetApplication()	noexcept;
-		SV::Version		GetVersion()		noexcept;
-		float			GetDeltaTime()		noexcept;
-
-	}
+	Application& application_get()	noexcept;
 
 }

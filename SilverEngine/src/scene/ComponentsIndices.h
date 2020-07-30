@@ -3,7 +3,7 @@
 #include "..//core.h"
 #include "SceneTypes.h"
 
-namespace SV {
+namespace sv {
 
 	class ComponentsIndices {
 		std::vector<std::pair<CompID, size_t>> m_Indices;

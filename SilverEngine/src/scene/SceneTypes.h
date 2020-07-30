@@ -2,7 +2,7 @@
 
 #include "..//core.h"
 
-namespace SV {
+namespace sv {
 
 	class Scene;
 	struct BaseComponent;
@@ -10,7 +10,7 @@ namespace SV {
 	typedef ui16 CompID;
 	typedef ui32 Entity;
 
-	typedef void(*CreateComponentFunction)(BaseComponent*, SV::Entity);
+	typedef void(*CreateComponentFunction)(BaseComponent*, Entity);
 	typedef void(*DestoryComponentFunction)(BaseComponent*);
 	typedef void(*MoveComponentFunction)(BaseComponent* from, BaseComponent* to);
 	typedef void(*CopyComponentFunction)(BaseComponent* from, BaseComponent* to);
@@ -19,7 +19,7 @@ namespace SV {
 
 }
 
-constexpr SV::Entity SV_INVALID_ENTITY = 0u;
+constexpr sv::Entity SV_INVALID_ENTITY = 0u;
 
 enum SV_ECS_SYSTEM_EXECUTION_MODE : ui8 {
 	SV_ECS_SYSTEM_EXECUTION_MODE_SAFE,
@@ -28,10 +28,10 @@ enum SV_ECS_SYSTEM_EXECUTION_MODE : ui8 {
 };
 
 struct SV_ECS_SYSTEM_DESC {
-	SV::SystemFunction					system;
+	sv::SystemFunction					system;
 	SV_ECS_SYSTEM_EXECUTION_MODE		executionMode;
-	SV::CompID* pRequestedComponents;
+	sv::CompID* pRequestedComponents;
 	ui32								requestedComponentsCount;
-	SV::CompID* pOptionalComponents;
+	sv::CompID* pOptionalComponents;
 	ui32								optionalComponentsCount;
 };

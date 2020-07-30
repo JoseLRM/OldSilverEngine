@@ -2,7 +2,7 @@
 
 #include "core.h"
 
-namespace SV {
+namespace sv {
 
 	class Application {
 

@@ -18,6 +18,7 @@ constexpr const char* SV_SRC_PATH = "../SilverEngine/";
 #define SV_GFX_SCISSOR_COUNT 16
 #define SV_GFX_INPUT_SLOT_COUNT 16
 #define SV_GFX_INPUT_ELEMENT_COUNT 16
+#define SV_GFX_BARRIER_COUNT 8
 
 #define SV_GFX_RENDER_TARGET_ATT_COUNT 8
 #define SV_GFX_ATTACHMENTS_COUNT (SV_GFX_RENDER_TARGET_ATT_COUNT + 1)
@@ -30,3 +31,7 @@ constexpr const char* SV_SRC_PATH = "../SilverEngine/";
 
 #define SV_ECS_MAX_COMPONENTS 128
 #define SV_ECS_REQUEST_COMPONENTS_COUNT 16
+
+// Renderer
+
+#define SV_REND_LAYER_BATCH_COUNT 10000

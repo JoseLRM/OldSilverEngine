@@ -2,7 +2,7 @@
 
 #include "core.h"
 
-namespace SV {
+namespace sv {
 
 	struct Version {
 		ui32 major = 0u;

@@ -3,6 +3,8 @@
 
 #include "src/scene/Scene.h"
 #include "src/core.h"
-#include "src/Engine.h"
+#include "src/engine.h"
+
+#include "src/renderer/renderer.h"
 
 #endif

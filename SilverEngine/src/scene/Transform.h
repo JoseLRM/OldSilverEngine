@@ -3,29 +3,29 @@
 #include "..//core.h"
 #include "SceneTypes.h"
 
-namespace SV {
+namespace _sv {
 
-	namespace _internal {
+	struct EntityTransform {
+		XMFLOAT3 localPosition = { 0.f, 0.f, 0.f };
+		XMFLOAT3 localRotation = { 0.f, 0.f, 0.f };
+		XMFLOAT3 localScale = { 1.f, 1.f, 1.f };
 
-		struct EntityTransform {
-			XMFLOAT3 localPosition = { 0.f, 0.f, 0.f };
-			XMFLOAT3 localRotation = { 0.f, 0.f, 0.f };
-			XMFLOAT3 localScale = { 1.f, 1.f, 1.f };
+		XMFLOAT4X4 worldMatrix;
 
-			XMFLOAT4X4 worldMatrix;
+		bool modified = true;
+	};
 
-			bool modified = true;
-		};
+}
 
-	}
+namespace sv {
 
 	class Transform {
 		
-		_internal::EntityTransform* trans;
+		_sv::EntityTransform* trans;
 		Scene* scene;
 
 	public:
-		Transform(SV::Entity entity, _internal::EntityTransform* transform, Scene* pScene);
+		Transform(Entity entity, _sv::EntityTransform* transform, Scene* pScene);
 		~Transform() = default;
 
 		Transform(const Transform& other) = default;

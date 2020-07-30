@@ -1,6 +1,6 @@
 #include "GameState.h"
 
-class Loading : public SV::LoadingState {
+class Loading : public sv::LoadingState {
 
 public:
 
@@ -28,100 +28,160 @@ public:
 
 };
 
-SV_COMPONENT(TestComponent) {
-	ui32 data;
-	TestComponent() = default;
-	TestComponent(ui32 d) : data(d) {}
-};
-
-SV_COMPONENT(PeneComponent) {
-	SV::Entity data;
-	PeneComponent() = default;
-	PeneComponent(SV::Entity e) : data(e) {}
-};
-
-class Application : public SV::Application
+void System(sv::Scene& scene, sv::Entity entity, sv::BaseComponent** comp, float dt)
 {
-	SV::OrthographicCamera camera;
-	SV::Scene scene;
+	sv::SpriteComponent& sprComp = *reinterpret_cast<sv::SpriteComponent*>(comp[0]);
+	sv::Transform trans = scene.GetTransform(entity);
+	sv::vec3 rot = trans.GetLocalRotation();
+
+	ui32 type = entity % 3;
+	
+	switch (type)
+	{
+	case 0:
+		rot.z += dt * ToRadians(5.f);
+		break;
+	case 1:
+		rot.z -= dt * ToRadians(50.f);
+		break;
+	case 2:
+		rot.z += dt * ToRadians(180.f);
+		break;
+	}
+
+	trans.SetRotation(rot);
+
+}
+
+class Application : public sv::Application
+{
+	sv::OrthographicCamera camera;
+	sv::Scene scene;
+	sv::Entity entity;
 
 public:
-	void Initialize() override
+
+	void createEntities()
 	{
-		SV::StateManager::LoadState(new GameState(), new Loading());
-		scene.Initialize();
-
 		constexpr ui32 count = 1000;
-		constexpr ui32 childsCount = 10;
+		sv::Entity entities[count];
 
-		SV::Entity entities[count];
-
-		scene.CreateEntities(count, SV_INVALID_ENTITY, entities);
+		scene.CreateEntities(count, 0u, entities);
+		scene.AddComponents<sv::SpriteComponent>(entities, count, SV_COLOR_BLUE);
 
 		for (ui32 i = 0; i < count; ++i) {
-			SV::Entity childs[childsCount];
-			scene.CreateEntities(childsCount, entities[i], childs);
-			scene.AddComponents<PeneComponent>(childs, childsCount, entities[i]);
-		}
+			sv::Transform trans = scene.GetTransform(entities[i]);
+			sv::SpriteComponent& sprComp = *scene.GetComponent<sv::SpriteComponent>(entities[i]);
 
-		scene.AddComponents<TestComponent>(entities, count);
+			sv::vec3 pos;
+			pos.x = (float(rand()) / RAND_MAX) * 800.f - 400.f;
+			pos.y = (float(rand()) / RAND_MAX) * 400.f - 200.f;
+
+			sv::vec3 scale;
+			scale.x = (float(rand()) / RAND_MAX) + 0.1f;
+			scale.y = (float(rand()) / RAND_MAX) + 0.1f;
+
+			sv::vec3 rot;
+			rot.z = ToRadians((float(rand()) / RAND_MAX) * 360.f);
+
+			sprComp.color.x = ui8((float(rand()) / RAND_MAX) * 255.f);
+			sprComp.color.y = ui8((float(rand()) / RAND_MAX) * 255.f);
+			sprComp.color.z = ui8((float(rand()) / RAND_MAX) * 255.f);
+			sprComp.color.w = 255u;
+
+			trans.SetPosition(pos);
+			trans.SetScale(scale);
+			trans.SetRotation(rot);
+
+		}
+	}
+
+	void Initialize() override
+	{
+		sv::engine_state_load(new GameState(), new Loading());
+		scene.Initialize();
+
+		entity = scene.CreateEntity();
+		scene.AddComponent<sv::SpriteComponent>(entity, SV_COLOR_RED);
+
+		
 	}
 
 	void Update(float dt) override
 	{
-		SV::CompID requestedComponents[] = {
-			TestComponent::ID
+		camera.Adjust();
+
+		sv::vec2 dir;
+		float dirZoom = 0u;
+		float add = 7.f * dt * camera.GetZoom() * 0.05f;
+		float addZoom = dt * 10.f * (camera.GetZoom()*0.05f);
+
+		if (sv::input_key('W')) {
+			dir.y += add;
+		}
+		if (sv::input_key('S')) {
+			dir.y -= add;
+		}
+		if (sv::input_key('D')) {
+			dir.x += add;
+		}
+		if (sv::input_key('A')) {
+			dir.x -= add;
+		}
+		if (sv::input_key(SV_KEY_SPACE)) {
+			dirZoom += addZoom;
+		}
+		if (sv::input_key(SV_KEY_SHIFT)) {
+			dirZoom -= addZoom;
+		}
+		camera.SetZoom(camera.GetZoom() + dirZoom);
+		camera.SetPosition(camera.GetPosition() + dir);
+
+
+		sv::Transform trans = scene.GetTransform(entity);
+		sv::vec3 rot = trans.GetLocalRotation();
+
+		if (sv::input_key('I')) {
+			rot.x += dt * 2.f;
+		}
+		if (sv::input_key('O')) {
+			rot.y += dt * 2.f;
+		}
+		if (sv::input_key('P')) {
+			rot.z += dt * 2.f;
+		}
+
+		trans.SetRotation(rot);
+
+
+		if (sv::input_mouse_pressed(SV_MOUSE_LEFT)) {
+			createEntities();
+			sv::log("Entities: %u", scene.GetEntityList().size());
+		}
+
+		sv::CompID req[] = {
+			sv::SpriteComponent::ID
 		};
-		SV::CompID optionalComponents[] = {
-			PeneComponent::ID
-		};
+		SV_ECS_SYSTEM_DESC system;
 		
-		SV_ECS_SYSTEM_DESC desc[1];
-		if(SV::Engine::IsMouse(SV_MOUSE_LEFT))
-			desc[0].executionMode = SV_ECS_SYSTEM_EXECUTION_MODE_MULTITHREADED;
-		else
-			desc[0].executionMode = SV_ECS_SYSTEM_EXECUTION_MODE_SAFE;
-		desc[0].pRequestedComponents = requestedComponents;
-		desc[0].pOptionalComponents = optionalComponents;
-		desc[0].requestedComponentsCount = 1u;
-		desc[0].optionalComponentsCount = 0u;
-
-		desc[0].system = [](SV::Scene& scene, SV::Entity entity, SV::BaseComponent** comp, float dt) {
-			TestComponent* testComp = reinterpret_cast<TestComponent*>(comp[0]);
-			//SV::Log("1-> Entity %u: %u", entity, testComp->data);
-
-			SV::Transform trans = scene.GetTransform(entity);
-			SV::vec3 p = trans.GetLocalPosition();
-			p.x += dt;
-			p.z -= dt * 2.f;
-
-			trans.SetPosition(p);
-
-			// Get Childs
-			SV::Entity const* childs;
-			ui32 childsCount;
-			scene.GetEntityChilds(entity, &childs, &childsCount);
-
-			for (ui32 i = 0; i < childsCount; ++i) {
-				SV::Transform childTrans = scene.GetTransform(childs[i]);
-
-				SV::vec3 pos = childTrans.GetWorldPosition();
-				//SV::Log("Position: %f %f %f", pos.x, pos.y, pos.z);
-
-				
-			}
-		};
-
-		//SV::LogSeparator();
-		scene.ExecuteSystems(desc, 1u, dt);
-
+		system.executionMode = SV_ECS_SYSTEM_EXECUTION_MODE_SAFE;
+		system.optionalComponentsCount = 0u;
+		system.requestedComponentsCount = 1u;
+		system.system = System;
+		system.pRequestedComponents = req;
+		if (sv::input_mouse(SV_MOUSE_RIGHT))
+			scene.ExecuteSystems(&system, 1u, dt);
 	}
 	void Render() override
 	{
+		sv::renderer_scene_begin();
+		sv::renderer_draw_scene(scene);
+		sv::renderer_scene_end();
+
+		sv::renderer_present(camera);
 	}
 	void Close() override
 	{
-		
 	}
 };
 
@@ -136,13 +196,13 @@ int main()
 	desc.windowDesc.y = 200u;
 	desc.windowDesc.width = 1280u;
 	desc.windowDesc.height = 720;
-	desc.windowDesc.title = L"SilverEngineTest";
+	desc.windowDesc.title = L"SilverEngine";
 	desc.showConsole = true;
 	desc.minThreadsCount = 2u;
 
-	SV::Engine::Initialize(&app, &desc);
-	while (SV::Engine::Loop());
-	SV::Engine::Close();
+	sv::engine_initialize(&app, &desc);
+	while (sv::engine_loop());
+	sv::engine_close();
 
 	system("PAUSE");
 	return 0;

@@ -2,9 +2,11 @@
 
 #include "Scene.h"
 
-namespace SV {
+using namespace _sv;
 
-	Transform::Transform(SV::Entity entity, _internal::EntityTransform* transform, SV::Scene* pScene)
+namespace sv {
+
+	Transform::Transform(Entity entity, EntityTransform* transform, Scene* pScene)
 		: entity(entity), trans(transform), scene(pScene) {}
 	void Transform::operator=(const Transform& other)
 	{
@@ -14,13 +16,15 @@ namespace SV {
 	XMMATRIX Transform::GetLocalMatrix() const noexcept
 	{
 		return XMMatrixScalingFromVector(GetLocalScaleDXV()) * XMMatrixRotationRollPitchYawFromVector(XMVectorSet(trans->localRotation.x, trans->localRotation.y, trans->localRotation.z, 1.f))
-			* XMMatrixTranslationFromVector(GetLocalPositionDXV());
+			* XMMatrixTranslation(trans->localPosition.x, -trans->localPosition.y, trans->localPosition.z);
 	}
 
 	vec3 Transform::GetWorldPosition() noexcept
 	{
 		if (trans->modified) UpdateWorldMatrix();
-		return *(vec3*)& trans->worldMatrix._41;
+		vec3 pos = *(vec3*)& trans->worldMatrix._41;
+		pos.y = -pos.y;
+		return pos;
 	}
 	vec3 Transform::GetWorldRotation() noexcept
 	{
@@ -98,7 +102,7 @@ namespace SV {
 		Entity parent = entityData.parent;
 
 		if (parent != SV_INVALID_ENTITY) {
-			SV::Transform parentTransform(parent, &list[parent].transform, scene);
+			Transform parentTransform(parent, &list[parent].transform, scene);
 			XMMATRIX mp = parentTransform.GetWorldMatrix();
 			m = m * mp;
 		}
