@@ -380,6 +380,11 @@ namespace sv {
 		return g_Device->BeginCommandList();
 	}
 
+	void graphics_gpu_wait()
+	{
+		g_Device->WaitGPU();
+	}
+
 	void graphics_state_reset()
 	{
 	}

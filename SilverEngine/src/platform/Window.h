@@ -8,6 +8,7 @@ struct SV_WINDOW_INITIALIZATION_DESC
 {
 	ui32 width, height, x, y;
 	const wchar* title;
+	bool fullscreen;
 };
 
 namespace _sv {
@@ -31,5 +32,8 @@ namespace sv {
 	ui32 window_get_height() noexcept;
 	float window_get_aspect() noexcept;
 	bool window_is_resized() noexcept;
+
+	bool window_fullscreen_get();
+	void window_fullscreen_set(bool fullscreen);
 
 }

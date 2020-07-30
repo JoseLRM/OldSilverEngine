@@ -1989,6 +1989,11 @@ namespace _sv {
 		return *reinterpret_cast<Image*>(&m_SwapChain.backBufferImage);
 	}
 
+	void Graphics_vk::WaitGPU()
+	{
+		vkAssert(vkDeviceWaitIdle(m_Device));
+	}
+
 	void Graphics_vk::BeginFrame()
 	{
 		Frame& frame = GetFrame();

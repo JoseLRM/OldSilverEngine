@@ -17,8 +17,10 @@ namespace sv {
 
 		void PeekMessages();
 
-		WindowHandle CreateWindowWindows(const wchar* title, ui32 xPos, ui32 yPos, ui32 width, ui32 height);
+		WindowHandle CreateWindowWindows(const wchar* title, ui32 xPos, ui32 yPos, ui32 width, ui32 height, bool fullscreen);
 		BOOL CloseWindowWindows(WindowHandle hWnd);
+
+		void SetFullscreen(bool fullscreen);
 		
 	};
 

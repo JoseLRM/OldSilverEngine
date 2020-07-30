@@ -217,6 +217,9 @@ public:
 		system.pRequestedComponents = req;
 		if (sv::input_mouse(SV_MOUSE_RIGHT))
 			scene.ExecuteSystems(&system, 1u, dt);
+
+		if (sv::input_key_pressed(SV_KEY_ESCAPE)) sv::engine_request_close();
+		if (sv::input_key_pressed('F')) sv::window_fullscreen_set(!sv::window_fullscreen_get());
 	}
 	void Render() override
 	{
@@ -236,12 +239,13 @@ int main()
 	Application app;
 
 	SV_ENGINE_INITIALIZATION_DESC desc;
-	desc.rendererDesc.resolutionWidth = 1280u;
-	desc.rendererDesc.resolutionHeight = 720;
+	desc.rendererDesc.resolutionWidth = 1920u;
+	desc.rendererDesc.resolutionHeight = 1080u;
 	desc.windowDesc.x = 200u;
 	desc.windowDesc.y = 200u;
 	desc.windowDesc.width = 1280u;
 	desc.windowDesc.height = 720;
+	desc.windowDesc.fullscreen = false;
 	desc.windowDesc.title = L"SilverEngine";
 	desc.showConsole = true;
 	desc.minThreadsCount = 2u;

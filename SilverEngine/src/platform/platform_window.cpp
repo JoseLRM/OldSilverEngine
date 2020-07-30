@@ -10,6 +10,9 @@
 #undef CreateWindow
 #undef CallWindowProc
 
+#define SV_STYLE_WINDOWED WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_SIZEBOX | WS_VISIBLE
+#define SV_STYLE_FULLSCREEN WS_POPUP | WS_VISIBLE
+
 namespace sv {
 
 	inline HWND ToHWND(WindowHandle wnd)
@@ -19,6 +22,14 @@ namespace sv {
 	inline WindowHandle ToSVWH(HWND wnd)
 	{
 		return reinterpret_cast<WindowHandle>(wnd);
+	}
+
+	uvec2 GetMonitorResolution()
+	{
+		HWND desktop = GetDesktopWindow();
+		RECT rect;
+		GetWindowRect(desktop, &rect);
+		return { ui32(rect.right), ui32(rect.bottom) };
 	}
 
 	LRESULT CALLBACK WindowProcFn(HWND hWnd, ui32 msg, WPARAM wParam, LPARAM lParam)
@@ -217,14 +228,29 @@ namespace sv {
 		}
 	}
 
-	WindowHandle Window_wnd::CreateWindowWindows(const wchar* title, ui32 x, ui32 y, ui32 width, ui32 height)
+	WindowHandle Window_wnd::CreateWindowWindows(const wchar* title, ui32 x, ui32 y, ui32 width, ui32 height, bool fullscreen)
 	{
 		if (!RegisterWindowClass()) {
 			sv::log_error("Can't Register Window Class");
 			return 0;
 		}
 
-		DWORD style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_SIZEBOX | WS_VISIBLE;
+		DWORD style;
+		if (fullscreen) {
+			style = SV_STYLE_FULLSCREEN;
+
+			x = 0u;
+			y = 0u;
+			uvec2 res = GetMonitorResolution();
+			width = res.x;
+			height = res.y;
+
+			_sv::window_set_position(0, 0);
+			_sv::window_set_size(width, height);
+		}
+		else {
+			style = SV_STYLE_WINDOWED;
+		}
 
 		int w = width, h = height;
 		AdjustWindow(x, y, w, h, style);
@@ -239,6 +265,14 @@ namespace sv {
 	BOOL Window_wnd::CloseWindowWindows(WindowHandle hWnd)
 	{
 		return CloseWindow(ToHWND(hWnd));
+	}
+
+	void Window_wnd::SetFullscreen(bool fullscreen)
+	{
+		DWORD style = fullscreen ? SV_STYLE_FULLSCREEN : SV_STYLE_WINDOWED;
+		SetWindowLongPtrW((HWND)sv::window_get_handle(), GWL_STYLE, (LONG_PTR)style);
+		uvec2 size = fullscreen ? GetMonitorResolution() : GetMonitorResolution() / 2u;
+		SetWindowPos((HWND)sv::window_get_handle(), 0, 0, 0, size.x, size.y, 0);
 	}
 
 }

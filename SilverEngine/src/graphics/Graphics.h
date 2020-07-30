@@ -198,6 +198,7 @@ namespace _sv {
 
 		virtual void ResizeSwapChain() = 0;
 		virtual sv::Image& AcquireSwapChainImage() = 0;
+		virtual void WaitGPU() = 0;
 
 		virtual void BeginFrame() = 0;
 		virtual void SubmitCommandLists() = 0;
@@ -254,6 +255,8 @@ namespace sv {
 	bool graphics_destroy(Primitive& primitive);
 
 	CommandList graphics_commandlist_begin();
+
+	void graphics_gpu_wait();
 
 	// State Methods
 

@@ -12,6 +12,8 @@ namespace _sv {
 
 	static float g_X, g_Y, g_Width, g_Height;
 	static bool g_Resized = false;
+	static bool g_Fullscreen;
+	static bool g_ChangeFullscreen = false;
 
 #ifdef SV_PLATFORM_WINDOWS
 	static Window_wnd platform;
@@ -26,8 +28,11 @@ namespace _sv {
 		g_Y = desc.y;
 		g_Width = desc.width;
 		g_Height = desc.height;
+		g_Fullscreen = desc.fullscreen;
 
-		g_WindowHandle = platform.CreateWindowWindows(desc.title, g_X, g_Y, g_Width, g_Height);
+#ifdef SV_PLATFORM_WINDOWS
+		g_WindowHandle = platform.CreateWindowWindows(desc.title, g_X, g_Y, g_Width, g_Height, desc.fullscreen);
+#endif
 
 		if (g_WindowHandle == 0) {
 			sv::log_error("Error creating Window class");
@@ -44,6 +49,14 @@ namespace _sv {
 	void window_update()
 	{
 		g_Resized = false;
+
+		if (g_ChangeFullscreen) {
+			graphics_gpu_wait();
+			g_Fullscreen = !g_Fullscreen;
+			platform.SetFullscreen(g_Fullscreen);
+			g_ChangeFullscreen = false;
+		}
+
 		platform.PeekMessages();
 		if (g_Resized) {
 			_sv::graphics_swapchain_resize();
@@ -78,5 +91,15 @@ namespace sv {
 	ui32 window_get_height() noexcept { return g_Height; }
 	float window_get_aspect() noexcept { return float(g_Width) / float(g_Height); }
 	bool window_is_resized() noexcept { return g_Resized; }
+
+	bool window_fullscreen_get()
+	{
+		return g_Fullscreen;
+	}
+
+	void window_fullscreen_set(bool fullscreen)
+	{
+		g_ChangeFullscreen = g_Fullscreen != fullscreen;
+	}
 	
 }

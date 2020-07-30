@@ -244,6 +244,7 @@ namespace _sv {
 
 		void ResizeSwapChain() override;
 		sv::Image& AcquireSwapChainImage() override;
+		void WaitGPU() override;
 
 		void BeginFrame() override;
 		void SubmitCommandLists() override;
