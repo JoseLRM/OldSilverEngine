@@ -13,6 +13,15 @@ enum SV_REND_SORT_MODE : ui8 {
 
 namespace _sv {
 
+	struct Offscreen {
+		sv::Image renderTarget;
+		sv::Image depthStencil;
+		inline sv::Viewport GetViewport() const noexcept { return renderTarget->GetViewport(); }
+		inline sv::Scissor GetScissor() const noexcept { return renderTarget->GetScissor(); }
+		inline ui32 GetWidth() const noexcept { return renderTarget->GetWidth(); }
+		inline ui32 GetHeight() const noexcept { return renderTarget->GetHeight(); }
+	};
+
 	struct SpriteInstance {
 		XMMATRIX tm;
 		sv::Sprite sprite;
@@ -31,6 +40,17 @@ namespace _sv {
 		{
 			sprites.Reset();
 		}
+	};
+
+	struct DrawData {
+
+		sv::Camera* pCamera;
+		XMMATRIX	viewMatrix;
+		XMMATRIX	projectionMatrix;
+		XMMATRIX	viewProjectionMatrix;
+
+		Offscreen* pOutput;
+
 	};
 
 }

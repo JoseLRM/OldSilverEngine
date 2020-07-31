@@ -141,7 +141,6 @@
     <ClInclude Include="src\platform\window.h" />
     <ClInclude Include="src\platform\windows\windows_impl.h" />
     <ClInclude Include="src\renderer\Camera.h" />
-    <ClInclude Include="src\renderer\DrawData.h" />
     <ClInclude Include="src\renderer\renderer.h" />
     <ClInclude Include="src\renderer\renderer_components.h" />
     <ClInclude Include="src\renderer\renderer_desc.h" />

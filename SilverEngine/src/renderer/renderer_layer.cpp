@@ -4,7 +4,6 @@
 #include "graphics/graphics_properties.h"
 #include "renderer.h"
 #include "renderer_components.h"
-#include "DrawData.h"
 
 using namespace sv;
 
@@ -57,9 +56,6 @@ namespace _sv {
 		// Create Default RenderLayer
 		g_DefRenderLayer = reinterpret_cast<RenderLayer*>(renderer_layer_create(0, SV_REND_SORT_MODE_NONE));
 
-		// Get Renderer offscreen
-		sv::Image& offscreen = renderer_offscreen_get();
-
 		// Sprite Buffers
 		{
 			SV_GFX_BUFFER_DESC desc;
@@ -105,7 +101,7 @@ namespace _sv {
 			att.storeOp = SV_GFX_STORE_OP_STORE;
 			att.stencilLoadOp = SV_GFX_LOAD_OP_DONT_CARE;
 			att.stencilStoreOp = SV_GFX_STORE_OP_DONT_CARE;
-			att.format = offscreen->GetFormat();
+			att.format = SV_REND_OFFSCREEN_FORMAT;
 			att.initialLayout = SV_GFX_IMAGE_LAYOUT_RENDER_TARGET;
 			att.layout = SV_GFX_IMAGE_LAYOUT_RENDER_TARGET;
 			att.finalLayout = SV_GFX_IMAGE_LAYOUT_RENDER_TARGET;
@@ -283,7 +279,7 @@ namespace _sv {
 		// TODO: frustum culling
 
 		Image* att[] = {
-			drawData.pOutput
+			&drawData.pOutput->renderTarget
 		};
 
 		bool firstRenderPass = true;

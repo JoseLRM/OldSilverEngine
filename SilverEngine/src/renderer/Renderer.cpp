@@ -3,7 +3,6 @@
 
 #include "renderer_components.h"
 #include "graphics/graphics_properties.h"
-#include "DrawData.h"
 
 using namespace sv;
 
@@ -11,7 +10,7 @@ namespace _sv {
 
 	static uvec2 g_Resolution;
 	
-	static Image					g_Offscreen;
+	static Offscreen				g_Offscreen;
 	static PostProcessing_Default	g_PP_OffscreenToBackBuffer;
 
 	static DrawData	g_DrawData;
@@ -25,22 +24,8 @@ namespace _sv {
 		//Image& backBuffer = graphics_swapchain_get_image();
 
 		// Create Offscreen
-		{
-			SV_GFX_IMAGE_DESC imageDesc;
-			imageDesc.format = SV_GFX_FORMAT_R8G8B8A8_UNORM;
-			imageDesc.layout = SV_GFX_IMAGE_LAYOUT_SHADER_RESOUCE;
-			imageDesc.dimension = 2u;
-			imageDesc.width = g_Resolution.x;
-			imageDesc.height = g_Resolution.y;
-			imageDesc.depth = 1u;
-			imageDesc.layers = 1u;
-			imageDesc.CPUAccess = 0u;
-			imageDesc.usage = SV_GFX_USAGE_STATIC;
-			imageDesc.pData = nullptr;
-			imageDesc.type = SV_GFX_IMAGE_TYPE_RENDER_TARGET | SV_GFX_IMAGE_TYPE_SHADER_RESOURCE;
+		svCheck(renderer_offscreen_create(g_Resolution.x, g_Resolution.y, g_Offscreen));
 
-			svCheck(graphics_image_create(&imageDesc, g_Offscreen));
-		}
 		//TODO: swapchain format
 		//svCheck(g_PP_OffscreenToBackBuffer.Create(backBuffer->GetFormat(), SV_GFX_IMAGE_LAYOUT_UNDEFINED, SV_GFX_IMAGE_LAYOUT_RENDER_TARGET));
 		svCheck(renderer_postprocessing_default_create(SV_GFX_FORMAT_B8G8R8A8_SRGB, SV_GFX_IMAGE_LAYOUT_UNDEFINED, SV_GFX_IMAGE_LAYOUT_RENDER_TARGET, g_PP_OffscreenToBackBuffer));
@@ -58,6 +43,8 @@ namespace _sv {
 		svCheck(renderer_postprocessing_close());
 		svCheck(renderer_layer_close());
 
+		svCheck(renderer_offscreen_destroy(g_Offscreen));
+
 		return true;
 	}
 
@@ -70,19 +57,46 @@ namespace _sv {
 		CommandList cmd = graphics_commandlist_last();
 
 		// PostProcess to BackBuffer
-		GPUBarrier barrier = GPUBarrier::Image(g_Offscreen, SV_GFX_IMAGE_LAYOUT_RENDER_TARGET, SV_GFX_IMAGE_LAYOUT_SHADER_RESOUCE);
+		GPUBarrier barrier = GPUBarrier::Image(g_Offscreen.renderTarget, SV_GFX_IMAGE_LAYOUT_RENDER_TARGET, SV_GFX_IMAGE_LAYOUT_SHADER_RESOUCE);
 		graphics_barrier(&barrier, 1u, cmd);
 
 		Image& backBuffer = graphics_swapchain_acquire_image();
 
-		renderer_postprocessing_default_render(g_PP_OffscreenToBackBuffer, g_Offscreen, backBuffer, cmd);
+		renderer_postprocessing_default_render(g_PP_OffscreenToBackBuffer, g_Offscreen.renderTarget, backBuffer, cmd);
 
 		// End
 		graphics_commandlist_submit();
 		graphics_present();
 	}
 
-	sv::Image& renderer_offscreen_get()
+	bool renderer_offscreen_create(ui32 width, ui32 height, Offscreen& offscreen)
+	{
+		SV_GFX_IMAGE_DESC imageDesc;
+		imageDesc.format = SV_REND_OFFSCREEN_FORMAT;
+		imageDesc.layout = SV_GFX_IMAGE_LAYOUT_SHADER_RESOUCE;
+		imageDesc.dimension = 2u;
+		imageDesc.width = width;
+		imageDesc.height = height;
+		imageDesc.depth = 1u;
+		imageDesc.layers = 1u;
+		imageDesc.CPUAccess = 0u;
+		imageDesc.usage = SV_GFX_USAGE_STATIC;
+		imageDesc.pData = nullptr;
+		imageDesc.type = SV_GFX_IMAGE_TYPE_RENDER_TARGET | SV_GFX_IMAGE_TYPE_SHADER_RESOURCE;
+
+		svCheck(graphics_image_create(&imageDesc, offscreen.renderTarget));
+
+		return true;
+	}
+
+	bool renderer_offscreen_destroy(Offscreen& offscreen)
+	{
+		svCheck(graphics_destroy(offscreen.renderTarget));
+		svCheck(graphics_destroy(offscreen.depthStencil));
+		return true;
+	}
+
+	Offscreen& renderer_offscreen_get()
 	{
 		return g_Offscreen;
 	}
@@ -154,18 +168,18 @@ namespace sv {
 		g_DrawData.pOutput = &g_Offscreen;
 
 		// Render
-		Image& offscreen = *g_DrawData.pOutput;
+		Offscreen& offscreen = *g_DrawData.pOutput;
 		CommandList cmd = graphics_commandlist_begin();
 
-		GPUBarrier offscreenBarrier = GPUBarrier::Image(offscreen, SV_GFX_IMAGE_LAYOUT_SHADER_RESOUCE, SV_GFX_IMAGE_LAYOUT_RENDER_TARGET);
+		GPUBarrier offscreenBarrier = GPUBarrier::Image(offscreen.renderTarget, SV_GFX_IMAGE_LAYOUT_SHADER_RESOUCE, SV_GFX_IMAGE_LAYOUT_RENDER_TARGET);
 		graphics_barrier(&offscreenBarrier, 1u, cmd);
 
 		graphics_set_pipeline_mode(SV_GFX_PIPELINE_MODE_GRAPHICS, cmd);
 
-		Viewport viewport = offscreen->GetViewport();
+		Viewport viewport = offscreen.GetViewport();
 		graphics_set_viewports(&viewport, 1u, cmd);
 
-		Scissor scissor = offscreen->GetScissor();
+		Scissor scissor = offscreen.GetScissor();
 		graphics_set_scissors(&scissor, 1u, cmd);
 
 		renderer_layer_render(cmd);

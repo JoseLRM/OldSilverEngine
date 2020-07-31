@@ -52,7 +52,6 @@
     <ClInclude Include="src\scene\Scene.h" />
     <ClInclude Include="src\scene\Transform.h" />
     <ClInclude Include="external\stbi_lib.h" />
-    <ClInclude Include="src\renderer\DrawData.h" />
     <ClInclude Include="src\graphics\vulkan\graphics_vulkan_memory.h" />
     <ClInclude Include="src\renderer\TextureAtlas.h" />
     <ClInclude Include="src\platform\window.h" />

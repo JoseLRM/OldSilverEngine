@@ -24,7 +24,11 @@ namespace _sv {
 	void renderer_frame_begin();
 	void renderer_frame_end();
 
-	sv::Image& renderer_offscreen_get();
+	bool renderer_offscreen_create(ui32 width, ui32 height, Offscreen& offscreen);
+	bool renderer_offscreen_destroy(Offscreen& offscreen);
+
+	Offscreen& renderer_offscreen_get();
+
 	DrawData& renderer_drawdata_get();
 
 }
