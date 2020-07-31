@@ -238,6 +238,7 @@ namespace _sv {
 		// Device Methods
 
 		sv::CommandList BeginCommandList() override;
+		sv::CommandList GetLastCommandList() override;
 
 		void BeginRenderPass(sv::CommandList cmd) override;
 		void EndRenderPass(sv::CommandList cmd) override;

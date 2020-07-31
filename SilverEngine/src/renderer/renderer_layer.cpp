@@ -10,6 +10,11 @@ using namespace sv;
 
 namespace _sv {
 
+	// Render Layers
+
+	static std::vector<std::unique_ptr<RenderLayer>> g_RenderLayers;
+	static RenderLayer* g_DefRenderLayer;
+
 	// Sprite Primitives
 
 	static GraphicsPipeline g_SpriteOpaquePipeline;
@@ -21,8 +26,6 @@ namespace _sv {
 	static Buffer g_SpriteVertexBuffer;
 	static Image g_SpriteWhiteTexture;
 	static Sampler g_SpriteDefSampler;
-
-	static RenderLayer g_DefRenderLayer;
 
 	struct SpriteVertex {
 		vec4 position;
@@ -51,6 +54,10 @@ namespace _sv {
 
 	bool renderer_layer_initialize()
 	{
+		// Create Default RenderLayer
+		g_DefRenderLayer = reinterpret_cast<RenderLayer*>(renderer_layer_create(0, SV_REND_SORT_MODE_NONE));
+
+		// Get Renderer offscreen
 		sv::Image& offscreen = renderer_offscreen_get();
 
 		// Sprite Buffers
@@ -183,85 +190,57 @@ namespace _sv {
 		return true;
 	}
 
-	void ResetRenderLayersSystem(Scene& scene, Entity entity, BaseComponent** comp, float dt)
-	{
-		RenderLayerComponent& rlComp = *reinterpret_cast<RenderLayerComponent*>(comp[0]);
-		rlComp.renderLayer.Reset();
-	}
-
 	void CreateSpritesInstancesSystem(Scene& scene, Entity entity, BaseComponent** comp, float dt)
 	{
 		SpriteComponent& sprComp = *reinterpret_cast<SpriteComponent*>(comp[0]);
 		Transform trans = scene.GetTransform(entity);
 
-		if (sprComp.renderLayer == SV_INVALID_ENTITY) {
-			g_DefRenderLayer.sprites.Emplace(trans.GetWorldMatrix(), sprComp.sprite, sprComp.color);
+		if (sprComp.renderLayer == SV_RENDER_LAYER_DEFAULT) {
+			g_DefRenderLayer->sprites.Emplace(trans.GetWorldMatrix(), sprComp.sprite, sprComp.color);
 		}
 		else {
-			RenderLayerComponent& rlComp = *reinterpret_cast<RenderLayerComponent*>(scene.GetComponent<RenderLayerComponent>(sprComp.renderLayer));
-			rlComp.renderLayer.sprites.Emplace(trans.GetWorldMatrix(), sprComp.sprite, sprComp.color);
+			RenderLayer* rl = reinterpret_cast<RenderLayer*>(sprComp.renderLayer);
+			rl->sprites.Emplace(trans.GetWorldMatrix(), sprComp.sprite, sprComp.color);
 		}
-	}
-
-	void GetRenderLayers(Scene& scene, Entity entity, BaseComponent** comp, float dt)
-	{
-		RenderLayerComponent& rlComp = *reinterpret_cast<RenderLayerComponent*>(comp[0]);
-		renderer_drawdata_get().renderLayers.push_back(&rlComp.renderLayer);
 	}
 
 	void renderer_layer_begin()
 	{
-		g_DefRenderLayer.Reset();
+		// Reset Render Layers
+		for (auto it = g_RenderLayers.begin(); it != g_RenderLayers.end(); ++it) {
+			(*it)->Reset();
+		}
 	}
 
 	void renderer_layer_end()
 	{
 		DrawData& drawData = renderer_drawdata_get();
-		auto& layers = drawData.renderLayers;
+
+		// Sort Sprites Instances
 
 		// Sort RenderLayers
-		std::sort(layers.begin(), layers.end(), [](const RenderLayer* rl0, const RenderLayer* rl1) {
-			return (rl0->sortValue == rl1->sortValue) ? rl0->sortValue < rl1->sortValue : rl0 < rl1;
+		std::sort(g_RenderLayers.begin(), g_RenderLayers.end(), [](const std::unique_ptr<RenderLayer>& rl0, const std::unique_ptr<RenderLayer>& rl1) {
+			return rl0->sortValue < rl1->sortValue;
 		});
 	}
 
 	void renderer_layer_prepare_scene(sv::Scene& scene)
 	{
-		// Reset RenderLayers, Create Sprites Instances and Get RenderLayers
+		// Create Sprites Instances
 
-		SV_ECS_SYSTEM_DESC systems[3];
+		SV_ECS_SYSTEM_DESC systems[1];
 
-		CompID reqComp0[] = {
-			RenderLayerComponent::ID
-		};
-		CompID reqComp1[] = {
+		CompID reqComp[] = {
 			SpriteComponent::ID
-		};
-		CompID reqComp2[] = {
-			RenderLayerComponent::ID
 		};
 
 		systems[0].executionMode = SV_ECS_SYSTEM_EXECUTION_MODE_SAFE;
-		systems[0].system = ResetRenderLayersSystem;
-		systems[0].pRequestedComponents = reqComp0;
+		systems[0].system = CreateSpritesInstancesSystem;
+		systems[0].pRequestedComponents = reqComp;
 		systems[0].requestedComponentsCount = 1u;
 		systems[0].optionalComponentsCount = 0u;
 
-		systems[1].executionMode = SV_ECS_SYSTEM_EXECUTION_MODE_SAFE;
-		systems[1].system = CreateSpritesInstancesSystem;
-		systems[1].pRequestedComponents = reqComp1;
-		systems[1].requestedComponentsCount = 1u;
-		systems[1].optionalComponentsCount = 0u;
-
-		systems[2].executionMode = SV_ECS_SYSTEM_EXECUTION_MODE_SAFE;
-		systems[2].system = GetRenderLayers;
-		systems[2].pRequestedComponents = reqComp2;
-		systems[2].requestedComponentsCount = 1u;
-		systems[2].optionalComponentsCount = 0u;
-
-		scene.ExecuteSystems(systems, 3u, 0.f);
-
-		renderer_drawdata_get().renderLayers.push_back(&g_DefRenderLayer);
+		scene.ExecuteSystems(systems, 1u, 0.f);
 
 	}
 
@@ -300,7 +279,6 @@ namespace _sv {
 	void renderer_layer_render(CommandList cmd)
 	{
 		DrawData& drawData = renderer_drawdata_get();
-		auto& layers = drawData.renderLayers;
 
 		// TODO: frustum culling
 
@@ -311,7 +289,7 @@ namespace _sv {
 		bool firstRenderPass = true;
 		TextureAtlas_DrawData* texture = nullptr;
 
-		for (auto it = layers.begin(); it != layers.end(); ++it) {
+		for (auto it = g_RenderLayers.begin(); it != g_RenderLayers.end(); ++it) {
 			auto& sprites = (*it)->sprites;
 
 			ui32 i = 0u;
@@ -393,6 +371,52 @@ namespace _sv {
 			}
 		}
 		
+	}
+
+}
+
+namespace sv {
+
+	using namespace _sv;
+
+	RenderLayerID renderer_layer_create(i16 sortValue, SV_REND_SORT_MODE sortMode)
+	{
+		std::unique_ptr<RenderLayer> renderLayer = std::make_unique<RenderLayer>();
+		renderLayer->sortMode = sortMode;
+		renderLayer->sortValue = sortValue;
+		RenderLayerID res = renderLayer.get();
+		g_RenderLayers.push_back(std::move(renderLayer));
+		return res;
+	}
+
+	i16 renderer_layer_get_sort_value(RenderLayerID renderLayer)
+	{
+		return reinterpret_cast<RenderLayer*>(renderLayer)->sortValue;
+	}
+
+	SV_REND_SORT_MODE renderer_layer_get_sort_mode(RenderLayerID renderLayer)
+	{
+		return reinterpret_cast<RenderLayer*>(renderLayer)->sortMode;
+	}
+
+	void renderer_layer_set_sort_value(i16 value, RenderLayerID renderLayer)
+	{
+		reinterpret_cast<RenderLayer*>(renderLayer)->sortValue = value;
+	}
+
+	void renderer_layer_set_sort_mode(SV_REND_SORT_MODE mode, RenderLayerID renderLayer)
+	{
+		reinterpret_cast<RenderLayer*>(renderLayer)->sortMode = mode;
+	}
+
+	void renderer_layer_destroy(RenderLayerID renderLayer)
+	{
+		for (auto it = g_RenderLayers.begin(); it != g_RenderLayers.end(); ++it) {
+			if (it->get() == renderLayer) {
+				g_RenderLayers.erase(it);
+				return;
+			}
+		}
 	}
 
 }

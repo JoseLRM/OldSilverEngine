@@ -192,6 +192,7 @@ namespace _sv {
 		virtual bool Close() = 0;
 
 		virtual sv::CommandList BeginCommandList() = 0;
+		virtual sv::CommandList GetLastCommandList() = 0;
 
 		virtual void BeginRenderPass(sv::CommandList cmd) = 0;
 		virtual void EndRenderPass(sv::CommandList cmd) = 0;
@@ -255,6 +256,7 @@ namespace sv {
 	bool graphics_destroy(Primitive& primitive);
 
 	CommandList graphics_commandlist_begin();
+	CommandList graphics_commandlist_last();
 
 	void graphics_gpu_wait();
 

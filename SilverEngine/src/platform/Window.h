@@ -2,7 +2,7 @@
 
 #include "core.h"
 
-#include "platform_window.h"
+#include "windows/platform_windows.h"
 
 struct SV_WINDOW_INITIALIZATION_DESC
 {

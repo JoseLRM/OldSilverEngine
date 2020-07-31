@@ -2,8 +2,8 @@
 
 #ifdef SV_PLATFORM_WINDOWS
 
-#include "platform_window.h"
-#include "Window.h"
+#include "platform_windows.h"
+#include "..//Window.h"
 #include "Engine.h"
 
 #include "windows_impl.h"

@@ -67,6 +67,17 @@ namespace _sv {
 	}
 	void renderer_frame_end()
 	{
+		CommandList cmd = graphics_commandlist_last();
+
+		// PostProcess to BackBuffer
+		GPUBarrier barrier = GPUBarrier::Image(g_Offscreen, SV_GFX_IMAGE_LAYOUT_RENDER_TARGET, SV_GFX_IMAGE_LAYOUT_SHADER_RESOUCE);
+		graphics_barrier(&barrier, 1u, cmd);
+
+		Image& backBuffer = graphics_swapchain_acquire_image();
+
+		renderer_postprocessing_default_render(g_PP_OffscreenToBackBuffer, g_Offscreen, backBuffer, cmd);
+
+		// End
 		graphics_commandlist_submit();
 		graphics_present();
 	}
@@ -113,8 +124,6 @@ namespace sv {
 		g_DrawData.viewProjectionMatrix = XMMatrixIdentity();
 
 		g_DrawData.pOutput = nullptr;
-
-		g_DrawData.renderLayers.clear();
 	}
 
 	void renderer_scene_end()
@@ -161,14 +170,6 @@ namespace sv {
 
 		renderer_layer_render(cmd);
 
-		// PostProcess to BackBuffer
-
-		GPUBarrier barrier = GPUBarrier::Image(g_Offscreen, SV_GFX_IMAGE_LAYOUT_RENDER_TARGET, SV_GFX_IMAGE_LAYOUT_SHADER_RESOUCE);
-		graphics_barrier(&barrier, 1u, cmd);
-
-		Image& backBuffer = graphics_swapchain_acquire_image();
-
-		renderer_postprocessing_default_render(g_PP_OffscreenToBackBuffer, offscreen, backBuffer, cmd);
 	}
 
 }

@@ -1023,6 +1023,13 @@ namespace _sv {
 		return index;
 	}
 
+	sv::CommandList Graphics_vk::GetLastCommandList()
+	{
+		std::lock_guard<std::mutex> lock(m_MutexCMD);
+		SV_ASSERT(m_ActiveCMDCount != 0);
+		return m_ActiveCMDCount - 1u;
+	}
+
 	void Graphics_vk::BeginRenderPass(sv::CommandList cmd_)
 	{
 		_sv::GraphicsPipelineState& state = _sv::graphics_state_get().graphics[cmd_];

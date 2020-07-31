@@ -49,15 +49,15 @@
     <ClInclude Include="src\engine_state.h" />
     <ClInclude Include="src\task_system.h" />
     <ClInclude Include="src\renderer\Camera.h" />
-    <ClInclude Include="src\platform\platform_window.h" />
-    <ClInclude Include="src\platform\windows_impl.h" />
-    <ClInclude Include="src\platform\Window.h" />
     <ClInclude Include="src\scene\Scene.h" />
     <ClInclude Include="src\scene\Transform.h" />
     <ClInclude Include="external\stbi_lib.h" />
     <ClInclude Include="src\renderer\DrawData.h" />
     <ClInclude Include="src\graphics\vulkan\graphics_vulkan_memory.h" />
     <ClInclude Include="src\renderer\TextureAtlas.h" />
+    <ClInclude Include="src\platform\window.h" />
+    <ClInclude Include="src\platform\windows\windows_impl.h" />
+    <ClInclude Include="src\platform\windows\platform_windows.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="external\sprv\spirv_cfg.cpp" />
@@ -90,13 +90,13 @@
     <ClCompile Include="src\engine_state.cpp" />
     <ClCompile Include="src\task_system.cpp" />
     <ClCompile Include="src\renderer\Camera.cpp" />
-    <ClCompile Include="src\platform\platform_window.cpp" />
-    <ClCompile Include="src\platform\Window.cpp" />
     <ClCompile Include="src\scene\Scene.cpp" />
     <ClCompile Include="src\scene\Transform.cpp" />
     <ClCompile Include="src\renderer\renderer_layer.cpp" />
     <ClCompile Include="src\graphics\vulkan\graphics_vulkan_memory.cpp" />
     <ClCompile Include="src\renderer\TextureAtlas.cpp" />
+    <ClCompile Include="src\platform\window.cpp" />
+    <ClCompile Include="src\platform\windows\platform_windows.cpp" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="src\graphics\sprv_shaders\DefPostProcess.frag" />

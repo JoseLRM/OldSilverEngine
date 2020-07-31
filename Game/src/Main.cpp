@@ -62,6 +62,8 @@ class Application : public sv::Application
 	sv::TextureAtlas texture;
 	sv::Sprite sprite;
 
+	sv::RenderLayerID renderLayer;
+
 public:
 
 	void createEntity()
@@ -70,7 +72,7 @@ public:
 		sv::Entity entities[count];
 
 		scene.CreateEntities(count, 0u, entities);
-		scene.AddComponents<sv::SpriteComponent>(entities, count, SV_COLOR_BLUE);
+		scene.AddComponents<sv::SpriteComponent>(entities, count, sprite);
 
 		for (ui32 i = 0; i < count; ++i) {
 			sv::Transform trans = scene.GetTransform(entities[i]);
@@ -108,7 +110,7 @@ public:
 		sv::Entity entities[count];
 
 		scene.CreateEntities(count, 0u, entities);
-		scene.AddComponents<sv::SpriteComponent>(entities, count, SV_COLOR_BLUE);
+		scene.AddComponents<sv::SpriteComponent>(entities, count, sprite);
 
 		for (ui32 i = 0; i < count; ++i) {
 			sv::Transform trans = scene.GetTransform(entities[i]);
@@ -142,15 +144,23 @@ public:
 		sv::engine_state_load(new GameState(), new Loading());
 		scene.Initialize();
 
-		texture.CreateFromFile("res/CloudsFront.png", true, SV_GFX_ADDRESS_MODE_WRAP);
+		texture.CreateFromFile("res/CloudsBack.png", true, SV_GFX_ADDRESS_MODE_WRAP);
 		sprite = texture.AddSprite(0.f, 0.f, 1.f, 1.f);
+
+		renderLayer = sv::renderer_layer_create(100, SV_REND_SORT_MODE_NONE);
 
 		entity = scene.CreateEntity();
 		scene.AddComponent<sv::SpriteComponent>(entity, sprite, SV_COLOR_WHITE);
+		scene.GetComponent<sv::SpriteComponent>(entity)->renderLayer = renderLayer;
 	}
 
 	void Update(float dt) override
 	{
+		if (sv::input_key('K')) 
+			sv::renderer_layer_set_sort_value(sv::renderer_layer_get_sort_value(renderLayer) - 1, renderLayer);
+		if (sv::input_key('L')) 
+			sv::renderer_layer_set_sort_value(sv::renderer_layer_get_sort_value(renderLayer) + 1, renderLayer);
+
 		camera.Adjust();
 
 		sv::vec2 dir;
@@ -231,6 +241,7 @@ public:
 	}
 	void Close() override
 	{
+		sv::renderer_layer_destroy(renderLayer);
 	}
 };
 

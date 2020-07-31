@@ -22,12 +22,8 @@ namespace _sv {
 		SpriteInstance(const XMMATRIX& m, sv::Sprite sprite, sv::Color color) : tm(m), sprite(sprite), color(color) {}
 	};
 
-}
-
-namespace sv {
-
 	struct RenderLayer {
-		RenderList<_sv::SpriteInstance>		sprites;
+		sv::RenderList<SpriteInstance>	sprites;
 		SV_REND_SORT_MODE					sortMode;
 		i16									sortValue;
 
@@ -36,7 +32,16 @@ namespace sv {
 			sprites.Reset();
 		}
 	};
+
 }
+
+namespace sv {
+
+	typedef void* RenderLayerID;
+
+}
+
+constexpr sv::RenderLayerID SV_RENDER_LAYER_DEFAULT = nullptr;
 
 
 

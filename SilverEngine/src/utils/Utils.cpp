@@ -1,6 +1,6 @@
 #include "core.h"
 
-#include "platform/windows_impl.h"
+#include "platform/windows/windows_impl.h"
 #undef LoadImage
 
 #define STB_IMAGE_IMPLEMENTATION

@@ -14,6 +14,7 @@ namespace sv {
 	class Scene;
 }
 
+// Main Functions (Internal)
 namespace _sv {
 
 	struct DrawData;
@@ -28,6 +29,7 @@ namespace _sv {
 
 }
 
+// Main Functions
 namespace sv {
 
 	void renderer_resolution_set(ui32 width, ui32 height);
@@ -68,3 +70,15 @@ namespace _sv {
 	void renderer_layer_render(sv::CommandList cmd);
 
 }
+
+namespace sv {
+
+	RenderLayerID renderer_layer_create(i16 sortValue, SV_REND_SORT_MODE sortMode);
+	i16 renderer_layer_get_sort_value(RenderLayerID renderLayer);
+	SV_REND_SORT_MODE renderer_layer_get_sort_mode(RenderLayerID renderLayer);
+	void renderer_layer_set_sort_value(i16 value, RenderLayerID renderLayer);
+	void renderer_layer_set_sort_mode(SV_REND_SORT_MODE mode, RenderLayerID renderLayer);
+	void renderer_layer_destroy(RenderLayerID renderLayer);
+
+}
+	

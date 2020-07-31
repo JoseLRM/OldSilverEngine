@@ -15,8 +15,6 @@ namespace _sv {
 
 		sv::Image* pOutput;
 
-		std::vector<sv::RenderLayer*> renderLayers;
-
 	};
 
 }

@@ -380,6 +380,11 @@ namespace sv {
 		return g_Device->BeginCommandList();
 	}
 
+	CommandList graphics_commandlist_last()
+	{
+		return g_Device->GetLastCommandList();
+	}
+
 	void graphics_gpu_wait()
 	{
 		g_Device->WaitGPU();
