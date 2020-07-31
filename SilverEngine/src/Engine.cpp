@@ -14,6 +14,8 @@ namespace _sv {
 
 	static Application* g_Application;
 
+	static ui64			g_FrameCount = 0u;
+
 }
 
 namespace sv {
@@ -61,6 +63,8 @@ namespace sv {
 		static float	showFPSTime		= 0.f;
 		static ui32		FPS				= 0u;
 		bool			running			= true;
+
+		g_FrameCount++;
 
 		try {
 
@@ -156,6 +160,8 @@ namespace sv {
 
 	Version engine_version_get() noexcept { return g_Version; }
 	float engine_deltatime_get() noexcept { return g_DeltaTime;	}
+
+	ui64 engine_stats_get_frame_count() noexcept { return g_FrameCount; }
 
 	Application& application_get() noexcept { return *g_Application; }
 	

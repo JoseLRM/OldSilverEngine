@@ -8,7 +8,6 @@ namespace _sv {
 	struct StagingBuffer {
 		VkBuffer buffer = VK_NULL_HANDLE;
 		VmaAllocation allocation = VK_NULL_HANDLE;
-		ui32 size = 0u;
 		void* mapData = nullptr;
 	};
 
@@ -17,15 +16,17 @@ namespace _sv {
 		std::vector<StagingBuffer> m_ActiveStaggingBuffers;
 		StagingBuffer m_CurrentStagingBuffer;
 		ui32 m_CurrentStagingBufferOffset = 0u;
+		ui64 m_LastFrame = std::numeric_limits<ui64>::max();
+		size_t m_BufferSize;
 
 	public:
+		void Create(size_t size);
 		void GetMappingData(ui32 size, VkBuffer& buffer, void** data, ui32& offset);
-		void Reset();
 		void Clear();
 
 	private:
-		void ResetStagingBuffers();
-		StagingBuffer CreateStagingBuffer(ui32 size);
+		void Reset();
+		StagingBuffer CreateStagingBuffer();
 
 	};
 

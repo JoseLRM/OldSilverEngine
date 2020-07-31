@@ -198,6 +198,8 @@ namespace sv {
 			return (Component*)GetComponent(entity, Component::ID);
 		}
 
+		inline BaseComponent* GetComponentByID(Entity entity, CompID ID) { return GetComponent(entity, ID); }
+
 		inline std::vector<ui8>& GetComponentsList(CompID ID) noexcept { return m_Components[ID]; }
 
 	private:

@@ -28,6 +28,7 @@ namespace sv {
 
 	Version	engine_version_get() noexcept;
 	float engine_deltatime_get() noexcept;
+	ui64 engine_stats_get_frame_count() noexcept;
 
 	Application& application_get()	noexcept;
 

@@ -143,7 +143,6 @@ namespace _sv {
 			vkDestroyCommandPool(m_Device, frame.commandPool, nullptr);
 			vkDestroyCommandPool(m_Device, frame.transientCommandPool, nullptr);
 			vkDestroyFence(m_Device, frame.fence, nullptr);
-			frame.memory.Clear();
 		}
 
 		// Destroy Allocator
@@ -1352,6 +1351,7 @@ namespace _sv {
 			alloc_info.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
 			vkCheck(vmaCreateBuffer(m_Allocator, &buffer_info, &alloc_info, &buffer.buffer, &buffer.allocation, nullptr));
+			buffer.memory.Create(desc.size);
 		}
 
 		// Set data
@@ -1931,6 +1931,7 @@ namespace _sv {
 	bool Graphics_vk::DestroyBuffer(Buffer_vk& buffer)
 	{
 		vmaDestroyBuffer(m_Allocator, buffer.buffer, buffer.allocation);
+		buffer.memory.Clear();
 		return true;
 	}
 	bool Graphics_vk::DestroyImage(Image_vk& image)
@@ -2004,8 +2005,6 @@ namespace _sv {
 	void Graphics_vk::BeginFrame()
 	{
 		Frame& frame = GetFrame();
-
-		frame.memory.Reset();
 
 		// Reset Pipeline Descriptors
 		for (auto& it : m_Pipelines) {
@@ -2143,7 +2142,7 @@ namespace _sv {
 			void* mapData;
 			VkBuffer mapBuffer;
 			ui32 mapOffset;
-			GetFrame().memory.GetMappingData(size, mapBuffer, &mapData, mapOffset);
+			buffer.memory.GetMappingData(size, mapBuffer, &mapData, mapOffset);
 			memcpy(mapData, pData, ui64(size));
 			CopyBuffer(cmd, mapBuffer, buffer.buffer, VkDeviceSize(mapOffset), VkDeviceSize(offset), VkDeviceSize(size));
 

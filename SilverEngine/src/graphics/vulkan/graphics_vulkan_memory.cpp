@@ -3,55 +3,46 @@
 #define VMA_IMPLEMENTATION
 #include "graphics_vulkan_memory.h"
 #include "graphics_vulkan.h"
+#include "engine.h"
 
 namespace _sv {
-
+	void MemoryManager::Create(size_t size)
+	{
+		m_BufferSize = size;
+	}
 	void MemoryManager::GetMappingData(ui32 size, VkBuffer& buffer, void** data, ui32& offset)
 	{
-		// 1 megabytes
-		constexpr ui32 BLOCK_SIZE = 1000000;
+		SV_ASSERT(size <= m_BufferSize);
 
-		if (m_CurrentStagingBuffer.buffer == VK_NULL_HANDLE) {
-			m_CurrentStagingBufferOffset = 0u;
-			m_CurrentStagingBuffer = CreateStagingBuffer(std::max(BLOCK_SIZE, size));
+		// Reset
+		if (m_LastFrame != sv::engine_stats_get_frame_count()) {
+			Reset();
+			m_LastFrame = sv::engine_stats_get_frame_count();
 		}
 
-		if (m_CurrentStagingBuffer.size - m_CurrentStagingBufferOffset < size) {
+		// Create first staging buffer
+		if (m_CurrentStagingBuffer.buffer == VK_NULL_HANDLE) {
+			m_CurrentStagingBufferOffset = 0u;
+			m_CurrentStagingBuffer = CreateStagingBuffer();
+		}
+
+		// Get new staging buffer or create
+		if (m_BufferSize - m_CurrentStagingBufferOffset < size) {
 			
 			m_ActiveStaggingBuffers.push_back(m_CurrentStagingBuffer);
 			m_CurrentStagingBufferOffset = 0u;
 
-			bool found = false;
-
-			if (size <= BLOCK_SIZE) {
-				for (ui32 i = 0; i < m_StaggingBuffers.size(); ++i) {
-					StagingBuffer& b = m_StaggingBuffers[i];
-					if (b.size >= size) {
-						found = true;
-						m_CurrentStagingBuffer = b;
-						m_StaggingBuffers.erase(m_StaggingBuffers.begin() + i);
-						break;
-					}
-				}
+			if (m_StaggingBuffers.empty()) {
+				m_CurrentStagingBuffer = CreateStagingBuffer();
 			}
 			else {
-				for (i32 i = m_StaggingBuffers.size() - 1; i >= 0; --i) {
-					StagingBuffer& b = m_StaggingBuffers[i];
-					if (b.size >= size) {
-						found = true;
-						m_CurrentStagingBuffer = b;
-						m_StaggingBuffers.erase(m_StaggingBuffers.begin() + i);
-						break;
-					}
-				}
-			}
-			
-			if (!found) {
-				m_CurrentStagingBuffer = CreateStagingBuffer(std::max(size, BLOCK_SIZE));
+				m_CurrentStagingBuffer = m_StaggingBuffers.back();
+				m_StaggingBuffers.pop_back();
 			}
 
 		}
 
+		// Set result
 		offset = m_CurrentStagingBufferOffset;
 		buffer = m_CurrentStagingBuffer.buffer;
 		*data = (ui8*)(m_CurrentStagingBuffer.mapData) + m_CurrentStagingBufferOffset;
@@ -60,7 +51,19 @@ namespace _sv {
 
 	void MemoryManager::Reset()
 	{
-		ResetStagingBuffers();
+		if (m_CurrentStagingBuffer.buffer != VK_NULL_HANDLE) {
+			m_ActiveStaggingBuffers.push_back(m_CurrentStagingBuffer);
+			m_CurrentStagingBuffer = {};
+		}
+		m_CurrentStagingBufferOffset = 0u;
+
+		m_StaggingBuffers.insert(m_StaggingBuffers.end(), m_ActiveStaggingBuffers.begin(), m_ActiveStaggingBuffers.end());
+		m_ActiveStaggingBuffers.clear();
+
+		if (!m_StaggingBuffers.empty()) {
+			m_CurrentStagingBuffer = m_StaggingBuffers.back();
+			m_StaggingBuffers.pop_back();
+		}
 	}
 
 	void MemoryManager::Clear()
@@ -78,32 +81,10 @@ namespace _sv {
 		m_StaggingBuffers.clear();
 	}
 
-	void MemoryManager::ResetStagingBuffers()
-	{
-		if (m_CurrentStagingBuffer.buffer != VK_NULL_HANDLE) {
-			m_ActiveStaggingBuffers.push_back(m_CurrentStagingBuffer);
-			m_CurrentStagingBuffer = {};
-		}
-		m_CurrentStagingBufferOffset = 0u;
-
-		m_StaggingBuffers.insert(m_StaggingBuffers.end(), m_ActiveStaggingBuffers.begin(), m_ActiveStaggingBuffers.end());
-		m_ActiveStaggingBuffers.clear();
-		std::sort(m_StaggingBuffers.begin(), m_StaggingBuffers.end(), [](const StagingBuffer& b0, const StagingBuffer& b1) {
-			if (b0.size == b1.size) return b0.buffer < b1.buffer;
-			return b0.size < b1.size;
-		});
-
-		if (!m_StaggingBuffers.empty()) {
-			m_CurrentStagingBuffer = m_StaggingBuffers[0];
-			m_StaggingBuffers.erase(m_StaggingBuffers.begin());
-		}
-	}
-
-	StagingBuffer MemoryManager::CreateStagingBuffer(ui32 size)
+	StagingBuffer MemoryManager::CreateStagingBuffer()
 	{
 		StagingBuffer res;
-		vkAssert(graphics_vulkan_memory_create_stagingbuffer(res.buffer, res.allocation, &res.mapData, size));
-		res.size = size;
+		vkAssert(graphics_vulkan_memory_create_stagingbuffer(res.buffer, res.allocation, &res.mapData, m_BufferSize));
 		return res;
 	}
 

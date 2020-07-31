@@ -52,9 +52,9 @@ namespace _sv {
 			svCheck(graphics_shader_create(&shaderDesc, g_DefPixelShader));
 
 			SV_GFX_SAMPLER_DESC samDesc;
-			samDesc.addressModeU = SV_GFX_ADDRESS_MODE_WRAP;
-			samDesc.addressModeV = SV_GFX_ADDRESS_MODE_WRAP;
-			samDesc.addressModeW = SV_GFX_ADDRESS_MODE_WRAP;
+			samDesc.addressModeU = SV_GFX_ADDRESS_MODE_MIRROR;
+			samDesc.addressModeV = SV_GFX_ADDRESS_MODE_MIRROR;
+			samDesc.addressModeW = SV_GFX_ADDRESS_MODE_MIRROR;
 			samDesc.magFilter = SV_GFX_FILTER_LINEAR;
 			samDesc.minFilter = SV_GFX_FILTER_LINEAR;
 

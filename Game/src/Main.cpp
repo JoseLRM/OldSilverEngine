@@ -144,8 +144,8 @@ public:
 		sv::engine_state_load(new GameState(), new Loading());
 		scene.Initialize();
 
-		texture.CreateFromFile("res/CloudsBack.png", true, SV_GFX_ADDRESS_MODE_WRAP);
-		sprite = texture.AddSprite(0.f, 0.f, 1.f, 1.f);
+		texture.CreateFromFile("res/Tileset.png", false, SV_GFX_ADDRESS_MODE_WRAP);
+		sprite = texture.AddSprite(0.1f, 0.f, 0.1f, 1.f / 6.f);
 
 		renderLayer = sv::renderer_layer_create(100, SV_REND_SORT_MODE_NONE);
 

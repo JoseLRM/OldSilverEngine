@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graphics/Graphics.h"
+#include "..//graphics.h"
 #include "vulkan_impl.h"
 #include "graphics_vulkan_conversions.h"
 #include "graphics_vulkan_memory.h"
@@ -45,6 +45,7 @@ namespace _sv {
 		VkBuffer				buffer;
 		VmaAllocation			allocation;
 		VkDescriptorBufferInfo	buffer_info;
+		MemoryManager			memory;
 	};
 	// Image
 	struct Image_vk : public _sv::Image_internal {
@@ -114,7 +115,6 @@ namespace _sv {
 		VkCommandBuffer		commandBuffers[SV_GFX_COMMAND_LIST_COUNT];
 		VkCommandPool		transientCommandPool;
 		VkFence				fence;
-		MemoryManager		memory;
 	};
 
 	struct SwapChain {
