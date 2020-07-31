@@ -214,6 +214,7 @@ namespace _sv {
 		inline VkDevice GetDevice() const noexcept { return m_Device; }
 		VkPhysicalDevice GetPhysicalDevice() const noexcept;
 		inline VmaAllocator GetAllocator() const noexcept { return m_Allocator; }
+		inline ui32 GetCurrentFrame() const noexcept { return m_CurrentFrame; }
 
 		// Primitive Creation
 		bool CreateBuffer(Buffer_vk& buffer, const SV_GFX_BUFFER_DESC& desc);

@@ -14,32 +14,43 @@ namespace _sv {
 	{
 		SV_ASSERT(size <= m_BufferSize);
 
+		ui32 currentFrame =  graphics_vulkan_device_get().GetCurrentFrame();
+
 		// Reset
 		if (m_LastFrame != sv::engine_stats_get_frame_count()) {
-			Reset();
+			Reset(currentFrame);
 			m_LastFrame = sv::engine_stats_get_frame_count();
 		}
 
-		// Create first staging buffer
-		if (m_CurrentStagingBuffer.buffer == VK_NULL_HANDLE) {
-			m_CurrentStagingBufferOffset = 0u;
-			m_CurrentStagingBuffer = CreateStagingBuffer();
-		}
-
-		// Get new staging buffer or create
+		// Get new staging buffer
 		if (m_BufferSize - m_CurrentStagingBufferOffset < size) {
-			
 			m_ActiveStaggingBuffers.push_back(m_CurrentStagingBuffer);
 			m_CurrentStagingBufferOffset = 0u;
+			m_CurrentStagingBuffer = {};
+		}
 
-			if (m_StaggingBuffers.empty()) {
-				m_CurrentStagingBuffer = CreateStagingBuffer();
-			}
-			else {
-				m_CurrentStagingBuffer = m_StaggingBuffers.back();
-				m_StaggingBuffers.pop_back();
+		// Create staging buffer
+		if (m_CurrentStagingBuffer.buffer == VK_NULL_HANDLE) {
+			
+			bool find = false;
+			m_CurrentStagingBufferOffset = 0u;
+
+			if (!m_StaggingBuffers.empty()) {
+				
+				for (ui32 i = 0; i < m_StaggingBuffers.size(); ++i) {
+					if (m_StaggingBuffers[i].frame == currentFrame) {
+						m_CurrentStagingBuffer = m_StaggingBuffers[i];
+						m_StaggingBuffers.erase(m_StaggingBuffers.begin() +i);
+						find = true;
+						break;
+					}
+				}
+
 			}
 
+			if (!find) {
+				m_CurrentStagingBuffer = CreateStagingBuffer(currentFrame);
+			}
 		}
 
 		// Set result
@@ -49,42 +60,49 @@ namespace _sv {
 		m_CurrentStagingBufferOffset += size;
 	}
 
-	void MemoryManager::Reset()
+	void MemoryManager::Reset(ui32 frame)
 	{
 		if (m_CurrentStagingBuffer.buffer != VK_NULL_HANDLE) {
 			m_ActiveStaggingBuffers.push_back(m_CurrentStagingBuffer);
 			m_CurrentStagingBuffer = {};
+			m_CurrentStagingBufferOffset = 0u;
 		}
-		m_CurrentStagingBufferOffset = 0u;
 
-		m_StaggingBuffers.insert(m_StaggingBuffers.end(), m_ActiveStaggingBuffers.begin(), m_ActiveStaggingBuffers.end());
-		m_ActiveStaggingBuffers.clear();
-
-		if (!m_StaggingBuffers.empty()) {
-			m_CurrentStagingBuffer = m_StaggingBuffers.back();
-			m_StaggingBuffers.pop_back();
+		if (!m_ActiveStaggingBuffers.empty()) {
+			for (i32 i = m_ActiveStaggingBuffers.size() - 1u; i >= 0; --i) {
+				if (m_ActiveStaggingBuffers[i].frame == frame) {
+					m_StaggingBuffers.emplace_back(m_ActiveStaggingBuffers[i]);
+					m_ActiveStaggingBuffers.erase(m_ActiveStaggingBuffers.begin() + i);
+				}
+			}
 		}
 	}
 
 	void MemoryManager::Clear()
 	{
 		Graphics_vk& gfx = graphics_vulkan_device_get();
-
-		Reset();
+		
 		if (m_CurrentStagingBuffer.buffer != VK_NULL_HANDLE) {
 			m_StaggingBuffers.push_back(m_CurrentStagingBuffer);
+			m_CurrentStagingBuffer = {};
 		}
 		for (ui32 i = 0; i < m_StaggingBuffers.size(); ++i) {
 			const StagingBuffer& b = m_StaggingBuffers[i];
 			vmaDestroyBuffer(gfx.GetAllocator(), b.buffer, b.allocation);
 		}
+		for (ui32 i = 0; i < m_ActiveStaggingBuffers.size(); ++i) {
+			const StagingBuffer& b = m_ActiveStaggingBuffers[i];
+			vmaDestroyBuffer(gfx.GetAllocator(), b.buffer, b.allocation);
+		}
 		m_StaggingBuffers.clear();
+		m_ActiveStaggingBuffers.clear();
 	}
 
-	StagingBuffer MemoryManager::CreateStagingBuffer()
+	MemoryManager::StagingBuffer MemoryManager::CreateStagingBuffer(ui32 currentFrame)
 	{
 		StagingBuffer res;
 		vkAssert(graphics_vulkan_memory_create_stagingbuffer(res.buffer, res.allocation, &res.mapData, m_BufferSize));
+		res.frame = currentFrame;
 		return res;
 	}
 

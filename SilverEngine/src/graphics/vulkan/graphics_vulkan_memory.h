@@ -5,13 +5,15 @@
 
 namespace _sv {
 
-	struct StagingBuffer {
-		VkBuffer buffer = VK_NULL_HANDLE;
-		VmaAllocation allocation = VK_NULL_HANDLE;
-		void* mapData = nullptr;
-	};
-
 	class MemoryManager {
+
+		struct StagingBuffer {
+			VkBuffer buffer = VK_NULL_HANDLE;
+			VmaAllocation allocation = VK_NULL_HANDLE;
+			void* mapData = nullptr;
+			ui32 frame = 0u;
+		};
+
 		std::vector<StagingBuffer> m_StaggingBuffers;
 		std::vector<StagingBuffer> m_ActiveStaggingBuffers;
 		StagingBuffer m_CurrentStagingBuffer;
@@ -25,8 +27,8 @@ namespace _sv {
 		void Clear();
 
 	private:
-		void Reset();
-		StagingBuffer CreateStagingBuffer();
+		void Reset(ui32 frame);
+		StagingBuffer CreateStagingBuffer(ui32 currentFrame);
 
 	};
 

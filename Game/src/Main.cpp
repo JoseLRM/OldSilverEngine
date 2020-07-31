@@ -79,8 +79,8 @@ public:
 
 			sv::vec3 pos;
 			sv::vec2 mousePos = camera.GetMousePos();
-			pos.x += mousePos.x;
-			pos.y += mousePos.y;
+			pos.x = mousePos.x;
+			pos.y = mousePos.y;
 			//pos.x = (float(rand()) / RAND_MAX) * 800.f - 400.f;
 			//pos.y = (float(rand()) / RAND_MAX) * 400.f - 200.f;
 
@@ -116,20 +116,32 @@ public:
 			sv::SpriteComponent& sprComp = *scene.GetComponent<sv::SpriteComponent>(entities[i]);
 
 			sv::vec3 pos;
-			pos.x = (float(rand()) / RAND_MAX) * 400.f - 300.f;
-			pos.y = (float(rand()) / RAND_MAX) * 200.f - 100.f;
-
 			sv::vec3 scale;
+			sv::vec3 rot;
+
+//#define TEST0
+
+#ifdef TEST0
+			sv::vec2 mousePos = camera.GetMousePos();
+			pos.x = mousePos.x;
+			pos.y = mousePos.y;
+
+			scale.x = 1.f;
+			scale.y = 1.f;
+#else
+			pos.x = (float(rand()) / RAND_MAX) * 40.f - 30.f;
+			pos.y = (float(rand()) / RAND_MAX) * 20.f - 10.f;
+
 			scale.x = (float(rand()) / RAND_MAX) + 0.1f;
 			scale.y = (float(rand()) / RAND_MAX) + 0.1f;
 
-			sv::vec3 rot;
 			rot.z = ToRadians((float(rand()) / RAND_MAX) * 360.f);
 
 			sprComp.color.x = ui8((float(rand()) / RAND_MAX) * 255.f);
 			sprComp.color.y = ui8((float(rand()) / RAND_MAX) * 255.f);
 			sprComp.color.z = ui8((float(rand()) / RAND_MAX) * 255.f);
 			sprComp.color.w = 255u;
+#endif
 
 			trans.SetPosition(pos);
 			trans.SetScale(scale);
