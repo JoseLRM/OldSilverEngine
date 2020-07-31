@@ -17,8 +17,10 @@ namespace _sv {
 	// Sprite Primitives
 
 	static GraphicsPipeline g_SpriteOpaquePipeline;
-	static RenderPass g_SpriteFirstRenderPass;
-	static RenderPass g_SpriteRenderPass;
+	static GraphicsPipeline g_SpriteTransparentPipeline;
+	static RenderPass g_SpriteOpaqueRenderPass;
+	static RenderPass g_SpriteTransparentRenderPass;
+
 	static Shader g_SpriteVertexShader;
 	static Shader g_SpritePixelShader;
 	static Buffer g_SpriteIndexBuffer;
@@ -54,7 +56,7 @@ namespace _sv {
 	bool renderer_layer_initialize()
 	{
 		// Create Default RenderLayer
-		g_DefRenderLayer = reinterpret_cast<RenderLayer*>(renderer_layer_create(0, SV_REND_SORT_MODE_NONE));
+		g_DefRenderLayer = reinterpret_cast<RenderLayer*>(renderer_layer_create(0, SV_REND_SORT_MODE_NONE, false));
 
 		// Sprite Buffers
 		{
@@ -96,25 +98,39 @@ namespace _sv {
 		}
 		// Sprite RenderPass
 		{
-			SV_GFX_ATTACHMENT_DESC att;
-			att.loadOp = SV_GFX_LOAD_OP_LOAD;
-			att.storeOp = SV_GFX_STORE_OP_STORE;
-			att.stencilLoadOp = SV_GFX_LOAD_OP_DONT_CARE;
-			att.stencilStoreOp = SV_GFX_STORE_OP_DONT_CARE;
-			att.format = SV_REND_OFFSCREEN_FORMAT;
-			att.initialLayout = SV_GFX_IMAGE_LAYOUT_RENDER_TARGET;
-			att.layout = SV_GFX_IMAGE_LAYOUT_RENDER_TARGET;
-			att.finalLayout = SV_GFX_IMAGE_LAYOUT_RENDER_TARGET;
-			att.type = SV_GFX_ATTACHMENT_TYPE_RENDER_TARGET;
-
 			SV_GFX_RENDERPASS_DESC desc;
-			desc.attachments.push_back(att);
+			desc.attachments.resize(2);
 
-			svCheck(graphics_renderpass_create(&desc, g_SpriteRenderPass));
-			desc.attachments[0].loadOp = SV_GFX_LOAD_OP_CLEAR;
-			svCheck(graphics_renderpass_create(&desc, g_SpriteFirstRenderPass));
+			desc.attachments[0].loadOp = SV_GFX_LOAD_OP_LOAD;
+			desc.attachments[0].storeOp = SV_GFX_STORE_OP_STORE;
+			desc.attachments[0].stencilLoadOp = SV_GFX_LOAD_OP_DONT_CARE;
+			desc.attachments[0].stencilStoreOp = SV_GFX_STORE_OP_DONT_CARE;
+			desc.attachments[0].format = SV_REND_OFFSCREEN_FORMAT;
+			desc.attachments[0].initialLayout = SV_GFX_IMAGE_LAYOUT_RENDER_TARGET;
+			desc.attachments[0].layout = SV_GFX_IMAGE_LAYOUT_RENDER_TARGET;
+			desc.attachments[0].finalLayout = SV_GFX_IMAGE_LAYOUT_RENDER_TARGET;
+			desc.attachments[0].type = SV_GFX_ATTACHMENT_TYPE_RENDER_TARGET;
+			
+			desc.attachments[1].loadOp = SV_GFX_LOAD_OP_DONT_CARE;
+			desc.attachments[1].storeOp = SV_GFX_STORE_OP_DONT_CARE;
+			desc.attachments[1].stencilLoadOp = SV_GFX_LOAD_OP_LOAD;
+			desc.attachments[1].stencilStoreOp = SV_GFX_STORE_OP_STORE;
+			desc.attachments[1].format = SV_GFX_FORMAT_D24_UNORM_S8_UINT;
+			desc.attachments[1].initialLayout = SV_GFX_IMAGE_LAYOUT_DEPTH_STENCIL;
+			desc.attachments[1].layout = SV_GFX_IMAGE_LAYOUT_DEPTH_STENCIL;
+			desc.attachments[1].finalLayout = SV_GFX_IMAGE_LAYOUT_DEPTH_STENCIL;
+			desc.attachments[1].type = SV_GFX_ATTACHMENT_TYPE_DEPTH_STENCIL;
+
+			svCheck(graphics_renderpass_create(&desc, g_SpriteOpaqueRenderPass));
+
+			desc.attachments[1].stencilStoreOp = SV_GFX_STORE_OP_DONT_CARE;
+			desc.attachments[1].initialLayout = SV_GFX_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY;
+			desc.attachments[1].layout = SV_GFX_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY;
+			desc.attachments[1].finalLayout = SV_GFX_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY;
+
+			svCheck(graphics_renderpass_create(&desc, g_SpriteTransparentRenderPass));
 		}
-		// Sprite Opaque Pipeline
+		// Sprite Pipelines
 		{
 			SV_GFX_INPUT_LAYOUT_DESC inputLayout;
 			inputLayout.slots.push_back({ 0u, sizeof(SpriteVertex), false });
@@ -122,6 +138,20 @@ namespace _sv {
 			inputLayout.elements.push_back({ 0u, "Position", 0u, 0u, SV_GFX_FORMAT_R32G32B32A32_FLOAT });
 			inputLayout.elements.push_back({ 0u, "TexCoord", 0u, 4u * sizeof(float), SV_GFX_FORMAT_R32G32_FLOAT });
 			inputLayout.elements.push_back({ 0u, "Color", 0u, 6u * sizeof(float), SV_GFX_FORMAT_R8G8B8A8_UNORM });
+
+			//SV_GFX_DEPTHSTENCIL_STATE_DESC depthStencilState;
+			//depthStencilState.depthTestEnabled = false;
+			//depthStencilState.depthWriteEnabled = false;
+			//depthStencilState.depthCompareOp = SV_GFX_COMPARE_OP_ALWAYS;
+			//depthStencilState.stencilTestEnabled = true;
+
+			//depthStencilState.front.failOp;
+			//depthStencilState.front.passOp;
+			//depthStencilState.front.depthFailOp;
+			//depthStencilState.front.compareOp = SV_GFX_COMPARE_OP_NOT_EQUAL;
+			//depthStencilState.front.readMask = 0xff;
+			//depthStencilState.front.writeMask = 0xff;
+			//depthStencilState.front.reference;
 
 			SV_GFX_GRAPHICS_PIPELINE_DESC desc;
 			desc.pVertexShader = &g_SpriteVertexShader;
@@ -134,6 +164,11 @@ namespace _sv {
 			desc.topology = SV_GFX_TOPOLOGY_TRIANGLES;
 
 			svCheck(graphics_pipeline_create(&desc, g_SpriteOpaquePipeline));
+
+			desc.pVertexShader = nullptr;
+			desc.pPixelShader = nullptr;
+			desc.pGeometryShader = nullptr;
+			svCheck(graphics_pipeline_create(&desc, g_SpriteTransparentPipeline));
 		}
 		// Sprite White Image
 		{
@@ -174,8 +209,7 @@ namespace _sv {
 	bool renderer_layer_close()
 	{
 		svCheck(graphics_destroy(g_SpriteOpaquePipeline));
-		svCheck(graphics_destroy(g_SpriteRenderPass));
-		svCheck(graphics_destroy(g_SpriteFirstRenderPass));
+		svCheck(graphics_destroy(g_SpriteOpaqueRenderPass));
 		svCheck(graphics_destroy(g_SpriteVertexShader));
 		svCheck(graphics_destroy(g_SpritePixelShader));
 		svCheck(graphics_destroy(g_SpriteVertexBuffer));
@@ -279,10 +313,10 @@ namespace _sv {
 		// TODO: frustum culling
 
 		Image* att[] = {
-			&drawData.pOutput->renderTarget
+			&drawData.pOutput->renderTarget,
+			&drawData.pOutput->depthStencil
 		};
 
-		bool firstRenderPass = true;
 		TextureAtlas_DrawData* texture = nullptr;
 
 		for (auto it = g_RenderLayers.begin(); it != g_RenderLayers.end(); ++it) {
@@ -333,12 +367,7 @@ namespace _sv {
 
 				// Begin rendering
 
-				if (firstRenderPass) {
-					firstRenderPass = false;
-					graphics_renderpass_begin(g_SpriteFirstRenderPass, att, nullptr, 1.f, 0u, cmd);
-				}
-				else
-					graphics_renderpass_begin(g_SpriteRenderPass, att, nullptr, 1.f, 0u, cmd);
+				graphics_renderpass_begin(g_SpriteOpaqueRenderPass, att, nullptr, 1.f, 0u, cmd);
 
 				graphics_indexbuffer_bind(g_SpriteIndexBuffer, 0u, cmd);
 				graphics_pipeline_bind(g_SpriteOpaquePipeline, cmd);
@@ -375,11 +404,12 @@ namespace sv {
 
 	using namespace _sv;
 
-	RenderLayerID renderer_layer_create(i16 sortValue, SV_REND_SORT_MODE sortMode)
+	RenderLayerID renderer_layer_create(i16 sortValue, SV_REND_SORT_MODE sortMode, bool transparent)
 	{
 		std::unique_ptr<RenderLayer> renderLayer = std::make_unique<RenderLayer>();
 		renderLayer->sortMode = sortMode;
 		renderLayer->sortValue = sortValue;
+		renderLayer->transparent = transparent;
 		RenderLayerID res = renderLayer.get();
 		g_RenderLayers.push_back(std::move(renderLayer));
 		return res;
@@ -395,6 +425,11 @@ namespace sv {
 		return reinterpret_cast<RenderLayer*>(renderLayer)->sortMode;
 	}
 
+	bool renderer_layer_get_transparent(RenderLayerID renderLayer)
+	{
+		return reinterpret_cast<RenderLayer*>(renderLayer)->transparent;
+	}
+
 	void renderer_layer_set_sort_value(i16 value, RenderLayerID renderLayer)
 	{
 		reinterpret_cast<RenderLayer*>(renderLayer)->sortValue = value;
@@ -403,6 +438,11 @@ namespace sv {
 	void renderer_layer_set_sort_mode(SV_REND_SORT_MODE mode, RenderLayerID renderLayer)
 	{
 		reinterpret_cast<RenderLayer*>(renderLayer)->sortMode = mode;
+	}
+
+	void renderer_layer_set_transparent(bool transparent, RenderLayerID renderLayer)
+	{
+		reinterpret_cast<RenderLayer*>(renderLayer)->transparent = transparent;
 	}
 
 	void renderer_layer_destroy(RenderLayerID renderLayer)

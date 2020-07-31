@@ -57,6 +57,8 @@
     <ClInclude Include="src\platform\window.h" />
     <ClInclude Include="src\platform\windows\windows_impl.h" />
     <ClInclude Include="src\platform\windows\platform_windows.h" />
+    <ClInclude Include="src\renderer\renderer_postprocessing.h" />
+    <ClInclude Include="src\renderer\renderer_layer.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="external\sprv\spirv_cfg.cpp" />

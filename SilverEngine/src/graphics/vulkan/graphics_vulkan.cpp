@@ -802,14 +802,14 @@ namespace _sv {
 					depthStencilState.front.passOp = graphics_vulkan_parse_stencilop(dDesc.front.passOp);
 					depthStencilState.front.depthFailOp = graphics_vulkan_parse_stencilop(dDesc.front.depthFailOp);
 					depthStencilState.front.compareOp = graphics_vulkan_parse_compareop(dDesc.front.compareOp);
-					depthStencilState.front.compareMask = dDesc.front.compareMask;
+					depthStencilState.front.compareMask = dDesc.front.readMask;
 					depthStencilState.front.writeMask = dDesc.front.writeMask;
 					depthStencilState.front.reference = dDesc.front.reference;
 					depthStencilState.back.failOp = graphics_vulkan_parse_stencilop(dDesc.back.failOp);
 					depthStencilState.back.passOp = graphics_vulkan_parse_stencilop(dDesc.back.passOp);
 					depthStencilState.back.depthFailOp = graphics_vulkan_parse_stencilop(dDesc.back.depthFailOp);
 					depthStencilState.back.compareOp = graphics_vulkan_parse_compareop(dDesc.back.compareOp);
-					depthStencilState.back.compareMask = dDesc.back.compareMask;
+					depthStencilState.back.compareMask = dDesc.back.readMask;
 					depthStencilState.back.writeMask = dDesc.back.writeMask;
 					depthStencilState.back.reference = dDesc.back.reference;
 
@@ -1919,8 +1919,6 @@ namespace _sv {
 			vkCheck(vkCreatePipelineLayout(m_Device, &layout_info, nullptr, &p.layout));
 		}
 
-		if (p.bindings.size() == 0) return true;
-
 		p.descriptors.Create(setLayout, m_FrameCount, imagesCount, samplersCount, uniformsCount);
 
 		return true;
@@ -2096,6 +2094,65 @@ namespace _sv {
 	{
 		UpdateGraphicsState(cmd);
 		vkCmdDrawIndexed(GetCMD(cmd), indexCount, instanceCount, startIndex, startVertex, startInstance);
+	}
+
+	void Graphics_vk::ClearImage(Image& image_, SV_GFX_IMAGE_LAYOUT oldLayout, SV_GFX_IMAGE_LAYOUT newLayout, const Color4f& clearColor, float depth, ui32 stencil, CommandList cmd_)
+	{
+		Image_vk& image = *reinterpret_cast<Image_vk*>(image_.GetPtr());
+		VkCommandBuffer cmd = GetCMD(cmd_);
+
+		VkImageSubresourceRange range{};
+		range.aspectMask = graphics_vulkan_aspect_from_image_layout(oldLayout, image.GetFormat());
+		range.baseMipLevel = 0u;
+		range.levelCount = 1u;
+		range.baseArrayLayer = 0u;
+		range.layerCount = image.GetLayers();
+
+		// Image Barrier: from oldLayout to VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+		VkPipelineStageFlags srcStage = graphics_vulkan_stage_from_image_layout(oldLayout);
+		VkPipelineStageFlags dstStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+
+		VkImageMemoryBarrier barrier{};
+		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		barrier.srcAccessMask = graphics_vulkan_access_from_image_layout(oldLayout);
+		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		barrier.oldLayout = graphics_vulkan_parse_image_layout(oldLayout);
+		barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.image = image.image;
+		barrier.subresourceRange = range;
+
+		vkCmdPipelineBarrier(cmd, srcStage, dstStage, 0u, 0u, nullptr, 0u, nullptr, 1u, &barrier);
+
+		// Clear
+		if (image.GetImageType() & SV_GFX_IMAGE_TYPE_DEPTH_STENCIL) {
+
+			VkClearDepthStencilValue clear = { depth, stencil };
+			vkCmdClearDepthStencilImage(cmd, image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear, 1u, &range);
+
+		}
+		else {
+
+			VkClearColorValue clear = { clearColor.x, clearColor.y, clearColor.z, clearColor.w };
+			vkCmdClearColorImage(cmd, image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear, 1u, &range);
+
+		}
+
+		// Image Barrier: from VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL to newLayout
+		srcStage = dstStage;
+		dstStage = graphics_vulkan_stage_from_image_layout(newLayout);
+
+		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		barrier.dstAccessMask = graphics_vulkan_access_from_image_layout(newLayout);
+		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		barrier.newLayout =  graphics_vulkan_parse_image_layout(newLayout);
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.image = image.image;
+
+		vkCmdPipelineBarrier(cmd, srcStage, dstStage, 0u, 0u, nullptr, 0u, nullptr, 1u, &barrier);
+
 	}
 
 	void Graphics_vk::UpdateBuffer(Buffer& buffer_, void* pData, ui32 size, ui32 offset, CommandList cmd_)

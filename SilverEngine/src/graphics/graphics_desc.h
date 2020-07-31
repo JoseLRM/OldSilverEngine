@@ -419,7 +419,7 @@ struct SV_GFX_STENCIL_STATE {
 	SV_GFX_STENCIL_OP   passOp;
 	SV_GFX_STENCIL_OP   depthFailOp;
 	SV_GFX_COMPARE_OP   compareOp;
-	ui32				compareMask;
+	ui32				readMask;
 	ui32				writeMask;
 	ui32				reference;
 };

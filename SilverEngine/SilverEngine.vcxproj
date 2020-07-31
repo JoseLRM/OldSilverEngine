@@ -144,6 +144,8 @@
     <ClInclude Include="src\renderer\renderer.h" />
     <ClInclude Include="src\renderer\renderer_components.h" />
     <ClInclude Include="src\renderer\renderer_desc.h" />
+    <ClInclude Include="src\renderer\renderer_layer.h" />
+    <ClInclude Include="src\renderer\renderer_postprocessing.h" />
     <ClInclude Include="src\renderer\RenderList.h" />
     <ClInclude Include="src\renderer\TextureAtlas.h" />
     <ClInclude Include="src\scene\ComponentsIndices.h" />

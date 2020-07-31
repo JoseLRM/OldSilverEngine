@@ -10,8 +10,8 @@ namespace _sv {
 
 	static uvec2 g_Resolution;
 	
-	static Offscreen				g_Offscreen;
-	static PostProcessing_Default	g_PP_OffscreenToBackBuffer;
+	static Offscreen					g_Offscreen;
+	static PostProcessing_Default		g_PP_OffscreenToBackBuffer;
 
 	static DrawData	g_DrawData;
 
@@ -28,10 +28,11 @@ namespace _sv {
 
 		//TODO: swapchain format
 		//svCheck(g_PP_OffscreenToBackBuffer.Create(backBuffer->GetFormat(), SV_GFX_IMAGE_LAYOUT_UNDEFINED, SV_GFX_IMAGE_LAYOUT_RENDER_TARGET));
-		svCheck(renderer_postprocessing_default_create(SV_GFX_FORMAT_B8G8R8A8_SRGB, SV_GFX_IMAGE_LAYOUT_UNDEFINED, SV_GFX_IMAGE_LAYOUT_RENDER_TARGET, g_PP_OffscreenToBackBuffer));
 
 		svCheck(renderer_postprocessing_initialize());
 		svCheck(renderer_layer_initialize());
+
+		svCheck(renderer_postprocessing_default_create(SV_GFX_FORMAT_B8G8R8A8_SRGB, SV_GFX_IMAGE_LAYOUT_UNDEFINED, SV_GFX_IMAGE_LAYOUT_RENDER_TARGET, g_PP_OffscreenToBackBuffer));
 
 		return true;
 	}
@@ -71,6 +72,7 @@ namespace _sv {
 
 	bool renderer_offscreen_create(ui32 width, ui32 height, Offscreen& offscreen)
 	{
+		// Create Render Target
 		SV_GFX_IMAGE_DESC imageDesc;
 		imageDesc.format = SV_REND_OFFSCREEN_FORMAT;
 		imageDesc.layout = SV_GFX_IMAGE_LAYOUT_SHADER_RESOUCE;
@@ -85,6 +87,13 @@ namespace _sv {
 		imageDesc.type = SV_GFX_IMAGE_TYPE_RENDER_TARGET | SV_GFX_IMAGE_TYPE_SHADER_RESOURCE;
 
 		svCheck(graphics_image_create(&imageDesc, offscreen.renderTarget));
+
+		// Create Depth Stencil
+		imageDesc.format = SV_GFX_FORMAT_D24_UNORM_S8_UINT;
+		imageDesc.layout = SV_GFX_IMAGE_LAYOUT_DEPTH_STENCIL;
+		imageDesc.type = SV_GFX_IMAGE_TYPE_DEPTH_STENCIL;
+
+		svCheck(graphics_image_create(&imageDesc, offscreen.depthStencil));
 
 		return true;
 	}
@@ -171,8 +180,12 @@ namespace sv {
 		Offscreen& offscreen = *g_DrawData.pOutput;
 		CommandList cmd = graphics_commandlist_begin();
 
-		GPUBarrier offscreenBarrier = GPUBarrier::Image(offscreen.renderTarget, SV_GFX_IMAGE_LAYOUT_SHADER_RESOUCE, SV_GFX_IMAGE_LAYOUT_RENDER_TARGET);
-		graphics_barrier(&offscreenBarrier, 1u, cmd);
+		// Skybox
+		//TODO: clear offscreen here :)
+
+		// this is not good for performance - rememver to do image barrier here
+		graphics_image_clear(offscreen.renderTarget, SV_GFX_IMAGE_LAYOUT_SHADER_RESOUCE, SV_GFX_IMAGE_LAYOUT_RENDER_TARGET, { 0.f, 0.f, 0.f, 0.f }, 1.f, 0u, cmd);
+		graphics_image_clear(offscreen.depthStencil, SV_GFX_IMAGE_LAYOUT_DEPTH_STENCIL, SV_GFX_IMAGE_LAYOUT_DEPTH_STENCIL, { 0.f, 0.f, 0.f, 0.f }, 1.f, 0u, cmd);
 
 		graphics_set_pipeline_mode(SV_GFX_PIPELINE_MODE_GRAPHICS, cmd);
 

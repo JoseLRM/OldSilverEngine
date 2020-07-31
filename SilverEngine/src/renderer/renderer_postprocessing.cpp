@@ -38,19 +38,19 @@ namespace _sv {
 			svCheck(graphics_buffer_create(&desc, g_VertexBuffer));
 		}
 
+		SV_GFX_SHADER_DESC shaderDesc;
+		shaderDesc.filePath = "shaders/DefPostProcessVertex.shader";
+		shaderDesc.shaderType = SV_GFX_SHADER_TYPE_VERTEX;
+
+		svCheck(graphics_shader_create(&shaderDesc, g_DefVertexShader));
+
+		shaderDesc.filePath = "shaders/DefPostProcessPixel.shader";
+		shaderDesc.shaderType = SV_GFX_SHADER_TYPE_PIXEL;
+
+		svCheck(graphics_shader_create(&shaderDesc, g_DefPixelShader));
+
 		// Create Default PP
 		{
-			SV_GFX_SHADER_DESC shaderDesc;
-			shaderDesc.filePath = "shaders/DefPostProcessVertex.shader";
-			shaderDesc.shaderType = SV_GFX_SHADER_TYPE_VERTEX;
-
-			svCheck(graphics_shader_create(&shaderDesc, g_DefVertexShader));
-
-			shaderDesc.filePath = "shaders/DefPostProcessPixel.shader";
-			shaderDesc.shaderType = SV_GFX_SHADER_TYPE_PIXEL;
-
-			svCheck(graphics_shader_create(&shaderDesc, g_DefPixelShader));
-
 			SV_GFX_SAMPLER_DESC samDesc;
 			samDesc.addressModeU = SV_GFX_ADDRESS_MODE_MIRROR;
 			samDesc.addressModeV = SV_GFX_ADDRESS_MODE_MIRROR;
@@ -75,9 +75,9 @@ namespace _sv {
 			pDesc.topology = SV_GFX_TOPOLOGY_TRIANGLE_STRIP;
 
 			svCheck(graphics_pipeline_create(&pDesc, g_DefPipeline));
-
-			return true;
 		}
+
+		return true;
 	}
 
 	bool renderer_postprocessing_close()

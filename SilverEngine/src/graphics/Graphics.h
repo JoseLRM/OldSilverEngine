@@ -208,6 +208,7 @@ namespace _sv {
 		virtual void Draw(ui32 vertexCount, ui32 instanceCount, ui32 startVertex, ui32 startInstance, sv::CommandList cmd) = 0;
 		virtual void DrawIndexed(ui32 indexCount, ui32 instanceCount, ui32 startIndex, ui32 startVertex, ui32 startInstance, sv::CommandList cmd) = 0;
 
+		virtual void ClearImage(sv::Image& image, SV_GFX_IMAGE_LAYOUT oldLayout, SV_GFX_IMAGE_LAYOUT newLayout, const sv::Color4f& clearColor, float depth, ui32 stencil, sv::CommandList cmd) = 0;
 		virtual void UpdateBuffer(sv::Buffer& buffer, void* pData, ui32 size, ui32 offset, sv::CommandList cmd) = 0;
 		virtual void Barrier(const sv::GPUBarrier* barriers, ui32 count, sv::CommandList cmd) = 0;
 
@@ -287,6 +288,7 @@ namespace sv {
 
 	void graphics_buffer_update(Buffer& buffer, void* pData, ui32 size, ui32 offset, CommandList cmd);
 	void graphics_barrier(const GPUBarrier* barriers, ui32 count, CommandList cmd);
+	void graphics_image_clear(Image& image, SV_GFX_IMAGE_LAYOUT oldLayout, SV_GFX_IMAGE_LAYOUT newLayout, const Color4f& clearColor, float depth, ui32 stencil, CommandList cmd); // Not use if necessary, renderpasses have best performance!!
 
 	// Defaults
 

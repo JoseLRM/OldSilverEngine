@@ -436,8 +436,9 @@ namespace sv {
 
 }
 
-#define SV_COLOR_RED	sv::Color(255u, 0u  , 0u  , 255u)
-#define SV_COLOR_GREEN	sv::Color(0u  , 255u, 0u  , 255u)
-#define SV_COLOR_BLUE	sv::Color(0u  , 0u  , 255u, 255u)
-#define SV_COLOR_BLACK	sv::Color(0u  , 0u  , 0u  , 255u)
-#define SV_COLOR_WHITE	sv::Color(255u, 255u, 255u, 255u)
+#define SV_COLOR_GRAY(x)	sv::Color(x   , x   , x   , 255u)
+#define SV_COLOR_RED		sv::Color(255u, 0u  , 0u  , 255u)
+#define SV_COLOR_GREEN		sv::Color(0u  , 255u, 0u  , 255u)
+#define SV_COLOR_BLUE		sv::Color(0u  , 0u  , 255u, 255u)
+#define SV_COLOR_BLACK		sv::Color(0u  , 0u  , 0u  , 255u)
+#define SV_COLOR_WHITE		sv::Color(255u, 255u, 255u, 255u)

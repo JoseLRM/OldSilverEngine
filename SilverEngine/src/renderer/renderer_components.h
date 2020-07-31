@@ -7,14 +7,14 @@ namespace sv {
 
 	SV_COMPONENT(SpriteComponent) {
 
-		RenderLayerID renderLayer = SV_RENDER_LAYER_DEFAULT;
+		RenderLayerID renderLayer;
 		Sprite sprite;
 		Color color = SV_COLOR_WHITE;
 
-		SpriteComponent() = default;
-		SpriteComponent(Color col) : color(col) {}
-		SpriteComponent(Sprite spr) : sprite(spr) {}
-		SpriteComponent(Sprite spr, Color col) : sprite(spr), color(col) {}
+		SpriteComponent(RenderLayerID renderLayer = SV_RENDER_LAYER_DEFAULT) : renderLayer(renderLayer) {}
+		SpriteComponent(Color col, RenderLayerID renderLayer = SV_RENDER_LAYER_DEFAULT) : color(col), renderLayer(renderLayer) {}
+		SpriteComponent(Sprite spr, RenderLayerID renderLayer = SV_RENDER_LAYER_DEFAULT) : sprite(spr), renderLayer(renderLayer) {}
+		SpriteComponent(Sprite spr, Color col, RenderLayerID renderLayer = SV_RENDER_LAYER_DEFAULT) : sprite(spr), color(col), renderLayer(renderLayer) {}
 
 	};
 

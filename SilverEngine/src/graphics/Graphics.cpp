@@ -229,14 +229,14 @@ namespace _sv {
 		sv::utils_hash_combine(hash, desc.depthTestEnabled ? 1u : 0u);
 		sv::utils_hash_combine(hash, desc.depthWriteEnabled ? 1u : 0u);
 		sv::utils_hash_combine(hash, desc.stencilTestEnabled ? 1u : 0u);
-		sv::utils_hash_combine(hash, desc.front.compareMask);
+		sv::utils_hash_combine(hash, desc.front.readMask);
 		sv::utils_hash_combine(hash, desc.front.compareOp);
 		sv::utils_hash_combine(hash, desc.front.depthFailOp);
 		sv::utils_hash_combine(hash, desc.front.failOp);
 		sv::utils_hash_combine(hash, desc.front.passOp);
 		sv::utils_hash_combine(hash, desc.front.reference);
 		sv::utils_hash_combine(hash, desc.front.writeMask);
-		sv::utils_hash_combine(hash, desc.back.compareMask);
+		sv::utils_hash_combine(hash, desc.back.readMask);
 		sv::utils_hash_combine(hash, desc.back.compareOp);
 		sv::utils_hash_combine(hash, desc.back.depthFailOp);
 		sv::utils_hash_combine(hash, desc.back.failOp);
@@ -564,4 +564,9 @@ namespace sv {
 	{
 		g_Device->Barrier(barriers, count, cmd);
 	}
+	void graphics_image_clear(Image& image, SV_GFX_IMAGE_LAYOUT oldLayout, SV_GFX_IMAGE_LAYOUT newLayout, const Color4f& clearColor, float depth, ui32 stencil, CommandList cmd)
+	{
+		g_Device->ClearImage(image, oldLayout, newLayout, clearColor, depth, stencil, cmd);
+	}
+
 }

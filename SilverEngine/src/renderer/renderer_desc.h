@@ -33,13 +33,18 @@ namespace _sv {
 
 	struct RenderLayer {
 		sv::RenderList<SpriteInstance>	sprites;
-		SV_REND_SORT_MODE					sortMode;
-		i16									sortValue;
+		SV_REND_SORT_MODE				sortMode;
+		i16								sortValue;
+		bool							transparent;
 
 		void Reset()
 		{
 			sprites.Reset();
 		}
+	};
+
+	struct PostProcessing_Default {
+		sv::RenderPass renderPass;
 	};
 
 	struct DrawData {

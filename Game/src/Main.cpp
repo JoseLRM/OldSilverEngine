@@ -62,7 +62,6 @@ class Application : public sv::Application
 	sv::TextureAtlas texture;
 	sv::Sprite sprite;
 
-	sv::RenderLayerID renderLayer;
 
 public:
 
@@ -147,19 +146,12 @@ public:
 		texture.CreateFromFile("res/Tileset.png", false, SV_GFX_ADDRESS_MODE_WRAP);
 		sprite = texture.AddSprite(0.1f, 0.f, 0.1f, 1.f / 6.f);
 
-		renderLayer = sv::renderer_layer_create(100, SV_REND_SORT_MODE_NONE);
-
 		entity = scene.CreateEntity();
 		scene.AddComponent<sv::SpriteComponent>(entity, sprite, SV_COLOR_WHITE);
-		scene.GetComponent<sv::SpriteComponent>(entity)->renderLayer = renderLayer;
 	}
 
 	void Update(float dt) override
 	{
-		if (sv::input_key('K')) 
-			sv::renderer_layer_set_sort_value(sv::renderer_layer_get_sort_value(renderLayer) - 1, renderLayer);
-		if (sv::input_key('L')) 
-			sv::renderer_layer_set_sort_value(sv::renderer_layer_get_sort_value(renderLayer) + 1, renderLayer);
 
 		camera.Adjust();
 
@@ -241,7 +233,6 @@ public:
 	}
 	void Close() override
 	{
-		sv::renderer_layer_destroy(renderLayer);
 	}
 };
 
