@@ -1,10 +1,37 @@
 #include "core.h"
 
 #include "Camera.h"
+#include "renderer.h"
 #include "engine_input.h"
 #include "platform/Window.h"
 
 namespace sv {
+
+	bool Camera::CreateOffscreen(ui32 width, ui32 height)
+	{
+		if (HasOffscreen()) {
+			DestroyOffscreen();
+		}
+		m_Offscreen = std::make_unique<_sv::Offscreen>();
+		return _sv::renderer_offscreen_create(width, height, *m_Offscreen.get());
+	}
+
+	bool Camera::HasOffscreen() const noexcept
+	{
+		return m_Offscreen.get() != nullptr;
+	}
+
+	_sv::Offscreen& Camera::GetOffscreen() noexcept
+	{
+		SV_ASSERT(HasOffscreen());
+		return *m_Offscreen.get();
+	}
+
+	bool Camera::DestroyOffscreen()
+	{
+		SV_ASSERT(HasOffscreen());
+		return _sv::renderer_offscreen_destroy(GetOffscreen());
+	}
 
 	XMMATRIX OrthographicCamera::GetProjectionMatrix() const
 	{

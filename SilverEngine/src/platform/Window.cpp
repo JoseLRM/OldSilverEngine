@@ -90,6 +90,7 @@ namespace sv {
 	ui32 window_get_width() noexcept { return g_Width; }
 	ui32 window_get_height() noexcept { return g_Height; }
 	float window_get_aspect() noexcept { return float(g_Width) / float(g_Height); }
+	Window_wnd& window_get_platform() noexcept { return platform; }
 	bool window_is_resized() noexcept { return g_Resized; }
 
 	bool window_fullscreen_get()

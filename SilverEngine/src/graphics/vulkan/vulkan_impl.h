@@ -4,14 +4,14 @@
 
 #ifdef SV_PLATFORM_WINDOWS
 #define VK_USE_PLATFORM_WIN32_KHR
-#include "platform/windows/windows_impl.h"
+#include "..//..//platform/windows/windows_impl.h"
 #endif
 
 #ifdef SV_PLATFORM_LINUX
 #define VK_USE_PLATFORM_XCB_KHR
 #endif
 
-#include "..//external/vk_mem_alloc.h"
+#include "..//..//..//external/vk_mem_alloc.h"
 
 #ifdef SV_DEBUG
 #define vkAssert(x) if((x) != VK_SUCCESS) SV_THROW("VulkanError", #x)
@@ -24,4 +24,4 @@
 
 #undef CreateSemaphore
 
-#include "../external/sprv/spirv_reflect.hpp"
+#include "..//..//..//external/sprv/spirv_reflect.hpp"

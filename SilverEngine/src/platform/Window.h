@@ -31,6 +31,7 @@ namespace sv {
 	ui32 window_get_width() noexcept;
 	ui32 window_get_height() noexcept;
 	float window_get_aspect() noexcept;
+	Window_wnd& window_get_platform() noexcept;
 	bool window_is_resized() noexcept;
 
 	bool window_fullscreen_get();

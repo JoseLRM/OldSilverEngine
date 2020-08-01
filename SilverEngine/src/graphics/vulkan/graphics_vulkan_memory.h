@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graphics/graphics.h"
+#include "..//..//graphics/graphics.h"
 #include "vulkan_impl.h"
 
 namespace _sv {
@@ -18,7 +18,7 @@ namespace _sv {
 		std::vector<StagingBuffer> m_ActiveStaggingBuffers;
 		StagingBuffer m_CurrentStagingBuffer;
 		ui32 m_CurrentStagingBufferOffset = 0u;
-		ui64 m_LastFrame = std::numeric_limits<ui64>::max();
+		ui64 m_LastFrame = UINT64_MAX;
 		size_t m_BufferSize;
 
 	public:

@@ -11,6 +11,7 @@ namespace _sv {
 	static uvec2 g_Resolution;
 	
 	static Offscreen					g_Offscreen;
+	static bool							g_OffscreenUsed;
 	static PostProcessing_Default		g_PP_OffscreenToBackBuffer;
 
 	static DrawData	g_DrawData;
@@ -51,6 +52,7 @@ namespace _sv {
 
 	void renderer_frame_begin()
 	{
+		g_OffscreenUsed = false;
 		graphics_begin();
 	}
 	void renderer_frame_end()
@@ -63,7 +65,8 @@ namespace _sv {
 
 		Image& backBuffer = graphics_swapchain_acquire_image();
 
-		renderer_postprocessing_default_render(g_PP_OffscreenToBackBuffer, g_Offscreen.renderTarget, backBuffer, cmd);
+		if(g_OffscreenUsed)
+			renderer_postprocessing_default_render(g_PP_OffscreenToBackBuffer, g_Offscreen.renderTarget, backBuffer, cmd);
 
 		// End
 		graphics_commandlist_submit();
@@ -173,8 +176,14 @@ namespace sv {
 		g_DrawData.viewProjectionMatrix = g_DrawData.viewMatrix * g_DrawData.projectionMatrix;
 
 		// Set Output Ptr
-		// TODO: Optional offscreen in Camera class
-		g_DrawData.pOutput = &g_Offscreen;
+		SV_ASSERT(!g_OffscreenUsed);
+		if (camera.HasOffscreen()) {
+			g_DrawData.pOutput = &camera.GetOffscreen();
+		}
+		else {
+			g_DrawData.pOutput = &g_Offscreen;
+			g_OffscreenUsed = true;
+		}
 
 		// Render
 		Offscreen& offscreen = *g_DrawData.pOutput;

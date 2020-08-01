@@ -1,14 +1,22 @@
 #pragma once
 
 #include "..//core.h"
+#include "renderer_desc.h"
 
 namespace sv {
 
 	class Camera {
+		std::unique_ptr<_sv::Offscreen> m_Offscreen;
+
 	public:
 		virtual XMMATRIX GetProjectionMatrix() const = 0;
 		virtual XMMATRIX GetViewMatrix() const = 0;
 		virtual void Adjust() = 0;
+
+		bool CreateOffscreen(ui32 width, ui32 height);
+		bool HasOffscreen() const noexcept;
+		_sv::Offscreen& GetOffscreen() noexcept;
+		bool DestroyOffscreen();
 	};
 
 	class OrthographicCamera : public Camera {

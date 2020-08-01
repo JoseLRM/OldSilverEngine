@@ -11,6 +11,10 @@ enum SV_REND_SORT_MODE : ui8 {
 	SV_REND_SORT_MODE_COORD_Z,
 };
 
+namespace sv {
+	class Camera;
+}
+
 namespace _sv {
 
 	struct Offscreen {

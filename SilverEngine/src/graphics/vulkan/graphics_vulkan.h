@@ -173,9 +173,11 @@ namespace _sv {
 
 		ui32					m_ImageIndex;
 
+	public:
 		inline Frame& GetFrame() noexcept { return m_Frames[m_CurrentFrame]; }
 		inline VkCommandBuffer GetCMD(sv::CommandList cmd) { return GetFrame().commandBuffers[cmd]; }
 
+	private:
 		// Binding Members
 
 		VkRenderPass						m_ActiveRenderPass[SV_GFX_COMMAND_LIST_COUNT];
@@ -215,6 +217,8 @@ namespace _sv {
 		VkPhysicalDevice GetPhysicalDevice() const noexcept;
 		inline VmaAllocator GetAllocator() const noexcept { return m_Allocator; }
 		inline ui32 GetCurrentFrame() const noexcept { return m_CurrentFrame; }
+		inline VkQueue GetGraphicsQueue() const noexcept { return m_QueueGraphics; }
+		inline SwapChain& GetSwapChain() noexcept { return m_SwapChain; }
 
 		// Primitive Creation
 		bool CreateBuffer(Buffer_vk& buffer, const SV_GFX_BUFFER_DESC& desc);

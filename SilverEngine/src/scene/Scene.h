@@ -199,6 +199,8 @@ namespace sv {
 		}
 
 		inline BaseComponent* GetComponentByID(Entity entity, CompID ID) { return GetComponent(entity, ID); }
+		inline void AddComponentByID(Entity entity, CompID ID) { AddComponent(entity, ID, ecs_components_get_size(ID)); }
+		inline void RemoveComponentByID(Entity entity, CompID ID) { RemoveComponent(entity, ID, ecs_components_get_size(ID)); }
 
 		inline std::vector<ui8>& GetComponentsList(CompID ID) noexcept { return m_Components[ID]; }
 
