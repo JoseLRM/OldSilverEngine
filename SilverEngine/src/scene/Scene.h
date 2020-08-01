@@ -180,8 +180,8 @@ namespace sv {
 			AddComponent(entity, Component::ID, Component::SIZE);
 		}
 		template<typename Component, typename... Args>
-		inline void AddComponents(Entity* entities, ui32 count, Args... args) {
-			Component component(std::forward<Args...>(args...));
+		inline void AddComponents(Entity* entities, ui32 count, Args&&... args) {
+			Component component(std::forward<Args>(args)...);
 			AddComponents(entities, count, (BaseComponent*) & component, Component::ID, Component::SIZE);
 		}
 		template<typename Component>

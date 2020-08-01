@@ -62,6 +62,8 @@ class Application : public sv::Application
 	sv::TextureAtlas texture;
 	sv::Sprite sprite;
 
+	sv::RenderLayerID transparentLayer;
+
 
 public:
 
@@ -109,7 +111,7 @@ public:
 		sv::Entity entities[count];
 
 		scene.CreateEntities(count, 0u, entities);
-		scene.AddComponents<sv::SpriteComponent>(entities, count, sprite);
+		scene.AddComponents<sv::SpriteComponent>(entities, count, sprite, transparentLayer);
 
 		for (ui32 i = 0; i < count; ++i) {
 			sv::Transform trans = scene.GetTransform(entities[i]);
@@ -140,7 +142,7 @@ public:
 			sprComp.color.x = ui8((float(rand()) / RAND_MAX) * 255.f);
 			sprComp.color.y = ui8((float(rand()) / RAND_MAX) * 255.f);
 			sprComp.color.z = ui8((float(rand()) / RAND_MAX) * 255.f);
-			sprComp.color.w = 255u;
+			sprComp.color.w = 100u;
 #endif
 
 			trans.SetPosition(pos);
@@ -157,6 +159,8 @@ public:
 
 		texture.CreateFromFile("res/Tileset.png", false, SV_GFX_ADDRESS_MODE_WRAP);
 		sprite = texture.AddSprite(0.1f, 0.f, 0.1f, 1.f / 6.f);
+
+		transparentLayer = sv::renderer_layer_create(10, SV_REND_SORT_MODE_NONE, true);
 
 		entity = scene.CreateEntity();
 		scene.AddComponent<sv::SpriteComponent>(entity, sprite, SV_COLOR_WHITE);

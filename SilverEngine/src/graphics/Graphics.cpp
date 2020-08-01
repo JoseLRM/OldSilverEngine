@@ -229,20 +229,16 @@ namespace _sv {
 		sv::utils_hash_combine(hash, desc.depthTestEnabled ? 1u : 0u);
 		sv::utils_hash_combine(hash, desc.depthWriteEnabled ? 1u : 0u);
 		sv::utils_hash_combine(hash, desc.stencilTestEnabled ? 1u : 0u);
-		sv::utils_hash_combine(hash, desc.front.readMask);
+		sv::utils_hash_combine(hash, desc.readMask);
+		sv::utils_hash_combine(hash, desc.writeMask);
 		sv::utils_hash_combine(hash, desc.front.compareOp);
 		sv::utils_hash_combine(hash, desc.front.depthFailOp);
 		sv::utils_hash_combine(hash, desc.front.failOp);
 		sv::utils_hash_combine(hash, desc.front.passOp);
-		sv::utils_hash_combine(hash, desc.front.reference);
-		sv::utils_hash_combine(hash, desc.front.writeMask);
-		sv::utils_hash_combine(hash, desc.back.readMask);
 		sv::utils_hash_combine(hash, desc.back.compareOp);
 		sv::utils_hash_combine(hash, desc.back.depthFailOp);
 		sv::utils_hash_combine(hash, desc.back.failOp);
 		sv::utils_hash_combine(hash, desc.back.passOp);
-		sv::utils_hash_combine(hash, desc.back.reference);
-		sv::utils_hash_combine(hash, desc.back.writeMask);
 
 		return hash;
 	}
@@ -541,6 +537,12 @@ namespace sv {
 		memcpy(g_PipelineState.graphics[cmd].scissors, scissors, size_t(count) * sizeof(Scissor));
 		g_PipelineState.graphics[cmd].scissorsCount = count;
 		g_PipelineState.graphics[cmd].flags |= SV_GFX_GRAPHICS_PIPELINE_STATE_SCISSOR;
+	}
+
+	void graphics_set_stencil_reference(ui32 ref, CommandList cmd)
+	{
+		g_PipelineState.graphics[cmd].stencilReference = ref;
+		g_PipelineState.graphics[cmd].flags |= SV_GFX_GRAPHICS_PIPELINE_STATE_STENCIL_REF;
 	}
 
 	////////////////////////////////////////// DRAW CALLS /////////////////////////////////////////

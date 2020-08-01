@@ -40,6 +40,7 @@ enum SV_GFX_GRAPHICS_PIPELINE_STATE : ui64 {
 
 	SV_GFX_GRAPHICS_PIPELINE_STATE_VIEWPORT				= SV_BIT(28),
 	SV_GFX_GRAPHICS_PIPELINE_STATE_SCISSOR				= SV_BIT(29),
+	SV_GFX_GRAPHICS_PIPELINE_STATE_STENCIL_REF			= SV_BIT(30),
 };
 
 namespace _sv {
@@ -70,6 +71,7 @@ namespace _sv {
 		ui32							viewportsCount;
 		sv::Scissor						scissors[SV_GFX_SCISSOR_COUNT];
 		ui32							scissorsCount;
+		ui32							stencilReference;
 		
 		RenderPass_internal*			renderPass;
 		Image_internal*					attachments[SV_GFX_ATTACHMENTS_COUNT];

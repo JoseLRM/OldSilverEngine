@@ -395,7 +395,7 @@ struct SV_GFX_INPUT_LAYOUT_DESC {
 	std::vector<SV_GFX_INPUT_ELEMENT_DESC> elements;
 };
 struct SV_GFX_BLEND_ATTACHMENT_DESC {
-	bool blendEnabled;
+	bool					blendEnabled;
 	SV_GFX_BLEND_FACTOR		srcColorBlendFactor;
 	SV_GFX_BLEND_FACTOR		dstColorBlendFactor;
 	SV_GFX_BLEND_OP			colorBlendOp;
@@ -419,15 +419,14 @@ struct SV_GFX_STENCIL_STATE {
 	SV_GFX_STENCIL_OP   passOp;
 	SV_GFX_STENCIL_OP   depthFailOp;
 	SV_GFX_COMPARE_OP   compareOp;
-	ui32				readMask;
-	ui32				writeMask;
-	ui32				reference;
 };
 struct SV_GFX_DEPTHSTENCIL_STATE_DESC {
 	bool					depthTestEnabled;
 	bool					depthWriteEnabled;
 	SV_GFX_COMPARE_OP		depthCompareOp;
 	bool					stencilTestEnabled;
+	ui32					readMask;
+	ui32					writeMask;
 	SV_GFX_STENCIL_STATE	front;
 	SV_GFX_STENCIL_STATE	back;
 };

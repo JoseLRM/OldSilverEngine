@@ -184,8 +184,8 @@ namespace sv {
 		//TODO: clear offscreen here :)
 
 		// this is not good for performance - remember to do image barrier here
-		graphics_image_clear(offscreen.renderTarget, SV_GFX_IMAGE_LAYOUT_SHADER_RESOUCE, SV_GFX_IMAGE_LAYOUT_RENDER_TARGET, { 0.f, 0.f, 0.f, 0.f }, 1.f, 0u, cmd);
-		graphics_image_clear(offscreen.depthStencil, SV_GFX_IMAGE_LAYOUT_DEPTH_STENCIL, SV_GFX_IMAGE_LAYOUT_DEPTH_STENCIL, { 0.f, 0.f, 0.f, 0.f }, 1.f, 0u, cmd);
+		graphics_image_clear(offscreen.renderTarget, SV_GFX_IMAGE_LAYOUT_SHADER_RESOUCE, SV_GFX_IMAGE_LAYOUT_RENDER_TARGET, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
+		graphics_image_clear(offscreen.depthStencil, SV_GFX_IMAGE_LAYOUT_DEPTH_STENCIL, SV_GFX_IMAGE_LAYOUT_DEPTH_STENCIL, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
 
 		graphics_set_pipeline_mode(SV_GFX_PIPELINE_MODE_GRAPHICS, cmd);
 

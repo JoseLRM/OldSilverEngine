@@ -18,8 +18,7 @@ namespace _sv {
 
 	static GraphicsPipeline g_SpriteOpaquePipeline;
 	static GraphicsPipeline g_SpriteTransparentPipeline;
-	static RenderPass g_SpriteOpaqueRenderPass;
-	static RenderPass g_SpriteTransparentRenderPass;
+	static RenderPass g_SpriteRenderPass;
 
 	static Shader g_SpriteVertexShader;
 	static Shader g_SpritePixelShader;
@@ -121,14 +120,7 @@ namespace _sv {
 			desc.attachments[1].finalLayout = SV_GFX_IMAGE_LAYOUT_DEPTH_STENCIL;
 			desc.attachments[1].type = SV_GFX_ATTACHMENT_TYPE_DEPTH_STENCIL;
 
-			svCheck(graphics_renderpass_create(&desc, g_SpriteOpaqueRenderPass));
-
-			desc.attachments[1].stencilStoreOp = SV_GFX_STORE_OP_DONT_CARE;
-			desc.attachments[1].initialLayout = SV_GFX_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY;
-			desc.attachments[1].layout = SV_GFX_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY;
-			desc.attachments[1].finalLayout = SV_GFX_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY;
-
-			svCheck(graphics_renderpass_create(&desc, g_SpriteTransparentRenderPass));
+			svCheck(graphics_renderpass_create(&desc, g_SpriteRenderPass));
 		}
 		// Sprite Pipelines
 		{
@@ -139,35 +131,63 @@ namespace _sv {
 			inputLayout.elements.push_back({ 0u, "TexCoord", 0u, 4u * sizeof(float), SV_GFX_FORMAT_R32G32_FLOAT });
 			inputLayout.elements.push_back({ 0u, "Color", 0u, 6u * sizeof(float), SV_GFX_FORMAT_R8G8B8A8_UNORM });
 
-			//SV_GFX_DEPTHSTENCIL_STATE_DESC depthStencilState;
-			//depthStencilState.depthTestEnabled = false;
-			//depthStencilState.depthWriteEnabled = false;
-			//depthStencilState.depthCompareOp = SV_GFX_COMPARE_OP_ALWAYS;
-			//depthStencilState.stencilTestEnabled = true;
+			SV_GFX_DEPTHSTENCIL_STATE_DESC depthStencilState;
+			depthStencilState.depthTestEnabled = false;
+			depthStencilState.depthWriteEnabled = false;
+			depthStencilState.depthCompareOp = SV_GFX_COMPARE_OP_ALWAYS;
+			depthStencilState.stencilTestEnabled = true;
+			depthStencilState.readMask = 0xff;
+			depthStencilState.writeMask = 0xff;
 
-			//depthStencilState.front.failOp;
-			//depthStencilState.front.passOp;
-			//depthStencilState.front.depthFailOp;
-			//depthStencilState.front.compareOp = SV_GFX_COMPARE_OP_NOT_EQUAL;
-			//depthStencilState.front.readMask = 0xff;
-			//depthStencilState.front.writeMask = 0xff;
-			//depthStencilState.front.reference;
+			SV_GFX_BLEND_STATE_DESC blendState;
+			blendState.attachments.resize(1);
+			blendState.blendConstants = { 0.f, 0.f, 0.f, 0.f };
+
+			// Opaque
+			depthStencilState.front.failOp = SV_GFX_STENCIL_OP_KEEP;
+			depthStencilState.front.passOp = SV_GFX_STENCIL_OP_REPLACE;
+			depthStencilState.front.depthFailOp = SV_GFX_STENCIL_OP_KEEP;
+			depthStencilState.front.compareOp = SV_GFX_COMPARE_OP_NOT_EQUAL;
+
+			depthStencilState.back = depthStencilState.front;
+
+			blendState.attachments[0].blendEnabled = true;
+			blendState.attachments[0].srcColorBlendFactor = SV_GFX_BLEND_FACTOR_ONE;
+			blendState.attachments[0].dstColorBlendFactor = SV_GFX_BLEND_FACTOR_ONE;
+			blendState.attachments[0].colorBlendOp = SV_GFX_BLEND_OP_ADD;
+			blendState.attachments[0].srcAlphaBlendFactor = SV_GFX_BLEND_FACTOR_ONE;
+			blendState.attachments[0].dstAlphaBlendFactor = SV_GFX_BLEND_FACTOR_ONE;
+			blendState.attachments[0].alphaBlendOp = SV_GFX_BLEND_OP_ADD;
+			blendState.attachments[0].colorWriteMask = SV_GFX_COLOR_COMPONENT_ALL;
 
 			SV_GFX_GRAPHICS_PIPELINE_DESC desc;
 			desc.pVertexShader = &g_SpriteVertexShader;
 			desc.pPixelShader = &g_SpritePixelShader;
 			desc.pGeometryShader = nullptr;
 			desc.pInputLayout = &inputLayout;
-			desc.pBlendState = nullptr;
+			desc.pBlendState = &blendState;
 			desc.pRasterizerState = nullptr;
-			desc.pDepthStencilState = nullptr;
+			desc.pDepthStencilState = &depthStencilState;
 			desc.topology = SV_GFX_TOPOLOGY_TRIANGLES;
 
 			svCheck(graphics_pipeline_create(&desc, g_SpriteOpaquePipeline));
 
-			desc.pVertexShader = nullptr;
-			desc.pPixelShader = nullptr;
-			desc.pGeometryShader = nullptr;
+			// Transparent
+			depthStencilState.front.failOp = SV_GFX_STENCIL_OP_KEEP;
+			depthStencilState.front.passOp = SV_GFX_STENCIL_OP_KEEP;
+			depthStencilState.front.depthFailOp = SV_GFX_STENCIL_OP_KEEP;
+			depthStencilState.front.compareOp = SV_GFX_COMPARE_OP_NOT_EQUAL;
+
+			depthStencilState.back = depthStencilState.front;
+
+			blendState.attachments[0].blendEnabled = true;
+			blendState.attachments[0].srcColorBlendFactor = SV_GFX_BLEND_FACTOR_SRC_ALPHA;
+			blendState.attachments[0].dstColorBlendFactor = SV_GFX_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+			blendState.attachments[0].colorBlendOp = SV_GFX_BLEND_OP_ADD;
+			blendState.attachments[0].srcAlphaBlendFactor = SV_GFX_BLEND_FACTOR_ONE;
+			blendState.attachments[0].dstAlphaBlendFactor = SV_GFX_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+			blendState.attachments[0].alphaBlendOp = SV_GFX_BLEND_OP_ADD;
+
 			svCheck(graphics_pipeline_create(&desc, g_SpriteTransparentPipeline));
 		}
 		// Sprite White Image
@@ -209,7 +229,8 @@ namespace _sv {
 	bool renderer_layer_close()
 	{
 		svCheck(graphics_destroy(g_SpriteOpaquePipeline));
-		svCheck(graphics_destroy(g_SpriteOpaqueRenderPass));
+		svCheck(graphics_destroy(g_SpriteTransparentPipeline));
+		svCheck(graphics_destroy(g_SpriteRenderPass));
 		svCheck(graphics_destroy(g_SpriteVertexShader));
 		svCheck(graphics_destroy(g_SpritePixelShader));
 		svCheck(graphics_destroy(g_SpriteVertexBuffer));
@@ -250,7 +271,7 @@ namespace _sv {
 
 		// Sort RenderLayers
 		std::sort(g_RenderLayers.begin(), g_RenderLayers.end(), [](const std::unique_ptr<RenderLayer>& rl0, const std::unique_ptr<RenderLayer>& rl1) {
-			return rl0->sortValue < rl1->sortValue;
+			return rl0->sortValue > rl1->sortValue;
 		});
 	}
 
@@ -321,6 +342,7 @@ namespace _sv {
 
 		for (auto it = g_RenderLayers.begin(); it != g_RenderLayers.end(); ++it) {
 			auto& sprites = (*it)->sprites;
+			bool transparent = (*it)->transparent;
 
 			ui32 i = 0u;
 
@@ -366,11 +388,19 @@ namespace _sv {
 				graphics_buffer_update(g_SpriteVertexBuffer, g_SpriteData, batchSize * sizeof(SpriteVertex) * 4u, 0u, cmd);
 
 				// Begin rendering
-
-				graphics_renderpass_begin(g_SpriteOpaqueRenderPass, att, nullptr, 1.f, 0u, cmd);
+				graphics_renderpass_begin(g_SpriteRenderPass, att, nullptr, 1.f, 0u, cmd);
+				
+				if (transparent) {
+					graphics_pipeline_bind(g_SpriteTransparentPipeline, cmd);
+				}
+				else {
+					graphics_pipeline_bind(g_SpriteOpaquePipeline, cmd);
+				}
 
 				graphics_indexbuffer_bind(g_SpriteIndexBuffer, 0u, cmd);
-				graphics_pipeline_bind(g_SpriteOpaquePipeline, cmd);
+				
+
+				graphics_set_stencil_reference(1u, cmd);
 
 				// Draw call per textureAtlas
 				j = 0u;

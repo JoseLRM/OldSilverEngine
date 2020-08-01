@@ -278,6 +278,7 @@ namespace sv {
 	void graphics_set_pipeline_mode(SV_GFX_PIPELINE_MODE mode, CommandList cmd);
 	void graphics_set_viewports(const Viewport* viewports, ui32 count, CommandList cmd);
 	void graphics_set_scissors(const Scissor* scissors, ui32 count, CommandList cmd);
+	void graphics_set_stencil_reference(ui32 ref, CommandList cmd);
 
 	// Draw Calls
 

@@ -10,5 +10,7 @@ layout (binding = 1) uniform texture2D tex;
 
 void main()
 {
-	outColor = FragColor * texture(sampler2D(tex, sam), FragTexCoord);
+	vec4 texColor = texture(sampler2D(tex, sam), FragTexCoord);
+	if (texColor.a < 0.05f) discard;
+	outColor = FragColor * texColor;
 }

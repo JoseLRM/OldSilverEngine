@@ -802,16 +802,16 @@ namespace _sv {
 					depthStencilState.front.passOp = graphics_vulkan_parse_stencilop(dDesc.front.passOp);
 					depthStencilState.front.depthFailOp = graphics_vulkan_parse_stencilop(dDesc.front.depthFailOp);
 					depthStencilState.front.compareOp = graphics_vulkan_parse_compareop(dDesc.front.compareOp);
-					depthStencilState.front.compareMask = dDesc.front.readMask;
-					depthStencilState.front.writeMask = dDesc.front.writeMask;
-					depthStencilState.front.reference = dDesc.front.reference;
+					depthStencilState.front.compareMask = dDesc.readMask;
+					depthStencilState.front.writeMask = dDesc.writeMask;
+					depthStencilState.front.reference = 0u;
 					depthStencilState.back.failOp = graphics_vulkan_parse_stencilop(dDesc.back.failOp);
 					depthStencilState.back.passOp = graphics_vulkan_parse_stencilop(dDesc.back.passOp);
 					depthStencilState.back.depthFailOp = graphics_vulkan_parse_stencilop(dDesc.back.depthFailOp);
 					depthStencilState.back.compareOp = graphics_vulkan_parse_compareop(dDesc.back.compareOp);
-					depthStencilState.back.compareMask = dDesc.back.readMask;
-					depthStencilState.back.writeMask = dDesc.back.writeMask;
-					depthStencilState.back.reference = dDesc.back.reference;
+					depthStencilState.back.compareMask = dDesc.readMask;
+					depthStencilState.back.writeMask = dDesc.writeMask;
+					depthStencilState.back.reference = 0u;
 
 					depthStencilState.depthBoundsTestEnable = VK_FALSE;
 					depthStencilState.minDepthBounds = 0.f;
@@ -847,11 +847,12 @@ namespace _sv {
 				VkDynamicState dynamicStates[] = {
 					VK_DYNAMIC_STATE_VIEWPORT,
 					VK_DYNAMIC_STATE_SCISSOR,
+					VK_DYNAMIC_STATE_STENCIL_REFERENCE,
 				};
 
 				VkPipelineDynamicStateCreateInfo dynamicStatesInfo{};
 				dynamicStatesInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-				dynamicStatesInfo.dynamicStateCount = 2u;
+				dynamicStatesInfo.dynamicStateCount = 3u;
 				dynamicStatesInfo.pDynamicStates = dynamicStates;
 
 				// Creation
@@ -933,6 +934,11 @@ namespace _sv {
 
 			vkCmdSetScissor(cmd, 0u, SV_GFX_SCISSOR_COUNT, scissors);
 
+		}
+
+		// Set stencil reference
+		if (state.flags & SV_GFX_GRAPHICS_PIPELINE_STATE_STENCIL_REF) {
+			vkCmdSetStencilReference(cmd, VK_STENCIL_FRONT_AND_BACK, state.stencilReference);
 		}
 
 		// Update Descriptors
