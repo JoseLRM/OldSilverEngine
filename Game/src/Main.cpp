@@ -55,7 +55,7 @@ void System(sv::Scene& scene, sv::Entity entity, sv::BaseComponent** comp, float
 
 class Application : public sv::Application
 {
-	sv::OrthographicCamera camera;
+	sv::Entity cameraEntity;
 	sv::Scene scene;
 	sv::Entity entity;
 
@@ -75,12 +75,17 @@ public:
 		scene.CreateEntities(count, 0u, entities);
 		scene.AddComponents<sv::SpriteComponent>(entities, count, sprite);
 
+		sv::CameraComponent* camera = scene.GetComponent<sv::CameraComponent>(cameraEntity);
+		sv::vec3 cameraPos = scene.GetTransform(cameraEntity).GetWorldPosition();
+
 		for (ui32 i = 0; i < count; ++i) {
 			sv::Transform trans = scene.GetTransform(entities[i]);
 			sv::SpriteComponent& sprComp = *scene.GetComponent<sv::SpriteComponent>(entities[i]);
 
 			sv::vec3 pos;
-			sv::vec2 mousePos = camera.GetMousePos();
+			sv::vec2 mousePos = camera->camera->Orthographic_GetMousePos();
+			mousePos.x += cameraPos.x;
+			mousePos.y += cameraPos.y;
 			pos.x = mousePos.x;
 			pos.y = mousePos.y;
 			//pos.x = (float(rand()) / RAND_MAX) * 800.f - 400.f;
@@ -157,6 +162,9 @@ public:
 		sv::engine_state_load(new GameState(), new Loading());
 		scene.Initialize();
 
+		cameraEntity = scene.CreateEntity();
+		scene.AddComponent<sv::CameraComponent>(cameraEntity, SV_REND_CAMERA_TYPE_ORTHOGRAPHIC);
+
 		texture.CreateFromFile("res/Tileset.png", false, SV_GFX_ADDRESS_MODE_WRAP);
 		sprite = texture.AddSprite(0.1f, 0.f, 0.1f, 1.f / 6.f);
 
@@ -168,51 +176,57 @@ public:
 
 	void Update(float dt) override
 	{
+		{
+			sv::CameraComponent* cameraComp = scene.GetComponent<sv::CameraComponent>(cameraEntity);
+			cameraComp->Adjust(sv::window_get_width(), sv::window_get_height());
 
-		camera.Adjust();
+			sv::Camera& camera = *cameraComp->camera.get();
 
-		sv::vec2 dir;
-		float dirZoom = 0u;
-		float add = 7.f * dt * camera.GetZoom() * 0.05f;
-		float addZoom = dt * 10.f * (camera.GetZoom()*0.05f);
+			sv::vec2 dir;
+			float dirZoom = 0u;
+			float add = 7.f * dt * camera.Orthographic_GetZoom() * 0.05f;
+			float addZoom = dt * 10.f * (camera.Orthographic_GetZoom() * 0.05f);
 
-		if (sv::input_key('W')) {
-			dir.y += add;
-		}
-		if (sv::input_key('S')) {
-			dir.y -= add;
-		}
-		if (sv::input_key('D')) {
-			dir.x += add;
-		}
-		if (sv::input_key('A')) {
-			dir.x -= add;
-		}
-		if (sv::input_key(SV_KEY_SPACE)) {
-			dirZoom += addZoom;
-		}
-		if (sv::input_key(SV_KEY_SHIFT)) {
-			dirZoom -= addZoom;
-		}
-		camera.SetZoom(camera.GetZoom() + dirZoom);
-		camera.SetPosition(camera.GetPosition() + dir);
+			if (sv::input_key('W')) {
+				dir.y += add;
+			}
+			if (sv::input_key('S')) {
+				dir.y -= add;
+			}
+			if (sv::input_key('D')) {
+				dir.x += add;
+			}
+			if (sv::input_key('A')) {
+				dir.x -= add;
+			}
+			if (sv::input_key(SV_KEY_SPACE)) {
+				dirZoom += addZoom;
+			}
+			if (sv::input_key(SV_KEY_SHIFT)) {
+				dirZoom -= addZoom;
+			}
+			camera.Orthographic_SetZoom(camera.Orthographic_GetZoom() + dirZoom);
 
-
-		sv::Transform trans = scene.GetTransform(entity);
-		sv::vec3 rot = trans.GetLocalRotation();
-
-		if (sv::input_key('I')) {
-			rot.x += dt * 2.f;
-		}
-		if (sv::input_key('O')) {
-			rot.y += dt * 2.f;
-		}
-		if (sv::input_key('P')) {
-			rot.z += dt * 2.f;
+			sv::Transform trans = scene.GetTransform(cameraEntity);
+			trans.SetPosition(trans.GetLocalPosition() + dir);
 		}
 
-		trans.SetRotation(rot);
+		{
+			sv::Transform trans = scene.GetTransform(entity);
+			sv::vec3 rot = trans.GetLocalRotation();
 
+			if (sv::input_key('I')) {
+				rot.x += dt * 2.f;
+			}
+			if (sv::input_key('O')) {
+				rot.y += dt * 2.f;
+			}
+			if (sv::input_key('P')) {
+				rot.z += dt * 2.f;
+			}
+
+			trans.SetRotation(rot);
+		}
 
 		if (sv::input_mouse_pressed(SV_MOUSE_LEFT)) {
 			createEntity();
@@ -244,8 +258,6 @@ public:
 		sv::renderer_scene_begin();
 		sv::renderer_draw_scene(scene);
 		sv::renderer_scene_end();
-
-		sv::renderer_present(camera);
 	}
 	void Close() override
 	{

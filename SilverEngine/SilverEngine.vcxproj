@@ -223,6 +223,7 @@
     <ClCompile Include="src\platform\window.cpp" />
     <ClCompile Include="src\renderer\Camera.cpp" />
     <ClCompile Include="src\renderer\renderer.cpp" />
+    <ClCompile Include="src\renderer\renderer_components.cpp" />
     <ClCompile Include="src\renderer\renderer_layer.cpp" />
     <ClCompile Include="src\renderer\renderer_postprocessing.cpp" />
     <ClCompile Include="src\renderer\TextureAtlas.cpp" />

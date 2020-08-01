@@ -98,6 +98,7 @@
     <ClCompile Include="src\renderer\TextureAtlas.cpp" />
     <ClCompile Include="src\platform\window.cpp" />
     <ClCompile Include="src\platform\windows\platform_windows.cpp" />
+    <ClCompile Include="src\renderer\renderer_components.cpp" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="src\graphics\sprv_shaders\DefPostProcess.frag" />

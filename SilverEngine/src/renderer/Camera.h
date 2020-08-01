@@ -7,44 +7,50 @@ namespace sv {
 
 	class Camera {
 		std::unique_ptr<_sv::Offscreen> m_Offscreen;
+		SV_REND_CAMERA_TYPE m_CameraType;
+
+		struct OrthographicCamera {
+			float width = 1.f;
+			float height = 1.f;
+		};
+		struct PerspectiveCamera {
+
+		};
+
+		union {
+			OrthographicCamera m_Orthographic;
+			PerspectiveCamera m_Perspective;
+		};
 
 	public:
-		virtual XMMATRIX GetProjectionMatrix() const = 0;
-		virtual XMMATRIX GetViewMatrix() const = 0;
-		virtual void Adjust() = 0;
+		Camera();
+		Camera(SV_REND_CAMERA_TYPE type);
+
+		// Orthographic
+
+		void Orthographic_SetDimension(ui32 width, ui32 height);
+		void Orthographic_SetZoom(float zoom);
+		void Orthographic_SetAspect(float aspect);
+
+		uvec2 Orthographic_GetDimension();
+		float Orthographic_GetZoom();
+		float Orthographic_GetAspect();
+		vec2 Orthographic_GetMousePos();
+
+		// Perspective
+
+		// General
+
+		XMMATRIX GetProjectionMatrix() const;
+
+		// Offscreen
 
 		bool CreateOffscreen(ui32 width, ui32 height);
 		bool HasOffscreen() const noexcept;
 		_sv::Offscreen& GetOffscreen() noexcept;
 		bool DestroyOffscreen();
-	};
 
-	class OrthographicCamera : public Camera {
-		vec2 m_Position = { 0.f, 0.f };
-		vec2 m_Dimension = { 1.f, 1.f };
-		float m_Rotation = 0.f;
-
-	public:
-		XMMATRIX GetProjectionMatrix() const override;
-		XMMATRIX GetViewMatrix() const override;
-
-		void Adjust() override;
-
-		// getters
-		inline vec2 GetPosition() const noexcept { return m_Position; }
-		inline vec2 GetDimension() const noexcept { return m_Dimension; }
-		inline float GetZoom() const noexcept { return m_Dimension.Mag(); }
-		inline float GetRotation() const noexcept { return m_Rotation; }
-		float GetAspect() const noexcept;
-
-		vec2 GetMousePos();
-
-		// setters
-		void SetPosition(vec2 position) noexcept;
-		void SetDimension(vec2 dimension) noexcept;
-		void SetZoom(float zoom) noexcept;
-		void SetRotation(float rotation) noexcept;
-		void SetAspect(float aspect) noexcept;
+		inline SV_REND_CAMERA_TYPE GetCameraType() const noexcept { return m_CameraType; }
 
 	};
 

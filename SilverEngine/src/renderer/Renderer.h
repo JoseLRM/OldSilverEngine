@@ -47,7 +47,7 @@ namespace sv {
 	void renderer_scene_begin();
 	void renderer_scene_end();
 	void renderer_draw_scene(Scene& scene);
-	void renderer_present(Camera& camera);
+	void renderer_present(Camera& camera, XMMATRIX worldMatrix);
 
 }
 

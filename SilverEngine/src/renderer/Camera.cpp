@@ -7,6 +7,74 @@
 
 namespace sv {
 
+	Camera::Camera() : m_CameraType(SV_REND_CAMERA_TYPE_NONE)
+	{
+	}
+	Camera::Camera(SV_REND_CAMERA_TYPE type) : m_CameraType(type)
+	{
+		if (type == SV_REND_CAMERA_TYPE_ORTHOGRAPHIC) {
+			m_Orthographic.width = 1.f;
+			m_Orthographic.height = 1.f;
+		}
+	}
+
+	// Orthographic
+
+	void Camera::Orthographic_SetDimension(ui32 width, ui32 height)
+	{
+		m_Orthographic.width = width;
+		m_Orthographic.height = height;
+	}
+
+	void Camera::Orthographic_SetZoom(float zoom)
+	{
+		float currentZoom = Orthographic_GetZoom();
+		m_Orthographic.width = (m_Orthographic.width / currentZoom) * zoom;
+		m_Orthographic.height = (m_Orthographic.height / currentZoom) * zoom;
+	}
+
+	void Camera::Orthographic_SetAspect(float aspect)
+	{
+		m_Orthographic.width = m_Orthographic.height * aspect;
+	}
+
+	uvec2 Camera::Orthographic_GetDimension()
+	{
+		return uvec2();
+	}
+	float Camera::Orthographic_GetZoom()
+	{
+		return sqrt(m_Orthographic.width * m_Orthographic.width + m_Orthographic.height * m_Orthographic.height);
+	}
+
+	float Camera::Orthographic_GetAspect()
+	{
+		return m_Orthographic.width / m_Orthographic.height;
+	}
+
+	vec2 Camera::Orthographic_GetMousePos()
+	{
+		return input_mouse_position_get() * vec2(m_Orthographic.width, m_Orthographic.height);
+	}
+
+	// General
+
+	XMMATRIX Camera::GetProjectionMatrix() const
+	{
+		XMMATRIX matrix = XMMatrixIdentity();
+
+		switch (m_CameraType)
+		{
+		case SV_REND_CAMERA_TYPE_ORTHOGRAPHIC:
+			matrix = XMMatrixOrthographicLH(m_Orthographic.width, m_Orthographic.height, -100000.f, 100000.f);
+			break;
+		case SV_REND_CAMERA_TYPE_PERSPECTIVE:
+			break;
+		}
+
+		return matrix;
+	}
+
 	bool Camera::CreateOffscreen(ui32 width, ui32 height)
 	{
 		if (HasOffscreen()) {
@@ -31,57 +99,6 @@ namespace sv {
 	{
 		SV_ASSERT(HasOffscreen());
 		return _sv::renderer_offscreen_destroy(GetOffscreen());
-	}
-
-	XMMATRIX OrthographicCamera::GetProjectionMatrix() const
-	{
-		return XMMatrixOrthographicLH(m_Dimension.x, m_Dimension.y, -100000.f, 100000.f);
-	}
-	XMMATRIX OrthographicCamera::GetViewMatrix() const
-	{
-		return XMMatrixRotationZ(-m_Rotation) * XMMatrixTranslation(-m_Position.x, m_Position.y, 0.f);
-	}
-	void OrthographicCamera::Adjust()
-	{
-		float mag = m_Dimension.Mag();
-		m_Dimension = vec2(window_get_width(), window_get_height());
-		m_Dimension.Normalize();
-		m_Dimension *= mag;
-	}
-	float OrthographicCamera::GetAspect() const noexcept
-	{
-		return m_Dimension.x / m_Dimension.y;
-	}
-	vec2 OrthographicCamera::GetMousePos()
-	{
-		vec2 pos = input_mouse_position_get();
-		return pos * m_Dimension + m_Position;
-	}
-	void OrthographicCamera::SetPosition(vec2 position) noexcept
-	{
-		m_Position = position;
-	}
-	void OrthographicCamera::SetDimension(vec2 dimension) noexcept
-	{
-		m_Dimension = dimension;
-	}
-	void OrthographicCamera::SetZoom(float zoom) noexcept
-	{
-		if (zoom < 0.9999f) zoom = 0.9999f;
-		m_Dimension.Normalize();
-		m_Dimension *= zoom;
-	}
-	void OrthographicCamera::SetRotation(float rotation) noexcept
-	{
-		m_Rotation = rotation;
-	}
-	void OrthographicCamera::SetAspect(float aspect) noexcept
-	{
-		float mag = m_Dimension.Mag();
-		m_Dimension.x = aspect;
-		m_Dimension.y = 1.f;
-		m_Dimension.Normalize();
-		m_Dimension *= mag;
 	}
 
 }

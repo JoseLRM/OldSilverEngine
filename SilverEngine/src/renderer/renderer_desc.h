@@ -11,6 +11,12 @@ enum SV_REND_SORT_MODE : ui8 {
 	SV_REND_SORT_MODE_COORD_Z,
 };
 
+enum SV_REND_CAMERA_TYPE : ui8 {
+	SV_REND_CAMERA_TYPE_NONE,
+	SV_REND_CAMERA_TYPE_ORTHOGRAPHIC,
+	SV_REND_CAMERA_TYPE_PERSPECTIVE
+};
+
 namespace sv {
 	class Camera;
 }
@@ -53,12 +59,12 @@ namespace _sv {
 
 	struct DrawData {
 
-		sv::Camera* pCamera;
-		XMMATRIX	viewMatrix;
-		XMMATRIX	projectionMatrix;
-		XMMATRIX	viewProjectionMatrix;
-
-		Offscreen* pOutput;
+		std::vector<std::pair<sv::Camera*, XMMATRIX>>	cameras;
+		sv::Camera*										currentCamera;
+		Offscreen*										pOutput;
+		XMMATRIX										viewMatrix;
+		XMMATRIX										projectionMatrix;
+		XMMATRIX										viewProjectionMatrix;
 
 	};
 

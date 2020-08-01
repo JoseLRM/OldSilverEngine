@@ -18,4 +18,21 @@ namespace sv {
 
 	};
 
+	SV_COMPONENT(CameraComponent) {
+
+		std::unique_ptr<Camera> camera;
+		bool active = true;
+
+		CameraComponent();
+		CameraComponent(SV_REND_CAMERA_TYPE type);
+
+		CameraComponent(const CameraComponent& other);
+		CameraComponent(CameraComponent&& other) noexcept;
+		CameraComponent& operator=(const CameraComponent& other);
+		CameraComponent& operator=(CameraComponent&& other) noexcept;
+
+		void Adjust(float width, float height);
+
+	};
+
 }

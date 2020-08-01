@@ -144,7 +144,8 @@ namespace sv {
 	{
 		renderer_layer_begin();
 
-		g_DrawData.pCamera = nullptr;
+		g_DrawData.cameras.clear();
+		g_DrawData.currentCamera = nullptr;
 		g_DrawData.viewMatrix = XMMatrixIdentity();
 		g_DrawData.projectionMatrix = XMMatrixIdentity();
 		g_DrawData.viewProjectionMatrix = XMMatrixIdentity();
@@ -154,24 +155,55 @@ namespace sv {
 
 	void renderer_scene_end()
 	{
+		// Present scene cameras
+		{
+			auto& cameras = g_DrawData.cameras;
+			for (ui32 i = 0; i < cameras.size(); ++i) {
+				renderer_present(*cameras[i].first, cameras[i].second);
+			}
+		}
+
+		// End render layers
 		renderer_layer_end();
 	}
 
 	void renderer_draw_scene(Scene& scene)
 	{
+		// Get Cameras
+		{
+			auto addCameraFn = [](Scene& scene, Entity entity, BaseComponent** comp, float dt) 
+			{
+				CameraComponent& camComp = *reinterpret_cast<CameraComponent*>(comp[0]);
+				sv::Transform trans = scene.GetTransform(entity);
+				if(camComp.active)
+					g_DrawData.cameras.push_back(std::make_pair(camComp.camera.get(), trans.GetWorldMatrix()));
+			};
+
+			CompID req[] = {
+				CameraComponent::ID
+			};
+
+			SV_ECS_SYSTEM_DESC cameraSystem;
+			cameraSystem.executionMode = SV_ECS_SYSTEM_EXECUTION_MODE_SAFE;
+			cameraSystem.system = addCameraFn;
+			cameraSystem.pRequestedComponents = req;
+			cameraSystem.requestedComponentsCount = 1u;
+			cameraSystem.optionalComponentsCount = 0u;
+
+			scene.ExecuteSystems(&cameraSystem, 1u, 0.f);
+		}
+
+		// Render layers
 		renderer_layer_prepare_scene(scene);
-
-		// Get RenderLayers
-
 	}
 
 	//////////////////////////////// RENDER FUNCTIONS ////////////////////////////////////////////////
 
-	void renderer_present(Camera& camera)
+	void renderer_present(Camera& camera, XMMATRIX worldMatrix)
 	{
 		// Set Camera Values
-		g_DrawData.pCamera = &camera;
-		g_DrawData.viewMatrix = camera.GetViewMatrix();
+		g_DrawData.currentCamera = &camera;
+		g_DrawData.viewMatrix = XMMatrixInverse(nullptr, worldMatrix);
 		g_DrawData.projectionMatrix = camera.GetProjectionMatrix();
 		g_DrawData.viewProjectionMatrix = g_DrawData.viewMatrix * g_DrawData.projectionMatrix;
 
