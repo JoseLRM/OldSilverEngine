@@ -14,14 +14,13 @@ namespace sve {
 
 		sv::Scene& scene = state.GetScene();
 		ImVec2 v = ImGui::GetWindowSize();
-		sv::CameraComponent& camComp = *scene.GetComponent<sv::CameraComponent>(state.GetMainCamera());
-		auto offscreen = camComp.GetOffscreen();
+		auto& offscreen = _sv::renderer_offscreen_get();
 
 		g_ViewportSize.x = ui32(v.x);
 		g_ViewportSize.y = ui32(v.y);
 
 		ImGuiDevice& device = editor_device_get();
-		ImGui::Image(device.ParseImage(offscreen->renderTarget), { v.x, v.y });
+		ImGui::Image(device.ParseImage(offscreen.renderTarget), { v.x, v.y });
 
 		return true;
 	}

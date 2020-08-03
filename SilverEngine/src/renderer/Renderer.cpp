@@ -8,7 +8,8 @@ using namespace sv;
 
 namespace _sv {
 
-	static uvec2 g_Resolution;
+	static uvec2				g_Resolution;
+	static SV_REND_OUTPUT_MODE	g_OutputMode;
 	
 	static Offscreen					g_Offscreen;
 	static PostProcessing_Default		g_PP_OffscreenToBackBuffer;
@@ -19,6 +20,7 @@ namespace _sv {
 	{
 		// Initial Resolution
 		g_Resolution = uvec2(desc.resolutionWidth, desc.resolutionHeight);
+		g_OutputMode = desc.outputMode;
 
 		// BackBuffer
 		//Image& backBuffer = graphics_swapchain_get_image();
@@ -60,7 +62,7 @@ namespace _sv {
 		// PostProcess to BackBuffer
 		Image& backBuffer = graphics_swapchain_acquire_image();
 
-		if (g_DrawData.hasMainCamera) {
+		if (g_OutputMode == SV_REND_OUTPUT_MODE_BACK_BUFFER) {
 			renderer_postprocessing_default_render(g_PP_OffscreenToBackBuffer, g_Offscreen.renderTarget, backBuffer, cmd);
 		}
 
@@ -142,7 +144,6 @@ namespace sv {
 
 		g_DrawData.cameras.clear();
 		g_DrawData.currentCamera = {};
-		g_DrawData.hasMainCamera = false;
 		g_DrawData.viewMatrix = XMMatrixIdentity();
 		g_DrawData.projectionMatrix = XMMatrixIdentity();
 		g_DrawData.viewProjectionMatrix = XMMatrixIdentity();
@@ -150,6 +151,17 @@ namespace sv {
 
 	void renderer_scene_end()
 	{
+#ifdef SV_DEBUG
+		{
+			ui32 mainCameraCount = 0u;
+			auto& cameras = g_DrawData.cameras;
+			for (ui32 i = 0; i < cameras.size(); ++i) {
+				if (cameras[i].pOffscreen == nullptr) mainCameraCount++;
+			}
+
+			SV_ASSERT(mainCameraCount == 1);
+		}
+#endif
 		// Present scene cameras
 		{
 			auto& cameras = g_DrawData.cameras;
@@ -197,9 +209,7 @@ namespace sv {
 
 	void renderer_scene_set_camera(const CameraProjection& projection, XMMATRIX worldMatrix)
 	{
-		SV_ASSERT(!g_DrawData.hasMainCamera);
 		g_DrawData.cameras.push_back({ projection, nullptr, worldMatrix });
-		g_DrawData.hasMainCamera = true;
 	}
 
 	//////////////////////////////// RENDER FUNCTIONS ////////////////////////////////////////////////

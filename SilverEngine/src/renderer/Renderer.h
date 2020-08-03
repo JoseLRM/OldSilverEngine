@@ -8,8 +8,9 @@
 #include "renderer_components.h"
 
 struct SV_RENDERER_INITIALIZATION_DESC {
-	ui32 resolutionWidth;
-	ui32 resolutionHeight;
+	ui32				resolutionWidth;
+	ui32				resolutionHeight;
+	SV_REND_OUTPUT_MODE outputMode;
 };
 
 namespace sv {

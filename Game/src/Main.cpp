@@ -275,6 +275,7 @@ int main()
 	SV_ENGINE_INITIALIZATION_DESC desc;
 	desc.rendererDesc.resolutionWidth = 1920u;
 	desc.rendererDesc.resolutionHeight = 1080u;
+	desc.rendererDesc.outputMode = SV_REND_OUTPUT_MODE_BACK_BUFFER;
 	desc.windowDesc.x = 200u;
 	desc.windowDesc.y = 200u;
 	desc.windowDesc.width = 1280u;

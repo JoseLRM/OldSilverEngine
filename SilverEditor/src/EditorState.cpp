@@ -13,7 +13,6 @@ namespace sve {
 		m_Scene.AddComponent<sv::CameraComponent>(m_MainCamera, SV_REND_CAMERA_TYPE_ORTHOGRAPHIC);
 		m_Scene.AddComponent<sv::NameComponent>(m_MainCamera, "Main Camera");
 		sv::CameraComponent* camComp = m_Scene.GetComponent<sv::CameraComponent>(m_MainCamera);
-		camComp->CreateOffscreen(1080, 720);
 	}
 
 	void EditorState::Load()
@@ -32,11 +31,9 @@ namespace sve {
 		// Resize offscreen if resized
 		sv::uvec2 size = viewport_game_get_size();
 		if (size.Mag() != 0u) {
-			auto& offscreen = *camComp->GetOffscreen();
-			if (offscreen.GetWidth() != size.x || offscreen.GetHeight() != size.y) {
-				// TODO: use sv::graphics_image_resize()
-				SV_ASSERT(_sv::renderer_offscreen_destroy(offscreen));
-				SV_ASSERT(_sv::renderer_offscreen_create(size.x, size.y, offscreen));
+			sv::uvec2 res = sv::renderer_resolution_get();
+			if (res.x != size.x || res.y != size.y) {
+				sv::renderer_resolution_set(size.x, size.y);
 			}
 
 			// Adjust camera to viewport
@@ -51,8 +48,12 @@ namespace sve {
 
 	void EditorState::Render()
 	{
+		sv::CameraComponent* camComp = m_Scene.GetComponent<sv::CameraComponent>(m_MainCamera);
+		sv::Transform trans = m_Scene.GetTransform(camComp->entity);
+
 		sv::renderer_scene_begin();
 		sv::renderer_scene_draw_scene(m_Scene);
+		sv::renderer_scene_set_camera(camComp->projection, trans.GetWorldMatrix());
 		sv::renderer_scene_end();
 	}
 

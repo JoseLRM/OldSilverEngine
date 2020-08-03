@@ -18,6 +18,7 @@ namespace sve {
 		desc.showConsole = true;
 		desc.rendererDesc.resolutionWidth = 1280;
 		desc.rendererDesc.resolutionHeight = 720;
+		desc.rendererDesc.outputMode = SV_REND_OUTPUT_MODE_OFFSCREEN;
 		desc.windowDesc.fullscreen = false;
 		desc.windowDesc.x = 0u;
 		desc.windowDesc.y = 0u;
