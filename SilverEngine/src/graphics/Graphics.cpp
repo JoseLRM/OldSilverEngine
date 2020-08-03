@@ -366,7 +366,9 @@ namespace sv {
 	bool graphics_destroy(Primitive& primitive)
 	{
 		if (primitive.IsValid()) {
-			return g_Allocator.Destroy(primitive);
+			bool res = g_Allocator.Destroy(primitive);
+			primitive = Primitive(nullptr);
+			return res;
 		}
 		return true;
 	}

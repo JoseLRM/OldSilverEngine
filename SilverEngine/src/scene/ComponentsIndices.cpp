@@ -6,17 +6,7 @@ namespace sv {
 
 	void ComponentsIndices::AddIndex(CompID ID, size_t index)
 	{
-		if (m_Indices.empty()) {
-			m_Indices.push_back(std::make_pair(ID, index));
-			return;
-		}
-
-		for (ui32 i = 0; i < m_Indices.size(); ++i) {
-			if (m_Indices[i].first <= ID) {
-				m_Indices.insert(m_Indices.begin() + i + 1u, std::make_pair(ID, index));
-				return;
-			}
-		}
+		m_Indices.push_back(std::make_pair(ID, index));
 	}
 
 	bool ComponentsIndices::GetIndex(CompID ID, size_t& index) const

@@ -1,12 +1,16 @@
 #pragma once
 
 #include "..//core.h"
-#include "renderer_desc.h"
+
+enum SV_REND_CAMERA_TYPE : ui8 {
+	SV_REND_CAMERA_TYPE_NONE,
+	SV_REND_CAMERA_TYPE_ORTHOGRAPHIC,
+	SV_REND_CAMERA_TYPE_PERSPECTIVE
+};
 
 namespace sv {
 
-	class Camera {
-		std::unique_ptr<_sv::Offscreen> m_Offscreen;
+	class CameraProjection {
 		SV_REND_CAMERA_TYPE m_CameraType;
 
 		struct OrthographicCamera {
@@ -23,8 +27,8 @@ namespace sv {
 		};
 
 	public:
-		Camera();
-		Camera(SV_REND_CAMERA_TYPE type);
+		CameraProjection();
+		CameraProjection(SV_REND_CAMERA_TYPE type);
 
 		// Orthographic
 
@@ -42,13 +46,6 @@ namespace sv {
 		// General
 
 		XMMATRIX GetProjectionMatrix() const;
-
-		// Offscreen
-
-		bool CreateOffscreen(ui32 width, ui32 height);
-		bool HasOffscreen() const noexcept;
-		_sv::Offscreen& GetOffscreen() noexcept;
-		bool DestroyOffscreen();
 
 		inline SV_REND_CAMERA_TYPE GetCameraType() const noexcept { return m_CameraType; }
 

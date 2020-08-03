@@ -83,7 +83,7 @@ public:
 			sv::SpriteComponent& sprComp = *scene.GetComponent<sv::SpriteComponent>(entities[i]);
 
 			sv::vec3 pos;
-			sv::vec2 mousePos = camera->camera->Orthographic_GetMousePos();
+			sv::vec2 mousePos = camera->projection.Orthographic_GetMousePos();
 			mousePos.x += cameraPos.x;
 			mousePos.y += cameraPos.y;
 			pos.x = mousePos.x;
@@ -136,8 +136,8 @@ public:
 			scale.x = 1.f;
 			scale.y = 1.f;
 #else
-			pos.x = (float(rand()) / RAND_MAX) * 40.f - 30.f;
-			pos.y = (float(rand()) / RAND_MAX) * 20.f - 10.f;
+			pos.x = (float(rand()) / RAND_MAX) * 400.f - 300.f;
+			pos.y = (float(rand()) / RAND_MAX) * 200.f - 100.f;
 
 			scale.x = (float(rand()) / RAND_MAX) + 0.1f;
 			scale.y = (float(rand()) / RAND_MAX) + 0.1f;
@@ -180,7 +180,7 @@ public:
 			sv::CameraComponent* cameraComp = scene.GetComponent<sv::CameraComponent>(cameraEntity);
 			cameraComp->Adjust(sv::window_get_width(), sv::window_get_height());
 
-			sv::Camera& camera = *cameraComp->camera.get();
+			sv::CameraProjection& camera = cameraComp->projection;
 
 			sv::vec2 dir;
 			float dirZoom = 0u;
@@ -255,8 +255,12 @@ public:
 	}
 	void Render() override
 	{
+		sv::CameraComponent* cameraComp = scene.GetComponent<sv::CameraComponent>(cameraEntity);
+		sv::Transform trans = scene.GetTransform(cameraEntity);
+
 		sv::renderer_scene_begin();
-		sv::renderer_draw_scene(scene);
+		sv::renderer_scene_draw_scene(scene);
+		sv::renderer_scene_set_camera(cameraComp->projection, trans.GetWorldMatrix());
 		sv::renderer_scene_end();
 	}
 	void Close() override

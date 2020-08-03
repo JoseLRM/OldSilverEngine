@@ -185,7 +185,7 @@ namespace _sv {
 			blendState.attachments[0].dstColorBlendFactor = SV_GFX_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
 			blendState.attachments[0].colorBlendOp = SV_GFX_BLEND_OP_ADD;
 			blendState.attachments[0].srcAlphaBlendFactor = SV_GFX_BLEND_FACTOR_ONE;
-			blendState.attachments[0].dstAlphaBlendFactor = SV_GFX_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+			blendState.attachments[0].dstAlphaBlendFactor = SV_GFX_BLEND_FACTOR_ONE;
 			blendState.attachments[0].alphaBlendOp = SV_GFX_BLEND_OP_ADD;
 
 			svCheck(graphics_pipeline_create(&desc, g_SpriteTransparentPipeline));
@@ -334,8 +334,8 @@ namespace _sv {
 		// TODO: frustum culling
 
 		Image* att[] = {
-			&drawData.pOutput->renderTarget,
-			&drawData.pOutput->depthStencil
+			&drawData.currentCamera.pOffscreen->renderTarget,
+			& drawData.currentCamera.pOffscreen->depthStencil
 		};
 
 		TextureAtlas_DrawData* texture = nullptr;

@@ -3,6 +3,7 @@
 #include "core.h"
 #include "RenderList.h"
 #include "TextureAtlas.h"
+#include "CameraProjection.h"
 
 enum SV_REND_SORT_MODE : ui8 {
 	SV_REND_SORT_MODE_NONE,
@@ -11,14 +12,8 @@ enum SV_REND_SORT_MODE : ui8 {
 	SV_REND_SORT_MODE_COORD_Z,
 };
 
-enum SV_REND_CAMERA_TYPE : ui8 {
-	SV_REND_CAMERA_TYPE_NONE,
-	SV_REND_CAMERA_TYPE_ORTHOGRAPHIC,
-	SV_REND_CAMERA_TYPE_PERSPECTIVE
-};
-
 namespace sv {
-	class Camera;
+	class CameraProjection;
 }
 
 namespace _sv {
@@ -57,14 +52,20 @@ namespace _sv {
 		sv::RenderPass renderPass;
 	};
 
+	struct Camera_DrawData {
+		sv::CameraProjection	projection;
+		_sv::Offscreen*			pOffscreen;
+		XMMATRIX				worldMatrix;
+	};
+
 	struct DrawData {
 
-		std::vector<std::pair<sv::Camera*, XMMATRIX>>	cameras;
-		sv::Camera*										currentCamera;
-		Offscreen*										pOutput;
-		XMMATRIX										viewMatrix;
-		XMMATRIX										projectionMatrix;
-		XMMATRIX										viewProjectionMatrix;
+		std::vector<Camera_DrawData>	cameras;
+		bool							hasMainCamera;
+		Camera_DrawData					currentCamera;
+		XMMATRIX						viewMatrix;
+		XMMATRIX						projectionMatrix;
+		XMMATRIX						viewProjectionMatrix;
 
 	};
 

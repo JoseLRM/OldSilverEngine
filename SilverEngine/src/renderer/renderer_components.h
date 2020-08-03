@@ -19,18 +19,25 @@ namespace sv {
 	};
 
 	SV_COMPONENT(CameraComponent) {
+	private:
+		std::unique_ptr<_sv::Offscreen> m_Offscreen;
 
-		std::unique_ptr<Camera> camera;
-		bool active = true;
+	public:
+		CameraProjection projection;
 
 		CameraComponent();
-		CameraComponent(SV_REND_CAMERA_TYPE type);
+		CameraComponent(SV_REND_CAMERA_TYPE projectionType);
 
 		CameraComponent(const CameraComponent& other);
 		CameraComponent(CameraComponent&& other) noexcept;
 		CameraComponent& operator=(const CameraComponent& other);
 		CameraComponent& operator=(CameraComponent&& other) noexcept;
 
+		bool CreateOffscreen(ui32 width, ui32 height);
+		bool HasOffscreen() const noexcept;
+		_sv::Offscreen* GetOffscreen() const noexcept;
+		bool DestroyOffscreen();
+		
 		void Adjust(float width, float height);
 
 	};

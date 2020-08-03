@@ -1,11 +1,11 @@
 #pragma once
 
 #include "core.h"
-#include "Camera.h"
 #include "renderer_desc.h"
 #include "graphics/graphics.h"
 #include "renderer_postprocessing.h"
 #include "renderer_layer.h"
+#include "renderer_components.h"
 
 struct SV_RENDERER_INITIALIZATION_DESC {
 	ui32 resolutionWidth;
@@ -46,8 +46,9 @@ namespace sv {
 
 	void renderer_scene_begin();
 	void renderer_scene_end();
-	void renderer_draw_scene(Scene& scene);
-	void renderer_present(Camera& camera, XMMATRIX worldMatrix);
+	void renderer_scene_draw_scene(Scene& scene);
+	void renderer_scene_set_camera(const CameraProjection& projection, XMMATRIX worldMatrix);
+	void renderer_present(CameraProjection projection, XMMATRIX worldMatrix, _sv::Offscreen* pOffscreen);
 
 }
 

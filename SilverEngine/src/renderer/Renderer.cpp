@@ -11,7 +11,6 @@ namespace _sv {
 	static uvec2 g_Resolution;
 	
 	static Offscreen					g_Offscreen;
-	static bool							g_OffscreenUsed;
 	static PostProcessing_Default		g_PP_OffscreenToBackBuffer;
 
 	static DrawData	g_DrawData;
@@ -52,7 +51,6 @@ namespace _sv {
 
 	void renderer_frame_begin()
 	{
-		g_OffscreenUsed = false;
 		graphics_begin();
 	}
 	void renderer_frame_end()
@@ -60,13 +58,11 @@ namespace _sv {
 		CommandList cmd = graphics_commandlist_last();
 
 		// PostProcess to BackBuffer
-		GPUBarrier barrier = GPUBarrier::Image(g_Offscreen.renderTarget, SV_GFX_IMAGE_LAYOUT_RENDER_TARGET, SV_GFX_IMAGE_LAYOUT_SHADER_RESOUCE);
-		graphics_barrier(&barrier, 1u, cmd);
-
 		Image& backBuffer = graphics_swapchain_acquire_image();
 
-		if(g_OffscreenUsed)
+		if (g_DrawData.hasMainCamera) {
 			renderer_postprocessing_default_render(g_PP_OffscreenToBackBuffer, g_Offscreen.renderTarget, backBuffer, cmd);
+		}
 
 		// End
 		graphics_commandlist_submit();
@@ -145,12 +141,11 @@ namespace sv {
 		renderer_layer_begin();
 
 		g_DrawData.cameras.clear();
-		g_DrawData.currentCamera = nullptr;
+		g_DrawData.currentCamera = {};
+		g_DrawData.hasMainCamera = false;
 		g_DrawData.viewMatrix = XMMatrixIdentity();
 		g_DrawData.projectionMatrix = XMMatrixIdentity();
 		g_DrawData.viewProjectionMatrix = XMMatrixIdentity();
-
-		g_DrawData.pOutput = nullptr;
 	}
 
 	void renderer_scene_end()
@@ -159,7 +154,8 @@ namespace sv {
 		{
 			auto& cameras = g_DrawData.cameras;
 			for (ui32 i = 0; i < cameras.size(); ++i) {
-				renderer_present(*cameras[i].first, cameras[i].second);
+				Camera_DrawData& c = g_DrawData.cameras[i];
+				renderer_present(c.projection, c.worldMatrix, c.pOffscreen);
 			}
 		}
 
@@ -167,7 +163,7 @@ namespace sv {
 		renderer_layer_end();
 	}
 
-	void renderer_draw_scene(Scene& scene)
+	void renderer_scene_draw_scene(Scene& scene)
 	{
 		// Get Cameras
 		{
@@ -175,8 +171,10 @@ namespace sv {
 			{
 				CameraComponent& camComp = *reinterpret_cast<CameraComponent*>(comp[0]);
 				sv::Transform trans = scene.GetTransform(entity);
-				if(camComp.active)
-					g_DrawData.cameras.push_back(std::make_pair(camComp.camera.get(), trans.GetWorldMatrix()));
+				if (camComp.HasOffscreen()) {
+					Offscreen* offscreen = camComp.GetOffscreen();
+					g_DrawData.cameras.push_back({ camComp.projection, offscreen, trans.GetWorldMatrix() });
+				}
 			};
 
 			CompID req[] = {
@@ -197,28 +195,34 @@ namespace sv {
 		renderer_layer_prepare_scene(scene);
 	}
 
+	void renderer_scene_set_camera(const CameraProjection& projection, XMMATRIX worldMatrix)
+	{
+		SV_ASSERT(!g_DrawData.hasMainCamera);
+		g_DrawData.cameras.push_back({ projection, nullptr, worldMatrix });
+		g_DrawData.hasMainCamera = true;
+	}
+
 	//////////////////////////////// RENDER FUNCTIONS ////////////////////////////////////////////////
 
-	void renderer_present(Camera& camera, XMMATRIX worldMatrix)
+	void renderer_present(CameraProjection projection, XMMATRIX worldMatrix, _sv::Offscreen* pOffscreen)
 	{
 		// Set Camera Values
-		g_DrawData.currentCamera = &camera;
+		g_DrawData.currentCamera.projection = projection;
+		g_DrawData.currentCamera.worldMatrix = worldMatrix;
 		g_DrawData.viewMatrix = XMMatrixInverse(nullptr, worldMatrix);
-		g_DrawData.projectionMatrix = camera.GetProjectionMatrix();
+		g_DrawData.projectionMatrix = projection.GetProjectionMatrix();
 		g_DrawData.viewProjectionMatrix = g_DrawData.viewMatrix * g_DrawData.projectionMatrix;
 
 		// Set Output Ptr
-		SV_ASSERT(!g_OffscreenUsed);
-		if (camera.HasOffscreen()) {
-			g_DrawData.pOutput = &camera.GetOffscreen();
+		if (pOffscreen) {
+			g_DrawData.currentCamera.pOffscreen = pOffscreen;
 		}
 		else {
-			g_DrawData.pOutput = &g_Offscreen;
-			g_OffscreenUsed = true;
+			g_DrawData.currentCamera.pOffscreen = &g_Offscreen;
 		}
 
 		// Render
-		Offscreen& offscreen = *g_DrawData.pOutput;
+		Offscreen& offscreen = *g_DrawData.currentCamera.pOffscreen;
 		CommandList cmd = graphics_commandlist_begin();
 
 		// Skybox
@@ -237,6 +241,10 @@ namespace sv {
 		graphics_set_scissors(&scissor, 1u, cmd);
 
 		renderer_layer_render(cmd);
+		
+		// Offscreen layout: from render target to shader resource
+		GPUBarrier barrier = GPUBarrier::Image(offscreen.renderTarget, SV_GFX_IMAGE_LAYOUT_RENDER_TARGET, SV_GFX_IMAGE_LAYOUT_SHADER_RESOUCE);
+		graphics_barrier(&barrier, 1u, cmd);
 
 	}
 
