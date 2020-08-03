@@ -11,19 +11,6 @@ namespace _sv {
 
 namespace sv {
 
-	class LoadingState {
-
-	public:
-		virtual void Initialize() {}
-
-		virtual void Update(float dt) {}
-		virtual void FixedUpdate() {}
-		virtual void Render() {}
-
-		virtual void Close() {}
-
-	};
-
 	class State {
 	public:
 		virtual void Load() {}
@@ -38,9 +25,8 @@ namespace sv {
 
 	};
 
-	void engine_state_load(State* state, LoadingState* loadingState);
+	void engine_state_load(State* state, State* loadingState = nullptr);
 	State* engine_state_get_state() noexcept;
-	LoadingState* engine_state_get_loadingstate() noexcept;
 	bool engine_state_loading();
 
 }

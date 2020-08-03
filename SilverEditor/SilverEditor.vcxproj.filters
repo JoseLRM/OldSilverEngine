@@ -1,0 +1,67 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="src\Main.cpp" />
+    <ClCompile Include="src\core.cpp">
+      <Filter>System</Filter>
+    </ClCompile>
+    <ClCompile Include="src\imGuiDevice\ImGuiDevice_vk.cpp" />
+    <ClCompile Include="external\ImGui\imgui.cpp" />
+    <ClCompile Include="external\ImGui\imgui_demo.cpp" />
+    <ClCompile Include="external\ImGui\imgui_draw.cpp" />
+    <ClCompile Include="external\ImGui\imgui_impl_dx11.cpp" />
+    <ClCompile Include="external\ImGui\imgui_impl_win32.cpp" />
+    <ClCompile Include="external\ImGui\imgui_widgets.cpp" />
+    <ClCompile Include="src\editor.cpp" />
+    <ClCompile Include="src\imGuiDevice\ImGuiDevice.cpp" />
+    <ClCompile Include="external\ImGui\imgui_impl_vulkan.cpp" />
+    <ClCompile Include="src\EditorState.cpp">
+      <Filter>System</Filter>
+    </ClCompile>
+    <ClCompile Include="src\viewports\viewport_manager.cpp" />
+    <ClCompile Include="src\viewports\viewport_scene.cpp" />
+    <ClCompile Include="src\viewports\viewport_game.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="config.h" />
+    <ClInclude Include="src\core.h">
+      <Filter>System</Filter>
+    </ClInclude>
+    <ClInclude Include="src\imGuiDevice\ImGuiDevice.h">
+      <Filter>System</Filter>
+    </ClInclude>
+    <ClInclude Include="external\ImGui\imconfig.h" />
+    <ClInclude Include="external\ImGui\imgui.h" />
+    <ClInclude Include="external\ImGui\imgui_impl_dx11.h" />
+    <ClInclude Include="external\ImGui\imgui_impl_win32.h" />
+    <ClInclude Include="external\ImGui\imgui_internal.h" />
+    <ClInclude Include="external\ImGui\imstb_rectpack.h" />
+    <ClInclude Include="external\ImGui\imstb_textedit.h" />
+    <ClInclude Include="external\ImGui\imstb_truetype.h" />
+    <ClInclude Include="src\imGuiDevice\ImGuiDevice_vk.h" />
+    <ClInclude Include="src\editor.h" />
+    <ClInclude Include="external\ImGui\imgui_impl_vulkan.h" />
+    <ClInclude Include="src\EditorApplication.h" />
+    <ClInclude Include="src\EditorState.h">
+      <Filter>System</Filter>
+    </ClInclude>
+    <ClInclude Include="src\viewports\viewport_manager.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="external">
+      <UniqueIdentifier>{d10ff150-5f41-427e-8da8-917ef7dfcbb3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="external\ImGui">
+      <UniqueIdentifier>{17c3856f-ee8f-41a1-a9bd-880e935fb4a7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Viewports">
+      <UniqueIdentifier>{c1d6df2f-fee8-43a0-acf2-0f032c418945}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="System">
+      <UniqueIdentifier>{7a7cc24e-568d-427c-903b-fceae1687176}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="external\ImGui\LICENSE.txt" />
+  </ItemGroup>
+</Project>

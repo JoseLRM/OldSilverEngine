@@ -47,6 +47,7 @@ namespace sv {
 
 		XMMATRIX GetProjectionMatrix() const;
 
+		void SetCameraType(SV_REND_CAMERA_TYPE type) noexcept;
 		inline SV_REND_CAMERA_TYPE GetCameraType() const noexcept { return m_CameraType; }
 
 	};

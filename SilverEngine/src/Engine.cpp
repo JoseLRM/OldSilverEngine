@@ -84,11 +84,9 @@ namespace sv {
 
 			// Get current state
 			State* state = engine_state_get_state();
-			LoadingState* loadingState = engine_state_get_loadingstate();
 
 			// Update state/loadingState and application
 			if (state) state->Update(g_DeltaTime);
-			else loadingState->Update(g_DeltaTime);
 
 			// Fixed update state/loadingState and application
 			fixedUpdateTime += g_DeltaTime;
@@ -96,7 +94,6 @@ namespace sv {
 			if (fixedUpdateTime >= g_FixedUpdateFrameRate) {
 
 				if (state) state->FixedUpdate();
-				else loadingState->FixedUpdate();
 
 				g_Application->FixedUpdate();
 				fixedUpdateTime -= g_FixedUpdateFrameRate;
@@ -106,7 +103,6 @@ namespace sv {
 			renderer_frame_begin();
 
 			if (state) state->Render();
-			else loadingState->Render();
 
 			g_Application->Render();
 

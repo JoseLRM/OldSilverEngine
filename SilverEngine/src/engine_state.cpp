@@ -10,7 +10,7 @@ namespace _sv {
 	static State*			g_CurrentState;
 
 	static State*			g_OldState;
-	static LoadingState*	g_LoadingState;
+	static State*			g_LoadingState;
 	static State*			g_NewState;
 
 	static ThreadContext	g_UnloadContext;
@@ -59,7 +59,7 @@ namespace sv {
 
 	using namespace _sv;
 	
-	void engine_state_load(State* state, LoadingState* loadingState)
+	void engine_state_load(State* state, State* loadingState)
 	{
 		SV_ASSERT(state && !engine_state_loading());
 
@@ -67,7 +67,7 @@ namespace sv {
 		g_OldState = g_CurrentState;
 		g_CurrentState = nullptr;
 
-		if (!loadingState) loadingState = new LoadingState();
+		if (!loadingState) loadingState = new State();
 		g_LoadingState = loadingState;
 		g_LoadingState->Initialize();
 
@@ -96,6 +96,5 @@ namespace sv {
 	}
 
 	State* engine_state_get_state() noexcept { return g_CurrentState; }
-	LoadingState* engine_state_get_loadingstate() noexcept { return g_LoadingState; }
 	
 }

@@ -9,12 +9,9 @@ namespace sv {
 	CameraProjection::CameraProjection() : m_CameraType(SV_REND_CAMERA_TYPE_NONE)
 	{
 	}
-	CameraProjection::CameraProjection(SV_REND_CAMERA_TYPE type) : m_CameraType(type)
+	CameraProjection::CameraProjection(SV_REND_CAMERA_TYPE type)
 	{
-		if (type == SV_REND_CAMERA_TYPE_ORTHOGRAPHIC) {
-			m_Orthographic.width = 1.f;
-			m_Orthographic.height = 1.f;
-		}
+		SetCameraType(type);
 	}
 
 	// Orthographic
@@ -72,6 +69,20 @@ namespace sv {
 		}
 
 		return matrix;
+	}
+
+	void CameraProjection::SetCameraType(SV_REND_CAMERA_TYPE type) noexcept
+	{
+		m_CameraType = type;
+		switch (type)
+		{
+		case SV_REND_CAMERA_TYPE_ORTHOGRAPHIC:
+			m_Orthographic = OrthographicCamera();
+			break;
+		case SV_REND_CAMERA_TYPE_PERSPECTIVE:
+			m_Perspective = PerspectiveCamera();
+			break;
+		}
 	}
 
 }

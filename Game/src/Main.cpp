@@ -1,6 +1,6 @@
 #include "GameState.h"
 
-class Loading : public sv::LoadingState {
+class Loading : public sv::State {
 
 public:
 
