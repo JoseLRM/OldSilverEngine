@@ -15,6 +15,8 @@ namespace sve {
 		virtual void BeginFrame() = 0;
 		virtual void EndFrame() = 0;
 
+		virtual void ResizeSwapChain() = 0;
+
 		virtual ImTextureID ParseImage(sv::Image& image) = 0;
 
 		inline ImGuiContext* GetCtx() const noexcept { return m_Ctx; }

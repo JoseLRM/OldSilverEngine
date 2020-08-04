@@ -45,7 +45,7 @@ namespace sv {
 #ifdef SV_SRC_PATH
 		std::string filePathStr = SV_SRC_PATH;
 		filePathStr += filePath;
-		m_Output.open(filePath, std::ios::ate);
+		m_Output.open(filePathStr.c_str(), std::ios::ate);
 #else
 		m_Output.open(filePath, std::ios::ate);
 #endif

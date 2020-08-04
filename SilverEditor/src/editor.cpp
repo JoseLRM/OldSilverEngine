@@ -31,6 +31,18 @@ namespace sve {
 		g_Device = device_create();
 		g_Device->Initialize();
 
+		// Add style
+		{
+			auto& style = ImGui::GetStyle();
+			sv::BinFile file;
+			if (!file.OpenR("ImGuiStyle")) {
+				SV_THROW("ImGui Style", "Style not found");
+			}
+
+			file.Read(&style, sizeof(ImGuiStyle));
+			file.Close();
+		}
+
 		while (true) {
 			
 			if (!sv::engine_loop()) break;
@@ -40,6 +52,35 @@ namespace sve {
 		g_Device->Close();
 
 		sv::engine_close();
+	}
+
+	void StyleEditor()
+	{
+		ImGui::ShowStyleEditor();
+
+		if (sv::input_key_pressed('S')) {
+
+			sv::BinFile file;
+			file.OpenW("ImGuiStyle");
+
+			file.Write(&ImGui::GetStyle(), sizeof(ImGuiStyle));
+
+			file.Close();
+
+			sv::log("Saved");
+		}
+	}
+
+	void MainMenu()
+	{
+		if (ImGui::BeginMainMenuBar()) {
+
+			if (ImGui::Button("Exit")) {
+				sv::engine_request_close();
+			}
+
+			ImGui::EndMainMenuBar();
+		}
 	}
 
 	void DisplayDocking()
@@ -87,10 +128,12 @@ namespace sve {
 
 	void editor_initialize()
 	{
+		// Add viewports
 		viewport_manager_add("Game", viewport_game_display);
 		viewport_manager_add("Scene Hierarchy", viewport_scene_hierarchy_display);
 		viewport_manager_add("Scene Entity", viewport_scene_entity_display);
 
+		// Show viewports
 		viewport_manager_show("Game");
 		viewport_manager_show("Scene Hierarchy");
 		viewport_manager_show("Scene Entity");
@@ -99,10 +142,19 @@ namespace sve {
 	}
 	void editor_update(float dt)
 	{
+
+		if (sv::input_key_pressed(SV_KEY_F11)) {
+			sv::window_fullscreen_set(!sv::window_fullscreen_get());
+		}
+
+		g_Device->ResizeSwapChain();
+
 	}
 	void editor_render()
 	{
 		g_Device->BeginFrame();
+
+		MainMenu();
 
 		DisplayDocking();
 

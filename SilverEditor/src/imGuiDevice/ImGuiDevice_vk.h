@@ -24,6 +24,7 @@ namespace sve {
 		VkRenderPass m_RenderPass;
 		VkDescriptorPool m_DescPool;
 		std::vector<Frame> m_Frames;
+		VkExtent2D m_SwapChainSize;
 
 		VkSampler m_ImageSampler;
 		std::map<_sv::Image_internal*, std::pair<VkImageView, ImTextureID>> m_Images;
@@ -35,7 +36,13 @@ namespace sve {
 		void BeginFrame() override;
 		void EndFrame() override;
 
+		void ResizeSwapChain() override;
+
 		ImTextureID ParseImage(sv::Image& image) override;
+
+	private:
+		VkResult CreateFrames();
+		void DestroyFrames();
 
 	};
 

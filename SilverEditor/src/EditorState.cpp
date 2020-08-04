@@ -13,6 +13,7 @@ namespace sve {
 		m_Scene.AddComponent<sv::CameraComponent>(m_MainCamera, SV_REND_CAMERA_TYPE_ORTHOGRAPHIC);
 		m_Scene.AddComponent<sv::NameComponent>(m_MainCamera, "Main Camera");
 		sv::CameraComponent* camComp = m_Scene.GetComponent<sv::CameraComponent>(m_MainCamera);
+		camComp->projection.Orthographic_SetZoom(5.f);
 	}
 
 	void EditorState::Load()
@@ -30,16 +31,7 @@ namespace sve {
 		
 		// Resize offscreen if resized
 		sv::uvec2 size = viewport_game_get_size();
-		if (size.Mag() != 0u) {
-			sv::uvec2 res = sv::renderer_resolution_get();
-			if (res.x != size.x || res.y != size.y) {
-				sv::renderer_resolution_set(size.x, size.y);
-			}
-
-			// Adjust camera to viewport
-			camComp->Adjust(size.x, size.y);
-		}
-
+		camComp->Adjust(size.x, size.y);
 	}
 
 	void EditorState::FixedUpdate()

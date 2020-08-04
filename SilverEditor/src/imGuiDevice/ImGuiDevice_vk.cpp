@@ -98,30 +98,6 @@ namespace sve {
 
 			vkCheck(vkCreateRenderPass(gfx.GetDevice(), &create_info, nullptr, &m_RenderPass));
 		}
-
-		// Create Framebuffers
-		{
-			auto& fb = gfx.GetSwapChain();
-
-			for (ui32 i = 0; i < fb.images.size(); ++i) {
-				Frame frame;
-				
-				frame.view = fb.images[i].view;
-				frame.image = fb.images[i].image;
-
-				VkFramebufferCreateInfo create_info{};
-				create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-				create_info.renderPass = m_RenderPass;
-				create_info.attachmentCount = 1u;
-				create_info.pAttachments = &frame.view;
-				create_info.width = window_get_width();
-				create_info.height = window_get_height();
-				create_info.layers = 1u;
-
-				vkCheck(vkCreateFramebuffer(gfx.GetDevice(), &create_info, nullptr, &frame.frameBuffer));
-				m_Frames.push_back(frame);
-			}
-		}
 		// Image sampler
 		{
 			VkSamplerCreateInfo create_info{};
@@ -134,6 +110,9 @@ namespace sve {
 
 			vkCheck(vkCreateSampler(gfx.GetDevice(), &create_info, nullptr, &m_ImageSampler));
 		}
+
+
+		vkCheck(CreateFrames());
 
 		ImGui_ImplVulkan_InitInfo info{};
 		info.QueueFamily = adapter.GetFamilyIndex().graphics;
@@ -162,9 +141,7 @@ namespace sve {
 
 		graphics_gpu_wait();
 
-		for (ui32 i = 0; i < m_Frames.size(); ++i) {
-			vkDestroyFramebuffer(gfx.GetDevice(), m_Frames[i].frameBuffer, nullptr);
-		}
+		DestroyFrames();
 
 		vkDestroyRenderPass(gfx.GetDevice(), m_RenderPass, nullptr);
 		vkDestroyDescriptorPool(gfx.GetDevice(), m_DescPool, nullptr);
@@ -217,7 +194,7 @@ namespace sve {
 		begin_info.renderPass = m_RenderPass;
 		begin_info.framebuffer = m_Frames[currentFrame].frameBuffer;
 		begin_info.renderArea.offset = { 0, 0 };
-		begin_info.renderArea.extent = { window_get_width(), window_get_height() };
+		begin_info.renderArea.extent = m_SwapChainSize;
 		begin_info.clearValueCount = 0u;
 		begin_info.pClearValues = nullptr;
 
@@ -228,6 +205,19 @@ namespace sve {
 		ImGui::EndFrame();
 		ImGui::UpdatePlatformWindows();
 		ImGui::RenderPlatformWindowsDefault();
+	}
+
+	void ImGuiDevice_vk::ResizeSwapChain()
+	{
+		_sv::Graphics_vk& gfx = _sv::graphics_vulkan_device_get();
+		VkExtent2D currentSize = gfx.GetSwapChain().currentExtent;
+
+		sv::graphics_gpu_wait();
+
+		if (currentSize.width != m_SwapChainSize.width || currentSize.height != m_SwapChainSize.height) {
+			DestroyFrames();
+			vkAssert(CreateFrames());
+		}
 	}
 
 	ImTextureID ImGuiDevice_vk::ParseImage(sv::Image& image_)
@@ -249,6 +239,48 @@ namespace sve {
 		}
 		else {
 			return it->second.second;
+		}
+	}
+
+	VkResult ImGuiDevice_vk::CreateFrames()
+	{
+		_sv::Graphics_vk& gfx = _sv::graphics_vulkan_device_get();
+
+		// Create Framebuffers
+		{
+			auto& fb = gfx.GetSwapChain();
+
+			m_SwapChainSize = fb.currentExtent;
+			m_Frames.clear();
+			m_Frames.resize(fb.images.size());
+
+			for (ui32 i = 0; i < fb.images.size(); ++i) {
+				Frame& frame = m_Frames[i];
+
+				frame.view = fb.images[i].view;
+				frame.image = fb.images[i].image;
+
+				VkFramebufferCreateInfo create_info{};
+				create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+				create_info.renderPass = m_RenderPass;
+				create_info.attachmentCount = 1u;
+				create_info.pAttachments = &frame.view;
+				create_info.width = window_get_width();
+				create_info.height = window_get_height();
+				create_info.layers = 1u;
+
+				vkExt(vkCreateFramebuffer(gfx.GetDevice(), &create_info, nullptr, &frame.frameBuffer));
+			}
+		}
+		return VK_SUCCESS;
+	}
+
+	void ImGuiDevice_vk::DestroyFrames()
+	{
+		_sv::Graphics_vk& gfx = _sv::graphics_vulkan_device_get();
+
+		for (ui32 i = 0; i < m_Frames.size(); ++i) {
+			vkDestroyFramebuffer(gfx.GetDevice(), m_Frames[i].frameBuffer, nullptr);
 		}
 	}
 

@@ -25,6 +25,7 @@ namespace sv {
 	void CameraProjection::Orthographic_SetZoom(float zoom)
 	{
 		float currentZoom = Orthographic_GetZoom();
+		if (zoom < 0.0001f) zoom = 0.0001f;
 		m_Orthographic.width = (m_Orthographic.width / currentZoom) * zoom;
 		m_Orthographic.height = (m_Orthographic.height / currentZoom) * zoom;
 	}

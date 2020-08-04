@@ -16,15 +16,13 @@ namespace sv {
 	XMMATRIX Transform::GetLocalMatrix() const noexcept
 	{
 		return XMMatrixScalingFromVector(GetLocalScaleDXV()) * XMMatrixRotationRollPitchYawFromVector(XMVectorSet(trans->localRotation.x, trans->localRotation.y, trans->localRotation.z, 1.f))
-			* XMMatrixTranslation(trans->localPosition.x, -trans->localPosition.y, trans->localPosition.z);
+			* XMMatrixTranslation(trans->localPosition.x, trans->localPosition.y, trans->localPosition.z);
 	}
 
 	vec3 Transform::GetWorldPosition() noexcept
 	{
 		if (trans->modified) UpdateWorldMatrix();
-		vec3 pos = *(vec3*)& trans->worldMatrix._41;
-		pos.y = -pos.y;
-		return pos;
+		return *(vec3*)& trans->worldMatrix._41;
 	}
 	vec3 Transform::GetWorldRotation() noexcept
 	{

@@ -18,7 +18,14 @@ namespace sv {
 		m_ReadMode = true;
 		Close();
 		m_Input = std::ifstream();
+
+#ifdef SV_SRC_PATH
+		std::string filePathStr = SV_SRC_PATH;
+		filePathStr += filePath;
+		m_Input.open(filePathStr.c_str(), std::ios::ate | std::ios::binary);
+#else
 		m_Input.open(filePath, std::ios::ate | std::ios::binary);
+#endif
 
 		if (!m_Input.is_open()) return false;
 
@@ -33,7 +40,14 @@ namespace sv {
 		m_ReadMode = false;
 		Close();
 		m_Output = std::ofstream();
+
+#ifdef SV_SRC_PATH
+		std::string filePathStr = SV_SRC_PATH;
+		filePathStr += filePath;
+		m_Output.open(filePathStr.c_str(), std::ios::ate | std::ios::binary);
+#else
 		m_Output.open(filePath, std::ios::ate | std::ios::binary);
+#endif
 
 		if (!m_Output.is_open()) return false;
 
