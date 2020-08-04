@@ -21,6 +21,8 @@ namespace _sv {
 	void window_set_size(ui32 width, ui32 height);
 	void window_notify_resized();
 
+	sv::uvec4 window_get_last_bounds();
+
 }
 
 namespace sv {

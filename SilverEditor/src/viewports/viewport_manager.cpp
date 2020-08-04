@@ -28,6 +28,16 @@ namespace sve {
 			if (!viewport.show) continue;
 
 			if (ImGui::Begin(it.first.c_str())) {
+
+				ImVec2 pos = ImGui::GetWindowPos();
+				ImVec2 size = ImGui::GetWindowSize();
+
+				viewport.properties.x = pos.x;
+				viewport.properties.y = pos.y;
+				viewport.properties.width = size.x;
+				viewport.properties.height = size.y;
+				viewport.properties.focus = ImGui::IsWindowFocused();
+
 				if (!viewport.displayFn()) {
 					viewport_manager_hide(it.first.c_str());
 				}
@@ -58,6 +68,17 @@ namespace sve {
 
 		sv::log_info("Hiding viewport inactive '%s'", name);
 		it->second.show = false;
+	}
+
+	ViewportProperties viewport_manager_properties_get(const char* name)
+	{
+		auto it = g_Viewports.find(name);
+		if (it == g_Viewports.end()) {
+			sv::log_error("Viewport '%s' not found", name);
+			return {};
+		}
+
+		return it->second.properties;
 	}
 
 }

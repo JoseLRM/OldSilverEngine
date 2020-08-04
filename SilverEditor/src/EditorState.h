@@ -4,9 +4,18 @@
 
 namespace sve {
 
+	struct DebugCamera {
+		sv::CameraComponent camera;
+		XMMATRIX viewMatrix;
+		sv::vec3 position;
+		sv::vec2 rotation;
+	};
+
 	class EditorState : public sv::State {
 		sv::Scene m_Scene;
 		sv::Entity m_MainCamera;
+
+		DebugCamera m_DebugCamera;
 
 	public:
 		EditorState();
@@ -21,6 +30,7 @@ namespace sve {
 
 		inline sv::Scene& GetScene() noexcept { return m_Scene; }
 		inline sv::Entity GetMainCamera() const noexcept { return m_MainCamera; }
+		inline DebugCamera& GetDebugCamera() noexcept { return m_DebugCamera; }
 
 	};
 

@@ -280,4 +280,20 @@ namespace sve {
 		return true;
 	}
 
+	bool viewport_scene_editor_display()
+	{
+		EditorState& state = editor_state_get();
+
+		sv::Scene& scene = state.GetScene();
+		ImVec2 v = ImGui::GetWindowSize();
+		auto& offscreen = *state.GetDebugCamera().camera.GetOffscreen();
+
+		ImGuiDevice& device = editor_device_get();
+		ImGui::Image(device.ParseImage(offscreen.renderTarget), { v.x, v.y });
+
+		return true;
+
+		return true;
+	}
+
 }

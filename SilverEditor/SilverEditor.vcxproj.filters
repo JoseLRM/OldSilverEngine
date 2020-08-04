@@ -21,6 +21,7 @@
     <ClCompile Include="src\viewports\viewport_manager.cpp" />
     <ClCompile Include="src\viewports\viewport_scene.cpp" />
     <ClCompile Include="src\viewports\viewport_game.cpp" />
+    <ClCompile Include="src\viewports\viewport_console.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="config.h" />

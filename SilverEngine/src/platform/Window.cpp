@@ -10,10 +10,12 @@ namespace _sv {
 
 	static WindowHandle g_WindowHandle;
 
-	static float g_X, g_Y, g_Width, g_Height;
+	static ui32 g_X, g_Y, g_Width, g_Height;
 	static bool g_Resized = false;
 	static bool g_Fullscreen;
 	static bool g_ChangeFullscreen = false;
+
+	static ui32 g_LastX, g_LastY, g_LastWidth, g_LastHeight;
 
 #ifdef SV_PLATFORM_WINDOWS
 	static Window_wnd platform;
@@ -53,6 +55,14 @@ namespace _sv {
 		if (g_ChangeFullscreen) {
 			graphics_gpu_wait();
 			g_Fullscreen = !g_Fullscreen;
+
+			if (g_Fullscreen) {
+				g_LastX = g_X;
+				g_LastY = g_Y;
+				g_LastWidth = g_Width;
+				g_LastHeight = g_Height;
+			}
+
 			platform.SetFullscreen(g_Fullscreen);
 			g_ChangeFullscreen = false;
 		}
@@ -76,6 +86,11 @@ namespace _sv {
 	void window_notify_resized()
 	{
 		g_Resized = true;
+	}
+
+	sv::uvec4 window_get_last_bounds()
+	{
+		return { g_LastX, g_LastY, g_LastWidth, g_LastHeight };
 	}
 
 }

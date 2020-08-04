@@ -10,7 +10,7 @@
 #undef CreateWindow
 #undef CallWindowProc
 
-#define SV_STYLE_WINDOWED WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_SIZEBOX | WS_VISIBLE
+#define SV_STYLE_WINDOWED WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SIZEBOX | WS_VISIBLE
 #define SV_STYLE_FULLSCREEN WS_POPUP | WS_VISIBLE
 
 namespace sv {
@@ -271,8 +271,16 @@ namespace sv {
 	{
 		DWORD style = fullscreen ? SV_STYLE_FULLSCREEN : SV_STYLE_WINDOWED;
 		SetWindowLongPtrW((HWND)sv::window_get_handle(), GWL_STYLE, (LONG_PTR)style);
-		uvec2 size = fullscreen ? GetMonitorResolution() : GetMonitorResolution() / 2u;
-		SetWindowPos((HWND)sv::window_get_handle(), 0, 0, 0, size.x, size.y, 0);
+		uvec4 bounds;
+		if (fullscreen) {
+			uvec2 monitor = GetMonitorResolution();
+			bounds.z = monitor.x;
+			bounds.w = monitor.y;
+		}
+		else {
+			bounds = _sv::window_get_last_bounds();
+		}
+		SetWindowPos((HWND)sv::window_get_handle(), 0u, bounds.x, bounds.y, bounds.z, bounds.w, 0);
 	}
 
 }

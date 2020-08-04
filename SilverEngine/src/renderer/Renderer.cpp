@@ -167,7 +167,8 @@ namespace sv {
 			auto& cameras = g_DrawData.cameras;
 			for (ui32 i = 0; i < cameras.size(); ++i) {
 				Camera_DrawData& c = g_DrawData.cameras[i];
-				renderer_present(c.projection, c.worldMatrix, c.pOffscreen);
+				c.viewMatrix = XMMatrixInverse(nullptr, c.viewMatrix);
+				renderer_present(c.projection, c.viewMatrix, c.pOffscreen);
 			}
 		}
 
@@ -214,12 +215,12 @@ namespace sv {
 
 	//////////////////////////////// RENDER FUNCTIONS ////////////////////////////////////////////////
 
-	void renderer_present(CameraProjection projection, XMMATRIX worldMatrix, _sv::Offscreen* pOffscreen)
+	void renderer_present(CameraProjection projection, XMMATRIX viewMatrix, _sv::Offscreen* pOffscreen)
 	{
 		// Set Camera Values
 		g_DrawData.currentCamera.projection = projection;
-		g_DrawData.currentCamera.worldMatrix = worldMatrix;
-		g_DrawData.viewMatrix = XMMatrixInverse(nullptr, worldMatrix);
+		g_DrawData.currentCamera.viewMatrix = viewMatrix;
+		g_DrawData.viewMatrix = viewMatrix;
 		g_DrawData.projectionMatrix = projection.GetProjectionMatrix();
 		g_DrawData.viewProjectionMatrix = g_DrawData.viewMatrix * g_DrawData.projectionMatrix;
 

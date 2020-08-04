@@ -132,11 +132,15 @@ namespace sve {
 		viewport_manager_add("Game", viewport_game_display);
 		viewport_manager_add("Scene Hierarchy", viewport_scene_hierarchy_display);
 		viewport_manager_add("Scene Entity", viewport_scene_entity_display);
+		viewport_manager_add("Scene Editor", viewport_scene_editor_display);
+		viewport_manager_add("Console", viewport_console_display);
 
 		// Show viewports
 		viewport_manager_show("Game");
 		viewport_manager_show("Scene Hierarchy");
 		viewport_manager_show("Scene Entity");
+		viewport_manager_show("Scene Editor");
+		viewport_manager_show("Console");
 
 		engine_state_load(new sve::EditorState(), nullptr);
 	}

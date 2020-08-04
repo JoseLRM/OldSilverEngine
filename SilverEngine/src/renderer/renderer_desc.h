@@ -60,7 +60,7 @@ namespace _sv {
 	struct Camera_DrawData {
 		sv::CameraProjection	projection;
 		_sv::Offscreen*			pOffscreen;
-		XMMATRIX				worldMatrix;
+		XMMATRIX				viewMatrix;
 	};
 
 	struct DrawData {

@@ -131,6 +131,7 @@
     </ClCompile>
     <ClCompile Include="src\Main.cpp" />
     <ClCompile Include="src\EditorState.cpp" />
+    <ClCompile Include="src\viewports\viewport_console.cpp" />
     <ClCompile Include="src\viewports\viewport_game.cpp" />
     <ClCompile Include="src\viewports\viewport_manager.cpp" />
     <ClCompile Include="src\viewports\viewport_scene.cpp" />

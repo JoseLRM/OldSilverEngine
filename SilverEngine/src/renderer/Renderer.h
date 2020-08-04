@@ -49,7 +49,7 @@ namespace sv {
 	void renderer_scene_end();
 	void renderer_scene_draw_scene(Scene& scene);
 	void renderer_scene_set_camera(const CameraProjection& projection, XMMATRIX worldMatrix);
-	void renderer_present(CameraProjection projection, XMMATRIX worldMatrix, _sv::Offscreen* pOffscreen);
+	void renderer_present(CameraProjection projection, XMMATRIX viewMatrix, _sv::Offscreen* pOffscreen);
 
 }
 
