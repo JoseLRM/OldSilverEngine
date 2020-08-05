@@ -13,8 +13,6 @@ namespace sve {
 
 	class EditorState : public sv::State {
 		sv::Scene m_Scene;
-		sv::Entity m_MainCamera;
-
 		DebugCamera m_DebugCamera;
 
 	public:
@@ -29,7 +27,7 @@ namespace sve {
 		void Close() override;
 
 		inline sv::Scene& GetScene() noexcept { return m_Scene; }
-		inline sv::Entity GetMainCamera() const noexcept { return m_MainCamera; }
+		inline sv::Entity GetMainCamera() const noexcept { return sv::scene_camera_get(); }
 		inline DebugCamera& GetDebugCamera() noexcept { return m_DebugCamera; }
 
 	};

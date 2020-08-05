@@ -9,7 +9,7 @@ namespace _sv {
 	bool renderer_layer_close();
 	void renderer_layer_begin();
 	void renderer_layer_end();
-	void renderer_layer_prepare_scene(sv::Scene& scene);
+	void renderer_layer_prepare_scene();
 	void renderer_layer_render(sv::CommandList cmd);
 
 }

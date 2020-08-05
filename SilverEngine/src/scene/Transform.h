@@ -1,31 +1,16 @@
 #pragma once
 
 #include "..//core.h"
-#include "SceneTypes.h"
-
-namespace _sv {
-
-	struct EntityTransform {
-		XMFLOAT3 localPosition = { 0.f, 0.f, 0.f };
-		XMFLOAT3 localRotation = { 0.f, 0.f, 0.f };
-		XMFLOAT3 localScale = { 1.f, 1.f, 1.f };
-
-		XMFLOAT4X4 worldMatrix;
-
-		bool modified = true;
-	};
-
-}
+#include "scene_types.h"
 
 namespace sv {
 
 	class Transform {
 		
 		_sv::EntityTransform* trans;
-		Scene* scene;
 
 	public:
-		Transform(Entity entity, _sv::EntityTransform* transform, Scene* pScene);
+		Transform(Entity entity, _sv::EntityTransform* transform);
 		~Transform() = default;
 
 		Transform(const Transform& other) = default;

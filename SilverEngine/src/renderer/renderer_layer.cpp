@@ -40,7 +40,7 @@ namespace _sv {
 		ui32 indexCount = SV_REND_LAYER_BATCH_COUNT * 6u;
 		ui32 index = 0u;
 		for (ui32 i = 0; i < indexCount; ) {
-			
+
 			indices[i++] = index;
 			indices[i++] = index + 1;
 			indices[i++] = index + 2;
@@ -71,7 +71,7 @@ namespace _sv {
 			// Index Buffer
 			ui32 indexData[SV_REND_LAYER_BATCH_COUNT * 6u];
 			ComputeIndexData(indexData);
-			
+
 			desc.bufferType = SV_GFX_BUFFER_TYPE_INDEX;
 			desc.CPUAccess = SV_GFX_CPU_ACCESS_NONE;
 			desc.usage = SV_GFX_USAGE_STATIC;
@@ -109,7 +109,7 @@ namespace _sv {
 			desc.attachments[0].layout = SV_GFX_IMAGE_LAYOUT_RENDER_TARGET;
 			desc.attachments[0].finalLayout = SV_GFX_IMAGE_LAYOUT_RENDER_TARGET;
 			desc.attachments[0].type = SV_GFX_ATTACHMENT_TYPE_RENDER_TARGET;
-			
+
 			desc.attachments[1].loadOp = SV_GFX_LOAD_OP_DONT_CARE;
 			desc.attachments[1].storeOp = SV_GFX_STORE_OP_DONT_CARE;
 			desc.attachments[1].stencilLoadOp = SV_GFX_LOAD_OP_LOAD;
@@ -241,10 +241,10 @@ namespace _sv {
 		return true;
 	}
 
-	void CreateSpritesInstancesSystem(Scene& scene, Entity entity, BaseComponent** comp, float dt)
+	void CreateSpritesInstancesSystem(Entity entity, BaseComponent** comp, float dt)
 	{
 		SpriteComponent& sprComp = *reinterpret_cast<SpriteComponent*>(comp[0]);
-		Transform trans = scene.GetTransform(entity);
+		Transform trans = scene_ecs_entity_get_transform(entity);
 
 		if (sprComp.renderLayer == SV_RENDER_LAYER_DEFAULT) {
 			g_DefRenderLayer->sprites.Emplace(trans.GetWorldMatrix(), sprComp.sprite, sprComp.color);
@@ -275,7 +275,7 @@ namespace _sv {
 		});
 	}
 
-	void renderer_layer_prepare_scene(sv::Scene& scene)
+	void renderer_layer_prepare_scene()
 	{
 		// Create Sprites Instances
 
@@ -291,8 +291,7 @@ namespace _sv {
 		systems[0].requestedComponentsCount = 1u;
 		systems[0].optionalComponentsCount = 0u;
 
-		scene.ExecuteSystems(systems, 1u, 0.f);
-
+		scene_ecs_system_execute(systems, 1u, 0.f);
 	}
 
 	void RenderSpriteBatch(ui32 offset, ui32 size, TextureAtlas_DrawData* texture, CommandList cmd)
@@ -335,7 +334,7 @@ namespace _sv {
 
 		Image* att[] = {
 			&drawData.currentCamera.pOffscreen->renderTarget,
-			& drawData.currentCamera.pOffscreen->depthStencil
+			&drawData.currentCamera.pOffscreen->depthStencil
 		};
 
 		TextureAtlas_DrawData* texture = nullptr;
@@ -363,9 +362,9 @@ namespace _sv {
 					XMMATRIX matrix = spr.tm * drawData.viewProjectionMatrix;
 
 					XMVECTOR pos0 = XMVectorSet(-0.5f, -0.5f, 0.f, 1.f);
-					XMVECTOR pos1 = XMVectorSet( 0.5f, -0.5f, 0.f, 1.f);
-					XMVECTOR pos2 = XMVectorSet(-0.5f,  0.5f, 0.f, 1.f);
-					XMVECTOR pos3 = XMVectorSet( 0.5f,  0.5f, 0.f, 1.f);
+					XMVECTOR pos1 = XMVectorSet(0.5f, -0.5f, 0.f, 1.f);
+					XMVECTOR pos2 = XMVectorSet(-0.5f, 0.5f, 0.f, 1.f);
+					XMVECTOR pos3 = XMVectorSet(0.5f, 0.5f, 0.f, 1.f);
 
 					pos0 = XMVector4Transform(pos0, matrix);
 					pos1 = XMVector4Transform(pos1, matrix);
@@ -373,7 +372,7 @@ namespace _sv {
 					pos3 = XMVector4Transform(pos3, matrix);
 
 					vec4 texCoord;
-					if(spr.sprite.pTexAtlas != nullptr) 
+					if (spr.sprite.pTexAtlas != nullptr)
 						texCoord = spr.sprite.pTexAtlas->sprites[spr.sprite.ID];
 
 					ui32 index = j * 4u;
@@ -389,7 +388,7 @@ namespace _sv {
 
 				// Begin rendering
 				graphics_renderpass_begin(g_SpriteRenderPass, att, nullptr, 1.f, 0u, cmd);
-				
+
 				if (transparent) {
 					graphics_pipeline_bind(g_SpriteTransparentPipeline, cmd);
 				}
@@ -398,7 +397,7 @@ namespace _sv {
 				}
 
 				graphics_indexbuffer_bind(g_SpriteIndexBuffer, 0u, cmd);
-				
+
 
 				graphics_set_stencil_reference(1u, cmd);
 
@@ -414,7 +413,7 @@ namespace _sv {
 						offset += j;
 						texture = sprites[j].sprite.pTexAtlas;
 					}
-					
+
 					++j;
 				}
 
@@ -425,7 +424,7 @@ namespace _sv {
 				i += j;
 			}
 		}
-		
+
 	}
 
 }

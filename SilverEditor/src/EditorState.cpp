@@ -7,17 +7,6 @@ namespace sve {
 
 	EditorState::EditorState() : State()
 	{
-		m_Scene.Initialize();
-
-		m_MainCamera = m_Scene.CreateEntity();
-		m_Scene.AddComponent<sv::CameraComponent>(m_MainCamera, SV_REND_CAMERA_TYPE_ORTHOGRAPHIC);
-		m_Scene.AddComponent<sv::NameComponent>(m_MainCamera, "Main Camera");
-		sv::CameraComponent* camComp = m_Scene.GetComponent<sv::CameraComponent>(m_MainCamera);
-		camComp->projection.Orthographic_SetZoom(5.f);
-
-		// Create debug camera
-		SV_ASSERT(m_DebugCamera.camera.CreateOffscreen(sv::renderer_resolution_get().x, sv::renderer_resolution_get().y));
-		m_DebugCamera.camera.projection = camComp->projection;
 	}
 
 	void EditorState::Load()
@@ -26,12 +15,26 @@ namespace sve {
 
 	void EditorState::Initialize()
 	{
+		m_Scene = sv::scene_create();
+		sv::scene_bind(m_Scene);
 
+		sv::Entity mainCamera = sv::scene_ecs_entity_create();
+		sv::scene_ecs_component_add<sv::CameraComponent>(mainCamera, SV_REND_CAMERA_TYPE_ORTHOGRAPHIC);
+		sv::scene_ecs_component_add<sv::NameComponent>(mainCamera, "Main Camera");
+		sv::CameraComponent* camComp = sv::scene_ecs_component_get<sv::CameraComponent>(mainCamera);
+		camComp->projection.Orthographic_SetZoom(5.f);
+
+		sv::scene_camera_set(mainCamera);
+
+		// Create debug camera
+		SV_ASSERT(m_DebugCamera.camera.CreateOffscreen(sv::renderer_resolution_get().x, sv::renderer_resolution_get().y));
+		m_DebugCamera.camera.projection = camComp->projection;
 	}
 
 	void EditorState::Update(float dt)
 	{
-		sv::CameraComponent* camComp = m_Scene.GetComponent<sv::CameraComponent>(m_MainCamera);
+		sv::Entity mainCamera = sv::scene_camera_get();
+		sv::CameraComponent* camComp = sv::scene_ecs_component_get<sv::CameraComponent>(mainCamera);
 		
 		// Adjust cameras
 		{
@@ -81,16 +84,11 @@ namespace sve {
 
 	void EditorState::Render()
 	{
-		sv::CameraComponent* camComp = m_Scene.GetComponent<sv::CameraComponent>(m_MainCamera);
-		sv::Transform trans = m_Scene.GetTransform(camComp->entity);
-
 		sv::renderer_scene_begin();
-		sv::renderer_scene_draw_scene(m_Scene);
-		sv::renderer_scene_set_camera(camComp->projection, trans.GetWorldMatrix());
+		sv::renderer_scene_draw_scene();
 		sv::renderer_scene_end();
 
 		m_DebugCamera.viewMatrix = XMMatrixTranslation(-m_DebugCamera.position.x, -m_DebugCamera.position.y, -m_DebugCamera.position.z);
-
 		sv::renderer_present(m_DebugCamera.camera.projection, m_DebugCamera.viewMatrix, m_DebugCamera.camera.GetOffscreen());
 	}
 
@@ -100,6 +98,7 @@ namespace sve {
 
 	void EditorState::Close()
 	{
+		sv::scene_destroy(m_Scene);
 	}
 
 }

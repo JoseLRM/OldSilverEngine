@@ -16,6 +16,4 @@ namespace sve {
 
 	ImGuiDevice& editor_device_get();
 	EditorState& editor_state_get();
-	sv::Scene& editor_scene_get();
-
 }

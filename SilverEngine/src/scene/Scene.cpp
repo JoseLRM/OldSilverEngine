@@ -4,6 +4,8 @@
 
 using namespace sv;
 
+///////////////////////////////////// COMPONENTS MANAGEMENT ////////////////////////////////////////
+
 namespace _sv {
 
 	struct ComponentData {
@@ -61,25 +63,6 @@ namespace sv {
 	{
 		return g_ComponentData[ID].name;
 	}
-	void ecs_components_create(CompID ID, BaseComponent* ptr, Entity entity)
-	{
-		g_ComponentData[ID].createFn(ptr, entity);
-	}
-	void ecs_components_destroy(CompID ID, BaseComponent* ptr)
-	{
-		g_ComponentData[ID].destroyFn(ptr);
-	}
-
-	void ecs_components_move(CompID ID, BaseComponent* from, BaseComponent* to)
-	{
-		g_ComponentData[ID].moveFn(from, to);
-	}
-
-	void ecs_components_copy(CompID ID, BaseComponent* from, BaseComponent* to)
-	{
-		g_ComponentData[ID].copyFn(from, to);
-	}
-
 	std::map<std::string, CompID> g_ComponentNames;
 	bool ecs_components_get_id(const char* name, CompID* id)
 	{
@@ -100,288 +83,95 @@ namespace sv {
 			return true;
 		}
 	}
+	void ecs_components_create(CompID ID, BaseComponent* ptr, Entity entity)
+	{
+		g_ComponentData[ID].createFn(ptr, entity);
+	}
+	void ecs_components_destroy(CompID ID, BaseComponent* ptr)
+	{
+		g_ComponentData[ID].destroyFn(ptr);
+	}
+
+	void ecs_components_move(CompID ID, BaseComponent* from, BaseComponent* to)
+	{
+		g_ComponentData[ID].moveFn(from, to);
+	}
+
+	void ecs_components_copy(CompID ID, BaseComponent* from, BaseComponent* to)
+	{
+		g_ComponentData[ID].copyFn(from, to);
+	}
 
 }
 
-namespace sv {
+///////////////////////////////////////// ECS //////////////////////////////////////////////////////
 
-	using namespace _sv;
+namespace _sv {
 
-	///////////////////////////SCENE////////////////////////
+	static Scene_internal* g_pScene = nullptr;
 
-	void Scene::Initialize() noexcept
+	void scene_ecs_entitydata_index_add(EntityData& ed, CompID ID, size_t index)
 	{
-		m_Components.reserve(ecs_components_get_count());
-		for (CompID id = 0; id < ecs_components_get_count(); ++id) {
-			m_Components.push_back(std::vector<ui8>());
-		}
-		// Create Layers
-		CreateLayer("Default", 0);
-
-		CreateEntity(); // allocate invalid Entity :)
+		ed.indices.push_back(std::make_pair(ID, index));
 	}
 
-	void Scene::Close() noexcept
+	void scene_ecs_entitydata_index_set(EntityData& ed, CompID ID, size_t index)
 	{
-		for (CompID id = 0; id < m_Components.size(); ++id) {
-			m_Components[id].clear();
-		}
-		m_Components.clear();
-		m_Entities.clear();
-		m_EntityData.clear();
-	}
-
-	void Scene::ClearScene()
-	{
-		m_Entities.clear();
-		m_EntityData.clear();
-		m_FreeEntityData.clear();
-		for (ui32 i = 0; i < ecs_components_get_count(); ++i) {
-			m_Components[i].clear();
-		}
-	}
-
-	Scene::~Scene()
-	{
-		Close();
-	}
-
-	//////////////////////////////////ENTITIES////////////////////////////////
-
-	Entity Scene::CreateEntity(Entity parent) noexcept
-	{
-		ReserveEntityData(1u);
-		Entity entity = GetNewEntity();
-
-		if (parent == SV_INVALID_ENTITY) {
-			m_EntityData[entity].handleIndex = m_Entities.size();
-			m_Entities.emplace_back(entity);
-		}
-		else {
-			UpdateChildsCount(parent, 1u);
-
-			// Set parent and handleIndex
-			EntityData& parentData = m_EntityData[parent];
-			size_t index = parentData.handleIndex + size_t(parentData.childsCount);
-
-			EntityData& entityData = m_EntityData[entity];
-			entityData.handleIndex = index;
-			entityData.parent = parent;
-
-			// Special case, the parent and childs are in back of the list
-			if (index == m_Entities.size()) {
-				m_Entities.emplace_back(entity);
-			}
-			else {
-				m_Entities.insert(m_Entities.begin() + index, entity);
-
-				for (size_t i = index + 1; i < m_Entities.size(); ++i) {
-					m_EntityData[m_Entities[i]].handleIndex++;
-				}
-			}
-		}
-
-		return entity;
-	}
-	void Scene::CreateEntities(ui32 count, Entity parent, Entity* entities) noexcept
-	{
-		ReserveEntityData(count);
-
-		size_t entityIndex = 0u;
-
-		if (parent == SV_INVALID_ENTITY) {
-
-			entityIndex = m_Entities.size();
-			m_Entities.reserve(count);
-
-			// Create entities
-			for (size_t i = 0; i < count; ++i) {
-				Entity entity = GetNewEntity();
-				m_EntityData[entity].handleIndex = entityIndex + i;
-				m_Entities.emplace_back(entity);
-			}
-		}
-		else {
-			// Indices and reserve memory
-			EntityData& parentData = m_EntityData[parent];
-			entityIndex = size_t(parentData.handleIndex) + size_t(parentData.childsCount) + 1u;
-
-			size_t lastEntitiesSize = m_Entities.size();
-			m_Entities.resize(lastEntitiesSize + count);
-
-			// Update childs count
-			UpdateChildsCount(parent, count);
-
-			// if the parent and sons aren't in back of the list
-			if (entityIndex != lastEntitiesSize) {
-				size_t newDataIndex = entityIndex + size_t(parentData.childsCount);
-				// move old entities
-				for (size_t i = m_Entities.size() - 1; i >= newDataIndex; --i) {
-					m_Entities[i] = m_Entities[i - size_t(count)];
-					m_EntityData[m_Entities[i]].handleIndex = i;
-				}
-			}
-
-			// creating entities
-			for (size_t i = 0; i < count; ++i) {
-				Entity entity = GetNewEntity();
-
-				EntityData& entityData = m_EntityData[entity];
-				entityData.handleIndex = entityIndex + i;
-				entityData.parent = parent;
-				m_Entities[entityData.handleIndex] = entity;
-			}
-		}
-
-		// Allocate entities in user list
-		if (entities) {
-			for (size_t i = 0; i < count; ++i) {
-				entities[i] = m_Entities[entityIndex + i];
+		for (auto it = ed.indices.begin(); it != ed.indices.end(); ++it) {
+			if (it->first == ID) {
+				it->second = index;
+				return;
 			}
 		}
 	}
 
-	Entity Scene::DuplicateEntity(Entity duplicated)
+	bool scene_ecs_entitydata_index_get(EntityData& ed, CompID ID, size_t& index)
 	{
-		return DuplicateEntity(duplicated, m_EntityData[duplicated].parent);
-	}
-
-	bool Scene::IsEmpty(Entity entity)
-	{
-		return m_EntityData[entity].indices.Empty();
-	}
-
-	void Scene::DestroyEntity(Entity entity) noexcept
-	{
-		EntityData& entityData = m_EntityData[entity];
-		ui32 count = entityData.childsCount + 1;
-
-		// notify parents
-		if (entityData.parent != SV_INVALID_ENTITY) {
-			UpdateChildsCount(entityData.parent, -i32(count));
+		for (auto it = ed.indices.begin(); it != ed.indices.end(); ++it) {
+			if (it->first == ID) {
+				index = it->second;
+				return true;
+			}
 		}
+		return false;
+	}
 
-		// data to remove entities
-		size_t indexBeginDest = entityData.handleIndex;
-		size_t indexBeginSrc = entityData.handleIndex + count;
-		size_t cpyCant = m_Entities.size() - indexBeginSrc;
-
-		// remove components & entityData
-		m_FreeEntityData.reserve(count);
-		for (size_t i = 0; i < count; i++) {
-			Entity e = m_Entities[indexBeginDest + i];
-			EntityData& ed = m_EntityData[e];
-			RemoveComponents(ed);
-			ed.handleIndex = 0;
-			ed.parent = SV_INVALID_ENTITY;
-			ed.childsCount = 0u;
-			m_FreeEntityData.emplace_back(e);
+	void scene_ecs_entitydata_index_remove(EntityData& ed, CompID ID)
+	{
+		for (auto it = ed.indices.begin(); it != ed.indices.end(); ++it) {
+			if (it->first == ID) {
+				ed.indices.erase(it);
+				return;
+			}
 		}
-
-		// remove from entities & update indices
-		if (cpyCant != 0) memcpy(&m_Entities[indexBeginDest], &m_Entities[indexBeginSrc], cpyCant * sizeof(Entity));
-		m_Entities.resize(m_Entities.size() - count);
-		for (size_t i = indexBeginDest; i < m_Entities.size(); ++i) {
-			m_EntityData[m_Entities[i]].handleIndex = i;
-		}
-
 	}
 
-	void Scene::GetEntityChilds(Entity parent, Entity const** childsArray, ui32* size) const noexcept
+	void scene_ecs_entitydata_reserve(ui32 count)
 	{
-		const EntityData& ed = m_EntityData[parent];
-		*size = ed.childsCount;
-		if (childsArray && ed.childsCount != 0) *childsArray = &m_Entities[ed.handleIndex + 1];
-	}
-
-	Entity Scene::GetEntityParent(Entity entity) {
-		return m_EntityData[entity].parent;
-	}
-
-	Transform Scene::GetTransform(Entity entity)
-	{
-		return Transform(entity, &m_EntityData[entity].transform, this);
-	}
-
-	void Scene::SetLayer(Entity entity, SceneLayer* layer) noexcept
-	{
-		m_EntityData[entity].layer = layer;
-	}
-
-	SceneLayer* Scene::GetLayer(Entity entity) const noexcept
-	{
-		return m_EntityData[entity].layer;
-	}
-
-	SceneLayer* Scene::GetLayerOf(Entity entity)
-	{
-		return m_EntityData[entity].layer;
-	}
-
-	Entity Scene::DuplicateEntity(Entity duplicated, Entity parent)
-	{
-		Entity copy;
-
-		if (parent == SV_INVALID_ENTITY) copy = CreateEntity();
-		else copy = CreateEntity(parent);
-
-		EntityData& duplicatedEd = m_EntityData[duplicated];
-		EntityData& copyEd = m_EntityData[copy];
-
-		for (ui32 i = 0; i < duplicatedEd.indices.Size(); ++i) {
-			CompID ID = duplicatedEd.indices[i];
-			size_t SIZE = ecs_components_get_size(ID);
-
-			auto& list = m_Components[ID];
-
-			size_t index = list.size();
-			list.resize(index + SIZE);
-
-			BaseComponent* comp = GetComponent(duplicated, ID);
-			BaseComponent* newComp = reinterpret_cast<BaseComponent*>(&list[index]);
-			ecs_components_copy(ID, comp, newComp);
-
-			newComp->entity = copy;
-			copyEd.indices.AddIndex(ID, index);
-		}
-
-		copyEd.transform = duplicatedEd.transform;
-
-		for (ui32 i = 0; i < m_EntityData[duplicated].childsCount; ++i) {
-			Entity toCopy = m_Entities[m_EntityData[duplicated].handleIndex + i + 1];
-			DuplicateEntity(toCopy, copy);
-			i += m_EntityData[toCopy].childsCount;
-		}
-
-		return copy;
-	}
-
-	void Scene::ReserveEntityData(ui32 count)
-	{
-		ui32 freeEntityDataCount = ui32(m_FreeEntityData.size());
+		ui32 freeEntityDataCount = ui32(g_pScene->ecs.freeEntityData.size());
 
 		if (freeEntityDataCount < count) {
-			m_EntityData.reserve(count - freeEntityDataCount);
+			g_pScene->ecs.entityData.reserve(count - freeEntityDataCount);
 		}
 	}
-	
-	Entity Scene::GetNewEntity()
+
+	Entity scene_ecs_entity_new()
 	{
 		Entity entity;
-		if (m_FreeEntityData.empty()) {
-			entity = Entity(m_EntityData.size());
-			m_EntityData.emplace_back();
+		ECS& ecs = g_pScene->ecs;
+		if (ecs.freeEntityData.empty()) {
+			entity = Entity(ecs.entityData.size());
+			ecs.entityData.emplace_back();
 		}
 		else {
-			entity = m_FreeEntityData.back();
-			m_FreeEntityData.pop_back();
+			entity = ecs.freeEntityData.back();
+			ecs.freeEntityData.pop_back();
 		}
-		m_EntityData[entity].transform = {};
-		m_EntityData[entity].layer = GetLayer("Default");
+		ecs.entityData[entity].transform = {};
 		return entity;
 	}
 
-	void Scene::UpdateChildsCount(Entity entity, i32 count)
+	void scene_ecs_entitydata_update_childs(Entity entity, i32 count)
 	{
 		std::vector<Entity> parentsToUpdate;
 		parentsToUpdate.emplace_back(entity);
@@ -389,36 +179,16 @@ namespace sv {
 
 			Entity parentToUpdate = parentsToUpdate.back();
 			parentsToUpdate.pop_back();
-			EntityData& parentToUpdateEd = m_EntityData[parentToUpdate];
+			EntityData& parentToUpdateEd = g_pScene->ecs.entityData[parentToUpdate];
 			parentToUpdateEd.childsCount += count;
 
 			if (parentToUpdateEd.parent != SV_INVALID_ENTITY) parentsToUpdate.emplace_back(parentToUpdateEd.parent);
 		}
 	}
 
-	////////////////////////////////COMPONENTS////////////////////////////////
-
-	BaseComponent* Scene::GetComponent(Entity e, CompID componentID) noexcept
+	void scene_ecs_component_add(sv::Entity entity, sv::BaseComponent* comp, sv::CompID componentID, size_t componentSize)
 	{
-		EntityData& entity = m_EntityData[e];
-		size_t index;
-		if (entity.indices.GetIndex(componentID, index)) {
-			return (BaseComponent*)(&(m_Components[componentID][index]));
-		}
-		return nullptr;
-	}
-	BaseComponent* Scene::GetComponent(const EntityData& entity, CompID componentID) noexcept
-	{
-		size_t index;
-		if (entity.indices.GetIndex(componentID, index)) {
-			return (BaseComponent*)(&(m_Components[componentID][index]));
-		}
-		return nullptr;
-	}
-
-	void Scene::AddComponent(Entity entity, BaseComponent* comp, CompID componentID, size_t componentSize) noexcept
-	{
-		auto& list = m_Components[componentID];
+		auto& list = g_pScene->ecs.components[componentID];
 		size_t index = list.size();
 
 		// allocate the component
@@ -427,26 +197,12 @@ namespace sv {
 		((BaseComponent*)& list[index])->entity = entity;
 
 		// set index in entity
-		m_EntityData[entity].indices.AddIndex(componentID, index);
+		scene_ecs_entitydata_index_add(g_pScene->ecs.entityData[entity], componentID, index);
 	}
 
-	void Scene::AddComponent(Entity entity, CompID componentID, size_t componentSize) noexcept
+	void scene_ecs_components_add(sv::Entity* entities, ui32 count, sv::BaseComponent* comp, sv::CompID componentID, size_t componentSize)
 	{
-		auto& list = m_Components[componentID];
-		size_t index = list.size();
-
-		// allocate the component
-		list.resize(list.size() + componentSize);
-		BaseComponent* comp = (BaseComponent*)& list[index];
-		ecs_components_create(componentID, comp, entity);
-
-		// set index in entity
-		m_EntityData[entity].indices.AddIndex(componentID, index);
-	}
-
-	void Scene::AddComponents(Entity* entities, ui32 count, BaseComponent* comp, CompID componentID, size_t componentSize) noexcept
-	{
-		auto& list = m_Components[componentID];
+		auto& list = g_pScene->ecs.components[componentID];
 		size_t index = list.size();
 
 		// allocate the components
@@ -469,22 +225,341 @@ namespace sv {
 			BaseComponent* component = (BaseComponent*)(&list[currentIndex]);
 			component->entity = currentEntity;
 			// set index in entity
-			m_EntityData[currentEntity].indices.AddIndex(componentID, currentIndex);
+			scene_ecs_entitydata_index_add(g_pScene->ecs.entityData[currentEntity], componentID, currentIndex);
 		}
 	}
 
-	void Scene::RemoveComponent(Entity entity, CompID componentID, size_t componentSize) noexcept
+	std::vector<EntityData>& scene_ecs_get_entity_data()
 	{
-		EntityData& entityData = m_EntityData[entity];
+		return g_pScene->ecs.entityData;
+	}
+
+	std::vector<sv::Entity>& scene_ecs_get_entities()
+	{
+		return g_pScene->ecs.entities;
+	}
+
+	std::vector<ui8>& scene_ecs_get_components(sv::CompID ID)
+	{
+		return g_pScene->ecs.components[ID];
+	}
+
+}
+
+namespace sv {
+
+	using namespace _sv;
+
+	Scene scene_create()
+	{
+		Scene_internal* scene = new Scene_internal();
+
+		scene->ecs.components.reserve(ecs_components_get_count());
+		for (CompID id = 0; id < ecs_components_get_count(); ++id) {
+			scene->ecs.components.push_back(std::vector<ui8>());
+		}
+
+		scene->ecs.entityData.emplace_back();
+		scene->ecs.entities.emplace_back(SV_INVALID_ENTITY);
+
+		return scene;
+	}
+
+	void scene_destroy(Scene& scene_)
+	{
+		Scene_internal* scene = reinterpret_cast<Scene_internal*>(scene_);
+		scene->physicsWorld; // TODO: Clear physics world
+
+		delete scene;
+		scene_ = nullptr;
+	}
+
+	void scene_clear(Scene scene_)
+	{
+		Scene_internal* scene = reinterpret_cast<Scene_internal*>(scene_);
+
+		scene->mainCamera = SV_INVALID_ENTITY;
+		scene->physicsWorld; // TODO: Clear physics world
+
+		for (ui16 i = 0; i < ecs_components_get_count(); ++i) {
+			scene->ecs.components[i].clear();
+		}
+		scene->ecs.entities.resize(1);
+		scene->ecs.entityData.resize(1);
+		scene->ecs.freeEntityData.clear();
+	}
+
+	Entity scene_camera_get()
+	{
+		return g_pScene->mainCamera;
+	}
+
+	void scene_camera_set(Entity entity)
+	{
+		g_pScene->mainCamera = entity;
+	}
+
+	void scene_bind(Scene scene)
+	{
+		g_pScene = reinterpret_cast<Scene_internal*>(scene);
+	}
+	
+	Scene scene_get()
+	{
+		return g_pScene;
+	}
+
+	Entity scene_ecs_entity_create(Entity parent)
+	{
+		ECS& ecs = g_pScene->ecs;
+		scene_ecs_entitydata_reserve(1u);
+		Entity entity = scene_ecs_entity_new();
+
+		if (parent == SV_INVALID_ENTITY) {
+			ecs.entityData[entity].handleIndex = ecs.entities.size();
+			ecs.entities.emplace_back(entity);
+		}
+		else {
+			scene_ecs_entitydata_update_childs(parent, 1u);
+
+			// Set parent and handleIndex
+			EntityData& parentData = ecs.entityData[parent];
+			size_t index = parentData.handleIndex + size_t(parentData.childsCount);
+
+			EntityData& entityData = ecs.entityData[entity];
+			entityData.handleIndex = index;
+			entityData.parent = parent;
+
+			// Special case, the parent and childs are in back of the list
+			if (index == ecs.entities.size()) {
+				ecs.entities.emplace_back(entity);
+			}
+			else {
+				ecs.entities.insert(ecs.entities.begin() + index, entity);
+
+				for (size_t i = index + 1; i < ecs.entities.size(); ++i) {
+					ecs.entityData[ecs.entities[i]].handleIndex++;
+				}
+			}
+		}
+
+		return entity;
+	}
+
+	void scene_ecs_entity_destroy(Entity entity)
+	{
+		ECS& ecs = g_pScene->ecs;
+
+		EntityData& entityData = ecs.entityData[entity];
+		ui32 count = entityData.childsCount + 1;
+
+		// notify parents
+		if (entityData.parent != SV_INVALID_ENTITY) {
+			scene_ecs_entitydata_update_childs(entityData.parent, -i32(count));
+		}
+
+		// data to remove entities
+		size_t indexBeginDest = entityData.handleIndex;
+		size_t indexBeginSrc = entityData.handleIndex + count;
+		size_t cpyCant = ecs.entities.size() - indexBeginSrc;
+
+		// remove components & entityData
+		ecs.freeEntityData.reserve(count);
+		for (size_t i = 0; i < count; i++) {
+			Entity e = ecs.entities[indexBeginDest + i];
+			EntityData& ed = ecs.entityData[e];
+			scene_ecs_components_remove(e);
+			ed.handleIndex = 0;
+			ed.parent = SV_INVALID_ENTITY;
+			ed.childsCount = 0u;
+			ecs.freeEntityData.emplace_back(e);
+		}
+
+		// remove from entities & update indices
+		if (cpyCant != 0) memcpy(&ecs.entities[indexBeginDest], &ecs.entities[indexBeginSrc], cpyCant * sizeof(Entity));
+		ecs.entities.resize(ecs.entities.size() - count);
+		for (size_t i = indexBeginDest; i < ecs.entities.size(); ++i) {
+			ecs.entityData[ecs.entities[i]].handleIndex = i;
+		}
+	}
+
+	Entity scene_ecs_entity_duplicate_recursive(Entity duplicated, Entity parent)
+	{
+		Entity copy;
+		ECS& ecs = g_pScene->ecs;
+
+		if (parent == SV_INVALID_ENTITY) copy = scene_ecs_entity_create();
+		else copy = scene_ecs_entity_create(parent);
+
+		EntityData& duplicatedEd = ecs.entityData[duplicated];
+		EntityData& copyEd = ecs.entityData[copy];
+
+		for (ui32 i = 0; i < duplicatedEd.indices.size(); ++i) {
+			CompID ID = duplicatedEd.indices[i].first;
+			size_t SIZE = ecs_components_get_size(ID);
+
+			auto& list = ecs.components[ID];
+
+			size_t index = list.size();
+			list.resize(index + SIZE);
+
+			BaseComponent* comp = scene_ecs_component_get_by_id(duplicated, ID);
+			BaseComponent* newComp = reinterpret_cast<BaseComponent*>(&list[index]);
+			ecs_components_copy(ID, comp, newComp);
+
+			newComp->entity = copy;
+			scene_ecs_entitydata_index_add(copyEd, ID, index);
+		}
+
+		copyEd.transform = duplicatedEd.transform;
+
+		for (ui32 i = 0; i < ecs.entityData[duplicated].childsCount; ++i) {
+			Entity toCopy = ecs.entities[ecs.entityData[duplicated].handleIndex + i + 1];
+			scene_ecs_entity_duplicate_recursive(toCopy, copy);
+			i += ecs.entityData[toCopy].childsCount;
+		}
+
+		return copy;
+	}
+
+	Entity scene_ecs_entity_duplicate(Entity duplicated)
+	{
+		return scene_ecs_entity_duplicate_recursive(duplicated, g_pScene->ecs.entityData[duplicated].parent);
+	}
+
+	bool scene_ecs_entity_is_empty(Entity entity)
+	{
+		return g_pScene->ecs.entityData[entity].indices.empty();
+	}
+
+	void scene_ecs_entity_get_childs(Entity parent, Entity const** childsArray, ui32* size)
+	{
+		const EntityData& ed = g_pScene->ecs.entityData[parent];
+		*size = ed.childsCount;
+		if (childsArray && ed.childsCount != 0)* childsArray = &g_pScene->ecs.entities[ed.handleIndex + 1];
+	}
+
+	Entity scene_ecs_entity_get_parent(Entity entity)
+	{
+		return g_pScene->ecs.entityData[entity].parent;
+	}
+
+	Transform scene_ecs_entity_get_transform(Entity entity)
+	{
+		return Transform(entity, &g_pScene->ecs.entityData[entity].transform);
+	}
+
+	void scene_ecs_entities_create(ui32 count, Entity parent, Entity* entities)
+	{
+		scene_ecs_entitydata_reserve(count);
+
+		ECS& ecs = g_pScene->ecs;
+		size_t entityIndex = 0u;
+
+		if (parent == SV_INVALID_ENTITY) {
+
+			entityIndex = ecs.entities.size();
+			ecs.entities.reserve(count);
+
+			// Create entities
+			for (size_t i = 0; i < count; ++i) {
+				Entity entity = scene_ecs_entity_new();
+				ecs.entityData[entity].handleIndex = entityIndex + i;
+				ecs.entities.emplace_back(entity);
+			}
+		}
+		else {
+			// Indices and reserve memory
+			EntityData& parentData = ecs.entityData[parent];
+			entityIndex = size_t(parentData.handleIndex) + size_t(parentData.childsCount) + 1u;
+
+			size_t lastEntitiesSize = ecs.entities.size();
+			ecs.entities.resize(lastEntitiesSize + count);
+
+			// Update childs count
+			scene_ecs_entitydata_update_childs(parent, count);
+
+			// if the parent and sons aren't in back of the list
+			if (entityIndex != lastEntitiesSize) {
+				size_t newDataIndex = entityIndex + size_t(parentData.childsCount);
+				// move old entities
+				for (size_t i = ecs.entities.size() - 1; i >= newDataIndex; --i) {
+					ecs.entities[i] = ecs.entities[i - size_t(count)];
+					ecs.entityData[ecs.entities[i]].handleIndex = i;
+				}
+			}
+
+			// creating entities
+			for (size_t i = 0; i < count; ++i) {
+				Entity entity = scene_ecs_entity_new();
+
+				EntityData& entityData = ecs.entityData[entity];
+				entityData.handleIndex = entityIndex + i;
+				entityData.parent = parent;
+				ecs.entities[entityData.handleIndex] = entity;
+			}
+		}
+
+		// Allocate entities in user list
+		if (entities) {
+			for (size_t i = 0; i < count; ++i) {
+				entities[i] = ecs.entities[entityIndex + i];
+			}
+		}
+	}
+
+	void scene_ecs_entities_destroy(Entity* entities, ui32 count)
+	{
+		// TODO:
+	}
+
+	void scene_ecs_component_add_by_id(sv::Entity entity, sv::CompID componentID)
+	{
+		size_t componentSize = ecs_components_get_size(componentID);
+
+		auto& list = g_pScene->ecs.components[componentID];
+		size_t index = list.size();
+
+		// allocate the component
+		list.resize(list.size() + componentSize);
+		BaseComponent* comp = (BaseComponent*)& list[index];
+		ecs_components_create(componentID, comp, entity);
+
+		// set index in entity
+		scene_ecs_entitydata_index_add(g_pScene->ecs.entityData[entity], componentID, index);
+	}
+
+	sv::BaseComponent* scene_ecs_component_get_by_id(Entity e, CompID componentID)
+	{
+		size_t index;
+		if (scene_ecs_entitydata_index_get(g_pScene->ecs.entityData[e], componentID, index)) {
+			return (BaseComponent*)(&(g_pScene->ecs.components[componentID][index]));
+		}
+		return nullptr;
+	}
+	sv::BaseComponent* scene_ecs_component_get_by_id(EntityData& e, sv::CompID componentID)
+	{
+		size_t index;
+		if (scene_ecs_entitydata_index_get(e, componentID, index)) {
+			return (BaseComponent*)(&(g_pScene->ecs.components[componentID][index]));
+		}
+		return nullptr;
+	}
+
+	void scene_ecs_component_remove_by_id(sv::Entity entity, sv::CompID componentID)
+	{
+		ECS& ecs = g_pScene->ecs;
+		size_t componentSize = ecs_components_get_size(componentID);
+		EntityData& entityData = ecs.entityData[entity];
 
 		// Get the index
 		size_t index;
-		if (!entityData.indices.GetIndex(componentID, index)) return;
+		if (!scene_ecs_entitydata_index_get(entityData, componentID, index)) return;
 
 		// Remove index from index list
-		entityData.indices.RemoveIndex(componentID);
+		scene_ecs_entitydata_index_remove(entityData, componentID);
 
-		auto& list = m_Components[componentID];
+		auto& list = ecs.components[componentID];
 
 		ecs_components_destroy(componentID, reinterpret_cast<BaseComponent*>(&list[index]));
 
@@ -494,21 +569,24 @@ namespace sv {
 			memcpy(&list[index], &list[list.size() - componentSize], componentSize);
 
 			Entity otherEntity = ((BaseComponent*)(&list[index]))->entity;
-			m_EntityData[otherEntity].indices.AddIndex(componentID, index);
+			scene_ecs_entitydata_index_set(ecs.entityData[otherEntity], componentID, index);
 		}
 
 		list.resize(list.size() - componentSize);
 	}
 
-	void Scene::RemoveComponents(EntityData& entityData) noexcept
+	void scene_ecs_components_remove(Entity entity)
 	{
+		ECS& ecs = g_pScene->ecs;
+		EntityData& entityData = ecs.entityData[entity];
+
 		CompID componentID;
 		size_t componentSize, index;
-		for (ui32 i = 0; i < entityData.indices.Size(); ++i) {
-			componentID = entityData.indices[i];
+		for (ui32 i = 0; i < entityData.indices.size(); ++i) {
+			componentID = entityData.indices[i].first;
 			componentSize = ecs_components_get_size(componentID);
-			entityData.indices.GetIndex(componentID, index);
-			auto& list = m_Components[componentID];
+			index = entityData.indices[i].second;
+			auto& list = ecs.components[componentID];
 
 			ecs_components_destroy(componentID, reinterpret_cast<BaseComponent*>(&list[index]));
 
@@ -517,74 +595,25 @@ namespace sv {
 				memcpy(&list[index], &list[list.size() - componentSize], componentSize);
 
 				Entity otherEntity = ((BaseComponent*)(&list[index]))->entity;
-				m_EntityData[otherEntity].indices.AddIndex(componentID, index);
+				scene_ecs_entitydata_index_set(ecs.entityData[otherEntity], componentID, index);
 			}
 
 			list.resize(list.size() - componentSize);
 		}
-		entityData.indices.Clear();
+		entityData.indices.clear();
 	}
 
-	//////////////////////////////////LAYERS///////////////////////////////////////
+	void UpdateLinearSystem(const SV_ECS_SYSTEM_DESC& desc, float dt);
+	void LinearSystem_OneRequest(SystemFunction system, CompID compID, float dt);
+	void LinearSystem(SystemFunction system, CompID* request, ui32 requestCount, CompID* optional, ui32 optionalCount, float dt);
+	void UpdateMultithreadedSystem(const SV_ECS_SYSTEM_DESC& desc, float dt);
+	void MultithreadedSystem_OneRequest(SystemFunction system, CompID compID, float dt);
+	void PartialSystem_OneRequest(SystemFunction system, CompID compID, size_t offset, size_t size, float dt);
+	void MultithreadedSystem(SystemFunction system, CompID* request, ui32 requestCount, CompID* optional, ui32 optionalCount, float dt);
+	void PartialSystem(SystemFunction system, ui32 bestCompIndex, CompID* request, ui32 requestCount, CompID* optional, ui32 optionalCount, size_t offset, size_t size, float dt);
+	ui32 GetSortestComponentList(CompID* compIDs, ui32 count);
 
-	void Scene::CreateLayer(const char* name, ui16 value)
-	{
-		SceneLayer layer;
-		layer.value = value;
-		layer.name = name;
-
-		auto it = m_Layers.find(name);
-		if (it != m_Layers.end()) {
-			sv::log_warning("Repeated Layer '%s'", name);
-			return;
-		}
-
-		m_Layers[name] = std::make_unique<SceneLayer>(layer);
-
-		// SET IDS
-		// sort
-		std::vector<SceneLayer*> layers;
-		layers.reserve(m_Layers.size());
-		for (auto& it : m_Layers) {
-			layers.emplace_back(it.second.get());
-		}
-		std::sort(layers.data(), layers.data() + layers.size() - 1u, [](SceneLayer* layer0, SceneLayer* layer1) {
-			return (*layer0) < (*layer1);
-		});
-
-		// set
-		for (ui16 id = 0; id < layers.size(); ++id) {
-			layers[id]->ID = id;
-		}
-	}
-
-	sv::SceneLayer* Scene::GetLayer(const char* name)
-	{
-		auto it = m_Layers.find(name);
-		if (it == m_Layers.end()) {
-			sv::log_error("Layer not found '%s'", name);
-			return nullptr;
-		}
-		return (*it).second.get();
-	}
-	
-	void Scene::DestroyLayer(const char* name)
-	{
-		auto it = m_Layers.find(name);
-		if (it == m_Layers.end()) {
-			sv::log_error("Layer not found '%s'", name);
-		}
-		m_Layers.erase(it);
-	}
-	
-	ui32 Scene::GetLayerCount()
-	{
-		return ui32(m_Layers.size());
-	}
-
-	////////////////////////////////SYSTEMS////////////////////////////////
-
-	void Scene::ExecuteSystems(const SV_ECS_SYSTEM_DESC* desc, ui32 count, float dt)
+	void scene_ecs_system_execute(const SV_ECS_SYSTEM_DESC* desc, ui32 count, float dt)
 	{
 		if (count == 0) return;
 
@@ -602,7 +631,7 @@ namespace sv {
 
 			for (ui32 i = 0; i < count; ++i) {
 				if (desc[i].executionMode == SV_ECS_SYSTEM_EXECUTION_MODE_PARALLEL) {
-					task_execute([this, desc, i, dt]() {
+					task_execute([desc, i, dt]() {
 						UpdateLinearSystem(desc[i], dt);
 					}, &ctx);
 				}
@@ -623,7 +652,7 @@ namespace sv {
 		}
 	}
 
-	void Scene::UpdateLinearSystem(const SV_ECS_SYSTEM_DESC& desc, float dt)
+	void UpdateLinearSystem(const SV_ECS_SYSTEM_DESC& desc, float dt)
 	{
 		if (desc.requestedComponentsCount == 0) return;
 
@@ -642,9 +671,9 @@ namespace sv {
 		}
 	}
 
-	void Scene::LinearSystem_OneRequest(SystemFunction system, CompID compID, float dt)
+	void LinearSystem_OneRequest(SystemFunction system, CompID compID, float dt)
 	{
-		auto& list = m_Components[compID];
+		auto& list = g_pScene->ecs.components[compID];
 		if (list.empty()) return;
 
 		ui32 compSize = ecs_components_get_size(compID);
@@ -652,18 +681,20 @@ namespace sv {
 
 		for (ui32 i = 0; i < bytesCount; i += compSize) {
 			BaseComponent* comp = reinterpret_cast<BaseComponent*>(&list[i]);
-			system(*this, comp->entity, &comp, dt);
+			system(comp->entity, &comp, dt);
 		}
 	}
 
-	void Scene::LinearSystem(SystemFunction system, CompID* request, ui32 requestCount, CompID* optional, ui32 optionalCount, float dt)
+	void LinearSystem(SystemFunction system, CompID* request, ui32 requestCount, CompID* optional, ui32 optionalCount, float dt)
 	{
+		ECS& ecs = g_pScene->ecs;
+
 		// for optimization, choose the sortest component list
 		ui32 indexOfBestList = GetSortestComponentList(request, requestCount);
 		CompID idOfBestList = request[indexOfBestList];
 
 		// if one request is empty, exit
-		auto& list = m_Components[idOfBestList];
+		auto& list = ecs.components[idOfBestList];
 		if (list.size() == 0) return;
 		size_t sizeOfBestList = ecs_components_get_size(idOfBestList);
 
@@ -681,7 +712,7 @@ namespace sv {
 
 			// entity
 			Entity entity = compOfBestList->entity;
-			EntityData& entityData = m_EntityData[entity];
+			EntityData& entityData = ecs.entityData[entity];
 			bool isValid = true;
 
 			// allocate requested components
@@ -689,7 +720,7 @@ namespace sv {
 			for (j = 0; j < requestCount; ++j) {
 				if (j == indexOfBestList) continue;
 
-				BaseComponent* comp = GetComponent(entityData, request[j]);
+				BaseComponent* comp = scene_ecs_component_get_by_id(entityData, request[j]);
 				if (!comp) {
 					isValid = false;
 					break;
@@ -701,16 +732,16 @@ namespace sv {
 			// allocate optional components
 			for (j = 0; j < optionalCount; ++j) {
 
-				BaseComponent* comp = GetComponent(entityData, optional[j]);
+				BaseComponent* comp = scene_ecs_component_get_by_id(entityData, optional[j]);
 				components[j + requestCount] = comp;
 			}
 
 			// if the entity is valid, call update
-			system(*this, entity, components, dt);
+			system(entity, components, dt);
 		}
 	}
 
-	void Scene::UpdateMultithreadedSystem(const SV_ECS_SYSTEM_DESC& desc, float dt)
+	void UpdateMultithreadedSystem(const SV_ECS_SYSTEM_DESC& desc, float dt)
 	{
 		if (desc.requestedComponentsCount == 0) return;
 
@@ -729,9 +760,11 @@ namespace sv {
 		}
 	}
 
-	void Scene::MultithreadedSystem_OneRequest(SystemFunction system, CompID compID, float dt)
+	void MultithreadedSystem_OneRequest(SystemFunction system, CompID compID, float dt)
 	{
-		auto& list = m_Components[compID];
+		ECS& ecs = g_pScene->ecs;
+
+		auto& list = ecs.components[compID];
 		size_t compSize = ecs_components_get_size(compID);
 
 		TaskFunction task[20];
@@ -751,7 +784,7 @@ namespace sv {
 				currentSize += compSize;
 			}
 
-			task[i] = [this, system, compID, offset, currentSize, dt]() {
+			task[i] = [system, compID, offset, currentSize, dt]() {
 				PartialSystem_OneRequest(system, compID, offset, currentSize, dt);
 			};
 		}
@@ -761,25 +794,25 @@ namespace sv {
 		task_wait(ctx);
 	}
 	
-	void Scene::PartialSystem_OneRequest(SystemFunction system, CompID compID, size_t offset, size_t size, float dt)
+	void PartialSystem_OneRequest(SystemFunction system, CompID compID, size_t offset, size_t size, float dt)
 	{
-		std::vector<ui8>& list = m_Components[compID];
+		std::vector<ui8>& list = g_pScene->ecs.components[compID];
 		ui64 compSize = ecs_components_get_size(compID);
 
 		size_t finalIndex = offset + size;
 
 		for (ui64 i = offset; i < finalIndex; i += compSize) {
 			BaseComponent* comp = reinterpret_cast<BaseComponent*>(&list[i]);
-			system(*this, comp->entity, &comp, dt);
+			system(comp->entity, &comp, dt);
 		}
 	}
 
-	void Scene::MultithreadedSystem(SystemFunction system, CompID* request, ui32 requestCount, CompID* optional, ui32 optionalCount, float dt)
+	void MultithreadedSystem(SystemFunction system, CompID* request, ui32 requestCount, CompID* optional, ui32 optionalCount, float dt)
 	{
 		ui32 bestCompIndex = GetSortestComponentList(request, requestCount);
 		CompID bestCompID = request[bestCompIndex];
 
-		auto& list = m_Components[bestCompID];
+		auto& list = g_pScene->ecs.components[bestCompID];
 		size_t compSize = ecs_components_get_size(bestCompID);
 
 		TaskFunction task[20];
@@ -799,7 +832,7 @@ namespace sv {
 				currentSize += compSize;
 			}
 
-			task[i] = [this, system, bestCompIndex, request, requestCount, optional, optionalCount, offset, currentSize, dt]() {
+			task[i] = [system, bestCompIndex, request, requestCount, optional, optionalCount, offset, currentSize, dt]() {
 				PartialSystem(system, bestCompIndex, request, requestCount, optional, optionalCount, offset, currentSize, dt);
 			};
 		}
@@ -809,11 +842,13 @@ namespace sv {
 		task_wait(ctx);
 	}
 
-	void Scene::PartialSystem(SystemFunction system, ui32 bestCompIndex, CompID* request, ui32 requestCount, CompID* optional, ui32 optionalCount, size_t offset, size_t size, float dt)
+	void PartialSystem(SystemFunction system, ui32 bestCompIndex, CompID* request, ui32 requestCount, CompID* optional, ui32 optionalCount, size_t offset, size_t size, float dt)
 	{
+		ECS& ecs = g_pScene->ecs;
+
 		CompID bestCompID = request[bestCompIndex];
 		size_t sizeOfBestComp = ecs_components_get_size(bestCompID);
-		auto& bestCompList = m_Components[bestCompID];
+		auto& bestCompList = ecs.components[bestCompID];
 		if (bestCompList.size() == 0) return;
 
 		size_t finalSize = offset + size;
@@ -824,7 +859,7 @@ namespace sv {
 			BaseComponent* bestComp = reinterpret_cast<BaseComponent*>(&bestCompList[i]);
 			components[bestCompIndex] = bestComp;
 
-			EntityData& ed = m_EntityData[bestComp->entity];
+			EntityData& ed = ecs.entityData[bestComp->entity];
 
 			bool valid = true;
 
@@ -832,7 +867,7 @@ namespace sv {
 			for (ui32 j = 0; j < requestCount; ++j) {
 				if (j == bestCompIndex) continue;
 
-				BaseComponent* comp = GetComponent(ed, request[j]);
+				BaseComponent* comp = scene_ecs_component_get_by_id(ed, request[j]);
 				if (comp == nullptr) {
 					valid = false;
 					break;
@@ -845,20 +880,20 @@ namespace sv {
 
 			// optional
 			for (ui32 j = 0; j < optionalCount; ++j) {
-				BaseComponent* comp = GetComponent(ed, optional[j]);
+				BaseComponent* comp = scene_ecs_component_get_by_id(ed, optional[j]);
 				components[j + requestCount] = comp;
 			}
 
 			// call
-			system(*this, bestComp->entity, components, dt);
+			system(bestComp->entity, components, dt);
 		}
 	}
 
-	ui32 Scene::GetSortestComponentList(CompID* compIDs, ui32 count)
+	ui32 GetSortestComponentList(CompID* compIDs, ui32 count)
 	{
 		ui32 index = 0;
 		for (ui32 i = 1; i < count; ++i) {
-			if (m_Components[compIDs[i]].size() < m_Components[index].size()) {
+			if (g_pScene->ecs.components[compIDs[i]].size() < g_pScene->ecs.components[index].size()) {
 				index = i;
 			}
 		}

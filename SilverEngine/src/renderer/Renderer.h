@@ -13,10 +13,6 @@ struct SV_RENDERER_INITIALIZATION_DESC {
 	SV_REND_OUTPUT_MODE outputMode;
 };
 
-namespace sv {
-	class Scene;
-}
-
 // Main Functions (Internal)
 namespace _sv {
 
@@ -47,8 +43,7 @@ namespace sv {
 
 	void renderer_scene_begin();
 	void renderer_scene_end();
-	void renderer_scene_draw_scene(Scene& scene);
-	void renderer_scene_set_camera(const CameraProjection& projection, XMMATRIX worldMatrix);
+	void renderer_scene_draw_scene();
 	void renderer_present(CameraProjection projection, XMMATRIX viewMatrix, _sv::Offscreen* pOffscreen);
 
 }

@@ -176,15 +176,19 @@ namespace sv {
 		renderer_layer_end();
 	}
 
-	void renderer_scene_draw_scene(Scene& scene)
+	void renderer_scene_draw_scene()
 	{
 		// Get Cameras
 		{
-			auto addCameraFn = [](Scene& scene, Entity entity, BaseComponent** comp, float dt) 
+			auto addCameraFn = [](Entity entity, BaseComponent** comp, float dt) 
 			{
 				CameraComponent& camComp = *reinterpret_cast<CameraComponent*>(comp[0]);
-				sv::Transform trans = scene.GetTransform(entity);
-				if (camComp.HasOffscreen()) {
+				sv::Transform trans = scene_ecs_entity_get_transform(entity);
+
+				if (sv::scene_camera_get() == entity) {
+					g_DrawData.cameras.push_back({ camComp.projection, nullptr, trans.GetWorldMatrix() });
+				}
+				else if (camComp.HasOffscreen()) {
 					Offscreen* offscreen = camComp.GetOffscreen();
 					g_DrawData.cameras.push_back({ camComp.projection, offscreen, trans.GetWorldMatrix() });
 				}
@@ -201,16 +205,11 @@ namespace sv {
 			cameraSystem.requestedComponentsCount = 1u;
 			cameraSystem.optionalComponentsCount = 0u;
 
-			scene.ExecuteSystems(&cameraSystem, 1u, 0.f);
+			scene_ecs_system_execute(&cameraSystem, 1u, 0.f);
 		}
 
 		// Render layers
-		renderer_layer_prepare_scene(scene);
-	}
-
-	void renderer_scene_set_camera(const CameraProjection& projection, XMMATRIX worldMatrix)
-	{
-		g_DrawData.cameras.push_back({ projection, nullptr, worldMatrix });
+		renderer_layer_prepare_scene();
 	}
 
 	//////////////////////////////// RENDER FUNCTIONS ////////////////////////////////////////////////

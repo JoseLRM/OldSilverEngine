@@ -8,12 +8,12 @@ namespace sve {
 	static sv::Entity g_SelectedEntity = SV_INVALID_ENTITY;
 	static bool g_ShowHierarchyToolTip = false;
 
-	void ShowEntity(sv::Scene& scene, sv::Entity entity)
+	void ShowEntity(sv::Entity entity)
 	{
-		auto& entities = scene.GetEntityList();
-		auto& entityData = scene.GetEntityDataList();
+		auto& entities = _sv::scene_ecs_get_entities();
+		auto& entityData = _sv::scene_ecs_get_entity_data();
 
-		sv::EntityData& ed = entityData[entity];
+		_sv::EntityData& ed = entityData[entity];
 
 		bool empty = ed.childsCount == 0;
 		ImGuiTreeNodeFlags treeFlags = ImGuiTreeNodeFlags_OpenOnArrow | (empty ? ImGuiTreeNodeFlags_Bullet : ImGuiTreeNodeFlags_AllowItemOverlap);
@@ -23,7 +23,7 @@ namespace sve {
 		}
 
 		bool active;
-		sv::NameComponent* nameComponent = (sv::NameComponent*)scene.GetComponentByID(entity, sv::NameComponent::ID);
+		sv::NameComponent* nameComponent = (sv::NameComponent*) sv::scene_ecs_component_get_by_id(entity, sv::NameComponent::ID);
 		if (nameComponent) {
 			active = ImGui::TreeNodeEx((nameComponent->GetName() + "[" + std::to_string(entity) + "]").c_str(), treeFlags);
 		}
@@ -41,7 +41,7 @@ namespace sve {
 				for (ui32 i = 0; i < ed.childsCount; ++i) {
 					sv::Entity e = entities[ed.handleIndex + i + 1];
 					i += entityData[e].childsCount;
-					ShowEntity(scene, e);
+					ShowEntity(e);
 				}
 				ImGui::TreePop();
 			}
@@ -51,19 +51,17 @@ namespace sve {
 
 	bool viewport_scene_hierarchy_display()
 	{
-		sv::Scene& scene = editor_scene_get();
-
-		auto& entities = scene.GetEntityList();
-		auto& entityData = scene.GetEntityDataList();
+		auto& entities = _sv::scene_ecs_get_entities();
+		auto& entityData = _sv::scene_ecs_get_entity_data();
 
 
 		for (size_t i = 1; i < entities.size(); ++i) {
 
 			sv::Entity entity = entities[i];
-			sv::EntityData& ed = entityData[entity];
+			_sv::EntityData& ed = entityData[entity];
 
 			if (ed.parent == SV_INVALID_ENTITY) {
-				ShowEntity(scene, entity);
+				ShowEntity(entity);
 				i += ed.childsCount;
 			}
 
@@ -76,7 +74,7 @@ namespace sve {
 		ImGui::Separator();
 
 		if (ImGui::Button("Create")) {
-			scene.CreateEntity();
+			sv::scene_ecs_entity_create();
 		}
 
 		if (g_SelectedEntity != SV_INVALID_ENTITY) {
@@ -84,17 +82,17 @@ namespace sve {
 			ImGui::SameLine();
 
 			if (ImGui::Button("Create Child")) {
-				scene.CreateEntity(g_SelectedEntity);
+				sv::scene_ecs_entity_create(g_SelectedEntity);
 			}
 
 			if (ImGui::Button("Duplicate")) {
-				scene.DuplicateEntity(g_SelectedEntity);
+				sv::scene_ecs_entity_duplicate(g_SelectedEntity);
 			}
 
 			ImGui::SameLine();
 
 			if (ImGui::Button("Destroy")) {
-				scene.DestroyEntity(g_SelectedEntity);
+				sv::scene_ecs_entity_destroy(g_SelectedEntity);
 				g_SelectedEntity = SV_INVALID_ENTITY;
 			}
 		}
@@ -170,14 +168,12 @@ namespace sve {
 
 	bool viewport_scene_entity_display()
 	{
-		sv::Scene& scene = editor_scene_get();
-
-		auto& entities = scene.GetEntityList();
-		auto& entityData = scene.GetEntityDataList();
+		auto& entities = _sv::scene_ecs_get_entities();
+		auto& entityData = _sv::scene_ecs_get_entity_data();
 
 		if (g_SelectedEntity != SV_INVALID_ENTITY) {
 
-			sv::NameComponent* nameComponent = scene.GetComponent<sv::NameComponent>(g_SelectedEntity);
+			sv::NameComponent* nameComponent = sv::scene_ecs_component_get<sv::NameComponent>(g_SelectedEntity);
 			if (nameComponent) {
 				ImGui::Text("%s[%u]", nameComponent->GetName().c_str(), g_SelectedEntity);
 			}
@@ -187,32 +183,18 @@ namespace sve {
 
 			ImGui::Separator();
 
-			sv::EntityData& ed = entityData[g_SelectedEntity];
+			_sv::EntityData& ed = entityData[g_SelectedEntity];
 
 			// Show Transform Data
-			sv::Transform trans = scene.GetTransform(g_SelectedEntity);
+			sv::Transform trans = sv::scene_ecs_entity_get_transform(g_SelectedEntity);
 
 			sv::vec3 position = trans.GetLocalPosition();
 			sv::vec3 rotation = ToDegrees(trans.GetLocalRotation());
 			sv::vec3 scale = trans.GetLocalScale();
 
-			ImGui::Text("Position");
-
-			ImGui::DragFloat("pX", &position.x, 0.3f);
-			ImGui::DragFloat("pY", &position.y, 0.3f);
-			ImGui::DragFloat("pZ", &position.z, 0.3f);
-
-			ImGui::Text("Rotation");
-
-			ImGui::DragFloat("rX", &rotation.x, 0.1f);
-			ImGui::DragFloat("rY", &rotation.y, 0.1f);
-			ImGui::DragFloat("rZ", &rotation.z, 0.1f);
-
-			ImGui::Text("Scale");
-
-			ImGui::DragFloat("sX", &scale.x, 0.01f);
-			ImGui::DragFloat("sY", &scale.y, 0.01f);
-			ImGui::DragFloat("sZ", &scale.z, 0.01f);
+			ImGui::DragFloat3("Position", &position.x, 0.3f);
+			ImGui::DragFloat3("Rotation", &rotation.x, 0.1f);
+			ImGui::DragFloat3("Scale", &scale.x, 0.01f);
 
 			trans.SetPosition(position);
 			trans.SetRotation(ToRadians(rotation));
@@ -222,13 +204,13 @@ namespace sve {
 
 			ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow;
 
-			for (ui32 i = 0; i < ed.indices.Size(); ++i) {
+			for (ui32 i = 0; i < ed.indices.size(); ++i) {
 
-				ui16 compID = ed.indices[i];
+				ui16 compID = ed.indices[i].first;
 				size_t index;
-				ed.indices.GetIndex(compID, index);
+				index = ed.indices[i].second;
 
-				std::vector<ui8>& componentList = scene.GetComponentsList(compID);
+				std::vector<ui8>& componentList = _sv::scene_ecs_get_components(compID);
 				sv::BaseComponent* comp = (sv::BaseComponent*)(&componentList[index]);
 
 				ImGui::Separator();
@@ -239,7 +221,7 @@ namespace sve {
 				}
 
 				if (remove) {
-					scene.RemoveComponentByID(g_SelectedEntity, compID);
+					sv::scene_ecs_component_remove_by_id(g_SelectedEntity, compID);
 					break;
 				}
 				ImGui::Separator();
@@ -250,10 +232,10 @@ namespace sve {
 
 				for (ui16 ID = 0; ID < sv::ecs_components_get_count(); ++ID) {
 					const char* NAME = sv::ecs_components_get_name(ID);
-					if (scene.GetComponentByID(g_SelectedEntity, ID) != nullptr) continue;
+					if (sv::scene_ecs_component_get_by_id(g_SelectedEntity, ID) != nullptr) continue;
 					size_t SIZE = sv::ecs_components_get_size(ID);
 					if (ImGui::Button(NAME)) {
-						scene.AddComponentByID(g_SelectedEntity, ID);
+						sv::scene_ecs_component_add_by_id(g_SelectedEntity, ID);
 					}
 				}
 
@@ -261,13 +243,13 @@ namespace sve {
 			}
 			if (ImGui::BeginCombo("Rmv", "Remove Component")) {
 
-				sv::EntityData& ed = entityData[g_SelectedEntity];
-				for (ui32 i = 0; i < ed.indices.Size(); ++i) {
-					sv::CompID ID = ed.indices[i];
+				_sv::EntityData& ed = entityData[g_SelectedEntity];
+				for (ui32 i = 0; i < ed.indices.size(); ++i) {
+					sv::CompID ID = ed.indices[i].first;
 					const char* NAME = sv::ecs_components_get_name(ID);
 					size_t SIZE = sv::ecs_components_get_size(ID);
 					if (ImGui::Button(NAME)) {
-						scene.RemoveComponentByID(g_SelectedEntity, ID);
+						sv::scene_ecs_component_remove_by_id(g_SelectedEntity, ID);
 						break;
 					}
 				}

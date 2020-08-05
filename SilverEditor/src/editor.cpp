@@ -161,7 +161,7 @@ namespace sve {
 		MainMenu();
 
 		DisplayDocking();
-
+		
 		viewport_manager_display();
 
 		g_Device->EndFrame();
@@ -178,11 +178,6 @@ namespace sve {
 	EditorState& editor_state_get()
 	{
 		return *reinterpret_cast<EditorState*>(sv::engine_state_get_state());
-	}
-
-	sv::Scene& editor_scene_get()
-	{
-		return editor_state_get().GetScene();
 	}
 
 }

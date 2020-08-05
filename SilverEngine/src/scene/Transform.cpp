@@ -6,8 +6,8 @@ using namespace _sv;
 
 namespace sv {
 
-	Transform::Transform(Entity entity, EntityTransform* transform, Scene* pScene)
-		: entity(entity), trans(transform), scene(pScene) {}
+	Transform::Transform(Entity entity, EntityTransform* transform)
+		: entity(entity), trans(transform) {}
 	void Transform::operator=(const Transform& other)
 	{
 		*trans = *other.trans;
@@ -95,12 +95,12 @@ namespace sv {
 
 		XMMATRIX m = GetLocalMatrix();
 
-		auto& list = scene->GetEntityDataList();
+		auto& list = scene_ecs_get_entity_data();
 		EntityData& entityData = list[entity];
 		Entity parent = entityData.parent;
 
 		if (parent != SV_INVALID_ENTITY) {
-			Transform parentTransform(parent, &list[parent].transform, scene);
+			Transform parentTransform(parent, &list[parent].transform);
 			XMMATRIX mp = parentTransform.GetWorldMatrix();
 			m = m * mp;
 		}
@@ -109,7 +109,7 @@ namespace sv {
 		// Set all the sons modified
 		if (entityData.childsCount == 0) return;
 
-		auto& entities = scene->GetEntityList();
+		auto& entities = scene_ecs_get_entities();
 		for (ui32 i = 0; i < entityData.childsCount; ++i) {
 			EntityData& ed = list[entities[entityData.handleIndex + 1 + i]];
 			ed.transform.modified = true;
