@@ -89,9 +89,25 @@ namespace sv {
 		trans->localScale = *(XMFLOAT3*)& scale;
 	}
 
+	void Transform::SetWorldTransformPRS(const vec3& position, const vec3& rotation, const vec3& scale) noexcept
+	{
+	}
+	void Transform::SetWorldTransformPR(const vec3& position, const vec3& rotation) noexcept
+	{
+		Entity parent = scene_ecs_entity_get_parent(entity);
+		trans->modified = true;
+
+		if (parent == SV_INVALID_ENTITY) {
+			trans->localPosition = *reinterpret_cast<const XMFLOAT3*>(&position);
+			trans->localRotation = *reinterpret_cast<const XMFLOAT3*>(&rotation);
+			
+		}
+	}
+
 	void Transform::UpdateWorldMatrix()
 	{
 		trans->modified = false;
+		trans->wakePhysics = true;
 
 		XMMATRIX m = GetLocalMatrix();
 

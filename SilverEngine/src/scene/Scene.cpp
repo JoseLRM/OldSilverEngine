@@ -234,6 +234,11 @@ namespace _sv {
 		return g_pScene->ecs.entityData;
 	}
 
+	EntityData& scene_ecs_get_entity_data(sv::Entity entity)
+	{
+		return g_pScene->ecs.entityData[entity];
+	}
+
 	std::vector<sv::Entity>& scene_ecs_get_entities()
 	{
 		return g_pScene->ecs.entities;
@@ -262,13 +267,17 @@ namespace sv {
 		scene->ecs.entityData.emplace_back();
 		scene->ecs.entities.emplace_back(SV_INVALID_ENTITY);
 
+		SV_PHY_WORLD_DESC desc;
+		desc.gravity = { 0.f, -3.f, 0.f };
+		scene->physicsWorld = physics_world_create(&desc);
+
 		return scene;
 	}
 
 	void scene_destroy(Scene& scene_)
 	{
 		Scene_internal* scene = reinterpret_cast<Scene_internal*>(scene_);
-		scene->physicsWorld; // TODO: Clear physics world
+		physics_world_destroy(scene->physicsWorld);
 
 		delete scene;
 		scene_ = nullptr;
@@ -279,7 +288,7 @@ namespace sv {
 		Scene_internal* scene = reinterpret_cast<Scene_internal*>(scene_);
 
 		scene->mainCamera = SV_INVALID_ENTITY;
-		scene->physicsWorld; // TODO: Clear physics world
+		physics_world_clear(scene->physicsWorld);
 
 		for (ui16 i = 0; i < ecs_components_get_count(); ++i) {
 			scene->ecs.components[i].clear();
@@ -297,6 +306,11 @@ namespace sv {
 	void scene_camera_set(Entity entity)
 	{
 		g_pScene->mainCamera = entity;
+	}
+
+	PhysicsWorld& scene_physics_world_get()
+	{
+		return g_pScene->physicsWorld;
 	}
 
 	void scene_bind(Scene scene)

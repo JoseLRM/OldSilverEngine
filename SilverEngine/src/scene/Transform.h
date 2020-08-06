@@ -6,7 +6,6 @@
 namespace sv {
 
 	class Transform {
-		
 		_sv::EntityTransform* trans;
 
 	public:
@@ -38,10 +37,15 @@ namespace sv {
 		XMVECTOR GetWorldScaleDXV() noexcept;
 		XMMATRIX GetWorldMatrix() noexcept;
 
+		inline _sv::EntityTransform& GetInternal() const noexcept { return *trans; }
+
 		// setters
 		void SetPosition(const vec3& position) noexcept;
 		void SetRotation(const vec3& rotation) noexcept;
 		void SetScale(const vec3& scale) noexcept;
+
+		void SetWorldTransformPRS(const vec3& position, const vec3& rotation, const vec3& scale) noexcept;
+		void SetWorldTransformPR(const vec3& position, const vec3& rotation) noexcept;
 
 	private:
 		void UpdateWorldMatrix();

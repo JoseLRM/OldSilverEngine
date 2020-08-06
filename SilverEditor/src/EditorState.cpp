@@ -56,10 +56,10 @@ namespace sve {
 
 		if (props.focus) {
 			if (sv::input_key('W')) {
-				m_DebugCamera.position.y -= force;
+				m_DebugCamera.position.y += force;
 			}
 			if (sv::input_key('S')) {
-				m_DebugCamera.position.y += force;
+				m_DebugCamera.position.y -= force;
 			}
 			if (sv::input_key('A')) {
 				m_DebugCamera.position.x -= force;
@@ -75,6 +75,7 @@ namespace sve {
 				zoom -= zoomForce;
 			}
 			m_DebugCamera.camera.projection.Orthographic_SetZoom(zoom);
+
 		}
 	}
 

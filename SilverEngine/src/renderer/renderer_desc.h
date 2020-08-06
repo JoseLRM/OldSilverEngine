@@ -46,11 +46,27 @@ namespace _sv {
 		SV_REND_SORT_MODE				sortMode;
 		i16								sortValue;
 		bool							transparent;
+		ui64							hashCode;
 
 		void Reset()
 		{
 			sprites.Reset();
 		}
+	};
+
+	struct Vertex {
+		vec3 position;
+		vec3 normal;
+		vec2 texCoord;
+	};
+
+	struct RawMesh_DrawData {
+		sv::Buffer vertexBuffer;
+		sv::Buffer indexBuffer;
+
+		std::vector<sv::vec3> positions;
+		std::vector<sv::vec3> normals;
+		std::vector<sv::vec2> texCoords;
 	};
 
 	struct PostProcessing_Default {

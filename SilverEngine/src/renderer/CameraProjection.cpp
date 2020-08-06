@@ -63,7 +63,7 @@ namespace sv {
 		switch (m_CameraType)
 		{
 		case SV_REND_CAMERA_TYPE_ORTHOGRAPHIC:
-			matrix = XMMatrixOrthographicLH(m_Orthographic.width, m_Orthographic.height, -100000.f, 100000.f);
+			matrix = XMMatrixOrthographicLH(m_Orthographic.width, -m_Orthographic.height, -100000.f, 100000.f);
 			break;
 		case SV_REND_CAMERA_TYPE_PERSPECTIVE:
 			break;

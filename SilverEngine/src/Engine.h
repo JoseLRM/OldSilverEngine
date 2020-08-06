@@ -8,6 +8,7 @@
 #include "renderer/Renderer.h"
 #include "platform/Window.h"
 #include "graphics/Graphics.h"
+#include "physics/physics.h"
 
 ///////////////////Initialization Parameters////////////////////////////////
 
@@ -15,6 +16,7 @@ struct SV_ENGINE_INITIALIZATION_DESC {
 	SV_WINDOW_INITIALIZATION_DESC windowDesc;
 	SV_RENDERER_INITIALIZATION_DESC rendererDesc;
 	SV_GRAPHICS_INITIALIZATION_DESC graphicsDesc;
+	SV_PHYSICS_INITIALIZATION_DESC physicsDesc;
 	bool showConsole;
 	ui32 minThreadsCount;
 };

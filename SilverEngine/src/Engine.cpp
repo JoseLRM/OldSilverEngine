@@ -46,6 +46,7 @@ namespace sv {
 
 		svCheck(utils_initialize());
 		svCheck(task_initialize(desc.minThreadsCount));
+		svCheck(physics_initialize(desc.physicsDesc));
 		svCheck(window_initialize(desc.windowDesc));
 		svCheck(graphics_initialize(desc.graphicsDesc));
 		svCheck(renderer_initialize(desc.rendererDesc));
@@ -99,6 +100,9 @@ namespace sv {
 				fixedUpdateTime -= g_FixedUpdateFrameRate;
 			}
 
+			// Physics
+			physics_update(g_DeltaTime);
+
 			// Rendering
 			renderer_frame_begin();
 
@@ -149,6 +153,7 @@ namespace sv {
 		svCheck(renderer_close());
 		svCheck(window_close());
 		svCheck(graphics_close());
+		svCheck(physics_close());
 		svCheck(task_close());
 
 		return true;

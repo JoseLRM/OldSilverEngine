@@ -159,11 +159,27 @@ namespace sve {
 		comp->SetName(name);
 	}
 
+	void ShowRigidBody2DComponentInfo(sv::RigidBody2DComponent* comp)
+	{
+		float density = comp->GetDensity();
+		bool dynamic = comp->IsDynamic();
+		bool fixedRotation = comp->IsFixedRotation();
+
+		ImGui::DragFloat("Density", &density, 0.1f, 0.f);
+		ImGui::Checkbox("Dynamic", &dynamic);
+		ImGui::Checkbox("FixedRotation", &fixedRotation);
+
+		comp->SetDensity(density);
+		comp->SetDynamic(dynamic);
+		comp->SetFixedRotation(fixedRotation);
+	}
+
 	void ShowComponentInfo(sv::CompID ID, sv::BaseComponent* comp)
 	{
 		if (ID == sv::SpriteComponent::ID) ShowSpriteComponentInfo(reinterpret_cast<sv::SpriteComponent*>(comp));
 		else if (ID == sv::NameComponent::ID) ShowNameComponentInfo(reinterpret_cast<sv::NameComponent*>(comp));
 		else if (ID == sv::CameraComponent::ID) ShowCameraComponentInfo(reinterpret_cast<sv::CameraComponent*>(comp));
+		else if (ID == sv::RigidBody2DComponent::ID) ShowRigidBody2DComponentInfo(reinterpret_cast<sv::RigidBody2DComponent*>(comp));
 	}
 
 	bool viewport_scene_entity_display()

@@ -435,10 +435,26 @@ namespace sv {
 
 	RenderLayerID renderer_layer_create(i16 sortValue, SV_REND_SORT_MODE sortMode, bool transparent)
 	{
+		// Compute hash
+		ui64 hashCode = 0u;
+		sv::utils_hash_combine(hashCode, sortValue);
+		sv::utils_hash_combine(hashCode, sortMode);
+		sv::utils_hash_combine(hashCode, transparent);
+
+		// Find duplicated renderlayer
+		for (ui32 i = 0; i < g_RenderLayers.size(); ++i) {
+			if (g_RenderLayers[i]->hashCode == hashCode) {
+				sv::log_warning("Can't duplicate render layers with the same parameters");
+				return g_RenderLayers[i].get();
+			}
+		}
+
+		// Create new render layer
 		std::unique_ptr<RenderLayer> renderLayer = std::make_unique<RenderLayer>();
 		renderLayer->sortMode = sortMode;
 		renderLayer->sortValue = sortValue;
 		renderLayer->transparent = transparent;
+		renderLayer->hashCode = hashCode;
 		RenderLayerID res = renderLayer.get();
 		g_RenderLayers.push_back(std::move(renderLayer));
 		return res;

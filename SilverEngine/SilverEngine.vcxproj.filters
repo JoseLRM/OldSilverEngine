@@ -30,12 +30,9 @@
     <ClInclude Include="src\graphics\graphics_properties.h" />
     <ClInclude Include="src\graphics\graphics_shader_utils.h" />
     <ClInclude Include="src\graphics\graphics_state.h" />
-    <ClInclude Include="src\renderer\renderer.h" />
     <ClInclude Include="src\renderer\renderer_components.h" />
     <ClInclude Include="src\renderer\renderer_desc.h" />
     <ClInclude Include="src\renderer\RenderList.h" />
-    <ClInclude Include="src\scene\ComponentsIndices.h" />
-    <ClInclude Include="src\scene\SceneTypes.h" />
     <ClInclude Include="src\utils\BinFile.h" />
     <ClInclude Include="src\utils\safe_queue.h" />
     <ClInclude Include="src\utils\sv_math.h" />
@@ -48,7 +45,6 @@
     <ClInclude Include="src\engine_input.h" />
     <ClInclude Include="src\engine_state.h" />
     <ClInclude Include="src\task_system.h" />
-    <ClInclude Include="src\scene\Scene.h" />
     <ClInclude Include="src\scene\Transform.h" />
     <ClInclude Include="external\stbi_lib.h" />
     <ClInclude Include="src\graphics\vulkan\graphics_vulkan_memory.h" />
@@ -59,6 +55,49 @@
     <ClInclude Include="src\renderer\renderer_postprocessing.h" />
     <ClInclude Include="src\renderer\renderer_layer.h" />
     <ClInclude Include="src\renderer\CameraProjection.h" />
+    <ClInclude Include="external\box2d\b2_block_allocator.h" />
+    <ClInclude Include="external\box2d\b2_body.h" />
+    <ClInclude Include="external\box2d\b2_broad_phase.h" />
+    <ClInclude Include="external\box2d\b2_chain_shape.h" />
+    <ClInclude Include="external\box2d\b2_circle_shape.h" />
+    <ClInclude Include="external\box2d\b2_collision.h" />
+    <ClInclude Include="external\box2d\b2_contact.h" />
+    <ClInclude Include="external\box2d\b2_contact_manager.h" />
+    <ClInclude Include="external\box2d\b2_distance.h" />
+    <ClInclude Include="external\box2d\b2_distance_joint.h" />
+    <ClInclude Include="external\box2d\b2_draw.h" />
+    <ClInclude Include="external\box2d\b2_dynamic_tree.h" />
+    <ClInclude Include="external\box2d\b2_edge_shape.h" />
+    <ClInclude Include="external\box2d\b2_fixture.h" />
+    <ClInclude Include="external\box2d\b2_friction_joint.h" />
+    <ClInclude Include="external\box2d\b2_gear_joint.h" />
+    <ClInclude Include="external\box2d\b2_growable_stack.h" />
+    <ClInclude Include="external\box2d\b2_joint.h" />
+    <ClInclude Include="external\box2d\b2_math.h" />
+    <ClInclude Include="external\box2d\b2_motor_joint.h" />
+    <ClInclude Include="external\box2d\b2_mouse_joint.h" />
+    <ClInclude Include="external\box2d\b2_polygon_shape.h" />
+    <ClInclude Include="external\box2d\b2_prismatic_joint.h" />
+    <ClInclude Include="external\box2d\b2_pulley_joint.h" />
+    <ClInclude Include="external\box2d\b2_revolute_joint.h" />
+    <ClInclude Include="external\box2d\b2_rope.h" />
+    <ClInclude Include="external\box2d\b2_rope_joint.h" />
+    <ClInclude Include="external\box2d\b2_settings.h" />
+    <ClInclude Include="external\box2d\b2_shape.h" />
+    <ClInclude Include="external\box2d\b2_stack_allocator.h" />
+    <ClInclude Include="external\box2d\b2_time_of_impact.h" />
+    <ClInclude Include="external\box2d\b2_time_step.h" />
+    <ClInclude Include="external\box2d\b2_timer.h" />
+    <ClInclude Include="external\box2d\b2_weld_joint.h" />
+    <ClInclude Include="external\box2d\b2_wheel_joint.h" />
+    <ClInclude Include="external\box2d\b2_world.h" />
+    <ClInclude Include="external\box2d\b2_world_callbacks.h" />
+    <ClInclude Include="external\box2d\box2d.h" />
+    <ClInclude Include="src\physics\physics.h" />
+    <ClInclude Include="src\physics\physics_components.h" />
+    <ClInclude Include="src\scene\scene_types.h" />
+    <ClInclude Include="src\scene\scene.h" />
+    <ClInclude Include="src\renderer\renderer.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="external\sprv\spirv_cfg.cpp" />
@@ -79,7 +118,6 @@
     <ClCompile Include="src\graphics\graphics_shader_utils.cpp" />
     <ClCompile Include="src\renderer\renderer.cpp" />
     <ClCompile Include="src\renderer\renderer_postprocessing.cpp" />
-    <ClCompile Include="src\scene\ComponentsIndices.cpp" />
     <ClCompile Include="src\utils\BinFile.cpp" />
     <ClCompile Include="src\utils\sv_math.cpp" />
     <ClCompile Include="src\utils\TxtFile.cpp" />
@@ -90,7 +128,6 @@
     <ClCompile Include="src\engine_input.cpp" />
     <ClCompile Include="src\engine_state.cpp" />
     <ClCompile Include="src\task_system.cpp" />
-    <ClCompile Include="src\scene\Scene.cpp" />
     <ClCompile Include="src\scene\Transform.cpp" />
     <ClCompile Include="src\renderer\renderer_layer.cpp" />
     <ClCompile Include="src\graphics\vulkan\graphics_vulkan_memory.cpp" />
@@ -99,6 +136,9 @@
     <ClCompile Include="src\platform\windows\platform_windows.cpp" />
     <ClCompile Include="src\renderer\renderer_components.cpp" />
     <ClCompile Include="src\renderer\CameraProjection.cpp" />
+    <ClCompile Include="src\physics\physics.cpp" />
+    <ClCompile Include="src\physics\physics_components.cpp" />
+    <ClCompile Include="src\scene\scene.cpp" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="src\graphics\sprv_shaders\DefPostProcess.frag" />

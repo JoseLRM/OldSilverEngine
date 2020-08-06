@@ -63,6 +63,7 @@ namespace _sv {
 	void scene_ecs_components_add(sv::Entity* entities, ui32 count, sv::BaseComponent* comp, sv::CompID componentID, size_t componentSize);
 
 	std::vector<EntityData>& scene_ecs_get_entity_data();
+	EntityData& scene_ecs_get_entity_data(sv::Entity entity);
 	std::vector<sv::Entity>& scene_ecs_get_entities();
 	std::vector<ui8>& scene_ecs_get_components(sv::CompID ID);
 
@@ -76,6 +77,8 @@ namespace sv {
 
 	Entity	scene_camera_get();
 	void	scene_camera_set(Entity entity);
+
+	PhysicsWorld& scene_physics_world_get();
 
 	void	scene_bind(Scene scene);
 	Scene	scene_get();
