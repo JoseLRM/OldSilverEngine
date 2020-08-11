@@ -1,15 +1,15 @@
 #pragma once
 
 #include "ImGuiDevice.h"
-#include "src/graphics/vulkan/graphics_vulkan.h"
+#include "graphics/vulkan/graphics_vulkan.h"
 
 #ifdef SV_PLATFORM_WINDOWS
 
-#include "..//external/ImGui/imgui_impl_win32.h"
+#include "external/ImGui/imgui_impl_win32.h"
 
 #endif
 
-#include "..//external/ImGui/imgui_impl_vulkan.h"
+#include "external/ImGui/imgui_impl_vulkan.h"
 
 namespace sve {
 
@@ -27,7 +27,7 @@ namespace sve {
 		VkExtent2D m_SwapChainSize;
 
 		VkSampler m_ImageSampler;
-		std::map<_sv::Image_internal*, std::pair<VkImageView, ImTextureID>> m_Images;
+		std::map<sv::GPUImage_internal*, std::pair<VkImageView, ImTextureID>> m_Images;
 
 	public:
 		bool Initialize() override;
@@ -38,7 +38,7 @@ namespace sve {
 
 		void ResizeSwapChain() override;
 
-		ImTextureID ParseImage(sv::Image& image) override;
+		ImTextureID ParseImage(sv::GPUImage& image) override;
 
 	private:
 		VkResult CreateFrames();

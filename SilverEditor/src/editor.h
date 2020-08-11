@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core.h"
+#include "core_editor.h"
 #include "imGuiDevice/ImGuiDevice.h"
 #include "viewports/viewport_manager.h"
 #include "EditorState.h"

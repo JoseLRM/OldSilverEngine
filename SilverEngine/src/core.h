@@ -45,7 +45,7 @@ typedef int			BOOL;
 
 // Exception
 
-namespace _sv {
+namespace sv {
 	struct Exception {
 		std::string type, desc, file;
 		ui32 line;
@@ -53,7 +53,7 @@ namespace _sv {
 			: type(type), desc(desc), file(file), line(line) {}
 	};
 }
-#define SV_THROW(type, desc) throw _sv::Exception(type, desc, __FILE__, __LINE__)
+#define SV_THROW(type, desc) throw sv::Exception(type, desc, __FILE__, __LINE__)
 
 // Console
 
@@ -86,9 +86,4 @@ namespace sv {
 
 // SilverEngine Includes
 
-#include "utils/BinFile.h"
-#include "utils/TxtFile.h"
-#include "utils/sv_math.h"
-#include "utils/utils.h"
-#include "task_system.h"
-#include "utils/safe_queue.h"
+#include "utils.h"

@@ -1,14 +1,9 @@
 #include "core.h"
 
-#include "Engine.h"
-#include "graphics/graphics_state.h"
-
 #include "graphics_vulkan.h"
-#include "graphics/graphics_properties.h"
+#include "window.h"
 
-using namespace sv;
-
-namespace _sv {
+namespace sv {
 
 	Graphics_vk& graphics_vulkan_device_get()
 	{
@@ -26,13 +21,13 @@ namespace _sv {
 		switch (msgSeverity)
 		{
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
-			sv::log("[VULKAN VERBOSE] %s\n", data->pMessage);
+			log("[VULKAN VERBOSE] %s\n", data->pMessage);
 			break;
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-			sv::log("[VULKAN WARNING] %s\n", data->pMessage);
+			log("[VULKAN WARNING] %s\n", data->pMessage);
 			break;
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
-			sv::log("[VULKAN ERROR] %s\n", data->pMessage);
+			log("[VULKAN ERROR] %s\n", data->pMessage);
 			break;
 		}
 		return VK_FALSE;
@@ -84,7 +79,7 @@ namespace _sv {
 	}
 	
 	////////////////////////////////////////////API/////////////////////////////////////////////////
-	bool Graphics_vk::Initialize(const SV_GRAPHICS_INITIALIZATION_DESC& desc)
+	bool Graphics_vk::Initialize(const InitializationGraphicsDesc& desc)
 	{
 		// Instance extensions and validation layers
 #if SV_GFX_VK_VALIDATION_LAYERS
@@ -165,16 +160,16 @@ namespace _sv {
 
 	void Graphics_vk::AdjustAllocator()
 	{
-		_sv::graphics_allocator_get().SetFunctions(VulkanConstructor, VulkanDestructor);
+		graphics_allocator_set_functions(VulkanConstructor, VulkanDestructor);
 	}
 
 	void Graphics_vk::SetProperties()
 	{
-		sv::GraphicsProperties props;
+		GraphicsProperties props;
 
 		props.transposedMatrices = false;
 
-		_sv::graphics_properties_set(props);
+		graphics_properties_set(props);
 	}
 
 	bool Graphics_vk::CreateInstance()
@@ -197,7 +192,7 @@ namespace _sv {
 				}
 
 				if (!found) {
-					sv::log_error("InstanceExtension '%s' not found", m_Extensions[i]);
+					log_error("InstanceExtension '%s' not found", m_Extensions[i]);
 					return false;
 				}
 			}
@@ -221,7 +216,7 @@ namespace _sv {
 				}
 
 				if (!found) {
-					sv::log_error("InstanceValidationLayer '%s' not found", m_ValidationLayers[i]);
+					log_error("InstanceValidationLayer '%s' not found", m_ValidationLayers[i]);
 					return false;
 				}
 			}
@@ -232,7 +227,7 @@ namespace _sv {
 		app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 		app_info.pEngineName = "SilverEngine";
 		app_info.pApplicationName = "";
-		//SV::Version engineVersion = GetEngine().GetVersion();
+		//Version engineVersion = GetEngine().GetVersion();
 		//app_info.engineVersion = VK_MAKE_VERSION(engineVersion.major, engineVersion.minor, engineVersion.revision);
 		app_info.applicationVersion = VK_MAKE_VERSION(0, 0, 0);
 		app_info.apiVersion = VK_VERSION_1_2;
@@ -289,7 +284,7 @@ namespace _sv {
 		for (ui32 i = 0; i < devices.size(); ++i) {
 			std::unique_ptr<Adapter> adapter = std::make_unique<Adapter_vk>(devices[i]);
 			if(adapter->GetSuitability() > 0)
-				_sv::graphics_adapter_add(std::move(adapter));
+				graphics_adapter_add(std::move(adapter));
 		}
 
 		// Select the most suitable
@@ -305,7 +300,7 @@ namespace _sv {
 
 		// Adapter not found
 		if (index == count) {
-			sv::log_error("Can't find valid adapters for Vulkan");
+			log_error("Can't find valid adapters for Vulkan");
 			return false;
 		}
 
@@ -436,7 +431,7 @@ namespace _sv {
 			VkBool32 supported;
 			vkCheck(vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, adapter.GetFamilyIndex().graphics, m_SwapChain.surface, &supported));
 			if (!supported) {
-				sv::log_error("This adapter don't support vulkan swapChain");
+				log_error("This adapter don't support vulkan swapChain");
 				return false;
 			}
 		}
@@ -622,7 +617,7 @@ namespace _sv {
 
 	void Graphics_vk::UpdateGraphicsState(CommandList cmd_)
 	{
-		_sv::GraphicsPipelineState& state = _sv::graphics_state_get().graphics[cmd_];
+		GraphicsState& state = graphics_state_get().graphics[cmd_];
 
 		RenderPass_vk& renderPass = *reinterpret_cast<RenderPass_vk*>(state.renderPass);
 		GraphicsPipeline_vk& svPipeline = *reinterpret_cast<GraphicsPipeline_vk*>(state.pipeline);
@@ -631,10 +626,10 @@ namespace _sv {
 
 		VkCommandBuffer cmd = GetCMD(cmd_);
 
-		bool updatePipeline = state.flags & SV_GFX_GRAPHICS_PIPELINE_STATE_PIPELINE;
+		bool updatePipeline = state.flags & GraphicsPipelineState_Pipeline;
 
 		// Bind Vertex Buffers
-		if (state.flags & SV_GFX_GRAPHICS_PIPELINE_STATE_VERTEX_BUFFER) {
+		if (state.flags & GraphicsPipelineState_VertexBuffer) {
 			
 			VkBuffer buffers[SV_GFX_VERTEX_BUFFER_COUNT];
 			VkDeviceSize offsets[SV_GFX_VERTEX_BUFFER_COUNT];
@@ -653,12 +648,13 @@ namespace _sv {
 			vkCmdBindVertexBuffers(cmd, 0u, state.vertexBuffersCount, buffers, offsets);
 		}
 		// Bind Index Buffer
-		if (state.flags & SV_GFX_GRAPHICS_PIPELINE_STATE_INDEX_BUFFER && state.indexBuffer != nullptr) {
-			vkCmdBindIndexBuffer(cmd, reinterpret_cast<Buffer_vk*>(state.indexBuffer)->buffer, state.indexBufferOffset, graphics_vulkan_parse_indextype(state.indexBuffer->GetIndexType()));
+		if (state.flags & GraphicsPipelineState_IndexBuffer && state.indexBuffer != nullptr) {
+			Buffer_vk& buffer = *reinterpret_cast<Buffer_vk*>(state.indexBuffer);
+			vkCmdBindIndexBuffer(cmd, buffer.buffer, state.indexBufferOffset, graphics_vulkan_parse_indextype(buffer.indexType));
 		}
 
 		// Bind RenderPass
-		if (state.flags & SV_GFX_GRAPHICS_PIPELINE_STATE_RENDER_PASS && m_ActiveRenderPass[cmd_] != renderPass.renderPass) {
+		if (state.flags & GraphicsPipelineState_RenderPass && m_ActiveRenderPass[cmd_] != renderPass.renderPass) {
 			updatePipeline = true;
 		}
 
@@ -670,7 +666,7 @@ namespace _sv {
 
 			// Compute hash
 			size_t hash = pipelineHash;
-			sv::utils_hash_combine(hash, renderPass.renderPass);
+			utils_hash_combine(hash, renderPass.renderPass);
 
 			// Find Pipeline
 			VkPipeline vkPipeline = VK_NULL_HANDLE;
@@ -680,33 +676,33 @@ namespace _sv {
 			if (it == pipeline.pipelines.end()) {
 
 				// Shader Stages
-				VkPipelineShaderStageCreateInfo shaderStages[SV_GFX_SHADER_TYPE_GFX_COUNT] = {};
+				VkPipelineShaderStageCreateInfo shaderStages[ShaderType_GraphicsCount] = {};
 				ui32 shaderStagesCount = 0u;
 
-				if (svPipeline.GetVertexShader()) {
+				if (svPipeline.vs) {
 					VkPipelineShaderStageCreateInfo& stage = shaderStages[shaderStagesCount++];
 					stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 					stage.flags = 0u;
 					stage.stage = VK_SHADER_STAGE_VERTEX_BIT;
-					stage.module = reinterpret_cast<Shader_vk*>(svPipeline.GetVertexShader())->module;
+					stage.module = reinterpret_cast<Shader_vk*>(svPipeline.vs)->module;
 					stage.pName = "main";
 					stage.pSpecializationInfo = nullptr;
 				}
-				if (svPipeline.GetPixelShader()) {
+				if (svPipeline.ps) {
 					VkPipelineShaderStageCreateInfo& stage = shaderStages[shaderStagesCount++];
 					stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 					stage.flags = 0u;
 					stage.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-					stage.module = reinterpret_cast<Shader_vk*>(svPipeline.GetPixelShader())->module;
+					stage.module = reinterpret_cast<Shader_vk*>(svPipeline.ps)->module;
 					stage.pName = "main";
 					stage.pSpecializationInfo = nullptr;
 				}
-				if (svPipeline.GetGeometryShader()) {
+				if (svPipeline.gs) {
 					VkPipelineShaderStageCreateInfo& stage = shaderStages[shaderStagesCount++];
 					stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 					stage.flags = 0u;
 					stage.stage = VK_SHADER_STAGE_GEOMETRY_BIT;
-					stage.module = reinterpret_cast<Shader_vk*>(svPipeline.GetGeometryShader())->module;
+					stage.module = reinterpret_cast<Shader_vk*>(svPipeline.gs)->module;
 					stage.pName = "main";
 					stage.pSpecializationInfo = nullptr;
 				}
@@ -718,7 +714,7 @@ namespace _sv {
 				VkVertexInputBindingDescription bindings[SV_GFX_INPUT_SLOT_COUNT];
 				VkVertexInputAttributeDescription attributes[SV_GFX_INPUT_ELEMENT_COUNT];
 				{
-					SV_GFX_INPUT_LAYOUT_DESC il = svPipeline.GetInputLayout();
+					const InputLayoutDesc& il = svPipeline.inputLayout;
 					for (ui32 i = 0; i < il.slots.size(); ++i) {
 						bindings[i].binding = il.slots[i].slot;
 						bindings[i].inputRate = il.slots[i].instanced ? VK_VERTEX_INPUT_RATE_INSTANCE : VK_VERTEX_INPUT_RATE_VERTEX;
@@ -739,7 +735,7 @@ namespace _sv {
 				// Rasterizer State
 				VkPipelineRasterizationStateCreateInfo rasterizerState{};
 				{
-					const SV_GFX_RASTERIZER_STATE_DESC& rDesc = svPipeline.GetRasterizerState();
+					const RasterizerStateDesc& rDesc = svPipeline.rasterizerState;
 
 					rasterizerState.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 					rasterizerState.flags = 0u;
@@ -759,11 +755,11 @@ namespace _sv {
 				VkPipelineColorBlendStateCreateInfo blendState{};
 				VkPipelineColorBlendAttachmentState attachments[SV_GFX_RENDER_TARGET_ATT_COUNT];
 				{
-					const SV_GFX_BLEND_STATE_DESC& bDesc = svPipeline.GetBlendState();
+					const BlendStateDesc& bDesc = svPipeline.blendState;
 					
 					for (ui32 i = 0; i < bDesc.attachments.size(); ++i)
 					{
-						const SV_GFX_BLEND_ATTACHMENT_DESC& b = bDesc.attachments[i];
+						const BlendAttachmentDesc& b = bDesc.attachments[i];
 
 						attachments[i].blendEnable = b.blendEnabled ? VK_TRUE : VK_FALSE;
 						attachments[i].srcColorBlendFactor = graphics_vulkan_parse_blendfactor(b.srcColorBlendFactor);
@@ -790,7 +786,7 @@ namespace _sv {
 				// DepthStencilState
 				VkPipelineDepthStencilStateCreateInfo depthStencilState{};
 				{
-					const SV_GFX_DEPTHSTENCIL_STATE_DESC& dDesc = svPipeline.GetDepthStencilState();
+					const DepthStencilStateDesc& dDesc = svPipeline.depthStencilState;
 					depthStencilState.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 					depthStencilState.flags = 0u;
 					depthStencilState.depthTestEnable = dDesc.depthTestEnabled;
@@ -821,7 +817,7 @@ namespace _sv {
 				// Topology
 				VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 				inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-				inputAssembly.topology = graphics_vulkan_parse_topology(svPipeline.GetTopology());
+				inputAssembly.topology = graphics_vulkan_parse_topology(svPipeline.topology);
 
 				// ViewportState
 				VkPipelineViewportStateCreateInfo viewportState{};
@@ -887,7 +883,7 @@ namespace _sv {
 		}
 
 		// Bind Viewports
-		if (state.flags & SV_GFX_GRAPHICS_PIPELINE_STATE_VIEWPORT) {
+		if (state.flags & GraphicsPipelineState_Viewport) {
 			
 			VkViewport viewports[SV_GFX_VIEWPORT_COUNT];
 			for (ui32 i = 0; i < state.viewportsCount; ++i) {
@@ -914,7 +910,7 @@ namespace _sv {
 		}
 
 		// Bind Scissors
-		if (state.flags & SV_GFX_GRAPHICS_PIPELINE_STATE_SCISSOR) {
+		if (state.flags & GraphicsPipelineState_Scissor) {
 
 			VkRect2D scissors[SV_GFX_SCISSOR_COUNT];
 			for (ui32 i = 0; i < state.scissorsCount; ++i) {
@@ -937,12 +933,12 @@ namespace _sv {
 		}
 
 		// Set stencil reference
-		if (state.flags & SV_GFX_GRAPHICS_PIPELINE_STATE_STENCIL_REF) {
+		if (state.flags & GraphicsPipelineState_StencilRef) {
 			vkCmdSetStencilReference(cmd, VK_STENCIL_FRONT_AND_BACK, state.stencilReference);
 		}
 
 		// Update Descriptors
-		if (state.flags & (SV_GFX_GRAPHICS_PIPELINE_STATE_CONSTANT_BUFFER | SV_GFX_GRAPHICS_PIPELINE_STATE_SAMPLER | SV_GFX_GRAPHICS_PIPELINE_STATE_IMAGE)) {
+		if (state.flags & (GraphicsPipelineState_ConstantBuffer | GraphicsPipelineState_Sampler | GraphicsPipelineState_Image)) {
 
 			VkDescriptorSet descSet = pipeline.descriptors.GetDescriptorSet(m_CurrentFrame, cmd_);
 
@@ -1028,24 +1024,24 @@ namespace _sv {
 		return index;
 	}
 
-	sv::CommandList Graphics_vk::GetLastCommandList()
+	CommandList Graphics_vk::GetLastCommandList()
 	{
 		std::lock_guard<std::mutex> lock(m_MutexCMD);
 		SV_ASSERT(m_ActiveCMDCount != 0);
 		return m_ActiveCMDCount - 1u;
 	}
 
-	void Graphics_vk::BeginRenderPass(sv::CommandList cmd_)
+	void Graphics_vk::BeginRenderPass(CommandList cmd_)
 	{
-		_sv::GraphicsPipelineState& state = _sv::graphics_state_get().graphics[cmd_];
+		GraphicsState& state = graphics_state_get().graphics[cmd_];
 		RenderPass_vk& renderPass = *reinterpret_cast<RenderPass_vk*>(state.renderPass);
 		VkCommandBuffer cmd = GetCMD(cmd_);
 
 		// Color Attachments clear values
 		VkClearValue clearValues[SV_GFX_ATTACHMENTS_COUNT];
-		for (ui32 i = 0; i < renderPass.GetAttachmentsCount(); ++i) {
+		for (ui32 i = 0; i < ui32(renderPass.attachments.size()); ++i) {
 
-			if (renderPass.HasDepthStencilAttachment() && renderPass.GetDepthStencilAttachment() == i) {
+			if (renderPass.depthStencilAttachment == i) {
 				clearValues[i].depthStencil.depth = state.clearDepthStencil.first;
 				clearValues[i].depthStencil.stencil = state.clearDepthStencil.second;
 
@@ -1064,10 +1060,10 @@ namespace _sv {
 		{
 			// Calculate hash value for attachments
 			size_t hash = 0u;
-			sv::utils_hash_combine(hash, renderPass.GetAttachmentsCount());
-			for (ui32 i = 0; i < renderPass.GetAttachmentsCount(); ++i) {
+			utils_hash_combine(hash, renderPass.attachments.size());
+			for (ui32 i = 0; i < ui32(renderPass.attachments.size()); ++i) {
 				Image_vk& att = *reinterpret_cast<Image_vk*>(state.attachments[i]);
-				sv::utils_hash_combine(hash, att.ID);
+				utils_hash_combine(hash, att.ID);
 			}
 
 			// Find framebuffer
@@ -1078,10 +1074,10 @@ namespace _sv {
 				VkImageView views[SV_GFX_ATTACHMENTS_COUNT];
 				ui32 width = 0, height = 0, layers = 0;
 
-				for (ui32 i = 0; i < renderPass.GetAttachmentsCount(); ++i) {
+				for (ui32 i = 0; i < ui32(renderPass.attachments.size()); ++i) {
 					Image_vk& att = *reinterpret_cast<Image_vk*>(state.attachments[i]);
 
-					if (renderPass.GetDepthStencilAttachment() == i) {
+					if (renderPass.depthStencilAttachment == i) {
 						views[i] = att.depthStencilView;
 					}
 					else {
@@ -1089,16 +1085,16 @@ namespace _sv {
 					}
 
 					if (i == 0) {
-						width = att.GetWidth();
-						height = att.GetHeight();
-						layers = att.GetLayers();
+						width = att.width;
+						height = att.height;
+						layers = att.layers;
 					}
 				}
 
 				VkFramebufferCreateInfo create_info{};
 				create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 				create_info.renderPass = renderPass.renderPass;
-				create_info.attachmentCount = renderPass.GetAttachmentsCount();
+				create_info.attachmentCount = ui32(renderPass.attachments.size());
 				create_info.pAttachments = views;
 				create_info.width = width;
 				create_info.height = height;
@@ -1119,16 +1115,16 @@ namespace _sv {
 		begin_info.framebuffer = fb;
 		begin_info.renderArea.offset.x = 0;
 		begin_info.renderArea.offset.y = 0;
-		begin_info.renderArea.extent.width = state.attachments[0]->GetWidth();
-		begin_info.renderArea.extent.height = state.attachments[0]->GetHeight();
-		begin_info.clearValueCount = renderPass.GetAttachmentsCount();
+		begin_info.renderArea.extent.width = state.attachments[0]->width;
+		begin_info.renderArea.extent.height = state.attachments[0]->height;
+		begin_info.clearValueCount = ui32(renderPass.attachments.size());
 		begin_info.pClearValues = clearValues;
 
 		vkCmdBeginRenderPass(cmd, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
 	}
-	void Graphics_vk::EndRenderPass(sv::CommandList cmd_)
+	void Graphics_vk::EndRenderPass(CommandList cmd_)
 	{
-		_sv::GraphicsPipelineState& state = _sv::graphics_state_get().graphics[cmd_];
+		GraphicsState& state = graphics_state_get().graphics[cmd_];
 		RenderPass_vk& renderPass = *reinterpret_cast<RenderPass_vk*>(state.renderPass);
 		VkCommandBuffer cmd = GetCMD(cmd_);
 
@@ -1148,7 +1144,7 @@ namespace _sv {
 
 			VkResult res = vkAllocateCommandBuffers(m_Device, &alloc_info, pCmd);
 			if (res != VK_SUCCESS) {
-				sv::log_error("Can't allocate SingleTime CommandBuffer");
+				log_error("Can't allocate SingleTime CommandBuffer");
 				return res;
 			}
 		}
@@ -1162,7 +1158,7 @@ namespace _sv {
 
 			VkResult res = vkBeginCommandBuffer(*pCmd, &begin_info);
 			if (res != VK_SUCCESS) {
-				sv::log_error("Can't begin SingleTime CommandBuffer");
+				log_error("Can't begin SingleTime CommandBuffer");
 				vkFreeCommandBuffers(m_Device, m_Frames[m_CurrentFrame].transientCommandPool, 1u, pCmd);
 				return res;
 			}
@@ -1259,7 +1255,7 @@ namespace _sv {
 		}
 	}
 
-	void Graphics_vk::LoadSpirv_Samplers(spirv_cross::Compiler& compiler, spirv_cross::ShaderResources& shaderResources, SV_GFX_SHADER_TYPE shaderType, std::vector<VkDescriptorSetLayoutBinding>& bindings)
+	void Graphics_vk::LoadSpirv_Samplers(spirv_cross::Compiler& compiler, spirv_cross::ShaderResources& shaderResources, ShaderType shaderType, std::vector<VkDescriptorSetLayoutBinding>& bindings)
 	{
 		auto& samplers = shaderResources.separate_samplers;
 
@@ -1278,7 +1274,7 @@ namespace _sv {
 		}
 	}
 
-	void Graphics_vk::LoadSpirv_Images(spirv_cross::Compiler& compiler, spirv_cross::ShaderResources& shaderResources, SV_GFX_SHADER_TYPE shaderType, std::vector<VkDescriptorSetLayoutBinding>& bindings)
+	void Graphics_vk::LoadSpirv_Images(spirv_cross::Compiler& compiler, spirv_cross::ShaderResources& shaderResources, ShaderType shaderType, std::vector<VkDescriptorSetLayoutBinding>& bindings)
 	{
 		auto& images = shaderResources.separate_images;
 
@@ -1297,7 +1293,7 @@ namespace _sv {
 		}
 	}
 
-	void Graphics_vk::LoadSpirv_Uniforms(spirv_cross::Compiler& compiler, spirv_cross::ShaderResources& shaderResources, SV_GFX_SHADER_TYPE shaderType, std::vector<VkDescriptorSetLayoutBinding>& bindings)
+	void Graphics_vk::LoadSpirv_Uniforms(spirv_cross::Compiler& compiler, spirv_cross::ShaderResources& shaderResources, ShaderType shaderType, std::vector<VkDescriptorSetLayoutBinding>& bindings)
 	{
 		auto& uniforms = shaderResources.uniform_buffers;
 
@@ -1318,7 +1314,7 @@ namespace _sv {
 
 	/////////////////////////////////////////////////// CREATION ///////////////////////////////////////////////////
 
-	bool Graphics_vk::CreateBuffer(Buffer_vk& buffer, const SV_GFX_BUFFER_DESC& desc)
+	bool Graphics_vk::CreateBuffer(Buffer_vk& buffer, const GPUBufferDesc& desc)
 	{
 		VkBufferUsageFlags bufferUsage = 0u;
 		bool deviceMemory = true;
@@ -1327,13 +1323,13 @@ namespace _sv {
 		// Usage Flags
 		switch (desc.bufferType)
 		{
-		case SV_GFX_BUFFER_TYPE_VERTEX:
+		case GPUBufferType_Vertex:
 			bufferUsage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 			break;
-		case SV_GFX_BUFFER_TYPE_INDEX:
+		case GPUBufferType_Index:
 			bufferUsage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 			break;
-		case SV_GFX_BUFFER_TYPE_CONSTANT:
+		case GPUBufferType_Constant:
 			bufferUsage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 			break;
 		}
@@ -1402,13 +1398,13 @@ namespace _sv {
 
 				switch (desc.bufferType)
 				{
-				case SV_GFX_BUFFER_TYPE_VERTEX:
+				case GPUBufferType_Vertex:
 					bufferBarrier.dstAccessMask |= VK_ACCESS_INDEX_READ_BIT;
 					break;
-				case SV_GFX_BUFFER_TYPE_INDEX:
+				case GPUBufferType_Index:
 					bufferBarrier.dstAccessMask |= VK_ACCESS_INDEX_READ_BIT;
 					break;
-				case SV_GFX_BUFFER_TYPE_CONSTANT:
+				case GPUBufferType_Constant:
 					bufferBarrier.dstAccessMask |= VK_ACCESS_UNIFORM_READ_BIT;
 					break;
 				}
@@ -1445,7 +1441,7 @@ namespace _sv {
 		return true;
 	}
 
-	bool Graphics_vk::CreateImage(Image_vk& image, const SV_GFX_IMAGE_DESC& desc)
+	bool Graphics_vk::CreateImage(Image_vk& image, const GPUImageDesc& desc)
 	{
 		VkImageType imageType = VK_IMAGE_TYPE_MAX_ENUM;
 		VkFormat format = graphics_vulkan_parse_format(desc.format);
@@ -1466,13 +1462,13 @@ namespace _sv {
 				break;
 			}
 
-			if (desc.type & SV_GFX_IMAGE_TYPE_RENDER_TARGET) {
+			if (desc.type & GPUImageType_RenderTarget) {
 				imageUsage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 			}
-			if (desc.type & SV_GFX_IMAGE_TYPE_SHADER_RESOURCE) {
+			if (desc.type & GPUImageType_ShaderResource) {
 				imageUsage |= VK_IMAGE_USAGE_SAMPLED_BIT;
 			}
-			if (desc.type & SV_GFX_IMAGE_TYPE_DEPTH_STENCIL) {
+			if (desc.type & GPUImageType_DepthStencil) {
 				imageUsage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 			}
 
@@ -1531,9 +1527,9 @@ namespace _sv {
 			// Memory barrier to set the image transfer dst layout
 			VkImageMemoryBarrier memBarrier{};
 			memBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-			memBarrier.srcAccessMask = graphics_vulkan_access_from_image_layout(SV_GFX_IMAGE_LAYOUT_UNDEFINED);
+			memBarrier.srcAccessMask = graphics_vulkan_access_from_image_layout(GPUImageLayout_Undefined);
 			memBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-			memBarrier.oldLayout = graphics_vulkan_parse_image_layout(SV_GFX_IMAGE_LAYOUT_UNDEFINED);
+			memBarrier.oldLayout = graphics_vulkan_parse_image_layout(GPUImageLayout_Undefined);
 			memBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 			memBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			memBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -1543,7 +1539,7 @@ namespace _sv {
 			memBarrier.subresourceRange.levelCount = 1u;
 
 			vkCmdPipelineBarrier(cmd,
-				graphics_vulkan_stage_from_image_layout(SV_GFX_IMAGE_LAYOUT_UNDEFINED),
+				graphics_vulkan_stage_from_image_layout(GPUImageLayout_Undefined),
 				VK_PIPELINE_STAGE_TRANSFER_BIT,
 				0u,
 				0u,
@@ -1601,9 +1597,9 @@ namespace _sv {
 
 			VkImageMemoryBarrier memBarrier{};
 			memBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-			memBarrier.srcAccessMask = graphics_vulkan_access_from_image_layout(SV_GFX_IMAGE_LAYOUT_UNDEFINED);
+			memBarrier.srcAccessMask = graphics_vulkan_access_from_image_layout(GPUImageLayout_Undefined);
 			memBarrier.dstAccessMask = graphics_vulkan_access_from_image_layout(desc.layout);
-			memBarrier.oldLayout = graphics_vulkan_parse_image_layout(SV_GFX_IMAGE_LAYOUT_UNDEFINED);
+			memBarrier.oldLayout = graphics_vulkan_parse_image_layout(GPUImageLayout_Undefined);
 			memBarrier.newLayout = graphics_vulkan_parse_image_layout(desc.layout);
 			memBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			memBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -1613,7 +1609,7 @@ namespace _sv {
 			memBarrier.subresourceRange.levelCount = 1u;
 
 			vkCmdPipelineBarrier(cmd,
-				graphics_vulkan_stage_from_image_layout(SV_GFX_IMAGE_LAYOUT_UNDEFINED),
+				graphics_vulkan_stage_from_image_layout(GPUImageLayout_Undefined),
 				graphics_vulkan_stage_from_image_layout(desc.layout),
 				0u,
 				0u,
@@ -1629,11 +1625,11 @@ namespace _sv {
 		// TODO: MipMapping
 
 		// Create Render Target View
-		if (desc.type & SV_GFX_IMAGE_TYPE_RENDER_TARGET) {
+		if (desc.type & GPUImageType_RenderTarget) {
 			vkCheck(CreateImageView(image.image, format, viewType, VK_IMAGE_ASPECT_COLOR_BIT, desc.layers, image.renderTargetView));
 		}
 		// Create Depth Stencil View
-		if (desc.type & SV_GFX_IMAGE_TYPE_DEPTH_STENCIL) {
+		if (desc.type & GPUImageType_DepthStencil) {
 			VkImageAspectFlags aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
 			
 			if (graphics_format_has_stencil(desc.format)) aspect |= VK_IMAGE_ASPECT_STENCIL_BIT;
@@ -1641,7 +1637,7 @@ namespace _sv {
 			vkCheck(CreateImageView(image.image, format, viewType, aspect, desc.layers, image.depthStencilView));
 		}
 		// Create Shader Resource View
-		if (desc.type & SV_GFX_IMAGE_TYPE_SHADER_RESOURCE) {
+		if (desc.type & GPUImageType_ShaderResource) {
 			vkCheck(CreateImageView(image.image, format, viewType, VK_IMAGE_ASPECT_COLOR_BIT, desc.layers, image.shaderResouceView));
 
 			// Set image info
@@ -1656,7 +1652,7 @@ namespace _sv {
 		return true;
 	}
 
-	bool Graphics_vk::CreateSampler(Sampler_vk& sampler, const SV_GFX_SAMPLER_DESC& desc)
+	bool Graphics_vk::CreateSampler(Sampler_vk& sampler, const SamplerDesc& desc)
 	{
 		VkSamplerCreateInfo create_info{};
 		create_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -1692,20 +1688,20 @@ namespace _sv {
 		return true;
 	}
 
-	bool Graphics_vk::CreateShader(Shader_vk& shader, const SV_GFX_SHADER_DESC& desc)
+	bool Graphics_vk::CreateShader(Shader_vk& shader, const ShaderDesc& desc)
 	{
 		if (shader.module != VK_NULL_HANDLE) return true;
 
 		// Get spv filePath
 		std::string binPath;
-		svCheck(graphics_shader_binpath(desc.filePath, SV_GFX_API_VULKAN, binPath));
+		svCheck(graphics_shader_binpath(desc.filePath, GraphicsAPI_Vulkan, binPath));
 
 		// Get spv bytes
 		std::vector<ui8> data;
 		{
-			sv::BinFile file;
+			BinFile file;
 			if (!file.OpenR(binPath.c_str())) {
-				sv::log_error("ShaderBin not found '%s'", binPath.c_str());
+				log_error("ShaderBin not found '%s'", binPath.c_str());
 				return false;
 			}
 
@@ -1728,7 +1724,7 @@ namespace _sv {
 		spirv_cross::ShaderResources sr = comp.get_shader_resources();
 
 		// Semantic Names
-		if (desc.shaderType == SV_GFX_SHADER_TYPE_VERTEX) {
+		if (desc.shaderType == ShaderType_Vertex) {
 			LoadSpirv_SemanticNames(comp, sr, shader.semanticNames);
 		}
 
@@ -1766,7 +1762,7 @@ namespace _sv {
 		return true;
 	}
 
-	bool Graphics_vk::CreateRenderPass(RenderPass_vk& renderPass, const SV_GFX_RENDERPASS_DESC& desc)
+	bool Graphics_vk::CreateRenderPass(RenderPass_vk& renderPass, const RenderPassDesc& desc)
 	{
 		VkAttachmentDescription attachments[SV_GFX_ATTACHMENTS_COUNT];
 
@@ -1779,19 +1775,19 @@ namespace _sv {
 		ui32 colorIt = 0u;
 
 		for (ui32 i = 0; i < desc.attachments.size(); ++i) {
-			const SV_GFX_ATTACHMENT_DESC& attDesc = desc.attachments[i];
+			const AttachmentDesc& attDesc = desc.attachments[i];
 
 			attachments[i] = {};
 
 			// Reference
 			switch (attDesc.type)
 			{
-			case SV_GFX_ATTACHMENT_TYPE_RENDER_TARGET:
+			case AttachmentType_RenderTarget:
 				colorAttachments[colorIt].layout = graphics_vulkan_parse_image_layout(attDesc.layout);
 				colorAttachments[colorIt].attachment = i;
 				colorIt++;
 				break;
-			case SV_GFX_ATTACHMENT_TYPE_DEPTH_STENCIL:
+			case AttachmentType_DepthStencil:
 				if (hasDepthStencil) return false;
 
 				depthStencilAttachment.attachment = i;
@@ -1810,7 +1806,7 @@ namespace _sv {
 			attachments[i].initialLayout = graphics_vulkan_parse_image_layout(attDesc.initialLayout);
 			attachments[i].finalLayout = graphics_vulkan_parse_image_layout(attDesc.finalLayout);
 
-			if (attDesc.type == SV_GFX_ATTACHMENT_TYPE_DEPTH_STENCIL) {
+			if (attDesc.type == AttachmentType_DepthStencil) {
 				// TODO: stencil operations
 				attachments[desc.attachments.size()].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 				attachments[desc.attachments.size()].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -1840,19 +1836,19 @@ namespace _sv {
 		return true;
 	}
 
-	bool Graphics_vk::CreateGraphicsPipeline(GraphicsPipeline_vk& pipeline, const SV_GFX_GRAPHICS_PIPELINE_DESC& desc)
+	bool Graphics_vk::CreateGraphicsPipeline(GraphicsPipeline_vk& pipeline, const GraphicsPipelineDesc& desc)
 	{
 		// Compute Hash
 		pipeline.hash = 0u;
 
-		if (desc.pVertexShader)		sv::utils_hash_combine(pipeline.hash, desc.pVertexShader->GetPtr());
-		if (desc.pPixelShader)		sv::utils_hash_combine(pipeline.hash, desc.pPixelShader->GetPtr());
-		if (desc.pGeometryShader)	sv::utils_hash_combine(pipeline.hash, desc.pGeometryShader->GetPtr());
+		if (desc.pVertexShader)		utils_hash_combine(pipeline.hash, desc.pVertexShader->GetPtr());
+		if (desc.pPixelShader)		utils_hash_combine(pipeline.hash, desc.pPixelShader->GetPtr());
+		if (desc.pGeometryShader)	utils_hash_combine(pipeline.hash, desc.pGeometryShader->GetPtr());
 
-		sv::utils_hash_combine(pipeline.hash, _sv::graphics_compute_hash_inputlayout(desc.pInputLayout));
-		sv::utils_hash_combine(pipeline.hash, _sv::graphics_compute_hash_rasterizerstate(desc.pRasterizerState));
-		sv::utils_hash_combine(pipeline.hash, _sv::graphics_compute_hash_blendstate(desc.pBlendState));
-		sv::utils_hash_combine(pipeline.hash, _sv::graphics_compute_hash_depthstencilstate(desc.pDepthStencilState));
+		utils_hash_combine(pipeline.hash, graphics_compute_hash_inputlayout(desc.pInputLayout));
+		utils_hash_combine(pipeline.hash, graphics_compute_hash_rasterizerstate(desc.pRasterizerState));
+		utils_hash_combine(pipeline.hash, graphics_compute_hash_blendstate(desc.pBlendState));
+		utils_hash_combine(pipeline.hash, graphics_compute_hash_depthstencilstate(desc.pDepthStencilState));
 
 		// Get VulkanPipeline
 		m_PipelinesMutex.lock();
@@ -1978,7 +1974,8 @@ namespace _sv {
 		SV_ASSERT(CreateSwapChain(old));
 		vkDestroySwapchainKHR(m_Device, old, nullptr);
 	}
-	Image& Graphics_vk::AcquireSwapChainImage()
+
+	GPUImage& Graphics_vk::AcquireSwapChainImage()
 	{
 		vkAssert(vkAcquireNextImageKHR(m_Device, m_SwapChain.swapChain, UINT64_MAX, m_SwapChain.semAcquireImage, VK_NULL_HANDLE, &m_ImageIndex));
 
@@ -1986,19 +1983,17 @@ namespace _sv {
 		m_SwapChain.backBuffer.renderTargetView = m_SwapChain.images[m_ImageIndex].view;
 		m_SwapChain.backBuffer.ID = m_SwapChain.images[m_ImageIndex].ID;
 
-		SV_GFX_IMAGE_DESC bbDesc{};
-		bbDesc.width = m_SwapChain.currentExtent.width;
-		bbDesc.height = m_SwapChain.currentExtent.height;
-		bbDesc.depth = 1u;
-		bbDesc.layers = 1u;
-		bbDesc.dimension = 2u;
-		bbDesc.format = graphics_vulkan_parse_format(m_SwapChain.currentFormat);
-
-		m_SwapChain.backBuffer.SetType(SV_GFX_PRIMITIVE_IMAGE);
-		m_SwapChain.backBuffer.SetDescription(bbDesc);
+		m_SwapChain.backBuffer.type = GraphicsPrimitiveType_Image;
+		m_SwapChain.backBuffer.dimension = 2u;
+		m_SwapChain.backBuffer.format = graphics_vulkan_parse_format(m_SwapChain.currentFormat);
+		m_SwapChain.backBuffer.width = m_SwapChain.currentExtent.width;
+		m_SwapChain.backBuffer.height = m_SwapChain.currentExtent.height;
+		m_SwapChain.backBuffer.depth = 1u;
+		m_SwapChain.backBuffer.layers = 1u;
+		m_SwapChain.backBuffer.imageType = GPUImageType_RenderTarget;
 
 		m_SwapChain.backBufferImage = Primitive(&m_SwapChain.backBuffer);
-		return *reinterpret_cast<Image*>(&m_SwapChain.backBufferImage);
+		return *reinterpret_cast<GPUImage*>(&m_SwapChain.backBufferImage);
 	}
 
 	void Graphics_vk::WaitGPU()
@@ -2102,17 +2097,17 @@ namespace _sv {
 		vkCmdDrawIndexed(GetCMD(cmd), indexCount, instanceCount, startIndex, startVertex, startInstance);
 	}
 
-	void Graphics_vk::ClearImage(Image& image_, SV_GFX_IMAGE_LAYOUT oldLayout, SV_GFX_IMAGE_LAYOUT newLayout, const Color4f& clearColor, float depth, ui32 stencil, CommandList cmd_)
+	void Graphics_vk::ClearImage(GPUImage& image_, GPUImageLayout oldLayout, GPUImageLayout newLayout, const Color4f& clearColor, float depth, ui32 stencil, CommandList cmd_)
 	{
 		Image_vk& image = *reinterpret_cast<Image_vk*>(image_.GetPtr());
 		VkCommandBuffer cmd = GetCMD(cmd_);
 
 		VkImageSubresourceRange range{};
-		range.aspectMask = graphics_vulkan_aspect_from_image_layout(oldLayout, image.GetFormat());
+		range.aspectMask = graphics_vulkan_aspect_from_image_layout(oldLayout, image.format);
 		range.baseMipLevel = 0u;
 		range.levelCount = 1u;
 		range.baseArrayLayer = 0u;
-		range.layerCount = image.GetLayers();
+		range.layerCount = image.layers;
 
 		// Image Barrier: from oldLayout to VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
 		VkPipelineStageFlags srcStage = graphics_vulkan_stage_from_image_layout(oldLayout);
@@ -2132,7 +2127,7 @@ namespace _sv {
 		vkCmdPipelineBarrier(cmd, srcStage, dstStage, 0u, 0u, nullptr, 0u, nullptr, 1u, &barrier);
 
 		// Clear
-		if (image.GetImageType() & SV_GFX_IMAGE_TYPE_DEPTH_STENCIL) {
+		if (image.imageType & GPUImageType_DepthStencil) {
 
 			VkClearDepthStencilValue clear = { depth, stencil };
 			vkCmdClearDepthStencilImage(cmd, image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear, 1u, &range);
@@ -2161,7 +2156,7 @@ namespace _sv {
 
 	}
 
-	void Graphics_vk::UpdateBuffer(Buffer& buffer_, void* pData, ui32 size, ui32 offset, CommandList cmd_)
+	void Graphics_vk::UpdateBuffer(GPUBuffer& buffer_, void* pData, ui32 size, ui32 offset, CommandList cmd_)
 	{
 		Buffer_vk& buffer = *reinterpret_cast<Buffer_vk*>(buffer_.GetPtr());
 
@@ -2183,17 +2178,17 @@ namespace _sv {
 
 			VkPipelineStageFlags stages = 0u;
 
-			switch (buffer.GetBufferType())
+			switch (buffer.bufferType)
 			{
-			case SV_GFX_BUFFER_TYPE_VERTEX:
+			case GPUBufferType_Vertex:
 				bufferBarrier.srcAccessMask |= VK_ACCESS_INDEX_READ_BIT;
 				stages |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
 				break;
-			case SV_GFX_BUFFER_TYPE_INDEX:
+			case GPUBufferType_Index:
 				bufferBarrier.srcAccessMask |= VK_ACCESS_INDEX_READ_BIT;
 				stages |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
 				break;
-			case SV_GFX_BUFFER_TYPE_CONSTANT:
+			case GPUBufferType_Constant:
 				bufferBarrier.srcAccessMask |= VK_ACCESS_UNIFORM_READ_BIT;
 				stages |= VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 				break;
@@ -2223,7 +2218,7 @@ namespace _sv {
 		}
 	}
 
-	void Graphics_vk::Barrier(const sv::GPUBarrier* barriers, ui32 count, sv::CommandList cmd_)
+	void Graphics_vk::Barrier(const GPUBarrier* barriers, ui32 count, CommandList cmd_)
 	{
 		VkCommandBuffer cmd = GetCMD(cmd_);
 
@@ -2244,7 +2239,7 @@ namespace _sv {
 
 			switch (barrier.type)
 			{
-			case SV_GFX_BARRIER_TYPE_IMAGE:
+			case BarrierType_Image:
 
 				Image_vk& image = *reinterpret_cast<Image_vk*>(barrier.image.pImage->GetPtr());
 
@@ -2257,8 +2252,8 @@ namespace _sv {
 				imageBarrier[imageBarrierCount].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 				imageBarrier[imageBarrierCount].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 				imageBarrier[imageBarrierCount].image = image.image;
-				imageBarrier[imageBarrierCount].subresourceRange.aspectMask = graphics_vulkan_aspect_from_image_layout(barrier.image.oldLayout, image.GetFormat());
-				imageBarrier[imageBarrierCount].subresourceRange.layerCount = image.GetLayers();
+				imageBarrier[imageBarrierCount].subresourceRange.aspectMask = graphics_vulkan_aspect_from_image_layout(barrier.image.oldLayout, image.format);
+				imageBarrier[imageBarrierCount].subresourceRange.layerCount = image.layers;
 				imageBarrier[imageBarrierCount].subresourceRange.levelCount = 1u;
 				imageBarrier[imageBarrierCount].subresourceRange.baseArrayLayer = 0u;
 				imageBarrier[imageBarrierCount].subresourceRange.baseMipLevel = 0u;
@@ -2276,18 +2271,18 @@ namespace _sv {
 	}
 
 	//////////////////////////////////////// CONSTRUCTOR & DESTRUCTOR ////////////////////////////////////////
-	void* VulkanConstructor(SV_GFX_PRIMITIVE type, const void* desc)
+	void* VulkanConstructor(GraphicsPrimitiveType type, const void* desc)
 	{
-		Graphics_vk& gfx = *reinterpret_cast<Graphics_vk*>(_sv::graphics_device_get());
+		Graphics_vk& gfx = *reinterpret_cast<Graphics_vk*>(graphics_device_get());
 		void* ptr = nullptr;
 
 		switch (type)
 		{
 
-		case SV_GFX_PRIMITIVE_BUFFER:
+		case GraphicsPrimitiveType_Buffer:
 		{
 			Buffer_vk* b = new Buffer_vk();
-			if (!gfx.CreateBuffer(*b, *reinterpret_cast<const SV_GFX_BUFFER_DESC*>(desc))) {
+			if (!gfx.CreateBuffer(*b, *reinterpret_cast<const GPUBufferDesc*>(desc))) {
 				delete b;
 				b = nullptr;
 			}
@@ -2295,10 +2290,10 @@ namespace _sv {
 		}
 		break;
 
-		case SV_GFX_PRIMITIVE_SHADER:
+		case GraphicsPrimitiveType_Shader:
 		{
 			Shader_vk* s = new Shader_vk();
-			if (!gfx.CreateShader(*s, *reinterpret_cast<const SV_GFX_SHADER_DESC*>(desc))) {
+			if (!gfx.CreateShader(*s, *reinterpret_cast<const ShaderDesc*>(desc))) {
 				delete s;
 				s = nullptr;
 			}
@@ -2306,10 +2301,10 @@ namespace _sv {
 		}
 		break;
 
-		case SV_GFX_PRIMITIVE_IMAGE:
+		case GraphicsPrimitiveType_Image:
 		{
 			Image_vk* i = new Image_vk();
-			if (!gfx.CreateImage(*i, *reinterpret_cast<const SV_GFX_IMAGE_DESC*>(desc))) {
+			if (!gfx.CreateImage(*i, *reinterpret_cast<const GPUImageDesc*>(desc))) {
 				delete i;
 				i = nullptr;
 			}
@@ -2317,10 +2312,10 @@ namespace _sv {
 		}
 		break;
 
-		case SV_GFX_PRIMITIVE_SAMPLER:
+		case GraphicsPrimitiveType_Sampler:
 		{
 			Sampler_vk* i = new Sampler_vk();
-			if (!gfx.CreateSampler(*i, *reinterpret_cast<const SV_GFX_SAMPLER_DESC*>(desc))) {
+			if (!gfx.CreateSampler(*i, *reinterpret_cast<const SamplerDesc*>(desc))) {
 				delete i;
 				i = nullptr;
 			}
@@ -2328,10 +2323,10 @@ namespace _sv {
 		}
 		break;
 
-		case SV_GFX_PRIMITIVE_RENDERPASS:
+		case GraphicsPrimitiveType_RenderPass:
 		{
 			RenderPass_vk* rp = new RenderPass_vk();
-			if (!gfx.CreateRenderPass(*rp, *reinterpret_cast<const SV_GFX_RENDERPASS_DESC*>(desc))) {
+			if (!gfx.CreateRenderPass(*rp, *reinterpret_cast<const RenderPassDesc*>(desc))) {
 				delete rp;
 				rp = nullptr;
 			}
@@ -2339,10 +2334,10 @@ namespace _sv {
 		}
 		break;
 
-		case SV_GFX_PRIMITIVE_GRAPHICS_PIPELINE:
+		case GraphicsPrimitiveType_GraphicsPipeline:
 		{
 			GraphicsPipeline_vk* gp = new GraphicsPipeline_vk();
-			if (!gfx.CreateGraphicsPipeline(*gp, *reinterpret_cast<const SV_GFX_GRAPHICS_PIPELINE_DESC*>(desc))) {
+			if (!gfx.CreateGraphicsPipeline(*gp, *reinterpret_cast<const GraphicsPipelineDesc*>(desc))) {
 				delete gp;
 				gp = nullptr;
 			}
@@ -2356,16 +2351,16 @@ namespace _sv {
 	}
 	bool VulkanDestructor(Primitive& primitive)
 	{
-		Graphics_vk& gfx = *reinterpret_cast<Graphics_vk*>(_sv::graphics_device_get());
+		Graphics_vk& gfx = *reinterpret_cast<Graphics_vk*>(graphics_device_get());
 
 		vkDeviceWaitIdle(gfx.GetDevice());
 
 		bool result = false;
 
-		switch (primitive->GetType())
+		switch (reinterpret_cast<Primitive_internal*>(primitive.GetPtr())->type)
 		{
 
-		case SV_GFX_PRIMITIVE_BUFFER:
+		case GraphicsPrimitiveType_Buffer:
 		{
 			Buffer_vk& buffer = *reinterpret_cast<Buffer_vk*>(primitive.GetPtr());
 			result = gfx.DestroyBuffer(buffer);
@@ -2373,7 +2368,7 @@ namespace _sv {
 			break;
 		}
 
-		case SV_GFX_PRIMITIVE_SHADER:
+		case GraphicsPrimitiveType_Shader:
 		{
 			Shader_vk& shader = *reinterpret_cast<Shader_vk*>(primitive.GetPtr());
 			result = gfx.DestroyShader(shader);
@@ -2381,7 +2376,7 @@ namespace _sv {
 			break;
 		}
 
-		case SV_GFX_PRIMITIVE_IMAGE:
+		case GraphicsPrimitiveType_Image:
 		{
 			Image_vk& image = *reinterpret_cast<Image_vk*>(primitive.GetPtr());
 			result = gfx.DestroyImage(image);
@@ -2389,7 +2384,7 @@ namespace _sv {
 			break;
 		}
 
-		case SV_GFX_PRIMITIVE_SAMPLER:
+		case GraphicsPrimitiveType_Sampler:
 		{
 			Sampler_vk& sampler = *reinterpret_cast<Sampler_vk*>(primitive.GetPtr());
 			result = gfx.DestroySampler(sampler);
@@ -2397,7 +2392,7 @@ namespace _sv {
 			break;
 		}
 
-		case SV_GFX_PRIMITIVE_RENDERPASS:
+		case GraphicsPrimitiveType_RenderPass:
 		{
 			RenderPass_vk& renderPass = *reinterpret_cast<RenderPass_vk*>(primitive.GetPtr());
 			result = gfx.DestroyRenderPass(renderPass);
@@ -2405,7 +2400,7 @@ namespace _sv {
 			break;
 		}
 
-		case SV_GFX_PRIMITIVE_GRAPHICS_PIPELINE:
+		case GraphicsPrimitiveType_GraphicsPipeline:
 		{
 			GraphicsPipeline_vk& pipeline = *reinterpret_cast<GraphicsPipeline_vk*>(primitive.GetPtr());
 			result = gfx.DestroyGraphicsPipeline(pipeline);

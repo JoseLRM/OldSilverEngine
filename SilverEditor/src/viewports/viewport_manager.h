@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core.h"
+#include "core_editor.h"
 
 namespace sve {
 

@@ -1,12 +1,9 @@
 #include "core.h"
 
-#include "Engine.h"
+#include "window_internal.h"
+#include "graphics/graphics_internal.h"
 
-#include "Window.h"
-
-using namespace sv;
-
-namespace _sv {
+namespace sv {
 
 	static WindowHandle g_WindowHandle;
 
@@ -23,7 +20,7 @@ namespace _sv {
 	static Window_lnx platform;
 #endif
 
-	bool window_initialize(const SV_WINDOW_INITIALIZATION_DESC& desc)
+	bool window_initialize(const InitializationWindowDesc& desc)
 	{
 		// Create Window
 		g_X = desc.x;
@@ -69,7 +66,7 @@ namespace _sv {
 
 		platform.PeekMessages();
 		if (g_Resized) {
-			_sv::graphics_swapchain_resize();
+			sv::graphics_swapchain_resize();
 		}
 	}
 
@@ -92,12 +89,6 @@ namespace _sv {
 	{
 		return { g_LastX, g_LastY, g_LastWidth, g_LastHeight };
 	}
-
-}
-
-namespace sv {
-
-	using namespace _sv;
 
 	WindowHandle window_get_handle() noexcept { return g_WindowHandle; }
 	ui32 window_get_x() noexcept { return g_X; }

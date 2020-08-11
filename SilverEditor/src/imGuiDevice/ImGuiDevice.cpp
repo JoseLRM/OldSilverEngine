@@ -1,4 +1,4 @@
-#include "core.h"
+#include "core_editor.h"
 
 #include "ImGuiDevice.h"
 #include "ImGuiDevice_vk.h"

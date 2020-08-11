@@ -2,16 +2,9 @@
 
 #include "core.h"
 
-namespace _sv {
+namespace sv {
 
 	class ThreadPool;
-
-	bool task_initialize(ui32 minThreadCount);
-	bool task_close();
-
-}
-
-namespace sv {
 
 	class ThreadContext {
 		std::atomic<ui32> executedTasks = 0u;
@@ -23,7 +16,7 @@ namespace sv {
 			executedTasks = 0u;
 			taskCount = 0u;
 		}
-		friend _sv::ThreadPool;
+		friend ThreadPool;
 	};
 
 	using TaskFunction = std::function<void()>;

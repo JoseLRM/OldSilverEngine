@@ -1,9 +1,9 @@
 #pragma once
 
-#include "..//..//graphics/graphics.h"
+#include "graphics.h"
 #include "vulkan_impl.h"
 
-namespace _sv {
+namespace sv {
 
 	class MemoryManager {
 

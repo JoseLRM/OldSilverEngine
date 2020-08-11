@@ -1,9 +1,9 @@
 #include "core.h"
 
-#include "graphics_shader_utils.h"
+#include "graphics_internal.h"
 
 namespace sv {
-	bool graphics_shader_binpath(const char* filePath, SV_GFX_API api, std::string& binPath)
+	bool graphics_shader_binpath(const char* filePath, GraphicsAPI api, std::string& binPath)
 	{
 		sv::TxtFile file;
 		if (!file.OpenR(filePath)) {
@@ -18,13 +18,7 @@ namespace sv {
 
 			switch (api)
 			{
-			case SV_GFX_API_DX11:
-				if (line[0] == 'd' && line[1] == 'x') {
-					binPath = line.c_str() + 3;
-					found = true;
-				}
-				break;
-			case SV_GFX_API_VULKAN:
+			case GraphicsAPI_Vulkan:
 				if (line[0] == 'v' && line[1] == 'k') {
 					binPath = line.c_str() + 3;
 					found = true;

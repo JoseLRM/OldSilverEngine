@@ -3,8 +3,8 @@
 #ifdef SV_PLATFORM_WINDOWS
 
 #include "platform_windows.h"
-#include "..//Window.h"
-#include "Engine.h"
+#include "..//window_internal.h"
+#include "input/input_internal.h"
 
 #include "windows_impl.h"
 #undef CreateWindow
@@ -56,7 +56,7 @@ namespace sv {
 				if (keyCode > 255) {
 					sv::log_warning("Unknown keycode: %u", keyCode);
 				}
-				else if (~lParam & (1 << 30)) _sv::input_key_pressed_add(keyCode);
+				else if (~lParam & (1 << 30)) sv::input_key_pressed_add(keyCode);
 
 				break;
 			}
@@ -69,27 +69,27 @@ namespace sv {
 					sv::log_warning("Unknown keycode: %u", keyCode);
 					VK_SHIFT;
 				}
-				else _sv::input_key_released_add(keyCode);
+				else sv::input_key_released_add(keyCode);
 
 				break;
 			}
 			case WM_LBUTTONDOWN:
-				_sv::input_mouse_pressed_add(0);
+				sv::input_mouse_pressed_add(0);
 				break;
 			case WM_RBUTTONDOWN:
-				_sv::input_mouse_pressed_add(1);
+				sv::input_mouse_pressed_add(1);
 				break;
 			case WM_MBUTTONDOWN:
-				_sv::input_mouse_pressed_add(2);
+				sv::input_mouse_pressed_add(2);
 				break;
 			case WM_LBUTTONUP:
-				_sv::input_mouse_released_add(0);
+				sv::input_mouse_released_add(0);
 				break;
 			case WM_RBUTTONUP:
-				_sv::input_mouse_released_add(1);
+				sv::input_mouse_released_add(1);
 				break;
 			case WM_MBUTTONUP:
-				_sv::input_mouse_released_add(2);
+				sv::input_mouse_released_add(2);
 				break;
 			case WM_MOUSEMOVE:
 			{
@@ -102,7 +102,7 @@ namespace sv {
 				float x = (float(_x) / w) - 0.5f;
 				float y = (1.f - (float(_y) / h)) - 0.5f;
 
-				_sv::input_mouse_position_set(x, y);
+				sv::input_mouse_position_set(x, y);
 				break;
 			}
 
@@ -125,7 +125,7 @@ namespace sv {
 			//break;
 			case WM_SIZE:
 			{
-				_sv::window_set_size(LOWORD(lParam), HIWORD(lParam));
+				sv::window_set_size(LOWORD(lParam), HIWORD(lParam));
 
 				//switch (wParam)
 				//{
@@ -137,13 +137,13 @@ namespace sv {
 				//	break;
 				//}
 
-				_sv::window_notify_resized();
+				sv::window_notify_resized();
 
 				break;
 			}
 			case WM_MOVE:
 			{
-				_sv::window_set_position(LOWORD(lParam), HIWORD(lParam));
+				sv::window_set_position(LOWORD(lParam), HIWORD(lParam));
 				
 				//m_Minimized = false;
 				//jsh::WindowMovedEvent e(screenX, screenY);
@@ -245,8 +245,8 @@ namespace sv {
 			width = res.x;
 			height = res.y;
 
-			_sv::window_set_position(0, 0);
-			_sv::window_set_size(width, height);
+			sv::window_set_position(0, 0);
+			sv::window_set_size(width, height);
 		}
 		else {
 			style = SV_STYLE_WINDOWED;
@@ -278,7 +278,7 @@ namespace sv {
 			bounds.w = monitor.y;
 		}
 		else {
-			bounds = _sv::window_get_last_bounds();
+			bounds = sv::window_get_last_bounds();
 		}
 		SetWindowPos((HWND)sv::window_get_handle(), 0u, bounds.x, bounds.y, bounds.z, bounds.w, 0);
 	}

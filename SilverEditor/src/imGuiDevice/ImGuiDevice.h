@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core.h"
+#include "core_editor.h"
 
 namespace sve {
 
@@ -17,7 +17,7 @@ namespace sve {
 
 		virtual void ResizeSwapChain() = 0;
 
-		virtual ImTextureID ParseImage(sv::Image& image) = 0;
+		virtual ImTextureID ParseImage(sv::GPUImage& image) = 0;
 
 		inline ImGuiContext* GetCtx() const noexcept { return m_Ctx; }
 

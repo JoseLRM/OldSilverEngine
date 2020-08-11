@@ -1,7 +1,9 @@
-#include "core.h"
+#include "core_editor.h"
 
 #include "viewport_manager.h"
 #include "editor.h"
+
+#include "scene/scene_internal.h"
 
 namespace sve {
 
@@ -10,10 +12,10 @@ namespace sve {
 
 	void ShowEntity(sv::Entity entity)
 	{
-		auto& entities = _sv::scene_ecs_get_entities();
-		auto& entityData = _sv::scene_ecs_get_entity_data();
+		auto& entities = sv::scene_ecs_get_entities();
+		auto& entityData = sv::scene_ecs_get_entity_data();
 
-		_sv::EntityData& ed = entityData[entity];
+		sv::EntityData& ed = entityData[entity];
 
 		bool empty = ed.childsCount == 0;
 		ImGuiTreeNodeFlags treeFlags = ImGuiTreeNodeFlags_OpenOnArrow | (empty ? ImGuiTreeNodeFlags_Bullet : ImGuiTreeNodeFlags_AllowItemOverlap);
@@ -51,14 +53,14 @@ namespace sve {
 
 	bool viewport_scene_hierarchy_display()
 	{
-		auto& entities = _sv::scene_ecs_get_entities();
-		auto& entityData = _sv::scene_ecs_get_entity_data();
+		auto& entities = sv::scene_ecs_get_entities();
+		auto& entityData = sv::scene_ecs_get_entity_data();
 
 
 		for (size_t i = 1; i < entities.size(); ++i) {
 
 			sv::Entity entity = entities[i];
-			_sv::EntityData& ed = entityData[entity];
+			sv::EntityData& ed = entityData[entity];
 
 			if (ed.parent == SV_INVALID_ENTITY) {
 				ShowEntity(entity);
@@ -109,15 +111,21 @@ namespace sve {
 
 	void ShowCameraComponentInfo(sv::CameraComponent* comp)
 	{
-		SV_REND_CAMERA_TYPE camType = comp->projection.GetCameraType();
+		sv::CameraType camType = comp->projection.cameraType;
 
-		if (ImGui::BeginCombo("Projection", (camType == SV_REND_CAMERA_TYPE_ORTHOGRAPHIC) ? "Orthographic" : "Perspective")) {
+		if (ImGui::BeginCombo("Projection", (camType == sv::CameraType_Orthographic) ? "Orthographic" : "Perspective")) {
 
-			if (camType == SV_REND_CAMERA_TYPE_ORTHOGRAPHIC) {
-				if (ImGui::Button("Perspective")) comp->projection.SetCameraType(SV_REND_CAMERA_TYPE_PERSPECTIVE);
+			if (camType == sv::CameraType_Orthographic) {
+				if (ImGui::Button("Perspective")) {
+					comp->projection.cameraType = sv::CameraType_Perspective;
+				}
 			}
-			else if (camType == SV_REND_CAMERA_TYPE_PERSPECTIVE) {
-				if (ImGui::Button("Orthographic")) comp->projection.SetCameraType(SV_REND_CAMERA_TYPE_ORTHOGRAPHIC);
+			else if (camType == sv::CameraType_Perspective) {
+				if (ImGui::Button("Orthographic")) {
+					comp->projection.cameraType = sv::CameraType_Orthographic;
+					comp->projection.orthographic.width = 10.f;
+					comp->projection.orthographic.height = 10.f;
+				}
 			}
 
 			ImGui::EndCombo();
@@ -125,14 +133,14 @@ namespace sve {
 
 		switch (camType)
 		{
-		case SV_REND_CAMERA_TYPE_ORTHOGRAPHIC:
+		case sv::CameraType_Orthographic:
 		{
-			float zoom = comp->projection.Orthographic_GetZoom();
+			float zoom = sv::renderer_compute_orthographic_zoom_get(comp->projection);
 			ImGui::DragFloat("Zoom", &zoom, 0.01f);
-			comp->projection.Orthographic_SetZoom(zoom);
+			sv::renderer_compute_orthographic_zoom_set(comp->projection, zoom);
 		}
 		break;
-		case SV_REND_CAMERA_TYPE_PERSPECTIVE:
+		case sv::CameraType_Perspective:
 			break;
 		}
 	}
@@ -165,9 +173,11 @@ namespace sve {
 		bool dynamic = comp->IsDynamic();
 		bool fixedRotation = comp->IsFixedRotation();
 
-		ImGui::DragFloat("Density", &density, 0.1f, 0.f);
+		ImGui::DragFloat("Density", &density, 0.1f);
 		ImGui::Checkbox("Dynamic", &dynamic);
 		ImGui::Checkbox("FixedRotation", &fixedRotation);
+
+		if (density < 0.f) density = 0.f;
 
 		comp->SetDensity(density);
 		comp->SetDynamic(dynamic);
@@ -184,8 +194,8 @@ namespace sve {
 
 	bool viewport_scene_entity_display()
 	{
-		auto& entities = _sv::scene_ecs_get_entities();
-		auto& entityData = _sv::scene_ecs_get_entity_data();
+		auto& entities = sv::scene_ecs_get_entities();
+		auto& entityData = sv::scene_ecs_get_entity_data();
 
 		if (g_SelectedEntity != SV_INVALID_ENTITY) {
 
@@ -199,7 +209,7 @@ namespace sve {
 
 			ImGui::Separator();
 
-			_sv::EntityData& ed = entityData[g_SelectedEntity];
+			sv::EntityData& ed = entityData[g_SelectedEntity];
 
 			// Show Transform Data
 			sv::Transform trans = sv::scene_ecs_entity_get_transform(g_SelectedEntity);
@@ -226,7 +236,7 @@ namespace sve {
 				size_t index;
 				index = ed.indices[i].second;
 
-				std::vector<ui8>& componentList = _sv::scene_ecs_get_components(compID);
+				std::vector<ui8>& componentList = sv::scene_ecs_get_components(compID);
 				sv::BaseComponent* comp = (sv::BaseComponent*)(&componentList[index]);
 
 				ImGui::Separator();
@@ -259,7 +269,7 @@ namespace sve {
 			}
 			if (ImGui::BeginCombo("Rmv", "Remove Component")) {
 
-				_sv::EntityData& ed = entityData[g_SelectedEntity];
+				sv::EntityData& ed = entityData[g_SelectedEntity];
 				for (ui32 i = 0; i < ed.indices.size(); ++i) {
 					sv::CompID ID = ed.indices[i].first;
 					const char* NAME = sv::ecs_components_get_name(ID);

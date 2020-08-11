@@ -1,12 +1,13 @@
 #include "core.h"
 
-#include "Scene.h"
+#include "scene.h"
+#include "scene_internal.h"
+#include "task_system.h"
 
-using namespace sv;
 
 ///////////////////////////////////// COMPONENTS MANAGEMENT ////////////////////////////////////////
 
-namespace _sv {
+namespace sv {
 
 	struct ComponentData {
 		const char* name;
@@ -44,12 +45,6 @@ namespace _sv {
 
 		return ID;
 	}
-
-}
-
-namespace sv {
-
-	using namespace _sv;
 
 	ui16 ecs_components_get_count()
 	{
@@ -102,11 +97,7 @@ namespace sv {
 		g_ComponentData[ID].copyFn(from, to);
 	}
 
-}
-
 ///////////////////////////////////////// ECS //////////////////////////////////////////////////////
-
-namespace _sv {
 
 	static Scene_internal* g_pScene = nullptr;
 
@@ -249,12 +240,6 @@ namespace _sv {
 		return g_pScene->ecs.components[ID];
 	}
 
-}
-
-namespace sv {
-
-	using namespace _sv;
-
 	Scene scene_create()
 	{
 		Scene_internal* scene = new Scene_internal();
@@ -267,9 +252,9 @@ namespace sv {
 		scene->ecs.entityData.emplace_back();
 		scene->ecs.entities.emplace_back(SV_INVALID_ENTITY);
 
-		SV_PHY_WORLD_DESC desc;
-		desc.gravity = { 0.f, -3.f, 0.f };
-		scene->physicsWorld = physics_world_create(&desc);
+		scene->physicsWorld = physics_world_create();
+
+		scene->renderWorld.renderLayers.resize(1u);
 
 		return scene;
 	}
@@ -308,9 +293,14 @@ namespace sv {
 		g_pScene->mainCamera = entity;
 	}
 
-	PhysicsWorld& scene_physics_world_get()
+	PhysicsWorld& scene_physicsWorld_get()
 	{
 		return g_pScene->physicsWorld;
+	}
+
+	RenderWorld& scene_renderWorld_get()
+	{
+		return g_pScene->renderWorld;
 	}
 
 	void scene_bind(Scene scene)
@@ -617,22 +607,22 @@ namespace sv {
 		entityData.indices.clear();
 	}
 
-	void UpdateLinearSystem(const SV_ECS_SYSTEM_DESC& desc, float dt);
+	void UpdateLinearSystem(const SystemDesc& desc, float dt);
 	void LinearSystem_OneRequest(SystemFunction system, CompID compID, float dt);
 	void LinearSystem(SystemFunction system, CompID* request, ui32 requestCount, CompID* optional, ui32 optionalCount, float dt);
-	void UpdateMultithreadedSystem(const SV_ECS_SYSTEM_DESC& desc, float dt);
+	void UpdateMultithreadedSystem(const SystemDesc& desc, float dt);
 	void MultithreadedSystem_OneRequest(SystemFunction system, CompID compID, float dt);
 	void PartialSystem_OneRequest(SystemFunction system, CompID compID, size_t offset, size_t size, float dt);
 	void MultithreadedSystem(SystemFunction system, CompID* request, ui32 requestCount, CompID* optional, ui32 optionalCount, float dt);
 	void PartialSystem(SystemFunction system, ui32 bestCompIndex, CompID* request, ui32 requestCount, CompID* optional, ui32 optionalCount, size_t offset, size_t size, float dt);
 	ui32 GetSortestComponentList(CompID* compIDs, ui32 count);
 
-	void scene_ecs_system_execute(const SV_ECS_SYSTEM_DESC* desc, ui32 count, float dt)
+	void scene_ecs_system_execute(const SystemDesc* desc, ui32 count, float dt)
 	{
 		if (count == 0) return;
 
 		if (count == 1) {
-			if (desc[0].executionMode == SV_ECS_SYSTEM_EXECUTION_MODE_MULTITHREADED) {
+			if (desc[0].executionMode == SystemExecutionMode_Multithreaded) {
 				UpdateMultithreadedSystem(desc[0], dt);
 			}
 			else {
@@ -644,7 +634,7 @@ namespace sv {
 			ThreadContext ctx;
 
 			for (ui32 i = 0; i < count; ++i) {
-				if (desc[i].executionMode == SV_ECS_SYSTEM_EXECUTION_MODE_PARALLEL) {
+				if (desc[i].executionMode == SystemExecutionMode_Parallel) {
 					task_execute([desc, i, dt]() {
 						UpdateLinearSystem(desc[i], dt);
 					}, &ctx);
@@ -653,10 +643,10 @@ namespace sv {
 
 			for (ui32 i = 0; i < count; ++i) {
 
-				if (desc[i].executionMode == SV_ECS_SYSTEM_EXECUTION_MODE_MULTITHREADED) {
+				if (desc[i].executionMode == SystemExecutionMode_Multithreaded) {
 					UpdateMultithreadedSystem(desc[i], dt);
 				}
-				else if (desc[i].executionMode == SV_ECS_SYSTEM_EXECUTION_MODE_SAFE) {
+				else if (desc[i].executionMode == SystemExecutionMode_Safe) {
 					UpdateLinearSystem(desc[i], dt);
 				}
 
@@ -666,7 +656,7 @@ namespace sv {
 		}
 	}
 
-	void UpdateLinearSystem(const SV_ECS_SYSTEM_DESC& desc, float dt)
+	void UpdateLinearSystem(const SystemDesc& desc, float dt)
 	{
 		if (desc.requestedComponentsCount == 0) return;
 
@@ -755,7 +745,7 @@ namespace sv {
 		}
 	}
 
-	void UpdateMultithreadedSystem(const SV_ECS_SYSTEM_DESC& desc, float dt)
+	void UpdateMultithreadedSystem(const SystemDesc& desc, float dt)
 	{
 		if (desc.requestedComponentsCount == 0) return;
 

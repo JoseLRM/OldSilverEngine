@@ -5,7 +5,8 @@
 #include "graphics_vulkan.h"
 #include "engine.h"
 
-namespace _sv {
+namespace sv {
+
 	void MemoryManager::Create(size_t size)
 	{
 		m_BufferSize = size;

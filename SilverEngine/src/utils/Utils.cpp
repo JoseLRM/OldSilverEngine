@@ -6,7 +6,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "..//external/stbi_lib.h"
 
-namespace _sv {
+namespace sv {
 
 	static std::chrono::steady_clock::time_point g_InitialTime;
 
@@ -24,12 +24,6 @@ namespace _sv {
 	{
 		return true;
 	}
-
-}
-
-namespace sv {
-
-	using namespace _sv;
 
 	// String
 	

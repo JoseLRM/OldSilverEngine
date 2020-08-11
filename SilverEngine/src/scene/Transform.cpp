@@ -1,92 +1,120 @@
 #include "core.h"
 
-#include "Scene.h"
+#include "scene_internal.h"
 
-using namespace _sv;
+#define Parse(x) reinterpret_cast<EntityTransform*>(x)
 
 namespace sv {
 
-	Transform::Transform(Entity entity, EntityTransform* transform)
+	Transform::Transform(Entity entity, void* transform)
 		: entity(entity), trans(transform) {}
-	void Transform::operator=(const Transform& other)
-	{
-		*trans = *other.trans;
+
+	const vec3& Transform::GetLocalPosition() const noexcept 
+	{ 
+		return *(vec3*)& Parse(trans)->localPosition;
+	}
+
+	const vec3& Transform::GetLocalRotation() const noexcept 
+	{ 
+		return *(vec3*)& Parse(trans)->localRotation;
+	}
+
+	const vec3& Transform::GetLocalScale() const noexcept 
+	{ 
+		return *(vec3*)& Parse(trans)->localScale;
+	}
+
+	XMVECTOR Transform::GetLocalPositionDXV() const noexcept 
+	{ 
+		return XMLoadFloat3(&Parse(trans)->localPosition);
+	}
+
+	XMVECTOR Transform::GetLocalRotationDXV() const noexcept 
+	{ 
+		return XMLoadFloat3(&Parse(trans)->localRotation);
+	}
+
+	XMVECTOR Transform::GetLocalScaleDXV() const noexcept 
+	{ 
+		return XMLoadFloat3(&Parse(trans)->localScale);
 	}
 
 	XMMATRIX Transform::GetLocalMatrix() const noexcept
 	{
-		return XMMatrixScalingFromVector(GetLocalScaleDXV()) * XMMatrixRotationRollPitchYawFromVector(XMVectorSet(trans->localRotation.x, trans->localRotation.y, trans->localRotation.z, 1.f))
-			* XMMatrixTranslation(trans->localPosition.x, trans->localPosition.y, trans->localPosition.z);
+		EntityTransform* t = Parse(trans);
+		return XMMatrixScalingFromVector(GetLocalScaleDXV()) * XMMatrixRotationRollPitchYawFromVector(XMVectorSet(t->localRotation.x, t->localRotation.y, t->localRotation.z, 1.f))
+			* XMMatrixTranslation(t->localPosition.x, t->localPosition.y, t->localPosition.z);
 	}
 
 	vec3 Transform::GetWorldPosition() noexcept
 	{
-		if (trans->modified) UpdateWorldMatrix();
-		return *(vec3*)& trans->worldMatrix._41;
+		if (Parse(trans)->modified) UpdateWorldMatrix();
+		return *(vec3*)& Parse(trans)->worldMatrix._41;
 	}
 	vec3 Transform::GetWorldRotation() noexcept
 	{
-		if (trans->modified) UpdateWorldMatrix();
+		if (Parse(trans)->modified) UpdateWorldMatrix();
 		return *(vec3*)& GetWorldRotationDXV();
 	}
 	vec3 Transform::GetWorldScale() noexcept
 	{
-		if (trans->modified) UpdateWorldMatrix();
-		return vec3(((vec3*)& trans->worldMatrix._11)->Mag(), ((vec3*)& trans->worldMatrix._21)->Mag(), ((vec3*)& trans->worldMatrix._31)->Mag());
+		EntityTransform* t = Parse(trans);
+		if (t->modified) UpdateWorldMatrix();
+		return vec3(((vec3*)& t->worldMatrix._11)->Mag(), ((vec3*)& t->worldMatrix._21)->Mag(), ((vec3*)& t->worldMatrix._31)->Mag());
 	}
 	XMVECTOR Transform::GetWorldPositionDXV() noexcept
 	{
-		if (trans->modified) UpdateWorldMatrix();
+		if (Parse(trans)->modified) UpdateWorldMatrix();
 
 		vec3 position = GetWorldPosition();
 		return XMVectorSet(position.x, position.y, position.z, 0.f);
 	}
 	XMVECTOR Transform::GetWorldRotationDXV() noexcept
 	{
-		if (trans->modified) UpdateWorldMatrix();
+		if (Parse(trans)->modified) UpdateWorldMatrix();
 		XMVECTOR scale;
 		XMVECTOR quatRotation;
 		XMVECTOR rotation;
 		float angle;
 		XMVECTOR position;
 
-		XMMatrixDecompose(&scale, &quatRotation, &position, XMLoadFloat4x4(&trans->worldMatrix));
+		XMMatrixDecompose(&scale, &quatRotation, &position, XMLoadFloat4x4(&Parse(trans)->worldMatrix));
 		XMQuaternionToAxisAngle(&rotation, &angle, quatRotation);
 
 		return rotation;
 	}
 	XMVECTOR Transform::GetWorldScaleDXV() noexcept
 	{
-		if (trans->modified) UpdateWorldMatrix();
+		if (Parse(trans)->modified) UpdateWorldMatrix();
 		XMVECTOR scale;
 		XMVECTOR rotation;
 		XMVECTOR position;
 
-		XMMatrixDecompose(&scale, &rotation, &position, XMLoadFloat4x4(&trans->worldMatrix));
+		XMMatrixDecompose(&scale, &rotation, &position, XMLoadFloat4x4(&Parse(trans)->worldMatrix));
 
 		return XMVectorAbs(scale);
 	}
 
 	XMMATRIX Transform::GetWorldMatrix() noexcept
 	{
-		if (trans->modified) UpdateWorldMatrix();
-		return XMLoadFloat4x4(&trans->worldMatrix);
+		if (Parse(trans)->modified) UpdateWorldMatrix();
+		return XMLoadFloat4x4(&Parse(trans)->worldMatrix);
 	}
 
 	void Transform::SetPosition(const vec3& position) noexcept
 	{
-		trans->modified = true;
-		trans->localPosition = *(XMFLOAT3*)& position;
+		Parse(trans)->modified = true;
+		Parse(trans)->localPosition = *(XMFLOAT3*)& position;
 	}
 	void Transform::SetRotation(const vec3& rotation) noexcept
 	{
-		trans->modified = true;
-		trans->localRotation = *(XMFLOAT3*)& rotation;
+		Parse(trans)->modified = true;
+		Parse(trans)->localRotation = *(XMFLOAT3*)& rotation;
 	}
 	void Transform::SetScale(const vec3& scale) noexcept
 	{
-		trans->modified = true;
-		trans->localScale = *(XMFLOAT3*)& scale;
+		Parse(trans)->modified = true;
+		Parse(trans)->localScale = *(XMFLOAT3*)& scale;
 	}
 
 	void Transform::SetWorldTransformPRS(const vec3& position, const vec3& rotation, const vec3& scale) noexcept
@@ -95,19 +123,19 @@ namespace sv {
 	void Transform::SetWorldTransformPR(const vec3& position, const vec3& rotation) noexcept
 	{
 		Entity parent = scene_ecs_entity_get_parent(entity);
-		trans->modified = true;
+		Parse(trans)->modified = true;
 
 		if (parent == SV_INVALID_ENTITY) {
-			trans->localPosition = *reinterpret_cast<const XMFLOAT3*>(&position);
-			trans->localRotation = *reinterpret_cast<const XMFLOAT3*>(&rotation);
-			
+			Parse(trans)->localPosition = *reinterpret_cast<const XMFLOAT3*>(&position);
+			Parse(trans)->localRotation = *reinterpret_cast<const XMFLOAT3*>(&rotation);
 		}
 	}
 
 	void Transform::UpdateWorldMatrix()
 	{
-		trans->modified = false;
-		trans->wakePhysics = true;
+		EntityTransform* t = Parse(trans);
+		t->modified = false;
+		t->wakePhysics = true;
 
 		XMMATRIX m = GetLocalMatrix();
 
@@ -120,7 +148,7 @@ namespace sv {
 			XMMATRIX mp = parentTransform.GetWorldMatrix();
 			m = m * mp;
 		}
-		XMStoreFloat4x4(&trans->worldMatrix, m);
+		XMStoreFloat4x4(&t->worldMatrix, m);
 
 		// Set all the sons modified
 		if (entityData.childsCount == 0) return;

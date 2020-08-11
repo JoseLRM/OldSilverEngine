@@ -1,32 +1,26 @@
 #pragma once
 
-#include "..//core.h"
-#include "scene_types.h"
-
 namespace sv {
 
 	class Transform {
-		_sv::EntityTransform* trans;
+		void* trans;
 
 	public:
-		Transform(Entity entity, _sv::EntityTransform* transform);
+		Transform(Entity entity, void* transform);
 		~Transform() = default;
 
 		Transform(const Transform& other) = default;
 		Transform(Transform&& other) = default;
 
-		void operator=(const Transform& other);
-		void operator=(Transform&& other) = delete;
-
 		const Entity entity = 0;
 
 		// getters
-		inline const vec3& GetLocalPosition() const noexcept { return *(vec3*)& trans->localPosition; }
-		inline const vec3& GetLocalRotation() const noexcept { return *(vec3*)& trans->localRotation; }
-		inline const vec3& GetLocalScale() const noexcept { return *(vec3*)& trans->localScale; }
-		inline XMVECTOR GetLocalPositionDXV() const noexcept { return XMLoadFloat3(&trans->localPosition); }
-		inline XMVECTOR GetLocalRotationDXV() const noexcept { return XMLoadFloat3(&trans->localRotation); }
-		inline XMVECTOR GetLocalScaleDXV() const noexcept { return XMLoadFloat3(&trans->localScale); }
+		const vec3& GetLocalPosition() const noexcept;
+		const vec3& GetLocalRotation() const noexcept;
+		const vec3& GetLocalScale() const noexcept;
+		XMVECTOR GetLocalPositionDXV() const noexcept;
+		XMVECTOR GetLocalRotationDXV() const noexcept;
+		XMVECTOR GetLocalScaleDXV() const noexcept;
 		XMMATRIX GetLocalMatrix() const noexcept;
 
 		vec3 GetWorldPosition() noexcept;
@@ -37,7 +31,7 @@ namespace sv {
 		XMVECTOR GetWorldScaleDXV() noexcept;
 		XMMATRIX GetWorldMatrix() noexcept;
 
-		inline _sv::EntityTransform& GetInternal() const noexcept { return *trans; }
+		inline void* GetInternal() const noexcept { return trans; }
 
 		// setters
 		void SetPosition(const vec3& position) noexcept;

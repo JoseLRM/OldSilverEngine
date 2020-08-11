@@ -1,22 +1,23 @@
 #include "core.h"
-#include "Engine.h"
 
-#include "renderer_components.h"
-#include "graphics/graphics_properties.h"
+#include "renderer_internal.h"
+#include "scene.h"
+#include "graphics/graphics_internal.h"
+#include "components.h"
 
-using namespace sv;
-
-namespace _sv {
+namespace sv {
 
 	static uvec2				g_Resolution;
-	static SV_REND_OUTPUT_MODE	g_OutputMode;
+	static RendererOutputMode	g_OutputMode;
 	
 	static Offscreen					g_Offscreen;
 	static PostProcessing_Default		g_PP_OffscreenToBackBuffer;
 
 	static DrawData	g_DrawData;
 
-	bool renderer_initialize(const SV_RENDERER_INITIALIZATION_DESC& desc)
+	// MAIN FUNCTIONS
+
+	bool renderer_initialize(const InitializationRendererDesc& desc)
 	{
 		// Initial Resolution
 		g_Resolution = uvec2(desc.resolutionWidth, desc.resolutionHeight);
@@ -29,22 +30,22 @@ namespace _sv {
 		svCheck(renderer_offscreen_create(g_Resolution.x, g_Resolution.y, g_Offscreen));
 
 		//TODO: swapchain format
-		//svCheck(g_PP_OffscreenToBackBuffer.Create(backBuffer->GetFormat(), SV_GFX_IMAGE_LAYOUT_UNDEFINED, SV_GFX_IMAGE_LAYOUT_RENDER_TARGET));
+		//svCheck(g_PP_OffscreenToBackBuffer.Create(backBuffer->GetFormat(), GPUImageLayout_UNDEFINED, GPUImageLayout_RENDER_TARGET));
 
-		svCheck(renderer_postprocessing_initialize());
-		svCheck(renderer_layer_initialize());
+		svCheck(postprocessing_initialize());
+		svCheck(renderer2D_initialize());
 
-		svCheck(renderer_postprocessing_default_create(SV_GFX_FORMAT_B8G8R8A8_SRGB, SV_GFX_IMAGE_LAYOUT_UNDEFINED, SV_GFX_IMAGE_LAYOUT_RENDER_TARGET, g_PP_OffscreenToBackBuffer));
+		svCheck(postprocessing_default_create(Format_B8G8R8A8_SRGB, GPUImageLayout_Undefined, GPUImageLayout_RenderTarget, g_PP_OffscreenToBackBuffer));
 
 		return true;
 	}
 
 	bool renderer_close()
 	{
-		svCheck(renderer_postprocessing_default_destroy(g_PP_OffscreenToBackBuffer));
+		svCheck(postprocessing_default_destroy(g_PP_OffscreenToBackBuffer));
 
-		svCheck(renderer_postprocessing_close());
-		svCheck(renderer_layer_close());
+		svCheck(postprocessing_close());
+		svCheck(renderer2D_close());
 
 		svCheck(renderer_offscreen_destroy(g_Offscreen));
 
@@ -60,10 +61,10 @@ namespace _sv {
 		CommandList cmd = graphics_commandlist_last();
 
 		// PostProcess to BackBuffer
-		Image& backBuffer = graphics_swapchain_acquire_image();
+		GPUImage& backBuffer = graphics_swapchain_acquire_image();
 
-		if (g_OutputMode == SV_REND_OUTPUT_MODE_BACK_BUFFER) {
-			renderer_postprocessing_default_render(g_PP_OffscreenToBackBuffer, g_Offscreen.renderTarget, backBuffer, cmd);
+		if (g_OutputMode == RendererOutputMode_backBuffer) {
+			postprocessing_default_render(g_PP_OffscreenToBackBuffer, g_Offscreen.renderTarget, backBuffer, cmd);
 		}
 
 		// End
@@ -74,25 +75,25 @@ namespace _sv {
 	bool renderer_offscreen_create(ui32 width, ui32 height, Offscreen& offscreen)
 	{
 		// Create Render Target
-		SV_GFX_IMAGE_DESC imageDesc;
+		GPUImageDesc imageDesc;
 		imageDesc.format = SV_REND_OFFSCREEN_FORMAT;
-		imageDesc.layout = SV_GFX_IMAGE_LAYOUT_SHADER_RESOUCE;
+		imageDesc.layout = GPUImageLayout_ShaderResource;
 		imageDesc.dimension = 2u;
 		imageDesc.width = width;
 		imageDesc.height = height;
 		imageDesc.depth = 1u;
 		imageDesc.layers = 1u;
 		imageDesc.CPUAccess = 0u;
-		imageDesc.usage = SV_GFX_USAGE_STATIC;
+		imageDesc.usage = ResourceUsage_Static;
 		imageDesc.pData = nullptr;
-		imageDesc.type = SV_GFX_IMAGE_TYPE_RENDER_TARGET | SV_GFX_IMAGE_TYPE_SHADER_RESOURCE;
+		imageDesc.type = GPUImageType_RenderTarget | GPUImageType_ShaderResource;
 
 		svCheck(graphics_image_create(&imageDesc, offscreen.renderTarget));
 
 		// Create Depth Stencil
-		imageDesc.format = SV_GFX_FORMAT_D24_UNORM_S8_UINT;
-		imageDesc.layout = SV_GFX_IMAGE_LAYOUT_DEPTH_STENCIL;
-		imageDesc.type = SV_GFX_IMAGE_TYPE_DEPTH_STENCIL;
+		imageDesc.format = Format_D24_UNORM_S8_UINT;
+		imageDesc.layout = GPUImageLayout_DepthStencil;
+		imageDesc.type = GPUImageType_DepthStencil;
 
 		svCheck(graphics_image_create(&imageDesc, offscreen.depthStencil));
 
@@ -111,16 +112,10 @@ namespace _sv {
 		return g_Offscreen;
 	}
 
-	DrawData& renderer_drawdata_get()
+	DrawData& renderer_drawData_get()
 	{
 		return g_DrawData;
 	}
-
-}
-
-namespace sv {
-
-	using namespace _sv;
 
 	void renderer_resolution_set(ui32 width, ui32 height)
 	{
@@ -140,13 +135,17 @@ namespace sv {
 
 	void renderer_scene_begin()
 	{
-		renderer_layer_begin();
 
+		// Clear last draw data
 		g_DrawData.cameras.clear();
 		g_DrawData.currentCamera = {};
 		g_DrawData.viewMatrix = XMMatrixIdentity();
 		g_DrawData.projectionMatrix = XMMatrixIdentity();
 		g_DrawData.viewProjectionMatrix = XMMatrixIdentity();
+		g_DrawData.sprites.Reset();
+		//g_DrawData.meshes.Reset();
+
+		renderer2D_begin();
 	}
 
 	void renderer_scene_end()
@@ -162,6 +161,9 @@ namespace sv {
 			SV_ASSERT(mainCameraCount == 1);
 		}
 #endif
+
+		renderer2D_end();
+
 		// Present scene cameras
 		{
 			auto& cameras = g_DrawData.cameras;
@@ -171,56 +173,40 @@ namespace sv {
 				renderer_present(c.projection, c.viewMatrix, c.pOffscreen);
 			}
 		}
-
-		// End render layers
-		renderer_layer_end();
 	}
 
 	void renderer_scene_draw_scene()
 	{
 		// Get Cameras
 		{
-			auto addCameraFn = [](Entity entity, BaseComponent** comp, float dt) 
-			{
-				CameraComponent& camComp = *reinterpret_cast<CameraComponent*>(comp[0]);
-				sv::Transform trans = scene_ecs_entity_get_transform(entity);
+			EntityView<CameraComponent> cameras;
 
-				if (sv::scene_camera_get() == entity) {
-					g_DrawData.cameras.push_back({ camComp.projection, nullptr, trans.GetWorldMatrix() });
+			for (auto& camera : cameras) {
+				sv::Transform trans = scene_ecs_entity_get_transform(camera.entity);
+
+				if (sv::scene_camera_get() == camera.entity) {
+					g_DrawData.cameras.push_back({ camera.projection, nullptr, trans.GetWorldMatrix() });
 				}
-				else if (camComp.HasOffscreen()) {
-					Offscreen* offscreen = camComp.GetOffscreen();
-					g_DrawData.cameras.push_back({ camComp.projection, offscreen, trans.GetWorldMatrix() });
+				else if (camera.HasOffscreen()) {
+					Offscreen* offscreen = camera.GetOffscreen();
+					g_DrawData.cameras.push_back({ camera.projection, offscreen, trans.GetWorldMatrix() });
 				}
-			};
-
-			CompID req[] = {
-				CameraComponent::ID
-			};
-
-			SV_ECS_SYSTEM_DESC cameraSystem;
-			cameraSystem.executionMode = SV_ECS_SYSTEM_EXECUTION_MODE_SAFE;
-			cameraSystem.system = addCameraFn;
-			cameraSystem.pRequestedComponents = req;
-			cameraSystem.requestedComponentsCount = 1u;
-			cameraSystem.optionalComponentsCount = 0u;
-
-			scene_ecs_system_execute(&cameraSystem, 1u, 0.f);
+			}
 		}
 
-		// Render layers
-		renderer_layer_prepare_scene();
+		// Render Layers
+		renderer2D_prepare_scene();
 	}
 
 	//////////////////////////////// RENDER FUNCTIONS ////////////////////////////////////////////////
 
-	void renderer_present(CameraProjection projection, XMMATRIX viewMatrix, _sv::Offscreen* pOffscreen)
+	void renderer_present(CameraProjection projection, XMMATRIX viewMatrix, Offscreen* pOffscreen)
 	{
 		// Set Camera Values
 		g_DrawData.currentCamera.projection = projection;
 		g_DrawData.currentCamera.viewMatrix = viewMatrix;
 		g_DrawData.viewMatrix = viewMatrix;
-		g_DrawData.projectionMatrix = projection.GetProjectionMatrix();
+		g_DrawData.projectionMatrix = renderer_compute_projection_matrix(projection);
 		g_DrawData.viewProjectionMatrix = g_DrawData.viewMatrix * g_DrawData.projectionMatrix;
 
 		// Set Output Ptr
@@ -239,10 +225,10 @@ namespace sv {
 		//TODO: clear offscreen here :)
 
 		// this is not good for performance - remember to do image barrier here
-		graphics_image_clear(offscreen.renderTarget, SV_GFX_IMAGE_LAYOUT_SHADER_RESOUCE, SV_GFX_IMAGE_LAYOUT_RENDER_TARGET, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
-		graphics_image_clear(offscreen.depthStencil, SV_GFX_IMAGE_LAYOUT_DEPTH_STENCIL, SV_GFX_IMAGE_LAYOUT_DEPTH_STENCIL, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
+		graphics_image_clear(offscreen.renderTarget, GPUImageLayout_ShaderResource, GPUImageLayout_RenderTarget, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
+		graphics_image_clear(offscreen.depthStencil, GPUImageLayout_DepthStencil, GPUImageLayout_DepthStencil, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
 
-		graphics_set_pipeline_mode(SV_GFX_PIPELINE_MODE_GRAPHICS, cmd);
+		graphics_set_pipeline_mode(GraphicsPipelineMode_Graphics, cmd);
 
 		Viewport viewport = offscreen.GetViewport();
 		graphics_set_viewports(&viewport, 1u, cmd);
@@ -250,10 +236,11 @@ namespace sv {
 		Scissor scissor = offscreen.GetScissor();
 		graphics_set_scissors(&scissor, 1u, cmd);
 
-		renderer_layer_render(cmd);
-		
+		// Sprite rendering
+		renderer2D_sprite_render(g_DrawData.sprites.data(), g_DrawData.sprites.Size(), cmd);
+
 		// Offscreen layout: from render target to shader resource
-		GPUBarrier barrier = GPUBarrier::Image(offscreen.renderTarget, SV_GFX_IMAGE_LAYOUT_RENDER_TARGET, SV_GFX_IMAGE_LAYOUT_SHADER_RESOUCE);
+		GPUBarrier barrier = GPUBarrier::Image(offscreen.renderTarget, GPUImageLayout_RenderTarget, GPUImageLayout_ShaderResource);
 		graphics_barrier(&barrier, 1u, cmd);
 
 	}

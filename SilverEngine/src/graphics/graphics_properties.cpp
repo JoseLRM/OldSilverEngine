@@ -1,10 +1,8 @@
 #include "core.h"
 
-#include "graphics_properties.h"
+#include "graphics_internal.h"
 
-using namespace sv;
-
-namespace _sv {
+namespace sv {
 
 	static GraphicsProperties g_Properties;
 
@@ -12,12 +10,6 @@ namespace _sv {
 	{
 		g_Properties = props;
 	}
-
-}
-
-namespace sv {
-
-	using namespace _sv;
 
 	GraphicsProperties graphics_properties_get()
 	{

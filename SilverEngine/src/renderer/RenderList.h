@@ -134,6 +134,15 @@ namespace sv {
 			m_Pos = 0u;
 		}
 
+		inline T* data()
+		{
+			return m_Data;
+		}
+		inline const T* data() const
+		{
+			return m_Data;
+		}
+
 	private:
 		void ReserveRequest()
 		{

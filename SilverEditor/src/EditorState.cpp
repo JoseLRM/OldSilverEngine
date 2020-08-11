@@ -1,4 +1,4 @@
-#include "core.h"
+#include "core_editor.h"
 
 #include "EditorState.h"
 #include "editor.h"
@@ -19,10 +19,12 @@ namespace sve {
 		sv::scene_bind(m_Scene);
 
 		sv::Entity mainCamera = sv::scene_ecs_entity_create();
-		sv::scene_ecs_component_add<sv::CameraComponent>(mainCamera, SV_REND_CAMERA_TYPE_ORTHOGRAPHIC);
+		sv::scene_ecs_component_add<sv::CameraComponent>(mainCamera, sv::CameraType_Orthographic);
 		sv::scene_ecs_component_add<sv::NameComponent>(mainCamera, "Main Camera");
 		sv::CameraComponent* camComp = sv::scene_ecs_component_get<sv::CameraComponent>(mainCamera);
-		camComp->projection.Orthographic_SetZoom(5.f);
+		sv::renderer_compute_orthographic_zoom_set(camComp->projection, 5.f);
+		camComp->projection.orthographic.width = 10.f;
+		camComp->projection.orthographic.height = 10.f;
 
 		sv::scene_camera_set(mainCamera);
 
@@ -50,7 +52,7 @@ namespace sve {
 		}
 
 		// Debug camera controller
-		float zoom = m_DebugCamera.camera.projection.Orthographic_GetZoom();
+		float zoom = sv::renderer_compute_orthographic_zoom_get(m_DebugCamera.camera.projection);
 		float force = 15.f * (zoom * 0.05f) * dt;
 		float zoomForce = 20.f * dt * (zoom * 0.1f);
 
@@ -74,8 +76,8 @@ namespace sve {
 			if (sv::input_key(SV_KEY_SHIFT)) {
 				zoom -= zoomForce;
 			}
-			m_DebugCamera.camera.projection.Orthographic_SetZoom(zoom);
 
+			sv::renderer_compute_orthographic_zoom_set(m_DebugCamera.camera.projection, zoom);
 		}
 	}
 

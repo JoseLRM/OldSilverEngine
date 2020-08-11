@@ -56,9 +56,9 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\VulkanSDK\1.2.141.2\Include;$(SolutionDir)SilverEngine\;$(SolutionDir)$(ProjectName)\src\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\VulkanSDK\1.2.141.2\Include;$(SolutionDir)SilverEngine\src\;$(SolutionDir)$(ProjectName)\src\</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>core.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile>core_editor.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
@@ -75,9 +75,9 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\VulkanSDK\1.2.141.2\Include;$(SolutionDir)SilverEngine\;$(SolutionDir)$(ProjectName)\src\</AdditionalIncludeDirectories>
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <PrecompiledHeaderFile>core.h</PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>C:\VulkanSDK\1.2.141.2\Include;$(SolutionDir)SilverEngine\src\;$(SolutionDir)$(ProjectName)\src\</AdditionalIncludeDirectories>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>core_editor.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
@@ -89,45 +89,45 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="external\ImGui\imgui.cpp">
+    <ClCompile Include="src\external\ImGui\imgui.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="external\ImGui\imgui_demo.cpp">
+    <ClCompile Include="src\external\ImGui\imgui_demo.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="external\ImGui\imgui_draw.cpp">
+    <ClCompile Include="src\external\ImGui\imgui_draw.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="external\ImGui\imgui_impl_dx11.cpp">
+    <ClCompile Include="src\external\ImGui\imgui_impl_dx11.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="external\ImGui\imgui_impl_vulkan.cpp">
+    <ClCompile Include="src\external\ImGui\imgui_impl_vulkan.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="external\ImGui\imgui_impl_win32.cpp">
+    <ClCompile Include="src\external\ImGui\imgui_impl_win32.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="external\ImGui\imgui_widgets.cpp">
+    <ClCompile Include="src\external\ImGui\imgui_widgets.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\core.cpp">
+    <ClCompile Include="src\core_editor.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">core.h</PrecompiledHeaderFile>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">core.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">core_editor.h</PrecompiledHeaderFile>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">core_editor.h</PrecompiledHeaderFile>
     </ClCompile>
     <ClCompile Include="src\editor.cpp" />
     <ClCompile Include="src\imGuiDevice\ImGuiDevice.cpp" />
     <ClCompile Include="src\imGuiDevice\ImGuiDevice_vk.cpp">
-      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">core.h</PrecompiledHeaderFile>
-      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">core.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">core_editor.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">core_editor.h</PrecompiledHeaderFile>
     </ClCompile>
     <ClCompile Include="src\Main.cpp" />
     <ClCompile Include="src\EditorState.cpp" />
@@ -137,17 +137,17 @@
     <ClCompile Include="src\viewports\viewport_scene.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="config.h" />
-    <ClInclude Include="external\ImGui\imconfig.h" />
-    <ClInclude Include="external\ImGui\imgui.h" />
-    <ClInclude Include="external\ImGui\imgui_impl_dx11.h" />
-    <ClInclude Include="external\ImGui\imgui_impl_vulkan.h" />
-    <ClInclude Include="external\ImGui\imgui_impl_win32.h" />
-    <ClInclude Include="external\ImGui\imgui_internal.h" />
-    <ClInclude Include="external\ImGui\imstb_rectpack.h" />
-    <ClInclude Include="external\ImGui\imstb_textedit.h" />
-    <ClInclude Include="external\ImGui\imstb_truetype.h" />
-    <ClInclude Include="src\core.h" />
+    <ClInclude Include="config_editor.h" />
+    <ClInclude Include="src\external\ImGui\imconfig.h" />
+    <ClInclude Include="src\external\ImGui\imgui.h" />
+    <ClInclude Include="src\external\ImGui\imgui_impl_dx11.h" />
+    <ClInclude Include="src\external\ImGui\imgui_impl_vulkan.h" />
+    <ClInclude Include="src\external\ImGui\imgui_impl_win32.h" />
+    <ClInclude Include="src\external\ImGui\imgui_internal.h" />
+    <ClInclude Include="src\external\ImGui\imstb_rectpack.h" />
+    <ClInclude Include="src\external\ImGui\imstb_textedit.h" />
+    <ClInclude Include="src\external\ImGui\imstb_truetype.h" />
+    <ClInclude Include="src\core_editor.h" />
     <ClInclude Include="src\editor.h" />
     <ClInclude Include="src\EditorApplication.h" />
     <ClInclude Include="src\imGuiDevice\ImGuiDevice_vk.h" />
@@ -156,7 +156,7 @@
     <ClInclude Include="src\viewports\viewport_manager.h" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="external\ImGui\LICENSE.txt" />
+    <Text Include="src\external\ImGui\LICENSE.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

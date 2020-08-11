@@ -1,11 +1,11 @@
 #pragma once
 
-#include "..//graphics.h"
+#include "..//graphics_internal.h"
 #include "vulkan_impl.h"
 #include "graphics_vulkan_conversions.h"
 #include "graphics_vulkan_memory.h"
 
-namespace _sv {
+namespace sv {
 
 	class Graphics_vk;
 
@@ -41,14 +41,14 @@ namespace _sv {
 	//////////////////////////////////////////////////////////// PRIMITIVES ////////////////////////////////////////////////////////////
 
 	// Buffer
-	struct Buffer_vk : public _sv::Buffer_internal {
+	struct Buffer_vk : public GPUBuffer_internal {
 		VkBuffer				buffer;
 		VmaAllocation			allocation;
 		VkDescriptorBufferInfo	buffer_info;
 		MemoryManager			memory;
 	};
 	// Image
-	struct Image_vk : public _sv::Image_internal {
+	struct Image_vk : public GPUImage_internal {
 		VmaAllocation			allocation;
 		VkImage					image = VK_NULL_HANDLE;
 		VkImageView				renderTargetView = VK_NULL_HANDLE;
@@ -58,30 +58,30 @@ namespace _sv {
 		VkDescriptorImageInfo	image_info;
 	};
 	// Sampler
-	struct Sampler_vk : public _sv::Sampler_internal {
+	struct Sampler_vk : public Sampler_internal {
 		VkSampler				sampler = VK_NULL_HANDLE;
 		VkDescriptorImageInfo	image_info;
 	};
 	// Shader
-	struct Shader_vk : public _sv::Shader_internal {
+	struct Shader_vk : public Shader_internal {
 		VkShaderModule								module = VK_NULL_HANDLE;
 		std::vector<VkDescriptorSetLayoutBinding>	bindings;
 		std::map<std::string, ui32>					semanticNames;
 		std::vector<ui32>							bindingsLocation;
 	};
 	// RenderPass
-	struct RenderPass_vk : public _sv::RenderPass_internal {
+	struct RenderPass_vk : public RenderPass_internal {
 		VkRenderPass					renderPass;
 		std::map<size_t, VkFramebuffer> frameBuffers;
 	};
 	// GraphicsPipeline
-	struct GraphicsPipeline_vk : public _sv::GraphicsPipeline_internal {
+	struct GraphicsPipeline_vk : public GraphicsPipeline_internal {
 		size_t hash;
 	};
 
 	//////////////////////////////////////////////////////////// CONSTRUCTOR & DESTRUCTOR ////////////////////////////////////////////////////////////
 
-	void* VulkanConstructor(SV_GFX_PRIMITIVE type, const void* desc);
+	void* VulkanConstructor(GraphicsPrimitiveType type, const void* desc);
 	bool VulkanDestructor(sv::Primitive& primitive);
 
 	//////////////////////////////////////////////////////////// GRAPHICS API ////////////////////////////////////////////////////////////
@@ -144,7 +144,7 @@ namespace _sv {
 		sv::Primitive						backBufferImage;
 	};
 
-	class Graphics_vk : public _sv::GraphicsDevice {
+	class Graphics_vk : public GraphicsDevice {
 
 		VkInstance					m_Instance = VK_NULL_HANDLE;
 		VkDevice					m_Device = VK_NULL_HANDLE;
@@ -185,7 +185,7 @@ namespace _sv {
 		std::mutex							m_PipelinesMutex;
 
 	public:
-		bool Initialize(const SV_GRAPHICS_INITIALIZATION_DESC& desc) override;
+		bool Initialize(const InitializationGraphicsDesc& desc) override;
 		bool Close() override;
 
 	private:
@@ -221,12 +221,12 @@ namespace _sv {
 		inline SwapChain& GetSwapChain() noexcept { return m_SwapChain; }
 
 		// Primitive Creation
-		bool CreateBuffer(Buffer_vk& buffer, const SV_GFX_BUFFER_DESC& desc);
-		bool CreateImage(Image_vk& image, const SV_GFX_IMAGE_DESC& desc);
-		bool CreateSampler(Sampler_vk& sampler, const SV_GFX_SAMPLER_DESC& desc);
-		bool CreateShader(Shader_vk& shader, const SV_GFX_SHADER_DESC& desc);
-		bool CreateRenderPass(RenderPass_vk& renderPass, const SV_GFX_RENDERPASS_DESC& desc);
-		bool CreateGraphicsPipeline(GraphicsPipeline_vk& graphicsPipeline, const SV_GFX_GRAPHICS_PIPELINE_DESC& desc);
+		bool CreateBuffer(Buffer_vk& buffer, const GPUBufferDesc& desc);
+		bool CreateImage(Image_vk& image, const GPUImageDesc& desc);
+		bool CreateSampler(Sampler_vk& sampler, const SamplerDesc& desc);
+		bool CreateShader(Shader_vk& shader, const ShaderDesc& desc);
+		bool CreateRenderPass(RenderPass_vk& renderPass, const RenderPassDesc& desc);
+		bool CreateGraphicsPipeline(GraphicsPipeline_vk& graphicsPipeline, const GraphicsPipelineDesc& desc);
 
 		ui64 m_IDCount = 0u;
 		std::mutex m_IDMutex;
@@ -249,7 +249,7 @@ namespace _sv {
 		void EndRenderPass(sv::CommandList cmd) override;
 
 		void ResizeSwapChain() override;
-		sv::Image& AcquireSwapChainImage() override;
+		GPUImage& AcquireSwapChainImage() override;
 		void WaitGPU() override;
 
 		void BeginFrame() override;
@@ -259,8 +259,8 @@ namespace _sv {
 		void Draw(ui32 vertexCount, ui32 instanceCount, ui32 startVertex, ui32 startInstance, sv::CommandList cmd) override;
 		void DrawIndexed(ui32 indexCount, ui32 instanceCount, ui32 startIndex, ui32 startVertex, ui32 startInstance, sv::CommandList cmd) override;
 
-		void ClearImage(sv::Image& image, SV_GFX_IMAGE_LAYOUT oldLayout, SV_GFX_IMAGE_LAYOUT newLayout, const sv::Color4f& clearColor, float depth, ui32 stencil, sv::CommandList cmd) override;
-		void UpdateBuffer(sv::Buffer& buffer, void* pData, ui32 size, ui32 offset, sv::CommandList cmd) override;
+		void ClearImage(GPUImage& image, GPUImageLayout oldLayout, GPUImageLayout newLayout, const sv::Color4f& clearColor, float depth, ui32 stencil, sv::CommandList cmd) override;
+		void UpdateBuffer(GPUBuffer& buffer, void* pData, ui32 size, ui32 offset, sv::CommandList cmd) override;
 		void Barrier(const sv::GPUBarrier* barriers, ui32 count, sv::CommandList cmd) override;
 
 		// CommandBuffers
@@ -282,9 +282,9 @@ namespace _sv {
 		// Shader Layout
 
 		void LoadSpirv_SemanticNames(spirv_cross::Compiler& compiler, spirv_cross::ShaderResources& shaderResources, std::map<std::string, ui32>& semanticNames);
-		void LoadSpirv_Samplers(spirv_cross::Compiler& compiler, spirv_cross::ShaderResources& shaderResources, SV_GFX_SHADER_TYPE shaderType, std::vector<VkDescriptorSetLayoutBinding>& bindings);
-		void LoadSpirv_Images(spirv_cross::Compiler& compiler, spirv_cross::ShaderResources& shaderResources, SV_GFX_SHADER_TYPE shaderType, std::vector<VkDescriptorSetLayoutBinding>& bindings);
-		void LoadSpirv_Uniforms(spirv_cross::Compiler& compiler, spirv_cross::ShaderResources& shaderResources, SV_GFX_SHADER_TYPE shaderType, std::vector<VkDescriptorSetLayoutBinding>& bindings);
+		void LoadSpirv_Samplers(spirv_cross::Compiler& compiler, spirv_cross::ShaderResources& shaderResources, ShaderType shaderType, std::vector<VkDescriptorSetLayoutBinding>& bindings);
+		void LoadSpirv_Images(spirv_cross::Compiler& compiler, spirv_cross::ShaderResources& shaderResources, ShaderType shaderType, std::vector<VkDescriptorSetLayoutBinding>& bindings);
+		void LoadSpirv_Uniforms(spirv_cross::Compiler& compiler, spirv_cross::ShaderResources& shaderResources, ShaderType shaderType, std::vector<VkDescriptorSetLayoutBinding>& bindings);
 
 	};
 

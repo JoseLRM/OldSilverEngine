@@ -2,19 +2,9 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="src\Main.cpp" />
-    <ClCompile Include="src\core.cpp">
-      <Filter>System</Filter>
-    </ClCompile>
     <ClCompile Include="src\imGuiDevice\ImGuiDevice_vk.cpp" />
-    <ClCompile Include="external\ImGui\imgui.cpp" />
-    <ClCompile Include="external\ImGui\imgui_demo.cpp" />
-    <ClCompile Include="external\ImGui\imgui_draw.cpp" />
-    <ClCompile Include="external\ImGui\imgui_impl_dx11.cpp" />
-    <ClCompile Include="external\ImGui\imgui_impl_win32.cpp" />
-    <ClCompile Include="external\ImGui\imgui_widgets.cpp" />
     <ClCompile Include="src\editor.cpp" />
     <ClCompile Include="src\imGuiDevice\ImGuiDevice.cpp" />
-    <ClCompile Include="external\ImGui\imgui_impl_vulkan.cpp" />
     <ClCompile Include="src\EditorState.cpp">
       <Filter>System</Filter>
     </ClCompile>
@@ -22,31 +12,41 @@
     <ClCompile Include="src\viewports\viewport_scene.cpp" />
     <ClCompile Include="src\viewports\viewport_game.cpp" />
     <ClCompile Include="src\viewports\viewport_console.cpp" />
+    <ClCompile Include="src\core_editor.cpp">
+      <Filter>System</Filter>
+    </ClCompile>
+    <ClCompile Include="src\external\ImGui\imgui.cpp" />
+    <ClCompile Include="src\external\ImGui\imgui_demo.cpp" />
+    <ClCompile Include="src\external\ImGui\imgui_draw.cpp" />
+    <ClCompile Include="src\external\ImGui\imgui_impl_dx11.cpp" />
+    <ClCompile Include="src\external\ImGui\imgui_impl_vulkan.cpp" />
+    <ClCompile Include="src\external\ImGui\imgui_impl_win32.cpp" />
+    <ClCompile Include="src\external\ImGui\imgui_widgets.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="config.h" />
-    <ClInclude Include="src\core.h">
-      <Filter>System</Filter>
-    </ClInclude>
     <ClInclude Include="src\imGuiDevice\ImGuiDevice.h">
       <Filter>System</Filter>
     </ClInclude>
-    <ClInclude Include="external\ImGui\imconfig.h" />
-    <ClInclude Include="external\ImGui\imgui.h" />
-    <ClInclude Include="external\ImGui\imgui_impl_dx11.h" />
-    <ClInclude Include="external\ImGui\imgui_impl_win32.h" />
-    <ClInclude Include="external\ImGui\imgui_internal.h" />
-    <ClInclude Include="external\ImGui\imstb_rectpack.h" />
-    <ClInclude Include="external\ImGui\imstb_textedit.h" />
-    <ClInclude Include="external\ImGui\imstb_truetype.h" />
     <ClInclude Include="src\imGuiDevice\ImGuiDevice_vk.h" />
     <ClInclude Include="src\editor.h" />
-    <ClInclude Include="external\ImGui\imgui_impl_vulkan.h" />
     <ClInclude Include="src\EditorApplication.h" />
     <ClInclude Include="src\EditorState.h">
       <Filter>System</Filter>
     </ClInclude>
     <ClInclude Include="src\viewports\viewport_manager.h" />
+    <ClInclude Include="src\core_editor.h">
+      <Filter>System</Filter>
+    </ClInclude>
+    <ClInclude Include="config_editor.h" />
+    <ClInclude Include="src\external\ImGui\imconfig.h" />
+    <ClInclude Include="src\external\ImGui\imgui.h" />
+    <ClInclude Include="src\external\ImGui\imgui_impl_dx11.h" />
+    <ClInclude Include="src\external\ImGui\imgui_impl_vulkan.h" />
+    <ClInclude Include="src\external\ImGui\imgui_impl_win32.h" />
+    <ClInclude Include="src\external\ImGui\imgui_internal.h" />
+    <ClInclude Include="src\external\ImGui\imstb_rectpack.h" />
+    <ClInclude Include="src\external\ImGui\imstb_textedit.h" />
+    <ClInclude Include="src\external\ImGui\imstb_truetype.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="external">
@@ -63,6 +63,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="external\ImGui\LICENSE.txt" />
+    <Text Include="src\external\ImGui\LICENSE.txt" />
   </ItemGroup>
 </Project>

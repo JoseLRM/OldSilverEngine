@@ -1,23 +1,20 @@
 #include "core.h"
 
-#include "physics.h"
-#include "..//external/box2d/b2_world.h"
-#include "..//external/box2d/b2_body.h"
-#include "..//external/box2d/b2_polygon_shape.h"
-#include "..//external/box2d/b2_circle_shape.h"
-#include "..//external/box2d/b2_fixture.h"
+#include "physics_internal.h"
+#include "scene/scene_internal.h"
+#include "components.h"
 
-#include "scene/Scene.h"
-#include "physics_components.h"
+#include "external/box2d/b2_world.h"
+#include "external/box2d/b2_body.h"
+#include "external/box2d/b2_polygon_shape.h"
+#include "external/box2d/b2_circle_shape.h"
+#include "external/box2d/b2_fixture.h"
 
-using namespace sv;
-using namespace _sv;
-
-namespace _sv {
+namespace sv {
 
 	static ui32 g_pCurrentSceneID = 0u;
 
-	bool physics_initialize(const SV_PHYSICS_INITIALIZATION_DESC& desc)
+	bool physics_initialize(const InitializationPhysicsDesc& desc)
 	{
 		return true;
 	}
@@ -27,11 +24,7 @@ namespace _sv {
 		return true;
 	}
 
-}
-
-namespace sv {
-
-	inline b2World& Parse2D(PhysicsWorld& world) { return *reinterpret_cast<b2World*>(world.pInternal2D); }
+	inline b2World& GetWorld2D() { return *reinterpret_cast<b2World*>(scene_physicsWorld_get().pInternal2D); }
 	inline b2Body* ParseBody(Body2D body) { return reinterpret_cast<b2Body*>(body); }
 	inline b2Fixture* ParseCollider(Collider2D collider) { return reinterpret_cast<b2Fixture*>(collider); }
 
@@ -49,7 +42,8 @@ namespace sv {
 
 		b2Body* body = ParseBody(rigidBody.GetBody());
 
-		if (trans.GetInternal().wakePhysics) {
+		EntityTransform& internalTrans = *reinterpret_cast<EntityTransform*>(trans.GetInternal());
+		if (internalTrans.wakePhysics) {
 
 			body->SetAwake(true);
 
@@ -59,7 +53,7 @@ namespace sv {
 				shape.SetAsBox(scale.x, scale.y);
 			}
 
-			trans.GetInternal().wakePhysics = false;
+			internalTrans.wakePhysics = false;
 		}
 
 		body->SetTransform({ pos.x, pos.y }, rot);
@@ -82,12 +76,14 @@ namespace sv {
 
 	void physics_update(float dt)
 	{
-		b2World& world = Parse2D(scene_physics_world_get());
+		b2World& world = GetWorld2D();
+
+		//TODO: Use EntityViews
 
 		// Update Positions Input
 		{
-			SV_ECS_SYSTEM_DESC updatePositionsDesc;
-			updatePositionsDesc.executionMode = SV_ECS_SYSTEM_EXECUTION_MODE_SAFE;
+			SystemDesc updatePositionsDesc;
+			updatePositionsDesc.executionMode = SystemExecutionMode_Safe;
 			updatePositionsDesc.optionalComponentsCount = 0u;
 			updatePositionsDesc.requestedComponentsCount = 1u;
 			CompID updatePositionsReq[] = { RigidBody2DComponent::ID };
@@ -102,8 +98,8 @@ namespace sv {
 
 		// Update Positions Output
 		{
-			SV_ECS_SYSTEM_DESC updatePositionsDesc;
-			updatePositionsDesc.executionMode = SV_ECS_SYSTEM_EXECUTION_MODE_SAFE;
+			SystemDesc updatePositionsDesc;
+			updatePositionsDesc.executionMode = SystemExecutionMode_Safe;
 			updatePositionsDesc.optionalComponentsCount = 0u;
 			updatePositionsDesc.requestedComponentsCount = 1u;
 			CompID updatePositionsReq[] = { RigidBody2DComponent::ID };
@@ -116,25 +112,25 @@ namespace sv {
 
 	/////////////////////////////// WORLD //////////////////////////////////////
 
-	PhysicsWorld physics_world_create(const SV_PHY_WORLD_DESC* desc)
+	PhysicsWorld physics_world_create()
 	{
-		b2World* world = new b2World({desc->gravity.x, desc->gravity.y});
+		b2World* world = new b2World({ 0.f, -3.f });
 		return { world };
 	}
 	void physics_world_destroy(PhysicsWorld& world_)
 	{
-		b2World& world = Parse2D(world_);
+		b2World& world = GetWorld2D();
 		delete &world;
 	}
 	void physics_world_clear(PhysicsWorld& world_)
 	{
-		b2World& world = Parse2D(world_);
+		b2World& world = GetWorld2D();
 		world.~b2World();
 	}
 
 	/////////////////////////////// BODY 2D //////////////////////////////////////
 
-	Body2D physics_2d_body_create(const SV_PHY2D_BODY_DESC* desc, PhysicsWorld& world_)
+	Body2D body2D_create(const Body2DDesc* desc)
 	{
 		b2BodyDef def;
 		def.userData = nullptr;
@@ -152,13 +148,13 @@ namespace sv {
 		def.enabled = true;
 		def.gravityScale = 1.0f;
 
-		b2World& world = Parse2D(world_);
+		b2World& world = GetWorld2D();
 		b2Body* body = world.CreateBody(&def);
 
 		return body;
 	}
 
-	void physics_2d_body_destroy(Body2D body_)
+	void body2D_destroy(Body2D body_)
 	{
 		if (body_ == 0) return;
 		b2Body* body = ParseBody(body_);
@@ -166,38 +162,38 @@ namespace sv {
 		world->DestroyBody(body);
 	}
 
-	void physics_2d_body_set_dynamic(bool dynamic, Body2D body_)
+	void body2D_dynamic_set(bool dynamic, Body2D body_)
 	{
 		b2Body* body = ParseBody(body_);
 		body->SetType(dynamic ? b2_dynamicBody : b2_staticBody);
 	}
 
-	bool physics_2d_body_get_dynamic(Body2D body_)
+	bool body2D_dynamic_get(Body2D body_)
 	{
 		b2Body* body = ParseBody(body_);
 		return body->GetType() == b2_dynamicBody;
 	}
 
-	void physics_2d_body_set_fixed_rotation(bool fixedRotation, Body2D body_)
+	void body2D_fixedRotation_set(bool fixedRotation, Body2D body_)
 	{
 		b2Body* body = ParseBody(body_);
 		body->SetFixedRotation(fixedRotation);
 	}
 
-	bool physics_2d_body_get_fixed_rotation(Body2D body_)
+	bool body2D_fixedRotation_get(Body2D body_)
 	{
 		b2Body* body = ParseBody(body_);
 		return body->IsFixedRotation();
 	}
 
-	void physics_2d_body_apply_force(vec2 force, SV_PHY_FORCE_TYPE forceType, Body2D body_)
+	void body2D_apply_force(vec2 force, ForceType forceType, Body2D body_)
 	{
 		b2Body* body = ParseBody(body_);
 	}
 
 	// COLLIDERS 2D
 
-	Collider2D physics_2d_collider_create(const SV_PHY2D_COLLIDER_DESC* desc)
+	Collider2D collider2D_create(const Collider2DDesc* desc)
 	{
 		b2CircleShape circleShape;
 		b2PolygonShape polygonShape;
@@ -209,7 +205,7 @@ namespace sv {
 		fDef.density = desc->density;
 		fDef.isSensor = false;
 
-		if (desc->colliderType == SV_PHY2D_COLLIDER_TYPE_BOX) {
+		if (desc->colliderType == Collider2DType_Box) {
 			fDef.shape = &polygonShape;
 
 			polygonShape.SetAsBox(desc->box.width, desc->box.height);
@@ -225,7 +221,7 @@ namespace sv {
 		return { fixture };
 	}
 
-	void physics_2d_collider_destroy(Collider2D collider)
+	void collider2D_destroy(Collider2D collider)
 	{
 		if (collider == nullptr) return;
 		b2Fixture* fixture = ParseCollider(collider);
@@ -234,22 +230,22 @@ namespace sv {
 		body->DestroyFixture(fixture);
 	}
 
-	void physics_2d_collider_set_density(float density, Collider2D collider)
+	void collider2D_density_set(float density, Collider2D collider)
 	{
 		b2Fixture* fixture = ParseCollider(collider);
 		fixture->SetDensity(density);
 	}
 
-	float physics_2d_collider_get_density(Collider2D collider)
+	float collider2D_density_get(Collider2D collider)
 	{
 		b2Fixture* fixture = ParseCollider(collider);
 		return fixture->GetDensity();
 	}
 
-	SV_PHY2D_COLLIDER_TYPE physics_2d_collider_get_type(Collider2D collider)
+	Collider2DType collider2D_type_get(Collider2D collider)
 	{
 		b2Fixture* fixture = ParseCollider(collider);
-		return (fixture->GetShape()->GetType() == b2Shape::e_polygon) ? SV_PHY2D_COLLIDER_TYPE_BOX : SV_PHY2D_COLLIDER_TYPE_CIRCLE;
+		return (fixture->GetShape()->GetType() == b2Shape::e_polygon) ? Collider2DType_Box : Collider2DType_Circle;
 	}
 
 }

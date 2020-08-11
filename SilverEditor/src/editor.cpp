@@ -1,4 +1,4 @@
-#include "core.h"
+#include "core_editor.h"
 
 #include "editor.h"
 
@@ -13,12 +13,12 @@ namespace sve {
 
 	void editor_run()
 	{
-		SV_ENGINE_INITIALIZATION_DESC desc;
+		sv::InitializationDesc desc;
 		desc.minThreadsCount = 2;
 		desc.showConsole = true;
 		desc.rendererDesc.resolutionWidth = 1280;
 		desc.rendererDesc.resolutionHeight = 720;
-		desc.rendererDesc.outputMode = SV_REND_OUTPUT_MODE_OFFSCREEN;
+		desc.rendererDesc.outputMode = sv::RendererOutputMode_offscreen;
 		desc.windowDesc.fullscreen = false;
 		desc.windowDesc.x = 0u;
 		desc.windowDesc.y = 0u;

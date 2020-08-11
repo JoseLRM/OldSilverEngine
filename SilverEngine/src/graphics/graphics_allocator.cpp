@@ -1,56 +1,61 @@
 #include "core.h"
 
-#include "graphics_allocator.h"
-#include "graphics.h"
+#include "graphics_internal.h"
 
-using namespace sv;
+namespace sv {
 
-namespace _sv {
+	static std::vector<Primitive_internal*> g_Data;
+	
+	static PrimitiveConstructor g_Constructor;
+	static PrimitiveDestructor g_Destructor;
+	
+	static std::mutex g_Mutex;
 
-	/////////////////////////////////////////////////////// POOL ///////////////////////////////////////////////////////////
-	void* PrimitiveAllocator::Construct(SV_GFX_PRIMITIVE type, const void* desc)
+	void* graphics_allocator_construct(GraphicsPrimitiveType type, const void* desc)
 	{
-		void* ptr = m_Constructor(type, desc);
+		void* ptr = g_Constructor(type, desc);
 		{
-			std::lock_guard<std::mutex> lock(m_Mutex);
-			m_Data.push_back(reinterpret_cast<Primitive_internal*>(ptr));
+			std::lock_guard<std::mutex> lock(g_Mutex);
+			g_Data.push_back(reinterpret_cast<Primitive_internal*>(ptr));
 
 			// TODO: Binary insertion
 		}
 		return ptr;
 	}
-	bool PrimitiveAllocator::Destroy(Primitive& primitive)
+
+	bool graphics_allocator_destroy(Primitive& primitive)
 	{
 		if (primitive.GetPtr() == nullptr) return true;
 
 		// Remove ptr from data
 		{
-			std::lock_guard<std::mutex> lock(m_Mutex);
+			std::lock_guard<std::mutex> lock(g_Mutex);
 			
 			// TODO: Binary search
-			m_Data.erase(std::find(m_Data.begin(), m_Data.end(), reinterpret_cast<Primitive_internal*>(primitive.GetPtr())));
+			g_Data.erase(std::find(g_Data.begin(), g_Data.end(), reinterpret_cast<Primitive_internal*>(primitive.GetPtr())));
 		}
 
 		// Deallocate
-		return m_Destructor(primitive);
+		return g_Destructor(primitive);
 	}
 
-	void PrimitiveAllocator::SetFunctions(PrimitiveConstructor constructor, PrimitiveDestructor destructor)
+	void graphics_allocator_set_functions(PrimitiveConstructor constructor, PrimitiveDestructor destructor)
 	{
-		m_Constructor = constructor;
-		m_Destructor = destructor;
+		g_Constructor = constructor;
+		g_Destructor = destructor;
 	}
-	void PrimitiveAllocator::Clear()
+
+	void graphics_allocator_clear()
 	{
 		// Call Destructors
-		for (ui32 i = 0; i < m_Data.size(); ++i) {
-			Primitive_internal* ptr = m_Data[i];
+		for (ui32 i = 0; i < g_Data.size(); ++i) {
+			Primitive_internal* ptr = g_Data[i];
 			Primitive primitive(ptr);
 
-			m_Destructor(primitive);
+			g_Destructor(primitive);
 		}
 
 		// Free
-		m_Data.clear();
+		g_Data.clear();
 	}
 }

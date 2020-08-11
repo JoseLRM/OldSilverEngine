@@ -1,4 +1,4 @@
-#include "core.h"
+#include "core_editor.h"
 
 #include "viewport_manager.h"
 #include "EditorState.h"
@@ -12,7 +12,7 @@ namespace sve {
 
 		sv::Scene& scene = state.GetScene();
 		ImVec2 v = ImGui::GetWindowSize();
-		auto& offscreen = _sv::renderer_offscreen_get();
+		auto& offscreen = sv::renderer_offscreen_get();
 
 		ImGuiDevice& device = editor_device_get();
 		ImGui::Image(device.ParseImage(offscreen.renderTarget), { v.x, v.y });
