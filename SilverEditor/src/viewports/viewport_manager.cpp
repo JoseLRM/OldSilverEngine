@@ -81,4 +81,9 @@ namespace sve {
 		return it->second.properties;
 	}
 
+	bool& viewport_manager_get_show(const char* name)
+	{
+		return g_Viewports[name].show;
+	}
+
 }

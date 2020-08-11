@@ -76,9 +76,22 @@ namespace sve {
 	{
 		if (ImGui::BeginMainMenuBar()) {
 
-			if (ImGui::Button("Exit")) {
-				sv::engine_request_close();
+			ImGui::PushStyleColor(ImGuiCol_PopupBg, { 0.1f, 0.1f, 0.1f, 1.f });
+
+			if (ImGui::BeginMenu("Viewports")) {
+
+				ImGui::Button("pog");
+				ImGui::Checkbox("Game", &viewport_manager_get_show("Game"));
+				ImGui::Checkbox("Scene Hierarchy", &viewport_manager_get_show("Scene Hierarchy"));
+				ImGui::Checkbox("Scene Entity", &viewport_manager_get_show("Scene Entity"));
+				ImGui::Checkbox("Scene Editor", &viewport_manager_get_show("Scene Editor"));
+				ImGui::Checkbox("Console", &viewport_manager_get_show("Console"));
+				ImGui::Checkbox("Renderer2D", &viewport_manager_get_show("Renderer2D"));
+
+				ImGui::EndMenu();
 			}
+
+			ImGui::PopStyleColor();
 
 			ImGui::EndMainMenuBar();
 		}
@@ -166,7 +179,7 @@ namespace sve {
 		DisplayDocking();
 		
 		viewport_manager_display();
-
+		
 		g_Device->EndFrame();
 	}
 	void editor_close()
