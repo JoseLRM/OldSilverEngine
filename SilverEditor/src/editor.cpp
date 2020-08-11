@@ -80,7 +80,6 @@ namespace sve {
 
 			if (ImGui::BeginMenu("Viewports")) {
 
-				ImGui::Button("pog");
 				ImGui::Checkbox("Game", &viewport_manager_get_show("Game"));
 				ImGui::Checkbox("Scene Hierarchy", &viewport_manager_get_show("Scene Hierarchy"));
 				ImGui::Checkbox("Scene Entity", &viewport_manager_get_show("Scene Entity"));

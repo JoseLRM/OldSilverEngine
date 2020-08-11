@@ -4,14 +4,20 @@
 
 namespace sv {
 
+	struct SpriteAABB {
+		vec3 position;
+		vec2 size;
+	};
+
 	struct SpriteInstance {
 		XMMATRIX tm;
 		Sprite sprite;
 		Color color;
 		ui32 layerID;
+		SpriteAABB boundingBox;
 
 		SpriteInstance() = default;
-		SpriteInstance(const XMMATRIX& m, Sprite sprite, sv::Color color, ui32 layerID) : tm(m), sprite(sprite), color(color), layerID(layerID) {}
+		SpriteInstance(const XMMATRIX& m, Sprite sprite, sv::Color color, ui32 layerID, vec3 pos, vec2 size) : tm(m), sprite(sprite), color(color), layerID(layerID), boundingBox({ pos, size }) {}
 	};
 
 	bool renderer2D_initialize();

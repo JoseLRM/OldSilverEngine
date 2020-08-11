@@ -204,7 +204,8 @@ namespace sv {
 
 			for (auto& sprite : sprites) {
 				Transform trans = scene_ecs_entity_get_transform(sprite.entity);
-				drawData.sprites.Emplace(trans.GetWorldMatrix(), sprite.sprite, sprite.color, sprite.renderLayer);
+				vec3 size = trans.GetWorldScale();
+				drawData.sprites.Emplace(trans.GetWorldMatrix(), sprite.sprite, sprite.color, sprite.renderLayer, trans.GetWorldPosition(), vec2{ size.x, size.y });
 			}
 		}
 		
@@ -240,7 +241,6 @@ namespace sv {
 		}
 
 		// Sort layer by sort mode and texture
-		//TODO:
 		{
 			auto& sprites = drawData.sprites;
 			auto& renderLayers = scene_renderWorld_get().renderLayers;
@@ -251,9 +251,39 @@ namespace sv {
 				RenderLayer& rl = renderLayers[i];
 				if (rl.count == 0u) continue;
 
-				std::sort(sprites.data() + index, sprites.data() + index + rl.count, [](const SpriteInstance& s0, const SpriteInstance& s1) {
-					return s0.sprite.textureAtlas < s1.sprite.textureAtlas;
-				});
+				SpriteInstance* begin = sprites.data() + index;
+				SpriteInstance* end = sprites.data() + index + rl.count;
+
+				switch (rl.sortMode)
+				{
+				case RenderLayerSortMode_none:
+					std::sort(begin, end, [](const SpriteInstance& s0, const SpriteInstance& s1) {
+						return s0.sprite.textureAtlas < s1.sprite.textureAtlas;
+					});
+					break;
+
+				case RenderLayerSortMode_coordX:
+					std::sort(begin, end, [](const SpriteInstance& s0, const SpriteInstance& s1) {
+						if (s0.boundingBox.position.x == s1.boundingBox.position.x) return s0.sprite.textureAtlas < s1.sprite.textureAtlas;
+						return s0.boundingBox.position.x < s1.boundingBox.position.x;
+					});
+					break;
+
+				case RenderLayerSortMode_coordY:
+					std::sort(begin, end, [](const SpriteInstance& s0, const SpriteInstance& s1) {
+						if (s0.boundingBox.position.y == s1.boundingBox.position.y) return s0.sprite.textureAtlas < s1.sprite.textureAtlas;
+						return s0.boundingBox.position.y < s1.boundingBox.position.y;
+					});
+					break;
+
+				case RenderLayerSortMode_coordZ:
+					std::sort(begin, end, [](const SpriteInstance& s0, const SpriteInstance& s1) {
+						if (s0.boundingBox.position.z == s1.boundingBox.position.z) return s0.sprite.textureAtlas < s1.sprite.textureAtlas;
+						return s0.boundingBox.position.z < s1.boundingBox.position.z;
+					});
+					break;
+
+				}
 
 				index += rl.count;
 			}
