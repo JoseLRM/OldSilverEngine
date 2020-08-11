@@ -4,6 +4,7 @@
 #include "editor.h"
 
 #include "scene/scene_internal.h"
+#include "input.h"
 
 namespace sve {
 
@@ -107,6 +108,47 @@ namespace sve {
 		sv::Color4f col = { float(comp->color.x) / 255.f, float(comp->color.y) / 255.f, float(comp->color.z) / 255.f, float(comp->color.w) / 255.f };
 		ImGui::ColorEdit4("SpriteColor", &col.x);
 		comp->color = { ui8(col.x * 255.f), ui8(col.y * 255.f) , ui8(col.z * 255.f) , ui8(col.w * 255.f) };
+
+		// Render Layers
+		ui32 count = sv::renderLayer_count_get();
+
+		ImGui::Separator();
+
+		int layer = comp->renderLayer;
+		ImGui::DragInt("Render Layer", &layer, 1);
+		if (layer < 0) layer = 0;
+		else if (layer >= count) layer = count - 1;
+		comp->renderLayer = layer;
+
+		sv::RenderLayerSortMode sortMode = sv::renderLayer_sortMode_get(comp->renderLayer);
+
+		auto getSortModeStr = [](sv::RenderLayerSortMode mode) {
+			switch (mode)
+			{
+			case sv::RenderLayerSortMode_none:
+				return "None";
+			case sv::RenderLayerSortMode_coordX:
+				return "Coord X";
+			case sv::RenderLayerSortMode_coordY:
+				return "Coord Y";
+			case sv::RenderLayerSortMode_coordZ:
+				return "Coord Z";
+			default:
+				return "";
+			}
+		};
+
+		if (ImGui::BeginCombo("Sort Mode", getSortModeStr(sortMode))) {
+
+			if (sortMode != sv::RenderLayerSortMode_none) if (ImGui::Button(getSortModeStr(sv::RenderLayerSortMode_none))) sortMode = sv::RenderLayerSortMode_none;
+			if (sortMode != sv::RenderLayerSortMode_coordX) if (ImGui::Button(getSortModeStr(sv::RenderLayerSortMode_coordX))) sortMode = sv::RenderLayerSortMode_coordX;
+			if (sortMode != sv::RenderLayerSortMode_coordY) if (ImGui::Button(getSortModeStr(sv::RenderLayerSortMode_coordY))) sortMode = sv::RenderLayerSortMode_coordY;
+			if (sortMode != sv::RenderLayerSortMode_coordZ) if (ImGui::Button(getSortModeStr(sv::RenderLayerSortMode_coordZ))) sortMode = sv::RenderLayerSortMode_coordZ;
+			
+			ImGui::EndCombo();
+		}
+
+		sv::renderLayer_sortMode_set(comp->renderLayer, sortMode);
 	}
 
 	void ShowCameraComponentInfo(sv::CameraComponent* comp)
@@ -298,8 +340,6 @@ namespace sve {
 
 		ImGuiDevice& device = editor_device_get();
 		ImGui::Image(device.ParseImage(offscreen.renderTarget), { v.x, v.y });
-
-		return true;
 
 		return true;
 	}

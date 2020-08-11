@@ -1,6 +1,7 @@
 #include "core_editor.h"
 
 #include "ImGuiDevice_vk.h"
+#include "window.h"
 
 using namespace sv;
 

@@ -19,9 +19,8 @@ namespace sv {
 	void renderer2D_sprite_render(SpriteInstance* buffer, ui32 count, sv::CommandList cmd);
 
 	struct RenderLayer {
-		RenderLayerSortMode		sortMode;
-		bool					transparent;
 		ui32					count;
+		RenderLayerSortMode		sortMode;
 	};
 
 	void renderer2D_begin();

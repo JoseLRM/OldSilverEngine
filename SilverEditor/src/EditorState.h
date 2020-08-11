@@ -2,6 +2,7 @@
 
 #include "core_editor.h"
 #include "components.h"
+#include "engine.h"
 
 namespace sve {
 

@@ -1,7 +1,8 @@
 #include "core_editor.h"
 
-#include "EditorState.h"
+#include "engine.h"
 #include "editor.h"
+#include "EditorState.h"
 
 namespace sve {
 
@@ -22,9 +23,9 @@ namespace sve {
 		sv::scene_ecs_component_add<sv::CameraComponent>(mainCamera, sv::CameraType_Orthographic);
 		sv::scene_ecs_component_add<sv::NameComponent>(mainCamera, "Main Camera");
 		sv::CameraComponent* camComp = sv::scene_ecs_component_get<sv::CameraComponent>(mainCamera);
-		sv::renderer_compute_orthographic_zoom_set(camComp->projection, 5.f);
 		camComp->projection.orthographic.width = 10.f;
 		camComp->projection.orthographic.height = 10.f;
+		sv::renderer_compute_orthographic_zoom_set(camComp->projection, 5.f);
 
 		sv::scene_camera_set(mainCamera);
 

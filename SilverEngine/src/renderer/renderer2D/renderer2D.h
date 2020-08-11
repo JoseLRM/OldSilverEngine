@@ -6,7 +6,7 @@ namespace sv {
 
 	// Render Layers
 
-	enum RenderLayerSortMode : ui8 {
+	enum RenderLayerSortMode : ui32 {
 		RenderLayerSortMode_none,
 		RenderLayerSortMode_coordX,
 		RenderLayerSortMode_coordY,
@@ -15,9 +15,8 @@ namespace sv {
 
 	void				renderLayer_count_set(ui32 count);
 	ui32				renderLayer_count_get();
-	void				renderLayer_set(ui32 layer, RenderLayerSortMode sortMode, bool transparent);
-	RenderLayerSortMode	renderLayer_get_sortMode(ui32 layer);
-	bool				renderLayer_get_transparent(ui32 layer);
+	void				renderLayer_sortMode_set(ui32 layer, RenderLayerSortMode sortMode);
+	RenderLayerSortMode	renderLayer_sortMode_get(ui32 layer);
 
 	// Texture Atlas
 

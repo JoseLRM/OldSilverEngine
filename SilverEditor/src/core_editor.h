@@ -2,5 +2,5 @@
 
 #include "..//config_editor.h"
 
-#include "engine.h"
+#include "core.h"
 #include "external/ImGui/imgui.h"

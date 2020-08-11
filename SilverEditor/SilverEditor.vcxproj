@@ -134,6 +134,7 @@
     <ClCompile Include="src\viewports\viewport_console.cpp" />
     <ClCompile Include="src\viewports\viewport_game.cpp" />
     <ClCompile Include="src\viewports\viewport_manager.cpp" />
+    <ClCompile Include="src\viewports\viewport_renderer.cpp" />
     <ClCompile Include="src\viewports\viewport_scene.cpp" />
   </ItemGroup>
   <ItemGroup>

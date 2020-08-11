@@ -9,8 +9,7 @@ namespace sv {
 
 	// Sprite Primitives
 
-	static GraphicsPipeline g_SpriteOpaquePipeline;
-	static GraphicsPipeline g_SpriteTransparentPipeline;
+	static GraphicsPipeline g_SpritePipeline;
 	static RenderPass g_SpriteRenderPass;
 
 	static Shader g_SpriteVertexShader;
@@ -88,7 +87,7 @@ namespace sv {
 		// Sprite RenderPass
 		{
 			RenderPassDesc desc;
-			desc.attachments.resize(2);
+			desc.attachments.resize(1);
 
 			desc.attachments[0].loadOp = AttachmentOperation_Load;
 			desc.attachments[0].storeOp = AttachmentOperation_Store;
@@ -99,16 +98,6 @@ namespace sv {
 			desc.attachments[0].layout = GPUImageLayout_RenderTarget;
 			desc.attachments[0].finalLayout = GPUImageLayout_RenderTarget;
 			desc.attachments[0].type = AttachmentType_RenderTarget;
-
-			desc.attachments[1].loadOp = AttachmentOperation_DontCare;
-			desc.attachments[1].storeOp = AttachmentOperation_DontCare;
-			desc.attachments[1].stencilLoadOp = AttachmentOperation_Load;
-			desc.attachments[1].stencilStoreOp = AttachmentOperation_Store;
-			desc.attachments[1].format = Format_D24_UNORM_S8_UINT;
-			desc.attachments[1].initialLayout = GPUImageLayout_DepthStencil;
-			desc.attachments[1].layout = GPUImageLayout_DepthStencil;
-			desc.attachments[1].finalLayout = GPUImageLayout_DepthStencil;
-			desc.attachments[1].type = AttachmentType_DepthStencil;
 
 			svCheck(graphics_renderpass_create(&desc, g_SpriteRenderPass));
 		}
@@ -121,29 +110,12 @@ namespace sv {
 			inputLayout.elements.push_back({ 0u, "TexCoord", 0u, 4u * sizeof(float), Format_R32G32_FLOAT });
 			inputLayout.elements.push_back({ 0u, "Color", 0u, 6u * sizeof(float), Format_R8G8B8A8_UNORM });
 
-			DepthStencilStateDesc depthStencilState;
-			depthStencilState.depthTestEnabled = false;
-			depthStencilState.depthWriteEnabled = false;
-			depthStencilState.depthCompareOp = CompareOperation_Always;
-			depthStencilState.stencilTestEnabled = true;
-			depthStencilState.readMask = 0xff;
-			depthStencilState.writeMask = 0xff;
-
 			BlendStateDesc blendState;
 			blendState.attachments.resize(1);
 			blendState.blendConstants = { 0.f, 0.f, 0.f, 0.f };
-
-			// Opaque
-			depthStencilState.front.failOp = StencilOperation_Keep;
-			depthStencilState.front.passOp = StencilOperation_Replace;
-			depthStencilState.front.depthFailOp = StencilOperation_Keep;
-			depthStencilState.front.compareOp = CompareOperation_NotEqual;
-
-			depthStencilState.back = depthStencilState.front;
-
 			blendState.attachments[0].blendEnabled = true;
-			blendState.attachments[0].srcColorBlendFactor = BlendFactor_One;
-			blendState.attachments[0].dstColorBlendFactor = BlendFactor_One;
+			blendState.attachments[0].srcColorBlendFactor = BlendFactor_SrcAlpha;
+			blendState.attachments[0].dstColorBlendFactor = BlendFactor_OneMinusSrcAlpha;
 			blendState.attachments[0].colorBlendOp = BlendOperation_Add;
 			blendState.attachments[0].srcAlphaBlendFactor = BlendFactor_One;
 			blendState.attachments[0].dstAlphaBlendFactor = BlendFactor_One;
@@ -157,28 +129,10 @@ namespace sv {
 			desc.pInputLayout = &inputLayout;
 			desc.pBlendState = &blendState;
 			desc.pRasterizerState = nullptr;
-			desc.pDepthStencilState = &depthStencilState;
+			desc.pDepthStencilState = nullptr;
 			desc.topology = GraphicsTopology_Triangles;
 
-			svCheck(graphics_pipeline_create(&desc, g_SpriteOpaquePipeline));
-
-			// Transparent
-			depthStencilState.front.failOp = StencilOperation_Keep;
-			depthStencilState.front.passOp = StencilOperation_Keep;
-			depthStencilState.front.depthFailOp = StencilOperation_Keep;
-			depthStencilState.front.compareOp = CompareOperation_NotEqual;
-
-			depthStencilState.back = depthStencilState.front;
-
-			blendState.attachments[0].blendEnabled = true;
-			blendState.attachments[0].srcColorBlendFactor = BlendFactor_SrcAlpha;
-			blendState.attachments[0].dstColorBlendFactor = BlendFactor_OneMinusSrcAlpha;
-			blendState.attachments[0].colorBlendOp = BlendOperation_Add;
-			blendState.attachments[0].srcAlphaBlendFactor = BlendFactor_One;
-			blendState.attachments[0].dstAlphaBlendFactor = BlendFactor_One;
-			blendState.attachments[0].alphaBlendOp = BlendOperation_Add;
-
-			svCheck(graphics_pipeline_create(&desc, g_SpriteTransparentPipeline));
+			svCheck(graphics_pipeline_create(&desc, g_SpritePipeline));
 		}
 		// Sprite White Image
 		{
@@ -218,8 +172,7 @@ namespace sv {
 
 	bool renderer2D_close()
 	{
-		svCheck(graphics_destroy(g_SpriteOpaquePipeline));
-		svCheck(graphics_destroy(g_SpriteTransparentPipeline));
+		svCheck(graphics_destroy(g_SpritePipeline));
 		svCheck(graphics_destroy(g_SpriteRenderPass));
 		svCheck(graphics_destroy(g_SpriteVertexShader));
 		svCheck(graphics_destroy(g_SpritePixelShader));
@@ -277,7 +230,7 @@ namespace sv {
 			if (!sprites.Empty()) {
 				for (SpriteInstance* it = sprites.data(); it != end; ++it) {
 					if (rl != it->layerID) {
-						renderLayers[rl].count = ((it - sprites.data()) / sizeof(SpriteInstance)) - last;
+						renderLayers[rl].count = it - sprites.data() - last;
 						last = renderLayers[rl].count;
 						rl = it->layerID;
 					}
@@ -298,7 +251,7 @@ namespace sv {
 				RenderLayer& rl = renderLayers[i];
 				if (rl.count == 0u) continue;
 
-				std::sort(sprites.data(), sprites.data() + rl.count, [](const SpriteInstance& s0, const SpriteInstance& s1) {
+				std::sort(sprites.data() + index, sprites.data() + index + rl.count, [](const SpriteInstance& s0, const SpriteInstance& s1) {
 					return s0.sprite.textureAtlas < s1.sprite.textureAtlas;
 				});
 
@@ -346,8 +299,7 @@ namespace sv {
 		// TODO: frustum culling
 
 		GPUImage* att[] = {
-			&drawData.currentCamera.pOffscreen->renderTarget,
-			&drawData.currentCamera.pOffscreen->depthStencil
+			&drawData.currentCamera.pOffscreen->renderTarget
 		};
 
 		TextureAtlas_internal* texture = nullptr;
@@ -401,7 +353,7 @@ namespace sv {
 			graphics_renderpass_begin(g_SpriteRenderPass, att, nullptr, 1.f, 0u, cmd);
 
 			graphics_indexbuffer_bind(g_SpriteIndexBuffer, 0u, cmd);
-			graphics_set_stencil_reference(1u, cmd);
+			graphics_pipeline_bind(g_SpritePipeline, cmd);
 
 			SpriteInstance* beginBuffer = buffer;
 			SpriteInstance* endBuffer;
@@ -411,16 +363,9 @@ namespace sv {
 				const RenderLayer* rl = &renderLayers[buffer->layerID];
 				endBuffer = buffer + std::min(rl->count, batchSize);
 
-				if (rl->transparent) {
-					graphics_pipeline_bind(g_SpriteTransparentPipeline, cmd);
-				}
-				else {
-					graphics_pipeline_bind(g_SpriteOpaquePipeline, cmd);
-				}
-
 				texture = reinterpret_cast<TextureAtlas_internal*>(buffer->sprite.textureAtlas);
 				
-				ui32 offset = 0u;
+				ui32 offset = buffer - beginBuffer;
 				while (buffer != endBuffer) {
 
 					if (buffer->sprite.textureAtlas != texture) {
@@ -435,6 +380,7 @@ namespace sv {
 
 				ui32 batchPos = buffer - beginBuffer;
 				RenderSpriteBatch(offset, batchPos - offset, texture, cmd);
+
 			}
 
 			graphics_renderpass_end(cmd);
@@ -454,21 +400,15 @@ namespace sv {
 		return ui32(scene_renderWorld_get().renderLayers.size());
 	}
 
-	void renderLayer_set(ui32 layer, RenderLayerSortMode sortMode, bool transparent)
+	void renderLayer_sortMode_set(ui32 layer, RenderLayerSortMode sortMode)
 	{
 		RenderLayer& rl = scene_renderWorld_get().renderLayers[layer];
 		rl.sortMode = sortMode;
-		rl.transparent = transparent;
 	}
 
-	RenderLayerSortMode	renderLayer_get_sortMode(ui32 layer)
+	RenderLayerSortMode	renderLayer_sortMode_get(ui32 layer)
 	{
 		return scene_renderWorld_get().renderLayers[layer].sortMode;
-	}
-
-	bool renderLayer_get_transparent(ui32 layer)
-	{
-		return scene_renderWorld_get().renderLayers[layer].transparent;
 	}
 
 	// Texture Atlas

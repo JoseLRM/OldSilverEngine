@@ -1,5 +1,6 @@
 #include "core_editor.h"
 
+#include "engine.h"
 #include "editor.h"
 
 #include "imGuiDevice/ImGuiDevice.h"
@@ -134,6 +135,7 @@ namespace sve {
 		viewport_manager_add("Scene Entity", viewport_scene_entity_display);
 		viewport_manager_add("Scene Editor", viewport_scene_editor_display);
 		viewport_manager_add("Console", viewport_console_display);
+		viewport_manager_add("Renderer2D", viewport_renderer2D_display);
 
 		// Show viewports
 		viewport_manager_show("Game");
@@ -141,6 +143,7 @@ namespace sve {
 		viewport_manager_show("Scene Entity");
 		viewport_manager_show("Scene Editor");
 		viewport_manager_show("Console");
+		viewport_manager_show("Renderer2D");
 
 		engine_state_load(new sve::EditorState(), nullptr);
 	}

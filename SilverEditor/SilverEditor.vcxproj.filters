@@ -22,6 +22,7 @@
     <ClCompile Include="src\external\ImGui\imgui_impl_vulkan.cpp" />
     <ClCompile Include="src\external\ImGui\imgui_impl_win32.cpp" />
     <ClCompile Include="src\external\ImGui\imgui_widgets.cpp" />
+    <ClCompile Include="src\viewports\viewport_renderer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\imGuiDevice\ImGuiDevice.h">

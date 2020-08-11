@@ -147,7 +147,7 @@ public:
 		sprite = sv::textureAtlas_sprite_add(texture, 0.1f, 0.f, 0.1f, 1.f / 6.f);
 
 		entity = sv::scene_ecs_entity_create();
-		sv::scene_ecs_component_add<sv::SpriteComponent>(entity, sprite, SV_COLOR_WHITE);
+		sv::scene_ecs_component_add<sv::SpriteComponent>(entity, sprite, sv::Color{0u,255u,255u,100u});
 	}
 	void Update(float dt) override
 	{
