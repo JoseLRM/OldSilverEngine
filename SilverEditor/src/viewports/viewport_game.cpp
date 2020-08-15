@@ -1,16 +1,14 @@
 #include "core_editor.h"
 
 #include "viewport_manager.h"
-#include "EditorState.h"
 #include "editor.h"
+#include "simulation.h"
+#include "components.h"
 
 namespace sve {
 
 	bool viewport_game_display()
 	{
-		EditorState& state = editor_state_get();
-
-		sv::Scene& scene = state.GetScene();
 		ImVec2 v = ImGui::GetWindowSize();
 		auto& offscreen = sv::renderer_offscreen_get();
 

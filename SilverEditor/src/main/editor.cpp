@@ -4,22 +4,27 @@
 #include "editor.h"
 
 #include "imGuiDevice/ImGuiDevice.h"
-#include "EditorState.h"
-#include "EditorApplication.h"
+#include "scene_editor.h"
+#include "simulation.h"
+#include "viewport_manager.h"
 
 namespace sve {
 	
-	std::unique_ptr<ImGuiDevice> g_Device;
-	static EditorApplication g_Application;
+	static std::unique_ptr<ImGuiDevice> g_Device;
+	static bool g_Simulation = false;
 
 	void editor_run()
 	{
 		sv::InitializationDesc desc;
+		desc.callbacks.initialize = editor_initialize;
+		desc.callbacks.update = editor_update;
+		desc.callbacks.render = editor_render;
+		desc.callbacks.close = editor_close;
+
 		desc.minThreadsCount = 2;
 		desc.showConsole = true;
 		desc.rendererDesc.resolutionWidth = 1280;
 		desc.rendererDesc.resolutionHeight = 720;
-		desc.rendererDesc.outputMode = sv::RendererOutputMode_offscreen;
 		desc.windowDesc.fullscreen = false;
 		desc.windowDesc.x = 0u;
 		desc.windowDesc.y = 0u;
@@ -27,7 +32,7 @@ namespace sve {
 		desc.windowDesc.height = 720u;
 		desc.windowDesc.title = L"SilverEngine";
 
-		sv::engine_initialize(&g_Application, &desc);
+		if (!sv::engine_initialize(&desc)) return;
 
 		g_Device = device_create();
 		g_Device->Initialize();
@@ -139,7 +144,7 @@ namespace sve {
 		ImGui::End();
 	}
 
-	void editor_initialize()
+	bool editor_initialize()
 	{
 		// Add viewports
 		viewport_manager_add("Game", viewport_game_display);
@@ -157,20 +162,27 @@ namespace sve {
 		viewport_manager_show("Console");
 		viewport_manager_show("Renderer2D");
 
-		engine_state_load(new sve::EditorState(), nullptr);
+		svCheck(simulation_initialize());
+		svCheck(scene_editor_initialize());
+
+		return true;
 	}
 	void editor_update(float dt)
 	{
+		simulation_update(dt);
+		scene_editor_update(dt);
 
 		if (sv::input_key_pressed(SV_KEY_F11)) {
 			sv::window_fullscreen_set(!sv::window_fullscreen_get());
 		}
 
 		g_Device->ResizeSwapChain();
-
 	}
 	void editor_render()
 	{
+		simulation_render();
+		scene_editor_render();
+
 		g_Device->BeginFrame();
 
 		MainMenu();
@@ -181,18 +193,17 @@ namespace sve {
 		
 		g_Device->EndFrame();
 	}
-	void editor_close()
+	bool editor_close()
 	{
+		svCheck(simulation_close());
+		svCheck(scene_editor_close());
+
+		return true;
 	}
 
 	ImGuiDevice& editor_device_get()
 	{
 		return *g_Device.get();
-	}
-
-	EditorState& editor_state_get()
-	{
-		return *reinterpret_cast<EditorState*>(sv::engine_state_get_state());
 	}
 
 }

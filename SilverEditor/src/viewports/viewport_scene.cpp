@@ -5,6 +5,9 @@
 
 #include "scene/scene_internal.h"
 #include "input.h"
+#include "simulation.h"
+#include "components.h"
+#include "scene_editor.h"
 
 namespace sve {
 
@@ -159,32 +162,24 @@ namespace sve {
 
 			if (camType == sv::CameraType_Orthographic) {
 				if (ImGui::Button("Perspective")) {
-					comp->projection.cameraType = sv::CameraType_Perspective;
+					comp->projection = { sv::CameraType_Perspective, 1.f, 1.f, 0.01f, 100000.f };
 				}
 			}
 			else if (camType == sv::CameraType_Perspective) {
 				if (ImGui::Button("Orthographic")) {
-					comp->projection.cameraType = sv::CameraType_Orthographic;
-					comp->projection.orthographic.width = 10.f;
-					comp->projection.orthographic.height = 10.f;
+					comp->projection = { sv::CameraType_Orthographic, 10.f, 10.f, -100000.f, 100000.f };
 				}
 			}
 
 			ImGui::EndCombo();
 		}
 
-		switch (camType)
-		{
-		case sv::CameraType_Orthographic:
-		{
-			float zoom = sv::renderer_compute_orthographic_zoom_get(comp->projection);
-			ImGui::DragFloat("Zoom", &zoom, 0.01f);
-			sv::renderer_compute_orthographic_zoom_set(comp->projection, zoom);
-		}
-		break;
-		case sv::CameraType_Perspective:
-			break;
-		}
+		ImGui::DragFloat("Near", &comp->projection.near, 0.01f);
+		ImGui::DragFloat("Far", &comp->projection.far, 0.1f);
+		float zoom = sv::renderer_projection_zoom_get(comp->projection);
+		ImGui::DragFloat("Zoom", &zoom, 0.01f);
+		sv::renderer_projection_zoom_set(comp->projection, zoom);
+		
 	}
 
 	void ShowNameComponentInfo(sv::NameComponent* comp)
@@ -332,11 +327,16 @@ namespace sve {
 
 	bool viewport_scene_editor_display()
 	{
-		EditorState& state = editor_state_get();
+		//if (ImGui::Button(simulation_running() ? "Pause" : "Start")) {
+		//	if (simulation_running()) {
+		//		simulation_stop();
+		//	}
+		//	else simulation_run();
+		//}
 
-		sv::Scene& scene = state.GetScene();
+		auto& camera = scene_editor_camera_get();
 		ImVec2 v = ImGui::GetWindowSize();
-		auto& offscreen = *state.GetDebugCamera().camera.GetOffscreen();
+		auto& offscreen = camera.offscreen;
 
 		ImGuiDevice& device = editor_device_get();
 		ImGui::Image(device.ParseImage(offscreen.renderTarget), { v.x, v.y });

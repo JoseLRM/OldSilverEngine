@@ -1,19 +1,17 @@
 #pragma once
 
 #include "core_editor.h"
-#include "imGuiDevice/ImGuiDevice.h"
-#include "viewports/viewport_manager.h"
-#include "EditorState.h"
+#include "main/imGuiDevice/ImGuiDevice.h"
 
 namespace sve {
 
 	void editor_run();
 
-	void editor_initialize();
+	bool editor_initialize();
 	void editor_update(float dt);
 	void editor_render();
-	void editor_close();
+	bool editor_close();
 
 	ImGuiDevice& editor_device_get();
-	EditorState& editor_state_get();
+
 }

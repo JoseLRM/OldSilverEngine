@@ -53,7 +53,7 @@ class GameState : public sv::State {
 			sv::SpriteComponent& sprComp = *sv::scene_ecs_component_get<sv::SpriteComponent>(entities[i]);
 
 			sv::vec3 pos;
-			sv::vec2 mousePos = sv::renderer_compute_orthographic_position(camera->projection, sv::input_mouse_position_get());
+			sv::vec2 mousePos = sv::renderer_projection_position(camera->projection, sv::input_mouse_position_get());
 			mousePos.x += cameraPos.x;
 			mousePos.y += cameraPos.y;
 			pos.x = mousePos.x;
@@ -86,7 +86,7 @@ class GameState : public sv::State {
 		sv::Entity entities[count];
 
 		sv::scene_ecs_entities_create(count, 0u, entities);
-		sv::scene_ecs_components_add<sv::SpriteComponent>(entities, count, sprite);
+		sv::scene_ecs_components_add<sv::SpriteComponent>(entities, count);
 
 		for (ui32 i = 0; i < count; ++i) {
 			sv::Transform trans = sv::scene_ecs_entity_get_transform(entities[i]);
@@ -159,8 +159,8 @@ public:
 
 			sv::vec2 dir;
 			float dirZoom = 0u;
-			float add = 7.f * dt * sv::renderer_compute_orthographic_zoom_get(camera) * 0.05f;
-			float addZoom = dt * 10.f * (sv::renderer_compute_orthographic_zoom_get(camera) * 0.05f);
+			float add = 7.f * dt * sv::renderer_projection_zoom_get(camera) * 0.05f;
+			float addZoom = dt * 10.f * (sv::renderer_projection_zoom_get(camera) * 0.05f);
 
 			if (sv::input_key('W')) {
 				dir.y += add;
@@ -180,7 +180,7 @@ public:
 			if (sv::input_key(SV_KEY_SHIFT)) {
 				dirZoom -= addZoom;
 			}
-			sv::renderer_compute_orthographic_zoom_set(camera, sv::renderer_compute_orthographic_zoom_get(camera) + dirZoom);
+			sv::renderer_projection_zoom_set(camera, sv::renderer_projection_zoom_get(camera) + dirZoom);
 
 			sv::Transform trans = sv::scene_ecs_entity_get_transform(cameraEntity);
 			trans.SetPosition(trans.GetLocalPosition() + dir);

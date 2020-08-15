@@ -117,20 +117,21 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\core_editor.cpp">
+    <ClCompile Include="src\main\core_editor.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">core_editor.h</PrecompiledHeaderFile>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">core_editor.h</PrecompiledHeaderFile>
     </ClCompile>
-    <ClCompile Include="src\editor.cpp" />
-    <ClCompile Include="src\imGuiDevice\ImGuiDevice.cpp" />
-    <ClCompile Include="src\imGuiDevice\ImGuiDevice_vk.cpp">
+    <ClCompile Include="src\main\editor.cpp" />
+    <ClCompile Include="src\main\imGuiDevice\ImGuiDevice.cpp" />
+    <ClCompile Include="src\main\imGuiDevice\ImGuiDevice_vk.cpp">
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">core_editor.h</PrecompiledHeaderFile>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">core_editor.h</PrecompiledHeaderFile>
     </ClCompile>
-    <ClCompile Include="src\Main.cpp" />
-    <ClCompile Include="src\EditorState.cpp" />
+    <ClCompile Include="src\main\Main.cpp" />
+    <ClCompile Include="src\scene_editor\scene_editor.cpp" />
+    <ClCompile Include="src\simulation\simulation.cpp" />
     <ClCompile Include="src\viewports\viewport_console.cpp" />
     <ClCompile Include="src\viewports\viewport_game.cpp" />
     <ClCompile Include="src\viewports\viewport_manager.cpp" />
@@ -150,11 +151,11 @@
     <ClInclude Include="src\external\ImGui\imstb_truetype.h" />
     <ClInclude Include="src\core_editor.h" />
     <ClInclude Include="src\editor.h" />
-    <ClInclude Include="src\EditorApplication.h" />
-    <ClInclude Include="src\imGuiDevice\ImGuiDevice_vk.h" />
-    <ClInclude Include="src\imGuiDevice\ImGuiDevice.h" />
-    <ClInclude Include="src\EditorState.h" />
-    <ClInclude Include="src\viewports\viewport_manager.h" />
+    <ClInclude Include="src\main\imGuiDevice\ImGuiDevice_vk.h" />
+    <ClInclude Include="src\main\imGuiDevice\ImGuiDevice.h" />
+    <ClInclude Include="src\scene_editor.h" />
+    <ClInclude Include="src\simulation.h" />
+    <ClInclude Include="src\viewport_manager.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="src\external\ImGui\LICENSE.txt" />
