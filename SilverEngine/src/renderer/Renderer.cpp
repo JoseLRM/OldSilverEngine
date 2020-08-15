@@ -7,13 +7,12 @@
 
 namespace sv {
 
-	static uvec2				g_Resolution;
-	static RendererOutputMode	g_OutputMode;
-	
+	static uvec2						g_Resolution;
+	static bool							g_BackBuffer;
 	static Offscreen					g_Offscreen;
 	static PostProcessing_Default		g_PP_OffscreenToBackBuffer;
 
-	static DrawData	g_DrawData;
+	static DrawData						g_DrawData;
 
 	// MAIN FUNCTIONS
 
@@ -21,7 +20,6 @@ namespace sv {
 	{
 		// Initial Resolution
 		g_Resolution = uvec2(desc.resolutionWidth, desc.resolutionHeight);
-		g_OutputMode = desc.outputMode;
 
 		// BackBuffer
 		//Image& backBuffer = graphics_swapchain_get_image();
@@ -34,6 +32,7 @@ namespace sv {
 
 		svCheck(postprocessing_initialize());
 		svCheck(renderer2D_initialize());
+		svCheck(mesh_renderer_initialize());
 
 		svCheck(postprocessing_default_create(Format_B8G8R8A8_SRGB, GPUImageLayout_Undefined, GPUImageLayout_RenderTarget, g_PP_OffscreenToBackBuffer));
 
@@ -44,6 +43,7 @@ namespace sv {
 	{
 		svCheck(postprocessing_default_destroy(g_PP_OffscreenToBackBuffer));
 
+		svCheck(mesh_renderer_close());
 		svCheck(postprocessing_close());
 		svCheck(renderer2D_close());
 
@@ -55,6 +55,7 @@ namespace sv {
 	void renderer_frame_begin()
 	{
 		graphics_begin();
+		g_BackBuffer = false;
 	}
 	void renderer_frame_end()
 	{
@@ -63,13 +64,18 @@ namespace sv {
 		// PostProcess to BackBuffer
 		GPUImage& backBuffer = graphics_swapchain_acquire_image();
 
-		if (g_OutputMode == RendererOutputMode_backBuffer) {
+		if (g_BackBuffer) {
 			postprocessing_default_render(g_PP_OffscreenToBackBuffer, g_Offscreen.renderTarget, backBuffer, cmd);
 		}
 
 		// End
 		graphics_commandlist_submit();
 		graphics_present();
+	}
+
+	DrawData& renderer_drawData_get()
+	{
+		return g_DrawData;
 	}
 
 	bool renderer_offscreen_create(ui32 width, ui32 height, Offscreen& offscreen)
@@ -112,10 +118,6 @@ namespace sv {
 		return g_Offscreen;
 	}
 
-	DrawData& renderer_drawData_get()
-	{
-		return g_DrawData;
-	}
 
 	void renderer_resolution_set(ui32 width, ui32 height)
 	{
@@ -133,102 +135,79 @@ namespace sv {
 
 	///////////////////////////////// DRAW FUNCTIONS ////////////////////////////////////////////////
 
-	void renderer_scene_begin()
+	void renderer_scene_render(bool backBuffer)
 	{
+		EntityView<CameraComponent> cameras;
+		for (CameraComponent& camera : cameras) {
 
-		// Clear last draw data
-		g_DrawData.cameras.clear();
-		g_DrawData.currentCamera = {};
-		g_DrawData.viewMatrix = XMMatrixIdentity();
-		g_DrawData.projectionMatrix = XMMatrixIdentity();
-		g_DrawData.viewProjectionMatrix = XMMatrixIdentity();
-		g_DrawData.sprites.Reset();
-		//g_DrawData.meshes.Reset();
+			bool draw = false;
 
-		renderer2D_begin();
+			// Fill desc struct
+			RendererDesc desc{};
+
+			if (camera.GetOffscreen() != nullptr) {
+				desc.camera.pOffscreen = camera.GetOffscreen();
+				desc.rendererTarget |= RendererTarget_CameraOffscreen;
+				draw = true;
+			}
+
+			if (camera.entity == scene_camera_get()) {
+				desc.rendererTarget |= RendererTarget_Offscreen;
+				if (backBuffer) desc.rendererTarget |= RendererTarget_BackBuffer;
+				draw = true;
+			}
+
+			if (!camera.settings.active) draw = false;
+			if (!draw) continue;
+
+			Transform trans = scene_ecs_entity_get_transform(camera.entity);
+
+			desc.camera.projection = camera.projection;
+			desc.camera.settings = camera.settings;
+			desc.camera.viewMatrix = XMMatrixInverse(nullptr, trans.GetWorldMatrix());
+
+			// Draw
+			renderer_scene_begin(&desc);
+			renderer_scene_draw_scene();
+			renderer_scene_end();
+
+		}
+	}
+
+	void renderer_scene_begin(const RendererDesc* desc)
+	{
+		SV_ASSERT(desc != nullptr);
+		g_DrawData.projection = desc->camera.projection;
+		g_DrawData.settings = desc->camera.settings;
+		g_DrawData.viewMatrix = desc->camera.viewMatrix;
+		g_DrawData.projectionMatrix = renderer_projection_matrix(g_DrawData.projection);
+		g_DrawData.viewProjectionMatrix = g_DrawData.viewMatrix * g_DrawData.projectionMatrix;
+
+		if (desc->rendererTarget == RendererTarget_CameraOffscreen) {
+			SV_ASSERT(desc->camera.pOffscreen != nullptr);
+			g_DrawData.pOffscreen = desc->camera.pOffscreen;
+		}
+		else if (desc->rendererTarget & RendererTarget_Offscreen) {
+			g_DrawData.pOffscreen = &g_Offscreen;
+			if (desc->rendererTarget & RendererTarget_BackBuffer) g_BackBuffer = true;
+		}
+
 	}
 
 	void renderer_scene_end()
 	{
-#ifdef SV_DEBUG
-		{
-			ui32 mainCameraCount = 0u;
-			auto& cameras = g_DrawData.cameras;
-			for (ui32 i = 0; i < cameras.size(); ++i) {
-				if (cameras[i].pOffscreen == nullptr) mainCameraCount++;
-			}
-
-			SV_ASSERT(mainCameraCount == 1);
-		}
-#endif
-
-		renderer2D_end();
-
-		// Present scene cameras
-		{
-			auto& cameras = g_DrawData.cameras;
-			for (ui32 i = 0; i < cameras.size(); ++i) {
-				Camera_DrawData& c = g_DrawData.cameras[i];
-				c.viewMatrix = XMMatrixInverse(nullptr, c.viewMatrix);
-				renderer_present(c.projection, c.viewMatrix, c.pOffscreen);
-			}
-		}
-	}
-
-	void renderer_scene_draw_scene()
-	{
-		// Get Cameras
-		{
-			EntityView<CameraComponent> cameras;
-
-			for (auto& camera : cameras) {
-				sv::Transform trans = scene_ecs_entity_get_transform(camera.entity);
-
-				if (sv::scene_camera_get() == camera.entity) {
-					g_DrawData.cameras.push_back({ camera.projection, nullptr, trans.GetWorldMatrix() });
-				}
-				else if (camera.HasOffscreen()) {
-					Offscreen* offscreen = camera.GetOffscreen();
-					g_DrawData.cameras.push_back({ camera.projection, offscreen, trans.GetWorldMatrix() });
-				}
-			}
-		}
-
-		// Render Layers
-		renderer2D_prepare_scene();
+		g_DrawData = {};
 	}
 
 	//////////////////////////////// RENDER FUNCTIONS ////////////////////////////////////////////////
 
-	void renderer_present(CameraProjection projection, XMMATRIX viewMatrix, Offscreen* pOffscreen)
+	void renderer_scene_draw_scene()
 	{
-		// Set Camera Values
-		g_DrawData.currentCamera.projection = projection;
-		g_DrawData.currentCamera.viewMatrix = viewMatrix;
-		g_DrawData.viewMatrix = viewMatrix;
-		g_DrawData.projectionMatrix = renderer_compute_projection_matrix(projection);
-		g_DrawData.viewProjectionMatrix = g_DrawData.viewMatrix * g_DrawData.projectionMatrix;
-
-		// Set Output Ptr
-		if (pOffscreen) {
-			g_DrawData.currentCamera.pOffscreen = pOffscreen;
-		}
-		else {
-			g_DrawData.currentCamera.pOffscreen = &g_Offscreen;
-		}
-
 		// Render
-		Offscreen& offscreen = *g_DrawData.currentCamera.pOffscreen;
+		Offscreen& offscreen = *g_DrawData.pOffscreen;
+
+		// Begin command list
 		CommandList cmd = graphics_commandlist_begin();
-
-		// Skybox
-		//TODO: clear offscreen here :)
-
-		// this is not good for performance - remember to do image barrier here
-		graphics_image_clear(offscreen.renderTarget, GPUImageLayout_ShaderResource, GPUImageLayout_RenderTarget, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
-		graphics_image_clear(offscreen.depthStencil, GPUImageLayout_DepthStencil, GPUImageLayout_DepthStencil, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
-
-		graphics_set_pipeline_mode(GraphicsPipelineMode_Graphics, cmd);
 
 		Viewport viewport = offscreen.GetViewport();
 		graphics_set_viewports(&viewport, 1u, cmd);
@@ -236,8 +215,17 @@ namespace sv {
 		Scissor scissor = offscreen.GetScissor();
 		graphics_set_scissors(&scissor, 1u, cmd);
 
+		// Skybox
+		//TODO: clear offscreen here :)
+
+		// this is not good for performance - remember to do image barrier here
+		graphics_image_clear(offscreen.renderTarget, GPUImageLayout_ShaderResource, GPUImageLayout_RenderTarget, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
+		graphics_image_clear(offscreen.depthStencil, GPUImageLayout_DepthStencil, GPUImageLayout_DepthStencil, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);		
+
 		// Sprite rendering
-		renderer2D_sprite_render(g_DrawData.sprites.data(), g_DrawData.sprites.Size(), cmd);
+		renderer2D_scene_draw_sprites(cmd);
+		// Mesh rendering
+		mesh_renderer_scene_draw_meshes(cmd);
 
 		// Offscreen layout: from render target to shader resource
 		GPUBarrier barrier = GPUBarrier::Image(offscreen.renderTarget, GPUImageLayout_RenderTarget, GPUImageLayout_ShaderResource);

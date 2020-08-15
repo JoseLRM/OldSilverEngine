@@ -103,7 +103,7 @@ namespace sv {
 	std::vector<ui8>& scene_ecs_get_components(sv::CompID ID);
 
 	Scene	scene_create();
-	void	scene_destroy(Scene& scene);
+	void	scene_destroy(Scene scene);
 	void	scene_clear(Scene scene);
 
 	Entity	scene_camera_get();

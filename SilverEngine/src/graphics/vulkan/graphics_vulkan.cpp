@@ -1738,8 +1738,6 @@ namespace sv {
 		ui32 imagesCount = 0u;
 		ui32 uniformsCount = 0u;
 
-		shader.bindingsLocation.resize(shader.bindings.size());
-
 		for (ui32 i = 0; i < shader.bindings.size(); ++i) {
 
 			switch (shader.bindings[i].descriptorType)
@@ -1868,16 +1866,34 @@ namespace sv {
 		// Check if it is created
 		if (p.layout != VK_NULL_HANDLE) return true;
 
+		ui32 bindingsCount = 0u;
+
 		if (desc.pVertexShader) {
 			Shader_vk& shader = *reinterpret_cast<Shader_vk*>(desc.pVertexShader->GetPtr());
 			p.semanticNames = shader.semanticNames;
 			p.bindings.insert(p.bindings.end(), shader.bindings.begin(), shader.bindings.end());
-			p.bindingsLocation.insert(p.bindingsLocation.end(), shader.bindingsLocation.begin(), shader.bindingsLocation.end());
+
+			bindingsCount += shader.bindingsLocation.size();
 		}
 		if (desc.pPixelShader) {
 			Shader_vk& shader = *reinterpret_cast<Shader_vk*>(desc.pPixelShader->GetPtr());
 			p.bindings.insert(p.bindings.end(), shader.bindings.begin(), shader.bindings.end());
-			p.bindingsLocation.insert(p.bindingsLocation.end(), shader.bindingsLocation.begin(), shader.bindingsLocation.end());
+			bindingsCount += shader.bindingsLocation.size();
+		}
+
+		p.bindingsLocation.resize(bindingsCount);
+
+		if (desc.pVertexShader) {
+			Shader_vk& shader = *reinterpret_cast<Shader_vk*>(desc.pVertexShader->GetPtr());
+			for (auto& it : shader.bindingsLocation) {
+				p.bindingsLocation[it.first] = it.second;
+			}
+		}
+		if (desc.pPixelShader) {
+			Shader_vk& shader = *reinterpret_cast<Shader_vk*>(desc.pPixelShader->GetPtr());
+			for (auto& it : shader.bindingsLocation) {
+				p.bindingsLocation[it.first] = it.second;
+			}
 		}
 
 		// Count

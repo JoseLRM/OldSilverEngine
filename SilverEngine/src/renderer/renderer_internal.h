@@ -3,6 +3,7 @@
 #include "renderer.h"
 #include "renderer2D/renderer2D_internal.h"
 #include "postprocessing/postprocessing.h"
+#include "mesh_renderer/mesh_renderer_internal.h"
 
 // Draw data
 
@@ -14,27 +15,16 @@ namespace sv {
 	void renderer_frame_begin();
 	void renderer_frame_end();
 
-	struct Camera_DrawData {
-		CameraProjection	projection;
-		Offscreen*			pOffscreen;
-		XMMATRIX			viewMatrix;
-	};
-
 	struct DrawData {
-
-		std::vector<Camera_DrawData>				cameras;
-		Camera_DrawData								currentCamera;
-		XMMATRIX									viewMatrix;
-		XMMATRIX									projectionMatrix;
-		XMMATRIX									viewProjectionMatrix;
-		sv::RenderList<SpriteInstance>				sprites;
-		//sv::RenderList<MeshInstance>				meshes;
-
+		Offscreen*			pOffscreen;
+		CameraProjection	projection;
+		CameraSettings		settings;
+		XMMATRIX			viewMatrix;
+		XMMATRIX			projectionMatrix;
+		XMMATRIX			viewProjectionMatrix;
 	};
 
 	DrawData& renderer_drawData_get();
-
-
 
 	// Scene struct
 	struct RenderWorld {

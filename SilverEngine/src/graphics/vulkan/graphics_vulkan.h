@@ -67,7 +67,7 @@ namespace sv {
 		VkShaderModule								module = VK_NULL_HANDLE;
 		std::vector<VkDescriptorSetLayoutBinding>	bindings;
 		std::map<std::string, ui32>					semanticNames;
-		std::vector<ui32>							bindingsLocation;
+		std::map<ui32, ui32>						bindingsLocation;
 	};
 	// RenderPass
 	struct RenderPass_vk : public RenderPass_internal {
@@ -101,7 +101,7 @@ namespace sv {
 		std::mutex									creationMutex;
 
 		std::map<std::string, ui32>					semanticNames;
-		std::vector<ui32>							bindingsLocation;
+		std::vector<ui32>						bindingsLocation;
 
 		VkPipelineLayout							layout = VK_NULL_HANDLE;
 		std::map<size_t, VkPipeline>				pipelines;

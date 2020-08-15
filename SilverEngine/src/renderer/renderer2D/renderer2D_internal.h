@@ -14,29 +14,27 @@ namespace sv {
 		Sprite sprite;
 		Color color;
 		ui32 layerID;
-		SpriteAABB boundingBox;
+		vec3 position;
 
 		SpriteInstance() = default;
-		SpriteInstance(const XMMATRIX& m, Sprite sprite, sv::Color color, ui32 layerID, vec3 pos, vec2 size) : tm(m), sprite(sprite), color(color), layerID(layerID), boundingBox({ pos, size }) {}
+		SpriteInstance(const XMMATRIX& m, Sprite sprite, sv::Color color, ui32 layerID, vec3 position) : tm(m), sprite(sprite), color(color), layerID(layerID), position(position) {}
 	};
-
-	bool renderer2D_initialize();
-	bool renderer2D_close();
-	void renderer2D_sprite_render(SpriteInstance* buffer, ui32 count, sv::CommandList cmd);
 
 	struct RenderLayer {
-		ui32					count;
 		RenderLayerSortMode		sortMode;
 	};
-
-	void renderer2D_begin();
-	void renderer2D_prepare_scene();
-	void renderer2D_end();
 
 	struct TextureAtlas_internal {
 		GPUImage			image;
 		Sampler				sampler;
 		std::vector<vec4>	sprites;
 	};
+
+	bool renderer2D_initialize();
+	bool renderer2D_close();
+	void renderer2D_scene_draw_sprites(CommandList cmd);
+
+	void renderer2D_sprite_sort(SpriteInstance* buffer, ui32 count, const RenderLayer& renderLayer);
+	void renderer2D_sprite_render(SpriteInstance* buffer, ui32 count, const XMMATRIX& viewProjectionMatrix, GPUImage& renderTarget, CommandList cmd);
 
 }

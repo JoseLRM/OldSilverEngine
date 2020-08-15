@@ -1,6 +1,6 @@
 #include "core.h"
 
-#include "engine_state_internal.h"
+#include "engine.h"
 
 #include "renderer/renderer_internal.h"
 #include "graphics/graphics_internal.h"
@@ -17,20 +17,20 @@ namespace sv {
 	static Version		g_Version = { 0u, 0u, 0u };
 	static std::string	g_Name;
 
-	static float		g_FixedUpdateFrameRate = 1 / 60.f;
 	static float		g_DeltaTime = 0.f;
-
-	static Application* g_Application;
+	static float		g_TimeStep = 1.f;
 
 	static ui64			g_FrameCount = 0u;
 
-	bool engine_initialize(Application* app, const InitializationDesc* d)
+	static ApplicationCallbacks g_App;
+
+	bool engine_initialize(const InitializationDesc* d)
 	{
-		SV_ASSERT(app);
-		g_Application = app;
+		SV_ASSERT(d != nullptr);
 
 		// Initialization Parameters
 		const InitializationDesc& desc = *d;
+		g_App = desc.callbacks;
 
 		g_Name = "SilverEngine ";
 		g_Name += g_Version.ToString();
@@ -52,7 +52,7 @@ namespace sv {
 		svCheck(renderer_initialize(desc.rendererDesc));
 
 		// APPLICATION
-		g_Application->Initialize();
+		svCheck(g_App.initialize());
 
 		return true;
 	}
@@ -60,7 +60,6 @@ namespace sv {
 	bool engine_loop()
 	{
 		static Time		lastTime		= 0.f;
-		static float	fixedUpdateTime = 0.f;
 		static float	showFPSTime		= 0.f;
 		static ui32		FPS				= 0u;
 		bool			running			= true;
@@ -80,36 +79,19 @@ namespace sv {
 			if (input_update()) return false;
 			window_update();
 
-			// Updating
-			engine_state_update();
+			// Update User
+			g_App.update(g_DeltaTime);
 
-			// Get current state
-			State* state = engine_state_get_state();
-
-			// Update state/loadingState and application
-			if (state) state->Update(g_DeltaTime);
-
-			// Fixed update state/loadingState and application
-			fixedUpdateTime += g_DeltaTime;
-			g_Application->Update(g_DeltaTime);
-			if (fixedUpdateTime >= g_FixedUpdateFrameRate) {
-
-				if (state) state->FixedUpdate();
-
-				g_Application->FixedUpdate();
-				fixedUpdateTime -= g_FixedUpdateFrameRate;
-			}
-
-			// Physics
+			// Update Physics
 			physics_update(g_DeltaTime);
 
-			// Rendering
+			// Begin Rendering
 			renderer_frame_begin();
 
-			if (state) state->Render();
+			// User Rendering
+			g_App.render();
 
-			g_Application->Render();
-
+			// End Rendering
 			renderer_frame_end();
 
 			// Calculate FPS
@@ -146,10 +128,8 @@ namespace sv {
 		sv::log_info("Closing %s", g_Name.c_str());
 
 		// APPLICATION
-		g_Application->Close();
-		g_Application = nullptr;
+		svCheck(g_App.close());
 
-		engine_state_close();
 		svCheck(renderer_close());
 		svCheck(window_close());
 		svCheck(graphics_close());
@@ -162,8 +142,15 @@ namespace sv {
 	Version engine_version_get() noexcept { return g_Version; }
 	float engine_deltatime_get() noexcept { return g_DeltaTime;	}
 
-	ui64 engine_stats_get_frame_count() noexcept { return g_FrameCount; }
+	void engine_timestep_set(float timestep) noexcept
+	{
+		g_TimeStep = timestep;
+	}
+	float engine_timestep_get() noexcept
+	{
+		return g_TimeStep;
+	}
 
-	Application& application_get() noexcept { return *g_Application; }
+	ui64 engine_stats_get_frame_count() noexcept { return g_FrameCount; }
 	
 }

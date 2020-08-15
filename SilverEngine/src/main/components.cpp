@@ -5,11 +5,14 @@
 namespace sv {
 
 	CameraComponent::CameraComponent()
-	{}
+	{
+		settings.active = true;
+	}
 
 	CameraComponent::CameraComponent(CameraType type)
 	{
 		projection.cameraType = type;
+		settings.active = true;
 	}
 
 	CameraComponent::CameraComponent(const CameraComponent& other)
@@ -40,15 +43,7 @@ namespace sv {
 
 	void CameraComponent::Adjust(float width, float height)
 	{
-		switch (projection.cameraType)
-		{
-		case CameraType_Orthographic:
-			renderer_compute_projection_aspect_set(projection, width / height);
-			break;
-		case CameraType_Perspective:
-			sv::log_error("TODO");
-			break;
-		}
+		renderer_projection_aspect_set(projection, width / height);
 	}
 
 	bool CameraComponent::CreateOffscreen(ui32 width, ui32 height)

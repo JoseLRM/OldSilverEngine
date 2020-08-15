@@ -342,9 +342,9 @@ namespace sv {
 	};
 
 	struct InputElementDesc {
-		ui32		inputSlot;
 		const char* name;
 		ui32		index;
+		ui32		inputSlot;
 		ui32		offset;
 		Format		format;
 	};

@@ -49,7 +49,8 @@ namespace sv {
 		std::unique_ptr<Offscreen> m_Offscreen;
 	
 	public:
-		CameraProjection projection;
+		CameraProjection	projection;
+		CameraSettings		settings;
 	
 		CameraComponent();
 		CameraComponent(CameraType projectionType);
@@ -105,6 +106,13 @@ namespace sv {
 		void SetCircleCollider(float radius);
 		float CircleCollider_GetRadius();
 		void CircleCollider_SetRadius(float radius);
+
+	};
+
+	SV_COMPONENT(MeshComponent) {
+
+		Mesh mesh;
+		Material material;
 
 	};
 

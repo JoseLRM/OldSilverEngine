@@ -393,7 +393,11 @@ namespace sv {
 
 	CommandList graphics_commandlist_begin()
 	{
-		return g_Device->BeginCommandList();
+		CommandList cmd = g_Device->BeginCommandList();
+
+		graphics_set_pipeline_mode(GraphicsPipelineMode_Graphics, cmd);
+
+		return cmd;
 	}
 
 	CommandList graphics_commandlist_last()

@@ -106,9 +106,9 @@ namespace sv {
 			InputLayoutDesc inputLayout;
 			inputLayout.slots.push_back({ 0u, sizeof(SpriteVertex), false });
 
-			inputLayout.elements.push_back({ 0u, "Position", 0u, 0u, Format_R32G32B32A32_FLOAT });
-			inputLayout.elements.push_back({ 0u, "TexCoord", 0u, 4u * sizeof(float), Format_R32G32_FLOAT });
-			inputLayout.elements.push_back({ 0u, "Color", 0u, 6u * sizeof(float), Format_R8G8B8A8_UNORM });
+			inputLayout.elements.push_back({ "Position", 0u, 0u, 0u, Format_R32G32B32A32_FLOAT });
+			inputLayout.elements.push_back({ "TexCoord", 0u, 0u, 4u * sizeof(float), Format_R32G32_FLOAT });
+			inputLayout.elements.push_back({ "Color", 0u, 0u, 6u * sizeof(float), Format_R8G8B8A8_UNORM });
 
 			BlendStateDesc blendState;
 			blendState.attachments.resize(1);
@@ -184,110 +184,89 @@ namespace sv {
 		return true;
 	}
 
-	void renderer2D_begin()
+	void renderer2D_sprite_sort(SpriteInstance* buffer, ui32 count, const RenderLayer& renderLayer) 
 	{
-		auto& renderLayers = scene_renderWorld_get().renderLayers;
-		for (auto& rl : renderLayers) {
-			rl.count = 0u;
+		SpriteInstance* begin = buffer;
+		SpriteInstance* end = buffer + count;
+
+		switch (renderLayer.sortMode)
+		{
+		case RenderLayerSortMode_none:
+			std::sort(begin, end, [](const SpriteInstance& s0, const SpriteInstance& s1) {
+				return s0.sprite.textureAtlas < s1.sprite.textureAtlas;
+			});
+			break;
+
+		case RenderLayerSortMode_coordX:
+			std::sort(begin, end, [](const SpriteInstance& s0, const SpriteInstance& s1) {
+				if (s0.position.x == s1.position.x) return s0.sprite.textureAtlas < s1.sprite.textureAtlas;
+				return s0.position.x < s1.position.x;
+			});
+			break;
+
+		case RenderLayerSortMode_coordY:
+			std::sort(begin, end, [](const SpriteInstance& s0, const SpriteInstance& s1) {
+				if (s0.position.y == s1.position.y) return s0.sprite.textureAtlas < s1.sprite.textureAtlas;
+				return s0.position.y < s1.position.y;
+			});
+			break;
+
+		case RenderLayerSortMode_coordZ:
+			std::sort(begin, end, [](const SpriteInstance& s0, const SpriteInstance& s1) {
+				if (s0.position.z == s1.position.z) return s0.sprite.textureAtlas < s1.sprite.textureAtlas;
+				return s0.position.z < s1.position.z;
+			});
+			break;
+
 		}
 	}
 
-	void renderer2D_prepare_scene()
+	void renderer2D_scene_draw_sprites(CommandList cmd)
 	{
-		DrawData& drawData = renderer_drawData_get();
+		EntityView<SpriteComponent> sprites;
+		std::vector<SpriteInstance> instances(sprites.size());
 
-		// Create Sprites Instances
+		// Create Instances
 		{
-			EntityView<SpriteComponent> sprites;
-
-			drawData.sprites.Reserve(sprites.size());
-
-			for (auto& sprite : sprites) {
+			for (ui32 i = 0; i < sprites.size(); ++i) {
+				SpriteComponent& sprite = sprites[i];
+				// TODO: frustum culling
 				Transform trans = scene_ecs_entity_get_transform(sprite.entity);
-				vec3 size = trans.GetWorldScale();
-				drawData.sprites.Emplace(trans.GetWorldMatrix(), sprite.sprite, sprite.color, sprite.renderLayer, trans.GetWorldPosition(), vec2{ size.x, size.y });
+				instances.emplace_back(trans.GetWorldMatrix(), sprite.sprite, sprite.color, sprite.renderLayer, trans.GetWorldPosition());
 			}
 		}
-		
-	}
 
-	void renderer2D_end()
-	{
-		DrawData& drawData = renderer_drawData_get();
 		// Sort by layer
-		std::sort(drawData.sprites.data(), drawData.sprites.data() + drawData.sprites.Size(), [](const SpriteInstance& i0, const SpriteInstance& i1) {
+		std::sort(instances.begin(), instances.end(), [](const SpriteInstance& i0, const SpriteInstance& i1) {
 			return i0.layerID < i1.layerID;
 		});
 
-		// Count sprites
+		// Sort layer by sort mode and texture
 		{
-			auto& sprites = drawData.sprites;
 			auto& renderLayers = scene_renderWorld_get().renderLayers;
 
-			ui32 last = 0u;
 			ui32 rl = 0u;
-			SpriteInstance* end = sprites.data() + sprites.Size();
+			SpriteInstance* offset = instances.data();
 
-			if (!sprites.Empty()) {
-				for (SpriteInstance* it = sprites.data(); it != end; ++it) {
+			if (!instances.empty()) {
+				for (auto it = instances.begin(); it != instances.end(); ++it) {
 					if (rl != it->layerID) {
-						renderLayers[rl].count = it - sprites.data() - last;
-						last = renderLayers[rl].count;
+						
+						SpriteInstance* pos = &*it;
+						
+						renderer2D_sprite_sort(offset, pos - offset, renderLayers[rl]);
+
+						offset = pos;
 						rl = it->layerID;
 					}
 				}
-				renderLayers[rl].count = sprites.Size() - last;
+				renderer2D_sprite_sort(offset, instances.size() - (offset - instances.data()), renderLayers[rl]);
 			}
 		}
 
-		// Sort layer by sort mode and texture
-		{
-			auto& sprites = drawData.sprites;
-			auto& renderLayers = scene_renderWorld_get().renderLayers;
-
-			ui32 index = 0u;
-
-			for (ui32 i = 0; i < renderLayers.size(); ++i) {
-				RenderLayer& rl = renderLayers[i];
-				if (rl.count == 0u) continue;
-
-				SpriteInstance* begin = sprites.data() + index;
-				SpriteInstance* end = sprites.data() + index + rl.count;
-
-				switch (rl.sortMode)
-				{
-				case RenderLayerSortMode_none:
-					std::sort(begin, end, [](const SpriteInstance& s0, const SpriteInstance& s1) {
-						return s0.sprite.textureAtlas < s1.sprite.textureAtlas;
-					});
-					break;
-
-				case RenderLayerSortMode_coordX:
-					std::sort(begin, end, [](const SpriteInstance& s0, const SpriteInstance& s1) {
-						if (s0.boundingBox.position.x == s1.boundingBox.position.x) return s0.sprite.textureAtlas < s1.sprite.textureAtlas;
-						return s0.boundingBox.position.x < s1.boundingBox.position.x;
-					});
-					break;
-
-				case RenderLayerSortMode_coordY:
-					std::sort(begin, end, [](const SpriteInstance& s0, const SpriteInstance& s1) {
-						if (s0.boundingBox.position.y == s1.boundingBox.position.y) return s0.sprite.textureAtlas < s1.sprite.textureAtlas;
-						return s0.boundingBox.position.y < s1.boundingBox.position.y;
-					});
-					break;
-
-				case RenderLayerSortMode_coordZ:
-					std::sort(begin, end, [](const SpriteInstance& s0, const SpriteInstance& s1) {
-						if (s0.boundingBox.position.z == s1.boundingBox.position.z) return s0.sprite.textureAtlas < s1.sprite.textureAtlas;
-						return s0.boundingBox.position.z < s1.boundingBox.position.z;
-					});
-					break;
-
-				}
-
-				index += rl.count;
-			}
-		}
+		// Render
+		DrawData& drawData = renderer_drawData_get();
+		renderer2D_sprite_render(instances.data(), ui32(instances.size()), drawData.viewProjectionMatrix, drawData.pOffscreen->renderTarget, cmd);
 	}
 
 	void RenderSpriteBatch(ui32 offset, ui32 size, TextureAtlas_internal* texture, CommandList cmd)
@@ -322,14 +301,10 @@ namespace sv {
 
 	}
 
-	void renderer2D_sprite_render(SpriteInstance* buffer, ui32 count, CommandList cmd)
+	void renderer2D_sprite_render(SpriteInstance* buffer, ui32 count, const XMMATRIX& viewProjectionMatrix, GPUImage& renderTarget, CommandList cmd)
 	{
-		DrawData& drawData = renderer_drawData_get();
-
-		// TODO: frustum culling
-
 		GPUImage* att[] = {
-			&drawData.currentCamera.pOffscreen->renderTarget
+			&renderTarget
 		};
 
 		TextureAtlas_internal* texture = nullptr;
@@ -352,7 +327,7 @@ namespace sv {
 				SpriteInstance& spr = buffer[j];
 
 				// Compute Matrices form WorldSpace to ScreenSpace
-				XMMATRIX matrix = spr.tm * drawData.viewProjectionMatrix;
+				XMMATRIX matrix = spr.tm * viewProjectionMatrix;
 
 				XMVECTOR pos0 = XMVectorSet(-0.5f, -0.5f, 0.f, 1.f);
 				XMVECTOR pos1 = XMVectorSet(0.5f, -0.5f, 0.f, 1.f);
@@ -390,8 +365,7 @@ namespace sv {
 
 			while (buffer < beginBuffer + batchSize) {
 
-				const RenderLayer* rl = &renderLayers[buffer->layerID];
-				endBuffer = buffer + std::min(rl->count, batchSize);
+				endBuffer = buffer + batchSize;
 
 				texture = reinterpret_cast<TextureAtlas_internal*>(buffer->sprite.textureAtlas);
 				

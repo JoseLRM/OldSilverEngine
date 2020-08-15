@@ -59,7 +59,7 @@ namespace sv {
 			svCheck(graphics_sampler_create(&samDesc, g_DefSampler));
 
 			InputLayoutDesc inputLayout;
-			inputLayout.elements.push_back({ 0u, "Position", 0u, 0u, Format_R32G32_FLOAT });
+			inputLayout.elements.push_back({ "Position", 0u, 0u, 0u, Format_R32G32_FLOAT });
 			inputLayout.slots.push_back({ 0u, sizeof(vec2), false });
 
 			GraphicsPipelineDesc pDesc;

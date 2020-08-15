@@ -107,13 +107,13 @@ namespace sv {
 		GPUBuffer_internal*				indexBuffer;
 		ui32							indexBufferOffset;
 
-		GPUBuffer_internal*				constantBuffers[SV_GFX_CONSTANT_BUFFER_COUNT][ShaderType_GraphicsCount];
+		GPUBuffer_internal*				constantBuffers[ShaderType_GraphicsCount][SV_GFX_CONSTANT_BUFFER_COUNT];
 		ui32							constantBuffersCount[ShaderType_GraphicsCount];
 
-		GPUImage_internal*				images[SV_GFX_IMAGE_COUNT][ShaderType_GraphicsCount];
+		GPUImage_internal*				images[ShaderType_GraphicsCount][SV_GFX_IMAGE_COUNT];
 		ui32							imagesCount[ShaderType_GraphicsCount];
 
-		Sampler_internal*				sampers[SV_GFX_SAMPLER_COUNT][ShaderType_GraphicsCount];
+		Sampler_internal*				sampers[ShaderType_GraphicsCount][SV_GFX_SAMPLER_COUNT];
 		ui32							samplersCount[ShaderType_GraphicsCount];
 
 		GraphicsPipeline_internal*		pipeline;

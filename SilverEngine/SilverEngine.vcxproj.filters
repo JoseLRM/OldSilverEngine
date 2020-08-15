@@ -72,7 +72,6 @@
     <ClInclude Include="src\external\sprv\spirv_reflect.hpp" />
     <ClInclude Include="src\external\stbi_lib.h" />
     <ClInclude Include="src\external\vk_mem_alloc.h" />
-    <ClInclude Include="src\main\Application.h" />
     <ClInclude Include="src\utils.h" />
     <ClInclude Include="src\core.h" />
     <ClInclude Include="src\engine.h" />
@@ -92,10 +91,11 @@
     <ClInclude Include="src\physics\physics_internal.h" />
     <ClInclude Include="src\graphics\graphics_internal.h" />
     <ClInclude Include="src\platform\window_internal.h" />
-    <ClInclude Include="src\main\engine_state_internal.h" />
     <ClInclude Include="src\input\input_internal.h" />
     <ClInclude Include="src\task_system\task_system_internal.h" />
     <ClInclude Include="src\utils\utils_internal.h" />
+    <ClInclude Include="src\renderer\mesh_renderer\mesh_renderer.h" />
+    <ClInclude Include="src\renderer\mesh_renderer\mesh_renderer_internal.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\graphics\vulkan\graphics_vulkan.cpp" />
@@ -127,19 +127,20 @@
     <ClCompile Include="src\external\sprv\spirv_reflect.cpp" />
     <ClCompile Include="src\main\engine.cpp" />
     <ClCompile Include="src\main\core.cpp" />
-    <ClCompile Include="src\main\engine_state.cpp" />
-    <ClCompile Include="src\main\Application.cpp" />
     <ClCompile Include="src\renderer\postprocessing\postprocessing.cpp" />
     <ClCompile Include="src\renderer\renderer2D\renderer2D.cpp" />
     <ClCompile Include="src\main\components.cpp" />
     <ClCompile Include="src\renderer\renderer_projection.cpp" />
     <ClCompile Include="src\task_system\task_system.cpp" />
     <ClCompile Include="src\input\input.cpp" />
+    <ClCompile Include="src\renderer\mesh_renderer\mesh_renderer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="src\graphics\sprv_shaders\DefPostProcess.frag" />
     <CustomBuild Include="src\graphics\sprv_shaders\DefPostProcess.vert" />
     <CustomBuild Include="src\graphics\sprv_shaders\Sprite.frag" />
     <CustomBuild Include="src\graphics\sprv_shaders\Sprite.vert" />
+    <CustomBuild Include="src\graphics\sprv_shaders\Forward.frag" />
+    <CustomBuild Include="src\graphics\sprv_shaders\Forward.vert" />
   </ItemGroup>
 </Project>

@@ -259,8 +259,9 @@ namespace sv {
 		return scene;
 	}
 
-	void scene_destroy(Scene& scene_)
+	void scene_destroy(Scene scene_)
 	{
+		if (scene_ == 0) return;
 		Scene_internal* scene = reinterpret_cast<Scene_internal*>(scene_);
 		physics_world_destroy(scene->physicsWorld);
 

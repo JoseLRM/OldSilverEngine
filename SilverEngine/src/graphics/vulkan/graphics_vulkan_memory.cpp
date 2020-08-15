@@ -3,6 +3,10 @@
 #define VMA_IMPLEMENTATION
 #include "graphics_vulkan_memory.h"
 #include "graphics_vulkan.h"
+
+#undef near
+#undef far
+
 #include "engine.h"
 
 namespace sv {

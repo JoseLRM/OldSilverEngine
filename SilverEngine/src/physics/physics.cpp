@@ -3,6 +3,7 @@
 #include "physics_internal.h"
 #include "scene/scene_internal.h"
 #include "components.h"
+#include "engine.h"
 
 #include "external/box2d/b2_world.h"
 #include "external/box2d/b2_body.h"
@@ -12,7 +13,7 @@
 
 namespace sv {
 
-	static ui32 g_pCurrentSceneID = 0u;
+	static bool g_Enabled = true;
 
 	bool physics_initialize(const InitializationPhysicsDesc& desc)
 	{
@@ -76,6 +77,8 @@ namespace sv {
 
 	void physics_update(float dt)
 	{
+		if (!g_Enabled) return;
+
 		b2World& world = GetWorld2D();
 
 		//TODO: Use EntityViews
@@ -94,7 +97,8 @@ namespace sv {
 		}
 
 		// World Step
-		world.Step(dt, 6, 2); //TODO: global variables
+		float timestep = dt * engine_timestep_get();
+		world.Step(timestep, 6, 2); //TODO: global variables
 
 		// Update Positions Output
 		{
@@ -129,6 +133,16 @@ namespace sv {
 	}
 
 	/////////////////////////////// BODY 2D //////////////////////////////////////
+
+	void physics_enable_set(bool enabled)
+	{
+		g_Enabled = enabled;
+	}
+
+	bool physics_enable_get()
+	{
+		return g_Enabled;
+	}
 
 	Body2D body2D_create(const Body2DDesc* desc)
 	{

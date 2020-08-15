@@ -50,6 +50,11 @@ namespace sv {
 	
 	};
 
+	// Globals
+
+	void physics_enable_set(bool enabled);
+	bool physics_enable_get();
+
 	// Body 2D
 
 	Body2D	body2D_create(const Body2DDesc* desc);
