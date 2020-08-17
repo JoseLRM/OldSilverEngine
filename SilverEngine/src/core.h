@@ -72,7 +72,7 @@ namespace _sv {
 
 #define svCheck(x) if(!(x)) do{ sv::log_error(#x); return false; }while(0)
 #define svZeroMemory(dest, size) memset(dest, 0, size)
-#define SV_BIT(x) 1 << x
+#define SV_BIT(x) 1ULL << x 
 
 // logging
 

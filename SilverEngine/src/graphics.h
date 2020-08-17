@@ -10,7 +10,10 @@ namespace sv {
 	struct Sampler;
 	struct RenderPass;
 	struct Shader;
-	struct GraphicsPipeline;
+	struct InputLayoutState;
+	struct BlendState;
+	struct DepthStencilState;
+	struct RasterizerState;
 
 	// Enums
 
@@ -26,7 +29,10 @@ namespace sv {
 		GraphicsPrimitiveType_Buffer,
 		GraphicsPrimitiveType_Shader,
 		GraphicsPrimitiveType_RenderPass,
-		GraphicsPrimitiveType_GraphicsPipeline,
+		GraphicsPrimitiveType_InputLayoutState,
+		GraphicsPrimitiveType_BlendState,
+		GraphicsPrimitiveType_DepthStencilState,
+		GraphicsPrimitiveType_RasterizerState,
 	};
 
 	enum GraphicsPipelineMode : ui8 {
@@ -355,7 +361,7 @@ namespace sv {
 		bool instanced;
 	};
 
-	struct InputLayoutDesc {
+	struct InputLayoutStateDesc {
 		std::vector<InputSlotDesc>		slots;
 		std::vector<InputElementDesc>	elements;
 	};
@@ -401,15 +407,16 @@ namespace sv {
 		StencilStateDesc		back;
 	};
 
-	struct GraphicsPipelineDesc {
-		sv::Shader*						pVertexShader;
-		sv::Shader*						pPixelShader;
-		sv::Shader*						pGeometryShader;
-		const InputLayoutDesc*			pInputLayout;
-		const BlendStateDesc*			pBlendState;
-		const RasterizerStateDesc*		pRasterizerState;
-		const DepthStencilStateDesc*	pDepthStencilState;
-		GraphicsTopology				topology;
+	struct GraphicsPipeline {
+		Shader*					pVertexShader;
+		Shader*					pPixelShader;
+		Shader*					pGeometryShader;
+		InputLayoutState*		pInputLayoutState;
+		BlendState*				pBlendState;
+		RasterizerState*		pRasterizerState;
+		DepthStencilState*		pDepthStencilState;
+		GraphicsTopology		topology;
+		ui32					stencilRef;
 	};
 
 	// Format functions
@@ -549,7 +556,10 @@ namespace sv {
 	struct Sampler : public Primitive {};
 	struct Shader : public Primitive {};
 	struct RenderPass : public Primitive {};
-	struct GraphicsPipeline : public Primitive {};
+	struct InputLayoutState : public Primitive {};
+	struct BlendState : public Primitive {};
+	struct DepthStencilState : public Primitive {};
+	struct RasterizerState : public Primitive {};
 
 	typedef ui32 CommandList;
 
@@ -566,7 +576,10 @@ namespace sv {
 	bool graphics_image_create(const GPUImageDesc* desc, GPUImage& image);
 	bool graphics_sampler_create(const SamplerDesc* desc, Sampler& sampler);
 	bool graphics_renderpass_create(const RenderPassDesc* desc, RenderPass& renderPass);
-	bool graphics_pipeline_create(const GraphicsPipelineDesc* desc, GraphicsPipeline& graphicsPipeline);
+	bool graphics_inputlayoutstate_create(const InputLayoutStateDesc* desc, InputLayoutState& inputLayoutState);
+	bool graphics_blendstate_create(const BlendStateDesc* desc, BlendState& blendState);
+	bool graphics_depthstencilstate_create(const DepthStencilStateDesc* desc, DepthStencilState& depthStencilState);
+	bool graphics_rasterizerstate_create(const RasterizerStateDesc* desc, RasterizerState& rasterizerState);
 
 	bool graphics_destroy(Primitive& primitive);
 
@@ -582,8 +595,14 @@ namespace sv {
 	void graphics_vertexbuffer_bind(GPUBuffer** buffers, ui32* offsets, ui32* strides, ui32 count, CommandList cmd);
 	void graphics_indexbuffer_bind(GPUBuffer& buffer, ui32 offset, CommandList cmd);
 	void graphics_constantbuffer_bind(GPUBuffer** buffers, ui32 count, ShaderType shaderType, CommandList cmd);
+	void graphics_shader_bind(Shader& shader, CommandList cmd);
 	void graphics_image_bind(GPUImage** images, ui32 count, ShaderType shaderType, CommandList cmd);
 	void graphics_sampler_bind(Sampler** samplers, ui32 count, ShaderType shaderType, CommandList cmd);
+	void graphics_inputlayoutstate_bind(InputLayoutState& inputLayoutState, CommandList cmd);
+	void graphics_blendstate_bind(BlendState& blendState, CommandList cmd);
+	void graphics_depthstencilstate_bind(DepthStencilState& depthStencilState, CommandList cmd);
+	void graphics_rasterizerstate_bind(RasterizerState& rasterizerState, CommandList cmd);
+
 	void graphics_pipeline_bind(GraphicsPipeline& pipeline, CommandList cmd);
 
 	void graphics_renderpass_begin(RenderPass& renderPass, GPUImage** attachments, const Color4f* colors, float depth, ui32 stencil, CommandList cmd);
@@ -592,6 +611,7 @@ namespace sv {
 	void graphics_set_pipeline_mode(GraphicsPipelineMode mode, CommandList cmd);
 	void graphics_set_viewports(const Viewport* viewports, ui32 count, CommandList cmd);
 	void graphics_set_scissors(const Scissor* scissors, ui32 count, CommandList cmd);
+	void graphics_set_topology(GraphicsTopology topology, CommandList cmd);
 	void graphics_set_stencil_reference(ui32 ref, CommandList cmd);
 
 	// Draw Calls

@@ -620,13 +620,17 @@ namespace sv {
 		GraphicsState& state = graphics_state_get().graphics[cmd_];
 
 		RenderPass_vk& renderPass = *reinterpret_cast<RenderPass_vk*>(state.renderPass);
-		GraphicsPipeline_vk& svPipeline = *reinterpret_cast<GraphicsPipeline_vk*>(state.pipeline);
-		size_t pipelineHash = svPipeline.hash;
-		VulkanPipeline& pipeline = m_Pipelines[pipelineHash];
 
 		VkCommandBuffer cmd = GetCMD(cmd_);
 
-		bool updatePipeline = state.flags & GraphicsPipelineState_Pipeline;
+		bool updatePipeline = state.flags & (
+			GraphicsPipelineState_Shader |
+			GraphicsPipelineState_InputLayoutState |
+			GraphicsPipelineState_BlendState |
+			GraphicsPipelineState_DepthStencilState |
+			GraphicsPipelineState_RasterizerState |
+			GraphicsPipelineState_Topology
+				);
 
 		// Bind Vertex Buffers
 		if (state.flags & GraphicsPipelineState_VertexBuffer) {
@@ -659,16 +663,39 @@ namespace sv {
 		}
 
 		// Bind Pipeline
+		size_t pipelineHash = 0u;
+
 		if (updatePipeline) {
 
 			// Set active renderpass
 			m_ActiveRenderPass[cmd_] = renderPass.renderPass;
 
 			// Compute hash
+			pipelineHash = ComputeVulkanPipelineHash(state);
+
+			// Find Pipeline
+			VulkanPipeline* pipelinePtr = nullptr;
+			{
+				// Critical Section
+				std::lock_guard<std::mutex> lock(m_PipelinesMutex);
+				auto it = m_Pipelines.find(pipelineHash);
+				if (it == m_Pipelines.end()) {
+					
+					// Create New Pipeline Object
+					VulkanPipeline& p = m_Pipelines[pipelineHash];
+					SV_ASSERT(CreateVulkanPipeline(p, state.vertexShader, state.pixelShader, state.geometryShader));
+					pipelinePtr = &p;
+
+				}
+				else {
+					pipelinePtr = &it->second;
+				}
+			}
+			VulkanPipeline& pipeline = *pipelinePtr;
+
 			size_t hash = pipelineHash;
 			utils_hash_combine(hash, renderPass.renderPass);
 
-			// Find Pipeline
 			VkPipeline vkPipeline = VK_NULL_HANDLE;
 
 			pipeline.mutex.lock();
@@ -679,30 +706,34 @@ namespace sv {
 				VkPipelineShaderStageCreateInfo shaderStages[ShaderType_GraphicsCount] = {};
 				ui32 shaderStagesCount = 0u;
 
-				if (svPipeline.vs) {
+				Shader_vk* vertexShader = reinterpret_cast<Shader_vk*>(state.vertexShader);
+				Shader_vk* pixelShader = reinterpret_cast<Shader_vk*>(state.pixelShader);
+				Shader_vk* geometryShader = reinterpret_cast<Shader_vk*>(state.geometryShader);
+
+				if (vertexShader) {
 					VkPipelineShaderStageCreateInfo& stage = shaderStages[shaderStagesCount++];
 					stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 					stage.flags = 0u;
 					stage.stage = VK_SHADER_STAGE_VERTEX_BIT;
-					stage.module = reinterpret_cast<Shader_vk*>(svPipeline.vs)->module;
+					stage.module = vertexShader->module;
 					stage.pName = "main";
 					stage.pSpecializationInfo = nullptr;
 				}
-				if (svPipeline.ps) {
+				if (pixelShader) {
 					VkPipelineShaderStageCreateInfo& stage = shaderStages[shaderStagesCount++];
 					stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 					stage.flags = 0u;
 					stage.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-					stage.module = reinterpret_cast<Shader_vk*>(svPipeline.ps)->module;
+					stage.module = pixelShader->module;
 					stage.pName = "main";
 					stage.pSpecializationInfo = nullptr;
 				}
-				if (svPipeline.gs) {
+				if (geometryShader) {
 					VkPipelineShaderStageCreateInfo& stage = shaderStages[shaderStagesCount++];
 					stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 					stage.flags = 0u;
 					stage.stage = VK_SHADER_STAGE_GEOMETRY_BIT;
-					stage.module = reinterpret_cast<Shader_vk*>(svPipeline.gs)->module;
+					stage.module = geometryShader->module;
 					stage.pName = "main";
 					stage.pSpecializationInfo = nullptr;
 				}
@@ -714,7 +745,7 @@ namespace sv {
 				VkVertexInputBindingDescription bindings[SV_GFX_INPUT_SLOT_COUNT];
 				VkVertexInputAttributeDescription attributes[SV_GFX_INPUT_ELEMENT_COUNT];
 				{
-					const InputLayoutDesc& il = svPipeline.inputLayout;
+					const InputLayoutStateDesc& il = state.inputLayoutState->desc;
 					for (ui32 i = 0; i < il.slots.size(); ++i) {
 						bindings[i].binding = il.slots[i].slot;
 						bindings[i].inputRate = il.slots[i].instanced ? VK_VERTEX_INPUT_RATE_INSTANCE : VK_VERTEX_INPUT_RATE_VERTEX;
@@ -733,29 +764,29 @@ namespace sv {
 				}
 
 				// Rasterizer State
-				VkPipelineRasterizationStateCreateInfo rasterizerState{};
+				VkPipelineRasterizationStateCreateInfo rasterizerStateInfo{};
 				{
-					const RasterizerStateDesc& rDesc = svPipeline.rasterizerState;
+					const RasterizerStateDesc& rDesc = state.rasterizerState->desc;
 
-					rasterizerState.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-					rasterizerState.flags = 0u;
-					rasterizerState.depthClampEnable = VK_FALSE;
-					rasterizerState.rasterizerDiscardEnable = VK_FALSE;
-					rasterizerState.polygonMode = rDesc.wireframe ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
-					rasterizerState.cullMode = graphics_vulkan_parse_cullmode(rDesc.cullMode);
-					rasterizerState.frontFace = rDesc.clockwise ? VK_FRONT_FACE_CLOCKWISE : VK_FRONT_FACE_COUNTER_CLOCKWISE;
-					rasterizerState.depthBiasEnable = VK_FALSE;
-					rasterizerState.depthBiasConstantFactor = 0;
-					rasterizerState.depthBiasClamp = 0;
-					rasterizerState.depthBiasSlopeFactor = 0;
-					rasterizerState.lineWidth = rDesc.lineWidth;
+					rasterizerStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+					rasterizerStateInfo.flags = 0u;
+					rasterizerStateInfo.depthClampEnable = VK_FALSE;
+					rasterizerStateInfo.rasterizerDiscardEnable = VK_FALSE;
+					rasterizerStateInfo.polygonMode = rDesc.wireframe ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
+					rasterizerStateInfo.cullMode = graphics_vulkan_parse_cullmode(rDesc.cullMode);
+					rasterizerStateInfo.frontFace = rDesc.clockwise ? VK_FRONT_FACE_CLOCKWISE : VK_FRONT_FACE_COUNTER_CLOCKWISE;
+					rasterizerStateInfo.depthBiasEnable = VK_FALSE;
+					rasterizerStateInfo.depthBiasConstantFactor = 0;
+					rasterizerStateInfo.depthBiasClamp = 0;
+					rasterizerStateInfo.depthBiasSlopeFactor = 0;
+					rasterizerStateInfo.lineWidth = rDesc.lineWidth;
 				}
 
 				// Blend State
-				VkPipelineColorBlendStateCreateInfo blendState{};
+				VkPipelineColorBlendStateCreateInfo blendStateInfo{};
 				VkPipelineColorBlendAttachmentState attachments[SV_GFX_RENDER_TARGET_ATT_COUNT];
 				{
-					const BlendStateDesc& bDesc = svPipeline.blendState;
+					const BlendStateDesc& bDesc = state.blendState->desc;
 					
 					for (ui32 i = 0; i < bDesc.attachments.size(); ++i)
 					{
@@ -771,53 +802,53 @@ namespace sv {
 						attachments[i].colorWriteMask = graphics_vulkan_parse_colorcomponent(b.colorWriteMask);
 					}
 
-					blendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-					blendState.flags = 0u;
-					blendState.logicOpEnable = VK_FALSE;
-					blendState.logicOp;
-					blendState.attachmentCount = ui32(bDesc.attachments.size());
-					blendState.pAttachments = attachments;
-					blendState.blendConstants[0] = bDesc.blendConstants.x;
-					blendState.blendConstants[1] = bDesc.blendConstants.y;
-					blendState.blendConstants[2] = bDesc.blendConstants.z;
-					blendState.blendConstants[3] = bDesc.blendConstants.w;
+					blendStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+					blendStateInfo.flags = 0u;
+					blendStateInfo.logicOpEnable = VK_FALSE;
+					blendStateInfo.logicOp;
+					blendStateInfo.attachmentCount = ui32(bDesc.attachments.size());
+					blendStateInfo.pAttachments = attachments;
+					blendStateInfo.blendConstants[0] = bDesc.blendConstants.x;
+					blendStateInfo.blendConstants[1] = bDesc.blendConstants.y;
+					blendStateInfo.blendConstants[2] = bDesc.blendConstants.z;
+					blendStateInfo.blendConstants[3] = bDesc.blendConstants.w;
 				}
 
 				// DepthStencilState
-				VkPipelineDepthStencilStateCreateInfo depthStencilState{};
+				VkPipelineDepthStencilStateCreateInfo depthStencilStateInfo{};
 				{
-					const DepthStencilStateDesc& dDesc = svPipeline.depthStencilState;
-					depthStencilState.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-					depthStencilState.flags = 0u;
-					depthStencilState.depthTestEnable = dDesc.depthTestEnabled;
-					depthStencilState.depthWriteEnable = dDesc.depthWriteEnabled;
-					depthStencilState.depthCompareOp = graphics_vulkan_parse_compareop(dDesc.depthCompareOp);
+					const DepthStencilStateDesc& dDesc = state.depthStencilState->desc;
+					depthStencilStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+					depthStencilStateInfo.flags = 0u;
+					depthStencilStateInfo.depthTestEnable = dDesc.depthTestEnabled;
+					depthStencilStateInfo.depthWriteEnable = dDesc.depthWriteEnabled;
+					depthStencilStateInfo.depthCompareOp = graphics_vulkan_parse_compareop(dDesc.depthCompareOp);
 					
-					depthStencilState.stencilTestEnable = dDesc.stencilTestEnabled;
-					depthStencilState.front.failOp = graphics_vulkan_parse_stencilop(dDesc.front.failOp);
-					depthStencilState.front.passOp = graphics_vulkan_parse_stencilop(dDesc.front.passOp);
-					depthStencilState.front.depthFailOp = graphics_vulkan_parse_stencilop(dDesc.front.depthFailOp);
-					depthStencilState.front.compareOp = graphics_vulkan_parse_compareop(dDesc.front.compareOp);
-					depthStencilState.front.compareMask = dDesc.readMask;
-					depthStencilState.front.writeMask = dDesc.writeMask;
-					depthStencilState.front.reference = 0u;
-					depthStencilState.back.failOp = graphics_vulkan_parse_stencilop(dDesc.back.failOp);
-					depthStencilState.back.passOp = graphics_vulkan_parse_stencilop(dDesc.back.passOp);
-					depthStencilState.back.depthFailOp = graphics_vulkan_parse_stencilop(dDesc.back.depthFailOp);
-					depthStencilState.back.compareOp = graphics_vulkan_parse_compareop(dDesc.back.compareOp);
-					depthStencilState.back.compareMask = dDesc.readMask;
-					depthStencilState.back.writeMask = dDesc.writeMask;
-					depthStencilState.back.reference = 0u;
+					depthStencilStateInfo.stencilTestEnable = dDesc.stencilTestEnabled;
+					depthStencilStateInfo.front.failOp = graphics_vulkan_parse_stencilop(dDesc.front.failOp);
+					depthStencilStateInfo.front.passOp = graphics_vulkan_parse_stencilop(dDesc.front.passOp);
+					depthStencilStateInfo.front.depthFailOp = graphics_vulkan_parse_stencilop(dDesc.front.depthFailOp);
+					depthStencilStateInfo.front.compareOp = graphics_vulkan_parse_compareop(dDesc.front.compareOp);
+					depthStencilStateInfo.front.compareMask = dDesc.readMask;
+					depthStencilStateInfo.front.writeMask = dDesc.writeMask;
+					depthStencilStateInfo.front.reference = 0u;
+					depthStencilStateInfo.back.failOp = graphics_vulkan_parse_stencilop(dDesc.back.failOp);
+					depthStencilStateInfo.back.passOp = graphics_vulkan_parse_stencilop(dDesc.back.passOp);
+					depthStencilStateInfo.back.depthFailOp = graphics_vulkan_parse_stencilop(dDesc.back.depthFailOp);
+					depthStencilStateInfo.back.compareOp = graphics_vulkan_parse_compareop(dDesc.back.compareOp);
+					depthStencilStateInfo.back.compareMask = dDesc.readMask;
+					depthStencilStateInfo.back.writeMask = dDesc.writeMask;
+					depthStencilStateInfo.back.reference = 0u;
 
-					depthStencilState.depthBoundsTestEnable = VK_FALSE;
-					depthStencilState.minDepthBounds = 0.f;
-					depthStencilState.maxDepthBounds = 1.f;
+					depthStencilStateInfo.depthBoundsTestEnable = VK_FALSE;
+					depthStencilStateInfo.minDepthBounds = 0.f;
+					depthStencilStateInfo.maxDepthBounds = 1.f;
 				}
 
 				// Topology
 				VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 				inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-				inputAssembly.topology = graphics_vulkan_parse_topology(svPipeline.topology);
+				inputAssembly.topology = graphics_vulkan_parse_topology(state.topology);
 
 				// ViewportState
 				VkPipelineViewportStateCreateInfo viewportState{};
@@ -861,10 +892,10 @@ namespace sv {
 				create_info.pInputAssemblyState = &inputAssembly;
 				create_info.pTessellationState = nullptr;
 				create_info.pViewportState = &viewportState;
-				create_info.pRasterizationState = &rasterizerState;
+				create_info.pRasterizationState = &rasterizerStateInfo;
 				create_info.pMultisampleState = &multisampleState;
-				create_info.pDepthStencilState = &depthStencilState;
-				create_info.pColorBlendState = &blendState;
+				create_info.pDepthStencilState = &depthStencilStateInfo;
+				create_info.pColorBlendState = &blendStateInfo;
 				create_info.pDynamicState = &dynamicStatesInfo;
 				create_info.layout = pipeline.layout;
 				create_info.renderPass = renderPass.renderPass;
@@ -940,6 +971,12 @@ namespace sv {
 		// Update Descriptors
 		if (state.flags & (GraphicsPipelineState_ConstantBuffer | GraphicsPipelineState_Sampler | GraphicsPipelineState_Image)) {
 
+			if (pipelineHash == 0u) {
+				pipelineHash = ComputeVulkanPipelineHash(state);
+			}
+
+			VulkanPipeline& pipeline = m_Pipelines[pipelineHash];
+
 			VkDescriptorSet descSet = pipeline.descriptors.GetDescriptorSet(m_CurrentFrame, cmd_);
 
 			VkWriteDescriptorSet writeDesc[SV_GFX_CONSTANT_BUFFER_COUNT + SV_GFX_IMAGE_COUNT + SV_GFX_SAMPLER_COUNT];
@@ -996,6 +1033,110 @@ namespace sv {
 		}
 
 		state.flags = 0u;
+	}
+
+	size_t Graphics_vk::ComputeVulkanPipelineHash(const GraphicsState& state)
+	{
+		InputLayoutState_vk& inputLayoutState = *reinterpret_cast<InputLayoutState_vk*>(state.inputLayoutState);
+		BlendState_vk& blendState = *reinterpret_cast<BlendState_vk*>(state.blendState);
+		DepthStencilState_vk& depthStencilState = *reinterpret_cast<DepthStencilState_vk*>(state.depthStencilState);
+		RasterizerState_vk& rasterizerState = *reinterpret_cast<RasterizerState_vk*>(state.rasterizerState);
+
+		size_t hash = 0u;
+		utils_hash_combine(hash, state.vertexShader);
+		utils_hash_combine(hash, state.pixelShader);
+		utils_hash_combine(hash, state.geometryShader);
+		utils_hash_combine(hash, inputLayoutState.hash);
+		utils_hash_combine(hash, blendState.hash);
+		utils_hash_combine(hash, depthStencilState.hash);
+		utils_hash_combine(hash, rasterizerState.hash);
+		utils_hash_combine(hash, ui64(state.topology));
+
+		return hash;
+	}
+
+	bool Graphics_vk::CreateVulkanPipeline(VulkanPipeline& p, Shader_internal* pVertexShader, Shader_internal* pPixelShader, Shader_internal* pGeometryShader)
+	{
+		// Create
+		std::lock_guard<std::mutex> lock(p.creationMutex);
+
+		// Check if it is created
+		if (p.layout != VK_NULL_HANDLE) return true;
+		
+		ui32 bindingsCount = 0u;
+
+		if (pVertexShader) {
+			Shader_vk& shader = *reinterpret_cast<Shader_vk*>(pVertexShader);
+			p.semanticNames = shader.semanticNames;
+			p.bindings.insert(p.bindings.end(), shader.bindings.begin(), shader.bindings.end());
+
+			bindingsCount += shader.bindingsLocation.size();
+		}
+		if (pPixelShader) {
+			Shader_vk& shader = *reinterpret_cast<Shader_vk*>(pPixelShader);
+			p.bindings.insert(p.bindings.end(), shader.bindings.begin(), shader.bindings.end());
+			bindingsCount += shader.bindingsLocation.size();
+		}
+
+		p.bindingsLocation.resize(bindingsCount);
+
+		if (pVertexShader) {
+			Shader_vk& shader = *reinterpret_cast<Shader_vk*>(pVertexShader);
+			for (auto& it : shader.bindingsLocation) {
+				p.bindingsLocation[it.first] = it.second;
+			}
+		}
+		if (pPixelShader) {
+			Shader_vk& shader = *reinterpret_cast<Shader_vk*>(pPixelShader);
+			for (auto& it : shader.bindingsLocation) {
+				p.bindingsLocation[it.first] = it.second;
+			}
+		}
+
+		// Count
+		ui32 samplersCount = 0u;
+		ui32 imagesCount = 0u;
+		ui32 uniformsCount = 0u;
+
+		for (ui32 i = 0; i < p.bindings.size(); ++i) {
+
+			switch (p.bindings[i].descriptorType)
+			{
+			case VK_DESCRIPTOR_TYPE_SAMPLER:
+				samplersCount++;
+				break;
+			case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+				imagesCount++;
+				break;
+			case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+				uniformsCount++;
+				break;
+			}
+		}
+
+		// Create Pipeline Layout
+		VkDescriptorSetLayout setLayout;
+		{
+			VkDescriptorSetLayoutCreateInfo layoutInfo{};
+			layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+			layoutInfo.flags = 0u;
+			layoutInfo.bindingCount = p.bindings.size();
+			layoutInfo.pBindings = p.bindings.data();
+
+			vkCheck(vkCreateDescriptorSetLayout(m_Device, &layoutInfo, nullptr, &setLayout));
+
+			VkPipelineLayoutCreateInfo layout_info{};
+			layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+			layout_info.setLayoutCount = 1u;
+			layout_info.pSetLayouts = &setLayout;
+			layout_info.pushConstantRangeCount = 0u;
+
+			vkCheck(vkCreatePipelineLayout(m_Device, &layout_info, nullptr, &p.layout));
+		}
+
+		p.descriptors.Create(setLayout, m_FrameCount, imagesCount, samplersCount, uniformsCount);
+
+		return true;
 	}
 
 	/////////////////////////////////////////////// GETTERS ////////////////////////////////////////////////////
@@ -1834,111 +1975,27 @@ namespace sv {
 		return true;
 	}
 
-	bool Graphics_vk::CreateGraphicsPipeline(GraphicsPipeline_vk& pipeline, const GraphicsPipelineDesc& desc)
+	bool Graphics_vk::CreateInputLayoutState(InputLayoutState_vk& inputLayoutState, const InputLayoutStateDesc& desc)
 	{
-		// Compute Hash
-		pipeline.hash = 0u;
+		inputLayoutState.hash = graphics_compute_hash_inputlayoutstate(&desc);
+		return true;
+	}
 
-		if (desc.pVertexShader)		utils_hash_combine(pipeline.hash, desc.pVertexShader->GetPtr());
-		if (desc.pPixelShader)		utils_hash_combine(pipeline.hash, desc.pPixelShader->GetPtr());
-		if (desc.pGeometryShader)	utils_hash_combine(pipeline.hash, desc.pGeometryShader->GetPtr());
+	bool Graphics_vk::CreateBlendState(BlendState_vk& blendState, const BlendStateDesc& desc)
+	{
+		blendState.hash = graphics_compute_hash_blendstate(&desc);
+		return true;
+	}
 
-		utils_hash_combine(pipeline.hash, graphics_compute_hash_inputlayout(desc.pInputLayout));
-		utils_hash_combine(pipeline.hash, graphics_compute_hash_rasterizerstate(desc.pRasterizerState));
-		utils_hash_combine(pipeline.hash, graphics_compute_hash_blendstate(desc.pBlendState));
-		utils_hash_combine(pipeline.hash, graphics_compute_hash_depthstencilstate(desc.pDepthStencilState));
+	bool Graphics_vk::CreateDepthStencilState(DepthStencilState_vk& depthStencilState, const DepthStencilStateDesc& desc)
+	{
+		depthStencilState.hash = graphics_compute_hash_depthstencilstate(&desc);
+		return true;
+	}
 
-		// Get VulkanPipeline
-		m_PipelinesMutex.lock();
-
-		auto it = m_Pipelines.find(pipeline.hash);
-		if (it == m_Pipelines.end()) {
-			m_Pipelines[pipeline.hash] = VulkanPipeline();
-		}
-
-		VulkanPipeline& p = m_Pipelines[pipeline.hash];
-
-		m_PipelinesMutex.unlock();
-
-		// Create
-		std::lock_guard<std::mutex> lock(p.creationMutex);
-
-		// Check if it is created
-		if (p.layout != VK_NULL_HANDLE) return true;
-
-		ui32 bindingsCount = 0u;
-
-		if (desc.pVertexShader) {
-			Shader_vk& shader = *reinterpret_cast<Shader_vk*>(desc.pVertexShader->GetPtr());
-			p.semanticNames = shader.semanticNames;
-			p.bindings.insert(p.bindings.end(), shader.bindings.begin(), shader.bindings.end());
-
-			bindingsCount += shader.bindingsLocation.size();
-		}
-		if (desc.pPixelShader) {
-			Shader_vk& shader = *reinterpret_cast<Shader_vk*>(desc.pPixelShader->GetPtr());
-			p.bindings.insert(p.bindings.end(), shader.bindings.begin(), shader.bindings.end());
-			bindingsCount += shader.bindingsLocation.size();
-		}
-
-		p.bindingsLocation.resize(bindingsCount);
-
-		if (desc.pVertexShader) {
-			Shader_vk& shader = *reinterpret_cast<Shader_vk*>(desc.pVertexShader->GetPtr());
-			for (auto& it : shader.bindingsLocation) {
-				p.bindingsLocation[it.first] = it.second;
-			}
-		}
-		if (desc.pPixelShader) {
-			Shader_vk& shader = *reinterpret_cast<Shader_vk*>(desc.pPixelShader->GetPtr());
-			for (auto& it : shader.bindingsLocation) {
-				p.bindingsLocation[it.first] = it.second;
-			}
-		}
-
-		// Count
-		ui32 samplersCount = 0u;
-		ui32 imagesCount = 0u;
-		ui32 uniformsCount = 0u;
-
-		for (ui32 i = 0; i < p.bindings.size(); ++i) {
-
-			switch (p.bindings[i].descriptorType)
-			{
-			case VK_DESCRIPTOR_TYPE_SAMPLER:
-				samplersCount++;
-				break;
-			case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-				imagesCount++;
-				break;
-			case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-				uniformsCount++;
-				break;
-			}
-		}
-
-		// Create Pipeline Layout
-		VkDescriptorSetLayout setLayout;
-		{
-			VkDescriptorSetLayoutCreateInfo layoutInfo{};
-			layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-			layoutInfo.flags = 0u;
-			layoutInfo.bindingCount = p.bindings.size();
-			layoutInfo.pBindings = p.bindings.data();
-
-			vkCheck(vkCreateDescriptorSetLayout(m_Device, &layoutInfo, nullptr, &setLayout));
-
-			VkPipelineLayoutCreateInfo layout_info{};
-			layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-			layout_info.setLayoutCount = 1u;
-			layout_info.pSetLayouts = &setLayout;
-			layout_info.pushConstantRangeCount = 0u;
-
-			vkCheck(vkCreatePipelineLayout(m_Device, &layout_info, nullptr, &p.layout));
-		}
-
-		p.descriptors.Create(setLayout, m_FrameCount, imagesCount, samplersCount, uniformsCount);
-
+	bool Graphics_vk::CreateRasterizerState(RasterizerState_vk& rasterizerState, const RasterizerStateDesc& desc)
+	{
+		rasterizerState.hash = graphics_compute_hash_rasterizerstate(&desc);
 		return true;
 	}
 
@@ -1974,10 +2031,6 @@ namespace sv {
 		for (auto& it : renderPass.frameBuffers) {
 			vkDestroyFramebuffer(m_Device, it.second, nullptr);
 		}
-		return true;
-	}
-	bool Graphics_vk::DestroyGraphicsPipeline(GraphicsPipeline_vk& graphicsPipeline)
-	{
 		return true;
 	}
 
@@ -2350,14 +2403,47 @@ namespace sv {
 		}
 		break;
 
-		case GraphicsPrimitiveType_GraphicsPipeline:
+		case GraphicsPrimitiveType_InputLayoutState:
 		{
-			GraphicsPipeline_vk* gp = new GraphicsPipeline_vk();
-			if (!gfx.CreateGraphicsPipeline(*gp, *reinterpret_cast<const GraphicsPipelineDesc*>(desc))) {
-				delete gp;
-				gp = nullptr;
+			InputLayoutState_vk* ils = new InputLayoutState_vk();
+			if (!gfx.CreateInputLayoutState(*ils, *reinterpret_cast<const InputLayoutStateDesc*>(desc))) {
+				delete ils;
+				ils = nullptr;
 			}
-			ptr = gp;
+			ptr = ils;
+		}
+		break;
+
+		case GraphicsPrimitiveType_BlendState:
+		{
+			BlendState_vk* bs = new BlendState_vk();
+			if (!gfx.CreateBlendState(*bs, *reinterpret_cast<const BlendStateDesc*>(desc))) {
+				delete bs;
+				bs = nullptr;
+			}
+			ptr = bs;
+		}
+		break;
+
+		case GraphicsPrimitiveType_DepthStencilState:
+		{
+			DepthStencilState_vk* dss = new DepthStencilState_vk();
+			if (!gfx.CreateDepthStencilState(*dss, *reinterpret_cast<const DepthStencilStateDesc*>(desc))) {
+				delete dss;
+				dss = nullptr;
+			}
+			ptr = dss;
+		}
+		break;
+
+		case GraphicsPrimitiveType_RasterizerState:
+		{
+			RasterizerState_vk* rs = new RasterizerState_vk();
+			if (!gfx.CreateRasterizerState(*rs, *reinterpret_cast<const RasterizerStateDesc*>(desc))) {
+				delete rs;
+				rs = nullptr;
+			}
+			ptr = rs;
 		}
 		break;
 
@@ -2416,11 +2502,35 @@ namespace sv {
 			break;
 		}
 
-		case GraphicsPrimitiveType_GraphicsPipeline:
+		case GraphicsPrimitiveType_InputLayoutState:
 		{
-			GraphicsPipeline_vk& pipeline = *reinterpret_cast<GraphicsPipeline_vk*>(primitive.GetPtr());
-			result = gfx.DestroyGraphicsPipeline(pipeline);
-			pipeline.~GraphicsPipeline_vk();
+			InputLayoutState_vk& inputLayoutState = *reinterpret_cast<InputLayoutState_vk*>(primitive.GetPtr());
+			inputLayoutState.~InputLayoutState_vk();
+			result = true;
+			break;
+		}
+
+		case GraphicsPrimitiveType_BlendState:
+		{
+			BlendState_vk& blendState = *reinterpret_cast<BlendState_vk*>(primitive.GetPtr());
+			blendState.~BlendState_vk();
+			result = true;
+			break;
+		}
+
+		case GraphicsPrimitiveType_DepthStencilState:
+		{
+			DepthStencilState_vk& depthStencilState = *reinterpret_cast<DepthStencilState_vk*>(primitive.GetPtr());
+			depthStencilState.~DepthStencilState_vk();
+			result = true;
+			break;
+		}
+
+		case GraphicsPrimitiveType_RasterizerState:
+		{
+			RasterizerState_vk& rasterizerState = *reinterpret_cast<RasterizerState_vk*>(primitive.GetPtr());
+			rasterizerState.~RasterizerState_vk();
+			result = true;
 			break;
 		}
 

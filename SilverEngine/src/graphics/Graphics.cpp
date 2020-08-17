@@ -13,6 +13,13 @@ namespace sv {
 	static std::vector<std::unique_ptr<Adapter>>	g_Adapters;
 	static ui32										g_AdapterIndex;
 
+	// Default Primitives
+
+	static InputLayoutState		g_DefInputLayoutState;
+	static BlendState			g_DefBlendState;
+	static DepthStencilState	g_DefDepthStencilState;
+	static RasterizerState		g_DefRasterizerState;
+
 	void ResetPipelineState(CommandList cmd)
 	{
 		svZeroMemory(&g_PipelineState.graphics, sizeof(GraphicsPipelineState));
@@ -36,6 +43,44 @@ namespace sv {
 		}
 
 		ResetPipelineState();
+
+		// Create default states
+		{
+			InputLayoutStateDesc desc;
+			svCheck(graphics_inputlayoutstate_create(&desc, g_DefInputLayoutState));
+		}
+		{
+			BlendStateDesc desc;
+			desc.attachments.resize(1u);
+			desc.attachments[0].blendEnabled = false;
+			desc.attachments[0].srcColorBlendFactor = BlendFactor_One;
+			desc.attachments[0].dstColorBlendFactor = BlendFactor_One;
+			desc.attachments[0].colorBlendOp = BlendOperation_Add;
+			desc.attachments[0].srcAlphaBlendFactor = BlendFactor_One;
+			desc.attachments[0].dstAlphaBlendFactor = BlendFactor_One;
+			desc.attachments[0].alphaBlendOp = BlendOperation_Add;
+			desc.attachments[0].colorWriteMask = ColorComponent_All;
+			desc.blendConstants = { 0.f, 0.f, 0.f, 0.f };
+			svCheck(graphics_blendstate_create(&desc, g_DefBlendState));
+		}
+		{
+			DepthStencilStateDesc desc;
+			desc.depthTestEnabled = false;
+			desc.depthWriteEnabled = false;
+			desc.depthCompareOp = CompareOperation_Always;
+			desc.stencilTestEnabled = false;
+			desc.readMask = 0xFF;
+			desc.writeMask = 0xFF;
+			svCheck(graphics_depthstencilstate_create(&desc, g_DefDepthStencilState));
+		}
+		{
+			RasterizerStateDesc desc;
+			desc.wireframe = false;
+			desc.lineWidth = 1.f;
+			desc.cullMode = RasterizerCullMode_None;
+			desc.clockwise = true;
+			svCheck(graphics_rasterizerstate_create(&desc, g_DefRasterizerState));
+		}
 
 		return true;
 	}
@@ -91,11 +136,11 @@ namespace sv {
 
 	/////////////////////////////////////// HASH FUNCTIONS ///////////////////////////////////////
 
-	size_t graphics_compute_hash_inputlayout(const InputLayoutDesc* d)
+	size_t graphics_compute_hash_inputlayoutstate(const InputLayoutStateDesc* d)
 	{
 		if (d == nullptr) return 0u;
 
-		const InputLayoutDesc& desc = *d;
+		const InputLayoutStateDesc& desc = *d;
 		size_t hash = 0u;
 		sv::utils_hash_combine(hash, desc.slots.size());
 
@@ -298,85 +343,59 @@ namespace sv {
 
 		return true;
 	}
-	
-	bool graphics_pipeline_create(const GraphicsPipelineDesc* desc, GraphicsPipeline& graphicsPipeline)
+
+	bool graphics_inputlayoutstate_create(const InputLayoutStateDesc* desc, InputLayoutState& inputLayoutState)
 	{
-		const GraphicsPipelineDesc* res = nullptr;
-
-		GraphicsPipelineDesc auxDesc;
-		InputLayoutDesc auxInputLayout{};
-		RasterizerStateDesc auxRasterizerState;
-		BlendStateDesc auxBlendState;
-		DepthStencilStateDesc auxDepthStencilState{};
-
-		if (desc->pBlendState && desc->pDepthStencilState && desc->pInputLayout && desc->pRasterizerState) {
-			res = desc;
-		}
-		else {
-			res = &auxDesc;
-
-			auxDesc.pVertexShader = desc->pVertexShader;
-			auxDesc.pPixelShader = desc->pPixelShader;
-			auxDesc.pGeometryShader = desc->pGeometryShader;
-
-			auxDesc.topology = desc->topology;
-
-			if (desc->pInputLayout) auxDesc.pInputLayout = desc->pInputLayout;
-			else {
-				auxDesc.pInputLayout = &auxInputLayout;
-			}
-			if (desc->pRasterizerState) auxDesc.pRasterizerState = desc->pRasterizerState;
-			else {
-				auxRasterizerState.clockwise = true;
-				auxRasterizerState.cullMode = RasterizerCullMode_None;
-				auxRasterizerState.lineWidth = 1.f;
-				auxRasterizerState.wireframe = false;
-
-				auxDesc.pRasterizerState = &auxRasterizerState;
-			}
-			if (desc->pBlendState) auxDesc.pBlendState = desc->pBlendState;
-			else {
-				BlendAttachmentDesc auxBlendAtt{};
-
-				auxBlendState.blendConstants = { 0.f, 0.f, 0.f, 0.f };
-				auxBlendAtt.blendEnabled = false;
-				auxBlendAtt.colorWriteMask = ColorComponent_All;
-
-				auxBlendState.attachments.emplace_back(auxBlendAtt);
-
-				auxDesc.pBlendState = &auxBlendState;
-			}
-			if (desc->pDepthStencilState) auxDesc.pDepthStencilState = desc->pDepthStencilState;
-			else {
-				auxDepthStencilState.depthTestEnabled = false;
-				auxDepthStencilState.depthWriteEnabled = false;
-				auxDepthStencilState.stencilTestEnabled = false;
-
-				auxDesc.pDepthStencilState = &auxDepthStencilState;
-			}
-		}
-
 #ifdef SV_DEBUG
 #endif
 
-		svCheck(Allocate(graphicsPipeline, GraphicsPrimitiveType_GraphicsPipeline, desc));
+		svCheck(Allocate(inputLayoutState, GraphicsPrimitiveType_InputLayoutState, desc));
 
-		GraphicsPipeline_internal* p = reinterpret_cast<GraphicsPipeline_internal*>(graphicsPipeline.GetPtr());
-		p->type = GraphicsPrimitiveType_GraphicsPipeline;
+		InputLayoutState_internal* p = reinterpret_cast<InputLayoutState_internal*>(inputLayoutState.GetPtr());
+		p->type = GraphicsPrimitiveType_InputLayoutState;
+		p->desc = *desc;
 
-		p->vs = nullptr;
-		p->ps = nullptr;
-		p->gs = nullptr;
-		if (res->pVertexShader)	p->vs = reinterpret_cast<Shader_internal*>(res->pVertexShader->GetPtr());
-		if (res->pPixelShader)		p->ps = reinterpret_cast<Shader_internal*>(res->pPixelShader->GetPtr());
-		if (res->pGeometryShader)	p->gs = reinterpret_cast<Shader_internal*>(res->pGeometryShader->GetPtr());
-		
-		p->inputLayout =		*res->pInputLayout;
-		p->rasterizerState =	*res->pRasterizerState;
-		p->blendState =			*res->pBlendState;
-		p->depthStencilState =	*res->pDepthStencilState;
-		
-		p->topology = res->topology;
+		return true;
+	}
+
+	bool graphics_blendstate_create(const BlendStateDesc* desc, BlendState& blendState)
+	{
+#ifdef SV_DEBUG
+#endif
+
+		svCheck(Allocate(blendState, GraphicsPrimitiveType_BlendState, desc));
+
+		BlendState_internal* p = reinterpret_cast<BlendState_internal*>(blendState.GetPtr());
+		p->type = GraphicsPrimitiveType_BlendState;
+		p->desc = *desc;
+
+		return true;
+	}
+
+	bool graphics_depthstencilstate_create(const DepthStencilStateDesc* desc, DepthStencilState& depthStencilState)
+	{
+#ifdef SV_DEBUG
+#endif
+
+		svCheck(Allocate(depthStencilState, GraphicsPrimitiveType_DepthStencilState, desc));
+
+		DepthStencilState_internal* p = reinterpret_cast<DepthStencilState_internal*>(depthStencilState.GetPtr());
+		p->type = GraphicsPrimitiveType_DepthStencilState;
+		p->desc = *desc;
+
+		return true;
+	}
+
+	bool graphics_rasterizerstate_create(const RasterizerStateDesc* desc, RasterizerState& rasterizerState)
+	{
+#ifdef SV_DEBUG
+#endif
+
+		svCheck(Allocate(rasterizerState, GraphicsPrimitiveType_RasterizerState, desc));
+
+		RasterizerState_internal* p = reinterpret_cast<RasterizerState_internal*>(rasterizerState.GetPtr());
+		p->type = GraphicsPrimitiveType_RasterizerState;
+		p->desc = *desc;
 
 		return true;
 	}
@@ -460,6 +479,29 @@ namespace sv {
 		}
 	}
 
+	void graphics_shader_bind(Shader& shader_, CommandList cmd)
+	{
+		Shader_internal* shader = reinterpret_cast<Shader_internal*>(shader_.GetPtr());
+
+		switch (shader->shaderType)
+		{
+		case ShaderType_Vertex:
+			g_PipelineState.graphics[cmd].vertexShader = shader;
+			g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_Shader_VS;
+			break;
+		case ShaderType_Pixel:
+			g_PipelineState.graphics[cmd].pixelShader = shader;
+			g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_Shader_PS;
+			break;
+		case ShaderType_Geometry:
+			g_PipelineState.graphics[cmd].geometryShader = shader;
+			g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_Shader_GS;
+			break;
+		}
+		
+		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_Shader;
+	}
+
 	void graphics_image_bind(GPUImage** images, ui32 count, ShaderType shaderType, CommandList cmd)
 	{
 		for (ui32 i = 0; i < count; ++i) {
@@ -515,10 +557,47 @@ namespace sv {
 		}
 	}
 
+	void graphics_inputlayoutstate_bind(InputLayoutState& inputLayoutState, CommandList cmd)
+	{
+		g_PipelineState.graphics[cmd].inputLayoutState = reinterpret_cast<InputLayoutState_internal*>(inputLayoutState.GetPtr());
+		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_InputLayoutState;
+	}
+
+	void graphics_blendstate_bind(BlendState& blendState, CommandList cmd)
+	{
+		g_PipelineState.graphics[cmd].blendState = reinterpret_cast<BlendState_internal*>(blendState.GetPtr());
+		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_BlendState;
+	}
+
+	void graphics_depthstencilstate_bind(DepthStencilState& depthStencilState, CommandList cmd)
+	{
+		g_PipelineState.graphics[cmd].depthStencilState = reinterpret_cast<DepthStencilState_internal*>(depthStencilState.GetPtr());
+		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_DepthStencilState;
+	}
+
+	void graphics_rasterizerstate_bind(RasterizerState& rasterizerState, CommandList cmd)
+	{
+		g_PipelineState.graphics[cmd].rasterizerState = reinterpret_cast<RasterizerState_internal*>(rasterizerState.GetPtr());
+		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_RasterizerState;
+	}
+
 	void graphics_pipeline_bind(GraphicsPipeline& pipeline, CommandList cmd)
 	{
-		g_PipelineState.graphics[cmd].pipeline = reinterpret_cast<GraphicsPipeline_internal*>(pipeline.GetPtr());
-		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_Pipeline;
+		// Bind shaders
+		if (pipeline.pVertexShader) graphics_shader_bind(*pipeline.pVertexShader, cmd);
+		if (pipeline.pPixelShader) graphics_shader_bind(*pipeline.pPixelShader, cmd);
+		if (pipeline.pGeometryShader) graphics_shader_bind(*pipeline.pGeometryShader, cmd);
+
+		// Bind states
+		graphics_inputlayoutstate_bind(pipeline.pInputLayoutState ? *pipeline.pInputLayoutState : g_DefInputLayoutState, cmd);
+		graphics_blendstate_bind(pipeline.pBlendState ? *pipeline.pBlendState : g_DefBlendState, cmd);
+		graphics_depthstencilstate_bind(pipeline.pDepthStencilState ? *pipeline.pDepthStencilState : g_DefDepthStencilState, cmd);
+		graphics_rasterizerstate_bind(pipeline.pRasterizerState ? *pipeline.pRasterizerState : g_DefRasterizerState, cmd);
+
+		graphics_set_pipeline_mode(GraphicsPipelineMode_Graphics, cmd);
+		graphics_set_stencil_reference(pipeline.stencilRef, cmd);
+		graphics_set_topology(pipeline.topology, cmd);
+
 	}
 
 	void graphics_renderpass_begin(RenderPass& renderPass, GPUImage** attachments, const Color4f* colors, float depth, ui32 stencil, CommandList cmd)
@@ -562,6 +641,12 @@ namespace sv {
 		memcpy(g_PipelineState.graphics[cmd].scissors, scissors, size_t(count) * sizeof(Scissor));
 		g_PipelineState.graphics[cmd].scissorsCount = count;
 		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_Scissor;
+	}
+
+	void graphics_set_topology(GraphicsTopology topology, CommandList cmd)
+	{
+		g_PipelineState.graphics[cmd].topology = topology;
+		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_Topology;
 	}
 
 	void graphics_set_stencil_reference(ui32 ref, CommandList cmd)

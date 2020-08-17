@@ -13,6 +13,9 @@ namespace sv {
 
 	static Shader g_SpriteVertexShader;
 	static Shader g_SpritePixelShader;
+	static InputLayoutState g_SpriteInputLayoutState;
+	static BlendState g_SpriteBlendState;
+
 	static GPUBuffer g_SpriteIndexBuffer;
 	static GPUBuffer g_SpriteVertexBuffer;
 	static GPUImage g_SpriteWhiteTexture;
@@ -100,14 +103,16 @@ namespace sv {
 
 			svCheck(graphics_renderpass_create(&desc, g_SpriteRenderPass));
 		}
-		// Sprite Pipelines
+		// Sprite Pipeline
 		{
-			InputLayoutDesc inputLayout;
+			InputLayoutStateDesc inputLayout;
 			inputLayout.slots.push_back({ 0u, sizeof(SpriteVertex), false });
 
 			inputLayout.elements.push_back({ "Position", 0u, 0u, 0u, Format_R32G32B32A32_FLOAT });
 			inputLayout.elements.push_back({ "TexCoord", 0u, 0u, 4u * sizeof(float), Format_R32G32_FLOAT });
 			inputLayout.elements.push_back({ "Color", 0u, 0u, 6u * sizeof(float), Format_R8G8B8A8_UNORM });
+
+			svCheck(graphics_inputlayoutstate_create(&inputLayout, g_SpriteInputLayoutState));
 
 			BlendStateDesc blendState;
 			blendState.attachments.resize(1);
@@ -121,17 +126,17 @@ namespace sv {
 			blendState.attachments[0].alphaBlendOp = BlendOperation_Add;
 			blendState.attachments[0].colorWriteMask = ColorComponent_All;
 
-			GraphicsPipelineDesc desc;
-			desc.pVertexShader = &g_SpriteVertexShader;
-			desc.pPixelShader = &g_SpritePixelShader;
-			desc.pGeometryShader = nullptr;
-			desc.pInputLayout = &inputLayout;
-			desc.pBlendState = &blendState;
-			desc.pRasterizerState = nullptr;
-			desc.pDepthStencilState = nullptr;
-			desc.topology = GraphicsTopology_Triangles;
+			svCheck(graphics_blendstate_create(&blendState, g_SpriteBlendState));
 
-			svCheck(graphics_pipeline_create(&desc, g_SpritePipeline));
+			g_SpritePipeline.pVertexShader = &g_SpriteVertexShader;
+			g_SpritePipeline.pPixelShader = &g_SpritePixelShader;
+			g_SpritePipeline.pGeometryShader = nullptr;
+			g_SpritePipeline.pInputLayoutState = &g_SpriteInputLayoutState;
+			g_SpritePipeline.pBlendState = &g_SpriteBlendState;
+			g_SpritePipeline.pRasterizerState = nullptr;
+			g_SpritePipeline.pDepthStencilState = nullptr;
+			g_SpritePipeline.topology = GraphicsTopology_Triangles;
+			g_SpritePipeline.stencilRef = 0u;
 		}
 		// Sprite White Image
 		{
@@ -171,7 +176,9 @@ namespace sv {
 
 	bool renderer2D_close()
 	{
-		svCheck(graphics_destroy(g_SpritePipeline));
+		g_SpritePipeline = {};
+		svCheck(graphics_destroy(g_SpriteInputLayoutState));
+		svCheck(graphics_destroy(g_SpriteBlendState));
 		svCheck(graphics_destroy(g_SpriteRenderPass));
 		svCheck(graphics_destroy(g_SpriteVertexShader));
 		svCheck(graphics_destroy(g_SpritePixelShader));

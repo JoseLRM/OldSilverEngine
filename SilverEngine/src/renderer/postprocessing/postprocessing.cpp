@@ -12,6 +12,7 @@ namespace sv {
 
 	static Shader			g_DefVertexShader;
 	static Shader			g_DefPixelShader;
+	static InputLayoutState g_DefInputLayoutState;
 	static Sampler			g_DefSampler;
 	static GraphicsPipeline	g_DefPipeline;
 
@@ -58,21 +59,20 @@ namespace sv {
 
 			svCheck(graphics_sampler_create(&samDesc, g_DefSampler));
 
-			InputLayoutDesc inputLayout;
+			InputLayoutStateDesc inputLayout;
 			inputLayout.elements.push_back({ "Position", 0u, 0u, 0u, Format_R32G32_FLOAT });
 			inputLayout.slots.push_back({ 0u, sizeof(vec2), false });
 
-			GraphicsPipelineDesc pDesc;
-			pDesc.pVertexShader = &g_DefVertexShader;
-			pDesc.pPixelShader = &g_DefPixelShader;
-			pDesc.pGeometryShader = nullptr;
-			pDesc.pInputLayout = &inputLayout;
-			pDesc.pBlendState = nullptr;
-			pDesc.pRasterizerState = nullptr;
-			pDesc.pDepthStencilState = nullptr;
-			pDesc.topology = GraphicsTopology_TriangleStrip;
+			svCheck(graphics_inputlayoutstate_create(&inputLayout, g_DefInputLayoutState));
 
-			svCheck(graphics_pipeline_create(&pDesc, g_DefPipeline));
+			g_DefPipeline.pVertexShader = &g_DefVertexShader;
+			g_DefPipeline.pPixelShader = &g_DefPixelShader;
+			g_DefPipeline.pGeometryShader = nullptr;
+			g_DefPipeline.pInputLayoutState = &g_DefInputLayoutState;
+			g_DefPipeline.pBlendState = nullptr;
+			g_DefPipeline.pRasterizerState = nullptr;
+			g_DefPipeline.pDepthStencilState = nullptr;
+			g_DefPipeline.topology = GraphicsTopology_TriangleStrip;
 		}
 
 		return true;
@@ -80,10 +80,11 @@ namespace sv {
 
 	bool postprocessing_close()
 	{
+		g_DefPipeline = {};
 		svCheck(graphics_destroy(g_VertexBuffer));
 		svCheck(graphics_destroy(g_DefVertexShader));
 		svCheck(graphics_destroy(g_DefPixelShader));
-		svCheck(graphics_destroy(g_DefPipeline));
+		svCheck(graphics_destroy(g_DefInputLayoutState));
 		return true;
 	}
 

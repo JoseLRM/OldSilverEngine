@@ -43,15 +43,20 @@ namespace sv {
 		std::vector<AttachmentDesc>	attachments;
 	};
 
-	struct GraphicsPipeline_internal : public Primitive_internal {
-		Shader_internal*		vs;
-		Shader_internal*		ps;
-		Shader_internal*		gs;
-		InputLayoutDesc			inputLayout;
-		RasterizerStateDesc		rasterizerState;
-		BlendStateDesc			blendState;
-		DepthStencilStateDesc	depthStencilState;
-		GraphicsTopology		topology;
+	struct InputLayoutState_internal : public Primitive_internal {
+		InputLayoutStateDesc desc;
+	};
+
+	struct BlendState_internal : public Primitive_internal {
+		BlendStateDesc desc;
+	};
+
+	struct DepthStencilState_internal : public Primitive_internal {
+		DepthStencilStateDesc desc;
+	};
+	
+	struct RasterizerState_internal : public Primitive_internal {
+		RasterizerStateDesc desc;
 	};
 
 	// Pipeline state
@@ -88,12 +93,26 @@ namespace sv {
 		GraphicsPipelineState_Sampler_MS = SV_BIT(24),
 		GraphicsPipelineState_Sampler_TS = SV_BIT(25),
 
-		GraphicsPipelineState_RenderPass = SV_BIT(26),
-		GraphicsPipelineState_Pipeline = SV_BIT(27),
+		GraphicsPipelineState_Shader	= SV_BIT(26),
+		GraphicsPipelineState_Shader_VS = SV_BIT(27),
+		GraphicsPipelineState_Shader_PS = SV_BIT(28),
+		GraphicsPipelineState_Shader_GS = SV_BIT(29),
+		GraphicsPipelineState_Shader_HS = SV_BIT(30),
+		GraphicsPipelineState_Shader_DS = SV_BIT(31),
+		GraphicsPipelineState_Shader_MS = SV_BIT(32),
+		GraphicsPipelineState_Shader_TS = SV_BIT(33),
 
-		GraphicsPipelineState_Viewport = SV_BIT(28),
-		GraphicsPipelineState_Scissor = SV_BIT(29),
-		GraphicsPipelineState_StencilRef = SV_BIT(30),
+		GraphicsPipelineState_RenderPass = SV_BIT(34),
+
+		GraphicsPipelineState_InputLayoutState	= SV_BIT(35),
+		GraphicsPipelineState_BlendState		= SV_BIT(36),
+		GraphicsPipelineState_DepthStencilState = SV_BIT(37),
+		GraphicsPipelineState_RasterizerState	= SV_BIT(38),
+
+		GraphicsPipelineState_Viewport		= SV_BIT(39),
+		GraphicsPipelineState_Scissor		= SV_BIT(40),
+		GraphicsPipelineState_Topology		= SV_BIT(41),
+		GraphicsPipelineState_StencilRef	= SV_BIT(42),
 	};
 
 	typedef ui64 GraphicsPipelineStateFlags;
@@ -116,12 +135,20 @@ namespace sv {
 		Sampler_internal*				sampers[ShaderType_GraphicsCount][SV_GFX_SAMPLER_COUNT];
 		ui32							samplersCount[ShaderType_GraphicsCount];
 
-		GraphicsPipeline_internal*		pipeline;
+		Shader_internal*				vertexShader;
+		Shader_internal*				pixelShader;
+		Shader_internal*				geometryShader;
+
+		InputLayoutState_internal*		inputLayoutState;
+		BlendState_internal*			blendState;
+		DepthStencilState_internal*		depthStencilState;
+		RasterizerState_internal*		rasterizerState;
 
 		sv::Viewport					viewports[SV_GFX_VIEWPORT_COUNT];
 		ui32							viewportsCount;
 		sv::Scissor						scissors[SV_GFX_SCISSOR_COUNT];
 		ui32							scissorsCount;
+		GraphicsTopology				topology;
 		ui32							stencilReference;
 
 		RenderPass_internal*			renderPass;
@@ -201,7 +228,7 @@ namespace sv {
 
 	// Hash functions
 
-	size_t graphics_compute_hash_inputlayout(const InputLayoutDesc* desc);
+	size_t graphics_compute_hash_inputlayoutstate(const InputLayoutStateDesc* desc);
 	size_t graphics_compute_hash_blendstate(const BlendStateDesc* desc);
 	size_t graphics_compute_hash_rasterizerstate(const RasterizerStateDesc* desc);
 	size_t graphics_compute_hash_depthstencilstate(const DepthStencilStateDesc* desc);

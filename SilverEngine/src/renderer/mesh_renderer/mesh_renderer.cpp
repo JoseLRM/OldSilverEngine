@@ -20,10 +20,13 @@ namespace sv {
 	// TODO: not global
 	static MeshData g_MeshData[SV_REND_MESH_INSTANCE_COUNT];
 
-	static RenderPass		g_ForwardRenderPass;
-	static GraphicsPipeline g_ForwardPipeline;
-	static Shader			g_ForwardVertexShader;
-	static Shader			g_ForwardPixelShader;
+	static RenderPass			g_ForwardRenderPass;
+	static GraphicsPipeline		g_ForwardPipeline;
+	static Shader				g_ForwardVertexShader;
+	static Shader				g_ForwardPixelShader;
+	static InputLayoutState		g_ForwardInputLayoutState;
+	static DepthStencilState	g_ForwardDepthStencilState;
+	static RasterizerState		g_ForwardRasterizerState;
 
 	bool mesh_renderer_initialize()
 	{
@@ -89,54 +92,59 @@ namespace sv {
 			svCheck(graphics_shader_create(&desc, g_ForwardPixelShader));
 		}
 		{
-			InputLayoutDesc inputLayout;
-			inputLayout.slots.resize(2u);
+			InputLayoutStateDesc desc;
+			desc.slots.resize(2u);
 
-			inputLayout.slots[0].instanced = false;
-			inputLayout.slots[0].slot = 0u;
-			inputLayout.slots[0].stride = sizeof(MeshVertex);
+			desc.slots[0].instanced = false;
+			desc.slots[0].slot = 0u;
+			desc.slots[0].stride = sizeof(MeshVertex);
 
-			inputLayout.slots[1].instanced = true;
-			inputLayout.slots[1].slot = 1u;
-			inputLayout.slots[1].stride = sizeof(MeshData);
+			desc.slots[1].instanced = true;
+			desc.slots[1].slot = 1u;
+			desc.slots[1].stride = sizeof(MeshData);
 
-			inputLayout.elements.resize(7u);
+			desc.elements.resize(7u);
 
-			inputLayout.elements[0] = { "Position", 0u, 0u, 0u, Format_R32G32B32_FLOAT };
-			inputLayout.elements[1] = { "Normal", 0u, 0u, 3 * sizeof(float), Format_R32G32B32_FLOAT };
-			inputLayout.elements[2] = { "TexCoord", 0u, 0u, 6 * sizeof(float), Format_R32G32_FLOAT };
+			desc.elements[0] = { "Position", 0u, 0u, 0u, Format_R32G32B32_FLOAT };
+			desc.elements[1] = { "Normal", 0u, 0u, 3 * sizeof(float), Format_R32G32B32_FLOAT };
+			desc.elements[2] = { "TexCoord", 0u, 0u, 6 * sizeof(float), Format_R32G32_FLOAT };
 			
-			inputLayout.elements[3] = { "ModelViewMatrix", 0u, 1u, 0u * sizeof(float), Format_R32G32B32A32_FLOAT };
-			inputLayout.elements[4] = { "ModelViewMatrix", 1u, 1u, 4u * sizeof(float), Format_R32G32B32A32_FLOAT };
-			inputLayout.elements[5] = { "ModelViewMatrix", 2u, 1u, 8u * sizeof(float), Format_R32G32B32A32_FLOAT };
-			inputLayout.elements[6] = { "ModelViewMatrix", 3u, 1u, 12u * sizeof(float), Format_R32G32B32A32_FLOAT };
+			desc.elements[3] = { "ModelViewMatrix", 0u, 1u, 0u * sizeof(float), Format_R32G32B32A32_FLOAT };
+			desc.elements[4] = { "ModelViewMatrix", 1u, 1u, 4u * sizeof(float), Format_R32G32B32A32_FLOAT };
+			desc.elements[5] = { "ModelViewMatrix", 2u, 1u, 8u * sizeof(float), Format_R32G32B32A32_FLOAT };
+			desc.elements[6] = { "ModelViewMatrix", 3u, 1u, 12u * sizeof(float), Format_R32G32B32A32_FLOAT };
 
-			RasterizerStateDesc rasterizerState;
-			rasterizerState.wireframe = false;
-			rasterizerState.lineWidth = 1.f;
-			rasterizerState.cullMode = RasterizerCullMode_Back;
-			rasterizerState.clockwise = true;
-
-			DepthStencilStateDesc depthStencilState;
-			depthStencilState.depthTestEnabled = true;
-			depthStencilState.depthWriteEnabled = true;
-			depthStencilState.depthCompareOp = CompareOperation_LessOrEqual;
-			depthStencilState.stencilTestEnabled = false;
-			depthStencilState.readMask = 0xFF;
-			depthStencilState.writeMask = 0xFF;
-
-			GraphicsPipelineDesc desc;
-			desc.pVertexShader = &g_ForwardVertexShader;
-			desc.pPixelShader = &g_ForwardPixelShader;
-			desc.pGeometryShader = nullptr;
-			desc.pInputLayout = &inputLayout;
-			desc.pBlendState = nullptr;
-			desc.pRasterizerState = &rasterizerState;
-			desc.pDepthStencilState = &depthStencilState;
-			desc.topology = GraphicsTopology_Triangles;
-
-			svCheck(graphics_pipeline_create(&desc, g_ForwardPipeline));
+			svCheck(graphics_inputlayoutstate_create(&desc, g_ForwardInputLayoutState));
 		}
+		{
+			RasterizerStateDesc desc;
+			desc.wireframe = false;
+			desc.lineWidth = 1.f;
+			desc.cullMode = RasterizerCullMode_Back;
+			desc.clockwise = true;
+
+			svCheck(graphics_rasterizerstate_create(&desc, g_ForwardRasterizerState));
+		}
+		{
+			DepthStencilStateDesc desc;
+			desc.depthTestEnabled = true;
+			desc.depthWriteEnabled = true;
+			desc.depthCompareOp = CompareOperation_LessOrEqual;
+			desc.stencilTestEnabled = false;
+			desc.readMask = 0xFF;
+			desc.writeMask = 0xFF;
+
+			svCheck(graphics_depthstencilstate_create(&desc, g_ForwardDepthStencilState));
+		}
+
+		g_ForwardPipeline.pVertexShader = &g_ForwardVertexShader;
+		g_ForwardPipeline.pPixelShader = &g_ForwardPixelShader;
+		g_ForwardPipeline.pGeometryShader = nullptr;
+		g_ForwardPipeline.pInputLayoutState = &g_ForwardInputLayoutState;
+		g_ForwardPipeline.pBlendState = nullptr;
+		g_ForwardPipeline.pRasterizerState = &g_ForwardRasterizerState;
+		g_ForwardPipeline.pDepthStencilState = &g_ForwardDepthStencilState;
+		g_ForwardPipeline.topology = GraphicsTopology_Triangles;
 
 		return true;
 	}

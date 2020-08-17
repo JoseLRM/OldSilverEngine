@@ -12,7 +12,7 @@ namespace sv {
 	Graphics_vk& graphics_vulkan_device_get();
 
 	//////////////////////////////////////////////////////////// ADAPTER ////////////////////////////////////////////////////////////
-	class Adapter_vk : public sv::Adapter {
+	class Adapter_vk : public Adapter {
 		VkPhysicalDevice					m_PhysicalDevice = VK_NULL_HANDLE;
 		VkPhysicalDeviceProperties			m_Properties;
 		VkPhysicalDeviceFeatures			m_Features;
@@ -74,15 +74,27 @@ namespace sv {
 		VkRenderPass					renderPass;
 		std::map<size_t, VkFramebuffer> frameBuffers;
 	};
-	// GraphicsPipeline
-	struct GraphicsPipeline_vk : public GraphicsPipeline_internal {
+	// InputLayoutState
+	struct InputLayoutState_vk : public InputLayoutState_internal {
+		size_t hash;
+	};
+	// BlendState
+	struct BlendState_vk : public BlendState_internal {
+		size_t hash;
+	};
+	// DepthStencilState
+	struct DepthStencilState_vk : public DepthStencilState_internal {
+		size_t hash;
+	};
+	// RasterizerState
+	struct RasterizerState_vk : public RasterizerState_internal {
 		size_t hash;
 	};
 
 	//////////////////////////////////////////////////////////// CONSTRUCTOR & DESTRUCTOR ////////////////////////////////////////////////////////////
 
 	void* VulkanConstructor(GraphicsPrimitiveType type, const void* desc);
-	bool VulkanDestructor(sv::Primitive& primitive);
+	bool VulkanDestructor(Primitive& primitive);
 
 	//////////////////////////////////////////////////////////// GRAPHICS API ////////////////////////////////////////////////////////////
 	struct VulkanPipeline {
@@ -141,7 +153,7 @@ namespace sv {
 		};
 		std::vector<Image>					images;
 		Image_vk							backBuffer;
-		sv::Primitive						backBufferImage;
+		Primitive						backBufferImage;
 	};
 
 	class Graphics_vk : public GraphicsDevice {
@@ -175,7 +187,7 @@ namespace sv {
 
 	public:
 		inline Frame& GetFrame() noexcept { return m_Frames[m_CurrentFrame]; }
-		inline VkCommandBuffer GetCMD(sv::CommandList cmd) { return GetFrame().commandBuffers[cmd]; }
+		inline VkCommandBuffer GetCMD(CommandList cmd) { return GetFrame().commandBuffers[cmd]; }
 
 	private:
 		// Binding Members
@@ -208,7 +220,9 @@ namespace sv {
 
 		// State Methods
 
-		void UpdateGraphicsState(sv::CommandList cmd);
+		void UpdateGraphicsState(CommandList cmd);
+		size_t ComputeVulkanPipelineHash(const GraphicsState& state);
+		bool CreateVulkanPipeline(VulkanPipeline& p, Shader_internal* pVertexShader, Shader_internal* pPixelShader, Shader_internal* pGeometryShader);
 
 	public:
 		// Getters
@@ -226,7 +240,10 @@ namespace sv {
 		bool CreateSampler(Sampler_vk& sampler, const SamplerDesc& desc);
 		bool CreateShader(Shader_vk& shader, const ShaderDesc& desc);
 		bool CreateRenderPass(RenderPass_vk& renderPass, const RenderPassDesc& desc);
-		bool CreateGraphicsPipeline(GraphicsPipeline_vk& graphicsPipeline, const GraphicsPipelineDesc& desc);
+		bool CreateInputLayoutState(InputLayoutState_vk& inputLayoutState, const InputLayoutStateDesc& desc);
+		bool CreateBlendState(BlendState_vk& blendState, const BlendStateDesc& desc);
+		bool CreateDepthStencilState(DepthStencilState_vk& depthStencilState, const DepthStencilStateDesc& desc);
+		bool CreateRasterizerState(RasterizerState_vk& rasterizerState, const RasterizerStateDesc& desc);
 
 		ui64 m_IDCount = 0u;
 		std::mutex m_IDMutex;
@@ -238,15 +255,14 @@ namespace sv {
 		bool DestroySampler(Sampler_vk& sampler);
 		bool DestroyShader(Shader_vk& shader);
 		bool DestroyRenderPass(RenderPass_vk& renderPass);
-		bool DestroyGraphicsPipeline(GraphicsPipeline_vk& graphicsPipeline);
 
 		// Device Methods
 
-		sv::CommandList BeginCommandList() override;
-		sv::CommandList GetLastCommandList() override;
+		CommandList BeginCommandList() override;
+		CommandList GetLastCommandList() override;
 
-		void BeginRenderPass(sv::CommandList cmd) override;
-		void EndRenderPass(sv::CommandList cmd) override;
+		void BeginRenderPass(CommandList cmd) override;
+		void EndRenderPass(CommandList cmd) override;
 
 		void ResizeSwapChain() override;
 		GPUImage& AcquireSwapChainImage() override;
@@ -256,12 +272,12 @@ namespace sv {
 		void SubmitCommandLists() override;
 		void Present() override;
 
-		void Draw(ui32 vertexCount, ui32 instanceCount, ui32 startVertex, ui32 startInstance, sv::CommandList cmd) override;
-		void DrawIndexed(ui32 indexCount, ui32 instanceCount, ui32 startIndex, ui32 startVertex, ui32 startInstance, sv::CommandList cmd) override;
+		void Draw(ui32 vertexCount, ui32 instanceCount, ui32 startVertex, ui32 startInstance, CommandList cmd) override;
+		void DrawIndexed(ui32 indexCount, ui32 instanceCount, ui32 startIndex, ui32 startVertex, ui32 startInstance, CommandList cmd) override;
 
-		void ClearImage(GPUImage& image, GPUImageLayout oldLayout, GPUImageLayout newLayout, const sv::Color4f& clearColor, float depth, ui32 stencil, sv::CommandList cmd) override;
-		void UpdateBuffer(GPUBuffer& buffer, void* pData, ui32 size, ui32 offset, sv::CommandList cmd) override;
-		void Barrier(const sv::GPUBarrier* barriers, ui32 count, sv::CommandList cmd) override;
+		void ClearImage(GPUImage& image, GPUImageLayout oldLayout, GPUImageLayout newLayout, const Color4f& clearColor, float depth, ui32 stencil, CommandList cmd) override;
+		void UpdateBuffer(GPUBuffer& buffer, void* pData, ui32 size, ui32 offset, CommandList cmd) override;
+		void Barrier(const GPUBarrier* barriers, ui32 count, CommandList cmd) override;
 
 		// CommandBuffers
 
