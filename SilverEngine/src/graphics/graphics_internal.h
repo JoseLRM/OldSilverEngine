@@ -176,8 +176,9 @@ namespace sv {
 		virtual bool Initialize(const sv::InitializationGraphicsDesc& desc) = 0;
 		virtual bool Close() = 0;
 
-		virtual sv::CommandList BeginCommandList() = 0;
-		virtual sv::CommandList GetLastCommandList() = 0;
+		virtual CommandList BeginCommandList() = 0;
+		virtual CommandList GetLastCommandList() = 0;
+		virtual ui32 GetCommandListCount() = 0;
 
 		virtual void BeginRenderPass(sv::CommandList cmd) = 0;
 		virtual void EndRenderPass(sv::CommandList cmd) = 0;

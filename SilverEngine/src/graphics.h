@@ -585,6 +585,7 @@ namespace sv {
 
 	CommandList graphics_commandlist_begin();
 	CommandList graphics_commandlist_last();
+	ui32		graphics_commandlist_count();
 
 	void graphics_gpu_wait();
 

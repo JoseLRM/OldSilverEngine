@@ -1172,6 +1172,12 @@ namespace sv {
 		return m_ActiveCMDCount - 1u;
 	}
 
+	ui32 Graphics_vk::GetCommandListCount()
+	{
+		std::lock_guard<std::mutex> lock(m_MutexCMD);
+		return m_ActiveCMDCount;
+	}
+
 	void Graphics_vk::BeginRenderPass(CommandList cmd_)
 	{
 		GraphicsState& state = graphics_state_get().graphics[cmd_];

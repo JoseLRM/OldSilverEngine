@@ -15,22 +15,12 @@ namespace sv {
 
 	// Default Primitives
 
+	static GraphicsState		g_DefGraphicsState;
+
 	static InputLayoutState		g_DefInputLayoutState;
 	static BlendState			g_DefBlendState;
 	static DepthStencilState	g_DefDepthStencilState;
 	static RasterizerState		g_DefRasterizerState;
-
-	void ResetPipelineState(CommandList cmd)
-	{
-		svZeroMemory(&g_PipelineState.graphics, sizeof(GraphicsPipelineState));
-		g_PipelineState.graphics->flags |= GraphicsPipelineState_Viewport;
-		g_PipelineState.graphics->flags |= GraphicsPipelineState_Scissor;
-	}
-	void ResetPipelineState()
-	{
-		for (ui32 i = 0; i < SV_GFX_COMMAND_LIST_COUNT; ++i)
-			ResetPipelineState(i);
-	}
 
 	bool graphics_initialize(const InitializationGraphicsDesc& desc)
 	{
@@ -41,8 +31,6 @@ namespace sv {
 			sv::log_error("Can't initialize GraphicsAPI");
 			return false;
 		}
-
-		ResetPipelineState();
 
 		// Create default states
 		{
@@ -81,6 +69,40 @@ namespace sv {
 			desc.clockwise = true;
 			svCheck(graphics_rasterizerstate_create(&desc, g_DefRasterizerState));
 		}
+
+		// Graphic State
+
+		g_DefGraphicsState = {};
+		g_DefGraphicsState.inputLayoutState = reinterpret_cast<InputLayoutState_internal*>(g_DefInputLayoutState.GetPtr());
+		g_DefGraphicsState.blendState = reinterpret_cast<BlendState_internal*>(g_DefBlendState.GetPtr());;
+		g_DefGraphicsState.depthStencilState = reinterpret_cast<DepthStencilState_internal*>(g_DefDepthStencilState.GetPtr());;
+		g_DefGraphicsState.rasterizerState = reinterpret_cast<RasterizerState_internal*>(g_DefRasterizerState.GetPtr());;
+		for (ui32 i = 0; i < SV_GFX_VIEWPORT_COUNT; ++i) {
+			g_DefGraphicsState.viewports[i] = { 0.f, 0.f, 100.f, 100.f, 0.f, 1.f };
+		}
+		g_DefGraphicsState.viewportsCount = SV_GFX_VIEWPORT_COUNT;
+		for (ui32 i = 0; i < SV_GFX_SCISSOR_COUNT; ++i) {
+			g_DefGraphicsState.scissors[i] = { 0.f, 0.f, 100.f, 100.f };
+		}
+		g_DefGraphicsState.scissorsCount = SV_GFX_SCISSOR_COUNT;
+		g_DefGraphicsState.topology = GraphicsTopology_Triangles;
+		g_DefGraphicsState.stencilReference = 0u;
+		for (ui32 i = 0; i < SV_GFX_ATTACHMENTS_COUNT; ++i) {
+			g_DefGraphicsState.clearColors[i] = { 0.f, 0.f, 0.f, 1.f };
+		}
+		g_DefGraphicsState.clearDepthStencil.first = 1.f;
+		g_DefGraphicsState.clearDepthStencil.second = 0u;
+		g_DefGraphicsState.flags =
+			GraphicsPipelineState_InputLayoutState |
+			GraphicsPipelineState_BlendState |
+			GraphicsPipelineState_DepthStencilState |
+			GraphicsPipelineState_RasterizerState |
+			GraphicsPipelineState_Viewport |
+			GraphicsPipelineState_Scissor |
+			GraphicsPipelineState_Topology |
+			GraphicsPipelineState_StencilRef |
+			GraphicsPipelineState_RenderPass
+			;
 
 		return true;
 	}
@@ -414,7 +436,8 @@ namespace sv {
 	{
 		CommandList cmd = g_Device->BeginCommandList();
 
-		graphics_set_pipeline_mode(GraphicsPipelineMode_Graphics, cmd);
+		g_PipelineState.mode[cmd] = GraphicsPipelineMode_Graphics;
+		g_PipelineState.graphics[cmd] = g_DefGraphicsState;
 
 		return cmd;
 	}
@@ -422,6 +445,11 @@ namespace sv {
 	CommandList graphics_commandlist_last()
 	{
 		return g_Device->GetLastCommandList();
+	}
+
+	ui32 graphics_commandlist_count()
+	{
+		return g_Device->GetCommandListCount();
 	}
 
 	void graphics_gpu_wait()

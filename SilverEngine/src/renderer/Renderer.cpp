@@ -59,7 +59,13 @@ namespace sv {
 	}
 	void renderer_frame_end()
 	{
-		CommandList cmd = graphics_commandlist_last();
+		CommandList cmd;
+		if (graphics_commandlist_count() == 0u) {
+			cmd = graphics_commandlist_begin();
+		}
+		else {
+			cmd = graphics_commandlist_last();
+		}
 
 		// PostProcess to BackBuffer
 		GPUImage& backBuffer = graphics_swapchain_acquire_image();

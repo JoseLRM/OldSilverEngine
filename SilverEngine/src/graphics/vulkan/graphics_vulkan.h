@@ -260,6 +260,7 @@ namespace sv {
 
 		CommandList BeginCommandList() override;
 		CommandList GetLastCommandList() override;
+		ui32 GetCommandListCount() override;
 
 		void BeginRenderPass(CommandList cmd) override;
 		void EndRenderPass(CommandList cmd) override;
