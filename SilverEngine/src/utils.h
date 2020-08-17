@@ -53,5 +53,89 @@ namespace sv {
 
 	}
 
+	// References
+	// TODO: I am using standard ptrs
+
+	template<typename T>
+	class SharedRef {
+		std::shared_ptr<T> m_Ref;
+
+	public:
+		SharedRef() = default;
+		SharedRef(std::shared_ptr<T>&& shared) { m_Ref = std::move(shared); }
+		SharedRef(const SharedRef& other) 
+		{
+			m_Ref = other.m_Ref;
+		}
+		SharedRef(SharedRef&& other) noexcept
+		{
+			m_Ref = std::move(other.m_Ref);
+		}
+
+		SharedRef<T>& operator=(const SharedRef& other)
+		{
+			m_Ref = other.m_Ref;
+			return *this;
+		}
+		SharedRef<T>& operator=(SharedRef&& other) noexcept
+		{
+			m_Ref = std::move(other.m_Ref);
+			return *this;
+		}
+
+		T& operator*() { return *m_Ref.get(); }
+		const T& operator*() const { return *m_Ref.get(); }
+		T* operator->() { return m_Ref.get(); }
+		const T* operator->() const { return m_Ref.get(); }
+		T* Get() { return m_Ref.get(); }
+		const T* Get() const { return m_Ref.get(); }
+
+	};
+
+	template<typename T>
+	class WeakRef {
+		std::weak_ptr<T> m_Ref;
+
+	public:
+		WeakRef() = default;
+		WeakRef(std::weak_ptr<T>&& other) { m_Ref = std::move(other); }
+		WeakRef(const WeakRef& other)
+		{
+			m_Ref = other.m_Ref;
+		}
+		WeakRef(WeakRef&& other) noexcept
+		{
+			m_Ref = std::move(other.m_Ref);
+		}
+
+		WeakRef<T>& operator=(const WeakRef& other)
+		{
+			m_Ref = other.m_Ref;
+			return *this;
+		}
+		WeakRef<T>& operator=(WeakRef&& other) noexcept
+		{
+			m_Ref = std::move(other.m_Ref);
+			return *this;
+		}
+
+		bool Expired() const
+		{
+			return m_Ref.expired();
+		}
+
+		SharedRef<T> GetShared() const noexcept
+		{
+			return { m_Ref.lock() };
+		}
+
+	};
+
+	template<typename T, typename... Args>
+	SharedRef<T> create_shared(Args&&... args)
+	{
+		return { std::make_shared<T>(std::forward<Args>(args)...) };
+	}
+
 }
 

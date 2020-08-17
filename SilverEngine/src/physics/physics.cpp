@@ -118,7 +118,7 @@ namespace sv {
 
 	PhysicsWorld physics_world_create()
 	{
-		b2World* world = new b2World({ 0.f, -3.f });
+		b2World* world = new b2World({ 0.f, 3.f });
 		return { world };
 	}
 	void physics_world_destroy(PhysicsWorld& world_)

@@ -3,6 +3,7 @@
 #include "simulation.h"
 #include "components.h"
 #include "viewport_manager.h"
+#include "loader.h"
 
 namespace sve {
 
@@ -68,6 +69,9 @@ namespace sve {
 		return g_Paused;
 	}
 
+	// TEMP
+	static sv::Model g_Model;
+
 	sv::Scene simulation_scene_create_default()
 	{
 		// Create scene
@@ -87,36 +91,13 @@ namespace sve {
 		}
 
 		// Temporal
-		sv::vec3 positions[] = {
-			{ -0.5f, -0.5f, 0.f },
-			{  0.5f, -0.5f, 0.f },
-			{ -0.5f,  0.5f, 0.f },
-			{  0.5f,  0.5f, 0.f },
-		};
+		sv::loader_model_import("assets/dragon.obj", g_Model);
 
-		ui32 indices[] = {
-			0u, 1u, 2u,
-			1u, 3u, 2u,
-		};
-
-		sv::Mesh mesh;
-		sv::mesh_create(4u, 6u, &mesh);
-
-		sv::mesh_positions_set(mesh, positions, 0u, 4u);
-		sv::mesh_indices_set(mesh, indices, 0u, 6u);
-
-		sv::mesh_initialize(mesh);
-
-		sv::Material material;
-		sv::MaterialData initialData;
-		initialData.diffuseColor = { 1.f, 0.f, 0.f, 1.f };
-
-		sv::material_create(initialData, &material);
 
 		sv::Entity meshEntity = sv::scene_ecs_entity_create();
 		sv::scene_ecs_component_add<sv::MeshComponent>(meshEntity);
-		sv::scene_ecs_component_get<sv::MeshComponent>(meshEntity)->mesh = mesh;
-		sv::scene_ecs_component_get<sv::MeshComponent>(meshEntity)->material = material;
+		sv::scene_ecs_component_get<sv::MeshComponent>(meshEntity)->mesh = &g_Model.nodes[0].mesh;
+		sv::scene_ecs_component_get<sv::MeshComponent>(meshEntity)->material = &g_Model.materials[0];
 
 		return scene;
 	}

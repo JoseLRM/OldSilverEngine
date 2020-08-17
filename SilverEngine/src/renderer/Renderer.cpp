@@ -1,7 +1,7 @@
 #include "core.h"
 
 #include "renderer_internal.h"
-#include "scene.h"
+#include "scene/scene_internal.h"
 #include "graphics/graphics_internal.h"
 #include "components.h"
 
@@ -132,6 +132,29 @@ namespace sv {
 	ui32 renderer_resolution_get_width() noexcept { return g_Resolution.x; }
 	ui32 renderer_resolution_get_height() noexcept { return g_Resolution.y; }
 	float renderer_resolution_get_aspect() noexcept { return float(g_Resolution.x) / float(g_Resolution.y); }
+
+	// Render layers
+
+	void renderLayer_count_set(ui32 count)
+	{
+		scene_renderWorld_get().renderLayers.resize(count);
+	}
+
+	ui32 renderLayer_count_get()
+	{
+		return ui32(scene_renderWorld_get().renderLayers.size());
+	}
+
+	void renderLayer_sortMode_set(ui32 layer, RenderLayerSortMode sortMode)
+	{
+		RenderLayer& rl = scene_renderWorld_get().renderLayers[layer];
+		rl.sortMode = sortMode;
+	}
+
+	RenderLayerSortMode	renderLayer_sortMode_get(ui32 layer)
+	{
+		return scene_renderWorld_get().renderLayers[layer].sortMode;
+	}
 
 	///////////////////////////////// DRAW FUNCTIONS ////////////////////////////////////////////////
 

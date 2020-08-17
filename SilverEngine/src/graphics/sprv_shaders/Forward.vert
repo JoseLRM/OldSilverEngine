@@ -8,6 +8,8 @@ layout (location = 2) in vec2 TexCoord;
 
 layout (location = 3) in mat4 ModelViewMatrix;
 
+layout (location = 0) out vec3 FragNormal;
+
 layout (set = 0, binding = 0) uniform camera {
 	mat4 pm;
 };
@@ -15,5 +17,6 @@ layout (set = 0, binding = 0) uniform camera {
 void main() {
 	
 	gl_Position = pm * ModelViewMatrix * vec4(Position, 1.f);
+	FragNormal = Normal;
 
 }

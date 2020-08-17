@@ -1,6 +1,5 @@
 #include "core.h"
 
-#include "renderer2D_internal.h"
 #include "..//renderer_internal.h"
 #include "scene/scene_internal.h"
 #include "components.h"
@@ -193,27 +192,27 @@ namespace sv {
 		{
 		case RenderLayerSortMode_none:
 			std::sort(begin, end, [](const SpriteInstance& s0, const SpriteInstance& s1) {
-				return s0.sprite.textureAtlas < s1.sprite.textureAtlas;
+				return s0.sprite.pTextureAtlas < s1.sprite.pTextureAtlas;
 			});
 			break;
 
 		case RenderLayerSortMode_coordX:
 			std::sort(begin, end, [](const SpriteInstance& s0, const SpriteInstance& s1) {
-				if (s0.position.x == s1.position.x) return s0.sprite.textureAtlas < s1.sprite.textureAtlas;
+				if (s0.position.x == s1.position.x) return s0.sprite.pTextureAtlas < s1.sprite.pTextureAtlas;
 				return s0.position.x < s1.position.x;
 			});
 			break;
 
 		case RenderLayerSortMode_coordY:
 			std::sort(begin, end, [](const SpriteInstance& s0, const SpriteInstance& s1) {
-				if (s0.position.y == s1.position.y) return s0.sprite.textureAtlas < s1.sprite.textureAtlas;
+				if (s0.position.y == s1.position.y) return s0.sprite.pTextureAtlas < s1.sprite.pTextureAtlas;
 				return s0.position.y < s1.position.y;
 			});
 			break;
 
 		case RenderLayerSortMode_coordZ:
 			std::sort(begin, end, [](const SpriteInstance& s0, const SpriteInstance& s1) {
-				if (s0.position.z == s1.position.z) return s0.sprite.textureAtlas < s1.sprite.textureAtlas;
+				if (s0.position.z == s1.position.z) return s0.sprite.pTextureAtlas < s1.sprite.pTextureAtlas;
 				return s0.position.z < s1.position.z;
 			});
 			break;
@@ -269,7 +268,7 @@ namespace sv {
 		renderer2D_sprite_render(instances.data(), ui32(instances.size()), drawData.viewProjectionMatrix, drawData.pOffscreen->renderTarget, cmd);
 	}
 
-	void RenderSpriteBatch(ui32 offset, ui32 size, TextureAtlas_internal* texture, CommandList cmd)
+	void RenderSpriteBatch(ui32 offset, ui32 size, TextureAtlas* texture, CommandList cmd)
 	{
 		GPUBuffer* vBuffers[] = {
 			&g_SpriteVertexBuffer,
@@ -284,8 +283,8 @@ namespace sv {
 		Sampler* samplers[1];
 
 		if (texture) {
-			images[0] = &texture->image;
-			samplers[0] = &texture->sampler;
+			images[0] = &texture->GetImage();
+			samplers[0] = &texture->GetSampler();
 		}
 		else {
 			images[0] = &g_SpriteWhiteTexture;
@@ -307,7 +306,7 @@ namespace sv {
 			&renderTarget
 		};
 
-		TextureAtlas_internal* texture = nullptr;
+		TextureAtlas* texture = nullptr;
 		auto& renderLayers = scene_renderWorld_get().renderLayers;
 
 		SpriteInstance* initialPtr = buffer;
@@ -340,8 +339,8 @@ namespace sv {
 				pos3 = XMVector4Transform(pos3, matrix);
 
 				vec4 texCoord;
-				if (spr.sprite.textureAtlas)
-					texCoord = reinterpret_cast<TextureAtlas_internal*>(spr.sprite.textureAtlas)->sprites[spr.sprite.index];
+				if (spr.sprite.pTextureAtlas)
+					texCoord = spr.sprite.pTextureAtlas->GetSprite(spr.sprite.index);
 
 				ui32 index = j * 4u;
 				g_SpriteData[index + 0] = { pos0, {texCoord.x, texCoord.y}, spr.color };
@@ -367,16 +366,16 @@ namespace sv {
 
 				endBuffer = buffer + batchSize;
 
-				texture = reinterpret_cast<TextureAtlas_internal*>(buffer->sprite.textureAtlas);
+				texture = buffer->sprite.pTextureAtlas;
 				
 				ui32 offset = buffer - beginBuffer;
 				while (buffer != endBuffer) {
 
-					if (buffer->sprite.textureAtlas != texture) {
+					if (buffer->sprite.pTextureAtlas != texture) {
 						ui32 batchPos = buffer - beginBuffer;
 						RenderSpriteBatch(offset, batchPos - offset, texture, cmd);
 						offset = batchPos;
-						texture = reinterpret_cast<TextureAtlas_internal*>(buffer->sprite.textureAtlas);
+						texture = buffer->sprite.pTextureAtlas;
 					}
 
 					buffer++;
@@ -390,112 +389,6 @@ namespace sv {
 			graphics_renderpass_end(cmd);
 		}
 
-	}
-
-	// Render layers
-
-	void renderLayer_count_set(ui32 count)
-	{
-		scene_renderWorld_get().renderLayers.resize(count);
-	}
-
-	ui32 renderLayer_count_get()
-	{
-		return ui32(scene_renderWorld_get().renderLayers.size());
-	}
-
-	void renderLayer_sortMode_set(ui32 layer, RenderLayerSortMode sortMode)
-	{
-		RenderLayer& rl = scene_renderWorld_get().renderLayers[layer];
-		rl.sortMode = sortMode;
-	}
-
-	RenderLayerSortMode	renderLayer_sortMode_get(ui32 layer)
-	{
-		return scene_renderWorld_get().renderLayers[layer].sortMode;
-	}
-
-	// Texture Atlas
-
-	bool textureAtlas_create_from_file(const char* filePath, bool linearFilter, SamplerAddressMode addressMode, TextureAtlas* pTextureAtlas)
-	{
-		// Get file data
-		void* data;
-		ui32 width;
-		ui32 height;
-		svCheck(utils_loader_image(filePath, &data, &width, &height));
-
-		TextureAtlas_internal* res = new TextureAtlas_internal();
-
-		// Create Image
-		{
-			GPUImageDesc desc;
-
-			desc.pData = data;
-			desc.size = width * height * 4u;
-			desc.format = Format_R8G8B8A8_UNORM;
-			desc.layout = GPUImageLayout_ShaderResource;
-			desc.type = GPUImageType_ShaderResource;
-			desc.usage = ResourceUsage_Static;
-			desc.CPUAccess = CPUAccess_None;
-			desc.dimension = 2u;
-			desc.width = width;
-			desc.height = height;
-			desc.depth = 1u;
-			desc.layers = 1u;
-
-			svCheck(graphics_image_create(&desc, res->image));
-		}
-		// Create Sampler
-		{
-			SamplerDesc desc;
-
-			desc.addressModeU = addressMode;
-			desc.addressModeV = addressMode;
-			desc.addressModeW = addressMode;
-			desc.minFilter = linearFilter ? SamplerFilter_Linear : SamplerFilter_Nearest;
-			desc.magFilter = desc.minFilter;
-
-			svCheck(graphics_sampler_create(&desc, res->sampler));
-		}
-
-		*pTextureAtlas = res;
-		return true;
-	}
-
-	bool textureAtlas_destroy(TextureAtlas textureAtlas)
-	{
-		TextureAtlas_internal& t = *reinterpret_cast<TextureAtlas_internal*>(textureAtlas);
-		if (t.image.IsValid()) {
-			svCheck(graphics_destroy(t.image));
-			svCheck(graphics_destroy(t.sampler));
-			t.sprites.clear();
-		}
-
-		delete &t;
-		return true;
-	}
-
-	Sprite textureAtlas_sprite_add(TextureAtlas textureAtlas, float x, float y, float w, float h)
-	{
-		TextureAtlas_internal& t = *reinterpret_cast<TextureAtlas_internal*>(textureAtlas);
-		SV_ASSERT(t.image.IsValid());
-		Sprite res = { textureAtlas, ui32(t.sprites.size()) };
-		t.sprites.emplace_back(x, y, x + w, y + h);
-		return res;
-	}
-
-	ui32 textureAtlas_sprite_count(TextureAtlas textureAtlas)
-	{
-		if (textureAtlas == nullptr) return 0u;
-		TextureAtlas_internal& t = *reinterpret_cast<TextureAtlas_internal*>(textureAtlas);
-		return ui32(t.sprites.size());
-	}
-
-	vec4 textureAtlas_sprite_get(TextureAtlas textureAtlas, ui32 index)
-	{
-		TextureAtlas_internal& t = *reinterpret_cast<TextureAtlas_internal*>(textureAtlas);
-		return t.sprites[index];
 	}
 
 }

@@ -1,6 +1,6 @@
 #include "core.h"
 
-#include "mesh_renderer_internal.h"
+#include "mesh_renderer.h"
 #include "scene/scene_internal.h"
 #include "components.h"
 
@@ -157,7 +157,7 @@ namespace sv {
 			MeshComponent& mesh = meshes[i];
 			Transform trans = scene_ecs_entity_get_transform(mesh.entity);
 
-			instances[i] = { trans.GetWorldMatrix(), reinterpret_cast<Mesh_internal*>(mesh.mesh), reinterpret_cast<Material_internal*>(mesh.material) };
+			instances[i] = { trans.GetWorldMatrix(), mesh.mesh, mesh.material };
 		}
 
 		// TODO: Frustum culling
@@ -171,10 +171,10 @@ namespace sv {
 			drawData.projectionMatrix, drawData.pOffscreen->renderTarget, drawData.pOffscreen->depthStencil, cmd);
 	}
 
-	void mesh_renderer_render(Mesh_internal* mesh, Material_internal* material, ui32 offset, ui32 size, CommandList cmd) {
+	void mesh_renderer_render(Mesh* mesh, Material* material, ui32 offset, ui32 size, CommandList cmd) {
 
 		GPUBuffer* vBuffers[] = {
-			&mesh->vertexBuffer, &g_InstanceBuffer
+			&mesh->GetVertexBuffer(), &g_InstanceBuffer
 		};
 
 		ui32 offsets[] = {
@@ -182,11 +182,11 @@ namespace sv {
 		};
 
 		ui32 strides[] = {
-			mesh->vertexCount * sizeof(MeshVertex), size * sizeof(MeshData)
+			mesh->GetVertexCount() * sizeof(MeshVertex), size * sizeof(MeshData)
 		};
 
 		graphics_vertexbuffer_bind(vBuffers, offsets, strides, 2u, cmd);
-		graphics_indexbuffer_bind(mesh->indexBuffer, 0u, cmd);
+		graphics_indexbuffer_bind(mesh->GetIndexBuffer(), 0u, cmd);
 
 		GPUBuffer* cBuffers[] = {
 			&g_CameraBuffer
@@ -194,11 +194,12 @@ namespace sv {
 
 		graphics_constantbuffer_bind(cBuffers, 1u, ShaderType_Vertex, cmd);
 
-		cBuffers[0] = &material->buffer;
+		material->UpdateBuffers(cmd);
+		cBuffers[0] = &material->GetConstantBuffer();
 
 		graphics_constantbuffer_bind(cBuffers, 1u, ShaderType_Pixel, cmd);
 
-		graphics_draw_indexed(mesh->indexCount, size, 0u, 0u, 0u, cmd);
+		graphics_draw_indexed(mesh->GetIndexCount(), size, 0u, 0u, 0u, cmd);
 	}
 
 	void mesh_renderer_mesh_render_forward(MeshInstance* instances, ui32* indices, ui32 count, bool transparent, const XMMATRIX& VM, const XMMATRIX& PM, GPUImage& renderTarget, GPUImage& depthStencil, CommandList cmd)
@@ -250,8 +251,8 @@ namespace sv {
 			graphics_renderpass_begin(g_ForwardRenderPass, att, nullptr, 0.f, 0u, cmd);
 			graphics_pipeline_bind(g_ForwardPipeline, cmd);
 
-			Mesh_internal* currentMesh = instances[*indices].pMesh;
-			Material_internal* currentMaterial = instances[*indices].pMaterial;
+			Mesh* currentMesh = instances[*indices].pMesh;
+			Material* currentMaterial = instances[*indices].pMaterial;
 
 			ui32* beginIndex = indices;
 			ui32* endIndex = indices + batchSize;
@@ -279,174 +280,6 @@ namespace sv {
 
 			instance += batchSize;
 		}
-	}
-
-	// Mesh
-
-	bool mesh_create(ui32 vertexCount, ui32 indexCount, Mesh* pMesh)
-	{
-		if (vertexCount == 0u && indexCount == 0u) return false;
-
-		Mesh_internal& mesh = *new Mesh_internal();
-		
-		mesh.positions.resize(vertexCount, { 0.f, 0.f, 0.f });
-		mesh.normals.resize(vertexCount, { 0.f, 1.f, 0.f });
-		mesh.texCoords.resize(vertexCount, { 0.f, 0.f });
-
-		mesh.indices.resize(indexCount, 0u);
-
-		mesh.vertexCount = vertexCount;
-		mesh.indexCount = indexCount;
-
-		*pMesh = &mesh;
-		return true;
-	}
-
-	bool mesh_destroy(Mesh mesh_)
-	{
-		if (mesh_ == nullptr) return true;
-
-		Mesh_internal& mesh = *reinterpret_cast<Mesh_internal*>(mesh_);
-
-		graphics_destroy(mesh.vertexBuffer);
-		graphics_destroy(mesh.indexBuffer);
-
-		delete &mesh;
-		return true;
-	}
-
-	void mesh_positions_set(Mesh mesh_, void* positions, ui32 offset, ui32 count)
-	{
-		SV_ASSERT(mesh_ != nullptr);
-		Mesh_internal& mesh = *reinterpret_cast<Mesh_internal*>(mesh_);
-
-		SV_ASSERT(!mesh.vertexBuffer.IsValid() && !mesh.indexBuffer.IsValid()); 
-		SV_ASSERT(offset + count <= mesh.vertexCount);
-		
-		memcpy(mesh.positions.data() + offset, positions, count * sizeof(vec3));
-	}
-
-	void mesh_normals_set(Mesh mesh_, void* normals, ui32 offset, ui32 count)
-	{
-		SV_ASSERT(mesh_ != nullptr);
-		Mesh_internal& mesh = *reinterpret_cast<Mesh_internal*>(mesh_);
-
-		SV_ASSERT(!mesh.vertexBuffer.IsValid() && !mesh.indexBuffer.IsValid());
-		SV_ASSERT(offset + count <= mesh.vertexCount);
-
-		memcpy(mesh.normals.data() + offset, normals, count * sizeof(vec3));
-	}
-
-	void mesh_texCoord_set(Mesh mesh_, void* texCoord, ui32 offset, ui32 count)
-	{
-		SV_ASSERT(mesh_ != nullptr);
-		Mesh_internal& mesh = *reinterpret_cast<Mesh_internal*>(mesh_);
-
-		SV_ASSERT(!mesh.vertexBuffer.IsValid() && !mesh.indexBuffer.IsValid());
-		SV_ASSERT(offset + count <= mesh.vertexCount);
-
-		memcpy(mesh.texCoords.data() + offset, texCoord, count * sizeof(vec2));
-	}
-
-	void mesh_indices_set(Mesh mesh_, ui32* indices, ui32 offset, ui32 count)
-	{
-		SV_ASSERT(mesh_ != nullptr);
-		Mesh_internal& mesh = *reinterpret_cast<Mesh_internal*>(mesh_);
-
-		SV_ASSERT(!mesh.vertexBuffer.IsValid() && !mesh.indexBuffer.IsValid());
-		SV_ASSERT(offset + count <= mesh.indexCount);
-
-		memcpy(mesh.indices.data() + offset, indices, count * sizeof(ui32));
-	}
-
-	bool mesh_initialize(Mesh mesh_)
-	{
-		SV_ASSERT(mesh_ != nullptr);
-		Mesh_internal& mesh = *reinterpret_cast<Mesh_internal*>(mesh_);
-
-		// Vertex Buffer
-		MeshVertex* vertices = new MeshVertex[mesh.vertexCount];
-		
-		for (ui32 i = 0; i < mesh.vertexCount; ++i) {
-			vertices[i].position = mesh.positions[i];
-		}
-		for (ui32 i = 0; i < mesh.vertexCount; ++i) {
-			vertices[i].normal = mesh.normals[i];
-		}
-		for (ui32 i = 0; i < mesh.vertexCount; ++i) {
-			vertices[i].texCoord = mesh.texCoords[i];
-		}
-
-		GPUBufferDesc desc;
-		desc.bufferType = GPUBufferType_Vertex;
-		desc.usage = ResourceUsage_Static;
-		desc.CPUAccess = CPUAccess_None;
-		desc.size = sizeof(MeshVertex) * mesh.vertexCount;
-		desc.pData = vertices;
-
-		svCheck(graphics_buffer_create(&desc, mesh.vertexBuffer));
-
-		delete[] vertices;
-
-		// Index Buffer
-		desc.bufferType = GPUBufferType_Index;
-		desc.size = sizeof(ui32) * mesh.indexCount;
-		desc.pData = mesh.indices.data();
-		desc.indexType = IndexType_32;
-
-		svCheck(graphics_buffer_create(&desc, mesh.indexBuffer));
-		
-		return true;
-	}
-
-	// Material
-
-	bool material_create(MaterialData& initialData, Material* pMaterial)
-	{
-		// Create
-		Material_internal& material = *new Material_internal();
-		material.data = initialData;
-		material.modified = false;
-		
-		// Create Constant Shader
-		GPUBufferDesc desc;
-		desc.bufferType = GPUBufferType_Constant;
-		desc.usage = ResourceUsage_Default;
-		desc.CPUAccess = CPUAccess_Write;
-		desc.size = sizeof(MaterialData);
-		desc.pData = &initialData;
-
-		svCheck(graphics_buffer_create(&desc, material.buffer));
-
-		*pMaterial = &material;
-		return true;
-	}
-
-	bool material_destroy(Material material_)
-	{
-		if (material_ == nullptr) return true;
-
-		Material_internal& material = *reinterpret_cast<Material_internal*>(material_);
-
-		svCheck(graphics_destroy(material.buffer));
-
-		delete &material;
-		return true;
-	}
-
-	void material_data_set(Material material_, const MaterialData& data)
-	{
-		SV_ASSERT(material_ != nullptr);
-		Material_internal& material = *reinterpret_cast<Material_internal*>(material_);
-		material.data = data;
-		material.modified = true;
-	}
-
-	const MaterialData& material_data_get(Material material_)
-	{
-		SV_ASSERT(material_ != nullptr);
-		Material_internal& material = *reinterpret_cast<Material_internal*>(material_);
-		return material.data;
 	}
 
 }

@@ -2,6 +2,8 @@
 
 #extension GL_KHR_vulkan_glsl : enable
 
+layout (location = 0) in vec3 FragNormal;
+
 layout(location = 0) out vec4 outColor;
 
 layout (set = 0, binding = 1) uniform Material {
@@ -10,6 +12,6 @@ layout (set = 0, binding = 1) uniform Material {
 
 void main() {
 	
-	outColor = vec4(1.f, 1.f, 1.f, 1.f) * diffuseColor;
+	outColor = vec4(FragNormal, 1.f);
 
 }

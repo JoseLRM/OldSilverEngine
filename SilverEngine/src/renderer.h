@@ -3,9 +3,9 @@
 #include "core.h"
 
 #include "graphics.h"
-#include "renderer/RenderList.h"
-#include "renderer/renderer2D/renderer2D.h"
-#include "renderer/mesh_renderer/mesh_renderer.h"
+#include "renderer/objects/Mesh.h"
+#include "renderer/objects/Material.h"
+#include "renderer/objects/TextureAtlas.h"
 
 namespace sv {
 	
@@ -30,7 +30,7 @@ namespace sv {
 		CameraType cameraType = CameraType_Orthographic;
 		float width = 1.f;
 		float height = 1.f;
-		float near = 0.0f;
+		float near = -10000.0f;
 		float far = 10000.f;
 	};
 
@@ -67,6 +67,11 @@ namespace sv {
 
 	// Camera Settings
 
+	enum MeshRenderingTechnique {
+		MeshRenderingTechnique_Forward,
+		MeshRenderingTechnique_Deferred,
+	};
+
 	struct CameraSettings {
 		bool					active;
 		MeshRenderingTechnique	meshTechnique;
@@ -76,6 +81,20 @@ namespace sv {
 			bool drawColliders;
 		} debug;
 	};
+
+	// Render Layers (2D)
+
+	enum RenderLayerSortMode : ui32 {
+		RenderLayerSortMode_none,
+		RenderLayerSortMode_coordX,
+		RenderLayerSortMode_coordY,
+		RenderLayerSortMode_coordZ,
+	};
+
+	void				renderLayer_count_set(ui32 count);
+	ui32				renderLayer_count_get();
+	void				renderLayer_sortMode_set(ui32 layer, RenderLayerSortMode sortMode);
+	RenderLayerSortMode	renderLayer_sortMode_get(ui32 layer);
 
 	// High level draw calls
 

@@ -1,9 +1,9 @@
 #pragma once
 
 #include "renderer.h"
-#include "renderer2D/renderer2D_internal.h"
+#include "renderer2D/renderer2D.h"
 #include "postprocessing/postprocessing.h"
-#include "mesh_renderer/mesh_renderer_internal.h"
+#include "mesh_renderer/mesh_renderer.h"
 
 // Draw data
 

@@ -1,36 +1,35 @@
 #pragma once
 
 #include "graphics.h"
+#include "renderer/objects/TextureAtlas.h"
 
 namespace sv {
 
-	// Render Layers
-
-	enum RenderLayerSortMode : ui32 {
-		RenderLayerSortMode_none,
-		RenderLayerSortMode_coordX,
-		RenderLayerSortMode_coordY,
-		RenderLayerSortMode_coordZ,
+	struct SpriteAABB {
+		vec3 position;
+		vec2 size;
 	};
 
-	void				renderLayer_count_set(ui32 count);
-	ui32				renderLayer_count_get();
-	void				renderLayer_sortMode_set(ui32 layer, RenderLayerSortMode sortMode);
-	RenderLayerSortMode	renderLayer_sortMode_get(ui32 layer);
+	struct SpriteInstance {
+		XMMATRIX tm;
+		Sprite sprite;
+		Color color;
+		ui32 layerID;
+		vec3 position;
 
-	// Texture Atlas
-
-	typedef void* TextureAtlas;
-
-	struct Sprite {
-		TextureAtlas	textureAtlas;
-		ui32			index;
+		SpriteInstance() = default;
+		SpriteInstance(const XMMATRIX& m, Sprite sprite, sv::Color color, ui32 layerID, vec3 position) : tm(m), sprite(sprite), color(color), layerID(layerID), position(position) {}
 	};
 
-	bool			textureAtlas_create_from_file(const char* filePath, bool linearFilter, SamplerAddressMode addressMode, TextureAtlas* pTextureAtlas);
-	bool			textureAtlas_destroy(TextureAtlas textureAtlas);
-	Sprite			textureAtlas_sprite_add(TextureAtlas textureAtlas, float x, float y, float w, float h);
-	ui32			textureAtlas_sprite_count(TextureAtlas textureAtlas);
-	vec4			textureAtlas_sprite_get(TextureAtlas textureAtlas, ui32 index);
+	struct RenderLayer {
+		RenderLayerSortMode		sortMode;
+	};
+
+	bool renderer2D_initialize();
+	bool renderer2D_close();
+	void renderer2D_scene_draw_sprites(CommandList cmd);
+
+	void renderer2D_sprite_sort(SpriteInstance* buffer, ui32 count, const RenderLayer& renderLayer);
+	void renderer2D_sprite_render(SpriteInstance* buffer, ui32 count, const XMMATRIX& viewProjectionMatrix, GPUImage& renderTarget, CommandList cmd);
 
 }
