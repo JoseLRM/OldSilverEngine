@@ -40,6 +40,10 @@ namespace sve {
 
 	void simulation_render()
 	{
+		if (!simulation_running() && !viewport_manager_properties_get("Game").visible) {
+			return;
+		}
+
 		sv::renderer_scene_render(false);
 	}
 

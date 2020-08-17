@@ -10,6 +10,7 @@ namespace sve {
 		ui32 x = 0u, y = 0u;
 		ui32 width = 1u, height = 1u;
 		bool focus = false;
+		bool visible = true;
 	};
 
 	struct Viewport {

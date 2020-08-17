@@ -101,82 +101,6 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\ai_assert.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\anim.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\BaseImporter.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\Bitmap.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\BlobIOSystem.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\ByteSwapper.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\camera.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\cexport.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\cfileio.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\cimport.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\color4.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\Compiler\poppack1.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\Compiler\pstdint.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\Compiler\pushpack1.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\config.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\CreateAnimMesh.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\DefaultIOStream.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\DefaultIOSystem.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\DefaultLogger.hpp" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\Defines.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\defs.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\Exceptional.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\Exporter.hpp" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\fast_atof.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\GenericProperty.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\Hash.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\Importer.hpp" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\importerdesc.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\IOStream.hpp" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\IOStreamBuffer.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\IOSystem.hpp" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\irrXMLWrapper.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\light.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\LineSplitter.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\LogAux.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\Logger.hpp" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\LogStream.hpp" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\Macros.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\material.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\MathFunctions.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\matrix3x3.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\matrix4x4.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\MemoryIOWrapper.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\mesh.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\metadata.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\NullLogger.hpp" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\ParsingUtils.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\pbrmaterial.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\port\AndroidJNI\AndroidJNIIOSystem.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\postprocess.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\Profiler.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\ProgressHandler.hpp" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\qnan.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\quaternion.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\RemoveComments.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\scene.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\SceneCombiner.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\SGSpatialSort.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\SkeletonMeshBuilder.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\SmoothingGroups.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\SpatialSort.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\StandardShapes.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\StreamReader.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\StreamWriter.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\StringComparison.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\StringUtils.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\Subdivision.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\texture.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\TinyFormatter.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\types.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\vector2.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\vector3.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\version.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\Vertex.h" />
-    <ClInclude Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\XMLTools.h" />
-    <ClInclude Include="config.h" />
     <ClInclude Include="src\components.h" />
     <ClInclude Include="src\external\assimp\ai_assert.h" />
     <ClInclude Include="src\external\assimp\anim.h" />
@@ -554,17 +478,6 @@
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <Library Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\assimp.lib" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\color4.inl" />
-    <None Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\material.inl" />
-    <None Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\matrix3x3.inl" />
-    <None Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\matrix4x4.inl" />
-    <None Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\quaternion.inl" />
-    <None Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\SmoothingGroups.inl" />
-    <None Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\vector2.inl" />
-    <None Include="..\..\..\Users\josel\Desktop\Jose\Proyectos\GameEngines\jshEngine 2\jshEngine\jshEngine\src\assimp\vector3.inl" />
     <None Include="src\external\assimp\.editorconfig" />
     <None Include="src\external\assimp\color4.inl" />
     <None Include="src\external\assimp\config.h.in" />

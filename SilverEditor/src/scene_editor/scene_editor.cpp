@@ -86,17 +86,22 @@ namespace sve {
 		sv::renderer_projection_aspect_set(g_Camera.projection, float(props.width) / float(props.height));
 		
 		// Camera Controller
-		if (g_Camera.projection.cameraType == sv::CameraType_Orthographic) {
-			scene_editor_camera_controller_2D(dt);
+		if (props.focus) {
+			if (g_Camera.projection.cameraType == sv::CameraType_Orthographic) {
+				scene_editor_camera_controller_2D(dt);
+			}
+			else if (g_Camera.projection.cameraType == sv::CameraType_Perspective) {
+				scene_editor_camera_controller_3D(dt);
+			}
 		}
-		else if (g_Camera.projection.cameraType == sv::CameraType_Perspective) {
-			scene_editor_camera_controller_3D(dt);
-		}
-		
 	}
 
 	void scene_editor_render()
 	{
+		if (!viewport_manager_properties_get("Scene Editor").visible) {
+			return;
+		}
+
 		sv::RendererDesc desc;
 		desc.rendererTarget = sv::RendererTarget_CameraOffscreen;
 		desc.camera.pOffscreen = &g_Camera.offscreen;

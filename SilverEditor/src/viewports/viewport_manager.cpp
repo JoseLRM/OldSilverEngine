@@ -37,10 +37,14 @@ namespace sve {
 				viewport.properties.width = size.x;
 				viewport.properties.height = size.y;
 				viewport.properties.focus = ImGui::IsWindowFocused();
+				viewport.properties.visible = true;
 
 				if (!viewport.displayFn()) {
 					viewport_manager_hide(it.first.c_str());
 				}
+			}
+			else {
+				viewport.properties.visible = false;
 			}
 			ImGui::End();
 		}
