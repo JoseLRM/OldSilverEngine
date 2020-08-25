@@ -104,6 +104,8 @@ namespace sv {
 			GraphicsPipelineState_RenderPass
 			;
 
+		svCheck(graphics_shader_initialize());
+
 		return true;
 	}
 
@@ -114,6 +116,8 @@ namespace sv {
 		if (!g_Device->Close()) {
 			sv::log_error("Can't close GraphicsDevice");
 		}
+
+		svCheck(graphics_shader_close());
 
 		return true;
 	}
@@ -249,6 +253,11 @@ namespace sv {
 		return hash;
 	}
 
+	GraphicsAPI graphics_api_get()
+	{
+		return GraphicsAPI_Vulkan;
+	}
+
 	//////////////////////////////////////ADAPTERS//////////////////////////////////////////
 	const std::vector<std::unique_ptr<Adapter>>& graphics_adapter_get_list() noexcept
 	{
@@ -307,7 +316,6 @@ namespace sv {
 		Shader_internal* p = reinterpret_cast<Shader_internal*>(shader.GetPtr());
 		p->type = GraphicsPrimitiveType_Shader;
 		p->shaderType = desc->shaderType;
-		p->filePath = desc->filePath;
 
 		return true;
 	}

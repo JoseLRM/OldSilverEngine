@@ -59,7 +59,7 @@
       <AdditionalIncludeDirectories>C:\VulkanSDK\1.2.141.2\Include;$(SolutionDir)SilverEngine\src\;$(SolutionDir)$(ProjectName)\src\</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>core_editor.h</PrecompiledHeaderFile>
-      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -78,7 +78,7 @@
       <AdditionalIncludeDirectories>C:\VulkanSDK\1.2.141.2\Include;$(SolutionDir)SilverEngine\src\;$(SolutionDir)$(ProjectName)\src\</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>core_editor.h</PrecompiledHeaderFile>
-      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

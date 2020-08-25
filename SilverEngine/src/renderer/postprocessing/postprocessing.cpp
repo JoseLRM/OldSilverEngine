@@ -1,5 +1,6 @@
 #include "core.h"
 
+#include "renderer/renderer_internal.h"
 #include "postprocessing.h"
 
 namespace sv {
@@ -37,16 +38,8 @@ namespace sv {
 			svCheck(graphics_buffer_create(&desc, g_VertexBuffer));
 		}
 
-		ShaderDesc shaderDesc;
-		shaderDesc.filePath = "shaders/DefPostProcessVertex.shader";
-		shaderDesc.shaderType = ShaderType_Vertex;
-
-		svCheck(graphics_shader_create(&shaderDesc, g_DefVertexShader));
-
-		shaderDesc.filePath = "shaders/DefPostProcessPixel.shader";
-		shaderDesc.shaderType = ShaderType_Pixel;
-
-		svCheck(graphics_shader_create(&shaderDesc, g_DefPixelShader));
+		svCheck(renderer_shader_create("DefPostProcess", ShaderType_Vertex, g_DefVertexShader));
+		svCheck(renderer_shader_create("DefPostProcess", ShaderType_Pixel, g_DefPixelShader));
 
 		// Create Default PP
 		{

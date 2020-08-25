@@ -23,8 +23,8 @@ namespace sve {
 
 		desc.minThreadsCount = 2;
 		desc.showConsole = true;
-		desc.rendererDesc.resolutionWidth = 1280;
-		desc.rendererDesc.resolutionHeight = 720;
+		desc.rendererDesc.resolutionWidth = 1920u;
+		desc.rendererDesc.resolutionHeight = 1080u;
 		desc.windowDesc.fullscreen = false;
 		desc.windowDesc.x = 0u;
 		desc.windowDesc.y = 0u;
@@ -41,12 +41,13 @@ namespace sve {
 		{
 			auto& style = ImGui::GetStyle();
 			sv::BinFile file;
-			if (!file.OpenR("ImGuiStyle")) {
-				SV_THROW("ImGui Style", "Style not found");
+			if (file.OpenR("ImGuiStyle")) {
+				file.Read(&style, sizeof(ImGuiStyle));
+				file.Close();
 			}
-
-			file.Read(&style, sizeof(ImGuiStyle));
-			file.Close();
+			else {
+				sv::log_error("ImGui Style", "Style not found");
+			}
 		}
 
 		while (true) {

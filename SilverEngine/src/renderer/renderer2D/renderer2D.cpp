@@ -75,16 +75,8 @@ namespace sv {
 		}
 		// Sprite Shaders
 		{
-			ShaderDesc desc;
-			desc.filePath = "shaders/SpriteVertex.shader";
-			desc.shaderType = ShaderType_Vertex;
-
-			svCheck(graphics_shader_create(&desc, g_SpriteVertexShader));
-
-			desc.filePath = "shaders/SpritePixel.shader";
-			desc.shaderType = ShaderType_Pixel;
-
-			svCheck(graphics_shader_create(&desc, g_SpritePixelShader));
+			svCheck(renderer_shader_create("Sprite", ShaderType_Vertex, g_SpriteVertexShader));
+			svCheck(renderer_shader_create("Sprite", ShaderType_Pixel, g_SpritePixelShader));
 		}
 		// Sprite RenderPass
 		{

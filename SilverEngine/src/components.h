@@ -109,10 +109,21 @@ namespace sv {
 
 	};
 
+	// MESH COMPONENT
+
 	SV_COMPONENT(MeshComponent) {
 
-		Mesh* mesh;
-		Material* material;
+		Mesh*		mesh;
+		Material*	material;
+
+	};
+
+	// LIGHT COMPONENT
+
+	SV_COMPONENT(LightComponent) {
+
+		Color4f color;
+
 
 	};
 

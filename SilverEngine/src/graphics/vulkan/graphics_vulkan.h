@@ -3,13 +3,113 @@
 #include "..//graphics_internal.h"
 #include "vulkan_impl.h"
 #include "graphics_vulkan_conversions.h"
-#include "graphics_vulkan_memory.h"
+
+#undef near
+#undef far
 
 namespace sv {
 
 	class Graphics_vk;
 
 	Graphics_vk& graphics_vulkan_device_get();
+
+	// MEMORY
+
+	class MemoryManager {
+
+		struct StagingBuffer {
+			VkBuffer buffer = VK_NULL_HANDLE;
+			VmaAllocation allocation = VK_NULL_HANDLE;
+			void* mapData = nullptr;
+			ui32 frame = 0u;
+		};
+
+		std::vector<StagingBuffer> m_StaggingBuffers;
+		std::vector<StagingBuffer> m_ActiveStaggingBuffers;
+		StagingBuffer m_CurrentStagingBuffer;
+		ui32 m_CurrentStagingBufferOffset = 0u;
+		ui64 m_LastFrame = UINT64_MAX;
+		size_t m_BufferSize;
+
+	public:
+		void Create(size_t size);
+		void GetMappingData(ui32 size, VkBuffer& buffer, void** data, ui32& offset);
+		void Clear();
+
+	private:
+		void Reset(ui32 frame);
+		StagingBuffer CreateStagingBuffer(ui32 currentFrame);
+
+	};
+
+	VkResult graphics_vulkan_memory_create_stagingbuffer(VkBuffer& buffer, VmaAllocation& allocation, void** mapData, VkDeviceSize size);
+
+	// DESCRIPTORS
+
+	struct VulkanDescriptorPool {
+		VkDescriptorPool pool;
+		ui32 count[3];
+		ui32 sets;
+	};
+
+	struct VulkanDescriptorSet {
+		std::vector<VkDescriptorSet>	sets;
+		ui32							used = 0u;
+	};
+
+	struct DescriptorPool {
+		std::vector<VulkanDescriptorPool>						pools;
+		std::map<VkDescriptorSetLayout, VulkanDescriptorSet>	sets;
+	};
+
+	struct ShaderResourceBinding {
+		ui32				vulkanBinding;
+		ui32				userBinding;
+	};
+	struct ShaderDescriptorSetLayout {
+		VkDescriptorSetLayout setLayout;
+		std::vector<ShaderResourceBinding> bindings;
+		ui32 count[3];
+	};
+
+	VkDescriptorSet graphics_vulkan_descriptors_allocate_sets(DescriptorPool& descPool, const ShaderDescriptorSetLayout& layout);
+	void			graphics_vulkan_descriptors_reset(DescriptorPool& descPool);
+	void			graphics_vulkan_descriptors_clear(DescriptorPool& descPool);
+
+	// PIPELINE
+
+	struct PipelineDescriptorSetLayout {
+		ShaderDescriptorSetLayout layouts[ShaderType_GraphicsCount];
+	};
+
+	struct VulkanPipeline {
+		VulkanPipeline& operator=(const VulkanPipeline& other)
+		{
+			semanticNames = other.semanticNames;
+			layout = other.layout;
+			pipelines = other.pipelines;
+			setLayout = other.setLayout;
+			return *this;
+		}
+
+		std::mutex						mutex;
+		std::mutex						creationMutex;
+
+		std::map<std::string, ui32>		semanticNames;
+
+		VkPipelineLayout				layout = VK_NULL_HANDLE;
+		std::map<size_t, VkPipeline>	pipelines;
+		PipelineDescriptorSetLayout		setLayout;
+		VkDescriptorSet					descriptorSets[ShaderType_GraphicsCount] = {};
+		float							lastUsage;
+	};
+
+	class Shader_vk;
+
+	size_t graphics_vulkan_pipeline_compute_hash(const GraphicsState& state);
+	bool graphics_vulkan_pipeline_create(VulkanPipeline& pipeline, Shader_vk* pVertexShader, Shader_vk* pPixelShader, Shader_vk* pGeometryShader);
+	bool graphics_vulkan_pipeline_destroy(VulkanPipeline& pipeline);
+	VkPipeline graphics_vulkan_pipeline_get(VulkanPipeline& pipeline, GraphicsState& state, size_t hash);
 
 	//////////////////////////////////////////////////////////// ADAPTER ////////////////////////////////////////////////////////////
 	class Adapter_vk : public Adapter {
@@ -64,15 +164,15 @@ namespace sv {
 	};
 	// Shader
 	struct Shader_vk : public Shader_internal {
-		VkShaderModule								module = VK_NULL_HANDLE;
-		std::vector<VkDescriptorSetLayoutBinding>	bindings;
-		std::map<std::string, ui32>					semanticNames;
-		std::map<ui32, ui32>						bindingsLocation;
+		VkShaderModule				module = VK_NULL_HANDLE;
+		std::map<std::string, ui32>	semanticNames;
+		ShaderDescriptorSetLayout	layout;
 	};
 	// RenderPass
 	struct RenderPass_vk : public RenderPass_internal {
 		VkRenderPass					renderPass;
 		std::map<size_t, VkFramebuffer> frameBuffers;
+		std::mutex						mutex;
 	};
 	// InputLayoutState
 	struct InputLayoutState_vk : public InputLayoutState_internal {
@@ -97,36 +197,13 @@ namespace sv {
 	bool VulkanDestructor(Primitive& primitive);
 
 	//////////////////////////////////////////////////////////// GRAPHICS API ////////////////////////////////////////////////////////////
-	struct VulkanPipeline {
-		VulkanPipeline& operator=(const VulkanPipeline& other)
-		{
-			semanticNames = other.semanticNames;
-			bindingsLocation = other.bindingsLocation;
-			layout = other.layout;
-			pipelines = other.pipelines;
-			descriptors = other.descriptors;
-			bindings = other.bindings;
-			return *this;
-		}
-
-		std::mutex									mutex;
-		std::mutex									creationMutex;
-
-		std::map<std::string, ui32>					semanticNames;
-		std::vector<ui32>						bindingsLocation;
-
-		VkPipelineLayout							layout = VK_NULL_HANDLE;
-		std::map<size_t, VkPipeline>				pipelines;
-		DescriptorsManager							descriptors;
-
-		std::vector<VkDescriptorSetLayoutBinding>	bindings;
-	};
 
 	struct Frame {
 		VkCommandPool		commandPool;
 		VkCommandBuffer		commandBuffers[SV_GFX_COMMAND_LIST_COUNT];
 		VkCommandPool		transientCommandPool;
 		VkFence				fence;
+		DescriptorPool		descPool[SV_GFX_COMMAND_LIST_COUNT];
 	};
 
 	struct SwapChain {
@@ -173,6 +250,8 @@ namespace sv {
 		std::vector<const char*>	m_DeviceValidationLayers;
 
 		VkQueue						m_QueueGraphics = VK_NULL_HANDLE;
+
+		float						m_LastTime = 0.f;
 
 		// Frame Members
 
@@ -221,8 +300,7 @@ namespace sv {
 		// State Methods
 
 		void UpdateGraphicsState(CommandList cmd);
-		size_t ComputeVulkanPipelineHash(const GraphicsState& state);
-		bool CreateVulkanPipeline(VulkanPipeline& p, Shader_internal* pVertexShader, Shader_internal* pPixelShader, Shader_internal* pGeometryShader);
+		VkDescriptorSet UpdateDescriptors(VulkanPipeline& pipeline, ShaderType shaderType, GraphicsState& state, bool samplers, bool images, bool uniforms, CommandList cmd);
 
 	public:
 		// Getters

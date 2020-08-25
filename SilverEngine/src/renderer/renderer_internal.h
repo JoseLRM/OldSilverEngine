@@ -31,4 +31,8 @@ namespace sv {
 		std::vector<RenderLayer> renderLayers;
 	};
 
+	// Shader utils
+
+	bool renderer_shader_create(const char* name, ShaderType type, Shader& shader);
+
 }

@@ -1,12 +1,7 @@
 #include "core.h"
 
 #define VMA_IMPLEMENTATION
-#include "graphics_vulkan_memory.h"
 #include "graphics_vulkan.h"
-
-#undef near
-#undef far
-
 #include "engine.h"
 
 namespace sv {
@@ -111,107 +106,6 @@ namespace sv {
 		return res;
 	}
 
-	void DescriptorsManager::Create(VkDescriptorSetLayout setLayout, ui32 frameCount, ui32 imagesCount, ui32 samplersCount, ui32 uniformsCount)
-	{
-		for (ui32 i = 0; i < SV_GFX_COMMAND_LIST_COUNT; ++i) {
-			m_Descriptors[i].frames.resize(frameCount);
-		}
-		m_SetLayout = setLayout;
-		m_ImagesCount = imagesCount;
-		m_SamplersCount = samplersCount;
-		m_UniformsCount = uniformsCount;
-	}
-
-	VkDescriptorSet DescriptorsManager::GetDescriptorSet(ui32 currentFrame, sv::CommandList cmd)
-	{
-		Graphics_vk& gfx = graphics_vulkan_device_get();
-		DescCMD& desc = m_Descriptors[cmd];
-		ui32 frameCount = desc.frames.size();
-		Frame& frame = desc.frames[currentFrame];
-
-		if (frame.descriptors.size() <= frame.activeDescriptors) {
-
-			VkDescriptorPoolSize poolSizes[3];
-			ui32 poolSizesCount = 0u;
-
-			if (m_ImagesCount > 0u) {
-				poolSizes[poolSizesCount].descriptorCount = m_ImagesCount * frameCount;
-				poolSizes[poolSizesCount].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-				poolSizesCount++;
-			}
-
-			if (m_SamplersCount > 0u) {
-				poolSizes[poolSizesCount].descriptorCount = m_SamplersCount * frameCount;
-				poolSizes[poolSizesCount].type = VK_DESCRIPTOR_TYPE_SAMPLER;
-				poolSizesCount++;
-			}
-
-			if (m_UniformsCount > 0u) {
-				poolSizes[poolSizesCount].descriptorCount = m_UniformsCount * frameCount;
-				poolSizes[poolSizesCount].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-				poolSizesCount++;
-			}
-
-			VkDescriptorPool pool;
-			std::vector<VkDescriptorSet> sets(frameCount);
-			std::vector<VkDescriptorSetLayout> setLayouts(frameCount);
-
-			VkDescriptorPoolCreateInfo descPool_info{};
-			descPool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-			descPool_info.flags = 0u;
-			descPool_info.maxSets = frameCount;
-			descPool_info.poolSizeCount = poolSizesCount;
-			descPool_info.pPoolSizes = poolSizes;
-			vkAssert(vkCreateDescriptorPool(gfx.GetDevice(), &descPool_info, nullptr, &pool));
-
-			// Allocate descriptor Sets
-			
-			for (ui64 i = 0; i < frameCount; ++i) setLayouts[i] = m_SetLayout;
-
-			VkDescriptorSetAllocateInfo alloc_info{};
-			alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-			alloc_info.descriptorSetCount = frameCount;
-			alloc_info.pSetLayouts = setLayouts.data();
-			alloc_info.descriptorPool = pool;
-			vkAssert(vkAllocateDescriptorSets(gfx.GetDevice(), &alloc_info, sets.data()));
-
-			// Set new data
-			desc.pools.push_back(pool);
-			for (ui32 i = 0; i < frameCount; ++i) {
-				desc.frames[i].descriptors.push_back(sets[i]);
-			}
-
-		}
-
-		return frame.descriptors[frame.activeDescriptors++];
-	}
-
-	void DescriptorsManager::Reset(ui32 frame)
-	{
-		for (ui32 i = 0; i < SV_GFX_COMMAND_LIST_COUNT; ++i) {
-			DescCMD& desc = m_Descriptors[i];
-
-			desc.frames[frame].activeDescriptors = 0u;
-		}
-	}
-
-	void DescriptorsManager::Clear()
-	{
-		Graphics_vk& gfx = graphics_vulkan_device_get();
-
-		for (ui32 i = 0; i < SV_GFX_COMMAND_LIST_COUNT; ++i) {
-			DescCMD& desc = m_Descriptors[i];
-
-			for (ui32 j = 0; j < desc.pools.size(); ++j) {
-				vkDestroyDescriptorPool(gfx.GetDevice(), desc.pools[j], nullptr);
-			}
-
-			desc.frames.clear();
-			desc.pools.clear();
-		}
-		vkDestroyDescriptorSetLayout(gfx.GetDevice(), m_SetLayout, nullptr);
-	}
-
 	VkResult graphics_vulkan_memory_create_stagingbuffer(VkBuffer& buffer, VmaAllocation& allocation, void** mapData, VkDeviceSize size)
 	{
 		Graphics_vk& gfx = graphics_vulkan_device_get();
@@ -234,6 +128,127 @@ namespace sv {
 		*mapData = allocation->GetMappedData();
 
 		return VK_SUCCESS;
+	}
+
+	constexpr ui32 graphics_vulkan_descriptors_indextype(VkDescriptorType type)
+	{
+		switch (type)
+		{
+		case VK_DESCRIPTOR_TYPE_SAMPLER:
+			return 0u;
+		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+			return 1u;
+		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+			return 2u;
+		default:
+			return 0u;
+		}
+	}
+
+	VkDescriptorSet graphics_vulkan_descriptors_allocate_sets(DescriptorPool& descPool, const ShaderDescriptorSetLayout& layout)
+	{
+		// Try to use allocated set
+		auto it = descPool.sets.find(layout.setLayout);
+		if (it != descPool.sets.end()) {
+			VulkanDescriptorSet& sets = it->second;
+			if (sets.used < sets.sets.size()) {
+				return sets.sets[sets.used++];
+			}
+		}
+
+		if (it == descPool.sets.end()) descPool.sets[layout.setLayout] = {};
+		VulkanDescriptorSet& sets = descPool.sets[layout.setLayout];
+		VulkanDescriptorPool* pool = nullptr;
+		Graphics_vk& gfx = graphics_vulkan_device_get();
+
+		ui32 samplerIndex = graphics_vulkan_descriptors_indextype(VK_DESCRIPTOR_TYPE_SAMPLER);
+		ui32 imageIndex = graphics_vulkan_descriptors_indextype(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+		ui32 uniformIndex = graphics_vulkan_descriptors_indextype(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+
+		// Try to find existing pool
+		if (!descPool.pools.empty()) {
+			for (auto it = descPool.pools.begin(); it != descPool.pools.end(); ++it) {
+				if (it->sets + SV_GFX_VK_DESCRIPTOR_ALLOC_COUNT >= SV_GFX_VK_MAX_DESCRIPTOR_SETS &&
+					it->count[samplerIndex] >= layout.count[samplerIndex] * SV_GFX_VK_DESCRIPTOR_ALLOC_COUNT &&
+					it->count[imageIndex] >= layout.count[imageIndex] * SV_GFX_VK_DESCRIPTOR_ALLOC_COUNT &&
+					it->count[uniformIndex] >= layout.count[uniformIndex] * SV_GFX_VK_DESCRIPTOR_ALLOC_COUNT) {
+					pool = it._Ptr;
+					break;
+				}
+			}
+		}
+
+		// Create new pool if necessary
+		if (pool == nullptr) {
+
+			pool = &descPool.pools.emplace_back();
+
+			VkDescriptorPoolSize sizes[3];
+
+			sizes[0].descriptorCount = SV_GFX_VK_MAX_DESCRIPTOR_TYPES * SV_GFX_VK_MAX_DESCRIPTOR_SETS;
+			sizes[0].type = VK_DESCRIPTOR_TYPE_SAMPLER;
+			
+			sizes[1].descriptorCount = SV_GFX_VK_MAX_DESCRIPTOR_TYPES * SV_GFX_VK_MAX_DESCRIPTOR_SETS;
+			sizes[1].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+
+			sizes[2].descriptorCount = SV_GFX_VK_MAX_DESCRIPTOR_TYPES * SV_GFX_VK_MAX_DESCRIPTOR_SETS;
+			sizes[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+
+			VkDescriptorPoolCreateInfo create_info{};
+			create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+			create_info.maxSets = SV_GFX_VK_MAX_DESCRIPTOR_SETS;
+			create_info.poolSizeCount = 3u;
+			create_info.pPoolSizes = sizes;
+
+			vkAssert(vkCreateDescriptorPool(gfx.GetDevice(), &create_info, nullptr, &pool->pool));
+
+			pool->sets = SV_GFX_VK_MAX_DESCRIPTOR_SETS;
+			for (ui32 i = 0; i < 3; ++i)	
+				pool->count[i] = SV_GFX_VK_MAX_DESCRIPTOR_TYPES;
+		}
+
+		// Allocate sets
+		{
+			pool->count[samplerIndex] -= layout.count[samplerIndex] * SV_GFX_VK_DESCRIPTOR_ALLOC_COUNT;
+			pool->count[imageIndex] -= layout.count[imageIndex] * SV_GFX_VK_DESCRIPTOR_ALLOC_COUNT;
+			pool->count[uniformIndex] -= layout.count[uniformIndex] * SV_GFX_VK_DESCRIPTOR_ALLOC_COUNT;
+
+			size_t index = sets.sets.size();
+			sets.sets.resize(index + SV_GFX_VK_DESCRIPTOR_ALLOC_COUNT);
+
+			VkDescriptorSetLayout setLayouts[SV_GFX_VK_DESCRIPTOR_ALLOC_COUNT];
+			for (ui32 i = 0; i < SV_GFX_VK_DESCRIPTOR_ALLOC_COUNT; ++i)
+				setLayouts[i] = layout.setLayout;
+
+			VkDescriptorSetAllocateInfo alloc_info{};
+			alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+			alloc_info.descriptorPool = pool->pool;
+			alloc_info.descriptorSetCount = SV_GFX_VK_DESCRIPTOR_ALLOC_COUNT;
+			alloc_info.pSetLayouts = setLayouts;
+
+			vkAssert(vkAllocateDescriptorSets(gfx.GetDevice(), &alloc_info, sets.sets.data() + index));
+
+			return sets.sets[sets.used++];
+		}
+	}
+
+	void graphics_vulkan_descriptors_reset(DescriptorPool& descPool)
+	{
+		for (auto& set : descPool.sets) {
+			set.second.used = 0u;
+		}
+	}
+
+	void graphics_vulkan_descriptors_clear(DescriptorPool& descPool)
+	{
+		Graphics_vk& gfx = graphics_vulkan_device_get();
+
+		for (auto it = descPool.pools.begin(); it != descPool.pools.end(); ++it) {
+			vkDestroyDescriptorPool(gfx.GetDevice(), it->pool, nullptr);
+		}
+
+		descPool.sets.clear();
+		descPool.pools.clear();
 	}
 
 }

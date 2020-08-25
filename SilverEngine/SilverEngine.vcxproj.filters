@@ -10,7 +10,6 @@
     <ClInclude Include="src\utils\TxtFile.h" />
     <ClInclude Include="src\utils\Version.h" />
     <ClInclude Include="src\scene\Transform.h" />
-    <ClInclude Include="src\graphics\vulkan\graphics_vulkan_memory.h" />
     <ClInclude Include="src\platform\windows\windows_impl.h" />
     <ClInclude Include="src\platform\windows\platform_windows.h" />
     <ClInclude Include="src\external\box2d\b2_block_allocator.h" />
@@ -172,13 +171,14 @@
     <ClInclude Include="src\external\assimp\version.h" />
     <ClInclude Include="src\external\assimp\Vertex.h" />
     <ClInclude Include="src\external\assimp\XMLTools.h" />
+    <ClInclude Include="src\asset_manager.h" />
+    <ClInclude Include="src\asset_manager\asset_manager_internal.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\graphics\vulkan\graphics_vulkan.cpp" />
     <ClCompile Include="src\graphics\graphics.cpp" />
     <ClCompile Include="src\graphics\graphics_allocator.cpp" />
     <ClCompile Include="src\graphics\graphics_properties.cpp" />
-    <ClCompile Include="src\graphics\graphics_shader_utils.cpp" />
     <ClCompile Include="src\renderer\renderer.cpp" />
     <ClCompile Include="src\utils\BinFile.cpp" />
     <ClCompile Include="src\utils\sv_math.cpp" />
@@ -214,14 +214,10 @@
     <ClCompile Include="src\renderer\objects\Material.cpp" />
     <ClCompile Include="src\renderer\objects\TextureAtlas.cpp" />
     <ClCompile Include="src\loader\loader.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <CustomBuild Include="src\graphics\sprv_shaders\DefPostProcess.frag" />
-    <CustomBuild Include="src\graphics\sprv_shaders\DefPostProcess.vert" />
-    <CustomBuild Include="src\graphics\sprv_shaders\Sprite.frag" />
-    <CustomBuild Include="src\graphics\sprv_shaders\Sprite.vert" />
-    <CustomBuild Include="src\graphics\sprv_shaders\Forward.frag" />
-    <CustomBuild Include="src\graphics\sprv_shaders\Forward.vert" />
+    <ClCompile Include="src\asset_manager\asset_manager.cpp" />
+    <ClCompile Include="src\graphics\vulkan\graphics_vulkan_pipeline.cpp" />
+    <ClCompile Include="src\renderer\renderer_shader.cpp" />
+    <ClCompile Include="src\graphics\graphics_shader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="src\external\assimp\.editorconfig" />

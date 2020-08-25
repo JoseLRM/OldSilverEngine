@@ -61,7 +61,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>core.h</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>C:\VulkanSDK\1.2.141.2\Include;$(SolutionDir)SilverEngine\src</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -86,7 +86,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>core.h</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>C:\VulkanSDK\1.2.141.2\Include;$(SolutionDir)SilverEngine\src</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -101,6 +101,8 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\asset_manager.h" />
+    <ClInclude Include="src\asset_manager\asset_manager_internal.h" />
     <ClInclude Include="src\components.h" />
     <ClInclude Include="src\external\assimp\ai_assert.h" />
     <ClInclude Include="src\external\assimp\anim.h" />
@@ -241,7 +243,6 @@
     <ClInclude Include="src\graphics.h" />
     <ClInclude Include="src\graphics\vulkan\graphics_vulkan.h" />
     <ClInclude Include="src\graphics\vulkan\graphics_vulkan_conversions.h" />
-    <ClInclude Include="src\graphics\vulkan\graphics_vulkan_memory.h" />
     <ClInclude Include="src\graphics\vulkan\vulkan_impl.h" />
     <ClInclude Include="src\input\input_internal.h" />
     <ClInclude Include="src\loader.h" />
@@ -274,6 +275,7 @@
     <ClInclude Include="src\utils\Version.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\asset_manager\asset_manager.cpp" />
     <ClCompile Include="src\external\sprv\spirv_cfg.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
@@ -318,6 +320,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\graphics\vulkan\graphics_vulkan_pipeline.cpp" />
     <ClCompile Include="src\loader\loader.cpp" />
     <ClCompile Include="src\main\components.cpp" />
     <ClCompile Include="src\main\core.cpp">
@@ -329,7 +332,7 @@
     <ClCompile Include="src\graphics\graphics.cpp" />
     <ClCompile Include="src\graphics\graphics_allocator.cpp" />
     <ClCompile Include="src\graphics\graphics_properties.cpp" />
-    <ClCompile Include="src\graphics\graphics_shader_utils.cpp" />
+    <ClCompile Include="src\graphics\graphics_shader.cpp" />
     <ClCompile Include="src\graphics\vulkan\graphics_vulkan.cpp" />
     <ClCompile Include="src\graphics\vulkan\graphics_vulkan_memory.cpp" />
     <ClCompile Include="src\physics\physics.cpp" />
@@ -343,6 +346,7 @@
     <ClCompile Include="src\renderer\renderer2D\renderer2D.cpp" />
     <ClCompile Include="src\renderer\postprocessing\postprocessing.cpp" />
     <ClCompile Include="src\renderer\renderer_projection.cpp" />
+    <ClCompile Include="src\renderer\renderer_shader.cpp" />
     <ClCompile Include="src\scene\scene.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
@@ -356,126 +360,6 @@
     <ClCompile Include="src\utils\sv_math.cpp" />
     <ClCompile Include="src\utils\TxtFile.cpp" />
     <ClCompile Include="src\utils\utils.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <CustomBuild Include="src\graphics\sprv_shaders\DefPostProcess.frag">
-      <FileType>Document</FileType>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\VulkanSDK\1.2.141.2\Bin\glslc.exe $(ProjectDir)src\graphics\sprv_shaders\%(Filename)%(Extension) -o $(ProjectDir)shaders\spv\%(Filename)%(Extension)</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\VulkanSDK\1.2.141.2\Bin\glslc.exe $(ProjectDir)src\graphics\sprv_shaders\%(Filename)%(Extension) -o $(ProjectDir)shaders\spv\%(Filename)%(Extension)</Command>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shaders\spv\%(Filename)%(Extension)</Outputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)shaders\spv\%(Filename)%(Extension)</Outputs>
-      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</BuildInParallel>
-      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</BuildInParallel>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
-      <TreatOutputAsContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</TreatOutputAsContent>
-      <TreatOutputAsContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</TreatOutputAsContent>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling %(Filename)%(Extension)</Message>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling %(Filename)%(Extension)</Message>
-    </CustomBuild>
-    <CustomBuild Include="src\graphics\sprv_shaders\DefPostProcess.vert">
-      <FileType>Document</FileType>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\VulkanSDK\1.2.141.2\Bin\glslc.exe $(ProjectDir)src\graphics\sprv_shaders\%(Filename)%(Extension) -o $(ProjectDir)shaders\spv\%(Filename)%(Extension)</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\VulkanSDK\1.2.141.2\Bin\glslc.exe $(ProjectDir)src\graphics\sprv_shaders\%(Filename)%(Extension) -o $(ProjectDir)shaders\spv\%(Filename)%(Extension)</Command>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shaders\spv\%(Filename)%(Extension)</Outputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)shaders\spv\%(Filename)%(Extension)</Outputs>
-      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</BuildInParallel>
-      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</BuildInParallel>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
-      <TreatOutputAsContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</TreatOutputAsContent>
-      <TreatOutputAsContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</TreatOutputAsContent>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling %(Filename)%(Extension)</Message>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling %(Filename)%(Extension)</Message>
-    </CustomBuild>
-  </ItemGroup>
-  <ItemGroup>
-    <CustomBuild Include="src\graphics\sprv_shaders\Sprite.frag">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
-      <FileType>Document</FileType>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\VulkanSDK\1.2.141.2\Bin\glslc.exe $(ProjectDir)src\graphics\sprv_shaders\%(Filename)%(Extension) -o $(ProjectDir)shaders\spv\%(Filename)%(Extension)</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\VulkanSDK\1.2.141.2\Bin\glslc.exe $(ProjectDir)src\graphics\sprv_shaders\%(Filename)%(Extension) -o $(ProjectDir)shaders\spv\%(Filename)%(Extension)</Command>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling %(Filename)%(Extension)</Message>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling %(Filename)%(Extension)</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shaders\spv\%(Filename)%(Extension)</Outputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)shaders\spv\%(Filename)%(Extension)</Outputs>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
-      <TreatOutputAsContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</TreatOutputAsContent>
-      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</BuildInParallel>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
-      <TreatOutputAsContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</TreatOutputAsContent>
-      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</BuildInParallel>
-    </CustomBuild>
-    <CustomBuild Include="src\graphics\sprv_shaders\Sprite.vert">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
-      <FileType>Document</FileType>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\VulkanSDK\1.2.141.2\Bin\glslc.exe $(ProjectDir)src\graphics\sprv_shaders\%(Filename)%(Extension) -o $(ProjectDir)shaders\spv\%(Filename)%(Extension)</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\VulkanSDK\1.2.141.2\Bin\glslc.exe $(ProjectDir)src\graphics\sprv_shaders\%(Filename)%(Extension) -o $(ProjectDir)shaders\spv\%(Filename)%(Extension)</Command>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling %(Filename)%(Extension)</Message>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling %(Filename)%(Extension)</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shaders\spv\%(Filename)%(Extension)</Outputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)shaders\spv\%(Filename)%(Extension)</Outputs>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
-      <TreatOutputAsContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</TreatOutputAsContent>
-      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</BuildInParallel>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
-      <TreatOutputAsContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</TreatOutputAsContent>
-      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</BuildInParallel>
-    </CustomBuild>
-  </ItemGroup>
-  <ItemGroup>
-    <CustomBuild Include="src\graphics\sprv_shaders\Forward.frag">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
-      <FileType>Document</FileType>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\VulkanSDK\1.2.141.2\Bin\glslc.exe $(ProjectDir)src\graphics\sprv_shaders\%(Filename)%(Extension) -o $(ProjectDir)shaders\spv\%(Filename)%(Extension)</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\VulkanSDK\1.2.141.2\Bin\glslc.exe $(ProjectDir)src\graphics\sprv_shaders\%(Filename)%(Extension) -o $(ProjectDir)shaders\spv\%(Filename)%(Extension)</Command>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling %(Filename)%(Extension)</Message>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling %(Filename)%(Extension)</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shaders\spv\%(Filename)%(Extension)</Outputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)shaders\spv\%(Filename)%(Extension)</Outputs>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
-      <TreatOutputAsContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</TreatOutputAsContent>
-      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</BuildInParallel>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
-      <TreatOutputAsContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</TreatOutputAsContent>
-      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</BuildInParallel>
-    </CustomBuild>
-    <CustomBuild Include="src\graphics\sprv_shaders\Forward.vert">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
-      <FileType>Document</FileType>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\VulkanSDK\1.2.141.2\Bin\glslc.exe $(ProjectDir)src\graphics\sprv_shaders\%(Filename)%(Extension) -o $(ProjectDir)shaders\spv\%(Filename)%(Extension)</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\VulkanSDK\1.2.141.2\Bin\glslc.exe $(ProjectDir)src\graphics\sprv_shaders\%(Filename)%(Extension) -o $(ProjectDir)shaders\spv\%(Filename)%(Extension)</Command>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling %(Filename)%(Extension)</Message>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling %(Filename)%(Extension)</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shaders\spv\%(Filename)%(Extension)</Outputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)shaders\spv\%(Filename)%(Extension)</Outputs>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
-      <TreatOutputAsContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</TreatOutputAsContent>
-      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</BuildInParallel>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
-      <TreatOutputAsContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</TreatOutputAsContent>
-      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</BuildInParallel>
-    </CustomBuild>
   </ItemGroup>
   <ItemGroup>
     <None Include="src\external\assimp\.editorconfig" />

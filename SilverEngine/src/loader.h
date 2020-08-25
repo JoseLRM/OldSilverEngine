@@ -12,31 +12,6 @@ namespace sv {
 		SerializationResult_InvalidFormat,
 	};
 
-	// Files
-
-	enum FileState {
-		FileState_None,
-		FileState_OpenWrite,
-		FileState_OpenRead,
-	};
-
-	struct File {
-		size_t	size;
-		size_t	pos;
-		FILE*	stream;
-	};
-
-	SerializationResult loader_file_open_read(const char* filePath, File& file);
-	SerializationResult loader_file_open_write(const char* filePath, bool append, File& file);
-
-	void loader_file_see(size_t pos, File& file);
-	void loader_file_read(void* dst, size_t size, File& file);
-	void loader_file_write(const void* src, size_t size, File& file);
-
-	constexpr FileState loader_file_state_get(File& file);
-
-	void loader_file_close(File& file);
-
 	// 3D Model
 
 	struct MaterialNode {

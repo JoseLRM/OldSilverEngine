@@ -35,7 +35,6 @@ namespace sv {
 
 	struct Shader_internal : public Primitive_internal {
 		ShaderType	shaderType;
-		std::string filePath;
 	};
 
 	struct RenderPass_internal : public Primitive_internal {
@@ -236,7 +235,8 @@ namespace sv {
 
 	// Shader utils
 
-	bool graphics_shader_binpath(const char* filePath, GraphicsAPI api, std::string& binPath);
+	bool graphics_shader_initialize();
+	bool graphics_shader_close();
 
 	// Properties
 

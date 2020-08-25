@@ -89,6 +89,7 @@ namespace sv {
 		const T* operator->() const { return m_Ref.get(); }
 		T* Get() { return m_Ref.get(); }
 		const T* Get() const { return m_Ref.get(); }
+		ui32 RefCount() const { return m_Ref.use_count(); }
 
 	};
 

@@ -9,6 +9,7 @@
 #include "platform/window_internal.h"
 #include "task_system/task_system_internal.h"
 #include "utils/utils_internal.h"
+#include "asset_manager/asset_manager_internal.h"
 
 using namespace sv;
 
@@ -50,6 +51,7 @@ namespace sv {
 		svCheck(window_initialize(desc.windowDesc));
 		svCheck(graphics_initialize(desc.graphicsDesc));
 		svCheck(renderer_initialize(desc.rendererDesc));
+		svCheck(asset_manager_initialize());
 
 		// APPLICATION
 		svCheck(g_App.initialize());
@@ -106,18 +108,22 @@ namespace sv {
 		catch (Exception e) {
 			sv::log_error("%s: '%s'\nFile: '%s', Line: %u", e.type.c_str(), e.desc.c_str(), e.file.c_str(), e.line);
 			running = false;
+			system("PAUSE");
 		}
 		catch (std::exception e) {
 			sv::log_error("STD Exception: '%s'", e.what());
 			running = false;
+			system("PAUSE");
 		}
 		catch (int i) {
 			sv::log_error("Unknown Error: %i", i);
 			running = false;
+			system("PAUSE");
 		}
 		catch (...) {
 			sv::log_error("Unknown Error");
 			running = false;
+			system("PAUSE");
 		}
 
 		return running;
@@ -130,6 +136,7 @@ namespace sv {
 		// APPLICATION
 		svCheck(g_App.close());
 
+		svCheck(asset_manager_close());
 		svCheck(renderer_close());
 		svCheck(window_close());
 		svCheck(graphics_close());

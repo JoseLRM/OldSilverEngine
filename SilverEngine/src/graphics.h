@@ -47,7 +47,7 @@ namespace sv {
 		GPUBufferType_Constant,
 	};
 
-	enum ShaderType : ui8 {
+	enum ShaderType : ui32 {
 		ShaderType_Vertex,
 		ShaderType_Pixel,
 		ShaderType_Geometry,
@@ -292,6 +292,15 @@ namespace sv {
 		}
 	};
 
+	struct ShaderCompileDesc {
+		GraphicsAPI											api;
+		ShaderType											shaderType;
+		ui32												majorVersion;
+		ui32												minorVersion;
+		const char*											entryPoint;
+		std::vector<std::pair<const char*, const char*>>	macros;
+	};
+
 	// Primitive Descriptors
 
 	struct GPUBufferDesc {
@@ -327,8 +336,9 @@ namespace sv {
 	};
 
 	struct ShaderDesc {
+		void*		pBinData;
+		size_t		binDataSize;
 		ShaderType	shaderType;
-		const char* filePath;
 	};
 
 	struct AttachmentDesc {
@@ -563,7 +573,9 @@ namespace sv {
 
 	typedef ui32 CommandList;
 
-	// ADAPTERS
+	GraphicsAPI graphics_api_get();
+
+	// Adapers
 
 	const std::vector<std::unique_ptr<Adapter>>& graphics_adapter_get_list() noexcept;
 	Adapter* graphics_adapter_get() noexcept;
@@ -626,6 +638,11 @@ namespace sv {
 	void graphics_barrier(const GPUBarrier* barriers, ui32 count, CommandList cmd);
 	void graphics_image_clear(GPUImage& image, GPUImageLayout oldLayout, GPUImageLayout newLayout, const Color4f& clearColor, float depth, ui32 stencil, CommandList cmd); // Not use if necessary, renderpasses have best performance!!
 
+	// Shader utils
+
+	bool graphics_shader_compile_string(const ShaderCompileDesc* desc, const char* str, ui32 size, std::vector<ui8>& data);
+	bool graphics_shader_compile_file(const ShaderCompileDesc* desc, const char* srcPath, const char* binPath);
+
 	// Primitive getters
 
 	ui32		graphics_image_get_width(const GPUImage& image);
@@ -640,7 +657,6 @@ namespace sv {
 	// Properties
 
 	struct GraphicsProperties {
-		bool transposedMatrices;
 	};
 
 	GraphicsProperties graphics_properties_get();

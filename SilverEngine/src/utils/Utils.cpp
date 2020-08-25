@@ -37,8 +37,12 @@ namespace sv {
 
 	std::string utils_string_parse(const wchar* c)
 	{
-		sv::log_error("Undefined 'utils_string_parse'");
-		return "";
+		size_t size = wcslen(c) + 1u;
+		std::string str;
+		str.resize(size);
+		size_t i;
+		wcstombs_s(&i, str.data(), size, c, size);
+		return str;
 	}
 
 	// Loader

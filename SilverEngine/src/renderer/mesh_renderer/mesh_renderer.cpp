@@ -80,16 +80,8 @@ namespace sv {
 			svCheck(graphics_renderpass_create(&desc, g_ForwardRenderPass));
 		}
 		{
-			ShaderDesc desc;
-			desc.filePath = "shaders/ForwardVertex.shader";
-			desc.shaderType = ShaderType_Vertex;
-
-			svCheck(graphics_shader_create(&desc, g_ForwardVertexShader));
-
-			desc.filePath = "shaders/ForwardPixel.shader";
-			desc.shaderType = ShaderType_Pixel;
-
-			svCheck(graphics_shader_create(&desc, g_ForwardPixelShader));
+			svCheck(renderer_shader_create("Forward", ShaderType_Vertex, g_ForwardVertexShader));
+			svCheck(renderer_shader_create("Forward", ShaderType_Pixel, g_ForwardPixelShader));
 		}
 		{
 			InputLayoutStateDesc desc;
@@ -202,7 +194,6 @@ namespace sv {
 
 		graphics_constantbuffer_bind(cBuffers, 1u, ShaderType_Vertex, cmd);
 
-		material->UpdateBuffers(cmd);
 		cBuffers[0] = &material->GetConstantBuffer();
 
 		graphics_constantbuffer_bind(cBuffers, 1u, ShaderType_Pixel, cmd);
@@ -221,11 +212,7 @@ namespace sv {
 		// Set CameraData
 		{
 			CameraBufferData camData;
-			camData.projectionMatrix = PM;
-
-			if (graphics_properties_get().transposedMatrices) 
-				camData.projectionMatrix = XMMatrixTranspose(camData.projectionMatrix);
-
+			camData.projectionMatrix = XMMatrixTranspose(PM);
 			graphics_buffer_update(g_CameraBuffer, &camData, sizeof(CameraBufferData), 0u, cmd);
 		}
 
@@ -242,14 +229,25 @@ namespace sv {
 				ui32 index = indices[i];
 				auto& mesh = instances[index];
 
-				g_MeshData[i].modelViewMatrix = mesh.tm * VM;
+				g_MeshData[i].modelViewMatrix = XMMatrixTranspose(mesh.tm * VM);
 
 			}
 
-			// Transpose matrices
-			if (graphics_properties_get().transposedMatrices) {
-				for(ui32 i = 0; i < batchSize; ++i)
-					g_MeshData[i].modelViewMatrix = XMMatrixTranspose(g_MeshData[i].modelViewMatrix);
+			// Update Material buffers
+			{
+				Material* currentMaterial = instances[indices[0]].pMaterial;
+				for (ui32 i = 1; i < batchSize; ++i) {
+					Material* mat = instances[indices[0]].pMaterial;
+					if (currentMaterial != mat) {
+						if (currentMaterial != nullptr) {
+							currentMaterial->UpdateBuffers(cmd);
+						}
+						currentMaterial = mat;
+					}
+				}
+				if (currentMaterial != nullptr) {
+					currentMaterial->UpdateBuffers(cmd);
+				}
 			}
 
 			// Copy instance data to GPU

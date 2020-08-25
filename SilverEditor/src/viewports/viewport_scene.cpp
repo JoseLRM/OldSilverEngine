@@ -221,12 +221,29 @@ namespace sve {
 		comp->SetFixedRotation(fixedRotation);
 	}
 
+	void ShowMeshComponentInfo(sv::MeshComponent* comp)
+	{
+		if (comp->mesh != nullptr) {
+			sv::Mesh& mesh = *comp->mesh;
+		}
+
+		if (comp->material != nullptr) {
+			sv::Material& mat = *comp->material;
+			sv::MaterialData data = mat.GetMaterialData();
+
+			ImGui::ColorEdit4("Diffuse color", &data.diffuseColor.x);
+
+			mat.SetMaterialData(data);
+		}
+	}
+
 	void ShowComponentInfo(sv::CompID ID, sv::BaseComponent* comp)
 	{
 		if (ID == sv::SpriteComponent::ID) ShowSpriteComponentInfo(reinterpret_cast<sv::SpriteComponent*>(comp));
 		else if (ID == sv::NameComponent::ID) ShowNameComponentInfo(reinterpret_cast<sv::NameComponent*>(comp));
 		else if (ID == sv::CameraComponent::ID) ShowCameraComponentInfo(reinterpret_cast<sv::CameraComponent*>(comp));
 		else if (ID == sv::RigidBody2DComponent::ID) ShowRigidBody2DComponentInfo(reinterpret_cast<sv::RigidBody2DComponent*>(comp));
+		else if (ID == sv::MeshComponent::ID) ShowMeshComponentInfo(reinterpret_cast<sv::MeshComponent*>(comp));
 	}
 
 	bool viewport_scene_entity_display()
