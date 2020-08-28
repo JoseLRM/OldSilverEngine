@@ -4,14 +4,14 @@
 
 namespace sv {
 
-	class TextureAtlas;
+	class Texture;
 
 	struct Sprite {
-		TextureAtlas*	pTextureAtlas;
+		Texture*	pTextureAtlas;
 		ui32			index;
 	};
 
-	class TextureAtlas {
+	class Texture {
 		GPUImage			m_Image;
 		Sampler				m_Sampler;
 		std::vector<vec4>	m_Sprites;

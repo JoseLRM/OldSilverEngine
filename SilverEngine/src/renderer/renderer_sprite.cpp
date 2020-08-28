@@ -1,8 +1,6 @@
 #include "core.h"
 
-#include "..//renderer_internal.h"
-#include "scene/scene_internal.h"
-#include "components.h"
+#include "renderer_internal.h"
 
 namespace sv {
 
@@ -46,7 +44,7 @@ namespace sv {
 		}
 	}
 
-	bool renderer2D_initialize()
+	bool renderer_sprite_initialize(const InitializationRendererDesc& desc)
 	{
 		// Sprite Buffers
 		{
@@ -166,7 +164,7 @@ namespace sv {
 		return true;
 	}
 
-	bool renderer2D_close()
+	bool renderer_sprite_close()
 	{
 		g_SpritePipeline = {};
 		svCheck(graphics_destroy(g_SpriteInputLayoutState));
@@ -182,92 +180,7 @@ namespace sv {
 		return true;
 	}
 
-	void renderer2D_sprite_sort(SpriteInstance* buffer, ui32 count, const RenderLayer& renderLayer) 
-	{
-		SpriteInstance* begin = buffer;
-		SpriteInstance* end = buffer + count;
-
-		switch (renderLayer.sortMode)
-		{
-		case RenderLayerSortMode_none:
-			std::sort(begin, end, [](const SpriteInstance& s0, const SpriteInstance& s1) {
-				return s0.sprite.pTextureAtlas < s1.sprite.pTextureAtlas;
-			});
-			break;
-
-		case RenderLayerSortMode_coordX:
-			std::sort(begin, end, [](const SpriteInstance& s0, const SpriteInstance& s1) {
-				if (s0.position.x == s1.position.x) return s0.sprite.pTextureAtlas < s1.sprite.pTextureAtlas;
-				return s0.position.x < s1.position.x;
-			});
-			break;
-
-		case RenderLayerSortMode_coordY:
-			std::sort(begin, end, [](const SpriteInstance& s0, const SpriteInstance& s1) {
-				if (s0.position.y == s1.position.y) return s0.sprite.pTextureAtlas < s1.sprite.pTextureAtlas;
-				return s0.position.y < s1.position.y;
-			});
-			break;
-
-		case RenderLayerSortMode_coordZ:
-			std::sort(begin, end, [](const SpriteInstance& s0, const SpriteInstance& s1) {
-				if (s0.position.z == s1.position.z) return s0.sprite.pTextureAtlas < s1.sprite.pTextureAtlas;
-				return s0.position.z < s1.position.z;
-			});
-			break;
-
-		}
-	}
-
-	void renderer2D_scene_draw_sprites(CommandList cmd)
-	{
-		EntityView<SpriteComponent> sprites;
-		std::vector<SpriteInstance> instances(sprites.size());
-
-		// Create Instances
-		{
-			for (ui32 i = 0; i < sprites.size(); ++i) {
-				SpriteComponent& sprite = sprites[i];
-				// TODO: frustum culling
-				Transform trans = scene_ecs_entity_get_transform(sprite.entity);
-				instances.emplace_back(trans.GetWorldMatrix(), sprite.sprite, sprite.color, sprite.renderLayer, trans.GetWorldPosition());
-			}
-		}
-
-		// Sort by layer
-		std::sort(instances.begin(), instances.end(), [](const SpriteInstance& i0, const SpriteInstance& i1) {
-			return i0.layerID < i1.layerID;
-		});
-
-		// Sort layer by sort mode and texture
-		{
-			auto& renderLayers = scene_renderWorld_get().renderLayers;
-
-			ui32 rl = 0u;
-			SpriteInstance* offset = instances.data();
-
-			if (!instances.empty()) {
-				for (auto it = instances.begin(); it != instances.end(); ++it) {
-					if (rl != it->layerID) {
-						
-						SpriteInstance* pos = &*it;
-						
-						renderer2D_sprite_sort(offset, pos - offset, renderLayers[rl]);
-
-						offset = pos;
-						rl = it->layerID;
-					}
-				}
-				renderer2D_sprite_sort(offset, instances.size() - (offset - instances.data()), renderLayers[rl]);
-			}
-		}
-
-		// Render
-		DrawData& drawData = renderer_drawData_get();
-		renderer2D_sprite_render(instances.data(), ui32(instances.size()), drawData.viewProjectionMatrix, drawData.pOffscreen->renderTarget, cmd);
-	}
-
-	void RenderSpriteBatch(ui32 offset, ui32 size, TextureAtlas* texture, CommandList cmd)
+	void RenderSpriteBatch(ui32 offset, ui32 size, Texture* texture, CommandList cmd)
 	{
 		GPUBuffer* vBuffers[] = {
 			&g_SpriteVertexBuffer,
@@ -299,16 +212,18 @@ namespace sv {
 
 	}
 
-	void renderer2D_sprite_render(SpriteInstance* buffer, ui32 count, const XMMATRIX& viewProjectionMatrix, GPUImage& renderTarget, CommandList cmd)
+	void renderer_sprite_rendering(const SpriteRenderingDesc* desc, CommandList cmd)
 	{
 		GPUImage* att[] = {
-			&renderTarget
+			desc->pRenderTarget
 		};
 
-		TextureAtlas* texture = nullptr;
-		auto& renderLayers = scene_renderWorld_get().renderLayers;
+		Texture* texture = nullptr;
 
-		SpriteInstance* initialPtr = buffer;
+		XMMATRIX viewProjectionMatrix = *desc->pViewProjectionMatrix;
+		ui32 count = desc->count;
+		const SpriteInstance* buffer = desc->pInstances;
+		const SpriteInstance* initialPtr = buffer;
 
 		while (buffer < initialPtr + count) {
 
@@ -322,7 +237,7 @@ namespace sv {
 			// Fill Vertex Buffer
 			while (j < batchSize) {
 
-				SpriteInstance& spr = buffer[j];
+				const SpriteInstance& spr = buffer[j];
 
 				// Compute Matrices form WorldSpace to ScreenSpace
 				XMMATRIX matrix = spr.tm * viewProjectionMatrix;
@@ -358,8 +273,8 @@ namespace sv {
 			graphics_indexbuffer_bind(g_SpriteIndexBuffer, 0u, cmd);
 			graphics_pipeline_bind(g_SpritePipeline, cmd);
 
-			SpriteInstance* beginBuffer = buffer;
-			SpriteInstance* endBuffer;
+			const SpriteInstance* beginBuffer = buffer;
+			const SpriteInstance* endBuffer;
 
 			while (buffer < beginBuffer + batchSize) {
 

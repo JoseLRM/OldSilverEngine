@@ -1,14 +1,9 @@
 #pragma once
 
-#include "scene.h"
-#include "renderer.h"
-#include "physics.h"
-
 namespace sv {
 
-	// NAME COMPONENT
-
-#if SV_ECS_NAME_COMPONENT
+	// Name component
+#if SV_SCENE_NAME_COMPONENT
 
 	SV_COMPONENT(NameComponent) {
 	private:
@@ -27,7 +22,7 @@ namespace sv {
 
 #endif
 
-	// SPRITE COMPONENT
+	// Sprite Component
 
 	SV_COMPONENT(SpriteComponent) {
 
@@ -42,14 +37,13 @@ namespace sv {
 
 	};
 
-	// CAMERA COMPONENT
+	// Camera Component
 
 	SV_COMPONENT(CameraComponent) {
 	private:
 		std::unique_ptr<Offscreen> m_Offscreen;
 	
 	public:
-		CameraProjection	projection;
 		CameraSettings		settings;
 	
 		CameraComponent();
@@ -66,64 +60,62 @@ namespace sv {
 		bool DestroyOffscreen();
 	
 		void Adjust(float width, float height);
-	
+
 	};
 
-	// RIGID BODY 2D COMPONENT
+	// Rigid body 2d component
 
 	SV_COMPONENT(RigidBody2DComponent) {
-	private:
-		Body2D m_Body = nullptr;
-		Collider2D m_Collider = nullptr;
-	
-	public:
-		vec2 offset;
-	
+		void* pInternal;
+
+		bool dynamic = true;
+		bool fixedRotation = false;
+		vec2 velocity;
+		float angularVelocity = 0.f;
+
 		RigidBody2DComponent();
-		RigidBody2DComponent(Collider2DType colliderType);
-	
+		~RigidBody2DComponent();
 		RigidBody2DComponent& operator=(const RigidBody2DComponent & other);
 		RigidBody2DComponent& operator=(RigidBody2DComponent && other) noexcept;
-	
-		~RigidBody2DComponent();
-	
-		void SetDensity(float density) const noexcept;
-		float GetDensity() const noexcept;
-		void SetDynamic(bool dynamic) const noexcept;
-		bool IsDynamic() const noexcept;
-		void SetFixedRotation(bool fixedRotation) const noexcept;
-		bool IsFixedRotation() const noexcept;
-	
-		inline Body2D GetBody() const noexcept { return m_Body; }
-		inline Collider2D GetCollider() const noexcept { return m_Collider; }
-		Collider2DType GetColliderType() const noexcept;
-	
-		void SetBoxCollider(float width, float height);
-		float BoxCollider_GetWidth();
-		float BoxCollider_GetHeight();
-		void BoxCollider_SetSize(float width, float height);
-	
-		void SetCircleCollider(float radius);
-		float CircleCollider_GetRadius();
-		void CircleCollider_SetRadius(float radius);
+	};
+
+	// Quad Collider
+
+	SV_COMPONENT(QuadComponent) {
+		void* pInternal;
+
+		vec2 size = { 1.f, 1.f };
+		vec2 offset;
+		float angularOffset = 0.f;
+		float density = 10.f;
+		float friction = 0.3f;
+		float restitution = 0.3f;
+
+		QuadComponent();
+		~QuadComponent();
+		QuadComponent& operator=(const QuadComponent & other);
+		QuadComponent& operator=(QuadComponent && other) noexcept;
 
 	};
 
-	// MESH COMPONENT
+	// Mesh component
 
 	SV_COMPONENT(MeshComponent) {
 
-		Mesh*		mesh;
-		Material*	material;
+		Mesh* mesh;
+		Material* material;
 
 	};
 
-	// LIGHT COMPONENT
+	// Light component
 
 	SV_COMPONENT(LightComponent) {
 
-		Color4f color;
-
+		LightType	lightType	= LightType_Point;
+		float		intensity	= 1.f;
+		float		range		= 5.f;
+		float		smoothness	= 0.8f;
+		Color3f		color		= SV_COLOR3F_WHITE;
 
 	};
 

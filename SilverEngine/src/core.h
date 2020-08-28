@@ -6,6 +6,10 @@
 #define NDEBUG
 #endif
 
+#ifdef SV_SRC_PATH
+#define SV_SRC_PATH_W L"" SV_SRC_PATH
+#endif
+
 // std includes
 #include <math.h>
 #include <DirectXMath.h>
@@ -21,6 +25,7 @@
 #include <mutex>
 #include <atomic>
 #include <fstream>
+#include <filesystem>
 
 using namespace DirectX;
 

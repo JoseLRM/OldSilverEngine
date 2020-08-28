@@ -5,7 +5,6 @@
 #include "window.h"
 #include "graphics.h"
 #include "renderer.h"
-#include "physics.h"
 #include "task_system.h"
 #include "input.h"
 
@@ -25,7 +24,6 @@ namespace sv {
 		InitializationWindowDesc windowDesc;
 		InitializationGraphicsDesc graphicsDesc;
 		InitializationRendererDesc rendererDesc;
-		InitializationPhysicsDesc physicsDesc;
 		bool showConsole;
 		ui32 minThreadsCount;
 	};
@@ -36,8 +34,6 @@ namespace sv {
 
 	Version	engine_version_get() noexcept;
 	float	engine_deltatime_get() noexcept;
-	void	engine_timestep_set(float timestep) noexcept;
-	float	engine_timestep_get() noexcept;
 	ui64	engine_stats_get_frame_count() noexcept;
 
 }

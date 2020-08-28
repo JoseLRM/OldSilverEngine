@@ -4,7 +4,6 @@
 
 #include "renderer/renderer_internal.h"
 #include "graphics/graphics_internal.h"
-#include "physics/physics_internal.h"
 #include "input/input_internal.h"
 #include "platform/window_internal.h"
 #include "task_system/task_system_internal.h"
@@ -19,7 +18,6 @@ namespace sv {
 	static std::string	g_Name;
 
 	static float		g_DeltaTime = 0.f;
-	static float		g_TimeStep = 1.f;
 
 	static ui64			g_FrameCount = 0u;
 
@@ -47,7 +45,6 @@ namespace sv {
 
 		svCheck(utils_initialize());
 		svCheck(task_initialize(desc.minThreadsCount));
-		svCheck(physics_initialize(desc.physicsDesc));
 		svCheck(window_initialize(desc.windowDesc));
 		svCheck(graphics_initialize(desc.graphicsDesc));
 		svCheck(renderer_initialize(desc.rendererDesc));
@@ -83,9 +80,6 @@ namespace sv {
 
 			// Update User
 			g_App.update(g_DeltaTime);
-
-			// Update Physics
-			physics_update(g_DeltaTime);
 
 			// Begin Rendering
 			renderer_frame_begin();
@@ -140,7 +134,6 @@ namespace sv {
 		svCheck(renderer_close());
 		svCheck(window_close());
 		svCheck(graphics_close());
-		svCheck(physics_close());
 		svCheck(task_close());
 
 		return true;
@@ -148,15 +141,6 @@ namespace sv {
 
 	Version engine_version_get() noexcept { return g_Version; }
 	float engine_deltatime_get() noexcept { return g_DeltaTime;	}
-
-	void engine_timestep_set(float timestep) noexcept
-	{
-		g_TimeStep = timestep;
-	}
-	float engine_timestep_get() noexcept
-	{
-		return g_TimeStep;
-	}
 
 	ui64 engine_stats_get_frame_count() noexcept { return g_FrameCount; }
 	

@@ -104,7 +104,9 @@ namespace sv {
 	}
 	vec2 input_mouse_dragged_get()
 	{
-		return g_Dragged;
+		//return g_Dragged;
+		//TEMP:
+		return g_Pos - g_RPos;
 	}
 
 	void engine_request_close() noexcept { g_CloseRequest = true; }

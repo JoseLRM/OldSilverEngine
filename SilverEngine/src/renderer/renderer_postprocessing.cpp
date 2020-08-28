@@ -1,7 +1,6 @@
 #include "core.h"
 
 #include "renderer/renderer_internal.h"
-#include "postprocessing.h"
 
 namespace sv {
 
@@ -17,7 +16,7 @@ namespace sv {
 	static Sampler			g_DefSampler;
 	static GraphicsPipeline	g_DefPipeline;
 
-	bool postprocessing_initialize()
+	bool renderer_postprocessing_initialize(const InitializationRendererDesc& desc)
 	{
 		// Create Common Buffers
 		{
@@ -71,7 +70,7 @@ namespace sv {
 		return true;
 	}
 
-	bool postprocessing_close()
+	bool renderer_postprocessing_close()
 	{
 		g_DefPipeline = {};
 		svCheck(graphics_destroy(g_VertexBuffer));
@@ -83,7 +82,7 @@ namespace sv {
 
 	// DEFAULT POSTPROCESSING
 
-	bool postprocessing_default_create(Format dstFormat, GPUImageLayout initialLayout, GPUImageLayout finalLayout, PostProcessing_Default& pp)
+	bool renderer_postprocessing_default_create(Format dstFormat, GPUImageLayout initialLayout, GPUImageLayout finalLayout, PostProcessing_Default& pp)
 	{
 		AttachmentDesc att;
 		att.loadOp = AttachmentOperation_DontCare;
@@ -100,12 +99,12 @@ namespace sv {
 		svCheck(graphics_renderpass_create(&desc, pp.renderPass));
 		return true;
 	}
-	bool postprocessing_default_destroy(PostProcessing_Default& pp)
+	bool renderer_postprocessing_default_destroy(PostProcessing_Default& pp)
 	{
 		svCheck(graphics_destroy(pp.renderPass));
 		return true;
 	}
-	void postprocessing_default_render(PostProcessing_Default& pp, GPUImage& src, GPUImage& dst, CommandList cmd)
+	void renderer_postprocessing_default_draw(PostProcessing_Default& pp, GPUImage& src, GPUImage& dst, CommandList cmd)
 	{
 		GPUImage* att[] = {
 			&dst

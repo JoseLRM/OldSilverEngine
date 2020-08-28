@@ -3,10 +3,11 @@
 namespace sv {
 
 	class Transform {
-		void* trans;
+		EntityTransform* trans;
+		ECS* pECS;
 
 	public:
-		Transform(Entity entity, void* transform);
+		Transform(Entity entity, EntityTransform* transform, ECS* ecs);
 		~Transform() = default;
 
 		Transform(const Transform& other) = default;
@@ -37,9 +38,6 @@ namespace sv {
 		void SetPosition(const vec3& position) noexcept;
 		void SetRotation(const vec3& rotation) noexcept;
 		void SetScale(const vec3& scale) noexcept;
-
-		void SetWorldTransformPRS(const vec3& position, const vec3& rotation, const vec3& scale) noexcept;
-		void SetWorldTransformPR(const vec3& position, const vec3& rotation) noexcept;
 
 	private:
 		void UpdateWorldMatrix();

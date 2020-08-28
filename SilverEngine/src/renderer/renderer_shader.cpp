@@ -117,6 +117,10 @@ namespace sv {
 				break;
 			}
 
+			// Lighting Macro
+			std::string lightCountStr = std::to_string(SV_REND_FORWARD_LIGHT_COUNT);
+			compileDesc.macros.push_back(std::make_pair("SV_LIGHT_COUNT", lightCountStr.c_str()));
+
 			// Compile
 			const char* shaderName;
 			switch (type)

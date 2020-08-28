@@ -9,22 +9,18 @@
 
 namespace sv {
 	
-	// Enums
-
-	enum CameraType {
+	enum CameraType : ui32 {
 		CameraType_Clip,
 		CameraType_Orthographic,
 		CameraType_Perspective,
 	};
 
-	// Renderer initialization
-
-	struct InitializationRendererDesc {
-		ui32				resolutionWidth;
-		ui32				resolutionHeight;
+	enum LightType : ui32 {
+		LightType_None,
+		LightType_Point,
+		LightType_Spot,
+		LightType_Directional,
 	};
-
-	// Camera Projection
 
 	struct CameraProjection {
 		CameraType cameraType = CameraType_Orthographic;
@@ -33,15 +29,6 @@ namespace sv {
 		float near = -10000.0f;
 		float far = 10000.f;
 	};
-
-	XMMATRIX	renderer_projection_matrix(const CameraProjection& projection);
-	float		renderer_projection_aspect_get(const CameraProjection& projection);
-	void		renderer_projection_aspect_set(CameraProjection& projection, float aspect);
-	vec2		renderer_projection_position(const CameraProjection& projection, const vec2& point); // The point must be in range { -0.5 - 0.5 }
-	float		renderer_projection_zoom_get(const CameraProjection& projection);
-	void		renderer_projection_zoom_set(CameraProjection& projection, float zoom);
-
-	// Offscreen
 
 	struct Offscreen {
 		GPUImage renderTarget;
@@ -52,10 +39,87 @@ namespace sv {
 		inline ui32 GetHeight() const noexcept { return graphics_image_get_height(renderTarget); }
 	};
 
+	struct SpriteInstance {
+		XMMATRIX tm;
+		Sprite sprite;
+		Color color;
+
+		SpriteInstance() = default;
+		SpriteInstance(const XMMATRIX& m, Sprite sprite, sv::Color color) : tm(m), sprite(sprite), color(color) {}
+	};
+
+	struct SpriteRenderingDesc {
+		const SpriteInstance*	pInstances;
+		ui32					count;
+		const XMMATRIX*			pViewProjectionMatrix;
+		GPUImage*				pRenderTarget;
+	};
+
+	struct MeshInstance {
+		XMMATRIX	modelViewMatrix;
+		Mesh*		pMesh;
+		Material*	pMaterial;
+
+		MeshInstance() = default;
+		MeshInstance(XMMATRIX mvm, Mesh* mesh, Material* mat) : modelViewMatrix(mvm), pMesh(mesh), pMaterial(mat) {}
+	};
+
+	struct alignas(16) LightInstance {
+		LightType	lightType;
+		vec3		position;
+		vec3		direction;
+		float		intensity;
+		float		range;
+		Color3f		color;
+		float		smoothness;
+		vec3		padding;
+
+		LightInstance() = default;
+		LightInstance(LightType type, const vec3& position, const vec3& direction, float intensity, float range, float smoothness, const Color3f& color)
+			: lightType(type), position(position), direction(direction), intensity(intensity), range(range), smoothness(smoothness), color(color) {}
+	};
+
+	struct ForwardRenderingDesc {
+		const MeshInstance*		pInstances;
+		ui32*					pIndices;
+		ui32					count;
+		bool					transparent;
+		const XMMATRIX*			pViewMatrix;
+		const XMMATRIX*			pProjectionMatrix;
+		GPUImage*				pRenderTarget;
+		GPUImage*				pDepthStencil;
+		const LightInstance*	lights;
+		ui32					lightCount;
+	};
+
+	struct PostProcessing_Default {
+		RenderPass renderPass;
+	};
+
+	// Renderer initialization
+
+	struct InitializationRendererDesc {
+		bool				presentOffscreen;
+		ui32				resolutionWidth;
+		ui32				resolutionHeight;
+	};
+
+	// Camera Projection
+
+	XMMATRIX	renderer_projection_matrix(const CameraProjection& projection);
+	float		renderer_projection_aspect_get(const CameraProjection& projection);
+	void		renderer_projection_aspect_set(CameraProjection& projection, float aspect);
+	vec2		renderer_projection_position(const CameraProjection& projection, const vec2& point); // The point must be in range { -0.5 - 0.5 }
+	float		renderer_projection_zoom_get(const CameraProjection& projection);
+	void		renderer_projection_zoom_set(CameraProjection& projection, float zoom);
+
+	// Offscreen
+
 	bool renderer_offscreen_create(ui32 width, ui32 height, Offscreen& offscreen);
 	bool renderer_offscreen_destroy(Offscreen& offscreen);
 
-	Offscreen& renderer_offscreen_get();
+	Offscreen&	renderer_offscreen_get();
+	void		renderer_offscreen_set_present(bool enable);
 
 	// MainOffscreen resolution
 
@@ -65,62 +129,18 @@ namespace sv {
 	ui32	renderer_resolution_get_height() noexcept;
 	float	renderer_resolution_get_aspect() noexcept;
 
-	// Camera Settings
+	// Mesh rendering
 
-	enum MeshRenderingTechnique {
-		MeshRenderingTechnique_Forward,
-		MeshRenderingTechnique_Deferred,
-	};
+	void renderer_mesh_forward_rendering(const ForwardRenderingDesc* desc, CommandList cmd);
 
-	struct CameraSettings {
-		bool					active;
-		MeshRenderingTechnique	meshTechnique;
-		struct
-		{
-			bool enabled;
-			bool drawColliders;
-		} debug;
-	};
+	// Sprite rendering
 
-	// Render Layers (2D)
+	void renderer_sprite_rendering(const SpriteRenderingDesc* desc, CommandList cmd);
 
-	enum RenderLayerSortMode : ui32 {
-		RenderLayerSortMode_none,
-		RenderLayerSortMode_coordX,
-		RenderLayerSortMode_coordY,
-		RenderLayerSortMode_coordZ,
-	};
+	// Postprocessing
 
-	void				renderLayer_count_set(ui32 count);
-	ui32				renderLayer_count_get();
-	void				renderLayer_sortMode_set(ui32 layer, RenderLayerSortMode sortMode);
-	RenderLayerSortMode	renderLayer_sortMode_get(ui32 layer);
-
-	// High level draw calls
-
-	void renderer_scene_render(bool backBuffer);
-
-	enum RendererTarget {
-		RendererTarget_Offscreen		= SV_BIT(0),
-		RendererTarget_CameraOffscreen	= SV_BIT(1),
-		RendererTarget_BackBuffer		= SV_BIT(2),
-	};
-	typedef ui32 RendererTargetFlags;
-
-	struct CameraDesc {
-		CameraProjection	projection;
-		CameraSettings		settings;
-		Offscreen*			pOffscreen;
-		XMMATRIX			viewMatrix;
-	};
-
-	struct RendererDesc {
-		RendererTargetFlags		rendererTarget;
-		CameraDesc				camera;
-	};
-
-	void renderer_scene_begin(const RendererDesc* desc);
-	void renderer_scene_end();
-	void renderer_scene_draw_scene();
+	bool renderer_postprocessing_default_create(Format dstFormat, GPUImageLayout initialLayout, GPUImageLayout finalLayout, PostProcessing_Default& pp);
+	bool renderer_postprocessing_default_destroy(PostProcessing_Default& pp);
+	void renderer_postprocessing_default_draw(PostProcessing_Default& pp, GPUImage& src, GPUImage& dst, CommandList cmd);
 
 }

@@ -103,7 +103,7 @@
   <ItemGroup>
     <ClInclude Include="src\asset_manager.h" />
     <ClInclude Include="src\asset_manager\asset_manager_internal.h" />
-    <ClInclude Include="src\components.h" />
+    <ClInclude Include="src\entity_system.h" />
     <ClInclude Include="src\external\assimp\ai_assert.h" />
     <ClInclude Include="src\external\assimp\anim.h" />
     <ClInclude Include="src\external\assimp\BaseImporter.h" />
@@ -247,17 +247,14 @@
     <ClInclude Include="src\input\input_internal.h" />
     <ClInclude Include="src\loader.h" />
     <ClInclude Include="src\loader\loader_internal.h" />
-    <ClInclude Include="src\physics.h" />
-    <ClInclude Include="src\physics\physics_internal.h" />
     <ClInclude Include="src\platform\windows\platform_windows.h" />
     <ClInclude Include="src\platform\window_internal.h" />
-    <ClInclude Include="src\renderer\mesh_renderer\mesh_renderer.h" />
     <ClInclude Include="src\renderer\objects\Material.h" />
     <ClInclude Include="src\renderer\objects\Mesh.h" />
     <ClInclude Include="src\renderer\objects\TextureAtlas.h" />
-    <ClInclude Include="src\renderer\postprocessing\postprocessing.h" />
     <ClInclude Include="src\renderer\renderer_internal.h" />
-    <ClInclude Include="src\renderer\renderer2D\renderer2D.h" />
+    <ClInclude Include="src\scene\physics_impl.h" />
+    <ClInclude Include="src\scene\scene_components.h" />
     <ClInclude Include="src\scene\scene_internal.h" />
     <ClInclude Include="src\task_system\task_system_internal.h" />
     <ClInclude Include="src\utils\utils_internal.h" />
@@ -265,7 +262,7 @@
     <ClInclude Include="src\platform\windows\windows_impl.h" />
     <ClInclude Include="src\renderer.h" />
     <ClInclude Include="src\scene.h" />
-    <ClInclude Include="src\scene\Transform.h" />
+    <ClInclude Include="src\entity_system\Transform.h" />
     <ClInclude Include="src\task_system.h" />
     <ClInclude Include="src\utils\BinFile.h" />
     <ClInclude Include="src\utils\safe_queue.h" />
@@ -276,6 +273,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\asset_manager\asset_manager.cpp" />
+    <ClCompile Include="src\entity_system\entity_system.cpp" />
     <ClCompile Include="src\external\sprv\spirv_cfg.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
@@ -322,7 +320,6 @@
     </ClCompile>
     <ClCompile Include="src\graphics\vulkan\graphics_vulkan_pipeline.cpp" />
     <ClCompile Include="src\loader\loader.cpp" />
-    <ClCompile Include="src\main\components.cpp" />
     <ClCompile Include="src\main\core.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
@@ -335,26 +332,27 @@
     <ClCompile Include="src\graphics\graphics_shader.cpp" />
     <ClCompile Include="src\graphics\vulkan\graphics_vulkan.cpp" />
     <ClCompile Include="src\graphics\vulkan\graphics_vulkan_memory.cpp" />
-    <ClCompile Include="src\physics\physics.cpp" />
     <ClCompile Include="src\platform\windows\platform_windows.cpp" />
     <ClCompile Include="src\platform\window.cpp" />
-    <ClCompile Include="src\renderer\mesh_renderer\mesh_renderer.cpp" />
+    <ClCompile Include="src\renderer\renderer_mesh.cpp" />
     <ClCompile Include="src\renderer\objects\Material.cpp" />
     <ClCompile Include="src\renderer\objects\Mesh.cpp" />
     <ClCompile Include="src\renderer\objects\TextureAtlas.cpp" />
     <ClCompile Include="src\renderer\renderer.cpp" />
-    <ClCompile Include="src\renderer\renderer2D\renderer2D.cpp" />
-    <ClCompile Include="src\renderer\postprocessing\postprocessing.cpp" />
+    <ClCompile Include="src\renderer\renderer_sprite.cpp" />
+    <ClCompile Include="src\renderer\renderer_postprocessing.cpp" />
     <ClCompile Include="src\renderer\renderer_projection.cpp" />
     <ClCompile Include="src\renderer\renderer_shader.cpp" />
     <ClCompile Include="src\scene\scene.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\scene\Transform.cpp">
+    <ClCompile Include="src\entity_system\Transform.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\scene\scene_components.cpp" />
+    <ClCompile Include="src\scene\scene_physics.cpp" />
     <ClCompile Include="src\task_system\task_system.cpp" />
     <ClCompile Include="src\utils\BinFile.cpp" />
     <ClCompile Include="src\utils\sv_math.cpp" />

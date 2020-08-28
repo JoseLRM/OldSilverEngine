@@ -1,6 +1,6 @@
 #include "core.h"
 
-#include "renderer/mesh_renderer/mesh_renderer.h"
+#include "renderer/renderer_internal.h"
 #include "Mesh.h"
 
 namespace sv {

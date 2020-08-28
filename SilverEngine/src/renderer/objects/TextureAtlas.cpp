@@ -3,7 +3,7 @@
 
 namespace sv {
 
-	bool TextureAtlas::CreateFromFile(const char* filePath, bool linearFilter, SamplerAddressMode addressMode)
+	bool Texture::CreateFromFile(const char* filePath, bool linearFilter, SamplerAddressMode addressMode)
 	{
 		// Get file data
 		void* data;
@@ -46,7 +46,7 @@ namespace sv {
 		return true;
 	}
 
-	bool TextureAtlas::Destroy()
+	bool Texture::Destroy()
 	{
 		svCheck(graphics_destroy(m_Image));
 		svCheck(graphics_destroy(m_Sampler));
@@ -54,7 +54,7 @@ namespace sv {
 		return true;
 	}
 
-	Sprite TextureAtlas::AddSprite(float x, float y, float w, float h)
+	Sprite Texture::AddSprite(float x, float y, float w, float h)
 	{
 		Sprite res = { this, ui32(m_Sprites.size()) };
 		m_Sprites.emplace_back(x, y, x + w, y + h);
