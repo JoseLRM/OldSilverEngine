@@ -102,8 +102,8 @@ namespace sv {
 
 	SV_COMPONENT(MeshComponent) {
 
-		Mesh* mesh;
-		Material* material;
+		SharedRef<Mesh>		mesh;
+		SharedRef<Material> material;
 
 	};
 

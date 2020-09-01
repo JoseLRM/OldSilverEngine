@@ -11,21 +11,21 @@ namespace sv {
 	
 	static std::mutex g_Mutex;
 
-	void* graphics_allocator_construct(GraphicsPrimitiveType type, const void* desc)
+	Result graphics_allocator_construct(GraphicsPrimitiveType type, const void* desc, Primitive_internal** res)
 	{
-		void* ptr = g_Constructor(type, desc);
+		svCheck(g_Constructor(type, desc, res));
 		{
 			std::lock_guard<std::mutex> lock(g_Mutex);
-			g_Data.push_back(reinterpret_cast<Primitive_internal*>(ptr));
+			g_Data.push_back(*res);
 
 			// TODO: Binary insertion
 		}
-		return ptr;
+		return Result_Success;
 	}
 
-	bool graphics_allocator_destroy(Primitive& primitive)
+	Result graphics_allocator_destroy(Primitive& primitive)
 	{
-		if (primitive.GetPtr() == nullptr) return true;
+		if (primitive.GetPtr() == nullptr) return Result_Success;
 
 		// Remove ptr from data
 		{

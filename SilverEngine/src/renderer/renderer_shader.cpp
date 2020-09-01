@@ -4,7 +4,7 @@
 
 namespace sv {
 
-	bool renderer_shader_create(const char* name, ShaderType type, Shader& shader)
+	Result renderer_shader_create(const char* name, ShaderType type, Shader& shader)
 	{
 		GraphicsAPI api = graphics_api_get();
 
@@ -148,18 +148,18 @@ namespace sv {
 				break;
 			}
 
-			if (graphics_shader_compile_file(&compileDesc, srcPath.c_str(), binPath.c_str())) {
-
-				log_info("%s (%s) successfully compiled", name, shaderName);
-			}
-			else {
-				log_error("%s (%s) failed compiling", name, shaderName);
-			}
+			Result compileResult = graphics_shader_compile_file(&compileDesc, srcPath.c_str(), binPath.c_str());
 
 			// Check if exists and read bin data
 			input.open(binPath.c_str(), std::ios::binary | std::ios::ate);
 
-			svCheck(input.is_open());
+			if (input.is_open() && compileResult == Result_Success) {
+				log_info("%s (%s) successfully compiled", name, shaderName);
+			}
+			else {
+				log_error("%s (%s) failed compiling", name, shaderName);
+				return compileResult == Result_Success ? Result_UnknownError : compileResult;
+			}
 
 			size_t size = input.tellg();
 			input.seekg(0u);
@@ -175,7 +175,7 @@ namespace sv {
 		desc.shaderType = type;
 		
 		svCheck(graphics_shader_create(&desc, shader));
-		return true;
+		return Result_Success;
 	}
 
 }

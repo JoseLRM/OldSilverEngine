@@ -7,7 +7,7 @@
 #include "platform/windows/windows_impl.h"
 #endif
 
-namespace _sv {
+namespace sv {
 
 	void console_show()
 	{

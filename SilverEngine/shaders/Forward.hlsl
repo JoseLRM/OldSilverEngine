@@ -30,7 +30,7 @@ SV_CONSTANT_BUFFER(Camera, b0)
 Output main(Input input)
 {
     Output output;
-    output.normal = input.normal;
+    output.normal = mul(input.normal, (float3x3)input.modelViewMatrix);
     float4 fragPos = mul(input.modelViewMatrix, float4(input.position, 1.f));
     output.fragPos = fragPos.xyz;
     output.position = mul(fragPos, projectionMatrix);

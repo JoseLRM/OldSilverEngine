@@ -7,11 +7,14 @@ namespace sve {
 
 	void editor_run();
 
-	bool editor_initialize();
+	sv::Result editor_initialize();
 	void editor_update(float dt);
 	void editor_render();
-	bool editor_close();
+	sv::Result editor_close();
 
 	ImGuiDevice& editor_device_get();
+
+	void editor_gamemode_set(bool gamemode);
+	bool editor_gamemode_get();
 
 }

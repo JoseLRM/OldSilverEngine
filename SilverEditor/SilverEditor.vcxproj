@@ -89,6 +89,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\viewports\assets\viewport_assets.cpp" />
     <ClCompile Include="src\external\ImGui\imgui.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
@@ -132,11 +133,9 @@
     <ClCompile Include="src\main\Main.cpp" />
     <ClCompile Include="src\scene_editor\scene_editor.cpp" />
     <ClCompile Include="src\simulation\simulation.cpp" />
-    <ClCompile Include="src\viewports\viewport_console.cpp" />
-    <ClCompile Include="src\viewports\viewport_game.cpp" />
-    <ClCompile Include="src\viewports\viewport_manager.cpp" />
-    <ClCompile Include="src\viewports\viewport_renderer.cpp" />
-    <ClCompile Include="src\viewports\viewport_scene.cpp" />
+    <ClCompile Include="src\viewports\simulation\viewport_simulation.cpp" />
+    <ClCompile Include="src\viewports\scene\viewport_scene.cpp" />
+    <ClCompile Include="src\viewports\viewports.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="config_editor.h" />
@@ -155,7 +154,10 @@
     <ClInclude Include="src\main\imGuiDevice\ImGuiDevice.h" />
     <ClInclude Include="src\scene_editor.h" />
     <ClInclude Include="src\simulation.h" />
-    <ClInclude Include="src\viewport_manager.h" />
+    <ClInclude Include="src\viewports.h" />
+    <ClInclude Include="src\viewports\viewport_assets.h" />
+    <ClInclude Include="src\viewports\viewport_scene_editor.h" />
+    <ClInclude Include="src\viewports\viewport_simulation.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="src\external\ImGui\LICENSE.txt" />

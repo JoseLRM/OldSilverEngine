@@ -4,7 +4,7 @@
 
 namespace sv {
 
-	bool utils_initialize();
-	bool utils_close();
+	Result utils_initialize();
+	Result utils_close();
 
 }

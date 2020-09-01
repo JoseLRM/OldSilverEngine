@@ -22,15 +22,12 @@ namespace sv {
 	static DepthStencilState	g_DefDepthStencilState;
 	static RasterizerState		g_DefRasterizerState;
 
-	bool graphics_initialize(const InitializationGraphicsDesc& desc)
+	Result graphics_initialize(const InitializationGraphicsDesc& desc)
 	{
 		g_Device = std::make_unique<Graphics_vk>();
 
 		// Initialize API
-		if (!g_Device->Initialize(desc)) {
-			sv::log_error("Can't initialize GraphicsAPI");
-			return false;
-		}
+		svCheck(g_Device->Initialize(desc));
 
 		// Create default states
 		{
@@ -106,20 +103,18 @@ namespace sv {
 
 		svCheck(graphics_shader_initialize());
 
-		return true;
+		return Result_Success;
 	}
 
-	bool graphics_close()
+	Result graphics_close()
 	{
 		graphics_allocator_clear();
 
-		if (!g_Device->Close()) {
-			sv::log_error("Can't close GraphicsDevice");
-		}
+		svCheck(g_Device->Close());
 
 		svCheck(graphics_shader_close());
 
-		return true;
+		return Result_Success;
 	}
 
 	void graphics_begin()
@@ -277,14 +272,20 @@ namespace sv {
 
 #define SVAssertValidation(x) SV_ASSERT(x.IsValid())
 
-	bool Allocate(Primitive& primitive, GraphicsPrimitiveType type, const void* desc)
+	Result Allocate(Primitive& primitive, GraphicsPrimitiveType type, const void* desc)
 	{
-		if (primitive.IsValid()) graphics_destroy(primitive);
-		else primitive = Primitive(graphics_allocator_construct(type, desc));
-		return primitive.IsValid();
+		if (primitive.IsValid()) svCheck(graphics_destroy(primitive));
+		else {
+			
+			Primitive_internal* res = reinterpret_cast<Primitive_internal*>(primitive.GetPtr());
+			graphics_allocator_construct(type, desc, &res);
+			primitive = Primitive(res);
+
+		}
+		return Result_Success;
 	}
 
-	bool graphics_buffer_create(const GPUBufferDesc* desc, GPUBuffer& buffer)
+	Result graphics_buffer_create(const GPUBufferDesc* desc, GPUBuffer& buffer)
 	{
 #ifdef SV_DEBUG
 		if (desc->usage == ResourceUsage_Static && desc->CPUAccess & CPUAccess_Write) {
@@ -303,10 +304,10 @@ namespace sv {
 		p->indexType = desc->indexType;
 		p->cpuAccess = desc->CPUAccess;
 
-		return true;
+		return Result_Success;
 	}
 
-	bool graphics_shader_create(const ShaderDesc* desc, Shader& shader)
+	Result graphics_shader_create(const ShaderDesc* desc, Shader& shader)
 	{
 #ifdef SV_DEBUG
 #endif
@@ -317,10 +318,10 @@ namespace sv {
 		p->type = GraphicsPrimitiveType_Shader;
 		p->shaderType = desc->shaderType;
 
-		return true;
+		return Result_Success;
 	}
 
-	bool graphics_image_create(const GPUImageDesc* desc, GPUImage& image)
+	Result graphics_image_create(const GPUImageDesc* desc, GPUImage& image)
 	{
 #ifdef SV_DEBUG
 #endif
@@ -337,10 +338,10 @@ namespace sv {
 		p->layers = desc->layers;
 		p->imageType = desc->type;
 
-		return true;
+		return Result_Success;
 	}
 
-	bool graphics_sampler_create(const SamplerDesc* desc, Sampler& sampler)
+	Result graphics_sampler_create(const SamplerDesc* desc, Sampler& sampler)
 	{
 #ifdef SV_DEBUG
 #endif
@@ -350,10 +351,10 @@ namespace sv {
 		Sampler_internal* p = reinterpret_cast<Sampler_internal*>(sampler.GetPtr());
 		p->type = GraphicsPrimitiveType_Sampler;
 
-		return true;
+		return Result_Success;
 	}
 
-	bool graphics_renderpass_create(const RenderPassDesc* desc, RenderPass& renderPass)
+	Result graphics_renderpass_create(const RenderPassDesc* desc, RenderPass& renderPass)
 	{
 #ifdef SV_DEBUG
 #endif
@@ -371,10 +372,10 @@ namespace sv {
 		}
 		p->attachments = desc->attachments;
 
-		return true;
+		return Result_Success;
 	}
 
-	bool graphics_inputlayoutstate_create(const InputLayoutStateDesc* desc, InputLayoutState& inputLayoutState)
+	Result graphics_inputlayoutstate_create(const InputLayoutStateDesc* desc, InputLayoutState& inputLayoutState)
 	{
 #ifdef SV_DEBUG
 #endif
@@ -385,10 +386,10 @@ namespace sv {
 		p->type = GraphicsPrimitiveType_InputLayoutState;
 		p->desc = *desc;
 
-		return true;
+		return Result_Success;
 	}
 
-	bool graphics_blendstate_create(const BlendStateDesc* desc, BlendState& blendState)
+	Result graphics_blendstate_create(const BlendStateDesc* desc, BlendState& blendState)
 	{
 #ifdef SV_DEBUG
 #endif
@@ -399,10 +400,10 @@ namespace sv {
 		p->type = GraphicsPrimitiveType_BlendState;
 		p->desc = *desc;
 
-		return true;
+		return Result_Success;
 	}
 
-	bool graphics_depthstencilstate_create(const DepthStencilStateDesc* desc, DepthStencilState& depthStencilState)
+	Result graphics_depthstencilstate_create(const DepthStencilStateDesc* desc, DepthStencilState& depthStencilState)
 	{
 #ifdef SV_DEBUG
 #endif
@@ -413,10 +414,10 @@ namespace sv {
 		p->type = GraphicsPrimitiveType_DepthStencilState;
 		p->desc = *desc;
 
-		return true;
+		return Result_Success;
 	}
 
-	bool graphics_rasterizerstate_create(const RasterizerStateDesc* desc, RasterizerState& rasterizerState)
+	Result graphics_rasterizerstate_create(const RasterizerStateDesc* desc, RasterizerState& rasterizerState)
 	{
 #ifdef SV_DEBUG
 #endif
@@ -427,17 +428,17 @@ namespace sv {
 		p->type = GraphicsPrimitiveType_RasterizerState;
 		p->desc = *desc;
 
-		return true;
+		return Result_Success;
 	}
 
-	bool graphics_destroy(Primitive& primitive)
+	Result graphics_destroy(Primitive& primitive)
 	{
 		if (primitive.IsValid()) {
-			bool res = graphics_allocator_destroy(primitive);
+			Result res = graphics_allocator_destroy(primitive);
 			primitive = Primitive(nullptr);
 			return res;
 		}
-		return true;
+		return Result_Success;
 	}
 
 	CommandList graphics_commandlist_begin()

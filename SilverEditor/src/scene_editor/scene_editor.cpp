@@ -1,10 +1,10 @@
 #include "core_editor.h"
 
 #include "scene_editor.h"
-#include "viewport_manager.h"
+#include "viewports/viewport_scene_editor.h"
 #include "input.h"
 #include "scene.h"
-#include "components.h"
+#include "simulation.h"
 
 namespace sve {
 
@@ -14,7 +14,7 @@ namespace sve {
 
 	void scene_editor_camera_controller_2D(float dt)
 	{
-		float zoom = sv::renderer_projection_zoom_get(g_Camera.projection);
+		float zoom = sv::renderer_projection_zoom_get(g_Camera.settings.projection);
 
 		// Movement
 		sv::vec2 direction;
@@ -50,47 +50,88 @@ namespace sve {
 			zoom -= zoomForce;
 		}
 
-		sv::renderer_projection_zoom_set(g_Camera.projection, zoom);
+		sv::renderer_projection_zoom_set(g_Camera.settings.projection, zoom);
 
 	}
 
 	void scene_editor_camera_controller_3D(float dt)
 	{
+		sv::vec2 dragged = sv::input_mouse_dragged_get();
+		
+		if (sv::input_mouse(SV_MOUSE_RIGHT)) {
+			
+			dragged *= 700.f;
+
+			g_Camera.rotation.x += ToRadians(dragged.y);
+			g_Camera.rotation.y += ToRadians(dragged.x);
+
+		}
+		else if (sv::input_mouse(SV_MOUSE_CENTER)) {
+
+			if (dragged.Mag() != 0.f) {
+				XMVECTOR lookAt = XMVectorSet(dragged.x, -dragged.y, 0.f, 0.f);
+				lookAt = XMVector3Transform(lookAt, XMMatrixRotationRollPitchYawFromVector(g_Camera.rotation));
+				g_Camera.position -= lookAt * 100.f;
+			}
+		}
+
+		float scroll = 0.f;
+
+		if (sv::input_key('W')) {
+			scroll += dt;
+		}
+		if (sv::input_key('S')) {
+			scroll -= dt;
+		}
+
+		if (scroll != 0.f) {
+			XMVECTOR lookAt = XMVectorSet(0.f, 0.f, 1.f, 0.f);
+			lookAt = XMVector3Transform(lookAt, XMMatrixRotationRollPitchYawFromVector(g_Camera.rotation));
+			lookAt = XMVector3Normalize(lookAt);
+			g_Camera.position += lookAt * scroll * 100.f;
+		}
 
 	}
 
 	// MAIN FUNCTIONS
 
-	bool scene_editor_initialize()
+	sv::Result scene_editor_initialize()
 	{
 		// Create camera
 		{
+			sv::Scene& scene = simulation_scene_get();
 			sv::uvec2 res = sv::renderer_resolution_get();
 			svCheck(sv::renderer_offscreen_create(res.x, res.y, g_Camera.offscreen));
-			sv::CameraComponent& mainCamera = *sv::scene_ecs_component_get<sv::CameraComponent>(sv::scene_camera_get());
-			g_Camera.projection = mainCamera.projection;
+			sv::CameraComponent& mainCamera = *sv::ecs_component_get<sv::CameraComponent>(scene.mainCamera, scene.ecs);
+			g_Camera.settings.projection = mainCamera.settings.projection;
+
+			// TEMP:
+			g_Camera.settings.projection.cameraType = sv::CameraType_Perspective;
+			g_Camera.settings.projection.near = 0.01f;
+			g_Camera.settings.projection.far = 100000.f;
+			g_Camera.settings.projection.width = 0.01f;
+			g_Camera.settings.projection.height = 0.01f;
 		}
-		return true;
+		return sv::Result_Success;
 	}
 
-	bool scene_editor_close()
+	sv::Result scene_editor_close()
 	{
-		return true;
+		return sv::Result_Success;
 	}
 
 	void scene_editor_update(float dt)
 	{
-		auto props = viewport_manager_properties_get("Scene Editor");
-
 		// Adjust camera
-		sv::renderer_projection_aspect_set(g_Camera.projection, float(props.width) / float(props.height));
+		sv::uvec2 size = viewport_scene_editor_size();
+		sv::renderer_projection_aspect_set(g_Camera.settings.projection, float(size.x) / float(size.y));
 		
 		// Camera Controller
-		if (props.focus) {
-			if (g_Camera.projection.cameraType == sv::CameraType_Orthographic) {
+		if (viewport_scene_editor_has_focus()) {
+			if (g_Camera.settings.projection.cameraType == sv::CameraType_Orthographic) {
 				scene_editor_camera_controller_2D(dt);
 			}
-			else if (g_Camera.projection.cameraType == sv::CameraType_Perspective) {
+			else if (g_Camera.settings.projection.cameraType == sv::CameraType_Perspective) {
 				scene_editor_camera_controller_3D(dt);
 			}
 		}
@@ -98,20 +139,17 @@ namespace sve {
 
 	void scene_editor_render()
 	{
-		if (!viewport_manager_properties_get("Scene Editor").visible) {
+		if (!viewport_scene_editor_visible()) {
 			return;
 		}
 
-		sv::RendererDesc desc;
-		desc.rendererTarget = sv::RendererTarget_CameraOffscreen;
-		desc.camera.pOffscreen = &g_Camera.offscreen;
-		desc.camera.projection = g_Camera.projection;
-		desc.camera.settings = g_Camera.settings;
-		desc.camera.viewMatrix = XMMatrixTranslation(-g_Camera.position.x, -g_Camera.position.y, -g_Camera.position.z);
+		sv::CameraDrawDesc desc;
+		desc.pOffscreen = &g_Camera.offscreen;
+		desc.pSettings = &g_Camera.settings;
+		desc.position = g_Camera.position;
+		desc.rotation = g_Camera.rotation;
 
-		sv::renderer_scene_begin(&desc);
-		sv::renderer_scene_draw_scene();
-		sv::renderer_scene_end();
+		sv::scene_renderer_camera_draw(&desc, simulation_scene_get());
 	}
 
 	// GETTERS

@@ -37,7 +37,7 @@ namespace sv {
 	VkResult vkCreateDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerCreateInfoEXT* create_info, const VkAllocationCallbacks* alloc, VkDebugUtilsMessengerEXT* debug)
 	{
 		auto fn = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT"));
-
+		
 		if (fn) return fn(instance, create_info, alloc, debug);
 		return VK_ERROR_EXTENSION_NOT_PRESENT;
 	}
@@ -81,7 +81,7 @@ namespace sv {
 	}
 	
 	////////////////////////////////////////////API/////////////////////////////////////////////////
-	bool Graphics_vk::Initialize(const InitializationGraphicsDesc& desc)
+	Result Graphics_vk::Initialize(const InitializationGraphicsDesc& desc)
 	{
 		// Instance extensions and validation layers
 #if SV_GFX_VK_VALIDATION_LAYERS
@@ -99,24 +99,24 @@ namespace sv {
 
 		AdjustAllocator();
 
-		svCheck(CreateInstance());
+		if (!CreateInstance()) return Result_UnknownError;
 
 #if SV_GFX_VK_VALIDATION_LAYERS
-		svCheck(CreateDebugMessenger());
+		if (!CreateDebugMessenger()) return Result_UnknownError;
 #endif
 
-		svCheck(CreateAdapters());
-		svCheck(CreateLogicalDevice());
-		svCheck(CreateAllocator());
-		svCheck(CreateFrames());
-		svCheck(CreateSwapChain());
+		if (!CreateAdapters()) return Result_UnknownError;
+		if (!CreateLogicalDevice()) return Result_UnknownError;
+		if (!CreateAllocator()) return Result_UnknownError;
+		if (!CreateFrames()) return Result_UnknownError;
+		if (!CreateSwapChain()) return Result_UnknownError;
 
 		SetProperties();
 
-		return true;
+		return Result_Success;
 	}
 
-	bool Graphics_vk::Close()
+	Result Graphics_vk::Close()
 	{
 		vkDeviceWaitIdle(m_Device);
 
@@ -142,7 +142,7 @@ namespace sv {
 		vmaDestroyAllocator(m_Allocator);
 
 		// Destroy SwapChain
-		svCheck(DestroySwapChain());
+		if (!DestroySwapChain()) return Result_UnknownError;
 
 		// Destroy device and vulkan instance
 		vkDestroyDevice(m_Device, nullptr);
@@ -152,7 +152,7 @@ namespace sv {
 #endif
 
 		vkDestroyInstance(m_Instance, nullptr);
-		return true;
+		return Result_Success;
 	}
 
 
@@ -1218,7 +1218,7 @@ namespace sv {
 
 	/////////////////////////////////////////////////// CREATION ///////////////////////////////////////////////////
 
-	bool Graphics_vk::CreateBuffer(Buffer_vk& buffer, const GPUBufferDesc& desc)
+	Result Graphics_vk::CreateBuffer(Buffer_vk& buffer, const GPUBufferDesc& desc)
 	{
 		VkBufferUsageFlags bufferUsage = 0u;
 		bool deviceMemory = true;
@@ -1342,10 +1342,10 @@ namespace sv {
 		buffer.buffer_info.offset = 0u;
 		buffer.buffer_info.range = desc.size;
 
-		return true;
+		return Result_Success;
 	}
 
-	bool Graphics_vk::CreateImage(Image_vk& image, const GPUImageDesc& desc)
+	Result Graphics_vk::CreateImage(Image_vk& image, const GPUImageDesc& desc)
 	{
 		VkImageType imageType = VK_IMAGE_TYPE_MAX_ENUM;
 		VkFormat format = graphics_vulkan_parse_format(desc.format);
@@ -1553,10 +1553,10 @@ namespace sv {
 		// Set ID
 		image.ID = GetID();
 
-		return true;
+		return Result_Success;
 	}
 
-	bool Graphics_vk::CreateSampler(Sampler_vk& sampler, const SamplerDesc& desc)
+	Result Graphics_vk::CreateSampler(Sampler_vk& sampler, const SamplerDesc& desc)
 	{
 		VkSamplerCreateInfo create_info{};
 		create_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -1589,13 +1589,11 @@ namespace sv {
 		sampler.image_info.imageView = VK_NULL_HANDLE;
 		sampler.image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-		return true;
+		return Result_Success;
 	}
 
-	bool Graphics_vk::CreateShader(Shader_vk& shader, const ShaderDesc& desc)
+	Result Graphics_vk::CreateShader(Shader_vk& shader, const ShaderDesc& desc)
 	{
-		if (shader.module != VK_NULL_HANDLE) return true;
-
 		// Create ShaderModule
 		{
 			VkShaderModuleCreateInfo create_info{};
@@ -1662,10 +1660,10 @@ namespace sv {
 			vkCheck(vkCreateDescriptorSetLayout(m_Device, &create_info, nullptr, &shader.layout.setLayout));
 		}
 
-		return true;
+		return Result_Success;
 	}
 
-	bool Graphics_vk::CreateRenderPass(RenderPass_vk& renderPass, const RenderPassDesc& desc)
+	Result Graphics_vk::CreateRenderPass(RenderPass_vk& renderPass, const RenderPassDesc& desc)
 	{
 		VkAttachmentDescription attachments[SV_GFX_ATTACHMENTS_COUNT];
 
@@ -1691,7 +1689,7 @@ namespace sv {
 				colorIt++;
 				break;
 			case AttachmentType_DepthStencil:
-				if (hasDepthStencil) return false;
+				if (hasDepthStencil) return Result_InvalidUsage;
 
 				depthStencilAttachment.attachment = i;
 				depthStencilAttachment.layout = graphics_vulkan_parse_image_layout(attDesc.layout, attDesc.format);
@@ -1736,67 +1734,67 @@ namespace sv {
 
 		vkCheck(vkCreateRenderPass(m_Device, &create_info, nullptr, &renderPass.renderPass));
 		
-		return true;
+		return Result_Success;
 	}
 
-	bool Graphics_vk::CreateInputLayoutState(InputLayoutState_vk& inputLayoutState, const InputLayoutStateDesc& desc)
+	Result Graphics_vk::CreateInputLayoutState(InputLayoutState_vk& inputLayoutState, const InputLayoutStateDesc& desc)
 	{
 		inputLayoutState.hash = graphics_compute_hash_inputlayoutstate(&desc);
-		return true;
+		return Result_Success;
 	}
 
-	bool Graphics_vk::CreateBlendState(BlendState_vk& blendState, const BlendStateDesc& desc)
+	Result Graphics_vk::CreateBlendState(BlendState_vk& blendState, const BlendStateDesc& desc)
 	{
 		blendState.hash = graphics_compute_hash_blendstate(&desc);
-		return true;
+		return Result_Success;
 	}
 
-	bool Graphics_vk::CreateDepthStencilState(DepthStencilState_vk& depthStencilState, const DepthStencilStateDesc& desc)
+	Result Graphics_vk::CreateDepthStencilState(DepthStencilState_vk& depthStencilState, const DepthStencilStateDesc& desc)
 	{
 		depthStencilState.hash = graphics_compute_hash_depthstencilstate(&desc);
-		return true;
+		return Result_Success;
 	}
 
-	bool Graphics_vk::CreateRasterizerState(RasterizerState_vk& rasterizerState, const RasterizerStateDesc& desc)
+	Result Graphics_vk::CreateRasterizerState(RasterizerState_vk& rasterizerState, const RasterizerStateDesc& desc)
 	{
 		rasterizerState.hash = graphics_compute_hash_rasterizerstate(&desc);
-		return true;
+		return Result_Success;
 	}
 
 	///////////////////////////////////////////////////// DESTRUCTION ///////////////////////////////////////////////////////
 
-	bool Graphics_vk::DestroyBuffer(Buffer_vk& buffer)
+	Result Graphics_vk::DestroyBuffer(Buffer_vk& buffer)
 	{
 		vmaDestroyBuffer(m_Allocator, buffer.buffer, buffer.allocation);
 		buffer.memory.Clear();
-		return true;
+		return Result_Success;
 	}
-	bool Graphics_vk::DestroyImage(Image_vk& image)
+	Result Graphics_vk::DestroyImage(Image_vk& image)
 	{
 		vmaDestroyImage(m_Allocator, image.image, image.allocation);
 		if (image.renderTargetView != VK_NULL_HANDLE)	vkDestroyImageView(m_Device, image.renderTargetView, nullptr);
 		if (image.depthStencilView != VK_NULL_HANDLE)	vkDestroyImageView(m_Device, image.depthStencilView, nullptr);
 		if (image.shaderResouceView != VK_NULL_HANDLE)	vkDestroyImageView(m_Device, image.shaderResouceView, nullptr);
-		return true;
+		return Result_Success;
 	}
-	bool Graphics_vk::DestroySampler(Sampler_vk& sampler)
+	Result Graphics_vk::DestroySampler(Sampler_vk& sampler)
 	{
 		vkDestroySampler(m_Device, sampler.sampler, nullptr);
-		return true;
+		return Result_Success;
 	}
-	bool Graphics_vk::DestroyShader(Shader_vk& shader)
+	Result Graphics_vk::DestroyShader(Shader_vk& shader)
 	{
 		vkDestroyShaderModule(m_Device, shader.module, nullptr);
 		vkDestroyDescriptorSetLayout(m_Device, shader.layout.setLayout, nullptr);
-		return true;
+		return Result_Success;
 	}
-	bool Graphics_vk::DestroyRenderPass(RenderPass_vk& renderPass)
+	Result Graphics_vk::DestroyRenderPass(RenderPass_vk& renderPass)
 	{
 		vkDestroyRenderPass(m_Device, renderPass.renderPass, nullptr);
 		for (auto& it : renderPass.frameBuffers) {
 			vkDestroyFramebuffer(m_Device, it.second, nullptr);
 		}
-		return true;
+		return Result_Success;
 	}
 
 	//////////////////////////////////////// DEVICE ////////////////////////////////////////
@@ -2126,10 +2124,10 @@ namespace sv {
 	}
 
 	//////////////////////////////////////// CONSTRUCTOR & DESTRUCTOR ////////////////////////////////////////
-	void* VulkanConstructor(GraphicsPrimitiveType type, const void* desc)
+	Result VulkanConstructor(GraphicsPrimitiveType type, const void* desc, Primitive_internal** ptr)
 	{
 		Graphics_vk& gfx = *reinterpret_cast<Graphics_vk*>(graphics_device_get());
-		void* ptr = nullptr;
+		Result result = Result_Success;
 
 		switch (type)
 		{
@@ -2137,113 +2135,132 @@ namespace sv {
 		case GraphicsPrimitiveType_Buffer:
 		{
 			Buffer_vk* b = new Buffer_vk();
-			if (!gfx.CreateBuffer(*b, *reinterpret_cast<const GPUBufferDesc*>(desc))) {
+			result = gfx.CreateBuffer(*b, *reinterpret_cast<const GPUBufferDesc*>(desc)); 
+			
+			if (result != Result_Success) {
 				delete b;
 				b = nullptr;
 			}
-			ptr = b;
+			*ptr = b;
 		}
 		break;
 
 		case GraphicsPrimitiveType_Shader:
 		{
 			Shader_vk* s = new Shader_vk();
-			if (!gfx.CreateShader(*s, *reinterpret_cast<const ShaderDesc*>(desc))) {
+			result = gfx.CreateShader(*s, *reinterpret_cast<const ShaderDesc*>(desc));
+
+			if (result != Result_Success) {
 				delete s;
 				s = nullptr;
 			}
-			ptr = s;
+			*ptr = s;
 		}
 		break;
 
 		case GraphicsPrimitiveType_Image:
 		{
 			Image_vk* i = new Image_vk();
-			if (!gfx.CreateImage(*i, *reinterpret_cast<const GPUImageDesc*>(desc))) {
+			result = gfx.CreateImage(*i, *reinterpret_cast<const GPUImageDesc*>(desc));
+
+			if (result != Result_Success) {
 				delete i;
 				i = nullptr;
 			}
-			ptr = i;
+			*ptr = i;
 		}
 		break;
 
 		case GraphicsPrimitiveType_Sampler:
 		{
 			Sampler_vk* i = new Sampler_vk();
-			if (!gfx.CreateSampler(*i, *reinterpret_cast<const SamplerDesc*>(desc))) {
+			result = gfx.CreateSampler(*i, *reinterpret_cast<const SamplerDesc*>(desc));
+
+			if (result != Result_Success) {
 				delete i;
 				i = nullptr;
 			}
-			ptr = i;
+			*ptr = i;
 		}
 		break;
 
 		case GraphicsPrimitiveType_RenderPass:
 		{
 			RenderPass_vk* rp = new RenderPass_vk();
-			if (!gfx.CreateRenderPass(*rp, *reinterpret_cast<const RenderPassDesc*>(desc))) {
+			result = gfx.CreateRenderPass(*rp, *reinterpret_cast<const RenderPassDesc*>(desc));
+
+			if (result != Result_Success) {
 				delete rp;
 				rp = nullptr;
 			}
-			ptr = rp;
+			*ptr = rp;
 		}
 		break;
 
 		case GraphicsPrimitiveType_InputLayoutState:
 		{
 			InputLayoutState_vk* ils = new InputLayoutState_vk();
-			if (!gfx.CreateInputLayoutState(*ils, *reinterpret_cast<const InputLayoutStateDesc*>(desc))) {
+			result = gfx.CreateInputLayoutState(*ils, *reinterpret_cast<const InputLayoutStateDesc*>(desc));
+
+			if (result != Result_Success) {
 				delete ils;
 				ils = nullptr;
 			}
-			ptr = ils;
+			*ptr = ils;
 		}
 		break;
 
 		case GraphicsPrimitiveType_BlendState:
 		{
 			BlendState_vk* bs = new BlendState_vk();
-			if (!gfx.CreateBlendState(*bs, *reinterpret_cast<const BlendStateDesc*>(desc))) {
+			result = gfx.CreateBlendState(*bs, *reinterpret_cast<const BlendStateDesc*>(desc));
+
+			if (result != Result_Success) {
 				delete bs;
 				bs = nullptr;
 			}
-			ptr = bs;
+			*ptr = bs;
 		}
 		break;
 
 		case GraphicsPrimitiveType_DepthStencilState:
 		{
 			DepthStencilState_vk* dss = new DepthStencilState_vk();
-			if (!gfx.CreateDepthStencilState(*dss, *reinterpret_cast<const DepthStencilStateDesc*>(desc))) {
+			result = gfx.CreateDepthStencilState(*dss, *reinterpret_cast<const DepthStencilStateDesc*>(desc));
+
+			if (result != Result_Success) {
 				delete dss;
 				dss = nullptr;
 			}
-			ptr = dss;
+			*ptr = dss;
 		}
 		break;
 
 		case GraphicsPrimitiveType_RasterizerState:
 		{
 			RasterizerState_vk* rs = new RasterizerState_vk();
-			if (!gfx.CreateRasterizerState(*rs, *reinterpret_cast<const RasterizerStateDesc*>(desc))) {
+			result = gfx.CreateRasterizerState(*rs, *reinterpret_cast<const RasterizerStateDesc*>(desc));
+
+			if (result != Result_Success) {
 				delete rs;
 				rs = nullptr;
 			}
-			ptr = rs;
+			*ptr = rs;
 		}
 		break;
 
 		}
 
-		return ptr;
+		return result;
 	}
-	bool VulkanDestructor(Primitive& primitive)
+
+	Result VulkanDestructor(Primitive& primitive)
 	{
 		Graphics_vk& gfx = *reinterpret_cast<Graphics_vk*>(graphics_device_get());
 
 		vkDeviceWaitIdle(gfx.GetDevice());
 
-		bool result = false;
+		Result result = Result_Success;
 
 		switch (reinterpret_cast<Primitive_internal*>(primitive.GetPtr())->type)
 		{
@@ -2292,7 +2309,7 @@ namespace sv {
 		{
 			InputLayoutState_vk& inputLayoutState = *reinterpret_cast<InputLayoutState_vk*>(primitive.GetPtr());
 			inputLayoutState.~InputLayoutState_vk();
-			result = true;
+			result = Result_Success;
 			break;
 		}
 
@@ -2300,7 +2317,7 @@ namespace sv {
 		{
 			BlendState_vk& blendState = *reinterpret_cast<BlendState_vk*>(primitive.GetPtr());
 			blendState.~BlendState_vk();
-			result = true;
+			result = Result_Success;
 			break;
 		}
 
@@ -2308,7 +2325,7 @@ namespace sv {
 		{
 			DepthStencilState_vk& depthStencilState = *reinterpret_cast<DepthStencilState_vk*>(primitive.GetPtr());
 			depthStencilState.~DepthStencilState_vk();
-			result = true;
+			result = Result_Success;
 			break;
 		}
 
@@ -2316,12 +2333,12 @@ namespace sv {
 		{
 			RasterizerState_vk& rasterizerState = *reinterpret_cast<RasterizerState_vk*>(primitive.GetPtr());
 			rasterizerState.~RasterizerState_vk();
-			result = true;
+			result = Result_Success;
 			break;
 		}
 
 		default:
-			return true;
+			return Result_Success;
 
 		}
 

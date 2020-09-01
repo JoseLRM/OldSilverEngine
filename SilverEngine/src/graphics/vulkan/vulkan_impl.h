@@ -19,7 +19,7 @@
 #define vkAssert(x) x
 #endif
 
-#define vkCheck(x) if((x) != VK_SUCCESS) return false
+#define vkCheck(x) if((x) != VK_SUCCESS) return sv::Result_UnknownError
 #define vkExt(x) do{ VkResult res = (x); if(res != VK_SUCCESS) return res; }while(0)
 
 #undef CreateSemaphore

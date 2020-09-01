@@ -44,7 +44,7 @@ namespace sv {
 		}
 	}
 
-	bool renderer_sprite_initialize(const InitializationRendererDesc& desc)
+	Result renderer_sprite_initialize(const InitializationRendererDesc& desc)
 	{
 		// Sprite Buffers
 		{
@@ -161,10 +161,10 @@ namespace sv {
 			svCheck(graphics_sampler_create(&desc, g_SpriteDefSampler));
 		}
 
-		return true;
+		return Result_Success;
 	}
 
-	bool renderer_sprite_close()
+	Result renderer_sprite_close()
 	{
 		g_SpritePipeline = {};
 		svCheck(graphics_destroy(g_SpriteInputLayoutState));
@@ -177,7 +177,7 @@ namespace sv {
 		svCheck(graphics_destroy(g_SpriteWhiteTexture));
 		svCheck(graphics_destroy(g_SpriteDefSampler));
 
-		return true;
+		return Result_Success;
 	}
 
 	void RenderSpriteBatch(ui32 offset, ui32 size, Texture* texture, CommandList cmd)
@@ -253,8 +253,8 @@ namespace sv {
 				pos3 = XMVector4Transform(pos3, matrix);
 
 				vec4 texCoord;
-				if (spr.sprite.pTextureAtlas)
-					texCoord = spr.sprite.pTextureAtlas->GetSprite(spr.sprite.index);
+				if (spr.pTexture)
+					texCoord = spr.pTexture->GetSprite(spr.spriteIndex);
 
 				ui32 index = j * 4u;
 				g_SpriteData[index + 0] = { pos0, {texCoord.x, texCoord.y}, spr.color };
@@ -280,16 +280,16 @@ namespace sv {
 
 				endBuffer = buffer + batchSize;
 
-				texture = buffer->sprite.pTextureAtlas;
+				texture = buffer->pTexture;
 				
 				ui32 offset = buffer - beginBuffer;
 				while (buffer != endBuffer) {
 
-					if (buffer->sprite.pTextureAtlas != texture) {
+					if (buffer->pTexture != texture) {
 						ui32 batchPos = buffer - beginBuffer;
 						RenderSpriteBatch(offset, batchPos - offset, texture, cmd);
 						offset = batchPos;
-						texture = buffer->sprite.pTextureAtlas;
+						texture = buffer->pTexture;
 					}
 
 					buffer++;

@@ -1,10 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="src\viewports\viewport_manager.cpp" />
-    <ClCompile Include="src\viewports\viewport_scene.cpp" />
-    <ClCompile Include="src\viewports\viewport_game.cpp" />
-    <ClCompile Include="src\viewports\viewport_console.cpp" />
     <ClCompile Include="src\external\ImGui\imgui.cpp" />
     <ClCompile Include="src\external\ImGui\imgui_demo.cpp" />
     <ClCompile Include="src\external\ImGui\imgui_draw.cpp" />
@@ -12,7 +8,6 @@
     <ClCompile Include="src\external\ImGui\imgui_impl_vulkan.cpp" />
     <ClCompile Include="src\external\ImGui\imgui_impl_win32.cpp" />
     <ClCompile Include="src\external\ImGui\imgui_widgets.cpp" />
-    <ClCompile Include="src\viewports\viewport_renderer.cpp" />
     <ClCompile Include="src\simulation\simulation.cpp" />
     <ClCompile Include="src\main\imGuiDevice\ImGuiDevice.cpp" />
     <ClCompile Include="src\main\imGuiDevice\ImGuiDevice_vk.cpp" />
@@ -22,6 +17,10 @@
       <Filter>System</Filter>
     </ClCompile>
     <ClCompile Include="src\scene_editor\scene_editor.cpp" />
+    <ClCompile Include="src\viewports\assets\viewport_assets.cpp" />
+    <ClCompile Include="src\viewports\scene\viewport_scene.cpp" />
+    <ClCompile Include="src\viewports\simulation\viewport_simulation.cpp" />
+    <ClCompile Include="src\viewports\viewports.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\editor.h" />
@@ -43,8 +42,11 @@
       <Filter>System</Filter>
     </ClInclude>
     <ClInclude Include="src\main\imGuiDevice\ImGuiDevice_vk.h" />
-    <ClInclude Include="src\viewport_manager.h" />
     <ClInclude Include="src\scene_editor.h" />
+    <ClInclude Include="src\viewports\viewport_assets.h" />
+    <ClInclude Include="src\viewports\viewport_simulation.h" />
+    <ClInclude Include="src\viewports\viewport_scene_editor.h" />
+    <ClInclude Include="src\viewports.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="external">

@@ -583,17 +583,17 @@ namespace sv {
 
 	// Primitives
 
-	bool graphics_buffer_create(const GPUBufferDesc* desc, GPUBuffer& buffer);
-	bool graphics_shader_create(const ShaderDesc* desc, Shader& shader);
-	bool graphics_image_create(const GPUImageDesc* desc, GPUImage& image);
-	bool graphics_sampler_create(const SamplerDesc* desc, Sampler& sampler);
-	bool graphics_renderpass_create(const RenderPassDesc* desc, RenderPass& renderPass);
-	bool graphics_inputlayoutstate_create(const InputLayoutStateDesc* desc, InputLayoutState& inputLayoutState);
-	bool graphics_blendstate_create(const BlendStateDesc* desc, BlendState& blendState);
-	bool graphics_depthstencilstate_create(const DepthStencilStateDesc* desc, DepthStencilState& depthStencilState);
-	bool graphics_rasterizerstate_create(const RasterizerStateDesc* desc, RasterizerState& rasterizerState);
+	Result graphics_buffer_create(const GPUBufferDesc* desc, GPUBuffer& buffer);
+	Result graphics_shader_create(const ShaderDesc* desc, Shader& shader);
+	Result graphics_image_create(const GPUImageDesc* desc, GPUImage& image);
+	Result graphics_sampler_create(const SamplerDesc* desc, Sampler& sampler);
+	Result graphics_renderpass_create(const RenderPassDesc* desc, RenderPass& renderPass);
+	Result graphics_inputlayoutstate_create(const InputLayoutStateDesc* desc, InputLayoutState& inputLayoutState);
+	Result graphics_blendstate_create(const BlendStateDesc* desc, BlendState& blendState);
+	Result graphics_depthstencilstate_create(const DepthStencilStateDesc* desc, DepthStencilState& depthStencilState);
+	Result graphics_rasterizerstate_create(const RasterizerStateDesc* desc, RasterizerState& rasterizerState);
 
-	bool graphics_destroy(Primitive& primitive);
+	Result graphics_destroy(Primitive& primitive);
 
 	CommandList graphics_commandlist_begin();
 	CommandList graphics_commandlist_last();
@@ -640,8 +640,8 @@ namespace sv {
 
 	// Shader utils
 
-	bool graphics_shader_compile_string(const ShaderCompileDesc* desc, const char* str, ui32 size, std::vector<ui8>& data);
-	bool graphics_shader_compile_file(const ShaderCompileDesc* desc, const char* srcPath, const char* binPath);
+	Result graphics_shader_compile_string(const ShaderCompileDesc* desc, const char* str, ui32 size, std::vector<ui8>& data);
+	Result graphics_shader_compile_file(const ShaderCompileDesc* desc, const char* srcPath, const char* binPath);
 
 	// Primitive getters
 

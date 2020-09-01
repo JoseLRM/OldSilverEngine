@@ -8,7 +8,7 @@
 #include "platform/window_internal.h"
 #include "task_system/task_system_internal.h"
 #include "utils/utils_internal.h"
-#include "asset_manager/asset_manager_internal.h"
+#include "scene/scene_internal.h"
 
 using namespace sv;
 
@@ -23,7 +23,7 @@ namespace sv {
 
 	static ApplicationCallbacks g_App;
 
-	bool engine_initialize(const InitializationDesc* d)
+	Result engine_initialize(const InitializationDesc* d)
 	{
 		SV_ASSERT(d != nullptr);
 
@@ -38,30 +38,30 @@ namespace sv {
 		sv::log_info("Initializing %s", g_Name.c_str());
 
 		// CONSOLE
-		if (desc.showConsole) _sv::console_show();
-		else _sv::console_hide();
+		if (desc.showConsole) console_show();
+		else console_hide();
 
 		// SYSTEMS
 
 		svCheck(utils_initialize());
 		svCheck(task_initialize(desc.minThreadsCount));
+		svCheck(scene_assets_initialize(desc.assetFolderPath));
 		svCheck(window_initialize(desc.windowDesc));
 		svCheck(graphics_initialize(desc.graphicsDesc));
 		svCheck(renderer_initialize(desc.rendererDesc));
-		svCheck(asset_manager_initialize());
 
 		// APPLICATION
 		svCheck(g_App.initialize());
 
-		return true;
+		return Result_Success;
 	}
 
-	bool engine_loop()
+	Result engine_loop()
 	{
 		static Time		lastTime		= 0.f;
 		static float	showFPSTime		= 0.f;
 		static ui32		FPS				= 0u;
-		bool			running			= true;
+		Result			loopResult		= Result_Success;
 
 		g_FrameCount++;
 
@@ -75,7 +75,7 @@ namespace sv {
 			if (g_DeltaTime > 0.3f) g_DeltaTime = 0.3f;
 
 			// Update Input
-			if (input_update()) return false;
+			if (input_update()) return Result_CloseRequest;
 			window_update();
 
 			// Update User
@@ -101,28 +101,29 @@ namespace sv {
 		}
 		catch (Exception e) {
 			sv::log_error("%s: '%s'\nFile: '%s', Line: %u", e.type.c_str(), e.desc.c_str(), e.file.c_str(), e.line);
-			running = false;
+			loopResult = Result_UnknownError;
 			system("PAUSE");
 		}
 		catch (std::exception e) {
 			sv::log_error("STD Exception: '%s'", e.what());
-			running = false;
+			loopResult = Result_UnknownError;
 			system("PAUSE");
 		}
 		catch (int i) {
 			sv::log_error("Unknown Error: %i", i);
-			running = false;
+			loopResult = Result_UnknownError;
 			system("PAUSE");
 		}
 		catch (...) {
 			sv::log_error("Unknown Error");
-			running = false;
+			loopResult = Result_UnknownError;
 			system("PAUSE");
 		}
 
-		return running;
+		return loopResult;
 	}
-	bool engine_close()
+
+	Result engine_close()
 	{
 		sv::log_separator();
 		sv::log_info("Closing %s", g_Name.c_str());
@@ -130,13 +131,13 @@ namespace sv {
 		// APPLICATION
 		svCheck(g_App.close());
 
-		svCheck(asset_manager_close());
 		svCheck(renderer_close());
 		svCheck(window_close());
 		svCheck(graphics_close());
+		svCheck(scene_assets_close());
 		svCheck(task_close());
 
-		return true;
+		return Result_Success;
 	}
 
 	Version engine_version_get() noexcept { return g_Version; }

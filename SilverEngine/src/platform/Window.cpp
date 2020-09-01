@@ -20,7 +20,7 @@ namespace sv {
 	static Window_lnx platform;
 #endif
 
-	bool window_initialize(const InitializationWindowDesc& desc)
+	Result window_initialize(const InitializationWindowDesc& desc)
 	{
 		// Create Window
 		g_X = desc.x;
@@ -35,14 +35,14 @@ namespace sv {
 
 		if (g_WindowHandle == 0) {
 			sv::log_error("Error creating Window class");
-			return false;
+			return Result_PlatformError;
 		}
 
-		return true;
+		return Result_Success;
 	}
-	bool window_close()
+	Result window_close()
 	{
-		return platform.CloseWindowWindows(g_WindowHandle);
+		return platform.CloseWindowWindows(g_WindowHandle) ? Result_Success : Result_PlatformError;
 	}
 
 	void window_update()

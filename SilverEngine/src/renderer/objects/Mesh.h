@@ -18,8 +18,8 @@ namespace sv {
 		GPUBuffer m_IndexBuffer;
 
 	public:
-		bool CreateBuffers();
-		bool DestroyBuffers();
+		Result CreateBuffers();
+		Result DestroyBuffers();
 
 		// Setters
 

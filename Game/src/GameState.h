@@ -34,7 +34,7 @@ class GameState : public sv::State {
 	sv::Scene scene;
 	sv::Entity entity;
 
-	sv::TextureAtlas texture;
+	sv::Texture texture;
 	sv::Sprite sprite;
 
 	void createEntity()

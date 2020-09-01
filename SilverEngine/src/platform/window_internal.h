@@ -4,8 +4,8 @@
 
 namespace sv {
 
-	bool window_initialize(const sv::InitializationWindowDesc& desc);
-	bool window_close();
+	Result window_initialize(const sv::InitializationWindowDesc& desc);
+	Result window_close();
 	void window_update();
 
 	void window_set_position(ui32 x, ui32 y);

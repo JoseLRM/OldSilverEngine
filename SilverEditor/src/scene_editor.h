@@ -1,20 +1,19 @@
 #pragma once
 
 #include "core_editor.h"
-#include "renderer.h"
+#include "scene.h"
 
 namespace sve {
 
 	struct DebugCamera {
-		sv::CameraProjection	projection;
 		sv::CameraSettings		settings;
 		sv::Offscreen			offscreen;
 		sv::vec3				position;
-		sv::vec2				rotation;
+		sv::vec3				rotation;
 	};
 
-	bool scene_editor_initialize();
-	bool scene_editor_close();
+	sv::Result scene_editor_initialize();
+	sv::Result scene_editor_close();
 
 	void scene_editor_update(float dt);
 	void scene_editor_render();

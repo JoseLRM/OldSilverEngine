@@ -48,23 +48,42 @@ typedef int			BOOL;
 #define FALSE		0
 #define TRUE		1
 
-// Exception
-
 namespace sv {
+
+	// Result
+
+	enum Result : ui32 {
+		Result_Success,
+		Result_CloseRequest,
+		Result_UnknownError,
+		Result_PlatformError,
+		Result_NotFound,
+		Result_InvalidFormat,
+		Result_InvalidUsage,
+	};
+	
+	// Exception
+	
 	struct Exception {
 		std::string type, desc, file;
 		ui32 line;
 		Exception(const char* type, const char* desc, const char* file, ui32 line)
 			: type(type), desc(desc), file(file), line(line) {}
 	};
-}
 #define SV_THROW(type, desc) throw sv::Exception(type, desc, __FILE__, __LINE__)
 
-// Console
+	// Console
 
-namespace _sv {
 	void console_show();
 	void console_hide();
+
+	// logging
+
+	void log_separator();
+	void log(const char* s, ...);
+	void log_info(const char* s, ...);
+	void log_warning(const char* s, ...);
+	void log_error(const char* s, ...);
 }
 
 // macros
@@ -75,19 +94,9 @@ namespace _sv {
 #define SV_ASSERT(x) x
 #endif
 
-#define svCheck(x) if(!(x)) do{ sv::log_error(#x); return false; }while(0)
+#define svCheck(x) do{ sv::Result __res__ = (x); if(__res__ != sv::Result_Success) { sv::log_error(#x" (error code: %u)", __res__); return __res__; } }while(0)
 #define svZeroMemory(dest, size) memset(dest, 0, size)
 #define SV_BIT(x) 1ULL << x 
-
-// logging
-
-namespace sv {
-	void log_separator();
-	void log(const char* s, ...);
-	void log_info(const char* s, ...);
-	void log_warning(const char* s, ...);
-	void log_error(const char* s, ...);
-}
 
 // SilverEngine Includes
 

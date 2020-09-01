@@ -8,7 +8,7 @@
 
 namespace sv {
 
-	SerializationResult loader_model_import(const char* externalFilePath, Model& model)
+	Result loader_model_import(const char* externalFilePath, Model& model)
 	{
 		Assimp::Importer importer;
 
@@ -18,7 +18,7 @@ namespace sv {
 #endif
 
 		const aiScene const* scene = importer.ReadFile(filePath, aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_CalcTangentSpace | aiProcess_OptimizeMeshes);
-		if (scene == nullptr || !scene->HasMeshes()) return SerializationResult_InvalidFormat;
+		if (scene == nullptr || !scene->HasMeshes()) return Result_InvalidFormat;
 
 		// Create Materials
 		model.materials.resize(scene->mNumMaterials);
@@ -32,7 +32,7 @@ namespace sv {
 			matData.diffuseColor = { 0.f, 1.f, 0.f, 1.f };
 
 			if (!mat.CreateBuffers(matData)) {
-				return SerializationResult_Unknown;
+				return Result_UnknownError;
 			}
 
 		}
@@ -65,14 +65,10 @@ namespace sv {
 				mesh.mesh.SetIndices(face.mIndices, i * 3u, 3u);
 			}
 
-			if (!mesh.mesh.CreateBuffers()) {
-				return SerializationResult_Unknown;
-			}
+			svCheck(mesh.mesh.CreateBuffers());
 		}
 
-		
-
-		return SerializationResult_Success;
+		return Result_Success;
 	}
 
 }

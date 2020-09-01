@@ -15,14 +15,14 @@ namespace sv {
 		return std::chrono::steady_clock::now();
 	}
 
-	bool utils_initialize()
+	Result utils_initialize()
 	{
 		g_InitialTime = timer_now_chrono();
-		return true;
+		return Result_Success;
 	}
-	bool utils_close()
+	Result utils_close()
 	{
-		return true;
+		return Result_Success;
 	}
 
 	// String
@@ -47,7 +47,7 @@ namespace sv {
 
 	// Loader
 
-	bool utils_loader_image(const char* filePath, void** pdata, ui32* width, ui32* height)
+	Result utils_loader_image(const char* filePath, void** pdata, ui32* width, ui32* height)
 	{
 		int w = 0, h = 0, bits = 0;
 
@@ -63,9 +63,9 @@ namespace sv {
 		*width = w;
 		*height = h;
 
-		if (!data) return false;
+		if (!data) return Result_NotFound;
 		*pdata = data;
-		return true;
+		return Result_Success;
 	}
 
 	// Timer

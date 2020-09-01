@@ -4,9 +4,9 @@
 #include "Mesh.h"
 
 namespace sv {
-	bool Mesh::CreateBuffers()
+	Result Mesh::CreateBuffers()
 	{
-		if (m_VertexCount == 0u && m_IndexCount == 0u) return false;
+		if (m_VertexCount == 0u && m_IndexCount == 0u) return Result_InvalidUsage;
 
 		// Vertex Buffer
 		MeshVertex* vertices = new MeshVertex[m_VertexCount];
@@ -40,15 +40,15 @@ namespace sv {
 
 		svCheck(graphics_buffer_create(&desc, m_IndexBuffer));
 
-		return true;
+		return Result_Success;
 	}
 
-	bool Mesh::DestroyBuffers()
+	Result Mesh::DestroyBuffers()
 	{
-		graphics_destroy(m_VertexBuffer);
-		graphics_destroy(m_IndexBuffer);
+		svCheck(graphics_destroy(m_VertexBuffer));
+		svCheck(graphics_destroy(m_IndexBuffer));
 
-		return true;
+		return Result_Success;
 	}
 
 	void Mesh::SetVertexCount(ui32 vertexCount)

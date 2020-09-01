@@ -193,8 +193,8 @@ namespace sv {
 
 	//////////////////////////////////////////////////////////// CONSTRUCTOR & DESTRUCTOR ////////////////////////////////////////////////////////////
 
-	void* VulkanConstructor(GraphicsPrimitiveType type, const void* desc);
-	bool VulkanDestructor(Primitive& primitive);
+	Result VulkanConstructor(GraphicsPrimitiveType type, const void* desc, Primitive_internal** res);
+	Result VulkanDestructor(Primitive& primitive);
 
 	//////////////////////////////////////////////////////////// GRAPHICS API ////////////////////////////////////////////////////////////
 
@@ -276,8 +276,8 @@ namespace sv {
 		std::mutex							m_PipelinesMutex;
 
 	public:
-		bool Initialize(const InitializationGraphicsDesc& desc) override;
-		bool Close() override;
+		Result Initialize(const InitializationGraphicsDesc& desc) override;
+		Result Close() override;
 
 	private:
 		// Initialization Methods
@@ -313,26 +313,26 @@ namespace sv {
 		inline SwapChain& GetSwapChain() noexcept { return m_SwapChain; }
 
 		// Primitive Creation
-		bool CreateBuffer(Buffer_vk& buffer, const GPUBufferDesc& desc);
-		bool CreateImage(Image_vk& image, const GPUImageDesc& desc);
-		bool CreateSampler(Sampler_vk& sampler, const SamplerDesc& desc);
-		bool CreateShader(Shader_vk& shader, const ShaderDesc& desc);
-		bool CreateRenderPass(RenderPass_vk& renderPass, const RenderPassDesc& desc);
-		bool CreateInputLayoutState(InputLayoutState_vk& inputLayoutState, const InputLayoutStateDesc& desc);
-		bool CreateBlendState(BlendState_vk& blendState, const BlendStateDesc& desc);
-		bool CreateDepthStencilState(DepthStencilState_vk& depthStencilState, const DepthStencilStateDesc& desc);
-		bool CreateRasterizerState(RasterizerState_vk& rasterizerState, const RasterizerStateDesc& desc);
+		Result CreateBuffer(Buffer_vk& buffer, const GPUBufferDesc& desc);
+		Result CreateImage(Image_vk& image, const GPUImageDesc& desc);
+		Result CreateSampler(Sampler_vk& sampler, const SamplerDesc& desc);
+		Result CreateShader(Shader_vk& shader, const ShaderDesc& desc);
+		Result CreateRenderPass(RenderPass_vk& renderPass, const RenderPassDesc& desc);
+		Result CreateInputLayoutState(InputLayoutState_vk& inputLayoutState, const InputLayoutStateDesc& desc);
+		Result CreateBlendState(BlendState_vk& blendState, const BlendStateDesc& desc);
+		Result CreateDepthStencilState(DepthStencilState_vk& depthStencilState, const DepthStencilStateDesc& desc);
+		Result CreateRasterizerState(RasterizerState_vk& rasterizerState, const RasterizerStateDesc& desc);
 
 		ui64 m_IDCount = 0u;
 		std::mutex m_IDMutex;
 		inline ui64 GetID() noexcept { std::lock_guard<std::mutex> lock(m_IDMutex); return m_IDCount++; }
 
 		// Primitive Destuction
-		bool DestroyBuffer(Buffer_vk& buffer);
-		bool DestroyImage(Image_vk& image);
-		bool DestroySampler(Sampler_vk& sampler);
-		bool DestroyShader(Shader_vk& shader);
-		bool DestroyRenderPass(RenderPass_vk& renderPass);
+		Result DestroyBuffer(Buffer_vk& buffer);
+		Result DestroyImage(Image_vk& image);
+		Result DestroySampler(Sampler_vk& sampler);
+		Result DestroyShader(Shader_vk& shader);
+		Result DestroyRenderPass(RenderPass_vk& renderPass);
 
 		// Device Methods
 

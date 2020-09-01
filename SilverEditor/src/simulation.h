@@ -5,8 +5,8 @@
 
 namespace sve {
 
-	bool simulation_initialize();
-	bool simulation_close();
+	sv::Result simulation_initialize();
+	sv::Result simulation_close();
 	void simulation_update(float dt);
 	void simulation_render();
 
@@ -20,8 +20,8 @@ namespace sve {
 
 	// Scene Management
 
-	sv::Scene	simulation_scene_create_default();
+	sv::Scene simulation_scene_create_default();
 	void		simulation_scene_load();
-	sv::Scene	simulation_scene_get();
+	sv::Scene&	simulation_scene_get();
 
 }

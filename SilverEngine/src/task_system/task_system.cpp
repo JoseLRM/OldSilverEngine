@@ -106,7 +106,7 @@ namespace sv {
 	static ui32			g_MinThreads = 0;
 	static std::mutex	g_BlockingTaskMutex;
 
-	bool task_initialize(ui32 minThreads)
+	Result task_initialize(ui32 minThreads)
 	{
 		g_MinThreads = minThreads;
 		ui32 numThreads = std::thread::hardware_concurrency();
@@ -115,12 +115,12 @@ namespace sv {
 		sv::log_info("Reserving %u threads", numThreads);
 
 		g_ThreadPool.Reserve(numThreads);
-		return true;
+		return Result_Success;
 	}
-	bool task_close()
+	Result task_close()
 	{
 		g_ThreadPool.Stop();
-		return true;
+		return Result_Success;
 	}
 
 	void task_execute(const TaskFunction& task, ThreadContext* context, bool blockingTask)

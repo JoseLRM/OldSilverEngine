@@ -3,7 +3,7 @@
 #define SV_SRC_PATH "../SilverEngine/"
 
 #define SV_PLATFORM_WINDOWS
-#define SV_DEBUG
+//#define SV_DEBUG
 
 // Graphics
 
@@ -39,12 +39,14 @@
 // Renderer
 
 #define SV_REND_LAYER_BATCH_COUNT 10000u
-#define SV_REND_MESH_INSTANCE_COUNT 1000u
+#define SV_REND_MESH_INSTANCE_COUNT 100u
 
-#define SV_REND_FORWARD_LIGHT_COUNT 30u
+#define SV_REND_FORWARD_LIGHT_COUNT 10u
 
 #define SV_REND_OFFSCREEN_FORMAT Format_R8G8B8A8_SRGB
 
 // Scene
 
 #define SV_SCENE_NAME_COMPONENT 1
+
+#define SV_SCENE_ASSET_LIFETIME 10.f

@@ -172,8 +172,8 @@ namespace sv {
 
 	class GraphicsDevice {
 	public:
-		virtual bool Initialize(const sv::InitializationGraphicsDesc& desc) = 0;
-		virtual bool Close() = 0;
+		virtual Result Initialize(const sv::InitializationGraphicsDesc& desc) = 0;
+		virtual Result Close() = 0;
 
 		virtual CommandList BeginCommandList() = 0;
 		virtual CommandList GetLastCommandList() = 0;
@@ -199,8 +199,8 @@ namespace sv {
 
 	};
 
-	bool graphics_initialize(const sv::InitializationGraphicsDesc& desc);
-	bool graphics_close();
+	Result graphics_initialize(const sv::InitializationGraphicsDesc& desc);
+	Result graphics_close();
 
 	void graphics_begin();
 	void graphics_commandlist_submit();
@@ -214,11 +214,11 @@ namespace sv {
 
 	// Allocator
 
-	typedef void* (*PrimitiveConstructor)(GraphicsPrimitiveType, const void*);
-	typedef bool(*PrimitiveDestructor)(sv::Primitive&);
+	typedef Result(*PrimitiveConstructor)(GraphicsPrimitiveType, const void*, Primitive_internal**);
+	typedef Result(*PrimitiveDestructor)(sv::Primitive&);
 
-	void*	graphics_allocator_construct(GraphicsPrimitiveType type, const void* desc);
-	bool	graphics_allocator_destroy(sv::Primitive& primitive);
+	Result	graphics_allocator_construct(GraphicsPrimitiveType type, const void* desc, Primitive_internal** res);
+	Result	graphics_allocator_destroy(sv::Primitive& primitive);
 	void	graphics_allocator_set_functions(PrimitiveConstructor constructor, PrimitiveDestructor destructor);
 	void	graphics_allocator_clear();
 
@@ -235,8 +235,8 @@ namespace sv {
 
 	// Shader utils
 
-	bool graphics_shader_initialize();
-	bool graphics_shader_close();
+	Result graphics_shader_initialize();
+	Result graphics_shader_close();
 
 	// Properties
 

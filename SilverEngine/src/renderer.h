@@ -41,11 +41,12 @@ namespace sv {
 
 	struct SpriteInstance {
 		XMMATRIX tm;
-		Sprite sprite;
+		ui32 spriteIndex;
+		Texture* pTexture;
 		Color color;
 
 		SpriteInstance() = default;
-		SpriteInstance(const XMMATRIX& m, Sprite sprite, sv::Color color) : tm(m), sprite(sprite), color(color) {}
+		SpriteInstance(const XMMATRIX& m, Sprite sprite, sv::Color color) : tm(m), spriteIndex(sprite.index), pTexture(sprite.texture.Get()), color(color) {}
 	};
 
 	struct SpriteRenderingDesc {
@@ -115,8 +116,8 @@ namespace sv {
 
 	// Offscreen
 
-	bool renderer_offscreen_create(ui32 width, ui32 height, Offscreen& offscreen);
-	bool renderer_offscreen_destroy(Offscreen& offscreen);
+	Result renderer_offscreen_create(ui32 width, ui32 height, Offscreen& offscreen);
+	Result renderer_offscreen_destroy(Offscreen& offscreen);
 
 	Offscreen&	renderer_offscreen_get();
 	void		renderer_offscreen_set_present(bool enable);
@@ -139,8 +140,8 @@ namespace sv {
 
 	// Postprocessing
 
-	bool renderer_postprocessing_default_create(Format dstFormat, GPUImageLayout initialLayout, GPUImageLayout finalLayout, PostProcessing_Default& pp);
-	bool renderer_postprocessing_default_destroy(PostProcessing_Default& pp);
+	Result renderer_postprocessing_default_create(Format dstFormat, GPUImageLayout initialLayout, GPUImageLayout finalLayout, PostProcessing_Default& pp);
+	Result renderer_postprocessing_default_destroy(PostProcessing_Default& pp);
 	void renderer_postprocessing_default_draw(PostProcessing_Default& pp, GPUImage& src, GPUImage& dst, CommandList cmd);
 
 }

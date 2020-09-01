@@ -5,13 +5,6 @@
 
 namespace sv {
 
-	enum SerializationResult {
-		SerializationResult_Success,
-		SerializationResult_Unknown,
-		SerializationResult_NotFound,
-		SerializationResult_InvalidFormat,
-	};
-
 	// 3D Model
 
 	struct MaterialNode {
@@ -30,10 +23,10 @@ namespace sv {
 		std::string				filePath;
 	};
 
-	SerializationResult loader_model_import(const char* externalFilePath, Model& model);
-	SerializationResult loader_model_serialize(const char* filePath, Model& model);
-	SerializationResult loader_model_deserialize(const char* filePath, Model& model);
+	Result loader_model_import(const char* externalFilePath, Model& model);
+	Result loader_model_serialize(const char* filePath, Model& model);
+	Result loader_model_deserialize(const char* filePath, Model& model);
 
-	Entity				loader_model_create_entities(Model& model);
+	Entity	loader_model_create_entities(Model& model);
 
 }

@@ -13,27 +13,27 @@ namespace sv {
 	//static ComPtr<IDxcLibrary> g_Library;
 	//static ComPtr<IDxcCompiler> g_Compiler;
 
-	bool graphics_shader_initialize()
+	Result graphics_shader_initialize()
 	{
 		//dxCheck(DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(&g_Library)));
 		//dxCheck(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&g_Compiler)));
 
-		return true;
+		return Result_Success;
 	}
 
-	bool graphics_shader_close()
+	Result graphics_shader_close()
 	{
 		//g_Library.Reset();
 		//g_Compiler.Reset();
 
-		return true;
+		return Result_Success;
 	}
 
-	bool graphics_shader_compile_string(const ShaderCompileDesc* desc, const char* str, ui32 size, std::vector<ui8>& data)
+	Result graphics_shader_compile_string(const ShaderCompileDesc* desc, const char* str, ui32 size, std::vector<ui8>& data)
 	{
 		//TODO:
 		log_error("TODO->graphics_shader_compile_from_string");
-		return false;
+		return Result_UnknownError;
 		/*
 		ComPtr<IDxcBlobEncoding> srcBlob;
 		dxCheck(g_Library->CreateBlobWithEncodingFromPinned(str, size, CP_UTF8, srcBlob.GetAddressOf()));
@@ -138,7 +138,7 @@ namespace sv {
 		*/
 	}
 
-	bool graphics_shader_compile_file(const ShaderCompileDesc* desc, const char* srcPath, const char* binPath)
+	Result graphics_shader_compile_file(const ShaderCompileDesc* desc, const char* srcPath, const char* binPath)
 	{
 		std::stringstream bat;
 
@@ -204,7 +204,7 @@ namespace sv {
 		// Execute
 		system(bat.str().c_str());
 
-		return true;
+		return Result_Success;
 	}
 
 }

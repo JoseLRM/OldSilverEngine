@@ -10,8 +10,8 @@ namespace sve {
 		ImGuiContext* m_Ctx = nullptr;
 
 	public:
-		virtual bool Initialize() = 0;
-		virtual bool Close() = 0;
+		virtual sv::Result Initialize() = 0;
+		virtual sv::Result Close() = 0;
 
 		virtual void BeginFrame() = 0;
 		virtual void EndFrame() = 0;

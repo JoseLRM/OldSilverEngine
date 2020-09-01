@@ -6,12 +6,12 @@
 #include "imGuiDevice/ImGuiDevice.h"
 #include "scene_editor.h"
 #include "simulation.h"
-#include "viewport_manager.h"
+#include "viewports.h"
 
 namespace sve {
 	
 	static std::unique_ptr<ImGuiDevice> g_Device;
-	static bool g_Simulation = false;
+	static bool g_Gamemode = false;
 
 	void editor_run()
 	{
@@ -21,8 +21,10 @@ namespace sve {
 		desc.callbacks.render = editor_render;
 		desc.callbacks.close = editor_close;
 
+		desc.assetFolderPath = "assets/";
 		desc.minThreadsCount = 2;
 		desc.showConsole = true;
+		desc.rendererDesc.presentOffscreen = false;
 		desc.rendererDesc.resolutionWidth = 1920u;
 		desc.rendererDesc.resolutionHeight = 1080u;
 		desc.windowDesc.fullscreen = false;
@@ -32,7 +34,7 @@ namespace sve {
 		desc.windowDesc.height = 720u;
 		desc.windowDesc.title = L"SilverEngine";
 
-		if (!sv::engine_initialize(&desc)) return;
+		if (sv::engine_initialize(&desc) != sv::Result_Success) return;
 
 		g_Device = device_create();
 		g_Device->Initialize();
@@ -52,7 +54,7 @@ namespace sve {
 
 		while (true) {
 			
-			if (!sv::engine_loop()) break;
+			if (sv::engine_loop() == sv::Result_CloseRequest) break;
 
 		}
 
@@ -86,12 +88,13 @@ namespace sve {
 
 			if (ImGui::BeginMenu("Viewports")) {
 
-				ImGui::Checkbox("Game", &viewport_manager_get_show("Game"));
-				ImGui::Checkbox("Scene Hierarchy", &viewport_manager_get_show("Scene Hierarchy"));
-				ImGui::Checkbox("Scene Entity", &viewport_manager_get_show("Scene Entity"));
-				ImGui::Checkbox("Scene Editor", &viewport_manager_get_show("Scene Editor"));
-				ImGui::Checkbox("Console", &viewport_manager_get_show("Console"));
-				ImGui::Checkbox("Renderer2D", &viewport_manager_get_show("Renderer2D"));
+				//ImGui::Checkbox("Game", &viewport_manager_get_show("Game"));
+				//ImGui::Checkbox("Scene Hierarchy", &viewport_manager_get_show("Scene Hierarchy"));
+				//ImGui::Checkbox("Scene Entity", &viewport_manager_get_show("Scene Entity"));
+				//ImGui::Checkbox("Scene Editor", &viewport_manager_get_show("Scene Editor"));
+				//ImGui::Checkbox("Assets", &viewport_manager_get_show("Assets"));
+				//ImGui::Checkbox("Console", &viewport_manager_get_show("Console"));
+				//ImGui::Checkbox("Renderer2D", &viewport_manager_get_show("Renderer2D"));
 
 				ImGui::EndMenu();
 			}
@@ -145,28 +148,13 @@ namespace sve {
 		ImGui::End();
 	}
 
-	bool editor_initialize()
+	sv::Result editor_initialize()
 	{
-		// Add viewports
-		viewport_manager_add("Game", viewport_game_display);
-		viewport_manager_add("Scene Hierarchy", viewport_scene_hierarchy_display);
-		viewport_manager_add("Scene Entity", viewport_scene_entity_display);
-		viewport_manager_add("Scene Editor", viewport_scene_editor_display);
-		viewport_manager_add("Console", viewport_console_display);
-		viewport_manager_add("Renderer2D", viewport_renderer2D_display);
-
-		// Show viewports
-		viewport_manager_show("Game");
-		viewport_manager_show("Scene Hierarchy");
-		viewport_manager_show("Scene Entity");
-		viewport_manager_show("Scene Editor");
-		viewport_manager_show("Console");
-		viewport_manager_show("Renderer2D");
-
 		svCheck(simulation_initialize());
 		svCheck(scene_editor_initialize());
+		viewports_initialize();
 
-		return true;
+		return sv::Result_Success;
 	}
 	void editor_update(float dt)
 	{
@@ -174,7 +162,7 @@ namespace sve {
 		scene_editor_update(dt);
 
 		if (sv::input_key_pressed(SV_KEY_F11)) {
-			sv::window_fullscreen_set(!sv::window_fullscreen_get());
+			editor_gamemode_set(!editor_gamemode_get());
 		}
 
 		g_Device->ResizeSwapChain();
@@ -182,29 +170,51 @@ namespace sve {
 	void editor_render()
 	{
 		simulation_render();
-		scene_editor_render();
 
-		g_Device->BeginFrame();
+		if (!g_Gamemode) {
+			scene_editor_render();
 
-		MainMenu();
+			g_Device->BeginFrame();
 
-		DisplayDocking();
-		
-		viewport_manager_display();
-		
-		g_Device->EndFrame();
+			MainMenu();
+
+			DisplayDocking();
+
+			viewports_display();
+
+			g_Device->EndFrame();
+		}
 	}
-	bool editor_close()
+	sv::Result editor_close()
 	{
 		svCheck(simulation_close());
 		svCheck(scene_editor_close());
 
-		return true;
+		return sv::Result_Success;
 	}
 
 	ImGuiDevice& editor_device_get()
 	{
 		return *g_Device.get();
+	}
+
+	void editor_gamemode_set(bool gamemode)
+	{
+		if (gamemode) {
+			if (simulation_running() && !simulation_paused()) {
+				g_Gamemode = true;
+				sv::renderer_offscreen_set_present(true);
+			}
+		}
+		else {
+			g_Gamemode = false;
+			sv::renderer_offscreen_set_present(false);
+		}
+	}
+
+	bool editor_gamemode_get()
+	{
+		return g_Gamemode;
 	}
 
 }

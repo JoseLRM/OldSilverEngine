@@ -12,7 +12,7 @@ namespace sv {
 
 	// MAIN FUNCTIONS
 
-	bool renderer_initialize(const InitializationRendererDesc& desc)
+	Result renderer_initialize(const InitializationRendererDesc& desc)
 	{
 		// Initial Resolution
 		g_Resolution = uvec2(desc.resolutionWidth, desc.resolutionHeight);
@@ -32,10 +32,10 @@ namespace sv {
 
 		svCheck(renderer_postprocessing_default_create(Format_B8G8R8A8_SRGB, GPUImageLayout_Undefined, GPUImageLayout_RenderTarget, g_PP_OffscreenToBackBuffer));
 
-		return true;
+		return Result_Success;
 	}
 
-	bool renderer_close()
+	Result renderer_close()
 	{
 		svCheck(renderer_postprocessing_default_destroy(g_PP_OffscreenToBackBuffer));
 
@@ -45,7 +45,7 @@ namespace sv {
 
 		svCheck(renderer_offscreen_destroy(g_Offscreen));
 
-		return true;
+		return Result_Success;
 	}
 
 	void renderer_frame_begin()
@@ -74,7 +74,7 @@ namespace sv {
 		graphics_present();
 	}
 
-	bool renderer_offscreen_create(ui32 width, ui32 height, Offscreen& offscreen)
+	Result renderer_offscreen_create(ui32 width, ui32 height, Offscreen& offscreen)
 	{
 		// Create Render Target
 		GPUImageDesc imageDesc;
@@ -99,14 +99,14 @@ namespace sv {
 
 		svCheck(graphics_image_create(&imageDesc, offscreen.depthStencil));
 
-		return true;
+		return Result_Success;
 	}
 
-	bool renderer_offscreen_destroy(Offscreen& offscreen)
+	Result renderer_offscreen_destroy(Offscreen& offscreen)
 	{
 		svCheck(graphics_destroy(offscreen.renderTarget));
 		svCheck(graphics_destroy(offscreen.depthStencil));
-		return true;
+		return Result_Success;
 	}
 
 	Offscreen& renderer_offscreen_get()

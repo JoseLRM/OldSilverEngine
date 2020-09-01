@@ -17,7 +17,7 @@ namespace sve {
 		ImGui_ImplWin32_WndProcHandler((HWND)window_get_handle(), msg, wParam, lParam);
 	}
 
-	bool ImGuiDevice_vk::Initialize()
+	sv::Result ImGuiDevice_vk::Initialize()
 	{
 		// Input handling
 		auto& platform = sv::window_get_platform();
@@ -33,7 +33,7 @@ namespace sve {
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable | ImGuiConfigFlags_DpiEnableScaleViewports;;
 		//io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_DpiEnableScaleViewports;;
 
-		svCheck(ImGui_ImplWin32_Init(window_get_handle()));
+		if (!ImGui_ImplWin32_Init(window_get_handle())) return Result_PlatformError;
 
 		sv::Graphics_vk& gfx = sv::graphics_vulkan_device_get();
 		sv::Adapter_vk& adapter = *reinterpret_cast<sv::Adapter_vk*>(sv::graphics_adapter_get());
@@ -130,12 +130,12 @@ namespace sve {
 
 		VkCommandBuffer cmd;
 		vkCheck(gfx.BeginSingleTimeCMD(&cmd));
-		svCheck(ImGui_ImplVulkan_CreateFontsTexture(cmd));
+		if (!ImGui_ImplVulkan_CreateFontsTexture(cmd)) return sv::Result_UnknownError;
 		vkCheck(gfx.EndSingleTimeCMD(cmd));
 
-		return true;
+		return sv::Result_Success;
 	}
-	bool ImGuiDevice_vk::Close()
+	sv::Result ImGuiDevice_vk::Close()
 	{
 		sv::Graphics_vk& gfx = sv::graphics_vulkan_device_get();
 
@@ -150,7 +150,7 @@ namespace sve {
 		ImGui_ImplVulkan_Shutdown();
 		ImGui_ImplWin32_Shutdown();
 		ImGui::DestroyContext(m_Ctx);
-		return true;
+		return sv::Result_Success;
 	}
 
 	void ImGuiDevice_vk::BeginFrame()
@@ -165,7 +165,9 @@ namespace sve {
 		ImGui::Render();
 
 		ui32 currentFrame = gfx.GetCurrentFrame();
-		CommandList cmd_ = graphics_commandlist_last();
+		CommandList cmd_;
+		if (graphics_commandlist_count() > 0) cmd_ = graphics_commandlist_last();
+		else cmd_ = graphics_commandlist_begin();
 		VkCommandBuffer cmd = gfx.GetCMD(cmd_);
 
 		// From VK_IMAGE_LAYOUT_PRESENT_SRC_KHR to VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL

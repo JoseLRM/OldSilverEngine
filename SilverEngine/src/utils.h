@@ -17,7 +17,7 @@ namespace sv {
 
 	// Loader
 
-	bool utils_loader_image(const char* filePath, void** pdata, ui32* width, ui32* height);
+	Result utils_loader_image(const char* filePath, void** pdata, ui32* width, ui32* height);
 
 	// Timer
 
@@ -91,6 +91,8 @@ namespace sv {
 		const T* Get() const { return m_Ref.get(); }
 		ui32 RefCount() const { return m_Ref.use_count(); }
 
+		void Delete() { m_Ref.reset(); }
+
 	};
 
 	template<typename T>
@@ -103,6 +105,10 @@ namespace sv {
 		WeakRef(const WeakRef& other)
 		{
 			m_Ref = other.m_Ref;
+		}
+		WeakRef(const SharedRef<T>& shared)
+		{
+			m_Ref = shared.m_Ref;
 		}
 		WeakRef(WeakRef&& other) noexcept
 		{

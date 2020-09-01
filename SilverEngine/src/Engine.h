@@ -13,10 +13,10 @@
 namespace sv {
 
 	struct ApplicationCallbacks {
-		bool(*initialize)();
+		Result(*initialize)();
 		void(*update)(float);
 		void(*render)();
-		bool(*close)();
+		Result(*close)();
 	};
 
 	struct InitializationDesc {
@@ -26,11 +26,12 @@ namespace sv {
 		InitializationRendererDesc rendererDesc;
 		bool showConsole;
 		ui32 minThreadsCount;
+		const char* assetFolderPath;
 	};
 
-	bool engine_initialize(const InitializationDesc* desc);
-	bool engine_loop();
-	bool engine_close();
+	Result engine_initialize(const InitializationDesc* desc);
+	Result engine_loop();
+	Result engine_close();
 
 	Version	engine_version_get() noexcept;
 	float	engine_deltatime_get() noexcept;

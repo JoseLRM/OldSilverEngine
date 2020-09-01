@@ -1,66 +1,80 @@
 #include "core_editor.h"
 
+#include "viewports/viewport_simulation.h"
 #include "simulation.h"
-#include "components.h"
-#include "viewport_manager.h"
 #include "loader.h"
+#include "scene.h"
 
 namespace sve {
 
 	static bool g_Running = false;
 	static bool g_Paused = false;
 
-	static sv::Scene g_Scene = 0;
+	static sv::Scene g_Scene;
 
-	bool simulation_initialize()
+	sv::Result simulation_initialize()
 	{
 		simulation_scene_load();
-		return true;
+		return sv::Result_Success;
 	}
 
-	bool simulation_close()
+	sv::Result simulation_close()
 	{
 		sv::scene_destroy(g_Scene);
-		return true;
+		return sv::Result_Success;
 	}
 
 	void simulation_update(float dt)
 	{
-		auto props = viewport_manager_properties_get("Game");
-
 		// Adjust camera
 		{
-			sv::Entity cameraEntity = sv::scene_camera_get();
-			sv::CameraComponent& camera = *sv::scene_ecs_component_get<sv::CameraComponent>(cameraEntity);
+			sv::CameraComponent& camera = *sv::ecs_component_get<sv::CameraComponent>(g_Scene.mainCamera, g_Scene.ecs);
 
-			camera.Adjust(props.width, props.height);
+			sv::uvec2 size = viewport_simulation_size();
+			camera.Adjust(size.x, size.y);
 		}
 
+		sv::scene_assets_update(g_Scene, dt);
+
+		if (g_Running && !g_Paused) {
+
+			sv::scene_physics_simulate(g_Scene, dt);
+
+		}
 	}
 
 	void simulation_render()
 	{
-		if (!simulation_running() && !viewport_manager_properties_get("Game").visible) {
+		if (!simulation_running() && !viewport_simulation_visible()) {
 			return;
 		}
 
-		sv::renderer_scene_render(false);
+		sv::scene_renderer_draw(g_Scene);
 	}
 
 	void simulation_run()
 	{
+		g_Running = true;
 	}
 
 	void simulation_continue()
 	{
+		if (g_Running) {
+			g_Paused = false;
+		}
 	}
 
 	void simulation_pause()
 	{
+		if (g_Running) {
+			g_Paused = true;
+		}
 	}
 
 	void simulation_stop()
 	{
+		g_Running = false;
+		g_Paused = false;
 	}
 
 	bool simulation_running()
@@ -79,29 +93,40 @@ namespace sve {
 	sv::Scene simulation_scene_create_default()
 	{
 		// Create scene
-		sv::Scene scene = sv::scene_create();
-		sv::scene_bind(scene);
+		sv::SceneDesc desc;
+		desc.gravity = { 0.f, 10.f, 0.f };
+
+		sv::Scene scene;
+		SV_ASSERT(sv::scene_create(&desc, scene) == sv::Result_Success);
 
 		// Create main camera
 		{
-			sv::Entity mainCamera = sv::scene_ecs_entity_create();
-			sv::scene_ecs_component_add<sv::CameraComponent>(mainCamera);
-			sv::scene_camera_set(mainCamera);
-
-			sv::CameraComponent& camera = *sv::scene_ecs_component_get<sv::CameraComponent>(mainCamera);
-			camera.projection.cameraType = sv::CameraType_Orthographic;
-			camera.projection.width = 10.f;
-			camera.projection.height = 10.f;
+			sv::CameraComponent& camera = *sv::ecs_component_get<sv::CameraComponent>(scene.mainCamera, scene.ecs);
+			camera.settings.projection.cameraType = sv::CameraType_Orthographic;
+			camera.settings.projection.width = 10.f;
+			camera.settings.projection.height = 10.f;
 		}
 
 		// Temporal
-		sv::loader_model_import("assets/dragon.obj", g_Model);
+		//sv::loader_model_import("assets/gobber/GoblinX.obj", g_Model);
+		//
+		//
+		//sv::Entity meshEntity = sv::ecs_entity_create(SV_ENTITY_NULL, scene.ecs);
+		//sv::ecs_component_add<sv::MeshComponent>(meshEntity, scene.ecs);
+		//sv::ecs_component_get<sv::MeshComponent>(meshEntity, scene.ecs)->mesh = &g_Model.nodes[0].mesh;
+		//sv::ecs_component_get<sv::MeshComponent>(meshEntity, scene.ecs)->material = &g_Model.materials[0];
 
+		sv::SharedRef<sv::Texture> texture;
+		sv::scene_assets_load_texture(scene, "textures/Tileset.png", texture);
+		if (texture.Get()) {
 
-		sv::Entity meshEntity = sv::scene_ecs_entity_create();
-		sv::scene_ecs_component_add<sv::MeshComponent>(meshEntity);
-		sv::scene_ecs_component_get<sv::MeshComponent>(meshEntity)->mesh = &g_Model.nodes[0].mesh;
-		sv::scene_ecs_component_get<sv::MeshComponent>(meshEntity)->material = &g_Model.materials[0];
+			sv::Entity spriteEntity = sv::ecs_entity_create(0, scene.ecs);
+			sv::ecs_component_add<sv::SpriteComponent>(spriteEntity, scene.ecs);
+			sv::SpriteComponent* spr = sv::ecs_component_get<sv::SpriteComponent>(spriteEntity, scene.ecs);
+			spr->sprite.index = texture->AddSprite(0.f, 0.f, 0.1f, 0.1f);
+			spr->sprite.texture = texture;
+
+		}
 
 		return scene;
 	}
@@ -111,10 +136,9 @@ namespace sve {
 		// TODO: Filepath in parameters and deserialize the scene
 		sv::scene_destroy(g_Scene);
 		g_Scene = simulation_scene_create_default();
-		sv::scene_bind(g_Scene);
 	}
 
-	sv::Scene simulation_scene_get()
+	sv::Scene& simulation_scene_get()
 	{
 		return g_Scene;
 	}

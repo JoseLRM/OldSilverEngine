@@ -3,8 +3,10 @@
 
 namespace sv {
 
-	bool Texture::CreateFromFile(const char* filePath, bool linearFilter, SamplerAddressMode addressMode)
+	Result Texture::CreateFromFile(const char* filePath, bool linearFilter, SamplerAddressMode addressMode)
 	{
+		svCheck(Destroy());
+
 		// Get file data
 		void* data;
 		ui32 width;
@@ -43,22 +45,25 @@ namespace sv {
 			svCheck(graphics_sampler_create(&desc, m_Sampler));
 		}
 
-		return true;
+		// Default Sprite
+		AddSprite(0.f, 0.f, 1.f, 1.f);
+
+		return Result_Success;
 	}
 
-	bool Texture::Destroy()
+	Result Texture::Destroy()
 	{
 		svCheck(graphics_destroy(m_Image));
 		svCheck(graphics_destroy(m_Sampler));
 		m_Sprites.clear();
-		return true;
+		return Result_Success;
 	}
 
-	Sprite Texture::AddSprite(float x, float y, float w, float h)
+	ui32 Texture::AddSprite(float x, float y, float w, float h)
 	{
-		Sprite res = { this, ui32(m_Sprites.size()) };
+		ui32 index = ui32(m_Sprites.size());
 		m_Sprites.emplace_back(x, y, x + w, y + h);
-		return res;
+		return index;
 	}
 
 }

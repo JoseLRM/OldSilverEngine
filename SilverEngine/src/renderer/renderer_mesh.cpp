@@ -31,7 +31,7 @@ namespace sv {
 	static DepthStencilState	g_ForwardDepthStencilState;
 	static RasterizerState		g_ForwardRasterizerState;
 
-	bool renderer_mesh_initialize(const InitializationRendererDesc& desc)
+	Result renderer_mesh_initialize(const InitializationRendererDesc& desc)
 	{
 		// Instance Buffer
 		{
@@ -152,13 +152,13 @@ namespace sv {
 		g_ForwardPipeline.pDepthStencilState = &g_ForwardDepthStencilState;
 		g_ForwardPipeline.topology = GraphicsTopology_Triangles;
 
-		return true;
+		return Result_Success;
 	}
 
-	bool renderer_mesh_close()
+	Result renderer_mesh_close()
 	{
 
-		return true;
+		return Result_Success;
 	}
 
 	void mesh_renderer_render(Mesh* mesh, Material* material, ui32 offset, ui32 size, CommandList cmd) {

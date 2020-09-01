@@ -4,7 +4,7 @@
 
 namespace sv {
 
-	bool task_initialize(ui32 minThreadCount);
-	bool task_close();
+	Result task_initialize(ui32 minThreadCount);
+	Result task_close();
 
 }

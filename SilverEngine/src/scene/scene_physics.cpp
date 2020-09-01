@@ -6,16 +6,17 @@
 
 namespace sv {
 
-	void scene_physics_create(const SceneDesc* desc, Scene& scene)
+	Result scene_physics_create(const SceneDesc* desc, Scene& scene)
 	{
 		// BOX 2D
 		{
 			b2World& world = *new b2World({ desc->gravity.x, desc->gravity.y });
 			scene.pWorld2D = &world;
 		}
+		return Result_Success;
 	}
 
-	void scene_physics_destroy(Scene& scene)
+	Result scene_physics_destroy(Scene& scene)
 	{
 		// BOX 2D
 		{
@@ -23,9 +24,10 @@ namespace sv {
 			delete pWorld;
 			scene.pWorld2D = nullptr;
 		}
+		return Result_Success;
 	}
 
-	void scene_physics2D_simulate(float dt, Scene& scene)
+	void scene_physics2D_simulate(Scene& scene, float dt)
 	{
 		b2World& world = *reinterpret_cast<b2World*>(scene.pWorld2D);
 
@@ -116,9 +118,9 @@ namespace sv {
 		}
 	}
 
-	void scene_physics_simulate(float dt, Scene& scene)
+	void scene_physics_simulate(Scene& scene, float dt)
 	{
-		scene_physics2D_simulate(dt, scene);
+		scene_physics2D_simulate(scene, dt);
 	}
 
 }

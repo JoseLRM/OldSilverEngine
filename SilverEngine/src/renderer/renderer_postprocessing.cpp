@@ -16,7 +16,7 @@ namespace sv {
 	static Sampler			g_DefSampler;
 	static GraphicsPipeline	g_DefPipeline;
 
-	bool renderer_postprocessing_initialize(const InitializationRendererDesc& desc)
+	Result renderer_postprocessing_initialize(const InitializationRendererDesc& desc)
 	{
 		// Create Common Buffers
 		{
@@ -67,22 +67,22 @@ namespace sv {
 			g_DefPipeline.topology = GraphicsTopology_TriangleStrip;
 		}
 
-		return true;
+		return Result_Success;
 	}
 
-	bool renderer_postprocessing_close()
+	Result renderer_postprocessing_close()
 	{
 		g_DefPipeline = {};
 		svCheck(graphics_destroy(g_VertexBuffer));
 		svCheck(graphics_destroy(g_DefVertexShader));
 		svCheck(graphics_destroy(g_DefPixelShader));
 		svCheck(graphics_destroy(g_DefInputLayoutState));
-		return true;
+		return Result_Success;
 	}
 
 	// DEFAULT POSTPROCESSING
 
-	bool renderer_postprocessing_default_create(Format dstFormat, GPUImageLayout initialLayout, GPUImageLayout finalLayout, PostProcessing_Default& pp)
+	Result renderer_postprocessing_default_create(Format dstFormat, GPUImageLayout initialLayout, GPUImageLayout finalLayout, PostProcessing_Default& pp)
 	{
 		AttachmentDesc att;
 		att.loadOp = AttachmentOperation_DontCare;
@@ -97,12 +97,12 @@ namespace sv {
 		desc.attachments.emplace_back(att);
 
 		svCheck(graphics_renderpass_create(&desc, pp.renderPass));
-		return true;
+		return Result_Success;
 	}
-	bool renderer_postprocessing_default_destroy(PostProcessing_Default& pp)
+	Result renderer_postprocessing_default_destroy(PostProcessing_Default& pp)
 	{
 		svCheck(graphics_destroy(pp.renderPass));
-		return true;
+		return Result_Success;
 	}
 	void renderer_postprocessing_default_draw(PostProcessing_Default& pp, GPUImage& src, GPUImage& dst, CommandList cmd)
 	{

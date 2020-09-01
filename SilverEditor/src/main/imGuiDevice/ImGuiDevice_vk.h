@@ -30,8 +30,8 @@ namespace sve {
 		std::map<sv::GPUImage_internal*, std::pair<VkImageView, ImTextureID>> m_Images;
 
 	public:
-		bool Initialize() override;
-		bool Close() override;
+		sv::Result Initialize() override;
+		sv::Result Close() override;
 
 		void BeginFrame() override;
 		void EndFrame() override;
