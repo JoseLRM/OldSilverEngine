@@ -4,7 +4,6 @@
 #include "editor.h"
 #include "viewports.h"
 
-#include "input.h"
 #include "simulation.h"
 #include "scene.h"
 #include "editor.h"
@@ -13,33 +12,54 @@
 namespace sve {
 
 	static sv::Entity g_SelectedEntity = SV_ENTITY_NULL;
-	static bool g_ShowHierarchyToolTip = false;
+
+	static bool g_HierarchyPopup = false;
 
 	static sv::uvec2 g_ViewportSize;
 	static bool g_Visible = false;
 	static bool g_Focused = false;
 
-	void ShowEntity(sv::Entity entity, sv::ECS& ecs)
+	void ShowEntity(sv::ECS* ecs, sv::Entity entity)
 	{
-		auto& entities = ecs.entities;
-		auto& entityData = ecs.entityData;
-
-		sv::EntityData& ed = entityData[entity];
-
-		bool empty = ed.childsCount == 0;
-		ImGuiTreeNodeFlags treeFlags = ImGuiTreeNodeFlags_OpenOnArrow | (empty ? ImGuiTreeNodeFlags_Bullet : ImGuiTreeNodeFlags_AllowItemOverlap);
+		ImGuiTreeNodeFlags treeFlags = ImGuiTreeNodeFlags_OpenOnArrow | (sv::ecs_entity_childs_count(ecs, entity) == 0 ? ImGuiTreeNodeFlags_Bullet : ImGuiTreeNodeFlags_AllowItemOverlap);
 		
 		if (g_SelectedEntity == entity) {
 			treeFlags |= ImGuiTreeNodeFlags_Selected;
 		}
 
 		bool active;
-		sv::NameComponent* nameComponent = (sv::NameComponent*) sv::ecs_component_get_by_id(entity, sv::NameComponent::ID, ecs);
+		std::string label;
+		sv::NameComponent* nameComponent = (sv::NameComponent*) sv::ecs_component_get_by_id(ecs, entity, sv::NameComponent::ID);
 		if (nameComponent) {
-			active = ImGui::TreeNodeEx((nameComponent->GetName() + "[" + std::to_string(entity) + "]").c_str(), treeFlags);
+			label = nameComponent->GetName() + "[" + std::to_string(entity) + "]";
 		}
 		else {
-			active = ImGui::TreeNodeEx(("Entity[" + std::to_string(entity) + "]").c_str(), treeFlags);
+			label = "Entity[" + std::to_string(entity) + "]";
+		}
+
+		active = ImGui::TreeNodeEx(label.c_str(), treeFlags);
+
+		if (!g_HierarchyPopup) {
+			if (ImGui::BeginPopupContextItem(label.c_str(), ImGuiMouseButton_Right)) {
+
+				g_HierarchyPopup = true;
+
+				if (ImGui::Button("Create child")) {
+					sv::ecs_entity_create(ecs, entity);
+				}
+
+				if (ImGui::Button("Duplicate")) {
+					sv::ecs_entity_duplicate(ecs, entity);
+					g_SelectedEntity = 0;
+				}
+
+				if (ImGui::Button("Destroy")) {
+					sv::ecs_entity_destroy(ecs, entity);
+					g_SelectedEntity = 0;
+				}
+
+				ImGui::EndPopup();
+			}
 		}
 
 		if (ImGui::IsItemClicked()) {
@@ -48,65 +68,60 @@ namespace sve {
 			}
 		}
 		if (active) {
-			if (!empty) {
-				for (ui32 i = 0; i < ed.childsCount; ++i) {
-					sv::Entity e = entities[ed.handleIndex + i + 1];
-					i += entityData[e].childsCount;
-					ShowEntity(e, ecs);
+			if (sv::ecs_entity_childs_count(ecs, entity) != 0) {
+
+				sv::Entity const* childs;
+
+				for (ui32 i = 0; i < sv::ecs_entity_childs_count(ecs, entity); ++i) {
+
+					sv::ecs_entity_childs_get(ecs, entity, &childs);
+
+					sv::Entity e = childs[i];
+					i += sv::ecs_entity_childs_count(ecs, e);
+					ShowEntity(ecs, e);
 				}
 				ImGui::TreePop();
 			}
 			else ImGui::TreePop();
 		}
+
 	};
 
 	bool viewport_scene_hierarchy_display()
 	{
 		if (ImGui::Begin(viewports_get_name(SVE_VIEWPORT_SCENE_HIERARCHY))) {
+			g_HierarchyPopup = false;
 			sv::Scene& scene = simulation_scene_get();
 
-			auto& entities = scene.ecs.entities;
-			auto& entityData = scene.ecs.entityData;
+			for (size_t i = 0; i < sv::ecs_entity_count(scene.ecs); ++i) {
 
-			for (size_t i = 1; i < entities.size(); ++i) {
+				sv::Entity entity = sv::ecs_entity_get(scene.ecs, i);
 
-				sv::Entity entity = entities[i];
-				sv::EntityData& ed = entityData[entity];
-
-				if (ed.parent == SV_ENTITY_NULL) {
-					ShowEntity(entity, scene.ecs);
-					i += ed.childsCount;
+				if (sv::ecs_entity_parent_get(scene.ecs, entity) == SV_ENTITY_NULL) {
+					ShowEntity(scene.ecs, entity);
+					i += sv::ecs_entity_childs_count(scene.ecs, entity);
 				}
 
 			}
 
-			if (g_SelectedEntity >= entityData.size()) g_SelectedEntity = SV_ENTITY_NULL;
+			if (sv::ecs_entity_exist(scene.ecs, g_SelectedEntity)) g_SelectedEntity = SV_ENTITY_NULL;
 
-			if (sv::input_mouse_released(SV_MOUSE_RIGHT)) g_ShowHierarchyToolTip = !g_ShowHierarchyToolTip;
+			if (!g_HierarchyPopup) {
+			
+				if (ImGui::BeginPopupContextWindow("Hierarchy Popup", ImGuiMouseButton_Right)) {
+					
+					g_HierarchyPopup = true;
 
-			ImGui::Separator();
+					if (ImGui::Button("Create empty entity")) {
+						sv::ecs_entity_create(scene.ecs);
+					}
 
-			if (ImGui::Button("Create")) {
-				sv::ecs_entity_create(SV_ENTITY_NULL, scene.ecs);
-			}
+					if (ImGui::Button("Create sprite")) {
+						sv::Entity entity = sv::ecs_entity_create(scene.ecs);
+						sv::ecs_component_add<sv::SpriteComponent>(scene.ecs, entity);
+					}
 
-			if (g_SelectedEntity != SV_ENTITY_NULL) {
-
-				ImGui::SameLine();
-
-				if (ImGui::Button("Create Child")) {
-					sv::ecs_entity_create(g_SelectedEntity, scene.ecs);
-				}
-
-				if (ImGui::Button("Duplicate")) {
-					sv::ecs_entity_duplicate(g_SelectedEntity, scene.ecs);
-				}
-
-				ImGui::SameLine();
-
-				if (ImGui::Button("Destroy")) {
-					sv::ecs_entity_destroy(g_SelectedEntity, scene.ecs);
-					g_SelectedEntity = SV_ENTITY_NULL;
+					ImGui::EndPopup();
 				}
 			}
 
@@ -275,13 +290,11 @@ namespace sve {
 	{
 		if (ImGui::Begin(viewports_get_name(SVE_VIEWPORT_ENTITY_INSPECTOR))) {
 
-			sv::ECS& ecs = simulation_scene_get().ecs;
-			auto& entities = ecs.entities;
-			auto& entityData = ecs.entityData;
+			sv::ECS* ecs = simulation_scene_get().ecs;
 
 			if (g_SelectedEntity != SV_ENTITY_NULL) {
 
-				sv::NameComponent* nameComponent = sv::ecs_component_get<sv::NameComponent>(g_SelectedEntity, ecs);
+				sv::NameComponent* nameComponent = sv::ecs_component_get<sv::NameComponent>(ecs, g_SelectedEntity);
 				if (nameComponent) {
 					ImGui::Text("%s[%u]", nameComponent->GetName().c_str(), g_SelectedEntity);
 				}
@@ -291,10 +304,8 @@ namespace sve {
 
 				ImGui::Separator();
 
-				sv::EntityData& ed = entityData[g_SelectedEntity];
-
 				// Show Transform Data
-				sv::Transform trans = sv::ecs_entity_get_transform(g_SelectedEntity, ecs);
+				sv::Transform trans = sv::ecs_entity_transform_get(ecs, g_SelectedEntity);
 
 				sv::vec3 position = trans.GetLocalPosition();
 				sv::vec3 rotation = ToDegrees(trans.GetLocalRotation());
@@ -312,38 +323,29 @@ namespace sve {
 
 				ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow;
 
-				for (ui32 i = 0; i < ed.indices.size(); ++i) {
+				for (ui32 i = 0; i < sv::ecs_entity_component_count(ecs, g_SelectedEntity); ++i) {
 
-					ui16 compID = ed.indices[i].first;
-					size_t index;
-					index = ed.indices[i].second;
-
-					std::vector<ui8>& componentList = ecs.components[compID];
-					sv::BaseComponent* comp = (sv::BaseComponent*)(&componentList[index]);
+					auto [compID, comp] = sv::ecs_component_get_by_index(ecs, g_SelectedEntity, i);
 
 					ImGui::Separator();
-					bool remove = false;
-					if (ImGui::TreeNodeEx(sv::ecs_components_get_name(compID), flags)) {
+					
+					if (ImGui::TreeNodeEx(sv::ecs_register_nameof(compID), flags)) {
 						ShowComponentInfo(compID, comp);
 						ImGui::TreePop();
 					}
 
-					if (remove) {
-						sv::ecs_component_remove_by_id(g_SelectedEntity, compID, ecs);
-						break;
-					}
 					ImGui::Separator();
 				}
 
 
 				if (ImGui::BeginCombo("Add", "Add Component")) {
 
-					for (ui16 ID = 0; ID < sv::ecs_components_get_count(); ++ID) {
-						const char* NAME = sv::ecs_components_get_name(ID);
-						if (sv::ecs_component_get_by_id(g_SelectedEntity, ID, ecs) != nullptr) continue;
-						size_t SIZE = sv::ecs_components_get_size(ID);
+					for (ui16 ID = 0; ID < sv::ecs_register_count(); ++ID) {
+						const char* NAME = sv::ecs_register_nameof(ID);
+						if (sv::ecs_component_get_by_id(ecs, g_SelectedEntity, ID) != nullptr) continue;
+						size_t SIZE = sv::ecs_register_sizeof(ID);
 						if (ImGui::Button(NAME)) {
-							sv::ecs_component_add_by_id(g_SelectedEntity, ID, ecs);
+							sv::ecs_component_add_by_id(ecs, g_SelectedEntity, ID);
 						}
 					}
 
@@ -351,13 +353,12 @@ namespace sve {
 				}
 				if (ImGui::BeginCombo("Rmv", "Remove Component")) {
 
-					sv::EntityData& ed = entityData[g_SelectedEntity];
-					for (ui32 i = 0; i < ed.indices.size(); ++i) {
-						sv::CompID ID = ed.indices[i].first;
-						const char* NAME = sv::ecs_components_get_name(ID);
-						size_t SIZE = sv::ecs_components_get_size(ID);
+					for (ui32 i = 0; i < sv::ecs_entity_component_count(ecs, g_SelectedEntity); ++i) {
+						sv::CompID ID = sv::ecs_component_get_by_index(ecs, g_SelectedEntity, i).first;
+						const char* NAME = sv::ecs_register_nameof(ID);
+						size_t SIZE = sv::ecs_register_sizeof(ID);
 						if (ImGui::Button(NAME)) {
-							sv::ecs_component_remove_by_id(g_SelectedEntity, ID, ecs);
+							sv::ecs_component_remove_by_id(ecs, g_SelectedEntity, ID);
 							break;
 						}
 					}
@@ -381,30 +382,6 @@ namespace sve {
 			g_Focused = ImGui::IsWindowFocused();
 			ImVec2 size = ImGui::GetWindowSize();
 			g_ViewportSize = { ui32(size.x), ui32(size.y) };
-
-			if (ImGui::Button(simulation_running() ? "Stop" : "Start")) {
-				if (simulation_running()) {
-					simulation_stop();
-				}
-				else simulation_run();
-			}
-
-
-			if (simulation_running()) {
-
-				ImGui::SameLine();
-
-				if (ImGui::Button(simulation_paused() ? "Continue" : "Pause")) {
-					if (simulation_paused()) {
-						simulation_continue();
-					}
-					else {
-						simulation_pause();
-					}
-				}
-
-			}
-
 
 			auto& camera = scene_editor_camera_get();
 			ImVec2 v = ImGui::GetWindowSize();

@@ -28,7 +28,7 @@ namespace sve {
 	{
 		// Adjust camera
 		{
-			sv::CameraComponent& camera = *sv::ecs_component_get<sv::CameraComponent>(g_Scene.mainCamera, g_Scene.ecs);
+			sv::CameraComponent& camera = *sv::ecs_component_get<sv::CameraComponent>(g_Scene.ecs, g_Scene.mainCamera);
 
 			sv::uvec2 size = viewport_simulation_size();
 			camera.Adjust(size.x, size.y);
@@ -55,12 +55,15 @@ namespace sve {
 	void simulation_run()
 	{
 		g_Running = true;
+		g_Paused = false;
+		ImGui::GetStyle().Alpha = 0.2f;
 	}
 
 	void simulation_continue()
 	{
 		if (g_Running) {
 			g_Paused = false;
+			ImGui::GetStyle().Alpha = 0.2f;
 		}
 	}
 
@@ -68,6 +71,7 @@ namespace sve {
 	{
 		if (g_Running) {
 			g_Paused = true;
+			ImGui::GetStyle().Alpha = 1.f;
 		}
 	}
 
@@ -75,6 +79,7 @@ namespace sve {
 	{
 		g_Running = false;
 		g_Paused = false;
+		ImGui::GetStyle().Alpha = 1.f;
 	}
 
 	bool simulation_running()
@@ -101,7 +106,7 @@ namespace sve {
 
 		// Create main camera
 		{
-			sv::CameraComponent& camera = *sv::ecs_component_get<sv::CameraComponent>(scene.mainCamera, scene.ecs);
+			sv::CameraComponent& camera = *sv::ecs_component_get<sv::CameraComponent>(scene.ecs, scene.mainCamera);
 			camera.settings.projection.cameraType = sv::CameraType_Orthographic;
 			camera.settings.projection.width = 10.f;
 			camera.settings.projection.height = 10.f;
@@ -110,24 +115,23 @@ namespace sve {
 		// Temporal
 		//sv::loader_model_import("assets/gobber/GoblinX.obj", g_Model);
 		//
-		//
 		//sv::Entity meshEntity = sv::ecs_entity_create(SV_ENTITY_NULL, scene.ecs);
 		//sv::ecs_component_add<sv::MeshComponent>(meshEntity, scene.ecs);
 		//sv::ecs_component_get<sv::MeshComponent>(meshEntity, scene.ecs)->mesh = &g_Model.nodes[0].mesh;
 		//sv::ecs_component_get<sv::MeshComponent>(meshEntity, scene.ecs)->material = &g_Model.materials[0];
 
-		sv::SharedRef<sv::Texture> texture;
-		sv::scene_assets_load_texture(scene, "textures/Tileset.png", texture);
-		if (texture.Get()) {
-
-			sv::Entity spriteEntity = sv::ecs_entity_create(0, scene.ecs);
-			sv::ecs_component_add<sv::SpriteComponent>(spriteEntity, scene.ecs);
-			sv::SpriteComponent* spr = sv::ecs_component_get<sv::SpriteComponent>(spriteEntity, scene.ecs);
-			spr->sprite.index = texture->AddSprite(0.f, 0.f, 0.1f, 0.1f);
-			spr->sprite.texture = texture;
-
-		}
-
+		//sv::SharedRef<sv::Texture> texture;
+		//sv::scene_assets_load_texture(scene, "textures/Tileset.png", texture);
+		//if (texture.Get()) {
+		//
+		//	sv::Entity spriteEntity = sv::ecs_entity_create(0, scene.ecs);
+		//	sv::ecs_component_add<sv::SpriteComponent>(spriteEntity, scene.ecs);
+		//	sv::SpriteComponent* spr = sv::ecs_component_get<sv::SpriteComponent>(spriteEntity, scene.ecs);
+		//	spr->sprite.index = texture->AddSprite(0.f, 0.f, 0.1f, 0.1f);
+		//	spr->sprite.texture = texture;
+		//
+		//}
+		//
 		return scene;
 	}
 

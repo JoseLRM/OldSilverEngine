@@ -9,6 +9,7 @@
 #include "task_system/task_system_internal.h"
 #include "utils/utils_internal.h"
 #include "scene/scene_internal.h"
+#include "console/console_internal.h"
 
 using namespace sv;
 
@@ -34,18 +35,15 @@ namespace sv {
 		g_Name = "SilverEngine ";
 		g_Name += g_Version.ToString();
 
-		sv::log_separator();
-		sv::log_info("Initializing %s", g_Name.c_str());
-
-		// CONSOLE
-		if (desc.showConsole) console_show();
-		else console_hide();
-
 		// SYSTEMS
+
+		svCheck(console_initialize(desc.consoleDesc));
+
+		sv::log_info("Initializing %s", g_Name.c_str());
 
 		svCheck(utils_initialize());
 		svCheck(task_initialize(desc.minThreadsCount));
-		svCheck(scene_assets_initialize(desc.assetFolderPath));
+		svCheck(scene_initialize(desc.sceneDesc));
 		svCheck(window_initialize(desc.windowDesc));
 		svCheck(graphics_initialize(desc.graphicsDesc));
 		svCheck(renderer_initialize(desc.rendererDesc));
@@ -134,8 +132,9 @@ namespace sv {
 		svCheck(renderer_close());
 		svCheck(window_close());
 		svCheck(graphics_close());
-		svCheck(scene_assets_close());
+		svCheck(scene_close());
 		svCheck(task_close());
+		svCheck(console_close());
 
 		return Result_Success;
 	}

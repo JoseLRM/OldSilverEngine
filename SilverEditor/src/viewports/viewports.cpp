@@ -8,7 +8,7 @@
 
 namespace sve {
 
-	constexpr static ui32 g_ViewportsCount = 5u;
+	constexpr static ui32 g_ViewportsCount = 6u;
 	static Viewport g_Viewports[g_ViewportsCount];
 
 
@@ -19,12 +19,14 @@ namespace sve {
 		g_Viewports[SVE_VIEWPORT_SCENE_HIERARCHY] = { false, "Scene Hierarchy" };
 		g_Viewports[SVE_VIEWPORT_SCENE_EDITOR] = { false, "Scene Editor" };
 		g_Viewports[SVE_VIEWPORT_ENTITY_INSPECTOR] = { false, "Entity Inspector" };
+		g_Viewports[SVE_VIEWPORT_SIMULATION_TOOLS] = { false, "Simulation Tools" };
 
 		viewports_show(SVE_VIEWPORT_SIMULATION);
 		viewports_show(SVE_VIEWPORT_ASSETS);
 		viewports_show(SVE_VIEWPORT_SCENE_HIERARCHY);
 		viewports_show(SVE_VIEWPORT_SCENE_EDITOR);
 		viewports_show(SVE_VIEWPORT_ENTITY_INSPECTOR);
+		viewports_show(SVE_VIEWPORT_SIMULATION_TOOLS);
 	}
 
 	void viewports_close()
@@ -61,6 +63,10 @@ namespace sve {
 
 			case SVE_VIEWPORT_ENTITY_INSPECTOR:
 				hideCheck(viewport_scene_entity_inspector_display());
+				break;
+
+			case SVE_VIEWPORT_SIMULATION_TOOLS:
+				viewport_simulationtools_display();
 				break;
 
 			}

@@ -1708,9 +1708,8 @@ namespace sv {
 			attachments[i].finalLayout = graphics_vulkan_parse_image_layout(attDesc.finalLayout);
 
 			if (attDesc.type == AttachmentType_DepthStencil) {
-				// TODO: stencil operations
-				attachments[desc.attachments.size()].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-				attachments[desc.attachments.size()].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+				attachments[desc.attachments.size()].stencilLoadOp = graphics_vulkan_parse_attachment_loadop(attDesc.stencilLoadOp);
+				attachments[desc.attachments.size()].stencilStoreOp = graphics_vulkan_parse_attachment_storeop(attDesc.stencilStoreOp);
 			}
 		}
 

@@ -35,8 +35,8 @@ namespace sv {
 		{
 			EntityView<RigidBody2DComponent> bodies(scene.ecs);
 			for (RigidBody2DComponent& body : bodies) {
-
-				Transform trans = ecs_entity_get_transform(body.entity, scene.ecs);
+				
+				Transform trans = ecs_entity_transform_get(scene.ecs, body.entity);
 
 				vec3 position = trans.GetWorldPosition();
 				//TODO: vec3 rotation	= trans.GetWorldRotation();
@@ -62,7 +62,7 @@ namespace sv {
 			EntityView<QuadComponent> quads(scene.ecs);
 			for (QuadComponent& quad : quads) {
 
-				Transform trans = ecs_entity_get_transform(quad.entity, scene.ecs);
+				Transform trans = ecs_entity_transform_get(scene.ecs, quad.entity);
 
 				vec3 worldScale = trans.GetWorldScale();
 				vec2 scale = (vec2(worldScale.x, worldScale.y) * quad.size) / 2.f;
@@ -70,7 +70,7 @@ namespace sv {
 
 				if (quad.pInternal == nullptr) {
 
-					RigidBody2DComponent* body = ecs_component_get<RigidBody2DComponent>(quad.entity, scene.ecs);
+					RigidBody2DComponent* body = ecs_component_get<RigidBody2DComponent>(scene.ecs, quad.entity);
 					if (body == nullptr) continue;
 
 					b2Body* b2body = reinterpret_cast<b2Body*>(body->pInternal);
@@ -101,9 +101,9 @@ namespace sv {
 				b2Body* b2body = reinterpret_cast<b2Body*>(body.pInternal);
 				
 				const b2Transform& transform = b2body->GetTransform();
-				Transform trans = ecs_entity_get_transform(body.entity, scene.ecs);
+				Transform trans = ecs_entity_transform_get(scene.ecs, body.entity);
 
-				if (ecs_entity_get_parent(body.entity, scene.ecs) == SV_ENTITY_NULL) {
+				if (ecs_entity_parent_get(scene.ecs, body.entity) == SV_ENTITY_NULL) {
 					trans.SetPosition({ transform.p.x, transform.p.y, trans.GetLocalPosition().z });
 					trans.SetRotation({ trans.GetLocalRotation().x, trans.GetLocalRotation().y, transform.q.GetAngle() });
 				}

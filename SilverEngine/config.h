@@ -3,7 +3,7 @@
 #define SV_SRC_PATH "../SilverEngine/"
 
 #define SV_PLATFORM_WINDOWS
-//#define SV_DEBUG
+#define SV_DEBUG
 
 // Graphics
 
@@ -24,7 +24,7 @@
 
 // Graphics Vulkan
 
-#define SV_GFX_VK_VALIDATION_LAYERS 1
+#define SV_GFX_VK_VALIDATION_LAYERS 0
 #define SV_GFX_VK_MAX_DESCRIPTOR_SETS 100u
 #define SV_GFX_VK_MAX_DESCRIPTOR_TYPES 32u
 #define SV_GFX_VK_DESCRIPTOR_ALLOC_COUNT 10u
@@ -33,7 +33,8 @@
 
 // Entity Component System
 
-#define SV_ECS_MAX_COMPONENTS 128
+#define SV_ECS_COMPONENT_POOL_SIZE 200u
+#define SV_ECS_ENTITY_ALLOC_SIZE 1000u
 #define SV_ECS_REQUEST_COMPONENTS_COUNT 16
 
 // Renderer

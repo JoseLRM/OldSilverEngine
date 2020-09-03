@@ -102,7 +102,7 @@ namespace sve {
 			sv::Scene& scene = simulation_scene_get();
 			sv::uvec2 res = sv::renderer_resolution_get();
 			svCheck(sv::renderer_offscreen_create(res.x, res.y, g_Camera.offscreen));
-			sv::CameraComponent& mainCamera = *sv::ecs_component_get<sv::CameraComponent>(scene.mainCamera, scene.ecs);
+			sv::CameraComponent& mainCamera = *sv::ecs_component_get<sv::CameraComponent>(scene.ecs, scene.mainCamera);
 			g_Camera.settings.projection = mainCamera.settings.projection;
 
 			// TEMP:

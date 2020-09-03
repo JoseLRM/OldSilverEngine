@@ -7,6 +7,7 @@
 #include "renderer.h"
 #include "task_system.h"
 #include "input.h"
+#include "scene.h"
 
 // Main engine
 
@@ -21,12 +22,12 @@ namespace sv {
 
 	struct InitializationDesc {
 		ApplicationCallbacks callbacks;
+		InitializationSceneDesc sceneDesc;
 		InitializationWindowDesc windowDesc;
 		InitializationGraphicsDesc graphicsDesc;
 		InitializationRendererDesc rendererDesc;
-		bool showConsole;
+		InitializationConsoleDesc consoleDesc;
 		ui32 minThreadsCount;
-		const char* assetFolderPath;
 	};
 
 	Result engine_initialize(const InitializationDesc* desc);

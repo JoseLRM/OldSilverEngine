@@ -168,6 +168,9 @@
     <ClInclude Include="src\entity_system\Transform.h" />
     <ClInclude Include="src\scene\scene_components.h" />
     <ClInclude Include="src\scene\physics_impl.h" />
+    <ClInclude Include="src\console.h" />
+    <ClInclude Include="src\console\console_internal.h" />
+    <ClInclude Include="src\entity_system\entity_system_internal.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\graphics\vulkan\graphics_vulkan.cpp" />
@@ -194,8 +197,6 @@
     <ClCompile Include="src\external\sprv\spirv_msl.cpp" />
     <ClCompile Include="src\external\sprv\spirv_parser.cpp" />
     <ClCompile Include="src\external\sprv\spirv_reflect.cpp" />
-    <ClCompile Include="src\main\engine.cpp" />
-    <ClCompile Include="src\main\core.cpp" />
     <ClCompile Include="src\renderer\renderer_projection.cpp" />
     <ClCompile Include="src\task_system\task_system.cpp" />
     <ClCompile Include="src\input\input.cpp" />
@@ -215,6 +216,9 @@
     <ClCompile Include="src\scene\scene_physics.cpp" />
     <ClCompile Include="src\scene\scene_renderer.cpp" />
     <ClCompile Include="src\scene\scene_assets.cpp" />
+    <ClCompile Include="src\console\console.cpp" />
+    <ClCompile Include="src\engine\engine.cpp" />
+    <ClCompile Include="src\entity_system\entity_system_allocators.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="src\external\assimp\.editorconfig" />

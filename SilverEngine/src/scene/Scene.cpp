@@ -4,6 +4,28 @@
 
 namespace sv {
 
+	Result scene_initialize(const InitializationSceneDesc& desc)
+	{
+		ecs_register<NameComponent>("NameComponent");
+		ecs_register<SpriteComponent>("SpriteComponent");
+		ecs_register<CameraComponent>("CameraComponent");
+		ecs_register<RigidBody2DComponent>("RigidBody2DComponent");
+		ecs_register<QuadComponent>("QuadComponent");
+		ecs_register<MeshComponent>("MeshComponent");
+		ecs_register<LightComponent>("LightComponent");
+
+		svCheck(scene_assets_initialize(desc.assetsFolderPath));
+
+		return Result_Success;
+	}
+
+	Result scene_close()
+	{
+		svCheck(scene_assets_close());
+
+		return Result_Success;
+	}
+
 	Result scene_create(const SceneDesc* desc, Scene& scene)
 	{
 		scene.timeStep = 1.f;
@@ -12,11 +34,11 @@ namespace sv {
 		scene.ecs = ecs_create();
 
 		// Create main camera
-		scene.mainCamera = ecs_entity_create(SV_ENTITY_NULL, scene.ecs);
-		ecs_component_add<CameraComponent>(scene.mainCamera, scene.ecs);
+		scene.mainCamera = ecs_entity_create(scene.ecs);
+		ecs_component_add<CameraComponent>(scene.ecs, scene.mainCamera);
 
 #if SV_SCENE_NAME_COMPONENT
-		ecs_component_add<NameComponent>(scene.mainCamera, scene.ecs, "Main Camera");
+		ecs_component_add<NameComponent>(scene.ecs, scene.mainCamera, "Camera");
 #endif
 
 		// Assets

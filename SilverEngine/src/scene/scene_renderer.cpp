@@ -10,7 +10,7 @@ namespace sv {
 
 		for (CameraComponent& camera : cameras) {
 
-			Transform trans = ecs_entity_get_transform(camera.entity, scene.ecs);
+			Transform trans = ecs_entity_transform_get(scene.ecs, camera.entity);
 
 			CameraDrawDesc desc;
 			desc.pSettings = &camera.settings;
@@ -74,7 +74,7 @@ namespace sv {
 
 			for (SpriteComponent& sprite : sprites) {
 
-				Transform trans = ecs_entity_get_transform(sprite.entity, scene.ecs);
+				Transform trans = ecs_entity_transform_get(scene.ecs, sprite.entity);
 				instances.emplace_back(trans.GetWorldMatrix(), sprite.sprite, sprite.color);
 
 			}
@@ -101,7 +101,7 @@ namespace sv {
 
 					if (mesh.mesh.Get() == nullptr || mesh.material.Get() == nullptr) continue;
 
-					Transform trans = ecs_entity_get_transform(mesh.entity, scene.ecs);
+					Transform trans = ecs_entity_transform_get(scene.ecs, mesh.entity);
 					instances.emplace_back(trans.GetWorldMatrix() * viewMatrix, mesh.mesh.Get(), mesh.material.Get());
 
 				}
@@ -112,7 +112,7 @@ namespace sv {
 
 				for (LightComponent& light : lights) {
 
-					Transform trans = ecs_entity_get_transform(light.entity, scene.ecs);
+					Transform trans = ecs_entity_transform_get(scene.ecs, light.entity);
 
 					vec3 pos = trans.GetWorldPosition();
 					vec3 dir; // TODO: Light Direction

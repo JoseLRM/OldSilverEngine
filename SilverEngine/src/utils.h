@@ -37,7 +37,17 @@ namespace sv {
 		inline ui32 GetMillisecondsUInt() const noexcept { return ui32(m_Time * 1000.f); }
 	};
 
+	struct Date {
+		ui32 year;
+		ui32 month;
+		ui32 day;
+		ui32 hour;
+		ui32 minute;
+		ui32 second;
+	};
+
 	Time timer_now();
+	Date timer_date();
 
 	// Hash functions
 

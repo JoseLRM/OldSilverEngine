@@ -3,11 +3,11 @@
 namespace sv {
 
 	class Transform {
-		EntityTransform* trans;
+		void* trans;
 		ECS* pECS;
 
 	public:
-		Transform(Entity entity, EntityTransform* transform, ECS* ecs);
+		Transform(Entity entity, void* transform, ECS* ecs);
 		~Transform() = default;
 
 		Transform(const Transform& other) = default;
@@ -41,6 +41,7 @@ namespace sv {
 
 	private:
 		void UpdateWorldMatrix();
+		void Notify();
 
 	};
 

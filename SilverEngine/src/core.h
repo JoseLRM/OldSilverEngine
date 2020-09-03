@@ -72,18 +72,6 @@ namespace sv {
 	};
 #define SV_THROW(type, desc) throw sv::Exception(type, desc, __FILE__, __LINE__)
 
-	// Console
-
-	void console_show();
-	void console_hide();
-
-	// logging
-
-	void log_separator();
-	void log(const char* s, ...);
-	void log_info(const char* s, ...);
-	void log_warning(const char* s, ...);
-	void log_error(const char* s, ...);
 }
 
 // macros
@@ -101,3 +89,4 @@ namespace sv {
 // SilverEngine Includes
 
 #include "utils.h"
+#include "console.h"

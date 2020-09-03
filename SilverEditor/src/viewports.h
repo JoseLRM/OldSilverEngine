@@ -7,6 +7,7 @@ namespace sve {
 #define SVE_VIEWPORT_SCENE_HIERARCHY 2
 #define SVE_VIEWPORT_SCENE_EDITOR 3
 #define SVE_VIEWPORT_ENTITY_INSPECTOR 4
+#define SVE_VIEWPORT_SIMULATION_TOOLS 5
 
 	struct Viewport {
 		bool		active;

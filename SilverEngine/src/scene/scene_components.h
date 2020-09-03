@@ -5,7 +5,7 @@ namespace sv {
 	// Name component
 #if SV_SCENE_NAME_COMPONENT
 
-	SV_COMPONENT(NameComponent) {
+	struct NameComponent : public Component<NameComponent> {
 	private:
 		std::string m_Name;
 	
@@ -24,7 +24,7 @@ namespace sv {
 
 	// Sprite Component
 
-	SV_COMPONENT(SpriteComponent) {
+	struct SpriteComponent : public Component<SpriteComponent> {
 
 		ui32 renderLayer;
 		Sprite sprite;
@@ -39,7 +39,7 @@ namespace sv {
 
 	// Camera Component
 
-	SV_COMPONENT(CameraComponent) {
+	struct CameraComponent : public Component<CameraComponent> {
 	private:
 		std::unique_ptr<Offscreen> m_Offscreen;
 	
@@ -65,7 +65,7 @@ namespace sv {
 
 	// Rigid body 2d component
 
-	SV_COMPONENT(RigidBody2DComponent) {
+	struct RigidBody2DComponent : public Component<RigidBody2DComponent> {
 		void* pInternal;
 
 		bool dynamic = true;
@@ -81,7 +81,7 @@ namespace sv {
 
 	// Quad Collider
 
-	SV_COMPONENT(QuadComponent) {
+	struct QuadComponent : public Component<QuadComponent> {
 		void* pInternal;
 
 		vec2 size = { 1.f, 1.f };
@@ -100,7 +100,7 @@ namespace sv {
 
 	// Mesh component
 
-	SV_COMPONENT(MeshComponent) {
+	struct MeshComponent : public Component<MeshComponent> {
 
 		SharedRef<Mesh>		mesh;
 		SharedRef<Material> material;
@@ -109,7 +109,7 @@ namespace sv {
 
 	// Light component
 
-	SV_COMPONENT(LightComponent) {
+	struct LightComponent : public Component<LightComponent> {
 
 		LightType	lightType	= LightType_Point;
 		float		intensity	= 1.f;

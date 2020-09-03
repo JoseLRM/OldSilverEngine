@@ -21,9 +21,10 @@ namespace sve {
 		desc.callbacks.render = editor_render;
 		desc.callbacks.close = editor_close;
 
-		desc.assetFolderPath = "assets/";
+		desc.sceneDesc.assetsFolderPath = "assets/";
 		desc.minThreadsCount = 2;
-		desc.showConsole = true;
+		desc.consoleDesc.show = true;
+		desc.consoleDesc.logFolder = "logs/";
 		desc.rendererDesc.presentOffscreen = false;
 		desc.rendererDesc.resolutionWidth = 1920u;
 		desc.rendererDesc.resolutionHeight = 1080u;
@@ -181,7 +182,7 @@ namespace sve {
 			DisplayDocking();
 
 			viewports_display();
-
+			
 			g_Device->EndFrame();
 		}
 	}

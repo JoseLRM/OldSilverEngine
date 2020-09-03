@@ -101,7 +101,10 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\console.h" />
+    <ClInclude Include="src\console\console_internal.h" />
     <ClInclude Include="src\entity_system.h" />
+    <ClInclude Include="src\entity_system\entity_system_internal.h" />
     <ClInclude Include="src\external\assimp\ai_assert.h" />
     <ClInclude Include="src\external\assimp\anim.h" />
     <ClInclude Include="src\external\assimp\BaseImporter.h" />
@@ -270,7 +273,9 @@
     <ClInclude Include="src\utils\Version.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\console\console.cpp" />
     <ClCompile Include="src\entity_system\entity_system.cpp" />
+    <ClCompile Include="src\entity_system\entity_system_allocators.cpp" />
     <ClCompile Include="src\external\sprv\spirv_cfg.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
@@ -317,11 +322,10 @@
     </ClCompile>
     <ClCompile Include="src\graphics\vulkan\graphics_vulkan_pipeline.cpp" />
     <ClCompile Include="src\loader\loader.cpp" />
-    <ClCompile Include="src\main\core.cpp">
+    <ClCompile Include="src\engine\engine.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\main\engine.cpp" />
     <ClCompile Include="src\input\input.cpp" />
     <ClCompile Include="src\graphics\graphics.cpp" />
     <ClCompile Include="src\graphics\graphics_allocator.cpp" />

@@ -1,266 +1,174 @@
 #include "core.h"
 
-#include "entity_system.h"
+#include "entity_system_internal.h"
 #include "task_system.h"
 
 namespace sv {
 
-	///////////////////////////////////// COMPONENTS TYPES ////////////////////////////////////////
+#define parseECS() ECS_internal& ecs = *reinterpret_cast<ECS_internal*>(ecs_)
+
+	ECS* ecs_create()
+	{
+		ECS_internal& ecs = *new ECS_internal();
+
+		ecs.components.resize(ecs_register_count());
+		for (CompID i = 0u; i < ecs.components.size(); ++i) {
+			ecs.components[i].create(i);
+		}
+
+		ecs.entities.emplace_back(SV_ENTITY_NULL);
+
+		return &ecs;
+	}
+
+	void ecs_destroy(ECS* ecs_)
+	{
+		if (ecs_ == nullptr) return;
+		parseECS();
+
+		ecs.components.clear();
+		ecs.entities.clear();
+
+		delete &ecs;
+	}
+
+	void ecs_clear(ECS* ecs_)
+	{
+		parseECS();
+
+		for (ui16 i = 0; i < ecs_register_count(); ++i) {
+			ecs.components[i].destroy();
+		}
+		ecs.entities.resize(1);
+		ecs.entityData.clear();
+	}
+
+	///////////////////////////////////// COMPONENTS REGISTER ////////////////////////////////////////
 
 	struct ComponentData {
 		const char* name;
-		size_t size;
+		ui32 size;
 		CreateComponentFunction createFn;
-		DestoryComponentFunction destroyFn;
+		DestroyComponentFunction destroyFn;
 		MoveComponentFunction moveFn;
 		CopyComponentFunction copyFn;
 	};
 
-	static ComponentData	g_ComponentData[SV_ECS_MAX_COMPONENTS];
-	static ui16				g_CompCount = 0u;
+	static std::vector<ComponentData> g_ComponentData;
+	static std::mutex g_ComponentRegisterMutex;
 
-	CompID ecs_components_register(ui32 size, const std::type_info& typeInfo, CreateComponentFunction createFn, DestoryComponentFunction destroyFn, MoveComponentFunction moveFn, CopyComponentFunction copyFn)
+	CompID ecs_register(ui32 size, const char* name, CreateComponentFunction createFn, DestroyComponentFunction destroyFn, MoveComponentFunction moveFn, CopyComponentFunction copyFn)
 	{
-		SV_ASSERT(g_CompCount < SV_ECS_MAX_COMPONENTS);
+		g_ComponentRegisterMutex.lock();
+		CompID ID = g_ComponentData.size();
+		ComponentData& data = g_ComponentData.emplace_back();
+		g_ComponentRegisterMutex.unlock();
 
-		CompID ID = g_CompCount++;
-
-		ComponentData& data = g_ComponentData[ID];
 		data.size = size;
-		data.name = typeInfo.name();
+		data.name = name;
 		data.createFn = createFn;
 		data.destroyFn = destroyFn;
 		data.moveFn = moveFn;
 		data.copyFn = copyFn;
 
-		size_t len = strlen(data.name);
-		char c = data.name[--len];
-		while (c != ' ' && c != ':') {
-			c = data.name[len--];
-		}
-
-		data.name += len + 2;
-
 		return ID;
 	}
 
-	ui16 ecs_components_get_count()
+	ui32 ecs_register_count()
 	{
-		return g_CompCount;
+		return ui32(g_ComponentData.size());
 	}
-	size_t ecs_components_get_size(CompID ID)
+	ui32 ecs_register_sizeof(CompID ID)
 	{
 		return g_ComponentData[ID].size;
 	}
-	const char* ecs_components_get_name(CompID ID)
+	const char* ecs_register_nameof(CompID ID)
 	{
 		return g_ComponentData[ID].name;
 	}
-	std::map<std::string, CompID> g_ComponentNames;
-	bool ecs_components_get_id(const char* name, CompID* id)
-	{
-		auto it = g_ComponentNames.find(name);
-		if (it == g_ComponentNames.end()) {
-			for (CompID i = 0; i < ecs_components_get_count(); ++i) {
-				if (std::strcmp(g_ComponentData[i].name, name) == 0) {
-					g_ComponentNames[name] = i;
-					*id = i;
-					return true;
-				}
-			}
-			*id = 0;
-			return false;
-		}
-		else {
-			*id = (*it).second;
-			return true;
-		}
-	}
-	void ecs_components_create(CompID ID, BaseComponent* ptr, Entity entity)
+	
+	void ecs_register_create(CompID ID, BaseComponent* ptr, Entity entity)
 	{
 		g_ComponentData[ID].createFn(ptr, entity);
 	}
-	void ecs_components_destroy(CompID ID, BaseComponent* ptr)
+	void ecs_register_destroy(CompID ID, BaseComponent* ptr)
 	{
 		g_ComponentData[ID].destroyFn(ptr);
+		ptr->entity = SV_ENTITY_NULL;
 	}
 
-	void ecs_components_move(CompID ID, BaseComponent* from, BaseComponent* to)
+	void ecs_register_move(CompID ID, BaseComponent* from, BaseComponent* to)
 	{
 		g_ComponentData[ID].moveFn(from, to);
 	}
 
-	void ecs_components_copy(CompID ID, BaseComponent* from, BaseComponent* to)
+	void ecs_register_copy(CompID ID, BaseComponent* from, BaseComponent* to)
 	{
 		g_ComponentData[ID].copyFn(from, to);
 	}
 
-	///////////////////////////////////// ENTITIES ////////////////////////////////////////
+	///////////////////////////////////// HELPER FUNCTIONS ////////////////////////////////////////
 
-	void ecs_entitydata_index_add(EntityData& ed, CompID ID, size_t index)
+	void ecs_entitydata_index_add(EntityData& ed, CompID ID, BaseComponent* compPtr)
 	{
-		ed.indices.push_back(std::make_pair(ID, index));
+		ed.components.push_back(std::make_pair(ID, compPtr));
 	}
 
-	void ecs_entitydata_index_set(EntityData& ed, CompID ID, size_t index)
+	void ecs_entitydata_index_set(EntityData& ed, CompID ID, BaseComponent* compPtr)
 	{
-		for (auto it = ed.indices.begin(); it != ed.indices.end(); ++it) {
+		for (auto it = ed.components.begin(); it != ed.components.end(); ++it) {
 			if (it->first == ID) {
-				it->second = index;
+				it->second = compPtr;
 				return;
 			}
 		}
 	}
 
-	bool ecs_entitydata_index_get(EntityData& ed, CompID ID, size_t& index)
+	BaseComponent* ecs_entitydata_index_get(EntityData& ed, CompID ID)
 	{
-		for (auto it = ed.indices.begin(); it != ed.indices.end(); ++it) {
+		for (auto it = ed.components.begin(); it != ed.components.end(); ++it) {
 			if (it->first == ID) {
-				index = it->second;
-				return true;
+				return it->second;
 			}
 		}
-		return false;
+		return nullptr;
 	}
 
 	void ecs_entitydata_index_remove(EntityData& ed, CompID ID)
 	{
-		for (auto it = ed.indices.begin(); it != ed.indices.end(); ++it) {
+		for (auto it = ed.components.begin(); it != ed.components.end(); ++it) {
 			if (it->first == ID) {
-				ed.indices.erase(it);
+				ed.components.erase(it);
 				return;
 			}
 		}
 	}
 
-	void ecs_entitydata_reserve(ui32 count, ECS& ecs)
+	void ecs_entitydata_update_childs(ECS_internal& ecs, Entity entity, i32 count)
 	{
-		ui32 freeEntityDataCount = ui32(ecs.freeEntityData.size());
+		Entity parent = entity;
 
-		if (freeEntityDataCount < count) {
-			ecs.entityData.reserve(count - freeEntityDataCount);
+		while (parent != SV_ENTITY_NULL) {
+			EntityData& parentToUpdate = ecs.entityData[parent];
+			parentToUpdate.childsCount += count;
+			parent = parentToUpdate.parent;
 		}
 	}
 
-	Entity ecs_entity_new(ECS& ecs)
+	///////////////////////////////////// ENTITIES ////////////////////////////////////////
+
+	Entity ecs_entity_create(ECS* ecs_, Entity parent)
 	{
-		Entity entity;
-		if (ecs.freeEntityData.empty()) {
-			entity = Entity(ecs.entityData.size());
-			ecs.entityData.emplace_back();
-		}
-		else {
-			entity = ecs.freeEntityData.back();
-			ecs.freeEntityData.pop_back();
-		}
-		ecs.entityData[entity].transform = {};
-		return entity;
-	}
+		parseECS();
 
-	void ecs_entitydata_update_childs(Entity entity, i32 count, ECS& ecs)
-	{
-		std::vector<Entity> parentsToUpdate;
-		parentsToUpdate.emplace_back(entity);
-		while (!parentsToUpdate.empty()) {
-
-			Entity parentToUpdate = parentsToUpdate.back();
-			parentsToUpdate.pop_back();
-			EntityData& parentToUpdateEd = ecs.entityData[parentToUpdate];
-			parentToUpdateEd.childsCount += count;
-
-			if (parentToUpdateEd.parent != SV_ENTITY_NULL) parentsToUpdate.emplace_back(parentToUpdateEd.parent);
-		}
-	}
-
-	void ecs_component_add(sv::Entity entity, sv::BaseComponent* comp, sv::CompID componentID, size_t componentSize, ECS& ecs)
-	{
-		auto& list = ecs.components[componentID];
-		size_t index = list.size();
-
-		// allocate the component
-		list.resize(list.size() + componentSize);
-		ecs_components_move(componentID, comp, (BaseComponent*)(&list[index]));
-		((BaseComponent*)& list[index])->entity = entity;
-
-		// set index in entity
-		ecs_entitydata_index_add(ecs.entityData[entity], componentID, index);
-	}
-
-	void ecs_components_add(sv::Entity* entities, ui32 count, sv::BaseComponent* comp, sv::CompID componentID, size_t componentSize, ECS& ecs)
-	{
-		auto& list = ecs.components[componentID];
-		size_t index = list.size();
-
-		// allocate the components
-		list.resize(list.size() + componentSize * ui64(count));
-
-		size_t currentIndex;
-		Entity currentEntity;
-		for (ui32 i = 0; i < count; ++i) {
-			currentIndex = index + (i * componentSize);
-			currentEntity = entities[i];
-
-			if (comp) {
-				ecs_components_copy(componentID, comp, (BaseComponent*)(&list[currentIndex]));
-			}
-			else {
-				ecs_components_create(componentID, (BaseComponent*)(&list[currentIndex]), currentEntity);
-			}
-
-			// set entity in component
-			BaseComponent* component = (BaseComponent*)(&list[currentIndex]);
-			component->entity = currentEntity;
-			// set index in entity
-			ecs_entitydata_index_add(ecs.entityData[currentEntity], componentID, currentIndex);
-		}
-	}
-
-	
-
-	ECS ecs_create()
-	{
-		ECS ecs;
-
-		ecs.components.reserve(ecs_components_get_count());
-		for (CompID id = 0; id < ecs_components_get_count(); ++id) {
-			ecs.components.push_back(std::vector<ui8>());
-		}
-
-		ecs.entityData.emplace_back();
-		ecs.entities.emplace_back(SV_ENTITY_NULL);
-
-		return ecs;
-	}
-
-	void ecs_destroy(ECS& ecs)
-	{
-		ecs.components.clear();
-		ecs.entities.clear();
-		ecs.entityData.clear();
-		ecs.freeEntityData.clear();
-	}
-
-	void ecs_clear(ECS& ecs)
-	{
-		for (ui16 i = 0; i < ecs_components_get_count(); ++i) {
-			ecs.components[i].clear();
-		}
-		ecs.entities.resize(1);
-		ecs.entityData.resize(1);
-		ecs.freeEntityData.clear();
-	}
-
-	Entity ecs_entity_create(Entity parent, ECS& ecs)
-	{
-		ecs_entitydata_reserve(1u, ecs);
-		Entity entity = ecs_entity_new(ecs);
+		Entity entity = ecs.entityData.add();
 
 		if (parent == SV_ENTITY_NULL) {
 			ecs.entityData[entity].handleIndex = ecs.entities.size();
 			ecs.entities.emplace_back(entity);
 		}
 		else {
-			ecs_entitydata_update_childs(parent, 1u, ecs);
+			ecs_entitydata_update_childs(ecs, parent, 1u);
 
 			// Set parent and handleIndex
 			EntityData& parentData = ecs.entityData[parent];
@@ -286,14 +194,16 @@ namespace sv {
 		return entity;
 	}
 
-	void ecs_entity_destroy(Entity entity, ECS& ecs)
+	void ecs_entity_destroy(ECS* ecs_, Entity entity)
 	{
+		parseECS();
+
 		EntityData& entityData = ecs.entityData[entity];
 		ui32 count = entityData.childsCount + 1;
 
 		// notify parents
 		if (entityData.parent != SV_ENTITY_NULL) {
-			ecs_entitydata_update_childs(entityData.parent, -i32(count), ecs);
+			ecs_entitydata_update_childs(ecs, entityData.parent, -i32(count));
 		}
 
 		// data to remove entities
@@ -302,15 +212,11 @@ namespace sv {
 		size_t cpyCant = ecs.entities.size() - indexBeginSrc;
 
 		// remove components & entityData
-		ecs.freeEntityData.reserve(count);
 		for (size_t i = 0; i < count; i++) {
 			Entity e = ecs.entities[indexBeginDest + i];
 			EntityData& ed = ecs.entityData[e];
-			ecs_components_remove(e, ecs);
-			ed.handleIndex = 0;
-			ed.parent = SV_ENTITY_NULL;
-			ed.childsCount = 0u;
-			ecs.freeEntityData.emplace_back(e);
+			ecs_entity_clear(ecs_, entity);
+			ecs.entityData.remove(entity);
 		}
 
 		// remove from entities & update indices
@@ -321,74 +227,111 @@ namespace sv {
 		}
 	}
 
-	Entity ecs_entity_duplicate_recursive(Entity duplicated, Entity parent, ECS& ecs)
+	void ecs_entity_clear(ECS* ecs_, Entity entity)
+	{
+		parseECS();
+
+		EntityData& ed = ecs.entityData[entity];
+		while (!ed.components.empty()) {
+
+			auto [compID, comp] = ed.components.back();
+			ed.components.pop_back();
+
+			ecs.components[compID].free_component(comp);
+			
+		}
+	}
+
+	Entity ecs_entity_duplicate_recursive(ECS_internal& ecs, Entity duplicated, Entity parent)
 	{
 		Entity copy;
 
-		if (parent == SV_ENTITY_NULL) copy = ecs_entity_create(SV_ENTITY_NULL, ecs);
-		else copy = ecs_entity_create(parent, ecs);
+		if (parent == SV_ENTITY_NULL) copy = ecs_entity_create(&ecs);
+		else copy = ecs_entity_create(&ecs, parent);
 
 		EntityData& duplicatedEd = ecs.entityData[duplicated];
 		EntityData& copyEd = ecs.entityData[copy];
 
-		for (ui32 i = 0; i < duplicatedEd.indices.size(); ++i) {
-			CompID ID = duplicatedEd.indices[i].first;
-			size_t SIZE = ecs_components_get_size(ID);
+		for (ui32 i = 0; i < duplicatedEd.components.size(); ++i) {
+			CompID ID = duplicatedEd.components[i].first;
+			size_t SIZE = ecs_register_sizeof(ID);
 
-			auto& list = ecs.components[ID];
-
-			size_t index = list.size();
-			list.resize(index + SIZE);
-
-			BaseComponent* comp = ecs_component_get_by_id(duplicated, ID, ecs);
-			BaseComponent* newComp = reinterpret_cast<BaseComponent*>(&list[index]);
-			ecs_components_copy(ID, comp, newComp);
+			BaseComponent* comp = ecs_entitydata_index_get(duplicatedEd, ID);
+			BaseComponent* newComp = ecs.components[ID].alloc_component(comp);
 
 			newComp->entity = copy;
-			ecs_entitydata_index_add(copyEd, ID, index);
+			ecs_entitydata_index_add(copyEd, ID, newComp);
 		}
 
 		copyEd.transform = duplicatedEd.transform;
 
 		for (ui32 i = 0; i < ecs.entityData[duplicated].childsCount; ++i) {
 			Entity toCopy = ecs.entities[ecs.entityData[duplicated].handleIndex + i + 1];
-			ecs_entity_duplicate_recursive(toCopy, copy, ecs);
+			ecs_entity_duplicate_recursive(ecs, toCopy, copy);
 			i += ecs.entityData[toCopy].childsCount;
 		}
 
 		return copy;
 	}
 
-	Entity ecs_entity_duplicate(Entity duplicated, ECS& ecs)
+	Entity ecs_entity_duplicate(ECS* ecs_, Entity entity)
 	{
-		return ecs_entity_duplicate_recursive(duplicated, ecs.entityData[duplicated].parent, ecs);
+		parseECS();
+
+		Entity res = ecs_entity_duplicate_recursive(ecs, entity, ecs.entityData[entity].parent);
+		return res;
 	}
 
-	bool ecs_entity_is_empty(Entity entity, ECS& ecs)
+	bool ecs_entity_is_empty(ECS* ecs_, Entity entity)
 	{
-		return ecs.entityData[entity].indices.empty();
+		parseECS();
+		return ecs.entityData[entity].components.empty();
 	}
 
-	void ecs_entity_get_childs(Entity parent, Entity const** childsArray, ui32* size, ECS& ecs)
+	bool ecs_entity_exist(ECS* ecs_, Entity entity)
 	{
+		parseECS();
+		if (entity == SV_ENTITY_NULL || entity >= ecs.entityData.size()) return false;
+
+		EntityData& ed = ecs.entityData[entity];
+		return ed.handleIndex == 0u;
+	}
+
+	ui32 ecs_entity_childs_count(ECS* ecs_, Entity parent)
+	{
+		parseECS();
+		return ecs.entityData[parent].childsCount;
+	}
+
+	void ecs_entity_childs_get(ECS* ecs_, Entity parent, Entity const** childsArray)
+	{
+		parseECS();
+
 		const EntityData& ed = ecs.entityData[parent];
-		*size = ed.childsCount;
-		if (childsArray && ed.childsCount != 0)* childsArray = &ecs.entities[ed.handleIndex + 1];
+		if (childsArray && ed.childsCount != 0) *childsArray = &ecs.entities[ed.handleIndex + 1];
 	}
 
-	Entity ecs_entity_get_parent(Entity entity, ECS& ecs)
+	Entity ecs_entity_parent_get(ECS* ecs_, Entity entity)
 	{
+		parseECS();
 		return ecs.entityData[entity].parent;
 	}
 
-	Transform ecs_entity_get_transform(Entity entity, ECS& ecs)
+	Transform ecs_entity_transform_get(ECS* ecs_, Entity entity)
 	{
+		parseECS();
 		return Transform(entity, &ecs.entityData[entity].transform, &ecs);
 	}
 
-	void ecs_entities_create(ui32 count, Entity parent, Entity* entities, ECS& ecs)
+	ui32 ecs_entity_component_count(ECS* ecs_, Entity entity)
 	{
-		ecs_entitydata_reserve(count, ecs);
+		parseECS();
+		return ui32(ecs.entityData[entity].components.size());
+	}
+
+	void ecs_entities_create(ECS* ecs_, ui32 count, Entity parent, Entity* entities)
+	{
+		parseECS();
 
 		size_t entityIndex = 0u;
 
@@ -399,7 +342,7 @@ namespace sv {
 
 			// Create entities
 			for (size_t i = 0; i < count; ++i) {
-				Entity entity = ecs_entity_new(ecs);
+				Entity entity = ecs.entityData.add();
 				ecs.entityData[entity].handleIndex = entityIndex + i;
 				ecs.entities.emplace_back(entity);
 			}
@@ -413,7 +356,7 @@ namespace sv {
 			ecs.entities.resize(lastEntitiesSize + count);
 
 			// Update childs count
-			ecs_entitydata_update_childs(parent, count, ecs);
+			ecs_entitydata_update_childs(ecs, parent, count);
 
 			// if the parent and sons aren't in back of the list
 			if (entityIndex != lastEntitiesSize) {
@@ -427,7 +370,7 @@ namespace sv {
 
 			// creating entities
 			for (size_t i = 0; i < count; ++i) {
-				Entity entity = ecs_entity_new(ecs);
+				Entity entity = ecs.entityData.add();
 
 				EntityData& entityData = ecs.entityData[entity];
 				entityData.handleIndex = entityIndex + i;
@@ -444,388 +387,207 @@ namespace sv {
 		}
 	}
 
-	void ecs_entities_destroy(Entity* entities, ui32 count, ECS& ecs)
+	void ecs_entities_destroy(ECS* ecs, Entity const* entities, ui32 count)
 	{
 		log_error("TODO->ecs_entities_destroy");
 	}
 
-	void ecs_component_add_by_id(sv::Entity entity, sv::CompID componentID, ECS& ecs)
+	ui32 ecs_entity_count(ECS* ecs_)
 	{
-		size_t componentSize = ecs_components_get_size(componentID);
-
-		auto& list = ecs.components[componentID];
-		size_t index = list.size();
-
-		// allocate the component
-		list.resize(list.size() + componentSize);
-		BaseComponent* comp = (BaseComponent*)& list[index];
-		ecs_components_create(componentID, comp, entity);
-
-		// set index in entity
-		ecs_entitydata_index_add(ecs.entityData[entity], componentID, index);
+		parseECS();
+		return ui32(ecs.entities.size()) - 1u;
 	}
 
-	sv::BaseComponent* ecs_component_get_by_id(Entity e, CompID componentID, ECS& ecs)
+	Entity ecs_entity_get(ECS* ecs_, ui32 index)
 	{
-		size_t index;
-		if (ecs_entitydata_index_get(ecs.entityData[e], componentID, index)) {
-			return (BaseComponent*)(&(ecs.components[componentID][index]));
-		}
-		return nullptr;
-	}
-	sv::BaseComponent* ecs_component_get_by_id(EntityData& e, sv::CompID componentID, ECS& ecs)
-	{
-		size_t index;
-		if (ecs_entitydata_index_get(e, componentID, index)) {
-			return (BaseComponent*)(&(ecs.components[componentID][index]));
-		}
-		return nullptr;
+		parseECS();
+		return ecs.entities[index + 1u];
 	}
 
-	void ecs_component_remove_by_id(sv::Entity entity, sv::CompID componentID, ECS& ecs)
+	/////////////////////////////// COMPONENTS /////////////////////////////////////
+
+	BaseComponent* ecs_component_add(ECS* ecs_, Entity entity, BaseComponent* comp, CompID componentID, size_t componentSize)
 	{
-		size_t componentSize = ecs_components_get_size(componentID);
-		EntityData& entityData = ecs.entityData[entity];
+		parseECS();
 
-		// Get the index
-		size_t index;
-		if (!ecs_entitydata_index_get(entityData, componentID, index)) return;
-
-		// Remove index from index list
-		ecs_entitydata_index_remove(entityData, componentID);
-
-		auto& list = ecs.components[componentID];
-
-		ecs_components_destroy(componentID, reinterpret_cast<BaseComponent*>(&list[index]));
-
-		// if the component isn't the last element
-		if (index != list.size() - componentSize) {
-			// set back data in index
-			memcpy(&list[index], &list[list.size() - componentSize], componentSize);
-
-			Entity otherEntity = ((BaseComponent*)(&list[index]))->entity;
-			ecs_entitydata_index_set(ecs.entityData[otherEntity], componentID, index);
-		}
-
-		list.resize(list.size() - componentSize);
+		comp = ecs.components[componentID].alloc_component(comp);
+		comp->entity = entity;
+		ecs_entitydata_index_add(ecs.entityData[entity], componentID, comp);
+		return comp;
 	}
 
-	void ecs_components_remove(Entity entity, ECS& ecs)
+	BaseComponent* ecs_component_add_by_id(ECS* ecs_, Entity entity, CompID componentID)
 	{
-		EntityData& entityData = ecs.entityData[entity];
+		parseECS();
 
-		CompID componentID;
-		size_t componentSize, index;
-		for (ui32 i = 0; i < entityData.indices.size(); ++i) {
-			componentID = entityData.indices[i].first;
-			componentSize = ecs_components_get_size(componentID);
-			index = entityData.indices[i].second;
-			auto& list = ecs.components[componentID];
-
-			ecs_components_destroy(componentID, reinterpret_cast<BaseComponent*>(&list[index]));
-
-			if (index != list.size() - componentSize) {
-				// set back data in index
-				memcpy(&list[index], &list[list.size() - componentSize], componentSize);
-
-				Entity otherEntity = ((BaseComponent*)(&list[index]))->entity;
-				ecs_entitydata_index_set(ecs.entityData[otherEntity], componentID, index);
-			}
-
-			list.resize(list.size() - componentSize);
-		}
-		entityData.indices.clear();
+		BaseComponent* comp = ecs.components[componentID].alloc_component(entity);
+		ecs_entitydata_index_add(ecs.entityData[entity], componentID, comp);
+		return comp;
 	}
 
-	void UpdateLinearSystem(const SystemDesc& desc, float dt, ECS& ecs);
-	void LinearSystem_OneRequest(SystemFunction system, CompID compID, float dt, ECS& ecs);
-	void LinearSystem(SystemFunction system, CompID* request, ui32 requestCount, CompID* optional, ui32 optionalCount, float dt, ECS& ecs);
-	void UpdateMultithreadedSystem(const SystemDesc& desc, float dt, ECS& ecs);
-	void MultithreadedSystem_OneRequest(SystemFunction system, CompID compID, float dt, ECS& ecs);
-	void PartialSystem_OneRequest(SystemFunction system, CompID compID, size_t offset, size_t size, float dt, ECS& ecs);
-	void MultithreadedSystem(SystemFunction system, CompID* request, ui32 requestCount, CompID* optional, ui32 optionalCount, float dt, ECS& ecs);
-	void PartialSystem(SystemFunction system, ui32 bestCompIndex, CompID* request, ui32 requestCount, CompID* optional, ui32 optionalCount, size_t offset, size_t size, float dt, ECS& ecs);
-	ui32 GetSortestComponentList(CompID* compIDs, ui32 count, ECS& ecs);
-
-	void ecs_system_execute(const SystemDesc* desc, ui32 count, float dt, ECS& ecs)
+	BaseComponent* ecs_component_get_by_id(ECS* ecs_, Entity entity, CompID componentID)
 	{
-		if (count == 0) return;
+		parseECS();
 
-		if (count == 1) {
-			if (desc[0].executionMode == SystemExecutionMode_Multithreaded) {
-				UpdateMultithreadedSystem(desc[0], dt, ecs);
-			}
-			else {
-				UpdateLinearSystem(*desc, dt, ecs);
-			}
-		}
-		else {
-
-			ThreadContext ctx;
-
-			for (ui32 i = 0; i < count; ++i) {
-				if (desc[i].executionMode == SystemExecutionMode_Parallel) {
-					task_execute([desc, i, dt, &ecs]() {
-						UpdateLinearSystem(desc[i], dt, ecs);
-					}, &ctx);
-				}
-			}
-
-			for (ui32 i = 0; i < count; ++i) {
-
-				if (desc[i].executionMode == SystemExecutionMode_Multithreaded) {
-					UpdateMultithreadedSystem(desc[i], dt, ecs);
-				}
-				else if (desc[i].executionMode == SystemExecutionMode_Safe) {
-					UpdateLinearSystem(desc[i], dt, ecs);
-				}
-
-			}
-
-			task_wait(ctx);
-		}
+		return ecs_entitydata_index_get(ecs.entityData[entity], componentID);
 	}
 
-	void UpdateLinearSystem(const SystemDesc& desc, float dt, ECS& ecs)
+	std::pair<CompID, BaseComponent*> ecs_component_get_by_index(ECS* ecs_, Entity entity, ui32 index)
 	{
-		if (desc.requestedComponentsCount == 0) return;
-
-		// system requisites
-		CompID* request = desc.pRequestedComponents;
-		CompID* optional = desc.pOptionalComponents;
-		ui32 requestCount = desc.requestedComponentsCount;
-		ui32 optionalCount = desc.optionalComponentsCount;
-
-		// Different algorithm if there are only one request and no optionals (optimization reason)
-		if (optionalCount == 0 && requestCount == 1) {
-			LinearSystem_OneRequest(desc.system, request[0], dt, ecs);
-		}
-		else {
-			LinearSystem(desc.system, request, requestCount, optional, optionalCount, dt, ecs);
-		}
+		parseECS();
+		return ecs.entityData[entity].components[index];
 	}
 
-	void LinearSystem_OneRequest(SystemFunction system, CompID compID, float dt, ECS& ecs)
+	void ecs_component_remove_by_id(ECS* ecs_, Entity entity, CompID componentID)
 	{
+		parseECS();
+
+		EntityData& ed = ecs.entityData[entity];
+		BaseComponent* comp = ecs_entitydata_index_get(ed, componentID);
+		ecs.components[componentID].free_component(comp);
+		ecs_entitydata_index_remove(ed, componentID);
+	}
+
+	ui32 ecs_component_count(ECS* ecs_, CompID ID)
+	{
+		parseECS();
+		return ecs.components[ID].size();
+	}
+
+	// Iterators
+
+	ComponentIterator::ComponentIterator(ECS* ecs_, CompID compID, bool end) : ecs_(ecs_), compID(compID), pool(0u)
+	{
+		parseECS();
+
+		if (end) start_end();
+		else start_begin();
+	}
+
+	BaseComponent* ComponentIterator::get_ptr()
+	{
+		return it;
+	}
+
+	bool ComponentIterator::equal(const ComponentIterator& other) const noexcept
+	{
+		return it == other.it;
+	}
+
+	void ComponentIterator::next()
+	{
+		parseECS();
 		auto& list = ecs.components[compID];
-		if (list.empty()) return;
 
-		ui32 compSize = ecs_components_get_size(compID);
-		ui32 bytesCount = ui32(list.size());
+		size_t compSize = size_t(ecs_register_sizeof(compID));
+		ui8* ptr = reinterpret_cast<ui8*>(it);
+		ui8* endPtr = list.get_pool(pool).get() + list.get_pool(pool).byte_size();
 
-		for (ui32 i = 0; i < bytesCount; i += compSize) {
-			BaseComponent* comp = reinterpret_cast<BaseComponent*>(&list[i]);
-			system(comp->entity, &comp, ecs, dt);
-		}
+		do {
+			ptr += compSize;
+			if (ptr == endPtr) {
+				auto& list = ecs.components[compID];
+
+				do {
+
+					if (++pool == list.get_pool_count()) break;
+
+				} while (list.get_pool(pool).byte_size() == 0u);
+
+				if (pool == list.get_pool_count()) break;
+				ComponentPool& compPool = list.get_pool(pool);
+
+				ptr = compPool.get();
+				endPtr = ptr + compPool.byte_size();
+			}
+		} while (reinterpret_cast<BaseComponent*>(ptr)->entity == SV_ENTITY_NULL);
+
+		it = reinterpret_cast<BaseComponent*>(ptr);
 	}
 
-	void LinearSystem(SystemFunction system, CompID* request, ui32 requestCount, CompID* optional, ui32 optionalCount, float dt, ECS& ecs)
+	void ComponentIterator::last()
 	{
-		// for optimization, choose the sortest component list
-		ui32 indexOfBestList = GetSortestComponentList(request, requestCount, ecs);
-		CompID idOfBestList = request[indexOfBestList];
+		parseECS();
+		auto& list = ecs.components[compID];
 
-		// if one request is empty, exit
-		auto& list = ecs.components[idOfBestList];
-		if (list.size() == 0) return;
-		size_t sizeOfBestList = ecs_components_get_size(idOfBestList);
+		size_t compSize = size_t(ecs_register_sizeof(compID));
+		ui8* ptr = reinterpret_cast<ui8*>(it);
+		ui8* beginPtr = list.get_pool(pool).get();
 
-		// reserve memory for the pointers
-		BaseComponent* components[SV_ECS_REQUEST_COMPONENTS_COUNT];
+		do {
+			ptr -= compSize;
+			if (ptr == beginPtr) {
+				
+				while (list.get_pool(--pool).byte_size() == 0u);
 
-		// for all the entities
-		BaseComponent* compOfBestList;
+				ComponentPool& compPool = list.get_pool(pool);
 
-		for (size_t i = 0; i < list.size(); i += sizeOfBestList) {
+				beginPtr = compPool.get();
+				ptr = beginPtr + compPool.byte_size();
+			}
+		} while (reinterpret_cast<BaseComponent*>(ptr)->entity == SV_ENTITY_NULL);
 
-			// allocate the best component
-			compOfBestList = (BaseComponent*)(&list[i]);
-			components[indexOfBestList] = compOfBestList;
+		it = reinterpret_cast<BaseComponent*>(ptr);
+	}
 
-			// entity
-			Entity entity = compOfBestList->entity;
-			EntityData& entityData = ecs.entityData[entity];
-			bool isValid = true;
+	void ComponentIterator::start_begin()
+	{
+		parseECS();
 
-			// allocate requested components
-			ui32 j;
-			for (j = 0; j < requestCount; ++j) {
-				if (j == indexOfBestList) continue;
+		auto& list = ecs.components[compID];
 
-				BaseComponent* comp = ecs_component_get_by_id(entityData, request[j], ecs);
-				if (!comp) {
-					isValid = false;
+		pool = 0u;
+		ui8* ptr = nullptr;
+
+		if (!list.empty()) {
+
+			ui32 compSize = ecs_register_sizeof(compID);
+
+			while (list.get_pool(pool).size(compSize) == 0u) pool++;
+
+			ptr = list.get_pool(pool).get();
+
+			while (true) {
+				BaseComponent* comp = reinterpret_cast<BaseComponent*>(ptr);
+				if (comp->entity != SV_ENTITY_NULL) {
 					break;
 				}
-				components[j] = comp;
+				ptr += compSize;
 			}
 
-			if (!isValid) continue;
-			// allocate optional components
-			for (j = 0; j < optionalCount; ++j) {
-
-				BaseComponent* comp = ecs_component_get_by_id(entityData, optional[j], ecs);
-				components[j + requestCount] = comp;
-			}
-
-			// if the entity is valid, call update
-			system(entity, components, ecs, dt);
 		}
+
+		it = reinterpret_cast<BaseComponent*>(ptr);
 	}
 
-	void UpdateMultithreadedSystem(const SystemDesc& desc, float dt, ECS& ecs)
+	void ComponentIterator::start_end()
 	{
-		if (desc.requestedComponentsCount == 0) return;
+		parseECS();
 
-		// system requisites
-		CompID* request = desc.pRequestedComponents;
-		CompID* optional = desc.pOptionalComponents;
-		ui32 requestCount = desc.requestedComponentsCount;
-		ui32 optionalCount = desc.optionalComponentsCount;
-
-		// Different algorithm if there are only one request and no optionals (optimization reason)
-		if (requestCount == 1 && optionalCount == 0) {
-			MultithreadedSystem_OneRequest(desc.system, request[0], dt, ecs);
-		}
-		else {
-			MultithreadedSystem(desc.system, request, requestCount, optional, optionalCount, dt, ecs);
-		}
-	}
-
-	void MultithreadedSystem_OneRequest(SystemFunction system, CompID compID, float dt, ECS& ecs)
-	{
 		auto& list = ecs.components[compID];
-		size_t compSize = ecs_components_get_size(compID);
 
-		TaskFunction task[20];
-		ui32 threadCount = task_thread_count();
+		pool = list.get_pool_count() - 1u;
+		ui8* ptr = nullptr;
+		ui32 compSize = ecs_register_sizeof(compID);
 
-		size_t count = list.size() / compSize;
-		if (count < threadCount) threadCount = count;
+		if (!list.empty()) {
 
-		size_t size = (count / ui64(threadCount)) * compSize;
+			while (list.get_pool(pool).size(compSize) == 0u) pool--;
 
-		for (ui32 i = 0; i < threadCount; ++i) {
+			ptr = list.get_pool(pool).get() + list.get_pool(pool).byte_size() - compSize;
 
-			size_t currentSize = size;
-			size_t offset = size * i;
-
-			if (i + 1 == threadCount && count % 2 == 1) {
-				currentSize += compSize;
-			}
-
-			task[i] = [system, compID, offset, currentSize, dt, &ecs]() {
-				PartialSystem_OneRequest(system, compID, offset, currentSize, dt, ecs);
-			};
-		}
-
-		ThreadContext ctx;
-		task_execute(task, threadCount, &ctx);
-		task_wait(ctx);
-	}
-
-	void PartialSystem_OneRequest(SystemFunction system, CompID compID, size_t offset, size_t size, float dt, ECS& ecs)
-	{
-		std::vector<ui8>& list = ecs.components[compID];
-		ui64 compSize = ecs_components_get_size(compID);
-
-		size_t finalIndex = offset + size;
-
-		for (ui64 i = offset; i < finalIndex; i += compSize) {
-			BaseComponent* comp = reinterpret_cast<BaseComponent*>(&list[i]);
-			system(comp->entity, &comp, ecs, dt);
-		}
-	}
-
-	void MultithreadedSystem(SystemFunction system, CompID* request, ui32 requestCount, CompID* optional, ui32 optionalCount, float dt, ECS& ecs)
-	{
-		ui32 bestCompIndex = GetSortestComponentList(request, requestCount, ecs);
-		CompID bestCompID = request[bestCompIndex];
-
-		auto& list = ecs.components[bestCompID];
-		size_t compSize = ecs_components_get_size(bestCompID);
-
-		TaskFunction task[20];
-		ui32 threadCount = task_thread_count();
-
-		size_t count = list.size() / compSize;
-		if (count < threadCount) threadCount = count;
-
-		size_t size = (count / ui64(threadCount)) * compSize;
-
-		for (ui32 i = 0; i < threadCount; ++i) {
-
-			size_t currentSize = size;
-			size_t offset = size * i;
-
-			if (i + 1 == threadCount && count % 2 == 1) {
-				currentSize += compSize;
-			}
-
-			task[i] = [system, bestCompIndex, request, requestCount, optional, optionalCount, offset, currentSize, dt, &ecs]() {
-				PartialSystem(system, bestCompIndex, request, requestCount, optional, optionalCount, offset, currentSize, dt, ecs);
-			};
-		}
-
-		ThreadContext ctx;
-		task_execute(task, threadCount, &ctx);
-		task_wait(ctx);
-	}
-
-	void PartialSystem(SystemFunction system, ui32 bestCompIndex, CompID* request, ui32 requestCount, CompID* optional, ui32 optionalCount, size_t offset, size_t size, float dt, ECS& ecs)
-	{
-		CompID bestCompID = request[bestCompIndex];
-		size_t sizeOfBestComp = ecs_components_get_size(bestCompID);
-		auto& bestCompList = ecs.components[bestCompID];
-		if (bestCompList.size() == 0) return;
-
-		size_t finalSize = offset + size;
-
-		BaseComponent* components[SV_ECS_REQUEST_COMPONENTS_COUNT];
-
-		for (size_t i = offset; i < finalSize; i += sizeOfBestComp) {
-			BaseComponent* bestComp = reinterpret_cast<BaseComponent*>(&bestCompList[i]);
-			components[bestCompIndex] = bestComp;
-
-			EntityData& ed = ecs.entityData[bestComp->entity];
-
-			bool valid = true;
-
-			// requested
-			for (ui32 j = 0; j < requestCount; ++j) {
-				if (j == bestCompIndex) continue;
-
-				BaseComponent* comp = ecs_component_get_by_id(ed, request[j], ecs);
-				if (comp == nullptr) {
-					valid = false;
+			while (true) {
+				BaseComponent* comp = reinterpret_cast<BaseComponent*>(ptr);
+				if (comp->entity != SV_ENTITY_NULL) {
 					break;
 				}
-
-				components[j] = comp;
+				ptr -= compSize;
 			}
 
-			if (!valid) continue;
-
-			// optional
-			for (ui32 j = 0; j < optionalCount; ++j) {
-				BaseComponent* comp = ecs_component_get_by_id(ed, optional[j], ecs);
-				components[j + requestCount] = comp;
-			}
-
-			// call
-			system(bestComp->entity, components, ecs, dt);
 		}
-	}
 
-	ui32 GetSortestComponentList(CompID* compIDs, ui32 count, ECS& ecs)
-	{
-		ui32 index = 0;
-		for (ui32 i = 1; i < count; ++i) {
-			if (ecs.components[compIDs[i]].size() < ecs.components[index].size()) {
-				index = i;
-			}
-		}
-		return index;
+		if (ptr == nullptr) it = nullptr;
+		else it = reinterpret_cast<BaseComponent*>(ptr + compSize);
 	}
 
 }

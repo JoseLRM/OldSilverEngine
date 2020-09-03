@@ -290,7 +290,7 @@ namespace sv {
 #ifdef SV_DEBUG
 		if (desc->usage == ResourceUsage_Static && desc->CPUAccess & CPUAccess_Write) {
 			sv::log_error("Buffer with static usage can't have CPU access");
-			return false;
+			return Result_InvalidUsage;
 		}
 #endif
 		

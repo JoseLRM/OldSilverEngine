@@ -33,15 +33,19 @@ namespace sv {
 		AssetType_Texture,
 	};
 
+	struct InitializationSceneDesc {
+		const char* assetsFolderPath;
+	};
+
 	struct SceneDesc {
 		vec3		gravity;
 	};
 
 	struct Scene {
-		ECS		ecs;
+		ECS*			ecs;
 		Entity	mainCamera;
-		float	timeStep;
-		void*	pWorld2D;
+		float			timeStep;
+		void*			pWorld2D;
 
 		struct {
 			ui32 refreshCount;
