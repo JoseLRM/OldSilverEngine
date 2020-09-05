@@ -6,7 +6,7 @@
 
 namespace sv {
 
-	Result scene_physics_create(const SceneDesc* desc, Scene& scene)
+	Result scene_physics_create(const SceneDesc* desc, Scene_internal& scene)
 	{
 		// BOX 2D
 		{
@@ -16,7 +16,7 @@ namespace sv {
 		return Result_Success;
 	}
 
-	Result scene_physics_destroy(Scene& scene)
+	Result scene_physics_destroy(Scene_internal& scene)
 	{
 		// BOX 2D
 		{
@@ -27,7 +27,7 @@ namespace sv {
 		return Result_Success;
 	}
 
-	void scene_physics2D_simulate(Scene& scene, float dt)
+	void scene_physics2D_simulate(Scene_internal& scene, float dt)
 	{
 		b2World& world = *reinterpret_cast<b2World*>(scene.pWorld2D);
 
@@ -118,8 +118,10 @@ namespace sv {
 		}
 	}
 
-	void scene_physics_simulate(Scene& scene, float dt)
+	void scene_physics_simulate(Scene* scene_, float dt)
 	{
+		parseScene();
+
 		scene_physics2D_simulate(scene, dt);
 	}
 

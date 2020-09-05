@@ -41,12 +41,12 @@ namespace sv {
 
 	struct SpriteInstance {
 		XMMATRIX tm;
-		ui32 spriteIndex;
+		vec4 texCoord;
 		Texture* pTexture;
 		Color color;
 
 		SpriteInstance() = default;
-		SpriteInstance(const XMMATRIX& m, Sprite sprite, sv::Color color) : tm(m), spriteIndex(sprite.index), pTexture(sprite.texture.Get()), color(color) {}
+		SpriteInstance(const XMMATRIX& m, Sprite sprite, sv::Color color) : tm(m), texCoord(sprite.texCoord), pTexture(sprite.texture.Get()), color(color) {}
 	};
 
 	struct SpriteRenderingDesc {

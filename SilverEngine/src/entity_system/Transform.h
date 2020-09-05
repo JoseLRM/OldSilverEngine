@@ -32,8 +32,6 @@ namespace sv {
 		XMVECTOR GetWorldScaleDXV() noexcept;
 		XMMATRIX GetWorldMatrix() noexcept;
 
-		inline void* GetInternal() const noexcept { return trans; }
-
 		// setters
 		void SetPosition(const vec3& position) noexcept;
 		void SetRotation(const vec3& rotation) noexcept;

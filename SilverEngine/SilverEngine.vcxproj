@@ -258,6 +258,7 @@
     <ClInclude Include="src\scene\scene_components.h" />
     <ClInclude Include="src\scene\scene_internal.h" />
     <ClInclude Include="src\task_system\task_system_internal.h" />
+    <ClInclude Include="src\utils\Archive.h" />
     <ClInclude Include="src\utils\utils_internal.h" />
     <ClInclude Include="src\window.h" />
     <ClInclude Include="src\platform\windows\windows_impl.h" />
@@ -265,10 +266,8 @@
     <ClInclude Include="src\scene.h" />
     <ClInclude Include="src\entity_system\Transform.h" />
     <ClInclude Include="src\task_system.h" />
-    <ClInclude Include="src\utils\BinFile.h" />
     <ClInclude Include="src\utils\safe_queue.h" />
     <ClInclude Include="src\utils\sv_math.h" />
-    <ClInclude Include="src\utils\TxtFile.h" />
     <ClInclude Include="src\utils.h" />
     <ClInclude Include="src\utils\Version.h" />
   </ItemGroup>
@@ -357,9 +356,8 @@
     <ClCompile Include="src\scene\scene_physics.cpp" />
     <ClCompile Include="src\scene\scene_renderer.cpp" />
     <ClCompile Include="src\task_system\task_system.cpp" />
-    <ClCompile Include="src\utils\BinFile.cpp" />
+    <ClCompile Include="src\utils\Archive.cpp" />
     <ClCompile Include="src\utils\sv_math.cpp" />
-    <ClCompile Include="src\utils\TxtFile.cpp" />
     <ClCompile Include="src\utils\utils.cpp" />
   </ItemGroup>
   <ItemGroup>

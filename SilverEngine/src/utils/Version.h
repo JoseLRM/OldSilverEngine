@@ -9,8 +9,8 @@ namespace sv {
 		ui32 minor = 0u;
 		ui32 revision = 0u;
 
-		Version() = default;
-		Version(ui32 major, ui32 minor, ui32 revision) 
+		constexpr Version() = default;
+		constexpr Version(ui32 major, ui32 minor, ui32 revision) 
 			: major(major), minor(minor), revision(revision) {}
 
 		std::string ToString() {

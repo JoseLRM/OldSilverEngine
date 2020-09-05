@@ -19,7 +19,7 @@ namespace sv {
 
 	struct EntityData {
 
-		size_t handleIndex = 0u;
+		size_t handleIndex = ui64_max;
 		Entity parent = SV_ENTITY_NULL;
 		ui32 childsCount = 0u;
 		EntityTransform transform;
@@ -27,76 +27,31 @@ namespace sv {
 
 	};
 
-	class EntityDataAllocator {
-		EntityData* m_Data;
-		ui32 m_Size;
-		ui32 m_Capacity;
-
-		std::vector<Entity> m_FreeList;
-
-	public:
-		EntityDataAllocator();
-
-		Entity add();
-		void remove(Entity entity);
-		inline EntityData& operator[](Entity entity) noexcept { return m_Data[entity]; }
-		void clear();
-		inline ui32 size() const noexcept { return m_Size; }
-
-	};
-
-	class ComponentPool {
-		ui8* m_Data;
-		size_t m_Size;
-
-		std::vector<ui8*> m_FreeList;
-
-	public:
-
-		ComponentPool();
-		~ComponentPool();
-
-		ComponentPool(const ComponentPool& other) = delete;
-		ComponentPool(ComponentPool&& other) noexcept;
-
-		void allocate(ui32 compSize);
-		void free();
-		void* add(ui32 compSize) noexcept;
-		void remove(ui32 compSize, void* ptr);
-		bool is_filled(ui32 compSize) const noexcept;
-		bool exist(void* ptr) const noexcept;
-		ui32 size(ui32 compSize) const noexcept;
-
-		inline size_t byte_size() const noexcept { return m_Size; }
-		inline ui8* get() const noexcept { return m_Data; }
-
-	};
-
-	class ComponentAllocator {
-
-		std::vector<ComponentPool> m_Pools;
-		CompID m_CompID;
-
-	public:
-		void create(CompID compID);
-		void destroy();
+	struct EntityDataAllocator {
 		
-		// Uses constructor
-		BaseComponent* alloc_component(Entity hnd); 
-		// Uses copy
-		BaseComponent* alloc_component(BaseComponent* src); 
+		EntityData* data = nullptr;
+		EntityData* accessData = nullptr;
+		ui32 size = 0u;
+		ui32 capacity = 0u;
+		std::vector<Entity> freeList;
 
-		// Uses destructor
-		void free_component(BaseComponent* comp); 
+		inline EntityData& operator[](Entity entity) { SV_ASSERT(entity != SV_ENTITY_NULL); return accessData[entity]; }
 
-		ui32 size() const noexcept;
-		bool empty() const noexcept;
-		ui32 get_pool_count() const noexcept;
-		ComponentPool& get_pool(ui32 i) noexcept;
+	};
 
-	private:
-		ComponentPool& create_pool();
-		ComponentPool& prepare_pool();
+	struct ComponentPool {
+		
+		ui8* data;
+		size_t size;
+		ui32 compSize;
+		std::vector<ui8*> freeList;
+
+	};
+
+	struct ComponentAllocator {
+
+		std::vector<ComponentPool> pools;
+		CompID compID;
 
 	};
 
@@ -107,5 +62,26 @@ namespace sv {
 		std::vector<ComponentAllocator>	components;
 
 	};
+
+	Entity	ecs_allocator_entity_alloc(EntityDataAllocator& allocator);
+	void	ecs_allocator_entity_free(EntityDataAllocator& allocator, Entity entity);
+	void	ecs_allocator_entity_clear(EntityDataAllocator& allocator);
+
+	void	ecs_allocator_component_pool_alloc(ComponentPool& pool, ui32 compSize);
+	void	ecs_allocator_component_pool_free(ComponentPool& pool);
+	void*	ecs_allocator_component_pool_add(ComponentPool& pool);
+	void	ecs_allocator_component_pool_remove(ComponentPool& pool, void* ptr);
+	bool	ecs_allocator_component_pool_is_filled(const ComponentPool& pool);
+	bool	ecs_allocator_component_pool_exist(const ComponentPool& pool, void* ptr);
+	ui32	ecs_allocator_component_pool_count(const ComponentPool& pool);
+
+	ComponentPool&	ecs_allocator_component_prepare_pool(ComponentAllocator& a);
+	void			ecs_allocator_component_create(ComponentAllocator& allocator, CompID ID);
+	void			ecs_allocator_component_destroy(ComponentAllocator& allocator);
+	BaseComponent*	ecs_allocator_component_alloc(ComponentAllocator& allocator, Entity entity);
+	BaseComponent*	ecs_allocator_component_alloc(ComponentAllocator& allocator, BaseComponent* srcComp);
+	void			ecs_allocator_component_free(ComponentAllocator& allocator, BaseComponent* comp);
+	ui32			ecs_allocator_component_count(const ComponentAllocator& allocator);
+	ui32			ecs_allocator_component_empty(const ComponentAllocator& allocator);
 
 }

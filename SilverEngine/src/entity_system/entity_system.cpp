@@ -5,20 +5,32 @@
 
 namespace sv {
 
+	struct ComponentData {
+		std::string name;
+		ui32 size;
+		CreateComponentFunction createFn;
+		DestroyComponentFunction destroyFn;
+		MoveComponentFunction moveFn;
+		CopyComponentFunction copyFn;
+		SerializeComponentFunction serializeFn;
+		DeserializeComponentFunction deserializeFn;
+	};
+
+	static std::vector<ComponentData> g_ComponentData;
+	static std::mutex g_ComponentRegisterMutex;
+
 #define parseECS() ECS_internal& ecs = *reinterpret_cast<ECS_internal*>(ecs_)
 
-	ECS* ecs_create()
+	void ecs_create(ECS** ecs_)
 	{
 		ECS_internal& ecs = *new ECS_internal();
 
 		ecs.components.resize(ecs_register_count());
 		for (CompID i = 0u; i < ecs.components.size(); ++i) {
-			ecs.components[i].create(i);
+			ecs_allocator_component_create(ecs.components[i], i);
 		}
 
-		ecs.entities.emplace_back(SV_ENTITY_NULL);
-
-		return &ecs;
+		*ecs_ = &ecs;
 	}
 
 	void ecs_destroy(ECS* ecs_)
@@ -26,8 +38,12 @@ namespace sv {
 		if (ecs_ == nullptr) return;
 		parseECS();
 
+		for (ui16 i = 0; i < ecs_register_count(); ++i) {
+			ecs_allocator_component_destroy(ecs.components[i]);
+		}
 		ecs.components.clear();
 		ecs.entities.clear();
+		ecs_allocator_entity_clear(ecs.entityData);
 
 		delete &ecs;
 	}
@@ -37,39 +53,224 @@ namespace sv {
 		parseECS();
 
 		for (ui16 i = 0; i < ecs_register_count(); ++i) {
-			ecs.components[i].destroy();
+			ecs_allocator_component_destroy(ecs.components[i]);
 		}
-		ecs.entities.resize(1);
-		ecs.entityData.clear();
+		ecs.entities.clear();
+		ecs_allocator_entity_clear(ecs.entityData);
+	}
+
+	Result ecs_serialize(ECS* ecs_, ArchiveO& archive)
+	{
+		parseECS();
+
+		// Registers
+		{
+			ui32 registersCount = ecs_register_count();
+			archive << registersCount;
+
+			while (registersCount-- != 0u) {
+
+				ComponentData& compData = g_ComponentData[registersCount];
+				archive << compData.name << compData.size;
+
+			}
+		}
+		
+		// Entity data
+		{
+			ui32 entityCount = ui32(ecs.entities.size());
+			ui32 entityDataCount = ui32(ecs.entityData.size);
+
+			archive << entityCount << entityDataCount;
+
+			for (ui32 i = 0; i < entityDataCount; ++i) {
+				EntityData& ed = ecs.entityData[i + 1u];
+
+				if (ed.handleIndex != ui64_max) {
+					archive << i << ed.childsCount << ed.handleIndex << ed.transform.localPosition;
+					archive << ed.transform.localRotation << ed.transform.localScale;
+				}
+			}
+		}
+
+		// Components
+		{
+			ui32 registersCount = ecs_register_count();
+
+			for (ui32 i = 0u; i < registersCount; ++i) {
+
+				auto& compList = ecs.components[i];
+				CompID compID = CompID(i);
+				ui32 compSize = ecs_register_sizeof(compID);
+
+				archive << ecs_allocator_component_count(compList);
+
+				ComponentIterator it(ecs_, compID, false);
+				ComponentIterator end(ecs_, compID, true);
+
+				while (!it.equal(end)) {
+					BaseComponent* component = it.get_ptr();
+					archive << component->entity;
+					ecs_register_serialize(compID, component, archive);
+
+					it.next();
+				}
+
+			}
+		}
+
+		return Result_Success;
+	}
+
+	Result ecs_deserialize(ECS* ecs_, ArchiveI& archive)
+	{
+		parseECS();
+		
+		ecs.entities.clear();
+		ecs_allocator_entity_clear(ecs.entityData);
+
+		struct Register {
+			std::string name;
+			ui32 size;
+			CompID ID;
+		};
+
+		// Registers
+		std::vector<Register> registers;
+
+		{
+			ui32 registersCount;
+			archive >> registersCount;
+			registers.resize(registersCount);
+			
+			for (auto it = registers.rbegin(); it != registers.rend(); ++it) {
+				
+				archive >> it->name;
+				archive >> it->size;
+
+			}
+		}
+
+		// Registers ID
+		for (ui32 i = 0; i < registers.size(); ++i) {
+
+			Register& reg = registers[i];
+
+			for (ui32 j = 0; j < g_ComponentData.size(); ++j) {
+				ComponentData& cData = g_ComponentData[j];
+
+				if (cData.size == reg.size && strcmp(cData.name.c_str(), reg.name.c_str()) == 0) {
+					reg.ID = j;
+					break;
+				}
+			}
+
+		}
+
+		// Entity data
+		ui32 entityCount;
+		ui32 entityDataCount;
+
+		archive >> entityCount;
+		archive >> entityDataCount;
+
+		ecs.entities.resize(entityCount);
+		EntityData* entityData = new EntityData[entityDataCount];
+
+		for (ui32 i = 0; i < entityCount; ++i) {
+
+			Entity entity;
+			archive >> entity;
+
+			EntityData& ed = entityData[entity];
+			archive >> ed.childsCount >> ed.handleIndex >> 
+				ed.transform.localPosition >> ed.transform.localRotation >> ed.transform.localScale;
+		}
+
+		// Create entity list and free list
+		{
+			for (ui32 i = 0u; i < entityDataCount; ++i) {
+
+				EntityData& ed = entityData[i];
+
+				if (ed.handleIndex != ui64_max) {
+					ecs.entities[ed.handleIndex] = i + 1u;
+				}
+				else ecs.entityData.freeList.push_back(i + 1u);
+			}
+		}
+
+		// Set entity data
+		ecs.entityData.data = entityData;
+		ecs.entityData.accessData = entityData - 1u;
+		ecs.entityData.capacity = entityDataCount;
+		ecs.entityData.size = entityDataCount;
+
+		// Components
+		{
+			for (ui32 i = 0; i < registers.size(); ++i) {
+
+				CompID compID = registers[i].ID;
+				auto& compList = ecs.components[compID];
+				ui32 compSize = ecs_register_sizeof(compID);
+				ui32 compCount;
+				archive >> compCount;
+
+				if (compCount == 0u) continue;
+
+				// Allocate component data
+				{
+					ui32 poolCount = compCount / SV_ECS_COMPONENT_POOL_SIZE + (compCount % SV_ECS_COMPONENT_POOL_SIZE == 0u) ? 0u : 1u;
+					ui32 lastPoolCount = ui32(compList.pools.size());
+					
+					compList.pools.resize(poolCount);
+
+					if (poolCount > lastPoolCount) {
+						for (ui32 j = lastPoolCount; j < poolCount; ++j) {
+							ecs_allocator_component_pool_alloc(compList.pools[j], compSize);
+						}
+					}
+
+					for (ui32 j = 0; j < lastPoolCount; ++j) {
+						compList.pools[j].size = 0u;
+						compList.pools[j].freeList.clear();
+					}
+				}
+
+				while (compCount-- != 0u) {
+
+					Entity entity;
+					archive >> entity;
+
+					BaseComponent* comp = ecs_allocator_component_alloc(compList, entity);
+					ecs_register_deserialize(compID, comp, archive);
+
+					ecs.entityData[entity].components.emplace_back(compID, comp);
+				}
+
+			}
+		}
+
+		return Result_Success;
 	}
 
 	///////////////////////////////////// COMPONENTS REGISTER ////////////////////////////////////////
 
-	struct ComponentData {
-		const char* name;
-		ui32 size;
-		CreateComponentFunction createFn;
-		DestroyComponentFunction destroyFn;
-		MoveComponentFunction moveFn;
-		CopyComponentFunction copyFn;
-	};
-
-	static std::vector<ComponentData> g_ComponentData;
-	static std::mutex g_ComponentRegisterMutex;
-
-	CompID ecs_register(ui32 size, const char* name, CreateComponentFunction createFn, DestroyComponentFunction destroyFn, MoveComponentFunction moveFn, CopyComponentFunction copyFn)
+	CompID ecs_register(const ComponentRegisterDesc* desc)
 	{
 		g_ComponentRegisterMutex.lock();
 		CompID ID = g_ComponentData.size();
 		ComponentData& data = g_ComponentData.emplace_back();
 		g_ComponentRegisterMutex.unlock();
 
-		data.size = size;
-		data.name = name;
-		data.createFn = createFn;
-		data.destroyFn = destroyFn;
-		data.moveFn = moveFn;
-		data.copyFn = copyFn;
+		data.size = desc->size;
+		data.name = desc->name;
+		data.createFn = desc->createFn;
+		data.destroyFn = desc->destroyFn;
+		data.moveFn = desc->moveFn;
+		data.copyFn = desc->copyFn;
+		data.serializeFn = desc->serializeFn;
+		data.deserializeFn = desc->deserializeFn;
 
 		return ID;
 	}
@@ -84,12 +285,13 @@ namespace sv {
 	}
 	const char* ecs_register_nameof(CompID ID)
 	{
-		return g_ComponentData[ID].name;
+		return g_ComponentData[ID].name.c_str();
 	}
 	
 	void ecs_register_create(CompID ID, BaseComponent* ptr, Entity entity)
 	{
-		g_ComponentData[ID].createFn(ptr, entity);
+		g_ComponentData[ID].createFn(ptr);
+		ptr->entity = entity;
 	}
 	void ecs_register_destroy(CompID ID, BaseComponent* ptr)
 	{
@@ -105,6 +307,18 @@ namespace sv {
 	void ecs_register_copy(CompID ID, BaseComponent* from, BaseComponent* to)
 	{
 		g_ComponentData[ID].copyFn(from, to);
+	}
+
+	void ecs_register_serialize(CompID ID, BaseComponent* comp, ArchiveO& archive)
+	{
+		SerializeComponentFunction fn = g_ComponentData[ID].serializeFn;
+		if (fn) fn(comp, archive);
+	}
+
+	void ecs_register_deserialize(CompID ID, BaseComponent* comp, ArchiveI& archive)
+	{
+		DeserializeComponentFunction fn = g_ComponentData[ID].deserializeFn;
+		if (fn) fn(comp, archive);
 	}
 
 	///////////////////////////////////// HELPER FUNCTIONS ////////////////////////////////////////
@@ -161,7 +375,7 @@ namespace sv {
 	{
 		parseECS();
 
-		Entity entity = ecs.entityData.add();
+		Entity entity = ecs_allocator_entity_alloc(ecs.entityData);
 
 		if (parent == SV_ENTITY_NULL) {
 			ecs.entityData[entity].handleIndex = ecs.entities.size();
@@ -214,9 +428,8 @@ namespace sv {
 		// remove components & entityData
 		for (size_t i = 0; i < count; i++) {
 			Entity e = ecs.entities[indexBeginDest + i];
-			EntityData& ed = ecs.entityData[e];
-			ecs_entity_clear(ecs_, entity);
-			ecs.entityData.remove(entity);
+			ecs_entity_clear(ecs_, e);
+			ecs_allocator_entity_free(ecs.entityData, e);
 		}
 
 		// remove from entities & update indices
@@ -237,8 +450,7 @@ namespace sv {
 			auto [compID, comp] = ed.components.back();
 			ed.components.pop_back();
 
-			ecs.components[compID].free_component(comp);
-			
+			ecs_allocator_component_free(ecs.components[compID], comp);
 		}
 	}
 
@@ -257,7 +469,7 @@ namespace sv {
 			size_t SIZE = ecs_register_sizeof(ID);
 
 			BaseComponent* comp = ecs_entitydata_index_get(duplicatedEd, ID);
-			BaseComponent* newComp = ecs.components[ID].alloc_component(comp);
+			BaseComponent* newComp = ecs_allocator_component_alloc(ecs.components[ID], comp);
 
 			newComp->entity = copy;
 			ecs_entitydata_index_add(copyEd, ID, newComp);
@@ -291,10 +503,10 @@ namespace sv {
 	bool ecs_entity_exist(ECS* ecs_, Entity entity)
 	{
 		parseECS();
-		if (entity == SV_ENTITY_NULL || entity >= ecs.entityData.size()) return false;
+		if (entity == SV_ENTITY_NULL || entity > ecs.entityData.size) return false;
 
 		EntityData& ed = ecs.entityData[entity];
-		return ed.handleIndex == 0u;
+		return ed.handleIndex != ui64_max;
 	}
 
 	ui32 ecs_entity_childs_count(ECS* ecs_, Entity parent)
@@ -342,7 +554,7 @@ namespace sv {
 
 			// Create entities
 			for (size_t i = 0; i < count; ++i) {
-				Entity entity = ecs.entityData.add();
+				Entity entity = ecs_allocator_entity_alloc(ecs.entityData);
 				ecs.entityData[entity].handleIndex = entityIndex + i;
 				ecs.entities.emplace_back(entity);
 			}
@@ -370,7 +582,7 @@ namespace sv {
 
 			// creating entities
 			for (size_t i = 0; i < count; ++i) {
-				Entity entity = ecs.entityData.add();
+				Entity entity = ecs_allocator_entity_alloc(ecs.entityData);
 
 				EntityData& entityData = ecs.entityData[entity];
 				entityData.handleIndex = entityIndex + i;
@@ -395,13 +607,13 @@ namespace sv {
 	ui32 ecs_entity_count(ECS* ecs_)
 	{
 		parseECS();
-		return ui32(ecs.entities.size()) - 1u;
+		return ui32(ecs.entities.size());
 	}
 
 	Entity ecs_entity_get(ECS* ecs_, ui32 index)
 	{
 		parseECS();
-		return ecs.entities[index + 1u];
+		return ecs.entities[index];
 	}
 
 	/////////////////////////////// COMPONENTS /////////////////////////////////////
@@ -410,7 +622,7 @@ namespace sv {
 	{
 		parseECS();
 
-		comp = ecs.components[componentID].alloc_component(comp);
+		comp = ecs_allocator_component_alloc(ecs.components[componentID], comp);
 		comp->entity = entity;
 		ecs_entitydata_index_add(ecs.entityData[entity], componentID, comp);
 		return comp;
@@ -420,7 +632,7 @@ namespace sv {
 	{
 		parseECS();
 
-		BaseComponent* comp = ecs.components[componentID].alloc_component(entity);
+		BaseComponent* comp = ecs_allocator_component_alloc(ecs.components[componentID], entity);
 		ecs_entitydata_index_add(ecs.entityData[entity], componentID, comp);
 		return comp;
 	}
@@ -444,14 +656,14 @@ namespace sv {
 
 		EntityData& ed = ecs.entityData[entity];
 		BaseComponent* comp = ecs_entitydata_index_get(ed, componentID);
-		ecs.components[componentID].free_component(comp);
+		ecs_allocator_component_free(ecs.components[componentID], comp);
 		ecs_entitydata_index_remove(ed, componentID);
 	}
 
 	ui32 ecs_component_count(ECS* ecs_, CompID ID)
 	{
 		parseECS();
-		return ecs.components[ID].size();
+		return ecs_allocator_component_count(ecs.components[ID]);
 	}
 
 	// Iterators
@@ -481,7 +693,7 @@ namespace sv {
 
 		size_t compSize = size_t(ecs_register_sizeof(compID));
 		ui8* ptr = reinterpret_cast<ui8*>(it);
-		ui8* endPtr = list.get_pool(pool).get() + list.get_pool(pool).byte_size();
+		ui8* endPtr = list.pools[pool].data + list.pools[pool].size;
 
 		do {
 			ptr += compSize;
@@ -490,15 +702,15 @@ namespace sv {
 
 				do {
 
-					if (++pool == list.get_pool_count()) break;
+					if (++pool == list.pools.size()) break;
 
-				} while (list.get_pool(pool).byte_size() == 0u);
+				} while (list.pools[pool].size == 0u);
 
-				if (pool == list.get_pool_count()) break;
-				ComponentPool& compPool = list.get_pool(pool);
+				if (pool == list.pools.size()) break;
+				ComponentPool& compPool = list.pools[pool];
 
-				ptr = compPool.get();
-				endPtr = ptr + compPool.byte_size();
+				ptr = compPool.data;
+				endPtr = ptr + compPool.size;
 			}
 		} while (reinterpret_cast<BaseComponent*>(ptr)->entity == SV_ENTITY_NULL);
 
@@ -512,18 +724,18 @@ namespace sv {
 
 		size_t compSize = size_t(ecs_register_sizeof(compID));
 		ui8* ptr = reinterpret_cast<ui8*>(it);
-		ui8* beginPtr = list.get_pool(pool).get();
+		ui8* beginPtr = list.pools[pool].data;
 
 		do {
 			ptr -= compSize;
 			if (ptr == beginPtr) {
 				
-				while (list.get_pool(--pool).byte_size() == 0u);
+				while (list.pools[--pool].size == 0u);
 
-				ComponentPool& compPool = list.get_pool(pool);
+				ComponentPool& compPool = list.pools[pool];
 
-				beginPtr = compPool.get();
-				ptr = beginPtr + compPool.byte_size();
+				beginPtr = compPool.data;
+				ptr = beginPtr + compPool.size;
 			}
 		} while (reinterpret_cast<BaseComponent*>(ptr)->entity == SV_ENTITY_NULL);
 
@@ -539,13 +751,13 @@ namespace sv {
 		pool = 0u;
 		ui8* ptr = nullptr;
 
-		if (!list.empty()) {
+		if (!ecs_allocator_component_empty(list)) {
 
 			ui32 compSize = ecs_register_sizeof(compID);
 
-			while (list.get_pool(pool).size(compSize) == 0u) pool++;
+			while (ecs_allocator_component_pool_count(list.pools[pool]) == 0u) pool++;
 
-			ptr = list.get_pool(pool).get();
+			ptr = list.pools[pool].data;
 
 			while (true) {
 				BaseComponent* comp = reinterpret_cast<BaseComponent*>(ptr);
@@ -566,28 +778,19 @@ namespace sv {
 
 		auto& list = ecs.components[compID];
 
-		pool = list.get_pool_count() - 1u;
+		pool = list.pools.size() - 1u;
 		ui8* ptr = nullptr;
 		ui32 compSize = ecs_register_sizeof(compID);
 
-		if (!list.empty()) {
+		if (!ecs_allocator_component_empty(list)) {
 
-			while (list.get_pool(pool).size(compSize) == 0u) pool--;
+			while (ecs_allocator_component_pool_count(list.pools[pool]) == 0u) pool--;
 
-			ptr = list.get_pool(pool).get() + list.get_pool(pool).byte_size() - compSize;
-
-			while (true) {
-				BaseComponent* comp = reinterpret_cast<BaseComponent*>(ptr);
-				if (comp->entity != SV_ENTITY_NULL) {
-					break;
-				}
-				ptr -= compSize;
-			}
+			ptr = list.pools[pool].data + list.pools[pool].size;
 
 		}
 
-		if (ptr == nullptr) it = nullptr;
-		else it = reinterpret_cast<BaseComponent*>(ptr + compSize);
+		it = reinterpret_cast<BaseComponent*>(ptr);
 	}
 
 }

@@ -6,17 +6,13 @@ namespace sv {
 #if SV_SCENE_NAME_COMPONENT
 
 	struct NameComponent : public Component<NameComponent> {
-	private:
-		std::string m_Name;
 	
-	public:
-		NameComponent() : m_Name("Unnamed") {}
-		NameComponent(const char* name) : m_Name(name) {}
-	
-		inline void SetName(const char* name) noexcept { m_Name = name; }
-		inline void SetName(const std::string & name) noexcept { m_Name = name; }
-	
-		inline const std::string& GetName() const noexcept { return m_Name; }
+		std::string name;
+
+		NameComponent() = default;
+		NameComponent(const char* name) : name(name) {}
+		NameComponent(const std::string& name) : name(name) {}
+		NameComponent(std::string&& name) : name(std::move(name)) {}
 
 	};
 
@@ -26,14 +22,13 @@ namespace sv {
 
 	struct SpriteComponent : public Component<SpriteComponent> {
 
-		ui32 renderLayer;
 		Sprite sprite;
 		Color color = SV_COLOR_WHITE;
 
-		SpriteComponent() : renderLayer(0u) {}
-		SpriteComponent(Color col) : color(col), renderLayer(0u) {}
-		SpriteComponent(Sprite spr) : sprite(spr), renderLayer(0u) {}
-		SpriteComponent(Sprite spr, Color col) : sprite(spr), color(col), renderLayer(0u) {}
+		SpriteComponent() {}
+		SpriteComponent(Color col) : color(col) {}
+		SpriteComponent(Sprite spr) : sprite(spr) {}
+		SpriteComponent(Sprite spr, Color col) : sprite(spr), color(col) {}
 
 	};
 

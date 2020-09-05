@@ -99,10 +99,13 @@ namespace sve {
 	{
 		// Create camera
 		{
-			sv::Scene& scene = simulation_scene_get();
+			sv::Scene* scene = simulation_scene_get();
+			sv::ECS* ecs = sv::scene_ecs_get(scene);
+			sv::Entity camera = sv::scene_camera_get(scene);
+
 			sv::uvec2 res = sv::renderer_resolution_get();
 			svCheck(sv::renderer_offscreen_create(res.x, res.y, g_Camera.offscreen));
-			sv::CameraComponent& mainCamera = *sv::ecs_component_get<sv::CameraComponent>(scene.ecs, scene.mainCamera);
+			sv::CameraComponent& mainCamera = *sv::ecs_component_get<sv::CameraComponent>(ecs, camera);
 			g_Camera.settings.projection = mainCamera.settings.projection;
 
 			// TEMP:
@@ -149,7 +152,7 @@ namespace sve {
 		desc.position = g_Camera.position;
 		desc.rotation = g_Camera.rotation;
 
-		sv::scene_renderer_camera_draw(&desc, simulation_scene_get());
+		sv::scene_renderer_camera_draw(simulation_scene_get() , &desc);
 	}
 
 	// GETTERS

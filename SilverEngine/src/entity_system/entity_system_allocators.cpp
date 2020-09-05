@@ -6,245 +6,214 @@ namespace sv {
 
 	// EntityDataAllocator
 
-	EntityDataAllocator::EntityDataAllocator() : m_Size(1u), m_Capacity(SV_ECS_ENTITY_ALLOC_SIZE)
+	Entity ecs_allocator_entity_alloc(EntityDataAllocator& a)
 	{
-		m_Data = new EntityData[SV_ECS_ENTITY_ALLOC_SIZE];
-	}
+		if (a.freeList.empty()) {
 
-	Entity EntityDataAllocator::add()
-	{
-		if (m_FreeList.empty()) {
+			if (a.size == a.capacity) {
+				EntityData* newData = new EntityData[a.capacity + SV_ECS_ENTITY_ALLOC_SIZE];
 
-			if (m_Size == m_Capacity) {
-				EntityData* newData = new EntityData[m_Capacity + SV_ECS_ENTITY_ALLOC_SIZE];
+				if (a.data) {
+					EntityData* end = a.data + a.capacity;
+					while (a.data != end) {
 
-				EntityData* end = m_Data + m_Capacity;
-				while (m_Data != end) {
+						*newData = std::move(*a.data);
 
-					*newData = std::move(*m_Data);
-
-					newData++;
-					m_Data++;
+						newData++;
+						a.data++;
+					}
+					a.data -= a.capacity;
+					newData -= a.capacity;
+					delete[] a.data;
 				}
-				m_Data -= m_Capacity;
-				newData -= m_Capacity;
 
-				delete[] m_Data;
-				m_Capacity += SV_ECS_ENTITY_ALLOC_SIZE;
-				m_Data = newData;
+				a.capacity += SV_ECS_ENTITY_ALLOC_SIZE;
+				a.data = newData;
+				a.accessData = a.data - 1u;
 			}
-		
-			return m_Size++;
+
+			return ++a.size;
 
 		}
 		else {
-			Entity result = m_FreeList.back();
-			m_FreeList.pop_back();
+			Entity result = a.freeList.back();
+			a.freeList.pop_back();
 			return result;
 		}
 	}
 
-	void EntityDataAllocator::remove(Entity entity)
+	void ecs_allocator_entity_free(EntityDataAllocator& a, Entity entity)
 	{
-		m_Data[entity] = EntityData();
-		
-		if (entity + 1u == m_Size) {
-			m_Size--;
+		SV_ASSERT(a.size >= entity);
+		a.accessData[entity] = EntityData();
+
+		if (entity == a.size) {
+			a.size--;
 		}
 		else {
-			m_FreeList.push_back(entity);
+			a.freeList.push_back(entity);
 		}
 	}
 
-	void EntityDataAllocator::clear()
+	void ecs_allocator_entity_clear(EntityDataAllocator& a)
 	{
-		if (m_Capacity > SV_ECS_ENTITY_ALLOC_SIZE) {
-
-			m_Capacity = SV_ECS_ENTITY_ALLOC_SIZE;
-			delete[] m_Data;
-			m_Data = new EntityData[SV_ECS_ENTITY_ALLOC_SIZE];
-			
-		}
-		else {
-
-			EntityData* end = m_Data + m_Size;
-			while (m_Data != end) {
-				*m_Data = EntityData();
-				m_Data++;
-			}
-
-			m_Data -= m_Size;
-
+		if (a.data) {
+			a.capacity = 0u;
+			delete[] a.data;
+			a.data = nullptr;
 		}
 
-		m_Size = 1u;
-		m_FreeList.clear();
+		a.accessData = nullptr;
+		a.size = 0u;
+		a.freeList.clear();
 	}
 
 	// ComponentPool
 
-	ComponentPool::ComponentPool() : m_Data(nullptr), m_Size(0) {}
-	ComponentPool::~ComponentPool()
+	void ecs_allocator_component_pool_alloc(ComponentPool& pool, ui32 compSize)
 	{
-		free();
+		ecs_allocator_component_pool_free(pool);
+		pool.compSize = compSize;
+		pool.data = new ui8[size_t(compSize) * SV_ECS_COMPONENT_POOL_SIZE];
 	}
 
-	ComponentPool::ComponentPool(ComponentPool&& other) noexcept
+	void ecs_allocator_component_pool_free(ComponentPool& pool)
 	{
-		m_Data = other.m_Data;
-		m_Size = other.m_Size;
-		other.m_Data = nullptr;
-		other.m_Size = 0u;
-	}
-
-	void ComponentPool::allocate(ui32 compSize)
-	{
-		free();
-		m_Data = new ui8[size_t(compSize) * SV_ECS_COMPONENT_POOL_SIZE];
-	}
-
-	void ComponentPool::free()
-	{
-		if (m_Data != nullptr) {
-			delete[] m_Data;
-			m_Data = nullptr;
-			m_Size = 0u;
-			m_FreeList.clear();
+		if (pool.data != nullptr) {
+			delete[] pool.data;
+			pool.data = nullptr;
 		}
+		pool.size;
+		pool.freeList.clear();
 	}
 
-	void* ComponentPool::add(ui32 compSize) noexcept
+	void* ecs_allocator_component_pool_add(ComponentPool& pool)
 	{
 		ui8* ptr;
 
-		if (m_FreeList.empty()) {
-			ptr = m_Data + m_Size;
-			m_Size += compSize;
+		if (pool.freeList.empty()) {
+			ptr = pool.data + pool.size;
+			pool.size += pool.compSize;
 		}
 		else {
-			ptr = m_FreeList.back();
-			m_FreeList.pop_back();
+			ptr = pool.freeList.back();
+			pool.freeList.pop_back();
 		}
 
 		return ptr;
 	}
 
-	void ComponentPool::remove(ui32 compSize, void* ptr)
+	void ecs_allocator_component_pool_remove(ComponentPool& pool, void* ptr)
 	{
-		if (ptr == m_Data + m_Size) {
-			m_Size -= compSize;
+		if (ptr == pool.data + pool.size) {
+			pool.size -= pool.compSize;
 		}
 		else {
-			m_FreeList.push_back(reinterpret_cast<ui8*>(ptr));
+			pool.freeList.push_back(reinterpret_cast<ui8*>(ptr));
 		}
 	}
 
-	bool ComponentPool::is_filled(ui32 compSize) const noexcept
+	bool ecs_allocator_component_pool_is_filled(const ComponentPool& pool)
 	{
-		return (m_Size / compSize) == SV_ECS_COMPONENT_POOL_SIZE;
+		return (pool.size / pool.compSize) == SV_ECS_COMPONENT_POOL_SIZE;
 	}
 
-	bool ComponentPool::exist(void* ptr) const noexcept
+	bool ecs_allocator_component_pool_exist(const ComponentPool& pool, void* ptr)
 	{
-		return ptr > m_Data && ptr < (m_Data + m_Size);
+		return ptr >= pool.data && ptr < (pool.data + pool.size);
 	}
 
-	ui32 ComponentPool::size(ui32 compSize) const noexcept
+	ui32 ecs_allocator_component_pool_count(const ComponentPool& pool)
 	{
-		return m_Size / size_t(compSize) - m_FreeList.size();
+		return pool.size / size_t(pool.compSize) - pool.freeList.size();
 	}
 
 	// ComponentAllocator
 
-	void ComponentAllocator::create(CompID compID)
+	ComponentPool& ecs_allocator_component_create_pool(ComponentAllocator& a)
 	{
-		destroy();
-		m_CompID = compID;
-		create_pool();
+		ComponentPool& pool = a.pools.emplace_back();
+		ecs_allocator_component_pool_alloc(pool, ecs_register_sizeof(a.compID));
+		return pool;
 	}
 
-	void ComponentAllocator::destroy()
+	ComponentPool& ecs_allocator_component_prepare_pool(ComponentAllocator& a)
 	{
-		m_Pools.clear();
+		if (ecs_allocator_component_pool_is_filled(a.pools.back())) {
+			return ecs_allocator_component_create_pool(a);
+		}
+		return a.pools.back();
 	}
 
-	BaseComponent* ComponentAllocator::alloc_component(Entity hnd)
+	void ecs_allocator_component_create(ComponentAllocator& a, CompID ID)
 	{
-		ComponentPool& pool = prepare_pool();
-		BaseComponent* comp = reinterpret_cast<BaseComponent*>(pool.add(ecs_register_sizeof(m_CompID)));
+		ecs_allocator_component_destroy(a);
+		a.compID = ID;
+		ecs_allocator_component_create_pool(a);
+	}
 
-		ecs_register_create(m_CompID, comp, hnd);
+	void ecs_allocator_component_destroy(ComponentAllocator& a)
+	{
+		for (auto it = a.pools.begin(); it != a.pools.end(); ++it) {
+
+			ecs_allocator_component_pool_free(*it);
+
+		}
+		a.pools.clear();
+	}
+
+	BaseComponent* ecs_allocator_component_alloc(ComponentAllocator& a, Entity entity)
+	{
+		ComponentPool& pool = ecs_allocator_component_prepare_pool(a);
+		BaseComponent* comp = reinterpret_cast<BaseComponent*>(ecs_allocator_component_pool_add(pool));
+
+		ecs_register_create(a.compID, comp, entity);
 
 		return comp;
 	}
 
-	BaseComponent* ComponentAllocator::alloc_component(BaseComponent* src)
+	BaseComponent* ecs_allocator_component_alloc(ComponentAllocator& a, BaseComponent* srcComp)
 	{
-		ComponentPool& pool = prepare_pool();
-		BaseComponent* comp = reinterpret_cast<BaseComponent*>(pool.add(ecs_register_sizeof(m_CompID)));
-		svZeroMemory(comp, ecs_register_sizeof(m_CompID));
+		ComponentPool& pool = ecs_allocator_component_prepare_pool(a);
+		BaseComponent* comp = reinterpret_cast<BaseComponent*>(ecs_allocator_component_pool_add(pool));
 
-		ecs_register_copy(m_CompID, src, comp);
+		ecs_register_copy(a.compID, srcComp, comp);
 
 		return comp;
 	}
 
-	void ComponentAllocator::free_component(BaseComponent* comp)
+	void ecs_allocator_component_free(ComponentAllocator& a, BaseComponent* comp)
 	{
 		SV_ASSERT(comp != nullptr);
 
-		for (auto it = m_Pools.begin(); it != m_Pools.end(); ++it) {
+		for (auto it = a.pools.begin(); it != a.pools.end(); ++it) {
 
-			if (it->exist(comp)) {
-				ecs_register_destroy(m_CompID, comp);
-				it->remove(ecs_register_sizeof(m_CompID), comp);
+			if (ecs_allocator_component_pool_exist(*it, comp)) {
+
+				ecs_register_destroy(a.compID, comp);
+				ecs_allocator_component_pool_remove(*it, comp);
+
 			}
-
 		}
 	}
 
-	ui32 ComponentAllocator::size() const noexcept
+	ui32 ecs_allocator_component_count(const ComponentAllocator& a)
 	{
-		ui32 compSize = ecs_register_sizeof(m_CompID);
+		ui32 compSize = ecs_register_sizeof(a.compID);
 		ui32 res = 0u;
-		for (const ComponentPool& pool : m_Pools) {
-			res += pool.size(compSize);
+		for (const ComponentPool& pool : a.pools) {
+			res += ecs_allocator_component_pool_count(pool);
 		}
 		return res;
 	}
 
-	bool ComponentAllocator::empty() const noexcept
+	ui32 ecs_allocator_component_empty(const ComponentAllocator& a)
 	{
-		ui32 compSize = ecs_register_sizeof(m_CompID);
-		for (const ComponentPool& pool : m_Pools) {
-			if (pool.byte_size() > 0u) return false;
+		ui32 compSize = ecs_register_sizeof(a.compID);
+		for (const ComponentPool& pool : a.pools) {
+			if (ecs_allocator_component_pool_count(pool) > 0u) return false;
 		}
 		return true;
-	}
-
-	ui32 ComponentAllocator::get_pool_count() const noexcept
-	{
-		return ui32(m_Pools.size());
-	}
-
-	ComponentPool& ComponentAllocator::get_pool(ui32 i) noexcept
-	{
-		return m_Pools[i];
-	}
-
-	ComponentPool& ComponentAllocator::create_pool()
-	{
-		ComponentPool& pool = m_Pools.emplace_back();
-		pool.allocate(ecs_register_sizeof(m_CompID));
-		return pool;
-	}
-
-	ComponentPool& ComponentAllocator::prepare_pool()
-	{
-		if (m_Pools.back().is_filled(ecs_register_sizeof(m_CompID))) {
-			return create_pool();
-		}
-		return m_Pools.back();
 	}
 	
 }

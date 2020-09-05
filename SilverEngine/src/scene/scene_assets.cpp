@@ -79,24 +79,22 @@ namespace sv {
 		return Result_Success;
 	}
 
-	Result scene_assets_refresh(Scene& scene)
+	Result scene_assets_refresh(Scene_internal& scene)
 	{
 		auto& assets = scene.assets;
-		
-
 
 		assets.refreshCount++;
 		return Result_Success;
 	}
 
-	Result scene_assets_create(const SceneDesc* desc, Scene& scene)
+	Result scene_assets_create(const SceneDesc* desc, Scene_internal& scene)
 	{
 		scene.assets.refreshCount = 0u;
 		scene_assets_refresh(scene);
 		return Result_Success;
 	}
 
-	Result scene_assets_destroy(Scene& scene)
+	Result scene_assets_destroy(Scene_internal& scene)
 	{
 		return Result_Success;
 	}
@@ -131,8 +129,10 @@ namespace sv {
 		}
 	}
 
-	Result scene_assets_update(Scene& scene, float dt)
+	Result scene_assets_update(Scene* scene_, float dt)
 	{
+		parseScene();
+
 		static float lifeTimeCount = 0.f;
 
 		// Refresh resources
@@ -150,8 +150,10 @@ namespace sv {
 		}
 	}
 
-	Result scene_assets_load_texture(Scene& scene, const char* filePath, SharedRef<Texture>& ref)
+	Result scene_assets_load_texture(Scene* scene_, const char* filePath, SharedRef<Texture>& ref)
 	{
+		parseScene();
+
 		auto& assets = scene.assets;
 
 		auto it = g_TexturesMap.find(filePath);

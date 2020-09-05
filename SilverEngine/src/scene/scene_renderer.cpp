@@ -4,8 +4,10 @@
 
 namespace sv {
 
-	void scene_renderer_draw(Scene& scene)
+	void scene_renderer_draw(Scene* scene_)
 	{
+		parseScene();
+
 		EntityView<CameraComponent> cameras(scene.ecs);
 
 		for (CameraComponent& camera : cameras) {
@@ -22,20 +24,22 @@ namespace sv {
 				camera.settings.active = true;
 
 				desc.pOffscreen = &renderer_offscreen_get();
-				scene_renderer_camera_draw(&desc, scene);
+				scene_renderer_camera_draw(scene_, &desc);
 
 			}
 			else {
 
 				desc.pOffscreen = camera.GetOffscreen();
-				scene_renderer_camera_draw(&desc, scene);
+				scene_renderer_camera_draw(scene_, &desc);
 
 			}
 		}
 	}
 
-	void scene_renderer_camera_draw(const CameraDrawDesc* desc, Scene& scene)
+	void scene_renderer_camera_draw(Scene* scene_, const CameraDrawDesc* desc)
 	{
+		parseScene();
+
 		if (!desc->pSettings->active || desc->pOffscreen == nullptr) return;
 
 		// Compute View Matrix

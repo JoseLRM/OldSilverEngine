@@ -2,8 +2,7 @@
 
 #include "core.h"
 
-#include "utils/TxtFile.h"
-#include "utils/BinFile.h"
+#include "utils/Archive.h"
 #include "utils/sv_math.h"
 #include "utils/Version.h"
 #include "utils/safe_queue.h"

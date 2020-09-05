@@ -43,10 +43,20 @@ namespace sve {
 		// Add style
 		{
 			auto& style = ImGui::GetStyle();
-			sv::BinFile file;
-			if (file.OpenR("ImGuiStyle")) {
-				file.Read(&style, sizeof(ImGuiStyle));
-				file.Close();
+			
+			std::ifstream file;
+
+			std::string path = "ImGuiStyle";
+#ifdef SV_SRC_PATH
+			path = SV_SRC_PATH + path;
+#endif
+
+			file.open(path, std::ios::binary);
+
+			if (file.is_open()) {
+				file.seekg(0u);
+				file.read((char*)&style, sizeof(ImGuiStyle));
+				file.close();
 			}
 			else {
 				sv::log_error("ImGui Style", "Style not found");
@@ -70,12 +80,14 @@ namespace sve {
 
 		if (sv::input_key_pressed('S')) {
 
-			sv::BinFile file;
-			file.OpenW("ImGuiStyle");
+			std::ofstream file;
 
-			file.Write(&ImGui::GetStyle(), sizeof(ImGuiStyle));
+			file.open("ImGuiStyle", std::ios::binary);
 
-			file.Close();
+			file.seekp(0u);
+			file.write((const char*)&ImGui::GetStyle(), sizeof(ImGuiStyle));
+
+			file.close();
 
 			sv::log("Saved");
 		}
@@ -151,12 +163,13 @@ namespace sve {
 
 	sv::Result editor_initialize()
 	{
-		svCheck(simulation_initialize());
+		svCheck(simulation_initialize("assets/scenes/Test.scene"));
 		svCheck(scene_editor_initialize());
 		viewports_initialize();
 
 		return sv::Result_Success;
 	}
+
 	void editor_update(float dt)
 	{
 		simulation_update(dt);
@@ -168,6 +181,7 @@ namespace sve {
 
 		g_Device->ResizeSwapChain();
 	}
+
 	void editor_render()
 	{
 		simulation_render();

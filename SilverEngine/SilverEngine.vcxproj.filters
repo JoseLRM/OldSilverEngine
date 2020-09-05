@@ -4,10 +4,8 @@
     <ClInclude Include="src\graphics\vulkan\graphics_vulkan.h" />
     <ClInclude Include="src\graphics\vulkan\graphics_vulkan_conversions.h" />
     <ClInclude Include="src\graphics\vulkan\vulkan_impl.h" />
-    <ClInclude Include="src\utils\BinFile.h" />
     <ClInclude Include="src\utils\safe_queue.h" />
     <ClInclude Include="src\utils\sv_math.h" />
-    <ClInclude Include="src\utils\TxtFile.h" />
     <ClInclude Include="src\utils\Version.h" />
     <ClInclude Include="src\platform\windows\windows_impl.h" />
     <ClInclude Include="src\platform\windows\platform_windows.h" />
@@ -171,6 +169,7 @@
     <ClInclude Include="src\console.h" />
     <ClInclude Include="src\console\console_internal.h" />
     <ClInclude Include="src\entity_system\entity_system_internal.h" />
+    <ClInclude Include="src\utils\Archive.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\graphics\vulkan\graphics_vulkan.cpp" />
@@ -178,9 +177,7 @@
     <ClCompile Include="src\graphics\graphics_allocator.cpp" />
     <ClCompile Include="src\graphics\graphics_properties.cpp" />
     <ClCompile Include="src\renderer\renderer.cpp" />
-    <ClCompile Include="src\utils\BinFile.cpp" />
     <ClCompile Include="src\utils\sv_math.cpp" />
-    <ClCompile Include="src\utils\TxtFile.cpp" />
     <ClCompile Include="src\utils\utils.cpp" />
     <ClCompile Include="src\graphics\vulkan\graphics_vulkan_memory.cpp" />
     <ClCompile Include="src\platform\window.cpp" />
@@ -219,6 +216,7 @@
     <ClCompile Include="src\console\console.cpp" />
     <ClCompile Include="src\engine\engine.cpp" />
     <ClCompile Include="src\entity_system\entity_system_allocators.cpp" />
+    <ClCompile Include="src\utils\Archive.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="src\external\assimp\.editorconfig" />

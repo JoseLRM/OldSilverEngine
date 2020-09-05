@@ -31,7 +31,7 @@ namespace sve {
 		std::string label;
 		sv::NameComponent* nameComponent = (sv::NameComponent*) sv::ecs_component_get_by_id(ecs, entity, sv::NameComponent::ID);
 		if (nameComponent) {
-			label = nameComponent->GetName() + "[" + std::to_string(entity) + "]";
+			label = nameComponent->name + "[" + std::to_string(entity) + "]";
 		}
 		else {
 			label = "Entity[" + std::to_string(entity) + "]";
@@ -91,20 +91,21 @@ namespace sve {
 	{
 		if (ImGui::Begin(viewports_get_name(SVE_VIEWPORT_SCENE_HIERARCHY))) {
 			g_HierarchyPopup = false;
-			sv::Scene& scene = simulation_scene_get();
+			sv::Scene* scene = simulation_scene_get();
+			sv::ECS* ecs = sv::scene_ecs_get(scene);
 
-			for (size_t i = 0; i < sv::ecs_entity_count(scene.ecs); ++i) {
+			for (size_t i = 0; i < sv::ecs_entity_count(ecs); ++i) {
 
-				sv::Entity entity = sv::ecs_entity_get(scene.ecs, i);
+				sv::Entity entity = sv::ecs_entity_get(ecs, i);
 
-				if (sv::ecs_entity_parent_get(scene.ecs, entity) == SV_ENTITY_NULL) {
-					ShowEntity(scene.ecs, entity);
-					i += sv::ecs_entity_childs_count(scene.ecs, entity);
+				if (sv::ecs_entity_parent_get(ecs, entity) == SV_ENTITY_NULL) {
+					ShowEntity(ecs, entity);
+					i += sv::ecs_entity_childs_count(ecs, entity);
 				}
 
 			}
 
-			if (sv::ecs_entity_exist(scene.ecs, g_SelectedEntity)) g_SelectedEntity = SV_ENTITY_NULL;
+			if (!sv::ecs_entity_exist(ecs, g_SelectedEntity)) g_SelectedEntity = SV_ENTITY_NULL;
 
 			if (!g_HierarchyPopup) {
 			
@@ -113,12 +114,12 @@ namespace sve {
 					g_HierarchyPopup = true;
 
 					if (ImGui::Button("Create empty entity")) {
-						sv::ecs_entity_create(scene.ecs);
+						sv::ecs_entity_create(ecs);
 					}
 
 					if (ImGui::Button("Create sprite")) {
-						sv::Entity entity = sv::ecs_entity_create(scene.ecs);
-						sv::ecs_component_add<sv::SpriteComponent>(scene.ecs, entity);
+						sv::Entity entity = sv::ecs_entity_create(ecs);
+						sv::ecs_component_add<sv::SpriteComponent>(ecs, entity);
 					}
 
 					ImGui::EndPopup();
@@ -165,9 +166,8 @@ namespace sve {
 
 					if (ImGui::Button(it->first.c_str())) {
 
-						sv::Scene& scene = simulation_scene_get();
+						sv::Scene* scene = simulation_scene_get();
 						sv::scene_assets_load_texture(scene, it->first.c_str(), comp->sprite.texture);
-						comp->sprite.index = 0u;
 
 						addTexturePopup = false;
 						break;
@@ -217,10 +217,10 @@ namespace sve {
 		// Set actual name into buffer
 		{
 			ui32 i;
-			ui32 size = comp->GetName().size();
+			ui32 size = comp->name.size();
 			if (size >= MAX_LENGTH) size = MAX_LENGTH - 1;
 			for (i = 0; i < size; ++i) {
-				name[i] = comp->GetName()[i];
+				name[i] = comp->name[i];
 			}
 			name[i] = '\0';
 		}
@@ -228,7 +228,7 @@ namespace sve {
 		ImGui::InputText("Name", name, MAX_LENGTH);
 
 		// Set new name into buffer
-		comp->SetName(name);
+		comp->name = name;
 	}
 
 	void ShowRigidBody2DComponentInfo(sv::RigidBody2DComponent* comp)
@@ -290,13 +290,13 @@ namespace sve {
 	{
 		if (ImGui::Begin(viewports_get_name(SVE_VIEWPORT_ENTITY_INSPECTOR))) {
 
-			sv::ECS* ecs = simulation_scene_get().ecs;
+			sv::ECS* ecs = sv::scene_ecs_get(simulation_scene_get());
 
 			if (g_SelectedEntity != SV_ENTITY_NULL) {
 
 				sv::NameComponent* nameComponent = sv::ecs_component_get<sv::NameComponent>(ecs, g_SelectedEntity);
 				if (nameComponent) {
-					ImGui::Text("%s[%u]", nameComponent->GetName().c_str(), g_SelectedEntity);
+					ImGui::Text("%s[%u]", nameComponent->name.c_str(), g_SelectedEntity);
 				}
 				else {
 					ImGui::Text("Entity[%u]", g_SelectedEntity);

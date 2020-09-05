@@ -26,10 +26,25 @@ namespace sv {
 	template<typename T>
 	ui32 Component<T>::SIZE;
 
-	typedef void(*CreateComponentFunction)(BaseComponent*, Entity);
+	typedef void(*CreateComponentFunction)(BaseComponent*);
 	typedef void(*DestroyComponentFunction)(BaseComponent*);
 	typedef void(*MoveComponentFunction)(BaseComponent* from, BaseComponent* to);
 	typedef void(*CopyComponentFunction)(BaseComponent* from, BaseComponent* to);
+	typedef void(*SerializeComponentFunction)(BaseComponent* comp, ArchiveO&);
+	typedef void(*DeserializeComponentFunction)(BaseComponent* comp, ArchiveI&);
+
+	struct ComponentRegisterDesc {
+
+		ui32							size;
+		const char*						name;
+		CreateComponentFunction			createFn;
+		DestroyComponentFunction		destroyFn;
+		MoveComponentFunction			moveFn;
+		CopyComponentFunction			copyFn;
+		SerializeComponentFunction		serializeFn;
+		DeserializeComponentFunction	deserializeFn;
+
+	};
 
 }
 
@@ -37,13 +52,16 @@ namespace sv {
 
 namespace sv {
 
-	ECS*	ecs_create();
+	void	ecs_create(ECS** ecs);
 	void	ecs_destroy(ECS* ecs);
 	void	ecs_clear(ECS* ecs);
 
+	Result	ecs_serialize(ECS* ecs, ArchiveO& archive);
+	Result	ecs_deserialize(ECS* ecs, ArchiveI& archive);
+
 	// Component register
 
-	CompID ecs_register(ui32 size, const char* name, CreateComponentFunction createFn, DestroyComponentFunction destroyFn, MoveComponentFunction moveFn, CopyComponentFunction copyFn);
+	CompID ecs_register(const ComponentRegisterDesc* desc);
 
 	ui32		ecs_register_count();
 	ui32		ecs_register_sizeof(CompID ID);
@@ -52,6 +70,8 @@ namespace sv {
 	void		ecs_register_destroy(CompID ID, BaseComponent* ptr);
 	void		ecs_register_move(CompID ID, BaseComponent* from, BaseComponent* to);
 	void		ecs_register_copy(CompID ID, BaseComponent* from, BaseComponent* to);
+	void		ecs_register_serialize(CompID ID, BaseComponent* comp, ArchiveO& archive);
+	void		ecs_register_deserialize(CompID ID, BaseComponent* comp, ArchiveI& archive);
 
 	// Entity
 
@@ -70,8 +90,8 @@ namespace sv {
 	void ecs_entities_create(ECS* ecs, ui32 count, Entity parent = SV_ENTITY_NULL, Entity* entities = nullptr);
 	void ecs_entities_destroy(ECS* ecs, Entity const* entities, ui32 count);
 
-	ui32								ecs_entity_count(ECS* ecs);
-	Entity								ecs_entity_get(ECS* ecs, ui32 index);
+	ui32	ecs_entity_count(ECS* ecs);
+	Entity	ecs_entity_get(ECS* ecs, ui32 index);
 
 	// Components
 
@@ -83,7 +103,7 @@ namespace sv {
 	
 	void ecs_component_remove_by_id(ECS* ecs, Entity entity, CompID componentID);
 
-	ui32			ecs_component_count(ECS* ecs, CompID ID);
+	ui32 ecs_component_count(ECS* ecs, CompID ID);
 
 	// Iterators
 
@@ -110,21 +130,22 @@ namespace sv {
 
 	// TEMPLATES
 	template<typename Component>
-	void ecs_register(const char* name)
+	void ecs_register(const char* name, SerializeComponentFunction serializeFn = nullptr, DeserializeComponentFunction deserializeFn = nullptr)
 	{
-		CreateComponentFunction createFn = [](BaseComponent* compPtr, Entity entity)
+		ComponentRegisterDesc desc;
+
+		desc.createFn = [](BaseComponent* compPtr)
 		{
 			new(compPtr) Component();
-			compPtr->entity = entity;
 		};
 
-		DestroyComponentFunction destroyFn = [](BaseComponent* compPtr)
+		desc.destroyFn = [](BaseComponent* compPtr)
 		{
 			Component* comp = reinterpret_cast<Component*>(compPtr);
 			comp->~Component();
 		};
 
-		MoveComponentFunction moveFn = [](BaseComponent* fromB, BaseComponent* toB)
+		desc.moveFn = [](BaseComponent* fromB, BaseComponent* toB)
 		{
 			Component* from = reinterpret_cast<Component*>(fromB);
 			Component* to = reinterpret_cast<Component*>(toB);
@@ -132,7 +153,7 @@ namespace sv {
 			to->operator=(std::move(*from));
 		};
 
-		CopyComponentFunction copyFn = [](BaseComponent* fromB, BaseComponent* toB)
+		desc.copyFn = [](BaseComponent* fromB, BaseComponent* toB)
 		{
 			Component* from = reinterpret_cast<Component*>(fromB);
 			Component* to = reinterpret_cast<Component*>(toB);
@@ -140,8 +161,14 @@ namespace sv {
 			to->operator=(*from);
 		};
 
+		desc.serializeFn = serializeFn;
+		desc.deserializeFn = deserializeFn;
+
+		desc.size = sizeof(Component);
+		desc.name = name;
+		
 		Component::SIZE = sizeof(Component);
-		Component::ID = ecs_register(Component::SIZE, name, createFn, destroyFn, moveFn, copyFn);
+		Component::ID = ecs_register(&desc);
 	}
 
 	template<typename Component, typename... Args>

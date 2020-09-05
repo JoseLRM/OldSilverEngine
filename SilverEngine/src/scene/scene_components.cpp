@@ -150,4 +150,96 @@ namespace sv {
 		return *this;
 	}
 
+	// SERIALIZATION
+
+	void scene_component_serialize_NameComponent(BaseComponent* comp_, ArchiveO& archive)
+	{
+		NameComponent* comp = reinterpret_cast<NameComponent*>(comp_);
+		archive << comp->name;
+	}
+
+	void scene_component_serialize_SpriteComponent(BaseComponent* comp_, ArchiveO& archive)
+	{
+		SpriteComponent* comp = reinterpret_cast<SpriteComponent*>(comp_);
+		archive << comp->color;
+		// TODO: Texure Asset and coords
+	}
+
+	void scene_component_serialize_CameraComponent(BaseComponent* comp_, ArchiveO& archive)
+	{
+		CameraComponent* comp = reinterpret_cast<CameraComponent*>(comp_);
+		archive << comp->settings;
+		archive << comp->HasOffscreen();
+		if (comp->HasOffscreen()) {
+			archive << comp->GetOffscreen()->GetWidth();
+			archive << comp->GetOffscreen()->GetHeight();
+		}
+	}
+
+	void scene_component_serialize_RigidBody2DComponent(BaseComponent* comp, ArchiveO& archive)
+	{
+		
+	}
+
+	void scene_component_serialize_QuadComponent(BaseComponent* comp, ArchiveO& archive)
+	{
+	}
+
+	void scene_component_serialize_MeshComponent(BaseComponent* comp, ArchiveO& archive)
+	{
+	}
+
+	void scene_component_serialize_LightComponent(BaseComponent* comp, ArchiveO& archive)
+	{
+	}
+
+	// DESERIALIZATION
+
+	void scene_component_deserialize_NameComponent(BaseComponent* comp_, ArchiveI& archive)
+	{
+		NameComponent* comp = reinterpret_cast<NameComponent*>(comp_);
+		archive >> comp->name;
+	}
+
+	void scene_component_deserialize_SpriteComponent(BaseComponent* comp_, ArchiveI& archive)
+	{
+		SpriteComponent* comp = reinterpret_cast<SpriteComponent*>(comp_);
+		archive >> comp->color;
+		// TODO: Texure Asset and coords
+	}
+
+	void scene_component_deserialize_CameraComponent(BaseComponent* comp_, ArchiveI& archive)
+	{
+		CameraComponent* comp = reinterpret_cast<CameraComponent*>(comp_);
+		archive >> comp->settings;
+
+		bool hasOffscreen;
+		archive >> hasOffscreen;
+
+		if (hasOffscreen) {
+			ui32 width;
+			ui32 height;
+			archive >> width;
+			archive >> height;
+
+			SV_ASSERT(comp->CreateOffscreen(width, height));
+		}
+	}
+
+	void scene_component_deserialize_RigidBody2DComponent(BaseComponent* comp, ArchiveI& archive)
+	{
+	}
+
+	void scene_component_deserialize_QuadComponent(BaseComponent* comp, ArchiveI& archive)
+	{
+	}
+
+	void scene_component_deserialize_MeshComponent(BaseComponent* comp, ArchiveI& archive)
+	{
+	}
+
+	void scene_component_deserialize_LightComponent(BaseComponent* comp, ArchiveI& archive)
+	{
+	}
+
 }

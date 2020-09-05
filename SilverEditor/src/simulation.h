@@ -5,7 +5,7 @@
 
 namespace sve {
 
-	sv::Result simulation_initialize();
+	sv::Result simulation_initialize(const char* sceneFilePath);
 	sv::Result simulation_close();
 	void simulation_update(float dt);
 	void simulation_render();
@@ -18,10 +18,6 @@ namespace sve {
 	bool simulation_running();	// Return true if the simulation is running or paused
 	bool simulation_paused();	// Return true if the simulation is paused
 
-	// Scene Management
-
-	sv::Scene simulation_scene_create_default();
-	void		simulation_scene_load();
-	sv::Scene&	simulation_scene_get();
+	sv::Scene*	simulation_scene_get();
 
 }

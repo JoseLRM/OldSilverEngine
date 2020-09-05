@@ -252,15 +252,11 @@ namespace sv {
 				pos2 = XMVector4Transform(pos2, matrix);
 				pos3 = XMVector4Transform(pos3, matrix);
 
-				vec4 texCoord;
-				if (spr.pTexture)
-					texCoord = spr.pTexture->GetSprite(spr.spriteIndex);
-
 				ui32 index = j * 4u;
-				g_SpriteData[index + 0] = { pos0, {texCoord.x, texCoord.y}, spr.color };
-				g_SpriteData[index + 1] = { pos1, {texCoord.z, texCoord.y}, spr.color };
-				g_SpriteData[index + 2] = { pos2, {texCoord.x, texCoord.w}, spr.color };
-				g_SpriteData[index + 3] = { pos3, {texCoord.z, texCoord.w}, spr.color };
+				g_SpriteData[index + 0] = { pos0, {spr.texCoord.x, spr.texCoord.y}, spr.color };
+				g_SpriteData[index + 1] = { pos1, {spr.texCoord.z, spr.texCoord.y}, spr.color };
+				g_SpriteData[index + 2] = { pos2, {spr.texCoord.x, spr.texCoord.w}, spr.color };
+				g_SpriteData[index + 3] = { pos3, {spr.texCoord.z, spr.texCoord.w}, spr.color };
 
 				j++;
 			}

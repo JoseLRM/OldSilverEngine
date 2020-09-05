@@ -10,11 +10,19 @@ namespace sve {
 	static bool g_Running = false;
 	static bool g_Paused = false;
 
-	static sv::Scene g_Scene;
+	static sv::Scene* g_Scene = nullptr;
+	static std::string g_ScenePath;
 
-	sv::Result simulation_initialize()
+	sv::Result simulation_initialize(const char* sceneFilePath)
 	{
-		simulation_scene_load();
+		sv::SceneDesc desc;
+		desc.gravity = { 0.f, 20.f, 0.f };
+
+		svCheck(sv::scene_create(&desc, &g_Scene));
+
+		svCheck(sv::scene_deserialize(g_Scene, sceneFilePath));
+		g_ScenePath = sceneFilePath;
+
 		return sv::Result_Success;
 	}
 
@@ -28,7 +36,8 @@ namespace sve {
 	{
 		// Adjust camera
 		{
-			sv::CameraComponent& camera = *sv::ecs_component_get<sv::CameraComponent>(g_Scene.ecs, g_Scene.mainCamera);
+			sv::ECS* ecs = sv::scene_ecs_get(g_Scene);
+			sv::CameraComponent& camera = *sv::ecs_component_get<sv::CameraComponent>(ecs, sv::scene_camera_get(g_Scene));
 
 			sv::uvec2 size = viewport_simulation_size();
 			camera.Adjust(size.x, size.y);
@@ -54,32 +63,40 @@ namespace sve {
 
 	void simulation_run()
 	{
+		if (g_Running) return;
+
 		g_Running = true;
 		g_Paused = false;
 		ImGui::GetStyle().Alpha = 0.2f;
+
+		sv::scene_serialize(g_Scene, g_ScenePath.c_str());
 	}
 
 	void simulation_continue()
 	{
-		if (g_Running) {
-			g_Paused = false;
-			ImGui::GetStyle().Alpha = 0.2f;
-		}
+		if (!g_Running || !g_Paused) return;
+	
+		g_Paused = false;
+		ImGui::GetStyle().Alpha = 0.2f;
 	}
 
 	void simulation_pause()
 	{
-		if (g_Running) {
-			g_Paused = true;
-			ImGui::GetStyle().Alpha = 1.f;
-		}
+		if (!g_Running || g_Paused) return;
+		
+		g_Paused = true;
+		ImGui::GetStyle().Alpha = 1.f;
 	}
 
 	void simulation_stop()
 	{
+		if (!g_Running) return;
+
 		g_Running = false;
 		g_Paused = false;
 		ImGui::GetStyle().Alpha = 1.f;
+
+		sv::scene_deserialize(g_Scene, g_ScenePath.c_str());
 	}
 
 	bool simulation_running()
@@ -92,57 +109,7 @@ namespace sve {
 		return g_Paused;
 	}
 
-	// TEMP
-	static sv::Model g_Model;
-
-	sv::Scene simulation_scene_create_default()
-	{
-		// Create scene
-		sv::SceneDesc desc;
-		desc.gravity = { 0.f, 10.f, 0.f };
-
-		sv::Scene scene;
-		SV_ASSERT(sv::scene_create(&desc, scene) == sv::Result_Success);
-
-		// Create main camera
-		{
-			sv::CameraComponent& camera = *sv::ecs_component_get<sv::CameraComponent>(scene.ecs, scene.mainCamera);
-			camera.settings.projection.cameraType = sv::CameraType_Orthographic;
-			camera.settings.projection.width = 10.f;
-			camera.settings.projection.height = 10.f;
-		}
-
-		// Temporal
-		//sv::loader_model_import("assets/gobber/GoblinX.obj", g_Model);
-		//
-		//sv::Entity meshEntity = sv::ecs_entity_create(SV_ENTITY_NULL, scene.ecs);
-		//sv::ecs_component_add<sv::MeshComponent>(meshEntity, scene.ecs);
-		//sv::ecs_component_get<sv::MeshComponent>(meshEntity, scene.ecs)->mesh = &g_Model.nodes[0].mesh;
-		//sv::ecs_component_get<sv::MeshComponent>(meshEntity, scene.ecs)->material = &g_Model.materials[0];
-
-		//sv::SharedRef<sv::Texture> texture;
-		//sv::scene_assets_load_texture(scene, "textures/Tileset.png", texture);
-		//if (texture.Get()) {
-		//
-		//	sv::Entity spriteEntity = sv::ecs_entity_create(0, scene.ecs);
-		//	sv::ecs_component_add<sv::SpriteComponent>(spriteEntity, scene.ecs);
-		//	sv::SpriteComponent* spr = sv::ecs_component_get<sv::SpriteComponent>(spriteEntity, scene.ecs);
-		//	spr->sprite.index = texture->AddSprite(0.f, 0.f, 0.1f, 0.1f);
-		//	spr->sprite.texture = texture;
-		//
-		//}
-		//
-		return scene;
-	}
-
-	void simulation_scene_load()
-	{
-		// TODO: Filepath in parameters and deserialize the scene
-		sv::scene_destroy(g_Scene);
-		g_Scene = simulation_scene_create_default();
-	}
-
-	sv::Scene& simulation_scene_get()
+	sv::Scene* simulation_scene_get()
 	{
 		return g_Scene;
 	}

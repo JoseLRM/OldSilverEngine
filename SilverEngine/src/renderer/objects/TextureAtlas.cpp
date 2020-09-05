@@ -45,9 +45,6 @@ namespace sv {
 			svCheck(graphics_sampler_create(&desc, m_Sampler));
 		}
 
-		// Default Sprite
-		AddSprite(0.f, 0.f, 1.f, 1.f);
-
 		return Result_Success;
 	}
 
@@ -55,15 +52,7 @@ namespace sv {
 	{
 		svCheck(graphics_destroy(m_Image));
 		svCheck(graphics_destroy(m_Sampler));
-		m_Sprites.clear();
 		return Result_Success;
-	}
-
-	ui32 Texture::AddSprite(float x, float y, float w, float h)
-	{
-		ui32 index = ui32(m_Sprites.size());
-		m_Sprites.emplace_back(x, y, x + w, y + h);
-		return index;
 	}
 
 }

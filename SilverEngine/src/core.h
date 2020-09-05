@@ -48,6 +48,23 @@ typedef int			BOOL;
 #define FALSE		0
 #define TRUE		1
 
+// limits
+
+constexpr ui8	ui8_max		= std::numeric_limits<ui8>::max();
+constexpr ui16	ui16_max	= std::numeric_limits<ui16>::max();
+constexpr ui32	ui32_max	= std::numeric_limits<ui32>::max();
+constexpr ui64	ui64_max	= std::numeric_limits<ui64>::max();
+
+constexpr i32	i8_min		= std::numeric_limits<i8>::min();
+constexpr i32	i16_min		= std::numeric_limits<i16>::min();
+constexpr i32	i32_min		= std::numeric_limits<i32>::min();
+constexpr i32	i64_min		= std::numeric_limits<i64>::min();
+
+constexpr i32	i8_max		= std::numeric_limits<i8>::max();
+constexpr i32	i16_max		= std::numeric_limits<i16>::max();
+constexpr i32	i32_max		= std::numeric_limits<i32>::max();
+constexpr i32	i64_max		= std::numeric_limits<i64>::max();
+
 namespace sv {
 
 	// Result
@@ -60,6 +77,7 @@ namespace sv {
 		Result_NotFound,
 		Result_InvalidFormat,
 		Result_InvalidUsage,
+		Result_UnsupportedVersion,
 	};
 	
 	// Exception
