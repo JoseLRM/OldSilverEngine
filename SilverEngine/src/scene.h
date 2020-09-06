@@ -30,11 +30,6 @@ namespace sv {
 
 namespace sv {
 
-	enum AssetType : ui32 {
-		AssetType_Unknown,
-		AssetType_Texture,
-	};
-
 	struct InitializationSceneDesc {
 		const char* assetsFolderPath;
 	};
@@ -59,7 +54,9 @@ namespace sv {
 	void	scene_clear(Scene* scene);
 
 	Result	scene_serialize(Scene* scene, const char* filePath);
+	Result	scene_serialize(Scene* scene, ArchiveO& archive);
 	Result	scene_deserialize(Scene* scene, const char* filePath);
+	Result	scene_deserialize(Scene* scene, ArchiveI& archive);
 
 	// Getters
 

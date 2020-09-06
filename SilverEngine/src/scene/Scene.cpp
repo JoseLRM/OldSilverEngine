@@ -73,38 +73,41 @@ namespace sv {
 		scene.mainCamera = SV_ENTITY_NULL;
 	}
 
-	Result scene_serialize(Scene* scene_, const char* filePath)
+	Result scene_serialize(Scene* scene, const char* filePath)
 	{
-		parseScene();
 		ArchiveO archive;
 		
-		archive << engine_version_get();
-
-		svCheck(ecs_serialize(scene.ecs, archive));
+		svCheck(scene_serialize(scene, archive));
 
 		// Save
-#ifdef SV_SRC_PATH
-		std::string filePathStr = SV_SRC_PATH;
-		filePathStr += filePath;
-		filePath = filePathStr.c_str();
-#endif
-		archive.save_file(filePath, false);
+		svCheck(archive.save_file(filePath, false));
 
 		return Result_Success;
 	}
 
-	Result scene_deserialize(Scene* scene_, const char* filePath)
+	Result scene_serialize(Scene* scene_, ArchiveO& archive)
+	{
+		parseScene();
+
+		archive << engine_version_get();
+
+		svCheck(ecs_serialize(scene.ecs, archive));
+		
+		return Result_Success;
+	}
+
+	Result scene_deserialize(Scene* scene, const char* filePath)
 	{
 		ArchiveI archive;
 
-#ifdef SV_SRC_PATH
-		std::string filePathStr = SV_SRC_PATH;
-		filePathStr += filePath;
-		filePath = filePathStr.c_str();
-#endif
-
 		svCheck(archive.open_file(filePath));
+		svCheck(scene_deserialize(scene, archive));
 
+		return Result_Success;
+	}
+
+	Result scene_deserialize(Scene* scene_, ArchiveI& archive)
+	{
 		parseScene();
 
 		// Version

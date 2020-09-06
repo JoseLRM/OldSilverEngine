@@ -22,20 +22,24 @@ namespace sv {
 		size_t handleIndex = ui64_max;
 		Entity parent = SV_ENTITY_NULL;
 		ui32 childsCount = 0u;
-		EntityTransform transform;
 		std::vector<std::pair<CompID, BaseComponent*>> components;
 
 	};
 
 	struct EntityDataAllocator {
 		
-		EntityData* data = nullptr;
-		EntityData* accessData = nullptr;
+		EntityData*				data			= nullptr;
+		EntityTransform*		transformData	= nullptr;
+
+		EntityData*				accessData			= nullptr;
+		EntityTransform*		accessTransformData = nullptr;
+
 		ui32 size = 0u;
 		ui32 capacity = 0u;
 		std::vector<Entity> freeList;
 
-		inline EntityData& operator[](Entity entity) { SV_ASSERT(entity != SV_ENTITY_NULL); return accessData[entity]; }
+		inline EntityData&			operator[](Entity entity) { SV_ASSERT(entity != SV_ENTITY_NULL); return accessData[entity]; }
+		inline EntityTransform&		get_transform(Entity entity) { SV_ASSERT(entity != SV_ENTITY_NULL); return accessTransformData[entity]; }
 
 	};
 

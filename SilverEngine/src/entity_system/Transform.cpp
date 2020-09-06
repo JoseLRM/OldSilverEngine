@@ -152,7 +152,7 @@ namespace sv {
 		Entity parent = entityData.parent;
 
 		if (parent != SV_ENTITY_NULL) {
-			Transform parentTransform(parent, &list[parent].transform, pECS);
+			Transform parentTransform(parent, &list.get_transform(parent), pECS);
 			XMMATRIX mp = parentTransform.GetWorldMatrix();
 			m = m * mp;
 		}
@@ -175,8 +175,8 @@ namespace sv {
 
 			auto& entities = ecs.entities;
 			for (ui32 i = 0; i < entityData.childsCount; ++i) {
-				EntityData& ed = list[entities[entityData.handleIndex + 1 + i]];
-				ed.transform.modified = true;
+				EntityTransform& et = list.get_transform(entities[entityData.handleIndex + 1 + i]);
+				et.modified = true;
 			}
 
 		}

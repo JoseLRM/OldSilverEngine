@@ -376,24 +376,30 @@ namespace sve {
 
 	bool viewport_scene_editor_display()
 	{
-		if (ImGui::Begin(viewports_get_name(SVE_VIEWPORT_SCENE_EDITOR))) {
+		ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1.f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 0.f, 0.f });
+
+		if (ImGui::Begin(viewports_get_name(SVE_VIEWPORT_SCENE_EDITOR), 0, ImGuiWindowFlags_NoScrollbar)) {
 
 			g_Visible = true;
 			g_Focused = ImGui::IsWindowFocused();
-			ImVec2 size = ImGui::GetWindowSize();
+			ImVec2 size = ImGui::GetWindowContentRegionMax();
+			size.x -= ImGui::GetWindowContentRegionMin().x;
+			size.y -= ImGui::GetWindowContentRegionMin().y;
 			g_ViewportSize = { ui32(size.x), ui32(size.y) };
 
 			auto& camera = scene_editor_camera_get();
-			ImVec2 v = ImGui::GetWindowSize();
 			auto& offscreen = camera.offscreen;
 
 			ImGuiDevice& device = editor_device_get();
-			ImGui::Image(device.ParseImage(offscreen.renderTarget), { v.x, v.y });
+			ImGui::Image(device.ParseImage(offscreen.renderTarget), { size.x, size.y });
 
 		}
 		else g_Visible = false;
 
 		ImGui::End();
+
+		ImGui::PopStyleVar(2u);
 
 		return true;
 	}

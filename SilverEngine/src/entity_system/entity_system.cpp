@@ -84,11 +84,16 @@ namespace sv {
 			archive << entityCount << entityDataCount;
 
 			for (ui32 i = 0; i < entityDataCount; ++i) {
-				EntityData& ed = ecs.entityData[i + 1u];
+
+				Entity entity = i + 1u;
+				EntityData& ed = ecs.entityData[entity];
 
 				if (ed.handleIndex != ui64_max) {
-					archive << i << ed.childsCount << ed.handleIndex << ed.transform.localPosition;
-					archive << ed.transform.localRotation << ed.transform.localScale;
+
+					EntityTransform& transform = ecs.entityData.get_transform(entity);
+
+					archive << i << ed.childsCount << ed.handleIndex << transform.localPosition;
+					archive << transform.localRotation << transform.localScale;
 				}
 			}
 		}
@@ -176,6 +181,7 @@ namespace sv {
 
 		ecs.entities.resize(entityCount);
 		EntityData* entityData = new EntityData[entityDataCount];
+		EntityTransform* entityTransform = new EntityTransform[entityDataCount];
 
 		for (ui32 i = 0; i < entityCount; ++i) {
 
@@ -183,8 +189,10 @@ namespace sv {
 			archive >> entity;
 
 			EntityData& ed = entityData[entity];
+			EntityTransform& et = entityTransform[entity];
+
 			archive >> ed.childsCount >> ed.handleIndex >> 
-				ed.transform.localPosition >> ed.transform.localRotation >> ed.transform.localScale;
+				et.localPosition >> et.localRotation >> et.localScale;
 		}
 
 		// Create entity list and free list
@@ -202,7 +210,9 @@ namespace sv {
 
 		// Set entity data
 		ecs.entityData.data = entityData;
+		ecs.entityData.transformData = entityTransform;
 		ecs.entityData.accessData = entityData - 1u;
+		ecs.entityData.accessTransformData = entityTransform - 1u;
 		ecs.entityData.capacity = entityDataCount;
 		ecs.entityData.size = entityDataCount;
 
@@ -464,6 +474,8 @@ namespace sv {
 		EntityData& duplicatedEd = ecs.entityData[duplicated];
 		EntityData& copyEd = ecs.entityData[copy];
 
+		ecs.entityData.get_transform(copy) = ecs.entityData.get_transform(duplicated);
+
 		for (ui32 i = 0; i < duplicatedEd.components.size(); ++i) {
 			CompID ID = duplicatedEd.components[i].first;
 			size_t SIZE = ecs_register_sizeof(ID);
@@ -474,8 +486,6 @@ namespace sv {
 			newComp->entity = copy;
 			ecs_entitydata_index_add(copyEd, ID, newComp);
 		}
-
-		copyEd.transform = duplicatedEd.transform;
 
 		for (ui32 i = 0; i < ecs.entityData[duplicated].childsCount; ++i) {
 			Entity toCopy = ecs.entities[ecs.entityData[duplicated].handleIndex + i + 1];
@@ -532,7 +542,7 @@ namespace sv {
 	Transform ecs_entity_transform_get(ECS* ecs_, Entity entity)
 	{
 		parseECS();
-		return Transform(entity, &ecs.entityData[entity].transform, &ecs);
+		return Transform(entity, &ecs.entityData.get_transform(entity), &ecs);
 	}
 
 	ui32 ecs_entity_component_count(ECS* ecs_, Entity entity)

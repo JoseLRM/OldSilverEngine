@@ -162,7 +162,8 @@ namespace sv {
 	{
 		SpriteComponent* comp = reinterpret_cast<SpriteComponent*>(comp_);
 		archive << comp->color;
-		// TODO: Texure Asset and coords
+		archive << comp->sprite.texCoord;
+		// TODO: Texure Asset
 	}
 
 	void scene_component_serialize_CameraComponent(BaseComponent* comp_, ArchiveO& archive)
@@ -189,8 +190,10 @@ namespace sv {
 	{
 	}
 
-	void scene_component_serialize_LightComponent(BaseComponent* comp, ArchiveO& archive)
+	void scene_component_serialize_LightComponent(BaseComponent* comp_, ArchiveO& archive)
 	{
+		LightComponent* comp = reinterpret_cast<LightComponent*>(comp_);
+		archive << comp->lightType << comp->intensity << comp->range << comp->smoothness << comp->color;
 	}
 
 	// DESERIALIZATION
@@ -205,7 +208,8 @@ namespace sv {
 	{
 		SpriteComponent* comp = reinterpret_cast<SpriteComponent*>(comp_);
 		archive >> comp->color;
-		// TODO: Texure Asset and coords
+		archive >> comp->sprite.texCoord;
+		// TODO: Texure Asset
 	}
 
 	void scene_component_deserialize_CameraComponent(BaseComponent* comp_, ArchiveI& archive)
@@ -238,8 +242,10 @@ namespace sv {
 	{
 	}
 
-	void scene_component_deserialize_LightComponent(BaseComponent* comp, ArchiveI& archive)
+	void scene_component_deserialize_LightComponent(BaseComponent* comp_, ArchiveI& archive)
 	{
+		LightComponent* comp = reinterpret_cast<LightComponent*>(comp_);
+		archive >> comp->lightType >> comp->intensity >> comp->range >> comp->smoothness >> comp->color;
 	}
 
 }

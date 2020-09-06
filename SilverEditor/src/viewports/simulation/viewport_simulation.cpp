@@ -17,7 +17,7 @@ namespace sve {
 
 		ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollbar;
 		if (ImGui::Begin(viewports_get_name(SVE_VIEWPORT_SIMULATION), 0, windowFlags)) {
-			
+
 			g_Visible = true;
 			ImVec2 size = ImGui::GetWindowContentRegionMax();
 			size.x -= ImGui::GetWindowContentRegionMin().x;
@@ -25,7 +25,6 @@ namespace sve {
 			g_Size = { ui32(size.x), ui32(size.y) };
 
 			auto& offscreen = sv::renderer_offscreen_get();
-
 			ImGuiDevice& device = editor_device_get();
 			ImGui::Image(device.ParseImage(offscreen.renderTarget), { size.x, size.y });
 

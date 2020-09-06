@@ -12,24 +12,44 @@ namespace sv {
 
 			if (a.size == a.capacity) {
 				EntityData* newData = new EntityData[a.capacity + SV_ECS_ENTITY_ALLOC_SIZE];
+				EntityTransform* newTransformData = new EntityTransform[a.capacity + SV_ECS_ENTITY_ALLOC_SIZE];
 
 				if (a.data) {
-					EntityData* end = a.data + a.capacity;
-					while (a.data != end) {
 
-						*newData = std::move(*a.data);
+					{
+						EntityData* end = a.data + a.capacity;
+						while (a.data != end) {
 
-						newData++;
-						a.data++;
+							*newData = std::move(*a.data);
+
+							++newData;
+							++a.data;
+						}
 					}
+					{
+						EntityTransform* end = a.transformData + a.capacity;
+						while (a.transformData != end) {
+
+							*newTransformData = std::move(*a.transformData);
+
+							++newTransformData;
+							++a.transformData;
+						}
+					}
+
 					a.data -= a.capacity;
+					a.transformData -= a.capacity;
 					newData -= a.capacity;
+					newTransformData -= a.capacity;
 					delete[] a.data;
+					delete[] a.transformData;
 				}
 
 				a.capacity += SV_ECS_ENTITY_ALLOC_SIZE;
 				a.data = newData;
+				a.transformData = newTransformData;
 				a.accessData = a.data - 1u;
+				a.accessTransformData = a.transformData - 1u;
 			}
 
 			return ++a.size;
@@ -46,6 +66,7 @@ namespace sv {
 	{
 		SV_ASSERT(a.size >= entity);
 		a.accessData[entity] = EntityData();
+		a.accessTransformData[entity] = EntityTransform();
 
 		if (entity == a.size) {
 			a.size--;
@@ -61,9 +82,12 @@ namespace sv {
 			a.capacity = 0u;
 			delete[] a.data;
 			a.data = nullptr;
+			delete[] a.transformData;
+			a.transformData = nullptr;
 		}
 
 		a.accessData = nullptr;
+		a.accessTransformData = nullptr;
 		a.size = 0u;
 		a.freeList.clear();
 	}

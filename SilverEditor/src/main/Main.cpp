@@ -5,5 +5,4 @@
 int main()
 {
 	sve::editor_run();
-	system("PAUSE");
 }
