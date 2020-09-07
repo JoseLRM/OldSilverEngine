@@ -11,7 +11,6 @@
 namespace sve {
 	
 	static std::unique_ptr<ImGuiDevice> g_Device;
-	static bool g_Gamemode = false;
 
 	void editor_run()
 	{
@@ -21,13 +20,10 @@ namespace sve {
 		desc.callbacks.render = editor_render;
 		desc.callbacks.close = editor_close;
 
-		desc.sceneDesc.assetsFolderPath = "assets/";
+		desc.assetsFolderPath = "assets/";
 		desc.minThreadsCount = 2;
 		desc.consoleDesc.show = true;
 		desc.consoleDesc.logFolder = "logs/";
-		desc.rendererDesc.presentOffscreen = false;
-		desc.rendererDesc.resolutionWidth = 1920u;
-		desc.rendererDesc.resolutionHeight = 1080u;
 		desc.windowDesc.fullscreen = false;
 		desc.windowDesc.x = 0u;
 		desc.windowDesc.y = 0u;
@@ -176,7 +172,7 @@ namespace sve {
 		scene_editor_update(dt);
 
 		if (sv::input_key_pressed(SV_KEY_F11)) {
-			editor_gamemode_set(!editor_gamemode_get());
+			simulation_gamemode_set(!simulation_gamemode_get());
 		}
 
 		g_Device->ResizeSwapChain();
@@ -186,18 +182,30 @@ namespace sve {
 	{
 		simulation_render();
 
-		if (!g_Gamemode) {		
+		if (!simulation_gamemode_get()) {		
 			scene_editor_render();
 
 			g_Device->BeginFrame();
 
-			sv::Offscreen& simulationOffscreen = sv::renderer_offscreen_get();
+			sv::Offscreen* simulationOffscreen = nullptr;
 			sv::Offscreen& editorOffscreen = scene_editor_camera_get().offscreen;
 
+			sv::Scene* scene = simulation_scene_get();
+			sv::ECS* ecs = sv::scene_ecs_get(scene);
+			sv::Entity cameraEntity = sv::scene_camera_get(scene);
+
+			if (sv::ecs_entity_exist(ecs, cameraEntity)) {
+
+				sv::CameraComponent* camera = sv::ecs_component_get<sv::CameraComponent>(ecs, cameraEntity);
+				if (camera) {
+					simulationOffscreen = &camera->offscreen;
+				}
+			}
+
 			sv::GPUBarrier barriers[2];
-			barriers[0] = sv::GPUBarrier::Image(simulationOffscreen.renderTarget, sv::GPUImageLayout_RenderTarget, sv::GPUImageLayout_ShaderResource);
-			barriers[1] = sv::GPUBarrier::Image(editorOffscreen.renderTarget, sv::GPUImageLayout_RenderTarget, sv::GPUImageLayout_ShaderResource);
-			sv::graphics_barrier(barriers, 2u, g_Device->GetCMD());
+			barriers[0] = sv::GPUBarrier::Image(editorOffscreen.renderTarget, sv::GPUImageLayout_RenderTarget, sv::GPUImageLayout_ShaderResource);
+			if (simulationOffscreen) barriers[1] = sv::GPUBarrier::Image(simulationOffscreen->renderTarget, sv::GPUImageLayout_RenderTarget, sv::GPUImageLayout_ShaderResource);
+			sv::graphics_barrier(barriers, simulationOffscreen ? 2u : 1u, g_Device->GetCMD());
 
 			
 			MainMenu();
@@ -205,9 +213,9 @@ namespace sve {
 			viewports_display();
 			g_Device->EndFrame();
 
-			barriers[0] = sv::GPUBarrier::Image(simulationOffscreen.renderTarget, sv::GPUImageLayout_ShaderResource, sv::GPUImageLayout_RenderTarget);
-			barriers[1] = sv::GPUBarrier::Image(editorOffscreen.renderTarget, sv::GPUImageLayout_ShaderResource, sv::GPUImageLayout_RenderTarget);
-			sv::graphics_barrier(barriers, 2u, g_Device->GetCMD());
+			barriers[0] = sv::GPUBarrier::Image(editorOffscreen.renderTarget, sv::GPUImageLayout_ShaderResource, sv::GPUImageLayout_RenderTarget);
+			if (simulationOffscreen) barriers[1] = sv::GPUBarrier::Image(simulationOffscreen->renderTarget, sv::GPUImageLayout_ShaderResource, sv::GPUImageLayout_RenderTarget);
+			sv::graphics_barrier(barriers, simulationOffscreen ? 2u : 1u, g_Device->GetCMD());
 		}
 	}
 	sv::Result editor_close()
@@ -221,25 +229,6 @@ namespace sve {
 	ImGuiDevice& editor_device_get()
 	{
 		return *g_Device.get();
-	}
-
-	void editor_gamemode_set(bool gamemode)
-	{
-		if (gamemode) {
-			if (simulation_running() && !simulation_paused()) {
-				g_Gamemode = true;
-				sv::renderer_offscreen_set_present(true);
-			}
-		}
-		else {
-			g_Gamemode = false;
-			sv::renderer_offscreen_set_present(false);
-		}
-	}
-
-	bool editor_gamemode_get()
-	{
-		return g_Gamemode;
 	}
 
 }

@@ -1,5 +1,5 @@
 #include "core.h"
-#include "TextureAtlas.h"
+#include "Texture.h"
 
 namespace sv {
 

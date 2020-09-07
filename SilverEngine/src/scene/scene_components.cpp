@@ -6,41 +6,34 @@
 
 namespace sv {
 
+	// CAMERA COMPONENT
+
 	CameraComponent::CameraComponent()
 	{
 		settings.active = true;
+		SV_ASSERT(renderer_offscreen_create(1920u, 1080u, offscreen) == Result_Success);
 	}
 
-	CameraComponent::CameraComponent(CameraType type)
+	CameraComponent::CameraComponent(ui32 width, ui32 height)
 	{
-		settings.projection.cameraType = type;
 		settings.active = true;
+		SV_ASSERT(renderer_offscreen_create(width, height, offscreen) == Result_Success);
+	}
+
+	CameraComponent::~CameraComponent()
+	{
+		SV_ASSERT(renderer_offscreen_destroy(offscreen) == Result_Success);
 	}
 
 	CameraComponent::CameraComponent(const CameraComponent& other)
 	{
-		this->operator=(other);
+		settings = other.settings;
+		SV_ASSERT(renderer_offscreen_create(other.offscreen.GetWidth(), other.offscreen.GetHeight(), offscreen) == Result_Success);
 	}
 	CameraComponent::CameraComponent(CameraComponent&& other) noexcept
 	{
-		this->operator=(std::move(other));
-	}
-	CameraComponent& CameraComponent::operator=(const CameraComponent& other)
-	{
 		settings = other.settings;
-		if (other.HasOffscreen()) {
-			Offscreen& offscreen = *other.GetOffscreen();
-			CreateOffscreen(offscreen.GetWidth(), offscreen.GetHeight());
-		}
-		return *this;
-	}
-	CameraComponent& CameraComponent::operator=(CameraComponent&& other) noexcept
-	{
-		settings = other.settings;
-		if (other.HasOffscreen()) {
-			m_Offscreen = std::move(other.m_Offscreen);
-		}
-		return *this;
+		offscreen = std::move(other.offscreen);
 	}
 
 	void CameraComponent::Adjust(float width, float height)
@@ -48,47 +41,20 @@ namespace sv {
 		renderer_projection_aspect_set(settings.projection, width / height);
 	}
 
-	bool CameraComponent::CreateOffscreen(ui32 width, ui32 height)
-	{
-		if (HasOffscreen()) {
-			DestroyOffscreen();
-		}
-		m_Offscreen = std::make_unique<Offscreen>();
-		return renderer_offscreen_create(width, height, *m_Offscreen.get());
-	}
-
-	bool CameraComponent::HasOffscreen() const noexcept
-	{
-		return m_Offscreen.get() != nullptr;
-	}
-
-	Offscreen* CameraComponent::GetOffscreen() const noexcept
-	{
-		return m_Offscreen.get();
-	}
-
-	bool CameraComponent::DestroyOffscreen()
-	{
-		if (HasOffscreen())
-			return renderer_offscreen_destroy(*GetOffscreen());
-		else
-			return true;
-	}
+	// RIGID BODY 2D
 
 	RigidBody2DComponent::RigidBody2DComponent() : pInternal(nullptr)
 	{}
 
-	RigidBody2DComponent& RigidBody2DComponent::operator=(const RigidBody2DComponent& other)
+	RigidBody2DComponent::RigidBody2DComponent(const RigidBody2DComponent& other)
 	{
 		dynamic = other.dynamic;
 		fixedRotation = other.fixedRotation;
 		velocity = other.velocity;
 		angularVelocity = other.angularVelocity;
-
-		return *this;
 	}
 
-	RigidBody2DComponent& RigidBody2DComponent::operator=(RigidBody2DComponent&& other) noexcept
+	RigidBody2DComponent::RigidBody2DComponent(RigidBody2DComponent&& other) noexcept
 	{
 		pInternal = other.pInternal;
 		other.pInternal = nullptr;
@@ -96,7 +62,6 @@ namespace sv {
 		fixedRotation = other.fixedRotation;
 		velocity = other.velocity;
 		angularVelocity = other.angularVelocity;
-		return *this;
 	}
 
 	RigidBody2DComponent::~RigidBody2DComponent()
@@ -126,7 +91,7 @@ namespace sv {
 		}
 	}
 
-	QuadComponent& QuadComponent::operator=(const QuadComponent& other)
+	QuadComponent::QuadComponent(const QuadComponent& other)
 	{
 		density = other.density;
 		friction = other.friction;
@@ -134,10 +99,9 @@ namespace sv {
 		offset = other.offset;
 		restitution = other.restitution;
 		size = other.size;
-		return *this;
 	}
 
-	QuadComponent& QuadComponent::operator=(QuadComponent&& other) noexcept
+	QuadComponent::QuadComponent(QuadComponent&& other) noexcept
 	{
 		pInternal = other.pInternal;
 		other.pInternal = nullptr;
@@ -147,7 +111,6 @@ namespace sv {
 		offset = other.offset;
 		restitution = other.restitution;
 		size = other.size;
-		return *this;
 	}
 
 	// SERIALIZATION
@@ -163,18 +126,18 @@ namespace sv {
 		SpriteComponent* comp = reinterpret_cast<SpriteComponent*>(comp_);
 		archive << comp->color;
 		archive << comp->sprite.texCoord;
-		// TODO: Texure Asset
+		if (comp->sprite.texture.Get()) {
+			archive << comp->sprite.texture->hashCode;
+		}
+		else archive << (size_t)0u;
 	}
 
 	void scene_component_serialize_CameraComponent(BaseComponent* comp_, ArchiveO& archive)
 	{
 		CameraComponent* comp = reinterpret_cast<CameraComponent*>(comp_);
 		archive << comp->settings;
-		archive << comp->HasOffscreen();
-		if (comp->HasOffscreen()) {
-			archive << comp->GetOffscreen()->GetWidth();
-			archive << comp->GetOffscreen()->GetHeight();
-		}
+		archive << comp->offscreen.GetWidth();
+		archive << comp->offscreen.GetHeight();
 	}
 
 	void scene_component_serialize_RigidBody2DComponent(BaseComponent* comp, ArchiveO& archive)
@@ -209,7 +172,14 @@ namespace sv {
 		SpriteComponent* comp = reinterpret_cast<SpriteComponent*>(comp_);
 		archive >> comp->color;
 		archive >> comp->sprite.texCoord;
-		// TODO: Texure Asset
+		size_t hash;
+		archive >> hash;
+
+		if (hash != 0u) {
+			if (assets_load_texture(hash, comp->sprite.texture) != Result_Success) {
+				log_error("Texture not found, hashcode: %u", hash);
+			}
+		}
 	}
 
 	void scene_component_deserialize_CameraComponent(BaseComponent* comp_, ArchiveI& archive)
@@ -217,17 +187,12 @@ namespace sv {
 		CameraComponent* comp = reinterpret_cast<CameraComponent*>(comp_);
 		archive >> comp->settings;
 
-		bool hasOffscreen;
-		archive >> hasOffscreen;
+		ui32 width;
+		ui32 height;
+		archive >> width;
+		archive >> height;
 
-		if (hasOffscreen) {
-			ui32 width;
-			ui32 height;
-			archive >> width;
-			archive >> height;
-
-			SV_ASSERT(comp->CreateOffscreen(width, height));
-		}
+		SV_ASSERT(renderer_offscreen_create(width, height, comp->offscreen) == Result_Success);
 	}
 
 	void scene_component_deserialize_RigidBody2DComponent(BaseComponent* comp, ArchiveI& archive)

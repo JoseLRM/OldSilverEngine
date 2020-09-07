@@ -5,7 +5,7 @@
 #include "graphics.h"
 #include "renderer/objects/Mesh.h"
 #include "renderer/objects/Material.h"
-#include "renderer/objects/TextureAtlas.h"
+#include "renderer/objects/Texture.h"
 
 namespace sv {
 	
@@ -46,7 +46,7 @@ namespace sv {
 		Color color;
 
 		SpriteInstance() = default;
-		SpriteInstance(const XMMATRIX& m, Sprite sprite, sv::Color color) : tm(m), texCoord(sprite.texCoord), pTexture(sprite.texture.Get()), color(color) {}
+		SpriteInstance(const XMMATRIX& m, const vec4& texCoord, Texture* pTex, sv::Color color) : tm(m), texCoord(texCoord), pTexture(pTex), color(color) {}
 	};
 
 	struct SpriteRenderingDesc {
@@ -96,10 +96,14 @@ namespace sv {
 	// Renderer initialization
 
 	struct InitializationRendererDesc {
-		bool				presentOffscreen;
-		ui32				resolutionWidth;
-		ui32				resolutionHeight;
 	};
+
+	void renderer_present(GPUImage& image, const GPUImageRegion& region, GPUImageLayout layout, CommandList cmd);
+
+	// Offscreen
+
+	Result renderer_offscreen_create(ui32 width, ui32 height, Offscreen& offscreen);
+	Result renderer_offscreen_destroy(Offscreen& offscreen);
 
 	// Camera Projection
 
@@ -109,22 +113,6 @@ namespace sv {
 	vec2		renderer_projection_position(const CameraProjection& projection, const vec2& point); // The point must be in range { -0.5 - 0.5 }
 	float		renderer_projection_zoom_get(const CameraProjection& projection);
 	void		renderer_projection_zoom_set(CameraProjection& projection, float zoom);
-
-	// Offscreen
-
-	Result renderer_offscreen_create(ui32 width, ui32 height, Offscreen& offscreen);
-	Result renderer_offscreen_destroy(Offscreen& offscreen);
-
-	Offscreen&	renderer_offscreen_get();
-	void		renderer_offscreen_set_present(bool enable);
-
-	// MainOffscreen resolution
-
-	void	renderer_resolution_set(ui32 width, ui32 height);
-	uvec2	renderer_resolution_get() noexcept;
-	ui32	renderer_resolution_get_width() noexcept;
-	ui32	renderer_resolution_get_height() noexcept;
-	float	renderer_resolution_get_aspect() noexcept;
 
 	// Mesh rendering
 

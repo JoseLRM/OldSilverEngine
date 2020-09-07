@@ -14,9 +14,11 @@ namespace sve {
 	void simulation_continue(); // If it was paused, continue
 	void simulation_pause();	// If it was running, pause but not stop the simulation
 	void simulation_stop();		// Destroy the simulation
+	void simulation_gamemode_set(bool gamemode);
 
 	bool simulation_running();	// Return true if the simulation is running or paused
 	bool simulation_paused();	// Return true if the simulation is paused
+	bool simulation_gamemode_get();
 
 	sv::Scene*	simulation_scene_get();
 

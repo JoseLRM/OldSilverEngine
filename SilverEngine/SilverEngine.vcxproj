@@ -101,6 +101,8 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\asset_system.h" />
+    <ClInclude Include="src\asset_system\asset_system_internal.h" />
     <ClInclude Include="src\console.h" />
     <ClInclude Include="src\console\console_internal.h" />
     <ClInclude Include="src\entity_system.h" />
@@ -252,7 +254,7 @@
     <ClInclude Include="src\platform\window_internal.h" />
     <ClInclude Include="src\renderer\objects\Material.h" />
     <ClInclude Include="src\renderer\objects\Mesh.h" />
-    <ClInclude Include="src\renderer\objects\TextureAtlas.h" />
+    <ClInclude Include="src\renderer\objects\Texture.h" />
     <ClInclude Include="src\renderer\renderer_internal.h" />
     <ClInclude Include="src\scene\physics_impl.h" />
     <ClInclude Include="src\scene\scene_components.h" />
@@ -272,6 +274,7 @@
     <ClInclude Include="src\utils\Version.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\asset_system\asset_system.cpp" />
     <ClCompile Include="src\console\console.cpp" />
     <ClCompile Include="src\entity_system\entity_system.cpp" />
     <ClCompile Include="src\entity_system\entity_system_allocators.cpp" />
@@ -337,7 +340,7 @@
     <ClCompile Include="src\renderer\renderer_mesh.cpp" />
     <ClCompile Include="src\renderer\objects\Material.cpp" />
     <ClCompile Include="src\renderer\objects\Mesh.cpp" />
-    <ClCompile Include="src\renderer\objects\TextureAtlas.cpp" />
+    <ClCompile Include="src\renderer\objects\Texture.cpp" />
     <ClCompile Include="src\renderer\renderer.cpp" />
     <ClCompile Include="src\renderer\renderer_sprite.cpp" />
     <ClCompile Include="src\renderer\renderer_postprocessing.cpp" />
@@ -351,7 +354,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\scene\scene_assets.cpp" />
     <ClCompile Include="src\scene\scene_components.cpp" />
     <ClCompile Include="src\scene\scene_physics.cpp" />
     <ClCompile Include="src\scene\scene_renderer.cpp" />

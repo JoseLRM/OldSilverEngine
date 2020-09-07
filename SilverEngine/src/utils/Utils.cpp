@@ -93,4 +93,16 @@ namespace sv {
 		return date;
 	}
 
+	size_t utils_hash_string(const char* str)
+	{
+		// TEMPORAL
+		size_t res = 0u;
+		size_t strLength = strlen(str);
+		utils_hash_combine(res, strLength);
+		while (strLength-- != 0u) {
+			utils_hash_combine(res, (const size_t)* str);
+		}
+		return res;
+	}
+
 }

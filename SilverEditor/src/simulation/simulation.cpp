@@ -4,11 +4,13 @@
 #include "simulation.h"
 #include "loader.h"
 #include "scene.h"
+#include "window.h"
 
 namespace sve {
 
 	static bool g_Running = false;
 	static bool g_Paused = false;
+	static bool g_Gamemode = false;
 
 	static sv::Scene* g_Scene = nullptr;
 	static std::string g_ScenePath;
@@ -39,11 +41,10 @@ namespace sve {
 			sv::ECS* ecs = sv::scene_ecs_get(g_Scene);
 			sv::CameraComponent& camera = *sv::ecs_component_get<sv::CameraComponent>(ecs, sv::scene_camera_get(g_Scene));
 
-			sv::uvec2 size = viewport_simulation_size();
+			sv::uvec2 size = g_Gamemode ? sv::uvec2{ sv::window_get_width(), sv::window_get_height() } : viewport_simulation_size();
+
 			camera.Adjust(size.x, size.y);
 		}
-
-		sv::scene_assets_update(g_Scene, dt);
 
 		if (g_Running && !g_Paused) {
 
@@ -58,7 +59,7 @@ namespace sve {
 			return;
 		}
 
-		sv::scene_renderer_draw(g_Scene);
+		sv::scene_renderer_draw(g_Scene, g_Gamemode);
 	}
 
 	void simulation_run()
@@ -99,6 +100,20 @@ namespace sve {
 		sv::scene_deserialize(g_Scene, g_ScenePath.c_str());
 	}
 
+	void simulation_gamemode_set(bool gamemode)
+	{
+		if (gamemode) {
+			if (g_Running && !g_Paused) {
+				g_Gamemode = true;
+				sv::window_fullscreen_set(true);
+			}
+		}
+		else {
+			g_Gamemode = false;
+			sv::window_fullscreen_set(false);
+		}
+	}
+
 	bool simulation_running()
 	{
 		return g_Running;
@@ -107,6 +122,11 @@ namespace sve {
 	bool simulation_paused()
 	{
 		return g_Paused;
+	}
+
+	bool simulation_gamemode_get()
+	{
+		return g_Gamemode;
 	}
 
 	sv::Scene* simulation_scene_get()

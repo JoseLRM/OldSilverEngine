@@ -84,7 +84,6 @@
     <ClInclude Include="src\utils\utils_internal.h" />
     <ClInclude Include="src\renderer\objects\Mesh.h" />
     <ClInclude Include="src\renderer\objects\Material.h" />
-    <ClInclude Include="src\renderer\objects\TextureAtlas.h" />
     <ClInclude Include="src\loader.h" />
     <ClInclude Include="src\loader\loader_internal.h" />
     <ClInclude Include="src\external\assimp\Compiler\poppack1.h" />
@@ -170,6 +169,9 @@
     <ClInclude Include="src\console\console_internal.h" />
     <ClInclude Include="src\entity_system\entity_system_internal.h" />
     <ClInclude Include="src\utils\Archive.h" />
+    <ClInclude Include="src\renderer\objects\Texture.h" />
+    <ClInclude Include="src\asset_system.h" />
+    <ClInclude Include="src\asset_system\asset_system_internal.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\graphics\vulkan\graphics_vulkan.cpp" />
@@ -199,24 +201,24 @@
     <ClCompile Include="src\input\input.cpp" />
     <ClCompile Include="src\renderer\objects\Mesh.cpp" />
     <ClCompile Include="src\renderer\objects\Material.cpp" />
-    <ClCompile Include="src\renderer\objects\TextureAtlas.cpp" />
     <ClCompile Include="src\loader\loader.cpp" />
     <ClCompile Include="src\graphics\vulkan\graphics_vulkan_pipeline.cpp" />
     <ClCompile Include="src\renderer\renderer_shader.cpp" />
     <ClCompile Include="src\graphics\graphics_shader.cpp" />
     <ClCompile Include="src\renderer\renderer_mesh.cpp" />
-    <ClCompile Include="src\renderer\renderer_sprite.cpp" />
     <ClCompile Include="src\renderer\renderer_postprocessing.cpp" />
     <ClCompile Include="src\entity_system\entity_system.cpp" />
     <ClCompile Include="src\entity_system\Transform.cpp" />
     <ClCompile Include="src\scene\scene_components.cpp" />
     <ClCompile Include="src\scene\scene_physics.cpp" />
     <ClCompile Include="src\scene\scene_renderer.cpp" />
-    <ClCompile Include="src\scene\scene_assets.cpp" />
     <ClCompile Include="src\console\console.cpp" />
     <ClCompile Include="src\engine\engine.cpp" />
     <ClCompile Include="src\entity_system\entity_system_allocators.cpp" />
     <ClCompile Include="src\utils\Archive.cpp" />
+    <ClCompile Include="src\renderer\renderer_sprite.cpp" />
+    <ClCompile Include="src\renderer\objects\Texture.cpp" />
+    <ClCompile Include="src\asset_system\asset_system.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="src\external\assimp\.editorconfig" />

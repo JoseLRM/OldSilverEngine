@@ -22,12 +22,12 @@ namespace sv {
 
 	struct InitializationDesc {
 		ApplicationCallbacks callbacks;
-		InitializationSceneDesc sceneDesc;
 		InitializationWindowDesc windowDesc;
 		InitializationGraphicsDesc graphicsDesc;
 		InitializationRendererDesc rendererDesc;
 		InitializationConsoleDesc consoleDesc;
 		ui32 minThreadsCount;
+		const char* assetsFolderPath;
 	};
 
 	Result engine_initialize(const InitializationDesc* desc);

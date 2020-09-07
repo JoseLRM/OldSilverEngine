@@ -4,13 +4,6 @@
 
 namespace sv {
 
-	class Texture;
-
-	struct Sprite {
-		sv::SharedRef<Texture>	texture;
-		vec4					texCoord;
-	};
-
 	class Texture {
 		GPUImage			m_Image;
 		Sampler				m_Sampler;

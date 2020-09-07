@@ -2,6 +2,7 @@
 
 #include "entity_system.h"
 #include "renderer.h"
+#include "asset_system.h"
 
 namespace sv {
 
@@ -19,6 +20,11 @@ namespace sv {
 
 	// Rendering
 
+	struct Sprite {
+		sv::SharedRef<TextureAsset>	texture;
+		vec4						texCoord = { 0.f, 0.f, 1.f, 1.f };
+	};
+
 	struct CameraSettings {
 		bool active = true;
 		CameraProjection projection;
@@ -29,10 +35,6 @@ namespace sv {
 #include "scene/scene_components.h"
 
 namespace sv {
-
-	struct InitializationSceneDesc {
-		const char* assetsFolderPath;
-	};
 
 	struct SceneDesc {
 		vec3		gravity;
@@ -64,18 +66,9 @@ namespace sv {
 	void scene_camera_set(Scene* scene, Entity camera);
 	Entity scene_camera_get(Scene* scene);
 
-	// Asset Management
-
-	Result	scene_assets_refresh();
-	const std::map<std::string, SharedRef<Texture>>& scene_assets_texturesmap_get();
-
-	Result	scene_assets_update(Scene* scene, float dt);
-
-	Result scene_assets_load_texture(Scene* scene, const char* filePath, SharedRef<Texture>& ref);
-
 	// Rendering
 
-	void scene_renderer_draw(Scene* scene);
+	void scene_renderer_draw(Scene* scene, bool present);
 	void scene_renderer_camera_draw(Scene* scene, const CameraDrawDesc* desc);
 
 	// Physics

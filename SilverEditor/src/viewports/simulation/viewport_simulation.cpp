@@ -24,10 +24,22 @@ namespace sve {
 			size.y -= ImGui::GetWindowContentRegionMin().y;
 			g_Size = { ui32(size.x), ui32(size.y) };
 
-			auto& offscreen = sv::renderer_offscreen_get();
-			ImGuiDevice& device = editor_device_get();
+			sv::Scene* scene = simulation_scene_get();
+			sv::ECS* ecs = sv::scene_ecs_get(scene);
+			sv::Entity cameraEntity = sv::scene_camera_get(scene);
 
-			ImGui::Image(device.ParseImage(offscreen.renderTarget), { size.x, size.y });
+			if (sv::ecs_entity_exist(ecs, cameraEntity)) {
+
+				sv::CameraComponent* camera = sv::ecs_component_get<sv::CameraComponent>(ecs, cameraEntity);
+				if (camera) {
+
+					auto& offscreen = camera->offscreen;
+					ImGuiDevice& device = editor_device_get();
+
+					ImGui::Image(device.ParseImage(offscreen.renderTarget), { size.x, size.y });
+				}
+			}
+
 		}
 		else g_Visible = false;
 		ImGui::End();

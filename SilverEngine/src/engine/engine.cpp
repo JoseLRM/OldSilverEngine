@@ -10,6 +10,7 @@
 #include "utils/utils_internal.h"
 #include "scene/scene_internal.h"
 #include "console/console_internal.h"
+#include "asset_system/asset_system_internal.h"
 
 using namespace sv;
 
@@ -43,7 +44,8 @@ namespace sv {
 
 		svCheck(utils_initialize());
 		svCheck(task_initialize(desc.minThreadsCount));
-		svCheck(scene_initialize(desc.sceneDesc));
+		svCheck(assets_initialize(desc.assetsFolderPath));
+		svCheck(scene_initialize());
 		svCheck(window_initialize(desc.windowDesc));
 		svCheck(graphics_initialize(desc.graphicsDesc));
 		svCheck(renderer_initialize(desc.rendererDesc));
@@ -75,6 +77,9 @@ namespace sv {
 			// Update Input
 			if (input_update()) return Result_CloseRequest;
 			window_update();
+
+			// Update assets
+			svCheck(assets_update(g_DeltaTime));
 
 			// Update User
 			g_App.update(g_DeltaTime);
@@ -133,6 +138,7 @@ namespace sv {
 		svCheck(window_close());
 		svCheck(graphics_close());
 		svCheck(scene_close());
+		svCheck(assets_close());
 		svCheck(task_close());
 		svCheck(console_close());
 

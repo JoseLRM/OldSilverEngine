@@ -179,7 +179,7 @@ namespace sv {
 			sv::utils_hash_combine(hash, ui64(element.format));
 			sv::utils_hash_combine(hash, element.inputSlot);
 			sv::utils_hash_combine(hash, element.offset);
-			sv::utils_hash_string(hash, element.name);
+			sv::utils_hash_combine(hash, sv::utils_hash_string(element.name));
 		}
 
 		return hash;
@@ -275,13 +275,9 @@ namespace sv {
 	Result Allocate(Primitive& primitive, GraphicsPrimitiveType type, const void* desc)
 	{
 		if (primitive.IsValid()) svCheck(graphics_destroy(primitive));
-		else {
-			
-			Primitive_internal* res = reinterpret_cast<Primitive_internal*>(primitive.GetPtr());
-			graphics_allocator_construct(type, desc, &res);
-			primitive = Primitive(res);
-
-		}
+		Primitive_internal* res = reinterpret_cast<Primitive_internal*>(primitive.GetPtr());
+		graphics_allocator_construct(type, desc, &res);
+		primitive = Primitive(res);
 		return Result_Success;
 	}
 
@@ -454,6 +450,11 @@ namespace sv {
 	CommandList graphics_commandlist_last()
 	{
 		return g_Device->GetLastCommandList();
+	}
+
+	CommandList graphics_commandlist_get()
+	{
+		return (graphics_commandlist_count() != 0u) ? graphics_commandlist_last() : graphics_commandlist_begin();
 	}
 
 	ui32 graphics_commandlist_count()

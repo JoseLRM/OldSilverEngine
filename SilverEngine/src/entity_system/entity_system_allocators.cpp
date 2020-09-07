@@ -27,14 +27,7 @@ namespace sv {
 						}
 					}
 					{
-						EntityTransform* end = a.transformData + a.capacity;
-						while (a.transformData != end) {
-
-							*newTransformData = std::move(*a.transformData);
-
-							++newTransformData;
-							++a.transformData;
-						}
+						memcpy(newTransformData, a.transformData, a.capacity);
 					}
 
 					a.data -= a.capacity;
@@ -107,7 +100,7 @@ namespace sv {
 			delete[] pool.data;
 			pool.data = nullptr;
 		}
-		pool.size;
+		pool.size = 0u;
 		pool.freeList.clear();
 	}
 
@@ -179,6 +172,19 @@ namespace sv {
 	void ecs_allocator_component_destroy(ComponentAllocator& a)
 	{
 		for (auto it = a.pools.begin(); it != a.pools.end(); ++it) {
+
+			ui8* ptr = it->data;
+			ui8* endPtr = it->data + it->size;
+
+			while (ptr != endPtr) {
+
+				BaseComponent* comp = reinterpret_cast<BaseComponent*>(ptr);
+				if (comp != SV_ENTITY_NULL) {
+					ecs_register_destroy(a.compID, comp);
+				}
+
+				ptr += it->compSize;
+			}
 
 			ecs_allocator_component_pool_free(*it);
 

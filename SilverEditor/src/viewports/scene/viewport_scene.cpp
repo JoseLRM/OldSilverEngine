@@ -139,12 +139,14 @@ namespace sve {
 		ImGui::ColorEdit4("SpriteColor", &col.x);
 		comp->color = { ui8(col.x * 255.f), ui8(col.y * 255.f) , ui8(col.z * 255.f) , ui8(col.w * 255.f) };
 
+		ImGui::DragFloat4("TexCoord", &comp->sprite.texCoord.x, 0.001f);
+
 		ImGui::Separator();
 
 		// Sprite
 		if (comp->sprite.texture.Get()) {
 			ImGuiDevice& device = editor_device_get();
-			ImGui::ImageButton(device.ParseImage(comp->sprite.texture->GetImage()), { 50.f, 50.f });
+			ImGui::ImageButton(device.ParseImage(comp->sprite.texture->texture.GetImage()), { 50.f, 50.f });
 		}
 		else {
 			//ImGui::ImageButton(0, { 50.f, 50.f });
@@ -161,18 +163,19 @@ namespace sve {
 			
 			if (ImGui::Begin("TexturePopup", 0, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar)) {
 
-				auto& textures = sv::scene_assets_texturesmap_get();
-				for (auto it = textures.begin(); it != textures.end(); ++it) {
+				auto& assets = sv::assets_map_get();
+				for (auto it = assets.begin(); it != assets.end(); ++it) {
 
-					if (ImGui::Button(it->first.c_str())) {
+					if (it->second.assetType == sv::AssetType_Texture) {
+						if (ImGui::Button(it->first.c_str())) {
 
-						sv::Scene* scene = simulation_scene_get();
-						sv::scene_assets_load_texture(scene, it->first.c_str(), comp->sprite.texture);
+							sv::Scene* scene = simulation_scene_get();
+							sv::assets_load_texture(it->first.c_str(), comp->sprite.texture);
 
-						addTexturePopup = false;
-						break;
+							addTexturePopup = false;
+							break;
+						}
 					}
-
 				}
 
 				if (!ImGui::IsWindowFocused()) addTexturePopup = false;

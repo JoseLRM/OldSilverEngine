@@ -13,21 +13,10 @@ namespace sv {
 		float	timeStep;
 		void*	pWorld2D;
 
-		struct {
-			ui32 refreshCount;
-			std::vector<std::pair<std::string, SharedRef<Texture>>> textures;
-		} assets;
-
 	};
 
-	Result scene_initialize(const InitializationSceneDesc& desc);
+	Result scene_initialize();
 	Result scene_close();
-
-	Result scene_assets_initialize(const char* assetsFolderPath);
-	Result scene_assets_close();
-
-	Result scene_assets_create(const SceneDesc* desc, Scene_internal& scene);
-	Result scene_assets_destroy(Scene_internal& scene);
 
 	Result scene_physics_create(const SceneDesc* desc, Scene_internal& scene);
 	Result scene_physics_destroy(Scene_internal& scene);

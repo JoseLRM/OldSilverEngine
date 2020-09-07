@@ -5,7 +5,7 @@
 
 namespace sv {
 
-	Result scene_initialize(const InitializationSceneDesc& desc)
+	Result scene_initialize()
 	{
 		ecs_register<NameComponent>("NameComponent"					, scene_component_serialize_NameComponent			, scene_component_deserialize_NameComponent);
 		ecs_register<SpriteComponent>("SpriteComponent"				, scene_component_serialize_SpriteComponent			, scene_component_deserialize_SpriteComponent);
@@ -15,15 +15,11 @@ namespace sv {
 		ecs_register<MeshComponent>("MeshComponent"					, scene_component_serialize_MeshComponent			, scene_component_deserialize_MeshComponent);
 		ecs_register<LightComponent>("LightComponent"				, scene_component_serialize_LightComponent			, scene_component_deserialize_LightComponent);
 
-		svCheck(scene_assets_initialize(desc.assetsFolderPath));
-
 		return Result_Success;
 	}
 
 	Result scene_close()
 	{
-		svCheck(scene_assets_close());
-
 		return Result_Success;
 	}
 
@@ -44,9 +40,6 @@ namespace sv {
 		ecs_component_add<NameComponent>(scene.ecs, scene.mainCamera, "Camera");
 #endif
 
-		// Assets
-		svCheck(scene_assets_create(desc, scene));
-
 		// Physics
 		svCheck(scene_physics_create(desc, scene));
 
@@ -61,7 +54,6 @@ namespace sv {
 		ecs_destroy(scene.ecs);
 		scene.mainCamera = SV_ENTITY_NULL;
 		svCheck(scene_physics_destroy(scene));
-		svCheck(scene_assets_destroy(scene));
 		delete &scene;
 		return Result_Success;
 	}

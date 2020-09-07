@@ -14,7 +14,4 @@ namespace sve {
 
 	ImGuiDevice& editor_device_get();
 
-	void editor_gamemode_set(bool gamemode);
-	bool editor_gamemode_get();
-
 }

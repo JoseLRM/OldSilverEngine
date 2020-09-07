@@ -4,7 +4,7 @@
 
 namespace sv {
 
-	void scene_renderer_draw(Scene* scene_)
+	void scene_renderer_draw(Scene* scene_, bool present)
 	{
 		parseScene();
 
@@ -18,20 +18,17 @@ namespace sv {
 			desc.pSettings = &camera.settings;
 			desc.position = trans.GetWorldPosition();
 			desc.rotation = trans.GetLocalRotation(); // TODO: World rotation;
+			desc.pOffscreen = &camera.offscreen;
 
-			if (camera.entity == scene.mainCamera) {
+			scene_renderer_camera_draw(scene_, &desc);
 
-				camera.settings.active = true;
+			if (present && camera.entity == scene.mainCamera) {
+				GPUImage& image = camera.offscreen.renderTarget;
+				GPUImageRegion region;
+				region.offset = { 0u, 0u, 0u };
+				region.size = { graphics_image_get_width(image), graphics_image_get_height(image), 1u };
 
-				desc.pOffscreen = &renderer_offscreen_get();
-				scene_renderer_camera_draw(scene_, &desc);
-
-			}
-			else {
-
-				desc.pOffscreen = camera.GetOffscreen();
-				scene_renderer_camera_draw(scene_, &desc);
-
+				renderer_present(image, region, GPUImageLayout_RenderTarget, graphics_commandlist_get());
 			}
 		}
 	}
@@ -79,7 +76,7 @@ namespace sv {
 			for (SpriteComponent& sprite : sprites) {
 
 				Transform trans = ecs_entity_transform_get(scene.ecs, sprite.entity);
-				instances.emplace_back(trans.GetWorldMatrix(), sprite.sprite, sprite.color);
+				instances.emplace_back(trans.GetWorldMatrix(), sprite.sprite.texCoord, &sprite.sprite.texture.Get()->texture, sprite.color);
 
 			}
 

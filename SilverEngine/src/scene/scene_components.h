@@ -35,24 +35,15 @@ namespace sv {
 	// Camera Component
 
 	struct CameraComponent : public Component<CameraComponent> {
-	private:
-		std::unique_ptr<Offscreen> m_Offscreen;
-	
-	public:
-		CameraSettings		settings;
+		Offscreen		offscreen;
+		CameraSettings	settings;
 	
 		CameraComponent();
-		CameraComponent(CameraType projectionType);
+		CameraComponent(ui32 width, ui32 heigth);
+		~CameraComponent();
 	
 		CameraComponent(const CameraComponent & other);
 		CameraComponent(CameraComponent && other) noexcept;
-		CameraComponent& operator=(const CameraComponent & other);
-		CameraComponent& operator=(CameraComponent && other) noexcept;
-	
-		bool CreateOffscreen(ui32 width, ui32 height);
-		bool HasOffscreen() const noexcept;
-		Offscreen* GetOffscreen() const noexcept;
-		bool DestroyOffscreen();
 	
 		void Adjust(float width, float height);
 
@@ -70,8 +61,8 @@ namespace sv {
 
 		RigidBody2DComponent();
 		~RigidBody2DComponent();
-		RigidBody2DComponent& operator=(const RigidBody2DComponent & other);
-		RigidBody2DComponent& operator=(RigidBody2DComponent && other) noexcept;
+		RigidBody2DComponent(const RigidBody2DComponent & other);
+		RigidBody2DComponent(RigidBody2DComponent && other) noexcept;
 	};
 
 	// Quad Collider
@@ -88,8 +79,8 @@ namespace sv {
 
 		QuadComponent();
 		~QuadComponent();
-		QuadComponent& operator=(const QuadComponent & other);
-		QuadComponent& operator=(QuadComponent && other) noexcept;
+		QuadComponent(const QuadComponent & other);
+		QuadComponent(QuadComponent && other) noexcept;
 
 	};
 

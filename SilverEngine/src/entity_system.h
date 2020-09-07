@@ -149,16 +149,14 @@ namespace sv {
 		{
 			Component* from = reinterpret_cast<Component*>(fromB);
 			Component* to = reinterpret_cast<Component*>(toB);
-			new(to) Component();
-			to->operator=(std::move(*from));
+			new(to) Component(std::move(*from));
 		};
 
 		desc.copyFn = [](BaseComponent* fromB, BaseComponent* toB)
 		{
 			Component* from = reinterpret_cast<Component*>(fromB);
 			Component* to = reinterpret_cast<Component*>(toB);
-			new(to) Component();
-			to->operator=(*from);
+			new(to) Component(*from);
 		};
 
 		desc.serializeFn = serializeFn;

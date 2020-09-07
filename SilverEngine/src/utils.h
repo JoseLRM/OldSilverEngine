@@ -57,10 +57,7 @@ namespace sv {
 		seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 	}
 
-	constexpr void utils_hash_string(size_t& seed, const char* str)
-	{
-
-	}
+	size_t utils_hash_string(const char* str);
 
 	// References
 	// TODO: I am using standard ptrs

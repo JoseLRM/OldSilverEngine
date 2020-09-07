@@ -242,8 +242,22 @@ namespace sv {
 					}
 
 					for (ui32 j = 0; j < lastPoolCount; ++j) {
-						compList.pools[j].size = 0u;
-						compList.pools[j].freeList.clear();
+
+						ComponentPool& pool = compList.pools[j];
+						ui8* it = pool.data;
+						ui8* end = pool.data + pool.size;
+						while (it != end) {
+
+							BaseComponent* comp = reinterpret_cast<BaseComponent*>(it);
+							if (comp->entity != SV_ENTITY_NULL) {
+								ecs_register_destroy(compID, comp);
+							}
+
+							it += compSize;
+						}
+
+						pool.size = 0u;
+						pool.freeList.clear();
 					}
 				}
 
