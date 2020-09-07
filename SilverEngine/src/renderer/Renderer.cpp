@@ -8,7 +8,6 @@ namespace sv {
 	static uvec2						g_Resolution;
 	static bool							g_BackBuffer;
 	static Offscreen					g_Offscreen;
-	static PostProcessing_Default		g_PP_OffscreenToBackBuffer;
 
 	// MAIN FUNCTIONS
 
@@ -30,15 +29,11 @@ namespace sv {
 		svCheck(renderer_sprite_initialize(desc));
 		svCheck(renderer_mesh_initialize(desc));
 
-		svCheck(renderer_postprocessing_default_create(Format_B8G8R8A8_SRGB, GPUImageLayout_Undefined, GPUImageLayout_RenderTarget, g_PP_OffscreenToBackBuffer));
-
 		return Result_Success;
 	}
 
 	Result renderer_close()
 	{
-		svCheck(renderer_postprocessing_default_destroy(g_PP_OffscreenToBackBuffer));
-
 		svCheck(renderer_mesh_close());
 		svCheck(renderer_postprocessing_close());
 		svCheck(renderer_sprite_close());
@@ -66,7 +61,11 @@ namespace sv {
 		GPUImage& backBuffer = graphics_swapchain_acquire_image();
 
 		if (g_BackBuffer) {
-			renderer_postprocessing_default_draw(g_PP_OffscreenToBackBuffer, g_Offscreen.renderTarget, backBuffer, cmd);
+			GPUImageBlit blit;
+			blit.srcRegion.size = { g_Offscreen.GetWidth(), g_Offscreen.GetHeight(), 1u };
+			blit.dstRegion.size = { graphics_image_get_width(backBuffer), graphics_image_get_height(backBuffer), 1u };
+
+			graphics_image_blit(g_Offscreen.renderTarget, backBuffer, GPUImageLayout_RenderTarget, GPUImageLayout_Present, 1u, &blit, SamplerFilter_Nearest, cmd);
 		}
 
 		// End
@@ -79,7 +78,7 @@ namespace sv {
 		// Create Render Target
 		GPUImageDesc imageDesc;
 		imageDesc.format = SV_REND_OFFSCREEN_FORMAT;
-		imageDesc.layout = GPUImageLayout_ShaderResource;
+		imageDesc.layout = GPUImageLayout_RenderTarget;
 		imageDesc.dimension = 2u;
 		imageDesc.width = width;
 		imageDesc.height = height;

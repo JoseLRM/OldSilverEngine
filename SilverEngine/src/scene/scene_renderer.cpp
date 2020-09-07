@@ -67,7 +67,7 @@ namespace sv {
 		//TODO: clear offscreen here :)
 
 		// this is not good for performance - remember to do image barrier here
-		graphics_image_clear(offscreen.renderTarget, GPUImageLayout_ShaderResource, GPUImageLayout_RenderTarget, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
+		graphics_image_clear(offscreen.renderTarget, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
 		graphics_image_clear(offscreen.depthStencil, GPUImageLayout_DepthStencil, GPUImageLayout_DepthStencil, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
 
 		// Sprite rendering
@@ -145,10 +145,6 @@ namespace sv {
 
 			renderer_mesh_forward_rendering(&desc, cmd);
 		}
-
-		// Offscreen layout: from render target to shader resource
-		GPUBarrier barrier = GPUBarrier::Image(offscreen.renderTarget, GPUImageLayout_RenderTarget, GPUImageLayout_ShaderResource);
-		graphics_barrier(&barrier, 1u, cmd);
 	}
 
 }

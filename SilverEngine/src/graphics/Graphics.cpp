@@ -709,10 +709,17 @@ namespace sv {
 	{
 		g_Device->UpdateBuffer(buffer, pData, size, offset, cmd);
 	}
+
 	void graphics_barrier(const GPUBarrier* barriers, ui32 count, CommandList cmd)
 	{
 		g_Device->Barrier(barriers, count, cmd);
 	}
+
+	void graphics_image_blit(GPUImage& src, GPUImage& dst, GPUImageLayout srcLayout, GPUImageLayout dstLayout, ui32 count, const GPUImageBlit* imageBlit, SamplerFilter filter, CommandList cmd)
+	{
+		g_Device->ImageBlit(src, dst, srcLayout, dstLayout, count, imageBlit, filter, cmd);
+	}
+
 	void graphics_image_clear(GPUImage& image, GPUImageLayout oldLayout, GPUImageLayout newLayout, const Color4f& clearColor, float depth, ui32 stencil, CommandList cmd)
 	{
 		g_Device->ClearImage(image, oldLayout, newLayout, clearColor, depth, stencil, cmd);

@@ -357,6 +357,7 @@ namespace sv {
 		void ClearImage(GPUImage& image, GPUImageLayout oldLayout, GPUImageLayout newLayout, const Color4f& clearColor, float depth, ui32 stencil, CommandList cmd) override;
 		void UpdateBuffer(GPUBuffer& buffer, void* pData, ui32 size, ui32 offset, CommandList cmd) override;
 		void Barrier(const GPUBarrier* barriers, ui32 count, CommandList cmd) override;
+		void ImageBlit(GPUImage& src, GPUImage& dst, GPUImageLayout srcLayout, GPUImageLayout dstLayout, ui32 count, const GPUImageBlit* imageBlit, SamplerFilter filter, CommandList cmd) override;
 
 		// CommandBuffers
 

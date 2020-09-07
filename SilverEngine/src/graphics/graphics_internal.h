@@ -195,7 +195,8 @@ namespace sv {
 
 		virtual void ClearImage(GPUImage& image, GPUImageLayout oldLayout, GPUImageLayout newLayout, const sv::Color4f& clearColor, float depth, ui32 stencil, sv::CommandList cmd) = 0;
 		virtual void UpdateBuffer(GPUBuffer& buffer, void* pData, ui32 size, ui32 offset, sv::CommandList cmd) = 0;
-		virtual void Barrier(const sv::GPUBarrier* barriers, ui32 count, sv::CommandList cmd) = 0;
+		virtual void Barrier(const GPUBarrier* barriers, ui32 count, sv::CommandList cmd) = 0;
+		virtual void ImageBlit(GPUImage& src, GPUImage& dst, GPUImageLayout srcLayout, GPUImageLayout dstLayout, ui32 count, const GPUImageBlit* imageBlit, SamplerFilter filter, CommandList cmd) = 0;
 
 	};
 

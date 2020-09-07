@@ -65,7 +65,7 @@ namespace sve {
 
 		while (true) {
 			
-			if (sv::engine_loop() == sv::Result_CloseRequest) break;
+			if (sv::engine_loop() != sv::Result_Success) break;
 
 		}
 
@@ -186,18 +186,28 @@ namespace sve {
 	{
 		simulation_render();
 
-		if (!g_Gamemode) {
+		if (!g_Gamemode) {		
 			scene_editor_render();
 
 			g_Device->BeginFrame();
 
-			MainMenu();
+			sv::Offscreen& simulationOffscreen = sv::renderer_offscreen_get();
+			sv::Offscreen& editorOffscreen = scene_editor_camera_get().offscreen;
 
-			DisplayDocking();
+			sv::GPUBarrier barriers[2];
+			barriers[0] = sv::GPUBarrier::Image(simulationOffscreen.renderTarget, sv::GPUImageLayout_RenderTarget, sv::GPUImageLayout_ShaderResource);
+			barriers[1] = sv::GPUBarrier::Image(editorOffscreen.renderTarget, sv::GPUImageLayout_RenderTarget, sv::GPUImageLayout_ShaderResource);
+			sv::graphics_barrier(barriers, 2u, g_Device->GetCMD());
 
-			viewports_display();
 			
+			MainMenu();
+			DisplayDocking();
+			viewports_display();
 			g_Device->EndFrame();
+
+			barriers[0] = sv::GPUBarrier::Image(simulationOffscreen.renderTarget, sv::GPUImageLayout_ShaderResource, sv::GPUImageLayout_RenderTarget);
+			barriers[1] = sv::GPUBarrier::Image(editorOffscreen.renderTarget, sv::GPUImageLayout_ShaderResource, sv::GPUImageLayout_RenderTarget);
+			sv::graphics_barrier(barriers, 2u, g_Device->GetCMD());
 		}
 	}
 	sv::Result editor_close()

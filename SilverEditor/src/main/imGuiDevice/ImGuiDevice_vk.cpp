@@ -158,6 +158,8 @@ namespace sve {
 		ImGui_ImplVulkan_NewFrame();
 		ImGui_ImplWin32_NewFrame();
 		ImGui::NewFrame();
+
+		m_CommandList = sv::graphics_commandlist_begin();
 	}
 	void ImGuiDevice_vk::EndFrame()
 	{
@@ -165,17 +167,15 @@ namespace sve {
 		ImGui::Render();
 
 		ui32 currentFrame = gfx.GetCurrentFrame();
-		CommandList cmd_;
-		if (graphics_commandlist_count() > 0) cmd_ = graphics_commandlist_last();
-		else cmd_ = graphics_commandlist_begin();
-		VkCommandBuffer cmd = gfx.GetCMD(cmd_);
+		
+		VkCommandBuffer cmd = gfx.GetCMD(m_CommandList);
 
 		// From VK_IMAGE_LAYOUT_PRESENT_SRC_KHR to VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
 		VkImageMemoryBarrier barrier{};
 		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		barrier.srcAccessMask = 0;
+		barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 		barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		barrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 		barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -186,7 +186,7 @@ namespace sve {
 		barrier.subresourceRange.layerCount = 1u;
 		barrier.subresourceRange.levelCount = 1u;
 
-		VkPipelineStageFlags srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		VkPipelineStageFlags srcStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 		VkPipelineStageFlags dstStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
 		vkCmdPipelineBarrier(cmd, srcStage, dstStage, 0u, 0u, nullptr, 0u, nullptr, 1u, &barrier);
@@ -203,6 +203,13 @@ namespace sve {
 		vkCmdBeginRenderPass(cmd, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
 		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
 		vkCmdEndRenderPass(cmd);
+
+		// From VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+		std::swap(barrier.srcAccessMask, barrier.dstAccessMask);
+		std::swap(barrier.oldLayout, barrier.newLayout);
+		std::swap(srcStage, dstStage);
+
+		vkCmdPipelineBarrier(cmd, srcStage, dstStage, 0u, 0u, nullptr, 0u, nullptr, 1u, &barrier);
 
 		ImGui::EndFrame();
 		ImGui::UpdatePlatformWindows();

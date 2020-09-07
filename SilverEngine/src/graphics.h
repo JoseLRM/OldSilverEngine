@@ -87,6 +87,7 @@ namespace sv {
 		GPUImageLayout_DepthStencil,
 		GPUImageLayout_DepthStencilReadOnly,
 		GPUImageLayout_ShaderResource,
+		GPUImageLayout_Present,
 	};
 	
 	enum Format {
@@ -290,6 +291,16 @@ namespace sv {
 			barrier.type = BarrierType_Image;
 			return barrier;
 		}
+	};
+
+	struct GPUImageRegion {
+		uvec3 offset;
+		uvec3 size;
+	};
+
+	struct GPUImageBlit {
+		GPUImageRegion srcRegion;
+		GPUImageRegion dstRegion;
 	};
 
 	struct ShaderCompileDesc {
@@ -636,6 +647,7 @@ namespace sv {
 
 	void graphics_buffer_update(GPUBuffer& buffer, void* pData, ui32 size, ui32 offset, CommandList cmd);
 	void graphics_barrier(const GPUBarrier* barriers, ui32 count, CommandList cmd);
+	void graphics_image_blit(GPUImage& src, GPUImage& dst, GPUImageLayout srcLayout, GPUImageLayout dstLayout, ui32 count, const GPUImageBlit* imageBlit, SamplerFilter filter, CommandList cmd);
 	void graphics_image_clear(GPUImage& image, GPUImageLayout oldLayout, GPUImageLayout newLayout, const Color4f& clearColor, float depth, ui32 stencil, CommandList cmd); // Not use if necessary, renderpasses have best performance!!
 
 	// Shader utils

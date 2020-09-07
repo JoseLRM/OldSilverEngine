@@ -93,10 +93,6 @@ namespace sv {
 		ui32					lightCount;
 	};
 
-	struct PostProcessing_Default {
-		RenderPass renderPass;
-	};
-
 	// Renderer initialization
 
 	struct InitializationRendererDesc {
@@ -140,8 +136,5 @@ namespace sv {
 
 	// Postprocessing
 
-	Result renderer_postprocessing_default_create(Format dstFormat, GPUImageLayout initialLayout, GPUImageLayout finalLayout, PostProcessing_Default& pp);
-	Result renderer_postprocessing_default_destroy(PostProcessing_Default& pp);
-	void renderer_postprocessing_default_draw(PostProcessing_Default& pp, GPUImage& src, GPUImage& dst, CommandList cmd);
 
 }

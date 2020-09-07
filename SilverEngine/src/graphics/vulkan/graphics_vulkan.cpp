@@ -526,7 +526,7 @@ namespace sv {
 			create_info.imageColorSpace = format.colorSpace;
 			create_info.imageExtent = extent;
 			create_info.imageArrayLayers = 1u;
-			create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+			create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 			create_info.preTransform = m_SwapChain.capabilities.currentTransform;
 			create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 			create_info.presentMode = presentMode;
@@ -580,6 +580,33 @@ namespace sv {
 
 				vkCheck(vkCreateImageView(m_Device, &create_info, nullptr, &m_SwapChain.images[i].view));
 			}
+		}
+
+		// Change Images layout
+		{
+			VkCommandBuffer cmd;
+			vkCheck(BeginSingleTimeCMD(&cmd));
+
+			for (ui32 i = 0; i < m_SwapChain.images.size(); ++i) {
+
+				VkImageMemoryBarrier imageBarrier{};
+				imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+				imageBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+				imageBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+				imageBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+				imageBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+				imageBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				imageBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				imageBarrier.image = m_SwapChain.images[i].image;
+				imageBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				imageBarrier.subresourceRange.layerCount = 1u;
+				imageBarrier.subresourceRange.levelCount = 1u;
+
+				vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0u, 0u, 0u, 0u, 0u, 1u, &imageBarrier);
+
+			}
+
+			EndSingleTimeCMD(cmd);
 		}
 
 		// Create Semaphores
@@ -1406,7 +1433,7 @@ namespace sv {
 			create_info.arrayLayers = desc.layers;
 			create_info.samples = VK_SAMPLE_COUNT_1_BIT;
 			create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
-			create_info.usage = imageUsage | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+			create_info.usage = imageUsage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 			create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 			create_info.queueFamilyIndexCount = 0u;
 			create_info.pQueueFamilyIndices = nullptr;
@@ -1875,26 +1902,6 @@ namespace sv {
 		for (ui32 i = 0; i < m_ActiveCMDCount; ++i) {
 
 			VkCommandBuffer cmd = GetCMD(i);
-
-			if (i == m_ActiveCMDCount - 1) {
-				
-				VkImageMemoryBarrier imageBarrier{};
-				imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-				imageBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-				imageBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
-				imageBarrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-				imageBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-				imageBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-				imageBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-				imageBarrier.image = m_SwapChain.backBuffer.image;
-				imageBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-				imageBarrier.subresourceRange.layerCount = 1u;
-				imageBarrier.subresourceRange.levelCount = 1u;
-
-				vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0u, 0u, 0u, 0u, 0u, 1u, &imageBarrier);
-
-			}
-
 			vkAssert(vkEndCommandBuffer(cmd));
 		}
 
@@ -2120,6 +2127,99 @@ namespace sv {
 		}
 
 		vkCmdPipelineBarrier(cmd, srcStage, dstStage, 0u, memoryBarrierCount, memoryBarrier, bufferBarrierCount, bufferBarrier, imageBarrierCount, imageBarrier);
+	}
+
+	void Graphics_vk::ImageBlit(GPUImage& src, GPUImage& dst, GPUImageLayout srcLayout, GPUImageLayout dstLayout, ui32 count, const GPUImageBlit* imageBlit, SamplerFilter filter, CommandList cmd_)
+	{
+		VkCommandBuffer cmd = GetCMD(cmd_);
+
+		SV_ASSERT(count <= 16u);
+
+		Image_vk& srcImage = *reinterpret_cast<Image_vk*>(src.GetPtr());
+		Image_vk& dstImage = *reinterpret_cast<Image_vk*>(dst.GetPtr());
+
+		// Barriers
+
+		VkImageMemoryBarrier imgBarrier[2];
+		imgBarrier[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		imgBarrier[0].pNext = nullptr;
+		imgBarrier[0].srcAccessMask = graphics_vulkan_access_from_image_layout(srcLayout);
+		imgBarrier[0].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+		imgBarrier[0].oldLayout = graphics_vulkan_parse_image_layout(srcLayout);
+		imgBarrier[0].newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		imgBarrier[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		imgBarrier[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		imgBarrier[0].image = srcImage.image;
+		imgBarrier[0].subresourceRange.aspectMask = graphics_vulkan_aspect_from_image_layout(srcLayout);
+		imgBarrier[0].subresourceRange.baseArrayLayer = 0u;
+		imgBarrier[0].subresourceRange.baseMipLevel = 0u;
+		imgBarrier[0].subresourceRange.layerCount = srcImage.layers;
+		imgBarrier[0].subresourceRange.levelCount = 1u;
+
+		imgBarrier[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		imgBarrier[1].pNext = nullptr;
+		imgBarrier[1].srcAccessMask = graphics_vulkan_access_from_image_layout(dstLayout);
+		imgBarrier[1].dstAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+		imgBarrier[1].oldLayout = graphics_vulkan_parse_image_layout(dstLayout);
+		imgBarrier[1].newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		imgBarrier[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		imgBarrier[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		imgBarrier[1].image = dstImage.image;
+		imgBarrier[1].subresourceRange.aspectMask = graphics_vulkan_aspect_from_image_layout(dstLayout);
+		imgBarrier[1].subresourceRange.baseArrayLayer = 0u;
+		imgBarrier[1].subresourceRange.baseMipLevel = 0u;
+		imgBarrier[1].subresourceRange.layerCount = dstImage.layers;
+		imgBarrier[1].subresourceRange.levelCount = 1u;
+
+		VkPipelineStageFlags srcStage = graphics_vulkan_stage_from_image_layout(srcLayout) | graphics_vulkan_stage_from_image_layout(dstLayout);
+		VkPipelineStageFlags dstStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+
+		vkCmdPipelineBarrier(cmd, srcStage, dstStage, 0u, 0u, 0u, 0u, 0u, 2u, imgBarrier);
+
+		VkImageBlit blits[16];
+
+		for (ui32 i = 0; i < count; ++i) {
+
+			blits[i].srcOffsets[0].x = imageBlit[i].srcRegion.offset.x;
+			blits[i].srcOffsets[0].y = imageBlit[i].srcRegion.offset.y;
+			blits[i].srcOffsets[0].z = imageBlit[i].srcRegion.offset.z;
+
+			blits[i].srcOffsets[1].x = imageBlit[i].srcRegion.offset.x + imageBlit[i].srcRegion.size.x;
+			blits[i].srcOffsets[1].y = imageBlit[i].srcRegion.offset.y + imageBlit[i].srcRegion.size.y;
+			blits[i].srcOffsets[1].z = imageBlit[i].srcRegion.offset.z + imageBlit[i].srcRegion.size.z;
+
+			blits[i].dstOffsets[0].x = imageBlit[i].dstRegion.offset.x;
+			blits[i].dstOffsets[0].y = imageBlit[i].dstRegion.offset.y;
+			blits[i].dstOffsets[0].z = imageBlit[i].dstRegion.offset.z;
+
+			blits[i].dstOffsets[1].x = imageBlit[i].dstRegion.offset.x + imageBlit[i].dstRegion.size.x;
+			blits[i].dstOffsets[1].y = imageBlit[i].dstRegion.offset.y + imageBlit[i].dstRegion.size.y;
+			blits[i].dstOffsets[1].z = imageBlit[i].dstRegion.offset.z + imageBlit[i].dstRegion.size.z;
+
+			blits[i].srcSubresource.aspectMask = graphics_vulkan_aspect_from_image_layout(srcLayout);
+			blits[i].srcSubresource.baseArrayLayer = 0u;
+			blits[i].srcSubresource.layerCount = srcImage.layers;
+			blits[i].srcSubresource.mipLevel = 0u;
+
+			blits[i].dstSubresource.aspectMask = graphics_vulkan_aspect_from_image_layout(dstLayout);
+			blits[i].dstSubresource.baseArrayLayer = 0u;
+			blits[i].dstSubresource.layerCount = dstImage.layers;
+			blits[i].dstSubresource.mipLevel = 0u;
+
+		}
+
+		vkCmdBlitImage(cmd, srcImage.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
+			dstImage.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, count, blits, graphics_vulkan_parse_filter(filter));
+
+		// Barrier
+		std::swap(srcStage, dstStage);
+		std::swap(imgBarrier[0].srcAccessMask, imgBarrier[0].dstAccessMask);
+		std::swap(imgBarrier[0].oldLayout, imgBarrier[0].newLayout);
+		std::swap(imgBarrier[1].srcAccessMask, imgBarrier[1].dstAccessMask);
+		std::swap(imgBarrier[1].oldLayout, imgBarrier[1].newLayout);
+
+		vkCmdPipelineBarrier(cmd, srcStage, dstStage, 0u, 0u, 0u, 0u, 0u, 2u, imgBarrier);
+
 	}
 
 	//////////////////////////////////////// CONSTRUCTOR & DESTRUCTOR ////////////////////////////////////////

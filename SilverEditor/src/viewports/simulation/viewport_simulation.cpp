@@ -26,8 +26,8 @@ namespace sve {
 
 			auto& offscreen = sv::renderer_offscreen_get();
 			ImGuiDevice& device = editor_device_get();
-			ImGui::Image(device.ParseImage(offscreen.renderTarget), { size.x, size.y });
 
+			ImGui::Image(device.ParseImage(offscreen.renderTarget), { size.x, size.y });
 		}
 		else g_Visible = false;
 		ImGui::End();

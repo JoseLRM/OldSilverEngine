@@ -8,6 +8,7 @@ namespace sve {
 	class ImGuiDevice {
 	protected:
 		ImGuiContext* m_Ctx = nullptr;
+		sv::CommandList m_CommandList;
 
 	public:
 		virtual sv::Result Initialize() = 0;
@@ -21,6 +22,7 @@ namespace sve {
 		virtual ImTextureID ParseImage(sv::GPUImage& image) = 0;
 
 		inline ImGuiContext* GetCtx() const noexcept { return m_Ctx; }
+		inline sv::CommandList GetCMD() const noexcept { return m_CommandList; }
 
 	};
 

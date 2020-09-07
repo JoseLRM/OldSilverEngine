@@ -447,6 +447,8 @@ namespace sv {
 			return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		case GPUImageLayout_RenderTarget:
 			return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		case GPUImageLayout_Present:
+			return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 		default:
 			sv::log_warning("Unknown Image Layout");
 			return VK_IMAGE_LAYOUT_GENERAL;
@@ -728,6 +730,9 @@ namespace sv {
 		case GPUImageLayout_ShaderResource:
 			flags |= VK_ACCESS_SHADER_READ_BIT;
 			break;
+		case GPUImageLayout_Present:
+			flags |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			break;
 		default:
 			sv::log_warning("Undefined Image Layout");
 			break;
@@ -746,6 +751,7 @@ namespace sv {
 			flags |= VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 			break;
 		case GPUImageLayout_RenderTarget:
+		case GPUImageLayout_Present:
 			flags |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 			break;
 		case GPUImageLayout_DepthStencil:
@@ -775,6 +781,7 @@ namespace sv {
 			flags |= VK_IMAGE_ASPECT_COLOR_BIT;
 			break;
 		case GPUImageLayout_RenderTarget:
+		case GPUImageLayout_Present:
 		case GPUImageLayout_ShaderResource:
 			flags |= VK_IMAGE_ASPECT_COLOR_BIT;
 			break;
