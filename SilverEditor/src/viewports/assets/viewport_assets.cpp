@@ -1,6 +1,7 @@
 #include "core_editor.h"
 
 #include "viewports.h"
+#include "asset_system.h"
 #include "viewports/viewport_assets.h"
 
 namespace sve {
@@ -147,9 +148,12 @@ namespace sve {
 			// POPUP
 			if (ImGui::BeginPopupContextWindow("Asset popup", ImGuiMouseButton_Right)) {
 
-				if (ImGui::Button("Refresh")) viewport_assets_refresh_folder(g_AssetFolder);
-
-					ImGui::EndPopup();
+				if (ImGui::Button("Refresh")) {
+					viewport_assets_refresh_folder(g_AssetFolder);
+					SV_ASSERT(sv::assets_refresh() == sv::Result_Success);
+				}
+					
+				ImGui::EndPopup();
 			}
 
 			// FOLDER ROOT

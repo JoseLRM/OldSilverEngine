@@ -47,6 +47,8 @@ namespace sv {
 
 	Time timer_now();
 	Date timer_date();
+	std::chrono::steady_clock::time_point timer_start_point();
+
 
 	// Hash functions
 
@@ -114,7 +116,7 @@ namespace sv {
 		}
 		WeakRef(const SharedRef<T>& shared)
 		{
-			m_Ref = shared.m_Ref;
+			m_Ref = *reinterpret_cast<const std::shared_ptr<T>*>(&shared);
 		}
 		WeakRef(WeakRef&& other) noexcept
 		{

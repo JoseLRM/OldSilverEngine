@@ -6,12 +6,16 @@ namespace fs = std::filesystem;
 
 namespace sv {
 
+	// Refresh variables
+	static std::map<std::string, Asset> g_AssetMap_aux;
+	static Time g_LastRefreshTime;
+
 	static std::string g_FolderPath;
 
 	static std::map<std::string, Asset> g_AssetMap;
 	static std::map<size_t, std::string> g_HashCodes;
 
-	static std::vector<std::pair<std::string, SharedRef<TextureAsset>*>> g_ActiveTextures;
+	static std::vector<std::pair<std::string, WeakRef<TextureAsset>>> g_ActiveTextures;
 
 	// INTERNAL FUNCTIONS
 
@@ -45,17 +49,17 @@ namespace sv {
 	}
 
 	template <typename T>
-	Result assets_ckeck(std::vector<std::pair<std::string, SharedRef<T>*>>& list)
+	Result assets_ckeck(std::vector<std::pair<std::string, WeakRef<T>>>& list)
 	{
 		for (auto it = list.begin(); it != list.end();) {
 
-			SharedRef<T>& ref = *it->second;
-			if (ref.RefCount() <= 1u) {
+			SharedRef<T> ref = it->second.GetShared();
+			if (ref.RefCount() <= 2u) {
 
 				// Destroy Resource
 				svCheck(assets_destroy(ref.Get()->texture));
 
-				log_info("Asset freed successfully '%s'", it->first.c_str());
+				log_info("Asset freed: '%s'", it->first.c_str());
 
 				// Free Reference
 				g_AssetMap[it->first].ref.Delete();
@@ -95,13 +99,13 @@ namespace sv {
 		for (const auto& file : it) {
 
 			if (file.is_directory()) {
-				std::string path = sv::utils_string_parse(file.path().c_str());
+				std::string path = utils_string_parse(file.path().c_str());
 				svCheck(scene_assets_refresh_folder(path.c_str()));
 			}
 
 			else {
-				std::string path = sv::utils_string_parse(file.path().c_str() + g_FolderPath.size());
-				std::string extension = sv::utils_string_parse(file.path().extension().c_str());
+				std::string path = utils_string_parse(file.path().c_str() + g_FolderPath.size());
+				std::string extension = utils_string_parse(file.path().extension().c_str());
 
 				// Prepare path
 				for (auto it = path.begin(); it != path.end(); ++it) {
@@ -120,10 +124,43 @@ namespace sv {
 				// Save hash string
 				if (type != AssetType_Invalid) {
 
-					g_AssetMap[path.c_str()] = { type, SharedRef<ui32>() };
-					size_t hash = utils_hash_string(path.c_str());
-					g_HashCodes[hash] = path.c_str();
+					auto it = g_AssetMap_aux.find(path.c_str());
+					if (it != g_AssetMap_aux.end()) {
 
+						auto p0 = timer_start_point().time_since_epoch();
+						auto p1 = fs::last_write_time(file).time_since_epoch();
+						float lastModification = std::chrono::duration<float>(p0 - p1).count();
+
+						if (lastModification < g_LastRefreshTime) {
+
+							if (it->second.ref.Get()) {
+
+								// Reload assets
+								Asset& asset = it->second;
+
+								switch (asset.assetType)
+								{
+								case AssetType_Texture:
+									Texture& texture = *reinterpret_cast<Texture*>(asset.ref.Get());
+									svCheck(assets_destroy(texture));
+									std::string assetPath = g_FolderPath + path;
+									svCheck(texture.CreateFromFile(assetPath.c_str(), false, SamplerAddressMode_Wrap));
+									break;
+								}
+
+							}
+
+						}
+
+						g_AssetMap[path.c_str()] = it->second;
+
+					}
+					else {
+						g_AssetMap[path.c_str()] = { type, SharedRef<ui32>() };
+
+						size_t hash = utils_hash_string(path.c_str());
+						g_HashCodes[hash] = path.c_str();
+					}
 				}
 			}
 
@@ -140,9 +177,13 @@ namespace sv {
 			return Result_NotFound;
 		}
 
+		g_AssetMap_aux = g_AssetMap;
 		g_AssetMap.clear();
 
 		svCheck(scene_assets_refresh_folder(g_FolderPath.c_str()));
+
+		g_AssetMap_aux.clear();
+		g_LastRefreshTime = timer_now();
 
 		return Result_Success;
 	}
@@ -163,21 +204,21 @@ namespace sv {
 			// Create Texture
 			std::string path = g_FolderPath + filePath;
 
-			SharedRef<TextureAsset> asset = sv::create_shared<sv::TextureAsset>();
-			if (asset->texture.CreateFromFile(path.c_str(), true, sv::SamplerAddressMode_Wrap) == Result_Success) {
+			SharedRef<TextureAsset> asset = create_shared<TextureAsset>();
+			if (asset->texture.CreateFromFile(path.c_str(), true, SamplerAddressMode_Wrap) == Result_Success) {
 
 				asset->hashCode = utils_hash_string(filePath);
 				it->second = Asset{ AssetType_Texture, *reinterpret_cast<SharedRef<ui32>*>(&asset) };
 				ref = asset;
 
-				g_ActiveTextures.emplace_back(std::make_pair(it->first.c_str(), reinterpret_cast<SharedRef<TextureAsset>*>(&it->second.ref)));
+				g_ActiveTextures.emplace_back(std::make_pair(it->first.c_str(), *reinterpret_cast<WeakRef<TextureAsset>*>(&WeakRef<ui32>(it->second.ref))));
 
-				log_info("Texture Asset loaded successfully '%s'", filePath);
+				log_info("Asset loaded: '%s'", filePath);
 				return Result_Success;
 			}
 		}
 
-		sv::log_error("Texture '%s' not found", filePath);
+		log_error("Texture '%s' not found", filePath);
 		return Result_NotFound;
 	}
 

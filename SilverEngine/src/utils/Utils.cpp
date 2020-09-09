@@ -93,14 +93,20 @@ namespace sv {
 		return date;
 	}
 
+	std::chrono::steady_clock::time_point timer_start_point()
+	{
+		return g_InitialTime;
+	}
+
 	size_t utils_hash_string(const char* str)
 	{
 		// TEMPORAL
 		size_t res = 0u;
 		size_t strLength = strlen(str);
 		utils_hash_combine(res, strLength);
-		while (strLength-- != 0u) {
-			utils_hash_combine(res, (const size_t)* str);
+		while (*str != '\0') {
+			utils_hash_combine(res, (const size_t)*str);
+			++str;
 		}
 		return res;
 	}

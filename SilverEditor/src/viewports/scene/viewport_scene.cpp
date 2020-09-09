@@ -146,17 +146,17 @@ namespace sve {
 		// Sprite
 		if (comp->sprite.texture.Get()) {
 			ImGuiDevice& device = editor_device_get();
-			ImGui::ImageButton(device.ParseImage(comp->sprite.texture->texture.GetImage()), { 50.f, 50.f });
-		}
-		else {
-			//ImGui::ImageButton(0, { 50.f, 50.f });
-
+			ImGui::Image(device.ParseImage(comp->sprite.texture->texture.GetImage()), { 50.f, 50.f });
 		}
 
 		static bool addTexturePopup = false;
 
 		if (ImGui::Button("Add Texture")) {
 			addTexturePopup = true;
+		}
+
+		if (comp->sprite.texture.Get()) {
+			if (ImGui::Button("Remove Texture")) comp->sprite.texture.Delete();
 		}
 
 		if (addTexturePopup) {

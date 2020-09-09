@@ -12,6 +12,9 @@ namespace sve {
 	static bool g_Paused = false;
 	static bool g_Gamemode = false;
 
+	static bool g_RunningRequest = false;
+	static bool g_StopRequest = false;
+
 	static sv::Scene* g_Scene = nullptr;
 	static std::string g_ScenePath;
 
@@ -36,6 +39,24 @@ namespace sve {
 
 	void simulation_update(float dt)
 	{
+		if (g_RunningRequest) {
+			g_Running = true;
+			g_Paused = false;
+			ImGui::GetStyle().Alpha = 0.2f;
+
+			sv::scene_serialize(g_Scene, g_ScenePath.c_str());
+			g_RunningRequest = false;
+		}
+
+		if (g_StopRequest) {
+			g_Running = false;
+			g_Paused = false;
+			ImGui::GetStyle().Alpha = 1.f;
+
+			sv::scene_deserialize(g_Scene, g_ScenePath.c_str());
+			g_StopRequest = false;
+		}
+
 		// Adjust camera
 		{
 			sv::ECS* ecs = sv::scene_ecs_get(g_Scene);
@@ -65,12 +86,7 @@ namespace sve {
 	void simulation_run()
 	{
 		if (g_Running) return;
-
-		g_Running = true;
-		g_Paused = false;
-		ImGui::GetStyle().Alpha = 0.2f;
-
-		sv::scene_serialize(g_Scene, g_ScenePath.c_str());
+		g_RunningRequest = true;
 	}
 
 	void simulation_continue()
@@ -92,12 +108,7 @@ namespace sve {
 	void simulation_stop()
 	{
 		if (!g_Running) return;
-
-		g_Running = false;
-		g_Paused = false;
-		ImGui::GetStyle().Alpha = 1.f;
-
-		sv::scene_deserialize(g_Scene, g_ScenePath.c_str());
+		g_StopRequest = true;
 	}
 
 	void simulation_gamemode_set(bool gamemode)

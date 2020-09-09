@@ -13,6 +13,8 @@ namespace sv {
 	static std::vector<std::unique_ptr<Adapter>>	g_Adapters;
 	static ui32										g_AdapterIndex;
 
+	static bool g_SwapChainImageAcquired = false;
+
 	// Default Primitives
 
 	static GraphicsState		g_DefGraphicsState;
@@ -119,6 +121,7 @@ namespace sv {
 
 	void graphics_begin()
 	{
+		g_SwapChainImageAcquired = false;
 		g_Device->BeginFrame();
 	}
 	void graphics_commandlist_submit()
@@ -128,6 +131,7 @@ namespace sv {
 	}
 	void graphics_present()
 	{
+		if (!g_SwapChainImageAcquired) log_warning("Must acquire swaphchain image once per frame");
 		g_Device->Present();
 	}
 
@@ -138,6 +142,8 @@ namespace sv {
 
 	GPUImage& graphics_swapchain_acquire_image()
 	{
+		if (g_SwapChainImageAcquired) log_warning("Must acquire swapchain image once per frame");
+		g_SwapChainImageAcquired = true;
 		return g_Device->AcquireSwapChainImage();
 	}
 
@@ -276,7 +282,7 @@ namespace sv {
 	{
 		if (primitive.IsValid()) svCheck(graphics_destroy(primitive));
 		Primitive_internal* res = reinterpret_cast<Primitive_internal*>(primitive.GetPtr());
-		graphics_allocator_construct(type, desc, &res);
+		svCheck(graphics_allocator_construct(type, desc, &res));
 		primitive = Primitive(res);
 		return Result_Success;
 	}

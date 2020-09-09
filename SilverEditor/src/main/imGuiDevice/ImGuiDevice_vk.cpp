@@ -163,6 +163,8 @@ namespace sve {
 	}
 	void ImGuiDevice_vk::EndFrame()
 	{
+		graphics_swapchain_acquire_image();
+
 		sv::Graphics_vk& gfx = sv::graphics_vulkan_device_get();
 		ImGui::Render();
 
