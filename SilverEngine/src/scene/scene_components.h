@@ -67,7 +67,7 @@ namespace sv {
 
 	// Quad Collider
 
-	struct QuadComponent : public Component<QuadComponent> {
+	struct Box2DComponent : public Component<Box2DComponent> {
 		void* pInternal;
 
 		vec2 size = { 1.f, 1.f };
@@ -77,10 +77,10 @@ namespace sv {
 		float friction = 0.3f;
 		float restitution = 0.3f;
 
-		QuadComponent();
-		~QuadComponent();
-		QuadComponent(const QuadComponent & other);
-		QuadComponent(QuadComponent && other) noexcept;
+		Box2DComponent();
+		~Box2DComponent();
+		Box2DComponent(const Box2DComponent & other);
+		Box2DComponent(Box2DComponent && other) noexcept;
 
 	};
 

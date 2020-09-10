@@ -25,7 +25,11 @@ namespace sve {
 
 		svCheck(sv::scene_create(&desc, &g_Scene));
 
-		svCheck(sv::scene_deserialize(g_Scene, sceneFilePath));
+		if (sv::scene_deserialize(g_Scene, sceneFilePath) != sv::Result_Success) {
+			svCheck(sv::scene_destroy(g_Scene));
+			svCheck(sv::scene_create(&desc, &g_Scene));
+		}
+
 		g_ScenePath = sceneFilePath;
 
 		return sv::Result_Success;

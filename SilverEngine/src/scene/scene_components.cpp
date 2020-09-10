@@ -79,10 +79,10 @@ namespace sv {
 
 	// QUAD COMPONENT
 
-	QuadComponent::QuadComponent() : pInternal(nullptr)
+	Box2DComponent::Box2DComponent() : pInternal(nullptr)
 	{}
 
-	QuadComponent::~QuadComponent()
+	Box2DComponent::~Box2DComponent()
 	{
 		if (pInternal) {
 
@@ -94,7 +94,7 @@ namespace sv {
 		}
 	}
 
-	QuadComponent::QuadComponent(const QuadComponent& other)
+	Box2DComponent::Box2DComponent(const Box2DComponent& other)
 	{
 		density = other.density;
 		friction = other.friction;
@@ -105,7 +105,7 @@ namespace sv {
 		pInternal = nullptr;
 	}
 
-	QuadComponent::QuadComponent(QuadComponent&& other) noexcept
+	Box2DComponent::Box2DComponent(Box2DComponent&& other) noexcept
 	{
 		pInternal = other.pInternal;
 		other.pInternal = nullptr;

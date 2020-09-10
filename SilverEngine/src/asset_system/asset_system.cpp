@@ -8,7 +8,6 @@ namespace sv {
 
 	// Refresh variables
 	static std::map<std::string, Asset> g_AssetMap_aux;
-	static Time g_LastRefreshTime;
 
 	static std::string g_FolderPath;
 
@@ -93,13 +92,6 @@ namespace sv {
 
 	// REFRESH
 
-	float assets_file_start_point(const fs::directory_entry& file)
-	{
-		auto p0 = timer_start_point().time_since_epoch();
-		auto p1 = fs::last_write_time(file).time_since_epoch();
-		return std::chrono::duration<float>(p0 - p1).count();
-	}
-
 	Result assets_refresh_folder(const char* folderPath)
 	{
 		auto it = fs::directory_iterator(folderPath);
@@ -134,10 +126,10 @@ namespace sv {
 					auto it = g_AssetMap_aux.find(path.c_str());
 					if (it != g_AssetMap_aux.end()) {
 
-						float lastModification = assets_file_start_point(file);
+						auto lastModification = fs::last_write_time(file);
 
-						if (lastModification < g_LastRefreshTime) {
-
+						if (it->second.lastModification != lastModification) {
+							it->second.lastModification = lastModification;
 							if (it->second.ref.Get()) {
 
 								// Reload assets
@@ -154,18 +146,18 @@ namespace sv {
 								}
 
 							}
-
 						}
 
 						g_AssetMap[path.c_str()] = it->second;
 
 					}
 					else {
-						g_AssetMap[path.c_str()] = { type, SharedRef<ui32>() };
+						g_AssetMap[path.c_str()] = { fs::last_write_time(file), type, SharedRef<ui32>() };
 
 						size_t hash = utils_hash_string(path.c_str());
 						g_HashCodes[hash] = path.c_str();
 					}
+
 				}
 			}
 
@@ -182,18 +174,12 @@ namespace sv {
 			return Result_NotFound;
 		}
 
-		if (assets_file_start_point(fs::directory_entry(g_FolderPath.c_str())) > g_LastRefreshTime) {
-
-			g_AssetMap_aux = g_AssetMap;
-			g_AssetMap.clear();
-
-			svCheck(assets_refresh_folder(g_FolderPath.c_str()));
-
-			g_AssetMap_aux.clear();
-			
-		}
-
-		g_LastRefreshTime = timer_now();
+		g_AssetMap_aux = g_AssetMap;
+		g_AssetMap.clear();
+	
+		svCheck(assets_refresh_folder(g_FolderPath.c_str()));
+	
+		g_AssetMap_aux.clear();
 
 		return Result_Success;
 	}
@@ -218,7 +204,7 @@ namespace sv {
 			if (asset->texture.CreateFromFile(path.c_str(), true, SamplerAddressMode_Wrap) == Result_Success) {
 
 				asset->hashCode = utils_hash_string(filePath);
-				it->second = Asset{ AssetType_Texture, *reinterpret_cast<SharedRef<ui32>*>(&asset) };
+				it->second.ref = *reinterpret_cast<SharedRef<ui32>*>(&asset);
 				ref = asset;
 
 				g_ActiveTextures.emplace_back(std::make_pair(it->first.c_str(), *reinterpret_cast<WeakRef<TextureAsset>*>(&WeakRef<ui32>(it->second.ref))));

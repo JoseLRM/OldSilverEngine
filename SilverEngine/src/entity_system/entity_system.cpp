@@ -157,9 +157,11 @@ namespace sv {
 		}
 
 		// Registers ID
+		CompID invalidCompID = CompID(g_ComponentData.size());
 		for (ui32 i = 0; i < registers.size(); ++i) {
 
 			Register& reg = registers[i];
+			reg.ID = invalidCompID;
 
 			for (ui32 j = 0; j < g_ComponentData.size(); ++j) {
 				ComponentData& cData = g_ComponentData[j];
@@ -168,6 +170,11 @@ namespace sv {
 					reg.ID = j;
 					break;
 				}
+			}
+
+			if (reg.ID == invalidCompID) {
+				log_error("Component '%s' doesn't exist", reg.name.c_str());
+				return Result_InvalidFormat;
 			}
 
 		}

@@ -59,8 +59,8 @@ namespace sv {
 
 		// Adjust Box2D Fixtures
 		{
-			EntityView<QuadComponent> quads(scene.ecs);
-			for (QuadComponent& quad : quads) {
+			EntityView<Box2DComponent> quads(scene.ecs);
+			for (Box2DComponent& quad : quads) {
 
 				Transform trans = ecs_entity_transform_get(scene.ecs, quad.entity);
 

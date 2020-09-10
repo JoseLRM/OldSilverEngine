@@ -10,6 +10,7 @@ namespace sv {
 	};
 
 	struct Asset {
+		std::filesystem::file_time_type lastModification;
 		AssetType assetType;
 		SharedRef<ui32> ref;
 	};

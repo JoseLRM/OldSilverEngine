@@ -11,7 +11,7 @@ namespace sv {
 		ecs_register<SpriteComponent>("SpriteComponent"				, scene_component_serialize_SpriteComponent			, scene_component_deserialize_SpriteComponent);
 		ecs_register<CameraComponent>("CameraComponent"				, scene_component_serialize_CameraComponent			, scene_component_deserialize_CameraComponent);
 		ecs_register<RigidBody2DComponent>("RigidBody2DComponent"	, scene_component_serialize_RigidBody2DComponent	, scene_component_deserialize_RigidBody2DComponent);
-		ecs_register<QuadComponent>("QuadComponent"					, scene_component_serialize_QuadComponent			, scene_component_deserialize_QuadComponent);
+		ecs_register<Box2DComponent>("Box2DComponent"				, scene_component_serialize_QuadComponent			, scene_component_deserialize_QuadComponent);
 		ecs_register<MeshComponent>("MeshComponent"					, scene_component_serialize_MeshComponent			, scene_component_deserialize_MeshComponent);
 		ecs_register<LightComponent>("LightComponent"				, scene_component_serialize_LightComponent			, scene_component_deserialize_LightComponent);
 
