@@ -12,16 +12,15 @@ namespace sve {
 		vkAssert(res);
 	}
 
-	void DeviceWindowProc(ui32& msg, ui64& wParam, i64& lParam)
+	ui64 DeviceWindowProc(WindowHandle handle, ui32 msg, ui64 wParam, i64 lParam)
 	{
-		ImGui_ImplWin32_WndProcHandler((HWND)window_get_handle(), msg, wParam, lParam);
+		return ImGui_ImplWin32_WndProcHandler((HWND)window_handle_get(), msg, wParam, lParam);
 	}
 
 	sv::Result ImGuiDevice_vk::Initialize()
 	{
 		// Input handling
-		auto& platform = sv::window_get_platform();
-		platform.AddWindowProc(DeviceWindowProc);
+		sv::window_userproc_set(DeviceWindowProc);
 
 		// Graphics
 		ImGui_ImplWin32_EnableDpiAwareness();
@@ -33,7 +32,7 @@ namespace sve {
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable | ImGuiConfigFlags_DpiEnableScaleViewports;;
 		//io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_DpiEnableScaleViewports;;
 
-		if (!ImGui_ImplWin32_Init(window_get_handle())) return Result_PlatformError;
+		if (!ImGui_ImplWin32_Init(window_handle_get())) return Result_PlatformError;
 
 		sv::Graphics_vk& gfx = sv::graphics_vulkan_device_get();
 		sv::Adapter_vk& adapter = *reinterpret_cast<sv::Adapter_vk*>(sv::graphics_adapter_get());
@@ -276,8 +275,8 @@ namespace sve {
 				create_info.renderPass = m_RenderPass;
 				create_info.attachmentCount = 1u;
 				create_info.pAttachments = &frame.view;
-				create_info.width = window_get_width();
-				create_info.height = window_get_height();
+				create_info.width = window_size_get().x;
+				create_info.height = window_size_get().y;
 				create_info.layers = 1u;
 
 				vkExt(vkCreateFramebuffer(gfx.GetDevice(), &create_info, nullptr, &frame.frameBuffer));

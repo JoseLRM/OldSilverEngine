@@ -129,6 +129,7 @@ namespace sv {
 	};
 
 	// TEMPLATES
+
 	template<typename Component>
 	void ecs_register(const char* name, SerializeComponentFunction serializeFn = nullptr, DeserializeComponentFunction deserializeFn = nullptr)
 	{

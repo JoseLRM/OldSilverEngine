@@ -27,13 +27,11 @@ namespace sv {
 						}
 					}
 					{
-						memcpy(newTransformData, a.transformData, a.capacity);
+						memcpy(newTransformData, a.transformData, a.capacity * sizeof(EntityTransform));
 					}
 
 					a.data -= a.capacity;
-					a.transformData -= a.capacity;
 					newData -= a.capacity;
-					newTransformData -= a.capacity;
 					delete[] a.data;
 					delete[] a.transformData;
 				}

@@ -24,11 +24,12 @@ namespace sve {
 		desc.minThreadsCount = 2;
 		desc.consoleDesc.show = true;
 		desc.consoleDesc.logFolder = "logs/";
-		desc.windowDesc.fullscreen = false;
-		desc.windowDesc.x = 0u;
-		desc.windowDesc.y = 0u;
-		desc.windowDesc.width = 1280u;
-		desc.windowDesc.height = 720u;
+		desc.windowDesc.iconFilePath = L"icon.ico";
+		desc.windowDesc.style = sv::WindowStyle_Default;
+		desc.windowDesc.bounds.x = 0u;
+		desc.windowDesc.bounds.y = 0u;
+		desc.windowDesc.bounds.z = 1280u;
+		desc.windowDesc.bounds.w = 720u;
 		desc.windowDesc.title = L"SilverEngine";
 
 		if (sv::engine_initialize(&desc) != sv::Result_Success) return;
@@ -173,6 +174,10 @@ namespace sve {
 
 		if (sv::input_key_pressed(SV_KEY_F11)) {
 			simulation_gamemode_set(!simulation_gamemode_get());
+		}
+		if (sv::input_key(SV_KEY_CONTROL) && sv::input_key_pressed('S')) {
+			sv::Scene* scene = simulation_scene_get();
+			SV_ASSERT(sv::scene_serialize(scene, "assets/scenes/Test.scene") == sv::Result_Success);
 		}
 
 		g_Device->ResizeSwapChain();

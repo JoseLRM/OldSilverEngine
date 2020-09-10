@@ -1,10 +1,10 @@
 #pragma once
 
 #include "core.h"
+#include "platform/platform_impl.h"
 
 #ifdef SV_PLATFORM_WINDOWS
 #define VK_USE_PLATFORM_WIN32_KHR
-#include "platform/windows/windows_impl.h"
 #endif
 
 #ifdef SV_PLATFORM_LINUX

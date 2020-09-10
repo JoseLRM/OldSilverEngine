@@ -52,6 +52,7 @@ namespace sv {
 		fixedRotation = other.fixedRotation;
 		velocity = other.velocity;
 		angularVelocity = other.angularVelocity;
+		pInternal = nullptr;
 	}
 
 	RigidBody2DComponent::RigidBody2DComponent(RigidBody2DComponent&& other) noexcept
@@ -67,11 +68,13 @@ namespace sv {
 	RigidBody2DComponent::~RigidBody2DComponent()
 	{
 		if (pInternal) {
+
 			b2Body* body = reinterpret_cast<b2Body*>(pInternal);
 			b2World& world = *body->GetWorld();
 			world.DestroyBody(body);
+			pInternal = nullptr;
+
 		}
-		pInternal = nullptr;
 	}
 
 	// QUAD COMPONENT
@@ -99,6 +102,7 @@ namespace sv {
 		offset = other.offset;
 		restitution = other.restitution;
 		size = other.size;
+		pInternal = nullptr;
 	}
 
 	QuadComponent::QuadComponent(QuadComponent&& other) noexcept

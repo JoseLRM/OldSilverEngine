@@ -250,7 +250,7 @@
     <ClInclude Include="src\input\input_internal.h" />
     <ClInclude Include="src\loader.h" />
     <ClInclude Include="src\loader\loader_internal.h" />
-    <ClInclude Include="src\platform\windows\platform_windows.h" />
+    <ClInclude Include="src\platform\platform_impl.h" />
     <ClInclude Include="src\platform\window_internal.h" />
     <ClInclude Include="src\renderer\objects\Material.h" />
     <ClInclude Include="src\renderer\objects\Mesh.h" />
@@ -263,7 +263,7 @@
     <ClInclude Include="src\utils\Archive.h" />
     <ClInclude Include="src\utils\utils_internal.h" />
     <ClInclude Include="src\window.h" />
-    <ClInclude Include="src\platform\windows\windows_impl.h" />
+    <ClInclude Include="src\platform\windows_impl.h" />
     <ClInclude Include="src\renderer.h" />
     <ClInclude Include="src\scene.h" />
     <ClInclude Include="src\entity_system\Transform.h" />
@@ -335,7 +335,6 @@
     <ClCompile Include="src\graphics\graphics_shader.cpp" />
     <ClCompile Include="src\graphics\vulkan\graphics_vulkan.cpp" />
     <ClCompile Include="src\graphics\vulkan\graphics_vulkan_memory.cpp" />
-    <ClCompile Include="src\platform\windows\platform_windows.cpp" />
     <ClCompile Include="src\platform\window.cpp" />
     <ClCompile Include="src\renderer\renderer_mesh.cpp" />
     <ClCompile Include="src\renderer\objects\Material.cpp" />

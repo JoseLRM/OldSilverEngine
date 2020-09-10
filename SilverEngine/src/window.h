@@ -2,31 +2,56 @@
 
 #include "core.h"
 
-#ifdef SV_PLATFORM_WINDOWS
-#include "platform/windows/platform_windows.h"
-#else
-#error "Platform not supported"
-#endif
-
 namespace sv {
+
+	enum WindowStyle {
+		WindowStyle_None,
+		WindowStyle_Fullscreen = SV_BIT(0),
+		WindowStyle_NoTitle = SV_BIT(1),
+		WindowStyle_NoBorder = SV_BIT(2),
+		WindowStyle_Maximizable = SV_BIT(3),
+		WindowStyle_Minimizable = SV_BIT(4),
+		WindowStyle_Resizable = SV_BIT(5),
+
+		WindowStyle_NoDecoration = WindowStyle_NoTitle | WindowStyle_NoBorder,
+		WindowStyle_Default = WindowStyle_Maximizable | WindowStyle_Minimizable | WindowStyle_Resizable,
+	};
+	typedef ui32 WindowStyleFlags;
 
 	struct InitializationWindowDesc
 	{
-		ui32 width, height, x, y;
-		const wchar* title;
-		bool fullscreen;
+		uvec4			bounds;
+		const wchar*	title;
+		WindowStyle		style;
+		const wchar*	iconFilePath;
 	};
 
-	WindowHandle window_get_handle() noexcept;
-	ui32 window_get_x() noexcept;
-	ui32 window_get_y() noexcept;
-	ui32 window_get_width() noexcept;
-	ui32 window_get_height() noexcept;
-	float window_get_aspect() noexcept;
-	Window_wnd& window_get_platform() noexcept;
-	bool window_is_resized() noexcept;
+	WindowHandle window_handle_get() noexcept;
 
-	bool window_fullscreen_get();
-	void window_fullscreen_set(bool fullscreen);
+	uvec4	window_bounds_get();
+	uvec2	window_position_get();
+	uvec2	window_size_get();
+	float	window_aspect_get();
+	void	window_bounds_set(const uvec4& bounds);
+	void	window_position_set(const uvec2& position);
+	void	window_size_set(const uvec2& size);
+	void	window_aspect_set(float aspect);
+
+	Result			window_title_set(const wchar* title);
+	const wchar*	window_title_get();
+
+	Result			window_icon_set(const wchar* filePath);
+	const wchar*	window_icon_get_filepath();
+
+	WindowStyleFlags	window_style_get();
+	void				window_style_set(WindowStyleFlags style);
+	
+	uvec2 window_desktop_size();
+
+#ifdef SV_PLATFORM_WINDOWS
+	typedef ui64(*WindowProc)(WindowHandle, ui32, ui64, i64);
+
+	void window_userproc_set(WindowProc userProc);
+#endif
 
 }

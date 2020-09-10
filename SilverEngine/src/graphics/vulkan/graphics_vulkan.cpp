@@ -405,9 +405,9 @@ namespace sv {
 		const Adapter_vk& adapter = *reinterpret_cast<const Adapter_vk*>(graphics_adapter_get());
 		VkPhysicalDevice physicalDevice = adapter.GetPhysicalDevice();
 
-		WindowHandle hWnd = window_get_handle();
-		ui32 width = window_get_width();
-		ui32 height = window_get_height();
+		WindowHandle hWnd = window_handle_get();
+		ui32 width = window_size_get().x;
+		ui32 height = window_size_get().y;
 
 		// Create Surface
 		if (oldSwapchain == VK_NULL_HANDLE) 

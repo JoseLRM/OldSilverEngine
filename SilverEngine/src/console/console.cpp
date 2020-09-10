@@ -5,9 +5,7 @@
 #include <iostream>
 #include <stdarg.h>
 
-#ifdef SV_PLATFORM_WINDOWS
-#include "platform/windows/windows_impl.h"
-#endif
+#include "platform/platform_impl.h"
 
 namespace sv {
 

@@ -93,14 +93,21 @@ namespace sv {
 
 	// REFRESH
 
-	Result scene_assets_refresh_folder(const char* folderPath)
+	float assets_file_start_point(const fs::directory_entry& file)
+	{
+		auto p0 = timer_start_point().time_since_epoch();
+		auto p1 = fs::last_write_time(file).time_since_epoch();
+		return std::chrono::duration<float>(p0 - p1).count();
+	}
+
+	Result assets_refresh_folder(const char* folderPath)
 	{
 		auto it = fs::directory_iterator(folderPath);
 		for (const auto& file : it) {
 
 			if (file.is_directory()) {
 				std::string path = utils_string_parse(file.path().c_str());
-				svCheck(scene_assets_refresh_folder(path.c_str()));
+				svCheck(assets_refresh_folder(path.c_str()));
 			}
 
 			else {
@@ -127,9 +134,7 @@ namespace sv {
 					auto it = g_AssetMap_aux.find(path.c_str());
 					if (it != g_AssetMap_aux.end()) {
 
-						auto p0 = timer_start_point().time_since_epoch();
-						auto p1 = fs::last_write_time(file).time_since_epoch();
-						float lastModification = std::chrono::duration<float>(p0 - p1).count();
+						float lastModification = assets_file_start_point(file);
 
 						if (lastModification < g_LastRefreshTime) {
 
@@ -177,12 +182,17 @@ namespace sv {
 			return Result_NotFound;
 		}
 
-		g_AssetMap_aux = g_AssetMap;
-		g_AssetMap.clear();
+		if (assets_file_start_point(fs::directory_entry(g_FolderPath.c_str())) > g_LastRefreshTime) {
 
-		svCheck(scene_assets_refresh_folder(g_FolderPath.c_str()));
+			g_AssetMap_aux = g_AssetMap;
+			g_AssetMap.clear();
 
-		g_AssetMap_aux.clear();
+			svCheck(assets_refresh_folder(g_FolderPath.c_str()));
+
+			g_AssetMap_aux.clear();
+			
+		}
+
 		g_LastRefreshTime = timer_now();
 
 		return Result_Success;

@@ -62,7 +62,7 @@ namespace sve {
 			sv::ECS* ecs = sv::scene_ecs_get(g_Scene);
 			sv::CameraComponent& camera = *sv::ecs_component_get<sv::CameraComponent>(ecs, sv::scene_camera_get(g_Scene));
 
-			sv::uvec2 size = g_Gamemode ? sv::uvec2{ sv::window_get_width(), sv::window_get_height() } : viewport_simulation_size();
+			sv::uvec2 size = g_Gamemode ? sv::window_size_get() : viewport_simulation_size();
 
 			camera.Adjust(size.x, size.y);
 		}
@@ -116,12 +116,12 @@ namespace sve {
 		if (gamemode) {
 			if (g_Running && !g_Paused) {
 				g_Gamemode = true;
-				sv::window_fullscreen_set(true);
+				sv::window_style_set(sv::WindowStyle_Fullscreen);
 			}
 		}
 		else {
 			g_Gamemode = false;
-			sv::window_fullscreen_set(false);
+			sv::window_style_set(sv::WindowStyle_Default);
 		}
 	}
 
