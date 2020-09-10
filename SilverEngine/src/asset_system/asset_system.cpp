@@ -142,6 +142,9 @@ namespace sv {
 									svCheck(assets_destroy(texture));
 									std::string assetPath = g_FolderPath + path;
 									svCheck(texture.CreateFromFile(assetPath.c_str(), false, SamplerAddressMode_Wrap));
+
+									log_info("Asset updated: '%s'", path.c_str());
+
 									break;
 								}
 

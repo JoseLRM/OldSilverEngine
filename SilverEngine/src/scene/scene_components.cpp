@@ -43,9 +43,6 @@ namespace sv {
 
 	// RIGID BODY 2D
 
-	RigidBody2DComponent::RigidBody2DComponent() : pInternal(nullptr)
-	{}
-
 	RigidBody2DComponent::RigidBody2DComponent(const RigidBody2DComponent& other)
 	{
 		dynamic = other.dynamic;
@@ -53,6 +50,9 @@ namespace sv {
 		velocity = other.velocity;
 		angularVelocity = other.angularVelocity;
 		pInternal = nullptr;
+		memcpy(boxColliders, other.boxColliders, other.boxCollidersCount * sizeof(Box2DCollider));
+		boxCollidersCount = other.boxCollidersCount;
+		for (ui32 i = 0; i < boxCollidersCount; ++i) boxColliders[i].pInternal = nullptr;
 	}
 
 	RigidBody2DComponent::RigidBody2DComponent(RigidBody2DComponent&& other) noexcept
@@ -63,6 +63,8 @@ namespace sv {
 		fixedRotation = other.fixedRotation;
 		velocity = other.velocity;
 		angularVelocity = other.angularVelocity;
+		memcpy(boxColliders, other.boxColliders, other.boxCollidersCount * sizeof(Box2DCollider));
+		boxCollidersCount = other.boxCollidersCount;
 	}
 
 	RigidBody2DComponent::~RigidBody2DComponent()
@@ -73,48 +75,9 @@ namespace sv {
 			b2World& world = *body->GetWorld();
 			world.DestroyBody(body);
 			pInternal = nullptr;
+			boxCollidersCount = 0u;
 
 		}
-	}
-
-	// QUAD COMPONENT
-
-	Box2DComponent::Box2DComponent() : pInternal(nullptr)
-	{}
-
-	Box2DComponent::~Box2DComponent()
-	{
-		if (pInternal) {
-
-			b2Fixture* fixture = reinterpret_cast<b2Fixture*>(pInternal);
-			b2Body* body = fixture->GetBody();
-			body->DestroyFixture(fixture);
-			pInternal = nullptr;
-
-		}
-	}
-
-	Box2DComponent::Box2DComponent(const Box2DComponent& other)
-	{
-		density = other.density;
-		friction = other.friction;
-		angularOffset = other.angularOffset;
-		offset = other.offset;
-		restitution = other.restitution;
-		size = other.size;
-		pInternal = nullptr;
-	}
-
-	Box2DComponent::Box2DComponent(Box2DComponent&& other) noexcept
-	{
-		pInternal = other.pInternal;
-		other.pInternal = nullptr;
-		density = other.density;
-		friction = other.friction;
-		angularOffset = other.angularOffset;
-		offset = other.offset;
-		restitution = other.restitution;
-		size = other.size;
 	}
 
 	// SERIALIZATION
@@ -144,13 +107,17 @@ namespace sv {
 		archive << comp->offscreen.GetHeight();
 	}
 
-	void scene_component_serialize_RigidBody2DComponent(BaseComponent* comp, ArchiveO& archive)
+	void scene_component_serialize_RigidBody2DComponent(BaseComponent* comp_, ArchiveO& archive)
 	{
-		
-	}
+		RigidBody2DComponent* comp = reinterpret_cast<RigidBody2DComponent*>(comp_);
 
-	void scene_component_serialize_QuadComponent(BaseComponent* comp, ArchiveO& archive)
-	{
+		archive << comp->dynamic << comp->fixedRotation << comp->velocity << comp->angularVelocity;
+
+		archive << comp->boxCollidersCount;
+		for (ui32 i = 0; i < comp->boxCollidersCount; ++i) {
+			Box2DCollider& collider = comp->boxColliders[i];
+			archive << collider.size << collider.offset << collider.angularOffset << collider.density << collider.friction << collider.restitution;
+		}
 	}
 
 	void scene_component_serialize_MeshComponent(BaseComponent* comp, ArchiveO& archive)
@@ -199,12 +166,17 @@ namespace sv {
 		SV_ASSERT(renderer_offscreen_create(width, height, comp->offscreen) == Result_Success);
 	}
 
-	void scene_component_deserialize_RigidBody2DComponent(BaseComponent* comp, ArchiveI& archive)
+	void scene_component_deserialize_RigidBody2DComponent(BaseComponent* comp_, ArchiveI& archive)
 	{
-	}
+		RigidBody2DComponent* comp = reinterpret_cast<RigidBody2DComponent*>(comp_);
 
-	void scene_component_deserialize_QuadComponent(BaseComponent* comp, ArchiveI& archive)
-	{
+		archive >> comp->dynamic >> comp->fixedRotation >> comp->velocity >> comp->angularVelocity;
+
+		archive >> comp->boxCollidersCount;
+		for (ui32 i = 0; i < comp->boxCollidersCount; ++i) {
+			Box2DCollider& collider = comp->boxColliders[i];
+			archive >> collider.size >> collider.offset >> collider.angularOffset >> collider.density >> collider.friction >> collider.restitution;
+		}
 	}
 
 	void scene_component_deserialize_MeshComponent(BaseComponent* comp, ArchiveI& archive)

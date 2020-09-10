@@ -51,37 +51,31 @@ namespace sv {
 
 	// Rigid body 2d component
 
-	struct RigidBody2DComponent : public Component<RigidBody2DComponent> {
+	struct Box2DCollider {
 		void* pInternal;
-
-		bool dynamic = true;
-		bool fixedRotation = false;
-		vec2 velocity;
-		float angularVelocity = 0.f;
-
-		RigidBody2DComponent();
-		~RigidBody2DComponent();
-		RigidBody2DComponent(const RigidBody2DComponent & other);
-		RigidBody2DComponent(RigidBody2DComponent && other) noexcept;
-	};
-
-	// Quad Collider
-
-	struct Box2DComponent : public Component<Box2DComponent> {
-		void* pInternal;
-
 		vec2 size = { 1.f, 1.f };
 		vec2 offset;
 		float angularOffset = 0.f;
 		float density = 10.f;
 		float friction = 0.3f;
 		float restitution = 0.3f;
+	};
 
-		Box2DComponent();
-		~Box2DComponent();
-		Box2DComponent(const Box2DComponent & other);
-		Box2DComponent(Box2DComponent && other) noexcept;
+	struct RigidBody2DComponent : public Component<RigidBody2DComponent> {
 
+		void* pInternal = nullptr;
+		bool dynamic = true;
+		bool fixedRotation = false;
+		vec2 velocity;
+		float angularVelocity = 0.f;
+
+		Box2DCollider boxColliders[8];
+		ui32 boxCollidersCount = 1u;
+
+		RigidBody2DComponent() = default;
+		~RigidBody2DComponent();
+		RigidBody2DComponent(const RigidBody2DComponent & other);
+		RigidBody2DComponent(RigidBody2DComponent && other) noexcept;
 	};
 
 	// Mesh component

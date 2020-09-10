@@ -41,52 +41,74 @@ namespace sv {
 				vec3 position = trans.GetWorldPosition();
 				//TODO: vec3 rotation	= trans.GetWorldRotation();
 				const vec3& rotation = trans.GetLocalRotation();
+				vec3 worldScale = trans.GetWorldScale();
 
+				// Create body
 				if (body.pInternal == nullptr) {
 					b2BodyDef def;
-					def.type = b2_dynamicBody;
+					def.type = body.dynamic ? b2_dynamicBody : b2_staticBody;
+					def.fixedRotation = body.fixedRotation;
+					def.linearVelocity.Set(body.velocity.x, body.velocity.y);
+					def.angularVelocity = body.angularVelocity;
+					
 					body.pInternal = world.CreateBody(&def);
 				}
 
 				b2Body* b2body = reinterpret_cast<b2Body*>(body.pInternal);
+
+				// Create fixtures
+				if (body.boxCollidersCount > 0u && body.boxColliders[body.boxCollidersCount - 1u].pInternal == nullptr) {
+
+					Box2DCollider* end = body.boxColliders - 1u;
+					Box2DCollider* it = end + body.boxCollidersCount;
+					while (it != end) {
+
+						if (it->pInternal == nullptr) {
+
+							b2FixtureDef def;
+							def.density = it->density;
+							def.friction = it->friction;
+							def.restitution = it->restitution;
+
+							b2PolygonShape shape;
+							vec2 scale = (vec2(worldScale.x, worldScale.y) * it->size) / 2.f;
+							shape.SetAsBox(scale.x, scale.y, { it->offset.x, it->offset.y }, it->angularOffset);
+							def.shape = &shape;
+
+							it->pInternal = b2body->CreateFixture(&def);
+						}
+						else break;
+
+						--it;
+					}
+
+				}
+
+				// Update fixtures
+				{
+					Box2DCollider* end = body.boxColliders + body.boxCollidersCount;
+					Box2DCollider* it = body.boxColliders;
+					while (it != end) {
+
+						vec2 scale = (vec2(worldScale.x, worldScale.y) * it->size) / 2.f;
+
+						b2Fixture* fixture = reinterpret_cast<b2Fixture*>(it->pInternal);
+						b2PolygonShape* shape = reinterpret_cast<b2PolygonShape*>(fixture->GetShape());
+						shape->SetAsBox(scale.x, scale.y, { it->offset.x, it->offset.y }, it->angularOffset);
+						fixture->SetDensity(it->density);
+						fixture->SetFriction(it->friction);
+						fixture->SetRestitution(it->restitution);
+
+						++it;
+					}
+				}
+
+				// Update body
 				b2body->SetTransform({ position.x, position.y }, rotation.z);
 				b2body->SetType(body.dynamic ? b2_dynamicBody : b2_staticBody);
 				b2body->SetFixedRotation(body.fixedRotation);
 				b2body->SetLinearVelocity({ body.velocity.x, body.velocity.y });
 				b2body->SetAngularVelocity(body.angularVelocity);
-			}
-		}
-
-		// Adjust Box2D Fixtures
-		{
-			EntityView<Box2DComponent> quads(scene.ecs);
-			for (Box2DComponent& quad : quads) {
-
-				Transform trans = ecs_entity_transform_get(scene.ecs, quad.entity);
-
-				vec3 worldScale = trans.GetWorldScale();
-				vec2 scale = (vec2(worldScale.x, worldScale.y) * quad.size) / 2.f;
-				vec2 offset = quad.offset;
-
-				if (quad.pInternal == nullptr) {
-
-					RigidBody2DComponent* body = ecs_component_get<RigidBody2DComponent>(scene.ecs, quad.entity);
-					if (body == nullptr) continue;
-
-					b2Body* b2body = reinterpret_cast<b2Body*>(body->pInternal);
-
-					b2PolygonShape shape;
-					b2FixtureDef def;
-					def.shape = &shape;
-					quad.pInternal = b2body->CreateFixture(&def);
-				}
-
-				b2Fixture* fixture = reinterpret_cast<b2Fixture*>(quad.pInternal);
-				b2PolygonShape* shape = reinterpret_cast<b2PolygonShape*>(fixture->GetShape());
-				shape->SetAsBox(scale.x, scale.y, { offset.x, offset.y }, quad.angularOffset);
-				fixture->SetDensity(quad.density);
-				fixture->SetFriction(quad.friction);
-				fixture->SetRestitution(quad.restitution);
 			}
 		}
 

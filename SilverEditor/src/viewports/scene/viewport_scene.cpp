@@ -242,17 +242,17 @@ namespace sve {
 		ImGui::Checkbox("FixedRotation", &comp->fixedRotation);
 	}
 
-	void ShowQuadComponentInfo(sv::Box2DComponent* comp)
-	{
-		ImGui::DragFloat("Density", &comp->density, 0.1f);
-		ImGui::DragFloat("Friction", &comp->friction, 0.1f);
-		ImGui::DragFloat("Restitution", &comp->restitution, 0.1f);
-		ImGui::DragFloat2("Size", &comp->size.x, 0.1f);
-		ImGui::DragFloat2("Offset", &comp->offset.x, 0.01f);
-		ImGui::DragFloat("Angular Offset", &comp->angularOffset, 0.01f);
-
-		if (comp->density < 0.f) comp->density = 0.f;
-	}
+	//void ShowQuadComponentInfo(sv::Box2DComponent* comp)
+	//{
+	//	ImGui::DragFloat("Density", &comp->density, 0.1f);
+	//	ImGui::DragFloat("Friction", &comp->friction, 0.1f);
+	//	ImGui::DragFloat("Restitution", &comp->restitution, 0.1f);
+	//	ImGui::DragFloat2("Size", &comp->size.x, 0.1f);
+	//	ImGui::DragFloat2("Offset", &comp->offset.x, 0.01f);
+	//	ImGui::DragFloat("Angular Offset", &comp->angularOffset, 0.01f);
+	//
+	//	if (comp->density < 0.f) comp->density = 0.f;
+	//}
 
 	void ShowMeshComponentInfo(sv::MeshComponent* comp)
 	{
@@ -284,7 +284,6 @@ namespace sve {
 		else if (ID == sv::NameComponent::ID) ShowNameComponentInfo(reinterpret_cast<sv::NameComponent*>(comp));
 		else if (ID == sv::CameraComponent::ID) ShowCameraComponentInfo(reinterpret_cast<sv::CameraComponent*>(comp));
 		else if (ID == sv::RigidBody2DComponent::ID) ShowRigidBody2DComponentInfo(reinterpret_cast<sv::RigidBody2DComponent*>(comp));
-		else if (ID == sv::Box2DComponent::ID) ShowQuadComponentInfo(reinterpret_cast<sv::Box2DComponent*>(comp));
 		else if (ID == sv::MeshComponent::ID) ShowMeshComponentInfo(reinterpret_cast<sv::MeshComponent*>(comp));
 		else if (ID == sv::LightComponent::ID) ShowLightComponentInfo(reinterpret_cast<sv::LightComponent*>(comp));
 	}
