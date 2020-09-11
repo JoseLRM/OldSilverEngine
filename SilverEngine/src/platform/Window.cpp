@@ -15,8 +15,11 @@ namespace sv {
 	static uvec4 g_BoundsNew;
 	static WindowStyleFlags g_Style;
 	static bool g_StyleModified = false;
-	static bool g_StyleNew = false;
+	static WindowStyleFlags g_StyleNew = false;
 	static bool g_Resized = false;
+
+	static uvec4 g_LastFullscreen_Bounds;
+	static bool g_LastFullscreen_Maximized;
 
 	static std::wstring g_Title;
 	static std::wstring g_IconFilePath;
@@ -282,7 +285,6 @@ namespace sv {
 	{
 		g_Resized = false;
 
-		// Resized
 		if (g_Bounds.x != g_BoundsNew.x || g_Bounds.y != g_BoundsNew.y || g_Bounds.z != g_BoundsNew.z || g_Bounds.w != g_BoundsNew.w) {
 			g_Bounds = g_BoundsNew;
 #ifdef SV_PLATFORM_WINDOWS
@@ -294,11 +296,28 @@ namespace sv {
 		if (g_StyleModified) {
 			graphics_gpu_wait();
 
+			bool maximize = false;
+
+			if (g_Style & WindowStyle_Fullscreen && ~g_StyleNew & WindowStyle_Fullscreen) {
+				maximize = g_LastFullscreen_Maximized;
+				if (!maximize) {
+					g_Bounds = g_LastFullscreen_Bounds;
+					g_BoundsNew = g_Bounds;
+				}
+			}
+			else if (~g_Style & WindowStyle_Fullscreen && g_StyleNew & WindowStyle_Fullscreen) {
+				g_LastFullscreen_Bounds = g_Bounds;
+				g_LastFullscreen_Maximized = GetWindowLong((HWND)g_WindowHandle, GWL_STYLE) & WS_MAXIMIZE;
+			}
+
 			g_Style = g_StyleNew;
 
 #ifdef SV_PLATFORM_WINDOWS
 			// Set Windows style
 			DWORD style = window_parse_style(g_Style);
+			if (maximize) {
+				style |= WS_MAXIMIZE;
+			}
 			SetWindowLongPtrW((HWND)sv::window_handle_get(), GWL_STYLE, (LONG_PTR)style);
 
 			ivec4 bounds = window_adjusted_bounds(style);

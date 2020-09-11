@@ -59,8 +59,6 @@ namespace sv {
 	Result engine_loop()
 	{
 		static Time		lastTime		= 0.f;
-		static float	showFPSTime		= 0.f;
-		static ui32		FPS				= 0u;
 		Result			loopResult		= Result_Success;
 
 		g_FrameCount++;
@@ -92,15 +90,6 @@ namespace sv {
 
 			// End Rendering
 			renderer_frame_end();
-
-			// Calculate FPS
-			FPS++;
-			showFPSTime += g_DeltaTime;
-			while (showFPSTime >= 1.f) {
-				showFPSTime -= 1.f;
-				sv::log("FPS: %u", FPS);
-				FPS = 0u;
-			}
 		}
 		catch (Exception e) {
 			sv::log_error("%s: '%s'\nFile: '%s', Line: %u", e.type.c_str(), e.desc.c_str(), e.file.c_str(), e.line);

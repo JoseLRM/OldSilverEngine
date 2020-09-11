@@ -3,8 +3,6 @@
 namespace sv {
 
 	// Name component
-#if SV_SCENE_NAME_COMPONENT
-
 	struct NameComponent : public Component<NameComponent> {
 	
 		std::string name;
@@ -15,8 +13,6 @@ namespace sv {
 		NameComponent(std::string&& name) : name(std::move(name)) {}
 
 	};
-
-#endif
 
 	// Sprite Component
 

@@ -181,6 +181,23 @@ namespace sve {
 		}
 
 		g_Device->ResizeSwapChain();
+
+		// FPS count
+		static float fpsTime = 0.f;
+		static ui32 fpsCount = 0u;
+		fpsTime += dt;
+		fpsCount++;
+
+		if (fpsTime >= 0.25f) {
+
+			std::wstring title = L"SilverEditor | FPS: ";
+			title += std::to_wstring(fpsCount * 4u);
+
+			sv::window_title_set(title.c_str());
+
+			fpsTime -= 0.25f;
+			fpsCount = 0u;
+		}
 	}
 
 	void editor_render()
