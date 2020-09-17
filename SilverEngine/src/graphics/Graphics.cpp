@@ -86,6 +86,7 @@ namespace sv {
 		g_DefGraphicsState.scissorsCount = SV_GFX_SCISSOR_COUNT;
 		g_DefGraphicsState.topology = GraphicsTopology_Triangles;
 		g_DefGraphicsState.stencilReference = 0u;
+		g_DefGraphicsState.lineWidth = 1.f;
 		for (ui32 i = 0; i < SV_GFX_ATTACHMENTS_COUNT; ++i) {
 			g_DefGraphicsState.clearColors[i] = { 0.f, 0.f, 0.f, 1.f };
 		}
@@ -100,6 +101,7 @@ namespace sv {
 			GraphicsPipelineState_Scissor |
 			GraphicsPipelineState_Topology |
 			GraphicsPipelineState_StencilRef |
+			GraphicsPipelineState_LineWidth |
 			GraphicsPipelineState_RenderPass
 			;
 
@@ -127,7 +129,6 @@ namespace sv {
 	void graphics_commandlist_submit()
 	{
 		g_Device->SubmitCommandLists();
-		graphics_state_reset();
 	}
 	void graphics_present()
 	{
@@ -473,8 +474,10 @@ namespace sv {
 		g_Device->WaitGPU();
 	}
 
-	void graphics_state_reset()
+	void graphics_state_reset(CommandList cmd)
 	{
+		if (g_PipelineState.graphics[cmd].renderPass) graphics_renderpass_end(cmd);
+		g_PipelineState.graphics[cmd] = g_DefGraphicsState;
 	}
 
 	void graphics_vertexbuffer_bind(GPUBuffer** buffers, ui32* offsets, ui32* strides, ui32 count, CommandList cmd)
@@ -697,6 +700,12 @@ namespace sv {
 	{
 		g_PipelineState.graphics[cmd].stencilReference = ref;
 		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_StencilRef;
+	}
+
+	void graphics_set_line_width(float lineWidth, CommandList cmd)
+	{
+		g_PipelineState.graphics[cmd].lineWidth = lineWidth;
+		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_LineWidth;
 	}
 
 	////////////////////////////////////////// DRAW CALLS /////////////////////////////////////////

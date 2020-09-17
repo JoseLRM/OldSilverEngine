@@ -182,6 +182,19 @@ namespace sve {
 
 		g_Device->ResizeSwapChain();
 
+		// Update Assets
+		static float assetTimeCount = 0.f;
+
+		if (!simulation_gamemode_get()) {
+			assetTimeCount += dt;
+			if (assetTimeCount >= 1.f) {
+
+				sv::assets_refresh();
+
+				assetTimeCount--;
+			}
+		}
+
 		// FPS count
 		static float fpsTime = 0.f;
 		static ui32 fpsCount = 0u;

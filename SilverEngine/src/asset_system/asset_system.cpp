@@ -141,7 +141,7 @@ namespace sv {
 									Texture& texture = *reinterpret_cast<Texture*>(asset.ref.Get());
 									svCheck(assets_destroy(texture));
 									std::string assetPath = g_FolderPath + path;
-									svCheck(texture.CreateFromFile(assetPath.c_str(), false, SamplerAddressMode_Wrap));
+									svCheck(texture.CreateFromFile(assetPath.c_str()));
 
 									log_info("Asset updated: '%s'", path.c_str());
 
@@ -204,7 +204,7 @@ namespace sv {
 			std::string path = g_FolderPath + filePath;
 
 			SharedRef<TextureAsset> asset = create_shared<TextureAsset>();
-			if (asset->texture.CreateFromFile(path.c_str(), true, SamplerAddressMode_Wrap) == Result_Success) {
+			if (asset->texture.CreateFromFile(path.c_str()) == Result_Success) {
 
 				asset->hashCode = utils_hash_string(filePath);
 				it->second.ref = *reinterpret_cast<SharedRef<ui32>*>(&asset);

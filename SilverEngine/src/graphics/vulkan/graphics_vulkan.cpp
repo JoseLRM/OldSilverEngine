@@ -779,6 +779,11 @@ namespace sv {
 			vkCmdSetStencilReference(cmd, VK_STENCIL_FRONT_AND_BACK, state.stencilReference);
 		}
 
+		// Set line width
+		if (state.flags & GraphicsPipelineState_LineWidth) {
+			vkCmdSetLineWidth(cmd, state.lineWidth);
+		}
+
 		// Update Descriptors
 		if (state.flags & (GraphicsPipelineState_ConstantBuffer | GraphicsPipelineState_Sampler | GraphicsPipelineState_Image)) {
 

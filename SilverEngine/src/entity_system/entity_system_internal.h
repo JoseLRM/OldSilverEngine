@@ -13,7 +13,6 @@ namespace sv {
 		XMFLOAT4X4 worldMatrix;
 
 		bool modified = true;
-		bool wakePhysics = true;
 
 	};
 

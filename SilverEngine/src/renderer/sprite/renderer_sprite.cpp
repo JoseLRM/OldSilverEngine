@@ -1,6 +1,6 @@
 #include "core.h"
 
-#include "renderer_internal.h"
+#include "renderer/renderer_internal.h"
 
 namespace sv {
 
@@ -25,11 +25,11 @@ namespace sv {
 		Color color;
 	};
 
-	static SpriteVertex g_SpriteData[SV_REND_LAYER_BATCH_COUNT * 4u];
+	static SpriteVertex g_SpriteData[SV_REND_BATCH_COUNT * 4u];
 
 	constexpr void ComputeIndexData(ui32* indices)
 	{
-		ui32 indexCount = SV_REND_LAYER_BATCH_COUNT * 6u;
+		ui32 indexCount = SV_REND_BATCH_COUNT * 6u;
 		ui32 index = 0u;
 		for (ui32 i = 0; i < indexCount; ) {
 
@@ -44,7 +44,7 @@ namespace sv {
 		}
 	}
 
-	Result renderer_sprite_initialize(const InitializationRendererDesc& desc)
+	Result renderer_sprite_initialize()
 	{
 		// Sprite Buffers
 		{
@@ -53,19 +53,19 @@ namespace sv {
 			desc.CPUAccess = CPUAccess_Write;
 			desc.usage = ResourceUsage_Default;
 			desc.pData = nullptr;
-			desc.size = SV_REND_LAYER_BATCH_COUNT * sizeof(SpriteVertex) * 4u;
+			desc.size = SV_REND_BATCH_COUNT * sizeof(SpriteVertex) * 4u;
 
 			svCheck(graphics_buffer_create(&desc, g_SpriteVertexBuffer));
 
 			// Index Buffer
-			ui32 indexData[SV_REND_LAYER_BATCH_COUNT * 6u];
+			ui32 indexData[SV_REND_BATCH_COUNT * 6u];
 			ComputeIndexData(indexData);
 
 			desc.bufferType = GPUBufferType_Index;
 			desc.CPUAccess = CPUAccess_None;
 			desc.usage = ResourceUsage_Static;
 			desc.pData = indexData;
-			desc.size = SV_REND_LAYER_BATCH_COUNT * 6u * sizeof(ui32);
+			desc.size = SV_REND_BATCH_COUNT * 6u * sizeof(ui32);
 			desc.indexType = IndexType_32;
 
 			svCheck(graphics_buffer_create(&desc, g_SpriteIndexBuffer));
@@ -229,7 +229,7 @@ namespace sv {
 
 			ui32 j = 0u;
 			ui32 currentInstance = buffer - initialPtr;
-			ui32 batchSize = SV_REND_LAYER_BATCH_COUNT;
+			ui32 batchSize = SV_REND_BATCH_COUNT;
 			if (currentInstance + batchSize > count) {
 				batchSize = count - currentInstance;
 			}

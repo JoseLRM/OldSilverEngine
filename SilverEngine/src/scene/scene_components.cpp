@@ -43,6 +43,9 @@ namespace sv {
 
 	// RIGID BODY 2D
 
+	Collider2D::Collider2D() : type(Collider2DType_Box), box({{1.f, 1.f}, 0.f})
+	{}
+
 	RigidBody2DComponent::RigidBody2DComponent(const RigidBody2DComponent& other)
 	{
 		dynamic = other.dynamic;
@@ -50,9 +53,9 @@ namespace sv {
 		velocity = other.velocity;
 		angularVelocity = other.angularVelocity;
 		pInternal = nullptr;
-		memcpy(boxColliders, other.boxColliders, other.boxCollidersCount * sizeof(Box2DCollider));
-		boxCollidersCount = other.boxCollidersCount;
-		for (ui32 i = 0; i < boxCollidersCount; ++i) boxColliders[i].pInternal = nullptr;
+		memcpy(colliders, other.colliders, other.collidersCount * sizeof(Collider2D));
+		collidersCount = other.collidersCount;
+		for (ui32 i = 0; i < collidersCount; ++i) colliders[i].pInternal = nullptr;
 	}
 
 	RigidBody2DComponent::RigidBody2DComponent(RigidBody2DComponent&& other) noexcept
@@ -63,8 +66,8 @@ namespace sv {
 		fixedRotation = other.fixedRotation;
 		velocity = other.velocity;
 		angularVelocity = other.angularVelocity;
-		memcpy(boxColliders, other.boxColliders, other.boxCollidersCount * sizeof(Box2DCollider));
-		boxCollidersCount = other.boxCollidersCount;
+		memcpy(colliders, other.colliders, other.collidersCount * sizeof(Collider2D));
+		collidersCount = other.collidersCount;
 	}
 
 	RigidBody2DComponent::~RigidBody2DComponent()
@@ -75,7 +78,7 @@ namespace sv {
 			b2World& world = *body->GetWorld();
 			world.DestroyBody(body);
 			pInternal = nullptr;
-			boxCollidersCount = 0u;
+			collidersCount = 0u;
 
 		}
 	}
@@ -113,10 +116,23 @@ namespace sv {
 
 		archive << comp->dynamic << comp->fixedRotation << comp->velocity << comp->angularVelocity;
 
-		archive << comp->boxCollidersCount;
-		for (ui32 i = 0; i < comp->boxCollidersCount; ++i) {
-			Box2DCollider& collider = comp->boxColliders[i];
-			archive << collider.size << collider.offset << collider.angularOffset << collider.density << collider.friction << collider.restitution;
+		archive << comp->collidersCount;
+		for (ui32 i = 0; i < comp->collidersCount; ++i) {
+			Collider2D& collider = comp->colliders[i];
+			
+			archive << collider.offset << collider.density << collider.friction << collider.restitution << collider.type;
+			
+			switch (collider.type)
+			{
+			case Collider2DType_Box:
+				archive << collider.box.angularOffset << collider.box.size;
+				break;
+
+			case Collider2DType_Circle:
+				archive << collider.circle.radius;
+				break;
+			}
+
 		}
 	}
 
@@ -172,10 +188,21 @@ namespace sv {
 
 		archive >> comp->dynamic >> comp->fixedRotation >> comp->velocity >> comp->angularVelocity;
 
-		archive >> comp->boxCollidersCount;
-		for (ui32 i = 0; i < comp->boxCollidersCount; ++i) {
-			Box2DCollider& collider = comp->boxColliders[i];
-			archive >> collider.size >> collider.offset >> collider.angularOffset >> collider.density >> collider.friction >> collider.restitution;
+		archive >> comp->collidersCount;
+		for (ui32 i = 0; i < comp->collidersCount; ++i) {
+			Collider2D& collider = comp->colliders[i];
+			archive >> collider.offset >> collider.density >> collider.friction >> collider.restitution >> collider.type;
+
+			switch (collider.type)
+			{
+			case Collider2DType_Box:
+				archive >> collider.box.angularOffset >> collider.box.size;
+				break;
+
+			case Collider2DType_Circle:
+				archive >> collider.circle.radius;
+				break;
+			}
 		}
 	}
 

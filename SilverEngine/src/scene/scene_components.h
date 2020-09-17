@@ -47,14 +47,35 @@ namespace sv {
 
 	// Rigid body 2d component
 
-	struct Box2DCollider {
-		void* pInternal;
-		vec2 size = { 1.f, 1.f };
+	struct Collider2D {
+		
+		Collider2DType type = Collider2DType_Null;
+		void* pInternal = nullptr;
 		vec2 offset;
-		float angularOffset = 0.f;
 		float density = 10.f;
 		float friction = 0.3f;
 		float restitution = 0.3f;
+
+		union {
+			// BOX 2D COLLIDER
+			struct {
+
+				vec2 size;
+				float angularOffset;
+				
+			} box;
+
+			// CIRCLE 2D COLLIDER
+			struct {
+
+				float radius;
+
+			} circle;
+
+		};
+
+		Collider2D();
+
 	};
 
 	struct RigidBody2DComponent : public Component<RigidBody2DComponent> {
@@ -65,8 +86,8 @@ namespace sv {
 		vec2 velocity;
 		float angularVelocity = 0.f;
 
-		Box2DCollider boxColliders[8];
-		ui32 boxCollidersCount = 1u;
+		Collider2D colliders[8];
+		ui32 collidersCount = 1u;
 
 		RigidBody2DComponent() = default;
 		~RigidBody2DComponent();

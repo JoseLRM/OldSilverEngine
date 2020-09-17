@@ -5,7 +5,7 @@
 #include "renderer/renderer_internal.h"
 #include "graphics/graphics_internal.h"
 #include "input/input_internal.h"
-#include "platform/window_internal.h"
+#include "window/window_internal.h"
 #include "task_system/task_system_internal.h"
 #include "utils/utils_internal.h"
 #include "scene/scene_internal.h"

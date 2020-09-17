@@ -112,6 +112,7 @@ namespace sv {
 		GraphicsPipelineState_Scissor		= SV_BIT(40),
 		GraphicsPipelineState_Topology		= SV_BIT(41),
 		GraphicsPipelineState_StencilRef	= SV_BIT(42),
+		GraphicsPipelineState_LineWidth		= SV_BIT(43),
 	};
 
 	typedef ui64 GraphicsPipelineStateFlags;
@@ -149,6 +150,7 @@ namespace sv {
 		ui32							scissorsCount;
 		GraphicsTopology				topology;
 		ui32							stencilReference;
+		float							lineWidth;
 
 		RenderPass_internal*			renderPass;
 		GPUImage_internal*				attachments[SV_GFX_ATTACHMENTS_COUNT];

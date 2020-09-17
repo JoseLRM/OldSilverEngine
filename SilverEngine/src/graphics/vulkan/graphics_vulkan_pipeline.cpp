@@ -276,11 +276,12 @@ namespace sv {
 				VK_DYNAMIC_STATE_VIEWPORT,
 				VK_DYNAMIC_STATE_SCISSOR,
 				VK_DYNAMIC_STATE_STENCIL_REFERENCE,
+				VK_DYNAMIC_STATE_LINE_WIDTH
 			};
 
 			VkPipelineDynamicStateCreateInfo dynamicStatesInfo{};
 			dynamicStatesInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-			dynamicStatesInfo.dynamicStateCount = 3u;
+			dynamicStatesInfo.dynamicStateCount = 4u;
 			dynamicStatesInfo.pDynamicStates = dynamicStates;
 
 			// Creation

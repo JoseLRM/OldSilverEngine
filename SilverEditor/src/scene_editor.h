@@ -12,6 +12,11 @@ namespace sve {
 		sv::vec3				rotation;
 	};
 
+	enum SceneEditorMode : ui32 {
+		SceneEditorMode_2D,
+		SceneEditorMode_3D,
+	};
+
 	sv::Result scene_editor_initialize();
 	sv::Result scene_editor_close();
 
@@ -19,5 +24,8 @@ namespace sve {
 	void scene_editor_render();
 
 	DebugCamera& scene_editor_camera_get();
+
+	SceneEditorMode scene_editor_mode_get();
+	void			scene_editor_mode_set(SceneEditorMode mode);
 
 }

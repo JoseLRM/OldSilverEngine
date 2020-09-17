@@ -8,6 +8,7 @@
 #include "scene.h"
 #include "editor.h"
 #include "scene_editor.h"
+#include "input.h"
 
 namespace sve {
 
@@ -240,19 +241,63 @@ namespace sve {
 		ImGui::DragFloat("Angular Velocity", &comp->angularVelocity, 0.1f);
 		ImGui::Checkbox("Dynamic", &comp->dynamic);
 		ImGui::Checkbox("FixedRotation", &comp->fixedRotation);
-	}
 
-	//void ShowQuadComponentInfo(sv::Box2DComponent* comp)
-	//{
-	//	ImGui::DragFloat("Density", &comp->density, 0.1f);
-	//	ImGui::DragFloat("Friction", &comp->friction, 0.1f);
-	//	ImGui::DragFloat("Restitution", &comp->restitution, 0.1f);
-	//	ImGui::DragFloat2("Size", &comp->size.x, 0.1f);
-	//	ImGui::DragFloat2("Offset", &comp->offset.x, 0.01f);
-	//	ImGui::DragFloat("Angular Offset", &comp->angularOffset, 0.01f);
-	//
-	//	if (comp->density < 0.f) comp->density = 0.f;
-	//}
+		ImGui::Separator();
+
+		ImGui::Text("Colliders");
+
+		static ui32 selectedCollider = 0u;
+
+		for (ui32 i = 0; i < comp->collidersCount; ++i) {
+
+			if (ImGui::SmallButton(std::to_string(i).c_str())) {
+				selectedCollider = i;
+			}
+			
+			ImGui::SameLine();
+
+		}
+
+		if (ImGui::Button("Add"))
+		{
+			if (comp->collidersCount != 8u) {
+			
+				sv::Collider2D collider = comp->colliders[comp->collidersCount];
+				collider.box.size = { 1.f, 1.f };
+				collider.box.angularOffset = 0.f;
+				collider.type = sv::Collider2DType_Box;
+
+				comp->collidersCount++;
+
+			}
+		}
+
+		if (selectedCollider < comp->collidersCount) {
+
+			sv::Collider2D& collider = comp->colliders[selectedCollider];
+
+			ImGui::DragFloat("Density", &collider.density, 0.1f);
+			ImGui::DragFloat("Friction", &collider.friction, 0.1f);
+			ImGui::DragFloat("Restitution", &collider.restitution, 0.1f);
+			ImGui::DragFloat2("Offset", &collider.offset.x, 0.01f);
+
+			switch (collider.type)
+			{
+			case sv::Collider2DType_Box:
+				ImGui::Text("Box Collider");
+				ImGui::DragFloat2("Size", &collider.box.size.x, 0.1f);
+				ImGui::DragFloat("Angular Offset", &collider.box.angularOffset, 0.01f);
+				break;
+
+			case sv::Collider2DType_Circle:
+				ImGui::Text("Circle Collider");
+				ImGui::DragFloat2("Radius", &collider.circle.radius, 0.1f);
+				break;
+			}
+
+			if (collider.density < 0.f) collider.density = 0.f;
+		}
+	}
 
 	void ShowMeshComponentInfo(sv::MeshComponent* comp)
 	{
@@ -396,12 +441,26 @@ namespace sve {
 			ImGuiDevice& device = editor_device_get();
 			ImGui::Image(device.ParseImage(offscreen.renderTarget), { size.x, size.y });
 
+			ImGui::PopStyleVar(2u);
+
+			// POPUP
+			if (sv::input_key(SV_KEY_CONTROL)) {
+				if (ImGui::BeginPopupContextWindow("ScenePopup", ImGuiMouseButton_Right)) {
+
+					bool mode3D = scene_editor_mode_get() == SceneEditorMode_3D;
+					ImGui::Checkbox("3D Mode", &mode3D);
+					if ((scene_editor_mode_get() == SceneEditorMode_3D) != mode3D) {
+						scene_editor_mode_set(mode3D ? SceneEditorMode_3D : SceneEditorMode_2D);
+					}
+
+					ImGui::EndPopup();
+				}
+			}
+
 		}
 		else g_Visible = false;
 
 		ImGui::End();
-
-		ImGui::PopStyleVar(2u);
 
 		return true;
 	}

@@ -1,6 +1,6 @@
 #include "core.h"
 
-#include "renderer_internal.h"
+#include "renderer/renderer_internal.h"
 
 namespace sv {
 
@@ -31,7 +31,7 @@ namespace sv {
 	static DepthStencilState	g_ForwardDepthStencilState;
 	static RasterizerState		g_ForwardRasterizerState;
 
-	Result renderer_mesh_initialize(const InitializationRendererDesc& desc)
+	Result renderer_mesh_initialize()
 	{
 		// Instance Buffer
 		{

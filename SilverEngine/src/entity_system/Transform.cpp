@@ -143,7 +143,6 @@ namespace sv {
 		ECS_internal& ecs = *reinterpret_cast<ECS_internal*>(pECS);
 
 		t->modified = false;
-		t->wakePhysics = true;
 
 		XMMATRIX m = GetLocalMatrix();
 

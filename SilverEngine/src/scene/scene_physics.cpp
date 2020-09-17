@@ -35,13 +35,6 @@ namespace sv {
 		{
 			EntityView<RigidBody2DComponent> bodies(scene.ecs);
 			for (RigidBody2DComponent& body : bodies) {
-				
-				Transform trans = ecs_entity_transform_get(scene.ecs, body.entity);
-
-				vec3 position = trans.GetWorldPosition();
-				//TODO: vec3 rotation	= trans.GetWorldRotation();
-				const vec3& rotation = trans.GetLocalRotation();
-				vec3 worldScale = trans.GetWorldScale();
 
 				// Create body
 				if (body.pInternal == nullptr) {
@@ -50,17 +43,19 @@ namespace sv {
 					def.fixedRotation = body.fixedRotation;
 					def.linearVelocity.Set(body.velocity.x, body.velocity.y);
 					def.angularVelocity = body.angularVelocity;
-					
+
 					body.pInternal = world.CreateBody(&def);
 				}
 
 				b2Body* b2body = reinterpret_cast<b2Body*>(body.pInternal);
 
 				// Create fixtures
-				if (body.boxCollidersCount > 0u && body.boxColliders[body.boxCollidersCount - 1u].pInternal == nullptr) {
+				if (body.collidersCount > 0u && body.colliders[body.collidersCount - 1u].pInternal == nullptr) {
 
-					Box2DCollider* end = body.boxColliders - 1u;
-					Box2DCollider* it = end + body.boxCollidersCount;
+					Transform trans = ecs_entity_transform_get(scene.ecs, body.entity);
+					vec3 worldScale = trans.GetWorldScale();
+					Collider2D* end = body.colliders - 1u;
+					Collider2D* it = end + body.collidersCount;
 					while (it != end) {
 
 						if (it->pInternal == nullptr) {
@@ -70,10 +65,31 @@ namespace sv {
 							def.friction = it->friction;
 							def.restitution = it->restitution;
 
-							b2PolygonShape shape;
-							vec2 scale = (vec2(worldScale.x, worldScale.y) * it->size) / 2.f;
-							shape.SetAsBox(scale.x, scale.y, { it->offset.x, it->offset.y }, it->angularOffset);
-							def.shape = &shape;
+							b2PolygonShape pShape;
+							b2CircleShape cShape;
+
+							switch (it->type)
+							{
+							case Collider2DType_Box:
+							{
+								vec2 scale = (vec2(worldScale.x, worldScale.y) * it->box.size) / 2.f;
+								pShape.SetAsBox(scale.x, scale.y, { it->offset.x, it->offset.y }, it->box.angularOffset);
+								def.shape = &pShape;
+							}
+								break;
+
+							case Collider2DType_Circle:
+							{								
+								cShape.m_radius = it->circle.radius * std::max(worldScale.x, worldScale.y);
+								cShape.m_p.Set(it->offset.x, it->offset.y);
+								def.shape = &cShape;
+							}
+								break;
+
+							default:
+								--it;
+								continue;
+							}
 
 							it->pInternal = b2body->CreateFixture(&def);
 						}
@@ -84,17 +100,50 @@ namespace sv {
 
 				}
 
+				if (!b2body->IsAwake()) continue;
+
+				Transform trans = ecs_entity_transform_get(scene.ecs, body.entity);
+
+				vec3 position = trans.GetWorldPosition();
+				//TODO: vec3 rotation	= trans.GetWorldRotation();
+				const vec3& rotation = trans.GetLocalRotation();
+				vec3 worldScale = trans.GetWorldScale();
+
 				// Update fixtures
 				{
-					Box2DCollider* end = body.boxColliders + body.boxCollidersCount;
-					Box2DCollider* it = body.boxColliders;
+					Collider2D* end = body.colliders + body.collidersCount;
+					Collider2D* it = body.colliders;
 					while (it != end) {
 
-						vec2 scale = (vec2(worldScale.x, worldScale.y) * it->size) / 2.f;
-
 						b2Fixture* fixture = reinterpret_cast<b2Fixture*>(it->pInternal);
-						b2PolygonShape* shape = reinterpret_cast<b2PolygonShape*>(fixture->GetShape());
-						shape->SetAsBox(scale.x, scale.y, { it->offset.x, it->offset.y }, it->angularOffset);
+
+						if (fixture == nullptr) {
+							++it;
+							continue;
+						}
+
+						switch (it->type)
+						{
+
+						case Collider2DType_Box:
+						{
+							vec2 scale = (vec2(worldScale.x, worldScale.y) * it->box.size) / 2.f;
+
+							b2PolygonShape* shape = reinterpret_cast<b2PolygonShape*>(fixture->GetShape());
+							shape->SetAsBox(scale.x, scale.y, { it->offset.x, it->offset.y }, it->box.angularOffset);
+						}
+							break;
+
+						case Collider2DType_Circle:
+						{
+							b2CircleShape* shape = reinterpret_cast<b2CircleShape*>(fixture->GetShape());
+							shape->m_p.Set(it->offset.x, it->offset.y);
+							shape->m_radius = it->circle.radius * std::max(worldScale.x, worldScale.y);
+						}
+							break;
+
+						}
+						
 						fixture->SetDensity(it->density);
 						fixture->SetFriction(it->friction);
 						fixture->SetRestitution(it->restitution);
@@ -121,21 +170,24 @@ namespace sv {
 			for (RigidBody2DComponent& body : bodies) {
 
 				b2Body* b2body = reinterpret_cast<b2Body*>(body.pInternal);
-				
-				const b2Transform& transform = b2body->GetTransform();
-				Transform trans = ecs_entity_transform_get(scene.ecs, body.entity);
 
-				if (ecs_entity_parent_get(scene.ecs, body.entity) == SV_ENTITY_NULL) {
-					trans.SetPosition({ transform.p.x, transform.p.y, trans.GetLocalPosition().z });
-					trans.SetRotation({ trans.GetLocalRotation().x, trans.GetLocalRotation().y, transform.q.GetAngle() });
-				}
-				else {
-					log_error("TODO: Get simulation result from a child");
-				}
+				if (b2body->IsAwake()) {
 
-				const b2Vec2& linearVelocity = b2body->GetLinearVelocity();
-				body.velocity = { linearVelocity.x, linearVelocity.y };
-				body.angularVelocity = b2body->GetAngularVelocity();
+					const b2Transform& transform = b2body->GetTransform();
+					Transform trans = ecs_entity_transform_get(scene.ecs, body.entity);
+
+					if (ecs_entity_parent_get(scene.ecs, body.entity) == SV_ENTITY_NULL) {
+						trans.SetPosition({ transform.p.x, transform.p.y, trans.GetLocalPosition().z });
+						trans.SetRotation({ trans.GetLocalRotation().x, trans.GetLocalRotation().y, transform.q.GetAngle() });
+					}
+					else {
+						log_error("TODO: Get simulation result from a child");
+					}
+
+					const b2Vec2& linearVelocity = b2body->GetLinearVelocity();
+					body.velocity = { linearVelocity.x, linearVelocity.y };
+					body.angularVelocity = b2body->GetAngularVelocity();
+				}
 			}
 		}
 	}

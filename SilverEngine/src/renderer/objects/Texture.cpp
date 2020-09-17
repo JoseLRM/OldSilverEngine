@@ -3,7 +3,7 @@
 
 namespace sv {
 
-	Result Texture::CreateFromFile(const char* filePath, bool linearFilter, SamplerAddressMode addressMode)
+	Result Texture::CreateFromFile(const char* filePath)
 	{
 		svCheck(Destroy());
 
@@ -36,10 +36,10 @@ namespace sv {
 		{
 			SamplerDesc desc;
 
-			desc.addressModeU = addressMode;
-			desc.addressModeV = addressMode;
-			desc.addressModeW = addressMode;
-			desc.minFilter = linearFilter ? SamplerFilter_Linear : SamplerFilter_Nearest;
+			desc.addressModeU = SamplerAddressMode_Wrap;
+			desc.addressModeV = SamplerAddressMode_Wrap;
+			desc.addressModeW = SamplerAddressMode_Wrap;
+			desc.minFilter = SamplerFilter_Nearest;
 			desc.magFilter = desc.minFilter;
 
 			svCheck(graphics_sampler_create(&desc, m_Sampler));

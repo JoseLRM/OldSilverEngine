@@ -8,7 +8,7 @@ namespace sv {
 
 	static GPUBuffer		g_VertexBuffer;
 
-	Result renderer_postprocessing_initialize(const InitializationRendererDesc& desc)
+	Result renderer_postprocessing_initialize()
 	{
 		// Create Common Buffers
 		{

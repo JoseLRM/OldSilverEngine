@@ -40,10 +40,7 @@ namespace sv {
 		if (!desc->pSettings->active || desc->pOffscreen == nullptr) return;
 
 		// Compute View Matrix
-		XMVECTOR lookAt = XMVectorSet(0.f, 0.f, 1.f, 0.f);
-		lookAt = XMVector3Transform(lookAt, XMMatrixRotationRollPitchYaw(desc->rotation.x, desc->rotation.y, desc->rotation.z));
-		lookAt = XMVectorAdd(lookAt, desc->position);
-		XMMATRIX viewMatrix = XMMatrixLookAtLH(desc->position, lookAt, XMVectorSet(0.f, 1.f, 0.f, 0.f));
+		XMMATRIX viewMatrix = math_matrix_view(desc->position, desc->rotation);
 
 		XMMATRIX projectionMatrix = renderer_projection_matrix(desc->pSettings->projection);
 		XMMATRIX viewProjectionMatrix = viewMatrix * projectionMatrix;

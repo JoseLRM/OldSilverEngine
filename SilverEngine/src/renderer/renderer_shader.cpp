@@ -4,7 +4,7 @@
 
 namespace sv {
 
-	Result renderer_shader_create(const char* name, ShaderType type, Shader& shader)
+	Result renderer_shader_create(const char* name, ShaderType type, Shader& shader, std::pair<const char*, const char*>* macros, ui32 macrosCount)
 	{
 		GraphicsAPI api = graphics_api_get();
 
@@ -120,6 +120,12 @@ namespace sv {
 			// Lighting Macro
 			std::string lightCountStr = std::to_string(SV_REND_FORWARD_LIGHT_COUNT);
 			compileDesc.macros.push_back(std::make_pair("SV_LIGHT_COUNT", lightCountStr.c_str()));
+
+			// User Macro
+
+			while (macrosCount-- != 0u) {
+				compileDesc.macros.emplace_back(macros[macrosCount]);
+			}
 
 			// Compile
 			const char* shaderName;

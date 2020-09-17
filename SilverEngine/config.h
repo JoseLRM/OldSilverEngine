@@ -3,7 +3,7 @@
 #define SV_SRC_PATH "../SilverEngine/"
 
 #define SV_PLATFORM_WINDOWS
-//#define SV_DEBUG
+#define SV_DEBUG
 
 // Graphics
 
@@ -24,7 +24,7 @@
 
 // Graphics Vulkan
 
-#define SV_GFX_VK_VALIDATION_LAYERS 0
+#define SV_GFX_VK_VALIDATION_LAYERS 1
 #define SV_GFX_VK_MAX_DESCRIPTOR_SETS 100u
 #define SV_GFX_VK_MAX_DESCRIPTOR_TYPES 32u
 #define SV_GFX_VK_DESCRIPTOR_ALLOC_COUNT 10u
@@ -39,7 +39,7 @@
 
 // Renderer
 
-#define SV_REND_LAYER_BATCH_COUNT 10000u
+#define SV_REND_BATCH_COUNT 10000u
 #define SV_REND_MESH_INSTANCE_COUNT 100u
 
 #define SV_REND_FORWARD_LIGHT_COUNT 10u

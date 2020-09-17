@@ -166,7 +166,7 @@ namespace sv {
 			for (ui32 j = 0; j < g_ComponentData.size(); ++j) {
 				ComponentData& cData = g_ComponentData[j];
 
-				if (cData.size == reg.size && strcmp(cData.name.c_str(), reg.name.c_str()) == 0) {
+				if (strcmp(cData.name.c_str(), reg.name.c_str()) == 0) {
 					reg.ID = j;
 					break;
 				}

@@ -615,7 +615,7 @@ namespace sv {
 
 	// State Methods
 
-	void graphics_state_reset();
+	void graphics_state_reset(CommandList cmd);
 
 	void graphics_vertexbuffer_bind(GPUBuffer** buffers, ui32* offsets, ui32* strides, ui32 count, CommandList cmd);
 	void graphics_indexbuffer_bind(GPUBuffer& buffer, ui32 offset, CommandList cmd);
@@ -638,6 +638,7 @@ namespace sv {
 	void graphics_set_scissors(const Scissor* scissors, ui32 count, CommandList cmd);
 	void graphics_set_topology(GraphicsTopology topology, CommandList cmd);
 	void graphics_set_stencil_reference(ui32 ref, CommandList cmd);
+	void graphics_set_line_width(float lineWidth, CommandList cmd);
 
 	// Draw Calls
 

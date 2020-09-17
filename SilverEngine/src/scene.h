@@ -14,6 +14,7 @@ namespace sv {
 	};
 
 	enum Collider2DType : ui32 {
+		Collider2DType_Null,
 		Collider2DType_Box,
 		Collider2DType_Circle,
 	};

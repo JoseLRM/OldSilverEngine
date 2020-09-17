@@ -5,7 +5,7 @@
 #include <iostream>
 #include <stdarg.h>
 
-#include "platform/platform_impl.h"
+#include "window/platform_impl.h"
 
 namespace sv {
 
