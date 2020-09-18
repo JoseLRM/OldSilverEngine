@@ -9,22 +9,22 @@ namespace sv {
 	Transform::Transform(Entity entity, void* transform, ECS* ecs)
 		: entity(entity), trans(transform), pECS(ecs) {}
 
-	const vec3& Transform::GetLocalPosition() const noexcept 
+	const vec3f& Transform::GetLocalPosition() const noexcept 
 	{ 
 		parse();
-		return *(vec3*)& t->localPosition;
+		return *(vec3f*)& t->localPosition;
 	}
 
-	const vec3& Transform::GetLocalRotation() const noexcept 
+	const vec3f& Transform::GetLocalRotation() const noexcept 
 	{ 
 		parse();
-		return *(vec3*)& t->localRotation;
+		return *(vec3f*)& t->localRotation;
 	}
 
-	const vec3& Transform::GetLocalScale() const noexcept 
+	const vec3f& Transform::GetLocalScale() const noexcept 
 	{ 
 		parse();
-		return *(vec3*)& t->localScale;
+		return *(vec3f*)& t->localScale;
 	}
 
 	XMVECTOR Transform::GetLocalPositionDXV() const noexcept 
@@ -52,30 +52,30 @@ namespace sv {
 			* XMMatrixTranslation(t->localPosition.x, t->localPosition.y, t->localPosition.z);
 	}
 
-	vec3 Transform::GetWorldPosition() noexcept
+	vec3f Transform::GetWorldPosition() noexcept
 	{
 		parse();
 		if (t->modified) UpdateWorldMatrix();
-		return *(vec3*)& t->worldMatrix._41;
+		return *(vec3f*)& t->worldMatrix._41;
 	}
-	vec3 Transform::GetWorldRotation() noexcept
+	vec3f Transform::GetWorldRotation() noexcept
 	{
 		parse();
 		if (t->modified) UpdateWorldMatrix();
-		return *(vec3*)& GetWorldRotationDXV();
+		return *(vec3f*)& GetWorldRotationDXV();
 	}
-	vec3 Transform::GetWorldScale() noexcept
+	vec3f Transform::GetWorldScale() noexcept
 	{
 		parse();
 		if (t->modified) UpdateWorldMatrix();
-		return vec3(((vec3*)& t->worldMatrix._11)->Mag(), ((vec3*)& t->worldMatrix._21)->Mag(), ((vec3*)& t->worldMatrix._31)->Mag());
+		return { (*(vec3f*)& t->worldMatrix._11).length(), (*(vec3f*)& t->worldMatrix._21).length(), (*(vec3f*)& t->worldMatrix._31).length() };
 	}
 	XMVECTOR Transform::GetWorldPositionDXV() noexcept
 	{
 		parse();
 		if (t->modified) UpdateWorldMatrix();
 
-		vec3 position = GetWorldPosition();
+		vec3f position = GetWorldPosition();
 		return XMVectorSet(position.x, position.y, position.z, 0.f);
 	}
 	XMVECTOR Transform::GetWorldRotationDXV() noexcept
@@ -115,21 +115,21 @@ namespace sv {
 		return XMLoadFloat4x4(&t->worldMatrix);
 	}
 
-	void Transform::SetPosition(const vec3& position) noexcept
+	void Transform::SetPosition(const vec3f& position) noexcept
 	{
 		Notify();
 
 		parse();
 		t->localPosition = *(XMFLOAT3*)& position;
 	}
-	void Transform::SetRotation(const vec3& rotation) noexcept
+	void Transform::SetRotation(const vec3f& rotation) noexcept
 	{
 		Notify();
 
 		parse();
 		t->localRotation = *(XMFLOAT3*)& rotation;
 	}
-	void Transform::SetScale(const vec3& scale) noexcept
+	void Transform::SetScale(const vec3f& scale) noexcept
 	{
 		parse();
 

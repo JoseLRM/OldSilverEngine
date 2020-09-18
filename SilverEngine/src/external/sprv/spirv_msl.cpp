@@ -286,18 +286,18 @@ void CompilerMSL::build_implicit_builtins()
 			uint32_t var_id = offset + 2;
 
 			// Create gl_FragCoord.
-			SPIRType vec4_type;
-			vec4_type.basetype = SPIRType::Float;
-			vec4_type.width = 32;
-			vec4_type.vecsize = 4;
-			set<SPIRType>(type_id, vec4_type);
+			SPIRType vec4f_type;
+			vec4f_type.basetype = SPIRType::Float;
+			vec4f_type.width = 32;
+			vec4f_type.vecsize = 4;
+			set<SPIRType>(type_id, vec4f_type);
 
-			SPIRType vec4_type_ptr;
-			vec4_type_ptr = vec4_type;
-			vec4_type_ptr.pointer = true;
-			vec4_type_ptr.parent_type = type_id;
-			vec4_type_ptr.storage = StorageClassInput;
-			auto &ptr_type = set<SPIRType>(type_ptr_id, vec4_type_ptr);
+			SPIRType vec4f_type_ptr;
+			vec4f_type_ptr = vec4f_type;
+			vec4f_type_ptr.pointer = true;
+			vec4f_type_ptr.parent_type = type_id;
+			vec4f_type_ptr.storage = StorageClassInput;
+			auto &ptr_type = set<SPIRType>(type_ptr_id, vec4f_type_ptr);
 			ptr_type.self = type_id;
 
 			set<SPIRVariable>(var_id, type_ptr_id, StorageClassInput);
@@ -12609,7 +12609,7 @@ void CompilerMSL::bitcast_from_builtin_load(uint32_t source_id, std::string &exp
 
 	if (builtin == BuiltInTessCoord && get_entry_point().flags.get(ExecutionModeQuads) && expr_type.vecsize == 3)
 	{
-		// In SPIR-V, this is always a vec3, even for quads. In Metal, though, it's a float2 for quads.
+		// In SPIR-V, this is always a vec3f, even for quads. In Metal, though, it's a float2 for quads.
 		// The code is expecting a float3, so we need to widen this.
 		expr = join("float3(", expr, ", 0)");
 	}

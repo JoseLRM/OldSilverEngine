@@ -31,9 +31,9 @@ namespace sv {
 		projection.width = projection.height * aspect;
 	}
 
-	vec2 renderer_projection_position(const CameraProjection& projection, const vec2& point)
+	vec2f renderer_projection_position(const CameraProjection& projection, const vec2f& point)
 	{
-		return point * vec2(projection.width, projection.height);
+		return point * vec2f(projection.width, projection.height);
 	}
 
 	float renderer_projection_zoom_get(const CameraProjection& projection)

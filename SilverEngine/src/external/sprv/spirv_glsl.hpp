@@ -222,8 +222,8 @@ public:
 	void require_extension(const std::string &ext);
 
 	// Legacy GLSL compatibility method.
-	// Takes a uniform or push constant variable and flattens it into a (i|u)vec4 array[N]; array instead.
-	// For this to work, all types in the block must be the same basic type, e.g. mixing vec2 and vec4 is fine, but
+	// Takes a uniform or push constant variable and flattens it into a (i|u)vec4f array[N]; array instead.
+	// For this to work, all types in the block must be the same basic type, e.g. mixing vec2f and vec4f is fine, but
 	// mixing int and float is not.
 	// The name of the uniform array will be the same as the interface block name.
 	void flatten_buffer_block(VariableID id);

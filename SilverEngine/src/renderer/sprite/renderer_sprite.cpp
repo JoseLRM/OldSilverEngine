@@ -20,8 +20,8 @@ namespace sv {
 	static Sampler g_SpriteDefSampler;
 
 	struct SpriteVertex {
-		vec4 position;
-		vec2 texCoord;
+		vec4f position;
+		vec2f texCoord;
 		Color color;
 	};
 
@@ -253,10 +253,10 @@ namespace sv {
 				pos3 = XMVector4Transform(pos3, matrix);
 
 				ui32 index = j * 4u;
-				g_SpriteData[index + 0] = { pos0, {spr.texCoord.x, spr.texCoord.y}, spr.color };
-				g_SpriteData[index + 1] = { pos1, {spr.texCoord.z, spr.texCoord.y}, spr.color };
-				g_SpriteData[index + 2] = { pos2, {spr.texCoord.x, spr.texCoord.w}, spr.color };
-				g_SpriteData[index + 3] = { pos3, {spr.texCoord.z, spr.texCoord.w}, spr.color };
+				g_SpriteData[index + 0] = { vec4f(pos0), {spr.texCoord.x, spr.texCoord.y}, spr.color };
+				g_SpriteData[index + 1] = { vec4f(pos1), {spr.texCoord.z, spr.texCoord.y}, spr.color };
+				g_SpriteData[index + 2] = { vec4f(pos2), {spr.texCoord.x, spr.texCoord.w}, spr.color };
+				g_SpriteData[index + 3] = { vec4f(pos3), {spr.texCoord.z, spr.texCoord.w}, spr.color };
 
 				j++;
 			}

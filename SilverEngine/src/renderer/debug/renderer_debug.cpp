@@ -7,8 +7,8 @@ namespace sv {
 #define parseBatch() sv::RendererDebugBatch_internal& batch = *reinterpret_cast<sv::RendererDebugBatch_internal*>(batch_)
 
 	struct DebugData {
-		vec4 position;
-		vec2 texCoord;
+		vec4f position;
+		vec2f texCoord;
 		float stroke;
 		Color color;
 	};
@@ -350,7 +350,7 @@ namespace sv {
 
 					XMMATRIX mvpMatrix;
 					Color color;
-					vec4 texCoord;
+					vec4f texCoord;
 					float stroke = 1.f;
 
 					switch (draw.list)
@@ -410,37 +410,37 @@ namespace sv {
 					p2 = XMVector3Transform(p2, mvpMatrix);
 					p3 = XMVector3Transform(p3, mvpMatrix);
 
-					itBatch->position = p0;
+					itBatch->position = vec4f(p0);
 					itBatch->texCoord = { texCoord.x, texCoord.y };
 					itBatch->stroke = stroke;
 					itBatch->color = color;
 					++itBatch;
 
-					itBatch->position = p1;
+					itBatch->position = vec4f(p1);
 					itBatch->texCoord = { texCoord.z, texCoord.y };
 					itBatch->stroke = stroke;
 					itBatch->color = color;
 					++itBatch;
 
-					itBatch->position = p2;
+					itBatch->position = vec4f(p2);
 					itBatch->texCoord = { texCoord.x, texCoord.w };
 					itBatch->stroke = stroke;
 					itBatch->color = color;
 					++itBatch;
 
-					itBatch->position = p1;
+					itBatch->position = vec4f(p1);
 					itBatch->texCoord = { texCoord.z, texCoord.y };
 					itBatch->stroke = stroke;
 					itBatch->color = color;
 					++itBatch;
 
-					itBatch->position = p3;
+					itBatch->position = vec4f(p3);
 					itBatch->texCoord = { texCoord.z, texCoord.w };
 					itBatch->stroke = stroke;
 					itBatch->color = color;
 					++itBatch;
 
-					itBatch->position = p2;
+					itBatch->position = vec4f(p2);
 					itBatch->texCoord = { texCoord.x, texCoord.w };
 					itBatch->stroke = stroke;
 					itBatch->color = color;
@@ -460,12 +460,12 @@ namespace sv {
 					XMVECTOR p0 = XMVector4Transform(XMVectorSet(line.point0.x, line.point0.y, line.point0.z, 1.f), viewProjectionMatrix);
 					XMVECTOR p1 = XMVector4Transform(XMVectorSet(line.point1.x, line.point1.y, line.point1.z, 1.f), viewProjectionMatrix);
 
-					itBatch->position = p0;
+					itBatch->position = vec4f(p0);
 					itBatch->color = line.color;
 					itBatch->stroke = 1.f;
 					++itBatch;
 
-					itBatch->position = p1;
+					itBatch->position = vec4f(p1);
 					itBatch->color = line.color;
 					itBatch->stroke = 1.f;
 					++itBatch;
@@ -513,7 +513,7 @@ namespace sv {
 		batch.quads.emplace_back(matrix, color);
 	}
 
-	void renderer_debug_draw_line(RendererDebugBatch* batch_, const vec3& p0, const vec3& p1, Color color)
+	void renderer_debug_draw_line(RendererDebugBatch* batch_, const vec3f& p0, const vec3f& p1, Color color)
 	{
 		parseBatch();
 		
@@ -551,37 +551,37 @@ namespace sv {
 	}
 
 
-	void renderer_debug_draw_quad(RendererDebugBatch* batch, const vec3& position, const vec2& size, Color color)
+	void renderer_debug_draw_quad(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, Color color)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixTranslation(position.x, position.y, position.z);
 		renderer_debug_draw_quad(batch, tm, color);
 	}
 
-	void renderer_debug_draw_quad(RendererDebugBatch* batch, const vec3& position, const vec2& size, const vec3& rotation, Color color)
+	void renderer_debug_draw_quad(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, const vec3f& rotation, Color color)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixRotationRollPitchYaw(rotation.x, rotation.y, rotation.z) * XMMatrixTranslation(position.x, position.y, position.z);
 		renderer_debug_draw_quad(batch, tm, color);
 	}
 
-	void renderer_debug_draw_ellipse(RendererDebugBatch* batch, const vec3& position, const vec2& size, Color color)
+	void renderer_debug_draw_ellipse(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, Color color)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixTranslation(position.x, position.y, position.z);
 		renderer_debug_draw_ellipse(batch, tm, color);
 	}
 
-	void renderer_debug_draw_ellipse(RendererDebugBatch* batch, const vec3& position, const vec2& size, const vec3& rotation, Color color)
+	void renderer_debug_draw_ellipse(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, const vec3f& rotation, Color color)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixRotationRollPitchYaw(rotation.x, rotation.y, rotation.z) * XMMatrixTranslation(position.x, position.y, position.z);
 		renderer_debug_draw_ellipse(batch, tm, color);
 	}
 
-	void renderer_debug_draw_sprite(RendererDebugBatch* batch, const vec3& position, const vec2& size, Color color, GPUImage& image)
+	void renderer_debug_draw_sprite(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, Color color, GPUImage& image)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixTranslation(position.x, position.y, position.z);
 		renderer_debug_draw_sprite(batch, tm, color, image);
 	}
 
-	void renderer_debug_draw_sprite(RendererDebugBatch* batch, const vec3& position, const vec2& size, const vec3& rotation, Color color, GPUImage& image)
+	void renderer_debug_draw_sprite(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, const vec3f& rotation, Color color, GPUImage& image)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixRotationRollPitchYaw(rotation.x, rotation.y, rotation.z) * XMMatrixTranslation(position.x, position.y, position.z);
 		renderer_debug_draw_sprite(batch, tm, color, image);
@@ -611,14 +611,14 @@ namespace sv {
 		return batch.stroke;
 	}
 
-	void renderer_debug_texcoord_set(RendererDebugBatch* batch_, const vec4& texCoord)
+	void renderer_debug_texcoord_set(RendererDebugBatch* batch_, const vec4f& texCoord)
 	{
 		parseBatch();
 		batch.texCoord = texCoord;
 		batch.sameSprite = false;
 	}
 
-	vec4 renderer_debug_texcoord_get(RendererDebugBatch* batch_)
+	vec4f renderer_debug_texcoord_get(RendererDebugBatch* batch_)
 	{
 		parseBatch();
 		return batch.texCoord;

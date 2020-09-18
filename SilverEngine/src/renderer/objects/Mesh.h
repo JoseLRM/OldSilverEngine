@@ -5,9 +5,9 @@
 namespace sv {
 
 	class Mesh {
-		std::vector<vec3> m_Positions;
-		std::vector<vec3> m_Normals;
-		std::vector<vec2> m_TexCoords;
+		std::vector<vec3f> m_Positions;
+		std::vector<vec3f> m_Normals;
+		std::vector<vec2f> m_TexCoords;
 
 		std::vector<ui32> m_Indices;
 
@@ -39,9 +39,9 @@ namespace sv {
 		inline GPUBuffer& GetVertexBuffer() { return m_VertexBuffer; }
 		inline GPUBuffer& GetIndexBuffer() { return m_IndexBuffer; }
 
-		inline const vec3* GetPositions() const { return m_Positions.data(); }
-		inline const vec3* GetNormals() const { return m_Normals.data(); }
-		inline const vec2* GetTexCoords() const { return m_TexCoords.data(); }
+		inline const vec3f* GetPositions() const { return m_Positions.data(); }
+		inline const vec3f* GetNormals() const { return m_Normals.data(); }
+		inline const vec2f* GetTexCoords() const { return m_TexCoords.data(); }
 
 		inline const ui32* GetIndices() const { return m_Indices.data(); }
 

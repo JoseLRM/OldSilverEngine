@@ -72,7 +72,7 @@ static bool is_unsigned_glsl_opcode(GLSLstd450 op)
 	}
 }
 
-static bool packing_is_vec4_padded(BufferPackingStandard packing)
+static bool packing_is_vec4f_padded(BufferPackingStandard packing)
 {
 	switch (packing)
 	{
@@ -1181,7 +1181,7 @@ uint32_t CompilerGLSL::type_to_packed_alignment(const SPIRType &type, const Bits
 
 		if (ir.addressing_model == AddressingModelPhysicalStorageBuffer64EXT)
 		{
-			if (packing_is_vec4_padded(packing) && type_is_array_of_pointers(type))
+			if (packing_is_vec4f_padded(packing) && type_is_array_of_pointers(type))
 				return 16;
 			else
 				return 8;
@@ -1193,7 +1193,7 @@ uint32_t CompilerGLSL::type_to_packed_alignment(const SPIRType &type, const Bits
 	if (!type.array.empty())
 	{
 		uint32_t minimum_alignment = 1;
-		if (packing_is_vec4_padded(packing))
+		if (packing_is_vec4f_padded(packing))
 			minimum_alignment = 16;
 
 		auto *tmp = &get<SPIRType>(type.parent_type);
@@ -1216,7 +1216,7 @@ uint32_t CompilerGLSL::type_to_packed_alignment(const SPIRType &type, const Bits
 		}
 
 		// In std140, struct alignment is rounded up to 16.
-		if (packing_is_vec4_padded(packing))
+		if (packing_is_vec4f_padded(packing))
 			alignment = max(alignment, 16u);
 
 		return alignment;
@@ -1230,7 +1230,7 @@ uint32_t CompilerGLSL::type_to_packed_alignment(const SPIRType &type, const Bits
 			return base_alignment;
 
 		// Vectors are *not* aligned in HLSL, but there's an extra rule where vectors cannot straddle
-		// a vec4, this is handled outside since that part knows our current offset.
+		// a vec4f, this is handled outside since that part knows our current offset.
 		if (type.columns == 1 && packing_is_hlsl(packing))
 			return base_alignment;
 
@@ -1253,7 +1253,7 @@ uint32_t CompilerGLSL::type_to_packed_alignment(const SPIRType &type, const Bits
 		// vectors.
 		if (flags.get(DecorationColMajor) && type.columns > 1)
 		{
-			if (packing_is_vec4_padded(packing))
+			if (packing_is_vec4f_padded(packing))
 				return 4 * base_alignment;
 			else if (type.vecsize == 3)
 				return 4 * base_alignment;
@@ -1266,7 +1266,7 @@ uint32_t CompilerGLSL::type_to_packed_alignment(const SPIRType &type, const Bits
 		// Rule 7.
 		if (flags.get(DecorationRowMajor) && type.vecsize > 1)
 		{
-			if (packing_is_vec4_padded(packing))
+			if (packing_is_vec4f_padded(packing))
 				return 4 * base_alignment;
 			else if (type.columns == 3)
 				return 4 * base_alignment;
@@ -1363,7 +1363,7 @@ uint32_t CompilerGLSL::type_to_packed_size(const SPIRType &type, const Bitset &f
 
 			if (flags.get(DecorationColMajor) && type.columns > 1)
 			{
-				if (packing_is_vec4_padded(packing))
+				if (packing_is_vec4f_padded(packing))
 					size = type.columns * 4 * base_alignment;
 				else if (type.vecsize == 3)
 					size = type.columns * 4 * base_alignment;
@@ -1373,7 +1373,7 @@ uint32_t CompilerGLSL::type_to_packed_size(const SPIRType &type, const Bitset &f
 
 			if (flags.get(DecorationRowMajor) && type.vecsize > 1)
 			{
-				if (packing_is_vec4_padded(packing))
+				if (packing_is_vec4f_padded(packing))
 					size = type.vecsize * 4 * base_alignment;
 				else if (type.columns == 3)
 					size = type.vecsize * 4 * base_alignment;
@@ -1400,8 +1400,8 @@ bool CompilerGLSL::buffer_is_packing_standard(const SPIRType &type, BufferPackin
 	// We will assume std430, but infer std140 if we can prove the struct is not compliant with std430.
 	//
 	// The only two differences between std140 and std430 are related to padding alignment/array stride
-	// in arrays and structs. In std140 they take minimum vec4 alignment.
-	// std430 only removes the vec4 requirement.
+	// in arrays and structs. In std140 they take minimum vec4f alignment.
+	// std430 only removes the vec4f requirement.
 
 	uint32_t offset = 0;
 	uint32_t pad_alignment = 1;
@@ -1435,10 +1435,10 @@ bool CompilerGLSL::buffer_is_packing_standard(const SPIRType &type, BufferPackin
 		if (!member_can_be_unsized)
 			packed_size = type_to_packed_size(memb_type, member_flags, packing);
 
-		// We only need to care about this if we have non-array types which can straddle the vec4 boundary.
+		// We only need to care about this if we have non-array types which can straddle the vec4f boundary.
 		if (packing_is_hlsl(packing))
 		{
-			// If a member straddles across a vec4 boundary, alignment is actually vec4.
+			// If a member straddles across a vec4f boundary, alignment is actually vec4f.
 			uint32_t begin_word = offset / 16;
 			uint32_t end_word = (offset + packed_size - 1) / 16;
 			if (begin_word != end_word)
@@ -2424,15 +2424,15 @@ void CompilerGLSL::replace_illegal_names()
 		"unpackSnorm2x16", "unpackSnorm4x8", "unpackUint2x16", "unpackUint4x16", "unpackUnorm2x16", "unpackUnorm4x8", "usubBorrow",
 
 		"active", "asm", "atomic_uint", "attribute", "bool", "break", "buffer",
-		"bvec2", "bvec3", "bvec4", "case", "cast", "centroid", "class", "coherent", "common", "const", "continue", "default", "discard",
+		"bvec2f", "bvec3f", "bvec4f", "case", "cast", "centroid", "class", "coherent", "common", "const", "continue", "default", "discard",
 		"dmat2", "dmat2x2", "dmat2x3", "dmat2x4", "dmat3", "dmat3x2", "dmat3x3", "dmat3x4", "dmat4", "dmat4x2", "dmat4x3", "dmat4x4",
-		"do", "double", "dvec2", "dvec3", "dvec4", "else", "enum", "extern", "external", "false", "filter", "fixed", "flat", "float",
-		"for", "fvec2", "fvec3", "fvec4", "goto", "half", "highp", "hvec2", "hvec3", "hvec4", "if", "iimage1D", "iimage1DArray",
+		"do", "double", "dvec2f", "dvec3f", "dvec4f", "else", "enum", "extern", "external", "false", "filter", "fixed", "flat", "float",
+		"for", "fvec2f", "fvec3f", "fvec4f", "goto", "half", "highp", "hvec2f", "hvec3f", "hvec4f", "if", "iimage1D", "iimage1DArray",
 		"iimage2D", "iimage2DArray", "iimage2DMS", "iimage2DMSArray", "iimage2DRect", "iimage3D", "iimageBuffer", "iimageCube",
 		"iimageCubeArray", "image1D", "image1DArray", "image2D", "image2DArray", "image2DMS", "image2DMSArray", "image2DRect",
 		"image3D", "imageBuffer", "imageCube", "imageCubeArray", "in", "inline", "inout", "input", "int", "interface", "invariant",
 		"isampler1D", "isampler1DArray", "isampler2D", "isampler2DArray", "isampler2DMS", "isampler2DMSArray", "isampler2DRect",
-		"isampler3D", "isamplerBuffer", "isamplerCube", "isamplerCubeArray", "ivec2", "ivec3", "ivec4", "layout", "long", "lowp",
+		"isampler3D", "isamplerBuffer", "isamplerCube", "isamplerCubeArray", "ivec2f", "ivec3f", "ivec4f", "layout", "long", "lowp",
 		"mat2", "mat2x2", "mat2x3", "mat2x4", "mat3", "mat3x2", "mat3x3", "mat3x4", "mat4", "mat4x2", "mat4x3", "mat4x4", "mediump",
 		"namespace", "noinline", "noperspective", "out", "output", "packed", "partition", "patch", "precise", "precision", "public", "readonly",
 		"resource", "restrict", "return", "sample", "sampler1D", "sampler1DArray", "sampler1DArrayShadow",
@@ -2443,7 +2443,7 @@ void CompilerGLSL::replace_illegal_names()
 		"uimage2DArray", "uimage2DMS", "uimage2DMSArray", "uimage2DRect", "uimage3D", "uimageBuffer", "uimageCube",
 		"uimageCubeArray", "uint", "uniform", "union", "unsigned", "usampler1D", "usampler1DArray", "usampler2D", "usampler2DArray",
 		"usampler2DMS", "usampler2DMSArray", "usampler2DRect", "usampler3D", "usamplerBuffer", "usamplerCube",
-		"usamplerCubeArray", "using", "uvec2", "uvec3", "uvec4", "varying", "vec2", "vec3", "vec4", "void", "volatile",
+		"usamplerCubeArray", "using", "uvec2f", "vec3fu", "uvec4f", "varying", "vec2f", "vec3f", "vec4f", "void", "volatile",
 		"while", "writeonly",
 	};
 	// clang-format on
@@ -2769,9 +2769,9 @@ void CompilerGLSL::emit_declared_builtin_block(StorageClass storage, ExecutionMo
 	{
 		auto itr = builtin_xfb_offsets.find(BuiltInPosition);
 		if (itr != end(builtin_xfb_offsets))
-			statement("layout(xfb_offset = ", itr->second, ") vec4 gl_Position;");
+			statement("layout(xfb_offset = ", itr->second, ") vec4f gl_Position;");
 		else
-			statement("vec4 gl_Position;");
+			statement("vec4f gl_Position;");
 	}
 
 	if (emitted_builtins.get(BuiltInPointSize))
@@ -5644,7 +5644,7 @@ std::string CompilerGLSL::to_texture_op(const Instruction &i, bool sparse, bool 
 	expr += to_function_args(args, forward);
 	expr += ")";
 
-	// texture(samplerXShadow) returns float. shadowX() returns vec4. Swizzle here.
+	// texture(samplerXShadow) returns float. shadowX() returns vec4f. Swizzle here.
 	if (is_legacy() && image_is_comparison(imgtype, img))
 		expr += ".r";
 
@@ -5887,10 +5887,10 @@ string CompilerGLSL::to_function_args(const TextureFunctionArguments &args, bool
 		}
 		else if (args.base.is_proj)
 		{
-			// Have to reshuffle so we get vec4(coord, dref, proj), special case.
+			// Have to reshuffle so we get vec4f(coord, dref, proj), special case.
 			// Other shading languages splits up the arguments for coord and compare value like SPIR-V.
-			// The coordinate type for textureProj shadow is always vec4 even for sampler1DShadow.
-			farg_str += ", vec4(";
+			// The coordinate type for textureProj shadow is always vec4f even for sampler1DShadow.
+			farg_str += ", vec4f(";
 
 			if (imgtype.image.dim == Dim1D)
 			{
@@ -5951,9 +5951,9 @@ string CompilerGLSL::to_function_args(const TextureFunctionArguments &args, bool
 			// Implement textureGrad() instead. LOD == 0.0 is implemented as gradient of 0.0.
 			// Implementing this as plain texture() is not safe on some implementations.
 			if (imgtype.image.dim == Dim2D)
-				farg_str += ", vec2(0.0), vec2(0.0)";
+				farg_str += ", vec2f(0.0), vec2f(0.0)";
 			else if (imgtype.image.dim == DimCube)
-				farg_str += ", vec3(0.0), vec3(0.0)";
+				farg_str += ", vec3f(0.0), vec3f(0.0)";
 		}
 		else
 		{
@@ -7950,7 +7950,7 @@ std::pair<std::string, uint32_t> CompilerGLSL::flattened_access_chain_offset(
 				{
 					SPIRV_CROSS_THROW(
 					    "Array stride for dynamic indexing must be divisible by the size of a 4-component vector. "
-					    "Likely culprit here is a float or vec2 array inside a push constant block which is std430. "
+					    "Likely culprit here is a float or vec2f array inside a push constant block which is std430. "
 					    "This cannot be flattened. Try using std140 layout instead.");
 				}
 
@@ -7976,7 +7976,7 @@ std::pair<std::string, uint32_t> CompilerGLSL::flattened_access_chain_offset(
 				{
 					SPIRV_CROSS_THROW(
 					    "Array stride for dynamic indexing must be divisible by the size of a 4-component vector. "
-					    "Likely culprit here is a float or vec2 array inside a push constant block which is std430. "
+					    "Likely culprit here is a float or vec2f array inside a push constant block which is std430. "
 					    "This cannot be flattened. Try using std140 layout instead.");
 				}
 
@@ -8332,7 +8332,7 @@ bool CompilerGLSL::remove_duplicate_swizzle(string &op)
 }
 
 // Optimizes away vector swizzles where we have something like
-// vec3 foo;
+// vec3f foo;
 // foo.xyz <-- swizzle expression does nothing.
 // This is a very common pattern after OpCompositeCombine.
 bool CompilerGLSL::remove_unity_swizzle(uint32_t base, string &op)
@@ -8412,7 +8412,7 @@ string CompilerGLSL::build_composite_combiner(uint32_t return_type, const uint32
 					subop += "()";
 
 				// Don't attempt to remove unity swizzling if we managed to remove duplicate swizzles.
-				// The base "foo" might be vec4, while foo.xyz is vec3 (OpVectorShuffle) and looks like a vec3 due to the .xyz tacked on.
+				// The base "foo" might be vec4f, while foo.xyz is vec3f (OpVectorShuffle) and looks like a vec3f due to the .xyz tacked on.
 				// We only want to remove the swizzles if we're certain that the resulting base will be the same vecsize.
 				// Essentially, we can only remove one set of swizzles, since that's what we have control over ...
 				// Case 1:
@@ -8420,7 +8420,7 @@ string CompilerGLSL::build_composite_combiner(uint32_t return_type, const uint32
 				//               foo.yxz was the result of OpVectorShuffle and we don't know the type of foo.
 				// Case 2:
 				//  foo.xyz: Duplicate swizzle won't kick in.
-				//           If foo is vec3, we can remove xyz, giving just foo.
+				//           If foo is vec3f, we can remove xyz, giving just foo.
 				if (!remove_duplicate_swizzle(subop))
 					remove_unity_swizzle(base, subop);
 
@@ -9168,11 +9168,11 @@ void CompilerGLSL::emit_instruction(const Instruction &instruction)
 			// This is so we can later combine different CompositeExtract results
 			// with CompositeConstruct without emitting code like
 			//
-			// vec3 temp = texture(...).xyz
-			// vec4(temp.x, temp.y, temp.z, 1.0).
+			// vec3f temp = texture(...).xyz
+			// vec4f(temp.x, temp.y, temp.z, 1.0).
 			//
 			// when we actually wanted to emit this
-			// vec4(texture(...).xyz, 1.0).
+			// vec4f(texture(...).xyz, 1.0).
 			//
 			// Including the base will prevent this and would trigger multiple reads
 			// from expression causing it to be forced to an actual temporary in GLSL.
@@ -9881,7 +9881,7 @@ void CompilerGLSL::emit_instruction(const Instruction &instruction)
 		switch (type.vecsize)
 		{
 		case 1:
-			op = join("unpackHalf2x16(packHalf2x16(vec2(", to_expression(arg), "))).x");
+			op = join("unpackHalf2x16(packHalf2x16(vec2f(", to_expression(arg), "))).x");
 			break;
 		case 2:
 			op = join("unpackHalf2x16(packHalf2x16(", to_expression(arg), "))");
@@ -9890,14 +9890,14 @@ void CompilerGLSL::emit_instruction(const Instruction &instruction)
 		{
 			auto op0 = join("unpackHalf2x16(packHalf2x16(", to_expression(arg), ".xy))");
 			auto op1 = join("unpackHalf2x16(packHalf2x16(", to_expression(arg), ".zz)).x");
-			op = join("vec3(", op0, ", ", op1, ")");
+			op = join("vec3f(", op0, ", ", op1, ")");
 			break;
 		}
 		case 4:
 		{
 			auto op0 = join("unpackHalf2x16(packHalf2x16(", to_expression(arg), ".xy))");
 			auto op1 = join("unpackHalf2x16(packHalf2x16(", to_expression(arg), ".zw))");
-			op = join("vec4(", op0, ", ", op1, ")");
+			op = join("vec4f(", op0, ", ", op1, ")");
 			break;
 		}
 		default:
@@ -10437,13 +10437,13 @@ void CompilerGLSL::emit_instruction(const Instruction &instruction)
 						    "Multisampled image used in OpImageRead, but unexpected operand mask was used.");
 
 					uint32_t samples = ops[5];
-					imgexpr = join("texelFetch(", to_expression(ops[2]), ", ivec2(gl_FragCoord.xy), ",
+					imgexpr = join("texelFetch(", to_expression(ops[2]), ", ivec2f(gl_FragCoord.xy), ",
 					               to_expression(samples), ")");
 				}
 				else
 				{
 					// Implement subpass loads via texture barrier style sampling.
-					imgexpr = join("texelFetch(", to_expression(ops[2]), ", ivec2(gl_FragCoord.xy), 0)");
+					imgexpr = join("texelFetch(", to_expression(ops[2]), ", ivec2f(gl_FragCoord.xy), 0)");
 				}
 			}
 			imgexpr = remap_swizzle(get<SPIRType>(result_type), 4, imgexpr);
@@ -10830,7 +10830,7 @@ void CompilerGLSL::emit_instruction(const Instruction &instruction)
 		uint32_t result_type = ops[0];
 		uint32_t id = ops[1];
 		string expr;
-		expr = join("uvec4(unpackUint2x32(ballotARB(" + to_expression(ops[2]) + ")), 0u, 0u)");
+		expr = join("uvec4f(unpackUint2x32(ballotARB(" + to_expression(ops[2]) + ")), 0u, 0u)");
 		emit_op(result_type, id, expr, should_forward(ops[2]));
 
 		require_extension_internal("GL_ARB_shader_ballot");

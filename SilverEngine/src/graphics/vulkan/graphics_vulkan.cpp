@@ -1999,7 +1999,7 @@ namespace sv {
 		}
 		else {
 
-			VkClearColorValue clear = { clearColor.x, clearColor.y, clearColor.z, clearColor.w };
+			VkClearColorValue clear = { clearColor.r, clearColor.g, clearColor.b, clearColor.a };
 			vkCmdClearColorImage(cmd, image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear, 1u, &range);
 
 		}

@@ -7,6 +7,6 @@ namespace sve {
 	bool viewport_simulation_display();
 	void viewport_simulationtools_display();
 	bool viewport_simulation_visible();
-	sv::uvec2 viewport_simulation_size();
+	sv::vec2u viewport_simulation_size();
 
 }

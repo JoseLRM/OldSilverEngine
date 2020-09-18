@@ -16,9 +16,9 @@ namespace sv {
 	void renderer_frame_end();
 
 	struct MeshVertex {
-		vec3 position;
-		vec3 normal;
-		vec2 texCoord;
+		vec3f position;
+		vec3f normal;
+		vec2f texCoord;
 	};
 
 	// Shader utils

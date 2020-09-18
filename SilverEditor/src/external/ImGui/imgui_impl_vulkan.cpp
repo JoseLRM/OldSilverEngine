@@ -106,19 +106,19 @@ void ImGui_ImplVulkanH_CreateWindowCommandBuffers(VkPhysicalDevice physical_devi
 // # glslangValidator -V -x -o glsl_shader.vert.u32 glsl_shader.vert
 /*
 #version 450 core
-layout(location = 0) in vec2 aPos;
-layout(location = 1) in vec2 aUV;
-layout(location = 2) in vec4 aColor;
-layout(push_constant) uniform uPushConstant { vec2 uScale; vec2 uTranslate; } pc;
+layout(location = 0) in vec2f aPos;
+layout(location = 1) in vec2f aUV;
+layout(location = 2) in vec4f aColor;
+layout(push_constant) uniform uPushConstant { vec2f uScale; vec2f uTranslate; } pc;
 
-out gl_PerVertex { vec4 gl_Position; };
-layout(location = 0) out struct { vec4 Color; vec2 UV; } Out;
+out gl_PerVertex { vec4f gl_Position; };
+layout(location = 0) out struct { vec4f Color; vec2f UV; } Out;
 
 void main()
 {
     Out.Color = aColor;
     Out.UV = aUV;
-    gl_Position = vec4(aPos * pc.uScale + pc.uTranslate, 0, 1);
+    gl_Position = vec4f(aPos * pc.uScale + pc.uTranslate, 0, 1);
 }
 */
 static uint32_t __glsl_shader_vert_spv[] =
@@ -170,9 +170,9 @@ static uint32_t __glsl_shader_vert_spv[] =
 // # glslangValidator -V -x -o glsl_shader.frag.u32 glsl_shader.frag
 /*
 #version 450 core
-layout(location = 0) out vec4 fColor;
+layout(location = 0) out vec4f fColor;
 layout(set=0, binding=0) uniform sampler2D sTexture;
-layout(location = 0) in struct { vec4 Color; vec2 UV; } In;
+layout(location = 0) in struct { vec4f Color; vec2f UV; } In;
 void main()
 {
     fColor = In.Color * texture(sTexture, In.UV.st);
@@ -628,7 +628,7 @@ bool ImGui_ImplVulkan_CreateDeviceObjects()
 
     if (!g_PipelineLayout)
     {
-        // Constants: we are using 'vec2 offset' and 'vec2 scale' instead of a full 3d projection matrix
+        // Constants: we are using 'vec2f offset' and 'vec2f scale' instead of a full 3d projection matrix
         VkPushConstantRange push_constants[1] = {};
         push_constants[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         push_constants[0].offset = sizeof(float) * 0;

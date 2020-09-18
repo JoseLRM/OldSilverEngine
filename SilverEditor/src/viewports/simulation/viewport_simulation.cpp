@@ -8,7 +8,7 @@
 namespace sve {
 
 	static bool g_Visible = false;
-	static sv::uvec2 g_Size;
+	static sv::vec2u g_Size;
 
 	bool viewport_simulation_display()
 	{
@@ -90,7 +90,7 @@ namespace sve {
 		return g_Visible;
 	}
 
-	sv::uvec2 viewport_simulation_size()
+	sv::vec2u viewport_simulation_size()
 	{
 		return g_Size;
 	}

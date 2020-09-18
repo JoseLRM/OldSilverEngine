@@ -16,7 +16,7 @@ namespace sve {
 
 	static bool g_HierarchyPopup = false;
 
-	static sv::uvec2 g_ViewportSize;
+	static sv::vec2u g_ViewportSize;
 	static bool g_Visible = false;
 	static bool g_Focused = false;
 
@@ -136,9 +136,9 @@ namespace sve {
 
 	void ShowSpriteComponentInfo(sv::SpriteComponent* comp)
 	{
-		sv::Color4f col = { float(comp->color.x) / 255.f, float(comp->color.y) / 255.f, float(comp->color.z) / 255.f, float(comp->color.w) / 255.f };
-		ImGui::ColorEdit4("SpriteColor", &col.x);
-		comp->color = { ui8(col.x * 255.f), ui8(col.y * 255.f) , ui8(col.z * 255.f) , ui8(col.w * 255.f) };
+		sv::Color4f col = { float(comp->color.r) / 255.f, float(comp->color.g) / 255.f, float(comp->color.b) / 255.f, float(comp->color.a) / 255.f };
+		ImGui::ColorEdit4("SpriteColor", &col.r);
+		comp->color = { ui8(col.r * 255.f), ui8(col.g * 255.f) , ui8(col.b * 255.f) , ui8(col.a * 255.f) };
 
 		ImGui::DragFloat4("TexCoord", &comp->sprite.texCoord.x, 0.001f);
 
@@ -317,7 +317,7 @@ namespace sve {
 
 	void ShowLightComponentInfo(sv::LightComponent* comp)
 	{
-		ImGui::ColorEdit3("Light Color", &comp->color.x);
+		ImGui::ColorEdit3("Light Color", &comp->color.r);
 		ImGui::DragFloat("Intensity", &comp->intensity, 0.01f);
 		ImGui::DragFloat("Range", &comp->range, 0.01f);
 		ImGui::DragFloat("Smoothness", &comp->smoothness, 0.01f);
@@ -354,9 +354,9 @@ namespace sve {
 				// Show Transform Data
 				sv::Transform trans = sv::ecs_entity_transform_get(ecs, g_SelectedEntity);
 
-				sv::vec3 position = trans.GetLocalPosition();
-				sv::vec3 rotation = ToDegrees(trans.GetLocalRotation());
-				sv::vec3 scale = trans.GetLocalScale();
+				sv::vec3f position = trans.GetLocalPosition();
+				sv::vec3f rotation = ToDegrees(trans.GetLocalRotation());
+				sv::vec3f scale = trans.GetLocalScale();
 
 				ImGui::DragFloat3("Position", &position.x, 0.3f);
 				ImGui::DragFloat3("Rotation", &rotation.x, 0.1f);
@@ -470,7 +470,7 @@ namespace sve {
 		return g_Visible;
 	}
 
-	sv::uvec2 viewport_scene_editor_size()
+	sv::vec2u viewport_scene_editor_size()
 	{
 		return g_ViewportSize;
 	}

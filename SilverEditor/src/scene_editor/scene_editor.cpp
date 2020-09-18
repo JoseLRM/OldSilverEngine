@@ -24,9 +24,9 @@ namespace sve {
 
 		// Movement
 		if (sv::input_mouse(SV_MOUSE_CENTER)) {
-			sv::vec2 direction = sv::input_mouse_dragged_get();
-			direction *= sv::vec2(g_Camera.settings.projection.width, g_Camera.settings.projection.height) * 2.f;
-			g_Camera.position += sv::vec3(-direction.x, direction.y, 0.f);
+			sv::vec2f direction = sv::input_mouse_dragged_get();
+			direction *= sv::vec2f{ g_Camera.settings.projection.width, g_Camera.settings.projection.height } * 2.f;
+			g_Camera.position += { -direction.x, direction.y, 0.f };
 		}
 
 		// Zoom
@@ -45,7 +45,7 @@ namespace sve {
 
 	void scene_editor_camera_controller_3D(float dt)
 	{
-		sv::vec2 dragged = sv::input_mouse_dragged_get();
+		sv::vec2f dragged = sv::input_mouse_dragged_get();
 		
 		if (sv::input_mouse(SV_MOUSE_RIGHT)) {
 			
@@ -57,11 +57,11 @@ namespace sve {
 		}
 		else if (sv::input_mouse(SV_MOUSE_CENTER)) {
 
-			if (dragged.Mag() != 0.f) {
-				dragged *= sv::vec2(g_Camera.settings.projection.width, g_Camera.settings.projection.height);
+			if (dragged.length() != 0.f) {
+				dragged *= { g_Camera.settings.projection.width, g_Camera.settings.projection.height };
 				XMVECTOR lookAt = XMVectorSet(dragged.x, -dragged.y, 0.f, 0.f);
-				lookAt = XMVector3Transform(lookAt, XMMatrixRotationRollPitchYawFromVector(g_Camera.rotation));
-				g_Camera.position -= lookAt * 4000.f;
+				lookAt = XMVector3Transform(lookAt, XMMatrixRotationRollPitchYawFromVector(g_Camera.rotation.get_dx()));
+				g_Camera.position -= sv::vec3f(lookAt) * 4000.f;
 			}
 		}
 
@@ -76,9 +76,12 @@ namespace sve {
 
 		if (scroll != 0.f) {
 			XMVECTOR lookAt = XMVectorSet(0.f, 0.f, 1.f, 0.f);
-			lookAt = XMVector3Transform(lookAt, XMMatrixRotationRollPitchYawFromVector(g_Camera.rotation));
+			lookAt = XMVector3Transform(lookAt, XMMatrixRotationRollPitchYawFromVector(g_Camera.rotation.get_dx()));
 			lookAt = XMVector3Normalize(lookAt);
-			g_Camera.position += lookAt * scroll * 100.f;
+
+			sv::vec3f svlookAt = sv::vec3f(lookAt);
+			svlookAt *= scroll * 100.f;
+			g_Camera.position += svlookAt;
 		}
 
 	}
@@ -94,7 +97,7 @@ namespace sve {
 			sv::Entity camera = sv::scene_camera_get(scene);
 
 			sv::CameraComponent& mainCamera = *sv::ecs_component_get<sv::CameraComponent>(ecs, camera);
-			sv::uvec2 res = { mainCamera.offscreen.GetWidth(), mainCamera.offscreen.GetHeight() };
+			sv::vec2u res = { mainCamera.offscreen.GetWidth(), mainCamera.offscreen.GetHeight() };
 			svCheck(sv::renderer_offscreen_create(res.x, res.y, g_Camera.offscreen));
 
 			g_Camera.position = { 0.f, 0.f, -10.f };
@@ -118,7 +121,7 @@ namespace sve {
 
 		if (sv::input_mouse_released(SV_MOUSE_LEFT)) {
 			sv::ECS* ecs = sv::scene_ecs_get(simulation_scene_get());
-			sv::vec2 mouse = sv::input_mouse_position_get();
+			sv::vec2f mouse = sv::input_mouse_position_get();
 
 			bool find = false;
 
@@ -126,8 +129,8 @@ namespace sve {
 				sv::Entity entity = sv::ecs_entity_get(ecs, i);
 
 				sv::Transform trans = sv::ecs_entity_transform_get(ecs, entity);
-				sv::vec3 pos = trans.GetWorldPosition();
-				sv::vec3 size = trans.GetWorldScale() / 2.f;
+				sv::vec3f pos = trans.GetWorldPosition();
+				sv::vec3f size = trans.GetWorldScale() * 2.f;
 
 				if (abs(pos.x - mouse.x) <= size.x && abs(pos.y - mouse.y) <= size.y) {
 					find = true;
@@ -152,7 +155,7 @@ namespace sve {
 	void scene_editor_update(float dt)
 	{
 		// Adjust camera
-		sv::uvec2 size = viewport_scene_editor_size();
+		sv::vec2u size = viewport_scene_editor_size();
 		if (size.x != 0u && size.y != 0u)
 			sv::renderer_projection_aspect_set(g_Camera.settings.projection, float(size.x) / float(size.y));
 		
@@ -188,11 +191,6 @@ namespace sve {
 
 		// Draw 2D Colliders
 		{
-			static sv::Texture texTest;
-			if (!texTest.GetImage().IsValid()) {
-				texTest.CreateFromFile("assets/textures/pene.jpg");
-			}
-
 			sv::renderer_debug_batch_reset(g_Colliders2DBatch);
 
 			sv::ECS* ecs = sv::scene_ecs_get(simulation_scene_get());
@@ -204,10 +202,10 @@ namespace sve {
 			for (sv::RigidBody2DComponent& body : bodies) {
 
 				sv::Transform trans = sv::ecs_entity_transform_get(ecs, body.entity);
-				sv::vec3 position = trans.GetWorldPosition();
-				sv::vec3 scale = trans.GetWorldScale();
-				//TODO: sv::vec3 rotation = trans.GetWorldRotation();
-				sv::vec3 rotation = trans.GetLocalRotation();
+				sv::vec3f position = trans.GetWorldPosition();
+				sv::vec3f scale = trans.GetWorldScale();
+				//TODO: sv::vec3f rotation = trans.GetWorldRotation();
+				sv::vec3f rotation = trans.GetLocalRotation();
 
 				for (ui32 i = 0; i < body.collidersCount; ++i) {
 
@@ -226,7 +224,7 @@ namespace sve {
 
 						colliderPosition += offset;
 
-						sv::renderer_debug_draw_quad(g_Colliders2DBatch, colliderPosition, colliderScale, rotation, { 0u, 255u, 0u, 255u });
+						sv::renderer_debug_draw_quad(g_Colliders2DBatch, sv::vec3f(colliderPosition), sv::vec2f(colliderScale), rotation, { 0u, 255u, 0u, 255u });
 					}
 						break;
 					}
@@ -266,7 +264,7 @@ namespace sve {
 			g_Camera.settings.projection.width = 20.f;
 			g_Camera.settings.projection.height = 20.f;
 			g_Camera.position.z = 0.f;
-			g_Camera.rotation = sv::vec3();
+			g_Camera.rotation = sv::vec3f();
 			break;
 		case sve::SceneEditorMode_3D:
 			g_Camera.settings.projection.cameraType = sv::CameraType_Perspective;

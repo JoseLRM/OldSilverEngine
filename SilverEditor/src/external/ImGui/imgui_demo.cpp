@@ -653,8 +653,8 @@ static void ShowDemoWindowWidgets()
                 "You can input value using the scientific notation,\n"
                 "  e.g. \"1e+8\" becomes \"100000000\".");
 
-            static float vec4a[4] = { 0.10f, 0.20f, 0.30f, 0.44f };
-            ImGui::InputFloat3("input float3", vec4a);
+            static float vec4fa[4] = { 0.10f, 0.20f, 0.30f, 0.44f };
+            ImGui::InputFloat3("input float3", vec4fa);
         }
 
         {
@@ -1656,31 +1656,31 @@ static void ShowDemoWindowWidgets()
 
     if (ImGui::TreeNode("Multi-component Widgets"))
     {
-        static float vec4f[4] = { 0.10f, 0.20f, 0.30f, 0.44f };
-        static int vec4i[4] = { 1, 5, 100, 255 };
+        static float vec4ff[4] = { 0.10f, 0.20f, 0.30f, 0.44f };
+        static int vec4fi[4] = { 1, 5, 100, 255 };
 
-        ImGui::InputFloat2("input float2", vec4f);
-        ImGui::DragFloat2("drag float2", vec4f, 0.01f, 0.0f, 1.0f);
-        ImGui::SliderFloat2("slider float2", vec4f, 0.0f, 1.0f);
-        ImGui::InputInt2("input int2", vec4i);
-        ImGui::DragInt2("drag int2", vec4i, 1, 0, 255);
-        ImGui::SliderInt2("slider int2", vec4i, 0, 255);
+        ImGui::InputFloat2("input float2", vec4ff);
+        ImGui::DragFloat2("drag float2", vec4ff, 0.01f, 0.0f, 1.0f);
+        ImGui::SliderFloat2("slider float2", vec4ff, 0.0f, 1.0f);
+        ImGui::InputInt2("input int2", vec4fi);
+        ImGui::DragInt2("drag int2", vec4fi, 1, 0, 255);
+        ImGui::SliderInt2("slider int2", vec4fi, 0, 255);
         ImGui::Spacing();
 
-        ImGui::InputFloat3("input float3", vec4f);
-        ImGui::DragFloat3("drag float3", vec4f, 0.01f, 0.0f, 1.0f);
-        ImGui::SliderFloat3("slider float3", vec4f, 0.0f, 1.0f);
-        ImGui::InputInt3("input int3", vec4i);
-        ImGui::DragInt3("drag int3", vec4i, 1, 0, 255);
-        ImGui::SliderInt3("slider int3", vec4i, 0, 255);
+        ImGui::InputFloat3("input float3", vec4ff);
+        ImGui::DragFloat3("drag float3", vec4ff, 0.01f, 0.0f, 1.0f);
+        ImGui::SliderFloat3("slider float3", vec4ff, 0.0f, 1.0f);
+        ImGui::InputInt3("input int3", vec4fi);
+        ImGui::DragInt3("drag int3", vec4fi, 1, 0, 255);
+        ImGui::SliderInt3("slider int3", vec4fi, 0, 255);
         ImGui::Spacing();
 
-        ImGui::InputFloat4("input float4", vec4f);
-        ImGui::DragFloat4("drag float4", vec4f, 0.01f, 0.0f, 1.0f);
-        ImGui::SliderFloat4("slider float4", vec4f, 0.0f, 1.0f);
-        ImGui::InputInt4("input int4", vec4i);
-        ImGui::DragInt4("drag int4", vec4i, 1, 0, 255);
-        ImGui::SliderInt4("slider int4", vec4i, 0, 255);
+        ImGui::InputFloat4("input float4", vec4ff);
+        ImGui::DragFloat4("drag float4", vec4ff, 0.01f, 0.0f, 1.0f);
+        ImGui::SliderFloat4("slider float4", vec4ff, 0.0f, 1.0f);
+        ImGui::InputInt4("input int4", vec4fi);
+        ImGui::DragInt4("drag int4", vec4fi, 1, 0, 255);
+        ImGui::SliderInt4("slider int4", vec4fi, 0, 255);
 
         ImGui::TreePop();
     }

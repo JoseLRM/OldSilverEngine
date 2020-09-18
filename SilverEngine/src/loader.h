@@ -8,7 +8,7 @@ namespace sv {
 	// 3D Model
 
 	struct MaterialNode {
-		vec4 diffuseColor;
+		vec4f diffuseColor;
 	};
 
 	struct MeshNode {

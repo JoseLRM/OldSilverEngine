@@ -2,7 +2,50 @@
 
 namespace sv {
 
-	void math_quaternion_to_euler(sv::vec4* q, sv::vec3* e)
+	// RANDOM
+
+	// 0u - (ui32_max / 2u)
+	inline ui32 math_random_inline(ui32 seed)
+	{
+		seed = (seed << 13) ^ seed;
+		return ((seed * (seed * seed * 15731u * 789221u) + 1376312589u) & 0x7fffffffu);
+	}
+
+	ui32 math_random(ui32 seed)
+	{
+		return math_random_inline(seed);
+	}
+
+	ui32 math_random(ui32 seed, ui32 max)
+	{
+		return math_random_inline(seed) % max;
+	}
+
+	ui32 math_random(ui32 seed, ui32 min, ui32 max)
+	{
+		SV_ASSERT(min <= max);
+		return min + (math_random_inline(seed) % (max - min));
+	}
+
+	float math_randomf(ui32 seed)
+	{
+		return (float(math_random(seed)) / float(ui32_max / 2u));
+	}
+
+	float math_randomf(ui32 seed, float max)
+	{
+		return float(math_random_inline(seed) / float(ui32_max / 2u)) * max;
+	}
+
+	float math_randomf(ui32 seed, float min, float max)
+	{
+		SV_ASSERT(min <= max);
+		return min + float(math_random_inline(seed) / float(ui32_max / 2u)) * (max - min);
+	}
+
+	// QUATERNION
+
+	void math_quaternion_to_euler(sv::vec4f* q, sv::vec3f* e)
 	{
 		// roll (x-axis rotation)
 		float sinr_cosp = 2.f * (q->w * q->x + q->y * q->z);
@@ -22,14 +65,19 @@ namespace sv {
 		e->z = std::atan2(siny_cosp, cosy_cosp);
 	}
 
-	XMMATRIX math_matrix_view(vec3 position, vec3 rotation)
+	// MATRIX
+
+	XMMATRIX math_matrix_view(const vec3f& position, const vec3f& rotation)
 	{
-		XMVECTOR direction = XMVectorSet(0.f, 0.f, 1.f, 0.f);
+		XMVECTOR direction, pos, target;
+		
+		direction = XMVectorSet(0.f, 0.f, 1.f, 0.f);
+		pos = position.get_dx();
 
 		direction = XMVector3Transform(direction, XMMatrixRotationRollPitchYaw(rotation.x, rotation.y, 0.f));
 
-		const auto target = XMVECTOR(position) + direction;
-		return XMMatrixLookAtLH(position, target, XMVectorSet(0.f, 1.f, 0.f, 0.f));
+		target = XMVectorAdd(pos, direction);
+		return XMMatrixLookAtLH(pos, target, XMVectorSet(0.f, 1.f, 0.f, 0.f));
 	}
 
 }

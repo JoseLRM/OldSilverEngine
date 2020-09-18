@@ -9,7 +9,7 @@ namespace sve {
 	bool viewport_scene_editor_display();
 
 	bool viewport_scene_editor_visible();
-	sv::uvec2 viewport_scene_editor_size();
+	sv::vec2u viewport_scene_editor_size();
 	bool viewport_scene_editor_has_focus();
 
 }

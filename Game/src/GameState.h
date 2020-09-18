@@ -7,7 +7,7 @@ void System(sv::Entity entity, sv::BaseComponent** comp, float dt)
 {
 	sv::SpriteComponent& sprComp = *reinterpret_cast<sv::SpriteComponent*>(comp[0]);
 	sv::Transform trans = sv::scene_ecs_entity_get_transform(entity);
-	sv::vec3 rot = trans.GetLocalRotation();
+	sv::vec3f rot = trans.GetLocalRotation();
 
 	ui32 type = entity % 3;
 
@@ -46,14 +46,14 @@ class GameState : public sv::State {
 		sv::scene_ecs_components_add<sv::SpriteComponent>(entities, count, sprite);
 
 		sv::CameraComponent* camera = sv::scene_ecs_component_get<sv::CameraComponent>(cameraEntity);
-		sv::vec3 cameraPos = sv::scene_ecs_entity_get_transform(cameraEntity).GetWorldPosition();
+		sv::vec3f cameraPos = sv::scene_ecs_entity_get_transform(cameraEntity).GetWorldPosition();
 
 		for (ui32 i = 0; i < count; ++i) {
 			sv::Transform trans = sv::scene_ecs_entity_get_transform(entities[i]);
 			sv::SpriteComponent& sprComp = *sv::scene_ecs_component_get<sv::SpriteComponent>(entities[i]);
 
-			sv::vec3 pos;
-			sv::vec2 mousePos = sv::renderer_projection_position(camera->projection, sv::input_mouse_position_get());
+			sv::vec3f pos;
+			sv::vec2f mousePos = sv::renderer_projection_position(camera->projection, sv::input_mouse_position_get());
 			mousePos.x += cameraPos.x;
 			mousePos.y += cameraPos.y;
 			pos.x = mousePos.x;
@@ -61,11 +61,11 @@ class GameState : public sv::State {
 			//pos.x = (float(rand()) / RAND_MAX) * 800.f - 400.f;
 			//pos.y = (float(rand()) / RAND_MAX) * 400.f - 200.f;
 
-			sv::vec3 scale;
+			sv::vec3f scale;
 			scale.x = (float(rand()) / RAND_MAX) + 0.1f;
 			scale.y = (float(rand()) / RAND_MAX) + 0.1f;
 
-			sv::vec3 rot;
+			sv::vec3f rot;
 			rot.z = ToRadians((float(rand()) / RAND_MAX) * 360.f);
 
 			sprComp.color.x = ui8((float(rand()) / RAND_MAX) * 255.f);
@@ -92,14 +92,14 @@ class GameState : public sv::State {
 			sv::Transform trans = sv::scene_ecs_entity_get_transform(entities[i]);
 			sv::SpriteComponent& sprComp = *sv::scene_ecs_component_get<sv::SpriteComponent>(entities[i]);
 
-			sv::vec3 pos;
-			sv::vec3 scale;
-			sv::vec3 rot;
+			sv::vec3f pos;
+			sv::vec3f scale;
+			sv::vec3f rot;
 
 			//#define TEST0
 
 #ifdef TEST0
-			sv::vec2 mousePos = camera.GetMousePos();
+			sv::vec2f mousePos = camera.GetMousePos();
 			pos.x = mousePos.x;
 			pos.y = mousePos.y;
 
@@ -157,7 +157,7 @@ public:
 
 			sv::CameraProjection& camera = cameraComp->projection;
 
-			sv::vec2 dir;
+			sv::vec2f dir;
 			float dirZoom = 0u;
 			float add = 7.f * dt * sv::renderer_projection_zoom_get(camera) * 0.05f;
 			float addZoom = dt * 10.f * (sv::renderer_projection_zoom_get(camera) * 0.05f);
@@ -188,7 +188,7 @@ public:
 
 		{
 			sv::Transform trans = sv::scene_ecs_entity_get_transform(entity);
-			sv::vec3 rot = trans.GetLocalRotation();
+			sv::vec3f rot = trans.GetLocalRotation();
 
 			if (sv::input_key('I')) {
 				rot.x += dt * 2.f;

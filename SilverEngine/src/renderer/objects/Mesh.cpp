@@ -71,7 +71,7 @@ namespace sv {
 		SV_ASSERT(!HasValidBuffers());
 		SV_ASSERT(offset + count <= m_VertexCount);
 
-		memcpy(m_Positions.data() + offset, positions, count * sizeof(vec3));
+		memcpy(m_Positions.data() + offset, positions, count * sizeof(vec3f));
 	}
 
 	void Mesh::SetNormals(void* normals, ui32 offset, ui32 count)
@@ -79,7 +79,7 @@ namespace sv {
 		SV_ASSERT(!HasValidBuffers());
 		SV_ASSERT(offset + count <= m_VertexCount);
 
-		memcpy(m_Normals.data() + offset, normals, count * sizeof(vec3));
+		memcpy(m_Normals.data() + offset, normals, count * sizeof(vec3f));
 	}
 
 	void Mesh::SetTexCoords(void* texCoords, ui32 offset, ui32 count)
@@ -87,7 +87,7 @@ namespace sv {
 		SV_ASSERT(!HasValidBuffers());
 		SV_ASSERT(offset + count <= m_VertexCount);
 
-		memcpy(m_TexCoords.data() + offset, texCoords, count * sizeof(vec2));
+		memcpy(m_TexCoords.data() + offset, texCoords, count * sizeof(vec2f));
 	}
 
 	void Mesh::SetIndices(ui32* indices, ui32 offset, ui32 count)

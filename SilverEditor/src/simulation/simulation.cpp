@@ -66,7 +66,7 @@ namespace sve {
 			sv::ECS* ecs = sv::scene_ecs_get(g_Scene);
 			sv::CameraComponent& camera = *sv::ecs_component_get<sv::CameraComponent>(ecs, sv::scene_camera_get(g_Scene));
 
-			sv::uvec2 size = g_Gamemode ? sv::window_size_get() : viewport_simulation_size();
+			sv::vec2u size = g_Gamemode ? sv::window_size_get() : viewport_simulation_size();
 
 			camera.Adjust(size.x, size.y);
 		}

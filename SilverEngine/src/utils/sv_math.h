@@ -8,6 +8,35 @@
 
 namespace sv {
 
+	inline float math_sqrt(float n)
+	{
+		int i;
+		float x, y;
+		x = n * 0.5f;
+		y = n;
+		i = *(int*)& y;
+		i = 0x5f3759df - (i >> 1);
+		y = *(float*)& i;
+		y = y * (1.5f - (x * y * y));
+		y = y * (1.5f - (x * y * y));
+		return n * y;
+	}
+
+	template<typename T>
+	constexpr T math_gauss(T x, T sigma) noexcept
+	{
+		return ((T)1.f / math_sqrt((T)2.f * (T)PI * sigma * sigma)) * exp(-(x * x) / ((T)2.f * sigma * sigma));
+	}
+
+	// Vector Structs
+
+	template<typename T>
+	struct Vector2D;
+	template<typename T>
+	struct Vector3D;
+	template<typename T>
+	struct Vector4D;
+
 	template<typename T>
 	struct Vector2D {
 
@@ -15,10 +44,13 @@ namespace sv {
 		T y;
 
 		using vec = Vector2D<T>;
+		using vec3 = Vector3D<T>;
+		using vec4 = Vector4D<T>;
 
 		constexpr Vector2D() : x(), y() {}
 		constexpr Vector2D(T n) : x(n), y(n) {}
 		constexpr Vector2D(T x, T y) : x(x), y(y) {}
+		explicit constexpr Vector2D(const XMVECTOR& v) : x(XMVectorGetX(v)), y(XMVectorGetY(v)) {}
 
 		// sum
 		inline void operator+=(const vec& v) noexcept
@@ -101,29 +133,53 @@ namespace sv {
 		}
 
 		// methods
-		constexpr float Mag() const noexcept
+		constexpr float length() const noexcept
 		{
-			return sqrt(x * x + y * y);
+			return math_sqrt(x * x + y * y);
 		}
-		inline void Normalize() noexcept
+		inline void normalize() noexcept
 		{
-			float m = Mag();
+			float m = length();
 			x /= m;
 			y /= m;
 		}
-		inline vec VecTo(const vec& other)
+		inline vec vec_to(const vec& other)
 		{
 			return other - *this;
 		}
-		inline float DistanceTo(const vec& other)
+		inline float distance_to(const vec& other)
 		{
-			return VecTo(other).Mag();
+			return vec_to(other).length();
 		}
 
-		// directx methods
-		Vector2D(const XMVECTOR& dxVec) : x(XMVectorGetX(dxVec)), y(XMVectorGetY(dxVec)) {}
+		// setters
+		inline void set(float x, float y) noexcept
+		{
+			*this = { x, y };
+		}
+		inline void set_vec3(const vec3& v) noexcept
+		{
+			*this = { v.x, v.y };
+		}
+		inline void set_vec4(const vec4& v) noexcept
+		{
+			*this = { v.x, v.y };
+		}
+		inline void set_dx(const XMVECTOR& v) noexcept
+		{
+			*this = { XMVectorGetX(v), XMVectorGetY(v) };
+		}
 
-		inline operator XMVECTOR() const noexcept
+		// getters
+		inline vec3 get_vec3() const noexcept
+		{
+			return { x, y, 0.f };
+		}
+		inline vec4 get_vec4() const noexcept
+		{
+			return { x, y, 0.f, 0.f };
+		}
+		inline XMVECTOR get_dx() const noexcept
 		{
 			return XMVectorSet(x, y, 0.f, 0.f);
 		}
@@ -138,10 +194,13 @@ namespace sv {
 		T z;
 
 		using vec = Vector3D<T>;
+		using vec2 = Vector2D<T>;
+		using vec4 = Vector4D<T>;
 
 		constexpr Vector3D() : x(), y(), z() {}
 		constexpr Vector3D(T n) : x(n), y(n), z(n) {}
 		constexpr Vector3D(T x, T y, T z) : x(x), y(y), z(z) {}
+		explicit constexpr Vector3D(const XMVECTOR& v) : x(XMVectorGetX(v)), y(XMVectorGetY(v)), z(XMVectorGetZ(v)) {}
 
 		// sum
 		inline void operator+=(const vec& v) noexcept
@@ -232,30 +291,54 @@ namespace sv {
 		}
 
 		// methods
-		constexpr float Mag() const noexcept
+		constexpr float length() const noexcept
 		{
-			return sqrt(x * x + y * y + z * z);
+			return math_sqrt(x * x + y * y + z * z);
 		}
-		inline void Normalize() noexcept
+		inline void normalize() noexcept
 		{
-			float m = Mag();
+			float m = length();
 			x /= m;
 			y /= m;
 			z /= m;
 		}
-		inline vec VecTo(const vec& other)
+		inline vec vec_to(const vec& other)
 		{
 			return other - *this;
 		}
-		inline float DistanceTo(const vec& other)
+		inline float distance_to(const vec& other)
 		{
-			return VecTo(other).Mag();
+			return vec_to(other).length();
 		}
 
-		// directx methods
-		Vector3D(const XMVECTOR& dxVec) : x(XMVectorGetX(dxVec)), y(XMVectorGetY(dxVec)), z(XMVectorGetZ(dxVec)) {}
+		// setters
+		inline void set(float x, float y, float z) noexcept
+		{
+			*this = { x, y, z };
+		}
+		inline void set_vec2(const vec2& v) noexcept
+		{
+			*this = { v.x, v.y, z };
+		}
+		inline void set_vec4(const vec4& v) noexcept
+		{
+			*this = { v.x, v.y, v.z };
+		}
+		inline void set_dx(const XMVECTOR& v) noexcept
+		{
+			*this = { XMVectorGetX(v), XMVectorGetY(v), XMVectorGetZ(v) };
+		}
 
-		inline operator XMVECTOR() const noexcept
+		// getters
+		inline vec2 get_vec2() const noexcept
+		{
+			return { x, y };
+		}
+		inline vec4 get_vec4() const noexcept
+		{
+			return { x, y, z, 0.f };
+		}
+		inline XMVECTOR get_dx() const noexcept
 		{
 			return XMVectorSet(x, y, z, 0.f);
 		}
@@ -270,10 +353,13 @@ namespace sv {
 		T w;
 
 		using vec = Vector4D<T>;
+		using vec2 = Vector2D<T>;
+		using vec3 = Vector3D<T>;
 
 		constexpr Vector4D() : x(), y(), z(), w() {}
 		constexpr Vector4D(T n) : x(n), y(n), z(n), w(n) {}
 		constexpr Vector4D(T x, T y, T z, T w) : x(x), y(y), z(z), w(w) {}
+		explicit constexpr Vector4D(const XMVECTOR& v) : x(XMVectorGetX(v)), y(XMVectorGetY(v)), z(XMVectorGetZ(v)), w(XMVectorGetW(v)) {}
 
 		// sum
 		inline void operator+=(const vec& v) noexcept
@@ -372,87 +458,126 @@ namespace sv {
 		}
 
 		// methods
-		constexpr float Mag() const noexcept
+		constexpr float length() const noexcept
 		{
-			return sqrt(x * x + y * y + z * z + w * w);
+			return math_sqrt(x * x + y * y + z * z + w * w);
 		}
-		inline void Normalize() noexcept
+		inline void normalize() noexcept
 		{
-			float m = Mag();
+			float m = length();
 			x /= m;
 			y /= m;
 			z /= m;
 			w /= m;
 		}
-		inline vec VecTo(const vec& other)
+		inline vec vec_to(const vec& other)
 		{
 			return other - *this;
 		}
-		inline float DistanceTo(const vec& other)
+		inline float distance_to(const vec& other)
 		{
-			return VecTo(other).Mag();
+			return vec_to(other).length();
 		}
 
-		// directx methods
-		Vector4D(const XMVECTOR& dxVec) : x(XMVectorGetX(dxVec)), y(XMVectorGetY(dxVec)), z(XMVectorGetZ(dxVec)), w(XMVectorGetW(dxVec)) {}
+		// setters
+		inline void set(float x, float y, float z, float w) noexcept
+		{
+			*this = { x, y, z, w };
+		}
+		inline void set_vec2(const vec2& v) noexcept
+		{
+			*this = { v.x, v.y, z, w };
+		}
+		inline void set_vec3(const vec3& v) noexcept
+		{
+			*this = { v.x, v.y, v.z, w };
+		}
+		inline void set_dx(const XMVECTOR& v) noexcept
+		{
+			*this = { XMVectorGetX(v), XMVectorGetY(v), XMVectorGetZ(v), XMVectorGetW(v) };
+		}
 
-		inline operator XMVECTOR() const noexcept
+		// getters
+		inline vec2 get_vec2() const noexcept
+		{
+			return { x, y };
+		}
+		inline vec3 get_vec3() const noexcept
+		{
+			return { x, y, z };
+		}
+		inline XMVECTOR get_dx() const noexcept
 		{
 			return XMVectorSet(x, y, z, w);
 		}
 	};
 
-	typedef Vector2D<float>  vec2;
-	typedef Vector2D<i32>	 ivec2;
-	typedef Vector2D<ui32>	 uvec2;
+	typedef Vector2D<float> vec2f;
+	typedef Vector3D<float> vec3f;
+	typedef Vector4D<float> vec4f;
 
-	typedef Vector3D<float>  vec3;
-	typedef Vector3D<i32>	 ivec3;
-	typedef Vector3D<ui32>	 uvec3;
+	typedef Vector2D<ui32> vec2u;
+	typedef Vector3D<ui32> vec3u;
+	typedef Vector4D<ui32> vec4u;
 
-	typedef Vector4D<float>  vec4;
-	typedef Vector4D<i32>	 ivec4;
-	typedef Vector4D<ui32>	 uvec4;
+	typedef Vector2D<i32> vec2i;
+	typedef Vector3D<i32> vec3i;
+	typedef Vector4D<i32> vec4i;
 
-	typedef Vector4D<ui8>	Color;
-	typedef Vector3D<float>	Color3f;
-	typedef Vector4D<float>	Color4f;
+	// Color
+
+	struct Color {
+		ui8 r, g, b, a;
+
+		constexpr static Color Red()		{ return { 255u	, 0u	, 0u	, 255u }; }
+		constexpr static Color Green()		{ return { 0u	, 255u	, 0u	, 255u }; }
+		constexpr static Color Blue()		{ return { 0u	, 0u	, 255u	, 255u }; }
+		constexpr static Color Black()		{ return { 0u	, 0u	, 0u	, 255u }; }
+		constexpr static Color Gray(ui8 v)	{ return { v	, v		, v		, 255u }; }
+		constexpr static Color White()		{ return { 255u	, 255u	, 255u	, 255u }; }
+
+	};
+
+	struct Color4f {
+		float r, g, b, a;
+
+		constexpr static Color4f Red()			{ return { 1.f	, 0.f	, 0.f	, 1.f }; }
+		constexpr static Color4f Green()		{ return { 0.f	, 1.f	, 0.f	, 1.f }; }
+		constexpr static Color4f Blue()			{ return { 0.f	, 0.f	, 1.f	, 1.f }; }
+		constexpr static Color4f Black()		{ return { 0.f	, 0.f	, 0.f	, 1.f }; }
+		constexpr static Color4f Gray(float v)	{ return { v	, v		, v		, 1.f }; }
+		constexpr static Color4f White()		{ return { 1.f	, 1.f	, 1.f	, 1.f }; }
+
+	};
+
+	struct Color3f {
+		float r, g, b;
+
+		constexpr static Color3f Red()			{ return { 1.f	, 0.f	, 0.f }; }
+		constexpr static Color3f Green()		{ return { 0.f	, 1.f	, 0.f }; }
+		constexpr static Color3f Blue()			{ return { 0.f	, 0.f	, 1.f }; }
+		constexpr static Color3f Black()		{ return { 0.f	, 0.f	, 0.f }; }
+		constexpr static Color3f Gray(float v)	{ return { v	, v		, v	 }; }
+		constexpr static Color3f White()		{ return { 1.f	, 1.f	, 1.f }; }
+
+	};
+
+	// Random
+
+	ui32 math_random(ui32 seed);
+	ui32 math_random(ui32 seed, ui32 max);
+	ui32 math_random(ui32 seed, ui32 min, ui32 max);
+
+	float math_randomf(ui32 seed);
+	float math_randomf(ui32 seed, float max);
+	float math_randomf(ui32 seed, float min, float max);
+
+	// Quaternion
+
+	void math_quaternion_to_euler(vec4f* q, vec3f* e);
+	
+	// Matrix
+
+	XMMATRIX math_matrix_view(const vec3f& position, const vec3f& rotation);
 
 }
-
-namespace sv {
-
-	void math_quaternion_to_euler(sv::vec4* q, sv::vec3* e);
-	XMMATRIX math_matrix_view(vec3 position, vec3 rotation);
-
-	template<typename T>
-	constexpr T math_gauss(T x, T sigma) noexcept
-	{
-		return ((T)1.f / sqrt((T)2.f * (T)PI * sigma * sigma)) * exp(-(x * x) / ((T)2.f * sigma * sigma));
-	}
-
-	constexpr float math_color_byte_to_float(ui8 c) { return float(c) / 255.f; }
-	constexpr ui8 math_color_float_to_byte(float c) { return ui8(c * 255.f); }
-
-}
-
-#define SV_COLOR_GRAY(x)	sv::Color(x   , x   , x   , 255u)
-#define SV_COLOR_RED		sv::Color(255u, 0u  , 0u  , 255u)
-#define SV_COLOR_GREEN		sv::Color(0u  , 255u, 0u  , 255u)
-#define SV_COLOR_BLUE		sv::Color(0u  , 0u  , 255u, 255u)
-#define SV_COLOR_BLACK		sv::Color(0u  , 0u  , 0u  , 255u)
-#define SV_COLOR_WHITE		sv::Color(255u, 255u, 255u, 255u)
-
-#define SV_COLOR3F_GRAY(x)	sv::Color3f(x  , x  , x  )
-#define SV_COLOR3F_RED		sv::Color3f(1.f, 0.f, 0.f)
-#define SV_COLOR3F_GREEN	sv::Color3f(0.f, 1.f, 0.f)
-#define SV_COLOR3F_BLUE		sv::Color3f(0.f, 0.f, 1.f)
-#define SV_COLOR3F_BLACK	sv::Color3f(0.f, 0.f, 0.f)
-#define SV_COLOR3F_WHITE	sv::Color3f(1.f, 1.f, 1.f)
-
-#define SV_COLOR4F_GRAY(x)	sv::Color4f(x  , x  , x  , 1.f)
-#define SV_COLOR4F_RED		sv::Color4f(1.f, 0.f, 0.f, 1.f)
-#define SV_COLOR4F_GREEN	sv::Color4f(0.f, 1.f, 0.f, 1.f)
-#define SV_COLOR4F_BLUE		sv::Color4f(0.f, 0.f, 1.f, 1.f)
-#define SV_COLOR4F_BLACK	sv::Color4f(0.f, 0.f, 0.f, 1.f)
-#define SV_COLOR4F_WHITE	sv::Color4f(1.f, 1.f, 1.f, 1.f)

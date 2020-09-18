@@ -23,7 +23,7 @@ namespace sv {
 
 	struct Sprite {
 		sv::SharedRef<TextureAsset>	texture;
-		vec4						texCoord = { 0.f, 0.f, 1.f, 1.f };
+		vec4f						texCoord = { 0.f, 0.f, 1.f, 1.f };
 	};
 
 	struct CameraSettings {
@@ -38,7 +38,7 @@ namespace sv {
 namespace sv {
 
 	struct SceneDesc {
-		vec3		gravity;
+		vec3f		gravity;
 	};
 
 	typedef void Scene;
@@ -46,8 +46,8 @@ namespace sv {
 	struct CameraDrawDesc {
 		Offscreen*				pOffscreen;
 		const CameraSettings*	pSettings;
-		vec3					position;
-		vec3					rotation;
+		vec3f					position;
+		vec3f					rotation;
 	};
 
 	// Main functions

@@ -1708,7 +1708,7 @@ size_t Compiler::get_declared_struct_member_size(const SPIRType &struct_type, ui
 		{
 			uint32_t matrix_stride = type_struct_member_matrix_stride(struct_type, index);
 
-			// Per SPIR-V spec, matrices must be tightly packed and aligned up for vec3 accesses.
+			// Per SPIR-V spec, matrices must be tightly packed and aligned up for vec3f accesses.
 			if (flags.get(DecorationRowMajor))
 				return matrix_stride * vecsize;
 			else if (flags.get(DecorationColMajor))

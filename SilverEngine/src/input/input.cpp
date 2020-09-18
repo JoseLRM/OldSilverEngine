@@ -12,9 +12,9 @@ namespace sv {
 	static bool g_MousePressed[3];
 	static bool g_MouseReleased[3];
 	
-	static vec2 g_Pos;
-	static vec2 g_RPos;
-	static vec2 g_Dragged;
+	static vec2f g_Pos;
+	static vec2f g_RPos;
+	static vec2f g_Dragged;
 	
 	static bool g_CloseRequest = false;
 
@@ -94,15 +94,15 @@ namespace sv {
 		return g_MouseReleased[id];
 	}
 
-	vec2 input_mouse_position_get()
+	vec2f input_mouse_position_get()
 	{
 		return g_Pos;
 	}
-	vec2 input_mouse_position_get_last()
+	vec2f input_mouse_position_get_last()
 	{
 		return g_RPos;
 	}
-	vec2 input_mouse_dragged_get()
+	vec2f input_mouse_dragged_get()
 	{
 		//return g_Dragged;
 		//TEMP:

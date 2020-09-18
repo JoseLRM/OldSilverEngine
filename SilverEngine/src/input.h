@@ -112,9 +112,9 @@ namespace sv {
 	bool input_mouse_pressed(ui8 id);
 	bool input_mouse_released(ui8 id);
 
-	vec2 input_mouse_position_get();
-	vec2 input_mouse_position_get_last();
-	vec2 input_mouse_dragged_get();
+	vec2f input_mouse_position_get();
+	vec2f input_mouse_position_get_last();
+	vec2f input_mouse_dragged_get();
 
 	void engine_request_close() noexcept;
 

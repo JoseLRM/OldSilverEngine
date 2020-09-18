@@ -5,7 +5,7 @@
 namespace sv {
 
 	struct MaterialData {
-		vec4 diffuseColor;
+		vec4f diffuseColor;
 	};
 
 	class Material {

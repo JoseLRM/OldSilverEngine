@@ -112,10 +112,11 @@ namespace sv {
 
 					Transform trans = ecs_entity_transform_get(scene.ecs, light.entity);
 
-					vec3 pos = trans.GetWorldPosition();
-					vec3 dir; // TODO: Light Direction
+					vec3f pos = trans.GetWorldPosition();
+					vec3f dir; // TODO: Light Direction
 
-					pos = XMVector3Transform(pos, viewMatrix);
+					XMVECTOR posDX = pos.get_dx();
+					pos = vec3f(XMVector3Transform(posDX, viewMatrix));
 
 					lightsInstances.emplace_back(light.lightType, pos, dir, light.intensity, light.range, light.smoothness, light.color);
 

@@ -20,7 +20,7 @@ namespace sv {
 
 	struct InitializationWindowDesc
 	{
-		uvec4			bounds;
+		vec4u			bounds;
 		const wchar*	title;
 		WindowStyle		style;
 		const wchar*	iconFilePath;
@@ -28,13 +28,13 @@ namespace sv {
 
 	WindowHandle window_handle_get() noexcept;
 
-	uvec4	window_bounds_get();
-	uvec2	window_position_get();
-	uvec2	window_size_get();
+	vec4u	window_bounds_get();
+	vec2u	window_position_get();
+	vec2u	window_size_get();
 	float	window_aspect_get();
-	void	window_bounds_set(const uvec4& bounds);
-	void	window_position_set(const uvec2& position);
-	void	window_size_set(const uvec2& size);
+	void	window_bounds_set(const vec4u& bounds);
+	void	window_position_set(const vec2u& position);
+	void	window_size_set(const vec2u& size);
 	void	window_aspect_set(float aspect);
 
 	Result			window_title_set(const wchar* title);
@@ -46,7 +46,7 @@ namespace sv {
 	WindowStyleFlags	window_style_get();
 	void				window_style_set(WindowStyleFlags style);
 	
-	uvec2 window_desktop_size();
+	vec2u window_desktop_size();
 
 #ifdef SV_PLATFORM_WINDOWS
 	typedef ui64(*WindowProc)(WindowHandle, ui32, ui64, i64);

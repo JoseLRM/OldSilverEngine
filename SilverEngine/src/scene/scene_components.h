@@ -19,7 +19,7 @@ namespace sv {
 	struct SpriteComponent : public Component<SpriteComponent> {
 
 		Sprite sprite;
-		Color color = SV_COLOR_WHITE;
+		Color color = Color::White();
 
 		SpriteComponent() {}
 		SpriteComponent(Color col) : color(col) {}
@@ -51,7 +51,7 @@ namespace sv {
 		
 		Collider2DType type = Collider2DType_Null;
 		void* pInternal = nullptr;
-		vec2 offset;
+		vec2f offset;
 		float density = 10.f;
 		float friction = 0.3f;
 		float restitution = 0.3f;
@@ -60,7 +60,7 @@ namespace sv {
 			// BOX 2D COLLIDER
 			struct {
 
-				vec2 size;
+				vec2f size;
 				float angularOffset;
 				
 			} box;
@@ -83,7 +83,7 @@ namespace sv {
 		void* pInternal = nullptr;
 		bool dynamic = true;
 		bool fixedRotation = false;
-		vec2 velocity;
+		vec2f velocity;
 		float angularVelocity = 0.f;
 
 		Collider2D colliders[8];
@@ -112,7 +112,7 @@ namespace sv {
 		float		intensity	= 1.f;
 		float		range		= 5.f;
 		float		smoothness	= 0.8f;
-		Color3f		color		= SV_COLOR3F_WHITE;
+		Color3f		color		= Color3f::White();
 
 	};
 

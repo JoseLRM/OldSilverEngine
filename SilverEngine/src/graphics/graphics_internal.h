@@ -154,7 +154,7 @@ namespace sv {
 
 		RenderPass_internal*			renderPass;
 		GPUImage_internal*				attachments[SV_GFX_ATTACHMENTS_COUNT];
-		sv::vec4						clearColors[SV_GFX_ATTACHMENTS_COUNT];
+		sv::vec4f						clearColors[SV_GFX_ATTACHMENTS_COUNT];
 		std::pair<float, ui32>			clearDepthStencil;
 
 		GraphicsPipelineStateFlags		flags;

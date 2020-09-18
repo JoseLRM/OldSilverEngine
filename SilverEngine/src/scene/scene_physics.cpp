@@ -53,7 +53,7 @@ namespace sv {
 				if (body.collidersCount > 0u && body.colliders[body.collidersCount - 1u].pInternal == nullptr) {
 
 					Transform trans = ecs_entity_transform_get(scene.ecs, body.entity);
-					vec3 worldScale = trans.GetWorldScale();
+					vec3f worldScale = trans.GetWorldScale();
 					Collider2D* end = body.colliders - 1u;
 					Collider2D* it = end + body.collidersCount;
 					while (it != end) {
@@ -72,7 +72,9 @@ namespace sv {
 							{
 							case Collider2DType_Box:
 							{
-								vec2 scale = (vec2(worldScale.x, worldScale.y) * it->box.size) / 2.f;
+								vec2f scale = worldScale.get_vec2();
+								scale *= it->box.size / 2.f;
+
 								pShape.SetAsBox(scale.x, scale.y, { it->offset.x, it->offset.y }, it->box.angularOffset);
 								def.shape = &pShape;
 							}
@@ -104,10 +106,10 @@ namespace sv {
 
 				Transform trans = ecs_entity_transform_get(scene.ecs, body.entity);
 
-				vec3 position = trans.GetWorldPosition();
-				//TODO: vec3 rotation	= trans.GetWorldRotation();
-				const vec3& rotation = trans.GetLocalRotation();
-				vec3 worldScale = trans.GetWorldScale();
+				vec3f position = trans.GetWorldPosition();
+				//TODO: vec3f rotation	= trans.GetWorldRotation();
+				const vec3f& rotation = trans.GetLocalRotation();
+				vec3f worldScale = trans.GetWorldScale();
 
 				// Update fixtures
 				{
@@ -127,7 +129,8 @@ namespace sv {
 
 						case Collider2DType_Box:
 						{
-							vec2 scale = (vec2(worldScale.x, worldScale.y) * it->box.size) / 2.f;
+							vec2f scale = worldScale.get_vec2();
+							scale *= it->box.size / 2.f;
 
 							b2PolygonShape* shape = reinterpret_cast<b2PolygonShape*>(fixture->GetShape());
 							shape->SetAsBox(scale.x, scale.y, { it->offset.x, it->offset.y }, it->box.angularOffset);

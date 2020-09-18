@@ -6,12 +6,12 @@ namespace sv {
 
 	struct SpriteInstance {
 		XMMATRIX tm;
-		vec4 texCoord;
+		vec4f texCoord;
 		Texture* pTexture;
 		Color color;
 
 		SpriteInstance() = default;
-		SpriteInstance(const XMMATRIX& m, const vec4& texCoord, Texture* pTex, sv::Color color) : tm(m), texCoord(texCoord), pTexture(pTex), color(color) {}
+		SpriteInstance(const XMMATRIX& m, const vec4f& texCoord, Texture* pTex, sv::Color color) : tm(m), texCoord(texCoord), pTexture(pTex), color(color) {}
 	};
 
 	struct SpriteRenderingDesc {

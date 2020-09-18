@@ -5124,7 +5124,7 @@ void CompilerHLSL::emit_instruction(const Instruction &instruction)
 		else
 		{
 			imgexpr = join(to_expression(ops[2]), "[", to_expression(ops[3]), "]");
-			// The underlying image type in HLSL depends on the image format, unlike GLSL, where all images are "vec4",
+			// The underlying image type in HLSL depends on the image format, unlike GLSL, where all images are "vec4f",
 			// except that the underlying type changes how the data is interpreted.
 
 			bool force_srv =
@@ -5161,7 +5161,7 @@ void CompilerHLSL::emit_instruction(const Instruction &instruction)
 	{
 		auto *var = maybe_get_backing_variable(ops[0]);
 
-		// The underlying image type in HLSL depends on the image format, unlike GLSL, where all images are "vec4",
+		// The underlying image type in HLSL depends on the image format, unlike GLSL, where all images are "vec4f",
 		// except that the underlying type changes how the data is interpreted.
 		auto value_expr = to_expression(ops[2]);
 		if (var)

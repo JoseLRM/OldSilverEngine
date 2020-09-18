@@ -12,7 +12,7 @@ namespace sv {
 	{
 		// Create Common Buffers
 		{
-			vec2 vertices[] = {
+			vec2f vertices[] = {
 				{-1.f, -1.f},
 				{ 1.f, -1.f},
 				{-1.f,  1.f},
@@ -23,7 +23,7 @@ namespace sv {
 			desc.bufferType = GPUBufferType_Vertex;
 			desc.CPUAccess = CPUAccess_None;
 			desc.pData = vertices;
-			desc.size = 4 * sizeof(vec2);
+			desc.size = 4 * sizeof(vec2f);
 			desc.usage = ResourceUsage_Static;
 
 			svCheck(graphics_buffer_create(&desc, g_VertexBuffer));

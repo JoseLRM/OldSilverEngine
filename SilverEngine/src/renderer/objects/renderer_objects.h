@@ -15,16 +15,16 @@ namespace sv {
 
 	struct alignas(16) LightInstance {
 		LightType	lightType;
-		vec3		position;
-		vec3		direction;
+		vec3f		position;
+		vec3f		direction;
 		float		intensity;
 		float		range;
 		Color3f		color;
 		float		smoothness;
-		vec3		padding;
+		vec3f		padding;
 
 		LightInstance() = default;
-		LightInstance(LightType type, const vec3 & position, const vec3 & direction, float intensity, float range, float smoothness, const Color3f & color)
+		LightInstance(LightType type, const vec3f & position, const vec3f & direction, float intensity, float range, float smoothness, const Color3f & color)
 			: lightType(type), position(position), direction(direction), intensity(intensity), range(range), smoothness(smoothness), color(color) {}
 	};
 

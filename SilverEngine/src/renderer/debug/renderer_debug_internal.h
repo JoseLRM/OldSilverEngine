@@ -15,11 +15,11 @@ namespace sv {
 	};
 
 	struct RendererDebugLine {
-		vec3 point0;
-		vec3 point1;
+		vec3f point0;
+		vec3f point1;
 		Color color;
 
-		RendererDebugLine(const vec3& p0, const vec3& p1, Color color) : point0(p0), point1(p1), color(color) {}
+		RendererDebugLine(const vec3f& p0, const vec3f& p1, Color color) : point0(p0), point1(p1), color(color) {}
 	};
 
 	struct RendererDebugDraw {
@@ -32,13 +32,13 @@ namespace sv {
 			struct {
 				GPUImage* pImage;
 				Sampler* pSampler;
-				vec4 texCoord;
+				vec4f texCoord;
 			};
 		};
 
 		RendererDebugDraw() {}
 		RendererDebugDraw(ui32 list, ui32 index, float lineWidth = 1.f) : list(list), index(index), count(1u), lineWidth(lineWidth) {}
-		RendererDebugDraw(ui32 list, ui32 index, GPUImage& image, Sampler* sampler, const vec4& texCoord) 
+		RendererDebugDraw(ui32 list, ui32 index, GPUImage& image, Sampler* sampler, const vec4f& texCoord) 
 			: list(list), index(index), count(1u), pImage(&image), pSampler(sampler), texCoord(texCoord) {}
 	};
 
@@ -53,7 +53,7 @@ namespace sv {
 		float lineWidth = 1.f;
 		float stroke = 1.f;
 
-		vec4 texCoord = { 0.f, 0.f, 1.f, 1.f };
+		vec4f texCoord = { 0.f, 0.f, 1.f, 1.f };
 		Sampler* pSampler = nullptr;
 		bool sameSprite = false;
 
