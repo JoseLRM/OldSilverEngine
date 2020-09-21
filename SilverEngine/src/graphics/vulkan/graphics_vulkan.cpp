@@ -860,7 +860,7 @@ namespace sv {
 				writeDesc[writeCount].descriptorCount = 1u;
 				writeDesc[writeCount].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
 
-				Sampler_vk& sampler = *reinterpret_cast<Sampler_vk*>(state.sampers[shaderType][binding.userBinding]);
+				Sampler_vk& sampler = *reinterpret_cast<Sampler_vk*>(state.samplers[shaderType][binding.userBinding]);
 				writeDesc[writeCount].pImageInfo = &sampler.image_info;
 				writeDesc[writeCount].pBufferInfo = nullptr;
 				writeDesc[writeCount].pTexelBufferView = nullptr;

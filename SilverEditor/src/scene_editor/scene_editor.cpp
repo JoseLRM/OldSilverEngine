@@ -14,8 +14,6 @@ namespace sve {
 
 	static sv::RendererDebugBatch* g_Colliders2DBatch;
 
-	static sv::Entity g_SelectedEntity;
-
 	// CAMERA CONTROLLERS
 
 	void scene_editor_camera_controller_2D(float dt)
@@ -118,33 +116,6 @@ namespace sve {
 	void scene_editor_update_mode2D(float dt)
 	{
 		scene_editor_camera_controller_2D(dt);
-
-		if (sv::input_mouse_released(SV_MOUSE_LEFT)) {
-			sv::ECS* ecs = sv::scene_ecs_get(simulation_scene_get());
-			sv::vec2f mouse = sv::input_mouse_position_get();
-
-			bool find = false;
-
-			for (ui32 i = 0; i < sv::ecs_entity_count(ecs); ++i) {
-				sv::Entity entity = sv::ecs_entity_get(ecs, i);
-
-				sv::Transform trans = sv::ecs_entity_transform_get(ecs, entity);
-				sv::vec3f pos = trans.GetWorldPosition();
-				sv::vec3f size = trans.GetWorldScale() * 2.f;
-
-				if (abs(pos.x - mouse.x) <= size.x && abs(pos.y - mouse.y) <= size.y) {
-					find = true;
-
-					if (g_SelectedEntity != entity) {
-						g_SelectedEntity = entity;
-						sv::log("Selected: %u", entity);
-						break;
-					}
-				}
-			}
-
-			if (!find) g_SelectedEntity = SV_ENTITY_NULL;
-		}
 	}
 
 	void scene_editor_update_mode3D(float dt)

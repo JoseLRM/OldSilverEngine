@@ -405,7 +405,6 @@ namespace sv {
 
 	struct RasterizerStateDesc {
 		bool				wireframe;
-		float				lineWidth;
 		RasterizerCullMode	cullMode;
 		bool				clockwise;
 	};
@@ -438,6 +437,7 @@ namespace sv {
 		DepthStencilState*		pDepthStencilState;
 		GraphicsTopology		topology;
 		ui32					stencilRef;
+		float					lineWidth;
 	};
 
 	// Format functions
@@ -606,6 +606,8 @@ namespace sv {
 
 	Result graphics_destroy(Primitive& primitive);
 
+	// CommandList functions
+
 	CommandList graphics_commandlist_begin();
 	CommandList graphics_commandlist_last();
 	CommandList graphics_commandlist_get();
@@ -613,32 +615,78 @@ namespace sv {
 
 	void graphics_gpu_wait();
 
-	// State Methods
+	// Resource functions
 
-	void graphics_state_reset(CommandList cmd);
+	void graphics_resources_unbind(CommandList cmd);
 
-	void graphics_vertexbuffer_bind(GPUBuffer** buffers, ui32* offsets, ui32* strides, ui32 count, CommandList cmd);
+	void graphics_vertexbuffer_bind(GPUBuffer** buffers, ui32* offsets, ui32 count, ui32 beginSlot, CommandList cmd);
+	void graphics_vertexbuffer_bind(GPUBuffer& buffer, ui32 offset, ui32 slot, CommandList cmd);
+	void graphics_vertexbuffer_unbind(ui32 slot, CommandList cmd);
+	void graphics_vertexbuffer_unbind(CommandList cmd);
+	
 	void graphics_indexbuffer_bind(GPUBuffer& buffer, ui32 offset, CommandList cmd);
-	void graphics_constantbuffer_bind(GPUBuffer** buffers, ui32 count, ShaderType shaderType, CommandList cmd);
+	void graphics_indexbuffer_unbind(CommandList cmd);
+
+	void graphics_constantbuffer_bind(GPUBuffer** buffers, ui32 count, ui32 beginSlot, ShaderType shaderType, CommandList cmd);
+	void graphics_constantbuffer_bind(GPUBuffer& buffer, ui32 slot, ShaderType shaderType, CommandList cmd);
+	void graphics_constantbuffer_unbind(ui32 slot, ShaderType shaderType, CommandList cmd);
+	void graphics_constantbuffer_unbind(ShaderType shaderType, CommandList cmd);
+	void graphics_constantbuffer_unbind(CommandList cmd);
+
+	void graphics_image_bind(GPUImage** images, ui32 count, ui32 beginSlot, ShaderType shaderType, CommandList cmd);
+	void graphics_image_bind(GPUImage& image, ui32 slot, ShaderType shaderType, CommandList cmd);
+	void graphics_image_unbind(ui32 slot, ShaderType shaderType, CommandList cmd);
+	void graphics_image_unbind(ShaderType shaderType, CommandList cmd);
+	void graphics_image_unbind(CommandList cmd);
+
+	void graphics_sampler_bind(Sampler** samplers, ui32 count, ui32 beginSlot, ShaderType shaderType, CommandList cmd);
+	void graphics_sampler_bind(Sampler& sampler, ui32 slot, ShaderType shaderType, CommandList cmd);
+	void graphics_sampler_unbind(ui32 slot, ShaderType shaderType, CommandList cmd);
+	void graphics_sampler_unbind(ShaderType shaderType, CommandList cmd);
+	void graphics_sampler_unbind(CommandList cmd);
+
+	// State functions
+
+	void graphics_state_unbind(CommandList cmd);
+
 	void graphics_shader_bind(Shader& shader, CommandList cmd);
-	void graphics_image_bind(GPUImage** images, ui32 count, ShaderType shaderType, CommandList cmd);
-	void graphics_sampler_bind(Sampler** samplers, ui32 count, ShaderType shaderType, CommandList cmd);
 	void graphics_inputlayoutstate_bind(InputLayoutState& inputLayoutState, CommandList cmd);
 	void graphics_blendstate_bind(BlendState& blendState, CommandList cmd);
 	void graphics_depthstencilstate_bind(DepthStencilState& depthStencilState, CommandList cmd);
 	void graphics_rasterizerstate_bind(RasterizerState& rasterizerState, CommandList cmd);
 
+	void graphics_shader_unbind(CommandList cmd);
+	void graphics_inputlayoutstate_unbind(CommandList cmd);
+	void graphics_blendstate_unbind(CommandList cmd);
+	void graphics_depthstencilstate_unbind(CommandList cmd);
+	void graphics_rasterizerstate_unbind(CommandList cmd);
+
+	void graphics_mode_set(GraphicsPipelineMode mode, CommandList cmd);
+	void graphics_topology_set(GraphicsTopology topology, CommandList cmd);
+	void graphics_stencil_reference_set(ui32 ref, CommandList cmd);
+	void graphics_line_width_set(float lineWidth, CommandList cmd);
+
+	GraphicsPipelineMode	graphics_mode_get(CommandList cmd);
+	GraphicsTopology		graphics_topology_get(CommandList cmd);
+	ui32					graphics_stencil_reference_get(CommandList cmd);
+	float					graphics_line_width_get(CommandList cmd);
+
 	void graphics_pipeline_bind(GraphicsPipeline& pipeline, CommandList cmd);
+
+	void graphics_viewport_set(const Viewport* viewports, ui32 count, CommandList cmd);
+	void graphics_viewport_set(const Viewport& viewport, ui32 slot, CommandList cmd);
+	void graphics_viewport_set(const GPUImage& image, ui32 slot, CommandList cmd);
+	void graphics_scissor_set(const Scissor* scissors, ui32 count, CommandList cmd);
+	void graphics_scissor_set(const Scissor& scissor, ui32 slot, CommandList cmd);
+	void graphics_scissor_set(const GPUImage& image, ui32 slot, CommandList cmd);
+
+	Viewport graphics_viewport_get(ui32 slot, CommandList cmd);
+	Scissor	 graphics_scissor_get(ui32 slot, CommandList cmd);
+
+	// RenderPass functions
 
 	void graphics_renderpass_begin(RenderPass& renderPass, GPUImage** attachments, const Color4f* colors, float depth, ui32 stencil, CommandList cmd);
 	void graphics_renderpass_end(CommandList cmd);
-
-	void graphics_set_pipeline_mode(GraphicsPipelineMode mode, CommandList cmd);
-	void graphics_set_viewports(const Viewport* viewports, ui32 count, CommandList cmd);
-	void graphics_set_scissors(const Scissor* scissors, ui32 count, CommandList cmd);
-	void graphics_set_topology(GraphicsTopology topology, CommandList cmd);
-	void graphics_set_stencil_reference(ui32 ref, CommandList cmd);
-	void graphics_set_line_width(float lineWidth, CommandList cmd);
 
 	// Draw Calls
 

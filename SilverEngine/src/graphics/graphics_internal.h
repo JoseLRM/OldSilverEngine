@@ -120,7 +120,6 @@ namespace sv {
 	struct GraphicsState {
 		GPUBuffer_internal*				vertexBuffers[SV_GFX_VERTEX_BUFFER_COUNT];
 		ui32							vertexBufferOffsets[SV_GFX_VERTEX_BUFFER_COUNT];
-		ui32							vertexBufferStrides[SV_GFX_VERTEX_BUFFER_COUNT];
 		ui32							vertexBuffersCount;
 
 		GPUBuffer_internal*				indexBuffer;
@@ -132,7 +131,7 @@ namespace sv {
 		GPUImage_internal*				images[ShaderType_GraphicsCount][SV_GFX_IMAGE_COUNT];
 		ui32							imagesCount[ShaderType_GraphicsCount];
 
-		Sampler_internal*				sampers[ShaderType_GraphicsCount][SV_GFX_SAMPLER_COUNT];
+		Sampler_internal*				samplers[ShaderType_GraphicsCount][SV_GFX_SAMPLER_COUNT];
 		ui32							samplersCount[ShaderType_GraphicsCount];
 
 		Shader_internal*				vertexShader;

@@ -180,7 +180,7 @@ namespace sv {
 				rasterizerStateInfo.depthBiasConstantFactor = 0;
 				rasterizerStateInfo.depthBiasClamp = 0;
 				rasterizerStateInfo.depthBiasSlopeFactor = 0;
-				rasterizerStateInfo.lineWidth = rDesc.lineWidth;
+				rasterizerStateInfo.lineWidth = 1.f;
 			}
 
 			// Blend State

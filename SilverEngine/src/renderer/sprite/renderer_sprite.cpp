@@ -182,31 +182,22 @@ namespace sv {
 
 	void RenderSpriteBatch(ui32 offset, ui32 size, Texture* texture, CommandList cmd)
 	{
-		GPUBuffer* vBuffers[] = {
-			&g_SpriteVertexBuffer,
-		};
-		ui32 offsets[] = {
-			0u,
-		};
-		ui32 strides[] = {
-			size * 4u * sizeof(SpriteVertex),
-		};
-		GPUImage* images[1];
-		Sampler* samplers[1];
+		GPUImage* img;
+		Sampler* sam;
 
 		if (texture) {
-			images[0] = &texture->GetImage();
-			samplers[0] = &texture->GetSampler();
+			img = &texture->GetImage();
+			sam = &texture->GetSampler();
 		}
 		else {
-			images[0] = &g_SpriteWhiteTexture;
-			samplers[0] = &g_SpriteDefSampler;
+			img = &g_SpriteWhiteTexture;
+			sam = &g_SpriteDefSampler;
 		}
 
-		graphics_vertexbuffer_bind(vBuffers, offsets, strides, 1u, cmd);
+		graphics_vertexbuffer_bind(g_SpriteVertexBuffer, 0u, 0u, cmd);
 
-		graphics_image_bind(images, 1u, ShaderType_Pixel, cmd);
-		graphics_sampler_bind(samplers, 1u, ShaderType_Pixel, cmd);
+		graphics_image_bind(*img, 0u, ShaderType_Pixel, cmd);
+		graphics_sampler_bind(*sam, 0u, ShaderType_Pixel, cmd);
 
 		graphics_draw_indexed(size * 6u, 1u, offset * 6u, 0u, 0u, cmd);
 

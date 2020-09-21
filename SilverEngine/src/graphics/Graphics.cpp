@@ -63,7 +63,6 @@ namespace sv {
 		{
 			RasterizerStateDesc desc;
 			desc.wireframe = false;
-			desc.lineWidth = 1.f;
 			desc.cullMode = RasterizerCullMode_None;
 			desc.clockwise = true;
 			svCheck(graphics_rasterizerstate_create(&desc, g_DefRasterizerState));
@@ -226,7 +225,6 @@ namespace sv {
 		size_t hash = 0u;
 		sv::utils_hash_combine(hash, desc.clockwise ? 1u : 0u);
 		sv::utils_hash_combine(hash, desc.cullMode);
-		sv::utils_hash_combine(hash, ui64(double(desc.lineWidth) * 10000.0));
 		sv::utils_hash_combine(hash, desc.wireframe ? 1u : 0u);
 
 		return hash;
@@ -474,56 +472,381 @@ namespace sv {
 		g_Device->WaitGPU();
 	}
 
-	void graphics_state_reset(CommandList cmd)
+	/////////////////////////////////////// RESOURCES ////////////////////////////////////////////////////////////
+
+	constexpr GraphicsPipelineState graphics_pipelinestateflags_constantbuffer(ShaderType shaderType)
 	{
-		if (g_PipelineState.graphics[cmd].renderPass) graphics_renderpass_end(cmd);
-		g_PipelineState.graphics[cmd] = g_DefGraphicsState;
+		switch (shaderType)
+		{
+		case ShaderType_Vertex:
+			return GraphicsPipelineState_ConstantBuffer_VS;
+		case ShaderType_Pixel:
+			return GraphicsPipelineState_ConstantBuffer_PS;
+		case ShaderType_Geometry:
+			return GraphicsPipelineState_ConstantBuffer_GS;
+		case ShaderType_Hull:
+			return GraphicsPipelineState_ConstantBuffer_HS;
+		case ShaderType_Domain:
+			return GraphicsPipelineState_ConstantBuffer_DS;
+		}
 	}
 
-	void graphics_vertexbuffer_bind(GPUBuffer** buffers, ui32* offsets, ui32* strides, ui32 count, CommandList cmd)
+	constexpr GraphicsPipelineState graphics_pipelinestateflags_image(ShaderType shaderType)
 	{
-		g_PipelineState.graphics[cmd].vertexBuffersCount = count;
-		for (ui32 i = 0; i < count; ++i) {
-			g_PipelineState.graphics[cmd].vertexBuffers[i] = reinterpret_cast<GPUBuffer_internal*>(buffers[i]->GetPtr());
+		switch (shaderType)
+		{
+		case ShaderType_Vertex:
+			return GraphicsPipelineState_Image_VS;
+		case ShaderType_Pixel:
+			return GraphicsPipelineState_Image_PS;
+		case ShaderType_Geometry:
+			return GraphicsPipelineState_Image_GS;
+		case ShaderType_Hull:
+			return GraphicsPipelineState_Image_HS;
+		case ShaderType_Domain:
+			return GraphicsPipelineState_Image_DS;
 		}
-		memcpy(g_PipelineState.graphics[cmd].vertexBufferOffsets, offsets, sizeof(ui32) * count);
-		memcpy(g_PipelineState.graphics[cmd].vertexBufferStrides, strides, sizeof(ui32) * count);
+	}
+
+	constexpr GraphicsPipelineState graphics_pipelinestateflags_sampler(ShaderType shaderType)
+	{
+		switch (shaderType)
+		{
+		case ShaderType_Vertex:
+			return GraphicsPipelineState_Sampler_VS;
+		case ShaderType_Pixel:
+			return GraphicsPipelineState_Sampler_PS;
+		case ShaderType_Geometry:
+			return GraphicsPipelineState_Sampler_GS;
+		case ShaderType_Hull:
+			return GraphicsPipelineState_Sampler_HS;
+		case ShaderType_Domain:
+			return GraphicsPipelineState_Sampler_DS;
+		}
+	}
+
+	void graphics_resources_unbind(CommandList cmd)
+	{
+		graphics_vertexbuffer_unbind(cmd);
+		graphics_indexbuffer_unbind(cmd);
+		graphics_constantbuffer_unbind(cmd);
+		graphics_image_unbind(cmd);
+		graphics_sampler_unbind(cmd);
+	}
+
+	void graphics_vertexbuffer_bind(GPUBuffer** buffers, ui32* offsets, ui32 count, ui32 beginSlot, CommandList cmd)
+	{
+		auto& state = g_PipelineState.graphics[cmd];
+
+		state.vertexBuffersCount = std::max(state.vertexBuffersCount, beginSlot + count);
+
+		GPUBuffer_internal** vBuffers = state.vertexBuffers + beginSlot;
+		GPUBuffer_internal** vBuffersEnd = vBuffers + count;
+
+		GPUBuffer** buf = buffers;
+		GPUBuffer** bufEnd = buf + count;
+
+		while (vBuffers != vBuffersEnd) {
+			*vBuffers = reinterpret_cast<GPUBuffer_internal*>((*buf)->GetPtr());
+
+			++vBuffers;
+			++buf;
+		}
+		memcpy(state.vertexBufferOffsets + beginSlot, offsets, sizeof(ui32) * count);
+		state.flags |= GraphicsPipelineState_VertexBuffer;
+	}
+
+	void graphics_vertexbuffer_bind(GPUBuffer& buffer, ui32 offset, ui32 slot, CommandList cmd)
+	{
+		auto& state = g_PipelineState.graphics[cmd];
+
+		state.vertexBuffersCount = std::max(state.vertexBuffersCount, slot + 1u);
+		state.vertexBuffers[slot] = reinterpret_cast<GPUBuffer_internal*>(buffer.GetPtr());
+		state.vertexBufferOffsets[slot] = offset;
+		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_VertexBuffer;
+	}
+
+	void graphics_vertexbuffer_unbind(ui32 slot, CommandList cmd)
+	{
+		auto& state = g_PipelineState.graphics[cmd];
+
+		state.vertexBuffers[slot] = nullptr;
+
+		// Compute Vertex Buffer Count
+		for (i32 i = i32(state.vertexBuffersCount) - 1; i >= 0; --i) {
+			if (state.vertexBuffers[i] != nullptr) {
+				state.vertexBuffersCount = i + 1;
+				break;
+			}
+		}
+
+		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_VertexBuffer;
+	}
+
+	void graphics_vertexbuffer_unbind(CommandList cmd)
+	{
+		auto& state = g_PipelineState.graphics[cmd];
+
+		svZeroMemory(state.vertexBuffers, state.vertexBuffersCount * sizeof(GPUBuffer_internal*));
+		state.vertexBuffersCount = 0u;
+
 		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_VertexBuffer;
 	}
 
 	void graphics_indexbuffer_bind(GPUBuffer& buffer, ui32 offset, CommandList cmd)
 	{
-		g_PipelineState.graphics[cmd].indexBuffer = reinterpret_cast<GPUBuffer_internal*>(buffer.GetPtr());
-		g_PipelineState.graphics[cmd].indexBufferOffset = offset;
-		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_IndexBuffer;
+		auto& state = g_PipelineState.graphics[cmd];
+
+		state.indexBuffer = reinterpret_cast<GPUBuffer_internal*>(buffer.GetPtr());
+		state.indexBufferOffset = offset;
+		state.flags |= GraphicsPipelineState_IndexBuffer;
 	}
 
-	void graphics_constantbuffer_bind(GPUBuffer** buffers, ui32 count, ShaderType shaderType, CommandList cmd)
+	void graphics_indexbuffer_unbind(CommandList cmd)
 	{
-		for (ui32 i = 0; i < count; ++i) {
-			g_PipelineState.graphics[cmd].constantBuffers[shaderType][i] = reinterpret_cast<GPUBuffer_internal*>(buffers[i]->GetPtr());
-		}
-		g_PipelineState.graphics[cmd].constantBuffersCount[shaderType] = count;
-		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_ConstantBuffer;
+		auto& state = g_PipelineState.graphics[cmd];
 
-		switch (shaderType)
-		{
-		case ShaderType_Vertex:
-			g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_ConstantBuffer_VS;
-			break;
-		case ShaderType_Pixel:
-			g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_ConstantBuffer_PS;
-			break;
-		case ShaderType_Geometry:
-			g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_ConstantBuffer_GS;
-			break;
-		case ShaderType_Hull:
-			g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_ConstantBuffer_HS;
-			break;
-		case ShaderType_Domain:
-			g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_ConstantBuffer_DS;
-			break;
+		state.indexBuffer = nullptr;
+		state.flags |= GraphicsPipelineState_IndexBuffer;
+	}
+
+	void graphics_constantbuffer_bind(GPUBuffer** buffers, ui32 count, ui32 beginSlot, ShaderType shaderType, CommandList cmd)
+	{
+		auto& state = g_PipelineState.graphics[cmd];
+
+		state.constantBuffersCount[shaderType] = std::max(state.constantBuffersCount[shaderType], beginSlot + count);
+
+		GPUBuffer_internal** cBuffers = state.constantBuffers[shaderType] + beginSlot;
+		GPUBuffer_internal** cBuffersEnd = cBuffers + count;
+
+		GPUBuffer** buf = buffers;
+		GPUBuffer** bufEnd = buf + count;
+
+		while (cBuffers != cBuffersEnd) {
+			*cBuffers = reinterpret_cast<GPUBuffer_internal*>((*buf)->GetPtr());
+
+			++cBuffers;
+			++buf;
 		}
+		state.flags |= GraphicsPipelineState_ConstantBuffer;
+		state.flags |= graphics_pipelinestateflags_constantbuffer(shaderType);
+	}
+
+	void graphics_constantbuffer_bind(GPUBuffer& buffer, ui32 slot, ShaderType shaderType, CommandList cmd)
+	{
+		auto& state = g_PipelineState.graphics[cmd];
+
+		state.constantBuffers[shaderType][slot] = reinterpret_cast<GPUBuffer_internal*>(buffer.GetPtr());
+		state.constantBuffersCount[shaderType] = std::max(state.constantBuffersCount[shaderType], slot + 1u);
+
+		state.flags |= GraphicsPipelineState_ConstantBuffer;
+		state.flags |= graphics_pipelinestateflags_constantbuffer(shaderType);
+	}
+
+	void graphics_constantbuffer_unbind(ui32 slot, ShaderType shaderType, CommandList cmd)
+	{
+		auto& state = g_PipelineState.graphics[cmd];
+
+		state.constantBuffers[shaderType][slot] = nullptr;
+
+		// Compute Constant Buffer Count
+		ui32& count = state.constantBuffersCount[shaderType];
+
+		for (i32 i = i32(count) - 1; i >= 0; --i) {
+			if (state.constantBuffers[shaderType][i] != nullptr) {
+				count = i + 1;
+				break;
+			}
+		}
+
+		state.flags |= GraphicsPipelineState_ConstantBuffer;
+		state.flags |= graphics_pipelinestateflags_constantbuffer(shaderType);
+	}
+
+	void graphics_constantbuffer_unbind(ShaderType shaderType, CommandList cmd)
+	{
+		auto& state = g_PipelineState.graphics[cmd];
+
+		svZeroMemory(state.constantBuffers[shaderType], state.constantBuffersCount[shaderType] * sizeof(GPUBuffer_internal*));
+		state.constantBuffersCount[shaderType] = 0u;
+
+		state.flags |= GraphicsPipelineState_ConstantBuffer;
+		state.flags |= graphics_pipelinestateflags_constantbuffer(shaderType);
+	}
+
+	void graphics_constantbuffer_unbind(CommandList cmd)
+	{
+		auto& state = g_PipelineState.graphics[cmd];
+
+		for (ui32 i = 0; i < ShaderType_GraphicsCount; ++i) {
+			state.constantBuffersCount[i] = 0u;
+			state.flags |= graphics_pipelinestateflags_constantbuffer((ShaderType)i);
+		}
+		state.flags |= GraphicsPipelineState_ConstantBuffer;
+	}
+
+	void graphics_image_bind(GPUImage** images, ui32 count, ui32 beginSlot, ShaderType shaderType, CommandList cmd)
+	{
+		auto& state = g_PipelineState.graphics[cmd];
+
+		state.imagesCount[shaderType] = std::max(state.imagesCount[shaderType], beginSlot + count);
+
+		GPUImage_internal** imagesIt = state.images[shaderType] + beginSlot;
+		GPUImage_internal** imagesEnd = imagesIt + count;
+
+		GPUImage** buf = images;
+		GPUImage** bufEnd = buf + count;
+
+		while (imagesIt != imagesEnd) {
+			*imagesIt = reinterpret_cast<GPUImage_internal*>((*buf)->GetPtr());
+
+			++imagesIt;
+			++buf;
+		}
+		state.flags |= GraphicsPipelineState_Image;
+		state.flags |= graphics_pipelinestateflags_image(shaderType);
+	}
+
+	void graphics_image_bind(GPUImage& image, ui32 slot, ShaderType shaderType, CommandList cmd)
+	{
+		auto& state = g_PipelineState.graphics[cmd];
+
+		state.images[shaderType][slot] = reinterpret_cast<GPUImage_internal*>(image.GetPtr());
+		state.imagesCount[shaderType] = std::max(state.imagesCount[shaderType], slot + 1u);
+		state.flags |= GraphicsPipelineState_Image;
+		state.flags |= graphics_pipelinestateflags_image(shaderType);
+	}
+
+	void graphics_image_unbind(ui32 slot, ShaderType shaderType, CommandList cmd)
+	{
+		auto& state = g_PipelineState.graphics[cmd];
+
+		state.images[shaderType][slot] = nullptr;
+
+		// Compute Images Count
+		ui32& count = state.imagesCount[shaderType];
+
+		for (i32 i = i32(count) - 1; i >= 0; --i) {
+			if (state.images[shaderType][i] != nullptr) {
+				count = i + 1;
+				break;
+			}
+		}
+
+		state.flags |= GraphicsPipelineState_Image;
+		state.flags |= graphics_pipelinestateflags_image(shaderType);
+	}
+
+	void graphics_image_unbind(ShaderType shaderType, CommandList cmd)
+	{
+		auto& state = g_PipelineState.graphics[cmd];
+
+		svZeroMemory(state.images[shaderType], state.imagesCount[shaderType] * sizeof(GPUImage_internal*));
+		state.imagesCount[shaderType] = 0u;
+
+		state.flags |= GraphicsPipelineState_Image;
+		state.flags |= graphics_pipelinestateflags_image(shaderType);
+	}
+	
+	void graphics_image_unbind(CommandList cmd)
+	{
+		auto& state = g_PipelineState.graphics[cmd];
+
+		for (ui32 i = 0; i < ShaderType_GraphicsCount; ++i) {
+			state.imagesCount[i] = 0u;
+			state.flags |= graphics_pipelinestateflags_image((ShaderType)i);
+		}
+		state.flags |= GraphicsPipelineState_Image;
+	}
+
+	void graphics_sampler_bind(Sampler** samplers, ui32 count, ui32 beginSlot, ShaderType shaderType, CommandList cmd)
+	{
+		auto& state = g_PipelineState.graphics[cmd];
+
+		state.samplersCount[shaderType] = std::max(state.samplersCount[shaderType], beginSlot + count);
+
+		Sampler_internal** samplersIt = state.samplers[shaderType] + beginSlot;
+		Sampler_internal** samplersEnd = samplersIt + count;
+
+		Sampler** buf = samplers;
+		Sampler** bufEnd = buf + count;
+
+		while (samplersIt != samplersEnd) {
+			*samplersIt = reinterpret_cast<Sampler_internal*>((*buf)->GetPtr());
+
+			++samplersIt;
+			++buf;
+		}
+		state.flags |= GraphicsPipelineState_Sampler;
+		state.flags |= graphics_pipelinestateflags_sampler(shaderType);
+	}
+
+	void graphics_sampler_bind(Sampler& sampler, ui32 slot, ShaderType shaderType, CommandList cmd)
+	{
+		auto& state = g_PipelineState.graphics[cmd];
+
+		state.samplers[shaderType][slot] = reinterpret_cast<Sampler_internal*>(sampler.GetPtr());
+		state.samplersCount[shaderType] = std::max(state.samplersCount[shaderType], slot + 1u);
+		state.flags |= GraphicsPipelineState_Sampler;
+		state.flags |= graphics_pipelinestateflags_sampler(shaderType);
+	}
+
+	void graphics_sampler_unbind(ui32 slot, ShaderType shaderType, CommandList cmd)
+	{
+		auto& state = g_PipelineState.graphics[cmd];
+
+		state.samplers[shaderType][slot] = nullptr;
+
+		// Compute Images Count
+		ui32& count = state.samplersCount[shaderType];
+
+		for (i32 i = i32(count) - 1; i >= 0; --i) {
+			if (state.samplers[shaderType][i] != nullptr) {
+				count = i + 1;
+				break;
+			}
+		}
+
+		state.flags |= GraphicsPipelineState_Sampler;
+		state.flags |= graphics_pipelinestateflags_sampler(shaderType);
+	}
+
+	void graphics_sampler_unbind(ShaderType shaderType, CommandList cmd)
+	{
+		auto& state = g_PipelineState.graphics[cmd];
+
+		svZeroMemory(state.samplers[shaderType], state.samplersCount[shaderType] * sizeof(Sampler_internal*));
+		state.samplersCount[shaderType] = 0u;
+
+		state.flags |= GraphicsPipelineState_Sampler;
+		state.flags |= graphics_pipelinestateflags_sampler(shaderType);
+	}
+
+	void graphics_sampler_unbind(CommandList cmd)
+	{
+		auto& state = g_PipelineState.graphics[cmd];
+
+		for (ui32 i = 0; i < ShaderType_GraphicsCount; ++i) {
+			state.samplersCount[i] = 0u;
+			state.flags |= graphics_pipelinestateflags_sampler((ShaderType)i);
+		}
+		state.flags |= GraphicsPipelineState_Sampler;
+	}
+
+	////////////////////////////////////////////// STATE //////////////////////////////////////////////////
+
+	void graphics_state_unbind(CommandList cmd)
+	{
+		if (g_PipelineState.graphics[cmd].renderPass) graphics_renderpass_end(cmd);
+		
+		graphics_shader_unbind(cmd);
+		graphics_inputlayoutstate_unbind(cmd);
+		graphics_blendstate_unbind(cmd);
+		graphics_depthstencilstate_unbind(cmd);
+		graphics_rasterizerstate_unbind(cmd);
+
+		graphics_stencil_reference_set(0u, cmd);
+		graphics_line_width_set(1.f, cmd);
 	}
 
 	void graphics_shader_bind(Shader& shader_, CommandList cmd)
@@ -545,63 +868,8 @@ namespace sv {
 			g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_Shader_GS;
 			break;
 		}
-		
+
 		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_Shader;
-	}
-
-	void graphics_image_bind(GPUImage** images, ui32 count, ShaderType shaderType, CommandList cmd)
-	{
-		for (ui32 i = 0; i < count; ++i) {
-			g_PipelineState.graphics[cmd].images[shaderType][i] = reinterpret_cast<GPUImage_internal*>(images[i]->GetPtr());
-		}
-		g_PipelineState.graphics[cmd].imagesCount[shaderType] = count;
-		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_Image;
-
-		switch (shaderType)
-		{
-		case ShaderType_Vertex:
-			g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_Image_VS;
-			break;
-		case ShaderType_Pixel:
-			g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_Image_PS;
-			break;
-		case ShaderType_Geometry:
-			g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_Image_GS;
-			break;
-		case ShaderType_Hull:
-			g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_Image_HS;
-			break;
-		case ShaderType_Domain:
-			g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_Image_DS;
-			break;
-		}
-	}
-	void graphics_sampler_bind(Sampler** samplers, ui32 count, ShaderType shaderType, CommandList cmd)
-	{
-		for (ui32 i = 0; i < count; ++i) {
-			g_PipelineState.graphics[cmd].sampers[shaderType][i] = reinterpret_cast<Sampler_internal*>(samplers[i]->GetPtr());
-		}
-		g_PipelineState.graphics[cmd].samplersCount[shaderType] = count;
-		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_Sampler;
-
-		switch (shaderType)
-		{
-		case ShaderType_Vertex:
-			g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_Sampler_VS;
-			break;
-		case ShaderType_Pixel:
-			g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_Sampler_PS;
-			break;
-		case ShaderType_Geometry:
-			g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_Sampler_GS;
-			break;
-		case ShaderType_Hull:
-			g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_Sampler_HS;
-			break;
-		case ShaderType_Domain:
-			g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_Sampler_DS;
-			break;
-		}
 	}
 
 	void graphics_inputlayoutstate_bind(InputLayoutState& inputLayoutState, CommandList cmd)
@@ -628,6 +896,31 @@ namespace sv {
 		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_RasterizerState;
 	}
 
+	void graphics_shader_unbind(CommandList cmd)
+	{
+		// TODO: Default shaders
+	}
+
+	void graphics_inputlayoutstate_unbind(CommandList cmd)
+	{
+		graphics_inputlayoutstate_bind(g_DefInputLayoutState, cmd);
+	}
+
+	void graphics_blendstate_unbind(CommandList cmd)
+	{
+		graphics_blendstate_bind(g_DefBlendState, cmd);
+	}
+
+	void graphics_depthstencilstate_unbind(CommandList cmd)
+	{
+		graphics_depthstencilstate_bind(g_DefDepthStencilState, cmd);
+	}
+
+	void graphics_rasterizerstate_unbind(CommandList cmd)
+	{
+		graphics_rasterizerstate_bind(g_DefRasterizerState, cmd);
+	}
+
 	void graphics_pipeline_bind(GraphicsPipeline& pipeline, CommandList cmd)
 	{
 		// Bind shaders
@@ -641,10 +934,10 @@ namespace sv {
 		graphics_depthstencilstate_bind(pipeline.pDepthStencilState ? *pipeline.pDepthStencilState : g_DefDepthStencilState, cmd);
 		graphics_rasterizerstate_bind(pipeline.pRasterizerState ? *pipeline.pRasterizerState : g_DefRasterizerState, cmd);
 
-		graphics_set_pipeline_mode(GraphicsPipelineMode_Graphics, cmd);
-		graphics_set_stencil_reference(pipeline.stencilRef, cmd);
-		graphics_set_topology(pipeline.topology, cmd);
-
+		graphics_mode_set(GraphicsPipelineMode_Graphics, cmd);
+		graphics_stencil_reference_set(pipeline.stencilRef, cmd);
+		graphics_topology_set(pipeline.topology, cmd);
+		graphics_line_width_set(pipeline.lineWidth, cmd);
 	}
 
 	void graphics_renderpass_begin(RenderPass& renderPass, GPUImage** attachments, const Color4f* colors, float depth, ui32 stencil, CommandList cmd)
@@ -671,41 +964,102 @@ namespace sv {
 		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_RenderPass;
 	}
 
-	void graphics_set_pipeline_mode(GraphicsPipelineMode mode, CommandList cmd)
+	void graphics_mode_set(GraphicsPipelineMode mode, CommandList cmd)
 	{
 		g_PipelineState.mode[cmd] = mode;
 	}
-	void graphics_set_viewports(const Viewport* viewports, ui32 count, CommandList cmd)
+
+	void graphics_viewport_set(const Viewport* viewports, ui32 count, CommandList cmd)
 	{
-		assert(count < SV_GFX_VIEWPORT_COUNT);
-		memcpy(g_PipelineState.graphics[cmd].viewports, viewports, size_t(count) * sizeof(Viewport));
-		g_PipelineState.graphics[cmd].viewportsCount = count;
-		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_Viewport;
+		auto& state = g_PipelineState.graphics[cmd];
+		SV_ASSERT(count < SV_GFX_VIEWPORT_COUNT);
+		memcpy(state.viewports, viewports, size_t(count) * sizeof(Viewport));
+		state.viewportsCount = count;
+		state.flags |= GraphicsPipelineState_Viewport;
 	}
-	void graphics_set_scissors(const Scissor* scissors, ui32 count, CommandList cmd)
+
+	void graphics_viewport_set(const Viewport& viewport, ui32 slot, CommandList cmd)
 	{
-		assert(count < SV_GFX_SCISSOR_COUNT);
+		auto& state = g_PipelineState.graphics[cmd];
+
+		state.viewports[slot] = viewport;
+		state.viewportsCount = std::max(g_PipelineState.graphics[cmd].viewportsCount, slot + 1u);
+		state.flags |= GraphicsPipelineState_Viewport;
+	}
+
+	void graphics_viewport_set(const GPUImage& image, ui32 slot, CommandList cmd)
+	{
+		graphics_viewport_set(graphics_image_get_viewport(image), slot, cmd);
+	}
+
+	void graphics_scissor_set(const Scissor* scissors, ui32 count, CommandList cmd)
+	{
+		SV_ASSERT(count < SV_GFX_SCISSOR_COUNT);
 		memcpy(g_PipelineState.graphics[cmd].scissors, scissors, size_t(count) * sizeof(Scissor));
 		g_PipelineState.graphics[cmd].scissorsCount = count;
 		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_Scissor;
 	}
 
-	void graphics_set_topology(GraphicsTopology topology, CommandList cmd)
+	void graphics_scissor_set(const Scissor& scissor, ui32 slot, CommandList cmd)
+	{
+		auto& state = g_PipelineState.graphics[cmd];
+
+		state.scissors[slot] = scissor;
+		state.scissorsCount = std::max(g_PipelineState.graphics[cmd].scissorsCount, slot + 1u);
+		state.flags |= GraphicsPipelineState_Scissor;
+	}
+
+	void graphics_scissor_set(const GPUImage& image, ui32 slot, CommandList cmd)
+	{
+		graphics_scissor_set(graphics_image_get_scissor(image), slot, cmd);
+	}
+
+	Viewport graphics_viewport_get(ui32 slot, CommandList cmd)
+	{
+		return g_PipelineState.graphics[cmd].viewports[slot];
+	}
+
+	Scissor graphics_scissor_get(ui32 slot, CommandList cmd)
+	{
+		return g_PipelineState.graphics[cmd].scissors[slot];
+	}
+
+	void graphics_topology_set(GraphicsTopology topology, CommandList cmd)
 	{
 		g_PipelineState.graphics[cmd].topology = topology;
 		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_Topology;
 	}
 
-	void graphics_set_stencil_reference(ui32 ref, CommandList cmd)
+	void graphics_stencil_reference_set(ui32 ref, CommandList cmd)
 	{
 		g_PipelineState.graphics[cmd].stencilReference = ref;
 		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_StencilRef;
 	}
 
-	void graphics_set_line_width(float lineWidth, CommandList cmd)
+	void graphics_line_width_set(float lineWidth, CommandList cmd)
 	{
 		g_PipelineState.graphics[cmd].lineWidth = lineWidth;
 		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_LineWidth;
+	}
+
+	GraphicsPipelineMode graphics_mode_get(CommandList cmd)
+	{
+		return g_PipelineState.mode[cmd];
+	}
+
+	GraphicsTopology graphics_topology_get(CommandList cmd)
+	{
+		return g_PipelineState.graphics[cmd].topology;
+	}
+
+	ui32 graphics_stencil_reference_get(CommandList cmd)
+	{
+		return g_PipelineState.graphics[cmd].stencilReference;
+	}
+
+	float graphics_line_width_get(CommandList cmd)
+	{
+		return g_PipelineState.graphics[cmd].lineWidth;
 	}
 
 	////////////////////////////////////////// DRAW CALLS /////////////////////////////////////////

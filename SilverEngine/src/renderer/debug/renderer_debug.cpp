@@ -192,37 +192,36 @@ namespace sv {
 		switch (draw.list)
 		{
 		case 0u:
-			graphics_set_topology(GraphicsTopology_Triangles, cmd);
+			graphics_topology_set(GraphicsTopology_Triangles, cmd);
 			graphics_shader_bind(g_QuadVertexShader, cmd);
 			graphics_shader_bind(g_QuadPixelShader, cmd);
 			break;
 
 		case 1u:
-			graphics_set_topology(GraphicsTopology_Lines, cmd);
+			graphics_topology_set(GraphicsTopology_Lines, cmd);
 			graphics_shader_bind(g_QuadVertexShader, cmd);
 			graphics_shader_bind(g_QuadPixelShader, cmd);
-			graphics_set_line_width(draw.lineWidth, cmd);
+			graphics_line_width_set(draw.lineWidth, cmd);
 			break;
 
 		case 2u:
-			graphics_set_topology(GraphicsTopology_Triangles, cmd);
+			graphics_topology_set(GraphicsTopology_Triangles, cmd);
 			graphics_shader_bind(g_EllipseVertexShader, cmd);
 			graphics_shader_bind(g_EllipsePixelShader, cmd);
 			break;
 
 		case 3u:
-			graphics_set_topology(GraphicsTopology_Triangles, cmd);
+			graphics_topology_set(GraphicsTopology_Triangles, cmd);
 			graphics_shader_bind(g_SpriteVertexShader, cmd);
 			graphics_shader_bind(g_SpritePixelShader, cmd);
 
-			graphics_image_bind(&draw.pImage, 1u, ShaderType_Pixel, cmd);
+			graphics_image_bind(*draw.pImage, 0u, ShaderType_Pixel, cmd);
 
 			if (draw.pSampler) {
-				graphics_sampler_bind(&draw.pSampler, 1u, ShaderType_Pixel, cmd);
+				graphics_sampler_bind(*draw.pSampler, 0u, ShaderType_Pixel, cmd);
 			}
 			else {
-				Sampler* s[] = { &g_DefSampler };
-				graphics_sampler_bind(s, 1u, ShaderType_Pixel, cmd);
+				graphics_sampler_bind(g_DefSampler, 0u, ShaderType_Pixel, cmd);
 			}
 
 			break;
@@ -244,14 +243,7 @@ namespace sv {
 
 		graphics_renderpass_begin(g_RenderPass, attachments, nullptr, 1.f, 0u, cmd);
 
-		GPUBuffer* vertexBuffer[] = {
-			&buffer
-		};
-
-		ui32 offsets[] = { 0u };
-		ui32 strides[] = { batchCount * sizeof(DebugData) };
-
-		graphics_vertexbuffer_bind(vertexBuffer, offsets, strides, 1u, cmd);
+		graphics_vertexbuffer_bind(buffer, 0u, 0u, cmd);
 
 		ui32 batchOffset;
 		{
@@ -289,11 +281,11 @@ namespace sv {
 
 		SV_ASSERT(renderer_debug_create_buffer(cmd) == Result_Success);
 
-		graphics_set_pipeline_mode(GraphicsPipelineMode_Graphics, cmd);
-		graphics_state_reset(cmd);
+		graphics_mode_set(GraphicsPipelineMode_Graphics, cmd);
+		graphics_state_unbind(cmd);
 
-		graphics_set_viewports(&viewport, 1u, cmd);
-		graphics_set_scissors(&scissor, 1u, cmd);
+		graphics_viewport_set(&viewport, 1u, cmd);
+		graphics_scissor_set(&scissor, 1u, cmd);
 
 		graphics_inputlayoutstate_bind(g_InputLayout, cmd);
 		graphics_blendstate_bind(g_BlendState, cmd);

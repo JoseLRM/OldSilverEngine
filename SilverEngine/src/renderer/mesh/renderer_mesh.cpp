@@ -125,7 +125,6 @@ namespace sv {
 		{
 			RasterizerStateDesc desc;
 			desc.wireframe = false;
-			desc.lineWidth = 1.f;
 			desc.cullMode = RasterizerCullMode_Back;
 			desc.clockwise = true;
 
@@ -175,19 +174,19 @@ namespace sv {
 			mesh->GetVertexCount() * sizeof(MeshVertex), size * sizeof(MeshData)
 		};
 
-		graphics_vertexbuffer_bind(vBuffers, offsets, strides, 2u, cmd);
+		graphics_vertexbuffer_bind(vBuffers, offsets, 2u, 0u, cmd);
 		graphics_indexbuffer_bind(mesh->GetIndexBuffer(), 0u, cmd);
 
 		GPUBuffer* cBuffers[] = {
 			&g_CameraBuffer, nullptr
 		};
 
-		graphics_constantbuffer_bind(cBuffers, 1u, ShaderType_Vertex, cmd);
+		graphics_constantbuffer_bind(cBuffers, 1u, 0u, ShaderType_Vertex, cmd);
 
 		cBuffers[0] = &material->GetConstantBuffer();
 		cBuffers[1] = &g_LightBuffer;
 
-		graphics_constantbuffer_bind(cBuffers, 2u, ShaderType_Pixel, cmd);
+		graphics_constantbuffer_bind(cBuffers, 2u, 0u, ShaderType_Pixel, cmd);
 
 		graphics_draw_indexed(mesh->GetIndexCount(), size, 0u, 0u, 0u, cmd);
 	}

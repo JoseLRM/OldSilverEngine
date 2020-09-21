@@ -52,10 +52,10 @@ namespace sv {
 		CommandList cmd = graphics_commandlist_begin();
 
 		Viewport viewport = offscreen.GetViewport();
-		graphics_set_viewports(&viewport, 1u, cmd);
+		graphics_viewport_set(&viewport, 1u, cmd);
 
 		Scissor scissor = offscreen.GetScissor();
-		graphics_set_scissors(&scissor, 1u, cmd);
+		graphics_scissor_set(&scissor, 1u, cmd);
 
 		// Skybox
 		//TODO: clear offscreen here :)
