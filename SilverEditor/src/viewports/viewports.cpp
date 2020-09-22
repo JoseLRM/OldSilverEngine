@@ -76,13 +76,13 @@ namespace sve {
 
 	void viewports_show(ui32 index)
 	{
-		sv::log_info("Showing viewport: %s", g_Viewports[index].name);
+		sv::console_log("Showing viewport: %s", g_Viewports[index].name);
 		g_Viewports[index].active = true;
 	}
 
 	void viewports_hide(ui32 index)
 	{
-		sv::log_info("Hiding viewport: %s", g_Viewports[index].name);
+		sv::console_log("Hiding viewport: %s", g_Viewports[index].name);
 		g_Viewports[index].active = false;
 	}
 

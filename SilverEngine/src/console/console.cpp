@@ -82,31 +82,49 @@ namespace sv {
 		ShowWindow(GetConsoleWindow(), SW_HIDE);
 	}
 
-	void _Log(const char* s0, const char* s1, va_list args, ui32 flags)
+	void log(const char* title, const char* s1, va_list args, ui32 flags, std::wstring* saveOutput = nullptr)
 	{
-		std::string dateStr = date_string(timer_date());
-
 		char logBuffer[1001];
-		memcpy(logBuffer, dateStr.data(), dateStr.size());
+		size_t offset = 0u;
 
-		size_t s0Size = strlen(s0);
-		memcpy(logBuffer + dateStr.size(), s0, s0Size);
+		// Date
+		{
+			std::string dateStr = date_string(timer_date());
+			memcpy(logBuffer, dateStr.data(), dateStr.size());
+			offset += dateStr.size();
+		}
 
-		vsnprintf(logBuffer + dateStr.size() + s0Size, 1000 - dateStr.size() - s0Size, s1, args);
+		// Title
+		{
+			size_t titleSize = strlen(title);
+			if (titleSize != 0u) {
+				logBuffer[offset++] = '[';
+				logBuffer[offset + titleSize] = ']';
+				memcpy(logBuffer + offset, title, titleSize);
+				offset += titleSize + 1u;
+			}
+		}
+
+		// Content
+		vsnprintf(logBuffer + offset, 1000 - offset, s1, args);
 
 		size_t size = strlen(logBuffer);
 		logBuffer[size] = '\n';
 		logBuffer[size + 1u] = '\0';
 
+		if (saveOutput) {
+			*saveOutput = utils_wstring_parse(logBuffer + offset);
+		}
+
 #ifdef SV_PLATFORM_WINDOWS
 		ui32 platformFlags = 0u;
 
-		if (flags & LoggingFlags_Red)				platformFlags |= FOREGROUND_RED;
-		if (flags & LoggingFlags_Green)				platformFlags |= FOREGROUND_GREEN;
-		if (flags & LoggingFlags_Blue)				platformFlags |= FOREGROUND_BLUE;
-		if (flags & LoggingFlags_BackgroundRed)		platformFlags |= BACKGROUND_RED;
-		if (flags & LoggingFlags_BackgroundGreen)	platformFlags |= BACKGROUND_GREEN;
-		if (flags & LoggingFlags_BackgroundBlue)	platformFlags |= BACKGROUND_BLUE;
+		if (flags & LoggingStyle_Red)				platformFlags |= FOREGROUND_RED;
+		if (flags & LoggingStyle_Green)				platformFlags |= FOREGROUND_GREEN;
+		if (flags & LoggingStyle_Blue)				platformFlags |= FOREGROUND_BLUE;
+		if (flags & LoggingStyle_BackgroundRed)		platformFlags |= BACKGROUND_RED;
+		if (flags & LoggingStyle_BackgroundGreen)	platformFlags |= BACKGROUND_GREEN;
+		if (flags & LoggingStyle_BackgroundBlue)	platformFlags |= BACKGROUND_BLUE;
 #endif
 
 		std::lock_guard<std::mutex> lock(g_LogMutex);
@@ -119,55 +137,53 @@ namespace sv {
 		g_LogFile << logBuffer;
 	}
 
-	void log_separator()
+	void console_log_separator()
 	{
-		log("----------------------------------------------------");
+		console_log("----------------------------------------------------");
 	}
 
-	void log(const char* s, ...)
+	void console_log(const char* s, ...)
 	{
 		va_list args;
 		va_start(args, s);
 
-		_Log("", s, args, LoggingFlags_Red | LoggingFlags_Green | LoggingFlags_Blue);
+		log("", s, args, LoggingStyle_Red | LoggingStyle_Green | LoggingStyle_Blue);
 
 		va_end(args);
 	}
-	void log_ex(const char* s, ui32 flags, ...)
+
+	void console_log(LoggingStyleFlags style, const char* s, ...)
 	{
 		va_list args;
 		va_start(args, s);
 
-		_Log("", s, args, flags);
+		log("", s, args, style);
 
 		va_end(args);
 	}
-	void log_info(const char* s, ...)
-	{
-		va_list args;
-		va_start(args, s);
 
-		_Log("[INFO] ", s, args, LoggingFlags_Green);
+	void console_log_error(bool fatal, const char* title, const char* content, ...)
+	{
+		std::wstring contentStr;
+
+		va_list args;
+		va_start(args, content);
+
+		log(title, content, args, LoggingStyle_Red, &contentStr);
 
 		va_end(args);
-	}
-	void log_warning(const char* s, ...)
-	{
-		va_list args;
-		va_start(args, s);
 
-		_Log("[WARNING] ", s, args, LoggingFlags_Green | LoggingFlags_Blue);
+#ifdef SV_PLATFORM_WINDOWS
+		std::wstring titleStr = utils_wstring_parse(title);
+		
 
-		va_end(args);
-	}
-	void log_error(const char* s, ...)
-	{
-		va_list args;
-		va_start(args, s);
+		UINT flags = 0u;
 
-		_Log("[ERROR] ", s, args, LoggingFlags_Red);
-
-		va_end(args);
+		if (fatal) flags |= MB_OK | MB_ICONERROR;
+		else flags |= MB_OK | MB_ICONWARNING;
+			
+		MessageBox(0, contentStr.c_str(), titleStr.c_str(), flags);
+#endif
 	}
 
 }

@@ -97,7 +97,7 @@ namespace sv {
 			// input
 			ui8 keyCode = (ui8)wParam;
 			if (keyCode > 255) {
-				log_warning("Unknown keycode: %u", keyCode);
+				svLogWarning("Unknown keycode: %u", keyCode);
 			}
 			else if (~lParam & (1 << 30)) input_key_pressed_add(keyCode);
 
@@ -109,8 +109,7 @@ namespace sv {
 			// input
 			ui8 keyCode = (ui8)wParam;
 			if (keyCode > 255) {
-				log_warning("Unknown keycode: %u", keyCode);
-				VK_SHIFT;
+				svLogWarning("Unknown keycode: %u", keyCode);
 			}
 			else input_key_released_add(keyCode);
 
@@ -234,7 +233,7 @@ namespace sv {
 		wndClass.style = 0;
 
 		if (!RegisterClassW(&wndClass)) {
-			sv::log_error("Can't Register Window Class");
+			svThrow("Can't Register Window Class");
 			return Result_PlatformError;
 		}
 
@@ -264,7 +263,7 @@ namespace sv {
 #endif
 
 		if (g_WindowHandle == 0) {
-			log_error("Error creating Window class");
+			svThrow("Error creating Window class");
 			return Result_PlatformError;
 		}
 
@@ -384,7 +383,7 @@ namespace sv {
 
 	void window_aspect_set(float aspect)
 	{
-		log_error("TODO->window_aspect_set");
+		svLogError("TODO->window_aspect_set");
 	}
 
 	// ICON

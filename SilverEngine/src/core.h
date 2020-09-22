@@ -83,10 +83,10 @@ namespace sv {
 	// Exception
 	
 	struct Exception {
-		std::string type, desc, file;
+		std::string title, desc, file;
 		ui32 line;
 		Exception(const char* type, const char* desc, const char* file, ui32 line)
-			: type(type), desc(desc), file(file), line(line) {}
+			: title(type), desc(desc), file(file), line(line) {}
 	};
 #define SV_THROW(type, desc) throw sv::Exception(type, desc, __FILE__, __LINE__)
 
@@ -100,7 +100,7 @@ namespace sv {
 #define SV_ASSERT(x) x
 #endif
 
-#define svCheck(x) do{ sv::Result __res__ = (x); if(__res__ != sv::Result_Success) { sv::log_error(#x" (error code: %u)", __res__); return __res__; } }while(0)
+#define svCheck(x) do{ sv::Result __res__ = (x); if(__res__ != sv::Result_Success) { sv::console_log(sv::LoggingStyle_Red, "[ERROR]"#x" (error code: %u)", __res__); return __res__; } }while(0)
 #define svZeroMemory(dest, size) memset(dest, 0, size)
 #define SV_BIT(x) 1ULL << x 
 

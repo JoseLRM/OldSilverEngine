@@ -184,7 +184,7 @@ namespace sv {
 						trans.SetRotation({ trans.GetLocalRotation().x, trans.GetLocalRotation().y, transform.q.GetAngle() });
 					}
 					else {
-						log_error("TODO: Get simulation result from a child");
+						console_log("TODO: Get simulation result from a child");
 					}
 
 					const b2Vec2& linearVelocity = b2body->GetLinearVelocity();

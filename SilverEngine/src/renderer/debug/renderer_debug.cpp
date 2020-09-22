@@ -182,7 +182,7 @@ namespace sv {
 		case 3:
 			return 6u;
 		default:
-			log_error("Unknown list: %u", list);
+			svLogError("Unknown list: %u", list);
 			return 0u;
 		}
 	}

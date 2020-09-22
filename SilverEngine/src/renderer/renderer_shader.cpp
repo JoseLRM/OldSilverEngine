@@ -160,10 +160,10 @@ namespace sv {
 			input.open(binPath.c_str(), std::ios::binary | std::ios::ate);
 
 			if (input.is_open() && compileResult == Result_Success) {
-				log_info("%s (%s) successfully compiled", name, shaderName);
+				svLog("%s (%s) successfully compiled", name, shaderName);
 			}
 			else {
-				log_error("%s (%s) failed compiling", name, shaderName);
+				svLogError("%s (%s) failed compiling", name, shaderName);
 				return compileResult == Result_Success ? Result_UnknownError : compileResult;
 			}
 

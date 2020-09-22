@@ -16,22 +16,20 @@ namespace sv {
 
 	// logging system
 
-	enum LoggingFlags : ui32 {
-		LoggingFlags_None,
-		LoggingFlags_Red				= SV_BIT(0),
-		LoggingFlags_Green				= SV_BIT(1),
-		LoggingFlags_Blue				= SV_BIT(2),
-		LoggingFlags_BackgroundRed		= SV_BIT(3),
-		LoggingFlags_BackgroundGreen	= SV_BIT(4),
-		LoggingFlags_BackgroundBlue		= SV_BIT(5),
+	enum LoggingStyle : ui32 {
+		LoggingStyle_None,
+		LoggingStyle_Red				= SV_BIT(0),
+		LoggingStyle_Green				= SV_BIT(1),
+		LoggingStyle_Blue				= SV_BIT(2),
+		LoggingStyle_BackgroundRed		= SV_BIT(3),
+		LoggingStyle_BackgroundGreen	= SV_BIT(4),
+		LoggingStyle_BackgroundBlue		= SV_BIT(5),
 	};
+	typedef ui32 LoggingStyleFlags;
 
-	void log_separator();
-	void log(const char* s, ...);
-	void log_ex(const char* s, ui32 flags, ...);
-
-	void log_info(const char* s, ...);
-	void log_warning(const char* s, ...);
-	void log_error(const char* s, ...);
+	void console_log_separator();
+	void console_log(const char* s, ...);
+	void console_log(LoggingStyleFlags style, const char* s, ...);
+	void console_log_error(bool fatal, const char* title, const char* content, ...);
 
 }

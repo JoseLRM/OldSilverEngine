@@ -131,7 +131,7 @@ namespace sv {
 	}
 	void graphics_present()
 	{
-		if (!g_SwapChainImageAcquired) log_warning("Must acquire swaphchain image once per frame");
+		if (!g_SwapChainImageAcquired) svLogWarning("Must acquire swaphchain image once per frame");
 		g_Device->Present();
 	}
 
@@ -142,7 +142,7 @@ namespace sv {
 
 	GPUImage& graphics_swapchain_acquire_image()
 	{
-		if (g_SwapChainImageAcquired) log_warning("Must acquire swapchain image once per frame");
+		if (g_SwapChainImageAcquired) svLogWarning("Must acquire swapchain image once per frame");
 		g_SwapChainImageAcquired = true;
 		return g_Device->AcquireSwapChainImage();
 	}
@@ -253,6 +253,91 @@ namespace sv {
 		return hash;
 	}
 
+	bool graphics_format_has_stencil(Format format)
+	{
+		if (format == Format_D24_UNORM_S8_UINT)
+			return true;
+		else return false;
+	}
+	constexpr ui32 graphics_format_size(Format format)
+	{
+		switch (format)
+		{
+		case Format_R32G32B32A32_FLOAT:
+		case Format_R32G32B32A32_UINT:
+		case Format_R32G32B32A32_SINT:
+			return 16u;
+
+		case Format_R32G32B32_FLOAT:
+		case Format_R32G32B32_UINT:
+		case Format_R32G32B32_SINT:
+			return 12u;
+		case Format_R16G16B16A16_FLOAT:
+		case Format_R16G16B16A16_UNORM:
+		case Format_R16G16B16A16_UINT:
+		case Format_R16G16B16A16_SNORM:
+		case Format_R16G16B16A16_SINT:
+		case Format_R32G32_FLOAT:
+		case Format_R32G32_UINT:
+		case Format_R32G32_SINT:
+			return 8u;
+
+		case Format_R8G8B8A8_UNORM:
+		case Format_R8G8B8A8_SRGB:
+		case Format_R8G8B8A8_UINT:
+		case Format_R8G8B8A8_SNORM:
+		case Format_R8G8B8A8_SINT:
+		case Format_R16G16_FLOAT:
+		case Format_R16G16_UNORM:
+		case Format_R16G16_UINT:
+		case Format_R16G16_SNORM:
+		case Format_R16G16_SINT:
+		case Format_D32_FLOAT:
+		case Format_R32_FLOAT:
+		case Format_R32_UINT:
+		case Format_R32_SINT:
+		case Format_D24_UNORM_S8_UINT:
+		case Format_B8G8R8A8_UNORM:
+		case Format_B8G8R8A8_SRGB:
+			return 4u;
+
+		case Format_R8G8_UNORM:
+		case Format_R8G8_UINT:
+		case Format_R8G8_SNORM:
+		case Format_R8G8_SINT:
+		case Format_R16_FLOAT:
+		case Format_D16_UNORM:
+		case Format_R16_UNORM:
+		case Format_R16_UINT:
+		case Format_R16_SNORM:
+		case Format_R16_SINT:
+			return 2u;
+
+		case Format_R8_UNORM:
+		case Format_R8_UINT:
+		case Format_R8_SNORM:
+		case Format_R8_SINT:
+			return 1u;
+
+		case Format_Unknown:
+			return 0u;
+
+		case Format_BC1_UNORM:
+		case Format_BC1_SRGB:
+		case Format_BC2_UNORM:
+		case Format_BC2_SRGB:
+		case Format_BC3_UNORM:
+		case Format_BC3_SRGB:
+		case Format_BC4_UNORM:
+		case Format_BC4_SNORM:
+		case Format_BC5_UNORM:
+		case Format_BC5_SNORM:
+		default:
+			svLog("Unknown format size");
+			return 0u;
+		}
+	}
+
 	GraphicsAPI graphics_api_get()
 	{
 		return GraphicsAPI_Vulkan;
@@ -290,7 +375,7 @@ namespace sv {
 	{
 #ifdef SV_DEBUG
 		if (desc->usage == ResourceUsage_Static && desc->CPUAccess & CPUAccess_Write) {
-			sv::log_error("Buffer with static usage can't have CPU access");
+			SV_THROW("GRAPHICS_ERROR", "Buffer with static usage can't have CPU access");
 			return Result_InvalidUsage;
 		}
 #endif

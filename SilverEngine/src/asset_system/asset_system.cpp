@@ -58,7 +58,7 @@ namespace sv {
 				// Destroy Resource
 				svCheck(assets_destroy(ref.Get()->texture));
 
-				log_info("Asset freed: '%s'", it->first.c_str());
+				console_log("Asset freed: '%s'", it->first.c_str());
 
 				// Free Reference
 				g_AssetMap[it->first].ref.Delete();
@@ -143,7 +143,7 @@ namespace sv {
 									std::string assetPath = g_FolderPath + path;
 									svCheck(texture.CreateFromFile(assetPath.c_str()));
 
-									log_info("Asset updated: '%s'", path.c_str());
+									console_log("Asset updated: '%s'", path.c_str());
 
 									break;
 								}
@@ -173,7 +173,7 @@ namespace sv {
 	{
 		// Check if assets folder exists
 		if (!fs::exists(g_FolderPath.c_str())) {
-			log_error("Asset folder not found '%s'", g_FolderPath.c_str());
+			console_log_error(true, "ASSET_ERROR", "Asset folder not found '%s'", g_FolderPath.c_str());
 			return Result_NotFound;
 		}
 
@@ -212,12 +212,12 @@ namespace sv {
 
 				g_ActiveTextures.emplace_back(std::make_pair(it->first.c_str(), *reinterpret_cast<WeakRef<TextureAsset>*>(&WeakRef<ui32>(it->second.ref))));
 
-				log_info("Asset loaded: '%s'", filePath);
+				console_log("Asset loaded: '%s'", filePath);
 				return Result_Success;
 			}
 		}
 
-		log_error("Texture '%s' not found", filePath);
+		console_log_error(false, "ASSET_ERROR", "Texture '%s' not found", filePath);
 		return Result_NotFound;
 	}
 

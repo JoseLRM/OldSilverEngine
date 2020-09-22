@@ -32,7 +32,9 @@ namespace sve {
 		desc.windowDesc.bounds.w = 720u;
 		desc.windowDesc.title = L"SilverEngine";
 
-		if (sv::engine_initialize(&desc) != sv::Result_Success) return;
+		if (sv::engine_initialize(&desc) != sv::Result_Success) {
+			return;
+		}
 
 		g_Device = device_create();
 		g_Device->Initialize();
@@ -56,7 +58,7 @@ namespace sve {
 				file.close();
 			}
 			else {
-				sv::log_error("ImGui Style", "Style not found");
+				sv::console_log("ImGui Style", "Style not found");
 			}
 		}
 
@@ -86,7 +88,7 @@ namespace sve {
 
 			file.close();
 
-			sv::log("Saved");
+			sv::console_log("Saved");
 		}
 	}
 

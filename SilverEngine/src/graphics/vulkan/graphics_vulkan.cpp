@@ -22,13 +22,13 @@ namespace sv {
 		switch (msgSeverity)
 		{
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
-			log("[VULKAN VERBOSE] %s\n", data->pMessage);
+			svLogWarning("[VULKAN] %s", data->pMessage);
 			break;
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-			log("[VULKAN WARNING] %s\n", data->pMessage);
+			svLogWarning("[VULKAN] %s", data->pMessage);
 			break;
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
-			log("[VULKAN ERROR] %s\n", data->pMessage);
+			svLogError("[VULKAN] %s", data->pMessage);
 			break;
 		}
 		return VK_FALSE;
@@ -189,7 +189,7 @@ namespace sv {
 				}
 
 				if (!found) {
-					log_error("InstanceExtension '%s' not found", m_Extensions[i]);
+					svLogError("InstanceExtension '%s' not found", m_Extensions[i]);
 					return false;
 				}
 			}
@@ -213,7 +213,7 @@ namespace sv {
 				}
 
 				if (!found) {
-					log_error("InstanceValidationLayer '%s' not found", m_ValidationLayers[i]);
+					svLogError("InstanceValidationLayer '%s' not found", m_ValidationLayers[i]);
 					return false;
 				}
 			}
@@ -297,7 +297,7 @@ namespace sv {
 
 		// Adapter not found
 		if (index == count) {
-			log_error("Can't find valid adapters for Vulkan");
+			svLogError("Can't find valid adapters for Vulkan");
 			return false;
 		}
 
@@ -428,7 +428,7 @@ namespace sv {
 			VkBool32 supported;
 			vkCheck(vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, adapter.GetFamilyIndex().graphics, m_SwapChain.surface, &supported));
 			if (!supported) {
-				log_error("This adapter don't support vulkan swapChain");
+				svLogError("This adapter don't support vulkan swapChain");
 				return false;
 			}
 		}
@@ -1074,7 +1074,7 @@ namespace sv {
 
 			VkResult res = vkAllocateCommandBuffers(m_Device, &alloc_info, pCmd);
 			if (res != VK_SUCCESS) {
-				log_error("Can't allocate SingleTime CommandBuffer");
+				svLogError("Can't allocate SingleTime CommandBuffer");
 				return res;
 			}
 		}
@@ -1088,7 +1088,7 @@ namespace sv {
 
 			VkResult res = vkBeginCommandBuffer(*pCmd, &begin_info);
 			if (res != VK_SUCCESS) {
-				log_error("Can't begin SingleTime CommandBuffer");
+				svLogError("Can't begin SingleTime CommandBuffer");
 				vkFreeCommandBuffers(m_Device, m_Frames[m_CurrentFrame].transientCommandPool, 1u, pCmd);
 				return res;
 			}

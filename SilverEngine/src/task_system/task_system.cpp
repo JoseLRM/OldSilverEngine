@@ -16,7 +16,10 @@ namespace sv {
 		bool m_Running = true;
 
 	public:
-		ThreadPool() {}
+		~ThreadPool() 
+		{
+			Stop();
+		}
 
 		inline void Reserve(ui32 cant) noexcept
 		{
@@ -89,10 +92,12 @@ namespace sv {
 
 		inline void Stop() noexcept
 		{
-			m_Running = false;
-			m_ConditionVar.notify_all();
+			if (m_Running) {
+				m_Running = false;
+				m_ConditionVar.notify_all();
 
-			for (ui32 i = 0; i < m_Threads.size(); ++i) m_Threads[i].join();
+				for (ui32 i = 0; i < m_Threads.size(); ++i) m_Threads[i].join();
+			}
 		}
 
 		inline ui32 GetThreadCount() const noexcept
@@ -112,7 +117,7 @@ namespace sv {
 		ui32 numThreads = std::thread::hardware_concurrency();
 		if (numThreads < g_MinThreads) numThreads = g_MinThreads;
 
-		sv::log_info("Reserving %u threads", numThreads);
+		svLog("Reserving %u threads", numThreads);
 
 		g_ThreadPool.Reserve(numThreads);
 		return Result_Success;

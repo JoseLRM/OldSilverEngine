@@ -12,6 +12,27 @@
 #include "console/console_internal.h"
 #include "asset_system/asset_system_internal.h"
 
+#define svLog(x, ...) sv::console_log(sv::LoggingStyle_Blue | sv::LoggingStyle_Green, "[ENGINE] "#x, __VA_ARGS__)
+#define svLogWarning(x, ...) sv::console_log(sv::LoggingStyle_Blue | sv::LoggingStyle_Green, "[ENGINE_WARNING] "#x, __VA_ARGS__)
+#define svLogError(x, ...) sv::console_log(sv::LoggingStyle_Red, "[ENGINE_ERROR] "#x, __VA_ARGS__)
+
+#define svCatch catch (Exception e) { \
+					sv::console_log_error(true, e.title.c_str(), "%s\nFile: %s.\nLine %u", e.desc.c_str(), e.file.c_str(), e.line);\
+					return Result_UnknownError;\
+				}\
+				catch (std::exception e) {\
+					sv::console_log_error(true, "STD Exception", e.what());\
+					return Result_UnknownError;\
+				}\
+				catch (int i) {\
+					sv::console_log_error(true, "Unknown Exception", "%i", i);\
+					return Result_UnknownError;\
+				}\
+				catch (...) {\
+					sv::console_log_error(true, "Unknown Error", "No description...");\
+					return Result_UnknownError;\
+				}
+
 using namespace sv;
 
 namespace sv {
@@ -37,21 +58,24 @@ namespace sv {
 		g_Name += g_Version.ToString();
 
 		// SYSTEMS
+		try {
 
-		svCheck(console_initialize(desc.consoleDesc));
+			svCheck(console_initialize(desc.consoleDesc));
 
-		sv::log_info("Initializing %s", g_Name.c_str());
+			svLog("Initializing %s", g_Name.c_str());
 
-		svCheck(utils_initialize());
-		svCheck(task_initialize(desc.minThreadsCount));
-		svCheck(assets_initialize(desc.assetsFolderPath));
-		svCheck(scene_initialize());
-		svCheck(window_initialize(desc.windowDesc));
-		svCheck(graphics_initialize(desc.graphicsDesc));
-		svCheck(renderer_initialize(desc.rendererDesc));
+			svCheck(utils_initialize());
+			svCheck(task_initialize(desc.minThreadsCount));
+			svCheck(assets_initialize(desc.assetsFolderPath));
+			svCheck(scene_initialize());
+			svCheck(window_initialize(desc.windowDesc));
+			svCheck(graphics_initialize(desc.graphicsDesc));
+			svCheck(renderer_initialize(desc.rendererDesc));
 
-		// APPLICATION
-		svCheck(g_App.initialize());
+			// APPLICATION
+			svCheck(g_App.initialize());
+		}
+		svCatch
 
 		return Result_Success;
 	}
@@ -59,7 +83,6 @@ namespace sv {
 	Result engine_loop()
 	{
 		static Time		lastTime		= 0.f;
-		Result			loopResult		= Result_Success;
 
 		g_FrameCount++;
 
@@ -91,45 +114,29 @@ namespace sv {
 			// End Rendering
 			renderer_frame_end();
 		}
-		catch (Exception e) {
-			sv::log_error("%s: '%s'\nFile: '%s', Line: %u", e.type.c_str(), e.desc.c_str(), e.file.c_str(), e.line);
-			loopResult = Result_UnknownError;
-			system("PAUSE");
-		}
-		catch (std::exception e) {
-			sv::log_error("STD Exception: '%s'", e.what());
-			loopResult = Result_UnknownError;
-			system("PAUSE");
-		}
-		catch (int i) {
-			sv::log_error("Unknown Error: %i", i);
-			loopResult = Result_UnknownError;
-			system("PAUSE");
-		}
-		catch (...) {
-			sv::log_error("Unknown Error");
-			loopResult = Result_UnknownError;
-			system("PAUSE");
-		}
+		svCatch
 
-		return loopResult;
+		return Result_Success;
 	}
 
 	Result engine_close()
 	{
-		sv::log_separator();
-		sv::log_info("Closing %s", g_Name.c_str());
+		sv::console_log_separator();
+		svLog("Closing %s", g_Name.c_str());
 
 		// APPLICATION
-		svCheck(g_App.close());
+		try {
+			svCheck(g_App.close());
 
-		svCheck(renderer_close());
-		svCheck(window_close());
-		svCheck(graphics_close());
-		svCheck(scene_close());
-		svCheck(assets_close());
-		svCheck(task_close());
-		svCheck(console_close());
+			svCheck(renderer_close());
+			svCheck(window_close());
+			svCheck(graphics_close());
+			svCheck(scene_close());
+			svCheck(assets_close());
+			svCheck(task_close());
+			svCheck(console_close());
+		}
+		svCatch
 
 		return Result_Success;
 	}

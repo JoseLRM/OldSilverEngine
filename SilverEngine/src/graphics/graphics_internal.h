@@ -2,6 +2,10 @@
 
 #include "graphics.h"
 
+#define svLog(x, ...) sv::console_log(sv::LoggingStyle_Blue, "[GRAPHICS] "#x, __VA_ARGS__)
+#define svLogWarning(x, ...) sv::console_log(sv::LoggingStyle_Blue, "[GRAPHICS_WARNING] "#x, __VA_ARGS__)
+#define svLogError(x, ...) sv::console_log(sv::LoggingStyle_Red, "[GRAPHICS_ERROR] "#x, __VA_ARGS__)
+
 namespace sv {
 
 	// Primitives internal

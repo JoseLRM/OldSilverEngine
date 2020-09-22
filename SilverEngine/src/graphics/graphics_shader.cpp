@@ -32,7 +32,7 @@ namespace sv {
 	Result graphics_shader_compile_string(const ShaderCompileDesc* desc, const char* str, ui32 size, std::vector<ui8>& data)
 	{
 		//TODO:
-		log_error("TODO->graphics_shader_compile_from_string");
+		svLogError("TODO->graphics_shader_compile_from_string");
 		return Result_UnknownError;
 		/*
 		ComPtr<IDxcBlobEncoding> srcBlob;
