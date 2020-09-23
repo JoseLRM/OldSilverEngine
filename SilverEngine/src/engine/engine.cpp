@@ -12,8 +12,8 @@
 #include "console/console_internal.h"
 #include "asset_system/asset_system_internal.h"
 
-#define svLog(x, ...) sv::console_log(sv::LoggingStyle_Blue | sv::LoggingStyle_Green, "[ENGINE] "#x, __VA_ARGS__)
-#define svLogWarning(x, ...) sv::console_log(sv::LoggingStyle_Blue | sv::LoggingStyle_Green, "[ENGINE_WARNING] "#x, __VA_ARGS__)
+#define svLog(x, ...) sv::console_log(sv::LoggingStyle_Blue | sv::LoggingStyle_Red | sv::LoggingStyle_Green | sv::LoggingStyle_BackgroundBlue, "[ENGINE] "#x, __VA_ARGS__)
+#define svLogWarning(x, ...) sv::console_log(sv::LoggingStyle_Blue | sv::LoggingStyle_Red | sv::LoggingStyle_Green | sv::LoggingStyle_BackgroundBlue, "[ENGINE_WARNING] "#x, __VA_ARGS__)
 #define svLogError(x, ...) sv::console_log(sv::LoggingStyle_Red, "[ENGINE_ERROR] "#x, __VA_ARGS__)
 
 #define svCatch catch (Exception e) { \
@@ -49,6 +49,7 @@ namespace sv {
 	Result engine_initialize(const InitializationDesc* d)
 	{
 		SV_ASSERT(d != nullptr);
+		console_clear();
 
 		// Initialization Parameters
 		const InitializationDesc& desc = *d;
@@ -75,7 +76,10 @@ namespace sv {
 			// APPLICATION
 			svCheck(g_App.initialize());
 		}
-		svCatch
+		svCatch;
+
+		svLog("Initialized successfuly");
+		sv::console_log_separator();
 
 		return Result_Success;
 	}
@@ -114,14 +118,14 @@ namespace sv {
 			// End Rendering
 			renderer_frame_end();
 		}
-		svCatch
+		svCatch;
 
 		return Result_Success;
 	}
 
 	Result engine_close()
 	{
-		sv::console_log_separator();
+		console_log_separator();
 		svLog("Closing %s", g_Name.c_str());
 
 		// APPLICATION
@@ -136,7 +140,7 @@ namespace sv {
 			svCheck(task_close());
 			svCheck(console_close());
 		}
-		svCatch
+		svCatch;
 
 		return Result_Success;
 	}

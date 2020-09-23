@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ImGuiDevice.h"
+#define SV_VULKAN_IMPLEMENTATION
 #include "graphics/vulkan/graphics_vulkan.h"
 
 #ifdef SV_PLATFORM_WINDOWS

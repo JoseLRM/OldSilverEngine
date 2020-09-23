@@ -5,15 +5,11 @@
 namespace sv {
 
 	static std::vector<Primitive_internal*> g_Data;
-	
-	static PrimitiveConstructor g_Constructor;
-	static PrimitiveDestructor g_Destructor;
-	
 	static std::mutex g_Mutex;
 
 	Result graphics_allocator_construct(GraphicsPrimitiveType type, const void* desc, Primitive_internal** res)
 	{
-		svCheck(g_Constructor(type, desc, res));
+		svCheck(graphics_create_primitive(type, desc, res));
 		{
 			std::lock_guard<std::mutex> lock(g_Mutex);
 			g_Data.push_back(*res);
@@ -36,13 +32,7 @@ namespace sv {
 		}
 
 		// Deallocate
-		return g_Destructor(primitive);
-	}
-
-	void graphics_allocator_set_functions(PrimitiveConstructor constructor, PrimitiveDestructor destructor)
-	{
-		g_Constructor = constructor;
-		g_Destructor = destructor;
+		return graphics_destroy_primitive(primitive);
 	}
 
 	void graphics_allocator_clear()
@@ -52,7 +42,7 @@ namespace sv {
 			Primitive_internal* ptr = g_Data[i];
 			Primitive primitive(ptr);
 
-			g_Destructor(primitive);
+			graphics_destroy_primitive(primitive);
 		}
 
 		// Free

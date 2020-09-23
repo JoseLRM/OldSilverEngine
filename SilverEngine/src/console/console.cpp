@@ -82,6 +82,12 @@ namespace sv {
 		ShowWindow(GetConsoleWindow(), SW_HIDE);
 	}
 
+	void console_clear()
+	{
+		std::lock_guard<std::mutex> lock(g_LogMutex);
+		system("CLS");
+	}
+
 	void log(const char* title, const char* s1, va_list args, ui32 flags, std::wstring* saveOutput = nullptr)
 	{
 		char logBuffer[1001];

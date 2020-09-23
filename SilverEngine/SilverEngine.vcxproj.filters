@@ -3,7 +3,6 @@
   <ItemGroup>
     <ClInclude Include="src\graphics\vulkan\graphics_vulkan.h" />
     <ClInclude Include="src\graphics\vulkan\graphics_vulkan_conversions.h" />
-    <ClInclude Include="src\graphics\vulkan\vulkan_impl.h" />
     <ClInclude Include="src\utils\safe_queue.h" />
     <ClInclude Include="src\utils\sv_math.h" />
     <ClInclude Include="src\utils\Version.h" />

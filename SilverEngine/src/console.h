@@ -13,6 +13,7 @@ namespace sv {
 
 	void console_show();
 	void console_hide();
+	void console_clear();
 
 	// logging system
 

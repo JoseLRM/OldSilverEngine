@@ -1,6 +1,7 @@
 #include "core.h"
 
 #define VMA_IMPLEMENTATION
+#define SV_VULKAN_IMPLEMENTATION
 #include "graphics_vulkan.h"
 #include "engine.h"
 
@@ -14,7 +15,7 @@ namespace sv {
 	{
 		SV_ASSERT(size <= m_BufferSize);
 
-		ui32 currentFrame =  graphics_vulkan_device_get().GetCurrentFrame();
+		ui32 currentFrame =  graphics_vulkan_device_get().currentFrame;
 
 		// Reset
 		if (m_LastFrame != sv::engine_stats_get_frame_count()) {
@@ -88,11 +89,11 @@ namespace sv {
 		}
 		for (ui32 i = 0; i < m_StaggingBuffers.size(); ++i) {
 			const StagingBuffer& b = m_StaggingBuffers[i];
-			vmaDestroyBuffer(gfx.GetAllocator(), b.buffer, b.allocation);
+			vmaDestroyBuffer(gfx.allocator, b.buffer, b.allocation);
 		}
 		for (ui32 i = 0; i < m_ActiveStaggingBuffers.size(); ++i) {
 			const StagingBuffer& b = m_ActiveStaggingBuffers[i];
-			vmaDestroyBuffer(gfx.GetAllocator(), b.buffer, b.allocation);
+			vmaDestroyBuffer(gfx.allocator, b.buffer, b.allocation);
 		}
 		m_StaggingBuffers.clear();
 		m_ActiveStaggingBuffers.clear();
@@ -123,7 +124,7 @@ namespace sv {
 		alloc_info.usage = VMA_MEMORY_USAGE_CPU_ONLY;
 		alloc_info.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
-		vkExt(vmaCreateBuffer(gfx.GetAllocator(), &buffer_info, &alloc_info, &buffer, &allocation, nullptr));
+		vkExt(vmaCreateBuffer(gfx.allocator, &buffer_info, &alloc_info, &buffer, &allocation, nullptr));
 
 		*mapData = allocation->GetMappedData();
 
@@ -200,7 +201,7 @@ namespace sv {
 			create_info.poolSizeCount = 3u;
 			create_info.pPoolSizes = sizes;
 
-			vkAssert(vkCreateDescriptorPool(gfx.GetDevice(), &create_info, nullptr, &pool->pool));
+			vkAssert(vkCreateDescriptorPool(gfx.device, &create_info, nullptr, &pool->pool));
 
 			pool->sets = SV_GFX_VK_MAX_DESCRIPTOR_SETS;
 			for (ui32 i = 0; i < 3; ++i)	
@@ -226,7 +227,7 @@ namespace sv {
 			alloc_info.descriptorSetCount = SV_GFX_VK_DESCRIPTOR_ALLOC_COUNT;
 			alloc_info.pSetLayouts = setLayouts;
 
-			vkAssert(vkAllocateDescriptorSets(gfx.GetDevice(), &alloc_info, sets.sets.data() + index));
+			vkAssert(vkAllocateDescriptorSets(gfx.device, &alloc_info, sets.sets.data() + index));
 
 			return sets.sets[sets.used++];
 		}
@@ -244,7 +245,7 @@ namespace sv {
 		Graphics_vk& gfx = graphics_vulkan_device_get();
 
 		for (auto it = descPool.pools.begin(); it != descPool.pools.end(); ++it) {
-			vkDestroyDescriptorPool(gfx.GetDevice(), it->pool, nullptr);
+			vkDestroyDescriptorPool(gfx.device, it->pool, nullptr);
 		}
 
 		descPool.sets.clear();

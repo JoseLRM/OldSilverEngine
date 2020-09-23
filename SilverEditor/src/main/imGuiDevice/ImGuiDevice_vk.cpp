@@ -61,14 +61,14 @@ namespace sve {
 			create_info.poolSizeCount = sizeof(pool_sizes) / sizeof(VkDescriptorPoolSize);
 			create_info.pPoolSizes = pool_sizes;
 
-			vkCheck(vkCreateDescriptorPool(gfx.GetDevice(), &create_info, nullptr, &m_DescPool));
+			vkCheck(vkCreateDescriptorPool(gfx.device, &create_info, nullptr, &m_DescPool));
 		}
 
 		// Render Pass
 		{
 			VkAttachmentDescription att{};
 			att.flags = 0u;
-			att.format = gfx.GetSwapChain().currentFormat;
+			att.format = gfx.swapChain.currentFormat;
 			att.samples = VK_SAMPLE_COUNT_1_BIT;
 			att.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
 			att.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -95,7 +95,7 @@ namespace sve {
 			create_info.dependencyCount = 0u;
 			create_info.pDependencies = nullptr;
 
-			vkCheck(vkCreateRenderPass(gfx.GetDevice(), &create_info, nullptr, &m_RenderPass));
+			vkCheck(vkCreateRenderPass(gfx.device, &create_info, nullptr, &m_RenderPass));
 		}
 		// Image sampler
 		{
@@ -107,7 +107,7 @@ namespace sve {
 			create_info.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 			create_info.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 
-			vkCheck(vkCreateSampler(gfx.GetDevice(), &create_info, nullptr, &m_ImageSampler));
+			vkCheck(vkCreateSampler(gfx.device, &create_info, nullptr, &m_ImageSampler));
 		}
 
 
@@ -115,22 +115,22 @@ namespace sve {
 
 		ImGui_ImplVulkan_InitInfo info{};
 		info.QueueFamily = adapter.GetFamilyIndex().graphics;
-		info.Instance = gfx.GetInstance();
+		info.Instance = gfx.instance;
 		info.PhysicalDevice = adapter.GetPhysicalDevice();
-		info.Device = gfx.GetDevice();
-		info.Queue = gfx.GetGraphicsQueue();
+		info.Device = gfx.device;
+		info.Queue = gfx.queueGraphics;
 		info.PipelineCache = 0;
 		info.DescriptorPool = m_DescPool;
-		info.MinImageCount = gfx.GetSwapChain().capabilities.minImageCount;
-		info.ImageCount = gfx.GetSwapChain().images.size();
+		info.MinImageCount = gfx.swapChain.capabilities.minImageCount;
+		info.ImageCount = gfx.swapChain.images.size();
 		info.CheckVkResultFn = ErrorHandler;
 
 		ImGui_ImplVulkan_Init(&info, m_RenderPass);
 
 		VkCommandBuffer cmd;
-		vkCheck(gfx.BeginSingleTimeCMD(&cmd));
+		vkCheck(graphics_vulkan_singletimecmb_begin(&cmd));
 		if (!ImGui_ImplVulkan_CreateFontsTexture(cmd)) return sv::Result_UnknownError;
-		vkCheck(gfx.EndSingleTimeCMD(cmd));
+		vkCheck(graphics_vulkan_singletimecmb_end(cmd));
 
 		return sv::Result_Success;
 	}
@@ -142,9 +142,9 @@ namespace sve {
 
 		DestroyFrames();
 
-		vkDestroyRenderPass(gfx.GetDevice(), m_RenderPass, nullptr);
-		vkDestroyDescriptorPool(gfx.GetDevice(), m_DescPool, nullptr);
-		vkDestroySampler(gfx.GetDevice(), m_ImageSampler, nullptr);
+		vkDestroyRenderPass(gfx.device, m_RenderPass, nullptr);
+		vkDestroyDescriptorPool(gfx.device, m_DescPool, nullptr);
+		vkDestroySampler(gfx.device, m_ImageSampler, nullptr);
 
 		ImGui_ImplVulkan_Shutdown();
 		ImGui_ImplWin32_Shutdown();
@@ -167,7 +167,7 @@ namespace sve {
 		sv::Graphics_vk& gfx = sv::graphics_vulkan_device_get();
 		ImGui::Render();
 
-		ui32 currentFrame = gfx.GetCurrentFrame();
+		ui32 currentFrame = gfx.currentFrame;
 		
 		VkCommandBuffer cmd = gfx.GetCMD(m_CommandList);
 
@@ -220,7 +220,7 @@ namespace sve {
 	void ImGuiDevice_vk::ResizeSwapChain()
 	{
 		sv::Graphics_vk& gfx = sv::graphics_vulkan_device_get();
-		VkExtent2D currentSize = gfx.GetSwapChain().currentExtent;
+		VkExtent2D currentSize = gfx.swapChain.currentExtent;
 
 		sv::graphics_gpu_wait();
 
@@ -240,7 +240,7 @@ namespace sve {
 
 			if (it != m_Images.end()) {
 				sv::Graphics_vk& gfx = sv::graphics_vulkan_device_get();
-				vkFreeDescriptorSets(gfx.GetDevice(), m_DescPool, 1u, (VkDescriptorSet*)(&it->second.second));
+				vkFreeDescriptorSets(gfx.device, m_DescPool, 1u, (VkDescriptorSet*)(&it->second.second));
 			}
 
 			ImTextureID tex = ImGui_ImplVulkan_AddTexture(m_ImageSampler, image.shaderResouceView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -258,7 +258,7 @@ namespace sve {
 
 		// Create Framebuffers
 		{
-			auto& fb = gfx.GetSwapChain();
+			auto& fb = gfx.swapChain;
 
 			m_SwapChainSize = fb.currentExtent;
 			m_Frames.clear();
@@ -279,7 +279,7 @@ namespace sve {
 				create_info.height = window_size_get().y;
 				create_info.layers = 1u;
 
-				vkExt(vkCreateFramebuffer(gfx.GetDevice(), &create_info, nullptr, &frame.frameBuffer));
+				vkExt(vkCreateFramebuffer(gfx.device, &create_info, nullptr, &frame.frameBuffer));
 			}
 		}
 		return VK_SUCCESS;
@@ -290,7 +290,7 @@ namespace sve {
 		sv::Graphics_vk& gfx = sv::graphics_vulkan_device_get();
 
 		for (ui32 i = 0; i < m_Frames.size(); ++i) {
-			vkDestroyFramebuffer(gfx.GetDevice(), m_Frames[i].frameBuffer, nullptr);
+			vkDestroyFramebuffer(gfx.device, m_Frames[i].frameBuffer, nullptr);
 		}
 	}
 

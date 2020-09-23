@@ -1,15 +1,78 @@
 #pragma once
 
 #include "..//graphics_internal.h"
-#include "vulkan_impl.h"
-#include "graphics_vulkan_conversions.h"
-
-#undef near
-#undef far
 
 namespace sv {
 
-	class Graphics_vk;
+	// DEVICE FUNCTIONS
+
+	void graphics_vulkan_device_prepare(GraphicsDevice& device);
+
+	Result	graphics_vulkan_initialize();
+	Result	graphics_vulkan_close();
+	void* graphics_vulkan_get();
+
+	Result graphics_vulkan_create(GraphicsPrimitiveType type, const void* desc, Primitive_internal** res);
+	Result graphics_vulkan_destroy(Primitive& primitive);
+
+	CommandList graphics_vulkan_commandlist_begin();
+	CommandList graphics_vulkan_commandlist_last();
+	ui32		graphics_vulkan_commandlist_count();
+
+	void graphics_vulkan_renderpass_begin(CommandList);
+	void graphics_vulkan_renderpass_end(CommandList);
+
+	void		graphics_vulkan_swapchain_resize();
+	GPUImage&	graphics_vulkan_swapchain_acquire_image();
+
+	void graphics_vulkan_gpu_wait();
+
+	void graphics_vulkan_frame_begin();
+	void graphics_vulkan_commandlist_submit();
+	void graphics_vulkan_present();
+
+	void graphics_vulkan_draw(ui32, ui32, ui32, ui32, CommandList);
+	void graphics_vulkan_draw_indexed(ui32, ui32, ui32, ui32, ui32, CommandList);
+
+	void graphics_vulkan_image_clear(GPUImage&, GPUImageLayout, GPUImageLayout, const Color4f&, float, ui32, CommandList);
+	void graphics_vulkan_image_blit(GPUImage&, GPUImage&, GPUImageLayout, GPUImageLayout, ui32, const GPUImageBlit*, SamplerFilter, CommandList);
+	void graphics_vulkan_buffer_update(GPUBuffer&, void*, ui32, ui32, CommandList);
+	void graphics_vulkan_barrier(const GPUBarrier*, ui32, CommandList);
+
+}
+
+#ifdef SV_VULKAN_IMPLEMENTATION
+
+#include "window/platform_impl.h"
+
+#ifdef SV_PLATFORM_WINDOWS
+#define VK_USE_PLATFORM_WIN32_KHR
+#endif
+
+#ifdef SV_PLATFORM_LINUX
+#define VK_USE_PLATFORM_XCB_KHR
+#endif
+
+#include "external/vk_mem_alloc.h"
+
+#ifdef SV_DEBUG
+#define vkAssert(x) if((x) != VK_SUCCESS) SV_THROW("VulkanError", #x)
+#else
+#define vkAssert(x) x
+#endif
+
+#define vkCheck(x) if((x) != VK_SUCCESS) return sv::Result_UnknownError
+#define vkExt(x) do{ VkResult res = (x); if(res != VK_SUCCESS) return res; }while(0)
+
+#undef CreateSemaphore
+
+#include "external/sprv/spirv_reflect.hpp"
+
+#include "graphics_vulkan_conversions.h"
+
+namespace sv {
+
+	struct Graphics_vk;
 
 	Graphics_vk& graphics_vulkan_device_get();
 
@@ -111,7 +174,8 @@ namespace sv {
 	bool graphics_vulkan_pipeline_destroy(VulkanPipeline& pipeline);
 	VkPipeline graphics_vulkan_pipeline_get(VulkanPipeline& pipeline, GraphicsState& state, size_t hash);
 
-	//////////////////////////////////////////////////////////// ADAPTER ////////////////////////////////////////////////////////////
+	// ADAPTER
+
 	class Adapter_vk : public Adapter {
 		VkPhysicalDevice					m_PhysicalDevice = VK_NULL_HANDLE;
 		VkPhysicalDeviceProperties			m_Properties;
@@ -138,7 +202,7 @@ namespace sv {
 
 	};
 
-	//////////////////////////////////////////////////////////// PRIMITIVES ////////////////////////////////////////////////////////////
+	// PRIMITIVES
 
 	// Buffer
 	struct Buffer_vk : public GPUBuffer_internal {
@@ -191,12 +255,7 @@ namespace sv {
 		size_t hash;
 	};
 
-	//////////////////////////////////////////////////////////// CONSTRUCTOR & DESTRUCTOR ////////////////////////////////////////////////////////////
-
-	Result VulkanConstructor(GraphicsPrimitiveType type, const void* desc, Primitive_internal** res);
-	Result VulkanDestructor(Primitive& primitive);
-
-	//////////////////////////////////////////////////////////// GRAPHICS API ////////////////////////////////////////////////////////////
+	// API STRUCTS
 
 	struct Frame {
 		VkCommandPool		commandPool;
@@ -233,155 +292,92 @@ namespace sv {
 		Primitive						backBufferImage;
 	};
 
-	class Graphics_vk : public GraphicsDevice {
+	struct Graphics_vk {
 
-		VkInstance					m_Instance = VK_NULL_HANDLE;
-		VkDevice					m_Device = VK_NULL_HANDLE;
-		SwapChain					m_SwapChain;
-		VmaAllocator				m_Allocator;
+		VkInstance					instance = VK_NULL_HANDLE;
+		VkDevice					device = VK_NULL_HANDLE;
+		SwapChain					swapChain;
+		VmaAllocator				allocator;
 
 #if SV_GFX_VK_VALIDATION_LAYERS
-		VkDebugUtilsMessengerEXT	m_Debug = VK_NULL_HANDLE;
+		VkDebugUtilsMessengerEXT	debug = VK_NULL_HANDLE;
 #endif
 
-		std::vector<const char*>	m_Extensions;
-		std::vector<const char*>	m_ValidationLayers;
-		std::vector<const char*>	m_DeviceExtensions;
-		std::vector<const char*>	m_DeviceValidationLayers;
+		std::vector<const char*>	extensions;
+		std::vector<const char*>	validationLayers;
+		std::vector<const char*>	deviceExtensions;
+		std::vector<const char*>	deviceValidationLayers;
 
-		VkQueue						m_QueueGraphics = VK_NULL_HANDLE;
+		VkQueue						queueGraphics = VK_NULL_HANDLE;
 
-		float						m_LastTime = 0.f;
+		float						lastTime = 0.f;
 
 		// Frame Members
 
-		std::vector<Frame>		m_Frames;
-		std::vector<VkFence>	m_ImageFences;
-		ui32					m_FrameCount;
-		ui32					m_CurrentFrame = 0u;
-		std::mutex				m_MutexCMD;
-		ui32					m_ActiveCMDCount = 0u;
+		std::vector<Frame>		frames;
+		std::vector<VkFence>	imageFences;
+		ui32					frameCount;
+		ui32					currentFrame = 0u;
+		std::mutex				mutexCMD;
+		ui32					activeCMDCount = 0u;
 
-		ui32					m_ImageIndex;
+		ui32					imageIndex;
 
-	public:
-		inline Frame& GetFrame() noexcept { return m_Frames[m_CurrentFrame]; }
+		inline Frame& GetFrame() noexcept { return frames[currentFrame]; }
 		inline VkCommandBuffer GetCMD(CommandList cmd) { return GetFrame().commandBuffers[cmd]; }
 
-	private:
 		// Binding Members
 
-		VkRenderPass						m_ActiveRenderPass[SV_GFX_COMMAND_LIST_COUNT];
-		std::map<size_t, VulkanPipeline>	m_Pipelines;
-		std::mutex							m_PipelinesMutex;
-
-	public:
-		Result Initialize(const InitializationGraphicsDesc& desc) override;
-		Result Close() override;
+		VkRenderPass						activeRenderPass[SV_GFX_COMMAND_LIST_COUNT];
+		std::map<size_t, VulkanPipeline>	pipelines;
+		std::mutex							pipelinesMutex;
 
 	private:
-		// Initialization Methods
-
-#if SV_GFX_VK_VALIDATION_LAYERS
-		bool CreateDebugMessenger();
-#endif
-
-		void AdjustAllocator();
-		void SetProperties();
-		bool CreateInstance();
-		bool CreateAdapters();
-		bool CreateLogicalDevice();
-		bool CreateAllocator();
-		bool CreateFrames();
-		bool CreateSwapChain(VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE);
-
-		bool DestroySwapChain(bool resizing = true);
-
-		// State Methods
-
-		void UpdateGraphicsState(CommandList cmd);
-		VkDescriptorSet UpdateDescriptors(VulkanPipeline& pipeline, ShaderType shaderType, GraphicsState& state, bool samplers, bool images, bool uniforms, CommandList cmd);
-
+		ui64 IDCount = 0u;
+		std::mutex IDMutex;
 	public:
-		// Getters
-		inline VkInstance GetInstance() const noexcept { return m_Instance; }
-		inline VkDevice GetDevice() const noexcept { return m_Device; }
-		VkPhysicalDevice GetPhysicalDevice() const noexcept;
-		inline VmaAllocator GetAllocator() const noexcept { return m_Allocator; }
-		inline ui32 GetCurrentFrame() const noexcept { return m_CurrentFrame; }
-		inline VkQueue GetGraphicsQueue() const noexcept { return m_QueueGraphics; }
-		inline SwapChain& GetSwapChain() noexcept { return m_SwapChain; }
-
-		// Primitive Creation
-		Result CreateBuffer(Buffer_vk& buffer, const GPUBufferDesc& desc);
-		Result CreateImage(Image_vk& image, const GPUImageDesc& desc);
-		Result CreateSampler(Sampler_vk& sampler, const SamplerDesc& desc);
-		Result CreateShader(Shader_vk& shader, const ShaderDesc& desc);
-		Result CreateRenderPass(RenderPass_vk& renderPass, const RenderPassDesc& desc);
-		Result CreateInputLayoutState(InputLayoutState_vk& inputLayoutState, const InputLayoutStateDesc& desc);
-		Result CreateBlendState(BlendState_vk& blendState, const BlendStateDesc& desc);
-		Result CreateDepthStencilState(DepthStencilState_vk& depthStencilState, const DepthStencilStateDesc& desc);
-		Result CreateRasterizerState(RasterizerState_vk& rasterizerState, const RasterizerStateDesc& desc);
-
-		ui64 m_IDCount = 0u;
-		std::mutex m_IDMutex;
-		inline ui64 GetID() noexcept { std::lock_guard<std::mutex> lock(m_IDMutex); return m_IDCount++; }
-
-		// Primitive Destuction
-		Result DestroyBuffer(Buffer_vk& buffer);
-		Result DestroyImage(Image_vk& image);
-		Result DestroySampler(Sampler_vk& sampler);
-		Result DestroyShader(Shader_vk& shader);
-		Result DestroyRenderPass(RenderPass_vk& renderPass);
-
-		// Device Methods
-
-		CommandList BeginCommandList() override;
-		CommandList GetLastCommandList() override;
-		ui32 GetCommandListCount() override;
-
-		void BeginRenderPass(CommandList cmd) override;
-		void EndRenderPass(CommandList cmd) override;
-
-		void ResizeSwapChain() override;
-		GPUImage& AcquireSwapChainImage() override;
-		void WaitGPU() override;
-
-		void BeginFrame() override;
-		void SubmitCommandLists() override;
-		void Present() override;
-
-		void Draw(ui32 vertexCount, ui32 instanceCount, ui32 startVertex, ui32 startInstance, CommandList cmd) override;
-		void DrawIndexed(ui32 indexCount, ui32 instanceCount, ui32 startIndex, ui32 startVertex, ui32 startInstance, CommandList cmd) override;
-
-		void ClearImage(GPUImage& image, GPUImageLayout oldLayout, GPUImageLayout newLayout, const Color4f& clearColor, float depth, ui32 stencil, CommandList cmd) override;
-		void UpdateBuffer(GPUBuffer& buffer, void* pData, ui32 size, ui32 offset, CommandList cmd) override;
-		void Barrier(const GPUBarrier* barriers, ui32 count, CommandList cmd) override;
-		void ImageBlit(GPUImage& src, GPUImage& dst, GPUImageLayout srcLayout, GPUImageLayout dstLayout, ui32 count, const GPUImageBlit* imageBlit, SamplerFilter filter, CommandList cmd) override;
-
-		// CommandBuffers
-
-		VkResult BeginSingleTimeCMD(VkCommandBuffer* pCmd);
-		VkResult EndSingleTimeCMD(VkCommandBuffer cmd);
-
-		// Memory Funtions
-
-		void CopyBuffer(VkCommandBuffer cmd, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize srcOffset, VkDeviceSize dstOffset, VkDeviceSize size);
-
-		VkResult CreateImageView(VkImage image, VkFormat format, VkImageViewType viewType, VkImageAspectFlags aspectFlags, ui32 layerCount, VkImageView& view);
-
-		// Sync Functions
-
-		VkSemaphore CreateSemaphore();
-		VkFence CreateFence(bool signaled);
-
-		// Shader Layout
-
-		void LoadSpirv_SemanticNames(spirv_cross::Compiler& compiler, spirv_cross::ShaderResources& shaderResources, std::map<std::string, ui32>& semanticNames);
-		void LoadSpirv_Samplers(spirv_cross::Compiler& compiler, spirv_cross::ShaderResources& shaderResources, ShaderType shaderType, std::vector<VkDescriptorSetLayoutBinding>& bindings);
-		void LoadSpirv_Images(spirv_cross::Compiler& compiler, spirv_cross::ShaderResources& shaderResources, ShaderType shaderType, std::vector<VkDescriptorSetLayoutBinding>& bindings);
-		void LoadSpirv_Uniforms(spirv_cross::Compiler& compiler, spirv_cross::ShaderResources& shaderResources, ShaderType shaderType, std::vector<VkDescriptorSetLayoutBinding>& bindings);
+		inline ui64 GetID() noexcept { std::lock_guard<std::mutex> lock(IDMutex); return IDCount++; }
 
 	};
 
+	// API FUNCTIONS
+
+	Result graphics_vulkan_swapchain_create(VkSwapchainKHR oldSwapchain);
+	Result graphics_vulkan_swapchain_destroy(bool resizing = true);
+
+	void graphics_vulkan_state_update_graphics(CommandList cmd);
+	VkDescriptorSet graphics_vulkan_state_update_graphics_descriptors(VulkanPipeline& pipeline, ShaderType shaderType, GraphicsState& state, bool samplers, bool images, bool uniforms, CommandList cmd);
+
+	VkResult graphics_vulkan_singletimecmb_begin(VkCommandBuffer* pCmd);
+	VkResult graphics_vulkan_singletimecmb_end(VkCommandBuffer cmd);
+
+	void graphics_vulkan_buffer_copy(VkCommandBuffer cmd, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize srcOffset, VkDeviceSize dstOffset, VkDeviceSize size);
+	VkResult graphics_vulkan_imageview_create(VkImage image, VkFormat format, VkImageViewType viewType, VkImageAspectFlags aspectFlags, ui32 layerCount, VkImageView& view);
+
+	VkSemaphore graphics_vulkan_semaphore_create();
+	VkFence graphics_vulkan_fence_create(bool sign);
+
+	Result graphics_vulkan_buffer_create(Buffer_vk& buffer, const GPUBufferDesc& desc);
+	Result graphics_vulkan_image_create(Image_vk& image, const GPUImageDesc& desc);
+	Result graphics_vulkan_sampler_create(Sampler_vk& sampler, const SamplerDesc& desc);
+	Result graphics_vulkan_shader_create(Shader_vk& shader, const ShaderDesc& desc);
+	Result graphics_vulkan_renderpass_create(RenderPass_vk& renderPass, const RenderPassDesc& desc);
+	Result graphics_vulkan_inputlayoutstate_create(InputLayoutState_vk& inputLayoutState, const InputLayoutStateDesc& desc);
+	Result graphics_vulkan_blendstate_create(BlendState_vk& blendState, const BlendStateDesc& desc);
+	Result graphics_vulkan_depthstencilstate_create(DepthStencilState_vk& depthStencilState, const DepthStencilStateDesc& desc);
+	Result graphics_vulkan_rasterizerstate_create(RasterizerState_vk& rasterizerState, const RasterizerStateDesc& desc);
+
+	Result graphics_vulkan_buffer_destroy(Buffer_vk& buffer);
+	Result graphics_vulkan_image_destroy(Image_vk& image);
+	Result graphics_vulkan_sampler_destroy(Sampler_vk& sampler);
+	Result graphics_vulkan_shader_destroy(Shader_vk& shader);
+	Result graphics_vulkan_renderpass_destroy(RenderPass_vk& renderPass);
+
+	void graphics_spirv_semantic_names(spirv_cross::Compiler& compiler, spirv_cross::ShaderResources& shaderResources, std::map<std::string, ui32>& semanticNames);
+	void graphics_spirv_samplers(spirv_cross::Compiler& compiler, spirv_cross::ShaderResources& shaderResources, ShaderType shaderType, std::vector<VkDescriptorSetLayoutBinding>& bindings);
+	void graphics_spirv_images(spirv_cross::Compiler& compiler, spirv_cross::ShaderResources& shaderResources, ShaderType shaderType, std::vector<VkDescriptorSetLayoutBinding>& bindings);
+	void graphics_spirv_uniforms(spirv_cross::Compiler& compiler, spirv_cross::ShaderResources& shaderResources, ShaderType shaderType, std::vector<VkDescriptorSetLayoutBinding>& bindings);
+
 }
+
+#endif

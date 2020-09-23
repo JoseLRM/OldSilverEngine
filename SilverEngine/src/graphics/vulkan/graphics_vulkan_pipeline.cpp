@@ -1,5 +1,6 @@
 #include "core.h"
 
+#define SV_VULKAN_IMPLEMENTATION
 #include "graphics_vulkan.h"
 
 namespace sv {
@@ -70,7 +71,7 @@ namespace sv {
 			layout_info.pSetLayouts = layouts.data();
 			layout_info.pushConstantRangeCount = 0u;
 
-			vkCheck(vkCreatePipelineLayout(gfx.GetDevice(), &layout_info, nullptr, &p.layout));
+			vkCheck(vkCreatePipelineLayout(gfx.device, &layout_info, nullptr, &p.layout));
 		}
 
 		p.lastUsage = timer_now();
@@ -82,10 +83,10 @@ namespace sv {
 	{
 		Graphics_vk& gfx = graphics_vulkan_device_get();
 
-		vkDestroyPipelineLayout(gfx.GetDevice(), pipeline.layout, nullptr);
+		vkDestroyPipelineLayout(gfx.device, pipeline.layout, nullptr);
 
 		for (auto& it : pipeline.pipelines) {
-			vkDestroyPipeline(gfx.GetDevice(), it.second, nullptr);
+			vkDestroyPipeline(gfx.device, it.second, nullptr);
 		}
 		return true;
 	}
@@ -303,7 +304,7 @@ namespace sv {
 			create_info.renderPass = renderPass.renderPass;
 			create_info.subpass = 0u;
 
-			vkAssert(vkCreateGraphicsPipelines(gfx.GetDevice(), VK_NULL_HANDLE, 1u, &create_info, nullptr, &res));
+			vkAssert(vkCreateGraphicsPipelines(gfx.device, VK_NULL_HANDLE, 1u, &create_info, nullptr, &res));
 			pipeline.pipelines[hash] = res;
 		}
 		else {

@@ -272,6 +272,8 @@ namespace sv {
 			svCheck(window_icon_set(desc.iconFilePath));
 		}
 
+		svLog("Window created");
+
 		return Result_Success;
 	}
 

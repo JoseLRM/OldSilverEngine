@@ -7,8 +7,8 @@
 
 namespace sv {
 
-	static PipelineState							g_PipelineState;
-	static std::unique_ptr<GraphicsDevice>			g_Device;
+	static PipelineState	g_PipelineState;
+	static GraphicsDevice	g_Device;
 	
 	static std::vector<std::unique_ptr<Adapter>>	g_Adapters;
 	static ui32										g_AdapterIndex;
@@ -26,10 +26,17 @@ namespace sv {
 
 	Result graphics_initialize(const InitializationGraphicsDesc& desc)
 	{
-		g_Device = std::make_unique<Graphics_vk>();
+		Result res;
 
 		// Initialize API
-		svCheck(g_Device->Initialize(desc));
+		svLog("Trying to initialize vulkan device");
+		graphics_vulkan_device_prepare(g_Device);
+		res = g_Device.initialize();
+		
+		if (res != Result_Success) {
+			svLogError("Can't initialize vulkan device (Error code: %u)", res);
+		}
+		else svLog("Vulkan device initialized successfuly");
 
 		// Create default states
 		{
@@ -113,7 +120,7 @@ namespace sv {
 	{
 		graphics_allocator_clear();
 
-		svCheck(g_Device->Close());
+		svCheck(g_Device.close());
 
 		svCheck(graphics_shader_close());
 
@@ -123,37 +130,47 @@ namespace sv {
 	void graphics_begin()
 	{
 		g_SwapChainImageAcquired = false;
-		g_Device->BeginFrame();
+		g_Device.frame_begin();
 	}
 	void graphics_commandlist_submit()
 	{
-		g_Device->SubmitCommandLists();
+		g_Device.commandlist_submit();
 	}
 	void graphics_present()
 	{
 		if (!g_SwapChainImageAcquired) svLogWarning("Must acquire swaphchain image once per frame");
-		g_Device->Present();
+		g_Device.present();
 	}
 
 	void graphics_swapchain_resize()
 	{
-		g_Device->ResizeSwapChain();
+		g_Device.swapchain_resize();
 	}
 
 	GPUImage& graphics_swapchain_acquire_image()
 	{
 		if (g_SwapChainImageAcquired) svLogWarning("Must acquire swapchain image once per frame");
 		g_SwapChainImageAcquired = true;
-		return g_Device->AcquireSwapChainImage();
+		return g_Device.swapchain_acquire_image();
 	}
 
 	PipelineState& graphics_state_get() noexcept
 	{
 		return g_PipelineState;
 	}
-	GraphicsDevice* graphics_device_get() noexcept
+	void* graphics_device_get() noexcept
 	{
 		return g_Device.get();
+	}
+
+	Result graphics_create_primitive(GraphicsPrimitiveType type, const void* desc, Primitive_internal** ptr)
+	{
+		return g_Device.create(type, desc, ptr);
+	}
+
+	Result graphics_destroy_primitive(sv::Primitive& p)
+	{
+		return g_Device.destroy(p);
 	}
 
 	void graphics_adapter_add(std::unique_ptr<Adapter>&& adapter)
@@ -529,7 +546,7 @@ namespace sv {
 
 	CommandList graphics_commandlist_begin()
 	{
-		CommandList cmd = g_Device->BeginCommandList();
+		CommandList cmd = g_Device.commandlist_begin();
 
 		g_PipelineState.mode[cmd] = GraphicsPipelineMode_Graphics;
 		g_PipelineState.graphics[cmd] = g_DefGraphicsState;
@@ -539,7 +556,7 @@ namespace sv {
 
 	CommandList graphics_commandlist_last()
 	{
-		return g_Device->GetLastCommandList();
+		return g_Device.commandlist_last();
 	}
 
 	CommandList graphics_commandlist_get()
@@ -549,12 +566,12 @@ namespace sv {
 
 	ui32 graphics_commandlist_count()
 	{
-		return g_Device->GetCommandListCount();
+		return g_Device.commandlist_count();
 	}
 
 	void graphics_gpu_wait()
 	{
-		g_Device->WaitGPU();
+		g_Device.gpu_wait();
 	}
 
 	/////////////////////////////////////// RESOURCES ////////////////////////////////////////////////////////////
@@ -1040,11 +1057,11 @@ namespace sv {
 			memcpy(g_PipelineState.graphics[cmd].clearColors, colors, rp->attachments.size() * sizeof(vec4f));
 		g_PipelineState.graphics[cmd].clearDepthStencil = std::make_pair(depth, stencil);
 
-		g_Device->BeginRenderPass(cmd);
+		g_Device.renderpass_begin(cmd);
 	}
 	void graphics_renderpass_end(CommandList cmd)
 	{
-		g_Device->EndRenderPass(cmd);
+		g_Device.renderpass_end(cmd);
 		g_PipelineState.graphics[cmd].renderPass = nullptr;
 		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_RenderPass;
 	}
@@ -1151,33 +1168,33 @@ namespace sv {
 
 	void graphics_draw(ui32 vertexCount, ui32 instanceCount, ui32 startVertex, ui32 startInstance, CommandList cmd)
 	{
-		g_Device->Draw(vertexCount, instanceCount, startVertex, startInstance, cmd);
+		g_Device.draw(vertexCount, instanceCount, startVertex, startInstance, cmd);
 	}
 	void graphics_draw_indexed(ui32 indexCount, ui32 instanceCount, ui32 startIndex, ui32 startVertex, ui32 startInstance, CommandList cmd)
 	{
-		g_Device->DrawIndexed(indexCount, instanceCount, startIndex, startVertex, startInstance, cmd);
+		g_Device.draw_indexed(indexCount, instanceCount, startIndex, startVertex, startInstance, cmd);
 	}
 
 	////////////////////////////////////////// MEMORY /////////////////////////////////////////
 
 	void graphics_buffer_update(GPUBuffer& buffer, void* pData, ui32 size, ui32 offset, CommandList cmd)
 	{
-		g_Device->UpdateBuffer(buffer, pData, size, offset, cmd);
+		g_Device.buffer_update(buffer, pData, size, offset, cmd);
 	}
 
 	void graphics_barrier(const GPUBarrier* barriers, ui32 count, CommandList cmd)
 	{
-		g_Device->Barrier(barriers, count, cmd);
+		g_Device.barrier(barriers, count, cmd);
 	}
 
 	void graphics_image_blit(GPUImage& src, GPUImage& dst, GPUImageLayout srcLayout, GPUImageLayout dstLayout, ui32 count, const GPUImageBlit* imageBlit, SamplerFilter filter, CommandList cmd)
 	{
-		g_Device->ImageBlit(src, dst, srcLayout, dstLayout, count, imageBlit, filter, cmd);
+		g_Device.image_blit(src, dst, srcLayout, dstLayout, count, imageBlit, filter, cmd);
 	}
 
 	void graphics_image_clear(GPUImage& image, GPUImageLayout oldLayout, GPUImageLayout newLayout, const Color4f& clearColor, float depth, ui32 stencil, CommandList cmd)
 	{
-		g_Device->ClearImage(image, oldLayout, newLayout, clearColor, depth, stencil, cmd);
+		g_Device.image_clear(image, oldLayout, newLayout, clearColor, depth, stencil, cmd);
 	}
 
 	ui32 graphics_image_get_width(const GPUImage& image)

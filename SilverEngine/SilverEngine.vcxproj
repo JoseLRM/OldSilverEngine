@@ -246,7 +246,6 @@
     <ClInclude Include="src\graphics.h" />
     <ClInclude Include="src\graphics\vulkan\graphics_vulkan.h" />
     <ClInclude Include="src\graphics\vulkan\graphics_vulkan_conversions.h" />
-    <ClInclude Include="src\graphics\vulkan\vulkan_impl.h" />
     <ClInclude Include="src\input\input_internal.h" />
     <ClInclude Include="src\loader.h" />
     <ClInclude Include="src\loader\loader_internal.h" />

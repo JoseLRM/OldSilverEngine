@@ -2,8 +2,8 @@
 
 #include "graphics.h"
 
-#define svLog(x, ...) sv::console_log(sv::LoggingStyle_Blue, "[GRAPHICS] "#x, __VA_ARGS__)
-#define svLogWarning(x, ...) sv::console_log(sv::LoggingStyle_Blue, "[GRAPHICS_WARNING] "#x, __VA_ARGS__)
+#define svLog(x, ...) sv::console_log(sv::LoggingStyle_Blue | sv::LoggingStyle_Green, "[GRAPHICS] "#x, __VA_ARGS__)
+#define svLogWarning(x, ...) sv::console_log(sv::LoggingStyle_Blue | sv::LoggingStyle_Green, "[GRAPHICS_WARNING] "#x, __VA_ARGS__)
 #define svLogError(x, ...) sv::console_log(sv::LoggingStyle_Red, "[GRAPHICS_ERROR] "#x, __VA_ARGS__)
 
 namespace sv {
@@ -175,33 +175,69 @@ namespace sv {
 
 	// GraphicsAPI Device
 
-	class GraphicsDevice {
-	public:
-		virtual Result Initialize(const sv::InitializationGraphicsDesc& desc) = 0;
-		virtual Result Close() = 0;
+	typedef Result(*FNP_graphics_api_initialize)();
+	typedef Result(*FNP_graphics_api_close)();
+	typedef void*(*FNP_graphics_api_get)();
 
-		virtual CommandList BeginCommandList() = 0;
-		virtual CommandList GetLastCommandList() = 0;
-		virtual ui32 GetCommandListCount() = 0;
+	typedef Result(*FNP_graphics_create)(GraphicsPrimitiveType, const void*, Primitive_internal**);
+	typedef Result(*FNP_graphics_destroy)(sv::Primitive&);
 
-		virtual void BeginRenderPass(sv::CommandList cmd) = 0;
-		virtual void EndRenderPass(sv::CommandList cmd) = 0;
+	typedef CommandList(*FNP_graphics_api_commandlist_begin)();
+	typedef CommandList(*FNP_graphics_api_commandlist_last)();
+	typedef ui32(*FNP_graphics_api_commandlist_count)();
 
-		virtual void ResizeSwapChain() = 0;
-		virtual GPUImage& AcquireSwapChainImage() = 0;
-		virtual void WaitGPU() = 0;
+	typedef void(*FNP_graphics_api_renderpass_begin)(CommandList);
+	typedef void(*FNP_graphics_api_renderpass_end)(CommandList);
 
-		virtual void BeginFrame() = 0;
-		virtual void SubmitCommandLists() = 0;
-		virtual void Present() = 0;
+	typedef void(*FNP_graphics_api_swapchain_resize)();
+	typedef GPUImage&(*FNP_graphics_api_swapchain_acquire_image)();
 
-		virtual void Draw(ui32 vertexCount, ui32 instanceCount, ui32 startVertex, ui32 startInstance, sv::CommandList cmd) = 0;
-		virtual void DrawIndexed(ui32 indexCount, ui32 instanceCount, ui32 startIndex, ui32 startVertex, ui32 startInstance, sv::CommandList cmd) = 0;
+	typedef void(*FNP_graphics_api_gpu_wait)();
 
-		virtual void ClearImage(GPUImage& image, GPUImageLayout oldLayout, GPUImageLayout newLayout, const sv::Color4f& clearColor, float depth, ui32 stencil, sv::CommandList cmd) = 0;
-		virtual void UpdateBuffer(GPUBuffer& buffer, void* pData, ui32 size, ui32 offset, sv::CommandList cmd) = 0;
-		virtual void Barrier(const GPUBarrier* barriers, ui32 count, sv::CommandList cmd) = 0;
-		virtual void ImageBlit(GPUImage& src, GPUImage& dst, GPUImageLayout srcLayout, GPUImageLayout dstLayout, ui32 count, const GPUImageBlit* imageBlit, SamplerFilter filter, CommandList cmd) = 0;
+	typedef void(*FNP_graphics_api_frame_begin)();
+	typedef void(*FNP_graphics_api_commandlist_submit)();
+	typedef void(*FNP_graphics_api_present)();
+
+	typedef void(*FNP_graphics_api_draw)(ui32, ui32, ui32, ui32, CommandList);
+	typedef void(*FNP_graphics_api_draw_indexed)(ui32, ui32, ui32, ui32, ui32, CommandList);
+
+	typedef void(*FNP_graphics_api_image_clear)(GPUImage&, GPUImageLayout, GPUImageLayout, const Color4f&, float, ui32, CommandList);
+	typedef void(*FNP_graphics_api_image_blit)(GPUImage&, GPUImage&, GPUImageLayout, GPUImageLayout, ui32, const GPUImageBlit*, SamplerFilter, CommandList);
+	typedef void(*FNP_graphics_api_buffer_update)(GPUBuffer&, void*, ui32, ui32, CommandList);
+	typedef void(*FNP_graphics_api_barrier)(const GPUBarrier*, ui32, CommandList);
+
+	struct GraphicsDevice {
+
+		FNP_graphics_api_initialize	initialize;
+		FNP_graphics_api_close		close;
+		FNP_graphics_api_get		get;
+
+		FNP_graphics_create		create;
+		FNP_graphics_destroy	destroy;
+
+		FNP_graphics_api_commandlist_begin	commandlist_begin;
+		FNP_graphics_api_commandlist_last	commandlist_last;
+		FNP_graphics_api_commandlist_count	commandlist_count;
+
+		FNP_graphics_api_renderpass_begin	renderpass_begin;
+		FNP_graphics_api_renderpass_end		renderpass_end;
+
+		FNP_graphics_api_swapchain_resize			swapchain_resize;
+		FNP_graphics_api_swapchain_acquire_image	swapchain_acquire_image;
+
+		FNP_graphics_api_gpu_wait gpu_wait;
+
+		FNP_graphics_api_frame_begin		frame_begin;
+		FNP_graphics_api_commandlist_submit commandlist_submit;
+		FNP_graphics_api_present			present;
+
+		FNP_graphics_api_draw			draw;
+		FNP_graphics_api_draw_indexed	draw_indexed;
+
+		FNP_graphics_api_image_clear	image_clear;
+		FNP_graphics_api_image_blit		image_blit;
+		FNP_graphics_api_buffer_update	buffer_update;
+		FNP_graphics_api_barrier		barrier;
 
 	};
 
@@ -215,17 +251,16 @@ namespace sv {
 	void graphics_swapchain_resize();
 	GPUImage& graphics_swapchain_acquire_image();
 
-	GraphicsDevice* graphics_device_get() noexcept;
-	PipelineState& graphics_state_get() noexcept;
+	void*			graphics_device_get() noexcept;
+	PipelineState&	graphics_state_get() noexcept;
+
+	Result graphics_create_primitive(GraphicsPrimitiveType, const void*, Primitive_internal**);
+	Result graphics_destroy_primitive(sv::Primitive&);
 
 	// Allocator
 
-	typedef Result(*PrimitiveConstructor)(GraphicsPrimitiveType, const void*, Primitive_internal**);
-	typedef Result(*PrimitiveDestructor)(sv::Primitive&);
-
 	Result	graphics_allocator_construct(GraphicsPrimitiveType type, const void* desc, Primitive_internal** res);
 	Result	graphics_allocator_destroy(sv::Primitive& primitive);
-	void	graphics_allocator_set_functions(PrimitiveConstructor constructor, PrimitiveDestructor destructor);
 	void	graphics_allocator_clear();
 
 	// Adapters

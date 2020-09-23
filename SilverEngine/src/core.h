@@ -74,6 +74,7 @@ namespace sv {
 		Result_CloseRequest,
 		Result_UnknownError,
 		Result_PlatformError,
+		Result_GraphicsAPIError,
 		Result_NotFound,
 		Result_InvalidFormat,
 		Result_InvalidUsage,
