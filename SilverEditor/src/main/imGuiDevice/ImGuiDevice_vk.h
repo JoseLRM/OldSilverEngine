@@ -39,7 +39,7 @@ namespace sve {
 
 		void ResizeSwapChain() override;
 
-		ImTextureID ParseImage(sv::GPUImage& image) override;
+		ImTextureID ParseImage(sv::GPUImage* image) override;
 
 	private:
 		VkResult CreateFrames();

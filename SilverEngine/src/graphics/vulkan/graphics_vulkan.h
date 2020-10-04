@@ -12,8 +12,8 @@ namespace sv {
 	Result	graphics_vulkan_close();
 	void* graphics_vulkan_get();
 
-	Result graphics_vulkan_create(GraphicsPrimitiveType type, const void* desc, Primitive_internal** res);
-	Result graphics_vulkan_destroy(Primitive& primitive);
+	Result graphics_vulkan_create(GraphicsPrimitiveType type, const void* desc, Primitive_internal* res);
+	Result graphics_vulkan_destroy(Primitive_internal* primitive);
 
 	CommandList graphics_vulkan_commandlist_begin();
 	CommandList graphics_vulkan_commandlist_last();
@@ -23,7 +23,7 @@ namespace sv {
 	void graphics_vulkan_renderpass_end(CommandList);
 
 	void		graphics_vulkan_swapchain_resize();
-	GPUImage&	graphics_vulkan_swapchain_acquire_image();
+	GPUImage*	graphics_vulkan_swapchain_acquire_image();
 
 	void graphics_vulkan_gpu_wait();
 
@@ -34,9 +34,9 @@ namespace sv {
 	void graphics_vulkan_draw(ui32, ui32, ui32, ui32, CommandList);
 	void graphics_vulkan_draw_indexed(ui32, ui32, ui32, ui32, ui32, CommandList);
 
-	void graphics_vulkan_image_clear(GPUImage&, GPUImageLayout, GPUImageLayout, const Color4f&, float, ui32, CommandList);
-	void graphics_vulkan_image_blit(GPUImage&, GPUImage&, GPUImageLayout, GPUImageLayout, ui32, const GPUImageBlit*, SamplerFilter, CommandList);
-	void graphics_vulkan_buffer_update(GPUBuffer&, void*, ui32, ui32, CommandList);
+	void graphics_vulkan_image_clear(GPUImage*, GPUImageLayout, GPUImageLayout, const Color4f&, float, ui32, CommandList);
+	void graphics_vulkan_image_blit(GPUImage*, GPUImage*, GPUImageLayout, GPUImageLayout, ui32, const GPUImageBlit*, SamplerFilter, CommandList);
+	void graphics_vulkan_buffer_update(GPUBuffer*, void*, ui32, ui32, CommandList);
 	void graphics_vulkan_barrier(const GPUBarrier*, ui32, CommandList);
 
 }
@@ -228,9 +228,10 @@ namespace sv {
 	};
 	// Shader
 	struct Shader_vk : public Shader_internal {
-		VkShaderModule				module = VK_NULL_HANDLE;
-		std::map<std::string, ui32>	semanticNames;
-		ShaderDescriptorSetLayout	layout;
+		VkShaderModule							module = VK_NULL_HANDLE;
+		std::unordered_map<std::string, ui32>	semanticNames;
+		ShaderDescriptorSetLayout				layout;
+		ui64									ID;
 	};
 	// RenderPass
 	struct RenderPass_vk : public RenderPass_internal {
@@ -289,7 +290,6 @@ namespace sv {
 		};
 		std::vector<Image>					images;
 		Image_vk							backBuffer;
-		Primitive						backBufferImage;
 	};
 
 	struct Graphics_vk {
@@ -372,11 +372,6 @@ namespace sv {
 	Result graphics_vulkan_sampler_destroy(Sampler_vk& sampler);
 	Result graphics_vulkan_shader_destroy(Shader_vk& shader);
 	Result graphics_vulkan_renderpass_destroy(RenderPass_vk& renderPass);
-
-	void graphics_spirv_semantic_names(spirv_cross::Compiler& compiler, spirv_cross::ShaderResources& shaderResources, std::map<std::string, ui32>& semanticNames);
-	void graphics_spirv_samplers(spirv_cross::Compiler& compiler, spirv_cross::ShaderResources& shaderResources, ShaderType shaderType, std::vector<VkDescriptorSetLayoutBinding>& bindings);
-	void graphics_spirv_images(spirv_cross::Compiler& compiler, spirv_cross::ShaderResources& shaderResources, ShaderType shaderType, std::vector<VkDescriptorSetLayoutBinding>& bindings);
-	void graphics_spirv_uniforms(spirv_cross::Compiler& compiler, spirv_cross::ShaderResources& shaderResources, ShaderType shaderType, std::vector<VkDescriptorSetLayoutBinding>& bindings);
 
 }
 

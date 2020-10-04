@@ -133,6 +133,7 @@
     <ClCompile Include="src\main\Main.cpp" />
     <ClCompile Include="src\scene_editor\scene_editor.cpp" />
     <ClCompile Include="src\simulation\simulation.cpp" />
+    <ClCompile Include="src\viewports\materials\viewport_materials.cpp" />
     <ClCompile Include="src\viewports\simulation\viewport_simulation.cpp" />
     <ClCompile Include="src\viewports\scene\viewport_scene.cpp" />
     <ClCompile Include="src\viewports\viewports.cpp" />
@@ -156,6 +157,7 @@
     <ClInclude Include="src\simulation.h" />
     <ClInclude Include="src\viewports.h" />
     <ClInclude Include="src\viewports\viewport_assets.h" />
+    <ClInclude Include="src\viewports\viewport_materials.h" />
     <ClInclude Include="src\viewports\viewport_scene_editor.h" />
     <ClInclude Include="src\viewports\viewport_simulation.h" />
   </ItemGroup>

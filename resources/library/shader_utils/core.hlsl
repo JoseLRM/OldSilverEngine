@@ -25,6 +25,8 @@ typedef unsigned int    ui32;
 
 typedef int             i32;
 
+#define SV_DEFINE_MATERIAL(binding) SV_CONSTANT_BUFFER(__Material__, binding)
+
 // LIGHTING
 
 #ifdef SV_ENABLE_LIGHTING

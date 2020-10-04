@@ -3,7 +3,12 @@
 #include "scene_internal.h"
 #include "engine.h"
 
+#include "utils/allocators/InstanceAllocator.h"
+
 namespace sv {
+
+	static InstanceAllocator<Scene_internal>	g_SceneAllocator;
+	static std::mutex							g_SceneMutex;
 
 	Result scene_initialize()
 	{
@@ -19,12 +24,19 @@ namespace sv {
 
 	Result scene_close()
 	{
+		ui32 count = g_SceneAllocator.unfreed_count();
+		if (count) svLogWarning("There are %u unfreed scenes", count);
+
+		g_SceneAllocator.clear();
+
 		return Result_Success;
 	}
 
 	Result scene_create(const SceneDesc* desc, Scene** scene_)
 	{
-		Scene_internal& scene = *new Scene_internal();
+		g_SceneMutex.lock();
+		Scene_internal& scene = *g_SceneAllocator.create();
+		g_SceneMutex.unlock();
 
 		scene.timeStep = 1.f;
 
@@ -35,9 +47,7 @@ namespace sv {
 		scene.mainCamera = ecs_entity_create(scene.ecs);
 		ecs_component_add<CameraComponent>(scene.ecs, scene.mainCamera);
 
-#if SV_SCENE_NAME_COMPONENT
 		ecs_component_add<NameComponent>(scene.ecs, scene.mainCamera, "Camera");
-#endif
 
 		// Physics
 		svCheck(scene_physics_create(desc, scene));
@@ -53,7 +63,9 @@ namespace sv {
 		ecs_destroy(scene.ecs);
 		scene.mainCamera = SV_ENTITY_NULL;
 		svCheck(scene_physics_destroy(scene));
-		delete &scene;
+		g_SceneMutex.lock();
+		g_SceneAllocator.destroy(&scene);
+		g_SceneMutex.unlock();
 		return Result_Success;
 	}
 

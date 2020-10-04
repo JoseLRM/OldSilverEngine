@@ -19,7 +19,7 @@ namespace sve {
 
 		virtual void ResizeSwapChain() = 0;
 
-		virtual ImTextureID ParseImage(sv::GPUImage& image) = 0;
+		virtual ImTextureID ParseImage(sv::GPUImage* image) = 0;
 
 		inline ImGuiContext* GetCtx() const noexcept { return m_Ctx; }
 		inline sv::CommandList GetCMD() const noexcept { return m_CommandList; }

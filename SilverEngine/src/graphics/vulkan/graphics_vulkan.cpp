@@ -110,6 +110,17 @@ namespace sv {
 		device.image_blit				= graphics_vulkan_image_blit;
 		device.buffer_update			= graphics_vulkan_buffer_update;
 		device.barrier					= graphics_vulkan_barrier;
+
+		device.bufferAllocator = std::make_unique<SizedInstanceAllocator>(sizeof(Buffer_vk));
+		device.imageAllocator = std::make_unique<SizedInstanceAllocator>(sizeof(Image_vk));
+		device.samplerAllocator = std::make_unique<SizedInstanceAllocator>(sizeof(Sampler_vk));
+		device.shaderAllocator = std::make_unique<SizedInstanceAllocator>(sizeof(Shader_vk));
+		device.renderPassAllocator = std::make_unique<SizedInstanceAllocator>(sizeof(RenderPass_vk));
+		device.inputLayoutStateAllocator = std::make_unique<SizedInstanceAllocator>(sizeof(InputLayoutState_vk));
+		device.blendStateAllocator = std::make_unique<SizedInstanceAllocator>(sizeof(BlendState_vk));
+		device.depthStencilStateAllocator = std::make_unique<SizedInstanceAllocator>(sizeof(DepthStencilState_vk));
+		device.rasterizerStateAllocator = std::make_unique<SizedInstanceAllocator>(sizeof(RasterizerState_vk));
+		
 	}
 
 	Result graphics_vulkan_initialize()
@@ -220,7 +231,7 @@ namespace sv {
 				VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
 			create_info.pfnUserCallback = DebugCallback;
 			create_info.pUserData = nullptr;
-
+			
 			vkCheck(vkCreateDebugUtilsMessengerEXT(g_API->instance, &create_info, nullptr, &g_API->debug));
 		}
 #endif
@@ -411,147 +422,91 @@ namespace sv {
 		return g_API.get();
 	}
 
-	Result graphics_vulkan_create(GraphicsPrimitiveType type, const void* desc, Primitive_internal** ptr)
+	Result graphics_vulkan_create(GraphicsPrimitiveType type, const void* desc, Primitive_internal* ptr)
 	{
-		Result result = Result_Success;
-
 		switch (type)
 		{
 
 		case GraphicsPrimitiveType_Buffer:
 		{
-			Buffer_vk* b = new Buffer_vk();
-			result = graphics_vulkan_buffer_create(*b, *reinterpret_cast<const GPUBufferDesc*>(desc));
-
-			if (result != Result_Success) {
-				delete b;
-				b = nullptr;
-			}
-			*ptr = b;
+			Buffer_vk* b = new(ptr) Buffer_vk();
+			return graphics_vulkan_buffer_create(*b, *reinterpret_cast<const GPUBufferDesc*>(desc));
 		}
 		break;
 
 		case GraphicsPrimitiveType_Shader:
 		{
-			Shader_vk* s = new Shader_vk();
-			result = graphics_vulkan_shader_create(*s, *reinterpret_cast<const ShaderDesc*>(desc));
-
-			if (result != Result_Success) {
-				delete s;
-				s = nullptr;
-			}
-			*ptr = s;
+			Shader_vk* s = new(ptr) Shader_vk();
+			return graphics_vulkan_shader_create(*s, *reinterpret_cast<const ShaderDesc*>(desc));
 		}
 		break;
 
 		case GraphicsPrimitiveType_Image:
 		{
-			Image_vk* i = new Image_vk();
-			result = graphics_vulkan_image_create(*i, *reinterpret_cast<const GPUImageDesc*>(desc));
-
-			if (result != Result_Success) {
-				delete i;
-				i = nullptr;
-			}
-			*ptr = i;
+			Image_vk* i = new(ptr) Image_vk();
+			return graphics_vulkan_image_create(*i, *reinterpret_cast<const GPUImageDesc*>(desc));
 		}
 		break;
 
 		case GraphicsPrimitiveType_Sampler:
 		{
-			Sampler_vk* i = new Sampler_vk();
-			result = graphics_vulkan_sampler_create(*i, *reinterpret_cast<const SamplerDesc*>(desc));
-
-			if (result != Result_Success) {
-				delete i;
-				i = nullptr;
-			}
-			*ptr = i;
+			Sampler_vk* i = new(ptr) Sampler_vk();
+			return graphics_vulkan_sampler_create(*i, *reinterpret_cast<const SamplerDesc*>(desc));
 		}
 		break;
 
 		case GraphicsPrimitiveType_RenderPass:
 		{
-			RenderPass_vk* rp = new RenderPass_vk();
-			result = graphics_vulkan_renderpass_create(*rp, *reinterpret_cast<const RenderPassDesc*>(desc));
-
-			if (result != Result_Success) {
-				delete rp;
-				rp = nullptr;
-			}
-			*ptr = rp;
+			RenderPass_vk* rp = new(ptr) RenderPass_vk();
+			return graphics_vulkan_renderpass_create(*rp, *reinterpret_cast<const RenderPassDesc*>(desc));
 		}
 		break;
 
 		case GraphicsPrimitiveType_InputLayoutState:
 		{
-			InputLayoutState_vk* ils = new InputLayoutState_vk();
-			result = graphics_vulkan_inputlayoutstate_create(*ils, *reinterpret_cast<const InputLayoutStateDesc*>(desc));
-
-			if (result != Result_Success) {
-				delete ils;
-				ils = nullptr;
-			}
-			*ptr = ils;
+			InputLayoutState_vk* ils = new(ptr) InputLayoutState_vk();
+			return graphics_vulkan_inputlayoutstate_create(*ils, *reinterpret_cast<const InputLayoutStateDesc*>(desc));
 		}
 		break;
 
 		case GraphicsPrimitiveType_BlendState:
 		{
-			BlendState_vk* bs = new BlendState_vk();
-			result = graphics_vulkan_blendstate_create(*bs, *reinterpret_cast<const BlendStateDesc*>(desc));
-
-			if (result != Result_Success) {
-				delete bs;
-				bs = nullptr;
-			}
-			*ptr = bs;
+			BlendState_vk* bs = new(ptr) BlendState_vk();
+			return graphics_vulkan_blendstate_create(*bs, *reinterpret_cast<const BlendStateDesc*>(desc));
 		}
 		break;
 
 		case GraphicsPrimitiveType_DepthStencilState:
 		{
-			DepthStencilState_vk* dss = new DepthStencilState_vk();
-			result = graphics_vulkan_depthstencilstate_create(*dss, *reinterpret_cast<const DepthStencilStateDesc*>(desc));
-
-			if (result != Result_Success) {
-				delete dss;
-				dss = nullptr;
-			}
-			*ptr = dss;
+			DepthStencilState_vk* dss = new(ptr) DepthStencilState_vk();
+			return graphics_vulkan_depthstencilstate_create(*dss, *reinterpret_cast<const DepthStencilStateDesc*>(desc));
 		}
 		break;
 
 		case GraphicsPrimitiveType_RasterizerState:
 		{
-			RasterizerState_vk* rs = new RasterizerState_vk();
-			result = graphics_vulkan_rasterizerstate_create(*rs, *reinterpret_cast<const RasterizerStateDesc*>(desc));
-
-			if (result != Result_Success) {
-				delete rs;
-				rs = nullptr;
-			}
-			*ptr = rs;
+			RasterizerState_vk* rs = new(ptr) RasterizerState_vk();
+			return graphics_vulkan_rasterizerstate_create(*rs, *reinterpret_cast<const RasterizerStateDesc*>(desc));
 		}
 		break;
 
 		}
 
-		return result;
+		return Result_InvalidUsage;
 	}
 
-	Result graphics_vulkan_destroy(Primitive& primitive)
+	Result graphics_vulkan_destroy(Primitive_internal* primitive)
 	{
 		vkDeviceWaitIdle(g_API->device);
 
 		Result result = Result_Success;
 
-		switch (reinterpret_cast<Primitive_internal*>(primitive.GetPtr())->type)
+		switch (primitive->type)
 		{
 
 		case GraphicsPrimitiveType_Buffer:
 		{
-			Buffer_vk& buffer = *reinterpret_cast<Buffer_vk*>(primitive.GetPtr());
+			Buffer_vk& buffer = *reinterpret_cast<Buffer_vk*>(primitive);
 			result = graphics_vulkan_buffer_destroy(buffer);
 			buffer.~Buffer_vk();
 			break;
@@ -559,7 +514,7 @@ namespace sv {
 
 		case GraphicsPrimitiveType_Shader:
 		{
-			Shader_vk& shader = *reinterpret_cast<Shader_vk*>(primitive.GetPtr());
+			Shader_vk& shader = *reinterpret_cast<Shader_vk*>(primitive);
 			result = graphics_vulkan_shader_destroy(shader);
 			shader.~Shader_vk();
 			break;
@@ -567,7 +522,7 @@ namespace sv {
 
 		case GraphicsPrimitiveType_Image:
 		{
-			Image_vk& image = *reinterpret_cast<Image_vk*>(primitive.GetPtr());
+			Image_vk& image = *reinterpret_cast<Image_vk*>(primitive);
 			result = graphics_vulkan_image_destroy(image);
 			image.~Image_vk();
 			break;
@@ -575,7 +530,7 @@ namespace sv {
 
 		case GraphicsPrimitiveType_Sampler:
 		{
-			Sampler_vk& sampler = *reinterpret_cast<Sampler_vk*>(primitive.GetPtr());
+			Sampler_vk& sampler = *reinterpret_cast<Sampler_vk*>(primitive);
 			result = graphics_vulkan_sampler_destroy(sampler);
 			sampler.~Sampler_vk();
 			break;
@@ -583,7 +538,7 @@ namespace sv {
 
 		case GraphicsPrimitiveType_RenderPass:
 		{
-			RenderPass_vk& renderPass = *reinterpret_cast<RenderPass_vk*>(primitive.GetPtr());
+			RenderPass_vk& renderPass = *reinterpret_cast<RenderPass_vk*>(primitive);
 			result = graphics_vulkan_renderpass_destroy(renderPass);
 			renderPass.~RenderPass_vk();
 			break;
@@ -591,7 +546,7 @@ namespace sv {
 
 		case GraphicsPrimitiveType_InputLayoutState:
 		{
-			InputLayoutState_vk& inputLayoutState = *reinterpret_cast<InputLayoutState_vk*>(primitive.GetPtr());
+			InputLayoutState_vk& inputLayoutState = *reinterpret_cast<InputLayoutState_vk*>(primitive);
 			inputLayoutState.~InputLayoutState_vk();
 			result = Result_Success;
 			break;
@@ -599,7 +554,7 @@ namespace sv {
 
 		case GraphicsPrimitiveType_BlendState:
 		{
-			BlendState_vk& blendState = *reinterpret_cast<BlendState_vk*>(primitive.GetPtr());
+			BlendState_vk& blendState = *reinterpret_cast<BlendState_vk*>(primitive);
 			blendState.~BlendState_vk();
 			result = Result_Success;
 			break;
@@ -607,7 +562,7 @@ namespace sv {
 
 		case GraphicsPrimitiveType_DepthStencilState:
 		{
-			DepthStencilState_vk& depthStencilState = *reinterpret_cast<DepthStencilState_vk*>(primitive.GetPtr());
+			DepthStencilState_vk& depthStencilState = *reinterpret_cast<DepthStencilState_vk*>(primitive);
 			depthStencilState.~DepthStencilState_vk();
 			result = Result_Success;
 			break;
@@ -615,7 +570,7 @@ namespace sv {
 
 		case GraphicsPrimitiveType_RasterizerState:
 		{
-			RasterizerState_vk& rasterizerState = *reinterpret_cast<RasterizerState_vk*>(primitive.GetPtr());
+			RasterizerState_vk& rasterizerState = *reinterpret_cast<RasterizerState_vk*>(primitive);
 			rasterizerState.~RasterizerState_vk();
 			result = Result_Success;
 			break;
@@ -626,7 +581,6 @@ namespace sv {
 
 		}
 
-		delete primitive.GetPtr();
 		return result;
 	}
 
@@ -766,12 +720,12 @@ namespace sv {
 	{
 		vkAssert(vkDeviceWaitIdle(g_API->device));
 		VkSwapchainKHR old = g_API->swapChain.swapChain;
-		SV_ASSERT(graphics_vulkan_swapchain_destroy(false));
-		SV_ASSERT(graphics_vulkan_swapchain_create(old));
+		graphics_vulkan_swapchain_destroy(false);
+		graphics_vulkan_swapchain_create(old);
 		vkDestroySwapchainKHR(g_API->device, old, nullptr);
 	}
 
-	GPUImage& graphics_vulkan_swapchain_acquire_image()
+	GPUImage* graphics_vulkan_swapchain_acquire_image()
 	{
 		vkAssert(vkAcquireNextImageKHR(g_API->device, g_API->swapChain.swapChain, UINT64_MAX, g_API->swapChain.semAcquireImage, VK_NULL_HANDLE, &g_API->imageIndex));
 
@@ -788,8 +742,7 @@ namespace sv {
 		g_API->swapChain.backBuffer.layers = 1u;
 		g_API->swapChain.backBuffer.imageType = GPUImageType_RenderTarget;
 
-		g_API->swapChain.backBufferImage = Primitive(&g_API->swapChain.backBuffer);
-		return *reinterpret_cast<GPUImage*>(&g_API->swapChain.backBufferImage);
+		return (GPUImage*)(&g_API->swapChain.backBuffer);
 	}
 
 	void graphics_vulkan_gpu_wait()
@@ -896,9 +849,9 @@ namespace sv {
 		vkCmdDrawIndexed(g_API->GetCMD(cmd), indexCount, instanceCount, startIndex, startVertex, startInstance);
 	}
 
-	void graphics_vulkan_image_clear(GPUImage& image_, GPUImageLayout oldLayout, GPUImageLayout newLayout, const Color4f& clearColor, float depth, ui32 stencil, CommandList cmd_)
+	void graphics_vulkan_image_clear(GPUImage* image_, GPUImageLayout oldLayout, GPUImageLayout newLayout, const Color4f& clearColor, float depth, ui32 stencil, CommandList cmd_)
 	{
-		Image_vk& image = *reinterpret_cast<Image_vk*>(image_.GetPtr());
+		Image_vk& image = *reinterpret_cast<Image_vk*>(image_);
 		VkCommandBuffer cmd = g_API->GetCMD(cmd_);
 
 		VkImageSubresourceRange range{};
@@ -954,14 +907,14 @@ namespace sv {
 		vkCmdPipelineBarrier(cmd, srcStage, dstStage, 0u, 0u, nullptr, 0u, nullptr, 1u, &barrier);
 	}
 	
-	void graphics_vulkan_image_blit(GPUImage& src, GPUImage& dst, GPUImageLayout srcLayout, GPUImageLayout dstLayout, ui32 count, const GPUImageBlit* imageBlit, SamplerFilter filter, CommandList cmd_)
+	void graphics_vulkan_image_blit(GPUImage* src, GPUImage* dst, GPUImageLayout srcLayout, GPUImageLayout dstLayout, ui32 count, const GPUImageBlit* imageBlit, SamplerFilter filter, CommandList cmd_)
 	{
 		VkCommandBuffer cmd = g_API->GetCMD(cmd_);
 
 		SV_ASSERT(count <= 16u);
 
-		Image_vk& srcImage = *reinterpret_cast<Image_vk*>(src.GetPtr());
-		Image_vk& dstImage = *reinterpret_cast<Image_vk*>(dst.GetPtr());
+		Image_vk& srcImage = *reinterpret_cast<Image_vk*>(src);
+		Image_vk& dstImage = *reinterpret_cast<Image_vk*>(dst);
 
 		// Barriers
 
@@ -1046,9 +999,9 @@ namespace sv {
 		vkCmdPipelineBarrier(cmd, srcStage, dstStage, 0u, 0u, 0u, 0u, 0u, 2u, imgBarrier);
 	}
 
-	void graphics_vulkan_buffer_update(GPUBuffer& buffer_, void* pData, ui32 size, ui32 offset, CommandList cmd_)
+	void graphics_vulkan_buffer_update(GPUBuffer* buffer_, void* pData, ui32 size, ui32 offset, CommandList cmd_)
 	{
-		Buffer_vk& buffer = *reinterpret_cast<Buffer_vk*>(buffer_.GetPtr());
+		Buffer_vk& buffer = *reinterpret_cast<Buffer_vk*>(buffer_);
 
 		VmaAllocationInfo info;
 		vmaGetAllocationInfo(g_API->allocator, buffer.allocation, &info);
@@ -1131,7 +1084,7 @@ namespace sv {
 			{
 			case BarrierType_Image:
 
-				Image_vk& image = *reinterpret_cast<Image_vk*>(barrier.image.pImage->GetPtr());
+				Image_vk& image = *reinterpret_cast<Image_vk*>(barrier.image.pImage);
 
 				imageBarrier[imageBarrierCount].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 				imageBarrier[imageBarrierCount].pNext = nullptr;
@@ -2185,20 +2138,125 @@ namespace sv {
 
 		// Semantic Names
 		if (desc.shaderType == ShaderType_Vertex) {
-			graphics_spirv_semantic_names(comp, sr, shader.semanticNames);
+			
+			for (ui32 i = 0; i < sr.stage_inputs.size(); ++i) {
+				auto& input = sr.stage_inputs[i];
+				shader.semanticNames[input.name.c_str() + 7] = comp.get_decoration(input.id, spv::Decoration::DecorationLocation);
+
+				ShaderAttribute attr;
+				attr.name = std::move(input.name);
+				attr.type = graphics_vulkan_parse_spirvtype(comp.get_type(input.base_type_id));
+
+				if (attr.type != ShaderAttributeType_Unknown) shader.input.emplace_back() = attr;
+			}
+
 		}
 
 		// Get Spirv bindings
 		std::vector<VkDescriptorSetLayoutBinding> bindings;
 
-		graphics_spirv_samplers(comp, sr, desc.shaderType, bindings);
-		shader.layout.count[0] = ui32(bindings.size());
+		// Samplers
+		{
+			auto& samplers = sr.separate_samplers;
+			if (!samplers.empty()) {
+
+				size_t initialIndex = bindings.size();
+				bindings.resize(initialIndex + samplers.size());
+
+				SV_ASSERT(samplers.size() <= SV_GFX_SAMPLER_COUNT);
+
+				for (ui64 i = 0; i < samplers.size(); ++i) {
+					auto& sampler = samplers[i];
+					VkDescriptorSetLayoutBinding& binding = bindings[i + initialIndex];
+					binding.binding = comp.get_decoration(sampler.id, spv::Decoration::DecorationBinding);
+					binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+					binding.descriptorCount = 1u;
+					binding.stageFlags = graphics_vulkan_parse_shadertype(desc.shaderType);
+					binding.pImmutableSamplers = nullptr;
+				}
+			}
+			shader.layout.count[0] = ui32(bindings.size());
+		}
 		
-		graphics_spirv_images(comp, sr, desc.shaderType, bindings);
-		shader.layout.count[1] = ui32(bindings.size()) - shader.layout.count[0];
-		
-		graphics_spirv_uniforms(comp, sr, desc.shaderType, bindings);
-		shader.layout.count[2] = ui32(bindings.size()) - shader.layout.count[0] - shader.layout.count[1];
+		// Images
+		{
+			auto& images = sr.separate_images;
+			if (!images.empty()) {
+
+				size_t initialIndex = bindings.size();
+				bindings.resize(initialIndex + images.size());
+
+				SV_ASSERT(images.size() <= SV_GFX_IMAGE_COUNT);
+
+				for (ui64 i = 0; i < images.size(); ++i) {
+					auto& image = images[i];
+					VkDescriptorSetLayoutBinding& binding = bindings[i + initialIndex];
+					binding.binding = comp.get_decoration(image.id, spv::Decoration::DecorationBinding);
+					binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+					binding.descriptorCount = 1u;
+					binding.stageFlags = graphics_vulkan_parse_shadertype(desc.shaderType);
+					binding.pImmutableSamplers = nullptr;
+
+					if (image.name[0] != '_') {
+						auto& tex = shader.textures.emplace_back();
+						tex.name = image.name.c_str();
+						tex.bindingSlot = binding.binding - SV_GFX_SAMPLER_COUNT;
+					}
+				}
+			}
+			shader.layout.count[1] = ui32(bindings.size()) - shader.layout.count[0];
+		}
+
+		{
+			auto& uniforms = sr.uniform_buffers;
+			if (!uniforms.empty()) {
+
+				size_t initialIndex = bindings.size();
+				bindings.resize(initialIndex + uniforms.size());
+
+				SV_ASSERT(uniforms.size() <= SV_GFX_CONSTANT_BUFFER_COUNT);
+
+				for (ui64 i = 0; i < uniforms.size(); ++i) {
+					auto& uniform = uniforms[i];
+					VkDescriptorSetLayoutBinding& binding = bindings[i + initialIndex];
+					binding.binding = comp.get_decoration(uniform.id, spv::Decoration::DecorationBinding);
+					binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+					binding.descriptorCount = 1u;
+					binding.stageFlags = graphics_vulkan_parse_shadertype(desc.shaderType);
+					binding.pImmutableSamplers = nullptr;
+
+					if (strcmp(uniform.name.c_str() + 5, "__Material__") == 0) {
+						
+						const spirv_cross::SPIRType& structType = comp.get_type(uniform.base_type_id);
+						ui32 i = 0u;
+
+						while (true) {
+
+							std::string name = std::move(comp.get_member_name(uniform.base_type_id, i));
+							if (name.empty()) break;
+
+							const spirv_cross::SPIRType& type = comp.get_type(structType.member_types[i]);
+
+							ShaderAttributeType svType = graphics_vulkan_parse_spirvtype(type);
+							if (svType == ShaderAttributeType_Unknown) {
+								svLogError("Unknown Material type");
+								continue;
+							}
+
+							ShaderAttribute& a = shader.attributes.emplace_back();
+							a.name = std::move(name);
+							a.type = svType;
+
+							++i;
+
+						}
+						shader.attributeSlot = binding.binding - (SV_GFX_SAMPLER_COUNT + SV_GFX_IMAGE_COUNT);
+
+					}
+				}
+			}
+			shader.layout.count[2] = ui32(bindings.size()) - shader.layout.count[0] - shader.layout.count[1];
+		}
 
 		// Calculate user bindings values
 		for (ui32 i = 0; i < bindings.size(); ++i) {
@@ -2233,6 +2291,9 @@ namespace sv {
 
 			vkCheck(vkCreateDescriptorSetLayout(g_API->device, &create_info, nullptr, &shader.layout.setLayout));
 		}
+
+		// ID
+		shader.ID = g_API->GetID();
 
 		return Result_Success;
 	}
@@ -2370,78 +2431,6 @@ namespace sv {
 			vkDestroyFramebuffer(g_API->device, it.second, nullptr);
 		}
 		return Result_Success;
-	}
-
-	void graphics_spirv_semantic_names(spirv_cross::Compiler& compiler, spirv_cross::ShaderResources& shaderResources, std::map<std::string, ui32>& semanticNames)
-	{
-		// Semantic names
-		for (ui32 i = 0; i < shaderResources.stage_inputs.size(); ++i) {
-			auto& input = shaderResources.stage_inputs[i];
-			semanticNames[input.name.c_str() + 7] = compiler.get_decoration(input.id, spv::Decoration::DecorationLocation);
-		}
-	}
-
-	void graphics_spirv_samplers(spirv_cross::Compiler& compiler, spirv_cross::ShaderResources& shaderResources, ShaderType shaderType, std::vector<VkDescriptorSetLayoutBinding>& bindings)
-	{
-		auto& samplers = shaderResources.separate_samplers;
-		if (samplers.empty()) return;
-
-		size_t initialIndex = bindings.size();
-		bindings.resize(initialIndex + samplers.size());
-
-		SV_ASSERT(samplers.size() <= SV_GFX_SAMPLER_COUNT);
-
-		for (ui64 i = 0; i < samplers.size(); ++i) {
-			auto& sampler = samplers[i];
-			VkDescriptorSetLayoutBinding& binding = bindings[i + initialIndex];
-			binding.binding = compiler.get_decoration(sampler.id, spv::Decoration::DecorationBinding);
-			binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-			binding.descriptorCount = 1u;
-			binding.stageFlags = graphics_vulkan_parse_shadertype(shaderType);
-			binding.pImmutableSamplers = nullptr;
-		}
-	}
-
-	void graphics_spirv_images(spirv_cross::Compiler& compiler, spirv_cross::ShaderResources& shaderResources, ShaderType shaderType, std::vector<VkDescriptorSetLayoutBinding>& bindings)
-	{
-		auto& images = shaderResources.separate_images;
-		if (images.empty()) return;
-
-		size_t initialIndex = bindings.size();
-		bindings.resize(initialIndex + images.size());
-
-		SV_ASSERT(images.size() <= SV_GFX_IMAGE_COUNT);
-
-		for (ui64 i = 0; i < images.size(); ++i) {
-			auto& image = images[i];
-			VkDescriptorSetLayoutBinding& binding = bindings[i + initialIndex];
-			binding.binding = compiler.get_decoration(image.id, spv::Decoration::DecorationBinding);
-			binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-			binding.descriptorCount = 1u;
-			binding.stageFlags = graphics_vulkan_parse_shadertype(shaderType);
-			binding.pImmutableSamplers = nullptr;
-		}
-	}
-
-	void graphics_spirv_uniforms(spirv_cross::Compiler& compiler, spirv_cross::ShaderResources& shaderResources, ShaderType shaderType, std::vector<VkDescriptorSetLayoutBinding>& bindings)
-	{
-		auto& uniforms = shaderResources.uniform_buffers;
-		if (uniforms.empty()) return;
-
-		size_t initialIndex = bindings.size();
-		bindings.resize(initialIndex + uniforms.size());
-
-		SV_ASSERT(uniforms.size() <= SV_GFX_CONSTANT_BUFFER_COUNT);
-
-		for (ui64 i = 0; i < uniforms.size(); ++i) {
-			auto& uniform = uniforms[i];
-			VkDescriptorSetLayoutBinding& binding = bindings[i + initialIndex];
-			binding.binding = compiler.get_decoration(uniform.id, spv::Decoration::DecorationBinding);
-			binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			binding.descriptorCount = 1u;
-			binding.stageFlags = graphics_vulkan_parse_shadertype(shaderType);
-			binding.pImmutableSamplers = nullptr;
-		}
 	}
 
 }

@@ -18,6 +18,7 @@ namespace sv {
 
 	struct SpriteComponent : public Component<SpriteComponent> {
 
+		MaterialAsset material;
 		Sprite sprite;
 		Color color = Color::White();
 
@@ -99,8 +100,8 @@ namespace sv {
 
 	struct MeshComponent : public Component<MeshComponent> {
 
-		SharedRef<Mesh>		mesh;
-		SharedRef<Material> material;
+		//SharedRef<Mesh>		mesh;
+		Material* material;
 
 	};
 

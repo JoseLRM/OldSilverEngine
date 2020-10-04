@@ -1,6 +1,7 @@
 #pragma once
 
 #include "graphics.h"
+#include "utils/allocators/InstanceAllocator.h"
 
 #define svLog(x, ...) sv::console_log(sv::LoggingStyle_Blue | sv::LoggingStyle_Green, "[GRAPHICS] "#x, __VA_ARGS__)
 #define svLogWarning(x, ...) sv::console_log(sv::LoggingStyle_Blue | sv::LoggingStyle_Green, "[GRAPHICS_WARNING] "#x, __VA_ARGS__)
@@ -38,7 +39,11 @@ namespace sv {
 	};
 
 	struct Shader_internal : public Primitive_internal {
-		ShaderType	shaderType;
+		ShaderType						shaderType;
+		std::vector<ShaderTexture>		textures;
+		std::vector<ShaderAttribute>	attributes;
+		ui32							attributeSlot;
+		std::vector<ShaderAttribute>	input;
 	};
 
 	struct RenderPass_internal : public Primitive_internal {
@@ -179,8 +184,8 @@ namespace sv {
 	typedef Result(*FNP_graphics_api_close)();
 	typedef void*(*FNP_graphics_api_get)();
 
-	typedef Result(*FNP_graphics_create)(GraphicsPrimitiveType, const void*, Primitive_internal**);
-	typedef Result(*FNP_graphics_destroy)(sv::Primitive&);
+	typedef Result(*FNP_graphics_create)(GraphicsPrimitiveType, const void*, Primitive_internal*);
+	typedef Result(*FNP_graphics_destroy)(Primitive_internal*);
 
 	typedef CommandList(*FNP_graphics_api_commandlist_begin)();
 	typedef CommandList(*FNP_graphics_api_commandlist_last)();
@@ -190,7 +195,7 @@ namespace sv {
 	typedef void(*FNP_graphics_api_renderpass_end)(CommandList);
 
 	typedef void(*FNP_graphics_api_swapchain_resize)();
-	typedef GPUImage&(*FNP_graphics_api_swapchain_acquire_image)();
+	typedef GPUImage*(*FNP_graphics_api_swapchain_acquire_image)();
 
 	typedef void(*FNP_graphics_api_gpu_wait)();
 
@@ -201,9 +206,9 @@ namespace sv {
 	typedef void(*FNP_graphics_api_draw)(ui32, ui32, ui32, ui32, CommandList);
 	typedef void(*FNP_graphics_api_draw_indexed)(ui32, ui32, ui32, ui32, ui32, CommandList);
 
-	typedef void(*FNP_graphics_api_image_clear)(GPUImage&, GPUImageLayout, GPUImageLayout, const Color4f&, float, ui32, CommandList);
-	typedef void(*FNP_graphics_api_image_blit)(GPUImage&, GPUImage&, GPUImageLayout, GPUImageLayout, ui32, const GPUImageBlit*, SamplerFilter, CommandList);
-	typedef void(*FNP_graphics_api_buffer_update)(GPUBuffer&, void*, ui32, ui32, CommandList);
+	typedef void(*FNP_graphics_api_image_clear)(GPUImage*, GPUImageLayout, GPUImageLayout, const Color4f&, float, ui32, CommandList);
+	typedef void(*FNP_graphics_api_image_blit)(GPUImage*, GPUImage*, GPUImageLayout, GPUImageLayout, ui32, const GPUImageBlit*, SamplerFilter, CommandList);
+	typedef void(*FNP_graphics_api_buffer_update)(GPUBuffer*, void*, ui32, ui32, CommandList);
 	typedef void(*FNP_graphics_api_barrier)(const GPUBarrier*, ui32, CommandList);
 
 	struct GraphicsDevice {
@@ -239,6 +244,26 @@ namespace sv {
 		FNP_graphics_api_buffer_update	buffer_update;
 		FNP_graphics_api_barrier		barrier;
 
+		std::unique_ptr<SizedInstanceAllocator> bufferAllocator;
+		std::unique_ptr<SizedInstanceAllocator> imageAllocator;
+		std::unique_ptr<SizedInstanceAllocator> samplerAllocator;
+		std::unique_ptr<SizedInstanceAllocator> shaderAllocator;
+		std::unique_ptr<SizedInstanceAllocator> renderPassAllocator;
+		std::unique_ptr<SizedInstanceAllocator> inputLayoutStateAllocator;
+		std::unique_ptr<SizedInstanceAllocator> blendStateAllocator;
+		std::unique_ptr<SizedInstanceAllocator> depthStencilStateAllocator;
+		std::unique_ptr<SizedInstanceAllocator> rasterizerStateAllocator;
+
+		std::mutex bufferMutex;
+		std::mutex imageMutex;
+		std::mutex samplerMutex;
+		std::mutex shaderMutex;
+		std::mutex renderPassMutex;
+		std::mutex inputLayoutStateMutex;
+		std::mutex blendStateMutex;
+		std::mutex depthStencilStateMutex;
+		std::mutex rasterizerStateMutex;
+
 	};
 
 	Result graphics_initialize(const sv::InitializationGraphicsDesc& desc);
@@ -249,30 +274,14 @@ namespace sv {
 	void graphics_present();
 
 	void graphics_swapchain_resize();
-	GPUImage& graphics_swapchain_acquire_image();
+	GPUImage* graphics_swapchain_acquire_image();
 
 	void*			graphics_device_get() noexcept;
 	PipelineState&	graphics_state_get() noexcept;
 
-	Result graphics_create_primitive(GraphicsPrimitiveType, const void*, Primitive_internal**);
-	Result graphics_destroy_primitive(sv::Primitive&);
-
-	// Allocator
-
-	Result	graphics_allocator_construct(GraphicsPrimitiveType type, const void* desc, Primitive_internal** res);
-	Result	graphics_allocator_destroy(sv::Primitive& primitive);
-	void	graphics_allocator_clear();
-
 	// Adapters
 
 	void graphics_adapter_add(std::unique_ptr<sv::Adapter>&& adapter);
-
-	// Hash functions
-
-	size_t graphics_compute_hash_inputlayoutstate(const InputLayoutStateDesc* desc);
-	size_t graphics_compute_hash_blendstate(const BlendStateDesc* desc);
-	size_t graphics_compute_hash_rasterizerstate(const RasterizerStateDesc* desc);
-	size_t graphics_compute_hash_depthstencilstate(const DepthStencilStateDesc* desc);
 
 	// Shader utils
 

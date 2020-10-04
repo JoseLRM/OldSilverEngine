@@ -16,20 +16,17 @@ namespace sv {
 		LightInstance light[SV_REND_FORWARD_LIGHT_COUNT];
 	};
 
-	static GPUBuffer g_InstanceBuffer;
-	static GPUBuffer g_CameraBuffer;
-	static GPUBuffer g_LightBuffer;
+	static GPUBuffer* g_InstanceBuffer;
+	static GPUBuffer* g_CameraBuffer;
+	static GPUBuffer* g_LightBuffer;
 
 	// TODO: not global
 	static MeshData g_MeshData[SV_REND_MESH_INSTANCE_COUNT];
 
-	static RenderPass			g_ForwardRenderPass;
-	static GraphicsPipeline		g_ForwardPipeline;
-	static Shader				g_ForwardVertexShader;
-	static Shader				g_ForwardPixelShader;
-	static InputLayoutState		g_ForwardInputLayoutState;
-	static DepthStencilState	g_ForwardDepthStencilState;
-	static RasterizerState		g_ForwardRasterizerState;
+	static RenderPass*			g_ForwardRenderPass;
+	static InputLayoutState*	g_ForwardInputLayoutState;
+	static DepthStencilState*	g_ForwardDepthStencilState;
+	static RasterizerState*		g_ForwardRasterizerState;
 
 	Result renderer_mesh_initialize()
 	{
@@ -42,7 +39,7 @@ namespace sv {
 			desc.size = SV_REND_MESH_INSTANCE_COUNT * sizeof(MeshData);
 			desc.pData = nullptr;
 
-			svCheck(graphics_buffer_create(&desc, g_InstanceBuffer));
+			svCheck(graphics_buffer_create(&desc, &g_InstanceBuffer));
 		}
 		// Camera Buffer
 		{
@@ -53,7 +50,7 @@ namespace sv {
 			desc.size = sizeof(CameraBufferData);
 			desc.pData = nullptr;
 
-			svCheck(graphics_buffer_create(&desc, g_CameraBuffer));
+			svCheck(graphics_buffer_create(&desc, &g_CameraBuffer));
 		}
 		// Light Buffer
 		{
@@ -64,7 +61,7 @@ namespace sv {
 			desc.size = sizeof(LightBufferData);
 			desc.pData = nullptr;
 
-			svCheck(graphics_buffer_create(&desc, g_LightBuffer));
+			svCheck(graphics_buffer_create(&desc, &g_LightBuffer));
 		}
 		// Forward technique
 		{
@@ -91,11 +88,7 @@ namespace sv {
 			desc.attachments[1].finalLayout = GPUImageLayout_DepthStencil;
 			desc.attachments[1].type = AttachmentType_DepthStencil;
 
-			svCheck(graphics_renderpass_create(&desc, g_ForwardRenderPass));
-		}
-		{
-			svCheck(renderer_shader_create("Forward", ShaderType_Vertex, g_ForwardVertexShader));
-			svCheck(renderer_shader_create("Forward", ShaderType_Pixel, g_ForwardPixelShader));
+			svCheck(graphics_renderpass_create(&desc, &g_ForwardRenderPass));
 		}
 		{
 			InputLayoutStateDesc desc;
@@ -120,7 +113,7 @@ namespace sv {
 			desc.elements[5] = { "ModelViewMatrix", 2u, 1u, 8u * sizeof(float), Format_R32G32B32A32_FLOAT };
 			desc.elements[6] = { "ModelViewMatrix", 3u, 1u, 12u * sizeof(float), Format_R32G32B32A32_FLOAT };
 
-			svCheck(graphics_inputlayoutstate_create(&desc, g_ForwardInputLayoutState));
+			svCheck(graphics_inputlayoutstate_create(&desc, &g_ForwardInputLayoutState));
 		}
 		{
 			RasterizerStateDesc desc;
@@ -128,7 +121,7 @@ namespace sv {
 			desc.cullMode = RasterizerCullMode_Back;
 			desc.clockwise = true;
 
-			svCheck(graphics_rasterizerstate_create(&desc, g_ForwardRasterizerState));
+			svCheck(graphics_rasterizerstate_create(&desc, &g_ForwardRasterizerState));
 		}
 		{
 			DepthStencilStateDesc desc;
@@ -139,55 +132,54 @@ namespace sv {
 			desc.readMask = 0xFF;
 			desc.writeMask = 0xFF;
 
-			svCheck(graphics_depthstencilstate_create(&desc, g_ForwardDepthStencilState));
+			svCheck(graphics_depthstencilstate_create(&desc, &g_ForwardDepthStencilState));
 		}
-
-		g_ForwardPipeline.pVertexShader = &g_ForwardVertexShader;
-		g_ForwardPipeline.pPixelShader = &g_ForwardPixelShader;
-		g_ForwardPipeline.pGeometryShader = nullptr;
-		g_ForwardPipeline.pInputLayoutState = &g_ForwardInputLayoutState;
-		g_ForwardPipeline.pBlendState = nullptr;
-		g_ForwardPipeline.pRasterizerState = &g_ForwardRasterizerState;
-		g_ForwardPipeline.pDepthStencilState = &g_ForwardDepthStencilState;
-		g_ForwardPipeline.topology = GraphicsTopology_Triangles;
 
 		return Result_Success;
 	}
 
 	Result renderer_mesh_close()
 	{
+		svCheck(graphics_destroy(g_InstanceBuffer));
+		svCheck(graphics_destroy(g_CameraBuffer));
+		svCheck(graphics_destroy(g_LightBuffer));
+		svCheck(graphics_destroy(g_ForwardRenderPass));
+		svCheck(graphics_destroy(g_ForwardInputLayoutState));
+		svCheck(graphics_destroy(g_ForwardDepthStencilState));
+		svCheck(graphics_destroy(g_ForwardRasterizerState));
 
 		return Result_Success;
 	}
 
+	/*
 	void mesh_renderer_render(Mesh* mesh, Material* material, ui32 offset, ui32 size, CommandList cmd) {
 
 		GPUBuffer* vBuffers[] = {
-			&mesh->GetVertexBuffer(), &g_InstanceBuffer
+			&mesh->GetVertexBuffer(), g_InstanceBuffer
 		};
-
+		
 		ui32 offsets[] = {
 			0u, offset * sizeof(MeshData)
 		};
-
+		
 		ui32 strides[] = {
 			mesh->GetVertexCount() * sizeof(MeshVertex), size * sizeof(MeshData)
 		};
-
-		graphics_vertexbuffer_bind(vBuffers, offsets, 2u, 0u, cmd);
-		graphics_indexbuffer_bind(mesh->GetIndexBuffer(), 0u, cmd);
-
+		
+		graphics_vertexbuffer_bind_array(vBuffers, offsets, 2u, 0u, cmd);
+		graphics_indexbuffer_bind(&mesh->GetIndexBuffer(), 0u, cmd);
+		
 		GPUBuffer* cBuffers[] = {
 			&g_CameraBuffer, nullptr
 		};
-
-		graphics_constantbuffer_bind(cBuffers, 1u, 0u, ShaderType_Vertex, cmd);
-
-		cBuffers[0] = &material->GetConstantBuffer();
+		
+		graphics_constantbuffer_bind_array(cBuffers, 1u, 0u, ShaderType_Vertex, cmd);
+		
+		cBuffers[0] = material;
 		cBuffers[1] = &g_LightBuffer;
-
+		
 		graphics_constantbuffer_bind(cBuffers, 2u, 0u, ShaderType_Pixel, cmd);
-
+		
 		graphics_draw_indexed(mesh->GetIndexCount(), size, 0u, 0u, 0u, cmd);
 	}
 
@@ -297,7 +289,7 @@ namespace sv {
 
 			lightCount -= drawLightCount;
 		}
-
 	}
+	*/
 
 }

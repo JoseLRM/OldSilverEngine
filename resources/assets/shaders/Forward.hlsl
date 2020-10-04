@@ -53,7 +53,7 @@ struct Output
     float4 color : SV_Target;
 };
 
-SV_CONSTANT_BUFFER(Material, b0)
+SV_DEFINE_MATERIAL(b0)
 {
     float4 diffuseColor;
 }

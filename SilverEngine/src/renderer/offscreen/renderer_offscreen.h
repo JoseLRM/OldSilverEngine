@@ -5,8 +5,8 @@
 namespace sv {
 
 	struct Offscreen {
-		GPUImage renderTarget;
-		GPUImage depthStencil;
+		GPUImage* renderTarget = nullptr;
+		GPUImage* depthStencil = nullptr;
 		inline Viewport GetViewport() const noexcept { return graphics_image_get_viewport(renderTarget); }
 		inline Scissor GetScissor() const noexcept { return graphics_image_get_scissor(renderTarget); }
 		inline ui32 GetWidth() const noexcept { return graphics_image_get_width(renderTarget); }

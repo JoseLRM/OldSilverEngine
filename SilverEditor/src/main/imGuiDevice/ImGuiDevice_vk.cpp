@@ -230,9 +230,9 @@ namespace sve {
 		}
 	}
 
-	ImTextureID ImGuiDevice_vk::ParseImage(sv::GPUImage& image_)
+	ImTextureID ImGuiDevice_vk::ParseImage(sv::GPUImage* image_)
 	{
-		sv::Image_vk& image = *reinterpret_cast<sv::Image_vk*>(image_.GetPtr());
+		sv::Image_vk& image = *reinterpret_cast<sv::Image_vk*>(image_);
 		SV_ASSERT(image.image != VK_NULL_HANDLE);
 
 		auto it = m_Images.find(&image);

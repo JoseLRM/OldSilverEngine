@@ -7,15 +7,18 @@ namespace sv {
 
 	size_t graphics_vulkan_pipeline_compute_hash(const GraphicsState& state)
 	{
+		Shader_vk* vs = reinterpret_cast<Shader_vk*>(state.vertexShader);
+		Shader_vk* ps = reinterpret_cast<Shader_vk*>(state.pixelShader);
+		Shader_vk* gs = reinterpret_cast<Shader_vk*>(state.geometryShader);
 		InputLayoutState_vk& inputLayoutState = *reinterpret_cast<InputLayoutState_vk*>(state.inputLayoutState);
 		BlendState_vk& blendState = *reinterpret_cast<BlendState_vk*>(state.blendState);
 		DepthStencilState_vk& depthStencilState = *reinterpret_cast<DepthStencilState_vk*>(state.depthStencilState);
 		RasterizerState_vk& rasterizerState = *reinterpret_cast<RasterizerState_vk*>(state.rasterizerState);
 
 		size_t hash = 0u;
-		utils_hash_combine(hash, state.vertexShader);
-		utils_hash_combine(hash, state.pixelShader);
-		utils_hash_combine(hash, state.geometryShader);
+		if (vs) utils_hash_combine(hash, vs->ID);
+		if (ps) utils_hash_combine(hash, ps->ID);
+		if (gs) utils_hash_combine(hash, gs->ID);
 		utils_hash_combine(hash, inputLayoutState.hash);
 		utils_hash_combine(hash, blendState.hash);
 		utils_hash_combine(hash, depthStencilState.hash);

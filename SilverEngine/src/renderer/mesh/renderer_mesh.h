@@ -6,11 +6,11 @@ namespace sv {
 
 	struct MeshInstance {
 		XMMATRIX	modelViewMatrix;
-		Mesh* pMesh;
-		Material* pMaterial;
+		void* pMesh;
+		void* pMaterial;
 
 		MeshInstance() = default;
-		MeshInstance(XMMATRIX mvm, Mesh* mesh, Material* mat) : modelViewMatrix(mvm), pMesh(mesh), pMaterial(mat) {}
+		MeshInstance(XMMATRIX mvm, void* mesh, void* mat) : modelViewMatrix(mvm), pMesh(mesh), pMaterial(mat) {}
 	};
 
 	struct ForwardRenderingDesc {

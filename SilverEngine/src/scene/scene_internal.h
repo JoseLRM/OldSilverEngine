@@ -2,6 +2,11 @@
 
 #include "scene.h"
 
+#define svThrow(x) SV_THROW("SCENE_ERROR", x)
+#define svLog(x, ...) sv::console_log(sv::LoggingStyle_Green | sv::LoggingStyle_Red, "[SCENE] "#x, __VA_ARGS__)
+#define svLogWarning(x, ...) sv::console_log(sv::LoggingStyle_Green | sv::LoggingStyle_Red, "[SCENE_WARNING] "#x, __VA_ARGS__)
+#define svLogError(x, ...) sv::console_log(sv::LoggingStyle_Red, "[SCENE_ERROR] "#x, __VA_ARGS__)
+
 #define parseScene() sv::Scene_internal& scene = *reinterpret_cast<sv::Scene_internal*>(scene_);
 
 namespace sv {

@@ -37,9 +37,9 @@ namespace sv {
 		graphics_present();
 	}
 
-	void renderer_present(GPUImage& image, const GPUImageRegion& region, GPUImageLayout layout, CommandList cmd)
+	void renderer_present(GPUImage* image, const GPUImageRegion& region, GPUImageLayout layout, CommandList cmd)
 	{
-		GPUImage& backBuffer = graphics_swapchain_acquire_image();
+		GPUImage* backBuffer = graphics_swapchain_acquire_image();
 
 		GPUImageBlit blit;
 		blit.srcRegion = region;

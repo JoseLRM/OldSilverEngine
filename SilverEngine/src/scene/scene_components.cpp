@@ -96,10 +96,7 @@ namespace sv {
 		SpriteComponent* comp = reinterpret_cast<SpriteComponent*>(comp_);
 		archive << comp->color;
 		archive << comp->sprite.texCoord;
-		if (comp->sprite.texture.Get()) {
-			archive << comp->sprite.texture->hashCode;
-		}
-		else archive << (size_t)0u;
+		archive << comp->sprite.texture.get_hashcode();
 	}
 
 	void scene_component_serialize_CameraComponent(BaseComponent* comp_, ArchiveO& archive)
@@ -163,7 +160,7 @@ namespace sv {
 		archive >> hash;
 
 		if (hash != 0u) {
-			if (assets_load_texture(hash, comp->sprite.texture) != Result_Success) {
+			if (comp->sprite.texture.load(hash) != Result_Success) {
 				sv::console_log("Texture not found, hashcode: %u", hash);
 			}
 		}

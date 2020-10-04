@@ -10,6 +10,7 @@ namespace sv {
 
 	Result loader_model_import(const char* externalFilePath, Model& model)
 	{
+		/*
 		Assimp::Importer importer;
 
 		std::string filePath = externalFilePath;
@@ -68,6 +69,7 @@ namespace sv {
 			svCheck(mesh.mesh.CreateBuffers());
 		}
 
+		*/
 		return Result_Success;
 	}
 

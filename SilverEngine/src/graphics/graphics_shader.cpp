@@ -2,144 +2,56 @@
 
 #include "graphics_internal.h"
 
-//#include <d3d11.h>
-//#include <dxcapi.h>
-//#include <wrl/client.h>
-//using namespace Microsoft::WRL;
-//#define dxCheck(x) if (FAILED(x)) return false
-
 namespace sv {
-
-	//static ComPtr<IDxcLibrary> g_Library;
-	//static ComPtr<IDxcCompiler> g_Compiler;
 
 	Result graphics_shader_initialize()
 	{
-		//dxCheck(DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(&g_Library)));
-		//dxCheck(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&g_Compiler)));
-
 		return Result_Success;
 	}
 
 	Result graphics_shader_close()
 	{
-		//g_Library.Reset();
-		//g_Compiler.Reset();
-
 		return Result_Success;
+	}
+
+	inline std::string graphics_shader_random_path()
+	{
+		static ui32 seed = 0u;
+		ui32 random = math_random(seed);
+
+		seed += 100;
+		std::string filePath = std::to_string(random);
+
+#ifdef SV_SRC_PATH
+		filePath = SV_SRC_PATH + filePath;
+#endif
+
+		return filePath;
 	}
 
 	Result graphics_shader_compile_string(const ShaderCompileDesc* desc, const char* str, ui32 size, std::vector<ui8>& data)
 	{
-		//TODO:
-		svLogError("TODO->graphics_shader_compile_from_string");
-		return Result_UnknownError;
-		/*
-		ComPtr<IDxcBlobEncoding> srcBlob;
-		dxCheck(g_Library->CreateBlobWithEncodingFromPinned(str, size, CP_UTF8, srcBlob.GetAddressOf()));
-		
-		// Target
-		std::wstringstream target;
-		switch (desc->shaderType)
-		{
-		case ShaderType_Vertex:
-			target << L"vs_";
-			break;
-		case ShaderType_Pixel:
-			target << L"ps_";
-			break;
-		case ShaderType_Geometry:
-			target << L"gs_";
-			break;
+		std::string filePath = graphics_shader_random_path();
+
+		std::ofstream tempFile(filePath, std::ios::ate | std::ios::binary);
+		if (!tempFile.is_open()) return Result_UnknownError;
+
+		tempFile.write(str, size);
+		tempFile.close();
+
+		Result res = graphics_shader_compile_file(desc, filePath.c_str(), data);
+
+		if (remove(filePath.c_str()) != 0) {
+			return Result_UnknownError;
 		}
-		
-		target << desc->majorVersion << L'_' << desc->minorVersion << L' ';
-		
-		// Macros
-		std::vector<DxcDefine> defines(desc->macros.size() + 2u);
-		
-		ui32 i = 0u;
-		for (; i < desc->macros.size(); ++i) {
-			DxcDefine& def = defines[i];
-			//def.Name = desc->macros[i].first;
-			//def.Value = desc->macros[i].second;
-		}
-		
-		switch (desc->shaderType)
-		{
-		case ShaderType_Vertex:
-			defines[i++] = { L"SV_SHADER_TYPE_VERTEX", L"" };
-			break;
-		case ShaderType_Pixel:
-			defines[i++] = { L"SV_SHADER_TYPE_PIXEL", L"" };
-			break;
-		case ShaderType_Geometry:
-			defines[i++] = { L"SV_SHADER_TYPE_GEOMETRY", L"" };
-			break;
-		}
-		
-		switch (api)
-		{
-		case sv::GraphicsAPI_Vulkan:
-			defines[i++] = { L"SV_API_VULKAN", L"" };
-			break;
-		}
-		
-		// Compile
-		ComPtr<IDxcOperationResult> result;
-		HRESULT hr = -1;
-		
-		switch (api)
-		{
-		case sv::GraphicsAPI_Vulkan:
-		{
-			std::wstring shiftTRes = L"-fvk-t-shift ";
-			shiftTRes += std::to_wstring(SV_GFX_SAMPLER_COUNT);
-			shiftTRes += L" all";
-		
-			std::wstring shiftBRes = L"-fvk-b-shift ";
-			shiftBRes += std::to_wstring(SV_GFX_SAMPLER_COUNT + SV_GFX_IMAGE_COUNT);
-			shiftBRes += L" all";
-		
-			const wchar* args[] = {
-				L"-WX", // Warnings as errors
-				L"-DENABLE_SPIRV_CODEGEN=ON",
-				L"-spirv",
-				//shiftTRes.c_str(),
-				//shiftBRes.c_str(),
-			};
-		
-			hr = g_Compiler->Compile(srcBlob.Get(), L"Nepe.hlsl", L"main", L"vs_6_0", args, sizeof(args) / sizeof(args[0]), defines.data(), ui32(defines.size()), nullptr, &result);
-			break;
-		}
-		}
-		
-		// Get errors
-		if (SUCCEEDED(hr)) {
-			result->GetStatus(&hr);
-		}
-		
-		if (FAILED(hr) && result) {
-			ComPtr<IDxcBlobEncoding> errorsBlob;
-			dxCheck(result->GetErrorBuffer(&errorsBlob));
-		
-			log_error("Shader compilation failed: %s", (const char*)errorsBlob->GetBufferPointer());
-			return false;
-		}
-		
-		// Get bin data
-		ComPtr<IDxcBlob> dataBlob;
-		dxCheck(result->GetResult(&dataBlob));
-		
-		data.resize(dataBlob->GetBufferSize());
-		memcpy(data.data(), dataBlob->GetBufferPointer(), data.size());
-		
-		return true;
-		*/
+
+		return res;
 	}
 
-	Result graphics_shader_compile_file(const ShaderCompileDesc* desc, const char* srcPath, const char* binPath)
+	Result graphics_shader_compile_file(const ShaderCompileDesc* desc, const char* srcPath, std::vector<ui8>& data)
 	{
+		std::string filePath = graphics_shader_random_path();
+
 		std::stringstream bat;
 
 		// .exe path
@@ -160,7 +72,7 @@ namespace sv {
 			shift += SV_GFX_CONSTANT_BUFFER_COUNT;
 			bat << "-fvk-u-shift " << shift << " all ";
 		}
-			break;
+		break;
 		}
 
 		// Target
@@ -183,10 +95,59 @@ namespace sv {
 		// Entry point
 		bat << "-E " << desc->entryPoint << ' ';
 
-		// Macros
+		// Optimization level
+		bat << "-O3 ";
+
+		// Include path
+		{
+			const char* includePath = "library/shader_utils";
+
+#ifdef SV_SRC_PATH
+			std::string includePathStr = SV_SRC_PATH;
+			includePathStr += includePath;
+			includePath = includePathStr.c_str();
+#endif
+
+			bat << "-I " << includePath << ' ';
+
+		}
+
+		// API Macro
+		switch (desc->api)
+		{
+		case sv::GraphicsAPI_Vulkan:
+			bat << "-D " << "SV_API_VULKAN ";
+			break;
+		}
+
+		// Shader Macro
+
+		switch (desc->shaderType)
+		{
+		case sv::ShaderType_Vertex:
+			bat << "-D " << "SV_SHADER_TYPE_VERTEX ";
+			break;
+		case sv::ShaderType_Pixel:
+			bat << "-D " << "SV_SHADER_TYPE_PIXEL ";
+			break;
+		case sv::ShaderType_Geometry:
+			bat << "-D " << "SV_SHADER_TYPE_GEOMETRY ";
+			break;
+		case sv::ShaderType_Hull:
+			bat << "-D " << "SV_SHADER_TYPE_HULL ";
+			break;
+		case sv::ShaderType_Domain:
+			bat << "-D " << "SV_SHADER_TYPE_DOMAIN ";
+			break;
+		case sv::ShaderType_Compute:
+			bat << "-D " << "SV_SHADER_TYPE_COMPUTE ";
+			break;
+		}
+
+		// User Macro
 		for (auto it = desc->macros.begin(); it != desc->macros.end(); ++it) {
 			auto [name, value] = *it;
-			
+
 			if (strlen(name) == 0u) continue;
 
 			bat << "-D " << name;
@@ -199,10 +160,27 @@ namespace sv {
 		}
 
 		// Input - Output
-		bat << srcPath << " -Fo " << binPath;
+		bat << srcPath << " -Fo " << filePath;
 
 		// Execute
 		system(bat.str().c_str());
+
+		// Read from file
+		{
+			std::ifstream file(filePath, std::ios::ate | std::ios::binary);
+			if (!file.is_open()) return Result_CompileError;
+
+			size_t size = file.tellg();
+			file.seekg(0);
+			size_t index = data.size();
+			data.resize(index + size);
+			file.read((char*)data.data() + index, size);
+
+			file.close();
+		}
+
+		// Remove tem file
+		if (remove(filePath.c_str()) != 0) return Result_UnknownError;
 
 		return Result_Success;
 	}

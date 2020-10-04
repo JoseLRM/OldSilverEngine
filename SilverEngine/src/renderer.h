@@ -17,6 +17,6 @@ namespace sv {
 	struct InitializationRendererDesc {
 	};
 
-	void renderer_present(GPUImage& image, const GPUImageRegion& region, GPUImageLayout layout, CommandList cmd);
+	void renderer_present(GPUImage* image, const GPUImageRegion& region, GPUImageLayout layout, CommandList cmd);
 
 }

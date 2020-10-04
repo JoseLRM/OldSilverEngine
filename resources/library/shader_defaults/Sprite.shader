@@ -1,3 +1,10 @@
+#name Sprite
+#package default
+
+#shader vs
+#shader ps
+
+#start
 #include "core.hlsl"
 
 // Vertex Shader
@@ -44,12 +51,12 @@ struct Output
 };
 
 SV_SAMPLER(sam, s0);
-SV_IMAGE(tex, t0);
+SV_IMAGE(_Albedo, t0);
 
 Output main(Input input)
 {
     Output output;
-    float4 texColor = tex.Sample(sam, input.fragTexCoord);
+    float4 texColor = _Albedo.Sample(sam, input.fragTexCoord);
 	if (texColor.a < 0.05f) discard;
     output.color = input.fragColor * texColor;
     return output;

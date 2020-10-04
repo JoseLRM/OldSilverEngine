@@ -3,12 +3,13 @@
 #include "viewports/viewport_assets.h"
 #include "viewports/viewport_scene_editor.h"
 #include "viewports/viewport_simulation.h"
+#include "viewports/viewport_materials.h"
 
 #include "viewports.h"
 
 namespace sve {
 
-	constexpr static ui32 g_ViewportsCount = 6u;
+	constexpr static ui32 g_ViewportsCount = 7u;
 	static Viewport g_Viewports[g_ViewportsCount];
 
 
@@ -20,6 +21,7 @@ namespace sve {
 		g_Viewports[SVE_VIEWPORT_SCENE_EDITOR] = { false, "Scene Editor" };
 		g_Viewports[SVE_VIEWPORT_ENTITY_INSPECTOR] = { false, "Entity Inspector" };
 		g_Viewports[SVE_VIEWPORT_SIMULATION_TOOLS] = { false, "Simulation Tools" };
+		g_Viewports[SVE_VIEWPORT_MATERIALS] = { false, "Materials" };
 
 		viewports_show(SVE_VIEWPORT_SIMULATION);
 		viewports_show(SVE_VIEWPORT_ASSETS);
@@ -27,6 +29,7 @@ namespace sve {
 		viewports_show(SVE_VIEWPORT_SCENE_EDITOR);
 		viewports_show(SVE_VIEWPORT_ENTITY_INSPECTOR);
 		viewports_show(SVE_VIEWPORT_SIMULATION_TOOLS);
+		viewports_show(SVE_VIEWPORT_MATERIALS);
 	}
 
 	void viewports_close()
@@ -67,6 +70,10 @@ namespace sve {
 
 			case SVE_VIEWPORT_SIMULATION_TOOLS:
 				viewport_simulationtools_display();
+				break;
+
+			case SVE_VIEWPORT_MATERIALS:
+				viewport_materials_display();
 				break;
 
 			}

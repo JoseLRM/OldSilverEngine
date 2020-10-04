@@ -145,9 +145,9 @@ namespace sve {
 		ImGui::Separator();
 
 		// Sprite
-		if (comp->sprite.texture.Get()) {
+		if (comp->sprite.texture.get_image()) {
 			ImGuiDevice& device = editor_device_get();
-			ImGui::Image(device.ParseImage(comp->sprite.texture->texture.GetImage()), { 50.f, 50.f });
+			ImGui::Image(device.ParseImage(comp->sprite.texture.get_image()), { 50.f, 50.f });
 		}
 
 		static bool addTexturePopup = false;
@@ -156,22 +156,22 @@ namespace sve {
 			addTexturePopup = true;
 		}
 
-		if (comp->sprite.texture.Get()) {
-			if (ImGui::Button("Remove Texture")) comp->sprite.texture.Delete();
+		if (comp->sprite.texture.get_image()) {
+			if (ImGui::Button("Remove Texture")) comp->sprite.texture.unload();
 		}
 
 		if (addTexturePopup) {
 			
 			if (ImGui::Begin("TexturePopup", 0, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar)) {
 
-				auto& assets = sv::assets_map_get();
+				auto& assets = sv::assets_registers_get();
 				for (auto it = assets.begin(); it != assets.end(); ++it) {
 
 					if (it->second.assetType == sv::AssetType_Texture) {
 						if (ImGui::Button(it->first.c_str())) {
 
 							sv::Scene* scene = simulation_scene_get();
-							sv::assets_load_texture(it->first.c_str(), comp->sprite.texture);
+							comp->sprite.texture.load(it->first.c_str());
 
 							addTexturePopup = false;
 							break;
@@ -301,18 +301,18 @@ namespace sve {
 
 	void ShowMeshComponentInfo(sv::MeshComponent* comp)
 	{
-		if (comp->mesh.Get() != nullptr) {
-			sv::Mesh& mesh = *comp->mesh;
-		}
-
-		if (comp->material.Get() != nullptr) {
-			sv::Material& mat = *comp->material;
-			sv::MaterialData data = mat.GetMaterialData();
-
-			ImGui::ColorEdit4("Diffuse color", &data.diffuseColor.x);
-
-			mat.SetMaterialData(data);
-		}
+		//if (comp->mesh.Get() != nullptr) {
+		//	sv::Mesh& mesh = *comp->mesh;
+		//}
+		//
+		//if (comp->material.Get() != nullptr) {
+		//	sv::Material& mat = *comp->material;
+		//	sv::MaterialData data = mat.GetMaterialData();
+		//
+		//	ImGui::ColorEdit4("Diffuse color", &data.diffuseColor.x);
+		//
+		//	mat.SetMaterialData(data);
+		//}
 	}
 
 	void ShowLightComponentInfo(sv::LightComponent* comp)

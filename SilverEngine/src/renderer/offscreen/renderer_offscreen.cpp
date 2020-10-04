@@ -6,6 +6,8 @@ namespace sv {
 
 	Result renderer_offscreen_create(ui32 width, ui32 height, Offscreen& offscreen)
 	{
+		svCheck(renderer_offscreen_destroy(offscreen));
+
 		// Create Render Target
 		GPUImageDesc imageDesc;
 		imageDesc.format = SV_REND_OFFSCREEN_FORMAT;
@@ -20,14 +22,14 @@ namespace sv {
 		imageDesc.pData = nullptr;
 		imageDesc.type = GPUImageType_RenderTarget | GPUImageType_ShaderResource;
 
-		svCheck(graphics_image_create(&imageDesc, offscreen.renderTarget));
+		svCheck(graphics_image_create(&imageDesc, &offscreen.renderTarget));
 
 		// Create Depth Stencil
 		imageDesc.format = Format_D24_UNORM_S8_UINT;
 		imageDesc.layout = GPUImageLayout_DepthStencil;
 		imageDesc.type = GPUImageType_DepthStencil;
 
-		svCheck(graphics_image_create(&imageDesc, offscreen.depthStencil));
+		svCheck(graphics_image_create(&imageDesc, &offscreen.depthStencil));
 
 		return Result_Success;
 	}

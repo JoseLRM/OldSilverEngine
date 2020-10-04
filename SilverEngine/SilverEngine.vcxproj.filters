@@ -79,7 +79,6 @@
     <ClInclude Include="src\task_system\task_system_internal.h" />
     <ClInclude Include="src\utils\utils_internal.h" />
     <ClInclude Include="src\renderer\objects\Mesh.h" />
-    <ClInclude Include="src\renderer\objects\Material.h" />
     <ClInclude Include="src\loader.h" />
     <ClInclude Include="src\loader\loader_internal.h" />
     <ClInclude Include="src\external\assimp\Compiler\poppack1.h" />
@@ -165,7 +164,6 @@
     <ClInclude Include="src\console\console_internal.h" />
     <ClInclude Include="src\entity_system\entity_system_internal.h" />
     <ClInclude Include="src\utils\Archive.h" />
-    <ClInclude Include="src\renderer\objects\Texture.h" />
     <ClInclude Include="src\asset_system.h" />
     <ClInclude Include="src\asset_system\asset_system_internal.h" />
     <ClInclude Include="src\renderer\postprocessing\renderer_postprocessing.h" />
@@ -182,11 +180,13 @@
     <ClInclude Include="src\window\windows_impl.h" />
     <ClInclude Include="src\renderer\debug\renderer_debug.h" />
     <ClInclude Include="src\renderer\debug\renderer_debug_internal.h" />
+    <ClInclude Include="src\material_system.h" />
+    <ClInclude Include="src\material_system\material_system_internal.h" />
+    <ClInclude Include="src\utils\allocators\InstanceAllocator.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\graphics\vulkan\graphics_vulkan.cpp" />
     <ClCompile Include="src\graphics\graphics.cpp" />
-    <ClCompile Include="src\graphics\graphics_allocator.cpp" />
     <ClCompile Include="src\graphics\graphics_properties.cpp" />
     <ClCompile Include="src\renderer\renderer.cpp" />
     <ClCompile Include="src\utils\sv_math.cpp" />
@@ -207,7 +207,6 @@
     <ClCompile Include="src\task_system\task_system.cpp" />
     <ClCompile Include="src\input\input.cpp" />
     <ClCompile Include="src\renderer\objects\Mesh.cpp" />
-    <ClCompile Include="src\renderer\objects\Material.cpp" />
     <ClCompile Include="src\loader\loader.cpp" />
     <ClCompile Include="src\graphics\vulkan\graphics_vulkan_pipeline.cpp" />
     <ClCompile Include="src\renderer\renderer_shader.cpp" />
@@ -221,7 +220,6 @@
     <ClCompile Include="src\engine\engine.cpp" />
     <ClCompile Include="src\entity_system\entity_system_allocators.cpp" />
     <ClCompile Include="src\utils\Archive.cpp" />
-    <ClCompile Include="src\renderer\objects\Texture.cpp" />
     <ClCompile Include="src\asset_system\asset_system.cpp" />
     <ClCompile Include="src\renderer\projection\renderer_projection.cpp" />
     <ClCompile Include="src\renderer\postprocessing\renderer_postprocessing.cpp" />
@@ -230,6 +228,8 @@
     <ClCompile Include="src\renderer\sprite\renderer_sprite.cpp" />
     <ClCompile Include="src\window\window.cpp" />
     <ClCompile Include="src\renderer\debug\renderer_debug.cpp" />
+    <ClCompile Include="src\material_system\material_system.cpp" />
+    <ClCompile Include="src\utils\allocators\InstanceAllocator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="src\external\assimp\.editorconfig" />

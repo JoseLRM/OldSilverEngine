@@ -6,18 +6,16 @@ namespace sv {
 
 	// Sprite Primitives
 
-	static GraphicsPipeline g_SpritePipeline;
-	static RenderPass g_SpriteRenderPass;
+	static RenderPass* g_SpriteRenderPass;
 
-	static Shader g_SpriteVertexShader;
-	static Shader g_SpritePixelShader;
-	static InputLayoutState g_SpriteInputLayoutState;
-	static BlendState g_SpriteBlendState;
+	static InputLayoutState* g_SpriteInputLayoutState;
 
-	static GPUBuffer g_SpriteIndexBuffer;
-	static GPUBuffer g_SpriteVertexBuffer;
-	static GPUImage g_SpriteWhiteTexture;
-	static Sampler g_SpriteDefSampler;
+	static BlendState* g_SpriteBlendState;
+
+	static GPUBuffer* g_SpriteIndexBuffer;
+	static GPUBuffer* g_SpriteVertexBuffer;
+	static GPUImage* g_SpriteWhiteTexture;
+	static Sampler* g_SpriteDefSampler;
 
 	struct SpriteVertex {
 		vec4f position;
@@ -55,7 +53,7 @@ namespace sv {
 			desc.pData = nullptr;
 			desc.size = SV_REND_BATCH_COUNT * sizeof(SpriteVertex) * 4u;
 
-			svCheck(graphics_buffer_create(&desc, g_SpriteVertexBuffer));
+			svCheck(graphics_buffer_create(&desc, &g_SpriteVertexBuffer));
 
 			// Index Buffer
 			ui32 indexData[SV_REND_BATCH_COUNT * 6u];
@@ -68,13 +66,8 @@ namespace sv {
 			desc.size = SV_REND_BATCH_COUNT * 6u * sizeof(ui32);
 			desc.indexType = IndexType_32;
 
-			svCheck(graphics_buffer_create(&desc, g_SpriteIndexBuffer));
+			svCheck(graphics_buffer_create(&desc, &g_SpriteIndexBuffer));
 
-		}
-		// Sprite Shaders
-		{
-			svCheck(renderer_shader_create("Sprite", ShaderType_Vertex, g_SpriteVertexShader));
-			svCheck(renderer_shader_create("Sprite", ShaderType_Pixel, g_SpritePixelShader));
 		}
 		// Sprite RenderPass
 		{
@@ -91,9 +84,9 @@ namespace sv {
 			desc.attachments[0].finalLayout = GPUImageLayout_RenderTarget;
 			desc.attachments[0].type = AttachmentType_RenderTarget;
 
-			svCheck(graphics_renderpass_create(&desc, g_SpriteRenderPass));
+			svCheck(graphics_renderpass_create(&desc, &g_SpriteRenderPass));
 		}
-		// Sprite Pipeline
+		// Sprite Shader Input Layout
 		{
 			InputLayoutStateDesc inputLayout;
 			inputLayout.slots.push_back({ 0u, sizeof(SpriteVertex), false });
@@ -102,8 +95,10 @@ namespace sv {
 			inputLayout.elements.push_back({ "TexCoord", 0u, 0u, 4u * sizeof(float), Format_R32G32_FLOAT });
 			inputLayout.elements.push_back({ "Color", 0u, 0u, 6u * sizeof(float), Format_R8G8B8A8_UNORM });
 
-			svCheck(graphics_inputlayoutstate_create(&inputLayout, g_SpriteInputLayoutState));
-
+			svCheck(graphics_inputlayoutstate_create(&inputLayout, &g_SpriteInputLayoutState));
+		}
+		// Blend State
+		{
 			BlendStateDesc blendState;
 			blendState.attachments.resize(1);
 			blendState.blendConstants = { 0.f, 0.f, 0.f, 0.f };
@@ -116,17 +111,7 @@ namespace sv {
 			blendState.attachments[0].alphaBlendOp = BlendOperation_Add;
 			blendState.attachments[0].colorWriteMask = ColorComponent_All;
 
-			svCheck(graphics_blendstate_create(&blendState, g_SpriteBlendState));
-
-			g_SpritePipeline.pVertexShader = &g_SpriteVertexShader;
-			g_SpritePipeline.pPixelShader = &g_SpritePixelShader;
-			g_SpritePipeline.pGeometryShader = nullptr;
-			g_SpritePipeline.pInputLayoutState = &g_SpriteInputLayoutState;
-			g_SpritePipeline.pBlendState = &g_SpriteBlendState;
-			g_SpritePipeline.pRasterizerState = nullptr;
-			g_SpritePipeline.pDepthStencilState = nullptr;
-			g_SpritePipeline.topology = GraphicsTopology_Triangles;
-			g_SpritePipeline.stencilRef = 0u;
+			svCheck(graphics_blendstate_create(&blendState, &g_SpriteBlendState));
 		}
 		// Sprite White Image
 		{
@@ -147,7 +132,7 @@ namespace sv {
 			desc.depth = 1u;
 			desc.layers = 1u;
 
-			svCheck(graphics_image_create(&desc, g_SpriteWhiteTexture));
+			svCheck(graphics_image_create(&desc, &g_SpriteWhiteTexture));
 		}
 		// Sprite Default Sampler
 		{
@@ -158,7 +143,7 @@ namespace sv {
 			desc.minFilter = SamplerFilter_Nearest;
 			desc.magFilter = SamplerFilter_Nearest;
 
-			svCheck(graphics_sampler_create(&desc, g_SpriteDefSampler));
+			svCheck(graphics_sampler_create(&desc, &g_SpriteDefSampler));
 		}
 
 		return Result_Success;
@@ -166,41 +151,20 @@ namespace sv {
 
 	Result renderer_sprite_close()
 	{
-		g_SpritePipeline = {};
-		svCheck(graphics_destroy(g_SpriteInputLayoutState));
 		svCheck(graphics_destroy(g_SpriteBlendState));
 		svCheck(graphics_destroy(g_SpriteRenderPass));
-		svCheck(graphics_destroy(g_SpriteVertexShader));
-		svCheck(graphics_destroy(g_SpritePixelShader));
 		svCheck(graphics_destroy(g_SpriteVertexBuffer));
 		svCheck(graphics_destroy(g_SpriteIndexBuffer));
 		svCheck(graphics_destroy(g_SpriteWhiteTexture));
 		svCheck(graphics_destroy(g_SpriteDefSampler));
+		svCheck(graphics_destroy(g_SpriteInputLayoutState));
 
 		return Result_Success;
 	}
 
-	void RenderSpriteBatch(ui32 offset, ui32 size, Texture* texture, CommandList cmd)
+	void renderer_sprite_draw_call(ui32 offset, ui32 size, CommandList cmd)
 	{
-		GPUImage* img;
-		Sampler* sam;
-
-		if (texture) {
-			img = &texture->GetImage();
-			sam = &texture->GetSampler();
-		}
-		else {
-			img = &g_SpriteWhiteTexture;
-			sam = &g_SpriteDefSampler;
-		}
-
-		graphics_vertexbuffer_bind(g_SpriteVertexBuffer, 0u, 0u, cmd);
-
-		graphics_image_bind(*img, 0u, ShaderType_Pixel, cmd);
-		graphics_sampler_bind(*sam, 0u, ShaderType_Pixel, cmd);
-
 		graphics_draw_indexed(size * 6u, 1u, offset * 6u, 0u, 0u, cmd);
-
 	}
 
 	void renderer_sprite_rendering(const SpriteRenderingDesc* desc, CommandList cmd)
@@ -209,7 +173,10 @@ namespace sv {
 			desc->pRenderTarget
 		};
 
-		Texture* texture = nullptr;
+		GPUImage* texture = nullptr;
+		Material* material = nullptr;
+
+		ShaderLibrary* currentShader = nullptr;
 
 		XMMATRIX viewProjectionMatrix = *desc->pViewProjectionMatrix;
 		ui32 count = desc->count;
@@ -257,33 +224,60 @@ namespace sv {
 			// Begin rendering
 			graphics_renderpass_begin(g_SpriteRenderPass, att, nullptr, 1.f, 0u, cmd);
 
+			graphics_vertexbuffer_bind(g_SpriteVertexBuffer, 0u, 0u, cmd);
 			graphics_indexbuffer_bind(g_SpriteIndexBuffer, 0u, cmd);
-			graphics_pipeline_bind(g_SpritePipeline, cmd);
+			graphics_blendstate_bind(g_SpriteBlendState, cmd);
+			graphics_inputlayoutstate_bind(g_SpriteInputLayoutState, cmd);
+			graphics_sampler_bind(g_SpriteDefSampler, 0u, ShaderType_Pixel, cmd);
 
 			const SpriteInstance* beginBuffer = buffer;
 			const SpriteInstance* endBuffer;
+
+			bool draw = false;
 
 			while (buffer < beginBuffer + batchSize) {
 
 				endBuffer = buffer + batchSize;
 
 				texture = buffer->pTexture;
+				material = buffer->material;
+				currentShader = matsys_material_shader_get(material);
+				matsys_shaderlibrary_bind(currentShader, cmd);
 				
 				ui32 offset = buffer - beginBuffer;
 				while (buffer != endBuffer) {
 
 					if (buffer->pTexture != texture) {
-						ui32 batchPos = buffer - beginBuffer;
-						RenderSpriteBatch(offset, batchPos - offset, texture, cmd);
-						offset = batchPos;
+						draw = true;
+						graphics_image_bind(texture ? texture : g_SpriteWhiteTexture, 0u, ShaderType_Pixel, cmd);
 						texture = buffer->pTexture;
+					}
+
+					if (buffer->material != material) {
+						draw = true;
+						matsys_material_bind(material, cmd);
+
+						if (matsys_material_shader_get(buffer->material) != currentShader) {
+							currentShader = matsys_material_shader_get(buffer->material);
+							matsys_shaderlibrary_bind(currentShader, cmd);
+						}
+						material = buffer->material;
+					}
+
+					if (draw) {
+						ui32 batchPos = buffer - beginBuffer;
+						renderer_sprite_draw_call(offset, batchPos - offset, cmd);
+						offset = batchPos;
+						draw = false;
 					}
 
 					buffer++;
 				}
 
 				ui32 batchPos = buffer - beginBuffer;
-				RenderSpriteBatch(offset, batchPos - offset, texture, cmd);
+				graphics_image_bind(texture ? texture : g_SpriteWhiteTexture, 0u, ShaderType_Pixel, cmd);
+				matsys_material_bind(material, cmd);
+				renderer_sprite_draw_call(offset, batchPos - offset, cmd);
 
 			}
 

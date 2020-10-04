@@ -1,7 +1,5 @@
 #pragma once
 
-#include "renderer/objects/Texture.h"
-
 namespace sv {
 
 	typedef void RendererDebugBatch;
@@ -10,14 +8,14 @@ namespace sv {
 	Result renderer_debug_batch_destroy(RendererDebugBatch* batch);
 
 	void renderer_debug_batch_reset(RendererDebugBatch* batch);
-	void renderer_debug_batch_render(RendererDebugBatch* batch, GPUImage& renderTarget, const Viewport& viewport, const Scissor& scissor, const XMMATRIX& viewProjectionMatrix, CommandList cmd);
+	void renderer_debug_batch_render(RendererDebugBatch* batch, GPUImage* renderTarget, const Viewport& viewport, const Scissor& scissor, const XMMATRIX& viewProjectionMatrix, CommandList cmd);
 
 	// Draw calls
 
 	void renderer_debug_draw_quad(RendererDebugBatch* batch, const XMMATRIX& matrix, Color color);
 	void renderer_debug_draw_line(RendererDebugBatch* batch, const vec3f& p0, const vec3f& p1, Color color);
 	void renderer_debug_draw_ellipse(RendererDebugBatch* batch, const XMMATRIX& matrix, Color color);
-	void renderer_debug_draw_sprite(RendererDebugBatch* batch, const XMMATRIX& matrix, Color color, GPUImage& image);
+	void renderer_debug_draw_sprite(RendererDebugBatch* batch, const XMMATRIX& matrix, Color color, GPUImage* image);
 
 	// Helper draw calls
 
@@ -27,8 +25,8 @@ namespace sv {
 	void renderer_debug_draw_ellipse(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, Color color);
 	void renderer_debug_draw_ellipse(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, const vec3f& rotation, Color color);
 
-	void renderer_debug_draw_sprite(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, Color color, GPUImage& image);
-	void renderer_debug_draw_sprite(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, const vec3f& rotation, Color color, GPUImage& image);
+	void renderer_debug_draw_sprite(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, Color color, GPUImage* image);
+	void renderer_debug_draw_sprite(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, const vec3f& rotation, Color color, GPUImage* image);
 
 	// Attributes
 
@@ -46,6 +44,6 @@ namespace sv {
 
 	// Sprite sampler
 	void renderer_debug_sampler_set_default(RendererDebugBatch* batch);
-	void renderer_debug_sampler_set(RendererDebugBatch* batch, Sampler& sampler);
+	void renderer_debug_sampler_set(RendererDebugBatch* batch, Sampler* sampler);
 
 }

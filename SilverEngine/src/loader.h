@@ -12,7 +12,7 @@ namespace sv {
 	};
 
 	struct MeshNode {
-		Mesh		mesh;
+		//Mesh		mesh;
 		Material*	pMaterial;
 		XMMATRIX	transformMatrix;
 	};

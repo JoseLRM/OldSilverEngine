@@ -23,7 +23,7 @@ namespace sv {
 			scene_renderer_camera_draw(scene_, &desc);
 
 			if (present && camera.entity == scene.mainCamera) {
-				GPUImage& image = camera.offscreen.renderTarget;
+				GPUImage* image = camera.offscreen.renderTarget;
 				GPUImageRegion region;
 				region.offset = { 0u, 0u, 0u };
 				region.size = { graphics_image_get_width(image), graphics_image_get_height(image), 1u };
@@ -73,7 +73,11 @@ namespace sv {
 			for (SpriteComponent& sprite : sprites) {
 
 				Transform trans = ecs_entity_transform_get(scene.ecs, sprite.entity);
-				instances.emplace_back(trans.GetWorldMatrix(), sprite.sprite.texCoord, &sprite.sprite.texture.Get()->texture, sprite.color);
+
+				// TEMP
+				if (sprite.material.get_material() == nullptr) continue;
+
+				instances.emplace_back(trans.GetWorldMatrix(), sprite.sprite.texCoord, sprite.sprite.texture.get_image(), sprite.color, sprite.material.get_material());
 
 			}
 
@@ -81,10 +85,11 @@ namespace sv {
 			desc.pInstances = instances.data();
 			desc.count = ui32(instances.size());
 			desc.pViewProjectionMatrix = &viewProjectionMatrix;
-			desc.pRenderTarget = &offscreen.renderTarget;
+			desc.pRenderTarget = offscreen.renderTarget;
 
 			renderer_sprite_rendering(&desc, cmd);
 		}
+		/*
 		// Mesh rendering
 		{
 			std::vector<MeshInstance> instances; // TODO: Linear allocator
@@ -133,13 +138,14 @@ namespace sv {
 			desc.transparent = false;
 			desc.pViewMatrix = &viewMatrix;
 			desc.pProjectionMatrix = &projectionMatrix;
-			desc.pRenderTarget = &offscreen.renderTarget;
-			desc.pDepthStencil = &offscreen.depthStencil;
+			desc.pRenderTarget = offscreen.renderTarget;
+			desc.pDepthStencil = offscreen.depthStencil;
 			desc.lights = lightsInstances.data();
 			desc.lightCount = ui32(lightsInstances.size());
 
 			renderer_mesh_forward_rendering(&desc, cmd);
 		}
+		*/
 	}
 
 }

@@ -75,6 +75,7 @@ namespace sv {
 		Result_UnknownError,
 		Result_PlatformError,
 		Result_GraphicsAPIError,
+		Result_CompileError,
 		Result_NotFound,
 		Result_InvalidFormat,
 		Result_InvalidUsage,
@@ -91,6 +92,8 @@ namespace sv {
 	};
 #define SV_THROW(type, desc) throw sv::Exception(type, desc, __FILE__, __LINE__)
 
+	// Ptr Handle
+#define SV_DEFINE_HANDLE(x) struct x { x() = delete; ~x() = delete; }
 }
 
 // macros

@@ -802,4 +802,53 @@ namespace sv {
 		return flags;
 	}
 
+	constexpr ShaderAttributeType graphics_vulkan_parse_spirvtype(const spirv_cross::SPIRType& type)
+	{
+		switch (type.basetype)
+		{
+
+		case spirv_cross::SPIRType::BaseType::Float:
+			if (type.columns == 1u) {
+				switch (type.vecsize)
+				{
+				case 1u:
+					return ShaderAttributeType_Float;
+				case 2u:
+					return ShaderAttributeType_Float2;
+				case 3u:
+					return ShaderAttributeType_Float3;
+				case 4u:
+					return ShaderAttributeType_Float4;
+				}
+			}
+			else if (type.columns == 3u) {
+				return ShaderAttributeType_Mat3;
+			}
+			else if (type.columns == 4u) {
+				return ShaderAttributeType_Mat4;
+			}
+			break;
+
+		case spirv_cross::SPIRType::BaseType::Half:
+			return ShaderAttributeType_Half;
+		case spirv_cross::SPIRType::BaseType::Double:
+			return ShaderAttributeType_Double;
+		case spirv_cross::SPIRType::BaseType::Boolean:
+			return ShaderAttributeType_Boolean;
+		case spirv_cross::SPIRType::BaseType::UInt:
+			return ShaderAttributeType_UInt32;
+		case spirv_cross::SPIRType::BaseType::Int:
+			return ShaderAttributeType_Int32;
+		case spirv_cross::SPIRType::BaseType::UInt64:
+			return ShaderAttributeType_UInt64;
+		case spirv_cross::SPIRType::BaseType::Int64:
+			return ShaderAttributeType_Int64;
+		case spirv_cross::SPIRType::BaseType::Char:
+			return ShaderAttributeType_Char;
+
+		}
+
+		return ShaderAttributeType_Unknown;
+	}
+
 }

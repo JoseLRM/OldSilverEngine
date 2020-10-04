@@ -2,6 +2,7 @@
 
 #include "entity_system_internal.h"
 #include "task_system.h"
+#include "utils/allocators/InstanceAllocator.h"
 
 namespace sv {
 
@@ -19,11 +20,16 @@ namespace sv {
 	static std::vector<ComponentData> g_ComponentData;
 	static std::mutex g_ComponentRegisterMutex;
 
+	static InstanceAllocator<ECS_internal>	g_ECSAllocator;
+	static std::mutex						g_ECSMutex;
+
 #define parseECS() ECS_internal& ecs = *reinterpret_cast<ECS_internal*>(ecs_)
 
 	void ecs_create(ECS** ecs_)
 	{
-		ECS_internal& ecs = *new ECS_internal();
+		g_ECSMutex.lock();
+		ECS_internal& ecs = *g_ECSAllocator.create();
+		g_ECSMutex.unlock();
 
 		ecs.components.resize(ecs_register_count());
 		for (CompID i = 0u; i < ecs.components.size(); ++i) {
@@ -45,7 +51,9 @@ namespace sv {
 		ecs.entities.clear();
 		ecs_allocator_entity_clear(ecs.entityData);
 
-		delete &ecs;
+		g_ECSMutex.lock();
+		g_ECSAllocator.destroy(&ecs);
+		g_ECSMutex.unlock();
 	}
 
 	void ecs_clear(ECS* ecs_)

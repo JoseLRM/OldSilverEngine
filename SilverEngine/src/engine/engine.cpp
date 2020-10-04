@@ -4,6 +4,7 @@
 
 #include "renderer/renderer_internal.h"
 #include "graphics/graphics_internal.h"
+#include "material_system/material_system_internal.h"
 #include "input/input_internal.h"
 #include "window/window_internal.h"
 #include "task_system/task_system_internal.h"
@@ -71,6 +72,7 @@ namespace sv {
 			svCheck(scene_initialize());
 			svCheck(window_initialize(desc.windowDesc));
 			svCheck(graphics_initialize(desc.graphicsDesc));
+			svCheck(matsys_initialize());
 			svCheck(renderer_initialize(desc.rendererDesc));
 
 			// APPLICATION
@@ -104,13 +106,16 @@ namespace sv {
 			window_update();
 
 			// Update assets
-			svCheck(assets_update(g_DeltaTime));
+			assets_update(g_DeltaTime);
 
 			// Update User
 			g_App.update(g_DeltaTime);
 
 			// Begin Rendering
 			renderer_frame_begin();
+
+			// Before rendering, update materials
+			matsys_update();
 
 			// User Rendering
 			g_App.render();
@@ -132,11 +137,12 @@ namespace sv {
 		try {
 			svCheck(g_App.close());
 
-			svCheck(renderer_close());
-			svCheck(window_close());
-			svCheck(graphics_close());
 			svCheck(scene_close());
 			svCheck(assets_close());
+			svCheck(renderer_close());
+			svCheck(matsys_close());
+			svCheck(graphics_close());
+			svCheck(window_close());
 			svCheck(task_close());
 			svCheck(console_close());
 		}

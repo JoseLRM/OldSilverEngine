@@ -21,6 +21,7 @@
     <ClCompile Include="src\viewports\scene\viewport_scene.cpp" />
     <ClCompile Include="src\viewports\simulation\viewport_simulation.cpp" />
     <ClCompile Include="src\viewports\viewports.cpp" />
+    <ClCompile Include="src\viewports\materials\viewport_materials.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\editor.h" />
@@ -47,6 +48,7 @@
     <ClInclude Include="src\viewports\viewport_simulation.h" />
     <ClInclude Include="src\viewports\viewport_scene_editor.h" />
     <ClInclude Include="src\viewports.h" />
+    <ClInclude Include="src\viewports\viewport_materials.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="external">

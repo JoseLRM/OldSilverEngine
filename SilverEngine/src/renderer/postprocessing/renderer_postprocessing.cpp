@@ -6,7 +6,7 @@ namespace sv {
 
 	// Common Buffers
 
-	static GPUBuffer		g_VertexBuffer;
+	static GPUBuffer* g_VertexBuffer;
 
 	Result renderer_postprocessing_initialize()
 	{
@@ -26,7 +26,7 @@ namespace sv {
 			desc.size = 4 * sizeof(vec2f);
 			desc.usage = ResourceUsage_Static;
 
-			svCheck(graphics_buffer_create(&desc, g_VertexBuffer));
+			svCheck(graphics_buffer_create(&desc, &g_VertexBuffer));
 		}
 
 		return Result_Success;

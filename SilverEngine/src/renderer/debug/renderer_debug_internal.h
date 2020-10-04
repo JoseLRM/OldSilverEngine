@@ -38,8 +38,8 @@ namespace sv {
 
 		RendererDebugDraw() {}
 		RendererDebugDraw(ui32 list, ui32 index, float lineWidth = 1.f) : list(list), index(index), count(1u), lineWidth(lineWidth) {}
-		RendererDebugDraw(ui32 list, ui32 index, GPUImage& image, Sampler* sampler, const vec4f& texCoord) 
-			: list(list), index(index), count(1u), pImage(&image), pSampler(sampler), texCoord(texCoord) {}
+		RendererDebugDraw(ui32 list, ui32 index, GPUImage* image, Sampler* sampler, const vec4f& texCoord) 
+			: list(list), index(index), count(1u), pImage(image), pSampler(sampler), texCoord(texCoord) {}
 	};
 
 	struct RendererDebugBatch_internal {

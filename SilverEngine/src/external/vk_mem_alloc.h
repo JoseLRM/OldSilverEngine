@@ -4007,7 +4007,7 @@ void* vma_aligned_alloc(size_t alignment, size_t size)
 #ifdef NDEBUG
 #define VMA_ASSERT(expr)
 #else
-#define VMA_ASSERT(expr)         assert(expr)
+#define VMA_ASSERT(expr)         SV_ASSERT(expr)
 #endif
 #endif
 

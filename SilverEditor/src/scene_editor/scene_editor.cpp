@@ -85,7 +85,7 @@ namespace sve {
 	}
 
 	// MAIN FUNCTIONS
-
+	sv::ShaderLibraryAsset shader;
 	sv::Result scene_editor_initialize()
 	{
 		// Create camera
@@ -104,11 +104,26 @@ namespace sve {
 
 			svCheck(sv::renderer_debug_batch_create(&g_Colliders2DBatch));
 		}
+
+		// TEMP
+		svCheck(shader.load("shaders/sprite.shader"));
+
+		sv::ECS* ecs = sv::scene_ecs_get(simulation_scene_get());
+		sv::Entity e = sv::ecs_entity_create(ecs);
+		sv::SpriteComponent* spr = sv::ecs_component_add<sv::SpriteComponent>(ecs, e);
+
+		svCheck(spr->material.load("test.mat"));
+
+		sv::Color4f f0 = sv::Color4f::Blue();
+
+		spr->material.set("diffuse", &f0, sv::ShaderAttributeType_Float4);
+
 		return sv::Result_Success;
 	}
 
 	sv::Result scene_editor_close()
 	{
+		svCheck(sv::renderer_offscreen_destroy(g_Camera.offscreen));
 		svCheck(sv::renderer_debug_batch_destroy(g_Colliders2DBatch));
 		return sv::Result_Success;
 	}

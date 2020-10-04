@@ -26,8 +26,4 @@ namespace sv {
 		vec2f texCoord;
 	};
 
-	// Shader utils
-
-	Result renderer_shader_create(const char* name, ShaderType type, Shader& shader, std::pair<const char*, const char*>* macros = nullptr, ui32 macrosCount = 0u);
-
 }

@@ -4,6 +4,7 @@
 #include "Mesh.h"
 
 namespace sv {
+	/*
 	Result Mesh::CreateBuffers()
 	{
 		if (m_VertexCount == 0u && m_IndexCount == 0u) return Result_InvalidUsage;
@@ -102,4 +103,5 @@ namespace sv {
 	{
 		return m_VertexBuffer.IsValid() && m_IndexBuffer.IsValid();
 	}
+	*/
 }

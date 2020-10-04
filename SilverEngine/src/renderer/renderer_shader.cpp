@@ -3,7 +3,7 @@
 #include "renderer_internal.h"
 
 namespace sv {
-
+	/*
 	Result renderer_shader_create(const char* name, ShaderType type, Shader& shader, std::pair<const char*, const char*>* macros, ui32 macrosCount)
 	{
 		GraphicsAPI api = graphics_api_get();
@@ -84,38 +84,6 @@ namespace sv {
 			compileDesc.majorVersion = 6u;
 			compileDesc.minorVersion = 0u;
 			compileDesc.entryPoint = "main";
-			
-			// API Macro
-			switch (api)
-			{
-			case sv::GraphicsAPI_Vulkan:
-				compileDesc.macros.push_back(std::make_pair("SV_API_VULKAN", ""));
-				break;
-			}
-			
-			// Shader Macro
-
-			switch (type)
-			{
-			case sv::ShaderType_Vertex:
-				compileDesc.macros.push_back(std::make_pair("SV_SHADER_TYPE_VERTEX", ""));
-				break;
-			case sv::ShaderType_Pixel:
-				compileDesc.macros.push_back(std::make_pair("SV_SHADER_TYPE_PIXEL", ""));
-				break;
-			case sv::ShaderType_Geometry:
-				compileDesc.macros.push_back(std::make_pair("SV_SHADER_TYPE_GEOMETRY", ""));
-				break;
-			case sv::ShaderType_Hull:
-				compileDesc.macros.push_back(std::make_pair("SV_SHADER_TYPE_HULL", ""));
-				break;
-			case sv::ShaderType_Domain:
-				compileDesc.macros.push_back(std::make_pair("SV_SHADER_TYPE_DOMAIN", ""));
-				break;
-			case sv::ShaderType_Compute:
-				compileDesc.macros.push_back(std::make_pair("SV_SHADER_TYPE_COMPUTE", ""));
-				break;
-			}
 
 			// Lighting Macro
 			std::string lightCountStr = std::to_string(SV_REND_FORWARD_LIGHT_COUNT);
@@ -183,5 +151,6 @@ namespace sv {
 		svCheck(graphics_shader_create(&desc, shader));
 		return Result_Success;
 	}
+	*/
 
 }

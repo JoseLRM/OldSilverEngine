@@ -22,8 +22,8 @@ namespace sv {
 	// Rendering
 
 	struct Sprite {
-		sv::SharedRef<TextureAsset>	texture;
-		vec4f						texCoord = { 0.f, 0.f, 1.f, 1.f };
+		TextureAsset	texture;
+		vec4f			texCoord = { 0.f, 0.f, 1.f, 1.f };
 	};
 
 	struct CameraSettings {
