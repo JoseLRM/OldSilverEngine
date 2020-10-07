@@ -3,6 +3,7 @@
 #include "viewports/viewport_scene_editor.h"
 #include "editor.h"
 #include "viewports.h"
+#include "viewports/viewport_assets.h"
 
 #include "simulation.h"
 #include "scene.h"
@@ -22,6 +23,9 @@ namespace sve {
 
 	void ShowEntity(sv::ECS* ecs, sv::Entity entity)
 	{
+		int* i = new int;
+		delete i;
+
 		ImGuiTreeNodeFlags treeFlags = ImGuiTreeNodeFlags_OpenOnArrow | (sv::ecs_entity_childs_count(ecs, entity) == 0 ? ImGuiTreeNodeFlags_Bullet : ImGuiTreeNodeFlags_AllowItemOverlap);
 		
 		if (g_SelectedEntity == entity) {
@@ -161,27 +165,14 @@ namespace sve {
 		}
 
 		if (addTexturePopup) {
-			
-			if (ImGui::Begin("TexturePopup", 0, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar)) {
+			const char* name;
 
-				auto& assets = sv::assets_registers_get();
-				for (auto it = assets.begin(); it != assets.end(); ++it) {
+			addTexturePopup = viewport_assets_texture_popmenu(&name);
 
-					if (it->second.assetType == sv::AssetType_Texture) {
-						if (ImGui::Button(it->first.c_str())) {
-
-							sv::Scene* scene = simulation_scene_get();
-							comp->sprite.texture.load(it->first.c_str());
-
-							addTexturePopup = false;
-							break;
-						}
-					}
-				}
-
-				if (!ImGui::IsWindowFocused()) addTexturePopup = false;
+			if (name) {
+				sv::Scene* scene = simulation_scene_get();
+				comp->sprite.texture.load(name);
 			}
-			ImGui::End();
 		}
 	}
 

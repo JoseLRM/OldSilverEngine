@@ -51,24 +51,26 @@ struct Output
 };
 
 SV_SAMPLER(sam, s0);
-SV_IMAGE(_Albedo, t0);
+SV_TEXTURE(_Albedo, t0);
+
+SV_TEXTURE(Test, t1);
 
 SV_DEFINE_MATERIAL(b0) {
-    float radius;
+    float4 diffuse;
+    float alpha;
+    float blend;
 };
 
 Output main(Input input)
 {
     Output output;
-    float4 texColor = _Albedo.Sample(sam, input.fragTexCoord);
-	if (texColor.a < 0.05f) discard;
-    output.color = input.fragColor * texColor;
+    float4 texColor0 = _Albedo.Sample(sam, input.fragTexCoord);
+    float4 texColor1 = Test.Sample(sam, input.fragTexCoord);
+    output.color = input.fragColor * texColor0 * blend + texColor1 * (1.f - blend);
+    output.color *= diffuse;
+    output.color.w *= alpha;
 
-    float distance = length((input.fragTexCoord - 0.5f) * 2.f);
-    if (distance > radius) output.color.xyz = float3(0.f, 0.6, 0.9f);
-    else output.color.xyz = length(output.color.xyz) * 0.5f;
-    
-
+	if (output.color.a < 0.05f) discard;
     return output;
 }
 

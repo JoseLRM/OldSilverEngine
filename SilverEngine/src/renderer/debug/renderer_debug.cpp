@@ -125,7 +125,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		"struct Output {\n"
 		"	float4 color : SV_Target;\n"
 		"};\n"
-		"SV_IMAGE(tex, t0);\n"
+		"SV_TEXTURE(tex, t0);\n"
 		"SV_SAMPLER(sam, s0);\n"
 		"Output main(Input input)\n"
 		"{\n"

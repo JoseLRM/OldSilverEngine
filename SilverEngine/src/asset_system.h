@@ -65,6 +65,7 @@ namespace sv {
 
 		GPUImage*	get_image() const noexcept;
 		size_t		get_hashcode() const noexcept;
+		const char*	get_name() const noexcept;
 
 	};
 
@@ -111,9 +112,25 @@ namespace sv {
 		Result load(const char* filePath);
 		Result load(size_t hashCode);
 
-		ShaderAttributeType get_type(const char* name);
-		Result				set(const char* name, const void* data, ShaderAttributeType type);
-		Result				get(const char* name, void* data, ShaderAttributeType type);
+		// Material setters
+
+		Result set_texture(const char* name, const TextureAsset& texture);
+
+		Result set_float(const char* name,	const float* pFloat);
+		Result set_float2(const char* name, const vec2f* pFloat2);
+		Result set_float3(const char* name, const vec3f* pFloat3);
+		Result set_float4(const char* name, const vec4f* pFloat4);
+
+		// Material getters
+
+		Result get_texture(const char* name, TextureAsset& texture);
+
+		Result get_float(const char* name, float* pFloat);
+		Result get_float2(const char* name, vec2f* pFloat2);
+		Result get_float3(const char* name, vec3f* pFloat3);
+		Result get_float4(const char* name, vec4f* pFloat4);
+
+		// Getters
 
 		Material* get_material() const noexcept;
 		const char* get_name() const noexcept;

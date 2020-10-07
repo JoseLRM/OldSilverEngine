@@ -8,46 +8,20 @@ namespace sve {
 
 	namespace fs = std::filesystem;
 
-	enum AssetType : ui32 {
-		AssetType_Folder,
-		AssetType_File,
-	};
-
 	struct AssetFolder;
 
-	struct AssetItem {
-		const AssetType		type;
-		std::wstring		name;
-		AssetFolder*		parent = nullptr;
-		AssetItem(AssetType type) : type(type) {}
+	struct AssetFile {
+		std::string		name;
+		std::string		extension;
+		AssetFolder*	folder = nullptr;
 	};
 
-	struct AssetFile : public AssetItem {
-		std::wstring extension;
-
-		AssetFile() : AssetItem(AssetType_File)
-		{}
-	};
-
-	struct AssetFolder : public AssetItem {
-		std::wstring								path;
-		std::vector<std::pair<ui32, AssetType>>		items;
+	struct AssetFolder {
+		std::string									name;
+		std::string									path;
 		std::vector<AssetFile>						files;
 		std::vector<std::unique_ptr<AssetFolder>>	folders;
-
-		AssetFolder() : AssetItem(AssetType_Folder) 
-		{}
-	};
-
-	// Runtime Structures
-
-	struct FolderRoot {
-		std::string		name;
-		AssetFolder* pFolder;
-	};
-
-	struct RuntimeFolderRoot {
-		std::vector<FolderRoot> folders;
+		AssetFolder*								folder = nullptr;
 	};
 
 	// Globals
@@ -55,83 +29,78 @@ namespace sve {
 	static AssetFolder	g_AssetFolder;
 	static AssetFolder* g_CurrentFolder = nullptr;
 
-	static RuntimeFolderRoot g_RuntimeFolderRoot;
-
-	void viewport_assets_generate_runtime()
-	{
-		g_RuntimeFolderRoot.folders.clear();
-
-		ui32 foldersCount = 0u;
-		AssetFolder* next = g_CurrentFolder;
-		while (next != nullptr) {
-			foldersCount++;
-			next = next->parent;
-		}
-
-		g_RuntimeFolderRoot.folders.resize(foldersCount);
-		next = g_CurrentFolder;
-		while (next != nullptr) {
-
-			FolderRoot& root = g_RuntimeFolderRoot.folders[--foldersCount];
-
-			root.name = sv::utils_string_parse(next->name.c_str());
-			root.pFolder = next;
-
-			next = next->parent;
-		}
-	}
-
 	void viewport_assets_refresh_folder(AssetFolder& folder)
 	{
 		folder.files.clear();
 		folder.folders.clear();
-		folder.items.clear();
 
 		auto iterator = fs::directory_iterator(folder.path.c_str());
 
 		for (const auto& item : iterator) {
 
-			std::pair<ui32, AssetType> pair;
-			
 			if (item.is_directory()) {
 
-				pair.first = ui32(folder.folders.size());
-				pair.second = AssetType_Folder;
 				std::unique_ptr<AssetFolder>& newFolder = folder.folders.emplace_back();
 				newFolder = std::make_unique<AssetFolder>();
-				newFolder->path = item.path().c_str();
-				newFolder->name = item.path().filename().c_str();
-				newFolder->parent = &folder;
+				newFolder->path = sv::utils_string_parse(item.path().c_str());
+				newFolder->name = sv::utils_string_parse(item.path().filename().c_str());
+				newFolder->folder = &folder;
 				viewport_assets_refresh_folder(*newFolder.get());
 				
 			}
 			else {
 
-				pair.first = ui32(folder.files.size());
-				pair.second = AssetType_File;
 				AssetFile& file = folder.files.emplace_back();
-				file.name = item.path().filename().c_str();
-				file.extension = item.path().extension().c_str();
-				file.parent = &folder;
+				file.name = sv::utils_string_parse(item.path().filename().c_str());
+				file.extension = sv::utils_string_parse(item.path().extension().c_str());
+				file.folder = &folder;
 
 			}
 
-			folder.items.emplace_back(pair);
-			
+		}
+	}
+
+	void viewport_assets_refresh()
+	{
+		viewport_assets_refresh_folder(g_AssetFolder);
+		g_CurrentFolder = &g_AssetFolder;
+	}
+
+	AssetFolder* viewport_assets_folder_tree(AssetFolder* folder)
+	{
+		AssetFolder* res = nullptr;
+
+		bool actived = ImGui::TreeNodeEx(folder->name.c_str(), ImGuiTreeNodeFlags_OpenOnArrow); 
+		
+		if (ImGui::IsItemClicked()) res = folder;
+
+		if (actived) {
+
+			for (const std::unique_ptr<AssetFolder>& f : folder->folders) {
+				AssetFolder* newFolder = viewport_assets_folder_tree(f.get());
+				if (newFolder) res = newFolder;
+			}
+
+			for (const AssetFile& file : folder->files) {
+				if (ImGui::Selectable(file.name.c_str())) {
+				}
+			}
+
+			ImGui::TreePop();
 		}
 
-		viewport_assets_generate_runtime();
+		return res;
 	}
 
 	bool viewport_assets_display()
 	{
 		static bool firstCall = true;
 		if (firstCall) {
-			g_AssetFolder.name = L"assets";
-			g_AssetFolder.path = L"assets";
+			g_AssetFolder.name = "assets";
+			g_AssetFolder.path = "assets";
 			
 #ifdef SV_SRC_PATH
-			g_AssetFolder.path = SV_SRC_PATH_W + g_AssetFolder.name;
+			g_AssetFolder.path = SV_SRC_PATH + g_AssetFolder.name;
 #endif
 			g_CurrentFolder = &g_AssetFolder;
 
@@ -141,7 +110,6 @@ namespace sve {
 		}
 
 		if (g_CurrentFolder == nullptr) g_CurrentFolder = &g_AssetFolder;
-		AssetFolder* nextFolder = g_CurrentFolder;
 
 		if (ImGui::Begin(viewports_get_name(SVE_VIEWPORT_ASSETS))) {
 
@@ -151,53 +119,64 @@ namespace sve {
 				ImGui::EndPopup();
 			}
 
+			float totalWidth = ImGui::GetWindowSize().x;
+
 			// FOLDER ROOT
-			for (ui32 i = 0u; i < g_RuntimeFolderRoot.folders.size(); ++i) {
-				auto& root = g_RuntimeFolderRoot.folders[i];
-				bool end = i == (g_RuntimeFolderRoot.folders.size() - 1u);
-
-				if (ImGui::Button(root.name.c_str())) {
-					nextFolder = root.pFolder;
-					break;
-				}
-				if (!end) ImGui::SameLine();
+			ImGui::Columns(2u);
+			{
+				float rootSize = ImGui::GetColumnWidth(ImGui::GetColumnIndex());
+				ImGui::SetColumnWidth(ImGui::GetColumnIndex(), std::min(rootSize, totalWidth * 0.1f));
+				AssetFolder* newCurrentFolder = viewport_assets_folder_tree(&g_AssetFolder);
+				if (newCurrentFolder) g_CurrentFolder = newCurrentFolder;
 			}
+			ImGui::NextColumn();
 
-			ImGui::Separator();
+			if (ImGui::BeginChild(6969)) {
+				ui32 columns = std::max(ImGui::GetWindowSize().x / 105.f, 1.f);
+				ui32 count = columns;
+				ImGui::Columns(columns, 0, false);
 
-			// ASSETS
-			ImGui::Columns(6);
-
-			for (auto [index, type] : g_CurrentFolder->items) {
-
-				switch (type)
-				{
-				case AssetType_File:
-				{
-					AssetFile& file = g_CurrentFolder->files[index];
-					std::string name = sv::utils_string_parse(file.name.c_str());
-					ImGui::Button(name.c_str());
-				}
-				break;
-				case AssetType_Folder:
-				{
-					std::unique_ptr<AssetFolder>& folder = g_CurrentFolder->folders[index];
-					std::string name = sv::utils_string_parse(folder->name.c_str());
-					if (ImGui::Button(name.c_str())) {
-						nextFolder = folder.get();
+				// ASSETS
+				for (const auto& folder : g_CurrentFolder->folders) {
+					if (ImGui::Button(folder->name.c_str(), { 100.f, 70.f })) {
+						g_CurrentFolder = folder.get();
 					}
-				}
-				break;
+
+					if (count == 0u) {
+						ImGui::Columns(columns, 0, false);
+						count = columns;
+					}
+					count--;
+					ImGui::NextColumn();
 				}
 
-				ImGui::NextColumn();
+				for (const auto& file : g_CurrentFolder->files) {
+					if (ImGui::Button(file.name.c_str(), { 100.f, 70.f })) {
+					}
+					if (count == 0u) {
+						ImGui::Columns(columns, 0, false);
+						count = columns;
+					}
+					count--;
+					ImGui::NextColumn();
+				}
+
+				while (count--) ImGui::NextColumn();
 
 			}
+			ImGui::EndChild();
 
-			if (g_CurrentFolder != nextFolder) {
-				g_CurrentFolder = nextFolder;
+			if (ImGui::BeginPopupContextWindow("AssetPopup")) {
 
-				viewport_assets_generate_runtime();
+				if (ImGui::Button("Create material")) {
+					
+					sv::MaterialAsset mat;
+					
+
+				}
+				if (ImGui::Button("Create shader library"));
+
+				ImGui::EndPopup();
 			}
 
 		}
@@ -205,6 +184,33 @@ namespace sve {
 		ImGui::End();
 
 		return true;
+	}
+
+	bool viewport_assets_texture_popmenu(const char** pName)
+	{
+		bool res = true;
+		*pName = nullptr;
+
+		if (ImGui::Begin("TexturePopup", 0, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar)) {
+
+			auto& assets = sv::assets_registers_get();
+			for (auto it = assets.begin(); it != assets.end(); ++it) {
+
+				if (it->second.assetType == sv::AssetType_Texture) {
+					if (ImGui::Button(it->first.c_str())) {
+
+						*pName = it->first.c_str();
+
+						res = false;
+						break;
+					}
+				}
+			}
+
+			if (!ImGui::IsWindowFocused()) res = false;
+		}
+		ImGui::End();
+		return res;
 	}
 
 }

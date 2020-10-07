@@ -1573,8 +1573,9 @@ namespace sv {
 				writeDesc[writeCount].descriptorCount = 1u;
 				writeDesc[writeCount].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
 
-				Sampler_vk& sampler = *reinterpret_cast<Sampler_vk*>(state.samplers[shaderType][binding.userBinding]);
-				writeDesc[writeCount].pImageInfo = &sampler.image_info;
+				Sampler_vk* sampler = reinterpret_cast<Sampler_vk*>(state.samplers[shaderType][binding.userBinding]);
+				if (sampler == nullptr) continue;
+				writeDesc[writeCount].pImageInfo = &sampler->image_info;
 				writeDesc[writeCount].pBufferInfo = nullptr;
 				writeDesc[writeCount].pTexelBufferView = nullptr;
 
@@ -1597,8 +1598,9 @@ namespace sv {
 				writeDesc[writeCount].descriptorCount = 1u;
 				writeDesc[writeCount].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 
-				Image_vk& image = *reinterpret_cast<Image_vk*>(state.images[shaderType][binding.userBinding]);
-				writeDesc[writeCount].pImageInfo = &image.image_info;
+				Image_vk* image = reinterpret_cast<Image_vk*>(state.images[shaderType][binding.userBinding]);
+				if (image == nullptr) continue;
+				writeDesc[writeCount].pImageInfo = &image->image_info;
 				writeDesc[writeCount].pBufferInfo = nullptr;
 				writeDesc[writeCount].pTexelBufferView = nullptr;
 
@@ -1621,9 +1623,10 @@ namespace sv {
 				writeDesc[writeCount].descriptorCount = 1u;
 				writeDesc[writeCount].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
-				Buffer_vk& buffer = *reinterpret_cast<Buffer_vk*>(state.constantBuffers[shaderType][binding.userBinding]);
+				Buffer_vk* buffer = reinterpret_cast<Buffer_vk*>(state.constantBuffers[shaderType][binding.userBinding]);
+				if (buffer == nullptr) continue;
 				writeDesc[writeCount].pImageInfo = nullptr;
-				writeDesc[writeCount].pBufferInfo = &buffer.buffer_info;
+				writeDesc[writeCount].pBufferInfo = &buffer->buffer_info;
 				writeDesc[writeCount].pTexelBufferView = nullptr;
 
 				writeCount++;
@@ -1748,7 +1751,7 @@ namespace sv {
 	Result graphics_vulkan_buffer_create(Buffer_vk& buffer, const GPUBufferDesc& desc)
 	{
 		VkBufferUsageFlags bufferUsage = 0u;
-		bool deviceMemory = true;
+		bool deviceMemory = !(desc.usage == ResourceUsage_Dynamic && desc.bufferType == GPUBufferType_Constant);
 		VmaMemoryUsage memoryUsage = deviceMemory ? VMA_MEMORY_USAGE_GPU_ONLY : VMA_MEMORY_USAGE_CPU_TO_GPU;
 
 		// Usage Flags
@@ -2198,9 +2201,10 @@ namespace sv {
 					binding.pImmutableSamplers = nullptr;
 
 					if (image.name[0] != '_') {
-						auto& tex = shader.textures.emplace_back();
-						tex.name = image.name.c_str();
-						tex.bindingSlot = binding.binding - SV_GFX_SAMPLER_COUNT;
+						auto& attr = shader.materialInfo.attributes.emplace_back();
+						attr.name = image.name.c_str();
+						attr.type = ShaderAttributeType_Texture;
+						shader.materialInfo.texturesSlots.push_back(binding.binding - SV_GFX_SAMPLER_COUNT);
 					}
 				}
 			}
@@ -2243,14 +2247,14 @@ namespace sv {
 								continue;
 							}
 
-							ShaderAttribute& a = shader.attributes.emplace_back();
+							ShaderAttribute& a = shader.materialInfo.attributes.emplace_back();
 							a.name = std::move(name);
 							a.type = svType;
 
 							++i;
 
 						}
-						shader.attributeSlot = binding.binding - (SV_GFX_SAMPLER_COUNT + SV_GFX_IMAGE_COUNT);
+						shader.materialInfo.bufferSlot = binding.binding - (SV_GFX_SAMPLER_COUNT + SV_GFX_IMAGE_COUNT);
 
 					}
 				}

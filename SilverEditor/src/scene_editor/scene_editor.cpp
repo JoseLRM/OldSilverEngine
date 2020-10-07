@@ -112,11 +112,8 @@ namespace sve {
 		sv::Entity e = sv::ecs_entity_create(ecs);
 		sv::SpriteComponent* spr = sv::ecs_component_add<sv::SpriteComponent>(ecs, e);
 
+		//svCheck(spr->material.create("test.mat", shader));
 		svCheck(spr->material.load("test.mat"));
-
-		sv::Color4f f0 = sv::Color4f::Blue();
-
-		spr->material.set("diffuse", &f0, sv::ShaderAttributeType_Float4);
 
 		return sv::Result_Success;
 	}

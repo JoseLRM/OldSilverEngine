@@ -40,10 +40,8 @@ namespace sv {
 
 	struct Shader_internal : public Primitive_internal {
 		ShaderType						shaderType;
-		std::vector<ShaderTexture>		textures;
-		std::vector<ShaderAttribute>	attributes;
-		ui32							attributeSlot;
 		std::vector<ShaderAttribute>	input;
+		ShaderMaterialInfo				materialInfo;
 	};
 
 	struct RenderPass_internal : public Primitive_internal {

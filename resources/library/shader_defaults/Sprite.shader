@@ -51,7 +51,7 @@ struct Output
 };
 
 SV_SAMPLER(sam, s0);
-SV_IMAGE(_Albedo, t0);
+SV_TEXTURE(_Albedo, t0);
 
 Output main(Input input)
 {

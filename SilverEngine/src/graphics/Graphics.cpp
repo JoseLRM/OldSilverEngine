@@ -1346,36 +1346,11 @@ namespace sv {
 		g_Device.image_clear(image, oldLayout, newLayout, clearColor, depth, stencil, cmd);
 	}
 
-	void graphics_shader_textures_get(Shader* shader_, ShaderTexture const** tex, ui32* count)
+	const ShaderMaterialInfo* graphics_shader_materialinfo_get(Shader* shader_)
 	{
 		SV_ASSERT(shader_);
 		const Shader_internal& shader = *reinterpret_cast<Shader_internal*>(shader_);
-
-		*tex = shader.textures.data();
-		*count = ui32(shader.textures.size());
-	}
-
-	void graphics_shader_attributes_get(Shader* shader_, ShaderAttribute const** attr, ui32* count)
-	{
-		SV_ASSERT(shader_);
-		const Shader_internal& shader = *reinterpret_cast<Shader_internal*>(shader_);
-
-		*attr = shader.attributes.data();
-		*count = ui32(shader.attributes.size());
-	}
-
-	ui32 graphics_shader_attributes_slot(Shader* shader_)
-	{
-		SV_ASSERT(shader_);
-		const Shader_internal& shader = *reinterpret_cast<Shader_internal*>(shader_);
-		return shader.attributeSlot;
-	}
-
-	bool graphics_shader_attributes_exist(Shader* shader_)
-	{
-		SV_ASSERT(shader_);
-		const Shader_internal& shader = *reinterpret_cast<Shader_internal*>(shader_);
-		return !shader.attributes.empty();
+		return &shader.materialInfo;
 	}
 
 	ui32 graphics_shader_attribute_size(ShaderAttributeType type)
@@ -1411,6 +1386,9 @@ namespace sv {
 
 		case sv::ShaderAttributeType_Mat4:
 			return 64u;
+
+		case sv::ShaderAttributeType_Texture:
+			return sizeof(void*);
 
 		default:
 			return 0u;

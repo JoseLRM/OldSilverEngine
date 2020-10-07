@@ -110,6 +110,7 @@ namespace sv {
 		ArchiveI file;
 		svCheck(file.open_file(filePath));
 
+		// Create Material
 		file >> material->shaderID;
 
 		auto it = g_ShaderLibraryMapID.find(material->shaderID);
@@ -118,7 +119,81 @@ namespace sv {
 			return Result_InvalidFormat;
 		}
 
-		svCheck(matsys_material_create(it->second->library, &material->material));
+		MaterialDesc desc;
+		desc.shaderLibrary = it->second->library;
+		desc.dynamic = false;
+		svCheck(matsys_material_create(&desc, &material->material));
+
+		ShaderLibrary* lib = matsys_material_shader_get(material->material);
+		const std::vector<ShaderAttribute>& attributes = matsys_shaderlibrary_attributes_get(lib);
+
+		// return ui32_max if not found
+		auto findAttributeIndex = [&attributes](ShaderAttributeType type, size_t nameAttrHashCode) -> ui32 {
+			
+			const ShaderAttribute* it = attributes.data();
+			const ShaderAttribute* end = it + attributes.size();
+
+			while (it != end) {
+				if (it->type == type) {
+					size_t hashCode = utils_hash_string(it->name.c_str());
+					if (hashCode == nameAttrHashCode) {
+						return it - attributes.data();
+					}
+				}
+				++it;
+			}
+			return ui32_max;
+			
+		};
+
+		// Set textures
+		{
+			ui32 textureCount;
+			file >> textureCount;
+			while (textureCount != 0u) {
+
+				size_t nameHashCode;
+				size_t textureHashCode;
+				file >> nameHashCode >> textureHashCode;
+
+				if (nameHashCode && textureHashCode) {
+
+					ui32 index = findAttributeIndex(ShaderAttributeType_Texture, nameHashCode);
+					
+					if (index != ui32_max) {
+						
+						if (index >= material->textureRefs.size()) material->textureRefs.resize(index + 1u);
+						TextureAsset tex;
+						if (tex.load(textureHashCode) != Result_Success) continue;
+						matsys_material_set(material->material, attributes[index].name.c_str(), ShaderAttributeType_Texture, tex.get_image());
+						material->textureRefs[index] = std::move(tex);
+
+					}
+				}
+
+				--textureCount;
+			}
+		}
+
+		// Set buffer data
+		while (file.pos_get() != file.size()) {
+
+			size_t nameAttrHashCode;
+			ShaderAttributeType type;
+			XMMATRIX value;
+
+			file >> nameAttrHashCode >> type;
+
+			file.read(&value, graphics_shader_attribute_size(type));
+
+			ui32 index = findAttributeIndex(type, nameAttrHashCode);
+			if (index == ui32_max) continue;
+			const char* name = attributes[index].name.c_str();
+
+			matsys_material_set(material->material, name, type , &value);
+
+		}
+
 		return Result_Success;
 	}
 
@@ -195,7 +270,9 @@ namespace sv {
 
 		if (package.empty()) package = "default";
 
-		// TODO: Check if the name or package modified
+		if (library->hashCode != 0u) {
+			
+		}
 		library->shaderName = package + '/' + name;
 
 		fileSize -= file.tellg();
@@ -287,6 +364,7 @@ namespace sv {
 	}
 
 	Result assets_destroy(MaterialAsset_internal* material) {
+		material->textureRefs.clear();
 		return matsys_material_destroy(material->material);
 	}
 
@@ -584,6 +662,11 @@ namespace sv {
 		return pInternal ? reinterpret_cast<TextureAsset_internal*>(pInternal)->hashCode : 0u;
 	}
 
+	const char* TextureAsset::get_name() const noexcept
+	{
+		return pInternal ? reinterpret_cast<TextureAsset_internal*>(pInternal)->name : 0u;
+	}
+
 	// SHADER LIBRARY ASSET
 
 	ShaderLibraryAsset::~ShaderLibraryAsset()
@@ -682,7 +765,12 @@ namespace sv {
 		Material* material;
 		ShaderLibrary* lib = shaderLibrary.get_shader();
 		if (lib == nullptr) return Result_InvalidUsage;
-		svCheck(matsys_material_create(lib, &material));
+		
+		MaterialDesc desc;
+		desc.dynamic = false;
+		desc.shaderLibrary = lib;
+
+		svCheck(matsys_material_create(&desc, &material));
 
 		// Allocate material asset and set some data
 		MaterialAsset_internal* matAsset = g_MaterialAllocator.create();
@@ -691,6 +779,7 @@ namespace sv {
 		matAsset->refCount = 0u;
 		matAsset->hashCode = utils_hash_string(filePath);
 		matAsset->shaderID = shaderLibrary.get_id();
+		matAsset->textureRefs.resize(matsys_shaderlibrary_texture_count(shaderLibrary.get_shader()));
 
 		// Set material register
 		g_AssetMap[filePath] = { fs::file_time_type::clock::now(), AssetType_Material, matAsset };
@@ -712,9 +801,43 @@ namespace sv {
 	Result MaterialAsset::serialize()
 	{
 		MaterialAsset_internal& mat = *reinterpret_cast<MaterialAsset_internal*>(pInternal);
+		const std::vector<ShaderAttribute>& attributes = matsys_shaderlibrary_attributes_get(matsys_material_shader_get(mat.material));
 		ArchiveO file;
 
+		// Save Shader ID
 		file << mat.shaderID;
+
+		// Count textures
+		ui32 validTexturesCount = 0u;
+		for (auto& tex : mat.textureRefs) {
+			if (tex.get_image()) validTexturesCount++;
+		}
+
+		// Save textures
+		file << validTexturesCount;
+		for (ui32 i = 0; i < mat.textureRefs.size(); ++i) {
+			TextureAsset& tex = mat.textureRefs[i];
+			if (tex.get_image()) {
+				file << utils_hash_string(attributes[i].name.c_str()) << tex.get_hashcode();
+			}
+		}
+
+		// Save buffer data
+		
+		for (const ShaderAttribute& attr : attributes) {
+			
+			if (attr.type == ShaderAttributeType_Texture) continue;
+
+			// Use matrix because is the largest size attribute
+			XMMATRIX data;
+
+			if (matsys_material_get(mat.material, attr.name.c_str(), attr.type, &data) == Result_Success) {
+				size_t nameHashCode = utils_hash_string(attr.name.c_str());
+
+				file << nameHashCode << attr.type;
+				file.write(&data, graphics_shader_attribute_size(attr.type));
+			}
+		}
 
 		std::string absoluteFilePath = g_FolderPath + mat.name;
 		const char* filePath = absoluteFilePath.c_str();
@@ -740,23 +863,115 @@ namespace sv {
 		return load(it->second);
 	}
 
-	ShaderAttributeType MaterialAsset::get_type(const char* name)
+	Result MaterialAsset::set_texture(const char* name, const TextureAsset& texture)
 	{
 		SV_ASSERT(pInternal);
 		MaterialAsset_internal& mat = *reinterpret_cast<MaterialAsset_internal*>(pInternal);
-		return matsys_shaderlibrary_attribute_type(matsys_material_shader_get(mat.material), name);
+		GPUImage* image = texture.get_image();
+		
+		svCheck(matsys_material_set(mat.material, name, ShaderAttributeType_Texture, image));
+
+		ShaderLibraryAsset_internal& lib = *g_ShaderLibraryMapID[mat.shaderID];
+		const std::vector<ShaderAttribute>& attributes = matsys_shaderlibrary_attributes_get(lib.library);
+		ui32 texCount = matsys_shaderlibrary_texture_count(lib.library);
+
+		ui32 i;
+		for (i = 0; i < texCount; ++i) {
+
+			const ShaderAttribute& attr = attributes[i];
+			if (strcmp(attr.name.c_str(), name) == 0) {
+				break;
+			}
+
+		}
+
+		SV_ASSERT(i != texCount);
+
+		if (mat.textureRefs.size() <= i) mat.textureRefs.resize(i + 1u);
+		mat.textureRefs[i] = texture;
+
+		return Result_Success;
 	}
-	Result MaterialAsset::set(const char* name, const void* data, ShaderAttributeType type)
+
+	Result MaterialAsset::set_float(const char* name, const float* pFloat)
 	{
 		SV_ASSERT(pInternal);
 		MaterialAsset_internal& mat = *reinterpret_cast<MaterialAsset_internal*>(pInternal);
-		return matsys_material_set(mat.material, name, data, type);
+		return matsys_material_set(mat.material, name, ShaderAttributeType_Float, pFloat);
 	}
-	Result MaterialAsset::get(const char* name, void* data, ShaderAttributeType type)
+	Result MaterialAsset::set_float2(const char* name, const vec2f* pFloat2)
 	{
 		SV_ASSERT(pInternal);
 		MaterialAsset_internal& mat = *reinterpret_cast<MaterialAsset_internal*>(pInternal);
-		return matsys_material_get(mat.material, name, data, type);
+		return matsys_material_set(mat.material, name, ShaderAttributeType_Float2, pFloat2);
+	}
+	Result MaterialAsset::set_float3(const char* name, const vec3f* pFloat3)
+	{
+		SV_ASSERT(pInternal);
+		MaterialAsset_internal& mat = *reinterpret_cast<MaterialAsset_internal*>(pInternal);
+		return matsys_material_set(mat.material, name, ShaderAttributeType_Float3, pFloat3);
+	}
+	Result MaterialAsset::set_float4(const char* name, const vec4f* pFloat4)
+	{
+		SV_ASSERT(pInternal);
+		MaterialAsset_internal& mat = *reinterpret_cast<MaterialAsset_internal*>(pInternal);
+		return matsys_material_set(mat.material, name, ShaderAttributeType_Float4, pFloat4);
+	}
+
+
+	Result MaterialAsset::get_texture(const char* name, TextureAsset& texture)
+	{
+		SV_ASSERT(pInternal);
+		MaterialAsset_internal& mat = *reinterpret_cast<MaterialAsset_internal*>(pInternal);
+
+		ShaderLibraryAsset_internal& lib = *g_ShaderLibraryMapID[mat.shaderID];
+		const std::vector<ShaderAttribute>& attributes = matsys_shaderlibrary_attributes_get(lib.library);
+		ui32 texCount = matsys_shaderlibrary_texture_count(lib.library);
+
+		ui32 i;
+		for (i = 0; i < texCount; ++i) {
+
+			const ShaderAttribute& attr = attributes[i];
+			if (strcmp(attr.name.c_str(), name) == 0) {
+				break;
+			}
+
+		}
+
+		if (i != texCount) {
+			if (mat.textureRefs.size() <= i) mat.textureRefs.resize(i + 1u);
+			texture = mat.textureRefs[i];
+			return Result_Success;
+		}
+		else Result_NotFound;
+	}
+
+	Result MaterialAsset::get_float(const char* name, float* pFloat)
+	{
+		SV_ASSERT(pInternal);
+		MaterialAsset_internal& mat = *reinterpret_cast<MaterialAsset_internal*>(pInternal);
+		return matsys_material_get(mat.material, name, ShaderAttributeType_Float, pFloat);
+	}
+
+	Result MaterialAsset::get_float2(const char* name, vec2f* pFloat2)
+	{
+		SV_ASSERT(pInternal);
+		MaterialAsset_internal& mat = *reinterpret_cast<MaterialAsset_internal*>(pInternal);
+		return matsys_material_get(mat.material, name, ShaderAttributeType_Float2, pFloat2);
+	}
+
+	Result MaterialAsset::get_float3(const char* name, vec3f* pFloat3)
+	{
+		SV_ASSERT(pInternal);
+		MaterialAsset_internal& mat = *reinterpret_cast<MaterialAsset_internal*>(pInternal);
+		return matsys_material_get(mat.material, name, ShaderAttributeType_Float3, pFloat3);
+	}
+
+	Result MaterialAsset::get_float4(const char* name, vec4f* pFloat4)
+	{
+		SV_ASSERT(pInternal);
+		MaterialAsset_internal& mat = *reinterpret_cast<MaterialAsset_internal*>(pInternal);
+		return matsys_material_get(mat.material, name, ShaderAttributeType_Float4, pFloat4);
 	}
 
 	Material* MaterialAsset::get_material() const noexcept

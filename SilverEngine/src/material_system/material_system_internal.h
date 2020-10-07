@@ -34,12 +34,10 @@ namespace sv {
 		Shader* ps;
 		Shader* gs;
 
-		std::vector<std::string>		textureNames;
-		std::vector<ShaderIndices>		textureIndices; // Contains information about tex. bindslot and if a shader contains or not this tex.
-
-		std::vector<ShaderAttribute>	attributes;
-		std::vector<ShaderIndices>		attributeIndices; // Contains information about attr. offset and if a shader contains or not this attr.
+		std::vector<ShaderAttribute>	attributes; // Sorted list -> Textures - buffer data. Aligned with attributeIndices
+		std::vector<ShaderIndices>		attributeIndices; // Contains information about attr. offset (or texture slot) and if a shader contains or not this attr.
 		ui32							bufferSizes[ShaderType_GraphicsCount] = {};
+		ui32							texturesCount;
 
 		std::vector<Material_internal*> materials;
 
@@ -65,6 +63,7 @@ namespace sv {
 		ShaderLibrary_internal* shaderLibrary;
 		MaterialBuffer			buffers[ShaderType_GraphicsCount] = {};
 		std::vector<GPUImage*>	textures;
+		bool					dynamic;
 		bool					inUpdateList = false;
 
 	};

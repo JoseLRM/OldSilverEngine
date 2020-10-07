@@ -81,10 +81,11 @@ namespace sv {
 		std::string			name;
 		ShaderAttributeType type;
 	};
-
-	struct ShaderTexture {
-		std::string name;
-		ui32		bindingSlot;
+	
+	struct ShaderMaterialInfo {
+		std::vector<ShaderAttribute>	attributes; // Sorted: Textures - Buffer Data
+		std::vector<ui32>				texturesSlots;
+		ui32							bufferSlot;
 	};
 
 	enum GPUImageType : ui8 {
@@ -636,10 +637,7 @@ namespace sv {
 	Result graphics_shader_compile_string(const ShaderCompileDesc* desc, const char* str, ui32 size, std::vector<ui8>& data);
 	Result graphics_shader_compile_file(const ShaderCompileDesc* desc, const char* srcPath, std::vector<ui8>& data);
 
-	void graphics_shader_textures_get(Shader* shader, ShaderTexture const** tex, ui32* count);
-	void graphics_shader_attributes_get(Shader* shader, ShaderAttribute const** attr, ui32* count);
-	ui32 graphics_shader_attributes_slot(Shader* shader);
-	bool graphics_shader_attributes_exist(Shader* shader);
+	const ShaderMaterialInfo* graphics_shader_materialinfo_get(Shader* shader);
 	ui32 graphics_shader_attribute_size(ShaderAttributeType type);
 
 	void graphics_shader_input_get(Shader* shader, ShaderAttribute const** inputAttr, ui32* count);

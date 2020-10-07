@@ -12,7 +12,7 @@ namespace sv {
 	struct TextureAsset_internal : public AssetRef {
 
 		GPUImage*	image = nullptr;
-		size_t		hashCode = 0u;
+		size_t		hashCode = 0u;	
 
 	};
 
@@ -30,6 +30,13 @@ namespace sv {
 		Material*	material = nullptr;
 		size_t		hashCode = 0u;
 		size_t		shaderID = 0u;
+		std::vector<TextureAsset> textureRefs;
+
+	};
+
+	struct ShaderPackage {
+
+
 
 	};
 

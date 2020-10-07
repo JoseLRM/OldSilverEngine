@@ -76,52 +76,20 @@ namespace sv {
 		return true;
 	}
 
-	/////////////////////////////// SHADER LIBRARY CREATION AND DESTRUCTION /////////////////////////////// 
-
-	void matsys_shaderlibrary_textures_add(const ShaderTexture* src, ui32 srcCount, ShaderType shaderType, std::vector<std::string>& names, std::vector<ShaderIndices>& indices) 
+	constexpr bool attribute_equal(const ShaderAttribute& a0, const ShaderAttribute& a1) 
 	{
-		const ShaderTexture* srcEnd = src + srcCount;
-		ui32 beginSize = ui32(names.size());
-
-		while (src != srcEnd) {
-
-			const ShaderTexture& tex = *src;
-
-			// Find if texture exist
-			bool found = false;
-
-			for (ui32 i = 0; i < beginSize; ++i) {
-
-				const std::string& name = names[i];
-
-				if (string_equal(name.c_str(), name.size(), tex.name.c_str(), tex.name.size())) {
-					
-					indices[i].i[shaderType] = tex.bindingSlot;
-					found = true;
-					break;
-
-				}
-			}
-
-			// Create new texture
-			if (!found) {
-
-				names.emplace_back(tex.name);
-				ShaderIndices& ind = indices.emplace_back();
-				ind.i[shaderType] = tex.bindingSlot;
-
-			}
-
-			++src;
-		}
+		return a0.type == a1.type && string_equal(a0.name.c_str(), a0.name.size(), a1.name.c_str(), a1.name.size());
 	}
 
-	void matsys_shaderlibrary_attributes_add(const ShaderAttribute* src, ui32 srcCount, ShaderType shaderType, std::vector<ShaderAttribute>& attributes, std::vector<ShaderIndices>& indices)
+	/////////////////////////////// SHADER LIBRARY CREATION AND DESTRUCTION /////////////////////////////// 
+
+	void matsys_shaderlibrary_textures_add(const ShaderMaterialInfo* matInfo, ShaderType shaderType, std::vector<ShaderAttribute>& attributes, std::vector<ShaderIndices>& indices)
 	{
 		ui32 beginSize = attributes.size();
-		ui32 offset = 0u;
+		ui32 slotCount = 0u;
 
-		const ShaderAttribute* endSrc = src + srcCount;
+		const ShaderAttribute* src = matInfo->attributes.data();
+		const ShaderAttribute* endSrc = matInfo->attributes.data() + matInfo->texturesSlots.size();
 
 		while (src != endSrc) {
 
@@ -130,10 +98,7 @@ namespace sv {
 			// Find if exist
 			ui32 i;
 			for (i = 0; i < beginSize; ++i) {
-
-				ShaderAttribute& a = attributes[i];
-
-				if (string_equal(a.name.c_str(), a.name.size(), attr.name.c_str(), attr.name.size())) {
+				if (attribute_equal(attributes[i], attr)) {
 					break;
 				}
 			}
@@ -145,7 +110,43 @@ namespace sv {
 				indices.emplace_back();
 			}
 
-			// Compute offset
+			// Set texture slot
+			indices[i].i[shaderType] = matInfo->texturesSlots[slotCount++];
+
+			++src;
+		}
+
+	}
+
+	void matsys_shaderlibrary_attributes_add(const ShaderMaterialInfo* matInfo, ShaderType shaderType, std::vector<ShaderAttribute>& attributes, std::vector<ShaderIndices>& indices, size_t textureCount)
+	{
+		ui32 beginSize = attributes.size();
+		ui32 offset = 0u;
+		ui32 slotCount = 0u;
+
+		const ShaderAttribute* src = matInfo->attributes.data() + textureCount;
+		const ShaderAttribute* endSrc = matInfo->attributes.data() + matInfo->attributes.size();
+
+		while (src != endSrc) {
+
+			const ShaderAttribute& attr = *src;
+
+			// Find if exist
+			ui32 i;
+			for (i = 0; i < beginSize; ++i) {
+				if (attribute_equal(attributes[i], attr)) {
+					break;
+				}
+			}
+
+			// If not exist add new
+			if (i == beginSize) {
+				i = ui32(attributes.size());
+				attributes.emplace_back() = attr;
+				indices.emplace_back();
+			}
+
+			// Compute offset if it's a buffer data
 			ui32 typeSize = graphics_shader_attribute_size(attr.type);
 			SV_ASSERT(typeSize != 0u);
 
@@ -157,7 +158,7 @@ namespace sv {
 
 			++src;
 		}
-
+		
 	}
 
 	Result matsys_shaderlibrary_construct(const ShaderLibraryDesc* desc, ShaderLibrary_internal& lib)
@@ -171,66 +172,57 @@ namespace sv {
 		lib.ps = desc->pixelShader;
 		lib.gs = desc->geometryShader;
 
+		const ShaderMaterialInfo* matInfo;
+
 		// Textures
 		{
-			const ShaderTexture* pTextures;
-			ui32 texturesCount;
-
 			// Add VertexShader textures
-			graphics_shader_textures_get(lib.vs, &pTextures, &texturesCount);
-
-			lib.textureNames.resize(texturesCount);
-			lib.textureIndices.resize(texturesCount);
-
-			for (ui32 i = 0; i < texturesCount; ++i) {
-				lib.textureNames[i] = pTextures[i].name;
-				lib.textureIndices[i].i[ShaderType_Vertex] = pTextures[i].bindingSlot;
-			}
+			matInfo = graphics_shader_materialinfo_get(lib.vs);
+			matsys_shaderlibrary_textures_add(matInfo, ShaderType_Vertex, lib.attributes, lib.attributeIndices);
 
 			// Add PixelShader textures
 			if (lib.ps) {
-				graphics_shader_textures_get(lib.ps, &pTextures, &texturesCount);
-				matsys_shaderlibrary_textures_add(pTextures, texturesCount, ShaderType_Pixel, lib.textureNames, lib.textureIndices);
+				matInfo = graphics_shader_materialinfo_get(lib.ps);
+				matsys_shaderlibrary_textures_add(matInfo, ShaderType_Pixel, lib.attributes, lib.attributeIndices);
 			}
 
 			// Add GeometryShader textures
 			if (lib.gs) {
-				graphics_shader_textures_get(lib.gs, &pTextures, &texturesCount);
-				matsys_shaderlibrary_textures_add(pTextures, texturesCount, ShaderType_Geometry, lib.textureNames, lib.textureIndices);
+				matInfo = graphics_shader_materialinfo_get(lib.gs);
+				matsys_shaderlibrary_textures_add(matInfo, ShaderType_Geometry, lib.attributes, lib.attributeIndices);
 			}
 		}
 
-		// Attributes
+		lib.texturesCount = ui32(lib.attributes.size());
+
+		// Buffer data
 		{
-			const ShaderAttribute* attributes;
-			ui32 attributesCount;
+			// Add VertexShader buffer data
+			matInfo = graphics_shader_materialinfo_get(lib.vs);
+			matsys_shaderlibrary_attributes_add(matInfo, ShaderType_Vertex, lib.attributes, lib.attributeIndices, matInfo->texturesSlots.size());
 
-			// Add VertexShader attributes
-			graphics_shader_attributes_get(lib.vs, &attributes, &attributesCount);
-			matsys_shaderlibrary_attributes_add(attributes, attributesCount, ShaderType_Vertex, lib.attributes, lib.attributeIndices);
-
-			// Add PixelShader attributes
+			// Add PixelShader buffer data
 			if (lib.ps) {
-				graphics_shader_attributes_get(lib.ps, &attributes, &attributesCount);
-				matsys_shaderlibrary_attributes_add(attributes, attributesCount, ShaderType_Pixel, lib.attributes, lib.attributeIndices);
+				matInfo = graphics_shader_materialinfo_get(lib.ps);
+				matsys_shaderlibrary_attributes_add(matInfo, ShaderType_Pixel, lib.attributes, lib.attributeIndices, matInfo->texturesSlots.size());
 			}
 
-			// Add GeometryShader attributes
+			// Add GeometryShader buffer data
 			if (lib.gs) {
-				graphics_shader_attributes_get(lib.gs, &attributes, &attributesCount);
-				matsys_shaderlibrary_attributes_add(attributes, attributesCount, ShaderType_Geometry, lib.attributes, lib.attributeIndices);
+				matInfo = graphics_shader_materialinfo_get(lib.gs);
+				matsys_shaderlibrary_attributes_add(matInfo, ShaderType_Geometry, lib.attributes, lib.attributeIndices, matInfo->texturesSlots.size());
 			}
 		}
 
 		// Compute attributes buffer size per shader
 		auto& indices = lib.attributeIndices;
 
-		if (!indices.empty()) {
+		if (indices.size() > lib.texturesCount) {
 			for (ui32 i = 0; i < ShaderType_GraphicsCount; ++i) {
 
 				ui32 lastOffsetIndex = ui32_max;
 
-				for (ui32 j = 0; j < lib.attributeIndices.size(); ++j) {
+				for (ui32 j = lib.texturesCount; j < lib.attributeIndices.size(); ++j) {
 					ui32 offset = indices[j].i[i];
 					if (offset != ui32_max) {
 						if (lastOffsetIndex == ui32_max || offset > indices[lastOffsetIndex].i[i])
@@ -310,47 +302,11 @@ namespace sv {
 		return lib.attributes;
 	}
 
-	bool matsys_shaderlibrary_attribute_exist(ShaderLibrary* shaderLibrary_, const char* name)
+	ui32 matsys_shaderlibrary_texture_count(ShaderLibrary* shaderLibrary_)
 	{
 		SV_ASSERT(shaderLibrary_);
 		ShaderLibrary_internal& lib = *reinterpret_cast<ShaderLibrary_internal*>(shaderLibrary_);
-		size_t size = strlen(name);
-
-		for (auto it = lib.textureNames.cbegin(); it != lib.textureNames.cend(); ++it) {
-			if (string_equal(it->c_str(), it->size(), name, size)) {
-				return true;
-			}
-		}
-
-		for (auto it = lib.attributes.cbegin(); it != lib.attributes.cend(); ++it) {
-			if (string_equal(it->name.c_str(), it->name.size(), name, size)) {
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	ShaderAttributeType matsys_shaderlibrary_attribute_type(ShaderLibrary* shaderLibrary_, const char* name)
-	{
-		SV_ASSERT(shaderLibrary_);
-		ShaderLibrary_internal& lib = *reinterpret_cast<ShaderLibrary_internal*>(shaderLibrary_);
-
-		size_t size = strlen(name);
-
-		for (auto it = lib.textureNames.cbegin(); it != lib.textureNames.cend(); ++it) {
-			if (string_equal(it->c_str(), it->size(), name, size)) {
-				return ShaderAttributeType_Texture;
-			}
-		}
-
-		for (auto it = lib.attributes.cbegin(); it != lib.attributes.cend(); ++it) {
-			if (string_equal(it->name.c_str(), it->name.size(), name, size)) {
-				return it->type;
-			}
-		}
-
-		return ShaderAttributeType_Unknown;
+		return lib.texturesCount;
 	}
 
 	Shader* matsys_shaderlibrary_shader_get(ShaderLibrary* shaderLibrary_, ShaderType shaderType)
@@ -385,12 +341,13 @@ namespace sv {
 
 	/////////////////////////////// MATERIAL CREATION AND DESTRUCTION /////////////////////////////// 
 
-	Result matsys_material_create(ShaderLibrary* shaderLibrary, Material** pMaterial)
+	Result matsys_material_create(const MaterialDesc* desc, Material** pMaterial)
 	{
-		if (shaderLibrary == nullptr) return Result_InvalidUsage;
+		if (desc->shaderLibrary == nullptr) return Result_InvalidUsage;
 
 		Material_internal mat;
-		mat.shaderLibrary = reinterpret_cast<ShaderLibrary_internal*>(shaderLibrary);
+		mat.shaderLibrary = reinterpret_cast<ShaderLibrary_internal*>(desc->shaderLibrary);
+		mat.dynamic = desc->dynamic;
 
 		if (!mat.shaderLibrary->attributeIndices.empty()) {
 
@@ -408,7 +365,7 @@ namespace sv {
 		}
 		
 		// Reserve and initialize to 0 texture ptrs
-		mat.textures.resize(mat.shaderLibrary->textureNames.size(), nullptr);
+		mat.textures.resize(mat.shaderLibrary->texturesCount, nullptr);
 		
 		// Allocate material and move created material
 		{
@@ -523,6 +480,7 @@ namespace sv {
 
 		// Update Textures
 		//TODO: 
+		mat.textures.resize(newLib.texturesCount, nullptr);
 		
 		if (mustUpdate) matsys_material_add_update_list(&mat);
 		matsys_material_remove_shader_reference(&mat, mat.shaderLibrary);
@@ -576,38 +534,80 @@ namespace sv {
 
 	/////////////////////////////// MATERIAL UTILS /////////////////////////////// 
 
-	Result matsys_material_set(Material* material_, const char* name, const void* data, ShaderAttributeType type)
+	Result matsys_material_set(Material* material_, const char* name, ShaderAttributeType type, const void* data)
 	{
-		SV_ASSERT(material_ && type != ShaderAttributeType_Unknown);
+		SV_ASSERT(material_);
 		Material_internal& mat = *reinterpret_cast<Material_internal*>(material_);
 
 		size_t size = strlen(name);
 		ui32 typeSize = graphics_shader_attribute_size(type);
 
-		if (type == ShaderAttributeType_Texture) {
+		const ShaderAttribute* begin;
+		const ShaderAttribute* it;
+		const ShaderAttribute* endIt;
 
-			for (ui32 i = 0; i < mat.shaderLibrary->textureNames.size(); ++i) {
+		if (type == ShaderAttributeType_Unknown) {
+			begin = mat.shaderLibrary->attributes.data();
+			it = begin;
+			endIt = it + mat.shaderLibrary->attributes.size();
 
-				const std::string& texName = mat.shaderLibrary->textureNames[i];
-				
-				if (string_equal(texName.c_str(), texName.size(), name, size)) {
-					mat.textures[i] = (GPUImage*)data;
+			while (it != endIt) {
+
+				if (string_equal(it->name.c_str(), it->name.size(), name, size)) {
+
+					if (it->type == ShaderAttributeType_Texture) {
+						mat.textures[it - begin] = (GPUImage*)data;
+					}
+					else {
+						for (ui32 j = 0; j < ShaderType_GraphicsCount; ++j) {
+
+							ui32 index = mat.shaderLibrary->attributeIndices[it - begin].i[j];
+							if (index != ui32_max) {
+								MaterialBuffer& mBuf = mat.buffers[j];
+								memcpy(mBuf.rawData + index, data, typeSize);
+
+								// Set begin and end indices
+								mBuf.updateBegin = std::min(mBuf.updateBegin, index);
+								mBuf.updateEnd = std::max(mBuf.updateEnd, index + typeSize);
+							}
+						}
+						
+						matsys_material_add_update_list(&mat);
+					}
+
 					return Result_Success;
 				}
+
+				++it;
+			}
+		}
+		else if (type == ShaderAttributeType_Texture) {
+			begin = mat.shaderLibrary->attributes.data();
+			it = begin;
+			endIt = it + mat.shaderLibrary->texturesCount;
+
+			while (it != endIt) {
+
+				if (string_equal(it->name.c_str(), it->name.size(), name, size)) {
+					mat.textures[it - begin] = (GPUImage*)data;
+					return Result_Success;
+				}
+
+				++it;
 			}
 		}
 		else {
-			for (ui32 i = 0; i < mat.shaderLibrary->attributes.size(); ++i) {
+			begin = mat.shaderLibrary->attributes.data() + mat.shaderLibrary->texturesCount;
+			it = begin;
+			endIt = mat.shaderLibrary->attributes.data() + mat.shaderLibrary->attributes.size();
 
-				const ShaderAttribute& attr = mat.shaderLibrary->attributes[i];
+			while (it != endIt) {
 
-				if (attr.type == type && string_equal(attr.name.c_str(), attr.name.size(), name, size)) {
-
-					const ShaderIndices& indices = mat.shaderLibrary->attributeIndices[i];
+				if (it->type == type && string_equal(it->name.c_str(), it->name.size(), name, size)) {
 
 					for (ui32 j = 0; j < ShaderType_GraphicsCount; ++j) {
 
-						ui32 index = indices.i[j];
+						ui32 index = mat.shaderLibrary->attributeIndices[it - begin + mat.shaderLibrary->texturesCount].i[j];
 						if (index != ui32_max) {
 							MaterialBuffer& mBuf = mat.buffers[j];
 							memcpy(mBuf.rawData + index, data, typeSize);
@@ -619,57 +619,94 @@ namespace sv {
 					}
 
 					matsys_material_add_update_list(&mat);
-
 					return Result_Success;
 				}
+
+				++it;
 			}
 		}
 
 		return Result_NotFound;
 	}
 
-	Result matsys_material_get(Material* material_, const char* name, void* data, ShaderAttributeType type)
+	Result matsys_material_get(Material* material_, const char* name, ShaderAttributeType type, void* data)
 	{
-		SV_ASSERT(material_ && type != ShaderAttributeType_Unknown);
+		SV_ASSERT(material_);
 		Material_internal& mat = *reinterpret_cast<Material_internal*>(material_);
 
 		size_t size = strlen(name);
 		ui32 typeSize = graphics_shader_attribute_size(type);
 
-		if (type == ShaderAttributeType_Texture) {
+		const ShaderAttribute* begin;
+		const ShaderAttribute* it;
+		const ShaderAttribute* endIt;
 
-			for (ui32 i = 0; i < mat.shaderLibrary->textureNames.size(); ++i) {
+		if (type == ShaderAttributeType_Unknown) {
+			begin = mat.shaderLibrary->attributes.data();
+			it = begin;
+			endIt = it + mat.shaderLibrary->attributes.size();
 
-				const std::string& texName = mat.shaderLibrary->textureNames[i];
+			while (it != endIt) {
 
-				if (string_equal(texName.c_str(), texName.size(), name, size)) {
-					memcpy(data, &mat.textures[i], sizeof(GPUImage*));
+				if (string_equal(it->name.c_str(), it->name.size(), name, size)) {
+
+					if (it->type == ShaderAttributeType_Texture) {
+						data = mat.textures[it - begin];
+					}
+					else {
+						for (ui32 j = 0; j < ShaderType_GraphicsCount; ++j) {
+
+							ui32 index = mat.shaderLibrary->attributeIndices[it - begin].i[j];
+							if (index != ui32_max) {
+								MaterialBuffer& mBuf = mat.buffers[j];
+								memcpy(data, mBuf.rawData + index, typeSize);
+								matsys_material_add_update_list(&mat);
+								return Result_Success;
+							}
+						}
+					}
+				}
+
+				++it;
+			}
+		}
+		else if (type == ShaderAttributeType_Texture) {
+			begin = mat.shaderLibrary->attributes.data();
+			it = begin;
+			endIt = it + mat.shaderLibrary->texturesCount;
+
+			while (it != endIt) {
+
+				if (string_equal(it->name.c_str(), it->name.size(), name, size)) {
+					data = mat.textures[it - begin];
 					return Result_Success;
 				}
+
+				++it;
 			}
 		}
 		else {
-			for (ui32 i = 0; i < mat.shaderLibrary->attributes.size(); ++i) {
+			begin = mat.shaderLibrary->attributes.data() + mat.shaderLibrary->texturesCount;
+			it = begin;
+			endIt = mat.shaderLibrary->attributes.data() + mat.shaderLibrary->attributes.size();
 
-				const ShaderAttribute& attr = mat.shaderLibrary->attributes[i];
+			while (it != endIt) {
 
-				if (string_equal(attr.name.c_str(), attr.name.size(), name, size)) {
-
-					const ShaderIndices& indices = mat.shaderLibrary->attributeIndices[i];
+				if (it->type == type && string_equal(it->name.c_str(), it->name.size(), name, size)) {
 
 					for (ui32 j = 0; j < ShaderType_GraphicsCount; ++j) {
 
-						ui32 index = indices.i[j];
+						ui32 index = mat.shaderLibrary->attributeIndices[it - begin + mat.shaderLibrary->texturesCount].i[j];
 						if (index != ui32_max) {
-							memcpy(data, mat.buffers[j].rawData + index, typeSize);
+							MaterialBuffer& mBuf = mat.buffers[j];
+							memcpy(data, mBuf.rawData + index, typeSize);
+							matsys_material_add_update_list(&mat);
 							return Result_Success;
 						}
 					}
-					
-					matsys_material_add_update_list(&mat);
-
-					return Result_Success;
 				}
+
+				++it;
 			}
 		}
 
@@ -688,7 +725,7 @@ namespace sv {
 				GPUBufferDesc desc;
 				desc.bufferType = GPUBufferType_Constant;
 				desc.CPUAccess = CPUAccess_Write;
-				desc.usage = ResourceUsage_Default;
+				desc.usage = mat.dynamic ? ResourceUsage_Dynamic : ResourceUsage_Default;
 				desc.pData = nullptr;
 				desc.size = mat.shaderLibrary->bufferSizes[i];
 
@@ -707,33 +744,60 @@ namespace sv {
 		}
 	}
 
+	void matsys_material_update(Material* material_, CommandList cmd)
+	{
+		SV_ASSERT(material_);
+		Material_internal& material = *reinterpret_cast<Material_internal*>(material_);
+
+		matsys_material_update(material, cmd);
+
+		// Remove from update list
+		if (material.inUpdateList) {
+			material.inUpdateList = false;
+			std::lock_guard<std::mutex> lock(g_MaterialsToUpdateMutex);
+			for (auto it = g_MaterialsToUpdate.begin(); it != g_MaterialsToUpdate.end(); ++it) {
+				if ((*it) == &material) {
+					g_MaterialsToUpdate.erase(it);
+					break;
+				}
+			}
+		}
+	}
+
 	void matsys_material_bind(Material* material_, CommandList cmd)
 	{
 		SV_ASSERT(material_);
 		Material_internal& mat = *reinterpret_cast<Material_internal*>(material_);
 
-		//TODO: bind textures
+		// Textures
+		for (ui32 shaderType = 0; shaderType < ShaderType_GraphicsCount; ++shaderType) {
+			for (ui32 i = 0; i < mat.shaderLibrary->texturesCount; ++i) {
+				ui32 bindSlot = mat.shaderLibrary->attributeIndices[i].i[shaderType];
+				if (bindSlot != ui32_max)
+					graphics_image_bind(mat.textures[i], bindSlot, (ShaderType)shaderType, cmd);
+			}
+		}
 
 		MaterialBuffer* it = mat.buffers;
 		ui32 slot;
 
 		// Vertex Shader
 		if (it->buffer) {
-			slot = graphics_shader_attributes_slot(mat.shaderLibrary->vs);
+			slot = graphics_shader_materialinfo_get(mat.shaderLibrary->vs)->bufferSlot;
 			graphics_constantbuffer_bind(it->buffer, slot, ShaderType_Vertex, cmd);
 		}
 		++it;
 
 		// Pixel Shader
 		if (it->buffer) {
-			slot = graphics_shader_attributes_slot(mat.shaderLibrary->ps);
+			slot = graphics_shader_materialinfo_get(mat.shaderLibrary->ps)->bufferSlot;
 			graphics_constantbuffer_bind(it->buffer, slot, ShaderType_Pixel, cmd);
 		}
 		++it;
 
 		// Geometry Shader
 		if (it->buffer) {
-			slot = graphics_shader_attributes_slot(mat.shaderLibrary->gs);
+			slot = graphics_shader_materialinfo_get(mat.shaderLibrary->gs)->bufferSlot;
 			graphics_constantbuffer_bind(it->buffer, slot, ShaderType_Geometry, cmd);
 		}
 
