@@ -1,9 +1,7 @@
 #include "core_editor.h"
 
 #include "ImGuiDevice_vk.h"
-#include "window.h"
-
-using namespace sv;
+#include "platform/window.h"
 
 namespace sve {
 
@@ -14,7 +12,7 @@ namespace sve {
 
 	ui64 DeviceWindowProc(WindowHandle handle, ui32 msg, ui64 wParam, i64 lParam)
 	{
-		return ImGui_ImplWin32_WndProcHandler((HWND)window_handle_get(), msg, wParam, lParam);
+		return ImGui_ImplWin32_WndProcHandler((HWND)sv::window_handle_get(), msg, wParam, lParam);
 	}
 
 	sv::Result ImGuiDevice_vk::Initialize()
@@ -32,7 +30,7 @@ namespace sve {
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable | ImGuiConfigFlags_DpiEnableScaleViewports;;
 		//io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_DpiEnableScaleViewports;;
 
-		if (!ImGui_ImplWin32_Init(window_handle_get())) return Result_PlatformError;
+		if (!ImGui_ImplWin32_Init(sv::window_handle_get())) return sv::Result_PlatformError;
 
 		sv::Graphics_vk& gfx = sv::graphics_vulkan_device_get();
 		sv::Adapter_vk& adapter = *reinterpret_cast<sv::Adapter_vk*>(sv::graphics_adapter_get());
@@ -128,9 +126,9 @@ namespace sve {
 		ImGui_ImplVulkan_Init(&info, m_RenderPass);
 
 		VkCommandBuffer cmd;
-		vkCheck(graphics_vulkan_singletimecmb_begin(&cmd));
+		vkCheck(sv::graphics_vulkan_singletimecmb_begin(&cmd));
 		if (!ImGui_ImplVulkan_CreateFontsTexture(cmd)) return sv::Result_UnknownError;
-		vkCheck(graphics_vulkan_singletimecmb_end(cmd));
+		vkCheck(sv::graphics_vulkan_singletimecmb_end(cmd));
 
 		return sv::Result_Success;
 	}
@@ -138,7 +136,7 @@ namespace sve {
 	{
 		sv::Graphics_vk& gfx = sv::graphics_vulkan_device_get();
 
-		graphics_gpu_wait();
+		sv::graphics_gpu_wait();
 
 		DestroyFrames();
 
@@ -162,7 +160,7 @@ namespace sve {
 	}
 	void ImGuiDevice_vk::EndFrame()
 	{
-		graphics_swapchain_acquire_image();
+		sv::graphics_vulkan_acquire_image();
 
 		sv::Graphics_vk& gfx = sv::graphics_vulkan_device_get();
 		ImGui::Render();
@@ -275,8 +273,8 @@ namespace sve {
 				create_info.renderPass = m_RenderPass;
 				create_info.attachmentCount = 1u;
 				create_info.pAttachments = &frame.view;
-				create_info.width = window_size_get().x;
-				create_info.height = window_size_get().y;
+				create_info.width = sv::window_size_get().x;
+				create_info.height = sv::window_size_get().y;
 				create_info.layers = 1u;
 
 				vkExt(vkCreateFramebuffer(gfx.device, &create_info, nullptr, &frame.frameBuffer));

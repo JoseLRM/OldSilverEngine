@@ -1,13 +1,12 @@
 #pragma once
 
 #include "core_editor.h"
-#include "scene.h"
+#include "high_level/scene.h"
 
 namespace sve {
 
 	struct DebugCamera {
-		sv::CameraSettings		settings;
-		sv::Offscreen			offscreen;
+		sv::Camera				camera;
 		sv::vec3f				position;
 		sv::vec3f				rotation;
 	};

@@ -1,12 +1,13 @@
 #include "core_editor.h"
 
-#include "engine.h"
+#include "main/engine.h"
+#include "platform/input.h"
 #include "editor.h"
 
 #include "imGuiDevice/ImGuiDevice.h"
 #include "scene_editor.h"
 #include "simulation.h"
-#include "viewports.h"
+#include "viewport_manager.h"
 
 namespace sve {
 	
@@ -22,15 +23,15 @@ namespace sve {
 
 		desc.assetsFolderPath = "assets/";
 		desc.minThreadsCount = 2;
-		desc.consoleDesc.show = true;
-		desc.consoleDesc.logFolder = "logs/";
-		desc.windowDesc.iconFilePath = L"icon.ico";
-		desc.windowDesc.style = sv::WindowStyle_Default;
-		desc.windowDesc.bounds.x = 0u;
-		desc.windowDesc.bounds.y = 0u;
-		desc.windowDesc.bounds.z = 1280u;
-		desc.windowDesc.bounds.w = 720u;
-		desc.windowDesc.title = L"SilverEngine";
+		desc.consoleShow = true;
+		desc.logFolder = "logs/";
+		desc.iconFilePath = L"icon.ico";
+		desc.windowStyle = sv::WindowStyle_Default;
+		desc.windowBounds.x = 0u;
+		desc.windowBounds.y = 0u;
+		desc.windowBounds.z = 1280u;
+		desc.windowBounds.w = 720u;
+		desc.windowTitle = L"SilverEngine";
 
 		if (sv::engine_initialize(&desc) != sv::Result_Success) {
 			return;
@@ -164,7 +165,7 @@ namespace sve {
 	{
 		svCheck(simulation_initialize("assets/scenes/Test.scene"));
 		svCheck(scene_editor_initialize());
-		viewports_initialize();
+		svCheck(viewport_initialize());
 
 		return sv::Result_Success;
 	}
@@ -178,8 +179,8 @@ namespace sve {
 			simulation_gamemode_set(!simulation_gamemode_get());
 		}
 		if (sv::input_key(SV_KEY_CONTROL) && sv::input_key_pressed('S')) {
-			sv::Scene* scene = simulation_scene_get();
-			SV_ASSERT(sv::scene_serialize(scene, "assets/scenes/Test.scene") == sv::Result_Success);
+			sv::Scene& scene = simulation_scene_get();
+			SV_ASSERT(scene.serialize("assets/scenes/Test.scene") == sv::Result_Success);
 		}
 
 		g_Device->ResizeSwapChain();
@@ -224,34 +225,33 @@ namespace sve {
 
 			g_Device->BeginFrame();
 
-			sv::Offscreen* simulationOffscreen = nullptr;
-			sv::Offscreen& editorOffscreen = scene_editor_camera_get().offscreen;
+			sv::GPUImage* simulationOffscreen = nullptr;
+			sv::GPUImage* editorOffscreen = scene_editor_camera_get().camera.getOffscreenRT();
 
-			sv::Scene* scene = simulation_scene_get();
-			sv::ECS* ecs = sv::scene_ecs_get(scene);
-			sv::Entity cameraEntity = sv::scene_camera_get(scene);
+			sv::Scene& scene = simulation_scene_get();
+			sv::Entity cameraEntity = scene.getMainCamera();
 
-			if (sv::ecs_entity_exist(ecs, cameraEntity)) {
+			if (sv::ecs_entity_exist(scene, cameraEntity)) {
 
-				sv::CameraComponent* camera = sv::ecs_component_get<sv::CameraComponent>(ecs, cameraEntity);
+				sv::CameraComponent* camera = sv::ecs_component_get<sv::CameraComponent>(scene, cameraEntity);
 				if (camera) {
-					simulationOffscreen = &camera->offscreen;
+					simulationOffscreen = camera->camera.getOffscreenRT();
 				}
 			}
 
 			sv::GPUBarrier barriers[2];
-			barriers[0] = sv::GPUBarrier::Image(editorOffscreen.renderTarget, sv::GPUImageLayout_RenderTarget, sv::GPUImageLayout_ShaderResource);
-			if (simulationOffscreen) barriers[1] = sv::GPUBarrier::Image(simulationOffscreen->renderTarget, sv::GPUImageLayout_RenderTarget, sv::GPUImageLayout_ShaderResource);
+			barriers[0] = sv::GPUBarrier::Image(editorOffscreen, sv::GPUImageLayout_RenderTarget, sv::GPUImageLayout_ShaderResource);
+			if (simulationOffscreen) barriers[1] = sv::GPUBarrier::Image(simulationOffscreen, sv::GPUImageLayout_RenderTarget, sv::GPUImageLayout_ShaderResource);
 			sv::graphics_barrier(barriers, simulationOffscreen ? 2u : 1u, g_Device->GetCMD());
 
 			
 			MainMenu();
 			DisplayDocking();
-			viewports_display();
+			viewport_display();
 			g_Device->EndFrame();
 
-			barriers[0] = sv::GPUBarrier::Image(editorOffscreen.renderTarget, sv::GPUImageLayout_ShaderResource, sv::GPUImageLayout_RenderTarget);
-			if (simulationOffscreen) barriers[1] = sv::GPUBarrier::Image(simulationOffscreen->renderTarget, sv::GPUImageLayout_ShaderResource, sv::GPUImageLayout_RenderTarget);
+			barriers[0] = sv::GPUBarrier::Image(editorOffscreen, sv::GPUImageLayout_ShaderResource, sv::GPUImageLayout_RenderTarget);
+			if (simulationOffscreen) barriers[1] = sv::GPUBarrier::Image(simulationOffscreen, sv::GPUImageLayout_ShaderResource, sv::GPUImageLayout_RenderTarget);
 			sv::graphics_barrier(barriers, simulationOffscreen ? 2u : 1u, g_Device->GetCMD());
 		}
 	}
@@ -259,6 +259,7 @@ namespace sve {
 	{
 		svCheck(simulation_close());
 		svCheck(scene_editor_close());
+		svCheck(viewport_close());
 
 		return sv::Result_Success;
 	}

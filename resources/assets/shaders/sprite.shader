@@ -8,7 +8,9 @@
 #include "core.hlsl"
 
 // Vertex Shader
-#ifdef SV_SHADER_TYPE_VERTEX 
+#ifdef SV_SHADER_TYPE_VERTEX
+
+SV_DEFINE_CAMERA(b0);
 
 struct Input
 {
@@ -24,13 +26,12 @@ struct Output
     float4 position : SV_Position;
 };
 
-
 Output main(Input input)
 {
     Output output;
 	output.color = input.color;
 	output.texCoord = input.texCoord;
-	output.position = input.position;
+	output.position = mul(input.position, camera.viewProjectionMatrix);
     return output;
 }
 

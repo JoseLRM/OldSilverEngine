@@ -1,10 +1,12 @@
 #include "core_editor.h"
 
 #include "scene_editor.h"
-#include "viewports/viewport_scene_editor.h"
-#include "input.h"
-#include "scene.h"
+#include "viewport_manager.h"
+#include "viewports/SceneEditorViewport.h"
+#include "platform/input.h"
+#include "high_level/scene.h"
 #include "simulation.h"
+#include "rendering/debug_renderer.h"
 
 namespace sve {
 
@@ -18,26 +20,27 @@ namespace sve {
 
 	void scene_editor_camera_controller_2D(float dt)
 	{
-		float zoom = sv::renderer_projection_zoom_get(g_Camera.settings.projection);
+		auto& cam = g_Camera.camera;
+		float length = cam.getProjectionLength();
 
 		// Movement
 		if (sv::input_mouse(SV_MOUSE_CENTER)) {
 			sv::vec2f direction = sv::input_mouse_dragged_get();
-			direction *= sv::vec2f{ g_Camera.settings.projection.width, g_Camera.settings.projection.height } * 2.f;
+			direction *= sv::vec2f{ cam.getWidth(), cam.getHeight() } * 2.f;
 			g_Camera.position += { -direction.x, direction.y, 0.f };
 		}
 
 		// Zoom
-		float zoomForce = dt * zoom;
+		float zoomForce = dt * length;
 
 		if (sv::input_key('S')) {
-			zoom += zoomForce;
+			length += zoomForce;
 		}
 		if (sv::input_key('W')) {
-			zoom -= zoomForce;
+			length -= zoomForce;
 		}
 
-		sv::renderer_projection_zoom_set(g_Camera.settings.projection, zoom);
+		cam.setProjectionLength(length);
 
 	}
 
@@ -56,7 +59,8 @@ namespace sve {
 		else if (sv::input_mouse(SV_MOUSE_CENTER)) {
 
 			if (dragged.length() != 0.f) {
-				dragged *= { g_Camera.settings.projection.width, g_Camera.settings.projection.height };
+				auto& cam = g_Camera.camera;
+				dragged *= { cam.getWidth(), cam.getHeight() };
 				XMVECTOR lookAt = XMVectorSet(dragged.x, -dragged.y, 0.f, 0.f);
 				lookAt = XMVector3Transform(lookAt, XMMatrixRotationRollPitchYawFromVector(g_Camera.rotation.get_dx()));
 				g_Camera.position -= sv::vec3f(lookAt) * 4000.f;
@@ -85,43 +89,30 @@ namespace sve {
 	}
 
 	// MAIN FUNCTIONS
-	sv::ShaderLibraryAsset shader;
 	sv::Result scene_editor_initialize()
 	{
 		// Create camera
 		{
-			sv::Scene* scene = simulation_scene_get();
-			sv::ECS* ecs = sv::scene_ecs_get(scene);
-			sv::Entity camera = sv::scene_camera_get(scene);
+			sv::Scene& scene = simulation_scene_get();
+			sv::Entity camera = scene.getMainCamera();
 
-			sv::CameraComponent& mainCamera = *sv::ecs_component_get<sv::CameraComponent>(ecs, camera);
-			sv::vec2u res = { mainCamera.offscreen.GetWidth(), mainCamera.offscreen.GetHeight() };
-			svCheck(sv::renderer_offscreen_create(res.x, res.y, g_Camera.offscreen));
+			sv::Camera& mainCamera = sv::ecs_component_get<sv::CameraComponent>(scene, camera)->camera;
+			sv::vec2u res = { mainCamera.getResolutionWidth(), mainCamera.getResolutionHeight() };
+			g_Camera.camera.setResolution(res.x, res.y);
 
 			g_Camera.position = { 0.f, 0.f, -10.f };
 
 			scene_editor_mode_set(SceneEditorMode_2D);
 
-			svCheck(sv::renderer_debug_batch_create(&g_Colliders2DBatch));
+			svCheck(sv::debug_renderer_batch_create(&g_Colliders2DBatch));
 		}
-
-		// TEMP
-		svCheck(shader.load("shaders/sprite.shader"));
-
-		sv::ECS* ecs = sv::scene_ecs_get(simulation_scene_get());
-		sv::Entity e = sv::ecs_entity_create(ecs);
-		sv::SpriteComponent* spr = sv::ecs_component_add<sv::SpriteComponent>(ecs, e);
-
-		//svCheck(spr->material.create("test.mat", shader));
-		svCheck(spr->material.load("test.mat"));
-
 		return sv::Result_Success;
 	}
 
 	sv::Result scene_editor_close()
 	{
-		svCheck(sv::renderer_offscreen_destroy(g_Camera.offscreen));
-		svCheck(sv::renderer_debug_batch_destroy(g_Colliders2DBatch));
+		g_Camera.camera.clear();
+		svCheck(sv::debug_renderer_batch_destroy(g_Colliders2DBatch));
 		return sv::Result_Success;
 	}
 
@@ -137,54 +128,57 @@ namespace sve {
 
 	void scene_editor_update(float dt)
 	{
+		SceneEditorViewport* vp = (SceneEditorViewport*) viewport_get("SceneEditor");
+		if (vp == nullptr) return;
+
 		// Adjust camera
-		sv::vec2u size = viewport_scene_editor_size();
+		sv::vec2u size = vp->get_screen_size();
 		if (size.x != 0u && size.y != 0u)
-			sv::renderer_projection_aspect_set(g_Camera.settings.projection, float(size.x) / float(size.y));
+			g_Camera.camera.adjust(size.x, size.y);
 		
-		switch (g_EditorMode)
-		{
-		case sve::SceneEditorMode_2D:
-			scene_editor_update_mode2D(dt);
-			break;
-		case sve::SceneEditorMode_3D:
-			scene_editor_update_mode3D(dt);
-			break;
+		if (vp->isFocused()) {
+			switch (g_EditorMode)
+			{
+			case sve::SceneEditorMode_2D:
+				scene_editor_update_mode2D(dt);
+				break;
+			case sve::SceneEditorMode_3D:
+				scene_editor_update_mode3D(dt);
+				break;
+			}
 		}
 	}
 
 	void scene_editor_render()
 	{
-		if (!viewport_scene_editor_visible()) {
+		SceneEditorViewport* vp = (SceneEditorViewport*)viewport_get("SceneEditor");
+		if (vp == nullptr) return;
+
+		if (!vp->isVisible()) {
 			return;
 		}
 
-		sv::CameraDrawDesc desc;
-		desc.pOffscreen = &g_Camera.offscreen;
-		desc.pSettings = &g_Camera.settings;
-		desc.position = g_Camera.position;
-		desc.rotation = g_Camera.rotation;
-
-		sv::scene_renderer_camera_draw(simulation_scene_get() , &desc);
+		sv::Scene& scene = simulation_scene_get();
+		scene.drawCamera(&g_Camera.camera, g_Camera.position, g_Camera.rotation);
 
 		// DEBUG RENDERING
 
-		XMMATRIX viewProjectionMatrix = sv::math_matrix_view(g_Camera.position, g_Camera.rotation) * sv::renderer_projection_matrix(g_Camera.settings.projection);
+		XMMATRIX viewProjectionMatrix = sv::math_matrix_view(g_Camera.position, g_Camera.rotation) * g_Camera.camera.getProjectionMatrix();
 		sv::CommandList cmd = sv::graphics_commandlist_get();
 
 		// Draw 2D Colliders
 		{
-			sv::renderer_debug_batch_reset(g_Colliders2DBatch);
+			sv::debug_renderer_batch_reset(g_Colliders2DBatch);
 
-			sv::ECS* ecs = sv::scene_ecs_get(simulation_scene_get());
+			sv::Scene& scene = simulation_scene_get();
 
-			sv::EntityView<sv::RigidBody2DComponent> bodies(ecs);
+			sv::EntityView<sv::RigidBody2DComponent> bodies(scene);
 
-			sv::renderer_debug_stroke_set(g_Colliders2DBatch, 0.05f);
+			sv::debug_renderer_stroke_set(g_Colliders2DBatch, 0.05f);
 
 			for (sv::RigidBody2DComponent& body : bodies) {
 
-				sv::Transform trans = sv::ecs_entity_transform_get(ecs, body.entity);
+				sv::Transform trans = sv::ecs_entity_transform_get(scene, body.entity);
 				sv::vec3f position = trans.GetWorldPosition();
 				sv::vec3f scale = trans.GetWorldScale();
 				//TODO: sv::vec3f rotation = trans.GetWorldRotation();
@@ -207,7 +201,7 @@ namespace sve {
 
 						colliderPosition += offset;
 
-						sv::renderer_debug_draw_quad(g_Colliders2DBatch, sv::vec3f(colliderPosition), sv::vec2f(colliderScale), rotation, { 0u, 255u, 0u, 255u });
+						sv::debug_renderer_draw_quad(g_Colliders2DBatch, sv::vec3f(colliderPosition), sv::vec2f(colliderScale), rotation, { 0u, 255u, 0u, 255u });
 					}
 						break;
 					}
@@ -216,7 +210,7 @@ namespace sve {
 
 			}
 
-			sv::renderer_debug_batch_render(g_Colliders2DBatch, g_Camera.offscreen.renderTarget, g_Camera.offscreen.GetViewport(), g_Camera.offscreen.GetScissor(), viewProjectionMatrix, cmd);
+			sv::debug_renderer_batch_render(g_Colliders2DBatch, g_Camera.camera.getOffscreenRT(), g_Camera.camera.getViewport(), g_Camera.camera.getScissor(), viewProjectionMatrix, cmd);
 		}
 	}
 
@@ -241,20 +235,22 @@ namespace sve {
 		switch (g_EditorMode)
 		{
 		case sve::SceneEditorMode_2D:
-			g_Camera.settings.projection.cameraType = sv::CameraType_Orthographic;
-			g_Camera.settings.projection.near = -100000.f;
-			g_Camera.settings.projection.far = 100000.f;
-			g_Camera.settings.projection.width = 20.f;
-			g_Camera.settings.projection.height = 20.f;
+			g_Camera.camera.setProjectionType(sv::ProjectionType_Orthographic);
+			//g_Camera.settings.projection.cameraType = sv::CameraType_Orthographic;
+			//g_Camera.settings.projection.near = -100000.f;
+			//g_Camera.settings.projection.far = 100000.f;
+			//g_Camera.settings.projection.width = 20.f;
+			//g_Camera.settings.projection.height = 20.f;
 			g_Camera.position.z = 0.f;
 			g_Camera.rotation = sv::vec3f();
 			break;
 		case sve::SceneEditorMode_3D:
-			g_Camera.settings.projection.cameraType = sv::CameraType_Perspective;
-			g_Camera.settings.projection.near = 0.01f;
-			g_Camera.settings.projection.far = 100000.f;
-			g_Camera.settings.projection.width = 0.01f;
-			g_Camera.settings.projection.height = 0.01f;
+			g_Camera.camera.setProjectionType(sv::ProjectionType_Perspective);
+			//g_Camera.settings.projection.cameraType = sv::CameraType_Perspective;
+			//g_Camera.settings.projection.near = 0.01f;
+			//g_Camera.settings.projection.far = 100000.f;
+			//g_Camera.settings.projection.width = 0.01f;
+			//g_Camera.settings.projection.height = 0.01f;
 			g_Camera.position.z = -10.f;
 			break;
 		default:

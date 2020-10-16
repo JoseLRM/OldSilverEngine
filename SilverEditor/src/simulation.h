@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core_editor.h"
-#include "scene.h"
+#include "high_level/scene.h"
 
 namespace sve {
 
@@ -20,6 +20,6 @@ namespace sve {
 	bool simulation_paused();	// Return true if the simulation is paused
 	bool simulation_gamemode_get();
 
-	sv::Scene*	simulation_scene_get();
+	sv::Scene&	simulation_scene_get();
 
 }

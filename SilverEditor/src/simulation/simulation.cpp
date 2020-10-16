@@ -1,10 +1,10 @@
 #include "core_editor.h"
 
-#include "viewports/viewport_simulation.h"
+#include "viewport_manager.h"
+#include "viewports/SimulationViewport.h"
 #include "simulation.h"
-#include "loader.h"
-#include "scene.h"
-#include "window.h"
+#include "high_level/scene.h"
+#include "platform/window.h"
 
 namespace sve {
 
@@ -15,19 +15,16 @@ namespace sve {
 	static bool g_RunningRequest = false;
 	static bool g_StopRequest = false;
 
-	static sv::Scene* g_Scene = nullptr;
+	static sv::Scene g_Scene;
 	static std::string g_ScenePath;
 
 	sv::Result simulation_initialize(const char* sceneFilePath)
 	{
-		sv::SceneDesc desc;
-		desc.gravity = { 0.f, 20.f, 0.f };
+		g_Scene.create();
 
-		svCheck(sv::scene_create(&desc, &g_Scene));
-
-		if (sv::scene_deserialize(g_Scene, sceneFilePath) != sv::Result_Success) {
-			svCheck(sv::scene_destroy(g_Scene));
-			svCheck(sv::scene_create(&desc, &g_Scene));
+		if (g_Scene.deserialize(sceneFilePath) != sv::Result_Success) {
+			g_Scene.destroy();
+			g_Scene.create();
 		}
 
 		g_ScenePath = sceneFilePath;
@@ -37,7 +34,7 @@ namespace sve {
 
 	sv::Result simulation_close()
 	{
-		sv::scene_destroy(g_Scene);
+		g_Scene.destroy();
 		return sv::Result_Success;
 	}
 
@@ -48,7 +45,7 @@ namespace sve {
 			g_Paused = false;
 			ImGui::GetStyle().Alpha = 0.2f;
 
-			sv::scene_serialize(g_Scene, g_ScenePath.c_str());
+			g_Scene.serialize(g_ScenePath.c_str());
 			g_RunningRequest = false;
 		}
 
@@ -57,34 +54,37 @@ namespace sve {
 			g_Paused = false;
 			ImGui::GetStyle().Alpha = 1.f;
 
-			sv::scene_deserialize(g_Scene, g_ScenePath.c_str());
+			g_Scene.deserialize(g_ScenePath.c_str());
 			g_StopRequest = false;
 		}
 
 		// Adjust camera
 		{
-			sv::ECS* ecs = sv::scene_ecs_get(g_Scene);
-			sv::CameraComponent& camera = *sv::ecs_component_get<sv::CameraComponent>(ecs, sv::scene_camera_get(g_Scene));
-
-			sv::vec2u size = g_Gamemode ? sv::window_size_get() : viewport_simulation_size();
-
-			camera.Adjust(size.x, size.y);
+			SimulationViewport* sim = (SimulationViewport*)viewport_get("Simulation");
+			if (sim) {
+				sv::CameraComponent& camera = *sv::ecs_component_get<sv::CameraComponent>(g_Scene, g_Scene.getMainCamera());
+				sv::vec2u size = g_Gamemode ? sv::window_size_get() : sim->get_screen_size();
+				camera.camera.adjust(size.x, size.y);
+			}
 		}
 
 		if (g_Running && !g_Paused) {
 
-			sv::scene_physics_simulate(g_Scene, dt);
+			g_Scene.physicsSimulate(dt);
 
 		}
 	}
 
 	void simulation_render()
 	{
-		if (!simulation_running() && !viewport_simulation_visible()) {
+		SimulationViewport* sim = (SimulationViewport*)viewport_get("Simulation");
+		if (sim == nullptr) return;
+
+		if (!simulation_running() && !sim->isVisible()) {
 			return;
 		}
 
-		sv::scene_renderer_draw(g_Scene, g_Gamemode);
+		g_Scene.draw(g_Gamemode);
 	}
 
 	void simulation_run()
@@ -144,7 +144,7 @@ namespace sve {
 		return g_Gamemode;
 	}
 
-	sv::Scene* simulation_scene_get()
+	sv::Scene& simulation_scene_get()
 	{
 		return g_Scene;
 	}

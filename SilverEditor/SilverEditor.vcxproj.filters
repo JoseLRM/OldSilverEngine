@@ -17,11 +17,16 @@
       <Filter>System</Filter>
     </ClCompile>
     <ClCompile Include="src\scene_editor\scene_editor.cpp" />
-    <ClCompile Include="src\viewports\assets\viewport_assets.cpp" />
-    <ClCompile Include="src\viewports\scene\viewport_scene.cpp" />
-    <ClCompile Include="src\viewports\simulation\viewport_simulation.cpp" />
-    <ClCompile Include="src\viewports\viewports.cpp" />
-    <ClCompile Include="src\viewports\materials\viewport_materials.cpp" />
+    <ClCompile Include="src\viewports\Viewport.cpp" />
+    <ClCompile Include="src\viewports\SimulationViewport.cpp" />
+    <ClCompile Include="src\viewports\SimulationToolsViewport.cpp" />
+    <ClCompile Include="src\viewports\MaterialViewport.cpp" />
+    <ClCompile Include="src\viewports\AssetViewport.cpp" />
+    <ClCompile Include="src\viewports\TexturePickerViewport.cpp" />
+    <ClCompile Include="src\viewports\SceneHierarchyViewport.cpp" />
+    <ClCompile Include="src\viewports\EntityInspectorViewport.cpp" />
+    <ClCompile Include="src\viewports\SceneEditorViewport.cpp" />
+    <ClCompile Include="src\viewport_manager\viewport_manager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\editor.h" />
@@ -44,11 +49,16 @@
     </ClInclude>
     <ClInclude Include="src\main\imGuiDevice\ImGuiDevice_vk.h" />
     <ClInclude Include="src\scene_editor.h" />
-    <ClInclude Include="src\viewports\viewport_assets.h" />
-    <ClInclude Include="src\viewports\viewport_simulation.h" />
-    <ClInclude Include="src\viewports\viewport_scene_editor.h" />
-    <ClInclude Include="src\viewports.h" />
-    <ClInclude Include="src\viewports\viewport_materials.h" />
+    <ClInclude Include="src\viewports\Viewport.h" />
+    <ClInclude Include="src\viewports\SimulationViewport.h" />
+    <ClInclude Include="src\viewports\SimulationToolsViewport.h" />
+    <ClInclude Include="src\viewports\MaterialViewport.h" />
+    <ClInclude Include="src\viewports\AssetViewport.h" />
+    <ClInclude Include="src\viewports\TexturePickerViewport.h" />
+    <ClInclude Include="src\viewports\SceneHierarchyViewport.h" />
+    <ClInclude Include="src\viewports\EntityInspectorViewport.h" />
+    <ClInclude Include="src\viewports\SceneEditorViewport.h" />
+    <ClInclude Include="src\viewport_manager.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="external">

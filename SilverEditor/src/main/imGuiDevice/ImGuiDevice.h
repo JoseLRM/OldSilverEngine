@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core_editor.h"
-#include "graphics.h"
+#include "platform/graphics.h"
 
 namespace sve {
 

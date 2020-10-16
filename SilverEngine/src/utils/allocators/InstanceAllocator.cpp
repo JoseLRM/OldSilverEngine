@@ -1,6 +1,6 @@
 #include "core.h"
 
-#include "InstanceAllocator.h"
+#include "utils/allocator.h"
 
 namespace sv {
 
@@ -15,6 +15,8 @@ namespace sv {
 
 	void* SizedInstanceAllocator::alloc()
 	{
+		std::scoped_lock<std::mutex> lock(m_Mutex);
+
 		{
 			Pool& pool = m_Pools.back();
 
@@ -74,6 +76,8 @@ namespace sv {
 
 	void SizedInstanceAllocator::free(void* ptr)
 	{
+		std::scoped_lock<std::mutex> lock(m_Mutex);
+
 		Pool* pool = nullptr;
 		for (auto it = m_Pools.rbegin(); it != m_Pools.rend(); ++it) {
 			if (it->data <= ptr && it->data + (it->size * INSTANCE_SIZE) > ptr) {
@@ -99,6 +103,8 @@ namespace sv {
 
 	void SizedInstanceAllocator::clear()
 	{
+		std::scoped_lock<std::mutex> lock(m_Mutex);
+
 		// Free memory
 		for (auto it = m_Pools.begin(); it != m_Pools.end(); ++it) {
 			Pool& pool = *it;
@@ -110,8 +116,10 @@ namespace sv {
 		m_Pools.clear();
 	}
 
-	bool SizedInstanceAllocator::has_unfreed() const noexcept
+	bool SizedInstanceAllocator::has_unfreed() noexcept
 	{
+		std::scoped_lock<std::mutex> lock(m_Mutex);
+
 		for (auto it = m_Pools.cbegin(); it != m_Pools.cend(); ++it) {
 			void* freeList = it->freeList;
 			ui32 count = 0u;
@@ -130,8 +138,10 @@ namespace sv {
 		return false;
 	}
 
-	ui32 SizedInstanceAllocator::unfreed_count() const noexcept
+	ui32 SizedInstanceAllocator::unfreed_count() noexcept
 	{
+		std::scoped_lock<std::mutex> lock(m_Mutex);
+
 		ui32 freeCount = 0u;
 		ui32 totalSize = 0u;
 
