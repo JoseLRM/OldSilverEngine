@@ -1,6 +1,13 @@
-.vs/
+# SilverEngine files
+**.log
+
+# Binaries
 bin/
 *.cso
-*.log
-*.sln
-*.vcxproj
+
+# VisualStudio files
+.vs/
+**.sln
+**.vcxproj
+**.vcxproj.filters
+**.vcxproj.user
