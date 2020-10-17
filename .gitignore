@@ -1,5 +1,5 @@
 # SilverEngine files
-**.log
+*.log
 
 # Binaries
 bin/
@@ -7,7 +7,7 @@ bin/
 
 # VisualStudio files
 .vs/
-**.sln
-**.vcxproj
-**.vcxproj.filters
-**.vcxproj.user
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
