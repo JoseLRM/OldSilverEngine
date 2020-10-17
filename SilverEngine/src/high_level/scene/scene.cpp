@@ -191,7 +191,7 @@ namespace sv {
 
 			GPUImageDesc desc;
 			desc.pData = nullptr;
-			desc.format = SV_OFFSCREEN_FORMAT;
+			desc.format = Format_R8G8B8A8_SRGB;
 			desc.layout = GPUImageLayout_RenderTarget;
 			desc.type = GPUImageType_RenderTarget | GPUImageType_ShaderResource;
 			desc.usage = ResourceUsage_Static;

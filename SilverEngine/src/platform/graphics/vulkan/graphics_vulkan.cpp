@@ -127,7 +127,7 @@ namespace sv {
 		g_API = std::make_unique<Graphics_vk>();
 
 		// Instance extensions and validation layers
-#if VULKAN_VALIDATION_LAYERS
+#ifdef SV_VULKAN_VALIDATION_LAYERS
 		g_API->validationLayers.push_back("VK_LAYER_KHRONOS_validation");
 		g_API->extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 #endif
@@ -135,7 +135,7 @@ namespace sv {
 		g_API->extensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
 
 		// Device extensions and validation layers
-#if VULKAN_VALIDATION_LAYERS
+#ifdef SV_VULKAN_VALIDATION_LAYERS
 		g_API->deviceValidationLayers.push_back("VK_LAYER_KHRONOS_validation");
 #endif
 		g_API->deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
@@ -215,7 +215,7 @@ namespace sv {
 		}
 
 		// Initialize validation layers
-#if VULKAN_VALIDATION_LAYERS
+#ifdef SV_VULKAN_VALIDATION_LAYERS
 		{
 			VkDebugUtilsMessengerCreateInfoEXT create_info{};
 			create_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
@@ -408,7 +408,7 @@ namespace sv {
 		// Destroy device and vulkan instance
 		vkDestroyDevice(g_API->device, nullptr);
 
-#if VULKAN_VALIDATION_LAYERS
+#ifdef SV_VULKAN_VALIDATION_LAYERS
 		vkDestroyDebugUtilsMessengerEXT(g_API->instance, g_API->debug);
 #endif
 
@@ -1079,7 +1079,7 @@ namespace sv {
 		// Create Surface
 		if (oldSwapchain == VK_NULL_HANDLE) 
 		{
-#ifdef SV_PLATFORM_WINDOWS
+#ifdef SV_PLATFORM_WIN
 			VkWin32SurfaceCreateInfoKHR create_info{};
 			create_info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
 			create_info.hinstance = GetModuleHandle(nullptr);

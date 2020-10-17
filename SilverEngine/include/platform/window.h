@@ -40,7 +40,7 @@ namespace sv {
 	
 	vec2u window_desktop_size();
 
-#ifdef SV_PLATFORM_WINDOWS
+#ifdef SV_PLATFORM_WIN
 	typedef ui64(*WindowProc)(WindowHandle, ui32, ui64, i64);
 
 	void window_userproc_set(WindowProc userProc);

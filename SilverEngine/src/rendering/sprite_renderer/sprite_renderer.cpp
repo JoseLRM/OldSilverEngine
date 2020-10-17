@@ -88,7 +88,7 @@ namespace sv {
 			desc.attachments[0].storeOp = AttachmentOperation_Store;
 			desc.attachments[0].stencilLoadOp = AttachmentOperation_DontCare;
 			desc.attachments[0].stencilStoreOp = AttachmentOperation_DontCare;
-			desc.attachments[0].format = SV_OFFSCREEN_FORMAT;
+			desc.attachments[0].format = Format_R8G8B8A8_SRGB;
 			desc.attachments[0].initialLayout = GPUImageLayout_RenderTarget;
 			desc.attachments[0].layout = GPUImageLayout_RenderTarget;
 			desc.attachments[0].finalLayout = GPUImageLayout_RenderTarget;

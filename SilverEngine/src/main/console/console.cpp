@@ -122,7 +122,7 @@ namespace sv {
 			*saveOutput = parse_wstring(logBuffer + offset);
 		}
 
-#ifdef SV_PLATFORM_WINDOWS
+#ifdef SV_PLATFORM_WIN
 		ui32 platformFlags = 0u;
 
 		if (flags & LoggingStyle_Red)				platformFlags |= FOREGROUND_RED;
@@ -135,7 +135,7 @@ namespace sv {
 
 		std::lock_guard<std::mutex> lock(g_LogMutex);
 
-#ifdef SV_PLATFORM_WINDOWS
+#ifdef SV_PLATFORM_WIN
 		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), platformFlags);
 #endif
 
@@ -179,7 +179,7 @@ namespace sv {
 
 		va_end(args);
 
-#ifdef SV_PLATFORM_WINDOWS
+#ifdef SV_PLATFORM_WIN
 		std::wstring titleStr = parse_wstring(title);
 		
 

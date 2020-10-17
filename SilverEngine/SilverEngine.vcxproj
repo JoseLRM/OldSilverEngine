@@ -1,114 +1,171 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
-    <ProjectConfiguration Include="Debug|x64">
-      <Configuration>Debug</Configuration>
+    <ProjectConfiguration Include="Debug Win64|x64">
+      <Configuration>Debug Win64</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|x64">
-      <Configuration>Release</Configuration>
+    <ProjectConfiguration Include="Release Win64|x64">
+      <Configuration>Release Win64</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Distribution Win64|x64">
+      <Configuration>Distribution Win64</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <VCProjectVersion>16.0</VCProjectVersion>
-    <ProjectGuid>{1170D6F9-3C8F-45BB-9DAA-A39321531875}</ProjectGuid>
+    <ProjectGuid>{D080BE76-BCE3-4D1B-6569-86D151AB199E}</ProjectGuid>
+    <IgnoreWarnCompileDuplicatedFilename>true</IgnoreWarnCompileDuplicatedFilename>
+    <Keyword>Win32Proj</Keyword>
     <RootNamespace>SilverEngine</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug Win64|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
     <PlatformToolset>v142</PlatformToolset>
-    <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release Win64|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
     <PlatformToolset>v142</PlatformToolset>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Distribution Win64|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
-  <ImportGroup Label="Shared">
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug Win64|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release Win64|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Distribution Win64|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>$(SolutionDir)bin\$(ProjectName)\$(Platform)-$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)bin\$(ProjectName)\$(Platform)-$(Configuration)\int</IntDir>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug Win64|x64'">
+    <OutDir>..\bin\Debug-windows-x86_64\</OutDir>
+    <IntDir>..\bin\Debug-windows-x86_64\int\SilverEngine\</IntDir>
+    <TargetName>SilverEngine</TargetName>
+    <TargetExt>.lib</TargetExt>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>$(SolutionDir)bin\$(ProjectName)\$(Platform)-$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)bin\$(ProjectName)\$(Platform)-$(Configuration)\int</IntDir>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release Win64|x64'">
+    <OutDir>..\bin\Release-windows-x86_64\</OutDir>
+    <IntDir>..\bin\Release-windows-x86_64\int\SilverEngine\</IntDir>
+    <TargetName>SilverEngine</TargetName>
+    <TargetExt>.lib</TargetExt>
   </PropertyGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Distribution Win64|x64'">
+    <OutDir>..\bin\Distribution-windows-x86_64\</OutDir>
+    <IntDir>..\bin\Distribution-windows-x86_64\int\SilverEngine\</IntDir>
+    <TargetName>SilverEngine</TargetName>
+    <TargetExt>.lib</TargetExt>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug Win64|x64'">
     <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <Optimization>Disabled</Optimization>
-      <SDLCheck>true</SDLCheck>
-      <ConformanceMode>true</ConformanceMode>
-      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <PreprocessorDefinitions>SV_ENGINE;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>core.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>C:\VulkanSDK\1.2.141.2\Include;$(SolutionDir)SilverEngine\include;$(SolutionDir)SilverEngine\src</AdditionalIncludeDirectories>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>SV_VULKAN_VALIDATION_LAYERS;SV_PLATFORM_WIN;SV_DEBUG;SV_SRC_PATH="../resources/";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>C:\VulkanSDK\1.2.141.2\Include;include;src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <Optimization>Disabled</Optimization>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <AdditionalDependencies>vulkan-1.lib;assimp.lib;box2d_debug.lib</AdditionalDependencies>
-    </Lib>
-    <Lib>
-      <AdditionalLibraryDirectories>C:\VulkanSDK\1.2.141.2\Lib;$(SolutionDir)SilverEngine\lib\</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib;box2d_debug.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\VulkanSDK\1.2.141.2\Lib;lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Lib>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release Win64|x64'">
     <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <Optimization>MaxSpeed</Optimization>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <ConformanceMode>true</ConformanceMode>
-      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <PreprocessorDefinitions>SV_ENGINE;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>core.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>C:\VulkanSDK\1.2.141.2\Include;$(SolutionDir)SilverEngine\include;$(SolutionDir)SilverEngine\src</AdditionalIncludeDirectories>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>SV_VULKAN_VALIDATION_LAYERS;SV_PLATFORM_WIN;SV_RELEASE;SV_SRC_PATH="../resources/";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>C:\VulkanSDK\1.2.141.2\Include;include;src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DebugInformationFormat>None</DebugInformationFormat>
+      <Optimization>Full</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <MinimalRebuild>false</MinimalRebuild>
+      <StringPooling>true</StringPooling>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <Lib>
-      <AdditionalDependencies>vulkan-1.lib;assimp.lib;box2d_release.lib</AdditionalDependencies>
+      <AdditionalDependencies>vulkan-1.lib;box2d_release.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\VulkanSDK\1.2.141.2\Lib;lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Distribution Win64|x64'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>core.h</PrecompiledHeaderFile>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>SV_VULKAN_VALIDATION_LAYERS;SV_PLATFORM_WIN;SV_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <UndefinePreprocessorDefinitions>SV_VULKAN_VALIDATION_LAYERS;%(UndefinePreprocessorDefinitions)</UndefinePreprocessorDefinitions>
+      <AdditionalIncludeDirectories>C:\VulkanSDK\1.2.141.2\Include;include;src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DebugInformationFormat>None</DebugInformationFormat>
+      <Optimization>Full</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <MinimalRebuild>false</MinimalRebuild>
+      <StringPooling>true</StringPooling>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
     <Lib>
-      <AdditionalLibraryDirectories>C:\VulkanSDK\1.2.141.2\Lib;$(SolutionDir)SilverEngine\lib\</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib;box2d_release.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\VulkanSDK\1.2.141.2\Lib;lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="include\core.h" />
     <ClInclude Include="include\high_level\asset_system.h" />
-    <ClInclude Include="include\utils\allocator.h" />
-    <ClInclude Include="include\utils\io.h" />
-    <ClInclude Include="src\high_level\asset_system\asset_system_internal.h" />
+    <ClInclude Include="include\high_level\scene.h" />
     <ClInclude Include="include\main\console.h" />
-    <ClInclude Include="src\main\console\console_internal.h" />
+    <ClInclude Include="include\main\engine.h" />
+    <ClInclude Include="include\main\task_system.h" />
+    <ClInclude Include="include\platform\graphics.h" />
+    <ClInclude Include="include\platform\input.h" />
+    <ClInclude Include="include\platform\platform_impl.h" />
+    <ClInclude Include="include\platform\window.h" />
+    <ClInclude Include="include\platform\windows_impl.h" />
+    <ClInclude Include="include\rendering\debug_renderer.h" />
+    <ClInclude Include="include\rendering\material_system.h" />
+    <ClInclude Include="include\rendering\sprite_renderer.h" />
     <ClInclude Include="include\simulation\entity_system.h" />
-    <ClInclude Include="src\simulation\entity_system\entity_system_internal.h" />
+    <ClInclude Include="include\utils\Version.h" />
+    <ClInclude Include="include\utils\allocator.h" />
+    <ClInclude Include="include\utils\data_structures\safe_queue.h" />
+    <ClInclude Include="include\utils\helper.h" />
+    <ClInclude Include="include\utils\io.h" />
+    <ClInclude Include="include\utils\math.h" />
+    <ClInclude Include="include\utils\timer.h" />
     <ClInclude Include="src\external\box2d\b2_block_allocator.h" />
     <ClInclude Include="src\external\box2d\b2_body.h" />
     <ClInclude Include="src\external\box2d\b2_broad_phase.h" />
@@ -139,9 +196,9 @@
     <ClInclude Include="src\external\box2d\b2_settings.h" />
     <ClInclude Include="src\external\box2d\b2_shape.h" />
     <ClInclude Include="src\external\box2d\b2_stack_allocator.h" />
-    <ClInclude Include="src\external\box2d\b2_timer.h" />
     <ClInclude Include="src\external\box2d\b2_time_of_impact.h" />
     <ClInclude Include="src\external\box2d\b2_time_step.h" />
+    <ClInclude Include="src\external\box2d\b2_timer.h" />
     <ClInclude Include="src\external\box2d\b2_weld_joint.h" />
     <ClInclude Include="src\external\box2d\b2_wheel_joint.h" />
     <ClInclude Include="src\external\box2d\b2_world.h" />
@@ -149,133 +206,88 @@
     <ClInclude Include="src\external\box2d\box2d.h" />
     <ClInclude Include="src\external\sprv\GLSL.std.450.h" />
     <ClInclude Include="src\external\sprv\spirv.h" />
-    <ClInclude Include="src\external\sprv\spirv.hpp" />
-    <ClInclude Include="src\external\sprv\spirv_cfg.hpp" />
-    <ClInclude Include="src\external\sprv\spirv_common.hpp" />
-    <ClInclude Include="src\external\sprv\spirv_cpp.hpp" />
-    <ClInclude Include="src\external\sprv\spirv_cross.hpp" />
     <ClInclude Include="src\external\sprv\spirv_cross_c.h" />
-    <ClInclude Include="src\external\sprv\spirv_cross_containers.hpp" />
-    <ClInclude Include="src\external\sprv\spirv_cross_error_handling.hpp" />
-    <ClInclude Include="src\external\sprv\spirv_cross_parsed_ir.hpp" />
-    <ClInclude Include="src\external\sprv\spirv_cross_util.hpp" />
-    <ClInclude Include="src\external\sprv\spirv_glsl.hpp" />
-    <ClInclude Include="src\external\sprv\spirv_hlsl.hpp" />
-    <ClInclude Include="src\external\sprv\spirv_msl.hpp" />
-    <ClInclude Include="src\external\sprv\spirv_parser.hpp" />
-    <ClInclude Include="src\external\sprv\spirv_reflect.hpp" />
-    <ClInclude Include="src\external\vk_mem_alloc.h" />
     <ClInclude Include="src\external\stbi_lib.h" />
+    <ClInclude Include="src\external\vk_mem_alloc.h" />
+    <ClInclude Include="src\high_level\asset_system\asset_system_internal.h" />
+    <ClInclude Include="src\high_level\scene\physics_impl.h" />
+    <ClInclude Include="src\high_level\scene\scene_internal.h" />
+    <ClInclude Include="src\main\console\console_internal.h" />
+    <ClInclude Include="src\main\task_system\task_system_internal.h" />
     <ClInclude Include="src\platform\graphics\graphics_internal.h" />
-    <ClInclude Include="include\core.h" />
-    <ClInclude Include="include\main\engine.h" />
-    <ClInclude Include="include\platform\input.h" />
-    <ClInclude Include="include\platform\graphics.h" />
     <ClInclude Include="src\platform\graphics\vulkan\graphics_vulkan.h" />
     <ClInclude Include="src\platform\graphics\vulkan\graphics_vulkan_conversions.h" />
     <ClInclude Include="src\platform\input\input_internal.h" />
-    <ClInclude Include="include\platform\platform_impl.h" />
-    <ClInclude Include="include\platform\windows_impl.h" />
     <ClInclude Include="src\platform\window\window_internal.h" />
-    <ClInclude Include="include\rendering\material_system.h" />
-    <ClInclude Include="src\rendering\material_system\material_system_internal.h" />
-    <ClInclude Include="include\rendering\debug_renderer.h" />
     <ClInclude Include="src\rendering\debug_renderer\debug_renderer_internal.h" />
-    <ClInclude Include="include\rendering\sprite_renderer.h" />
+    <ClInclude Include="src\rendering\material_system\material_system_internal.h" />
     <ClInclude Include="src\rendering\sprite_renderer\sprite_renderer_internal.h" />
-    <ClInclude Include="src\high_level\scene\physics_impl.h" />
-    <ClInclude Include="src\high_level\scene\scene_internal.h" />
-    <ClInclude Include="src\main\task_system\task_system_internal.h" />
-    <ClInclude Include="include\utils\helper.h" />
-    <ClInclude Include="include\utils\timer.h" />
-    <ClInclude Include="include\platform\window.h" />
-    <ClInclude Include="include\high_level\scene.h" />
-    <ClInclude Include="include\main\task_system.h" />
-    <ClInclude Include="include\utils\data_structures\safe_queue.h" />
-    <ClInclude Include="include\utils\math.h" />
-    <ClInclude Include="include\utils\Version.h" />
+    <ClInclude Include="src\simulation\entity_system\entity_system_internal.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\high_level\asset_system\asset_system.cpp" />
-    <ClCompile Include="src\main\console\console.cpp" />
-    <ClCompile Include="src\rendering\material_system\material_system_material.cpp" />
-    <ClCompile Include="src\rendering\material_system\material_system_shaderlibrary.cpp" />
-    <ClCompile Include="src\simulation\entity_system\entity_system.cpp" />
-    <ClCompile Include="src\simulation\entity_system\entity_system_allocators.cpp" />
+    <ClCompile Include="src\core.cpp">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="src\external\sprv\spirv_cfg.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\external\sprv\spirv_cpp.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\external\sprv\spirv_cross.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\external\sprv\spirv_cross_c.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\external\sprv\spirv_cross_parsed_ir.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\external\sprv\spirv_cross_util.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\external\sprv\spirv_glsl.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\external\sprv\spirv_hlsl.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\external\sprv\spirv_msl.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\external\sprv\spirv_parser.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\external\sprv\spirv_reflect.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\platform\graphics\vulkan\graphics_vulkan_pipeline.cpp" />
-    <ClCompile Include="src\main\engine.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="src\platform\input\input.cpp" />
+    <ClCompile Include="src\high_level\asset_system\asset_system.cpp" />
+    <ClCompile Include="src\high_level\scene\scene.cpp" />
+    <ClCompile Include="src\high_level\scene\scene_components.cpp" />
+    <ClCompile Include="src\high_level\scene\scene_physics.cpp" />
+    <ClCompile Include="src\high_level\scene\scene_renderer.cpp" />
+    <ClCompile Include="src\main\console\console.cpp" />
+    <ClCompile Include="src\main\engine.cpp" />
+    <ClCompile Include="src\main\task_system\task_system.cpp" />
     <ClCompile Include="src\platform\graphics\graphics.cpp" />
     <ClCompile Include="src\platform\graphics\graphics_properties.cpp" />
     <ClCompile Include="src\platform\graphics\graphics_shader.cpp" />
     <ClCompile Include="src\platform\graphics\vulkan\graphics_vulkan.cpp" />
     <ClCompile Include="src\platform\graphics\vulkan\graphics_vulkan_memory.cpp" />
+    <ClCompile Include="src\platform\graphics\vulkan\graphics_vulkan_pipeline.cpp" />
+    <ClCompile Include="src\platform\input\input.cpp" />
     <ClCompile Include="src\platform\window\window.cpp" />
-    <ClCompile Include="src\rendering\material_system\material_system.cpp" />
     <ClCompile Include="src\rendering\debug_renderer\debug_renderer.cpp" />
-    <ClCompile Include="src\utils\allocators\InstanceAllocator.cpp" />
+    <ClCompile Include="src\rendering\material_system\material_system.cpp" />
+    <ClCompile Include="src\rendering\material_system\material_system_material.cpp" />
+    <ClCompile Include="src\rendering\material_system\material_system_shaderlibrary.cpp" />
     <ClCompile Include="src\rendering\sprite_renderer\sprite_renderer.cpp" />
-    <ClCompile Include="src\high_level\scene\scene.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="src\simulation\entity_system\Transform.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="src\high_level\scene\scene_components.cpp" />
-    <ClCompile Include="src\high_level\scene\scene_physics.cpp" />
-    <ClCompile Include="src\high_level\scene\scene_renderer.cpp" />
-    <ClCompile Include="src\main\task_system\task_system.cpp" />
-    <ClCompile Include="src\utils\io\Archive.cpp" />
+    <ClCompile Include="src\simulation\entity_system\Transform.cpp" />
+    <ClCompile Include="src\simulation\entity_system\entity_system.cpp" />
+    <ClCompile Include="src\simulation\entity_system\entity_system_allocators.cpp" />
+    <ClCompile Include="src\utils\allocators\InstanceAllocator.cpp" />
     <ClCompile Include="src\utils\helper.cpp" />
+    <ClCompile Include="src\utils\io\Archive.cpp" />
     <ClCompile Include="src\utils\io\loader.cpp" />
     <ClCompile Include="src\utils\math.cpp" />
     <ClCompile Include="src\utils\timer.cpp" />

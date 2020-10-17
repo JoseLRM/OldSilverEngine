@@ -5,7 +5,7 @@
 #define SV_VULKAN_IMPLEMENTATION
 #include "..//src/platform/graphics/vulkan/graphics_vulkan.h"
 
-#ifdef SV_PLATFORM_WINDOWS
+#ifdef SV_PLATFORM_WIN
 #include "external/ImGui/imgui_impl_win32.h"
 #endif
 

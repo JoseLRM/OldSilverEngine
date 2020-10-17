@@ -1,80 +1,170 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="src\external\ImGui\imgui.cpp" />
-    <ClCompile Include="src\external\ImGui\imgui_demo.cpp" />
-    <ClCompile Include="src\external\ImGui\imgui_draw.cpp" />
-    <ClCompile Include="src\external\ImGui\imgui_impl_dx11.cpp" />
-    <ClCompile Include="src\external\ImGui\imgui_impl_vulkan.cpp" />
-    <ClCompile Include="src\external\ImGui\imgui_impl_win32.cpp" />
-    <ClCompile Include="src\external\ImGui\imgui_widgets.cpp" />
-    <ClCompile Include="src\simulation\simulation.cpp" />
-    <ClCompile Include="src\main\imGuiDevice\ImGuiDevice.cpp" />
-    <ClCompile Include="src\main\imGuiDevice\ImGuiDevice_vk.cpp" />
-    <ClCompile Include="src\main\Main.cpp" />
-    <ClCompile Include="src\main\editor.cpp" />
-    <ClCompile Include="src\main\core_editor.cpp">
-      <Filter>System</Filter>
-    </ClCompile>
-    <ClCompile Include="src\scene_editor\scene_editor.cpp" />
-    <ClCompile Include="src\viewports\Viewport.cpp" />
-    <ClCompile Include="src\viewports\SimulationViewport.cpp" />
-    <ClCompile Include="src\viewports\SimulationToolsViewport.cpp" />
-    <ClCompile Include="src\viewports\MaterialViewport.cpp" />
-    <ClCompile Include="src\viewports\AssetViewport.cpp" />
-    <ClCompile Include="src\viewports\TexturePickerViewport.cpp" />
-    <ClCompile Include="src\viewports\SceneHierarchyViewport.cpp" />
-    <ClCompile Include="src\viewports\EntityInspectorViewport.cpp" />
-    <ClCompile Include="src\viewports\SceneEditorViewport.cpp" />
-    <ClCompile Include="src\viewport_manager\viewport_manager.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="src\editor.h" />
-    <ClInclude Include="src\core_editor.h">
-      <Filter>System</Filter>
-    </ClInclude>
-    <ClInclude Include="config_editor.h" />
-    <ClInclude Include="src\external\ImGui\imconfig.h" />
-    <ClInclude Include="src\external\ImGui\imgui.h" />
-    <ClInclude Include="src\external\ImGui\imgui_impl_dx11.h" />
-    <ClInclude Include="src\external\ImGui\imgui_impl_vulkan.h" />
-    <ClInclude Include="src\external\ImGui\imgui_impl_win32.h" />
-    <ClInclude Include="src\external\ImGui\imgui_internal.h" />
-    <ClInclude Include="src\external\ImGui\imstb_rectpack.h" />
-    <ClInclude Include="src\external\ImGui\imstb_textedit.h" />
-    <ClInclude Include="src\external\ImGui\imstb_truetype.h" />
-    <ClInclude Include="src\simulation.h" />
-    <ClInclude Include="src\main\imGuiDevice\ImGuiDevice.h">
-      <Filter>System</Filter>
-    </ClInclude>
-    <ClInclude Include="src\main\imGuiDevice\ImGuiDevice_vk.h" />
-    <ClInclude Include="src\scene_editor.h" />
-    <ClInclude Include="src\viewports\Viewport.h" />
-    <ClInclude Include="src\viewports\SimulationViewport.h" />
-    <ClInclude Include="src\viewports\SimulationToolsViewport.h" />
-    <ClInclude Include="src\viewports\MaterialViewport.h" />
-    <ClInclude Include="src\viewports\AssetViewport.h" />
-    <ClInclude Include="src\viewports\TexturePickerViewport.h" />
-    <ClInclude Include="src\viewports\SceneHierarchyViewport.h" />
-    <ClInclude Include="src\viewports\EntityInspectorViewport.h" />
-    <ClInclude Include="src\viewports\SceneEditorViewport.h" />
-    <ClInclude Include="src\viewport_manager.h" />
-  </ItemGroup>
-  <ItemGroup>
     <Filter Include="external">
-      <UniqueIdentifier>{d10ff150-5f41-427e-8da8-917ef7dfcbb3}</UniqueIdentifier>
+      <UniqueIdentifier>{2839F3DC-1406-4EE8-3D1F-3C90294B8376}</UniqueIdentifier>
     </Filter>
     <Filter Include="external\ImGui">
-      <UniqueIdentifier>{17c3856f-ee8f-41a1-a9bd-880e935fb4a7}</UniqueIdentifier>
+      <UniqueIdentifier>{52ECDBB8-3EBA-CFBE-274E-40E513BBAB23}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Viewports">
-      <UniqueIdentifier>{c1d6df2f-fee8-43a0-acf2-0f032c418945}</UniqueIdentifier>
+    <Filter Include="main">
+      <UniqueIdentifier>{6A7F9A7C-56B6-9B0D-FFA2-8110EBB8170F}</UniqueIdentifier>
     </Filter>
-    <Filter Include="System">
-      <UniqueIdentifier>{7a7cc24e-568d-427c-903b-fceae1687176}</UniqueIdentifier>
+    <Filter Include="main\imGuiDevice">
+      <UniqueIdentifier>{64B92020-50B2-3F72-79E4-24F7653C1F7E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="scene_editor">
+      <UniqueIdentifier>{F9512F48-E5B4-BEEC-8E3A-F7A27A7C8A6F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="simulation">
+      <UniqueIdentifier>{AAA8E696-9660-28E4-FF67-0140EB3EC3D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="viewport_manager">
+      <UniqueIdentifier>{9F251ACC-8B1E-391E-B450-1EA3A0A8182A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="viewports">
+      <UniqueIdentifier>{3857F206-A4C1-A67D-EDFF-572359A984D2}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="src\external\ImGui\LICENSE.txt" />
+    <ClInclude Include="src\core_editor.h" />
+    <ClInclude Include="src\editor.h" />
+    <ClInclude Include="src\external\ImGui\imconfig.h">
+      <Filter>external\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\external\ImGui\imgui.h">
+      <Filter>external\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\external\ImGui\imgui_impl_dx11.h">
+      <Filter>external\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\external\ImGui\imgui_impl_vulkan.h">
+      <Filter>external\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\external\ImGui\imgui_impl_win32.h">
+      <Filter>external\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\external\ImGui\imgui_internal.h">
+      <Filter>external\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\external\ImGui\imstb_rectpack.h">
+      <Filter>external\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\external\ImGui\imstb_textedit.h">
+      <Filter>external\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\external\ImGui\imstb_truetype.h">
+      <Filter>external\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\main\imGuiDevice\ImGuiDevice.h">
+      <Filter>main\imGuiDevice</Filter>
+    </ClInclude>
+    <ClInclude Include="src\main\imGuiDevice\ImGuiDevice_vk.h">
+      <Filter>main\imGuiDevice</Filter>
+    </ClInclude>
+    <ClInclude Include="src\scene_editor.h" />
+    <ClInclude Include="src\simulation.h" />
+    <ClInclude Include="src\viewport_manager.h" />
+    <ClInclude Include="src\viewports\AssetViewport.h">
+      <Filter>viewports</Filter>
+    </ClInclude>
+    <ClInclude Include="src\viewports\EntityInspectorViewport.h">
+      <Filter>viewports</Filter>
+    </ClInclude>
+    <ClInclude Include="src\viewports\MaterialViewport.h">
+      <Filter>viewports</Filter>
+    </ClInclude>
+    <ClInclude Include="src\viewports\SceneEditorViewport.h">
+      <Filter>viewports</Filter>
+    </ClInclude>
+    <ClInclude Include="src\viewports\SceneHierarchyViewport.h">
+      <Filter>viewports</Filter>
+    </ClInclude>
+    <ClInclude Include="src\viewports\SimulationToolsViewport.h">
+      <Filter>viewports</Filter>
+    </ClInclude>
+    <ClInclude Include="src\viewports\SimulationViewport.h">
+      <Filter>viewports</Filter>
+    </ClInclude>
+    <ClInclude Include="src\viewports\TexturePickerViewport.h">
+      <Filter>viewports</Filter>
+    </ClInclude>
+    <ClInclude Include="src\viewports\Viewport.h">
+      <Filter>viewports</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\external\ImGui\imgui.cpp">
+      <Filter>external\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\external\ImGui\imgui_demo.cpp">
+      <Filter>external\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\external\ImGui\imgui_draw.cpp">
+      <Filter>external\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\external\ImGui\imgui_impl_dx11.cpp">
+      <Filter>external\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\external\ImGui\imgui_impl_vulkan.cpp">
+      <Filter>external\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\external\ImGui\imgui_impl_win32.cpp">
+      <Filter>external\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\external\ImGui\imgui_widgets.cpp">
+      <Filter>external\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\main\Main.cpp">
+      <Filter>main</Filter>
+    </ClCompile>
+    <ClCompile Include="src\main\core_editor.cpp">
+      <Filter>main</Filter>
+    </ClCompile>
+    <ClCompile Include="src\main\editor.cpp">
+      <Filter>main</Filter>
+    </ClCompile>
+    <ClCompile Include="src\main\imGuiDevice\ImGuiDevice.cpp">
+      <Filter>main\imGuiDevice</Filter>
+    </ClCompile>
+    <ClCompile Include="src\main\imGuiDevice\ImGuiDevice_vk.cpp">
+      <Filter>main\imGuiDevice</Filter>
+    </ClCompile>
+    <ClCompile Include="src\scene_editor\scene_editor.cpp">
+      <Filter>scene_editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\simulation\simulation.cpp">
+      <Filter>simulation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\viewport_manager\viewport_manager.cpp">
+      <Filter>viewport_manager</Filter>
+    </ClCompile>
+    <ClCompile Include="src\viewports\AssetViewport.cpp">
+      <Filter>viewports</Filter>
+    </ClCompile>
+    <ClCompile Include="src\viewports\EntityInspectorViewport.cpp">
+      <Filter>viewports</Filter>
+    </ClCompile>
+    <ClCompile Include="src\viewports\MaterialViewport.cpp">
+      <Filter>viewports</Filter>
+    </ClCompile>
+    <ClCompile Include="src\viewports\SceneEditorViewport.cpp">
+      <Filter>viewports</Filter>
+    </ClCompile>
+    <ClCompile Include="src\viewports\SceneHierarchyViewport.cpp">
+      <Filter>viewports</Filter>
+    </ClCompile>
+    <ClCompile Include="src\viewports\SimulationToolsViewport.cpp">
+      <Filter>viewports</Filter>
+    </ClCompile>
+    <ClCompile Include="src\viewports\SimulationViewport.cpp">
+      <Filter>viewports</Filter>
+    </ClCompile>
+    <ClCompile Include="src\viewports\TexturePickerViewport.cpp">
+      <Filter>viewports</Filter>
+    </ClCompile>
+    <ClCompile Include="src\viewports\Viewport.cpp">
+      <Filter>viewports</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

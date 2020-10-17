@@ -2,3 +2,5 @@
 bin/
 *.cso
 *.log
+*.sln
+*.vcxproj

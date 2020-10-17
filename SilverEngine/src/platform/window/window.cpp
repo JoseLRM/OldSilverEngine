@@ -33,7 +33,7 @@ namespace sv {
 
 	// WINDOWS
 
-#ifdef SV_PLATFORM_WINDOWS
+#ifdef SV_PLATFORM_WIN
 
 	static WindowProc g_UserProc = nullptr;
 
@@ -217,7 +217,7 @@ namespace sv {
 
 	Result window_initialize(WindowStyle s, const vec4u& bounds, const wchar* title, const wchar* iconFilePath)
 	{
-#ifdef SV_PLATFORM_WINDOWS
+#ifdef SV_PLATFORM_WIN
 
 		// Register class
 		WNDCLASSW wndClass;
@@ -288,7 +288,7 @@ namespace sv {
 
 		if (g_Bounds.x != g_BoundsNew.x || g_Bounds.y != g_BoundsNew.y || g_Bounds.z != g_BoundsNew.z || g_Bounds.w != g_BoundsNew.w) {
 			g_Bounds = g_BoundsNew;
-#ifdef SV_PLATFORM_WINDOWS
+#ifdef SV_PLATFORM_WIN
 			vec4i bounds = window_adjusted_bounds(GetWindowLongPtr((HWND)g_WindowHandle, GWL_STYLE));
 			SetWindowPos((HWND)g_WindowHandle, 0u, bounds.x, bounds.y, bounds.z, bounds.w, 0);
 #endif
@@ -313,7 +313,7 @@ namespace sv {
 
 			g_Style = g_StyleNew;
 
-#ifdef SV_PLATFORM_WINDOWS
+#ifdef SV_PLATFORM_WIN
 			// Set Windows style
 			DWORD style = window_parse_style(g_Style);
 			if (maximize) {
@@ -398,7 +398,7 @@ namespace sv {
 		filePath = filePathStr.c_str();
 #endif
 
-#ifdef SV_PLATFORM_WINDOWS
+#ifdef SV_PLATFORM_WIN
 		
 		auto icon = LoadImageW(0, filePath, IMAGE_ICON, 0, 0, LR_LOADFROMFILE | LR_DEFAULTSIZE | LR_SHARED | LR_LOADTRANSPARENT);
 		if (icon == NULL) return Result_PlatformError;
@@ -451,7 +451,7 @@ namespace sv {
 
 	vec2u window_desktop_size()
 	{
-#ifdef SV_PLATFORM_WINDOWS
+#ifdef SV_PLATFORM_WIN
 		HWND desktop = GetDesktopWindow();
 		RECT rect;
 		GetWindowRect(desktop, &rect);
@@ -459,7 +459,7 @@ namespace sv {
 #endif
 	}
 
-#ifdef SV_PLATFORM_WINDOWS
+#ifdef SV_PLATFORM_WIN
 
 	void window_userproc_set(WindowProc userProc)
 	{

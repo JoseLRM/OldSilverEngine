@@ -44,7 +44,7 @@ namespace sv {
 
 #include "platform/platform_impl.h"
 
-#ifdef SV_PLATFORM_WINDOWS
+#ifdef SV_PLATFORM_WIN
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
 
@@ -303,7 +303,7 @@ namespace sv {
 		SwapChain					swapChain;
 		VmaAllocator				allocator;
 
-#if VULKAN_VALIDATION_LAYERS
+#ifdef SV_VULKAN_VALIDATION_LAYERS
 		VkDebugUtilsMessengerEXT	debug = VK_NULL_HANDLE;
 #endif
 

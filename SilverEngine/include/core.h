@@ -1,7 +1,5 @@
 #pragma once
 
-#include "..//config.h"
-
 #ifndef SV_DEBUG
 #define NDEBUG
 #endif
