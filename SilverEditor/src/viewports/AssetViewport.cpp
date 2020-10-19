@@ -10,8 +10,8 @@ namespace sve {
 		m_AssetFolder.name = "assets";
 		m_AssetFolder.path = "assets";
 
-#ifdef SV_SRC_PATH
-		m_AssetFolder.path = SV_SRC_PATH + m_AssetFolder.name;
+#ifdef SV_RES_PATH
+		m_AssetFolder.path = SV_RES_PATH + m_AssetFolder.name;
 #endif
 		m_CurrentFolder = &m_AssetFolder;
 

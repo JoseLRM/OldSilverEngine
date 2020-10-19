@@ -36,8 +36,8 @@ namespace sv {
 		// Create folder path
 		g_FolderPath = assetsFolderPath;
 
-#ifdef SV_SRC_PATH
-		g_FolderPath = SV_SRC_PATH + g_FolderPath;
+#ifdef SV_RES_PATH
+		g_FolderPath = SV_RES_PATH + g_FolderPath;
 #endif
 
 		// Create Assets
@@ -53,21 +53,21 @@ namespace sv {
 		// Free textures
 		for (TextureAsset_internal* tex : g_ActiveTextures) {
 			res = assets_destroy(tex);
-			if (res != Result_Success) svLogError("Can't destroy texture: Error code %u", res);
+			if (res != Result_Success) SV_LOG_ERROR("Can't destroy texture: Error code %u", res);
 			g_TextureAllocator.destroy(tex);
 		}
 
 		// Free materials
 		for (MaterialAsset_internal* mat : g_ActiveMaterials) {
 			res = assets_destroy(mat);
-			if (res != Result_Success) svLogError("Can't destroy material: Error code %u", res);
+			if (res != Result_Success) SV_LOG_ERROR("Can't destroy material: Error code %u", res);
 			g_MaterialAllocator.destroy(mat);
 		}
 
 		// Free shader libraries
 		for (ShaderLibraryAsset_internal* lib : g_ActiveShaderLibraries) {
 			res = assets_destroy(lib);
-			if (res != Result_Success) svLogError("Can't destroy shader library: Error code %u", res);
+			if (res != Result_Success) SV_LOG_ERROR("Can't destroy shader library: Error code %u", res);
 			g_ShaderLibraryAllocator.destroy(lib);
 		}
 
@@ -152,12 +152,12 @@ namespace sv {
 					auxRes = assets_destroy(*it);
 
 					if (auxRes != Result_Success) {
-						svLogError("Can't destroy texture '%s'", tex->path);
+						SV_LOG_ERROR("Can't destroy texture '%s'", tex->path);
 					}
 					g_AssetMap[tex->path].pInternal = nullptr;
 					g_TextureAllocator.destroy(tex);
 
-					svLog("Texture freed: '%s'", tex->path);
+					SV_LOG_INFO("Texture freed: '%s'", tex->path);
 
 					it = g_ActiveTextures.erase(it);
 				}
@@ -227,7 +227,7 @@ namespace sv {
 									TextureAsset_internal& tex = *reinterpret_cast<TextureAsset_internal*>(asset.pInternal);
 									svCheck(assets_create(&tex, assetPath.c_str()));
 
-									svLog("Texture updated: '%s'", path.c_str());
+									SV_LOG_INFO("Texture updated: '%s'", path.c_str());
 								}
 								break;
 								}
@@ -257,7 +257,7 @@ namespace sv {
 	{
 		// Check if assets folder exists
 		if (!fs::exists(g_FolderPath.c_str())) {
-			svThrow("Asset folder not found '%s'", g_FolderPath.c_str());
+			SV_LOG_ERROR("Asset folder not found '%s'", g_FolderPath.c_str());
 			return Result_NotFound;
 		}
 
@@ -279,7 +279,7 @@ namespace sv {
 		auto it = g_AssetMap.find(filePath);
 
 		if (it == g_AssetMap.end()) {
-			svLogError("%s '%s' not found", assetTypeName, filePath);
+			SV_LOG_ERROR("%s '%s' not found", assetTypeName, filePath);
 			return Result_NotFound;
 		}
 
@@ -292,7 +292,7 @@ namespace sv {
 
 			const char* absoluteFilePath = filePath;
 
-#ifdef SV_SRC_PATH
+#ifdef SV_RES_PATH
 			std::string filePathStr = absoluteFilePath;
 			filePathStr = g_FolderPath + filePathStr;
 			absoluteFilePath = filePathStr.c_str();
@@ -317,7 +317,7 @@ namespace sv {
 			// Save allocated ptr
 			*pInternal = obj;
 
-			svLog("%s loaded: '%s'", assetTypeName, obj->path);
+			SV_LOG_INFO("%s loaded: '%s'", assetTypeName, obj->path);
 
 		}
 

@@ -9,27 +9,22 @@
 #include "platform/input/input_internal.h"
 #include "platform/window/window_internal.h"
 #include "task_system/task_system_internal.h"
-#include "console/console_internal.h"
+#include "logging/logging_internal.h"
 #include "high_level/asset_system/asset_system_internal.h"
 
-#define svLog(x, ...) sv::console_log(sv::LoggingStyle_Blue | sv::LoggingStyle_Red | sv::LoggingStyle_Green | sv::LoggingStyle_BackgroundBlue, "[ENGINE] "#x, __VA_ARGS__)
-#define svLogWarning(x, ...) sv::console_log(sv::LoggingStyle_Blue | sv::LoggingStyle_Red | sv::LoggingStyle_Green | sv::LoggingStyle_BackgroundBlue, "[ENGINE_WARNING] "#x, __VA_ARGS__)
-#define svLogError(x, ...) sv::console_log(sv::LoggingStyle_Red, "[ENGINE_ERROR] "#x, __VA_ARGS__)
-
-#define svCatch catch (Exception e) { \
-					sv::console_log_error(true, e.title.c_str(), "%s\nFile: %s.\nLine %u", e.desc.c_str(), e.file.c_str(), e.line);\
-					return Result_UnknownError;\
-				}\
-				catch (std::exception e) {\
-					sv::console_log_error(true, "STD Exception", e.what());\
+#define svCatch catch (std::exception e) {\
+					SV_LOG_ERROR("STD Exception: %s", e.what()); \
+					sv::show_message(L"STD Exception", sv::parse_wstring(e.what()).c_str(), sv::MessageStyle_IconError | sv::MessageStyle_Ok);\
 					return Result_UnknownError;\
 				}\
 				catch (int i) {\
-					sv::console_log_error(true, "Unknown Exception", "%i", i);\
+					SV_LOG_ERROR("Unknown Exception %i", i); \
+					sv::show_message(L"Unknown Exception", std::to_wstring(i).c_str(), sv::MessageStyle_IconError | sv::MessageStyle_Ok);\
 					return Result_UnknownError;\
 				}\
 				catch (...) {\
-					sv::console_log_error(true, "Unknown Error", "No description...");\
+					SV_LOG_ERROR("Unknown Exception"); \
+					sv::show_message(L"Unknown Exception", L"", sv::MessageStyle_IconError | sv::MessageStyle_Ok);\
 					return Result_UnknownError;\
 				}
 
@@ -48,8 +43,7 @@ namespace sv {
 
 	Result engine_initialize(const InitializationDesc* d)
 	{
-		SV_ASSERT(d != nullptr);
-		console_clear();
+		if (d == nullptr) return Result_InvalidUsage;
 
 		// Initialization Parameters
 		const InitializationDesc& desc = *d;
@@ -61,9 +55,10 @@ namespace sv {
 		// SYSTEMS
 		try {
 
-			svCheck(console_initialize(desc.consoleShow, desc.logFolder));
+			svCheck(logging_initialize());
 
-			svLog("Initializing %s", g_Name.c_str());
+			SV_LOG_CLEAR();
+			SV_LOG_INFO("Initializing %s", g_Name.c_str());
 
 			svCheck(task_initialize(desc.minThreadsCount));
 			svCheck(assets_initialize(desc.assetsFolderPath));
@@ -78,8 +73,8 @@ namespace sv {
 		}
 		svCatch;
 
-		svLog("Initialized successfuly");
-		sv::console_log_separator();
+		SV_LOG_INFO("Initialized successfuly");
+		SV_LOG_SEPARATOR();
 
 		return Result_Success;
 	}
@@ -128,8 +123,8 @@ namespace sv {
 
 	Result engine_close()
 	{
-		console_log_separator();
-		svLog("Closing %s", g_Name.c_str());
+		SV_LOG_SEPARATOR();
+		SV_LOG_INFO("Closing %s", g_Name.c_str());
 
 		// APPLICATION
 		try {
@@ -142,7 +137,7 @@ namespace sv {
 			svCheck(graphics_close());
 			svCheck(window_close());
 			svCheck(task_close());
-			svCheck(console_close());
+			svCheck(logging_close());
 		}
 		svCatch;
 

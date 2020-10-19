@@ -175,7 +175,7 @@ namespace sv {
 			return VK_FORMAT_B8G8R8A8_SRGB;
 
 		default:
-			svLogError("Invalid Format");
+			SV_LOG_ERROR("Invalid Format");
 			return VK_FORMAT_UNDEFINED;
 		}
 	}
@@ -352,7 +352,7 @@ namespace sv {
 			return Format_B8G8R8A8_SRGB;
 
 		default:
-			svLogError("Invalid Format");
+			SV_LOG_ERROR("Invalid Format");
 			return Format_Unknown;
 		}
 	}
@@ -371,7 +371,7 @@ namespace sv {
 		case GraphicsTopology_TriangleStrip:
 			return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
 		default:
-			svLogError("Unknown Topology");
+			SV_LOG_ERROR("Unknown Topology");
 			return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 		}
 	}
@@ -450,7 +450,7 @@ namespace sv {
 		case GPUImageLayout_Present:
 			return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 		default:
-			svLogError("Unknown Image Layout");
+			SV_LOG_ERROR("Unknown Image Layout");
 			return VK_IMAGE_LAYOUT_GENERAL;
 		}
 	}
@@ -734,7 +734,7 @@ namespace sv {
 			flags |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 			break;
 		default:
-			svLogError("Undefined Image Layout");
+			SV_LOG_ERROR("Undefined Image Layout");
 			break;
 		}
 
@@ -763,7 +763,7 @@ namespace sv {
 			flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 			break;
 		default:
-			svLogError("Undefined Image Layout");
+			SV_LOG_ERROR("Undefined Image Layout");
 			break;
 		}
 
@@ -795,7 +795,7 @@ namespace sv {
 			}
 			break;
 		default:
-			svLogError("Undefined Image Layout");
+			SV_LOG_ERROR("Undefined Image Layout");
 			break;
 		}
 
@@ -870,7 +870,7 @@ namespace sv {
 
 				ShaderAttributeType svType = graphics_vulkan_parse_spirvtype(type);
 				if (svType == ShaderAttributeType_Unknown) {
-					svLogError("Unknown Material type");
+					SV_LOG_ERROR("Unknown Material type");
 					continue;
 				}
 

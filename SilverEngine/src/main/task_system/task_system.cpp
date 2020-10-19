@@ -117,7 +117,7 @@ namespace sv {
 		ui32 numThreads = std::thread::hardware_concurrency();
 		if (numThreads < g_MinThreads) numThreads = g_MinThreads;
 
-		svLog("Reserving %u threads", numThreads);
+		SV_LOG_INFO("Reserving %u threads", numThreads);
 
 		g_ThreadPool.Reserve(numThreads);
 		return Result_Success;

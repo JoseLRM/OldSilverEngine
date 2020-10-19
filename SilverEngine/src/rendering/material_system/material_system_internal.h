@@ -2,13 +2,6 @@
 
 #include "rendering/material_system.h"
 
-#define svThrow(x) SV_THROW("MATERIAL_SYSTEM_ERROR", x)
-#define svLog(x, ...) sv::console_log(sv::LoggingStyle_Blue | sv::LoggingStyle_Red, "[MATERIAL_SYSTEM] "#x, __VA_ARGS__)
-#define svLogWarning(x, ...) sv::console_log(sv::LoggingStyle_Blue | sv::LoggingStyle_Red, "[MATERIAL_SYSTEM_WARNING] "#x, __VA_ARGS__)
-#define svLogError(x, ...) sv::console_log(sv::LoggingStyle_Red, "[MATERIAL_SYSTEM_ERROR] "#x, __VA_ARGS__)
-
-#define svLogCompile(x, ...) sv::console_log(sv::LoggingStyle_Red, "[SHADER COMPILE] "#x, __VA_ARGS__)
-
 namespace sv {
 
 	struct ShaderIndices {

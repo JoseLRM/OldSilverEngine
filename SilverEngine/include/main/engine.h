@@ -23,8 +23,6 @@ namespace sv {
 		const wchar*	windowTitle;
 		WindowStyle		windowStyle;
 		const wchar*	iconFilePath;
-		bool			consoleShow;
-		const char*		logFolder;
 		ui32			minThreadsCount;
 		const char*		assetsFolderPath;
 

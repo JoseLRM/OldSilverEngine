@@ -157,7 +157,7 @@ namespace sv {
 			}
 
 			if (reg.ID == invalidCompID) {
-				svLogError("Component '%s' doesn't exist", reg.name.c_str());
+				SV_LOG_ERROR("Component '%s' doesn't exist", reg.name.c_str());
 				return Result_InvalidFormat;
 			}
 
@@ -629,7 +629,7 @@ namespace sv {
 
 	void ecs_entities_destroy(ECS* ecs, Entity const* entities, ui32 count)
 	{
-		svLogError("TODO->ecs_entities_destroy");
+		SV_LOG_ERROR("TODO->ecs_entities_destroy");
 	}
 
 	ui32 ecs_entity_count(ECS* ecs_)

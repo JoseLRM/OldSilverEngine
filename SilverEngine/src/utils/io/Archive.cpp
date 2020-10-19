@@ -45,8 +45,8 @@ namespace sv {
 
 	Result ArchiveO::save_file(const char* filePath, bool append)
 	{
-#ifdef SV_SRC_PATH
-		std::string filePathStr = SV_SRC_PATH;
+#ifdef SV_RES_PATH
+		std::string filePathStr = SV_RES_PATH;
 		filePathStr += filePath;
 		filePath = filePathStr.c_str();
 #endif
@@ -102,8 +102,8 @@ namespace sv {
 	{
 		std::ifstream stream;
 
-#ifdef SV_SRC_PATH
-		std::string filePathStr = SV_SRC_PATH;
+#ifdef SV_RES_PATH
+		std::string filePathStr = SV_RES_PATH;
 		filePathStr += filePath;
 		filePath = filePathStr.c_str();
 #endif

@@ -22,8 +22,8 @@ namespace sv {
 		seed += 100;
 		std::string filePath = std::to_string(random);
 
-#ifdef SV_SRC_PATH
-		filePath = SV_SRC_PATH + filePath;
+#ifdef SV_RES_PATH
+		filePath = SV_RES_PATH + filePath;
 #endif
 
 		return filePath;
@@ -102,8 +102,8 @@ namespace sv {
 		{
 			const char* includePath = "library/shader_utils";
 
-#ifdef SV_SRC_PATH
-			std::string includePathStr = SV_SRC_PATH;
+#ifdef SV_RES_PATH
+			std::string includePathStr = SV_RES_PATH;
 			includePathStr += includePath;
 			includePath = includePathStr.c_str();
 #endif

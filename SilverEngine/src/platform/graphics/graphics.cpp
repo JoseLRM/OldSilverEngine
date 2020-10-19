@@ -27,14 +27,14 @@ namespace sv {
 		Result res;
 
 		// Initialize API
-		svLog("Trying to initialize vulkan device");
+		SV_LOG_INFO("Trying to initialize vulkan device");
 		graphics_vulkan_device_prepare(g_Device);
 		res = g_Device.initialize();
 		
 		if (res != Result_Success) {
-			svLogError("Can't initialize vulkan device (Error code: %u)", res);
+			SV_LOG_ERROR("Can't initialize vulkan device (Error code: %u)", res);
 		}
-		else svLog("Vulkan device initialized successfuly");
+		else SV_LOG_INFO("Vulkan device initialized successfuly");
 
 		// Create default states
 		{
@@ -125,31 +125,31 @@ namespace sv {
 			ui32 count;
 
 			count = g_Device.bufferAllocator->unfreed_count();
-			if (count) svLogWarning("There are %u unfreed buffers", count);
+			if (count) SV_LOG_WARNING("There are %u unfreed buffers", count);
 			
 			count = g_Device.imageAllocator->unfreed_count();
-			if (count) svLogWarning("There are %u unfreed images", count);
+			if (count) SV_LOG_WARNING("There are %u unfreed images", count);
 
 			count = g_Device.samplerAllocator->unfreed_count();
-			if (count) svLogWarning("There are %u unfreed samplers", count);
+			if (count) SV_LOG_WARNING("There are %u unfreed samplers", count);
 
 			count = g_Device.shaderAllocator->unfreed_count();
-			if (count) svLogWarning("There are %u unfreed shaders", count);
+			if (count) SV_LOG_WARNING("There are %u unfreed shaders", count);
 
 			count = g_Device.renderPassAllocator->unfreed_count();
-			if (count) svLogWarning("There are %u unfreed render passes", count);
+			if (count) SV_LOG_WARNING("There are %u unfreed render passes", count);
 
 			count = g_Device.inputLayoutStateAllocator->unfreed_count();
-			if (count) svLogWarning("There are %u unfreed input layout states", count);
+			if (count) SV_LOG_WARNING("There are %u unfreed input layout states", count);
 
 			count = g_Device.blendStateAllocator->unfreed_count();
-			if (count) svLogWarning("There are %u unfreed blend states", count);
+			if (count) SV_LOG_WARNING("There are %u unfreed blend states", count);
 
 			count = g_Device.depthStencilStateAllocator->unfreed_count();
-			if (count) svLogWarning("There are %u unfreed depth stencil states", count);
+			if (count) SV_LOG_WARNING("There are %u unfreed depth stencil states", count);
 
 			count = g_Device.rasterizerStateAllocator->unfreed_count();
-			if (count) svLogWarning("There are %u unfreed rasterizer states", count);
+			if (count) SV_LOG_WARNING("There are %u unfreed rasterizer states", count);
 
 			g_Device.bufferAllocator->clear();
 			g_Device.imageAllocator->clear();
@@ -375,7 +375,7 @@ namespace sv {
 		case Format_BC5_UNORM:
 		case Format_BC5_SNORM:
 		default:
-			svLog("Unknown format size");
+			SV_LOG_INFO("Unknown format size");
 			return 0u;
 		}
 	}
@@ -406,7 +406,7 @@ namespace sv {
 	{
 #ifdef SV_DEBUG
 		if (desc->usage == ResourceUsage_Static && desc->CPUAccess & CPUAccess_Write) {
-			SV_THROW("GRAPHICS_ERROR", "Buffer with static usage can't have CPU access");
+			SV_LOG_ERROR("Buffer with static usage can't have CPU access");
 			return Result_InvalidUsage;
 		}
 #endif

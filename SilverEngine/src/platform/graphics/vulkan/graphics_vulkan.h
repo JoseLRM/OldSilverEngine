@@ -55,7 +55,7 @@ namespace sv {
 #include "..//src/external/vk_mem_alloc.h"
 
 #ifdef SV_DEBUG
-#define vkAssert(x) if((x) != VK_SUCCESS) SV_THROW("VulkanError", #x)
+#define vkAssert(x) if((x) != VK_SUCCESS) SV_ASSERT("VulkanError", #x)
 #else
 #define vkAssert(x) x
 #endif
@@ -303,7 +303,7 @@ namespace sv {
 		SwapChain					swapChain;
 		VmaAllocator				allocator;
 
-#ifdef SV_VULKAN_VALIDATION_LAYERS
+#ifdef SV_ENABLE_VULKAN_VALIDATION_LAYERS
 		VkDebugUtilsMessengerEXT	debug = VK_NULL_HANDLE;
 #endif
 

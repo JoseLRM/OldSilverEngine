@@ -32,13 +32,13 @@ namespace sv {
 		ui32 count;
 
 		count = g_ShaderLibraries.unfreed_count();
-		if (count) svLogWarning("There are %u unfreed Shader Libraries", count);
+		if (count) SV_LOG_WARNING("There are %u unfreed Shader Libraries", count);
 
 		count = g_Materials.unfreed_count();
-		if (count) svLogWarning("There are %u unfreed Materials", count);
+		if (count) SV_LOG_WARNING("There are %u unfreed Materials", count);
 
 		count = g_CameraBuffers.unfreed_count();
-		if (count) svLogWarning("There are %u unfreed Camera buffers", count);
+		if (count) SV_LOG_WARNING("There are %u unfreed Camera buffers", count);
 
 		g_ShaderLibraries.clear();
 		g_Materials.clear();
@@ -68,8 +68,8 @@ namespace sv {
 
 		ShaderLibrary_internal lib;
 
-#ifdef SV_SRC_PATH
-		std::string filePathStr = SV_SRC_PATH;
+#ifdef SV_RES_PATH
+		std::string filePathStr = SV_RES_PATH;
 		filePathStr += filePath;
 		filePath = filePathStr.c_str();
 #endif
@@ -205,7 +205,7 @@ namespace sv {
 		PARSE_SHADER_LIBRARY();
 
 		if (!lib.materials.empty()) {
-			svLogError("Can't destroy a Shader Library with Materials");
+			SV_LOG_ERROR("Can't destroy a Shader Library with Materials");
 			return Result_InvalidUsage;
 		}
 
@@ -246,6 +246,7 @@ namespace sv {
 		ASSERT_PTR();
 		PARSE_SHADER_LIBRARY();
 		// TODO: return lib.name
+		return "";
 	}
 
 	size_t ShaderLibrary::getHashCode() const noexcept
@@ -253,6 +254,7 @@ namespace sv {
 		ASSERT_PTR();
 		PARSE_SHADER_LIBRARY();
 		// TODO: return lib.hashCode
+		return 0u;
 	}
 
 	// MATERIAL

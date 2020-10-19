@@ -48,7 +48,7 @@ namespace sve {
 	{
 		Viewport* vp = viewport_get(name);
 		if (vp != nullptr) {
-			sv::console_log("The viewport '%s' already exist", name);
+			SV_LOG_INFO("The viewport '%s' already exist", name);
 			return;
 		}
 
@@ -66,7 +66,7 @@ namespace sve {
 	{
 		auto it = g_Viewports.find(name);
 		if (g_Viewports.end() == it) {
-			sv::console_log("Can't destroy the viewport '%s', doesn't exist", name);
+			SV_LOG_INFO("Can't destroy the viewport '%s', doesn't exist", name);
 			return;
 		}
 		delete it->second;

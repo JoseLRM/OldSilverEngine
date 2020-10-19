@@ -184,7 +184,7 @@ namespace sv {
 					case ShaderTag_VSend:
 					case ShaderTag_PSend:
 						if ((define.tag == ShaderTag_VSend && currentShader != ShaderType_Vertex) || (define.tag == ShaderTag_PSend && currentShader != ShaderType_Pixel)) {
-							svLogCompile("Can't end a shader with diferent type");
+							SV_LOG_INFO("Can't end a shader with diferent type");
 							return Result_CompileError;
 						}
 						end = true;
@@ -206,21 +206,21 @@ namespace sv {
 						{
 						case sv::ShaderType_Vertex:
 							if (VSBin.size()) {
-								svLogCompile("Can't have more than one vertex shader code");
+								SV_LOG_INFO("Can't have more than one vertex shader code");
 								return Result_CompileError;
 							}
 							pBin = &VSBin;
 							break;
 						case sv::ShaderType_Pixel:
 							if (PSBin.size()) {
-								svLogCompile("Can't have more than one pixel shader code");
+								SV_LOG_INFO("Can't have more than one pixel shader code");
 								return Result_CompileError;
 							}
 							pBin = &PSBin;
 							break;
 						case sv::ShaderType_Geometry:
 							if (GSBin.size()) {
-								svLogCompile("Can't have more than one geometry shader code");
+								SV_LOG_INFO("Can't have more than one geometry shader code");
 								return Result_CompileError;
 							}
 							pBin = &GSBin;
@@ -266,7 +266,7 @@ namespace sv {
 
 					case ShaderTag_VSend:
 					case ShaderTag_PSend:
-						svLogCompile("Can't call end without calling begin");
+						SV_LOG_INFO("Can't call end without calling begin");
 						break;
 
 					case ShaderTag_Unknown:
@@ -276,7 +276,7 @@ namespace sv {
 						defStr.resize(lineSize + 1u);
 						memcpy(defStr.data(), line, lineSize);
 						defStr.back() = '\0';
-						svLogCompile("Unknown shader tag '%s'", defStr.c_str());
+						SV_LOG_INFO("Unknown shader tag '%s'", defStr.c_str());
 						break;
 					}
 					}
@@ -287,7 +287,7 @@ namespace sv {
 				defStr.resize(lineSize + 1u);
 				memcpy(defStr.data(), line, lineSize);
 				defStr.back() = '\0';
-				svLogCompile("Unknown line outside shader code '%s'", defStr.c_str());
+				SV_LOG_INFO("Unknown line outside shader code '%s'", defStr.c_str());
 				break;
 			}
 
@@ -297,11 +297,11 @@ namespace sv {
 
 		// Check some errors
 		if (VSBin.empty()) {
-			svLogCompile("Shader must have vertex shader code");
+			SV_LOG_INFO("Shader must have vertex shader code");
 			return Result_CompileError;
 		}
 		if (name.empty()) {
-			svLogCompile("Shader must have name");
+			SV_LOG_INFO("Shader must have name");
 			return Result_CompileError;
 		}
 
@@ -360,7 +360,7 @@ namespace sv {
 
 			Result binResult = bin_write(hashCode, archive);
 			if (result_fail(binResult)) {
-				svLogCompile("Can't generate bin data, error code = %u", binResult);
+				SV_LOG_INFO("Can't generate bin data, error code = %u", binResult);
 				return binResult;
 			}
 		}

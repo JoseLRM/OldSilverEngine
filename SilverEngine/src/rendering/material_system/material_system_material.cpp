@@ -68,7 +68,7 @@ namespace sv {
 				desc.size = mat.shaderLibrary->bufferSizes[i];
 
 				if (graphics_buffer_create(&desc, &buffer.buffer) != Result_Success) {
-					svLogError("Can't create material buffer");
+					SV_LOG_ERROR("Can't create material buffer");
 					return;
 				}
 			}

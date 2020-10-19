@@ -119,7 +119,7 @@ namespace sv {
 
 		if (hash != 0u) {
 			if (comp->sprite.texture.load(hash) != Result_Success) {
-				sv::console_log("Texture not found, hashcode: %u", hash);
+				SV_LOG_ERROR("Texture not found, hashcode: %u", hash);
 			}
 		}
 	}

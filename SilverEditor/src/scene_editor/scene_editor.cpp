@@ -254,7 +254,7 @@ namespace sve {
 			g_Camera.position.z = -10.f;
 			break;
 		default:
-			sv::console_log("Unknown editor mode");
+			SV_LOG_INFO("Unknown editor mode");
 			break;
 		}
 		

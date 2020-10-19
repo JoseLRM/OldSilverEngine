@@ -97,7 +97,7 @@ namespace sv {
 			// input
 			ui8 keyCode = (ui8)wParam;
 			if (keyCode > 255) {
-				svLogWarning("Unknown keycode: %u", keyCode);
+				SV_LOG_WARNING("Unknown keycode: %u", keyCode);
 			}
 			else if (~lParam & (1 << 30)) input_key_pressed_add(keyCode);
 
@@ -109,7 +109,7 @@ namespace sv {
 			// input
 			ui8 keyCode = (ui8)wParam;
 			if (keyCode > 255) {
-				svLogWarning("Unknown keycode: %u", keyCode);
+				SV_LOG_WARNING("Unknown keycode: %u", keyCode);
 			}
 			else input_key_released_add(keyCode);
 
@@ -233,7 +233,7 @@ namespace sv {
 		wndClass.style = 0;
 
 		if (!RegisterClassW(&wndClass)) {
-			svThrow("Can't Register Window Class");
+			SV_LOG_ERROR("Can't Register Window Class");
 			return Result_PlatformError;
 		}
 
@@ -263,7 +263,7 @@ namespace sv {
 #endif
 
 		if (g_WindowHandle == 0) {
-			svThrow("Error creating Window class");
+			SV_LOG_ERROR("Error creating Window class");
 			return Result_PlatformError;
 		}
 
@@ -272,7 +272,7 @@ namespace sv {
 			svCheck(window_icon_set(iconFilePath));
 		}
 
-		svLog("Window created");
+		SV_LOG_INFO("Window created");
 
 		return Result_Success;
 	}
@@ -385,15 +385,15 @@ namespace sv {
 
 	void window_aspect_set(float aspect)
 	{
-		svLogError("TODO->window_aspect_set");
+		SV_LOG_ERROR("TODO->window_aspect_set");
 	}
 
 	// ICON
 
 	Result window_icon_set(const wchar* filePath)
 	{
-#ifdef SV_SRC_PATH
-		std::wstring filePathStr = SV_SRC_PATH_W;
+#ifdef SV_RES_PATH
+		std::wstring filePathStr = SV_RES_PATH_W;
 		filePathStr += filePath;
 		filePath = filePathStr.c_str();
 #endif

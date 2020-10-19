@@ -26,13 +26,13 @@ namespace sv {
 		switch (msgSeverity)
 		{
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
-			svLogWarning("[VULKAN] %s", data->pMessage);
+			SV_LOG_WARNING("[VULKAN] %s", data->pMessage);
 			break;
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-			svLogWarning("[VULKAN] %s", data->pMessage);
+			SV_LOG_WARNING("[VULKAN] %s", data->pMessage);
 			break;
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
-			svLogError("[VULKAN] %s", data->pMessage);
+			SV_LOG_ERROR("[VULKAN] %s", data->pMessage);
 			break;
 		}
 		return VK_FALSE;
@@ -127,7 +127,7 @@ namespace sv {
 		g_API = std::make_unique<Graphics_vk>();
 
 		// Instance extensions and validation layers
-#ifdef SV_VULKAN_VALIDATION_LAYERS
+#ifdef SV_ENABLE_VULKAN_VALIDATION_LAYERS
 		g_API->validationLayers.push_back("VK_LAYER_KHRONOS_validation");
 		g_API->extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 #endif
@@ -135,7 +135,7 @@ namespace sv {
 		g_API->extensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
 
 		// Device extensions and validation layers
-#ifdef SV_VULKAN_VALIDATION_LAYERS
+#ifdef SV_ENABLE_VULKAN_VALIDATION_LAYERS
 		g_API->deviceValidationLayers.push_back("VK_LAYER_KHRONOS_validation");
 #endif
 		g_API->deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
@@ -160,7 +160,7 @@ namespace sv {
 					}
 
 					if (!found) {
-						svLogError("InstanceExtension '%s' not found", g_API->extensions[i]);
+						SV_LOG_ERROR("InstanceExtension '%s' not found", g_API->extensions[i]);
 						return Result_GraphicsAPIError;
 					}
 				}
@@ -184,7 +184,7 @@ namespace sv {
 					}
 
 					if (!found) {
-						svLogError("InstanceValidationLayer '%s' not found", g_API->validationLayers[i]);
+						SV_LOG_ERROR("InstanceValidationLayer '%s' not found", g_API->validationLayers[i]);
 						return Result_GraphicsAPIError;
 					}
 				}
@@ -215,7 +215,7 @@ namespace sv {
 		}
 
 		// Initialize validation layers
-#ifdef SV_VULKAN_VALIDATION_LAYERS
+#ifdef SV_ENABLE_VULKAN_VALIDATION_LAYERS
 		{
 			VkDebugUtilsMessengerCreateInfoEXT create_info{};
 			create_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
@@ -264,7 +264,7 @@ namespace sv {
 
 			// Adapter not found
 			if (index == count) {
-				svLogError("Can't find valid adapters for Vulkan");
+				SV_LOG_ERROR("Can't find valid adapters for Vulkan");
 				return Result_GraphicsAPIError;
 			}
 
@@ -363,7 +363,7 @@ namespace sv {
 		{
 			Result res = graphics_vulkan_swapchain_create(0);
 			if (res != Result_Success) {
-				svLogError("Can't create vulkan swapchain");
+				SV_LOG_ERROR("Can't create vulkan swapchain");
 				return res;
 			}
 		}
@@ -408,7 +408,7 @@ namespace sv {
 		// Destroy device and vulkan instance
 		vkDestroyDevice(g_API->device, nullptr);
 
-#ifdef SV_VULKAN_VALIDATION_LAYERS
+#ifdef SV_ENABLE_VULKAN_VALIDATION_LAYERS
 		vkDestroyDebugUtilsMessengerEXT(g_API->instance, g_API->debug);
 #endif
 
@@ -1095,7 +1095,7 @@ namespace sv {
 			VkBool32 supported;
 			vkCheck(vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, adapter.GetFamilyIndex().graphics, g_API->swapChain.surface, &supported));
 			if (!supported) {
-				svLogError("This adapter don't support vulkan swapChain");
+				SV_LOG_ERROR("This adapter don't support vulkan swapChain");
 				return Result_GraphicsAPIError;
 			}
 		}
@@ -1375,7 +1375,8 @@ namespace sv {
 					Shader_vk* vertexShader = reinterpret_cast<Shader_vk*>(state.vertexShader);
 					Shader_vk* pixelShader = reinterpret_cast<Shader_vk*>(state.pixelShader);
 					Shader_vk* geometryShader = reinterpret_cast<Shader_vk*>(state.geometryShader);
-					SV_ASSERT(graphics_vulkan_pipeline_create(p, vertexShader, pixelShader, geometryShader));
+					bool res = graphics_vulkan_pipeline_create(p, vertexShader, pixelShader, geometryShader);
+					SV_ASSERT(res);
 					pipelinePtr = &p;
 
 				}
@@ -1601,7 +1602,7 @@ namespace sv {
 
 			VkResult res = vkAllocateCommandBuffers(g_API->device, &alloc_info, pCmd);
 			if (res != VK_SUCCESS) {
-				svLogError("Can't allocate SingleTime CommandBuffer");
+				SV_LOG_ERROR("Can't allocate SingleTime CommandBuffer");
 				return res;
 			}
 		}
@@ -1615,7 +1616,7 @@ namespace sv {
 
 			VkResult res = vkBeginCommandBuffer(*pCmd, &begin_info);
 			if (res != VK_SUCCESS) {
-				svLogError("Can't begin SingleTime CommandBuffer");
+				SV_LOG_ERROR("Can't begin SingleTime CommandBuffer");
 				vkFreeCommandBuffers(g_API->device, g_API->frames[g_API->currentFrame].transientCommandPool, 1u, pCmd);
 				return res;
 			}

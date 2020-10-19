@@ -15,11 +15,19 @@ workspace "SilverEngine"
 		"Win64",
 	}
 
-	-- CONFIG
+	-- DEBUG CONFIG
 	
+	filter "configurations:not Distribution"
+
 	defines {
-		"SV_VULKAN_VALIDATION_LAYERS"
+		"SV_ENABLE_LOGGING",
+		"SV_ENABLE_ASSERTION",
+		"SV_ENABLE_VULKAN_VALIDATION_LAYERS",
+
+		"SV_RES_PATH=\"../resources/\"",
 	}
+
+	filter {}
 
 	-- PLATFORM
 
@@ -39,7 +47,7 @@ workspace "SilverEngine"
 		optimize "Off"
 		defines {
 			"SV_DEBUG",
-			"SV_SRC_PATH=\"../resources/\""
+			
 		}
 
 	filter "configurations:Release" --release
@@ -54,10 +62,8 @@ workspace "SilverEngine"
 		symbols "Off"
 		optimize "On"
 		defines {
-			"SV_DIST"
-		}
-		undefines {
-			"SV_VULKAN_VALIDATION_LAYERS"
+			"SV_DIST",
+			"NDEBUG"
 		}
 
 

@@ -1,11 +1,11 @@
 #pragma once
 
-#ifndef SV_DEBUG
+#ifdef NDEBUG
 #define NDEBUG
 #endif
 
-#ifdef SV_SRC_PATH
-#define SV_SRC_PATH_W L"" SV_SRC_PATH
+#ifdef SV_RES_PATH
+#define SV_RES_PATH_W L"" SV_RES_PATH
 #endif
 
 // std includes
@@ -84,26 +84,20 @@ namespace sv {
 	inline bool result_okay(Result res) { return res == Result_Success; }
 	inline bool result_fail(Result res) { return res != Result_Success; }
 	
-	// Exception
-	
-	struct Exception {
-		std::string title, desc, file;
-		ui32 line;
-		Exception(const char* type, const char* desc, const char* file, ui32 line)
-			: title(type), desc(desc), file(file), line(line) {}
-	};
-#define SV_THROW(type, desc) throw sv::Exception(type, desc, __FILE__, __LINE__)
-
 	// Ptr Handle
 #define SV_DEFINE_HANDLE(x) struct x { x() = delete; ~x() = delete; }
 }
 
 // macros
 
-#ifdef SV_DEBUG
-#define SV_ASSERT(x) do{ if((x) == false) SV_THROW("Assertion Failed!!", #x); }while(0)
+namespace sv {
+	void throw_assertion(const char* content, ui32 line, const char* file);
+}
+
+#ifdef SV_ENABLE_ASSERTION
+#define SV_ASSERT(x) do{ if (!(x)) { sv::throw_assertion(#x, __LINE__, __FILE__); } } while(0)
 #else
-#define SV_ASSERT(x) x
+#define SV_ASSERT(x)
 #endif
 
 #define svCheck(x) do{ sv::Result __res__ = (x); if(sv::result_fail(__res__)) return __res__; }while(0)
@@ -115,4 +109,4 @@ namespace sv {
 #include "utils/helper.h"
 #include "utils/timer.h"
 #include "utils/math.h"
-#include "main/console.h"
+#include "main/logging.h"

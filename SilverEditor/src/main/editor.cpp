@@ -23,8 +23,6 @@ namespace sve {
 
 		desc.assetsFolderPath = "assets/";
 		desc.minThreadsCount = 2;
-		desc.consoleShow = true;
-		desc.logFolder = "logs/";
 		desc.iconFilePath = L"icon.ico";
 		desc.windowStyle = sv::WindowStyle_Default;
 		desc.windowBounds.x = 0u;
@@ -47,8 +45,8 @@ namespace sve {
 			std::ifstream file;
 
 			std::string path = "ImGuiStyle";
-#ifdef SV_SRC_PATH
-			path = SV_SRC_PATH + path;
+#ifdef SV_RES_PATH
+			path = SV_RES_PATH + path;
 #endif
 
 			file.open(path, std::ios::binary);
@@ -59,7 +57,7 @@ namespace sve {
 				file.close();
 			}
 			else {
-				sv::console_log("ImGui Style", "Style not found");
+				SV_LOG_ERROR("ImGui Style", "Style not found");
 			}
 		}
 
@@ -89,7 +87,7 @@ namespace sve {
 
 			file.close();
 
-			sv::console_log("Saved");
+			SV_LOG_INFO("Saved");
 		}
 	}
 
@@ -180,7 +178,8 @@ namespace sve {
 		}
 		if (sv::input_key(SV_KEY_CONTROL) && sv::input_key_pressed('S')) {
 			sv::Scene& scene = simulation_scene_get();
-			SV_ASSERT(scene.serialize("assets/scenes/Test.scene") == sv::Result_Success);
+			sv::Result res = scene.serialize("assets/scenes/Test.scene");
+			SV_ASSERT(sv::result_okay(res));
 		}
 
 		g_Device->ResizeSwapChain();

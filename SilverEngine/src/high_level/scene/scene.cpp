@@ -26,7 +26,8 @@ namespace sv {
 		vec2u res = other.getResolution();
 		if (res.x != 0u && res.y != 0u) 
 		{
-			SV_ASSERT(setResolution(res.x, res.y) == Result_Success);
+			Result r = setResolution(res.x, res.y);
+			SV_ASSERT(result_okay(r));
 		}
 	}
 
@@ -44,9 +45,11 @@ namespace sv {
 
 	void Camera::clear()
 	{
-		SV_ASSERT(graphics_destroy(m_OffscreenRT) == Result_Success);
+		sv::Result res = graphics_destroy(m_OffscreenRT);
+		SV_ASSERT(result_okay(res));
 		m_OffscreenRT = nullptr;
-		SV_ASSERT(graphics_destroy(m_OffscreenDS) == Result_Success);
+		res = graphics_destroy(m_OffscreenDS);
+		SV_ASSERT(result_okay(res));
 		m_OffscreenDS = nullptr;
 	}
 

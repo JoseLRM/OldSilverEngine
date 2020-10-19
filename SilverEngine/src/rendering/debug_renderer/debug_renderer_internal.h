@@ -2,11 +2,6 @@
 
 #include "rendering/debug_renderer.h"
 
-#define svThrow(x) SV_THROW("DEBUG_RENDERER_ERROR", x)
-#define svLog(x, ...) sv::console_log(sv::LoggingStyle_Blue | sv::LoggingStyle_Red, "[DEBUG_RENDERER] "#x, __VA_ARGS__)
-#define svLogWarning(x, ...) sv::console_log(sv::LoggingStyle_Blue | sv::LoggingStyle_Red, "[DEBUG_RENDERER_WARNING] "#x, __VA_ARGS__)
-#define svLogError(x, ...) sv::console_log(sv::LoggingStyle_Red, "[DEBUG_RENDERER_ERROR] "#x, __VA_ARGS__)
-
 namespace sv {
 	
 	Result debug_renderer_initialize();

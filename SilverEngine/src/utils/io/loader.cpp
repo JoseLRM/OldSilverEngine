@@ -11,8 +11,8 @@ namespace sv {
 	{
 		int w = 0, h = 0, bits = 0;
 
-#ifdef SV_SRC_PATH
-		std::string filePathStr = SV_SRC_PATH;
+#ifdef SV_RES_PATH
+		std::string filePathStr = SV_RES_PATH;
 		filePathStr += filePath;
 		void* data = stbi_load(filePathStr.c_str(), &w, &h, &bits, 4);
 #else
@@ -31,8 +31,8 @@ namespace sv {
 	std::string bin_filepath(size_t hash)
 	{
 		std::string filePath = "bin/" + std::to_string(hash) + ".bin";
-#ifdef SV_SRC_PATH
-		filePath = SV_SRC_PATH + filePath;
+#ifdef SV_RES_PATH
+		filePath = SV_RES_PATH + filePath;
 #endif
 		return filePath;
 	}

@@ -374,7 +374,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		case 3:
 			return 6u;
 		default:
-			svLogError("Unknown list: %u", list);
+			SV_LOG_ERROR("Unknown list: %u", list);
 			return 0u;
 		}
 	}
@@ -471,7 +471,8 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		if (batch.drawCalls.size() <= 1u)
 			return;
 
-		SV_ASSERT(debug_renderer_create_buffer(cmd) == Result_Success);
+		sv::Result result = debug_renderer_create_buffer(cmd);
+		SV_ASSERT(result_okay(result));
 
 		graphics_mode_set(GraphicsPipelineMode_Graphics, cmd);
 		graphics_state_unbind(cmd);

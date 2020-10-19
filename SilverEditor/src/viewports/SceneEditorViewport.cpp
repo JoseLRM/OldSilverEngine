@@ -29,8 +29,6 @@ namespace sve {
 		ImGuiDevice& device = editor_device_get();
 		ImGui::Image(device.ParseImage(offscreen), { size.x, size.y });
 
-		ImGui::PopStyleVar(2u);
-
 		// POPUP
 		if (sv::input_key(SV_KEY_CONTROL)) {
 			if (ImGui::BeginPopupContextWindow("ScenePopup", ImGuiMouseButton_Right)) {
@@ -49,7 +47,9 @@ namespace sve {
 	}
 
 	void SceneEditorViewport::endDisplay()
-	{}
+	{
+		ImGui::PopStyleVar(2u);
+	}
 
 	ImGuiWindowFlags SceneEditorViewport::getWindowFlags()
 	{
