@@ -27,6 +27,7 @@ namespace sve {
 	private:
 		sv::Entity m_Entity = SV_ENTITY_NULL;
 		TexturePickerViewport m_TexturePicker;
+		bool m_EulerRotation = true;
 
 	};
 

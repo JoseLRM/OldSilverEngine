@@ -572,12 +572,8 @@ namespace sv {
 	float math_randomf(ui32 seed, float max);
 	float math_randomf(ui32 seed, float min, float max);
 
-	// Quaternion
-
-	void math_quaternion_to_euler(vec4f* q, vec3f* e);
-	
 	// Matrix
 
-	XMMATRIX math_matrix_view(const vec3f& position, const vec3f& rotation);
+	XMMATRIX math_matrix_view(const vec3f& position, const vec4f& directionQuat);
 
 }

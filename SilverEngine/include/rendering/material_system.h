@@ -89,7 +89,7 @@ namespace sv {
 		void setProjectionMatrix(const XMMATRIX& matrix);
 		void setViewProjectionMatrix(const XMMATRIX& matrix);
 		void setPosition(const vec3f& position);
-		void setDirection(const vec3f& direction);
+		void setDirection(const vec4f& direction);
 
 		void update(CommandList cmd);
 

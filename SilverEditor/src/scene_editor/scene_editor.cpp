@@ -159,6 +159,7 @@ namespace sve {
 		}
 
 		sv::Scene& scene = simulation_scene_get();
+
 		scene.drawCamera(&g_Camera.camera, g_Camera.position, g_Camera.rotation);
 
 		// DEBUG RENDERING
@@ -179,10 +180,10 @@ namespace sve {
 			for (sv::RigidBody2DComponent& body : bodies) {
 
 				sv::Transform trans = sv::ecs_entity_transform_get(scene, body.entity);
-				sv::vec3f position = trans.GetWorldPosition();
-				sv::vec3f scale = trans.GetWorldScale();
+				sv::vec3f position = trans.getWorldPosition();
+				sv::vec3f scale = trans.getWorldScale();
 				//TODO: sv::vec3f rotation = trans.GetWorldRotation();
-				sv::vec3f rotation = trans.GetLocalRotation();
+				sv::vec4f rotation = trans.getLocalRotation();
 
 				for (ui32 i = 0; i < body.collidersCount; ++i) {
 
@@ -197,7 +198,7 @@ namespace sve {
 						colliderScale = XMVectorMultiply(XMVectorSet(collider.box.size.x, collider.box.size.y, 0.f, 0.f), colliderScale);
 
 						XMVECTOR offset = XMVectorSet(collider.offset.x, collider.offset.y, 0.f, 0.f);
-						offset = XMVector3Transform(offset, XMMatrixRotationZ(collider.box.angularOffset + rotation.z));
+						offset = XMVector3Transform(offset, XMMatrixRotationQuaternion(rotation.get_dx()));
 
 						colliderPosition += offset;
 
@@ -242,7 +243,7 @@ namespace sve {
 			//g_Camera.settings.projection.width = 20.f;
 			//g_Camera.settings.projection.height = 20.f;
 			g_Camera.position.z = 0.f;
-			g_Camera.rotation = sv::vec3f();
+			g_Camera.rotation = sv::vec4f();
 			break;
 		case sve::SceneEditorMode_3D:
 			g_Camera.camera.setProjectionType(sv::ProjectionType_Perspective);

@@ -748,6 +748,12 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		debug_renderer_draw_quad(batch, tm, color);
 	}
 
+	void debug_renderer_draw_quad(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, const vec4f& rotationQuat, Color color)
+	{
+		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixRotationQuaternion(rotationQuat.get_dx()) * XMMatrixTranslation(position.x, position.y, position.z);
+		debug_renderer_draw_quad(batch, tm, color);
+	}
+
 	void debug_renderer_draw_ellipse(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, Color color)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixTranslation(position.x, position.y, position.z);
@@ -760,6 +766,12 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		debug_renderer_draw_ellipse(batch, tm, color);
 	}
 
+	void debug_renderer_draw_ellipse(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, const vec4f& rotationQuat, Color color)
+	{
+		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixRotationQuaternion(rotationQuat.get_dx()) * XMMatrixTranslation(position.x, position.y, position.z);
+		debug_renderer_draw_ellipse(batch, tm, color);
+	}
+
 	void debug_renderer_draw_sprite(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, Color color, GPUImage* image)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixTranslation(position.x, position.y, position.z);
@@ -769,6 +781,12 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 	void debug_renderer_draw_sprite(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, const vec3f& rotation, Color color, GPUImage* image)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixRotationRollPitchYaw(rotation.x, rotation.y, rotation.z) * XMMatrixTranslation(position.x, position.y, position.z);
+		debug_renderer_draw_sprite(batch, tm, color, image);
+	}
+
+	void debug_renderer_draw_sprite(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, const vec4f& rotationQuat, Color color, GPUImage* image)
+	{
+		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixRotationQuaternion(rotationQuat.get_dx()) * XMMatrixTranslation(position.x, position.y, position.z);
 		debug_renderer_draw_sprite(batch, tm, color, image);
 	}
 

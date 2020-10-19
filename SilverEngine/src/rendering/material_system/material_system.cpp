@@ -668,7 +668,7 @@ namespace sv {
 		PARSE_CAMERA_BUFFER();
 		cam.data.position = position;
 	}
-	void CameraBuffer::setDirection(const vec3f& direction)
+	void CameraBuffer::setDirection(const vec4f& direction)
 	{
 		ASSERT_PTR();
 		PARSE_CAMERA_BUFFER();

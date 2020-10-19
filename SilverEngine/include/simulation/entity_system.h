@@ -61,30 +61,31 @@ namespace sv {
 		const Entity entity = 0;
 
 		// getters
-		const vec3f& GetLocalPosition() const noexcept;
-		const vec3f& GetLocalRotation() const noexcept;
-		const vec3f& GetLocalScale() const noexcept;
-		XMVECTOR GetLocalPositionDXV() const noexcept;
-		XMVECTOR GetLocalRotationDXV() const noexcept;
-		XMVECTOR GetLocalScaleDXV() const noexcept;
-		XMMATRIX GetLocalMatrix() const noexcept;
+		const vec3f& getLocalPosition() const noexcept;
+		const vec4f& getLocalRotation() const noexcept;
+		const vec3f& getLocalScale() const noexcept;
+		XMVECTOR getLocalPositionDXV() const noexcept;
+		XMVECTOR getLocalRotationDXV() const noexcept;
+		XMVECTOR getLocalScaleDXV() const noexcept;
+		XMMATRIX getLocalMatrix() const noexcept;
 
-		vec3f GetWorldPosition() noexcept;
-		vec3f GetWorldRotation() noexcept;
-		vec3f GetWorldScale() noexcept;
-		XMVECTOR GetWorldPositionDXV() noexcept;
-		XMVECTOR GetWorldRotationDXV() noexcept;
-		XMVECTOR GetWorldScaleDXV() noexcept;
-		XMMATRIX GetWorldMatrix() noexcept;
+		vec3f getWorldPosition() noexcept;
+		vec4f getWorldRotation() noexcept;
+		vec3f getWorldScale() noexcept;
+		XMVECTOR getWorldPositionDXV() noexcept;
+		XMVECTOR getWorldRotationDXV() noexcept;
+		XMVECTOR getWorldScaleDXV() noexcept;
+		XMMATRIX getWorldMatrix() noexcept;
 
 		// setters
-		void SetPosition(const vec3f& position) noexcept;
-		void SetRotation(const vec3f& rotation) noexcept;
-		void SetScale(const vec3f& scale) noexcept;
+		void setPosition(const vec3f& position) noexcept;
+		void setRotation(const vec4f& rotation) noexcept;
+		void setEulerRotation(const vec3f& rotation) noexcept;
+		void setScale(const vec3f& scale) noexcept;
 
 	private:
-		void UpdateWorldMatrix();
-		void Notify();
+		void updateWorldMatrix();
+		void notify();
 
 	};
 

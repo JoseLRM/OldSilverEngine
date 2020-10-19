@@ -55,7 +55,6 @@ workspace "SilverEngine"
 		optimize "On"
 		defines {
 			"SV_RELEASE",
-			"SV_SRC_PATH=\"../resources/\""
 		}
 
 	filter "configurations:Distribution" --distribution

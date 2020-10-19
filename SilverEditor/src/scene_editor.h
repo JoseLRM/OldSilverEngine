@@ -8,7 +8,7 @@ namespace sve {
 	struct DebugCamera {
 		sv::Camera				camera;
 		sv::vec3f				position;
-		sv::vec3f				rotation;
+		sv::vec4f				rotation;
 	};
 
 	enum SceneEditorMode : ui32 {

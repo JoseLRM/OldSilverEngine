@@ -35,17 +35,42 @@ namespace sve {
 			// Show Transform Data
 			sv::Transform trans = sv::ecs_entity_transform_get(ecs, m_Entity);
 
-			sv::vec3f position = trans.GetLocalPosition();
-			sv::vec3f rotation = ToDegrees(trans.GetLocalRotation());
-			sv::vec3f scale = trans.GetLocalScale();
+			sv::vec3f position = trans.getLocalPosition();
+			sv::vec3f scale = trans.getLocalScale();
 
-			ImGui::DragFloat3("Position", &position.x, 0.3f);
-			ImGui::DragFloat3("Rotation", &rotation.x, 0.1f);
-			ImGui::DragFloat3("Scale", &scale.x, 0.01f);
+			if (ImGui::DragFloat3("Position", &position.x, 0.3f)) {
+				trans.setPosition(position);
+			}
+			if (ImGui::DragFloat3("Scale", &scale.x, 0.01f)) {
+				trans.setScale(scale);
+			}
+			
+			ImGui::Text("Rotation");
+			ImGui::SameLine();
+			ImGui::Checkbox("Euler", &m_EulerRotation);
 
-			trans.SetPosition(position);
-			trans.SetRotation(ToRadians(rotation));
-			trans.SetScale(scale);
+			if (m_EulerRotation) {
+				sv::vec3f rotation;
+				if (ImGui::DragFloat3("", &rotation.x, 1.f)) {
+					
+					rotation = ToRadians(rotation);
+					sv::vec4f quat = trans.getLocalRotation();
+					quat.set_dx(XMQuaternionMultiply(quat.get_dx(), XMQuaternionRotationRollPitchYawFromVector(rotation.get_dx())));
+					trans.setRotation(quat);
+
+				}
+			}
+			else {
+				sv::vec4f rotation = trans.getLocalRotation();
+				if (ImGui::DragFloat4("", &rotation.x, 0.1f)) {
+					trans.setRotation(rotation);
+				}
+			}
+			if (ImGui::Button("Reset Transform")) {
+				trans.setPosition({});
+				trans.setScale({1.f, 1.f, 1.f});
+				trans.setRotation({0.f, 0.f, 0.f, 1.f});
+			}
 
 			ImGui::Separator();
 

@@ -16,6 +16,7 @@ namespace sv {
 
 	void Scene::physicsSimulate(float dt)
 	{
+		return;
 		// Simulate 2D
 		{
 			b2World& world = reinterpret_cast<ScenePhysics*>(m_pPhysics)->world2D;
@@ -42,7 +43,7 @@ namespace sv {
 					if (body.collidersCount > 0u && body.colliders[body.collidersCount - 1u].pInternal == nullptr) {
 
 						Transform trans = ecs_entity_transform_get(m_ECS, body.entity);
-						vec3f worldScale = trans.GetWorldScale();
+						vec3f worldScale = trans.getWorldScale();
 						Collider2D* end = body.colliders - 1u;
 						Collider2D* it = end + body.collidersCount;
 						while (it != end) {
@@ -95,10 +96,10 @@ namespace sv {
 
 					Transform trans = ecs_entity_transform_get(m_ECS, body.entity);
 
-					vec3f position = trans.GetWorldPosition();
+					vec3f position = trans.getWorldPosition();
 					//TODO: vec3f rotation	= trans.GetWorldRotation();
-					const vec3f& rotation = trans.GetLocalRotation();
-					vec3f worldScale = trans.GetWorldScale();
+					const vec3f rotation;
+					vec3f worldScale = trans.getWorldScale();
 
 					// Update fixtures
 					{
@@ -169,8 +170,8 @@ namespace sv {
 						Transform trans = ecs_entity_transform_get(m_ECS, body.entity);
 
 						if (ecs_entity_parent_get(m_ECS, body.entity) == SV_ENTITY_NULL) {
-							trans.SetPosition({ transform.p.x, transform.p.y, trans.GetLocalPosition().z });
-							trans.SetRotation({ trans.GetLocalRotation().x, trans.GetLocalRotation().y, transform.q.GetAngle() });
+							trans.setPosition({ transform.p.x, transform.p.y, trans.getLocalPosition().z });
+							//trans.setRotation({ trans.getLocalEulerRotation().x, trans.getLocalEulerRotation().y, transform.q.GetAngle(), 1.f });
 						}
 						else {
 							SV_LOG_ERROR("TODO: Get simulation result from a child");

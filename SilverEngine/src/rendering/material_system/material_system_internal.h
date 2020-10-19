@@ -79,7 +79,7 @@ namespace sv {
 			XMMATRIX viewProjectionMatrix;
 			vec3f position;
 			float padding;
-			vec3f direction;
+			vec4f direction;
 		} data;
 
 	};

@@ -30,7 +30,7 @@ struct Camera {
     matrix pm;
     matrix vpm;
     float3 position;
-    float3 direction;
+    float4 direction;
 };
 
 #define SV_DEFINE_MATERIAL(binding) SV_CONSTANT_BUFFER(__Material__, binding)

@@ -38,7 +38,7 @@ namespace sv {
 			Transform trans = ecs_entity_transform_get(m_ECS, camera.entity);
 
 			// TODO: World rotation;
-			drawCamera(&camera.camera, trans.GetWorldPosition(), trans.GetLocalRotation());
+			drawCamera(&camera.camera, trans.getWorldPosition(), trans.getWorldRotation());
 
 			if (present && camera.entity == m_MainCamera) {
 				GPUImage* image = camera.camera.getOffscreenRT();
@@ -52,14 +52,14 @@ namespace sv {
 		}
 	}
 
-	void Scene::drawCamera(Camera* pCamera, const vec3f& position, const vec3f& rotation)
+	void Scene::drawCamera(Camera* pCamera, const vec3f& position, const vec4f& directionQuat)
 	{
 		if (!pCamera->isActive()) return;
 
 		SceneRendering& rend = *reinterpret_cast<SceneRendering*>(m_pRendering);
 
 		// Compute View Matrix
-		XMMATRIX viewMatrix = math_matrix_view(position, rotation);
+		XMMATRIX viewMatrix = math_matrix_view(position, directionQuat);
 
 		const XMMATRIX& projectionMatrix = pCamera->getProjectionMatrix();
 		XMMATRIX viewProjectionMatrix = viewMatrix * projectionMatrix;
@@ -76,7 +76,7 @@ namespace sv {
 			rend.cameraBuffer.setProjectionMatrix(projectionMatrix);
 			rend.cameraBuffer.setViewProjectionMatrix(viewProjectionMatrix);
 			rend.cameraBuffer.setPosition(position);
-			rend.cameraBuffer.setDirection(rotation);
+			rend.cameraBuffer.setDirection(directionQuat);
 
 			rend.cameraBuffer.update(cmd);
 		}
@@ -102,7 +102,7 @@ namespace sv {
 			// Add sprites to intermediate list
 			for (SpriteComponent& sprite : sprites) {
 				Transform trans = ecs_entity_transform_get(m_ECS, sprite.entity);
-				inter.emplace_back(trans.GetWorldMatrix(), sprite.sprite.texCoord, sprite.sprite.texture.getImage(), sprite.color, sprite.material.getMaterial());
+				inter.emplace_back(trans.getWorldMatrix(), sprite.sprite.texCoord, sprite.sprite.texture.getImage(), sprite.color, sprite.material.getMaterial());
 			}
 
 			// Sort sprites per material

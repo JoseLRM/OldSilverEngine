@@ -23,7 +23,7 @@ namespace sv {
 	struct EntityTransform {
 
 		XMFLOAT3 localPosition = { 0.f, 0.f, 0.f };
-		XMFLOAT3 localRotation = { 0.f, 0.f, 0.f };
+		XMFLOAT4 localRotation = { 0.f, 0.f, 0.f, 1.f };
 		XMFLOAT3 localScale = { 1.f, 1.f, 1.f };
 
 		XMFLOAT4X4 worldMatrix;

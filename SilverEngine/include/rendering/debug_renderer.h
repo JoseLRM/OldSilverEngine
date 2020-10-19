@@ -23,12 +23,15 @@ namespace sv {
 
 	void debug_renderer_draw_quad(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, Color color);
 	void debug_renderer_draw_quad(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, const vec3f& rotation, Color color);
+	void debug_renderer_draw_quad(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, const vec4f& rotationQuat, Color color);
 
 	void debug_renderer_draw_ellipse(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, Color color);
 	void debug_renderer_draw_ellipse(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, const vec3f& rotation, Color color);
+	void debug_renderer_draw_ellipse(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, const vec4f& rotationQuat, Color color);
 
 	void debug_renderer_draw_sprite(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, Color color, GPUImage* image);
 	void debug_renderer_draw_sprite(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, const vec3f& rotation, Color color, GPUImage* image);
+	void debug_renderer_draw_sprite(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, const vec4f& rotationQuat, Color color, GPUImage* image);
 
 	// Attributes
 

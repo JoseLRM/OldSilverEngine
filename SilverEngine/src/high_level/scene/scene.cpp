@@ -213,6 +213,8 @@ namespace sv {
 
 			svCheck(graphics_image_create(&desc, &m_OffscreenDS));
 		}
+
+		return Result_Success;
 	}
 
 	ui32 Camera::getResolutionWidth() const noexcept

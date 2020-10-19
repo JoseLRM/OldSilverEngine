@@ -179,7 +179,7 @@ namespace sv {
 		void draw(bool present = true);
 
 		// Is the second high level draw call, save the result in the camera
-		void drawCamera(Camera* pCamera, const vec3f& position, const vec3f& rotation);
+		void drawCamera(Camera* pCamera, const vec3f& position, const vec4f& directionQuat);
 
 	private:
 		void createRendering();
