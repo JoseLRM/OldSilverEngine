@@ -314,6 +314,8 @@ namespace sv {
 			obj->hashCode = hash_string(filePath);
 			obj->path = g_HashCodes[obj->hashCode];
 
+			obj->refCount.fetch_add(1);
+
 			// Save allocated ptr
 			*pInternal = obj;
 
@@ -330,7 +332,7 @@ namespace sv {
 	{
 		if (pInternal) {
 			PARSE_REFERENCE();
-			--ref.refCount;
+			ref.refCount.fetch_sub(1);
 			pInternal = nullptr;
 		}
 	}
@@ -346,7 +348,7 @@ namespace sv {
 		pInternal = other.pInternal;
 		if (pInternal) {
 			PARSE_TEXTURE();
-			++tex.refCount;
+			tex.refCount.fetch_add(1);
 		}
 	}
 	TextureAsset::TextureAsset(TextureAsset&& other) noexcept
@@ -358,12 +360,12 @@ namespace sv {
 	{
 		if (pInternal) {
 			PARSE_TEXTURE();
-			--tex.refCount;
+			tex.refCount.fetch_sub(1);
 		}
 		pInternal = other.pInternal;
 		if (pInternal) {
 			PARSE_TEXTURE();
-			++tex.refCount;
+			tex.refCount.fetch_add(1);
 		}
 		return *this;
 	}
@@ -371,7 +373,7 @@ namespace sv {
 	{
 		if (pInternal) {
 			PARSE_TEXTURE();
-			--tex.refCount;
+			tex.refCount.fetch_sub(1);
 		}
 		pInternal = other.pInternal;
 		other.pInternal = nullptr;
@@ -423,7 +425,7 @@ namespace sv {
 		pInternal = other.pInternal;
 		if (pInternal) {
 			PARSE_SHADER_LIBRARY();
-			++lib.refCount;
+			lib.refCount.fetch_add(1);
 		}
 	}
 	ShaderLibraryAsset::ShaderLibraryAsset(ShaderLibraryAsset&& other) noexcept
@@ -435,12 +437,12 @@ namespace sv {
 	{
 		if (pInternal) {
 			PARSE_SHADER_LIBRARY();
-			--lib.refCount;
+			lib.refCount.fetch_sub(1);
 		}
 		pInternal = other.pInternal;
 		if (pInternal) {
 			PARSE_SHADER_LIBRARY();
-			++lib.refCount;
+			lib.refCount.fetch_add(1);
 		}
 		return *this;
 	}
@@ -448,7 +450,7 @@ namespace sv {
 	{
 		if (pInternal) {
 			PARSE_SHADER_LIBRARY();
-			--lib.refCount;
+			lib.refCount.fetch_sub(1);
 		}
 		pInternal = other.pInternal;
 		other.pInternal = nullptr;
@@ -500,7 +502,7 @@ namespace sv {
 		pInternal = other.pInternal;
 		if (pInternal) {
 			PARSE_MATERIAL();
-			++mat.refCount;
+			mat.refCount.fetch_add(1);
 		}
 	}
 	MaterialAsset::MaterialAsset(MaterialAsset&& other) noexcept
@@ -512,12 +514,12 @@ namespace sv {
 	{
 		if (pInternal) {
 			PARSE_MATERIAL();
-			--mat.refCount;
+			mat.refCount.fetch_sub(1);
 		}
 		pInternal = other.pInternal;
 		if (pInternal) {
 			PARSE_MATERIAL();
-			++mat.refCount;
+			mat.refCount.fetch_add(1);
 		}
 		return *this;
 	}
@@ -525,7 +527,7 @@ namespace sv {
 	{
 		if (pInternal) {
 			PARSE_MATERIAL();
-			--mat.refCount;
+			mat.refCount.fetch_sub(1);
 		}
 		pInternal = other.pInternal;
 		other.pInternal = nullptr;

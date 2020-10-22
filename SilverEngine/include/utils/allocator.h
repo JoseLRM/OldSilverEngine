@@ -204,7 +204,6 @@ namespace sv {
 	public:
 		struct iterator {
 			T* ptr;
-			FrameList<T>* list;
 
 			T* operator->() const noexcept { return ptr; }
 			T& operator*() const noexcept { return *ptr; }
@@ -224,12 +223,11 @@ namespace sv {
 			bool operator>(const iterator& other) const noexcept { return ptr > other.ptr; }
 			bool operator>=(const iterator& other) const noexcept { return ptr >= other.ptr; }
 
-			iterator(T* ptr, FrameList<T>* list) : ptr(ptr), list(list) {}
+			iterator(T* ptr) : ptr(ptr) {}
 		};
 
 		struct const_iterator {
 			const T* ptr;
-			const FrameList<T>* list;
 
 			const T* operator->() const noexcept { return ptr; }
 			const T& operator*() const noexcept { return *ptr; }
@@ -249,25 +247,25 @@ namespace sv {
 			bool operator>(const const_iterator& other) const noexcept { return ptr > other.ptr; }
 			bool operator>=(const const_iterator& other) const noexcept { return ptr >= other.ptr; }
 
-			const_iterator(const T* ptr, const FrameList<T>* list) : ptr(ptr), list(list) {}
+			const_iterator(const T* ptr) : ptr(ptr) {}
 		};
 
 		iterator begin() noexcept
 		{
-			return iterator(m_Data, this);
+			return iterator(m_Data);
 		}
 		const_iterator cbegin() const noexcept
 		{
-			return const_iterator(m_Data, this);
+			return const_iterator(m_Data);
 		}
 
 		iterator end() noexcept
 		{
-			return iterator(m_Data + m_Size, this);
+			return iterator(m_Data + m_Size);
 		}
 		const_iterator cend() const noexcept
 		{
-			return const_iterator(m_Data + m_Size, this);
+			return const_iterator(m_Data + m_Size);
 		}
 
 	};

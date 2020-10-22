@@ -11,6 +11,7 @@
 #include "task_system/task_system_internal.h"
 #include "logging/logging_internal.h"
 #include "high_level/asset_system/asset_system_internal.h"
+#include "simulation/animator/animator_internal.h"
 
 #define svCatch catch (std::exception e) {\
 					SV_LOG_ERROR("STD Exception: %s", e.what()); \
@@ -61,6 +62,7 @@ namespace sv {
 			SV_LOG_INFO("Initializing %s", g_Name.c_str());
 
 			svCheck(task_initialize(desc.minThreadsCount));
+			svCheck(animator_initialize());
 			svCheck(assets_initialize(desc.assetsFolderPath));
 			svCheck(window_initialize(desc.windowStyle, desc.windowBounds, desc.windowTitle, desc.iconFilePath));
 			svCheck(graphics_initialize());
@@ -97,6 +99,9 @@ namespace sv {
 			// Update Input
 			if (input_update()) return Result_CloseRequest;
 			window_update();
+
+			// Update animations
+			animator_update(g_DeltaTime);
 
 			// Update assets
 			assets_update(g_DeltaTime);
@@ -136,6 +141,7 @@ namespace sv {
 			svCheck(matsys_close());
 			svCheck(graphics_close());
 			svCheck(window_close());
+			svCheck(animator_close());
 			svCheck(task_close());
 			svCheck(logging_close());
 		}

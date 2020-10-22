@@ -63,6 +63,9 @@ constexpr i32	i16_max		= std::numeric_limits<i16>::max();
 constexpr i32	i32_max		= std::numeric_limits<i32>::max();
 constexpr i32	i64_max		= std::numeric_limits<i64>::max();
 
+constexpr float	float_min = std::numeric_limits<float>::min();
+constexpr float	float_max = std::numeric_limits<float>::max();
+
 namespace sv {
 
 	// Result
