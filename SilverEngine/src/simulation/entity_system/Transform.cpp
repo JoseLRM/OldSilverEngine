@@ -21,6 +21,42 @@ namespace sv {
 		return *(vec4f*)& t->localRotation;
 	}
 
+	const vec3f& Transform::getLocalEulerRotation() const noexcept
+	{
+		parse();
+		XMFLOAT4X4 rm;
+		XMStoreFloat4x4(&rm, XMMatrixTranspose(XMMatrixRotationQuaternion(XMLoadFloat4(&t->localRotation))));
+
+		vec3f euler;
+
+		if (rm._13 < 1.f) {
+			if (rm._13 > -1.f) {
+				euler.y = asin(rm._13);
+				euler.x = atan2(-rm._23, rm._33);
+				euler.z = atan2(-rm._12, rm._11);
+			}
+			else {
+				euler.y = -PI / 2.f;
+				euler.x = -atan2(rm._21, rm._22);
+				euler.z = 0.f;
+			}
+		}
+		else {
+			euler.y = PI / 2.f;
+			euler.x = atan2(rm._21, rm._22);
+			euler.z = 0.f;
+		}
+
+		if (euler.x < 0.f) {
+			euler.x = 2 * PI + euler.x;
+		}
+		if (euler.z < 0.f) {
+			euler.z = 2 * PI + euler.z;
+		}
+
+		return euler;
+	}
+
 	const vec3f& Transform::getLocalScale() const noexcept 
 	{ 
 		parse();

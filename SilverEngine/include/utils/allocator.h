@@ -27,6 +27,7 @@ namespace sv {
 
 		bool has_unfreed() noexcept;
 		ui32 unfreed_count() noexcept;
+		bool empty() const noexcept;
 
 	};
 
@@ -56,6 +57,7 @@ namespace sv {
 		inline void clear() { m_Allocator.clear(); }
 		inline bool has_unfreed() noexcept { return m_Allocator.has_unfreed(); }
 		inline ui32 unfreed_count() noexcept { return m_Allocator.unfreed_count(); }
+		inline bool empty() const noexcept { return m_Allocator.empty(); }
 
 	};
 

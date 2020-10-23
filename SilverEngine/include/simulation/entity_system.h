@@ -63,6 +63,7 @@ namespace sv {
 		// getters
 		const vec3f& getLocalPosition() const noexcept;
 		const vec4f& getLocalRotation() const noexcept;
+		const vec3f& getLocalEulerRotation() const noexcept;
 		const vec3f& getLocalScale() const noexcept;
 		XMVECTOR getLocalPositionDXV() const noexcept;
 		XMVECTOR getLocalRotationDXV() const noexcept;

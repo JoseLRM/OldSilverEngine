@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <functional>
 #include <mutex>
+#include <shared_mutex>
 #include <atomic>
 #include <fstream>
 #include <filesystem>

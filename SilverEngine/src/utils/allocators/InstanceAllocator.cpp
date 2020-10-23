@@ -6,7 +6,6 @@ namespace sv {
 
 	SizedInstanceAllocator::SizedInstanceAllocator(size_t instanceSize, size_t poolSize) : m_PoolSize(poolSize), INSTANCE_SIZE(std::max(instanceSize, sizeof(void*)))
 	{
-		m_Pools.emplace_back();
 	}
 	SizedInstanceAllocator::~SizedInstanceAllocator()
 	{
@@ -16,6 +15,8 @@ namespace sv {
 	void* SizedInstanceAllocator::alloc()
 	{
 		std::scoped_lock<std::mutex> lock(m_Mutex);
+
+		if (m_Pools.empty()) m_Pools.emplace_back();
 
 		{
 			Pool& pool = m_Pools.back();
@@ -93,11 +94,17 @@ namespace sv {
 			void** newFreeList = reinterpret_cast<void**>(ptr);
 			*newFreeList = pool->freeList;
 			pool->freeList = ptr;
+		}
 
-			// Set pool back to the list
-			Pool aux = *pool;
-			*pool = m_Pools.back();
-			m_Pools.back() = aux;
+		if (pool->size == 0u) {
+			delete[] pool->data;
+
+			for (auto it = m_Pools.begin(); it != m_Pools.end(); ++it) {
+				if (&(*it) == pool) {
+					m_Pools.erase(it);
+					break;
+				}
+			}
 		}
 	}
 
@@ -159,6 +166,11 @@ namespace sv {
 		}
 
 		return totalSize - freeCount;
+	}
+
+	bool SizedInstanceAllocator::empty() const noexcept
+	{
+		return m_Pools.empty();
 	}
 
 }
