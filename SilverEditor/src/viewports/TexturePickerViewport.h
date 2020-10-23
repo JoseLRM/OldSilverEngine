@@ -4,9 +4,9 @@
 
 namespace sve {
 
-	class TexturePickerViewport {
+	class TexturePickerPopUp {
 	public:
-		TexturePickerViewport();
+		TexturePickerPopUp();
 
 		bool getTextureName(const char** pName);
 

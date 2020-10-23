@@ -150,14 +150,13 @@ namespace sv {
 				if (tex->refCount.load() <= 0u) {
 
 					auxRes = assets_destroy(*it);
+					SV_LOG_INFO("Texture freed: '%s'", tex->path);
 
 					if (auxRes != Result_Success) {
 						SV_LOG_ERROR("Can't destroy texture '%s'", tex->path);
 					}
 					g_AssetMap[tex->path].pInternal = nullptr;
 					g_TextureAllocator.destroy(tex);
-
-					SV_LOG_INFO("Texture freed: '%s'", tex->path);
 
 					it = g_ActiveTextures.erase(it);
 				}
@@ -286,6 +285,7 @@ namespace sv {
 		if (it->second.pInternal) {
 
 			*pInternal = it->second.pInternal;
+			it->second.pInternal->refCount.fetch_add(1);
 
 		}
 		else {

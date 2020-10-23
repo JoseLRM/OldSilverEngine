@@ -19,6 +19,8 @@ namespace sve {
 	private:
 		void showComponentInfo(sv::CompID ID, sv::BaseComponent* comp);
 
+		void showTransform(sv::Transform& transform);
+
 		void showSpriteComponentInfo(sv::SpriteComponent* comp);
 		void showNameComponentInfo(sv::NameComponent* comp);
 		void showCameraComponentInfo(sv::CameraComponent* comp);
@@ -26,8 +28,7 @@ namespace sve {
 
 	private:
 		sv::Entity m_Entity = SV_ENTITY_NULL;
-		TexturePickerViewport m_TexturePicker;
-		bool m_EulerRotation = true;
+		TexturePickerPopUp m_TexturePicker;
 
 	};
 

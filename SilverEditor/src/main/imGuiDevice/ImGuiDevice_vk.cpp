@@ -30,6 +30,24 @@ namespace sve {
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable | ImGuiConfigFlags_DpiEnableScaleViewports;;
 		//io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_DpiEnableScaleViewports;;
 
+		{
+			const char* filePath = "library/fonts/open_sans/OpenSans-Regular.ttf";
+			const char* filePathBold = "library/fonts/open_sans/OpenSans-Bold.ttf";
+#ifdef SV_RES_PATH
+			std::string filePathStr = SV_RES_PATH;
+			filePathStr += filePath;
+			filePath = filePathStr.c_str();
+
+			std::string filePathBoldStr = SV_RES_PATH;
+			filePathBoldStr += filePathBold;
+			filePathBold = filePathBoldStr.c_str();
+#endif
+			
+			io.Fonts->AddFontFromFileTTF(filePathBold, 15.f);
+			io.FontDefault = io.Fonts->AddFontFromFileTTF(filePath, 15.f);
+			
+		}
+
 		if (!ImGui_ImplWin32_Init(sv::window_handle_get())) return sv::Result_PlatformError;
 
 		sv::Graphics_vk& gfx = sv::graphics_vulkan_device_get();

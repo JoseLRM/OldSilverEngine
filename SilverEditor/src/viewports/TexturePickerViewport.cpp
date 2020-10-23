@@ -4,10 +4,10 @@
 
 namespace sve {
 	
-	TexturePickerViewport::TexturePickerViewport()
+	TexturePickerPopUp::TexturePickerPopUp()
 	{}
 
-	bool TexturePickerViewport::getTextureName(const char** pName)
+	bool TexturePickerPopUp::getTextureName(const char** pName)
 	{
 		bool res = true;
 		*pName = nullptr;

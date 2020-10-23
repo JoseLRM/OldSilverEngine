@@ -16,7 +16,7 @@ namespace sve {
 
 	private:
 		sv::MaterialAsset m_SelectedMaterial;
-		TexturePickerViewport m_TexturePicker;
+		TexturePickerPopUp m_TexturePicker;
 
 	};
 

@@ -5,6 +5,7 @@
 #include "simulation.h"
 #include "high_level/scene.h"
 #include "platform/window.h"
+#include "simulation/animator.h"
 
 namespace sve {
 
