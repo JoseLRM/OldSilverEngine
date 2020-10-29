@@ -2,6 +2,7 @@
 
 #include "graphics_internal.h"
 #include "platform/window.h"
+#include "utils/io.h"
 
 #include "vulkan/graphics_vulkan.h"
 
@@ -21,6 +22,52 @@ namespace sv {
 	static BlendState*			g_DefBlendState;
 	static DepthStencilState*	g_DefDepthStencilState;
 	static RasterizerState*		g_DefRasterizerState;
+
+	Result createTextureAsset(const char* filePath, void* pObject)
+	{
+		GPUImage*& image = *reinterpret_cast<GPUImage * *>(pObject);
+
+		// Get file data
+		void* data;
+		ui32 width;
+		ui32 height;
+		svCheck(load_image(filePath, &data, &width, &height));
+
+		// Create Image
+		GPUImageDesc desc;
+
+		desc.pData = data;
+		desc.size = width * height * 4u;
+		desc.format = Format_R8G8B8A8_UNORM;
+		desc.layout = GPUImageLayout_ShaderResource;
+		desc.type = GPUImageType_ShaderResource;
+		desc.usage = ResourceUsage_Static;
+		desc.CPUAccess = CPUAccess_None;
+		desc.dimension = 2u;
+		desc.width = width;
+		desc.height = height;
+		desc.depth = 1u;
+		desc.layers = 1u;
+
+		Result res = graphics_image_create(&desc, &image);
+
+		delete[] data;
+		return res;
+	}
+
+	Result destroyTextureAsset(void* pObject)
+	{
+		GPUImage*& image = *reinterpret_cast<GPUImage * *>(pObject);
+		svCheck(graphics_destroy(image));
+		image = nullptr;
+		return Result_Success;
+	}
+
+	Result recreateTextureAsset(const char* filePath, void* pObject)
+	{
+		svCheck(destroyTextureAsset(pObject));
+		return createTextureAsset(filePath, pObject);
+	}
 
 	Result graphics_initialize()
 	{
@@ -84,7 +131,7 @@ namespace sv {
 		}
 		g_DefGraphicsState.viewportsCount = GraphicsLimit_Viewport;
 		for (ui32 i = 0; i < GraphicsLimit_Scissor; ++i) {
-			g_DefGraphicsState.scissors[i] = { 0.f, 0.f, 100.f, 100.f };
+			g_DefGraphicsState.scissors[i] = { 0u, 0u, 100u, 100u };
 		}
 		g_DefGraphicsState.scissorsCount = GraphicsLimit_Scissor;
 		g_DefGraphicsState.topology = GraphicsTopology_Triangles;
@@ -109,6 +156,26 @@ namespace sv {
 			;
 
 		svCheck(graphics_shader_initialize());
+
+		// Register Texture Asset
+		{
+			const char* extensions[] = {
+			"png"
+			};
+
+			AssetRegisterTypeDesc desc;
+			desc.name = "Texture";
+			desc.pExtensions = extensions;
+			desc.extensionsCount = 1u;
+			desc.createFn = createTextureAsset;
+			desc.destroyFn = destroyTextureAsset;
+			desc.recreateFn = recreateTextureAsset;
+			desc.isUnusedFn = nullptr;
+			desc.assetSize = sizeof(GPUImage*);
+			desc.unusedLifeTime = 3.f;
+
+			asset_register_type(&desc, nullptr);
+		}
 
 		return Result_Success;
 	}
@@ -680,6 +747,8 @@ namespace sv {
 			return GraphicsPipelineState_ConstantBuffer_HS;
 		case ShaderType_Domain:
 			return GraphicsPipelineState_ConstantBuffer_DS;
+		default:
+			return GraphicsPipelineState(0);
 		}
 	}
 
@@ -697,6 +766,8 @@ namespace sv {
 			return GraphicsPipelineState_Image_HS;
 		case ShaderType_Domain:
 			return GraphicsPipelineState_Image_DS;
+		default:
+			return GraphicsPipelineState(0);
 		}
 	}
 
@@ -714,6 +785,8 @@ namespace sv {
 			return GraphicsPipelineState_Sampler_HS;
 		case ShaderType_Domain:
 			return GraphicsPipelineState_Sampler_DS;
+		default:
+			return GraphicsPipelineState(0);
 		}
 	}
 
@@ -1285,7 +1358,7 @@ namespace sv {
 		{
 		case sv::ShaderAttributeType_Boolean:
 		case sv::ShaderAttributeType_Char:
-			return 1u;
+			return 4u;
 
 		case sv::ShaderAttributeType_Half:
 			return 2u;
@@ -1313,9 +1386,7 @@ namespace sv {
 		case sv::ShaderAttributeType_Mat4:
 			return 64u;
 
-		case sv::ShaderAttributeType_Texture:
-			return sizeof(void*);
-
+		case sv::ShaderAttributeType_Other:
 		default:
 			return 0u;
 		}
@@ -1353,7 +1424,7 @@ namespace sv {
 	Scissor graphics_image_get_scissor(GPUImage* image)
 	{
 		GPUImage_internal& p = *reinterpret_cast<GPUImage_internal*>(image);
-		return { 0.f, 0.f, float(p.width), float(p.height) };
+		return { 0u, 0u, p.width, p.height };
 	}
 
 }

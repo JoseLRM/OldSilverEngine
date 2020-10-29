@@ -3,7 +3,7 @@
 #include "ImGuiDevice_vk.h"
 #include "platform/window.h"
 
-namespace sve {
+namespace sv {
 
 	void ErrorHandler(VkResult res)
 	{
@@ -12,13 +12,13 @@ namespace sve {
 
 	ui64 DeviceWindowProc(WindowHandle handle, ui32 msg, ui64 wParam, i64 lParam)
 	{
-		return ImGui_ImplWin32_WndProcHandler((HWND)sv::window_handle_get(), msg, wParam, lParam);
+		return ImGui_ImplWin32_WndProcHandler((HWND)window_handle_get(), msg, wParam, lParam);
 	}
 
-	sv::Result ImGuiDevice_vk::Initialize()
+	Result ImGuiDevice_vk::Initialize()
 	{
 		// Input handling
-		sv::window_userproc_set(DeviceWindowProc);
+		window_userproc_set(DeviceWindowProc);
 
 		// Graphics
 		ImGui_ImplWin32_EnableDpiAwareness();
@@ -48,10 +48,10 @@ namespace sve {
 			
 		}
 
-		if (!ImGui_ImplWin32_Init(sv::window_handle_get())) return sv::Result_PlatformError;
+		if (!ImGui_ImplWin32_Init(window_handle_get())) return Result_PlatformError;
 
-		sv::Graphics_vk& gfx = sv::graphics_vulkan_device_get();
-		sv::Adapter_vk& adapter = *reinterpret_cast<sv::Adapter_vk*>(sv::graphics_adapter_get());
+		Graphics_vk& gfx = graphics_vulkan_device_get();
+		Adapter_vk& adapter = *reinterpret_cast<Adapter_vk*>(graphics_adapter_get());
 
 		// Create Descriptor Pool
 		{
@@ -138,23 +138,23 @@ namespace sve {
 		info.PipelineCache = 0;
 		info.DescriptorPool = m_DescPool;
 		info.MinImageCount = gfx.swapChain.capabilities.minImageCount;
-		info.ImageCount = gfx.swapChain.images.size();
+		info.ImageCount = ui32(gfx.swapChain.images.size());
 		info.CheckVkResultFn = ErrorHandler;
 
 		ImGui_ImplVulkan_Init(&info, m_RenderPass);
 
 		VkCommandBuffer cmd;
-		vkCheck(sv::graphics_vulkan_singletimecmb_begin(&cmd));
-		if (!ImGui_ImplVulkan_CreateFontsTexture(cmd)) return sv::Result_UnknownError;
-		vkCheck(sv::graphics_vulkan_singletimecmb_end(cmd));
+		vkCheck(graphics_vulkan_singletimecmb_begin(&cmd));
+		if (!ImGui_ImplVulkan_CreateFontsTexture(cmd)) return Result_UnknownError;
+		vkCheck(graphics_vulkan_singletimecmb_end(cmd));
 
-		return sv::Result_Success;
+		return Result_Success;
 	}
-	sv::Result ImGuiDevice_vk::Close()
+	Result ImGuiDevice_vk::Close()
 	{
-		sv::Graphics_vk& gfx = sv::graphics_vulkan_device_get();
+		Graphics_vk& gfx = graphics_vulkan_device_get();
 
-		sv::graphics_gpu_wait();
+		graphics_gpu_wait();
 
 		DestroyFrames();
 
@@ -165,7 +165,7 @@ namespace sve {
 		ImGui_ImplVulkan_Shutdown();
 		ImGui_ImplWin32_Shutdown();
 		ImGui::DestroyContext(m_Ctx);
-		return sv::Result_Success;
+		return Result_Success;
 	}
 
 	void ImGuiDevice_vk::BeginFrame()
@@ -174,13 +174,13 @@ namespace sve {
 		ImGui_ImplWin32_NewFrame();
 		ImGui::NewFrame();
 
-		m_CommandList = sv::graphics_commandlist_begin();
+		m_CommandList = graphics_commandlist_begin();
 	}
 	void ImGuiDevice_vk::EndFrame()
 	{
-		sv::graphics_vulkan_acquire_image();
+		graphics_vulkan_acquire_image();
 
-		sv::Graphics_vk& gfx = sv::graphics_vulkan_device_get();
+		Graphics_vk& gfx = graphics_vulkan_device_get();
 		ImGui::Render();
 
 		ui32 currentFrame = gfx.currentFrame;
@@ -235,10 +235,10 @@ namespace sve {
 
 	void ImGuiDevice_vk::ResizeSwapChain()
 	{
-		sv::Graphics_vk& gfx = sv::graphics_vulkan_device_get();
+		Graphics_vk& gfx = graphics_vulkan_device_get();
 		VkExtent2D currentSize = gfx.swapChain.currentExtent;
 
-		sv::graphics_gpu_wait();
+		graphics_gpu_wait();
 
 		if (currentSize.width != m_SwapChainSize.width || currentSize.height != m_SwapChainSize.height) {
 			DestroyFrames();
@@ -246,16 +246,16 @@ namespace sve {
 		}
 	}
 
-	ImTextureID ImGuiDevice_vk::ParseImage(sv::GPUImage* image_)
+	ImTextureID ImGuiDevice_vk::ParseImage(GPUImage* image_)
 	{
-		sv::Image_vk& image = *reinterpret_cast<sv::Image_vk*>(image_);
+		Image_vk& image = *reinterpret_cast<Image_vk*>(image_);
 		SV_ASSERT(image.image != VK_NULL_HANDLE);
 
 		auto it = m_Images.find(&image);
 		if (it == m_Images.end() || it->second.first != image.shaderResouceView) {
 
 			if (it != m_Images.end()) {
-				sv::Graphics_vk& gfx = sv::graphics_vulkan_device_get();
+				Graphics_vk& gfx = graphics_vulkan_device_get();
 				vkFreeDescriptorSets(gfx.device, m_DescPool, 1u, (VkDescriptorSet*)(&it->second.second));
 			}
 
@@ -270,7 +270,7 @@ namespace sve {
 
 	VkResult ImGuiDevice_vk::CreateFrames()
 	{
-		sv::Graphics_vk& gfx = sv::graphics_vulkan_device_get();
+		Graphics_vk& gfx = graphics_vulkan_device_get();
 
 		// Create Framebuffers
 		{
@@ -291,8 +291,8 @@ namespace sve {
 				create_info.renderPass = m_RenderPass;
 				create_info.attachmentCount = 1u;
 				create_info.pAttachments = &frame.view;
-				create_info.width = sv::window_size_get().x;
-				create_info.height = sv::window_size_get().y;
+				create_info.width = window_size_get().x;
+				create_info.height = window_size_get().y;
 				create_info.layers = 1u;
 
 				vkExt(vkCreateFramebuffer(gfx.device, &create_info, nullptr, &frame.frameBuffer));
@@ -303,7 +303,7 @@ namespace sve {
 
 	void ImGuiDevice_vk::DestroyFrames()
 	{
-		sv::Graphics_vk& gfx = sv::graphics_vulkan_device_get();
+		Graphics_vk& gfx = graphics_vulkan_device_get();
 
 		for (ui32 i = 0; i < m_Frames.size(); ++i) {
 			vkDestroyFramebuffer(gfx.device, m_Frames[i].frameBuffer, nullptr);

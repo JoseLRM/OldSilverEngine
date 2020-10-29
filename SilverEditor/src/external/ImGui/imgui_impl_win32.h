@@ -10,8 +10,9 @@
 
 #pragma once
 #include "imgui.h"      // IMGUI_IMPL_API
-#define UNICODE
-#include <Windows.h>
+
+// My own Windows.h header
+#include "platform/windows_impl.h"
 
 IMGUI_IMPL_API bool     ImGui_ImplWin32_Init(void* hwnd);
 IMGUI_IMPL_API void     ImGui_ImplWin32_Shutdown();

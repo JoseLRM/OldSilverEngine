@@ -1,12 +1,12 @@
 #pragma once
 
 #include "core_editor.h"
-#include "high_level/scene.h"
+#include "simulation/scene.h"
 
-namespace sve {
+namespace sv {
 
-	sv::Result simulation_initialize(const char* sceneFilePath);
-	sv::Result simulation_close();
+	Result simulation_initialize(const char* sceneFilePath);
+	Result simulation_close();
 	void simulation_update(float dt);
 	void simulation_render();
 
@@ -20,6 +20,6 @@ namespace sve {
 	bool simulation_paused();	// Return true if the simulation is paused
 	bool simulation_gamemode_get();
 
-	sv::Scene&	simulation_scene_get();
+	Scene&	simulation_scene_get();
 
 }

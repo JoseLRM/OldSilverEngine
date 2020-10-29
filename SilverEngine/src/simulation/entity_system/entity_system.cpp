@@ -274,7 +274,7 @@ namespace sv {
 	CompID ecs_register(ECS* ecs_, const ComponentRegisterDesc* desc)
 	{
 		parseECS();
-		CompID ID = ecs.registers.size();
+		CompID ID = CompID(ecs.registers.size());
 		ComponentRegister& reg = ecs.registers.emplace_back();
 
 		reg.size = desc->size;
@@ -806,7 +806,7 @@ namespace sv {
 
 		auto& list = ecs.components[compID];
 
-		pool = list.pools.size() - 1u;
+		pool = ui32(list.pools.size()) - 1u;
 		ui8* ptr = nullptr;
 		ui32 compSize = ecs_register_sizeof(ecs_, compID);
 

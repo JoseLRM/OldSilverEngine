@@ -160,8 +160,8 @@ namespace sv {
 			if (result_fail(g_DefShaderLibrary.createFromBinary("SilverEngine/DefaultSprite"))) {
 
 				const char* src = 
-					"#name DefaultSprite\n"
-					"#package SilverEngine\n"
+					"#name SilverEngine/DefaultSprite\n"
+					"#type Sprite\n"
 					"#VS_begin\n"
 					"#include \"core.hlsl\"\n"
 					"SV_DEFINE_CAMERA(b0);\n"
@@ -203,8 +203,8 @@ namespace sv {
 					"{\n"
 					"	Output output;\n"
 					"	float4 texColor = _Albedo.Sample(sam, input.fragTexCoord);\n"
-					"	if (texColor.a < 0.05f) discard;\n"
 					"	output.color = input.fragColor * texColor;\n"
+					"	if (output.color.a < 0.05f) discard;\n"
 					"	return output;\n"
 					"}\n"
 					"#PS_end\n";
@@ -247,6 +247,7 @@ namespace sv {
 		// Bind material
 		if (desc->material) {
 			ShaderLibrary* shaderLib = desc->material->getShaderLibrary();
+			SV_ASSERT(shaderLib->isType("Sprite"));
 			shaderLib->bind(desc->cameraBuffer, cmd);
 			desc->material->bind(cmd);
 		}
@@ -267,7 +268,7 @@ namespace sv {
 		while (buffer < initialPtr + count) {
 
 			ui32 j = 0u;
-			ui32 currentInstance = buffer - initialPtr;
+			ui32 currentInstance = ui32(buffer - initialPtr);
 			ui32 batchSize = BATCH_COUNT;
 			if (currentInstance + batchSize > count) {
 				batchSize = count - currentInstance;
@@ -323,13 +324,13 @@ namespace sv {
 
 				texture = buffer->pTexture;
 				
-				ui32 offset = buffer - beginBuffer;
+				ui32 offset = ui32(buffer - beginBuffer);
 				while (buffer != endBuffer) {
 
 					if (buffer->pTexture != texture) {
 						graphics_image_bind(texture ? texture : g_SpriteWhiteTexture, 0u, ShaderType_Pixel, cmd);
 						texture = buffer->pTexture;
-						ui32 batchPos = buffer - beginBuffer;
+						ui32 batchPos = ui32(buffer - beginBuffer);
 						renderer_sprite_draw_call(offset, batchPos - offset, cmd);
 						offset = batchPos;
 					}
@@ -337,7 +338,7 @@ namespace sv {
 					buffer++;
 				}
 
-				ui32 batchPos = buffer - beginBuffer;
+				ui32 batchPos = ui32(buffer - beginBuffer);
 				graphics_image_bind(texture ? texture : g_SpriteWhiteTexture, 0u, ShaderType_Pixel, cmd);
 				renderer_sprite_draw_call(offset, batchPos - offset, cmd);
 

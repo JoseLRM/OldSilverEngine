@@ -140,7 +140,7 @@ namespace sv {
 
 	ui32 ecs_allocator_component_pool_count(const ComponentPool& pool)
 	{
-		return pool.size / size_t(pool.compSize) - pool.freeList.size();
+		return ui32(pool.size / size_t(pool.compSize) - pool.freeList.size());
 	}
 
 	// ComponentAllocator

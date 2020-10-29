@@ -74,7 +74,7 @@ namespace sv {
 			layout_info.pSetLayouts = layouts.data();
 			layout_info.pushConstantRangeCount = 0u;
 
-			vkCheck(vkCreatePipelineLayout(gfx.device, &layout_info, nullptr, &p.layout));
+			if (vkCreatePipelineLayout(gfx.device, &layout_info, nullptr, &p.layout) != VK_SUCCESS) return false;
 		}
 
 		p.lastUsage = timer_now();

@@ -22,7 +22,6 @@
 // Types
 
 typedef unsigned int    ui32;
-
 typedef int             i32;
 
 struct Camera {

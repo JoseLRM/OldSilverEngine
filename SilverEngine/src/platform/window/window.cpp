@@ -138,8 +138,8 @@ namespace sv {
 			ui16 _x = LOWORD(lParam);
 			ui16 _y = HIWORD(lParam);
 
-			float w = g_Bounds.z;
-			float h = g_Bounds.w;
+			float w = float(g_Bounds.z);
+			float h = float(g_Bounds.w);
 
 			float x = (float(_x) / w) - 0.5f;
 			float y = (1.f - (float(_y) / h)) - 0.5f;
@@ -289,7 +289,7 @@ namespace sv {
 		if (g_Bounds.x != g_BoundsNew.x || g_Bounds.y != g_BoundsNew.y || g_Bounds.z != g_BoundsNew.z || g_Bounds.w != g_BoundsNew.w) {
 			g_Bounds = g_BoundsNew;
 #ifdef SV_PLATFORM_WIN
-			vec4i bounds = window_adjusted_bounds(GetWindowLongPtr((HWND)g_WindowHandle, GWL_STYLE));
+			vec4i bounds = window_adjusted_bounds((DWORD)GetWindowLongPtr((HWND)g_WindowHandle, GWL_STYLE));
 			SetWindowPos((HWND)g_WindowHandle, 0u, bounds.x, bounds.y, bounds.z, bounds.w, 0);
 #endif
 		}

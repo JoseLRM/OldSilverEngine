@@ -1,14 +1,14 @@
 #pragma once
 
 #include "core_editor.h"
-#include "high_level/scene.h"
+#include "simulation/scene.h"
 
-namespace sve {
+namespace sv {
 
 	struct DebugCamera {
-		sv::Camera				camera;
-		sv::vec3f				position;
-		sv::vec4f				rotation;
+		Camera				camera;
+		vec3f				position;
+		vec4f				rotation;
 	};
 
 	enum SceneEditorMode : ui32 {
@@ -16,8 +16,8 @@ namespace sve {
 		SceneEditorMode_3D,
 	};
 
-	sv::Result scene_editor_initialize();
-	sv::Result scene_editor_close();
+	Result scene_editor_initialize();
+	Result scene_editor_close();
 
 	void scene_editor_update(float dt);
 	void scene_editor_render();

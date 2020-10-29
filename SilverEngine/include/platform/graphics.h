@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core.h"
+#include "simulation/asset_system.h"
 
 namespace sv {
 
@@ -89,7 +90,7 @@ namespace sv {
 		ShaderAttributeType_Char,
 		ShaderAttributeType_Mat3,
 		ShaderAttributeType_Mat4,
-		ShaderAttributeType_Texture,
+		ShaderAttributeType_Other,
 	};
 
 	struct ShaderAttribute {
@@ -335,7 +336,7 @@ namespace sv {
 	};
 
 	struct Scissor {
-		float x, y, width, height;
+		ui32 x, y, width, height;
 	};
 
 	struct GPUBarrier {
@@ -513,15 +514,15 @@ namespace sv {
 
 	SV_DEFINE_HANDLE(Primitive);
 
-	struct GPUBuffer : public Primitive {};
-	struct GPUImage : public Primitive {};
-	struct Sampler : public Primitive {};
-	struct Shader : public Primitive {};
-	struct RenderPass : public Primitive {};
-	struct InputLayoutState : public Primitive {};
-	struct BlendState : public Primitive {};
-	struct DepthStencilState : public Primitive {};
-	struct RasterizerState : public Primitive {};
+	struct GPUBuffer : public Primitive { GPUBuffer() = delete; ~GPUBuffer() = delete; };
+	struct GPUImage : public Primitive { GPUImage() = delete; ~GPUImage() = delete; };
+	struct Sampler : public Primitive { Sampler() = delete; ~Sampler() = delete; };
+	struct Shader : public Primitive { Shader() = delete; ~Shader() = delete; };
+	struct RenderPass : public Primitive { RenderPass() = delete; ~RenderPass() = delete; };
+	struct InputLayoutState : public Primitive { InputLayoutState() = delete; ~InputLayoutState() = delete; };
+	struct BlendState : public Primitive { BlendState() = delete; ~BlendState() = delete; };
+	struct DepthStencilState : public Primitive { DepthStencilState() = delete; ~DepthStencilState() = delete; };
+	struct RasterizerState : public Primitive { RasterizerState() = delete; ~RasterizerState() = delete; };
 
 	typedef ui32 CommandList;
 
@@ -668,6 +669,13 @@ namespace sv {
 	Format		graphics_image_get_format(GPUImage* image);
 	Viewport	graphics_image_get_viewport(GPUImage* image);
 	Scissor		graphics_image_get_scissor(GPUImage* image);
+
+	// Assets
+
+	class TextureAsset : public Asset {
+	public:
+		inline GPUImage* get() const noexcept { GPUImage** ptr = reinterpret_cast<GPUImage**>(m_Ref.get()); return ptr ? *ptr : nullptr; }
+	};
 
 	// Properties
 

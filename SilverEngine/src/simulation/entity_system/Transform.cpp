@@ -21,7 +21,7 @@ namespace sv {
 		return *(vec4f*)& t->localRotation;
 	}
 
-	const vec3f& Transform::getLocalEulerRotation() const noexcept
+	vec3f Transform::getLocalEulerRotation() const noexcept
 	{
 		parse();
 		XMFLOAT4X4 rm;

@@ -51,7 +51,7 @@ namespace sv {
 		return *this;
     }
 
-    void EventRegister::bind(EventListener* listener_, const EventFunction& fn)
+    void EventRegister::bindRaw(EventListener* listener_, const EventFunction& fn)
     {
 		unbind();
 

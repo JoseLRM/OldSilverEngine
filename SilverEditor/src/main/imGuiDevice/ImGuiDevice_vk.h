@@ -11,7 +11,7 @@
 
 #include "external/ImGui/imgui_impl_vulkan.h"
 
-namespace sve {
+namespace sv {
 
 	class ImGuiDevice_vk : public ImGuiDevice {
 
@@ -27,18 +27,18 @@ namespace sve {
 		VkExtent2D m_SwapChainSize;
 
 		VkSampler m_ImageSampler;
-		std::map<sv::GPUImage_internal*, std::pair<VkImageView, ImTextureID>> m_Images;
+		std::map<GPUImage_internal*, std::pair<VkImageView, ImTextureID>> m_Images;
 
 	public:
-		sv::Result Initialize() override;
-		sv::Result Close() override;
+		Result Initialize() override;
+		Result Close() override;
 
 		void BeginFrame() override;
 		void EndFrame() override;
 
 		void ResizeSwapChain() override;
 
-		ImTextureID ParseImage(sv::GPUImage* image) override;
+		ImTextureID ParseImage(GPUImage* image) override;
 
 	private:
 		VkResult CreateFrames();

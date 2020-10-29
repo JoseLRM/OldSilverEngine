@@ -21,8 +21,14 @@ namespace sv {
         EventRegister& operator=(const EventRegister& other) = delete;
         EventRegister& operator=(EventRegister&& other) noexcept;
 
-        void bind(EventListener* eventListener, const EventFunction& fn);
+        void bindRaw(EventListener* eventListener, const EventFunction& fn);
         void unbind();
+
+		template<typename T>
+		inline void bind(EventListener* eventListener, const std::function<void(const T*)>& fn)
+		{
+			bindRaw(eventListener, reinterpret_cast<const EventFunction&>(fn));
+		}
 
 		EventListener* getEventListener() const noexcept;
 

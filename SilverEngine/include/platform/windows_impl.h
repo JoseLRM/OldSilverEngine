@@ -10,7 +10,7 @@
 #define OEMRESOURCE
 #define NOATOM
 #define NOCLIPBOARD
-#define NOCOLOR
+//#define NOCOLOR		(COLOR_BACKGROUND)
 #define NOCTLMGR
 #define NODRAWTEXT
 #define NOKERNEL
@@ -33,8 +33,11 @@
 #define NOPROXYSTUB
 #define NOIMAGE
 #define NOTAPE
-#define UNICODE
 #define NOMINMAX
+
+#ifndef UNICODE
+#define UNICODE
+#endif
 
 #include <Windows.h>
 

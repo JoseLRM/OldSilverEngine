@@ -7,15 +7,15 @@
 #include "imGuiDevice/ImGuiDevice.h"
 #include "scene_editor.h"
 #include "simulation.h"
-#include "viewport_manager.h"
+#include "panel_manager.h"
 
-namespace sve {
+namespace sv {
 	
 	static std::unique_ptr<ImGuiDevice> g_Device;
 
 	void editor_run()
 	{
-		sv::InitializationDesc desc;
+		InitializationDesc desc;
 		desc.callbacks.initialize = editor_initialize;
 		desc.callbacks.update = editor_update;
 		desc.callbacks.render = editor_render;
@@ -24,14 +24,14 @@ namespace sve {
 		desc.assetsFolderPath = "assets/";
 		desc.minThreadsCount = 2;
 		desc.iconFilePath = L"icon.ico";
-		desc.windowStyle = sv::WindowStyle_Default;
+		desc.windowStyle = WindowStyle_Default;
 		desc.windowBounds.x = 0u;
 		desc.windowBounds.y = 0u;
 		desc.windowBounds.z = 1280u;
 		desc.windowBounds.w = 720u;
 		desc.windowTitle = L"SilverEngine";
 
-		if (sv::engine_initialize(&desc) != sv::Result_Success) {
+		if (engine_initialize(&desc) != Result_Success) {
 			return;
 		}
 
@@ -79,7 +79,7 @@ namespace sve {
 			colors[ImGuiCol_TabActive] = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
 			colors[ImGuiCol_TabUnfocused] = ImVec4(0.30f, 0.30f, 0.30f, 0.44f);
 			colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.34f, 0.34f, 0.34f, 1.00f);
-			colors[ImGuiCol_DockingPreview] = ImVec4(1.00f, 0.00f, 0.00f, 1.00f);
+			colors[ImGuiCol_DockingPreview] = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
 			colors[ImGuiCol_DockingEmptyBg] = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
 			colors[ImGuiCol_PlotLines] = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
 			colors[ImGuiCol_PlotLinesHovered] = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
@@ -95,20 +95,20 @@ namespace sve {
 
 		while (true) {
 			
-			if (sv::engine_loop() != sv::Result_Success) break;
+			if (engine_loop() != Result_Success) break;
 
 		}
 
 		g_Device->Close();
 
-		sv::engine_close();
+		engine_close();
 	}
 
 	void StyleEditor()
 	{
 		ImGui::ShowStyleEditor();
 
-		if (sv::input_key_pressed('S')) {
+		if (input_key_pressed('S')) {
 
 			std::ofstream file;
 
@@ -171,19 +171,25 @@ namespace sve {
 
 		ImGui::PopStyleVar(2);
 
+		auto& style = ImGui::GetStyle();
+		float minWidth = style.WindowMinSize.x;
+		style.WindowMinSize.x = 300.f;
+
 		ImGuiID dockspace_id = ImGui::GetID("MyDockSpace");
 		ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
+
+		style.WindowMinSize.x = minWidth;
 
 		ImGui::End();
 	}
 
-	sv::Result editor_initialize()
+	Result editor_initialize()
 	{
 		svCheck(simulation_initialize("assets/scenes/Test.scene"));
 		svCheck(scene_editor_initialize());
 		svCheck(viewport_initialize());
 
-		return sv::Result_Success;
+		return Result_Success;
 	}
 
 	void editor_update(float dt)
@@ -191,13 +197,13 @@ namespace sve {
 		simulation_update(dt);
 		scene_editor_update(dt);
 
-		if (sv::input_key_pressed(SV_KEY_F11)) {
+		if (input_key_pressed(SV_KEY_F11)) {
 			simulation_gamemode_set(!simulation_gamemode_get());
 		}
-		if (sv::input_key(SV_KEY_CONTROL) && sv::input_key_pressed('S')) {
-			sv::Scene& scene = simulation_scene_get();
-			sv::Result res = scene.serialize("assets/scenes/Test.scene");
-			SV_ASSERT(sv::result_okay(res));
+		if (input_key(SV_KEY_CONTROL) && input_key_pressed('S')) {
+			Scene& scene = simulation_scene_get();
+			Result res = scene.serialize("assets/scenes/Test.scene");
+			SV_ASSERT(result_okay(res));
 		}
 
 		g_Device->ResizeSwapChain();
@@ -209,7 +215,7 @@ namespace sve {
 			assetTimeCount += dt;
 			if (assetTimeCount >= 1.f) {
 
-				sv::assets_refresh();
+				asset_refresh();
 
 				assetTimeCount--;
 			}
@@ -226,7 +232,7 @@ namespace sve {
 			std::wstring title = L"SilverEditor | FPS: ";
 			title += std::to_wstring(fpsCount * 4u);
 
-			sv::window_title_set(title.c_str());
+			window_title_set(title.c_str());
 
 			fpsTime -= 0.25f;
 			fpsCount = 0u;
@@ -242,24 +248,24 @@ namespace sve {
 
 			g_Device->BeginFrame();
 
-			sv::GPUImage* simulationOffscreen = nullptr;
-			sv::GPUImage* editorOffscreen = scene_editor_camera_get().camera.getOffscreenRT();
+			GPUImage* simulationOffscreen = nullptr;
+			GPUImage* editorOffscreen = scene_editor_camera_get().camera.getOffscreenRT();
 
-			sv::Scene& scene = simulation_scene_get();
-			sv::Entity cameraEntity = scene.getMainCamera();
+			Scene& scene = simulation_scene_get();
+			Entity cameraEntity = scene.getMainCamera();
 
-			if (sv::ecs_entity_exist(scene, cameraEntity)) {
+			if (ecs_entity_exist(scene, cameraEntity)) {
 
-				sv::CameraComponent* camera = sv::ecs_component_get<sv::CameraComponent>(scene, cameraEntity);
+				CameraComponent* camera = ecs_component_get<CameraComponent>(scene, cameraEntity);
 				if (camera) {
 					simulationOffscreen = camera->camera.getOffscreenRT();
 				}
 			}
 
-			sv::GPUBarrier barriers[2];
-			barriers[0] = sv::GPUBarrier::Image(editorOffscreen, sv::GPUImageLayout_RenderTarget, sv::GPUImageLayout_ShaderResource);
-			if (simulationOffscreen) barriers[1] = sv::GPUBarrier::Image(simulationOffscreen, sv::GPUImageLayout_RenderTarget, sv::GPUImageLayout_ShaderResource);
-			sv::graphics_barrier(barriers, simulationOffscreen ? 2u : 1u, g_Device->GetCMD());
+			GPUBarrier barriers[2];
+			barriers[0] = GPUBarrier::Image(editorOffscreen, GPUImageLayout_RenderTarget, GPUImageLayout_ShaderResource);
+			if (simulationOffscreen) barriers[1] = GPUBarrier::Image(simulationOffscreen, GPUImageLayout_RenderTarget, GPUImageLayout_ShaderResource);
+			graphics_barrier(barriers, simulationOffscreen ? 2u : 1u, g_Device->GetCMD());
 			
 			MainMenu();
 			DisplayDocking();
@@ -267,18 +273,18 @@ namespace sve {
 			viewport_display();
 			g_Device->EndFrame();
 
-			barriers[0] = sv::GPUBarrier::Image(editorOffscreen, sv::GPUImageLayout_ShaderResource, sv::GPUImageLayout_RenderTarget);
-			if (simulationOffscreen) barriers[1] = sv::GPUBarrier::Image(simulationOffscreen, sv::GPUImageLayout_ShaderResource, sv::GPUImageLayout_RenderTarget);
-			sv::graphics_barrier(barriers, simulationOffscreen ? 2u : 1u, g_Device->GetCMD());
+			barriers[0] = GPUBarrier::Image(editorOffscreen, GPUImageLayout_ShaderResource, GPUImageLayout_RenderTarget);
+			if (simulationOffscreen) barriers[1] = GPUBarrier::Image(simulationOffscreen, GPUImageLayout_ShaderResource, GPUImageLayout_RenderTarget);
+			graphics_barrier(barriers, simulationOffscreen ? 2u : 1u, g_Device->GetCMD());
 		}
 	}
-	sv::Result editor_close()
+	Result editor_close()
 	{
 		svCheck(simulation_close());
 		svCheck(scene_editor_close());
 		svCheck(viewport_close());
 
-		return sv::Result_Success;
+		return Result_Success;
 	}
 
 	ImGuiDevice& editor_device_get()

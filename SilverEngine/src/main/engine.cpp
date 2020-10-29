@@ -10,7 +10,7 @@
 #include "platform/window/window_internal.h"
 #include "task_system/task_system_internal.h"
 #include "logging/logging_internal.h"
-#include "high_level/asset_system/asset_system_internal.h"
+#include "simulation/asset_system/asset_system_internal.h"
 #include "simulation/animator/animator_internal.h"
 #include "main/event_system/event_system_internal.h"
 
@@ -64,8 +64,8 @@ namespace sv {
 
 			svCheck(task_initialize(desc.minThreadsCount));
 			svCheck(event_initialize());
+			svCheck(asset_initialize(desc.assetsFolderPath));
 			svCheck(animator_initialize());
-			svCheck(assets_initialize(desc.assetsFolderPath));
 			svCheck(window_initialize(desc.windowStyle, desc.windowBounds, desc.windowTitle, desc.iconFilePath));
 			svCheck(graphics_initialize());
 			svCheck(matsys_initialize());
@@ -106,7 +106,7 @@ namespace sv {
 			animator_update(g_DeltaTime);
 
 			// Update assets
-			assets_update(g_DeltaTime);
+			asset_update(g_DeltaTime);
 
 			// Update User
 			g_App.update(g_DeltaTime);
@@ -137,13 +137,14 @@ namespace sv {
 		try {
 			svCheck(g_App.close());
 
-			svCheck(assets_close());
+			asset_free_unused();
 			svCheck(sprite_renderer_close());
 			svCheck(debug_renderer_close());
 			svCheck(matsys_close());
 			svCheck(graphics_close());
 			svCheck(window_close());
 			svCheck(animator_close());
+			svCheck(asset_close());
 			svCheck(event_close());
 			svCheck(task_close());
 			svCheck(logging_close());

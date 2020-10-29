@@ -3,7 +3,7 @@
 #include "ImGuiDevice.h"
 #include "ImGuiDevice_vk.h"
 
-namespace sve {
+namespace sv {
 
 	std::unique_ptr<ImGuiDevice> device_create()
 	{

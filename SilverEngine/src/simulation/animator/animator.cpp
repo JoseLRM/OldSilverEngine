@@ -44,8 +44,8 @@ namespace sv {
 		return Result_Success;
 	}
 
-	template<typename T>
-	void animator_keyframes_set(AnimatedInstance<T>& anim, const KeyFrame<T>* kfs, ui32 count)
+	template<typename T, typename key>
+	void animator_keyframes_set(AnimatedInstance<T>& anim, const KeyFrame<key>* kfs, ui32 count)
 	{
 		SV_ASSERT(anim.data.get());
 
@@ -53,7 +53,12 @@ namespace sv {
 		keyFrameList.clear();
 
 		for (ui32 i = 0; i < count; ++i) {
-			keyFrameList.emplace_back(*kfs);
+			auto& k = keyFrameList.emplace_back();
+			k.duration = kfs->duration;
+			k.effect = kfs->effect;
+			k.maxVelocity = kfs->maxVelocity;
+			k.minVelocity = kfs->minVelocity;
+			k.value = T(kfs->value);
 			++kfs;
 		}
 
@@ -212,6 +217,17 @@ namespace sv {
 			animator_idle(g_FloatAllocator, anim);
 		}
 		animator_reset(g_FloatAllocator, anim);
+	}
+
+	// ANIMATED UINT
+
+	void AnimatedUInt::setKeyFrames(const KeyFrame<ui32>* kfs, ui32 count) noexcept
+	{
+		animator_internal_check(g_FloatAllocator, m_Float.pInternal);
+
+		SV_ASSERT(m_Float.pInternal);
+		AnimatedFloat_internal& anim = *reinterpret_cast<AnimatedFloat_internal*>(m_Float.pInternal);
+		animator_keyframes_set(anim, kfs, count);
 	}
 
 }

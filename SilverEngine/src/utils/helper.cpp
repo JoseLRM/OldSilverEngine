@@ -10,7 +10,7 @@ namespace sv {
 	{
 		std::wstring str;
 		str.resize(strlen(c));
-		MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, c, str.size(), &str[0], str.size());
+		MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, c, int(str.size()), &str[0], int(str.size()));
 		return str;
 	}
 

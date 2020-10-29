@@ -8,7 +8,7 @@ namespace sv {
 
 	void matsys_shaderlibrary_textures_add(const ShaderInfo* info, ShaderType shaderType, std::vector<ShaderLibraryAttribute>& attributes, std::vector<ShaderIndices>& indices)
 	{
-		ui32 beginSize = attributes.size();
+		ui32 beginSize = ui32(attributes.size());
 
 		const ShaderInfo::ResourceImage* src = info->images.data();
 		const ShaderInfo::ResourceImage* endSrc = info->images.data() + info->images.size();
@@ -16,6 +16,10 @@ namespace sv {
 		while (src != endSrc) {
 
 			const ShaderInfo::ResourceImage& attr = *src;
+			if (attr.name.empty() || attr.name.front() == '_') {
+				++src;
+				continue;
+			}
 
 			// Find if exist
 			ui32 i;
@@ -31,7 +35,7 @@ namespace sv {
 				i = ui32(attributes.size());
 				auto& a = attributes.emplace_back();
 				a.name = attr.name;
-				a.type = ShaderAttributeType_Texture;
+				a.type = ShaderAttributeType_Other;
 				indices.emplace_back();
 			}
 
@@ -45,7 +49,7 @@ namespace sv {
 
 	void matsys_shaderlibrary_attributes_add(const ShaderInfo* info, ShaderType shaderType, std::vector<ShaderLibraryAttribute>& attributes, std::vector<ShaderIndices>& indices, ui32& cameraBinding, ui32& binding, ui32& size)
 	{
-		ui32 beginSize = attributes.size();
+		ui32 beginSize = ui32(attributes.size());
 
 		// Find camera buffer
 		cameraBinding = ui32_max;
@@ -108,7 +112,7 @@ namespace sv {
 		ShaderTag_Null,
 		ShaderTag_Unknown,
 		ShaderTag_Name,
-		ShaderTag_Package,
+		ShaderTag_Type,
 		ShaderTag_VSbegin,
 		ShaderTag_VSend,
 		ShaderTag_PSbegin,
@@ -130,7 +134,7 @@ namespace sv {
 		++line;
 
 		if (line[0] == 'n' && line[1] == 'a' && line[2] == 'm' && line[3] == 'e' && line[4] == ' ') def = { ShaderTag_Name, line + 5 };
-		else if (line[0] == 'p' && line[1] == 'a' && line[2] == 'c' && line[3] == 'k' && line[4] == 'a' && line[5] == 'g' && line[6] == 'e' && line[7] == ' ') def = { ShaderTag_Package, line + 8 };
+		else if (line[0] == 't' && line[1] == 'y' && line[2] == 'p' && line[3] == 'e' && line[4] == ' ') def = { ShaderTag_Type, line + 5 };
 		else if (line[0] == 'V' && line[1] == 'S' && line[2] == '_' && line[3] == 'b' && line[4] == 'e' && line[5] == 'g' && line[6] == 'i' && line[7] == 'n') def = { ShaderTag_VSbegin, nullptr };
 		else if (line[0] == 'P' && line[1] == 'S' && line[2] == '_' && line[3] == 'b' && line[4] == 'e' && line[5] == 'g' && line[6] == 'i' && line[7] == 'n') def = { ShaderTag_PSbegin, nullptr };
 		else if (line[0] == 'V' && line[1] == 'S' && line[2] == '_' && line[3] == 'e' && line[4] == 'n' && line[5] == 'd') def = { ShaderTag_VSend, nullptr };
@@ -138,7 +142,7 @@ namespace sv {
 		else def = { ShaderTag_Unknown, line - 1u };
 
 		if (def.pValue)
-			def.valueSize = size - (def.pValue - line) - 1;
+			def.valueSize = size - ui32(def.pValue - line) - 1u;
 		return def;
 	}
 
@@ -147,8 +151,18 @@ namespace sv {
 		const char* it = src;
 		while (*it != '\n' && *it != '\0') ++it;
 
-		size = it - src;
+		size = ui32(it - src);
 		return *it != '\0';
+	}
+
+	void matsys_rmv_ctrl_chars(std::string& str)
+	{
+		for (auto it = str.begin(); it != str.end(); ) {
+			if (*it == '\r') {
+				it = str.erase(it);
+			}
+			else ++it;
+		}
 	}
 
 	Result matsys_shaderlibrary_compile(ShaderLibrary_internal& lib, const char* src)
@@ -157,7 +171,7 @@ namespace sv {
 		ui32 lineSize;
 
 		std::string name;
-		std::string package;
+		std::string type;
 
 		const char* inShader = nullptr;
 		ShaderType currentShader;
@@ -237,7 +251,7 @@ namespace sv {
 						shaderSrc.resize(endSrc - beginSrc);
 						memcpy(shaderSrc.data(), beginSrc, shaderSrc.size());
 
-						svCheck(graphics_shader_compile_string(&desc, shaderSrc.c_str(), strlen(shaderSrc.c_str()), *pBin));
+						svCheck(graphics_shader_compile_string(&desc, shaderSrc.c_str(), ui32(strlen(shaderSrc.c_str())), *pBin));
 						inShader = nullptr;
 					}
 				}
@@ -249,9 +263,9 @@ namespace sv {
 						memcpy(name.data(), define.pValue, define.valueSize);
 						break;
 
-					case ShaderTag_Package:
-						package.resize(define.valueSize);
-						memcpy(package.data(), define.pValue, define.valueSize);
+					case ShaderTag_Type:
+						type.resize(define.valueSize);
+						memcpy(type.data(), define.pValue, define.valueSize);
 						break;
 
 					case ShaderTag_VSbegin:
@@ -282,18 +296,14 @@ namespace sv {
 					}
 				}
 			}
-			else if (!inShader) {
-				std::string defStr;
-				defStr.resize(lineSize + 1u);
-				memcpy(defStr.data(), line, lineSize);
-				defStr.back() = '\0';
-				SV_LOG_INFO("Unknown line outside shader code '%s'", defStr.c_str());
-				break;
-			}
 
 			if (brk) break;
 			line += lineSize + 1u;
 		}
+
+		// Remove control caracters
+		matsys_rmv_ctrl_chars(name);
+		matsys_rmv_ctrl_chars(type);
 
 		// Check some errors
 		if (VSBin.empty()) {
@@ -332,21 +342,16 @@ namespace sv {
 			}
 		}
 
-		// Create shaderlibrary name
-		if (package.size()) {
-			lib.name = package;
-			if (lib.name.back() != '/')
-				lib.name += '/';
-		}
-		lib.name += name;
-
-		// Compute hascode
-		lib.hashCode = hash_string(lib.name.c_str());
+		// Create shaderlibrary name and compute hashCode
+		lib.name = name;
+		lib.nameHashCode = hash_string(lib.name.c_str());
+		lib.type = type;
 
 		// Save bin
 		{
 			ArchiveO archive;
 			archive << lib.name;
+			archive << lib.type;
 			archive << VSBin;
 
 			if (PSBin.empty()) archive << false;
@@ -355,7 +360,7 @@ namespace sv {
 			if (GSBin.empty()) archive << false;
 			else archive << true << GSBin;
 
-			size_t hashCode = lib.hashCode;
+			size_t hashCode = lib.nameHashCode;
 			hash_combine(hashCode, graphics_api_get());
 
 			Result binResult = bin_write(hashCode, archive);

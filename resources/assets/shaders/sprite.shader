@@ -1,14 +1,11 @@
-#name Sprite
-#package default
+#name default/Sprite
 
-#shader vs
-#shader ps
-
-#start
-#include "core.hlsl"
+#type Sprite
 
 // Vertex Shader
-#ifdef SV_SHADER_TYPE_VERTEX
+#VS_begin
+
+#include "core.hlsl"
 
 SV_DEFINE_CAMERA(b0);
 
@@ -31,14 +28,16 @@ Output main(Input input)
     Output output;
 	output.color = input.color;
 	output.texCoord = input.texCoord;
-	output.position = mul(input.position, camera.viewProjectionMatrix);
+	output.position = mul(camera.vpm, input.position);
     return output;
 }
 
-#endif
+#VS_end
 
 // Pixel Shader
-#ifdef SV_SHADER_TYPE_PIXEL
+#PS_begin
+
+#include "core.hlsl"
 
 struct Input
 {
@@ -54,25 +53,27 @@ struct Output
 SV_SAMPLER(sam, s0);
 SV_TEXTURE(_Albedo, t0);
 
-SV_TEXTURE(Test, t1);
+SV_DEFINE_MATERIAL(b0)
+{
+    float opacidad;
+    float2 pene;
+}
 
-SV_DEFINE_MATERIAL(b0) {
-    float4 diffuse;
-    float alpha;
-    float blend;
-};
+SV_TEXTURE(Juan, t1);
 
 Output main(Input input)
 {
     Output output;
-    float4 texColor0 = _Albedo.Sample(sam, input.fragTexCoord);
-    float4 texColor1 = Test.Sample(sam, input.fragTexCoord);
-    output.color = input.fragColor * texColor0 * blend + texColor1 * (1.f - blend);
-    output.color *= diffuse;
-    output.color.w *= alpha;
 
+    float4 texColor = _Albedo.Sample(sam, input.fragTexCoord) * Juan.Sample(sam, input.fragTexCoord);
+    output.color = input.fragColor * texColor;
 	if (output.color.a < 0.05f) discard;
+
+    output.color.a = opacidad;
+    output.color.x *= pene.x;
+    output.color.y *= pene.y;
+
     return output;
 }
 
-#endif
+#PS_end

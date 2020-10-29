@@ -4,5 +4,5 @@
 
 int main()
 {
-	sve::editor_run();
+	sv::editor_run();
 }

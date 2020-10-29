@@ -54,15 +54,15 @@ constexpr ui16	ui16_max	= std::numeric_limits<ui16>::max();
 constexpr ui32	ui32_max	= std::numeric_limits<ui32>::max();
 constexpr ui64	ui64_max	= std::numeric_limits<ui64>::max();
 
-constexpr i32	i8_min		= std::numeric_limits<i8>::min();
-constexpr i32	i16_min		= std::numeric_limits<i16>::min();
+constexpr i8	i8_min		= std::numeric_limits<i8>::min();
+constexpr i16	i16_min		= std::numeric_limits<i16>::min();
 constexpr i32	i32_min		= std::numeric_limits<i32>::min();
-constexpr i32	i64_min		= std::numeric_limits<i64>::min();
+constexpr i64	i64_min		= std::numeric_limits<i64>::min();
 
-constexpr i32	i8_max		= std::numeric_limits<i8>::max();
-constexpr i32	i16_max		= std::numeric_limits<i16>::max();
+constexpr i8	i8_max		= std::numeric_limits<i8>::max();
+constexpr i16	i16_max		= std::numeric_limits<i16>::max();
 constexpr i32	i32_max		= std::numeric_limits<i32>::max();
-constexpr i32	i64_max		= std::numeric_limits<i64>::max();
+constexpr i64	i64_max		= std::numeric_limits<i64>::max();
 
 constexpr float	float_min = std::numeric_limits<float>::min();
 constexpr float	float_max = std::numeric_limits<float>::max();
@@ -83,6 +83,7 @@ namespace sv {
 		Result_InvalidFormat,
 		Result_InvalidUsage,
 		Result_UnsupportedVersion,
+		Result_Duplicated,
 	};
 
 	inline bool result_okay(Result res) { return res == Result_Success; }

@@ -867,7 +867,6 @@ namespace sv {
 				graphics_vulkan_parse_spirvstruct(comp, structType.member_types[i], attributes);
 			}
 			else {
-
 				ShaderAttributeType svType = graphics_vulkan_parse_spirvtype(type);
 				if (svType == ShaderAttributeType_Unknown) {
 					SV_LOG_ERROR("Unknown Material type");
@@ -881,9 +880,11 @@ namespace sv {
 				// Compute offset
 				if (attributes.size() == 1u) a.offset = 0u;
 				else {
-					a.offset = attributes.back().offset + graphics_shader_attribute_size(attributes.back().type);
+					ShaderAttribute& last = attributes[attributes.size() - 2u];
+
+					a.offset = last.offset + graphics_shader_attribute_size(last.type);
 					ui32 typeSize = graphics_shader_attribute_size(a.type);
-					if (a.offset / 16u != (a.offset + std::min(typeSize, 15u)) / 16) a.offset += 16 - (a.offset % 16);
+					if (a.offset / 16u != (a.offset + std::min(typeSize - 1u, 15u)) / 16) a.offset += 16 - (a.offset % 16);
 				}
 			}
 			

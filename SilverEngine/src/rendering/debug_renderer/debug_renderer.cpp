@@ -185,14 +185,14 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 
 				// TODO: Create and load from bin data
 
-				svCheck(graphics_shader_compile_string(&vsComileDesc, QUAD_VERTEX_SHADER_SRC, strlen(QUAD_VERTEX_SHADER_SRC), quadVS));
-				svCheck(graphics_shader_compile_string(&psComileDesc, QUAD_PIXEL_SHADER_SRC, strlen(QUAD_PIXEL_SHADER_SRC), quadPS));
+				svCheck(graphics_shader_compile_string(&vsComileDesc, QUAD_VERTEX_SHADER_SRC, ui32(strlen(QUAD_VERTEX_SHADER_SRC)), quadVS));
+				svCheck(graphics_shader_compile_string(&psComileDesc, QUAD_PIXEL_SHADER_SRC, ui32(strlen(QUAD_PIXEL_SHADER_SRC)), quadPS));
 
-				svCheck(graphics_shader_compile_string(&vsComileDesc, ELLIPSE_VERTEX_SHADER_SRC, strlen(ELLIPSE_VERTEX_SHADER_SRC), ellipseVS));
-				svCheck(graphics_shader_compile_string(&psComileDesc, ELLIPSE_PIXEL_SHADER_SRC, strlen(ELLIPSE_PIXEL_SHADER_SRC), ellipsePS));
+				svCheck(graphics_shader_compile_string(&vsComileDesc, ELLIPSE_VERTEX_SHADER_SRC, ui32(strlen(ELLIPSE_VERTEX_SHADER_SRC)), ellipseVS));
+				svCheck(graphics_shader_compile_string(&psComileDesc, ELLIPSE_PIXEL_SHADER_SRC, ui32(strlen(ELLIPSE_PIXEL_SHADER_SRC)), ellipsePS));
 
-				svCheck(graphics_shader_compile_string(&vsComileDesc, SPRITE_VERTEX_SHADER_SRC, strlen(SPRITE_VERTEX_SHADER_SRC), spriteVS));
-				svCheck(graphics_shader_compile_string(&psComileDesc, SPRITE_PIXEL_SHADER_SRC, strlen(SPRITE_PIXEL_SHADER_SRC), spritePS));
+				svCheck(graphics_shader_compile_string(&vsComileDesc, SPRITE_VERTEX_SHADER_SRC, ui32(strlen(SPRITE_VERTEX_SHADER_SRC)), spriteVS));
+				svCheck(graphics_shader_compile_string(&psComileDesc, SPRITE_PIXEL_SHADER_SRC, ui32(strlen(SPRITE_PIXEL_SHADER_SRC)), spritePS));
 			}
 
 			ShaderDesc desc;
@@ -665,7 +665,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 			// Update & draw
 			if (batchCount <= draw.count) {
 
-				debug_renderer_draw_batch(beginIt, beginIndex, it, currentIndex, itBatch - batchData, batchData, renderTarget, cmd);
+				debug_renderer_draw_batch(beginIt, beginIndex, it, currentIndex, ui32(itBatch - batchData), batchData, renderTarget, cmd);
 
 				// prepare next batch
 				beginIndex = ui32_max;
@@ -679,7 +679,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 			}
 		}
 
-		ui32 batchCount = itBatch - batchData;
+		ui32 batchCount = ui32(itBatch - batchData);
 		debug_renderer_draw_batch(beginIt, beginIndex, it - 1u, currentIndex, batchCount, batchData, renderTarget, cmd);
 
 	}

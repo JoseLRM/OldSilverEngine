@@ -70,7 +70,7 @@ namespace sv {
 		}
 
 		if (!m_ActiveStaggingBuffers.empty()) {
-			for (i32 i = m_ActiveStaggingBuffers.size() - 1u; i >= 0; --i) {
+			for (i64 i = m_ActiveStaggingBuffers.size() - 1u; i >= 0; --i) {
 				if (m_ActiveStaggingBuffers[i].frame == frame) {
 					m_StaggingBuffers.emplace_back(m_ActiveStaggingBuffers[i]);
 					m_ActiveStaggingBuffers.erase(m_ActiveStaggingBuffers.begin() + i);

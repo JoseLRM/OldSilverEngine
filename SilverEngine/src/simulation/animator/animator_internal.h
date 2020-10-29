@@ -417,7 +417,7 @@ namespace sv {
 			}
 
 			ui32& otherCount = (begin == it) ? pool.beginCount : it->nextCount;
-			ui32 distance = ptr - it;
+			ui32 distance = ui32(ptr - it);
 			SV_ASSERT(otherCount >= distance);
 
 			ptr->nextCount = otherCount - distance;

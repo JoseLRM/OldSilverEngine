@@ -1,13 +1,13 @@
 #include "core_editor.h"
 
-#include "viewport_manager.h"
-#include "viewports/SimulationViewport.h"
+#include "panel_manager.h"
+#include "panels/SimulationPanel.h"
 #include "simulation.h"
-#include "high_level/scene.h"
+#include "simulation/scene.h"
 #include "platform/window.h"
 #include "simulation/animator.h"
 
-namespace sve {
+namespace sv {
 
 	static bool g_Running = false;
 	static bool g_Paused = false;
@@ -16,27 +16,27 @@ namespace sve {
 	static bool g_RunningRequest = false;
 	static bool g_StopRequest = false;
 
-	static sv::Scene g_Scene;
+	static Scene g_Scene;
 	static std::string g_ScenePath;
 
-	sv::Result simulation_initialize(const char* sceneFilePath)
+	Result simulation_initialize(const char* sceneFilePath)
 	{
 		g_Scene.create();
 
-		if (g_Scene.deserialize(sceneFilePath) != sv::Result_Success) {
+		if (g_Scene.deserialize(sceneFilePath) != Result_Success) {
 			g_Scene.destroy();
 			g_Scene.create();
 		}
 
 		g_ScenePath = sceneFilePath;
 
-		return sv::Result_Success;
+		return Result_Success;
 	}
 
-	sv::Result simulation_close()
+	Result simulation_close()
 	{
 		g_Scene.destroy();
-		return sv::Result_Success;
+		return Result_Success;
 	}
 
 	void simulation_update(float dt)
@@ -63,9 +63,11 @@ namespace sve {
 		{
 			SimulationViewport* sim = (SimulationViewport*)viewport_get("Simulation");
 			if (sim) {
-				sv::CameraComponent& camera = *sv::ecs_component_get<sv::CameraComponent>(g_Scene, g_Scene.getMainCamera());
-				sv::vec2u size = g_Gamemode ? sv::window_size_get() : sim->get_screen_size();
-				camera.camera.adjust(size.x, size.y);
+				CameraComponent* camera = ecs_component_get<CameraComponent>(g_Scene, g_Scene.getMainCamera());
+				if (camera) {
+					vec2u size = g_Gamemode ? window_size_get() : sim->get_screen_size();
+					camera->camera.adjust(size.x, size.y);
+				}
 			}
 		}
 
@@ -121,12 +123,12 @@ namespace sve {
 		if (gamemode) {
 			if (g_Running && !g_Paused) {
 				g_Gamemode = true;
-				sv::window_style_set(sv::WindowStyle_Fullscreen);
+				window_style_set(WindowStyle_Fullscreen);
 			}
 		}
 		else {
 			g_Gamemode = false;
-			sv::window_style_set(sv::WindowStyle_Default);
+			window_style_set(WindowStyle_Default);
 		}
 	}
 
@@ -145,7 +147,7 @@ namespace sve {
 		return g_Gamemode;
 	}
 
-	sv::Scene& simulation_scene_get()
+	Scene& simulation_scene_get()
 	{
 		return g_Scene;
 	}

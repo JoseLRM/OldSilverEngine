@@ -1430,10 +1430,10 @@ namespace sv {
 				scissors[i].extent.height = sc.height;
 			}
 			for (ui32 i = state.scissorsCount; i < GraphicsLimit_Scissor; ++i) {
-				scissors[i].offset.x = 0.f;
-				scissors[i].offset.y = 0.f;
-				scissors[i].extent.width = 1.f;
-				scissors[i].extent.height = 1.f;
+				scissors[i].offset.x = 0u;
+				scissors[i].offset.y = 0u;
+				scissors[i].extent.width = 1u;
+				scissors[i].extent.height = 1u;
 			}
 
 			vkCmdSetScissor(cmd, 0u, GraphicsLimit_Scissor, scissors);
@@ -2353,7 +2353,7 @@ namespace sv {
 		create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 		create_info.pSubpasses = &subpass_info;
 		create_info.subpassCount = 1u;
-		create_info.attachmentCount = desc.attachments.size();
+		create_info.attachmentCount = ui32(desc.attachments.size());
 		create_info.pAttachments = attachments;
 
 		vkCheck(vkCreateRenderPass(g_API->device, &create_info, nullptr, &renderPass.renderPass));

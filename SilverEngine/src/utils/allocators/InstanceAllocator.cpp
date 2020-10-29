@@ -162,7 +162,7 @@ namespace sv {
 
 			}
 
-			totalSize += it->size;
+			totalSize += ui32(it->size);
 		}
 
 		return totalSize - freeCount;

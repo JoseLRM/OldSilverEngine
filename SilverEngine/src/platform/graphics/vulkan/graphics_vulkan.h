@@ -55,7 +55,7 @@ namespace sv {
 #include "..//src/external/vk_mem_alloc.h"
 
 #ifdef SV_DEBUG
-#define vkAssert(x) if((x) != VK_SUCCESS) SV_ASSERT("VulkanError", #x)
+#define vkAssert(x) if((x) != VK_SUCCESS) SV_ASSERT(#x)
 #else
 #define vkAssert(x) x
 #endif
@@ -172,7 +172,7 @@ namespace sv {
 		float							lastUsage;
 	};
 
-	class Shader_vk;
+	struct Shader_vk;
 
 	size_t graphics_vulkan_pipeline_compute_hash(const GraphicsState& state);
 	bool graphics_vulkan_pipeline_create(VulkanPipeline& pipeline, Shader_vk* pVertexShader, Shader_vk* pPixelShader, Shader_vk* pGeometryShader);
