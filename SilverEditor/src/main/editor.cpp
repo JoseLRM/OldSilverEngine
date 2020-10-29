@@ -1,6 +1,5 @@
 #include "core_editor.h"
 
-#include "main/engine.h"
 #include "platform/input.h"
 #include "editor.h"
 

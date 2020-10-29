@@ -1,7 +1,6 @@
 #include "core.h"
 
 #include "platform/window.h"
-#include "main/engine.h"
 
 #define SV_VULKAN_IMPLEMENTATION
 #include "graphics_vulkan.h"

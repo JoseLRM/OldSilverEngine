@@ -1,7 +1,7 @@
 #include "core.h"
 
 #include "entity_system_internal.h"
-#include "main/task_system.h"
+#include "simulation/task_system.h"
 #include "utils/allocator.h"
 
 namespace sv {

@@ -238,6 +238,8 @@ namespace sv {
 
 	void graphics_begin()
 	{
+		SV_PROFILER_SCALAR_SET("Draw Calls", 0);
+
 		g_Device.frame_begin();
 	}
 
@@ -1316,10 +1318,12 @@ namespace sv {
 
 	void graphics_draw(ui32 vertexCount, ui32 instanceCount, ui32 startVertex, ui32 startInstance, CommandList cmd)
 	{
+		SV_PROFILER_SCALAR_ADD("Draw Calls", 1);
 		g_Device.draw(vertexCount, instanceCount, startVertex, startInstance, cmd);
 	}
 	void graphics_draw_indexed(ui32 indexCount, ui32 instanceCount, ui32 startIndex, ui32 startVertex, ui32 startInstance, CommandList cmd)
 	{
+		SV_PROFILER_SCALAR_ADD("Draw Calls", 1);
 		g_Device.draw_indexed(indexCount, instanceCount, startIndex, startVertex, startInstance, cmd);
 	}
 

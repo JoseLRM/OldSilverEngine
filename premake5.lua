@@ -22,6 +22,7 @@ workspace "SilverEngine"
 	defines {
 		"SV_ENABLE_LOGGING",
 		"SV_ENABLE_ASSERTION",
+		"SV_ENABLE_PROFILER",
 		"SV_ENABLE_VULKAN_VALIDATION_LAYERS",
 
 		"SV_RES_PATH=\"../resources/\"",

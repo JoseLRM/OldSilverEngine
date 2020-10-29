@@ -3,7 +3,6 @@
 #define VMA_IMPLEMENTATION
 #define SV_VULKAN_IMPLEMENTATION
 #include "graphics_vulkan.h"
-#include "main/engine.h"
 
 namespace sv {
 
@@ -18,9 +17,9 @@ namespace sv {
 		ui32 currentFrame =  graphics_vulkan_device_get().currentFrame;
 
 		// Reset
-		if (m_LastFrame != sv::engine_stats_get_frame_count()) {
+		if (m_LastFrame != sv::engine_frame_count()) {
 			Reset(currentFrame);
-			m_LastFrame = sv::engine_stats_get_frame_count();
+			m_LastFrame = sv::engine_frame_count();
 		}
 
 		// Get new staging buffer

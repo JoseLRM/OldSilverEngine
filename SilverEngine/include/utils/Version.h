@@ -13,12 +13,12 @@ namespace sv {
 		constexpr Version(ui32 major, ui32 minor, ui32 revision) 
 			: major(major), minor(minor), revision(revision) {}
 
-		std::string ToString() {
+		std::string toString() const noexcept {
 			std::stringstream ss;
 			ss << major << '.' << minor << '.' << revision;
 			return ss.str();
 		}
-		ui64 GetVersion()
+		ui64 getVersion() const noexcept
 		{
 			return ui64(major) * 1000000L + ui64(minor) * 1000L + ui64(revision);
 		}

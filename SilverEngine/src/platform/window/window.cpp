@@ -4,7 +4,6 @@
 #include "platform/graphics/graphics_internal.h"
 #include "platform/platform_impl.h"
 
-#include "main/engine.h"
 #include "platform/input/input_internal.h"
 
 namespace sv {

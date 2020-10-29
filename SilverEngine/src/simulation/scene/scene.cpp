@@ -1,7 +1,6 @@
 #include "core.h"
 
 #include "scene_internal.h"
-#include "main/engine.h"
 
 #include "utils/allocator.h"
 
