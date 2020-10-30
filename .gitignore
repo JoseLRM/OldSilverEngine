@@ -11,3 +11,6 @@ bin/
 *.vcxproj
 *.vcxproj.filters
 *.vcxproj.user
+
+# VisualStudioCode files
+*.vscode
