@@ -111,6 +111,38 @@ namespace sv {
 		EventListener_internal& src = *reinterpret_cast<EventListener_internal*>(src_);
 		EventListener_internal& dst = *reinterpret_cast<EventListener_internal*>(dst_);
 
+		// Check if must attach
+
+		if (src.attachments.size() + src.attached.size() <= dst.attachments.size() dst.attached.size()) {
+			for (EventListenerAttachment& att : src.attachments) {
+				if (att.attachment == &dst) {
+					SV_LOG_ERROR("Can't attach because it is currently attached");
+					return;
+				}
+			}
+			for (EventListener_internal* att : src.attached) {
+				if (att == &dst) {
+					SV_LOG_ERROR("Can't attach because it is currently attached");
+					return;
+				}
+			}
+		}
+		else {
+			for (EventListenerAttachment& att : dst.attachments) {
+				if (att.attachment == &src) {
+					SV_LOG_ERROR("Can't attach because it is currently attached");
+					return;
+				}
+			}
+			for (EventListener_internal* att : dst.attached) {
+				if (att == &src) {
+					SV_LOG_ERROR("Can't attach because it is currently attached");
+					return;
+				}
+			}
+		}
+
+		// Attach
 		{
 			std::scoped_lock lock(src.mutex);
 
