@@ -299,7 +299,7 @@ namespace sv {
 		SV_PROFILER_SCALAR value;
 	};
 
-	static std::unordered_map<const char*, ChronoProfile>		g_ProfilerChrono;
+	static std::unordered_map<std::string, ChronoProfile>		g_ProfilerChrono;
 	static std::shared_mutex									g_ProfilerChronoMutex;
 	static std::unordered_map<const char*, ScalarProfile>		g_ProfilerScalar;
 	static std::mutex											g_ProfilerScalarMutex;
