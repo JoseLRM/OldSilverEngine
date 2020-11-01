@@ -272,4 +272,263 @@ namespace sv {
 
 	};
 
+	template<typename T>
+	class IterableInstanceAllocator {
+	public:
+
+		struct Instance {
+			T obj;
+			ui32 nextCount = 0u;
+		};
+
+		const ui32 POOL_SIZE;
+
+		struct Pool {
+			Instance* instances = nullptr;
+			Instance* freeList = nullptr;
+			ui32 size = 0u;
+			ui32 beginCount = 0u;
+
+			struct iterator {
+				Instance* ptr;
+
+				T* operator->() const noexcept { return reinterpret_cast<T*>(ptr); }
+				T& operator*() const noexcept { return *reinterpret_cast<T*>(ptr); }
+
+				iterator& operator++() noexcept { next(); return *this; }
+				iterator operator++(int) noexcept { iterator temp = *this; next(); return temp; }
+				iterator& operator+=(i64 n) noexcept { while(n-- > 0) next(); return *this; }
+
+				bool operator==(const iterator& other) const noexcept { return ptr == other.ptr; }
+				bool operator!=(const iterator& other) const noexcept { return ptr != other.ptr; }
+				bool operator<(const iterator& other) const noexcept { return ptr < other.ptr; }
+				bool operator<=(const iterator& other) const noexcept { return ptr <= other.ptr; }
+				bool operator>(const iterator& other) const noexcept { return ptr > other.ptr; }
+				bool operator>=(const iterator& other) const noexcept { return ptr >= other.ptr; }
+
+				iterator(Instance* ptr) : ptr(ptr) {}
+
+			private:
+				void next()
+				{
+					SV_ASSERT(ptr->nextCount != 0u);
+					ptr += ptr->nextCount;
+				}
+
+			};
+
+			iterator begin()
+			{
+				SV_ASSERT(instances);
+				return iterator(instances + beginCount);
+			}
+
+			iterator end()
+			{
+				SV_ASSERT(instances);
+				return iterator(instances + size);
+			}
+
+		};
+
+	public:
+		IterableInstanceAllocator(ui32 poolSize = 100u) : POOL_SIZE(poolSize)
+		{
+			static_assert(sizeof(T) >= sizeof(void*), "The size of this object must be greater or equals than sizeof(void*)");
+		}
+
+		T* create()
+		{
+			// Make sure that m_Pools.back() has a valid Pool
+			{
+				if (m_Pools.empty()) m_Pools.emplace_back();
+
+				if (m_Pools.back().freeList == nullptr && m_Pools.back().size == POOL_SIZE) {
+
+					ui32 nextPoolIndex = ui32_max;
+
+					// Find pool with available freelist
+					for (ui32 i = 0; i < m_Pools.size(); ++i) {
+						if (m_Pools[i].freeList) {
+							nextPoolIndex = i;
+							goto swap;
+						}
+					}
+
+					// Find pool with available size
+					for (ui32 i = 0; i < m_Pools.size(); ++i) {
+						if (m_Pools[i].size < POOL_SIZE) {
+							nextPoolIndex = i;
+							goto swap;
+						}
+					}
+
+				swap:
+					// if not found create new one
+					if (nextPoolIndex == ui32_max) {
+						m_Pools.emplace_back();
+					}
+					// else swap pools
+					else {
+						Pool aux = m_Pools.back();
+						m_Pools.back() = m_Pools[nextPoolIndex];
+						m_Pools[nextPoolIndex] = aux;
+					}
+				}
+			}
+
+			Pool& pool = m_Pools.back();
+			Instance* res = nullptr;
+			bool resized = false;
+
+			if (pool.freeList) {
+				res = pool.freeList;
+				pool.freeList = *reinterpret_cast<Instance**>(res);
+			}
+			else if (pool.instances == nullptr) {
+				pool.instances = (Instance*)operator new(POOL_SIZE * sizeof(Instance));
+				pool.size = 0u;
+				pool.beginCount = 0u;
+				pool.freeList = nullptr;
+			}
+
+			if (res == nullptr) {
+				resized = true;
+				res = pool.instances + pool.size++;
+			}
+
+			new(res) Instance();
+
+			// Change next count
+			if (!resized) {
+				if (res == pool.instances) {
+					res->nextCount = pool.beginCount;
+					pool.beginCount = 0u;
+				}
+				else {
+
+					Instance* it = res - 1u;
+					Instance* begin = pool.instances - 1u;
+
+					while (it != begin) {
+
+						if (it->nextCount != 0u) {
+							break;
+						}
+
+						--it;
+					}
+
+					ui32& otherCount = (begin == it) ? pool.beginCount : it->nextCount;
+					ui32 distance = ui32(res - it);
+					SV_ASSERT(otherCount >= distance);
+
+					res->nextCount = otherCount - distance;
+					otherCount = distance;
+				}
+			}
+			else res->nextCount = 1u;
+
+			return &res->obj;
+		}
+
+		void destroy(T* obj)
+		{
+			if (m_Pools.empty()) return;
+
+			obj->~T();
+			Instance* ptr = reinterpret_cast<Instance*>(obj);
+
+			Pool* pPool = findPool(ptr);
+
+			if (pPool == nullptr) return;
+
+			// Change the next count
+			if (ptr->nextCount != 0u) {
+
+				SV_ASSERT(ptr->nextCount != 0u);
+
+				if (pPool->instances == ptr) {
+					pPool->beginCount = ptr->nextCount;
+				}
+				else {
+
+					Instance* begin = pPool->instances - 1u;
+					Instance* it = ptr - 1u;
+
+					// Find active animation
+					while (it != begin) {
+
+						if (it->nextCount != 0u && it->nextCount != ui32_max) {
+							break;
+						}
+
+						--it;
+					}
+
+					if (begin == it) {
+						pPool->beginCount += ptr->nextCount;
+					}
+					else it->nextCount += ptr->nextCount;
+				}
+
+				ptr->nextCount = 0u;
+			}
+
+			// Remove from pool
+			memcpy(ptr, &pPool->freeList, sizeof(void*));
+			pPool->freeList = ptr;
+
+			// Destroy empty pool
+			if (pPool->beginCount == pPool->size) {
+
+				// free memory
+				SV_ASSERT(pPool->instances);
+				operator delete[](pPool->instances);
+
+				for (auto it = m_Pools.begin(); it != m_Pools.end(); ++it) {
+					if (&(*it) == pPool) {
+						m_Pools.erase(it);
+						break;
+					}
+				}
+			}
+		}
+
+		void clear()
+		{
+
+		}
+
+	private:
+		Pool* findPool(Instance* ptr)
+		{
+			Pool* pPool = nullptr;
+
+			for (auto& pool : m_Pools) {
+				if (pool.instances <= ptr && pool.instances + pool.size > ptr) {
+					pPool = &pool;
+					break;
+				}
+			}
+
+			return pPool;
+		}
+
+	private:
+		std::vector<Pool> m_Pools;
+
+	public:
+		inline auto begin() 
+		{
+			return m_Pools.begin();
+		}
+
+		inline auto end()
+		{
+			return m_Pools.end();
+		}
+
+	};
+
 }

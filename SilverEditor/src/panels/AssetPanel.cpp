@@ -107,6 +107,7 @@ namespace sv {
 			Option_CreateMaterial,
 			Option_CreateEmptyShader,
 			Option_CreateSpriteShader,
+			Option_CreateSpriteAnimation,
 		};
 
 		Option option = Option_None;
@@ -126,6 +127,12 @@ namespace sv {
 
 				if (ImGui::MenuItem("Empty Shader")) option = Option_CreateEmptyShader;
 				if (ImGui::MenuItem("Sprite Shader")) option = Option_CreateSpriteShader;
+
+				ImGui::EndMenu();
+			}
+			if (ImGui::BeginMenu("Create Animation")) {
+
+				if (ImGui::MenuItem("Sprite Animation")) option = Option_CreateSpriteAnimation;
 
 				ImGui::EndMenu();
 			}
@@ -150,6 +157,9 @@ namespace sv {
 			break;
 		case Option_CreateSpriteShader:
 			SV_LOG_ERROR("For now you can't do that");
+			break;
+		case Option_CreateSpriteAnimation:
+			ImGui::OpenPopup("CreateSpriteAnimationPopup");
 			break;
 		}
 
@@ -246,6 +256,31 @@ namespace sv {
 			ImGui::EndPopup();
 		}
 
+		// CREATE SPRITE ANIMATION
+		if (ImGui::BeginPopup("CreateSpriteAnimationPopup")) {
+
+			gui_component_item_string(nameSelection);
+
+			if (ImGui::Button("Done"))
+			{
+				std::string filePath = m_CurrentFolder->path;
+				filePath += '/';
+				filePath += nameSelection;
+
+				ArchiveO file;
+
+				file << ui32(1u) << size_t(0u) << vec4f(0.f, 0.f, 1.f, 1.f);
+
+				file.save_file(filePath.c_str());
+
+				refresh();
+
+				nameSelection = "";
+			}
+
+			ImGui::EndPopup();
+		}
+
 		return true;
 	}
 
@@ -259,7 +294,15 @@ namespace sv {
 		folder.files.clear();
 		folder.folders.clear();
 
-		auto iterator = fs::directory_iterator(folder.path.c_str());
+		const char* folderPath = folder.path.c_str();
+
+#ifdef SV_RES_PATH
+		std::string folderPathStr = SV_RES_PATH;
+		folderPathStr += folderPath;
+		folderPath = folderPathStr.c_str();
+#endif
+
+		auto iterator = fs::directory_iterator(folderPath);
 
 		for (const auto& item : iterator) {
 
@@ -267,7 +310,11 @@ namespace sv {
 
 				std::unique_ptr<AssetEditorFolder>& newFolder = folder.folders.emplace_back();
 				newFolder = std::make_unique<AssetEditorFolder>();
+#ifdef SV_RES_PATH
+				newFolder->path = parse_string(item.path().c_str() + strlen(SV_RES_PATH));
+#else
 				newFolder->path = parse_string(item.path().c_str());
+#endif
 				newFolder->name = parse_string(item.path().filename().c_str());
 				newFolder->folder = &folder;
 				refreshFolder(*newFolder.get());

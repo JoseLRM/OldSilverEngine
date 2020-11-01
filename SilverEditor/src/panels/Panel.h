@@ -7,6 +7,7 @@ namespace sv {
 	class Panel {
 	public:
 		Panel(const char* name);
+		virtual ~Panel() = default;
 
 		void display();
 

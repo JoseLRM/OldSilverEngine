@@ -74,6 +74,7 @@ namespace sv {
 		// Sprite rendering
 		{
 			EntityView<SpriteComponent> sprites(ecs);
+			EntityView<AnimatedSpriteComponent> animatedSprites(ecs);
 
 			FrameList<SpriteIntermediate>& inter = rend.spritesIntermediates;
 			inter.reset();
@@ -81,14 +82,29 @@ namespace sv {
 			// Add sprites to intermediate list
 			for (SpriteComponent& sprite : sprites) {
 				Transform trans = ecs_entity_transform_get(ecs, sprite.entity);
-				inter.emplace_back(trans.getWorldMatrix(), sprite.sprite.texCoord, sprite.sprite.texture.get(), sprite.color, sprite.material.get());
+
+				// Compute layer value
+
+				inter.emplace_back(trans.getWorldMatrix(), sprite.sprite.texCoord, sprite.sprite.texture.get(), sprite.color, sprite.material.get(), trans.getWorldPosition().z);
+			}
+
+			for (AnimatedSpriteComponent& sprite : animatedSprites) {
+				Transform trans = ecs_entity_transform_get(ecs, sprite.entity);
+
+				// Compute layer value
+
+				Sprite spr = sprite.sprite.getSprite();
+				inter.emplace_back(trans.getWorldMatrix(), spr.texCoord, spr.texture.get(), sprite.color, sprite.material.get(), trans.getWorldPosition().z);
 			}
 
 			// Sort sprites per material
 			std::sort(inter.data(), inter.data() + inter.size(), [](const SpriteIntermediate& s0, const SpriteIntermediate& s1) {
-				if (s0.material != s1.material)
-					return s0.material < s1.material;
-				else return s0.instance.pTexture < s1.instance.pTexture;
+				if (s0.depth == s1.depth) {
+					if (s0.material != s1.material)
+						return s0.material < s1.material;
+					else return s0.instance.pTexture < s1.instance.pTexture;
+				}
+				else return s0.depth < s1.depth;
 			});
 
 			// Draw sprites

@@ -88,6 +88,7 @@ namespace sv {
 		Result_NotFound = 404u,
 		Result_InvalidFormat,
 		Result_InvalidUsage,
+		Result_Unsupported,
 		Result_UnsupportedVersion,
 		Result_Duplicated,
 	};
@@ -258,5 +259,9 @@ namespace sv {
 	Version	engine_version_get() noexcept;
 	float	engine_deltatime_get() noexcept;
 	ui64	engine_frame_count() noexcept;
+
+	void engine_animations_enable();
+	void engine_animations_disable();
+	bool engine_animations_is_enabled();
 
 }

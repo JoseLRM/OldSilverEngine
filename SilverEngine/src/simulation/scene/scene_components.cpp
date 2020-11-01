@@ -70,6 +70,14 @@ namespace sv {
 		archive << comp->material.getHashCode();
 	}
 
+	void scene_component_serialize_AnimatedSpriteComponent(BaseComponent* comp_, ArchiveO& archive)
+	{
+		AnimatedSpriteComponent* comp = reinterpret_cast<AnimatedSpriteComponent*>(comp_);
+		archive << comp->color;
+		archive << comp->sprite.getState();
+		archive << comp->material.getHashCode();
+	}
+
 	void scene_component_serialize_CameraComponent(BaseComponent* comp_, ArchiveO& archive)
 	{
 		CameraComponent* comp = reinterpret_cast<CameraComponent*>(comp_);
@@ -124,6 +132,26 @@ namespace sv {
 			}
 		}
 
+		archive >> hash;
+		if (hash != 0u) {
+			if (comp->material.load(hash) != Result_Success) {
+				SV_LOG_ERROR("Material not found, hashcode: %u", hash);
+			}
+		}
+	}
+
+	void scene_component_deserialize_AnimatedSpriteComponent(BaseComponent* comp_, ArchiveI& archive)
+	{
+		AnimatedSpriteComponent* comp = reinterpret_cast<AnimatedSpriteComponent*>(comp_);
+		archive >> comp->color;
+
+		AnimatedSprite::State sprState;
+		archive >> sprState;
+		if (result_fail(comp->sprite.setState(sprState))) {
+			SV_LOG_ERROR("Sprite Animation not found");
+		}
+
+		size_t hash;
 		archive >> hash;
 		if (hash != 0u) {
 			if (comp->material.load(hash) != Result_Success) {

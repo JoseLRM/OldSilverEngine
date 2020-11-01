@@ -113,7 +113,7 @@ namespace sv {
 
 		// Check if must attach
 
-		if (src.attachments.size() + src.attached.size() <= dst.attachments.size() dst.attached.size()) {
+		if (src.attachments.size() + src.attached.size() <= dst.attachments.size() + dst.attached.size()) {
 			for (EventListenerAttachment& att : src.attachments) {
 				if (att.attachment == &dst) {
 					SV_LOG_ERROR("Can't attach because it is currently attached");

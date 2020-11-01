@@ -5,6 +5,7 @@
 #include "simulation/entity_system.h"
 #include "platform/graphics.h"
 #include "rendering/material_system.h"
+#include "simulation/sprite_animator.h"
 
 namespace sv {
 
@@ -33,6 +34,7 @@ namespace sv {
 	bool gui_component_item_color_picker(Color3f& color);
 	bool gui_component_item_texture(TextureAsset& texture);
 	void gui_component_item_material(MaterialAsset& material);
+	bool gui_component_item_sprite_animation(SpriteAnimationAsset& spriteAnimation);
 	bool gui_component_item_string(std::string& str);
 	bool gui_component_item_mat4(XMMATRIX& matrix);
 	bool gui_component_item_mat4(XMFLOAT4X4& matrix);

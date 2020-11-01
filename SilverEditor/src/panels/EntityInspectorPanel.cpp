@@ -28,6 +28,60 @@ namespace sv {
 
 	}
 
+	void showAnimatedSpriteComponentInfo(AnimatedSpriteComponent* comp)
+	{
+		static bool simulateAnimation = false;
+
+		gui_component_item_begin();
+
+		gui_component_item_next("Color");
+		gui_component_item_color_picker(comp->color);
+
+		gui_component_item_next("Material");
+		gui_component_item_material(comp->material);
+
+		gui_component_item_next("Animation");
+
+		SpriteAnimationAsset anim = comp->sprite.getAnimation();
+		if (gui_component_item_sprite_animation(anim))
+			comp->sprite.setAnimation(anim);
+
+		gui_component_item_next("Sprite Duration");
+		float duration = comp->sprite.getSpriteDuration();
+		if (ImGui::DragFloat("##Duration", &duration, 0.01f, 0.01f, float_max)) {
+			comp->sprite.setSpriteDuration(duration);
+		}
+
+		if (anim.hasReference()) {
+
+			gui_component_item_next("State");
+
+			if (comp->sprite.isRunning()) {
+				if (ImGui::Button("Pause")) comp->sprite.pause();
+			}
+			else if (ImGui::Button("Start")) comp->sprite.start();
+			ImGui::SameLine();
+			if (ImGui::Button("Reset")) comp->sprite.reset();
+
+			gui_component_item_next("Timeline");
+
+			ui32 count = ui32(anim->sprites.size());
+
+			float maxTime = float(count) * duration;
+			float currentTime = float(comp->sprite.getIndex()) * duration + comp->sprite.getSpriteTime();
+
+			if (ImGui::SliderFloat("##Timeline", &currentTime, 0.f, maxTime)) {
+				ui32 currentIndex = ui32(currentTime / duration);
+				float time = currentTime - (currentIndex * duration);
+				comp->sprite.setIndex(currentIndex);
+				comp->sprite.setSpriteTime(time);
+			}
+		}
+
+		gui_component_item_end();
+
+	}
+
 	void showNameComponentInfo(NameComponent* comp)
 	{
 		gui_component_item_string(comp->name);
@@ -144,6 +198,7 @@ namespace sv {
 	void showComponentInfo(CompID ID, BaseComponent* comp)
 	{
 		if (ID == SpriteComponent::ID)				showSpriteComponentInfo(reinterpret_cast<SpriteComponent*>(comp));
+		else if (ID == AnimatedSpriteComponent::ID)	showAnimatedSpriteComponentInfo(reinterpret_cast<AnimatedSpriteComponent*>(comp));
 		else if (ID == NameComponent::ID)			showNameComponentInfo(reinterpret_cast<NameComponent*>(comp));
 		else if (ID == CameraComponent::ID)			showCameraComponentInfo(reinterpret_cast<CameraComponent*>(comp));
 		else if (ID == RigidBody2DComponent::ID)	showRigidBody2DComponentInfo(reinterpret_cast<RigidBody2DComponent*>(comp));

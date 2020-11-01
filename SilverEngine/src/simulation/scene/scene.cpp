@@ -257,6 +257,7 @@ namespace sv {
 
 		ecs_register<NameComponent>(m_ECS, "NameComponent", scene_component_serialize_NameComponent, scene_component_deserialize_NameComponent);
 		ecs_register<SpriteComponent>(m_ECS, "SpriteComponent", scene_component_serialize_SpriteComponent, scene_component_deserialize_SpriteComponent);
+		ecs_register<AnimatedSpriteComponent>(m_ECS, "AnimatedSpriteComponent", scene_component_serialize_AnimatedSpriteComponent, scene_component_deserialize_AnimatedSpriteComponent);
 		ecs_register<CameraComponent>(m_ECS, "CameraComponent", scene_component_serialize_CameraComponent, scene_component_deserialize_CameraComponent);
 		ecs_register<RigidBody2DComponent>(m_ECS, "RigidBody2DComponent", scene_component_serialize_RigidBody2DComponent, scene_component_deserialize_RigidBody2DComponent);
 
@@ -266,7 +267,7 @@ namespace sv {
 		Camera& camera = ecs_component_add<CameraComponent>(m_ECS, m_MainCamera)->camera;
 		camera.setProjectionType(ProjectionType_Orthographic);
 		camera.setProjectionLength(10.f);
-		camera.setResolution(1080u, 720u);
+		camera.setResolution(1920u, 1080u);
 		camera.activate();
 
 		// Rendering

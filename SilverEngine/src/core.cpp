@@ -15,6 +15,7 @@
 #include "simulation/asset_system/asset_system_internal.h"
 #include "simulation/animator/animator_internal.h"
 #include "simulation/event_system/event_system_internal.h"
+#include "simulation/sprite_animator/sprite_animator_internal.h"
 
 namespace sv {
 
@@ -374,6 +375,8 @@ namespace sv {
 	static float		g_DeltaTime = 0.f;
 	static ui64			g_FrameCount = 0u;
 
+	static bool g_EnableAnimations = true;
+
 	// Initialization
 
 	Result engine_initialize(const InitializationDesc* d)
@@ -398,9 +401,10 @@ namespace sv {
 			svCheck(task_initialize(desc.minThreadsCount));
 			svCheck(event_initialize());
 			svCheck(asset_initialize(desc.assetsFolderPath));
-			svCheck(animator_initialize());
 			svCheck(window_initialize(desc.windowStyle, desc.windowBounds, desc.windowTitle, desc.iconFilePath));
 			svCheck(graphics_initialize());
+			svCheck(animator_initialize());
+			svCheck(sprite_animator_initialize());
 			svCheck(matsys_initialize());
 			svCheck(debug_renderer_initialize());
 			svCheck(sprite_renderer_initialize());
@@ -436,7 +440,10 @@ namespace sv {
 			window_update();
 
 			// Update animations
-			animator_update(g_DeltaTime);
+			if (g_EnableAnimations) {
+				animator_update(g_DeltaTime);
+				sprite_animator_update(g_DeltaTime);
+			}
 
 			// Update assets
 			asset_update(g_DeltaTime);
@@ -474,9 +481,10 @@ namespace sv {
 			svCheck(sprite_renderer_close());
 			svCheck(debug_renderer_close());
 			svCheck(matsys_close());
+			svCheck(sprite_animator_close());
+			svCheck(animator_close());
 			svCheck(graphics_close());
 			svCheck(window_close());
-			svCheck(animator_close());
 			svCheck(asset_close());
 			svCheck(event_close());
 			svCheck(task_close());
@@ -491,5 +499,20 @@ namespace sv {
 	float engine_deltatime_get() noexcept { return g_DeltaTime; }
 
 	ui64 engine_frame_count() noexcept { return g_FrameCount; }
+
+	void engine_animations_enable()
+	{
+		g_EnableAnimations = true;
+	}
+
+	void engine_animations_disable()
+	{
+		g_EnableAnimations = false;
+	}
+
+	bool engine_animations_is_enabled()
+	{
+		return g_EnableAnimations;
+	}
 
 }

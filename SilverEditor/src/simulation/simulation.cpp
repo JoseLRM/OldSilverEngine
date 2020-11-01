@@ -30,6 +30,8 @@ namespace sv {
 
 		g_ScenePath = sceneFilePath;
 
+		engine_animations_disable();
+
 		return Result_Success;
 	}
 
@@ -48,6 +50,8 @@ namespace sv {
 
 			g_Scene.serialize(g_ScenePath.c_str());
 			g_RunningRequest = false;
+
+			engine_animations_enable();
 		}
 
 		if (g_StopRequest) {
@@ -57,6 +61,8 @@ namespace sv {
 
 			g_Scene.deserialize(g_ScenePath.c_str());
 			g_StopRequest = false;
+
+			engine_animations_disable();
 		}
 
 		// Adjust camera

@@ -12,9 +12,6 @@ namespace sv {
 		new(pObject) MaterialAsset_internal();
 		MaterialAsset_internal& asset = *reinterpret_cast<MaterialAsset_internal*>(pObject);
 
-#ifdef SV_RES_PATH
-		filePath += strlen(SV_RES_PATH);
-#endif
 		ArchiveI file;
 		file.open_file(filePath);
 

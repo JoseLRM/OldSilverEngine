@@ -5,6 +5,7 @@
 #include "simulation/entity_system.h"
 #include "utils/io.h"
 #include "rendering/material_system.h"
+#include "simulation/sprite_animator.h"
 
 namespace sv {
 
@@ -105,11 +106,6 @@ namespace sv {
 
 	};
 
-	struct Sprite {
-		TextureAsset texture;
-		vec4f texCoord = { 0.f, 0.f, 1.f, 1.f };
-	};
-
 	// Sprite Component
 
 	struct SpriteComponent : public Component<SpriteComponent> {
@@ -117,11 +113,28 @@ namespace sv {
 		MaterialAsset material;
 		Sprite sprite;
 		Color color = Color::White();
+		i32 spriteLayer; // TODO:
 
 		SpriteComponent() {}
 		SpriteComponent(Color col) : color(col) {}
 		SpriteComponent(Sprite spr) : sprite(spr) {}
 		SpriteComponent(Sprite spr, Color col) : sprite(spr), color(col) {}
+
+	};
+
+	// Animated Sprite Component
+
+	struct AnimatedSpriteComponent : public Component<AnimatedSpriteComponent> {
+
+		MaterialAsset material;
+		AnimatedSprite sprite;
+		Color color = Color::White();
+		i32 spriteLayer; // TODO:
+
+		AnimatedSpriteComponent() {}
+		AnimatedSpriteComponent(Color col) : color(col) {}
+		AnimatedSpriteComponent(AnimatedSprite spr) : sprite(spr) {}
+		AnimatedSpriteComponent(AnimatedSprite spr, Color col) : sprite(spr), color(col) {}
 
 	};
 

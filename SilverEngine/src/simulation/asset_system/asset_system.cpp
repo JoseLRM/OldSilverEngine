@@ -26,9 +26,6 @@ namespace sv {
 
 		// Set folder filepath
 		g_FolderPath = assetsFolderPath;
-#ifdef SV_RES_PATH
-		g_FolderPath = SV_RES_PATH + g_FolderPath;
-#endif
 
 		return Result_Success;
 	}
@@ -125,9 +122,14 @@ namespace sv {
 			}
 			else {
 
+				size_t folderPathSize = g_FolderPath.size();
+#ifdef SV_RES_PATH
+				folderPathSize += strlen(SV_RES_PATH);
+#endif
+
 				std::string path = std::move(file.path().string());
-				if (path.size() <= g_FolderPath.size()) continue;
-				path = path.c_str() + g_FolderPath.size();
+				if (path.size() <= folderPathSize) continue;
+				path = path.c_str() + folderPathSize;
 
 				// Prepare path
 				for (auto it0 = path.begin(); it0 != path.end(); ++it0) {
@@ -193,14 +195,16 @@ namespace sv {
 
 	Result asset_refresh()
 	{
-		// Check if assets folder exists
-		if (!fs::exists(g_FolderPath)) {
-			SV_LOG_ERROR("Asset folder not found '%s'", g_FolderPath.c_str());
-			return Result_NotFound;
-		}
-
 		++g_RefreshID;
-		svCheck(assets_refresh_folder(g_FolderPath.c_str()));
+
+		const char* folderPath = g_FolderPath.c_str();
+
+#ifdef SV_RES_PATH
+		std::string folderPathStr = SV_RES_PATH + g_FolderPath;
+		folderPath = folderPathStr.c_str();
+#endif
+
+		svCheck(assets_refresh_folder(folderPath));
 
 		// Check if has removed files
 		for (auto it = g_Files.begin(); it != g_Files.end(); ) {

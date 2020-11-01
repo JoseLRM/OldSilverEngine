@@ -67,15 +67,15 @@ namespace sv {
 
 	struct AssetRegisterTypeDesc {
 
-		const char*		name;
-		const char**	pExtensions;
-		ui32			extensionsCount;
-		AssetCreateFn	createFn;
-		AssetDestroyFn	destroyFn;
-		AssetCreateFn	recreateFn;
-		AssetIsUnusedFn isUnusedFn;
-		size_t			assetSize;
-		float			unusedLifeTime; //TODO
+		const char*			name;
+		const char**		pExtensions;
+		ui32				extensionsCount;
+		AssetCreateFn		createFn;
+		AssetDestroyFn		destroyFn;
+		AssetCreateFn		recreateFn;
+		AssetIsUnusedFn		isUnusedFn;
+		size_t				assetSize;
+		float				unusedLifeTime;
 
 	};
 

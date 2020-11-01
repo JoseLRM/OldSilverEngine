@@ -5,6 +5,7 @@
 #include "editor.h"
 #include "panel_manager.h"
 #include "panels/MaterialPanel.h"
+#include "panels/SpriteAnimationPanel.h"
 
 namespace sv {
 
@@ -389,6 +390,69 @@ namespace sv {
 		if (name) {
 			material.load(name);
 		}
+	}
+
+	bool gui_component_item_sprite_animation(SpriteAnimationAsset& spriteAnimation)
+	{
+		AssetType textureType = asset_type_get("Sprite Animation");
+
+		if (spriteAnimation.hasReference()) {
+			ImGuiDevice& device = editor_device_get();
+
+			GPUImage* img = spriteAnimation.get()->sprites.front().texture.get();
+
+			if (img) {
+				if (ImGui::ImageButton(device.ParseImage(img), { 50.f, 50.f })) {
+					ImGui::OpenPopup("SpriteAnimationPopUp");
+				}
+			}
+			else {
+				if (ImGui::ColorButton("##WhiteAnimationImage", { 1.f, 1.f, 1.f, 1.f }, 0, { 50.f, 50.f })) {
+					ImGui::OpenPopup("SpriteAnimationPopUp");
+				}
+			}
+		}
+		else if (ImGui::Button("No animation")) gui_asset_picker_open(textureType);
+
+		bool openPopup = false;
+		bool result = false;
+
+		if (ImGui::BeginPopup("SpriteAnimationPopUp")) {
+
+			if (ImGui::MenuItem("New")) {
+				ImGui::CloseCurrentPopup();
+				openPopup = true;
+			}
+			if (ImGui::MenuItem("Remove")) {
+				spriteAnimation.unload();
+				ImGui::CloseCurrentPopup();
+				result = true;
+			}
+			if (ImGui::MenuItem("Edit")) {
+				ImGui::CloseCurrentPopup();
+
+				SpriteAnimationPanel* sprPanel = (SpriteAnimationPanel*)viewport_get("Sprite Animation");
+				if (sprPanel == nullptr) {
+					sprPanel = new SpriteAnimationPanel();
+					viewport_add("Sprite Animation", sprPanel);
+				}
+
+				sprPanel->setSelectedAnimation(spriteAnimation);
+			}
+
+			ImGui::EndPopup();
+		}
+
+		if (openPopup) gui_asset_picker_open(textureType);
+
+		const char* name = gui_asset_picker_show(textureType);
+
+		if (name) {
+			spriteAnimation.load(name);
+			result = true;
+		}
+
+		return result;
 	}
 
 	bool gui_component_item_string(std::string& str)

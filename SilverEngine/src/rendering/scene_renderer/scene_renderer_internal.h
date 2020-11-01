@@ -10,10 +10,11 @@ namespace sv {
 
 		SpriteInstance	instance;
 		Material* material;
+		float depth;
 
 		SpriteIntermediate() = default;
-		SpriteIntermediate(const XMMATRIX& m, const vec4f& texCoord, GPUImage* pTex, Color color, Material* material)
-			: instance(m, texCoord, pTex, color), material(material) {}
+		SpriteIntermediate(const XMMATRIX& m, const vec4f& texCoord, GPUImage* pTex, Color color, Material* material, float depth)
+			: instance(m, texCoord, pTex, color), material(material), depth(depth) {}
 
 	};
 

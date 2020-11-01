@@ -428,33 +428,7 @@ namespace sv {
 	template<typename T>
 	void animator_allocator_idle(AnimationAllocator<T>& allocator, AnimationPool<T>& pool, PoolInstance<T>* ptr)
 	{
-		SV_ASSERT(ptr->nextCount != ui32_max && ptr->nextCount != 0u);
-
-		if (pool.instances == ptr) {
-			pool.beginCount = ptr->nextCount;
-		}
-		else {
-
-			PoolInstance<T>* begin = pool.instances - 1u;
-			PoolInstance<T>* it = ptr - 1u;
-
-			// Find active animation
-			while (it != begin) {
-
-				if (it->nextCount != 0u && it->nextCount != ui32_max) {
-					break;
-				}
-
-				--it;
-			}
-
-			if (begin == it) {
-				pool.beginCount += ptr->nextCount;
-			}
-			else it->nextCount += ptr->nextCount;
-		}
-
-		ptr->nextCount = 0u;
+		
 	}
 
 }
