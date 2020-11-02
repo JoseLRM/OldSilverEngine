@@ -14,13 +14,49 @@ namespace sv {
 	{
 		ECS_internal& ecs = *g_ECSAllocator.create();
 
-		*ecs_ = reinterpret_cast<ECS*>(&ecs);
+		// Open listeners
+		ecs.listenerOnEntityCreate = event_listener_open();
+		ecs.listenerOnEntityDestroy = event_listener_open();
+		ecs.listenerOnComponentAdd = event_listener_open();
+		ecs.listenerOnComponentRemove= event_listener_open();
+
+		*ecs_ = reinterpret_cast<ECS*>(&ecs);	
+	}
+
+	void ecs_dispatch_clear(ECS_internal& ecs)
+	{
+		// Events
+		{
+			Entity* it = ecs.entities.data();
+			Entity* end = it + ecs.entities.size();
+
+			while (it != end) {
+				ecs_dispatch_OnEntityDestroy(ecs, *it);
+				++it;
+			}
+		}
+
+		// Components
+		{
+			for (CompID compID = 0u; compID < ecs.listenerComponents.size(); ++compID) {
+
+				ComponentIterator it(reinterpret_cast<ECS*>(&ecs), compID, false);
+				ComponentIterator end(reinterpret_cast<ECS*>(&ecs), compID, true);
+
+				while (!it.equal(end)) {
+					ecs_dispatch_OnComponentRemove(ecs, it.get_ptr(), compID);
+					it.next();
+				}
+			}
+		}
 	}
 
 	void ecs_destroy(ECS* ecs_)
 	{
 		if (ecs_ == nullptr) return;
 		parseECS();
+
+		ecs_dispatch_clear(ecs);
 
 		for (ui16 i = 0; i < ecs_register_count(ecs_); ++i) {
 			ecs_allocator_component_destroy(ecs_, ecs.components[i]);
@@ -29,12 +65,27 @@ namespace sv {
 		ecs.entities.clear();
 		ecs_allocator_entity_clear(ecs.entityData);
 
+		// Close listeners
+		event_listener_close(ecs.listenerOnEntityCreate);
+		event_listener_close(ecs.listenerOnEntityDestroy);
+		event_listener_close(ecs.listenerOnComponentAdd);
+		event_listener_close(ecs.listenerOnComponentRemove);
+
+		for (auto& listeners : ecs.listenerComponents) {
+			event_listener_close(listeners.first);
+			event_listener_close(listeners.second);
+		}
+
+		// Deallocate
 		g_ECSAllocator.destroy(&ecs);
 	}
 
 	void ecs_clear(ECS* ecs_)
 	{
 		parseECS();
+
+		// Dispatch Events
+		ecs_dispatch_clear(ecs);
 
 		for (ui16 i = 0; i < ecs_register_count(ecs_); ++i) {
 			ecs_allocator_component_destroy(ecs_, ecs.components[i]);
@@ -114,6 +165,8 @@ namespace sv {
 	Result ecs_deserialize(ECS* ecs_, ArchiveI& archive)
 	{
 		parseECS();
+
+		ecs_dispatch_clear(ecs);
 		
 		ecs.entities.clear();
 		ecs_allocator_entity_clear(ecs.entityData);
@@ -187,15 +240,41 @@ namespace sv {
 		}
 
 		// Create entity list and free list
+		for (ui32 i = 0u; i < entityDataCount; ++i) {
+
+			EntityData& ed = entityData[i];
+
+			if (ed.handleIndex != ui64_max) {
+				ecs.entities[ed.handleIndex] = i + 1u;
+			}
+			else ecs.entityData.freeList.push_back(i + 1u);
+		}
+
+		// Set entity parents
 		{
-			for (ui32 i = 0u; i < entityDataCount; ++i) {
+			EntityData* it = entityData;
+			EntityData* end = it + entityDataCount;
 
-				EntityData& ed = entityData[i];
+			while (it != end) {
 
-				if (ed.handleIndex != ui64_max) {
-					ecs.entities[ed.handleIndex] = i + 1u;
+				if (it->handleIndex != ui64_max && it->childsCount) {
+					
+					Entity* eIt = ecs.entities.data() + it->handleIndex;
+					Entity* eEnd = eIt + it->childsCount;
+					Entity parent = *eIt++;
+
+					while (eIt <= eEnd) {
+
+						EntityData& ed = entityData[*eIt - 1u];
+						ed.parent = parent;
+						if (ed.childsCount) {
+							eIt += ed.childsCount + 1u;
+						}
+						else ++eIt;
+					}
 				}
-				else ecs.entityData.freeList.push_back(i + 1u);
+
+				++it;
 			}
 		}
 
@@ -266,6 +345,23 @@ namespace sv {
 			}
 		}
 
+		// Dispatch Events
+		{
+			for (Entity entity : ecs.entities) {
+				ecs_dispatch_OnEntityCreate(ecs, entity);
+			}
+			for (CompID compID = 0u; compID < ecs.components.size(); ++compID) {
+				
+				ComponentIterator it(reinterpret_cast<ECS*>(&ecs), compID, false);
+				ComponentIterator end(reinterpret_cast<ECS*>(&ecs), compID, true);
+
+				while (!it.equal(end)) {
+					ecs_dispatch_OnComponentAdd(ecs, it.get_ptr(), compID);
+					it.next();
+				}
+			}
+		}
+
 		return Result_Success;
 	}
 
@@ -288,6 +384,12 @@ namespace sv {
 
 		ComponentAllocator& compAlloc = ecs.components.emplace_back();
 		ecs_allocator_component_create(reinterpret_cast<ECS*>(&ecs), compAlloc, ID);
+
+		// Open Listeners
+		auto&[onCompAdd, onCompRmv] = ecs.listenerComponents.emplace_back();
+
+		onCompAdd = event_listener_open();
+		onCompRmv = event_listener_open();
 
 		return ID;
 	}
@@ -432,6 +534,8 @@ namespace sv {
 			}
 		}
 
+		ecs_dispatch_OnEntityCreate(ecs, entity);
+
 		return entity;
 	}
 
@@ -440,6 +544,26 @@ namespace sv {
 		parseECS();
 
 		EntityData& entityData = ecs.entityData[entity];
+
+		// Dispatch Events
+		{
+			ecs_dispatch_OnEntityDestroy(ecs, entity);
+			for (auto [compID, comp] : entityData.components) {
+				ecs_dispatch_OnComponentRemove(ecs, comp, compID);
+			}
+			for (ui32 i = 0; i < entityData.childsCount; ++i) {
+
+				Entity e = ecs.entities[entityData.handleIndex + i];
+				ecs_dispatch_OnEntityDestroy(ecs, e);
+
+				EntityData& ed = ecs.entityData[e];
+
+				for (auto [compID, comp] : ed.components) {
+					ecs_dispatch_OnComponentRemove(ecs, comp, compID);
+				}
+			}
+		}
+		
 		ui32 count = entityData.childsCount + 1;
 
 		// notify parents
@@ -509,6 +633,10 @@ namespace sv {
 			Entity toCopy = ecs.entities[ecs.entityData[duplicated].handleIndex + i + 1];
 			ecs_entity_duplicate_recursive(ecs, toCopy, copy);
 			i += ecs.entityData[toCopy].childsCount;
+		}
+
+		for (auto [compID, comp] : copyEd.components) {
+			ecs_dispatch_OnComponentAdd(ecs, comp, compID);
 		}
 
 		return copy;
@@ -625,6 +753,14 @@ namespace sv {
 				entities[i] = ecs.entities[entityIndex + i];
 			}
 		}
+
+		Entity* it = ecs.entities.data() + entityIndex;
+		Entity* end = it + size_t(count);
+
+		while (it != end) {
+			ecs_dispatch_OnEntityCreate(ecs, *it);
+			++it;
+		}
 	}
 
 	void ecs_entities_destroy(ECS* ecs, Entity const* entities, ui32 count)
@@ -653,6 +789,9 @@ namespace sv {
 		comp = ecs_allocator_component_alloc(ecs_, ecs.components[componentID], comp);
 		comp->entity = entity;
 		ecs_entitydata_index_add(ecs.entityData[entity], componentID, comp);
+
+		ecs_dispatch_OnComponentAdd(ecs, comp, componentID);
+
 		return comp;
 	}
 
@@ -662,6 +801,9 @@ namespace sv {
 
 		BaseComponent* comp = ecs_allocator_component_alloc(ecs_, ecs.components[componentID], entity);
 		ecs_entitydata_index_add(ecs.entityData[entity], componentID, comp);
+
+		ecs_dispatch_OnComponentAdd(ecs, comp, componentID);
+
 		return comp;
 	}
 
@@ -684,6 +826,9 @@ namespace sv {
 
 		EntityData& ed = ecs.entityData[entity];
 		BaseComponent* comp = ecs_entitydata_index_get(ed, componentID);
+
+		ecs_dispatch_OnComponentRemove(ecs, comp, componentID);
+
 		ecs_allocator_component_free(ecs_, ecs.components[componentID], comp);
 		ecs_entitydata_index_remove(ed, componentID);
 	}
@@ -692,6 +837,84 @@ namespace sv {
 	{
 		parseECS();
 		return ecs_allocator_component_count(ecs_, ecs.components[ID]);
+	}
+
+	// EVENTS
+
+	void ecs_dispatch_OnEntityCreate(ECS_internal& ecs, Entity entity)
+	{
+		ECS_CreateEntityEvent e;
+		e.ecs = reinterpret_cast<ECS*>(&ecs);
+		e.entity = entity;
+
+		event_dispatch(ecs.listenerOnEntityCreate, &e);
+	}
+
+	void ecs_dispatch_OnEntityDestroy(ECS_internal& ecs, Entity entity)
+	{
+		ECS_DestroyEntityEvent e;
+		e.ecs = reinterpret_cast<ECS*>(&ecs);
+		e.entity = entity;
+
+		event_dispatch(ecs.listenerOnEntityDestroy, &e);
+	}
+
+	void ecs_dispatch_OnComponentAdd(ECS_internal& ecs, BaseComponent* comp, CompID ID)
+	{
+		ECS_AddComponentEvent e;
+		e.ecs = reinterpret_cast<ECS*>(&ecs);
+		e.compID = ID;
+		e.component = comp;
+
+		auto [onCompAdd, onCompRmv] = ecs.listenerComponents[size_t(ID)];
+		event_dispatch(ecs.listenerOnComponentAdd, &e);
+		event_dispatch(onCompAdd, &e);
+	}
+
+	void ecs_dispatch_OnComponentRemove(ECS_internal& ecs, BaseComponent* comp, CompID ID)
+	{
+		ECS_AddComponentEvent e;
+		e.ecs = reinterpret_cast<ECS*>(&ecs);
+		e.compID = ID;
+		e.component = comp;
+
+		auto [onCompAdd, onCompRmv] = ecs.listenerComponents[size_t(ID)];
+		event_dispatch(ecs.listenerOnComponentRemove, &e);
+		event_dispatch(onCompRmv, &e);
+	}
+
+	EventListener* ecs_listener_OnEntityCreate(ECS* ecs_)
+	{
+		parseECS();
+		return ecs.listenerOnEntityCreate;
+	}
+
+	EventListener* ecs_listener_OnEntityDestroy(ECS* ecs_)
+	{
+		parseECS();
+		return ecs.listenerOnEntityDestroy;
+	}
+
+	EventListener* ecs_listener_OnComponentAdd(ECS* ecs_, CompID compID)
+	{
+		parseECS();
+		if (compID == SV_COMPONENT_ID_INVALID)
+			return ecs.listenerOnComponentAdd;
+		else {
+			SV_ASSERT(compID < ecs.listenerComponents.size());
+			return ecs.listenerComponents[compID].first;
+		}
+	}
+
+	EventListener* ecs_listener_OnComponentRemove(ECS* ecs_, CompID compID)
+	{
+		parseECS();
+		if (compID == SV_COMPONENT_ID_INVALID)
+			return ecs.listenerOnComponentRemove;
+		else {
+			SV_ASSERT(compID < ecs.listenerComponents.size());
+			return ecs.listenerComponents[compID].second;
+		}
 	}
 
 	// Iterators

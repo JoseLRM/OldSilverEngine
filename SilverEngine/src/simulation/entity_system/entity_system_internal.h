@@ -81,7 +81,15 @@ namespace sv {
 		EntityDataAllocator				entityData;
 		std::vector<ComponentAllocator>	components;
 
+		EventListener* listenerOnEntityCreate;
+		EventListener* listenerOnEntityDestroy;
+		EventListener* listenerOnComponentAdd;
+		EventListener* listenerOnComponentRemove;
+		std::vector<std::pair<EventListener*, EventListener*>> listenerComponents; // first-> OnComponentAdd, second-> OnComponentRemove
+
 	};
+
+	// MEMORY
 
 	Entity	ecs_allocator_entity_alloc(EntityDataAllocator& allocator);
 	void	ecs_allocator_entity_free(EntityDataAllocator& allocator, Entity entity);
@@ -103,5 +111,12 @@ namespace sv {
 	void			ecs_allocator_component_free(ECS* ecs, ComponentAllocator& allocator, BaseComponent* comp);
 	ui32			ecs_allocator_component_count(ECS* ecs, const ComponentAllocator& allocator);
 	ui32			ecs_allocator_component_empty(ECS* ecs, const ComponentAllocator& allocator);
+
+	// EVENTS
+
+	void ecs_dispatch_OnEntityCreate(ECS_internal& ecs, Entity entity);
+	void ecs_dispatch_OnEntityDestroy(ECS_internal& ecs, Entity entity);
+	void ecs_dispatch_OnComponentAdd(ECS_internal& ecs, BaseComponent* comp, CompID ID);
+	void ecs_dispatch_OnComponentRemove(ECS_internal& ecs, BaseComponent* comp, CompID ID);
 
 }

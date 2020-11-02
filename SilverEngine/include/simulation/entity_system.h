@@ -2,8 +2,10 @@
 
 #include "core.h"
 #include "utils/io.h"
+#include "simulation/event_system.h"
 
 #define SV_ENTITY_NULL 0u
+#define SV_COMPONENT_ID_INVALID std::numeric_limits<sv::CompID>::max()
 
 namespace sv {
 
@@ -142,6 +144,35 @@ namespace sv {
 	void ecs_component_remove_by_id(ECS* ecs, Entity entity, CompID componentID);
 
 	ui32 ecs_component_count(ECS* ecs, CompID ID);
+
+	// Listeners
+
+	struct ECS_CreateEntityEvent : public Event {
+		ECS*	ecs;
+		Entity	entity;
+	};
+
+	struct ECS_DestroyEntityEvent : public Event {
+		ECS*	ecs;
+		Entity	entity;
+	};
+
+	struct ECS_AddComponentEvent : public Event {
+		ECS*			ecs;
+		CompID			compID;
+		BaseComponent*	component;
+	};
+
+	struct ECS_RemoveComponentEvent : public Event {
+		ECS*			ecs;
+		CompID			compID;
+		BaseComponent*	component;
+	};
+
+	EventListener* ecs_listener_OnEntityCreate(ECS* ecs);
+	EventListener* ecs_listener_OnEntityDestroy(ECS* ecs);
+	EventListener* ecs_listener_OnComponentAdd(ECS* ecs, CompID compID = SV_COMPONENT_ID_INVALID);
+	EventListener* ecs_listener_OnComponentRemove(ECS* ecs, CompID compID = SV_COMPONENT_ID_INVALID);
 
 	// Iterators
 
