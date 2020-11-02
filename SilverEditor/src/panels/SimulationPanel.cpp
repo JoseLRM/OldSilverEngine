@@ -6,7 +6,7 @@
 #include "simulation.h"
 
 namespace sv {
-	SimulationViewport::SimulationViewport() : Panel("Simulation")
+	SimulationViewport::SimulationViewport()
 	{
 	}
 

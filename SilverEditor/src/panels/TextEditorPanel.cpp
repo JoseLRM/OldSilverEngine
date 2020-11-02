@@ -5,7 +5,7 @@
 
 namespace sv {
 	
-	TextEditorPanel::TextEditorPanel(const char* filePath) : m_FilePath(filePath), Panel(filePath)
+	TextEditorPanel::TextEditorPanel(const char* filePath) : m_FilePath(filePath)
 	{
 		m_FilePath = filePath;
 #ifdef SV_RES_PATH

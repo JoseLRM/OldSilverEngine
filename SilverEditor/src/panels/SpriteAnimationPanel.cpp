@@ -5,7 +5,7 @@
 
 namespace sv {
 	
-	SpriteAnimationPanel::SpriteAnimationPanel() : Panel("Sprite Animation")
+	SpriteAnimationPanel::SpriteAnimationPanel()
 	{}
 
 	SpriteAnimationPanel::~SpriteAnimationPanel()

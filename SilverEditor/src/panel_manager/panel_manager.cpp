@@ -11,66 +11,71 @@
 
 namespace sv {
 
-	std::unordered_map<std::string, Panel*> g_Viewports;
+	std::unordered_map<std::string, Panel*> g_Panels;
 
-	Result viewport_initialize()
+	Result panel_manager_initialize()
 	{
-		viewport_add("Simulation", new SimulationViewport());
-		viewport_add("SceneEditor", new SceneEditorViewport());
-		viewport_add("SceneHierarchy", new SceneHierarchyViewport());
-		viewport_add("EntityInspector", new EntityInspectorViewport());
-		viewport_add("Asset", new AssetPanel());
-		viewport_add("SimulationTools", new SimulationToolsViewport());
+		panel_manager_add("Simulation", new SimulationViewport());
+		panel_manager_add("SceneEditor", new SceneEditorViewport());
+		panel_manager_add("SceneHierarchy", new SceneHierarchyViewport());
+		panel_manager_add("EntityInspector", new EntityInspectorViewport());
+		panel_manager_add("Asset", new AssetPanel());
+		panel_manager_add("SimulationTools", new SimulationToolsViewport());
 
 		return Result_Success;
 	}
 
-	Result viewport_close()
+	Result panel_manager_close()
 	{
-		for (auto vp : g_Viewports)
+		for (auto vp : g_Panels)
 		{
 			delete vp.second;
 		}
-		g_Viewports.clear();
+		g_Panels.clear();
 
 		return Result_Success;
 	}
 
-	void viewport_display()
+	void panel_manager_display()
 	{
-		for (auto vp : g_Viewports)
+		for (auto it = g_Panels.begin(); it != g_Panels.end(); )
 		{
-			vp.second->display();
+			if (!it->second->display()) {
+				delete it->second;
+				it = g_Panels.erase(it);
+			}
+			else ++it;
 		}
 	}
 
-	void viewport_add(const char* name, Panel* viewport)
+	void panel_manager_add(const char* name, Panel* panel)
 	{
-		Panel* vp = viewport_get(name);
+		Panel* vp = panel_manager_get(name);
 		if (vp != nullptr) {
 			SV_LOG_INFO("The viewport '%s' already exist", name);
 			return;
 		}
 
-		g_Viewports[name] = viewport;
+		g_Panels[name] = panel;
+		panel->setName(name);
 	}
 
-	Panel* viewport_get(const char* name)
+	Panel* panel_manager_get(const char* name)
 	{
-		auto it = g_Viewports.find(name);
-		if (g_Viewports.end() == it) return nullptr;
+		auto it = g_Panels.find(name);
+		if (g_Panels.end() == it) return nullptr;
 		return it->second;
 	}
 
-	void viewport_rmv(const char* name)
+	void panel_manager_rmv(const char* name)
 	{
-		auto it = g_Viewports.find(name);
-		if (g_Viewports.end() == it) {
+		auto it = g_Panels.find(name);
+		if (g_Panels.end() == it) {
 			SV_LOG_INFO("Can't destroy the viewport '%s', doesn't exist", name);
 			return;
 		}
 		delete it->second;
-		g_Viewports.erase(it);
+		g_Panels.erase(it);
 	}
 
 }

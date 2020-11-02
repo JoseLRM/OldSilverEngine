@@ -7,7 +7,7 @@
 
 namespace sv {
 	
-	SceneEditorViewport::SceneEditorViewport() : Panel("Scene Editor")
+	SceneEditorViewport::SceneEditorViewport()
 	{}
 
 	void SceneEditorViewport::beginDisplay()

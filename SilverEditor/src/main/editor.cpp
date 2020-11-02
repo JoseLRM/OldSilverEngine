@@ -186,7 +186,7 @@ namespace sv {
 	{
 		svCheck(simulation_initialize("assets/scenes/Test.scene"));
 		svCheck(scene_editor_initialize());
-		svCheck(viewport_initialize());
+		svCheck(panel_manager_initialize());
 
 		return Result_Success;
 	}
@@ -269,7 +269,7 @@ namespace sv {
 			MainMenu();
 			DisplayDocking();
 			//StyleEditor();
-			viewport_display();
+			panel_manager_display();
 			g_Device->EndFrame();
 
 			barriers[0] = GPUBarrier::Image(editorOffscreen, GPUImageLayout_ShaderResource, GPUImageLayout_RenderTarget);
@@ -281,7 +281,7 @@ namespace sv {
 	{
 		svCheck(simulation_close());
 		svCheck(scene_editor_close());
-		svCheck(viewport_close());
+		svCheck(panel_manager_close());
 
 		return Result_Success;
 	}

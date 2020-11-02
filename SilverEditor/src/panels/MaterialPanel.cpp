@@ -6,7 +6,7 @@
 
 namespace sv {
 	
-	MaterialPanel::MaterialPanel() : Panel("Material")
+	MaterialPanel::MaterialPanel()
 	{
 	}
 

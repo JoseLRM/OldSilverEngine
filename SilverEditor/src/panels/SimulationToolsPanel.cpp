@@ -5,7 +5,7 @@
 
 namespace sv {
 
-	SimulationToolsViewport::SimulationToolsViewport() : Panel("SimulationTools")
+	SimulationToolsViewport::SimulationToolsViewport()
 	{
 	}
 

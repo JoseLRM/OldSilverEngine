@@ -6,12 +6,12 @@
 
 namespace sv {
 
-	Result	viewport_initialize();
-	Result  viewport_close();
-	void		viewport_display();
+	Result	panel_manager_initialize();
+	Result  panel_manager_close();
+	void		panel_manager_display();
 
-	void		viewport_add(const char* name, Panel* viewport);
-	Panel*		viewport_get(const char* name);
-	void		viewport_rmv(const char* name);
+	void		panel_manager_add(const char* name, Panel* viewport);
+	Panel*		panel_manager_get(const char* name);
+	void		panel_manager_rmv(const char* name);
 
 }

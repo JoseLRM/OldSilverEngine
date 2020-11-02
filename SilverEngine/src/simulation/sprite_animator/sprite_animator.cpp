@@ -62,6 +62,7 @@ namespace sv {
 							// Idle the animtion
 							spr.repeatIndex = 0u;
 							spr.running = false;
+							dt = 0.f;
 						}
 					}
 				}
@@ -161,12 +162,22 @@ namespace sv {
 		}
 	}
 
-	void AnimatedSprite::setRepeatCount(i32 repeatCount)
+	void AnimatedSprite::setRepeatCount(ui32 repeatCount)
 	{
 		create();
 		ASSERT_PTR();
 		PARSE_ANIMATED_SPRITE();
 		spr.repeatCount = repeatCount;
+
+		if (spr.repeatCount >= spr.repeatIndex) spr.running = false;
+	}
+
+	void AnimatedSprite::setRepeatIndex(ui32 repeatIndex)
+	{
+		create();
+		ASSERT_PTR();
+		PARSE_ANIMATED_SPRITE();
+		spr.repeatIndex = repeatIndex;
 
 		if (spr.repeatCount >= spr.repeatIndex) spr.running = false;
 	}
@@ -184,7 +195,7 @@ namespace sv {
 		create();
 		ASSERT_PTR();
 		PARSE_ANIMATED_SPRITE();
-		time = spr.time;
+		spr.time = time;
 	}
 
 	Result AnimatedSprite::setState(const State& state)
@@ -224,12 +235,20 @@ namespace sv {
 		return spr.index;
 	}
 
-	i32 AnimatedSprite::getRepeatCount()
+	ui32 AnimatedSprite::getRepeatCount()
 	{
 		create();
 		ASSERT_PTR();
 		PARSE_ANIMATED_SPRITE();
 		return spr.repeatCount;
+	}
+
+	ui32 AnimatedSprite::getRepeatIndex()
+	{
+		create();
+		ASSERT_PTR();
+		PARSE_ANIMATED_SPRITE();
+		return spr.repeatIndex;
 	}
 
 	float AnimatedSprite::getSpriteDuration()
@@ -273,7 +292,7 @@ namespace sv {
 		ASSERT_PTR();
 		PARSE_ANIMATED_SPRITE();
 		return { spr.animation.getHashCode(), spr.duration, spr.repeatCount, 
-			spr.index, spr.repeatIndex, spr.time };
+			spr.index, spr.repeatIndex, spr.time, spr.running };
 	}
 
 	void AnimatedSprite::start()
@@ -283,6 +302,7 @@ namespace sv {
 		PARSE_ANIMATED_SPRITE();
 		if (spr.animation.hasReference()) {
 			spr.running = true;
+			if (spr.repeatIndex >= spr.repeatCount) spr.repeatIndex = 0u;
 		}
 	}
 

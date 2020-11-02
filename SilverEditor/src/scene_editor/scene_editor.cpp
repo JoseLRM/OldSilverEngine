@@ -128,7 +128,7 @@ namespace sv {
 
 	void scene_editor_update(float dt)
 	{
-		SceneEditorViewport* vp = (SceneEditorViewport*) viewport_get("SceneEditor");
+		SceneEditorViewport* vp = (SceneEditorViewport*) panel_manager_get("SceneEditor");
 		if (vp == nullptr) return;
 
 		// Adjust camera
@@ -151,7 +151,7 @@ namespace sv {
 
 	void scene_editor_render()
 	{
-		SceneEditorViewport* vp = (SceneEditorViewport*)viewport_get("SceneEditor");
+		SceneEditorViewport* vp = (SceneEditorViewport*)panel_manager_get("SceneEditor");
 		if (vp == nullptr) return;
 
 		if (!vp->isVisible()) {

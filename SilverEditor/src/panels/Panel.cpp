@@ -1,13 +1,14 @@
 #include "core_editor.h"
 #include "Panel.h"
+#include "panel_manager.h"
 
 namespace sv {
-	Panel::Panel(const char* name) : m_Name(name)
+	Panel::Panel()
 	{}
 
-	void Panel::display()
+	bool Panel::display()
 	{
-		if (!m_Enabled) return;
+		if (!m_Enabled) return true;
 
 		beginDisplay();
 
@@ -29,6 +30,8 @@ namespace sv {
 		ImGui::End();
 
 		endDisplay();
+		
+		return open;
 	}
 
 	void Panel::show()
@@ -40,6 +43,11 @@ namespace sv {
 	{
 		m_Enabled = false;
 		m_Focused = false;
+	}
+
+	void Panel::close()
+	{
+		panel_manager_rmv(m_Name.c_str());
 	}
 
 }

@@ -370,10 +370,10 @@ namespace sv {
 			if (ImGui::MenuItem("Edit")) {
 				ImGui::CloseCurrentPopup();
 				
-				MaterialPanel* matPanel = (MaterialPanel*)viewport_get("Material");
+				MaterialPanel* matPanel = (MaterialPanel*)panel_manager_get("Material");
 				if (matPanel == nullptr) {
 					matPanel = new MaterialPanel();
-					viewport_add("Material", matPanel);
+					panel_manager_add("Material", matPanel);
 				}
 
 				matPanel->setSelectedMaterial(material);
@@ -431,10 +431,10 @@ namespace sv {
 			if (ImGui::MenuItem("Edit")) {
 				ImGui::CloseCurrentPopup();
 
-				SpriteAnimationPanel* sprPanel = (SpriteAnimationPanel*)viewport_get("Sprite Animation");
+				SpriteAnimationPanel* sprPanel = (SpriteAnimationPanel*)panel_manager_get("Sprite Animation");
 				if (sprPanel == nullptr) {
 					sprPanel = new SpriteAnimationPanel();
-					viewport_add("Sprite Animation", sprPanel);
+					panel_manager_add("Sprite Animation", sprPanel);
 				}
 
 				sprPanel->setSelectedAnimation(spriteAnimation);

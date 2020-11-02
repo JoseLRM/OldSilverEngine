@@ -27,7 +27,7 @@ namespace sv {
 		struct State {
 			size_t animationHashCode;
 			float spriteDuration;
-			i32 repeatCount;
+			ui32 repeatCount;
 			ui32 index;
 			ui32 repeatIndex;
 			float time;
@@ -48,7 +48,8 @@ namespace sv {
 
 		void setAnimation(SpriteAnimationAsset& animationAsset);
 		void setIndex(ui32 index);
-		void setRepeatCount(i32 repeatCount);
+		void setRepeatCount(ui32 repeatCount); // 0 to infinite
+		void setRepeatIndex(ui32 repeatIndex);
 		void setSpriteDuration(float duration);
 		void setSpriteTime(float time);
 		Result setState(const State& state);
@@ -57,7 +58,8 @@ namespace sv {
 
 		SpriteAnimationAsset	getAnimation();
 		ui32					getIndex();
-		i32						getRepeatCount();
+		ui32					getRepeatCount();
+		ui32					getRepeatIndex();
 		float					getSpriteDuration();
 		float					getSpriteTime();
 		Sprite					getSprite();

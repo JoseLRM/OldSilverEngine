@@ -29,7 +29,6 @@ namespace sv {
 		}
 
 		g_ScenePath = sceneFilePath;
-
 		engine_animations_disable();
 
 		return Result_Success;
@@ -50,8 +49,6 @@ namespace sv {
 
 			g_Scene.serialize(g_ScenePath.c_str());
 			g_RunningRequest = false;
-
-			engine_animations_enable();
 		}
 
 		if (g_StopRequest) {
@@ -61,13 +58,11 @@ namespace sv {
 
 			g_Scene.deserialize(g_ScenePath.c_str());
 			g_StopRequest = false;
-
-			engine_animations_disable();
 		}
 
 		// Adjust camera
 		{
-			SimulationViewport* sim = (SimulationViewport*)viewport_get("Simulation");
+			SimulationViewport* sim = (SimulationViewport*)panel_manager_get("Simulation");
 			if (sim) {
 				CameraComponent* camera = ecs_component_get<CameraComponent>(g_Scene, g_Scene.getMainCamera());
 				if (camera) {
@@ -86,7 +81,7 @@ namespace sv {
 
 	void simulation_render()
 	{
-		SimulationViewport* sim = (SimulationViewport*)viewport_get("Simulation");
+		SimulationViewport* sim = (SimulationViewport*)panel_manager_get("Simulation");
 		if (sim == nullptr) return;
 
 		if (!simulation_running() && !sim->isVisible()) {
@@ -100,6 +95,7 @@ namespace sv {
 	{
 		if (g_Running) return;
 		g_RunningRequest = true;
+		engine_animations_enable();
 	}
 
 	void simulation_continue()
@@ -108,6 +104,7 @@ namespace sv {
 	
 		g_Paused = false;
 		ImGui::GetStyle().Alpha = 0.2f;
+		engine_animations_enable();
 	}
 
 	void simulation_pause()
@@ -116,12 +113,14 @@ namespace sv {
 		
 		g_Paused = true;
 		ImGui::GetStyle().Alpha = 1.f;
+		engine_animations_disable();
 	}
 
 	void simulation_stop()
 	{
 		if (!g_Running) return;
 		g_StopRequest = true;
+		engine_animations_disable();
 	}
 
 	void simulation_gamemode_set(bool gamemode)

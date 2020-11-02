@@ -8,7 +8,7 @@
 
 namespace sv {
 	
-	SceneHierarchyViewport::SceneHierarchyViewport() : Panel("Scene Hierarchy")
+	SceneHierarchyViewport::SceneHierarchyViewport()
 	{
 	}
 
@@ -49,7 +49,7 @@ namespace sv {
 			}
 		}
 
-		EntityInspectorViewport* vp = (EntityInspectorViewport*)viewport_get("EntityInspector");
+		EntityInspectorViewport* vp = (EntityInspectorViewport*)panel_manager_get("EntityInspector");
 		if (vp)
 		{
 			vp->setEntity(m_SelectedEntity);

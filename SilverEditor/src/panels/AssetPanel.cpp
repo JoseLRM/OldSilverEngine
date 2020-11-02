@@ -10,7 +10,7 @@ namespace fs = std::filesystem;
 
 namespace sv {
 	
-	AssetPanel::AssetPanel() : Panel("Assets")
+	AssetPanel::AssetPanel()
 	{
 		m_AssetFolder.name = "assets";
 		m_AssetFolder.path = "assets";

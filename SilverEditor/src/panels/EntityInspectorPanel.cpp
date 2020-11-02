@@ -54,27 +54,56 @@ namespace sv {
 
 		if (anim.hasReference()) {
 
-			gui_component_item_next("State");
+			{
+				gui_component_item_next("State");
 
-			if (comp->sprite.isRunning()) {
-				if (ImGui::Button("Pause")) comp->sprite.pause();
+				if (comp->sprite.isRunning()) {
+					if (ImGui::Button("Pause")) comp->sprite.pause();
+				}
+				else if (ImGui::Button("Start")) comp->sprite.start();
+				ImGui::SameLine();
+				if (ImGui::Button("Reset")) comp->sprite.reset();
 			}
-			else if (ImGui::Button("Start")) comp->sprite.start();
-			ImGui::SameLine();
-			if (ImGui::Button("Reset")) comp->sprite.reset();
 
-			gui_component_item_next("Timeline");
+			{
+				gui_component_item_next("Timeline");
 
-			ui32 count = ui32(anim->sprites.size());
+				ui32 count = ui32(anim->sprites.size());
 
-			float maxTime = float(count) * duration;
-			float currentTime = float(comp->sprite.getIndex()) * duration + comp->sprite.getSpriteTime();
+				float maxTime = float(count) * duration;
+				float currentTime = float(comp->sprite.getIndex()) * duration + comp->sprite.getSpriteTime();
 
-			if (ImGui::SliderFloat("##Timeline", &currentTime, 0.f, maxTime)) {
-				ui32 currentIndex = ui32(currentTime / duration);
-				float time = currentTime - (currentIndex * duration);
-				comp->sprite.setIndex(currentIndex);
-				comp->sprite.setSpriteTime(time);
+				if (ImGui::SliderFloat("##Timeline", &currentTime, 0.f, maxTime)) {
+					ui32 currentIndex = ui32(currentTime / duration);
+					float time = currentTime - (currentIndex * duration);
+					comp->sprite.setIndex(currentIndex);
+					comp->sprite.setSpriteTime(time);
+				}
+			}
+
+			bool infinite = comp->sprite.getRepeatCount() == 0u;
+			{
+				gui_component_item_next("Infinite loop");
+
+				if (ImGui::Checkbox("##Infinitelopp", &infinite)) {
+					comp->sprite.setRepeatCount(!infinite);
+				}
+			}
+
+			if (!infinite) {
+				gui_component_item_next("Repeat Count");
+
+				int repeat = comp->sprite.getRepeatCount();
+				if (ImGui::DragInt("##RepeatCount", &repeat, 1, 1, i32_max)) {
+					comp->sprite.setRepeatCount(repeat);
+				}
+
+				gui_component_item_next("Repeat Index");
+
+				repeat = comp->sprite.getRepeatIndex();
+				if (ImGui::SliderInt("##RepeatIndex", &repeat, 0, comp->sprite.getRepeatCount() - 1u)) {
+					comp->sprite.setRepeatIndex(repeat);
+				}
 			}
 		}
 
@@ -204,7 +233,7 @@ namespace sv {
 		else if (ID == RigidBody2DComponent::ID)	showRigidBody2DComponentInfo(reinterpret_cast<RigidBody2DComponent*>(comp));
 	}
 
-	EntityInspectorViewport::EntityInspectorViewport() : Panel("Entity Inspector")
+	EntityInspectorViewport::EntityInspectorViewport()
 	{
 
 	}

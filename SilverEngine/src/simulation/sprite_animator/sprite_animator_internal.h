@@ -12,7 +12,7 @@ namespace sv {
 		
 		bool running = false;
 		float time = 0.f; 
-		i32 repeatCount = -1;
+		ui32 repeatCount = 0u;
 		ui32 repeatIndex = 0u;
 		float duration = 0.3f;
 		ui32 index = 0u;
