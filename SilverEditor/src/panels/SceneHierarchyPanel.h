@@ -5,10 +5,10 @@
 
 namespace sv {
 
-	class SceneHierarchyViewport : public Panel {
+	class SceneHierarchyPanel : public Panel {
 
 	public:
-		SceneHierarchyViewport();
+		SceneHierarchyPanel();
 
 	protected:
 		bool onDisplay() override;

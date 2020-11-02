@@ -6,6 +6,7 @@
 #include "simulation/scene.h"
 #include "platform/window.h"
 #include "simulation/animator.h"
+#include "gui.h"
 
 namespace sv {
 
@@ -45,7 +46,7 @@ namespace sv {
 		if (g_RunningRequest) {
 			g_Running = true;
 			g_Paused = false;
-			ImGui::GetStyle().Alpha = 0.2f;
+			gui_style_simulation();
 
 			g_Scene.serialize(g_ScenePath.c_str());
 			g_RunningRequest = false;
@@ -54,7 +55,7 @@ namespace sv {
 		if (g_StopRequest) {
 			g_Running = false;
 			g_Paused = false;
-			ImGui::GetStyle().Alpha = 1.f;
+			gui_style_editor();
 
 			g_Scene.deserialize(g_ScenePath.c_str());
 			g_StopRequest = false;
@@ -62,12 +63,14 @@ namespace sv {
 
 		// Adjust camera
 		{
-			SimulationViewport* sim = (SimulationViewport*)panel_manager_get("Simulation");
+			SimulationPanel* sim = (SimulationPanel*)panel_manager_get("Simulation");
 			if (sim) {
-				CameraComponent* camera = ecs_component_get<CameraComponent>(g_Scene, g_Scene.getMainCamera());
-				if (camera) {
-					vec2u size = g_Gamemode ? window_size_get() : sim->get_screen_size();
-					camera->camera.adjust(size.x, size.y);
+				if (g_Scene.getMainCamera() != SV_ENTITY_NULL) {
+					CameraComponent* camera = ecs_component_get<CameraComponent>(g_Scene, g_Scene.getMainCamera());
+					if (camera) {
+						vec2u size = g_Gamemode ? window_size_get() : sim->get_screen_size();
+						camera->camera.adjust(size.x, size.y);
+					}
 				}
 			}
 		}
@@ -81,7 +84,7 @@ namespace sv {
 
 	void simulation_render()
 	{
-		SimulationViewport* sim = (SimulationViewport*)panel_manager_get("Simulation");
+		SimulationPanel* sim = (SimulationPanel*)panel_manager_get("Simulation");
 		if (sim == nullptr) return;
 
 		if (!simulation_running() && !sim->isVisible()) {
@@ -103,7 +106,7 @@ namespace sv {
 		if (!g_Running || !g_Paused) return;
 	
 		g_Paused = false;
-		ImGui::GetStyle().Alpha = 0.2f;
+		gui_style_simulation();
 		engine_animations_enable();
 	}
 
@@ -112,7 +115,7 @@ namespace sv {
 		if (!g_Running || g_Paused) return;
 		
 		g_Paused = true;
-		ImGui::GetStyle().Alpha = 1.f;
+		gui_style_editor();
 		engine_animations_disable();
 	}
 

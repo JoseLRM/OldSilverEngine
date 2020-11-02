@@ -96,6 +96,7 @@ namespace sv {
 			Scene& scene = simulation_scene_get();
 			Entity camera = scene.getMainCamera();
 
+			SV_ASSERT(ecs_entity_exist(scene, camera));
 			Camera& mainCamera = ecs_component_get<CameraComponent>(scene, camera)->camera;
 			vec2u res = { mainCamera.getResolutionWidth(), mainCamera.getResolutionHeight() };
 			g_Camera.camera.setResolution(res.x, res.y);
@@ -128,7 +129,7 @@ namespace sv {
 
 	void scene_editor_update(float dt)
 	{
-		SceneEditorViewport* vp = (SceneEditorViewport*) panel_manager_get("SceneEditor");
+		SceneEditorPanel* vp = (SceneEditorPanel*) panel_manager_get("Scene Editor");
 		if (vp == nullptr) return;
 
 		// Adjust camera
@@ -151,7 +152,7 @@ namespace sv {
 
 	void scene_editor_render()
 	{
-		SceneEditorViewport* vp = (SceneEditorViewport*)panel_manager_get("SceneEditor");
+		SceneEditorPanel* vp = (SceneEditorPanel*)panel_manager_get("Scene Editor");
 		if (vp == nullptr) return;
 
 		if (!vp->isVisible()) {

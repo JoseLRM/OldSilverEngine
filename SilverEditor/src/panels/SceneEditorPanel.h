@@ -4,9 +4,9 @@
 
 namespace sv {
 
-	class SceneEditorViewport : public Panel {
+	class SceneEditorPanel : public Panel {
 	public:
-		SceneEditorViewport();
+		SceneEditorPanel();
 
 		inline const vec2u& get_screen_size() const noexcept { return m_ScreenSize; }
 

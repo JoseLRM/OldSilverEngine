@@ -8,11 +8,11 @@
 
 namespace sv {
 	
-	SceneHierarchyViewport::SceneHierarchyViewport()
+	SceneHierarchyPanel::SceneHierarchyPanel()
 	{
 	}
 
-	bool SceneHierarchyViewport::onDisplay()
+	bool SceneHierarchyPanel::onDisplay()
 	{
 		m_Popup = false;
 		Scene& scene = simulation_scene_get();
@@ -36,20 +36,45 @@ namespace sv {
 
 				m_Popup = true;
 
-				if (ImGui::Button("Create empty entity")) {
+				if (ImGui::MenuItem("Create Empty Entity")) {
 					ecs_entity_create(scene);
 				}
 
-				if (ImGui::Button("Create sprite")) {
+				if (ImGui::MenuItem("Create Camera")) {
 					Entity entity = ecs_entity_create(scene);
-					ecs_component_add<SpriteComponent>(scene, entity);
+					ecs_component_add<CameraComponent>(scene, entity)->camera.setResolution(1080u, 720u);
+					ecs_component_add<NameComponent>(scene, entity, "Camera");
+				}
+
+				ImGui::Separator();
+
+				if (ImGui::BeginMenu("2D")) {
+
+					if (ImGui::MenuItem("Create Sprite")) {
+						Entity entity = ecs_entity_create(scene);
+						ecs_component_add<SpriteComponent>(scene, entity);
+						ecs_component_add<NameComponent>(scene, entity, "Sprite");
+					}
+
+					if (ImGui::MenuItem("Create Animated Sprite")) {
+						Entity entity = ecs_entity_create(scene);
+						ecs_component_add<AnimatedSpriteComponent>(scene, entity);
+						ecs_component_add<NameComponent>(scene, entity, "Animated Sprite");
+					}
+
+					ImGui::EndMenu();
+				}
+
+				if (ImGui::BeginMenu("3D")) {
+
+					ImGui::EndMenu();
 				}
 
 				ImGui::EndPopup();
 			}
 		}
 
-		EntityInspectorViewport* vp = (EntityInspectorViewport*)panel_manager_get("EntityInspector");
+		EntityInspectorPanel* vp = (EntityInspectorPanel*)panel_manager_get("Entity Inspector");
 		if (vp)
 		{
 			vp->setEntity(m_SelectedEntity);
@@ -58,9 +83,9 @@ namespace sv {
 		return true;
 	}
 
-	void SceneHierarchyViewport::showEntity(ECS* ecs, Entity entity)
+	void SceneHierarchyPanel::showEntity(ECS* ecs, Entity entity)
 	{
-		ImGuiTreeNodeFlags treeFlags = ImGuiTreeNodeFlags_OpenOnArrow | (ecs_entity_childs_count(ecs, entity) == 0 ? ImGuiTreeNodeFlags_Bullet : ImGuiTreeNodeFlags_AllowItemOverlap);
+		ImGuiTreeNodeFlags treeFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth | (ecs_entity_childs_count(ecs, entity) == 0 ? ImGuiTreeNodeFlags_Bullet : ImGuiTreeNodeFlags_AllowItemOverlap);
 
 		if (m_SelectedEntity == entity) {
 			treeFlags |= ImGuiTreeNodeFlags_Selected;

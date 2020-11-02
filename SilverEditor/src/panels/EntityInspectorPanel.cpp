@@ -121,43 +121,118 @@ namespace sv {
 		ProjectionType projectionType = comp->camera.getProjectionType();
 		Camera& cam = comp->camera;
 
-		if (ImGui::BeginCombo("Projection", (projectionType == ProjectionType_Orthographic) ? "Orthographic" : "Perspective")) {
-
-			if (projectionType == ProjectionType_Orthographic) {
-				if (ImGui::Button("Perspective")) {
-					cam.setProjectionType(ProjectionType_Perspective);
-					cam.setWidth(1.f);
-					cam.setHeight(1.f);
-					cam.setNear(0.01f);
-					cam.setFar(100000.f);
-				}
+		auto getPrjStr = [](ProjectionType type) {
+			switch (type)
+			{
+			case sv::ProjectionType_Clip:
+				return "Clip";
+			case sv::ProjectionType_Orthographic:
+				return "Orthographic";
+			case sv::ProjectionType_Perspective:
+				return "Perspective";
+			default:
+				return "None";
 			}
-			else if (projectionType == ProjectionType_Orthographic) {
-				if (ImGui::Button("Orthographic")) {
-					cam.setProjectionType(ProjectionType_Orthographic);
-					cam.setWidth(10.f);
-					cam.setHeight(10.f);
-					cam.setNear(-100000.f);
-					cam.setFar(100000.f);
+		};
+
+		auto getPrjNearMin = [](ProjectionType type) {
+			switch (type)
+			{
+			case sv::ProjectionType_Orthographic:
+				return float_min;
+			case sv::ProjectionType_Perspective:
+				return 0.001f;
+			default:
+				return float_min;
+			}
+		};
+
+		gui_component_item_begin();
+
+		ProjectionType types[] = {
+			ProjectionType_Clip,
+			ProjectionType_Orthographic,
+			ProjectionType_Perspective
+		};
+	
+		gui_component_item_next("Projection");
+		if (ImGui::BeginCombo("##Projection", getPrjStr(cam.getProjectionType()))) {
+
+			for (ui32 i = 0; i < 3; ++i) {
+				ProjectionType type = types[i];
+
+				if (cam.getProjectionType() == type) continue;
+
+				if (ImGui::MenuItem(getPrjStr(type))) {
+					cam.setProjectionType(type);
+
+					// Initialize values
+					switch (type)
+					{
+					case sv::ProjectionType_Clip:
+						break;
+					case sv::ProjectionType_Orthographic:
+						cam.setNear(-1000.f);
+						cam.setFar(1000.f);
+						cam.setProjectionLength(10.f);
+						break;
+					case sv::ProjectionType_Perspective:
+						cam.setNear(0.1f);
+						cam.setFar(1000.f);
+						cam.setProjectionLength(0.1f);
+						break;
+					}
 				}
 			}
 
 			ImGui::EndCombo();
 		}
 
-		float far = cam.getFar();
-		float near = cam.getNear();
+		gui_component_item_next("Length");
 		float length = cam.getProjectionLength();
-
-		if (ImGui::DragFloat("Near", &near, 0.01f)) {
-			cam.setNear(near);
-		}
-		if (ImGui::DragFloat("Far", &far, 0.1f)) {
-			cam.setFar(far);
-		}
-		if (ImGui::DragFloat("Length", &length, 0.01f)) {
+		if (ImGui::DragFloat("##Length", &length, 0.1f, 0.01f, float_max)) {
 			cam.setProjectionLength(length);
 		}
+
+		gui_component_item_next("Near");
+		float near = cam.getNear();
+		if (ImGui::DragFloat("##Near", &near, 0.1f, getPrjNearMin(cam.getProjectionType()), float_max)) {
+			cam.setNear(near);
+		}
+
+		gui_component_item_next("Far");
+		float far = cam.getFar();
+		if (ImGui::DragFloat("##Far", &far, 0.1f, near + 0.001f, float_max)) {
+			cam.setFar(far);
+		}
+		
+		gui_component_item_next("Resolution");
+		vec2u res = cam.getResolution();
+		vec2i res0 = { i32(res.x), i32(res.y) };
+		if (ImGui::DragInt2("##Res", &res0.x, 1, 10, 2000)) {
+			//cam.setResolution(res0.x, res0.y);
+			SV_LOG_ERROR("TODO");
+		}
+
+		gui_component_item_next("Active");
+		bool active = cam.isActive();
+		if (ImGui::Checkbox("##Active", &active)) {
+			if (active) cam.activate();
+			else cam.deactivate();
+		}
+
+		Scene& scene = simulation_scene_get();
+
+		gui_component_item_next("Main Camera");
+		bool isMain = scene.getMainCamera() == comp->entity;
+		if (ImGui::Checkbox("##MainCamera", &isMain)) {
+			if (isMain) {
+				scene.setMainCamera(comp->entity);
+			}
+			else scene.setMainCamera(SV_ENTITY_NULL);
+		}
+
+		gui_component_item_end();
 	}
 
 	void showRigidBody2DComponentInfo(RigidBody2DComponent* comp)
@@ -233,17 +308,17 @@ namespace sv {
 		else if (ID == RigidBody2DComponent::ID)	showRigidBody2DComponentInfo(reinterpret_cast<RigidBody2DComponent*>(comp));
 	}
 
-	EntityInspectorViewport::EntityInspectorViewport()
+	EntityInspectorPanel::EntityInspectorPanel()
 	{
 
 	}
 
-	void EntityInspectorViewport::setEntity(Entity entity)
+	void EntityInspectorPanel::setEntity(Entity entity)
 	{
 		m_Entity = entity;
 	}
 
-	bool EntityInspectorViewport::onDisplay()
+	bool EntityInspectorPanel::onDisplay()
 	{
 		ECS* ecs = simulation_scene_get().getECS();
 

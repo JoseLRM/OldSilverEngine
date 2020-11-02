@@ -6,17 +6,17 @@
 #include "simulation.h"
 
 namespace sv {
-	SimulationViewport::SimulationViewport()
+	SimulationPanel::SimulationPanel()
 	{
 	}
 
-	void SimulationViewport::beginDisplay()
+	void SimulationPanel::beginDisplay()
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1.f);
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 0.f, 0.f });
 	}
 
-	bool SimulationViewport::onDisplay()
+	bool SimulationPanel::onDisplay()
 	{
 		ImVec2 size = ImGui::GetWindowContentRegionMax();
 		size.x -= ImGui::GetWindowContentRegionMin().x;
@@ -43,12 +43,12 @@ namespace sv {
 		return true;
 	}
 
-	void SimulationViewport::endDisplay()
+	void SimulationPanel::endDisplay()
 	{
 		ImGui::PopStyleVar(2);
 	}
 
-	ImGuiWindowFlags SimulationViewport::getWindowFlags()
+	ImGuiWindowFlags SimulationPanel::getWindowFlags()
 	{
 		return ImGuiWindowFlags_NoScrollbar;
 	}

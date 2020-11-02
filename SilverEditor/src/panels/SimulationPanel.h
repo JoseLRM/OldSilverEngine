@@ -4,9 +4,9 @@
 
 namespace sv {
 
-	class SimulationViewport : public Panel {
+	class SimulationPanel : public Panel {
 	public:
-		SimulationViewport();
+		SimulationPanel();
 
 		inline const vec2u& get_screen_size() const noexcept { return m_ScreenSize; }
 

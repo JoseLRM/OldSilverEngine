@@ -5,10 +5,10 @@
 
 namespace sv {
 
-	class EntityInspectorViewport : public Panel {
+	class EntityInspectorPanel : public Panel {
 
 	public:
-		EntityInspectorViewport();
+		EntityInspectorPanel();
 
 		void setEntity(Entity entity);
 

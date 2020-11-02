@@ -4,10 +4,10 @@
 
 namespace sv {
 
-	class SimulationToolsViewport : public Panel {
+	class SimulationToolsPanel : public Panel {
 
 	public:
-		SimulationToolsViewport();
+		SimulationToolsPanel();
 
 	protected:
 		void beginDisplay() override;

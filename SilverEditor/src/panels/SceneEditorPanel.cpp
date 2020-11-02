@@ -7,16 +7,16 @@
 
 namespace sv {
 	
-	SceneEditorViewport::SceneEditorViewport()
+	SceneEditorPanel::SceneEditorPanel()
 	{}
 
-	void SceneEditorViewport::beginDisplay()
+	void SceneEditorPanel::beginDisplay()
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1.f);
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 0.f, 0.f });
 	}
 
-	bool SceneEditorViewport::onDisplay()
+	bool SceneEditorPanel::onDisplay()
 	{
 		ImVec2 size = ImGui::GetWindowContentRegionMax();
 		size.x -= ImGui::GetWindowContentRegionMin().x;
@@ -46,12 +46,12 @@ namespace sv {
 		return true;
 	}
 
-	void SceneEditorViewport::endDisplay()
+	void SceneEditorPanel::endDisplay()
 	{
 		ImGui::PopStyleVar(2u);
 	}
 
-	ImGuiWindowFlags SceneEditorViewport::getWindowFlags()
+	ImGuiWindowFlags SceneEditorPanel::getWindowFlags()
 	{
 		return ImGuiWindowFlags_NoScrollbar;
 	}

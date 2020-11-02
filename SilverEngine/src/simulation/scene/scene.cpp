@@ -308,6 +308,7 @@ namespace sv {
 	{
 		archive << engine_version_get();
 		svCheck(ecs_serialize(m_ECS, archive));
+		archive << m_MainCamera;
 
 		return Result_Success;
 	}
@@ -318,6 +319,12 @@ namespace sv {
 
 		svCheck(archive.open_file(filePath));
 		svCheck(deserialize(archive));
+		archive >> m_MainCamera;
+
+		if (!ecs_entity_exist(m_ECS, m_MainCamera) || ecs_component_get<CameraComponent>(m_ECS, m_MainCamera) == nullptr) {
+			m_MainCamera = SV_ENTITY_NULL;
+			return Result_InvalidFormat;
+		}
 
 		return Result_Success;
 	}
@@ -339,8 +346,8 @@ namespace sv {
 
 	void Scene::setMainCamera(Entity camera)
 	{
-		SV_ASSERT(ecs_entity_exist(m_ECS, camera) && ecs_component_get<CameraComponent>(m_ECS, camera));
-		m_MainCamera = camera;
+		if (!ecs_entity_exist(m_ECS, camera) || ecs_component_get<CameraComponent>(m_ECS, camera) == nullptr) m_MainCamera = SV_ENTITY_NULL;
+		else m_MainCamera = camera;
 	}
 
 	Entity Scene::getMainCamera()

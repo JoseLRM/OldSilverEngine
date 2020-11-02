@@ -2,26 +2,12 @@
 
 #include "panel_manager.h"
 
-#include "panels/SimulationPanel.h"
-#include "panels/SceneEditorPanel.h"
-#include "panels/SceneHierarchyPanel.h"
-#include "panels/EntityInspectorPanel.h"
-#include "panels/AssetPanel.h"
-#include "panels/SimulationToolsPanel.h"
-
 namespace sv {
 
 	std::unordered_map<std::string, Panel*> g_Panels;
 
 	Result panel_manager_initialize()
 	{
-		panel_manager_add("Simulation", new SimulationViewport());
-		panel_manager_add("SceneEditor", new SceneEditorViewport());
-		panel_manager_add("SceneHierarchy", new SceneHierarchyViewport());
-		panel_manager_add("EntityInspector", new EntityInspectorViewport());
-		panel_manager_add("Asset", new AssetPanel());
-		panel_manager_add("SimulationTools", new SimulationToolsViewport());
-
 		return Result_Success;
 	}
 

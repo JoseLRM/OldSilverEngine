@@ -6,27 +6,258 @@
 #include "panel_manager.h"
 #include "panels/MaterialPanel.h"
 #include "panels/SpriteAnimationPanel.h"
+#include "panels/SimulationPanel.h"
+#include "panels/SceneEditorPanel.h"
+#include "panels/SceneHierarchyPanel.h"
+#include "panels/EntityInspectorPanel.h"
+#include "panels/AssetPanel.h"
+#include "panels/SimulationToolsPanel.h"
+
+#include "utils/io.h"
 
 namespace sv {
 
+	static GuiStyle g_Style;
+	bool g_SimulationMode;
+
 	Result gui_initialize()
 	{
+		gui_style_set(GuiStyle_Black);
+		gui_style_editor();
+
+		// Get last state
+		ArchiveI file;
+		if (result_okay(bin_read(hash_string("Editor State"), file))) {
+
+			ui32 count;
+			file >> count;
+
+			std::string name;
+			for (ui32 i = 0; i < count; ++i) {
+
+				file >> name;
+
+				if (strcmp(name.c_str(), "Simulation") == 0) panel_manager_add(name.c_str(), new SimulationPanel());
+				else if (strcmp(name.c_str(), "Scene Editor") == 0) panel_manager_add(name.c_str(), new SceneEditorPanel());
+				else if (strcmp(name.c_str(), "Scene Hierarchy") == 0) panel_manager_add(name.c_str(), new SceneHierarchyPanel());
+				else if (strcmp(name.c_str(), "Entity Inspector") == 0) panel_manager_add(name.c_str(), new EntityInspectorPanel());
+				else if (strcmp(name.c_str(), "Assets") == 0) panel_manager_add(name.c_str(), new AssetPanel());
+				else if (strcmp(name.c_str(), "Simulation Tools") == 0) panel_manager_add(name.c_str(), new SimulationToolsPanel());
+			}
+		}
+		else SV_LOG_ERROR("Can't deserialize Editor State");
+
 		return Result_Success;
 	}
 
 	Result gui_close()
 	{
+		// Save state
+		{
+			ArchiveO file;
+
+			std::vector<const char*> panels;
+
+			if (panel_manager_get("Simulation")) panels.emplace_back("Simulation");
+			if (panel_manager_get("Scene Editor")) panels.emplace_back("Scene Editor");
+			if (panel_manager_get("Scene Hierarchy")) panels.emplace_back("Scene Hierarchy");
+			if (panel_manager_get("Entity Inspector")) panels.emplace_back("Entity Inspector");
+			if (panel_manager_get("Assets")) panels.emplace_back("Assets");
+			if (panel_manager_get("Simulation Tools")) panels.emplace_back("Simulation Tools");
+
+			file << ui32(panels.size());
+
+			for (ui32 i = 0; i < panels.size(); ++i) {
+				file << panels[i];
+			}
+
+			if (result_fail(bin_write(hash_string("Editor State"), file))) SV_LOG_ERROR("Can't serialize Editor State");
+		}
+
+
 		return Result_Success;
+	}
+	
+	template<typename T>
+	void panelCheckbox(const char* name) 
+	{
+		T* panel = (T*)panel_manager_get(name);
+		if (ImGui::MenuItem(name, nullptr, nullptr, panel == nullptr)) {
+			panel_manager_add(name, new T());
+		}
 	}
 
 	void gui_begin()
 	{
 
+		if (ImGui::BeginMainMenuBar()) {
+
+			ImGui::PushStyleColor(ImGuiCol_PopupBg, { 0.1f, 0.1f, 0.1f, 1.f });
+
+			if (ImGui::BeginMenu("Panels")) {
+
+				panelCheckbox<SimulationPanel>("Simulation");
+				panelCheckbox<SceneEditorPanel>("Scene Editor");
+				panelCheckbox<SceneHierarchyPanel>("Scene Hierarchy");
+				panelCheckbox<EntityInspectorPanel>("Entity Inspector");
+				panelCheckbox<AssetPanel>("Assets");
+				panelCheckbox<SimulationToolsPanel>("Simulation Tools");
+
+				ImGui::EndMenu();
+			}
+
+			ImGui::PopStyleColor();
+
+			ImGui::EndMainMenuBar();
+		}
 	}
 
 	void gui_end()
 	{
 
+	}
+
+	void gui_style_update()
+	{
+		if (g_SimulationMode) {
+			switch (g_Style)
+			{
+			case sv::GuiStyle_Black:
+				ImVec4* colors = ImGui::GetStyle().Colors;
+				colors[ImGuiCol_Text] = ImVec4(1.00f, 1.00f, 1.00f, 0.51f);
+				colors[ImGuiCol_TextDisabled] = ImVec4(0.50f, 0.50f, 0.50f, 0.62f);
+				colors[ImGuiCol_WindowBg] = ImVec4(0.06f, 0.06f, 0.06f, 0.82f);
+				colors[ImGuiCol_ChildBg] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+				colors[ImGuiCol_PopupBg] = ImVec4(0.08f, 0.08f, 0.08f, 0.73f);
+				colors[ImGuiCol_Border] = ImVec4(0.43f, 0.43f, 0.50f, 0.50f);
+				colors[ImGuiCol_BorderShadow] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+				colors[ImGuiCol_FrameBg] = ImVec4(0.24f, 0.24f, 0.24f, 0.20f);
+				colors[ImGuiCol_FrameBgHovered] = ImVec4(0.43f, 0.43f, 0.43f, 0.40f);
+				colors[ImGuiCol_FrameBgActive] = ImVec4(0.44f, 0.44f, 0.44f, 0.67f);
+				colors[ImGuiCol_TitleBg] = ImVec4(0.04f, 0.04f, 0.04f, 0.00f);
+				colors[ImGuiCol_TitleBgActive] = ImVec4(0.21f, 0.21f, 0.21f, 1.00f);
+				colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.21f, 0.21f, 0.21f, 1.00f);
+				colors[ImGuiCol_MenuBarBg] = ImVec4(0.12f, 0.12f, 0.12f, 1.00f);
+				colors[ImGuiCol_ScrollbarBg] = ImVec4(0.02f, 0.02f, 0.02f, 0.40f);
+				colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.31f, 0.31f, 0.31f, 1.00f);
+				colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.41f, 0.41f, 0.41f, 1.00f);
+				colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.51f, 0.51f, 0.51f, 1.00f);
+				colors[ImGuiCol_CheckMark] = ImVec4(0.26f, 0.98f, 0.32f, 1.00f);
+				colors[ImGuiCol_SliderGrab] = ImVec4(0.24f, 0.88f, 0.27f, 1.00f);
+				colors[ImGuiCol_SliderGrabActive] = ImVec4(0.28f, 0.98f, 0.26f, 1.00f);
+				colors[ImGuiCol_Button] = ImVec4(0.24f, 0.24f, 0.24f, 0.54f);
+				colors[ImGuiCol_ButtonHovered] = ImVec4(0.43f, 0.43f, 0.43f, 0.40f);
+				colors[ImGuiCol_ButtonActive] = ImVec4(0.44f, 0.44f, 0.44f, 0.67f);
+				colors[ImGuiCol_Header] = ImVec4(0.77f, 0.77f, 0.77f, 0.31f);
+				colors[ImGuiCol_HeaderHovered] = ImVec4(0.66f, 0.66f, 0.66f, 0.43f);
+				colors[ImGuiCol_HeaderActive] = ImVec4(0.63f, 0.63f, 0.63f, 0.63f);
+				colors[ImGuiCol_Separator] = ImVec4(0.43f, 0.43f, 0.50f, 0.50f);
+				colors[ImGuiCol_SeparatorHovered] = ImVec4(0.58f, 0.58f, 0.58f, 0.78f);
+				colors[ImGuiCol_SeparatorActive] = ImVec4(0.64f, 0.64f, 0.64f, 1.00f);
+				colors[ImGuiCol_ResizeGrip] = ImVec4(0.56f, 0.56f, 0.56f, 0.25f);
+				colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.48f, 0.48f, 0.48f, 0.67f);
+				colors[ImGuiCol_ResizeGripActive] = ImVec4(0.50f, 0.50f, 0.50f, 0.95f);
+				colors[ImGuiCol_Tab] = ImVec4(0.16f, 0.16f, 0.16f, 0.64f);
+				colors[ImGuiCol_TabHovered] = ImVec4(0.47f, 0.47f, 0.47f, 1.00f);
+				colors[ImGuiCol_TabActive] = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
+				colors[ImGuiCol_TabUnfocused] = ImVec4(0.30f, 0.30f, 0.30f, 0.44f);
+				colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.34f, 0.34f, 0.34f, 1.00f);
+				colors[ImGuiCol_DockingPreview] = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
+				colors[ImGuiCol_DockingEmptyBg] = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
+				colors[ImGuiCol_PlotLines] = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
+				colors[ImGuiCol_PlotLinesHovered] = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
+				colors[ImGuiCol_PlotHistogram] = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
+				colors[ImGuiCol_PlotHistogramHovered] = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
+				colors[ImGuiCol_TextSelectedBg] = ImVec4(0.26f, 0.98f, 0.37f, 0.17f);
+				colors[ImGuiCol_DragDropTarget] = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
+				colors[ImGuiCol_NavHighlight] = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+				colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
+				colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
+				colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
+				break;
+			}
+		}
+		else {
+			switch (g_Style)
+			{
+			case sv::GuiStyle_Black:
+				ImVec4* colors = ImGui::GetStyle().Colors;
+				colors[ImGuiCol_Text] = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+				colors[ImGuiCol_TextDisabled] = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
+				colors[ImGuiCol_WindowBg] = ImVec4(0.02f, 0.02f, 0.02f, 1.00f);
+				colors[ImGuiCol_ChildBg] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+				colors[ImGuiCol_PopupBg] = ImVec4(0.08f, 0.08f, 0.08f, 0.94f);
+				colors[ImGuiCol_Border] = ImVec4(0.43f, 0.43f, 0.50f, 0.50f);
+				colors[ImGuiCol_BorderShadow] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+				colors[ImGuiCol_FrameBg] = ImVec4(0.24f, 0.24f, 0.24f, 0.54f);
+				colors[ImGuiCol_FrameBgHovered] = ImVec4(0.43f, 0.43f, 0.43f, 0.40f);
+				colors[ImGuiCol_FrameBgActive] = ImVec4(0.44f, 0.44f, 0.44f, 0.67f);
+				colors[ImGuiCol_TitleBg] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
+				colors[ImGuiCol_TitleBgActive] = ImVec4(0.21f, 0.21f, 0.21f, 1.00f);
+				colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.21f, 0.21f, 0.21f, 1.00f);
+				colors[ImGuiCol_MenuBarBg] = ImVec4(0.12f, 0.12f, 0.12f, 1.00f);
+				colors[ImGuiCol_ScrollbarBg] = ImVec4(0.02f, 0.02f, 0.02f, 0.53f);
+				colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.31f, 0.31f, 0.31f, 1.00f);
+				colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.41f, 0.41f, 0.41f, 1.00f);
+				colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.51f, 0.51f, 0.51f, 1.00f);
+				colors[ImGuiCol_CheckMark] = ImVec4(0.26f, 0.98f, 0.32f, 1.00f);
+				colors[ImGuiCol_SliderGrab] = ImVec4(0.24f, 0.88f, 0.27f, 1.00f);
+				colors[ImGuiCol_SliderGrabActive] = ImVec4(0.28f, 0.98f, 0.26f, 1.00f);
+				colors[ImGuiCol_Button] = ImVec4(0.24f, 0.24f, 0.24f, 0.54f);
+				colors[ImGuiCol_ButtonHovered] = ImVec4(0.43f, 0.43f, 0.43f, 0.40f);
+				colors[ImGuiCol_ButtonActive] = ImVec4(0.44f, 0.44f, 0.44f, 0.67f);
+				colors[ImGuiCol_Header] = ImVec4(0.77f, 0.77f, 0.77f, 0.31f);
+				colors[ImGuiCol_HeaderHovered] = ImVec4(0.66f, 0.66f, 0.66f, 0.43f);
+				colors[ImGuiCol_HeaderActive] = ImVec4(0.63f, 0.63f, 0.63f, 0.63f);
+				colors[ImGuiCol_Separator] = ImVec4(0.43f, 0.43f, 0.50f, 0.50f);
+				colors[ImGuiCol_SeparatorHovered] = ImVec4(0.58f, 0.58f, 0.58f, 0.78f);
+				colors[ImGuiCol_SeparatorActive] = ImVec4(0.64f, 0.64f, 0.64f, 1.00f);
+				colors[ImGuiCol_ResizeGrip] = ImVec4(0.56f, 0.56f, 0.56f, 0.25f);
+				colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.48f, 0.48f, 0.48f, 0.67f);
+				colors[ImGuiCol_ResizeGripActive] = ImVec4(0.50f, 0.50f, 0.50f, 0.95f);
+				colors[ImGuiCol_Tab] = ImVec4(0.16f, 0.16f, 0.16f, 1.00f);
+				colors[ImGuiCol_TabHovered] = ImVec4(0.47f, 0.47f, 0.47f, 1.00f);
+				colors[ImGuiCol_TabActive] = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
+				colors[ImGuiCol_TabUnfocused] = ImVec4(0.30f, 0.30f, 0.30f, 0.44f);
+				colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.34f, 0.34f, 0.34f, 1.00f);
+				colors[ImGuiCol_DockingPreview] = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
+				colors[ImGuiCol_DockingEmptyBg] = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
+				colors[ImGuiCol_PlotLines] = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
+				colors[ImGuiCol_PlotLinesHovered] = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
+				colors[ImGuiCol_PlotHistogram] = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
+				colors[ImGuiCol_PlotHistogramHovered] = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
+				colors[ImGuiCol_TextSelectedBg] = ImVec4(0.26f, 0.98f, 0.37f, 0.17f);
+				colors[ImGuiCol_DragDropTarget] = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
+				colors[ImGuiCol_NavHighlight] = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+				colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
+				colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
+				colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
+				break;
+			}
+		}
+	}
+
+	void gui_style_set(GuiStyle style)
+	{
+		g_Style = style;
+		gui_style_update();
+	}
+
+	GuiStyle gui_style_get()
+	{
+		return g_Style;
+	}
+
+	void gui_style_editor()
+	{
+		g_SimulationMode = false;
+		gui_style_update();
+	}
+
+	void gui_style_simulation()
+	{
+		g_SimulationMode = true;
+		gui_style_update();
 	}
 
 	void gui_asset_picker_open(AssetType type)

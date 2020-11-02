@@ -15,6 +15,17 @@ namespace sv {
 	void gui_begin();
 	void gui_end();
 
+	// Style
+
+	enum GuiStyle {
+		GuiStyle_Black
+	};
+
+	void		gui_style_set(GuiStyle style);
+	GuiStyle	gui_style_get();
+	void		gui_style_editor();
+	void		gui_style_simulation();
+
 	// Assets
 
 	void gui_asset_picker_open(AssetType type);

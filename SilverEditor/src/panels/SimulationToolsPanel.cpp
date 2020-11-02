@@ -5,16 +5,16 @@
 
 namespace sv {
 
-	SimulationToolsViewport::SimulationToolsViewport()
+	SimulationToolsPanel::SimulationToolsPanel()
 	{
 	}
 
-	void SimulationToolsViewport::beginDisplay()
+	void SimulationToolsPanel::beginDisplay()
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_TabRounding, 0.f);
 	}
 
-	bool SimulationToolsViewport::onDisplay()
+	bool SimulationToolsPanel::onDisplay()
 	{
 		if (ImGui::Button(simulation_running() ? "Stop" : "Start")) {
 			if (simulation_running()) {
@@ -42,11 +42,11 @@ namespace sv {
 		return true;
 	}
 
-	void SimulationToolsViewport::endDisplay()
+	void SimulationToolsPanel::endDisplay()
 	{
 		ImGui::PopStyleVar();
 	}
-	ImGuiWindowFlags SimulationToolsViewport::getWindowFlags()
+	ImGuiWindowFlags SimulationToolsPanel::getWindowFlags()
 	{
 		return ImGuiWindowFlags_NoDecoration;
 	}

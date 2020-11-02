@@ -126,7 +126,12 @@ namespace sv {
 
 	void ArchiveI::read(void* data, size_t size)
 	{
-		SV_ASSERT(m_Pos + size <= m_Size && m_Data != nullptr);
+		if (m_Pos + size > m_Size) {
+			size_t invalidSize = (m_Pos + size) - m_Size;
+			svZeroMemory((ui8*)data + size - invalidSize, invalidSize);
+			size -= invalidSize;
+			SV_LOG_WARNING("Archive reading, out of bounds");
+		}
 		memcpy(data, m_Data + m_Pos, size);
 		m_Pos += size;
 	}
