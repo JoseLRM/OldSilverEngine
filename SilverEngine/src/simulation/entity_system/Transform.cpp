@@ -94,18 +94,57 @@ namespace sv {
 		if (t->modified) updateWorldMatrix();
 		return *(vec3f*)& t->worldMatrix._41;
 	}
+
 	vec4f Transform::getWorldRotation() noexcept
 	{
 		parse();
 		if (t->modified) updateWorldMatrix();
 		return *(vec4f*)& getWorldRotationDXV();
 	}
+
+	vec3f Transform::getWorldEulerRotation() noexcept
+	{
+		parse();
+		XMFLOAT4X4 rm;
+		XMStoreFloat4x4(&rm, XMMatrixTranspose(XMMatrixRotationQuaternion(getWorldRotationDXV())));
+
+		vec3f euler;
+
+		if (rm._13 < 1.f) {
+			if (rm._13 > -1.f) {
+				euler.y = asin(rm._13);
+				euler.x = atan2(-rm._23, rm._33);
+				euler.z = atan2(-rm._12, rm._11);
+			}
+			else {
+				euler.y = -PI / 2.f;
+				euler.x = -atan2(rm._21, rm._22);
+				euler.z = 0.f;
+			}
+		}
+		else {
+			euler.y = PI / 2.f;
+			euler.x = atan2(rm._21, rm._22);
+			euler.z = 0.f;
+		}
+
+		if (euler.x < 0.f) {
+			euler.x = 2 * PI + euler.x;
+		}
+		if (euler.z < 0.f) {
+			euler.z = 2 * PI + euler.z;
+		}
+
+		return euler;
+	}
+
 	vec3f Transform::getWorldScale() noexcept
 	{
 		parse();
 		if (t->modified) updateWorldMatrix();
 		return { (*(vec3f*)& t->worldMatrix._11).length(), (*(vec3f*)& t->worldMatrix._21).length(), (*(vec3f*)& t->worldMatrix._31).length() };
 	}
+
 	XMVECTOR Transform::getWorldPositionDXV() noexcept
 	{
 		parse();
@@ -114,6 +153,7 @@ namespace sv {
 		vec3f position = getWorldPosition();
 		return XMVectorSet(position.x, position.y, position.z, 0.f);
 	}
+
 	XMVECTOR Transform::getWorldRotationDXV() noexcept
 	{
 		parse();
@@ -126,6 +166,7 @@ namespace sv {
 
 		return rotation;
 	}
+
 	XMVECTOR Transform::getWorldScaleDXV() noexcept
 	{
 		parse();
@@ -148,6 +189,21 @@ namespace sv {
 		return XMLoadFloat4x4(&t->worldMatrix);
 	}
 
+	XMMATRIX Transform::getParentMatrix() const noexcept
+	{
+		parse();
+		ECS_internal& ecs = *reinterpret_cast<ECS_internal*>(pECS);
+
+		EntityData& entityData = ecs.entityData[entity];
+		Entity parent = entityData.parent;
+
+		if (parent) {
+			Transform parentTransform(parent, &ecs.entityData.get_transform(parent), pECS);
+			return parentTransform.getWorldMatrix();
+		}
+		else return XMMatrixIdentity();
+	}
+
 	void Transform::setPosition(const vec3f& position) noexcept
 	{
 		notify();
@@ -155,6 +211,31 @@ namespace sv {
 		parse();
 		t->localPosition = *(XMFLOAT3*)& position;
 	}
+
+	void Transform::setPositionX(float x) noexcept
+	{
+		notify();
+
+		parse();
+		t->localPosition.x = x;
+	}
+
+	void Transform::setPositionY(float y) noexcept
+	{
+		notify();
+
+		parse();
+		t->localPosition.y = y;
+	}
+
+	void Transform::setPositionZ(float z) noexcept
+	{
+		notify();
+
+		parse();
+		t->localPosition.z = z;
+	}
+
 	void Transform::setRotation(const vec4f& rotation) noexcept
 	{
 		notify();
@@ -162,6 +243,7 @@ namespace sv {
 		parse();
 		t->localRotation = *(XMFLOAT4*)& rotation;
 	}
+
 	void Transform::setEulerRotation(const vec3f& rotation) noexcept
 	{
 		notify();
@@ -169,12 +251,69 @@ namespace sv {
 		parse();
 		XMStoreFloat4(&t->localRotation, XMQuaternionRotationRollPitchYawFromVector(rotation.get_dx()));
 	}
+
+	void Transform::setRotationX(float x) noexcept
+	{
+		notify();
+
+		parse();
+		t->localRotation.x = x;
+	}
+
+	void Transform::setRotationY(float y) noexcept
+	{
+		notify();
+
+		parse();
+		t->localRotation.y = y;
+	}
+
+	void Transform::setRotationZ(float z) noexcept
+	{
+		notify();
+
+		parse();
+		t->localRotation.z = z;
+	}
+
+	void Transform::setRotationW(float w) noexcept
+	{
+		notify();
+
+		parse();
+		t->localRotation.w = w;
+	}
+
 	void Transform::setScale(const vec3f& scale) noexcept
 	{
 		parse();
 
 		notify();
 		t->localScale = *(XMFLOAT3*)& scale;
+	}
+
+	void Transform::setScaleX(float x) noexcept
+	{
+		notify();
+
+		parse();
+		t->localScale.x = x;
+	}
+
+	void Transform::setScaleY(float y) noexcept
+	{
+		notify();
+
+		parse();
+		t->localScale.y = y;
+	}
+
+	void Transform::setScaleZ(float z) noexcept
+	{
+		notify();
+
+		parse();
+		t->localScale.z = z;
 	}
 
 	void Transform::updateWorldMatrix()
@@ -186,12 +325,11 @@ namespace sv {
 
 		XMMATRIX m = getLocalMatrix();
 
-		auto& list = ecs.entityData;
-		EntityData& entityData = list[entity];
+		EntityData& entityData = ecs.entityData[entity];
 		Entity parent = entityData.parent;
 
 		if (parent != SV_ENTITY_NULL) {
-			Transform parentTransform(parent, &list.get_transform(parent), pECS);
+			Transform parentTransform(parent, &ecs.entityData.get_transform(parent), pECS);
 			XMMATRIX mp = parentTransform.getWorldMatrix();
 			m = m * mp;
 		}

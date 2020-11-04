@@ -190,12 +190,12 @@ namespace sv {
 		a.pools.clear();
 	}
 
-	BaseComponent* ecs_allocator_component_alloc(ECS* ecs, ComponentAllocator& a, Entity entity)
+	BaseComponent* ecs_allocator_component_alloc(ECS* ecs, ComponentAllocator& a, Entity entity, bool create)
 	{
 		ComponentPool& pool = ecs_allocator_component_prepare_pool(ecs, a);
 		BaseComponent* comp = reinterpret_cast<BaseComponent*>(ecs_allocator_component_pool_add(pool));
 
-		ecs_register_create(ecs, a.compID, comp, entity);
+		if (create) ecs_register_create(ecs, a.compID, comp, entity);
 
 		return comp;
 	}

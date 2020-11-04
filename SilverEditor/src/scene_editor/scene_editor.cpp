@@ -180,36 +180,51 @@ namespace sv {
 
 			for (RigidBody2DComponent& body : bodies) {
 
-				Transform trans = ecs_entity_transform_get(scene, body.entity);
-				vec3f position = trans.getWorldPosition();
-				vec3f scale = trans.getWorldScale();
-				//TODO: vec3f rotation = trans.GetWorldRotation();
-				vec4f rotation = trans.getLocalRotation();
+				{
+					BoxCollider2DComponent* collider = ecs_component_get<BoxCollider2DComponent>(scene, body.entity);
 
-				for (ui32 i = 0; i < body.collidersCount; ++i) {
+					if (collider) {
 
-					Collider2D& collider = body.colliders[i];
+						Transform trans = ecs_entity_transform_get(scene, body.entity);
+						vec3f position = trans.getWorldPosition();
+						vec3f scale = trans.getWorldScale();
+						vec4f rotation = trans.getWorldRotation();
 
-					switch (collider.type)
-					{
-					case Collider2DType_Box:
-					{
 						XMVECTOR colliderPosition = XMVectorSet(position.x, position.y, position.z, 0.f);
 						XMVECTOR colliderScale = XMVectorSet(scale.x, scale.y, 0.f, 0.f);
-						colliderScale = XMVectorMultiply(XMVectorSet(collider.box.size.x, collider.box.size.y, 0.f, 0.f), colliderScale);
+						colliderScale = XMVectorMultiply(XMVectorSet(collider->getSize().x * 2.f, collider->getSize().y * 2.f, 0.f, 0.f), colliderScale);
 
-						XMVECTOR offset = XMVectorSet(collider.offset.x, collider.offset.y, 0.f, 0.f);
+						XMVECTOR offset = XMVectorSet(collider->getOffset().x, collider->getOffset().y, 0.f, 0.f);
 						offset = XMVector3Transform(offset, XMMatrixRotationQuaternion(rotation.get_dx()));
 
 						colliderPosition += offset;
 
 						debug_renderer_draw_quad(g_Colliders2DBatch, vec3f(colliderPosition), vec2f(colliderScale), rotation, { 0u, 255u, 0u, 255u });
 					}
-						break;
-					}
-
 				}
+				{
+					CircleCollider2DComponent* collider = ecs_component_get<CircleCollider2DComponent>(scene, body.entity);
 
+					if (collider) {
+
+						Transform trans = ecs_entity_transform_get(scene, body.entity);
+						vec3f position = trans.getWorldPosition();
+						vec3f scale = trans.getWorldScale();
+						vec4f rotation = trans.getWorldRotation();
+
+						XMVECTOR colliderPosition = XMVectorSet(position.x, position.y, position.z, 0.f);
+						XMVECTOR colliderScale = XMVectorSet(scale.x, scale.y, 0.f, 0.f);
+						float radius = collider->getRadius() * 2.f;
+						colliderScale = XMVectorMultiply(XMVectorSet(radius, radius, 0.f, 0.f), colliderScale);
+
+						XMVECTOR offset = XMVectorSet(collider->getOffset().x, collider->getOffset().y, 0.f, 0.f);
+						offset = XMVector3Transform(offset, XMMatrixRotationQuaternion(rotation.get_dx()));
+
+						colliderPosition += offset;
+
+						debug_renderer_draw_ellipse(g_Colliders2DBatch, vec3f(colliderPosition), vec2f(colliderScale), rotation, { 0u, 255u, 0u, 255u });
+					}
+				}
 			}
 
 			debug_renderer_batch_render(g_Colliders2DBatch, g_Camera.camera.getOffscreenRT(), g_Camera.camera.getViewport(), g_Camera.camera.getScissor(), viewProjectionMatrix, cmd);

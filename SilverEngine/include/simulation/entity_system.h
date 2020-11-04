@@ -24,17 +24,17 @@ namespace sv {
 	};
 
 	template<typename T>
-	CompID Component<T>::ID;
+	CompID Component<T>::ID(SV_COMPONENT_ID_INVALID);
 
 	template<typename T>
 	ui32 Component<T>::SIZE;
 
-	typedef void(*CreateComponentFunction)(BaseComponent*);
-	typedef void(*DestroyComponentFunction)(BaseComponent*);
-	typedef void(*MoveComponentFunction)(BaseComponent* from, BaseComponent* to);
-	typedef void(*CopyComponentFunction)(BaseComponent* from, BaseComponent* to);
-	typedef void(*SerializeComponentFunction)(BaseComponent* comp, ArchiveO&);
-	typedef void(*DeserializeComponentFunction)(BaseComponent* comp, ArchiveI&);
+	typedef std::function<void(BaseComponent*)>							CreateComponentFunction;
+	typedef std::function<void(BaseComponent*)>							DestroyComponentFunction;
+	typedef std::function<void(BaseComponent* from, BaseComponent* to)> MoveComponentFunction;
+	typedef std::function<void(BaseComponent* from, BaseComponent* to)> CopyComponentFunction;
+	typedef std::function<void(BaseComponent* comp, ArchiveO&)>			SerializeComponentFunction;
+	typedef std::function<void(BaseComponent* comp, ArchiveI&)>			DeserializeComponentFunction;
 
 	struct ComponentRegisterDesc {
 
@@ -74,17 +74,32 @@ namespace sv {
 
 		vec3f getWorldPosition() noexcept;
 		vec4f getWorldRotation() noexcept;
+		vec3f getWorldEulerRotation() noexcept;
 		vec3f getWorldScale() noexcept;
 		XMVECTOR getWorldPositionDXV() noexcept;
 		XMVECTOR getWorldRotationDXV() noexcept;
 		XMVECTOR getWorldScaleDXV() noexcept;
 		XMMATRIX getWorldMatrix() noexcept;
 
+		XMMATRIX getParentMatrix() const noexcept;
+
 		// setters
 		void setPosition(const vec3f& position) noexcept;
+		void setPositionX(float x) noexcept;
+		void setPositionY(float y) noexcept;
+		void setPositionZ(float z) noexcept;
+
 		void setRotation(const vec4f& rotation) noexcept;
 		void setEulerRotation(const vec3f& rotation) noexcept;
+		void setRotationX(float x) noexcept;
+		void setRotationY(float y) noexcept;
+		void setRotationZ(float z) noexcept;
+		void setRotationW(float w) noexcept;
+
 		void setScale(const vec3f& scale) noexcept;
+		void setScaleX(float x) noexcept;
+		void setScaleY(float y) noexcept;
+		void setScaleZ(float z) noexcept;
 
 	private:
 		void updateWorldMatrix();
@@ -101,7 +116,7 @@ namespace sv {
 
 	// Component register
 
-	CompID ecs_register(ECS* ecs, const ComponentRegisterDesc* desc);
+	void ecs_register(ECS* ecs, CompID& ID, const ComponentRegisterDesc* desc);
 
 	ui32		ecs_register_count(ECS* ecs);
 	ui32		ecs_register_sizeof(ECS* ecs,CompID ID);
@@ -236,7 +251,7 @@ namespace sv {
 		desc.name = name;
 		
 		Component::SIZE = sizeof(Component);
-		Component::ID = ecs_register(ecs, &desc);
+		ecs_register(ecs, Component::ID, &desc);
 	}
 
 	template<typename Component, typename... Args>

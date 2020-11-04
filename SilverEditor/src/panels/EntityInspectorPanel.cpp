@@ -237,75 +237,95 @@ namespace sv {
 
 	void showRigidBody2DComponentInfo(RigidBody2DComponent* comp)
 	{
-		ImGui::DragFloat2("Velocity", &comp->velocity.x, 0.1f);
-		ImGui::DragFloat("Angular Velocity", &comp->angularVelocity, 0.1f);
-		ImGui::Checkbox("Dynamic", &comp->dynamic);
-		ImGui::Checkbox("FixedRotation", &comp->fixedRotation);
+		gui_component_item_begin();
 
-		ImGui::Separator();
-
-		ImGui::Text("Colliders");
-
-		static ui32 selectedCollider = 0u;
-
-		for (ui32 i = 0; i < comp->collidersCount; ++i) {
-
-			if (ImGui::SmallButton(std::to_string(i).c_str())) {
-				selectedCollider = i;
-			}
-
-			ImGui::SameLine();
-
-		}
-
-		if (ImGui::Button("Add"))
 		{
-			if (comp->collidersCount != 8u) {
-
-				Collider2D collider = comp->colliders[comp->collidersCount];
-				collider.box.size = { 1.f, 1.f };
-				collider.box.angularOffset = 0.f;
-				collider.type = Collider2DType_Box;
-
-				comp->collidersCount++;
-
-			}
+			bool dynamic = comp->isDynamic();
+			gui_component_item_next("Dynamic");
+			if (ImGui::Checkbox("##Dynamic", &dynamic)) comp->setDynamic(dynamic);
+		}
+		{
+			bool fixedRot = comp->isFixedRotation();
+			gui_component_item_next("Fixed Rotation");
+			if (ImGui::Checkbox("##FixedRot", &fixedRot)) comp->setFixedRotation(fixedRot);
+		}
+		{
+			gui_component_item_next("Velocity");
+			vec2f vel = comp->getVelocity();
+			if (ImGui::DragFloat2("##Velocity", &vel.x, 0.1f)) comp->setVelocity(vel);
+		}
+		{
+			gui_component_item_next("Angular Velocity");
+			float vel = comp->getAngularVelocity();
+			if (ImGui::DragFloat("##AngularVelocity", &vel, 0.1f)) comp->setAngularVelocity(vel);
 		}
 
-		if (selectedCollider < comp->collidersCount) {
+		gui_component_item_end();
+	}
 
-			Collider2D& collider = comp->colliders[selectedCollider];
+	void showBoxCollider2DComponentInfo(BoxCollider2DComponent* comp)
+	{
+		gui_component_item_begin();
 
-			ImGui::DragFloat("Density", &collider.density, 0.1f);
-			ImGui::DragFloat("Friction", &collider.friction, 0.1f);
-			ImGui::DragFloat("Restitution", &collider.restitution, 0.1f);
-			ImGui::DragFloat2("Offset", &collider.offset.x, 0.01f);
+		gui_component_item_next("Density");
+		float density = comp->getDensity();
+		if (ImGui::DragFloat("##density", &density, 0.1f, 0.f)) comp->setDensity(density);
 
-			switch (collider.type)
-			{
-			case Collider2DType_Box:
-				ImGui::Text("Box Collider");
-				ImGui::DragFloat2("Size", &collider.box.size.x, 0.1f);
-				ImGui::DragFloat("Angular Offset", &collider.box.angularOffset, 0.01f);
-				break;
+		gui_component_item_next("Friction");
+		float friction = comp->getFriction();
+		if (ImGui::DragFloat("##friction", &friction, 0.1f, 0.f)) comp->setFriction(friction);
 
-			case Collider2DType_Circle:
-				ImGui::Text("Circle Collider");
-				ImGui::DragFloat2("Radius", &collider.circle.radius, 0.1f);
-				break;
-			}
+		gui_component_item_next("Restitution");
+		float restitution = comp->getRestitution();
+		if (ImGui::DragFloat("##restitution", &restitution, 0.01f, 0.f)) comp->setRestitution(restitution);
 
-			if (collider.density < 0.f) collider.density = 0.f;
-		}
+		gui_component_item_next("Size");
+		vec2f size = comp->getSize();
+		if (ImGui::DragFloat2("##size", &size.x, 0.1f)) comp->setSize(size);
+
+		gui_component_item_next("Offset");
+		vec2f offset = comp->getOffset();
+		if (ImGui::DragFloat2("##offset", &offset.x, 0.01f)) comp->setOffset(offset);
+
+		gui_component_item_end();
+	}
+
+	void showCircleCollider2DComponentInfo(CircleCollider2DComponent* comp)
+	{
+		gui_component_item_begin();
+
+		gui_component_item_next("Density");
+		float density = comp->getDensity();
+		if (ImGui::DragFloat("##density", &density, 0.1f, 0.f)) comp->setDensity(density);
+
+		gui_component_item_next("Friction");
+		float friction = comp->getFriction();
+		if (ImGui::DragFloat("##friction", &friction, 0.1f, 0.f)) comp->setFriction(friction);
+
+		gui_component_item_next("Restitution");
+		float restitution = comp->getRestitution();
+		if (ImGui::DragFloat("##restitution", &restitution, 0.01f, 0.f)) comp->setRestitution(restitution);
+
+		gui_component_item_next("Radius");
+		float radius = comp->getRadius();
+		if (ImGui::DragFloat("##radius", &radius, 0.1f)) comp->setRadius(radius);
+
+		gui_component_item_next("Offset");
+		vec2f offset = comp->getOffset();
+		if (ImGui::DragFloat2("##offset", &offset.x, 0.01f)) comp->setOffset(offset);
+
+		gui_component_item_end();
 	}
 
 	void showComponentInfo(CompID ID, BaseComponent* comp)
 	{
-		if (ID == SpriteComponent::ID)				showSpriteComponentInfo(reinterpret_cast<SpriteComponent*>(comp));
-		else if (ID == AnimatedSpriteComponent::ID)	showAnimatedSpriteComponentInfo(reinterpret_cast<AnimatedSpriteComponent*>(comp));
-		else if (ID == NameComponent::ID)			showNameComponentInfo(reinterpret_cast<NameComponent*>(comp));
-		else if (ID == CameraComponent::ID)			showCameraComponentInfo(reinterpret_cast<CameraComponent*>(comp));
-		else if (ID == RigidBody2DComponent::ID)	showRigidBody2DComponentInfo(reinterpret_cast<RigidBody2DComponent*>(comp));
+		if (ID == SpriteComponent::ID)					showSpriteComponentInfo(reinterpret_cast<SpriteComponent*>(comp));
+		else if (ID == AnimatedSpriteComponent::ID)		showAnimatedSpriteComponentInfo(reinterpret_cast<AnimatedSpriteComponent*>(comp));
+		else if (ID == NameComponent::ID)				showNameComponentInfo(reinterpret_cast<NameComponent*>(comp));
+		else if (ID == CameraComponent::ID)				showCameraComponentInfo(reinterpret_cast<CameraComponent*>(comp));
+		else if (ID == RigidBody2DComponent::ID)		showRigidBody2DComponentInfo(reinterpret_cast<RigidBody2DComponent*>(comp));
+		else if (ID == BoxCollider2DComponent::ID)		showBoxCollider2DComponentInfo(reinterpret_cast<BoxCollider2DComponent*>(comp));
+		else if (ID == CircleCollider2DComponent::ID)	showCircleCollider2DComponentInfo(reinterpret_cast<CircleCollider2DComponent*>(comp));
 	}
 
 	EntityInspectorPanel::EntityInspectorPanel()

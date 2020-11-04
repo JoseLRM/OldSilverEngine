@@ -28,6 +28,7 @@ namespace sv {
 		virtual void beginDisplay() {}
 		virtual bool onDisplay() = 0;
 		virtual void endDisplay() {}
+		virtual void onClose() {}
 
 	private:
 		bool m_Enabled = true;

@@ -14,6 +14,7 @@ namespace sv {
 
 	protected:
 		bool onDisplay() override;
+		void onClose() override;
 
 	private:
 		MaterialAsset m_SelectedMaterial;

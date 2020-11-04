@@ -22,7 +22,10 @@ namespace sv {
 			const std::unordered_map<std::string, AssetFile>& assetMap = asset_map_get();
 			
 			if (selectedName) if (ImGui::Button("None"))
+			{
 				m_SelectedMaterial.unload();
+				m_SelectedMaterial.serialize();
+			}
 			
 			for (auto& mat : assetMap) {
 				if (mat.second.assetType == matType) {
@@ -40,8 +43,6 @@ namespace sv {
 
 		if (m_SelectedMaterial.hasReference()) {
 		
-			bool serialize = false;
-
 			Material& mat = *m_SelectedMaterial.get();
 			ShaderLibrary& lib = *mat.getShaderLibrary();
 			const auto& attributes = lib.getAttributes();
@@ -152,20 +153,19 @@ namespace sv {
 			
 				if (add) {
 					mat.setRaw(attr.name.c_str(), attr.type, &data);
-					serialize = true;
 				}
 
 				ImGui::PopID();
 			
 			}
 
-			if (serialize) {
-				m_SelectedMaterial.serialize();
-			}
-
 			gui_component_item_end();
 		}
 
 		return true;
+	}
+	void MaterialPanel::onClose()
+	{
+		m_SelectedMaterial.serialize();
 	}
 }

@@ -31,6 +31,7 @@ namespace sv {
 
 		endDisplay();
 		
+		if (!open) onClose();
 		return open;
 	}
 

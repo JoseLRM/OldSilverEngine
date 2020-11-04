@@ -203,9 +203,6 @@ namespace sv {
 
 		// Save File
 		std::string absFilePath = asset_folderpath_get() + filePath;
-#ifdef SV_RES_PATH
-		absFilePath = absFilePath.c_str() + strlen(SV_RES_PATH);
-#endif
 		return file.save_file(absFilePath.c_str());
 	}
 

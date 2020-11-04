@@ -144,12 +144,16 @@ namespace sv {
 		}
 	}
 
-	void SceneRenderer::create()
+	void SceneRenderer::create(ECS* ecs)
 	{
 		SceneRenderer_internal* rendering = new SceneRenderer_internal();
 		pInternal = rendering;
 		
 		rendering->cameraBuffer.create();
+
+		ecs_register<SpriteComponent>(ecs, "Sprite", scene_component_serialize_SpriteComponent, scene_component_deserialize_SpriteComponent);
+		ecs_register<AnimatedSpriteComponent>(ecs, "Animated Sprite", scene_component_serialize_AnimatedSpriteComponent, scene_component_deserialize_AnimatedSpriteComponent);
+		ecs_register<CameraComponent>(ecs, "Camera", scene_component_serialize_CameraComponent, scene_component_deserialize_CameraComponent);
 	}
 	void SceneRenderer::destroy()
 	{
@@ -160,6 +164,85 @@ namespace sv {
 
 		delete rendering;
 		pInternal = nullptr;
+	}
+
+	// COMPONENTS
+
+	void scene_component_serialize_SpriteComponent(BaseComponent* comp_, ArchiveO& archive)
+	{
+		SpriteComponent* comp = reinterpret_cast<SpriteComponent*>(comp_);
+		archive << comp->color;
+		archive << comp->sprite.texCoord;
+		archive << comp->sprite.texture.getHashCode();
+		archive << comp->material.getHashCode();
+	}
+
+	void scene_component_serialize_AnimatedSpriteComponent(BaseComponent* comp_, ArchiveO& archive)
+	{
+		AnimatedSpriteComponent* comp = reinterpret_cast<AnimatedSpriteComponent*>(comp_);
+		archive << comp->color;
+		archive << comp->sprite.getState();
+		archive << comp->material.getHashCode();
+	}
+
+	void scene_component_serialize_CameraComponent(BaseComponent* comp_, ArchiveO& archive)
+	{
+		CameraComponent* comp = reinterpret_cast<CameraComponent*>(comp_);
+		comp->camera.serialize(archive);
+	}
+
+	void scene_component_deserialize_SpriteComponent(BaseComponent* comp_, ArchiveI& archive)
+	{
+		new(comp_) SpriteComponent();
+
+		SpriteComponent* comp = reinterpret_cast<SpriteComponent*>(comp_);
+		archive >> comp->color;
+		archive >> comp->sprite.texCoord;
+		size_t hash;
+		archive >> hash;
+
+		if (hash != 0u) {
+			if (comp->sprite.texture.load(hash) != Result_Success) {
+				SV_LOG_ERROR("Texture not found, hashcode: %u", hash);
+			}
+		}
+
+		archive >> hash;
+		if (hash != 0u) {
+			if (comp->material.load(hash) != Result_Success) {
+				SV_LOG_ERROR("Material not found, hashcode: %u", hash);
+			}
+		}
+	}
+
+	void scene_component_deserialize_AnimatedSpriteComponent(BaseComponent* comp_, ArchiveI& archive)
+	{
+		new(comp_) AnimatedSpriteComponent();
+
+		AnimatedSpriteComponent* comp = reinterpret_cast<AnimatedSpriteComponent*>(comp_);
+		archive >> comp->color;
+
+		AnimatedSprite::State sprState;
+		archive >> sprState;
+		if (result_fail(comp->sprite.setState(sprState))) {
+			SV_LOG_ERROR("Sprite Animation not found");
+		}
+
+		size_t hash;
+		archive >> hash;
+		if (hash != 0u) {
+			if (comp->material.load(hash) != Result_Success) {
+				SV_LOG_ERROR("Material not found, hashcode: %u", hash);
+			}
+		}
+	}
+
+	void scene_component_deserialize_CameraComponent(BaseComponent* comp_, ArchiveI& archive)
+	{
+		new(comp_) CameraComponent();
+
+		CameraComponent* comp = reinterpret_cast<CameraComponent*>(comp_);
+		comp->camera.deserialize(archive);
 	}
 
 }

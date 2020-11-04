@@ -336,8 +336,9 @@ namespace sv {
 					Entity entity;
 					archive >> entity;
 
-					BaseComponent* comp = ecs_allocator_component_alloc(ecs_, compList, entity);
+					BaseComponent* comp = ecs_allocator_component_alloc(ecs_, compList, entity, false);
 					ecs_register_deserialize(ecs_, compID, comp, archive);
+					comp->entity = entity;
 
 					ecs.entityData[entity].components.emplace_back(compID, comp);
 				}
@@ -367,11 +368,18 @@ namespace sv {
 
 	///////////////////////////////////// COMPONENTS REGISTER ////////////////////////////////////////
 
-	CompID ecs_register(ECS* ecs_, const ComponentRegisterDesc* desc)
+	void ecs_register(ECS* ecs_, CompID& ID, const ComponentRegisterDesc* desc)
 	{
 		parseECS();
-		CompID ID = CompID(ecs.registers.size());
-		ComponentRegister& reg = ecs.registers.emplace_back();
+		if (ID == SV_COMPONENT_ID_INVALID) ID = CompID(ecs.registers.size());
+
+		if (ID >= ecs.registers.size()) {
+			ecs.registers.resize(ID + 1u);
+			ecs.components.resize(ID + 1u);
+			ecs.listenerComponents.resize(ID + 1u);
+		}
+
+		ComponentRegister& reg = ecs.registers[ID];
 
 		reg.size = desc->size;
 		reg.name = desc->name;
@@ -382,16 +390,14 @@ namespace sv {
 		reg.serializeFn = desc->serializeFn;
 		reg.deserializeFn = desc->deserializeFn;
 
-		ComponentAllocator& compAlloc = ecs.components.emplace_back();
+		ComponentAllocator& compAlloc = ecs.components[ID];
 		ecs_allocator_component_create(reinterpret_cast<ECS*>(&ecs), compAlloc, ID);
 
 		// Open Listeners
-		auto&[onCompAdd, onCompRmv] = ecs.listenerComponents.emplace_back();
+		auto&[onCompAdd, onCompRmv] = ecs.listenerComponents[ID];
 
 		onCompAdd = event_listener_open();
 		onCompRmv = event_listener_open();
-
-		return ID;
 	}
 
 	ui32 ecs_register_count(ECS* ecs_)

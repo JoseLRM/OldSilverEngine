@@ -95,7 +95,7 @@ namespace sv {
 		SceneRenderer() = default;
 		~SceneRenderer();
 
-		void create();
+		void create(ECS* ecs);
 		void destroy();
 
 		void draw(ECS* ecs, Entity mainCamera, bool present = true);
@@ -144,7 +144,7 @@ namespace sv {
 		Camera camera;
 
 		CameraComponent() = default;
-		CameraComponent(ui32 width, ui32 heigth);
+		CameraComponent(ui32 width, ui32 height) { camera.setResolution(width, height); }
 
 	};
 

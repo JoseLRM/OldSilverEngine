@@ -106,7 +106,7 @@ namespace sv {
 	ComponentPool&	ecs_allocator_component_prepare_pool(ECS* ecs, ComponentAllocator& a);
 	void			ecs_allocator_component_create(ECS* ecs, ComponentAllocator& allocator, CompID ID);
 	void			ecs_allocator_component_destroy(ECS* ecs, ComponentAllocator& allocator);
-	BaseComponent*	ecs_allocator_component_alloc(ECS* ecs, ComponentAllocator& allocator, Entity entity);
+	BaseComponent*	ecs_allocator_component_alloc(ECS* ecs, ComponentAllocator& allocator, Entity entity, bool create = true);
 	BaseComponent*	ecs_allocator_component_alloc(ECS* ecs, ComponentAllocator& allocator, BaseComponent* srcComp);
 	void			ecs_allocator_component_free(ECS* ecs, ComponentAllocator& allocator, BaseComponent* comp);
 	ui32			ecs_allocator_component_count(ECS* ecs, const ComponentAllocator& allocator);
