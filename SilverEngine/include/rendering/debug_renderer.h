@@ -51,4 +51,8 @@ namespace sv {
 	void debug_renderer_sampler_set_default(RendererDebugBatch* batch);
 	void debug_renderer_sampler_set(RendererDebugBatch* batch, Sampler* sampler);
 
+	// High level draw calls
+
+	void debug_renderer_draw_grid_orthographic(RendererDebugBatch* batch, const vec2f& position, const vec2f& size, float gridSize, Color color);
+
 }

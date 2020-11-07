@@ -27,4 +27,7 @@ namespace sv {
 	SceneEditorMode scene_editor_mode_get();
 	void			scene_editor_mode_set(SceneEditorMode mode);
 
+	void	scene_editor_selected_entity_set(Entity entity);
+	Entity	scene_editor_selected_entity_get();
+
 }

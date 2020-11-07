@@ -10,13 +10,8 @@ namespace sv {
 	public:
 		EntityInspectorPanel();
 
-		void setEntity(Entity entity);
-
 	protected:
 		bool onDisplay() override;
-
-	private:
-		Entity m_Entity = SV_ENTITY_NULL;
 
 	};
 

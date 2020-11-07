@@ -379,7 +379,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		}
 	}
 
-	void debug_renderer_draw_call(ui32 batchOffset, DebugRendererDraw& draw, ui32 vertexCount, GPUBuffer* buffer, CommandList cmd)
+	void debug_renderer_draw_call(ui32 batchOffset, const DebugRendererDraw& draw, ui32 vertexCount, GPUBuffer* buffer, CommandList cmd)
 	{
 		switch (draw.list)
 		{
@@ -423,7 +423,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		graphics_draw(vertexCount, 1u, batchOffset, 0u, cmd);
 	}
 
-	void debug_renderer_draw_batch(DebugRendererDraw* begin, ui32 beginIndex, DebugRendererDraw* end, ui32 endIndex, ui32 batchCount, DebugData* batchData, GPUImage* renderTarget, CommandList cmd)
+	void debug_renderer_draw_batch(const DebugRendererDraw* begin, ui32 beginIndex, const DebugRendererDraw* end, ui32 endIndex, ui32 batchCount, DebugData* batchData, GPUImage* renderTarget, CommandList cmd)
 	{
 		GPUBuffer* buffer = g_VertexBuffer[cmd];
 
@@ -437,18 +437,19 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 
 		graphics_vertexbuffer_bind(buffer, 0u, 0u, cmd);
 
-		ui32 batchOffset;
-		{
-			ui32 count = begin->count - (beginIndex - begin->index);
-			ui32 vertexCount = debug_renderer_vertex_count(begin->list);
-			debug_renderer_draw_call(0u, *begin, vertexCount * count, buffer, cmd);
-
-			batchOffset = vertexCount * count;
-		}
-
+		ui32 batchOffset = 0u;
+		
 		if (begin != end) {
 
-			DebugRendererDraw* it = begin + 1u;
+			{
+				ui32 count = begin->count - (beginIndex - begin->index);
+				ui32 vertexCount = debug_renderer_vertex_count(begin->list);
+				debug_renderer_draw_call(0u, *begin, vertexCount * count, buffer, cmd);
+
+				batchOffset =+ vertexCount * count;
+			}
+
+			const DebugRendererDraw* it = begin + 1u;
 			while (it != end) {
 				ui32 vertexCount = debug_renderer_vertex_count(it->list);
 				debug_renderer_draw_call(batchOffset, *it, vertexCount * it->count, buffer, cmd);
@@ -456,10 +457,10 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 				++it;
 			}
 
-			ui32 vertexCount = debug_renderer_vertex_count(end->list);
-			debug_renderer_draw_call(batchOffset, *end, vertexCount * end->count - (endIndex - end->index), buffer, cmd);
-
 		}
+		
+		ui32 vertexCount = debug_renderer_vertex_count(end->list);
+		debug_renderer_draw_call(batchOffset, *end, vertexCount * (endIndex - end->index), buffer, cmd);
 
 		graphics_renderpass_end(cmd);
 
@@ -483,205 +484,207 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		graphics_inputlayoutstate_bind(g_InputLayout, cmd);
 		graphics_blendstate_bind(g_BlendState, cmd);
 
-		DebugRendererDraw* end = batch.drawCalls.data() + batch.drawCalls.size();
-		DebugRendererDraw* it = batch.drawCalls.data() + 1u;
+		const DebugRendererDraw* end = batch.drawCalls.data() + batch.drawCalls.size();
+		const DebugRendererDraw* it = batch.drawCalls.data() + 1u;
 
 		// Draw Data
-		DebugRendererDraw* beginIt = it;
-		ui32 beginIndex = it->index;
-		ui32 currentIndex = ui32_max;
+		const DebugRendererDraw* beginIt = it;
+		ui32 beginIndex = ui32_max;
 
 		// Update Data
 		DebugData batchData[BATCH_COUNT];
 		DebugData* itBatch = batchData;
+		DebugData* endBatch = batchData + BATCH_COUNT;
 
 		while (it != end) {
-			const DebugRendererDraw& draw = *it;
-
-			// Current index
-			ui32 currentIndex;
-
-			if (beginIndex == ui32_max) {
-
-				beginIt = it;
-
-				if (currentIndex == ui32_max) beginIndex = draw.index;
-				else beginIndex = currentIndex;
-
-				currentIndex = beginIndex;
-			}
-			else currentIndex = draw.index;
+			
+			DebugRendererDraw draw = *it;
 
 			ui32 vertexCount = debug_renderer_vertex_count(draw.list);
+			ui32 currentIndex = draw.index;
 
-			// Fill vertex buffer
-			DebugData* endBatch = itBatch + BATCH_COUNT;
-			ui32 batchCount = ui32(endBatch - itBatch) / vertexCount;
-			ui32 c = std::min(batchCount, draw.count - (currentIndex - draw.index)) * vertexCount;
-			endBatch = itBatch + ui64(c);
+			if (beginIndex == ui32_max) {
+				beginIndex = draw.index;
+				beginIt = it;
+			}
+			
+			while (draw.count) {
 
-			switch (draw.list)
-			{
-			case 0:
-			case 2:
-			case 3:
-			{
-				while (itBatch != endBatch) {
+				ui32 capacity = ui32(endBatch - itBatch) / vertexCount;
+				
+				ui32 batchUsage = std::min(capacity, draw.count);
 
-					XMVECTOR p0 = XMVectorSet(-0.5f, -0.5f, 0.f, 1.f);
-					XMVECTOR p1 = XMVectorSet( 0.5f, -0.5f, 0.f, 1.f);
-					XMVECTOR p2 = XMVectorSet(-0.5f,  0.5f, 0.f, 1.f);
-					XMVECTOR p3 = XMVectorSet( 0.5f,  0.5f, 0.f, 1.f);
+				draw.count -= batchUsage;
 
-					XMMATRIX mvpMatrix;
-					Color color;
-					vec4f texCoord;
-					float stroke = 1.f;
+				DebugData* itBatchEnd = itBatch + (batchUsage * vertexCount);
 
-					switch (draw.list)
-					{
-					case 0:
-					{
-						DebugRendererQuad& quad = batch.quads[currentIndex];
+				switch (draw.list)
+				{
+				case 0:
+				case 2:
+				case 3:
+				{
+					while (itBatch != itBatchEnd) {
 
-						mvpMatrix = quad.matrix;
-						color = quad.color;
-						stroke = batch.stroke;
-						texCoord.x = 69.f;
-					}
+						XMVECTOR p0 = XMVectorSet(-0.5f, -0.5f, 0.f, 1.f);
+						XMVECTOR p1 = XMVectorSet(0.5f, -0.5f, 0.f, 1.f);
+						XMVECTOR p2 = XMVectorSet(-0.5f, 0.5f, 0.f, 1.f);
+						XMVECTOR p3 = XMVectorSet(0.5f, 0.5f, 0.f, 1.f);
+
+						XMMATRIX mvpMatrix;
+						Color color;
+						vec4f texCoord;
+						float stroke = 1.f;
+
+						switch (draw.list)
+						{
+						case 0:
+						{
+							DebugRendererQuad& quad = batch.quads[currentIndex];
+
+							mvpMatrix = quad.matrix;
+							color = quad.color;
+							stroke = batch.stroke;
+							texCoord.x = 69.f;
+						}
 
 						break;
 
-					case 2:
-					{
-						DebugRendererQuad& ellipse = batch.ellipses[currentIndex];
+						case 2:
+						{
+							DebugRendererQuad& ellipse = batch.ellipses[currentIndex];
 
-						mvpMatrix = ellipse.matrix;
-						color = ellipse.color;
-						stroke = batch.stroke;
-						texCoord.x = 69.f;
-					}
+							mvpMatrix = ellipse.matrix;
+							color = ellipse.color;
+							stroke = batch.stroke;
+							texCoord.x = 69.f;
+						}
 						break;
 
-					case 3:
-					{
-						DebugRendererQuad& spr = batch.sprites[currentIndex];
+						case 3:
+						{
+							DebugRendererQuad& spr = batch.sprites[currentIndex];
 
-						mvpMatrix = spr.matrix;
-						color = spr.color;
-						texCoord = batch.texCoord;
-					}
+							mvpMatrix = spr.matrix;
+							color = spr.color;
+							texCoord = batch.texCoord;
+						}
 						break;
+						}
+
+						// Compute size
+						if (texCoord.x == 69.f) {
+							XMFLOAT4X4 m;
+							XMStoreFloat4x4(&m, mvpMatrix);
+
+							float width = XMVectorGetX(XMVector3Length(XMVectorSet(m._11, m._12, m._13, 0.f)));
+							float height = XMVectorGetX(XMVector3Length(XMVectorSet(m._21, m._22, m._23, 0.f)));
+
+							texCoord.z = width / 2.f;
+							texCoord.w = height / 2.f;
+							texCoord.x = -texCoord.z;
+							texCoord.y = -texCoord.w;
+						}
+
+						mvpMatrix *= viewProjectionMatrix;
+
+						p0 = XMVector3Transform(p0, mvpMatrix);
+						p1 = XMVector3Transform(p1, mvpMatrix);
+						p2 = XMVector3Transform(p2, mvpMatrix);
+						p3 = XMVector3Transform(p3, mvpMatrix);
+
+						itBatch->position = vec4f(p0);
+						itBatch->texCoord = { texCoord.x, texCoord.y };
+						itBatch->stroke = stroke;
+						itBatch->color = color;
+						++itBatch;
+
+						itBatch->position = vec4f(p1);
+						itBatch->texCoord = { texCoord.z, texCoord.y };
+						itBatch->stroke = stroke;
+						itBatch->color = color;
+						++itBatch;
+
+						itBatch->position = vec4f(p2);
+						itBatch->texCoord = { texCoord.x, texCoord.w };
+						itBatch->stroke = stroke;
+						itBatch->color = color;
+						++itBatch;
+
+						itBatch->position = vec4f(p1);
+						itBatch->texCoord = { texCoord.z, texCoord.y };
+						itBatch->stroke = stroke;
+						itBatch->color = color;
+						++itBatch;
+
+						itBatch->position = vec4f(p3);
+						itBatch->texCoord = { texCoord.z, texCoord.w };
+						itBatch->stroke = stroke;
+						itBatch->color = color;
+						++itBatch;
+
+						itBatch->position = vec4f(p2);
+						itBatch->texCoord = { texCoord.x, texCoord.w };
+						itBatch->stroke = stroke;
+						itBatch->color = color;
+						++itBatch;
+
+						++currentIndex;
 					}
+				}
+				break;
 
-					// Compute size
-					if (texCoord.x == 69.f) {
-						XMFLOAT4X4 m;
-						XMStoreFloat4x4(&m, mvpMatrix);
+				case 1:
+				{
+					while (itBatch != itBatchEnd) {
 
-						float width = XMVectorGetX(XMVector3Length(XMVectorSet(m._11, m._12, m._13, 0.f)));
-						float height = XMVectorGetX(XMVector3Length(XMVectorSet(m._21, m._22, m._23, 0.f)));
+						DebugRendererLine& line = batch.lines[currentIndex];
 
-						texCoord.z = width / 2.f;
-						texCoord.w = height / 2.f;
-						texCoord.x = -texCoord.z;
-						texCoord.y = -texCoord.w;
+						XMVECTOR p0 = XMVector4Transform(XMVectorSet(line.point0.x, line.point0.y, line.point0.z, 1.f), viewProjectionMatrix);
+						XMVECTOR p1 = XMVector4Transform(XMVectorSet(line.point1.x, line.point1.y, line.point1.z, 1.f), viewProjectionMatrix);
+
+						itBatch->position = vec4f(p0);
+						itBatch->color = line.color;
+						itBatch->stroke = 1.f;
+						++itBatch;
+
+						itBatch->position = vec4f(p1);
+						itBatch->color = line.color;
+						itBatch->stroke = 1.f;
+						++itBatch;
+
+						++currentIndex;
 					}
+				}
+				break;
 
-					mvpMatrix *= viewProjectionMatrix;
+				}
 
-					p0 = XMVector3Transform(p0, mvpMatrix);
-					p1 = XMVector3Transform(p1, mvpMatrix);
-					p2 = XMVector3Transform(p2, mvpMatrix);
-					p3 = XMVector3Transform(p3, mvpMatrix);
+				// Update & draw
+				if ((capacity - batchUsage) * vertexCount < 6u) { // 6 because is the max vertex count
 
-					itBatch->position = vec4f(p0);
-					itBatch->texCoord = { texCoord.x, texCoord.y };
-					itBatch->stroke = stroke;
-					itBatch->color = color;
-					++itBatch;
-
-					itBatch->position = vec4f(p1);
-					itBatch->texCoord = { texCoord.z, texCoord.y };
-					itBatch->stroke = stroke;
-					itBatch->color = color;
-					++itBatch;
-
-					itBatch->position = vec4f(p2);
-					itBatch->texCoord = { texCoord.x, texCoord.w };
-					itBatch->stroke = stroke;
-					itBatch->color = color;
-					++itBatch;
-
-					itBatch->position = vec4f(p1);
-					itBatch->texCoord = { texCoord.z, texCoord.y };
-					itBatch->stroke = stroke;
-					itBatch->color = color;
-					++itBatch;
-
-					itBatch->position = vec4f(p3);
-					itBatch->texCoord = { texCoord.z, texCoord.w };
-					itBatch->stroke = stroke;
-					itBatch->color = color;
-					++itBatch;
-
-					itBatch->position = vec4f(p2);
-					itBatch->texCoord = { texCoord.x, texCoord.w };
-					itBatch->stroke = stroke;
-					itBatch->color = color;
-					++itBatch;
+					debug_renderer_draw_batch(beginIt, beginIndex, it, currentIndex, ui32(itBatch - batchData), batchData, renderTarget, cmd);
 					
-					++currentIndex;
+					itBatch = batchData;
+
+					if (draw.count) {
+						beginIt = it;
+						beginIndex = currentIndex;
+					}
+					else {
+						beginIndex = ui32_max;
+					}
 				}
-			}
-				break;
-
-			case 1:
-			{
-				while (itBatch != endBatch) {
-
-					DebugRendererLine& line = batch.lines[currentIndex];
-
-					XMVECTOR p0 = XMVector4Transform(XMVectorSet(line.point0.x, line.point0.y, line.point0.z, 1.f), viewProjectionMatrix);
-					XMVECTOR p1 = XMVector4Transform(XMVectorSet(line.point1.x, line.point1.y, line.point1.z, 1.f), viewProjectionMatrix);
-
-					itBatch->position = vec4f(p0);
-					itBatch->color = line.color;
-					itBatch->stroke = 1.f;
-					++itBatch;
-
-					itBatch->position = vec4f(p1);
-					itBatch->color = line.color;
-					itBatch->stroke = 1.f;
-					++itBatch;
-
-					++currentIndex;
-				}
-			}
-				break;
 
 			}
 
-			// Update & draw
-			if (batchCount <= draw.count) {
-
-				debug_renderer_draw_batch(beginIt, beginIndex, it, currentIndex, ui32(itBatch - batchData), batchData, renderTarget, cmd);
-
-				// prepare next batch
-				beginIndex = ui32_max;
-				if (currentIndex == draw.count) {
-					currentIndex = ui32_max;
-					++it;
-				}
-			}
-			else {
-				++it;
-			}
+			++it;
 		}
 
-		ui32 batchCount = ui32(itBatch - batchData);
-		debug_renderer_draw_batch(beginIt, beginIndex, it - 1u, currentIndex, batchCount, batchData, renderTarget, cmd);
-
+		if (beginIndex != ui32_max) {
+			--it;
+			debug_renderer_draw_batch(beginIt, beginIndex, it, it->index + it->count, ui32(itBatch - batchData), batchData, renderTarget, cmd);
+		}
 	}
 
 	// DRAW
@@ -837,6 +840,19 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 	{
 		parseBatch();
 		batch.pSampler = sampler;
+	}
+
+	void debug_renderer_draw_grid_orthographic(RendererDebugBatch* batch, const vec2f& position, const vec2f& size, float gridSize, Color color)
+	{
+		vec2f begin = position - size / 2.f;
+		vec2f end = begin + size;
+		
+		for (float y = i32(begin.y / gridSize) * gridSize; y < end.y; y += gridSize) {
+			debug_renderer_draw_line(batch, { begin.x, y, 0.f }, { end.x, y, 0.f }, color);
+		}
+		for (float x = i32(begin.x / gridSize) * gridSize; x < end.x; x += gridSize) {
+			debug_renderer_draw_line(batch, { x, begin.y, 0.f }, { x, end.y, 0.f }, color);
+		}
 	}
 
 }

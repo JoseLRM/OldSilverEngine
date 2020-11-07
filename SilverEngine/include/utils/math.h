@@ -143,13 +143,25 @@ namespace sv {
 			x /= m;
 			y /= m;
 		}
-		inline vec vec_to(const vec& other)
+		inline vec vec_to(const vec& other) const noexcept
 		{
 			return other - *this;
 		}
-		inline float distance_to(const vec& other)
+		inline float distance_to(const vec& other) const noexcept
 		{
 			return vec_to(other).length();
+		}
+		inline float angle() const noexcept
+		{
+			return atan2(y, x);
+		}
+		inline void setAngle(float angle) noexcept
+		{
+			float mag = length();
+			x = cos(angle);
+			x *= mag;
+			y = sin(angle);
+			y *= mag;
 		}
 
 		// setters
@@ -532,6 +544,7 @@ namespace sv {
 		constexpr static Color Red()		{ return { 255u	, 0u	, 0u	, 255u }; }
 		constexpr static Color Green()		{ return { 0u	, 255u	, 0u	, 255u }; }
 		constexpr static Color Blue()		{ return { 0u	, 0u	, 255u	, 255u }; }
+		constexpr static Color Orange()		{ return { 255u	, 153u	, 51u	, 255u }; }
 		constexpr static Color Black()		{ return { 0u	, 0u	, 0u	, 255u }; }
 		constexpr static Color Gray(ui8 v)	{ return { v	, v		, v		, 255u }; }
 		constexpr static Color White()		{ return { 255u	, 255u	, 255u	, 255u }; }
@@ -575,5 +588,75 @@ namespace sv {
 	// Matrix
 
 	XMMATRIX math_matrix_view(const vec3f& position, const vec4f& directionQuat);
+
+	// MOSTLY INSPIRED IN WICKED ENGINE !!!!!!!!!!
+	// Intersection
+
+	struct Ray3D;
+
+	struct BoundingBox3D {
+
+		vec3f min, max;
+
+		inline void init_center(const vec3f& center, const vec3f& dimensions)
+		{
+			vec3f half = dimensions / 2.f;
+			min = center - half;
+			max = center + half;
+		}
+
+		inline void init_minmax(const vec3f& min, const vec3f& max)
+		{
+			this->min = min;
+			this->max = max;
+		}
+
+		bool intersects_point(const vec3f& point) const noexcept;
+		bool intersects_ray3D(const Ray3D& ray) const noexcept;
+
+	};
+
+	struct Ray3D {
+
+		vec3f origin, direction, directionInverse;
+
+		inline void init_line(const vec3f& point0, const vec3f& point1)
+		{
+			origin = point0;
+			direction = point1 - origin;
+			direction.normalize();
+			directionInverse = { 1.f / direction.x, 1.f / direction.y, 1.f / direction.z };
+		}
+
+		inline void init_direction(const vec3f& origin, const vec3f& direction)
+		{
+			this->origin = origin;
+			this->direction = direction;
+		}
+
+		inline bool intersects_boundingBox3D(const BoundingBox3D& aabb) const noexcept { return aabb.intersects_ray3D(*this); }
+
+	};
+
+	struct BoundingBox2D {
+
+		vec2f min, max;
+
+		inline void init_center(const vec2f& center, const vec2f& dimensions)
+		{
+			vec2f half = dimensions / 2.f;
+			min = center - half;
+			max = center + half;
+		}
+
+		inline void init_minmax(const vec2f& min, const vec2f& max)
+		{
+			this->min = min;
+			this->max = max;
+		}
+
+		bool intersects_point(const vec2f& point) const noexcept;
+
+	};
 
 }

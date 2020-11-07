@@ -14,7 +14,50 @@ namespace sv {
 
 	static DebugCamera g_Camera;
 
-	static RendererDebugBatch* g_Colliders2DBatch;
+	static RendererDebugBatch* g_DebugBatch;
+
+	// Action
+
+	enum ActionMode {
+
+		ActionMode_None,
+		ActionMode_Transform,
+		ActionMode_Selection,
+
+	};
+
+	static ActionMode g_ActionMode = ActionMode_None;
+	static bool g_ActionStart = false;
+	static struct {
+
+		vec2f mousePos;
+		bool selectedAtStart;
+
+	} g_ActionStartData;
+
+	static Entity g_SelectedEntity = SV_ENTITY_NULL;
+
+	// Transform Action
+	
+	enum TransformMode : ui32 {
+
+		TransformMode_Translation,
+		TransformMode_Scale,
+		TransformMode_Rotation,
+
+	};
+	
+	
+	static TransformMode g_TransformMode = TransformMode_Translation;
+
+	struct {
+		struct {
+
+			vec2f beginPos;
+			vec2f beginMousePos;
+
+		} translation;
+	} g_TransformModeData;
 
 	// CAMERA CONTROLLERS
 
@@ -27,7 +70,7 @@ namespace sv {
 		if (input_mouse(SV_MOUSE_CENTER)) {
 			vec2f direction = input_mouse_dragged_get();
 			direction *= vec2f{ cam.getWidth(), cam.getHeight() } * 2.f;
-			g_Camera.position += { -direction.x, direction.y, 0.f };
+			g_Camera.position -= { direction.x, direction.y, 0.f };
 		}
 
 		// Zoom
@@ -61,7 +104,7 @@ namespace sv {
 			if (dragged.length() != 0.f) {
 				auto& cam = g_Camera.camera;
 				dragged *= { cam.getWidth(), cam.getHeight() };
-				XMVECTOR lookAt = XMVectorSet(dragged.x, -dragged.y, 0.f, 0.f);
+				XMVECTOR lookAt = XMVectorSet(dragged.x, dragged.y, 0.f, 0.f);
 				lookAt = XMVector3Transform(lookAt, XMMatrixRotationRollPitchYawFromVector(g_Camera.rotation.get_dx()));
 				g_Camera.position -= vec3f(lookAt) * 4000.f;
 			}
@@ -105,7 +148,7 @@ namespace sv {
 
 			scene_editor_mode_set(SceneEditorMode_2D);
 
-			svCheck(debug_renderer_batch_create(&g_Colliders2DBatch));
+			svCheck(debug_renderer_batch_create(&g_DebugBatch));
 		}
 		return Result_Success;
 	}
@@ -113,13 +156,167 @@ namespace sv {
 	Result scene_editor_close()
 	{
 		g_Camera.camera.clear();
-		svCheck(debug_renderer_batch_destroy(g_Colliders2DBatch));
+		svCheck(debug_renderer_batch_destroy(g_DebugBatch));
 		return Result_Success;
+	}
+
+	bool scene_editor_is_entity_in_point(ECS* ecs, Entity entity, const vec2f& point)
+	{
+		Transform trans = ecs_entity_transform_get(ecs, entity);
+
+		vec2f pos = trans.getWorldPosition().get_vec2();
+		float rot = trans.getWorldEulerRotation().z;
+		vec2f auxMousePos = point - pos;
+		rot -= auxMousePos.angle();
+		auxMousePos.setAngle(rot);
+		auxMousePos += pos;
+
+		BoundingBox2D aabb;
+		aabb.init_center(pos, trans.getWorldScale().get_vec2());
+
+		return aabb.intersects_point(auxMousePos);
+	}
+
+	std::vector<Entity> scene_editor_entities_in_point(const vec2f& point)
+	{
+		SceneEditorPanel* vp = (SceneEditorPanel*)panel_manager_get("Scene Editor");
+		Scene& scene = simulation_scene_get();
+		std::vector<Entity> selectedEntities;
+
+		ui32 entityCount = ecs_entity_count(scene);
+
+		for (ui32 i = 0; i < entityCount; ++i) {
+
+			Entity entity = ecs_entity_get(scene, i);
+
+			if (scene_editor_is_entity_in_point(scene, entity, point)) {
+				selectedEntities.push_back(entity);
+			}
+		}
+
+		return selectedEntities;
 	}
 
 	void scene_editor_update_mode2D(float dt)
 	{
+		SceneEditorPanel* vp = (SceneEditorPanel*)panel_manager_get("Scene Editor");
+		Scene& scene = simulation_scene_get();
+
+		// Compute Mouse Pos
+		vec2f mousePos = input_mouse_position_get();
+		vp->adjustCoord(mousePos);
+		bool mouseInCamera = mousePos.x > -0.5f && mousePos.x < 0.5f && mousePos.y > -0.5f && mousePos.y < 0.5f;
+
+		mousePos *= { g_Camera.camera.getWidth(), g_Camera.camera.getHeight() };
+		mousePos += g_Camera.position.get_vec2();
+
 		scene_editor_camera_controller_2D(dt);
+
+		// Actions
+
+		if (mouseInCamera && input_mouse_pressed(SV_MOUSE_LEFT)) {
+			g_ActionStart = true;
+			g_ActionMode = ActionMode_None;
+
+			g_ActionStartData.mousePos = mousePos;
+			g_ActionStartData.selectedAtStart = g_SelectedEntity != SV_ENTITY_NULL && scene_editor_is_entity_in_point(scene, g_SelectedEntity, mousePos);
+		}
+
+		if (g_ActionStart && mouseInCamera) {
+
+			if (input_mouse_released(SV_MOUSE_LEFT)) {
+
+				g_ActionStart = false;
+				g_ActionMode = ActionMode_Selection;
+
+			}
+
+			else if (g_ActionStartData.selectedAtStart && g_SelectedEntity != SV_ENTITY_NULL && input_mouse_dragged_get().length() != 0.f) {
+
+				Transform trans = ecs_entity_transform_get(scene, g_SelectedEntity);
+				g_ActionStart = false;
+				g_ActionMode = ActionMode_Transform;
+
+				switch (g_TransformMode)
+				{
+				case sv::TransformMode_Translation:
+					g_TransformModeData.translation.beginPos = trans.getWorldPosition().get_vec2();
+					g_TransformModeData.translation.beginMousePos = mousePos;
+					break;
+				case sv::TransformMode_Scale:
+					break;
+				case sv::TransformMode_Rotation:
+					break;
+				default:
+					break;
+				}
+
+			}
+
+		}
+
+		switch (g_ActionMode)
+		{
+		case sv::ActionMode_Transform:
+			// Transform
+		{
+			Transform trans = ecs_entity_transform_get(scene, g_SelectedEntity);
+
+			switch (g_TransformMode)
+			{
+			case sv::TransformMode_Translation:
+			{
+				auto& data = g_TransformModeData.translation;
+
+				vec2f diference = data.beginPos - data.beginMousePos;
+				vec2f pos = trans.getWorldPosition().get_vec2();
+
+				pos = mousePos + diference;
+
+				trans.setPositionX(pos.x);
+				trans.setPositionY(pos.y);
+			}
+			break;
+			case sv::TransformMode_Scale:
+				break;
+			case sv::TransformMode_Rotation:
+				break;
+			}
+
+			if (input_mouse_released(SV_MOUSE_LEFT)) {
+				g_ActionMode = ActionMode_None;
+			}
+		}
+			break;
+		case sv::ActionMode_Selection:
+		{
+			std::vector<Entity> selectedEntities = scene_editor_entities_in_point(mousePos);
+
+			// Select the selected entity :)
+			if (selectedEntities.size()) {
+				Entity selected = selectedEntities.front();
+				float depth = ecs_entity_transform_get(scene, selected).getWorldPosition().z;
+				for (ui32 i = 1u; i < selectedEntities.size(); ++i) {
+					Entity e = selectedEntities[i];
+
+					if (e == g_SelectedEntity) continue;
+
+					float eDepth = ecs_entity_transform_get(scene, e).getWorldPosition().z;
+					if (eDepth > depth) {
+						selected = e;
+						depth = eDepth;
+					}
+				}
+
+				g_SelectedEntity = selected;
+			}
+			else g_SelectedEntity = SV_ENTITY_NULL;
+
+			g_ActionMode = ActionMode_None;
+		}
+			break;
+		}
+
 	}
 
 	void scene_editor_update_mode3D(float dt)
@@ -129,11 +326,21 @@ namespace sv {
 
 	void scene_editor_update(float dt)
 	{
+		Scene& scene = simulation_scene_get();
+
+		if (input_key(SV_KEY_CONTROL)) {
+
+			if (g_SelectedEntity != SV_ENTITY_NULL && input_key_pressed('D')) {
+				ecs_entity_duplicate(scene, g_SelectedEntity);
+			}
+
+		}
+
 		SceneEditorPanel* vp = (SceneEditorPanel*) panel_manager_get("Scene Editor");
 		if (vp == nullptr) return;
 
 		// Adjust camera
-		vec2u size = vp->get_screen_size();
+		vec2u size = vp->getScreenSize();
 		if (size.x != 0u && size.y != 0u)
 			g_Camera.camera.adjust(size.x, size.y);
 		
@@ -170,13 +377,11 @@ namespace sv {
 
 		// Draw 2D Colliders
 		{
-			debug_renderer_batch_reset(g_Colliders2DBatch);
-
-			Scene& scene = simulation_scene_get();
+			debug_renderer_batch_reset(g_DebugBatch);
 
 			EntityView<RigidBody2DComponent> bodies(scene);
 
-			debug_renderer_stroke_set(g_Colliders2DBatch, 0.05f);
+			debug_renderer_stroke_set(g_DebugBatch, 0.05f);
 
 			for (RigidBody2DComponent& body : bodies) {
 
@@ -199,7 +404,7 @@ namespace sv {
 
 						colliderPosition += offset;
 
-						debug_renderer_draw_quad(g_Colliders2DBatch, vec3f(colliderPosition), vec2f(colliderScale), rotation, { 0u, 255u, 0u, 255u });
+						debug_renderer_draw_quad(g_DebugBatch, vec3f(colliderPosition), vec2f(colliderScale), rotation, { 0u, 255u, 0u, 255u });
 					}
 				}
 				{
@@ -222,12 +427,90 @@ namespace sv {
 
 						colliderPosition += offset;
 
-						debug_renderer_draw_ellipse(g_Colliders2DBatch, vec3f(colliderPosition), vec2f(colliderScale), rotation, { 0u, 255u, 0u, 255u });
+						debug_renderer_draw_ellipse(g_DebugBatch, vec3f(colliderPosition), vec2f(colliderScale), rotation, { 0u, 255u, 0u, 255u });
 					}
 				}
 			}
 
-			debug_renderer_batch_render(g_Colliders2DBatch, g_Camera.camera.getOffscreenRT(), g_Camera.camera.getViewport(), g_Camera.camera.getScissor(), viewProjectionMatrix, cmd);
+			// Draw 2D Entity
+			if (g_SelectedEntity != SV_ENTITY_NULL) {
+				
+				Transform trans = ecs_entity_transform_get(scene, g_SelectedEntity);
+
+				XMMATRIX transformMatrix = trans.getWorldMatrix();
+
+				XMVECTOR p0, p1, p2, p3;
+				p0 = XMVector3Transform(XMVectorSet(-0.5f, -0.5f, 0.f, 0.f), transformMatrix);
+				p1 = XMVector3Transform(XMVectorSet( 0.5f, -0.5f, 0.f, 0.f), transformMatrix);
+				p2 = XMVector3Transform(XMVectorSet(-0.5f,  0.5f, 0.f, 0.f), transformMatrix);
+				p3 = XMVector3Transform(XMVectorSet( 0.5f,  0.5f, 0.f, 0.f), transformMatrix);
+
+				debug_renderer_linewidth_set(g_DebugBatch, 2.f);
+
+				vec3f pos = trans.getWorldPosition();
+				debug_renderer_draw_line(g_DebugBatch, { -float_max / 1000.f, pos.y, pos.z }, { float_max / 1000.f, pos.y, pos.z }, Color::Gray(100));
+				debug_renderer_draw_line(g_DebugBatch, { pos.x, -float_max / 1000.f, pos.z }, { pos.x, float_max / 1000.f, pos.z }, Color::Gray(100));
+
+				debug_renderer_linewidth_set(g_DebugBatch, 5.f);
+
+				debug_renderer_draw_line(g_DebugBatch, vec3f(p0), vec3f(p1), Color::Orange());
+				debug_renderer_draw_line(g_DebugBatch, vec3f(p0), vec3f(p2), Color::Orange());
+				debug_renderer_draw_line(g_DebugBatch, vec3f(p2), vec3f(p3), Color::Orange());
+				debug_renderer_draw_line(g_DebugBatch, vec3f(p1), vec3f(p3), Color::Orange());
+			}
+
+			// Draw 2D grid
+			if (g_Camera.camera.getProjectionType() == ProjectionType_Orthographic) {
+
+				debug_renderer_linewidth_set(g_DebugBatch, 2.f);
+
+				float width = g_Camera.camera.getWidth();
+				float height = g_Camera.camera.getHeight();
+				float mag = g_Camera.camera.getProjectionLength();
+
+				ui32 count = 0u;
+				for (float i = 0.01f; count < 3u ; i *= 10.f) {
+
+					if (mag / i <= 50.f) {
+						
+						Color color;
+
+						switch (count++)
+						{
+						case 0:
+							color = Color::Gray(50);
+							break;
+
+						case 1:
+							color = Color::Gray(100);
+							break;
+
+						case 2:
+							color = Color::Gray(150);
+							break;
+
+						case 3:
+							color = Color::Gray(200);
+							break;
+						}
+
+						color.a = 10u;
+
+						debug_renderer_linewidth_set(g_DebugBatch, count + 1.f);
+						debug_renderer_draw_grid_orthographic(g_DebugBatch, g_Camera.position.get_vec2(), { width, height }, i, color);
+					}
+				}
+
+				// Center
+				float centerSize = (g_Camera.position.length() + mag) * 2.f;
+				Color centerColor = Color::Gray(100);
+				centerColor.a = 5u;
+				debug_renderer_linewidth_set(g_DebugBatch, 2.f);
+				debug_renderer_draw_line(g_DebugBatch, { -centerSize, -centerSize, 0.f }, { centerSize, centerSize, 0.f }, centerColor);
+				debug_renderer_draw_line(g_DebugBatch, { -centerSize, centerSize, 0.f }, { centerSize, -centerSize, 0.f }, centerColor);
+			}
+
+			debug_renderer_batch_render(g_DebugBatch, g_Camera.camera.getOffscreenRT(), g_Camera.camera.getViewport(), g_Camera.camera.getScissor(), viewProjectionMatrix, cmd);
 		}
 	}
 
@@ -275,6 +558,16 @@ namespace sv {
 			break;
 		}
 		
+	}
+
+	void scene_editor_selected_entity_set(Entity entity)
+	{
+		g_SelectedEntity = entity;
+	}
+
+	Entity scene_editor_selected_entity_get()
+	{
+		return g_SelectedEntity;
 	}
 
 }

@@ -8,7 +8,8 @@ namespace sv {
 	public:
 		SceneEditorPanel();
 
-		inline const vec2u& get_screen_size() const noexcept { return m_ScreenSize; }
+		inline const vec2u& getScreenSize() const noexcept { return m_ScreenSize; }
+		void adjustCoord(vec2f& coord) const noexcept;
 
 	protected:
 		void beginDisplay() override;
@@ -19,6 +20,7 @@ namespace sv {
 
 	private:
 		vec2u m_ScreenSize = { 1u, 1u };
+		vec2u m_ScreenPos;
 
 	};
 

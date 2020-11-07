@@ -58,4 +58,51 @@ namespace sv {
 		return XMMatrixLookAtLH(pos, target, XMVectorSet(0.f, 1.f, 0.f, 0.f));
 	}
 
+	// Intersection
+
+	bool BoundingBox3D::intersects_point(const vec3f& point) const noexcept
+	{
+		if (point.x < min.x) return false;
+		if (point.x > max.x) return false;
+		if (point.y < min.y) return false;
+		if (point.y > max.y) return false;
+		if (point.z < min.z) return false;
+		if (point.z > max.z) return false;
+		return true;
+	}
+
+	bool BoundingBox3D::intersects_ray3D(const Ray3D& ray) const noexcept
+	{
+		if (intersects_point(ray.origin)) return true;
+
+		float tx1 = (min.x - ray.origin.x) * ray.directionInverse.x;
+		float tx2 = (max.x - ray.origin.x) * ray.directionInverse.x;
+
+		float tmin = std::min(tx1, tx2);
+		float tmax = std::max(tx1, tx2);
+
+		float ty1 = (min.y - ray.origin.y) * ray.directionInverse.y;
+		float ty2 = (max.y - ray.origin.y) * ray.directionInverse.y;
+
+		tmin = std::max(tmin, std::min(ty1, ty2));
+		tmax = std::min(tmax, std::max(ty1, ty2));
+
+		float tz1 = (min.z - ray.origin.z) * ray.directionInverse.z;
+		float tz2 = (max.z - ray.origin.z) * ray.directionInverse.z;
+
+		tmin = std::max(tmin, std::min(tz1, tz2));
+		tmax = std::min(tmax, std::max(tz1, tz2));
+
+		return tmax >= tmin;
+	}
+
+	bool BoundingBox2D::intersects_point(const vec2f& point) const noexcept
+	{
+		if (point.x < min.x) return false;
+		if (point.x > max.x) return false;
+		if (point.y < min.y) return false;
+		if (point.y > max.y) return false;
+		return true;
+	}
+
 }

@@ -1,10 +1,10 @@
 #include "core_editor.h"
 
 #include "SceneHierarchyPanel.h"
-#include "EntityInspectorPanel.h"
 #include "panel_manager.h"
 #include "simulation/scene.h"
 #include "simulation.h"
+#include "scene_editor.h"
 
 namespace sv {
 	
@@ -28,7 +28,6 @@ namespace sv {
 
 		}
 
-		if (!ecs_entity_exist(scene, m_SelectedEntity)) m_SelectedEntity = SV_ENTITY_NULL;
 
 		if (!m_Popup) {
 
@@ -74,12 +73,6 @@ namespace sv {
 			}
 		}
 
-		EntityInspectorPanel* vp = (EntityInspectorPanel*)panel_manager_get("Entity Inspector");
-		if (vp)
-		{
-			vp->setEntity(m_SelectedEntity);
-		}
-
 		return true;
 	}
 
@@ -87,7 +80,8 @@ namespace sv {
 	{
 		ImGuiTreeNodeFlags treeFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth | (ecs_entity_childs_count(ecs, entity) == 0 ? ImGuiTreeNodeFlags_Bullet : ImGuiTreeNodeFlags_AllowItemOverlap);
 
-		if (m_SelectedEntity == entity) {
+		Entity selected = scene_editor_selected_entity_get();
+		if (selected == entity) {
 			treeFlags |= ImGuiTreeNodeFlags_Selected;
 		}
 
@@ -114,12 +108,12 @@ namespace sv {
 
 				if (ImGui::Button("Duplicate")) {
 					ecs_entity_duplicate(ecs, entity);
-					m_SelectedEntity = 0;
+					scene_editor_selected_entity_set(SV_ENTITY_NULL);
 				}
 
 				if (ImGui::Button("Destroy")) {
 					ecs_entity_destroy(ecs, entity);
-					m_SelectedEntity = 0;
+					scene_editor_selected_entity_set(SV_ENTITY_NULL);
 				}
 
 				ImGui::EndPopup();
@@ -127,9 +121,7 @@ namespace sv {
 		}
 
 		if (ImGui::IsItemClicked()) {
-			if (m_SelectedEntity != entity) {
-				m_SelectedEntity = entity;
-			}
+			scene_editor_selected_entity_set(entity);
 		}
 		if (active) {
 			if (ecs_entity_childs_count(ecs, entity) != 0) {

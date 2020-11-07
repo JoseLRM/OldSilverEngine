@@ -141,7 +141,7 @@ namespace sv {
 			float h = float(g_Bounds.w);
 
 			float x = (float(_x) / w) - 0.5f;
-			float y = (1.f - (float(_y) / h)) - 0.5f;
+			float y = (float(_y) / h) - 0.5f;
 
 			input_mouse_position_set(x, y);
 			break;

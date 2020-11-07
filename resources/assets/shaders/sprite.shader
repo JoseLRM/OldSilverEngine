@@ -57,21 +57,23 @@ SV_DEFINE_MATERIAL(b0)
 {
     float opacidad;
     float2 pene;
+    int juan;
 }
 
-SV_TEXTURE(Juan, t1);
 
 Output main(Input input)
 {
     Output output;
 
-    float4 texColor = _Albedo.Sample(sam, input.fragTexCoord) * Juan.Sample(sam, input.fragTexCoord);
+    float4 texColor = _Albedo.Sample(sam, input.fragTexCoord);
     output.color = input.fragColor * texColor;
 	if (output.color.a < 0.05f) discard;
 
     output.color.a = opacidad;
     output.color.x *= pene.x;
     output.color.y *= pene.y;
+
+    if (juan == 2) output.color.y = 0.5f;
 
     return output;
 }

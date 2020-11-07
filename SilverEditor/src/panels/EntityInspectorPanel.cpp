@@ -3,6 +3,7 @@
 #include "EntityInspectorPanel.h"
 #include "simulation.h"
 #include "editor.h"
+#include "scene_editor.h"
 
 #include "gui.h"
 
@@ -333,20 +334,16 @@ namespace sv {
 
 	}
 
-	void EntityInspectorPanel::setEntity(Entity entity)
-	{
-		m_Entity = entity;
-	}
-
 	bool EntityInspectorPanel::onDisplay()
 	{
 		ECS* ecs = simulation_scene_get().getECS();
+		Entity selectedEntity = scene_editor_selected_entity_get();
 
-		if (m_Entity != SV_ENTITY_NULL) {
+		if (selectedEntity != SV_ENTITY_NULL) {
 
 			ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[0]);
 
-			NameComponent* nameComponent = ecs_component_get<NameComponent>(ecs, m_Entity);
+			NameComponent* nameComponent = ecs_component_get<NameComponent>(ecs, selectedEntity);
 			if (nameComponent) {
 				ImGui::Text(nameComponent->name.c_str(), nameComponent->name.c_str());
 			}
@@ -360,12 +357,12 @@ namespace sv {
 
 
 			// Show Transform Data
-			gui_transform_show(ecs_entity_transform_get(ecs, m_Entity));
+			gui_transform_show(ecs_entity_transform_get(ecs, selectedEntity));
 
 			// Show components
-			for (ui32 i = 0; i < ecs_entity_component_count(ecs, m_Entity); ++i) {
+			for (ui32 i = 0; i < ecs_entity_component_count(ecs, selectedEntity); ++i) {
 
-				auto [compID, comp] = ecs_component_get_by_index(ecs, m_Entity, i);
+				auto [compID, comp] = ecs_component_get_by_index(ecs, selectedEntity, i);
 				gui_component_show(ecs, compID, comp, showComponentInfo);
 				
 			}
@@ -375,10 +372,10 @@ namespace sv {
 
 				for (ui16 ID = 0; ID < ecs_register_count(ecs); ++ID) {
 					const char* NAME = ecs_register_nameof(ecs, ID);
-					if (ecs_component_get_by_id(ecs, m_Entity, ID) != nullptr) continue;
+					if (ecs_component_get_by_id(ecs, selectedEntity, ID) != nullptr) continue;
 					size_t SIZE = ecs_register_sizeof(ecs, ID);
 					if (ImGui::Button(NAME)) {
-						ecs_component_add_by_id(ecs, m_Entity, ID);
+						ecs_component_add_by_id(ecs, selectedEntity, ID);
 					}
 				}
 
@@ -386,12 +383,12 @@ namespace sv {
 			}
 			if (ImGui::BeginCombo("##Rmv", "Remove Component")) {
 
-				for (ui32 i = 0; i < ecs_entity_component_count(ecs, m_Entity); ++i) {
-					CompID ID = ecs_component_get_by_index(ecs, m_Entity, i).first;
+				for (ui32 i = 0; i < ecs_entity_component_count(ecs, selectedEntity); ++i) {
+					CompID ID = ecs_component_get_by_index(ecs, selectedEntity, i).first;
 					const char* NAME = ecs_register_nameof(ecs, ID);
 					size_t SIZE = ecs_register_sizeof(ecs, ID);
 					if (ImGui::Button(NAME)) {
-						ecs_component_remove_by_id(ecs, m_Entity, ID);
+						ecs_component_remove_by_id(ecs, selectedEntity, ID);
 						break;
 					}
 				}

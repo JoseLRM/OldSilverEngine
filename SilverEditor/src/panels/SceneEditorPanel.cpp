@@ -10,6 +10,19 @@ namespace sv {
 	SceneEditorPanel::SceneEditorPanel()
 	{}
 
+	void SceneEditorPanel::adjustCoord(vec2f& coord) const noexcept
+	{
+		vec2f winSize = vec2f(float(window_size_get().x), float(window_size_get().y));
+		vec2f screenPos = vec2f{ float(m_ScreenPos.x), float(m_ScreenPos.y) };
+
+		coord += { 0.5f, 0.5f };
+		coord *= winSize;
+
+		coord -= screenPos;
+		coord /= vec2f{ float(m_ScreenSize.x), float(m_ScreenSize.y) };;
+		coord -= { 0.5f, 0.5f };
+	}
+
 	void SceneEditorPanel::beginDisplay()
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1.f);
@@ -42,6 +55,10 @@ namespace sv {
 				ImGui::EndPopup();
 			}
 		}
+
+		ImVec2 pos = ImGui::GetItemRectMin();
+		m_ScreenPos.x = pos.x;
+		m_ScreenPos.y = pos.y;
 
 		return true;
 	}

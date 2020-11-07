@@ -17,7 +17,6 @@ namespace sv {
 		void showEntity(ECS* ecs, Entity entityentity);
 
 	private:
-		Entity m_SelectedEntity = SV_ENTITY_NULL;
 		bool m_Popup = false;
 
 	};
