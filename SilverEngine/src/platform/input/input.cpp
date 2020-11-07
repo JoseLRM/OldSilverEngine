@@ -15,6 +15,7 @@ namespace sv {
 	static vec2f g_Pos;
 	static vec2f g_RPos;
 	static vec2f g_Dragged;
+	static float g_Wheel;
 	
 	static bool g_CloseRequest = false;
 
@@ -39,6 +40,7 @@ namespace sv {
 		g_RPos = g_Pos;
 		g_Dragged.x = 0.f;
 		g_Dragged.y = 0.f;
+		g_Wheel = 0.f;
 
 		return false;
 	}
@@ -72,6 +74,10 @@ namespace sv {
 	{
 		g_Dragged.x = float(dx);
 		g_Dragged.y = float(dy);
+	}
+	void input_mouse_wheel_set(float wheel)
+	{
+		g_Wheel = wheel;
 	}
 
 	bool input_key(ui8 id) {
@@ -107,6 +113,11 @@ namespace sv {
 		//return g_Dragged;
 		//TEMP:
 		return g_Pos - g_RPos;
+	}
+
+	float input_mouse_wheel_get()
+	{
+		return g_Wheel;
 	}
 
 	void engine_request_close() noexcept { g_CloseRequest = true; }

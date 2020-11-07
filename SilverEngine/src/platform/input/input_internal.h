@@ -13,5 +13,6 @@ namespace sv {
 
 	void input_mouse_position_set(float x, float y);
 	void input_mouse_dragged_set(int dx, int dy);
+	void input_mouse_wheel_set(float wheel);
 
 }

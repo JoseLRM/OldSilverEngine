@@ -115,6 +115,7 @@ namespace sv {
 	vec2f input_mouse_position_get();
 	vec2f input_mouse_position_get_last();
 	vec2f input_mouse_dragged_get();
+	float input_mouse_wheel_get();
 
 	void engine_request_close() noexcept;
 

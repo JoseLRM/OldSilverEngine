@@ -195,6 +195,12 @@ namespace sv {
 			//jshEvent::Dispatch(e);
 			break;
 		}
+		case WM_MOUSEWHEEL:
+		{
+			float wheel = float(GET_WHEEL_DELTA_WPARAM(wParam)) / WHEEL_DELTA;
+			input_mouse_wheel_set(wheel);
+			break;
+		}
 		case WM_SETFOCUS:
 		{
 			//jsh::WindowGainFocusEvent e;
