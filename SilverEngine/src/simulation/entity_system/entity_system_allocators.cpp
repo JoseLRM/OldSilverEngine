@@ -177,7 +177,7 @@ namespace sv {
 			while (ptr != endPtr) {
 
 				BaseComponent* comp = reinterpret_cast<BaseComponent*>(ptr);
-				if (comp != SV_ENTITY_NULL) {
+				if (comp->entity != SV_ENTITY_NULL) {
 					ecs_register_destroy(ecs, a.compID, comp);
 				}
 

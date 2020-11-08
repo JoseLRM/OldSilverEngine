@@ -544,7 +544,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 
 							mvpMatrix = quad.matrix;
 							color = quad.color;
-							stroke = batch.stroke;
+							stroke = draw.stroke;
 							texCoord.x = 69.f;
 						}
 
@@ -556,7 +556,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 
 							mvpMatrix = ellipse.matrix;
 							color = ellipse.color;
-							stroke = batch.stroke;
+							stroke = draw.stroke;
 							texCoord.x = 69.f;
 						}
 						break;

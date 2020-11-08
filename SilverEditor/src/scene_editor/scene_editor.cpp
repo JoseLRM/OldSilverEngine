@@ -16,6 +16,15 @@ namespace sv {
 
 	static RendererDebugBatch* g_DebugBatch;
 
+	// Camera movement
+
+	static bool g_CameraInMovement = false;
+	static struct {
+		
+		vec2f initialMovement;
+
+	} g_CameraMovementData;
+
 	// Action
 
 	enum ActionMode {
@@ -26,12 +35,14 @@ namespace sv {
 
 	};
 
+	static vec2f g_MousePos;
+	static bool g_MouseInCamera = false;
+
 	static ActionMode g_ActionMode = ActionMode_None;
 	static bool g_ActionStart = false;
 	static struct {
 
 		vec2f mousePos;
-		bool selectedAtStart;
 
 	} g_ActionStartData;
 
@@ -47,41 +58,45 @@ namespace sv {
 
 	};
 	
-	
 	static TransformMode g_TransformMode = TransformMode_Translation;
 
 	struct {
-		struct {
 
-			vec2f beginPos;
-			vec2f beginMousePos;
+		vec2f beginMousePos;
+		vec2f beginPos;
+		vec2f beginScale;
+		float beginRotation;
+		bool selectedXAxis;
+		bool selectedYAxis;
 
-		} translation;
 	} g_TransformModeData;
 
 	// CAMERA CONTROLLERS
 
-	void scene_editor_camera_controller_2D(float dt)
+	void scene_editor_camera_controller_2D(const vec2f mousePos, float dt)
 	{
 		auto& cam = g_Camera.camera;
 		float length = cam.getProjectionLength();
 
 		// Movement
-		if (input_mouse(SV_MOUSE_CENTER)) {
-			vec2f direction = input_mouse_dragged_get();
-			direction *= vec2f{ cam.getWidth(), cam.getHeight() } * 2.f;
-			g_Camera.position -= { direction.x, direction.y, 0.f };
+		if (input_mouse_pressed(SV_MOUSE_CENTER)) {
+			g_CameraInMovement = true;
+
+			g_CameraMovementData.initialMovement = mousePos;
+		}
+		else if (input_mouse_released(SV_MOUSE_CENTER)) {
+			g_CameraInMovement = false;
+		}
+
+		if (g_CameraInMovement) {
+
+			g_Camera.position += (g_CameraMovementData.initialMovement - mousePos).get_vec3();
+
 		}
 
 		// Zoom
-		float zoomForce = dt * length;
-
-		if (input_key('S')) {
-			length += zoomForce;
-		}
-		if (input_key('W')) {
-			length -= zoomForce;
-		}
+		length += -input_mouse_wheel_get() * length * 0.1f;
+		if (length < 0.001f) length = 0.001f;
 
 		cam.setProjectionLength(length);
 
@@ -202,27 +217,31 @@ namespace sv {
 		SceneEditorPanel* vp = (SceneEditorPanel*)panel_manager_get("Scene Editor");
 		Scene& scene = simulation_scene_get();
 
+		// Transform mode
+		if (input_key_pressed('T')) g_TransformMode = TransformMode_Translation;
+		if (input_key_pressed('R')) g_TransformMode = TransformMode_Scale;
+		if (input_key_pressed('E')) g_TransformMode = TransformMode_Rotation;
+
 		// Compute Mouse Pos
-		vec2f mousePos = input_mouse_position_get();
-		vp->adjustCoord(mousePos);
-		bool mouseInCamera = mousePos.x > -0.5f && mousePos.x < 0.5f && mousePos.y > -0.5f && mousePos.y < 0.5f;
+		g_MousePos = input_mouse_position_get();
+		vp->adjustCoord(g_MousePos);
+		g_MouseInCamera = g_MousePos.x > -0.5f && g_MousePos.x < 0.5f && g_MousePos.y > -0.5f && g_MousePos.y < 0.5f;
 
-		mousePos *= { g_Camera.camera.getWidth(), g_Camera.camera.getHeight() };
-		mousePos += g_Camera.position.get_vec2();
+		g_MousePos *= { g_Camera.camera.getWidth(), g_Camera.camera.getHeight() };
+		g_MousePos += g_Camera.position.get_vec2();
 
-		scene_editor_camera_controller_2D(dt);
+		scene_editor_camera_controller_2D(g_MousePos, dt);
 
 		// Actions
 
-		if (mouseInCamera && input_mouse_pressed(SV_MOUSE_LEFT)) {
+		if (g_MouseInCamera && input_mouse_pressed(SV_MOUSE_LEFT)) {
 			g_ActionStart = true;
 			g_ActionMode = ActionMode_None;
 
-			g_ActionStartData.mousePos = mousePos;
-			g_ActionStartData.selectedAtStart = g_SelectedEntity != SV_ENTITY_NULL && scene_editor_is_entity_in_point(scene, g_SelectedEntity, mousePos);
+			g_ActionStartData.mousePos = g_MousePos;
 		}
 
-		if (g_ActionStart && mouseInCamera) {
+		if (g_ActionStart && g_MouseInCamera) {
 
 			if (input_mouse_released(SV_MOUSE_LEFT)) {
 
@@ -231,28 +250,35 @@ namespace sv {
 
 			}
 
-			else if (g_ActionStartData.selectedAtStart && g_SelectedEntity != SV_ENTITY_NULL && input_mouse_dragged_get().length() != 0.f) {
+			else if (g_SelectedEntity != SV_ENTITY_NULL && input_mouse_dragged_get().length() != 0.f) {
 
 				Transform trans = ecs_entity_transform_get(scene, g_SelectedEntity);
-				g_ActionStart = false;
-				g_ActionMode = ActionMode_Transform;
 
-				switch (g_TransformMode)
-				{
-				case sv::TransformMode_Translation:
-					g_TransformModeData.translation.beginPos = trans.getWorldPosition().get_vec2();
-					g_TransformModeData.translation.beginMousePos = mousePos;
-					break;
-				case sv::TransformMode_Scale:
-					break;
-				case sv::TransformMode_Rotation:
-					break;
-				default:
-					break;
+				vec3f pos = trans.getWorldPosition();
+				vec3f scale = trans.getWorldScale();
+				float rot = trans.getWorldEulerRotation().z;
+
+				g_TransformModeData.beginPos = pos.get_vec2();
+				g_TransformModeData.beginMousePos = g_ActionStartData.mousePos;
+				g_TransformModeData.beginScale = scale.get_vec2();
+				g_TransformModeData.beginRotation = rot;
+
+				float maxScale = std::max(abs(scale.x), abs(scale.y));
+
+				BoundingBox2D xAxis;
+				xAxis.init_minmax(pos.get_vec2() + vec2f{ 0.f, maxScale * -0.05f }, pos.get_vec2() + vec2f{ maxScale * 0.6f, maxScale * 0.05f });
+				
+				BoundingBox2D yAxis;
+				yAxis.init_minmax(pos.get_vec2() + vec2f{ maxScale * -0.05f, 0.f }, pos.get_vec2() + vec2f{ maxScale * 0.05f, maxScale * 0.6f });
+
+				g_TransformModeData.selectedXAxis = xAxis.intersects_point(g_ActionStartData.mousePos);
+				g_TransformModeData.selectedYAxis = yAxis.intersects_point(g_ActionStartData.mousePos);
+
+				if (g_TransformModeData.selectedXAxis || g_TransformModeData.selectedYAxis || scene_editor_is_entity_in_point(scene, g_SelectedEntity, g_ActionStartData.mousePos)) {
+					g_ActionStart = false;
+					g_ActionMode = ActionMode_Transform;
 				}
-
 			}
-
 		}
 
 		switch (g_ActionMode)
@@ -261,23 +287,47 @@ namespace sv {
 			// Transform
 		{
 			Transform trans = ecs_entity_transform_get(scene, g_SelectedEntity);
+			auto& data = g_TransformModeData;
 
 			switch (g_TransformMode)
 			{
 			case sv::TransformMode_Translation:
 			{
-				auto& data = g_TransformModeData.translation;
-
 				vec2f diference = data.beginPos - data.beginMousePos;
 				vec2f pos = trans.getWorldPosition().get_vec2();
 
-				pos = mousePos + diference;
+				pos = g_MousePos + diference;
 
-				trans.setPositionX(pos.x);
-				trans.setPositionY(pos.y);
+				if (data.selectedXAxis) {
+					trans.setPositionX(pos.x);
+				}
+				else if (data.selectedYAxis) {
+					trans.setPositionY(pos.y);
+				}
+				else {
+					trans.setPositionX(pos.x);
+					trans.setPositionY(pos.y);
+				}
 			}
 			break;
 			case sv::TransformMode_Scale:
+			{
+				float dif = (g_MousePos - data.beginMousePos).length();
+				if ((g_MousePos - data.beginPos).length() < (g_MousePos - data.beginMousePos).length()) dif = -dif;
+
+				vec2f newScale = data.beginScale + dif;
+
+				if (data.selectedXAxis) {
+					trans.setScaleX(newScale.x);
+				}
+				else if (data.selectedYAxis) {
+					trans.setScaleY(newScale.y);
+				}
+				else {
+					trans.setScaleX(newScale.x);
+					trans.setScaleY(newScale.y);
+				}
+			}
 				break;
 			case sv::TransformMode_Rotation:
 				break;
@@ -290,7 +340,7 @@ namespace sv {
 			break;
 		case sv::ActionMode_Selection:
 		{
-			std::vector<Entity> selectedEntities = scene_editor_entities_in_point(mousePos);
+			std::vector<Entity> selectedEntities = scene_editor_entities_in_point(g_MousePos);
 
 			// Select the selected entity :)
 			if (selectedEntities.size()) {
@@ -334,6 +384,11 @@ namespace sv {
 				ecs_entity_duplicate(scene, g_SelectedEntity);
 			}
 
+		}
+
+		if (g_SelectedEntity != SV_ENTITY_NULL && input_key_pressed(SV_KEY_DELETE)) {
+			ecs_entity_destroy(scene, g_SelectedEntity);
+			g_SelectedEntity = SV_ENTITY_NULL;
 		}
 
 		SceneEditorPanel* vp = (SceneEditorPanel*) panel_manager_get("Scene Editor");
@@ -457,6 +512,79 @@ namespace sv {
 				debug_renderer_draw_line(g_DebugBatch, vec3f(p0), vec3f(p2), Color::Orange());
 				debug_renderer_draw_line(g_DebugBatch, vec3f(p2), vec3f(p3), Color::Orange());
 				debug_renderer_draw_line(g_DebugBatch, vec3f(p1), vec3f(p3), Color::Orange());
+
+				switch (g_TransformMode)
+				{
+				case sv::TransformMode_Translation:
+				case sv::TransformMode_Scale:
+				{
+					vec3f scale = trans.getWorldScale();
+					float arrowLength = std::max(scale.x, scale.y) * 0.6f;
+
+					if (g_TransformMode == TransformMode_Translation && g_ActionMode == ActionMode_Transform) {
+						auto& data = g_TransformModeData;
+
+						debug_renderer_linewidth_set(g_DebugBatch, 4.f);
+						debug_renderer_draw_line(g_DebugBatch, data.beginPos.get_vec3(), pos, Color::Gray(200));
+					}
+
+					Color xAxisColor = Color::Red();
+					Color yAxisColor = Color::Green();
+
+					if (g_ActionMode == ActionMode_Transform) {
+						auto& data = g_TransformModeData;
+
+						if (data.selectedXAxis) xAxisColor = Color::White();
+						if (data.selectedYAxis) yAxisColor = Color::White();
+					}
+
+					debug_renderer_draw_line(g_DebugBatch, pos, pos + vec3f(arrowLength, 0.f, 0.f), xAxisColor);
+					debug_renderer_draw_line(g_DebugBatch, pos, pos + vec3f(0.f, arrowLength, 0.f), yAxisColor);
+
+					if (g_TransformMode == TransformMode_Scale) {
+
+						debug_renderer_stroke_set(g_DebugBatch, 1.f);
+						debug_renderer_draw_quad(g_DebugBatch, pos + vec3f(arrowLength, 0.f, 0.f), { arrowLength * 0.2f, arrowLength * 0.2f }, xAxisColor);
+						debug_renderer_draw_quad(g_DebugBatch, pos + vec3f(0.f, arrowLength, 0.f), { arrowLength * 0.2f, arrowLength * 0.2f }, yAxisColor);
+						
+					}
+					else {
+
+					}
+				}
+				break;
+
+				case sv::TransformMode_Rotation:
+
+					float radius = trans.getWorldScale().get_vec2().length() / 2.f;
+
+					constexpr ui32 CIRCLE_RESOLUTION = 180u;
+					constexpr float adv = 2.f * PI / float(CIRCLE_RESOLUTION);
+
+					float x0 = (cos(0.f) * radius) + pos.x;
+					float y0 = (sin(0.f) * radius) + pos.y;
+					float x1 = 0.f;
+					float y1 = 0.f;
+
+					for (float i = adv; i < 2.f * PI; i += adv) {
+
+						x1 = (cos(i) * radius) + pos.x;
+						y1 = (sin(i) * radius) + pos.y;
+
+						debug_renderer_draw_line(g_DebugBatch, { x0, y0, pos.z }, { x1, y1, pos.z }, Color::White());
+
+						x0 = x1;
+						y0 = y1;
+
+					}
+
+					x1 = (cos(0.f) * radius) + pos.x;
+					y1 = (sin(0.f) * radius) + pos.y;
+
+					debug_renderer_draw_line(g_DebugBatch, { x0, y0, pos.z }, { x1, y1, pos.z }, Color::White());
+
+					break;
+				}
 			}
 
 			// Draw 2D grid
