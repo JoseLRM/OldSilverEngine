@@ -17,7 +17,7 @@ namespace sv {
 
 			Transform trans = ecs_entity_transform_get(ecs, camera.entity);
 
-			drawCamera(ecs, &camera.camera, trans.getWorldPosition(), trans.getWorldRotation());
+			drawCamera2D(ecs, &camera.camera, trans.getWorldPosition(), trans.getWorldRotation());
 
 			if (present && camera.entity == mainCamera) {
 				GPUImage* image = camera.camera.getOffscreenRT();
@@ -31,7 +31,7 @@ namespace sv {
 		}
 	}
 
-	void SceneRenderer::drawCamera(ECS* ecs, Camera* pCamera, const vec3f& position, const vec4f& directionQuat)
+	void SceneRenderer::drawCamera2D(ECS* ecs, Camera* pCamera, const vec3f& position, const vec4f& directionQuat)
 	{
 		if (!pCamera->isActive()) return;
 

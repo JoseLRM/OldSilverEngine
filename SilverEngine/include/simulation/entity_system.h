@@ -112,7 +112,7 @@ namespace sv {
 	void	ecs_clear(ECS* ecs);
 
 	Result	ecs_serialize(ECS* ecs, ArchiveO& archive);
-	Result	ecs_deserialize(ECS* ecs, ArchiveI& archive);
+	Result	ecs_deserialize(ECS* ecs, ArchiveI& archive); // Must create the ECS before deserialize it
 
 	// Component register
 

@@ -16,8 +16,10 @@ namespace sv {
 		destroy();
 	}
 
-	void Scene::create()
+	void Scene::create(SceneType sceneType)
 	{
+		m_SceneType = sceneType;
+
 		// Initialize Entity Component System
 		ecs_create(&m_ECS);
 
@@ -44,16 +46,38 @@ namespace sv {
 		m_MainCamera = ecs_entity_create(m_ECS);
 		ecs_component_add<NameComponent>(m_ECS, m_MainCamera, "Camera");
 		Camera& camera = ecs_component_add<CameraComponent>(m_ECS, m_MainCamera)->camera;
-		camera.setProjectionType(ProjectionType_Orthographic);
-		camera.setProjectionLength(10.f);
-		camera.setResolution(1920u, 1080u);
-		camera.activate();
 
+		switch (sceneType)
+		{
+		case sv::SceneType_2D:
+		{
+			camera.setProjectionType(ProjectionType_Orthographic);
+			camera.setProjectionLength(10.f);
+			camera.setResolution(1920u, 1080u);
+			camera.setNear(-1000.f);
+			camera.setFar(1000.f);
+			camera.activate();
+		}
+			break;
+		case sv::SceneType_3D:
+		{
+			camera.setProjectionType(ProjectionType_Perspective);
+			camera.setProjectionLength(0.1f);
+			camera.setResolution(1920u, 1080u);
+			camera.setNear(0.2f);
+			camera.setFar(100000.f);
+			camera.activate();
+		}
+			break;
+		}
 		
 	}
 
 	void Scene::destroy()
 	{
+		if (m_SceneType == SceneType_Invalid) return;
+		m_SceneType = SceneType_Invalid;
+
 		ecs_destroy(m_ECS);
 		m_ECS = nullptr;
 		m_Renderer.destroy();
@@ -82,6 +106,9 @@ namespace sv {
 	Result Scene::serialize(ArchiveO& archive)
 	{
 		archive << engine_version_get();
+
+		archive << m_SceneType;
+
 		svCheck(ecs_serialize(m_ECS, archive));
 		archive << m_MainCamera;
 
@@ -94,18 +121,14 @@ namespace sv {
 
 		svCheck(archive.open_file(filePath));
 		svCheck(deserialize(archive));
-		archive >> m_MainCamera;
-
-		if (!ecs_entity_exist(m_ECS, m_MainCamera) || ecs_component_get<CameraComponent>(m_ECS, m_MainCamera) == nullptr) {
-			m_MainCamera = SV_ENTITY_NULL;
-			return Result_InvalidFormat;
-		}
 
 		return Result_Success;
 	}
 
 	Result Scene::deserialize(ArchiveI& archive)
 	{
+		destroy();
+
 		// Version
 		{
 			Version version;
@@ -114,7 +137,22 @@ namespace sv {
 			if (version < SCENE_MINIMUM_SUPPORTED_VERSION) return Result_UnsupportedVersion;
 		}
 
+		// Scene Type
+		archive >> m_SceneType;
+
+		if (m_SceneType != SceneType_2D && m_SceneType != SceneType_3D) return Result_InvalidFormat;
+
+		// Create the scene
+		create(m_SceneType);
+
 		svCheck(ecs_deserialize(m_ECS, archive));
+
+		archive >> m_MainCamera;
+
+		if (!ecs_entity_exist(m_ECS, m_MainCamera) || ecs_component_get<CameraComponent>(m_ECS, m_MainCamera) == nullptr) {
+			m_MainCamera = SV_ENTITY_NULL;
+			return Result_InvalidFormat;
+		}
 
 		return Result_Success;
 	}
@@ -142,7 +180,7 @@ namespace sv {
 
 	void Scene::drawCamera(Camera* pCamera, const vec3f& position, const vec4f& directionQuat)
 	{
-		m_Renderer.drawCamera(m_ECS, pCamera, position, directionQuat);
+		m_Renderer.drawCamera2D(m_ECS, pCamera, position, directionQuat);
 	}
 
 }

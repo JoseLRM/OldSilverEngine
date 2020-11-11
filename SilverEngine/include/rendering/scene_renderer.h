@@ -99,7 +99,7 @@ namespace sv {
 		void destroy();
 
 		void draw(ECS* ecs, Entity mainCamera, bool present = true);
-		void drawCamera(ECS* ecs, Camera* pCamera, const vec3f& position, const vec4f& directionQuat);
+		void drawCamera2D(ECS* ecs, Camera* pCamera, const vec3f& position, const vec4f& directionQuat);
 
 	private:
 		void* pInternal = nullptr;

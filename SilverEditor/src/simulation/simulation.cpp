@@ -32,11 +32,9 @@ namespace sv {
 
 	Result simulation_initialize(const char* sceneFilePath)
 	{
-		g_Scene.create();
-
 		if (g_Scene.deserialize(sceneFilePath) != Result_Success) {
 			g_Scene.destroy();
-			g_Scene.create();
+			g_Scene.create(SceneType_2D);
 		}
 
 		g_ScenePath = sceneFilePath;
