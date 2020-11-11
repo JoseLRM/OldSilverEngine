@@ -15,6 +15,8 @@ namespace sv {
 	void gui_begin();
 	void gui_end();
 
+	ImTextureID gui_image_parse(GPUImage* image);
+
 	// Style
 
 	enum GuiStyle {

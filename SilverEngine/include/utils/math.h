@@ -153,7 +153,11 @@ namespace sv {
 		}
 		inline float angle() const noexcept
 		{
-			return atan2(y, x);
+			float res = atan2(y, x);
+			if (res < 0) {
+				res = (2.f * PI) + res;
+			}
+			return res;
 		}
 		inline void setAngle(float angle) noexcept
 		{
@@ -183,7 +187,7 @@ namespace sv {
 		}
 
 		// getters
-		inline vec3 get_vec3() const noexcept
+		inline vec3 getVec3() const noexcept
 		{
 			return { x, y, 0.f };
 		}
@@ -342,7 +346,7 @@ namespace sv {
 		}
 
 		// getters
-		inline vec2 get_vec2() const noexcept
+		inline vec2 getVec2() const noexcept
 		{
 			return { x, y };
 		}
@@ -541,13 +545,13 @@ namespace sv {
 	struct Color {
 		ui8 r, g, b, a;
 
-		constexpr static Color Red()		{ return { 255u	, 0u	, 0u	, 255u }; }
-		constexpr static Color Green()		{ return { 0u	, 255u	, 0u	, 255u }; }
-		constexpr static Color Blue()		{ return { 0u	, 0u	, 255u	, 255u }; }
-		constexpr static Color Orange()		{ return { 255u	, 153u	, 51u	, 255u }; }
-		constexpr static Color Black()		{ return { 0u	, 0u	, 0u	, 255u }; }
-		constexpr static Color Gray(ui8 v)	{ return { v	, v		, v		, 255u }; }
-		constexpr static Color White()		{ return { 255u	, 255u	, 255u	, 255u }; }
+		constexpr static Color Red(ui8 a = 255u)			{ return { 255u	, 0u	, 0u	, a }; }
+		constexpr static Color Green(ui8 a = 255u)			{ return { 0u	, 255u	, 0u	, a }; }
+		constexpr static Color Blue(ui8 a = 255u)			{ return { 0u	, 0u	, 255u	, a }; }
+		constexpr static Color Orange(ui8 a = 255u)			{ return { 255u	, 153u	, 51u	, a }; }
+		constexpr static Color Black(ui8 a = 255u)			{ return { 0u	, 0u	, 0u	, a }; }
+		constexpr static Color Gray(ui8 v, ui8 a = 255u)	{ return { v	, v		, v		, a }; }
+		constexpr static Color White(ui8 a = 255u)			{ return { 255u	, 255u	, 255u	, a }; }
 
 	};
 

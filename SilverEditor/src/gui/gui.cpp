@@ -2,26 +2,30 @@
 
 #include "gui.h"
 #include "external/ImGui/imgui_internal.h"
-#include "editor.h"
+#include "imGuiDevice/ImGuiDevice.h"
+#include "simulation.h"
+
 #include "panel_manager.h"
 #include "panels/MaterialPanel.h"
 #include "panels/SpriteAnimationPanel.h"
-#include "panels/SimulationPanel.h"
-#include "panels/SceneEditorPanel.h"
 #include "panels/SceneHierarchyPanel.h"
 #include "panels/EntityInspectorPanel.h"
 #include "panels/AssetPanel.h"
-#include "panels/SimulationToolsPanel.h"
 
 #include "utils/io.h"
 
 namespace sv {
+	
+	static std::unique_ptr<ImGuiDevice> g_Device;
 
 	static GuiStyle g_Style;
 	bool g_SimulationMode;
 
 	Result gui_initialize()
 	{
+		g_Device = device_create();
+		g_Device->Initialize();
+
 		gui_style_set(GuiStyle_Black);
 		gui_style_editor();
 
@@ -37,12 +41,9 @@ namespace sv {
 
 				file >> name;
 
-				if (strcmp(name.c_str(), "Simulation") == 0) panel_manager_add(name.c_str(), new SimulationPanel());
-				else if (strcmp(name.c_str(), "Scene Editor") == 0) panel_manager_add(name.c_str(), new SceneEditorPanel());
-				else if (strcmp(name.c_str(), "Scene Hierarchy") == 0) panel_manager_add(name.c_str(), new SceneHierarchyPanel());
+				if (strcmp(name.c_str(), "Scene Hierarchy") == 0) panel_manager_add(name.c_str(), new SceneHierarchyPanel());
 				else if (strcmp(name.c_str(), "Entity Inspector") == 0) panel_manager_add(name.c_str(), new EntityInspectorPanel());
 				else if (strcmp(name.c_str(), "Assets") == 0) panel_manager_add(name.c_str(), new AssetPanel());
-				else if (strcmp(name.c_str(), "Simulation Tools") == 0) panel_manager_add(name.c_str(), new SimulationToolsPanel());
 			}
 		}
 		else SV_LOG_ERROR("Can't deserialize Editor State");
@@ -74,6 +75,7 @@ namespace sv {
 			if (result_fail(bin_write(hash_string("Editor State"), file))) SV_LOG_ERROR("Can't serialize Editor State");
 		}
 
+		g_Device->Close();
 
 		return Result_Success;
 	}
@@ -87,21 +89,82 @@ namespace sv {
 		}
 	}
 
+	GPUImage* gui_simulation_offscreen_get()
+	{
+		GPUImage* simulationOffscreen = nullptr;
+
+		Entity cameraEntity = g_Scene.getMainCamera();
+
+		if (ecs_entity_exist(g_Scene, cameraEntity)) {
+
+			CameraComponent* camera = ecs_component_get<CameraComponent>(g_Scene, cameraEntity);
+			if (camera) {
+				simulationOffscreen = camera->camera.getOffscreenRT();
+			}
+		}
+
+		return simulationOffscreen;
+	}
+
 	void gui_begin()
 	{
+		// Resize the swapchain
+		g_Device->ResizeSwapChain();
+
+		g_Device->BeginFrame();
+
+		// Set the main camera and the editor camera offscreens to GPUImageLayout_ShaderResource
+		{
+			GPUImage* simulationOffscreen = gui_simulation_offscreen_get();
+			GPUImage* editorOffscreen = g_DebugCamera.camera.getOffscreenRT();
+
+			GPUBarrier barriers[2];
+			barriers[0] = GPUBarrier::Image(editorOffscreen, GPUImageLayout_RenderTarget, GPUImageLayout_ShaderResource);
+			if (simulationOffscreen) barriers[1] = GPUBarrier::Image(simulationOffscreen, GPUImageLayout_RenderTarget, GPUImageLayout_ShaderResource);
+			graphics_barrier(barriers, simulationOffscreen ? 2u : 1u, g_Device->GetCMD());
+		}
 
 		if (ImGui::BeginMainMenuBar()) {
 
 			ImGui::PushStyleColor(ImGuiCol_PopupBg, { 0.1f, 0.1f, 0.1f, 1.f });
 
+			if (ImGui::BeginMenu("File")) {
+
+				if (ImGui::MenuItem("New")) {
+
+				}
+
+				if (ImGui::MenuItem("Open")) {
+
+				}
+
+				if (ImGui::MenuItem("Close")) {
+
+				}
+
+				ImGui::Separator();
+
+				if (ImGui::MenuItem("New Scene")) {
+
+				}
+				if (ImGui::MenuItem("Open Scene")) {
+
+				}
+				if (ImGui::MenuItem("Save Scene")) {
+
+				}
+				if (ImGui::MenuItem("Close Scene")) {
+
+				}
+
+				ImGui::EndMenu();
+			}
+
 			if (ImGui::BeginMenu("Panels")) {
 
-				panelCheckbox<SimulationPanel>("Simulation");
-				panelCheckbox<SceneEditorPanel>("Scene Editor");
 				panelCheckbox<SceneHierarchyPanel>("Scene Hierarchy");
 				panelCheckbox<EntityInspectorPanel>("Entity Inspector");
 				panelCheckbox<AssetPanel>("Assets");
-				panelCheckbox<SimulationToolsPanel>("Simulation Tools");
 
 				ImGui::EndMenu();
 			}
@@ -110,11 +173,59 @@ namespace sv {
 
 			ImGui::EndMainMenuBar();
 		}
+
+		// Display Docking
+		{
+			static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
+
+			// We are using the ImGuiWindowFlags_NoDocking flag to make the parent window not dockable into,
+			// because it would be confusing to have two docking targets within each others.
+			ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking;
+
+			ImGuiViewport* viewport = ImGui::GetMainViewport();
+			ImGui::SetNextWindowPos(viewport->GetWorkPos());
+			ImGui::SetNextWindowSize(viewport->GetWorkSize());
+			ImGui::SetNextWindowViewport(viewport->ID);
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+			window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+			window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+			ImGui::Begin("DockSpace Demo", 0, window_flags);
+			ImGui::PopStyleVar();
+
+			ImGui::PopStyleVar(2);
+
+			auto& style = ImGui::GetStyle();
+			float minWidth = style.WindowMinSize.x;
+			style.WindowMinSize.x = 300.f;
+
+			ImGuiID dockspace_id = ImGui::GetID("MyDockSpace");
+			ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
+
+			style.WindowMinSize.x = minWidth;
+
+			ImGui::End();
+		}
 	}
 
 	void gui_end()
 	{
+		g_Device->EndFrame();
 
+		GPUImage* simulationOffscreen = gui_simulation_offscreen_get();
+		GPUImage* editorOffscreen = g_DebugCamera.camera.getOffscreenRT();
+
+		GPUBarrier barriers[2];
+		barriers[0] = GPUBarrier::Image(editorOffscreen, GPUImageLayout_ShaderResource, GPUImageLayout_RenderTarget);
+		if (simulationOffscreen) barriers[1] = GPUBarrier::Image(simulationOffscreen, GPUImageLayout_ShaderResource, GPUImageLayout_RenderTarget);
+		graphics_barrier(barriers, simulationOffscreen ? 2u : 1u, g_Device->GetCMD());
+	}
+
+	ImTextureID gui_image_parse(GPUImage* image)
+	{
+		return g_Device->ParseImage(image);
 	}
 
 	void gui_style_update()
@@ -533,12 +644,9 @@ namespace sv {
 	{
 		AssetType textureType = asset_type_get("Texture");
 		if (texture.get()) {
-			ImGuiDevice& device = editor_device_get();
-			if (ImGui::ImageButton(device.ParseImage(texture.get()), { 50.f, 50.f })) {
+			if (ImGui::ImageButton(g_Device->ParseImage(texture.get()), { 50.f, 50.f })) {
 				ImGui::OpenPopup("ImagePopUp");
 			}
-
-
 		}
 		else if (ImGui::Button("No texture")) gui_asset_picker_open(textureType);
 
@@ -628,12 +736,10 @@ namespace sv {
 		AssetType textureType = asset_type_get("Sprite Animation");
 
 		if (spriteAnimation.hasReference()) {
-			ImGuiDevice& device = editor_device_get();
-
 			GPUImage* img = spriteAnimation.get()->sprites.front().texture.get();
 
 			if (img) {
-				if (ImGui::ImageButton(device.ParseImage(img), { 50.f, 50.f })) {
+				if (ImGui::ImageButton(g_Device->ParseImage(img), { 50.f, 50.f })) {
 					ImGui::OpenPopup("SpriteAnimationPopUp");
 				}
 			}

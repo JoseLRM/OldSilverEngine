@@ -6,8 +6,8 @@
 
 namespace sv {
 
-	Result	panel_manager_initialize();
-	Result  panel_manager_close();
+	Result		panel_manager_initialize();
+	Result		panel_manager_close();
 	void		panel_manager_display();
 
 	void		panel_manager_add(const char* name, Panel* viewport);

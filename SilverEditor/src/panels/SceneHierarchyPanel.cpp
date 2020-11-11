@@ -4,7 +4,6 @@
 #include "panel_manager.h"
 #include "simulation/scene.h"
 #include "simulation.h"
-#include "scene_editor.h"
 
 namespace sv {
 	
@@ -15,15 +14,14 @@ namespace sv {
 	bool SceneHierarchyPanel::onDisplay()
 	{
 		m_Popup = false;
-		Scene& scene = simulation_scene_get();
 
-		for (ui32 i = 0; i < ecs_entity_count(scene); ++i) {
+		for (ui32 i = 0; i < ecs_entity_count(g_Scene); ++i) {
 
-			Entity entity = ecs_entity_get(scene, i);
+			Entity entity = ecs_entity_get(g_Scene, i);
 
-			if (ecs_entity_parent_get(scene, entity) == SV_ENTITY_NULL) {
-				showEntity(scene, entity);
-				i += ecs_entity_childs_count(scene, entity);
+			if (ecs_entity_parent_get(g_Scene, entity) == SV_ENTITY_NULL) {
+				showEntity(g_Scene, entity);
+				i += ecs_entity_childs_count(g_Scene, entity);
 			}
 
 		}
@@ -36,13 +34,13 @@ namespace sv {
 				m_Popup = true;
 
 				if (ImGui::MenuItem("Create Empty Entity")) {
-					ecs_entity_create(scene);
+					ecs_entity_create(g_Scene);
 				}
 
 				if (ImGui::MenuItem("Create Camera")) {
-					Entity entity = ecs_entity_create(scene);
-					ecs_component_add<CameraComponent>(scene, entity)->camera.setResolution(1080u, 720u);
-					ecs_component_add<NameComponent>(scene, entity, "Camera");
+					Entity entity = ecs_entity_create(g_Scene);
+					ecs_component_add<CameraComponent>(g_Scene, entity)->camera.setResolution(1080u, 720u);
+					ecs_component_add<NameComponent>(g_Scene, entity, "Camera");
 				}
 
 				ImGui::Separator();
@@ -50,15 +48,15 @@ namespace sv {
 				if (ImGui::BeginMenu("2D")) {
 
 					if (ImGui::MenuItem("Create Sprite")) {
-						Entity entity = ecs_entity_create(scene);
-						ecs_component_add<SpriteComponent>(scene, entity);
-						ecs_component_add<NameComponent>(scene, entity, "Sprite");
+						Entity entity = ecs_entity_create(g_Scene);
+						ecs_component_add<SpriteComponent>(g_Scene, entity);
+						ecs_component_add<NameComponent>(g_Scene, entity, "Sprite");
 					}
 
 					if (ImGui::MenuItem("Create Animated Sprite")) {
-						Entity entity = ecs_entity_create(scene);
-						ecs_component_add<AnimatedSpriteComponent>(scene, entity);
-						ecs_component_add<NameComponent>(scene, entity, "Animated Sprite");
+						Entity entity = ecs_entity_create(g_Scene);
+						ecs_component_add<AnimatedSpriteComponent>(g_Scene, entity);
+						ecs_component_add<NameComponent>(g_Scene, entity, "Animated Sprite");
 					}
 
 					ImGui::EndMenu();
@@ -80,8 +78,7 @@ namespace sv {
 	{
 		ImGuiTreeNodeFlags treeFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth | (ecs_entity_childs_count(ecs, entity) == 0 ? ImGuiTreeNodeFlags_Bullet : ImGuiTreeNodeFlags_AllowItemOverlap);
 
-		Entity selected = scene_editor_selected_entity_get();
-		if (selected == entity) {
+		if (g_SelectedEntity == entity) {
 			treeFlags |= ImGuiTreeNodeFlags_Selected;
 		}
 
@@ -108,12 +105,12 @@ namespace sv {
 
 				if (ImGui::Button("Duplicate")) {
 					ecs_entity_duplicate(ecs, entity);
-					scene_editor_selected_entity_set(SV_ENTITY_NULL);
+					g_SelectedEntity = SV_ENTITY_NULL;
 				}
 
 				if (ImGui::Button("Destroy")) {
 					ecs_entity_destroy(ecs, entity);
-					scene_editor_selected_entity_set(SV_ENTITY_NULL);
+					g_SelectedEntity = SV_ENTITY_NULL;
 				}
 
 				ImGui::EndPopup();
@@ -121,7 +118,7 @@ namespace sv {
 		}
 
 		if (ImGui::IsItemClicked()) {
-			scene_editor_selected_entity_set(entity);
+			g_SelectedEntity = entity;
 		}
 		if (active) {
 			if (ecs_entity_childs_count(ecs, entity) != 0) {

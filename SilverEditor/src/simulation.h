@@ -5,10 +5,17 @@
 
 namespace sv {
 
+	struct DebugCamera {
+		Camera camera;
+		vec3f position;
+		vec4f rotation;
+	};
+
 	Result simulation_initialize(const char* sceneFilePath);
 	Result simulation_close();
 	void simulation_update(float dt);
 	void simulation_render();
+	void simulation_display();
 
 	void simulation_run();		// Start/Reset the simulation
 	void simulation_continue(); // If it was paused, continue
@@ -20,6 +27,10 @@ namespace sv {
 	bool simulation_paused();	// Return true if the simulation is paused
 	bool simulation_gamemode_get();
 
-	Scene&	simulation_scene_get();
+	extern DebugCamera g_DebugCamera;
+	extern Scene g_Scene;
+	extern vec2f g_SimulationMousePos;
+	extern bool g_SimulationMouseInCamera;
+	extern Entity g_SelectedEntity;
 
 }

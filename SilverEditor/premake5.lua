@@ -17,7 +17,7 @@ project "SilverEditor"
 	filter {}
 
 	pchheader "core_editor.h"
-	pchsource "%{prj.location}/src/main/editor.cpp"
+	pchsource "%{prj.location}/src/Main.cpp"
 
 	-- INCLUDE DIRS
 

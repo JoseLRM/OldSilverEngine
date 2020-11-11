@@ -1,7 +1,6 @@
 #include "core_editor.h"
 
 #include "MaterialPanel.h"
-#include "editor.h"
 #include "gui.h"
 
 namespace sv {
