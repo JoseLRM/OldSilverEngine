@@ -4,6 +4,7 @@
 #include "external/ImGui/imgui_internal.h"
 #include "imGuiDevice/ImGuiDevice.h"
 #include "simulation.h"
+#include "platform/input.h"
 
 #include "panel_manager.h"
 #include "panels/MaterialPanel.h"
@@ -91,13 +92,15 @@ namespace sv {
 
 	GPUImage* gui_simulation_offscreen_get()
 	{
+		Scene& scene = *g_Scene.get();
+
 		GPUImage* simulationOffscreen = nullptr;
 
-		Entity cameraEntity = g_Scene.getMainCamera();
+		Entity cameraEntity = scene.getMainCamera();
 
-		if (ecs_entity_exist(g_Scene, cameraEntity)) {
+		if (ecs_entity_exist(scene, cameraEntity)) {
 
-			CameraComponent* camera = ecs_component_get<CameraComponent>(g_Scene, cameraEntity);
+			CameraComponent* camera = ecs_component_get<CameraComponent>(scene, cameraEntity);
 			if (camera) {
 				simulationOffscreen = camera->camera.getOffscreenRT();
 			}
@@ -124,6 +127,10 @@ namespace sv {
 			graphics_barrier(barriers, simulationOffscreen ? 2u : 1u, g_Device->GetCMD());
 		}
 
+		static SceneType newSceneType;
+
+		bool newScene = false;
+
 		if (ImGui::BeginMainMenuBar()) {
 
 			ImGui::PushStyleColor(ImGuiCol_PopupBg, { 0.1f, 0.1f, 0.1f, 1.f });
@@ -146,18 +153,81 @@ namespace sv {
 
 				if (ImGui::MenuItem("New Scene")) {
 
+					newSceneType = SceneType_2D;
+					newScene = true;
+
 				}
 				if (ImGui::MenuItem("Open Scene")) {
+					const char* filters[] = {
+						"Silver Scene (*.scene)",
+						"*.scene"
+					};
+					std::string filePath = file_dialog_open(1u, filters, asset_folderpath_get().c_str());
 
+					if (!filePath.empty()) {
+
+						simulation_scene_open(filePath.c_str());
+					}
 				}
-				if (ImGui::MenuItem("Save Scene")) {
-
+				if (ImGui::MenuItem("Save Scene", "Ctrl+S")) {
+					simulation_scene_save();
 				}
 				if (ImGui::MenuItem("Close Scene")) {
-
+					g_Scene.unload();
 				}
 
 				ImGui::EndMenu();
+			}
+
+			if (newScene) ImGui::OpenPopup("NewScenePopup");
+
+			if (ImGui::BeginPopup("NewScenePopup")) {
+
+				auto getSceneTypeStr = [](SceneType type) -> const char* {
+				
+					switch (type)
+					{
+					case sv::SceneType_2D:
+						return "Type 2D";
+					case sv::SceneType_3D:
+						return "Type 3D";
+					default:
+						return "Invalid";
+					}
+				
+				};
+
+				if (ImGui::BeginCombo("Scene Type", getSceneTypeStr(newSceneType))) {
+
+					for (ui32 i = 1; i <= 2; ++i) {
+
+						SceneType t = (SceneType)i;
+						if (t == newSceneType) continue;
+
+						if (ImGui::MenuItem(getSceneTypeStr(t))) {
+							newSceneType = t;
+						}
+					}
+
+					ImGui::EndCombo();
+				}
+
+				ImGui::Separator();
+
+				if (ImGui::MenuItem("Create")) {
+
+					const char* filters[] = {
+						"Silver Scene (*.scene)",
+						"*.scene"
+					};
+
+					std::string filePath = file_dialog_save(1u, filters, asset_folderpath_get().c_str());
+
+					simulation_scene_new(filePath.c_str(), newSceneType);
+
+				}
+
+				ImGui::EndPopup();
 			}
 
 			if (ImGui::BeginMenu("Panels")) {
@@ -172,6 +242,11 @@ namespace sv {
 			ImGui::PopStyleColor();
 
 			ImGui::EndMainMenuBar();
+		}
+
+		if (input_key(SV_KEY_CONTROL) && input_key_pressed('S')) {
+			Result res = simulation_scene_save();
+			SV_ASSERT(result_okay(res));
 		}
 
 		// Display Docking
@@ -813,6 +888,12 @@ namespace sv {
 		// Set new name into buffer
 		str = name;
 		return res;
+	}
+
+	bool gui_component_item_string_with_extension(std::string& str, const char* extension)
+	{
+		//TODO
+		return gui_component_item_string(str);
 	}
 
 	bool gui_component_item_mat4(XMMATRIX& matrix)

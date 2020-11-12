@@ -11,7 +11,7 @@ namespace sv {
 		vec4f rotation;
 	};
 
-	Result simulation_initialize(const char* sceneFilePath);
+	Result simulation_initialize();
 	Result simulation_close();
 	void simulation_update(float dt);
 	void simulation_render();
@@ -27,8 +27,12 @@ namespace sv {
 	bool simulation_paused();	// Return true if the simulation is paused
 	bool simulation_gamemode_get();
 
+	Result simulation_scene_save();
+	Result simulation_scene_open(const char* filePath);
+	Result simulation_scene_new(const char* filePath, SceneType type);
+
 	extern DebugCamera g_DebugCamera;
-	extern Scene g_Scene;
+	extern SceneAsset g_Scene;
 	extern vec2f g_SimulationMousePos;
 	extern bool g_SimulationMouseInCamera;
 	extern Entity g_SelectedEntity;

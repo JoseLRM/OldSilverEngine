@@ -32,7 +32,7 @@ namespace sv {
 
 	Result editor_initialize()
 	{
-		svCheck(simulation_initialize("assets/scenes/Test.scene"));
+		svCheck(simulation_initialize());
 		svCheck(panel_manager_initialize());
 
 		return Result_Success;
@@ -44,10 +44,6 @@ namespace sv {
 
 		if (input_key_pressed(SV_KEY_F11)) {
 			simulation_gamemode_set(!simulation_gamemode_get());
-		}
-		if (input_key(SV_KEY_CONTROL) && input_key_pressed('S')) {
-			Result res = g_Scene.serialize("assets/scenes/Test.scene");
-			SV_ASSERT(result_okay(res));
 		}
 
 		// Update Assets

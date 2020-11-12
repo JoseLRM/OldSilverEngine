@@ -1,6 +1,11 @@
 #pragma once
 
-#define WIN32_LEAN_AND_MEAN
+//#define NOCOLOR				(COLOR_BACKGROUND)
+//#define NONLS					(MultiByteToWideChar)
+//#define NOOPENFILE			(OPENFILENAME)
+//#define NOCTLMGR
+//#define WIN32_LEAN_AND_MEAN
+
 #define NOGDICAPMASKS
 #define NOSYSMETRICS
 #define NOMENUS
@@ -10,14 +15,10 @@
 #define OEMRESOURCE
 #define NOATOM
 #define NOCLIPBOARD
-//#define NOCOLOR		(COLOR_BACKGROUND)
-#define NOCTLMGR
 #define NODRAWTEXT
 #define NOKERNEL
-//#define NONLS			(MultiByteToWideChar)
 #define NOMEMMGR
 #define NOMETAFILE
-#define NOOPENFILE
 #define NOSCROLL
 #define NOSERVICE
 #define NOSOUND

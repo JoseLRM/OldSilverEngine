@@ -26,7 +26,8 @@ namespace sv {
 	public:
 		Scene();
 		~Scene();
-		Scene(const Scene& scene) = delete;
+
+		Scene(const Scene& other) = delete;
 
 		void create(SceneType sceneType);
 		void destroy();
@@ -74,6 +75,16 @@ namespace sv {
 		SceneRenderer	m_Renderer;
 		ScenePhysics	m_Physics;
 
+	};
+
+	// Scene Asset
+	class SceneAsset : public Asset {
+	public:
+		inline Scene* get() const noexcept { return reinterpret_cast<Scene*>(m_Ref.get()); }
+		inline Scene* operator->() const noexcept { return get(); }
+
+		Result createFile(const char* filePath, SceneType sceneType);
+		inline Result save() const noexcept { return get()->serialize((asset_folderpath_get() + getFilePath()).c_str()); }
 	};
 
 	// COMPONENTS

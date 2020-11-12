@@ -16,14 +16,22 @@
 #include "simulation/animator/animator_internal.h"
 #include "simulation/event_system/event_system_internal.h"
 #include "simulation/sprite_animator/sprite_animator_internal.h"
+#include "simulation/scene/scene_internal.h"
+
+#ifdef SV_PLATFORM_WIN
+
+#include <commdlg.h> // File Dialogs
+
+#endif
 
 namespace sv {
 
 	///////////////////////////////////////////////// PLATFORM /////////////////////////////////////////////////
 
+#ifdef SV_PLATFORM_WIN
+
 	int show_message(const wchar* title, const wchar* content, MessageStyleFlags style)
 	{
-#ifdef SV_PLATFORM_WIN
 		UINT flags = 0u;
 
 		if (style & MessageStyle_IconInfo) flags |= MB_ICONINFORMATION;
@@ -78,8 +86,67 @@ namespace sv {
 		}
 
 		return res;
-#endif
 	}
+
+	inline std::string file_dialog(ui32 filterCount, const char** filters, const char* startPath, bool open)
+	{
+		std::stringstream absFilterStream;
+
+		for (ui32 i = 0; i < filterCount; ++i) {
+			absFilterStream << filters[i * 2u];
+			absFilterStream << '\0';
+			absFilterStream << filters[i * 2u + 1u];
+			absFilterStream << '\0';
+		}
+
+		std::string absFilter = std::move(absFilterStream.str());
+
+#ifdef SV_RES_PATH
+		std::string startPathStr = SV_RES_PATH;
+		startPathStr += startPath;
+		startPath = startPathStr.c_str();
+#endif
+
+		HWND hwnd = (HWND)window_handle_get();
+
+		OPENFILENAMEA file;
+		svZeroMemory(&file, sizeof(OPENFILENAMEA));
+
+		constexpr size_t FILE_MAX_SIZE = 300u;
+		char lpstrFile[FILE_MAX_SIZE] = {};
+
+		file.lStructSize = sizeof(OPENFILENAMEA);
+		file.hwndOwner = hwnd;
+		file.lpstrFilter = absFilter.c_str();
+		file.nFilterIndex = 1u;
+		file.lpstrFile = lpstrFile;
+		file.lpstrInitialDir = startPath;
+		file.nMaxFile = FILE_MAX_SIZE;
+		file.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
+
+		BOOL result;
+
+		if (open) result = GetOpenFileNameA(&file);
+		else result = GetSaveFileNameA(&file);
+
+		if (result == TRUE) {
+			path_clear(lpstrFile);
+			return lpstrFile;
+		}
+		else return std::string();
+	}
+
+	std::string file_dialog_open(ui32 filterCount, const char** filters, const char* startPath)
+	{
+		return file_dialog(filterCount, filters, startPath, true);
+	}
+
+	std::string file_dialog_save(ui32 filterCount, const char** filters, const char* startPath)
+	{
+		return file_dialog(filterCount, filters, startPath, false);
+	}
+
+#endif
 
 	///////////////////////////////////////////////// ASSERTION /////////////////////////////////////////////////
 
@@ -408,6 +475,7 @@ namespace sv {
 			svCheck(matsys_initialize());
 			svCheck(debug_renderer_initialize());
 			svCheck(sprite_renderer_initialize());
+			svCheck(scene_initialize());
 
 			// APPLICATION
 			svCheck(g_App.initialize());
@@ -478,6 +546,8 @@ namespace sv {
 			svCheck(g_App.close());
 
 			asset_free_unused();
+
+			svCheck(scene_close());
 			svCheck(sprite_renderer_close());
 			svCheck(debug_renderer_close());
 			svCheck(matsys_close());

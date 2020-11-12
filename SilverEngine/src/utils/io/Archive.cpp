@@ -48,7 +48,9 @@ namespace sv {
 #ifdef SV_RES_PATH
 		std::string filePathStr = SV_RES_PATH;
 		filePathStr += filePath;
-		filePath = filePathStr.c_str();
+
+		if (!path_is_absolute(filePath))
+			filePath = filePathStr.c_str();
 #endif
 
 		std::ofstream stream;
@@ -103,9 +105,12 @@ namespace sv {
 		std::ifstream stream;
 
 #ifdef SV_RES_PATH
+
 		std::string filePathStr = SV_RES_PATH;
 		filePathStr += filePath;
-		filePath = filePathStr.c_str();
+
+		if (!path_is_absolute(filePath))
+			filePath = filePathStr.c_str();
 #endif
 
 		stream.open(filePath, std::ios::ate | std::ios::binary);

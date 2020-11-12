@@ -13,15 +13,17 @@ namespace sv {
 
 	bool SceneHierarchyPanel::onDisplay()
 	{
+		Scene& scene = *g_Scene.get();
+
 		m_Popup = false;
 
-		for (ui32 i = 0; i < ecs_entity_count(g_Scene); ++i) {
+		for (ui32 i = 0; i < ecs_entity_count(scene); ++i) {
 
-			Entity entity = ecs_entity_get(g_Scene, i);
+			Entity entity = ecs_entity_get(scene, i);
 
-			if (ecs_entity_parent_get(g_Scene, entity) == SV_ENTITY_NULL) {
-				showEntity(g_Scene, entity);
-				i += ecs_entity_childs_count(g_Scene, entity);
+			if (ecs_entity_parent_get(scene, entity) == SV_ENTITY_NULL) {
+				showEntity(scene, entity);
+				i += ecs_entity_childs_count(scene, entity);
 			}
 
 		}
@@ -34,13 +36,13 @@ namespace sv {
 				m_Popup = true;
 
 				if (ImGui::MenuItem("Create Empty Entity")) {
-					ecs_entity_create(g_Scene);
+					ecs_entity_create(scene);
 				}
 
 				if (ImGui::MenuItem("Create Camera")) {
-					Entity entity = ecs_entity_create(g_Scene);
-					ecs_component_add<CameraComponent>(g_Scene, entity)->camera.setResolution(1080u, 720u);
-					ecs_component_add<NameComponent>(g_Scene, entity, "Camera");
+					Entity entity = ecs_entity_create(scene);
+					ecs_component_add<CameraComponent>(scene, entity)->camera.setResolution(1080u, 720u);
+					ecs_component_add<NameComponent>(scene, entity, "Camera");
 				}
 
 				ImGui::Separator();
@@ -48,15 +50,15 @@ namespace sv {
 				if (ImGui::BeginMenu("2D")) {
 
 					if (ImGui::MenuItem("Create Sprite")) {
-						Entity entity = ecs_entity_create(g_Scene);
-						ecs_component_add<SpriteComponent>(g_Scene, entity);
-						ecs_component_add<NameComponent>(g_Scene, entity, "Sprite");
+						Entity entity = ecs_entity_create(scene);
+						ecs_component_add<SpriteComponent>(scene, entity);
+						ecs_component_add<NameComponent>(scene, entity, "Sprite");
 					}
 
 					if (ImGui::MenuItem("Create Animated Sprite")) {
-						Entity entity = ecs_entity_create(g_Scene);
-						ecs_component_add<AnimatedSpriteComponent>(g_Scene, entity);
-						ecs_component_add<NameComponent>(g_Scene, entity, "Animated Sprite");
+						Entity entity = ecs_entity_create(scene);
+						ecs_component_add<AnimatedSpriteComponent>(scene, entity);
+						ecs_component_add<NameComponent>(scene, entity, "Animated Sprite");
 					}
 
 					ImGui::EndMenu();

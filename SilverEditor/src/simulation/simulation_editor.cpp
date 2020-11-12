@@ -100,6 +100,8 @@ namespace sv {
 
 	void simulation_editor_update_action(float dt)
 	{
+		Scene& scene = *g_Scene.get();
+
 		// Transform mode
 		if (input_key_pressed('T')) g_TransformMode = TransformMode_Translation;
 		if (input_key_pressed('R')) g_TransformMode = TransformMode_Scale;
@@ -123,7 +125,7 @@ namespace sv {
 
 			else if (g_SelectedEntity != SV_ENTITY_NULL && input_mouse_dragged_get().length() != 0.f) {
 
-				Transform trans = ecs_entity_transform_get(g_Scene, g_SelectedEntity);
+				Transform trans = ecs_entity_transform_get(scene, g_SelectedEntity);
 
 				vec3f pos = trans.getWorldPosition();
 				vec3f scale = trans.getWorldScale();
@@ -171,7 +173,7 @@ namespace sv {
 					g_TransformModeData.selectedZAxis = false;
 				}
 
-				if (g_TransformModeData.selectedXAxis || g_TransformModeData.selectedYAxis || g_TransformModeData.selectedZAxis || simulation_editor_is_entity_in_point(g_Scene, g_SelectedEntity, g_ActionStartData.mousePos)) {
+				if (g_TransformModeData.selectedXAxis || g_TransformModeData.selectedYAxis || g_TransformModeData.selectedZAxis || simulation_editor_is_entity_in_point(scene, g_SelectedEntity, g_ActionStartData.mousePos)) {
 					g_ActionStart = false;
 					g_ActionMode = ActionMode_Transform;
 				}
@@ -183,7 +185,7 @@ namespace sv {
 		case sv::ActionMode_Transform:
 			// Transform
 		{
-			Transform trans = ecs_entity_transform_get(g_Scene, g_SelectedEntity);
+			Transform trans = ecs_entity_transform_get(scene, g_SelectedEntity);
 			auto& data = g_TransformModeData;
 
 			switch (g_TransformMode)
@@ -264,13 +266,13 @@ namespace sv {
 			// Select the selected entity :)
 			if (selectedEntities.size()) {
 				Entity selected = selectedEntities.front();
-				float depth = ecs_entity_transform_get(g_Scene, selected).getWorldPosition().z;
+				float depth = ecs_entity_transform_get(scene, selected).getWorldPosition().z;
 				for (ui32 i = 1u; i < selectedEntities.size(); ++i) {
 					Entity e = selectedEntities[i];
 
 					if (e == g_SelectedEntity) continue;
 
-					float eDepth = ecs_entity_transform_get(g_Scene, e).getWorldPosition().z;
+					float eDepth = ecs_entity_transform_get(scene, e).getWorldPosition().z;
 					if (eDepth > depth) {
 						selected = e;
 						depth = eDepth;
@@ -306,15 +308,16 @@ namespace sv {
 
 	std::vector<Entity> simulation_editor_entities_in_point(const vec2f& point)
 	{
+		ECS* ecs = g_Scene->getECS();
 		std::vector<Entity> selectedEntities;
 
-		ui32 entityCount = ecs_entity_count(g_Scene);
+		ui32 entityCount = ecs_entity_count(ecs);
 
 		for (ui32 i = 0; i < entityCount; ++i) {
 
-			Entity entity = ecs_entity_get(g_Scene, i);
+			Entity entity = ecs_entity_get(ecs, i);
 
-			if (simulation_editor_is_entity_in_point(g_Scene, entity, point)) {
+			if (simulation_editor_is_entity_in_point(ecs, entity, point)) {
 				selectedEntities.push_back(entity);
 			}
 		}
@@ -324,7 +327,9 @@ namespace sv {
 
 	void simulation_editor_render()
 	{
-		g_Scene.drawCamera(&g_DebugCamera.camera, g_DebugCamera.position, g_DebugCamera.rotation);
+		Scene& scene = *g_Scene.get();
+
+		scene.drawCamera(&g_DebugCamera.camera, g_DebugCamera.position, g_DebugCamera.rotation);
 
 		// DEBUG RENDERING
 
@@ -336,18 +341,18 @@ namespace sv {
 		// Draw 2D Colliders
 		if (g_DebugRendering_Collisions) {
 			
-			EntityView<RigidBody2DComponent> bodies(g_Scene);
+			EntityView<RigidBody2DComponent> bodies(scene);
 
 			debug_renderer_stroke_set(g_DebugBatch, 0.05f);
 
 			for (RigidBody2DComponent& body : bodies) {
 
 				{
-					BoxCollider2DComponent* collider = ecs_component_get<BoxCollider2DComponent>(g_Scene, body.entity);
+					BoxCollider2DComponent* collider = ecs_component_get<BoxCollider2DComponent>(scene, body.entity);
 
 					if (collider) {
 
-						Transform trans = ecs_entity_transform_get(g_Scene, body.entity);
+						Transform trans = ecs_entity_transform_get(scene, body.entity);
 						vec3f position = trans.getWorldPosition();
 						vec3f scale = trans.getWorldScale();
 						vec4f rotation = trans.getWorldRotation();
@@ -365,11 +370,11 @@ namespace sv {
 					}
 				}
 				{
-					CircleCollider2DComponent* collider = ecs_component_get<CircleCollider2DComponent>(g_Scene, body.entity);
+					CircleCollider2DComponent* collider = ecs_component_get<CircleCollider2DComponent>(scene, body.entity);
 
 					if (collider) {
 
-						Transform trans = ecs_entity_transform_get(g_Scene, body.entity);
+						Transform trans = ecs_entity_transform_get(scene, body.entity);
 						vec3f position = trans.getWorldPosition();
 						vec3f scale = trans.getWorldScale();
 						vec4f rotation = trans.getWorldRotation();
@@ -393,7 +398,7 @@ namespace sv {
 			// Draw 2D Entity
 		if (g_SelectedEntity != SV_ENTITY_NULL) {
 
-			Transform trans = ecs_entity_transform_get(g_Scene, g_SelectedEntity);
+			Transform trans = ecs_entity_transform_get(scene, g_SelectedEntity);
 
 			XMMATRIX transformMatrix = trans.getWorldMatrix();
 

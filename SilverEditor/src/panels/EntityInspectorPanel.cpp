@@ -221,12 +221,12 @@ namespace sv {
 		}
 
 		gui_component_item_next("Main Camera");
-		bool isMain = g_Scene.getMainCamera() == comp->entity;
+		bool isMain = g_Scene->getMainCamera() == comp->entity;
 		if (ImGui::Checkbox("##MainCamera", &isMain)) {
 			if (isMain) {
-				g_Scene.setMainCamera(comp->entity);
+				g_Scene->setMainCamera(comp->entity);
 			}
-			else g_Scene.setMainCamera(SV_ENTITY_NULL);
+			else g_Scene->setMainCamera(SV_ENTITY_NULL);
 		}
 
 		gui_component_item_end();
@@ -332,7 +332,7 @@ namespace sv {
 
 	bool EntityInspectorPanel::onDisplay()
 	{
-		ECS* ecs = g_Scene.getECS();
+		ECS* ecs = g_Scene->getECS();
 
 		if (g_SelectedEntity != SV_ENTITY_NULL) {
 

@@ -177,14 +177,17 @@ namespace sv {
 						AssetType_internal* type = reinterpret_cast<AssetType_internal*>(find->second.assetType);
 						SV_ASSERT(type);
 
-						std::string absFilePath = g_FolderPath + path;
-						Result res = type->recreateFn(absFilePath.c_str(), (ui8*)(find->second.pInternalAsset) + sizeof(Asset_internal));
+						if (type->recreateFn != nullptr) {
 
-						if (result_okay(res)) {
-							SV_LOG_INFO("%s asset updated: '%s'", type->name.c_str(), reinterpret_cast<Asset_internal*>(find->second.pInternalAsset)->filePath);
-						}
-						else {
-							SV_LOG_ERROR("fail to update a %s asset: '%s'", type->name.c_str(), reinterpret_cast<Asset_internal*>(find->second.pInternalAsset)->filePath);
+							std::string absFilePath = g_FolderPath + path;
+							Result res = type->recreateFn(absFilePath.c_str(), (ui8*)(find->second.pInternalAsset) + sizeof(Asset_internal));
+
+							if (result_okay(res)) {
+								SV_LOG_INFO("%s asset updated: '%s'", type->name.c_str(), reinterpret_cast<Asset_internal*>(find->second.pInternalAsset)->filePath);
+							}
+							else {
+								SV_LOG_ERROR("fail to update a %s asset: '%s'", type->name.c_str(), reinterpret_cast<Asset_internal*>(find->second.pInternalAsset)->filePath);
+							}
 						}
 					}
 				}
@@ -257,7 +260,6 @@ namespace sv {
 		SV_ASSERT(desc->extensionsCount);
 		SV_ASSERT(desc->createFn);
 		SV_ASSERT(desc->destroyFn);
-		SV_ASSERT(desc->recreateFn);
 		SV_ASSERT(desc->assetSize);
 
 		// Compute hashCode
@@ -370,6 +372,14 @@ namespace sv {
 	Result AssetRef::load(const char* filePath)
 	{
 		unload();
+
+		if (path_is_absolute(filePath)) {
+
+			filePath = strstr(filePath, g_FolderPath.c_str());
+			if (filePath == nullptr) return Result_NotFound;
+			filePath += g_FolderPath.size();
+
+		}
 
 		auto it = g_Files.find(filePath);
 

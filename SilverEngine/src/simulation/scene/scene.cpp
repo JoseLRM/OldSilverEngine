@@ -1,10 +1,52 @@
 #include "core.h"
 
-#include "simulation/scene.h"
+#include "scene_internal.h"
 
 #include "utils/allocator.h"
 
 namespace sv {
+
+	Result scene_asset_create(const char* filePath, void* pObj)
+	{
+		Scene* scene = new(pObj) Scene();
+		return scene->deserialize(filePath);
+	}
+
+	Result scene_asset_destroy(void* pObj)
+	{
+		Scene* scene = reinterpret_cast<Scene*>(pObj);
+		scene->destroy();
+		scene->~Scene();
+		return Result_Success;
+	}
+
+	Result scene_initialize()
+	{
+		// Register Scene Asset
+		{
+			const char* extensions[] = {
+				"scene"
+			};
+
+			AssetRegisterTypeDesc desc;
+			desc.name = "Scene";
+			desc.pExtensions = extensions;
+			desc.extensionsCount = 1u;
+			desc.createFn = scene_asset_create;
+			desc.destroyFn = scene_asset_destroy;
+			desc.recreateFn = nullptr;
+			desc.isUnusedFn = nullptr;
+			desc.assetSize = sizeof(Scene);
+			desc.unusedLifeTime = 5.f;
+
+			svCheck(asset_register_type(&desc, nullptr));
+		}
+	}
+
+	Result scene_close()
+	{
+		return Result_Success;
+	}
 
 	// SCENE
 
@@ -181,6 +223,14 @@ namespace sv {
 	void Scene::drawCamera(Camera* pCamera, const vec3f& position, const vec4f& directionQuat)
 	{
 		m_Renderer.drawCamera2D(m_ECS, pCamera, position, directionQuat);
+	}
+
+	Result SceneAsset::createFile(const char* filePath, SceneType sceneType)
+	{
+		Scene scene;
+		scene.create(sceneType);
+		svCheck(scene.serialize(filePath));
+		return asset_refresh();
 	}
 
 }

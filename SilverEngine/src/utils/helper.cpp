@@ -24,6 +24,34 @@ namespace sv {
 		return str;
 	}
 
+	bool path_is_absolute(const char* filePath)
+	{
+		return filePath[0] != '\0' && filePath[1] == ':';
+	}
+	void path_clear(char* path)
+	{
+		while (*path != '\0') {
+			
+			switch (*path)
+			{
+			case '//':
+				*path = '/';
+				break;
+
+			case '\\':
+				*path = '/';
+				break;
+			}
+
+			++path;
+		}
+	}
+
+	bool path_is_absolute(const wchar* filePath)
+	{
+		return filePath[0] != L'\0' && filePath[1] == L':';
+	}
+
 	size_t hash_string(const char* str)
 	{
 		// TEMPORAL

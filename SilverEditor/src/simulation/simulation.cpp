@@ -18,8 +18,7 @@ namespace sv {
 	static bool g_RunningRequest = false;
 	static bool g_StopRequest = false;
 
-	Scene g_Scene;
-	static std::string g_ScenePath;
+	SceneAsset g_Scene;
 
 	DebugCamera g_DebugCamera;
 
@@ -30,14 +29,15 @@ namespace sv {
 
 	Entity g_SelectedEntity = SV_ENTITY_NULL;
 
-	Result simulation_initialize(const char* sceneFilePath)
+	Result simulation_initialize()
 	{
-		if (g_Scene.deserialize(sceneFilePath) != Result_Success) {
-			g_Scene.destroy();
-			g_Scene.create(SceneType_2D);
+		const char* sceneFilePath = "scenes/Test.scene";
+
+		if (g_Scene.load(sceneFilePath) != Result_Success) {
+			g_Scene.createFile(sceneFilePath, SceneType_2D);
+			g_Scene.load("assets/scenes/Test.scene");
 		}
 
-		g_ScenePath = sceneFilePath;
 		engine_animations_disable();
 
 		// Create debug camera
@@ -58,12 +58,14 @@ namespace sv {
 	{
 		svCheck(simulation_editor_close());
 		g_DebugCamera.camera.clear();
-		g_Scene.destroy();
+		g_Scene.unload();
 		return Result_Success;
 	}
 
 	void simulation_update(float dt)
 	{
+		if (!ecs_entity_exist(*g_Scene.get(), g_SelectedEntity)) g_SelectedEntity = SV_ENTITY_NULL;
+
 		// Compute Mouse Position
 		if (g_Gamemode) {
 			g_SimulationMousePos = input_mouse_position_get();
@@ -96,12 +98,20 @@ namespace sv {
 
 		// RUN - STOP Simulation
 		{
+			static size_t hash = hash_string("Scene aux");
+
 			if (g_RunningRequest) {
 				g_Running = true;
 				g_Paused = false;
 				gui_style_simulation();
 
-				g_Scene.serialize(g_ScenePath.c_str());
+				g_SelectedEntity = SV_ENTITY_NULL;
+
+				ArchiveO file;
+				file << g_Scene.getHashCode();
+				g_Scene->serialize(file);
+				bin_write(hash, file);
+				
 				g_RunningRequest = false;
 			}
 
@@ -110,15 +120,31 @@ namespace sv {
 				g_Paused = false;
 				gui_style_editor();
 
-				g_Scene.deserialize(g_ScenePath.c_str());
+				g_SelectedEntity = SV_ENTITY_NULL;
+
+				ArchiveI file;
+				size_t sceneHashCode;
+				if (result_okay(bin_read(hash, file))) {
+					
+					file >> sceneHashCode;
+					g_Scene.unload();
+
+					asset_free_unused(asset_type_get("Scene"));
+
+					g_Scene.load(sceneHashCode);
+					g_Scene->deserialize(file);
+				}
+				
 				g_StopRequest = false;
 			}
 		}
 
+		Scene& scene = *g_Scene.get();
+
 		// Adjust cameras
 		{
-			if (g_Scene.getMainCamera() != SV_ENTITY_NULL) {
-				CameraComponent* camera = ecs_component_get<CameraComponent>(g_Scene, g_Scene.getMainCamera());
+			if (scene.getMainCamera() != SV_ENTITY_NULL) {
+				CameraComponent* camera = ecs_component_get<CameraComponent>(scene, scene.getMainCamera());
 				if (camera) {
 					vec2u panelSize;
 					panelSize.x = g_ScreenBounds.z;
@@ -142,7 +168,7 @@ namespace sv {
 
 		if (g_Running && !g_Paused) {
 
-			g_Scene.physicsSimulate(dt);
+			scene.physicsSimulate(dt);
 
 		}
 	}
@@ -153,12 +179,14 @@ namespace sv {
 			simulation_editor_render();
 		}
 		else {
-			g_Scene.draw(g_Gamemode);
+			g_Scene->draw(g_Gamemode);
 		}
 	}
 
 	void simulation_display()
 	{
+		Scene& scene = *g_Scene.get();
+
 		if (ImGui::Begin("Simulation")) {
 
 			ImGui::Columns(2);
@@ -256,10 +284,10 @@ namespace sv {
 			}
 			else {
 
-				Entity entityCamera = g_Scene.getMainCamera();
-				if (ecs_entity_exist(g_Scene, entityCamera)) {
+				Entity entityCamera = scene.getMainCamera();
+				if (ecs_entity_exist(scene, entityCamera)) {
 					
-					CameraComponent* camComp = ecs_component_get<CameraComponent>(g_Scene, entityCamera);
+					CameraComponent* camComp = ecs_component_get<CameraComponent>(scene, entityCamera);
 					if (camComp) {
 						ImGui::Image(gui_image_parse(camComp->camera.getOffscreenRT()), size);
 					}
@@ -337,6 +365,27 @@ namespace sv {
 	bool simulation_gamemode_get()
 	{
 		return g_Gamemode;
+	}
+
+	Result simulation_scene_save()
+	{
+		if (g_Running) return Result_Success;
+		return g_Scene.save();
+	}
+
+	Result simulation_scene_open(const char* filePath)
+	{
+		g_SelectedEntity = SV_ENTITY_NULL;
+		g_Scene.unload();
+		asset_free_unused(asset_type_get("Scene"));
+		return g_Scene.load(filePath);
+	}
+
+	Result simulation_scene_new(const char* filePath, SceneType type)
+	{
+		g_Scene.createFile(filePath, type);
+		g_SelectedEntity = SV_ENTITY_NULL;
+		return g_Scene.load(filePath);
 	}
 
 	DebugCamera& simulation_debug_camera_get()

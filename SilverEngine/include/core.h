@@ -121,6 +121,9 @@ namespace sv {
 
 	int show_message(const wchar* title, const wchar* content, MessageStyleFlags style = MessageStyle_None);
 
+	std::string file_dialog_open(ui32 filterCount, const char** filters, const char* startPath);
+	std::string file_dialog_save(ui32 filterCount, const char** filters, const char* startPath);
+
 }
 
 // Assertion
