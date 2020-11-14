@@ -109,15 +109,15 @@ namespace sv {
 		device.buffer_update			= graphics_vulkan_buffer_update;
 		device.barrier					= graphics_vulkan_barrier;
 
-		device.bufferAllocator = std::make_unique<SizedInstanceAllocator>(sizeof(Buffer_vk));
-		device.imageAllocator = std::make_unique<SizedInstanceAllocator>(sizeof(Image_vk));
-		device.samplerAllocator = std::make_unique<SizedInstanceAllocator>(sizeof(Sampler_vk));
-		device.shaderAllocator = std::make_unique<SizedInstanceAllocator>(sizeof(Shader_vk));
-		device.renderPassAllocator = std::make_unique<SizedInstanceAllocator>(sizeof(RenderPass_vk));
-		device.inputLayoutStateAllocator = std::make_unique<SizedInstanceAllocator>(sizeof(InputLayoutState_vk));
-		device.blendStateAllocator = std::make_unique<SizedInstanceAllocator>(sizeof(BlendState_vk));
-		device.depthStencilStateAllocator = std::make_unique<SizedInstanceAllocator>(sizeof(DepthStencilState_vk));
-		device.rasterizerStateAllocator = std::make_unique<SizedInstanceAllocator>(sizeof(RasterizerState_vk));
+		device.bufferAllocator = std::make_unique<SizedInstanceAllocator>(sizeof(Buffer_vk), 200u);
+		device.imageAllocator = std::make_unique<SizedInstanceAllocator>(sizeof(Image_vk), 200u);
+		device.samplerAllocator = std::make_unique<SizedInstanceAllocator>(sizeof(Sampler_vk), 200u);
+		device.shaderAllocator = std::make_unique<SizedInstanceAllocator>(sizeof(Shader_vk), 200u);
+		device.renderPassAllocator = std::make_unique<SizedInstanceAllocator>(sizeof(RenderPass_vk), 200u);
+		device.inputLayoutStateAllocator = std::make_unique<SizedInstanceAllocator>(sizeof(InputLayoutState_vk), 200u);
+		device.blendStateAllocator = std::make_unique<SizedInstanceAllocator>(sizeof(BlendState_vk), 200u);
+		device.depthStencilStateAllocator = std::make_unique<SizedInstanceAllocator>(sizeof(DepthStencilState_vk), 200u);
+		device.rasterizerStateAllocator = std::make_unique<SizedInstanceAllocator>(sizeof(RasterizerState_vk), 200u);
 		
 	}
 

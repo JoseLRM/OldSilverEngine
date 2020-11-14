@@ -236,14 +236,31 @@ namespace sv {
 		FNP_graphics_api_barrier		barrier;
 
 		std::unique_ptr<SizedInstanceAllocator> bufferAllocator;
+		std::mutex								bufferMutex;
+
 		std::unique_ptr<SizedInstanceAllocator> imageAllocator;
+		std::mutex								imageMutex;
+
 		std::unique_ptr<SizedInstanceAllocator> samplerAllocator;
+		std::mutex								samplerMutex;
+
 		std::unique_ptr<SizedInstanceAllocator> shaderAllocator;
+		std::mutex								shaderMutex;
+
 		std::unique_ptr<SizedInstanceAllocator> renderPassAllocator;
+		std::mutex								renderPassMutex;
+
 		std::unique_ptr<SizedInstanceAllocator> inputLayoutStateAllocator;
+		std::mutex								inputLayoutStateMutex;
+
 		std::unique_ptr<SizedInstanceAllocator> blendStateAllocator;
+		std::mutex								blendStateMutex;
+
 		std::unique_ptr<SizedInstanceAllocator> depthStencilStateAllocator;
+		std::mutex								depthStencilStateMutex;
+
 		std::unique_ptr<SizedInstanceAllocator> rasterizerStateAllocator;
+		std::mutex								rasterizerStateMutex;
 
 	};
 

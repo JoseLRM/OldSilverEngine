@@ -6,13 +6,13 @@
 
 namespace sv {
 
-	static InstanceAllocator<ECS_internal>	g_ECSAllocator;
+	static InstanceAllocator<ECS_internal, 5u>	g_ECSAllocator;
 
 #define parseECS() ECS_internal& ecs = *reinterpret_cast<ECS_internal*>(ecs_)
 
 	void ecs_create(ECS** ecs_)
 	{
-		ECS_internal& ecs = *g_ECSAllocator.create();
+		ECS_internal& ecs = g_ECSAllocator.create();
 
 		// Open listeners
 		ecs.listenerOnEntityCreate = event_listener_open();
@@ -77,7 +77,7 @@ namespace sv {
 		}
 
 		// Deallocate
-		g_ECSAllocator.destroy(&ecs);
+		g_ECSAllocator.destroy(ecs);
 	}
 
 	void ecs_clear(ECS* ecs_)

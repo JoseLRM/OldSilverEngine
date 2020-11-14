@@ -38,7 +38,7 @@ namespace sv {
 				type->allocator.free(asset);
 			}
 
-			SV_ASSERT(!type->allocator.has_unfreed());
+			SV_ASSERT(type->allocator.unfreed_count() == 0u);
 			type->allocator.clear();
 		}
 

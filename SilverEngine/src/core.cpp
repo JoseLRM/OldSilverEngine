@@ -446,6 +446,7 @@ namespace sv {
 
 	// Initialization
 
+
 	Result engine_initialize(const InitializationDesc* d)
 	{
 		if (d == nullptr) return Result_InvalidUsage;
@@ -547,18 +548,18 @@ namespace sv {
 
 			asset_free_unused();
 
-			svCheck(scene_close());
-			svCheck(sprite_renderer_close());
-			svCheck(debug_renderer_close());
-			svCheck(matsys_close());
-			svCheck(sprite_animator_close());
-			svCheck(animator_close());
-			svCheck(graphics_close());
-			svCheck(window_close());
-			svCheck(asset_close());
-			svCheck(event_close());
-			svCheck(task_close());
-			svCheck(logging_close());
+			if (result_fail(scene_close())) { SV_LOG_ERROR("Can't close the scene system"); }
+			if (result_fail(sprite_renderer_close())) { SV_LOG_ERROR("Can't close the sprite renderer"); }
+			if (result_fail(debug_renderer_close())) { SV_LOG_ERROR("Can't close the debug renderer"); }
+			if (result_fail(matsys_close())) { SV_LOG_ERROR("Can't close the material system"); }
+			if (result_fail(sprite_animator_close())) { SV_LOG_ERROR("Can't close the sprite animator"); }
+			if (result_fail(animator_close())) { SV_LOG_ERROR("Can't close the animator"); }
+			if (result_fail(graphics_close())) { SV_LOG_ERROR("Can't close graphics"); }
+			if (result_fail(window_close())) { SV_LOG_ERROR("Can't close the window"); }
+			if (result_fail(asset_close())) { SV_LOG_ERROR("Can't close the asset system"); }
+			if (result_fail(event_close())) { SV_LOG_ERROR("Can't close the event system"); }
+			if (result_fail(task_close())) { SV_LOG_ERROR("Can't close the task system"); }
+			logging_close();
 		}
 		SV_CATCH;
 

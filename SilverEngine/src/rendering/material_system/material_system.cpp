@@ -7,9 +7,9 @@
 
 namespace sv {
 
-	static InstanceAllocator<ShaderLibrary_internal>		g_ShaderLibraries;
-	static InstanceAllocator<Material_internal>				g_Materials;
-	static InstanceAllocator<CameraBuffer_internal>			g_CameraBuffers;
+	static InstanceAllocator<ShaderLibrary_internal, 200u>	g_ShaderLibraries;
+	static InstanceAllocator<Material_internal, 200u>		g_Materials;
+	static InstanceAllocator<CameraBuffer_internal, 200u>	g_CameraBuffers;
 
 #define ASSERT_PTR() SV_ASSERT(pInternal != nullptr)
 
@@ -33,11 +33,19 @@ namespace sv {
 	{
 		ui32 count;
 
-		count = g_ShaderLibraries.unfreed_count();
-		if (count) SV_LOG_WARNING("There are %u unfreed Shader Libraries", count);
-
 		count = g_Materials.unfreed_count();
 		if (count) SV_LOG_WARNING("There are %u unfreed Materials", count);
+
+		count = g_ShaderLibraries.unfreed_count();
+		if (count) {
+			SV_LOG_WARNING("There are %u unfreed Shader Libraries", count);
+
+			for (auto& pool : g_ShaderLibraries) {
+				for (ShaderLibrary_internal& lib : pool) {
+					SV_LOG_ERROR("TODO");
+				}
+			}
+		}
 
 		count = g_CameraBuffers.unfreed_count();
 		if (count) SV_LOG_WARNING("There are %u unfreed Camera buffers", count);
@@ -74,7 +82,7 @@ namespace sv {
 		}
 		// Allocate
 		else {
-			ShaderLibrary_internal* shaderLibrary = g_ShaderLibraries.create();
+			ShaderLibrary_internal* shaderLibrary = &g_ShaderLibraries.create();
 			*shaderLibrary = std::move(lib);
 			pInternal = shaderLibrary;
 		}
@@ -232,7 +240,7 @@ namespace sv {
 		svCheck(graphics_destroy(lib.ps));
 		svCheck(graphics_destroy(lib.gs));
 		
-		g_ShaderLibraries.destroy(&lib);
+		g_ShaderLibraries.destroy(lib);
 		pInternal = nullptr;
 
 		return Result_Success;
@@ -306,7 +314,7 @@ namespace sv {
 		Material_internal mat;
 		svCheck(matsys_material_create(mat, *reinterpret_cast<ShaderLibrary_internal**>(shaderLibrary), dynamic, false));
 
-		Material_internal* material = g_Materials.create();
+		Material_internal* material = &g_Materials.create();
 		*material = std::move(mat);
 		pInternal = material;
 
@@ -326,7 +334,7 @@ namespace sv {
 
 		Result res = matsys_material_destroy(mat);
 
-		g_Materials.destroy(&mat);
+		g_Materials.destroy(mat);
 		pInternal = nullptr;
 
 		return res;
@@ -732,7 +740,7 @@ namespace sv {
 
 		svCheck(graphics_buffer_create(&bufferDesc, &cam.buffer));
 
-		CameraBuffer_internal* camBuffer = g_CameraBuffers.create();
+		CameraBuffer_internal* camBuffer = &g_CameraBuffers.create();
 		*camBuffer = std::move(cam);
 		pInternal = camBuffer;
 
@@ -746,7 +754,7 @@ namespace sv {
 
 		svCheck(graphics_destroy(cam.buffer));
 		
-		g_CameraBuffers.destroy(&cam);
+		g_CameraBuffers.destroy(cam);
 		pInternal = nullptr;
 
 		return Result_Success;

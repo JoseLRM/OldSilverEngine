@@ -189,34 +189,110 @@ namespace sv {
 
 		if (g_Device.bufferAllocator.get()) {
 
+			std::scoped_lock lock(g_Device.bufferMutex, g_Device.imageMutex, g_Device.samplerMutex, 
+				g_Device.shaderMutex, g_Device.renderPassMutex, g_Device.inputLayoutStateMutex, g_Device.blendStateMutex,
+				g_Device.depthStencilStateMutex, g_Device.rasterizerStateMutex);
+
 			ui32 count;
 
 			count = g_Device.bufferAllocator->unfreed_count();
-			if (count) SV_LOG_WARNING("There are %u unfreed buffers", count);
+			if (count) {
+				SV_LOG_WARNING("There are %u unfreed buffers", count);
+
+				for (auto pool : *(g_Device.bufferAllocator.get())) {
+					for (void* p : pool) {
+						g_Device.destroy(reinterpret_cast<Primitive_internal*>(p));
+					}
+				}
+			}
 			
 			count = g_Device.imageAllocator->unfreed_count();
-			if (count) SV_LOG_WARNING("There are %u unfreed images", count);
+			if (count) {
+				SV_LOG_WARNING("There are %u unfreed images", count);
+				
+				for (auto pool : *(g_Device.imageAllocator.get())) {
+					for (void* p : pool) {
+						g_Device.destroy(reinterpret_cast<Primitive_internal*>(p));
+					}
+				}
+			}
 
 			count = g_Device.samplerAllocator->unfreed_count();
-			if (count) SV_LOG_WARNING("There are %u unfreed samplers", count);
+			if (count) {
+				SV_LOG_WARNING("There are %u unfreed samplers", count);
+
+				for (auto pool : *(g_Device.samplerAllocator.get())) {
+					for (void* p : pool) {
+						g_Device.destroy(reinterpret_cast<Primitive_internal*>(p));
+					}
+				}
+			}
 
 			count = g_Device.shaderAllocator->unfreed_count();
-			if (count) SV_LOG_WARNING("There are %u unfreed shaders", count);
+			if (count) {
+				SV_LOG_WARNING("There are %u unfreed shaders", count);
+
+				for (auto pool : *(g_Device.shaderAllocator.get())) {
+					for (void* p : pool) {
+						g_Device.destroy(reinterpret_cast<Primitive_internal*>(p));
+					}
+				}
+			}
 
 			count = g_Device.renderPassAllocator->unfreed_count();
-			if (count) SV_LOG_WARNING("There are %u unfreed render passes", count);
+			if (count) {
+				SV_LOG_WARNING("There are %u unfreed render passes", count);
+
+				for (auto pool : *(g_Device.renderPassAllocator.get())) {
+					for (void* p : pool) {
+						g_Device.destroy(reinterpret_cast<Primitive_internal*>(p));
+					}
+				}
+			}
 
 			count = g_Device.inputLayoutStateAllocator->unfreed_count();
-			if (count) SV_LOG_WARNING("There are %u unfreed input layout states", count);
+			if (count) {
+				SV_LOG_WARNING("There are %u unfreed input layout states", count);
+
+				for (auto pool : *(g_Device.inputLayoutStateAllocator.get())) {
+					for (void* p : pool) {
+						g_Device.destroy(reinterpret_cast<Primitive_internal*>(p));
+					}
+				}
+			}
 
 			count = g_Device.blendStateAllocator->unfreed_count();
-			if (count) SV_LOG_WARNING("There are %u unfreed blend states", count);
+			if (count) {
+				SV_LOG_WARNING("There are %u unfreed blend states", count);
+
+				for (auto pool : *(g_Device.blendStateAllocator.get())) {
+					for (void* p : pool) {
+						g_Device.destroy(reinterpret_cast<Primitive_internal*>(p));
+					}
+				}
+			}
 
 			count = g_Device.depthStencilStateAllocator->unfreed_count();
-			if (count) SV_LOG_WARNING("There are %u unfreed depth stencil states", count);
+			if (count) {
+				SV_LOG_WARNING("There are %u unfreed depth stencil states", count);
+
+				for (auto pool : *(g_Device.depthStencilStateAllocator.get())) {
+					for (void* p : pool) {
+						g_Device.destroy(reinterpret_cast<Primitive_internal*>(p));
+					}
+				}
+			}
 
 			count = g_Device.rasterizerStateAllocator->unfreed_count();
-			if (count) SV_LOG_WARNING("There are %u unfreed rasterizer states", count);
+			if (count) {
+				SV_LOG_WARNING("There are %u unfreed rasterizer states", count);
+
+				for (auto pool : *(g_Device.rasterizerStateAllocator.get())) {
+					for (void* p : pool) {
+						g_Device.destroy(reinterpret_cast<Primitive_internal*>(p));
+					}
+				}
+			}
 
 			g_Device.bufferAllocator->clear();
 			g_Device.imageAllocator->clear();
@@ -481,8 +557,10 @@ namespace sv {
 #endif
 		
 		// Allocate memory
-		*buffer = (GPUBuffer*)g_Device.bufferAllocator->alloc();
-
+		{
+			std::scoped_lock lock(g_Device.bufferMutex);
+			*buffer = (GPUBuffer*)g_Device.bufferAllocator->alloc();
+		}
 		// Create API primitive
 		svCheck(g_Device.create(GraphicsPrimitiveType_Buffer, desc, (Primitive_internal*)*buffer));
 
@@ -504,7 +582,10 @@ namespace sv {
 #endif
 
 		// Allocate memory
-		*shader = (Shader*)g_Device.shaderAllocator->alloc();
+		{
+			std::scoped_lock lock(g_Device.shaderMutex);
+			*shader = (Shader*)g_Device.shaderAllocator->alloc();
+		}
 
 		// Create API primitive
 		svCheck(g_Device.create(GraphicsPrimitiveType_Shader, desc, (Primitive_internal*)* shader));
@@ -523,7 +604,10 @@ namespace sv {
 #endif
 
 		// Allocate memory
-		*image = (GPUImage*)g_Device.imageAllocator->alloc();
+		{
+			std::scoped_lock lock(g_Device.imageMutex);
+			*image = (GPUImage*)g_Device.imageAllocator->alloc();
+		}
 
 		// Create API primitive
 		svCheck(g_Device.create(GraphicsPrimitiveType_Image, desc, (Primitive_internal*)* image));
@@ -548,7 +632,10 @@ namespace sv {
 #endif
 
 		// Allocate memory
-		*sampler = (Sampler*)g_Device.samplerAllocator->alloc();
+		{
+			std::scoped_lock lock(g_Device.samplerMutex);
+			*sampler = (Sampler*)g_Device.samplerAllocator->alloc();
+		}
 
 		// Create API primitive
 		svCheck(g_Device.create(GraphicsPrimitiveType_Sampler, desc, (Primitive_internal*)* sampler));
@@ -566,7 +653,10 @@ namespace sv {
 #endif
 
 		// Allocate memory
-		*renderPass = (RenderPass*)g_Device.renderPassAllocator->alloc();
+		{
+			std::scoped_lock lock(g_Device.renderPassMutex);
+			*renderPass = (RenderPass*)g_Device.renderPassAllocator->alloc();
+		}
 
 		// Create API primitive
 		svCheck(g_Device.create(GraphicsPrimitiveType_RenderPass, desc, (Primitive_internal*)* renderPass));
@@ -592,7 +682,10 @@ namespace sv {
 #endif
 
 		// Allocate memory
-		*inputLayoutState = (InputLayoutState*)g_Device.inputLayoutStateAllocator->alloc();
+		{
+			std::scoped_lock lock(g_Device.inputLayoutStateMutex);
+			*inputLayoutState = (InputLayoutState*)g_Device.inputLayoutStateAllocator->alloc();
+		}
 
 		// Create API primitive
 		svCheck(g_Device.create(GraphicsPrimitiveType_InputLayoutState, desc, (Primitive_internal*)* inputLayoutState));
@@ -611,7 +704,10 @@ namespace sv {
 #endif
 
 		// Allocate memory
-		*blendState = (BlendState*)g_Device.blendStateAllocator->alloc();
+		{
+			std::scoped_lock lock(g_Device.blendStateMutex);
+			*blendState = (BlendState*)g_Device.blendStateAllocator->alloc();
+		}
 
 		// Create API primitive
 		svCheck(g_Device.create(GraphicsPrimitiveType_BlendState, desc, (Primitive_internal*)* blendState));
@@ -630,7 +726,10 @@ namespace sv {
 #endif
 
 		// Allocate memory
-		*depthStencilState = (DepthStencilState*)g_Device.depthStencilStateAllocator->alloc();
+		{
+			std::scoped_lock lock(g_Device.depthStencilStateMutex);
+			*depthStencilState = (DepthStencilState*)g_Device.depthStencilStateAllocator->alloc();
+		}
 
 		// Create API primitive
 		svCheck(g_Device.create(GraphicsPrimitiveType_DepthStencilState, desc, (Primitive_internal*)* depthStencilState));
@@ -649,7 +748,10 @@ namespace sv {
 #endif
 
 		// Allocate memory
-		*rasterizerState = (RasterizerState*)g_Device.rasterizerStateAllocator->alloc();
+		{
+			std::scoped_lock lock(g_Device.rasterizerStateMutex);
+			*rasterizerState = (RasterizerState*)g_Device.rasterizerStateAllocator->alloc();
+		}
 
 		// Create API primitive
 		svCheck(g_Device.create(GraphicsPrimitiveType_DepthStencilState, desc, (Primitive_internal*)* rasterizerState));
@@ -672,32 +774,59 @@ namespace sv {
 		switch (p->type)
 		{
 		case GraphicsPrimitiveType_Image:
+		{
+			std::scoped_lock lock(g_Device.imageMutex);
 			g_Device.imageAllocator->free(p);
 			break;
+		}
 		case GraphicsPrimitiveType_Sampler:
+		{
+			std::scoped_lock lock(g_Device.samplerMutex);
 			g_Device.samplerAllocator->free(p);
 			break;
+		}
 		case GraphicsPrimitiveType_Buffer:
+		{
+			std::scoped_lock lock(g_Device.bufferMutex);
 			g_Device.bufferAllocator->free(p);
 			break;
+		}
 		case GraphicsPrimitiveType_Shader:
+		{
+			std::scoped_lock lock(g_Device.shaderMutex);
 			g_Device.shaderAllocator->free(p);
 			break;
+		}
 		case GraphicsPrimitiveType_RenderPass:
+		{
+			std::scoped_lock lock(g_Device.renderPassMutex);
 			g_Device.renderPassAllocator->free(p);
 			break;
+		}
 		case GraphicsPrimitiveType_InputLayoutState:
+		{
+			std::scoped_lock lock(g_Device.inputLayoutStateMutex);
 			g_Device.inputLayoutStateAllocator->free(p);
 			break;
+		}
 		case GraphicsPrimitiveType_BlendState:
+		{
+			std::scoped_lock lock(g_Device.blendStateMutex);
 			g_Device.blendStateAllocator->free(p);
 			break;
+		}
 		case GraphicsPrimitiveType_DepthStencilState:
+		{
+			std::scoped_lock lock(g_Device.depthStencilStateMutex);
 			g_Device.depthStencilStateAllocator->free(p);
 			break;
+		}
 		case GraphicsPrimitiveType_RasterizerState:
+		{
+			std::scoped_lock lock(g_Device.rasterizerStateMutex);
 			g_Device.rasterizerStateAllocator->free(p);
 			break;
+		}
 		}
 
 		return Result_Success;

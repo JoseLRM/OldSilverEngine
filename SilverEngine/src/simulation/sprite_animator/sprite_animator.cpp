@@ -9,7 +9,7 @@
 
 namespace sv {
 
-	IterableInstanceAllocator<AnimatedSprite_internal>	g_AnimatedSprites;
+	InstanceAllocator<AnimatedSprite_internal, 100u>	g_AnimatedSprites;
 	std::mutex											g_AnimatedSpritesMutex;
 
 	// Main Functions
@@ -339,7 +339,7 @@ namespace sv {
 	{
 		if (pInternal == nullptr) {
 			std::scoped_lock lock(g_AnimatedSpritesMutex);
-			pInternal = g_AnimatedSprites.create();
+			pInternal = &g_AnimatedSprites.create();
 		}
 	}
 
@@ -347,7 +347,7 @@ namespace sv {
 	{
 		if (pInternal) {
 			std::scoped_lock lock(g_AnimatedSpritesMutex);
-			g_AnimatedSprites.destroy(reinterpret_cast<AnimatedSprite_internal*>(pInternal));
+			g_AnimatedSprites.destroy(*reinterpret_cast<AnimatedSprite_internal*>(pInternal));
 			pInternal = nullptr;
 		}
 	}

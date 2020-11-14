@@ -7,8 +7,10 @@ namespace sv {
 
 #define PARSE_LISTENER() sv::EventListener_internal& listener = *reinterpret_cast<sv::EventListener_internal*>(listener_);
 
-	static InstanceAllocator<EventListener_internal> g_Listeners;
-	static InstanceAllocator<EventRegister_internal> g_Registers;
+	static InstanceAllocator<EventListener_internal, 200u> g_Listeners;
+	static InstanceAllocator<EventRegister_internal, 200u> g_Registers;
+
+	static bool g_SystemClosed = false;
 
     // MAIN FUNCTIONS
 
@@ -26,6 +28,8 @@ namespace sv {
 		if (unfreed) SV_LOG_ERROR("There are %u unfreed event listeners", unfreed);
 
 		g_Listeners.clear();
+
+		g_SystemClosed = true;
         return Result_Success;
     }
 
@@ -33,8 +37,7 @@ namespace sv {
 
     EventRegister::~EventRegister()
     {
-		if (!g_Registers.empty())
-			unbind();
+		unbind();
     }
 
     EventRegister::EventRegister(EventRegister&& other) noexcept
@@ -57,7 +60,7 @@ namespace sv {
 
 		if (listener_ != nullptr)  {
 			PARSE_LISTENER();
-			EventRegister_internal& reg = *g_Registers.create();
+			EventRegister_internal& reg = g_Registers.create();
 			reg.listener = &listener;
 			std::scoped_lock<std::shared_mutex> lock(listener.mutex);
 			listener.functions.push_back({ fn, &reg });
@@ -67,7 +70,7 @@ namespace sv {
 
     void EventRegister::unbind()
     {
-		if (pInternal == nullptr) return;
+		if (pInternal == nullptr || g_SystemClosed) return;
         
 		EventRegister_internal& reg = *reinterpret_cast<EventRegister_internal*>(pInternal);
 		pInternal = nullptr;
@@ -94,7 +97,7 @@ namespace sv {
 			}
 		}
 
-		g_Registers.destroy(&reg);
+		g_Registers.destroy(reg);
     }
 
 	EventListener* EventRegister::getEventListener() const noexcept
@@ -189,7 +192,7 @@ namespace sv {
 
 	EventListener* event_listener_open()
     {
-        return (EventListener*)g_Listeners.create();
+        return (EventListener*)&g_Listeners.create();
     }
 
 	void event_listener_close(EventListener* listener_)
@@ -214,7 +217,7 @@ namespace sv {
 			}
 		}
 
-		g_Listeners.destroy(&listener);
+		g_Listeners.destroy(listener);
 	}
 
     void event_dispatch(EventListener* listener_, Event* event)

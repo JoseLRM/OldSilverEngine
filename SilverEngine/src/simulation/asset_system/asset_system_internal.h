@@ -33,7 +33,7 @@ namespace sv {
 		SizedInstanceAllocator			allocator;
 		std::vector<Asset_internal*>	activeAssets;
 
-		AssetType_internal(size_t assetSize) : allocator(assetSize) {}
+		AssetType_internal(size_t assetSize) : allocator(assetSize, 200u) {}
 
 	};
 

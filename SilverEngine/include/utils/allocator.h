@@ -4,62 +4,414 @@
 
 namespace sv {
 
-	class SizedInstanceAllocator {
+	// SIZED INSTANCE ALLOCATOR
 
-		struct Pool {
-			ui8* data = nullptr;
-			size_t size = 0u;
-			void* freeList = nullptr;
-		};
+	struct SizedInstanceAllocatorPoolIterator {
 
-		std::mutex m_Mutex;
-		std::vector<Pool> m_Pools;
-		size_t m_PoolSize;
+		using iterator = SizedInstanceAllocatorPoolIterator;
+
+		ui8* ptr;
+		ui8* nextFreeInstance;
 		const size_t INSTANCE_SIZE;
 
+		inline void* operator*() const noexcept { return ptr; }
+		
+		inline iterator& operator++() noexcept { next(); return *this; }
+		inline iterator operator++(int) noexcept { iterator temp = *this; next(); return temp; }
+		inline iterator& operator+=(i64 n) noexcept { while (n-- > 0) next(); return *this; }
+		
+		inline bool operator==(const iterator& other) const noexcept { return ptr == other.ptr; }
+		inline bool operator!=(const iterator& other) const noexcept { return ptr != other.ptr; }
+		inline bool operator<(const iterator& other) const noexcept { return ptr < other.ptr; }
+		inline bool operator<=(const iterator& other) const noexcept { return ptr <= other.ptr; }
+		inline bool operator>(const iterator& other) const noexcept { return ptr > other.ptr; }
+		inline bool operator>=(const iterator& other) const noexcept { return ptr >= other.ptr; }
+
+		inline iterator(ui8* ptr, ui8* nextFreeInstance, size_t instanceSize)
+			: ptr(ptr), nextFreeInstance(nextFreeInstance), INSTANCE_SIZE(instanceSize)
+		{
+			checkInvalidInstances();
+		}
+
+	private:
+		inline void checkInvalidInstances()
+		{
+			while (ptr == nextFreeInstance) {
+				ui32* nextCount = reinterpret_cast<ui32*>(nextFreeInstance);
+				if (*nextCount == ui32_max) {
+					ptr += INSTANCE_SIZE;
+					break;
+				}
+				nextFreeInstance += *nextCount * INSTANCE_SIZE;
+				ptr += INSTANCE_SIZE;
+			}
+		}
+
+		inline void next()
+		{
+			ptr += INSTANCE_SIZE;
+			checkInvalidInstances();
+		}
+
+	};
+
+	struct SizedInstanceAllocatorPool {
+
+		using iterator = SizedInstanceAllocatorPoolIterator;
+
+		ui8* instances = nullptr;
+		ui32 size = 0u;
+		ui32 beginCount = ui32_max;
+		const size_t INSTANCE_SIZE;
+
+		SizedInstanceAllocatorPool(size_t instanceSize);
+		SizedInstanceAllocatorPool(const SizedInstanceAllocatorPool& other);
+		SizedInstanceAllocatorPool& operator=(const SizedInstanceAllocatorPool& other);
+
+		ui32 unfreed_count() const noexcept;
+
+		iterator begin() const;
+		iterator end() const;
+
+	};
+
+	class SizedInstanceAllocator {
 	public:
-		SizedInstanceAllocator(size_t instanceSize, size_t poolSize = 100u);
+
+		using Pool = SizedInstanceAllocatorPool;
+		using PoolIterator = SizedInstanceAllocatorPoolIterator;
+
+		SizedInstanceAllocator(size_t instanceSize, size_t poolSize);
 		~SizedInstanceAllocator();
 
 		void* alloc();
-		void free(void* ptr);
+		void free(void* ptr_);
 		void clear();
 
-		bool has_unfreed() noexcept;
-		ui32 unfreed_count() noexcept;
-		bool empty() const noexcept;
+		inline ui32 pool_count() { ui32(m_Pools.size()); }
+		inline SizedInstanceAllocatorPool& operator[](size_t i) noexcept { return m_Pools[i]; };
+		inline const SizedInstanceAllocatorPool& operator[](size_t i) const noexcept { return m_Pools[i]; };
+
+		ui32 unfreed_count() const noexcept;
+
+		inline auto begin()
+		{
+			return m_Pools.begin();
+		}
+		inline auto end()
+		{
+			return m_Pools.end();
+		}
+
+	private:
+		ui32* findLastNextCount(void* ptr, Pool& pool);
+
+	private:
+		std::vector<Pool> m_Pools;
+		const size_t INSTANCE_SIZE;
+		const size_t POOL_SIZE;
+
+	};
+
+	// TEMPLATED INSTANCE ALLOCATOR
+
+	template<typename T>
+	struct InstanceAllocatorPoolIterator {
+
+		using iterator = InstanceAllocatorPoolIterator<T>;
+
+		T* ptr;
+		ui8* nextFreeInstance;
+
+		T& operator*() const noexcept { return *ptr; }
+		T* operator->() const noexcept { return ptr; }
+
+		iterator& operator++() noexcept { next(); return *this; }
+		iterator operator++(int) noexcept { iterator temp = *this; next(); return temp; }
+		iterator& operator+=(i64 n) noexcept { while (n-- > 0) next(); return *this; }
+
+		bool operator==(const iterator& other) const noexcept { return ptr == other.ptr; }
+		bool operator!=(const iterator& other) const noexcept { return ptr != other.ptr; }
+		bool operator<(const iterator& other) const noexcept { return ptr < other.ptr; }
+		bool operator<=(const iterator& other) const noexcept { return ptr <= other.ptr; }
+		bool operator>(const iterator& other) const noexcept { return ptr > other.ptr; }
+		bool operator>=(const iterator& other) const noexcept { return ptr >= other.ptr; }
+
+		iterator(T* ptr, ui8* nextFreeInstance)
+			: ptr(ptr), nextFreeInstance(nextFreeInstance)
+		{
+			checkInvalidInstances();
+		}
+
+	private:
+		inline void checkInvalidInstances()
+		{
+			while (reinterpret_cast<ui8*>(ptr) == nextFreeInstance) {
+				ui32* nextCount = reinterpret_cast<ui32*>(nextFreeInstance);
+				if (*nextCount == ui32_max) {
+					++ptr;
+					break;
+				}
+				nextFreeInstance += *nextCount * sizeof(T);
+				++ptr;
+			}
+		}
+
+		inline void next()
+		{
+			++ptr;
+			checkInvalidInstances();
+		}
 
 	};
 
 	template<typename T>
-	class InstanceAllocator {
+	struct InstanceAllocatorPool {
 
-		SizedInstanceAllocator m_Allocator;
+		using iterator = InstanceAllocatorPoolIterator<T>;
 
-	public:
-		InstanceAllocator(size_t poolSize = 100u) : m_Allocator(sizeof(T), poolSize) {}
-		~InstanceAllocator() = default;
+		T* instances = nullptr;
+		ui32 size = 0u;
+		ui32 beginCount = ui32_max;
 
-		template<typename... Args>
-		T* create(Args&& ...args)
+		InstanceAllocatorPool() {}
+		InstanceAllocatorPool(const InstanceAllocatorPool& other)
 		{
-			T* instance = (T*)m_Allocator.alloc();
-			new(instance) T(std::forward<Args>(args)...);
-			return instance;
+			instances = other.instances;
+			size = other.size;
+			beginCount = other.beginCount;
+		}
+		InstanceAllocatorPool& operator=(const InstanceAllocatorPool& other)
+		{
+			instances = other.instances;
+			size = other.size;
+			beginCount = other.beginCount;
+			return *this;
 		}
 
-		void destroy(T* instance)
+		ui32 unfreed_count() const noexcept
 		{
-			instance->~T();
-			m_Allocator.free(instance);
+			ui32 unfreed = 0u;
+			for (auto it = begin(); it != end(); ++it) {
+				++unfreed;
+			}
+			return unfreed;
 		}
 
-		inline void clear() { m_Allocator.clear(); }
-		inline bool has_unfreed() noexcept { return m_Allocator.has_unfreed(); }
-		inline ui32 unfreed_count() noexcept { return m_Allocator.unfreed_count(); }
-		inline bool empty() const noexcept { return m_Allocator.empty(); }
+		iterator begin() const
+		{
+			if (beginCount == ui32_max) return iterator(instances, (ui8*)& beginCount);
+			return iterator(instances, reinterpret_cast<ui8*>(instances + beginCount));
+		}
+
+		iterator end() const
+		{
+			return iterator(instances + size, nullptr);
+		}
 
 	};
+
+	template<typename T, size_t POOL_SIZE>
+	class InstanceAllocator {
+	public:
+
+		using Pool = InstanceAllocatorPool<T>;
+		using PoolIterator = InstanceAllocatorPoolIterator<T>;
+
+		InstanceAllocator()
+		{
+			static_assert(sizeof(T) >= sizeof(ui32), "The size must be greater than 4u");
+		}
+		~InstanceAllocator()
+		{
+			clear();
+		}
+
+		template<typename... Args>
+		T& create(Args&& ... args)
+		{
+			// Validate back pool
+			if (m_Pools.empty()) m_Pools.emplace_back();
+			else if (m_Pools.back().beginCount == ui32_max && m_Pools.back().size == POOL_SIZE) {
+
+				ui32 poolIndex;
+
+				// Find available freelist
+				for (ui32 i = 0u; i < m_Pools.size(); ++i) {
+					if (m_Pools[i].beginCount != ui32_max) {
+						poolIndex = i;
+						goto found;
+					}
+				}
+
+				// Find available size
+				for (ui32 i = 0u; i < m_Pools.size(); ++i) {
+					if (m_Pools[i].size < POOL_SIZE) {
+						poolIndex = i;
+						goto found;
+					}
+				}
+
+				// Emplace new pool
+				poolIndex = ui32(m_Pools.size());
+				m_Pools.emplace_back();
+
+			found:
+				Pool aux = m_Pools[poolIndex];
+				m_Pools[poolIndex] = m_Pools.back();
+				m_Pools.back() = aux;
+
+			}
+
+			Pool& pool = m_Pools.back();
+
+			// Allocate
+			if (pool.instances == nullptr) {
+				pool.instances = (T*) operator new(POOL_SIZE * sizeof(T));
+			}
+
+			// Get ptr
+			T* ptr;
+
+			if (pool.beginCount != ui32_max) {
+				ptr = pool.instances + pool.beginCount;
+
+				// Change nextCount
+				ui32* freeInstance = reinterpret_cast<ui32*>(ptr);
+
+				if (*freeInstance == ui32_max)
+					pool.beginCount = ui32_max;
+				else
+					pool.beginCount += *freeInstance;
+			}
+			else {
+				ptr = pool.instances + pool.size;
+				++pool.size;
+			}
+
+			return *new(ptr) T(std::forward<Args>(args)...);
+		}
+
+		void destroy(T& obj)
+		{
+			T* ptr = &obj;
+
+			// Find pool
+			Pool* pool = nullptr;
+
+			for (Pool& p : m_Pools) {
+				if (p.instances <= ptr && p.instances + p.size > ptr) {
+					pool = &p;
+					break;
+				}
+			}
+
+			if (pool == nullptr || pool->size == 0u) {
+				return;
+			}
+
+			obj.~T();
+
+			// Remove from list
+			if (ptr == pool->instances + size_t(pool->size - 1u)) {
+				--pool->size;
+			}
+			else {
+				// Update next count
+				ui32* nextCount = findLastNextCount(ptr, *pool);
+
+				ui32 distance;
+
+				if (nextCount == &pool->beginCount) {
+					distance = ui32(ptr - pool->instances);
+				}
+				else {
+					if ((void*)nextCount >= ptr)
+						system("PAUSE");
+
+					distance = ui32(ptr - reinterpret_cast<T*>(nextCount));
+				}
+
+				ui32* freeInstance = reinterpret_cast<ui32*>(ptr);
+
+				if (*nextCount == ui32_max)
+					* freeInstance = ui32_max;
+				else
+					*freeInstance = *nextCount - distance;
+
+				*nextCount = distance;
+			}
+		}
+
+		void clear()
+		{
+			for (Pool& pool : m_Pools) {
+				for (T& t : pool) {
+					t.~T();
+				}
+				operator delete(pool.instances);
+			}
+			m_Pools.clear();
+		}
+
+		inline ui32 pool_count() { ui32(m_Pools.size()); }
+		inline Pool& operator[](size_t i) noexcept { return m_Pools[i]; };
+		inline const Pool& operator[](size_t i) const noexcept { return m_Pools[i]; };
+
+		ui32 unfreed_count() const noexcept
+		{
+			ui32 unfreed = 0u;
+			for (auto it = m_Pools.cbegin(); it != m_Pools.cend(); ++it) {
+				unfreed += it->unfreed_count();
+			}
+			return unfreed;
+		}
+
+		inline auto begin()
+		{
+			return m_Pools.begin();
+		}
+		inline auto end()
+		{
+			return m_Pools.end();
+		}
+
+	private:
+		ui32* findLastNextCount(void* ptr, Pool& pool)
+		{
+			ui32* nextCount;
+
+			if (pool.beginCount == ui32_max) return &pool.beginCount;
+
+			T* next = pool.instances + pool.beginCount;
+			T* end = pool.instances + pool.size;
+
+			if (next >= ptr) nextCount = &pool.beginCount;
+			else {
+				T* last = next;
+
+				while (next != end) {
+
+					ui32 nextCount = *reinterpret_cast<ui32*>(last);
+					if (nextCount == ui32_max) break;
+
+					next += nextCount;
+					if (next > ptr) break;
+
+					last = next;
+				}
+				nextCount = reinterpret_cast<ui32*>(last);
+			}
+
+			return nextCount;
+		}
+
+	private:
+		std::vector<Pool> m_Pools;
+
+	};
+
+	// FRAME LIST
 
 	template<typename T>
 	class FrameList {
@@ -268,265 +620,6 @@ namespace sv {
 		const_iterator cend() const noexcept
 		{
 			return const_iterator(m_Data + m_Size);
-		}
-
-	};
-
-	template<typename T>
-	class IterableInstanceAllocator {
-	public:
-
-		struct Instance {
-			T obj;
-			ui32 nextCount = 0u;
-		};
-
-		const ui32 POOL_SIZE;
-
-		struct Pool {
-			Instance* instances = nullptr;
-			Instance* freeList = nullptr;
-			ui32 size = 0u;
-			ui32 beginCount = 0u;
-
-			struct iterator {
-				Instance* ptr;
-
-				T* operator->() const noexcept { return reinterpret_cast<T*>(ptr); }
-				T& operator*() const noexcept { return *reinterpret_cast<T*>(ptr); }
-
-				iterator& operator++() noexcept { next(); return *this; }
-				iterator operator++(int) noexcept { iterator temp = *this; next(); return temp; }
-				iterator& operator+=(i64 n) noexcept { while(n-- > 0) next(); return *this; }
-
-				bool operator==(const iterator& other) const noexcept { return ptr == other.ptr; }
-				bool operator!=(const iterator& other) const noexcept { return ptr != other.ptr; }
-				bool operator<(const iterator& other) const noexcept { return ptr < other.ptr; }
-				bool operator<=(const iterator& other) const noexcept { return ptr <= other.ptr; }
-				bool operator>(const iterator& other) const noexcept { return ptr > other.ptr; }
-				bool operator>=(const iterator& other) const noexcept { return ptr >= other.ptr; }
-
-				iterator(Instance* ptr) : ptr(ptr) {}
-
-			private:
-				void next()
-				{
-					SV_ASSERT(ptr->nextCount != 0u);
-					ptr += ptr->nextCount;
-				}
-
-			};
-
-			iterator begin()
-			{
-				SV_ASSERT(instances);
-				return iterator(instances + beginCount);
-			}
-
-			iterator end()
-			{
-				SV_ASSERT(instances);
-				return iterator(instances + size);
-			}
-
-		};
-
-	public:
-		IterableInstanceAllocator(ui32 poolSize = 100u) : POOL_SIZE(poolSize)
-		{
-			static_assert(sizeof(T) >= sizeof(void*), "The size of this object must be greater or equals than sizeof(void*)");
-		}
-
-		T* create()
-		{
-			// Make sure that m_Pools.back() has a valid Pool
-			{
-				if (m_Pools.empty()) m_Pools.emplace_back();
-
-				if (m_Pools.back().freeList == nullptr && m_Pools.back().size == POOL_SIZE) {
-
-					ui32 nextPoolIndex = ui32_max;
-
-					// Find pool with available freelist
-					for (ui32 i = 0; i < m_Pools.size(); ++i) {
-						if (m_Pools[i].freeList) {
-							nextPoolIndex = i;
-							goto swap;
-						}
-					}
-
-					// Find pool with available size
-					for (ui32 i = 0; i < m_Pools.size(); ++i) {
-						if (m_Pools[i].size < POOL_SIZE) {
-							nextPoolIndex = i;
-							goto swap;
-						}
-					}
-
-				swap:
-					// if not found create new one
-					if (nextPoolIndex == ui32_max) {
-						m_Pools.emplace_back();
-					}
-					// else swap pools
-					else {
-						Pool aux = m_Pools.back();
-						m_Pools.back() = m_Pools[nextPoolIndex];
-						m_Pools[nextPoolIndex] = aux;
-					}
-				}
-			}
-
-			Pool& pool = m_Pools.back();
-			Instance* res = nullptr;
-			bool resized = false;
-
-			if (pool.freeList) {
-				res = pool.freeList;
-				pool.freeList = *reinterpret_cast<Instance**>(res);
-			}
-			else if (pool.instances == nullptr) {
-				pool.instances = (Instance*)operator new(POOL_SIZE * sizeof(Instance));
-				pool.size = 0u;
-				pool.beginCount = 0u;
-				pool.freeList = nullptr;
-			}
-
-			if (res == nullptr) {
-				resized = true;
-				res = pool.instances + pool.size++;
-			}
-
-			new(res) Instance();
-
-			// Change next count
-			if (!resized) {
-				if (res == pool.instances) {
-					res->nextCount = pool.beginCount;
-					pool.beginCount = 0u;
-				}
-				else {
-
-					Instance* it = res - 1u;
-					Instance* begin = pool.instances - 1u;
-
-					while (it != begin) {
-
-						if (it->nextCount != 0u) {
-							break;
-						}
-
-						--it;
-					}
-
-					ui32& otherCount = (begin == it) ? pool.beginCount : it->nextCount;
-					ui32 distance = ui32(res - it);
-					SV_ASSERT(otherCount >= distance);
-
-					res->nextCount = otherCount - distance;
-					otherCount = distance;
-				}
-			}
-			else res->nextCount = 1u;
-
-			return &res->obj;
-		}
-
-		void destroy(T* obj)
-		{
-			if (m_Pools.empty()) return;
-
-			obj->~T();
-			Instance* ptr = reinterpret_cast<Instance*>(obj);
-
-			Pool* pPool = findPool(ptr);
-
-			if (pPool == nullptr) return;
-
-			// Change the next count
-			if (ptr->nextCount != 0u) {
-
-				SV_ASSERT(ptr->nextCount != 0u);
-
-				if (pPool->instances == ptr) {
-					pPool->beginCount = ptr->nextCount;
-				}
-				else {
-
-					Instance* begin = pPool->instances - 1u;
-					Instance* it = ptr - 1u;
-
-					// Find active animation
-					while (it != begin) {
-
-						if (it->nextCount != 0u && it->nextCount != ui32_max) {
-							break;
-						}
-
-						--it;
-					}
-
-					if (begin == it) {
-						pPool->beginCount += ptr->nextCount;
-					}
-					else it->nextCount += ptr->nextCount;
-				}
-
-				ptr->nextCount = 0u;
-			}
-
-			// Remove from pool
-			memcpy(ptr, &pPool->freeList, sizeof(void*));
-			pPool->freeList = ptr;
-
-			// Destroy empty pool
-			if (pPool->beginCount == pPool->size) {
-
-				// free memory
-				SV_ASSERT(pPool->instances);
-				operator delete[](pPool->instances);
-
-				for (auto it = m_Pools.begin(); it != m_Pools.end(); ++it) {
-					if (&(*it) == pPool) {
-						m_Pools.erase(it);
-						break;
-					}
-				}
-			}
-		}
-
-		void clear()
-		{
-
-		}
-
-	private:
-		Pool* findPool(Instance* ptr)
-		{
-			Pool* pPool = nullptr;
-
-			for (auto& pool : m_Pools) {
-				if (pool.instances <= ptr && pool.instances + pool.size > ptr) {
-					pPool = &pool;
-					break;
-				}
-			}
-
-			return pPool;
-		}
-
-	private:
-		std::vector<Pool> m_Pools;
-
-	public:
-		inline auto begin() 
-		{
-			return m_Pools.begin();
-		}
-
-		inline auto end()
-		{
-			return m_Pools.end();
 		}
 
 	};
