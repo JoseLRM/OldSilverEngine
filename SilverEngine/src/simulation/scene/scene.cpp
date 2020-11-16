@@ -41,6 +41,19 @@ namespace sv {
 
 			svCheck(asset_register_type(&desc, nullptr));
 		}
+
+		// Register Component Names
+		{
+			ecs_component_register<NameComponent>("Name");
+			ecs_component_register<CameraComponent>("Camera");
+			ecs_component_register<SpriteComponent>("Sprite");
+			ecs_component_register<AnimatedSpriteComponent>("Animated Sprite");
+			ecs_component_register<RigidBody2DComponent>("RigidBody 2D");
+			ecs_component_register<BoxCollider2DComponent>("BoxCollider 2D");
+			ecs_component_register<CircleCollider2DComponent>("CircleCollider 2D");
+		}
+
+		return Result_Success;
 	}
 
 	Result scene_close()
@@ -65,7 +78,7 @@ namespace sv {
 		// Initialize Entity Component System
 		ecs_create(&m_ECS);
 
-		ecs_register<NameComponent>(m_ECS, "Name",
+		ecs_register<NameComponent>(m_ECS,
 			[](BaseComponent* comp, ArchiveO& archive)
 		{
 			NameComponent* name = reinterpret_cast<NameComponent*>(comp);

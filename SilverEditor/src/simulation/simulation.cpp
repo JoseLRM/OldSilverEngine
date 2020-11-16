@@ -101,15 +101,14 @@ namespace sv {
 			static size_t hash = hash_string("Scene aux");
 
 			if (g_RunningRequest) {
+				simulation_scene_save();
+
 				g_Running = true;
 				g_Paused = false;
 				gui_style_simulation();
 
-				g_SelectedEntity = SV_ENTITY_NULL;
-
 				ArchiveO file;
 				file << g_Scene.getHashCode();
-				g_Scene->serialize(file);
 				bin_write(hash, file);
 				
 				g_RunningRequest = false;
@@ -132,7 +131,6 @@ namespace sv {
 					asset_free_unused(asset_type_get("Scene"));
 
 					g_Scene.load(sceneHashCode);
-					g_Scene->deserialize(file);
 				}
 				
 				g_StopRequest = false;

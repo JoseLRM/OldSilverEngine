@@ -148,7 +148,7 @@ namespace sv {
 	ComponentPool& ecs_allocator_component_create_pool(ECS* ecs, ComponentAllocator& a)
 	{
 		ComponentPool& pool = a.pools.emplace_back();
-		ecs_allocator_component_pool_alloc(pool, ecs_register_sizeof(ecs, a.compID));
+		ecs_allocator_component_pool_alloc(pool, ecs_component_size(a.compID));
 		return pool;
 	}
 
@@ -227,7 +227,7 @@ namespace sv {
 
 	ui32 ecs_allocator_component_count(ECS* ecs, const ComponentAllocator& a)
 	{
-		ui32 compSize = ecs_register_sizeof(ecs, a.compID);
+		ui32 compSize = ecs_component_size(a.compID);
 		ui32 res = 0u;
 		for (const ComponentPool& pool : a.pools) {
 			res += ecs_allocator_component_pool_count(pool);
@@ -237,7 +237,7 @@ namespace sv {
 
 	ui32 ecs_allocator_component_empty(ECS* ecs, const ComponentAllocator& a)
 	{
-		ui32 compSize = ecs_register_sizeof(ecs, a.compID);
+		ui32 compSize = ecs_component_size(a.compID);
 		for (const ComponentPool& pool : a.pools) {
 			if (ecs_allocator_component_pool_count(pool) > 0u) return false;
 		}

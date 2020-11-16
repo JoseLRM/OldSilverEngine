@@ -365,10 +365,13 @@ namespace sv {
 
 			if (ImGui::BeginCombo("##Add", "Add Component")) {
 
-				for (ui16 ID = 0; ID < ecs_register_count(ecs); ++ID) {
-					const char* NAME = ecs_register_nameof(ecs, ID);
+				for (ui16 ID = 0; ID < ecs_component_register_count(); ++ID) {
+
+					if (!ecs_register_exist(ecs, ID)) continue;
+
+					const char* NAME = ecs_component_name(ID);
 					if (ecs_component_get_by_id(ecs, g_SelectedEntity, ID) != nullptr) continue;
-					size_t SIZE = ecs_register_sizeof(ecs, ID);
+					size_t SIZE = ecs_component_size(ID);
 					if (ImGui::Button(NAME)) {
 						ecs_component_add_by_id(ecs, g_SelectedEntity, ID);
 					}
@@ -380,8 +383,8 @@ namespace sv {
 
 				for (ui32 i = 0; i < ecs_entity_component_count(ecs, g_SelectedEntity); ++i) {
 					CompID ID = ecs_component_get_by_index(ecs, g_SelectedEntity, i).first;
-					const char* NAME = ecs_register_nameof(ecs, ID);
-					size_t SIZE = ecs_register_sizeof(ecs, ID);
+					const char* NAME = ecs_component_name(ID);
+					size_t SIZE = ecs_component_size(ID);
 					if (ImGui::Button(NAME)) {
 						ecs_component_remove_by_id(ecs, g_SelectedEntity, ID);
 						break;

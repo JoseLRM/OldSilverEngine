@@ -21,9 +21,6 @@ namespace sv {
 
 		// RIGID BODY 2D COMPONENT
 		{
-			desc.name = "RigidBody 2D";
-			desc.size = sizeof(RigidBody2DComponent);
-
 			desc.createFn = [this](BaseComponent* comp_)
 			{
 				new(comp_) RigidBody2DComponent();
@@ -88,9 +85,10 @@ namespace sv {
 				comp->pInternal = world.CreateBody(&def);
 			};
 
-			ecs_register(ecs, RigidBody2DComponent::ID, &desc);
+			desc.compID = RigidBody2DComponent::ID;
+			ecs_register(ecs, &desc);
 
-			ecs_register<BoxCollider2DComponent>(ecs, "BoxCollider 2D", 
+			ecs_register<BoxCollider2DComponent>(ecs,
 				[](BaseComponent* comp_, ArchiveO& archive) 
 			{
 				BoxCollider2DComponent* comp = reinterpret_cast<BoxCollider2DComponent*>(comp_);
@@ -102,7 +100,7 @@ namespace sv {
 				archive >> comp->density >> comp->friction >> comp->restitution >> comp->size >> comp->offset;
 			});
 
-			ecs_register<CircleCollider2DComponent>(ecs, "CircleCollider 2D",
+			ecs_register<CircleCollider2DComponent>(ecs,
 				[](BaseComponent* comp_, ArchiveO& archive)
 			{
 				CircleCollider2DComponent* comp = reinterpret_cast<CircleCollider2DComponent*>(comp_);

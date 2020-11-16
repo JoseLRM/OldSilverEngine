@@ -7,16 +7,21 @@ namespace sv {
 	constexpr ui32 ECS_COMPONENT_POOL_SIZE = 200u;
 	constexpr ui32 ECS_ENTITY_ALLOC_SIZE = 1000u;
 
-	struct ComponentRegister {
+	struct ComponentType {
 
 		std::string name;
-		ui32 size;
-		CreateComponentFunction createFn;
-		DestroyComponentFunction destroyFn;
-		MoveComponentFunction moveFn;
-		CopyComponentFunction copyFn;
-		SerializeComponentFunction serializeFn;
-		DeserializeComponentFunction deserializeFn;
+		ui32		size;
+
+	};
+
+	struct ComponentRegister {
+
+		CreateComponentFunction createFn = nullptr;
+		DestroyComponentFunction destroyFn = nullptr;
+		MoveComponentFunction moveFn = nullptr;
+		CopyComponentFunction copyFn = nullptr;
+		SerializeComponentFunction serializeFn = nullptr;
+		DeserializeComponentFunction deserializeFn = nullptr;
 
 	};
 

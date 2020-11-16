@@ -617,7 +617,7 @@ namespace sv {
 
 		bool destroyComponent = false;
 		ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[0]);
-		bool tree = ImGui::TreeNodeEx(ecs_register_nameof(ecs, compID), flags);
+		bool tree = ImGui::TreeNodeEx(ecs_component_name(compID), flags);
 		ImGui::PopFont();
 
 		if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) ImGui::OpenPopup("ComponentPopup");

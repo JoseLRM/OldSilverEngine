@@ -151,9 +151,9 @@ namespace sv {
 		
 		rendering->cameraBuffer.create();
 
-		ecs_register<SpriteComponent>(ecs, "Sprite", scene_component_serialize_SpriteComponent, scene_component_deserialize_SpriteComponent);
-		ecs_register<AnimatedSpriteComponent>(ecs, "Animated Sprite", scene_component_serialize_AnimatedSpriteComponent, scene_component_deserialize_AnimatedSpriteComponent);
-		ecs_register<CameraComponent>(ecs, "Camera", scene_component_serialize_CameraComponent, scene_component_deserialize_CameraComponent);
+		ecs_register<SpriteComponent>(ecs, scene_component_serialize_SpriteComponent, scene_component_deserialize_SpriteComponent);
+		ecs_register<AnimatedSpriteComponent>(ecs, scene_component_serialize_AnimatedSpriteComponent, scene_component_deserialize_AnimatedSpriteComponent);
+		ecs_register<CameraComponent>(ecs, scene_component_serialize_CameraComponent, scene_component_deserialize_CameraComponent);
 	}
 	void SceneRenderer::destroy()
 	{
