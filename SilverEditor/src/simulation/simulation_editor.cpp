@@ -59,7 +59,7 @@ namespace sv {
 		svCheck(debug_renderer_batch_destroy(g_DebugBatch));
 	}
 
-	void simulation_editor_camera_controller_2D(const vec2f mousePos, float dt)
+	void simulation_editor_camera_controller_2D(float dt)
 	{
 		static bool cameraInMovement = false;
 
@@ -76,7 +76,7 @@ namespace sv {
 		if (input_mouse_pressed(SV_MOUSE_CENTER)) {
 			cameraInMovement = true;
 
-			cameraMovementData.initialMovement = mousePos;
+			cameraMovementData.initialMovement = g_SimulationMousePos;
 		}
 		else if (input_mouse_released(SV_MOUSE_CENTER)) {
 			cameraInMovement = false;
@@ -84,7 +84,61 @@ namespace sv {
 
 		if (cameraInMovement && g_SimulationMouseInCamera) {
 
-			g_DebugCamera.position += (cameraMovementData.initialMovement - mousePos).getVec3();
+			g_DebugCamera.position += (cameraMovementData.initialMovement - g_SimulationMousePos).getVec3();
+
+		}
+
+		// Zoom
+		if (g_SimulationMouseInCamera) {
+			length += -input_mouse_wheel_get() * length * 0.1f;
+			if (length < 0.001f) length = 0.001f;
+
+			cam.setProjectionLength(length);
+		}
+
+	}
+
+	void simulation_editor_camera_controller_3D(float dt)
+	{
+		static bool cameraInMovement = false;
+
+		static struct {
+
+			vec2f initialMovement;
+
+		} cameraMovementData;
+
+		auto& cam = g_DebugCamera.camera;
+		float length = cam.getProjectionLength();
+
+		// Rotation
+		{
+			if (input_mouse(SV_MOUSE_RIGHT)) {
+				vec2f drag = input_mouse_dragged_get();
+				g_DebugCamera.rotation.x += drag.x;
+				g_DebugCamera.rotation.y += drag.y;
+			}
+		}
+
+		// Movement
+		if (input_mouse_pressed(SV_MOUSE_CENTER)) {
+			cameraInMovement = true;
+
+			cameraMovementData.initialMovement = g_SimulationMousePos;
+		}
+		else if (input_mouse_released(SV_MOUSE_CENTER)) {
+			cameraInMovement = false;
+		}
+
+		if (cameraInMovement && g_SimulationMouseInCamera) {
+
+			XMVECTOR direction = (cameraMovementData.initialMovement - g_SimulationMousePos).get_dx();
+
+			XMMATRIX rm = XMMatrixRotationQuaternion(g_DebugCamera.rotation.get_dx());
+
+			direction = XMVector3Transform(direction, rm);
+
+			g_DebugCamera.position += vec3f(direction);
 
 		}
 

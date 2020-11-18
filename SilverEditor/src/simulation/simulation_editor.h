@@ -8,7 +8,8 @@ namespace sv {
 	Result simulation_editor_close();
 
 	void simulation_editor_render();
-	void simulation_editor_camera_controller_2D(const vec2f mousePos, float dt);
+	void simulation_editor_camera_controller_2D(float dt);
+	void simulation_editor_camera_controller_3D(float dt);
 
 	enum TransformMode : ui32 {
 

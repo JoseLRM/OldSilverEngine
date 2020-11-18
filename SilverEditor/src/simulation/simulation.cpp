@@ -4,7 +4,6 @@
 #include "simulation.h"
 #include "simulation/scene.h"
 #include "platform/window.h"
-#include "simulation/animator.h"
 #include "gui.h"
 #include "platform/input.h"
 #include "simulation_editor.h"
@@ -38,16 +37,9 @@ namespace sv {
 			g_Scene.load("assets/scenes/Test.scene");
 		}
 
+		simulation_scene_open(sceneFilePath);
+			
 		engine_animations_disable();
-
-		// Create debug camera
-		{
-			g_DebugCamera.position = { 0.f, 0.f, -10.f };
-			svCheck(g_DebugCamera.camera.setResolution(1920u, 1080u));
-			g_DebugCamera.camera.setProjectionType(ProjectionType_Orthographic);
-			g_DebugCamera.camera.setWidth(10.f);
-			g_DebugCamera.camera.setHeight(10.f);
-		}
 
 		svCheck(simulation_editor_initialize());
 
@@ -130,7 +122,7 @@ namespace sv {
 
 					asset_free_unused(asset_type_get("Scene"));
 
-					g_Scene.load(sceneHashCode);
+					simulation_scene_open(asset_filepath_get(sceneHashCode));
 				}
 				
 				g_StopRequest = false;
@@ -160,8 +152,28 @@ namespace sv {
 
 		// Debug
 		if (g_ShowDebug) {
-			simulation_editor_camera_controller_2D(g_SimulationMousePos, dt);
+			if (g_DebugCamera.camera.getProjectionType() == ProjectionType_Orthographic)
+				simulation_editor_camera_controller_2D(dt);
+			else 
+				simulation_editor_camera_controller_3D(dt);
+
 			simulation_editor_update_action(dt);
+		}
+
+		// Control keys
+		{
+			if (input_key(SV_KEY_CONTROL)) {
+
+				if (g_SelectedEntity != SV_ENTITY_NULL && input_key_pressed('D')) {
+					ecs_entity_duplicate(scene, g_SelectedEntity);
+				}
+
+			}
+
+			if (g_SelectedEntity != SV_ENTITY_NULL && input_key_pressed(SV_KEY_DELETE)) {
+				ecs_entity_destroy(scene, g_SelectedEntity);
+				g_SelectedEntity = SV_ENTITY_NULL;
+			}
 		}
 
 		if (g_Running && !g_Paused) {
@@ -376,7 +388,38 @@ namespace sv {
 		g_SelectedEntity = SV_ENTITY_NULL;
 		g_Scene.unload();
 		asset_free_unused(asset_type_get("Scene"));
-		return g_Scene.load(filePath);
+		svCheck(g_Scene.load(filePath));
+		
+		// Create debug camera
+
+		switch (g_Scene->getSceneType())
+		{
+
+		case SceneType_2D:
+		{
+			g_DebugCamera.position = { 0.f, 0.f, -10.f };
+			svCheck(g_DebugCamera.camera.setResolution(1920u, 1080u));
+			g_DebugCamera.camera.setProjectionType(ProjectionType_Orthographic);
+			g_DebugCamera.camera.setWidth(10.f);
+			g_DebugCamera.camera.setHeight(10.f);
+			g_DebugCamera.camera.setNear(-1000.f);
+			g_DebugCamera.camera.setFar(1000.f);
+			break;
+		}
+
+		case SceneType_3D:
+		{
+			g_DebugCamera.position = { 0.f, 0.f, -10.f };
+			svCheck(g_DebugCamera.camera.setResolution(1920u, 1080u));
+			g_DebugCamera.camera.setProjectionType(ProjectionType_Perspective);
+			g_DebugCamera.camera.setWidth(0.1f);
+			g_DebugCamera.camera.setHeight(0.1f);
+			g_DebugCamera.camera.setNear(0.1f);
+			g_DebugCamera.camera.setFar(100000.f);
+			break;
+		}
+
+		}
 	}
 
 	Result simulation_scene_new(const char* filePath, SceneType type)
