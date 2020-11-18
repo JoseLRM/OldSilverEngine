@@ -13,7 +13,6 @@
 #include "platform/window/window_internal.h"
 #include "simulation/task_system/task_system_internal.h"
 #include "simulation/asset_system/asset_system_internal.h"
-#include "simulation/animator/animator_internal.h"
 #include "simulation/event_system/event_system_internal.h"
 #include "simulation/sprite_animator/sprite_animator_internal.h"
 #include "simulation/scene/scene_internal.h"
@@ -471,7 +470,6 @@ namespace sv {
 			svCheck(asset_initialize(desc.assetsFolderPath));
 			svCheck(window_initialize(desc.windowStyle, desc.windowBounds, desc.windowTitle, desc.iconFilePath));
 			svCheck(graphics_initialize());
-			svCheck(animator_initialize());
 			svCheck(sprite_animator_initialize());
 			svCheck(matsys_initialize());
 			svCheck(debug_renderer_initialize());
@@ -510,7 +508,6 @@ namespace sv {
 
 			// Update animations
 			if (g_EnableAnimations) {
-				animator_update(g_DeltaTime);
 				sprite_animator_update(g_DeltaTime);
 			}
 
@@ -553,7 +550,6 @@ namespace sv {
 			if (result_fail(debug_renderer_close())) { SV_LOG_ERROR("Can't close the debug renderer"); }
 			if (result_fail(matsys_close())) { SV_LOG_ERROR("Can't close the material system"); }
 			if (result_fail(sprite_animator_close())) { SV_LOG_ERROR("Can't close the sprite animator"); }
-			if (result_fail(animator_close())) { SV_LOG_ERROR("Can't close the animator"); }
 			if (result_fail(graphics_close())) { SV_LOG_ERROR("Can't close graphics"); }
 			if (result_fail(window_close())) { SV_LOG_ERROR("Can't close the window"); }
 			if (result_fail(asset_close())) { SV_LOG_ERROR("Can't close the asset system"); }

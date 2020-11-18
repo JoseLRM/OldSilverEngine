@@ -86,6 +86,7 @@ namespace sv {
 
 	Result asset_register_type(const AssetRegisterTypeDesc* desc, AssetType* pAssetType);
 
+	const char* asset_filepath_get(size_t hashCode);
 	AssetType asset_type_get(const char* name);
 	const std::string& asset_folderpath_get();
 

@@ -313,6 +313,12 @@ namespace sv {
 		return Result_Success;
 	}
 
+	const char* asset_filepath_get(size_t hashCode)
+	{
+		auto it = g_HashCodes.find(hashCode);
+		return (it == g_HashCodes.end()) ? nullptr : it->second;
+	}
+
 	AssetType asset_type_get(const char* name)
 	{
 		for (std::unique_ptr<AssetType_internal>& type : g_Types) {

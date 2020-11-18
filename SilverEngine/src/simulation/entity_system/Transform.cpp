@@ -24,34 +24,35 @@ namespace sv {
 	vec3f Transform::getLocalEulerRotation() const noexcept
 	{
 		parse();
-		XMFLOAT4X4 rm;
-		XMStoreFloat4x4(&rm, XMMatrixTranspose(XMMatrixRotationQuaternion(XMLoadFloat4(&t->localRotation))));
-
 		vec3f euler;
 
-		if (rm._13 < 1.f) {
-			if (rm._13 > -1.f) {
-				euler.y = asin(rm._13);
-				euler.x = atan2(-rm._23, rm._33);
-				euler.z = atan2(-rm._12, rm._11);
-			}
-			else {
-				euler.y = -PI / 2.f;
-				euler.x = -atan2(rm._21, rm._22);
-				euler.z = 0.f;
-			}
-		}
-		else {
-			euler.y = PI / 2.f;
-			euler.x = atan2(rm._21, rm._22);
-			euler.z = 0.f;
-		}
+		// roll (x-axis rotation)
+
+		XMFLOAT4 q = t->localRotation;
+		float sinr_cosp = 2.f * (q.w * q.x + q.y * q.z);
+		float cosr_cosp = 1.f - 2.f * (q.x * q.x + q.y * q.y);
+		euler.x = std::atan2(sinr_cosp, cosr_cosp);
+
+		// pitch (y-axis rotation)
+		float sinp = 2.f * (q.w * q.y - q.z * q.x);
+		if (std::abs(sinp) >= 1.f)
+			euler.y = std::copysign(PI / 2.f, sinp); // use 90 degrees if out of range
+		else
+			euler.y = std::asin(sinp);
+
+		// yaw (z-axis rotation)
+		float siny_cosp = 2 * (q.w * q.z + q.x * q.y);
+		float cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z);
+		euler.z = std::atan2(siny_cosp, cosy_cosp);
 
 		if (euler.x < 0.f) {
-			euler.x = 2 * PI + euler.x;
+			euler.x = 2.f * PI + euler.x;
+		}
+		if (euler.y < 0.f) {
+			euler.y = 2.f * PI + euler.y;
 		}
 		if (euler.z < 0.f) {
-			euler.z = 2 * PI + euler.z;
+			euler.z = 2.f * PI + euler.z;
 		}
 
 		return euler;
@@ -244,12 +245,25 @@ namespace sv {
 		t->localRotation = *(XMFLOAT4*)& rotation;
 	}
 
-	void Transform::setEulerRotation(const vec3f& rotation) noexcept
+	void Transform::setEulerRotation(const vec3f& r) noexcept
 	{
 		notify();
 
+		float cy = cos(r.z * 0.5f);
+		float sy = sin(r.z * 0.5f);
+		float cp = cos(r.y * 0.5f);
+		float sp = sin(r.y * 0.5f);
+		float cr = cos(r.x * 0.5f);
+		float sr = sin(r.x * 0.5f);
+
+		vec4f q;
+		q.w = cr * cp * cy + sr * sp * sy;
+		q.x = sr * cp * cy - cr * sp * sy;
+		q.y = cr * sp * cy + sr * cp * sy;
+		q.z = cr * cp * sy - sr * sp * cy;
+
 		parse();
-		XMStoreFloat4(&t->localRotation, XMQuaternionRotationRollPitchYawFromVector(rotation.get_dx()));
+		XMStoreFloat4(&t->localRotation, XMVectorSet(q.x, q.y, q.z, q.w));
 	}
 
 	void Transform::setRotationX(float x) noexcept
