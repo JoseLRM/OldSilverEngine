@@ -1,53 +1,75 @@
 #pragma once
 
 #include "rendering/material_system.h"
+#include "utils/allocator.h"
 
 namespace sv {
 
-	struct ShaderIndices {
-		ui32 i[ShaderType_GraphicsCount];
+	constexpr ui32 MAX_SUBSHADERS = 10u;
 
-		ShaderIndices()
-		{
-			memset(i, ui32_max, sizeof(ui32) * ShaderType_GraphicsCount);
-		}
+	struct SubShaderRegister {
+
+		std::string name;
+		std::string preLibName;
+		std::string postLibName;
+		Shader*		defaultShader;
+		ShaderType	type;
+
 	};
 
-	struct Material_internal;
+	struct ShaderLibraryType_internal {
+
+		std::string			name;
+		SubShaderRegister	subShaderRegisters[MAX_SUBSHADERS];
+		ui32				subShaderCount;
+
+		SubShaderID findSubShaderID(const char* name);
+
+	};
+
+	struct SubShader {
+
+		Shader* shader = nullptr;
+		ui32 cameraSlot = ui32_max;
+
+	};
+
+	struct SubShaderIndices {
+		ui32 i[MAX_SUBSHADERS]; // Buffer offsets, aligned with subshader list
+
+		inline void init(ui32 n) { for (ui32 j = 0u; j < MAX_SUBSHADERS; ++j) i[j] = n; }
+	};
+
+	struct MaterialInfo {
+
+		std::vector<MaterialAttribute>	attributes; // Buffer data. Aligned with attributeOffsets
+		std::vector<SubShaderIndices>	attributeOffsets;
+		
+		ui32 bufferSizes[MAX_SUBSHADERS];		// Per subshader: buffer size
+		ui32 bufferBindings[MAX_SUBSHADERS];	// Per subshader: buffer binding
+
+		ui32 bufferSizesCount = 0u; // The sum of all the material attributes
+
+		std::vector<std::string>		textures;			// texture names. Aligned with textureSlots
+		std::vector<SubShaderIndices>	textureSlots;		// textures slots
+		
+	};
 
 	struct ShaderLibrary_internal {
 
-		Shader* vs = nullptr;
-		Shader* ps = nullptr;
-		Shader* gs = nullptr;
+		SubShader subShaders[MAX_SUBSHADERS];
+		GPUBuffer* cameraBuffer = nullptr;
 
-		std::vector<ShaderLibraryAttribute>	attributes; // Sorted list -> Textures - buffer data. Aligned with attributeIndices
-		std::vector<ShaderIndices>			attributeIndices; // Contains information about attr. offset (or texture slot) and if a shader contains or not this attr.
-		ui32								bufferSizes[ShaderType_GraphicsCount] = {};
-		ui32								bufferBindigs[ShaderType_GraphicsCount] = {};
-		ui32								bufferSizesCount = 0u;
-		ui32								texturesCount = 0u;
-		std::vector<Material_internal*>		materials;
-		ShaderIndices						cameraBufferBinding;
+		MaterialInfo matInfo;
 		
-		std::string							name;
-		std::string							type;
-		size_t								nameHashCode;
+		std::atomic<i32>	matCount = 0u;
+		std::string			name;
+		ShaderLibraryType_internal*	type;
+		size_t				nameHashCode;
 
-		inline Shader* get_shader(ui32 type) const noexcept 
-		{
-			switch (type)
-			{
-			case sv::ShaderType_Vertex:
-				return vs;
-			case sv::ShaderType_Pixel:
-				return ps;
-			case sv::ShaderType_Geometry:
-				return gs;
-			default:
-				return nullptr;
-			}
-		}
+		ShaderLibrary_internal() = default;
+		ShaderLibrary_internal& operator=(const ShaderLibrary_internal& other);
+		ShaderLibrary_internal& operator=(ShaderLibrary_internal&& other) noexcept;
 
 	};
 
@@ -67,69 +89,57 @@ namespace sv {
 	struct Material_internal {
 
 		ShaderLibrary_internal*			shaderLibrary;
-		MaterialBuffer					buffers[ShaderType_GraphicsCount] = {};
+		MaterialBuffer					buffers[MAX_SUBSHADERS];
 		std::vector<MaterialTexture>	textures;
 		bool							dynamic;
 		bool							inUpdateList = false;
 		ui8*							rawMemory = nullptr;
 
-	};
+		Result create(ShaderLibrary_internal* pShaderLibrary, bool dynamic, bool addToUpdateList);
+		Result destroy();
+		Result recreate(ShaderLibrary_internal& lib);
+		void update(CommandList cmd);
+		void addToUpdateList();
+		void rmvToUpdateList();
 
-	struct CameraBuffer_internal {
-
-		GPUBuffer* buffer;
-		
-		struct BufferData {
-			XMMATRIX viewMatrix;
-			XMMATRIX projectionMatrix;
-			XMMATRIX viewProjectionMatrix;
-			vec3f position;
-			float padding;
-			vec4f direction;
-		} data;
+		static void update();
 
 	};
 
 	struct MaterialAsset_internal {
 
-		Material material;
-		size_t hashCode;
+		Material* material = nullptr;
+		size_t hashCode = 0u;
 
 	};
 
-	constexpr bool string_equal(const char* s0, size_t size0, const char* s1, size_t size1)
+	extern InstanceAllocator<ShaderLibraryType_internal, 10u>		g_ShaderLibrariesTypes;
+	extern InstanceAllocator<ShaderLibrary_internal, 50u>			g_ShaderLibraries;
+	extern InstanceAllocator<Material_internal, 100u>				g_Materials;
+
+	extern std::unordered_map<std::string, ShaderLibraryType_internal*> g_ShaderLibraryTypeNames;
+
+	extern std::vector<Material_internal*>					g_MaterialsToUpdate;
+	extern std::mutex										g_MaterialsToUpdateMutex;
+
+	static inline ShaderLibraryType_internal* typeFind(const char* name)
 	{
-		if (size0 != size1) return false;
-
-		const char* end0 = s0 + size0;
-		const char* end1 = s1 + size1;
-
-		while (s0 != end0) {
-
-			if (*s0 != *s1) return false;
-
-			++s0;
-			++s1;
-		}
-
-		return true;
+		auto it = g_ShaderLibraryTypeNames.find(name);
+		if (it == g_ShaderLibraryTypeNames.end()) return nullptr;
+		else return it->second;
 	}
+
+#define ASSERT_PTR() SV_ASSERT(pInternal != nullptr)
+
+#define PARSE_SHADER_LIBRARY() ShaderLibrary_internal& lib = *reinterpret_cast<ShaderLibrary_internal*>(pInternal)
+#define PARSE_MATERIAL() Material_internal& mat = *reinterpret_cast<Material_internal*>(pInternal)
+#define PARSE_CAMERA_BUFFER() CameraBuffer_internal& cam = *reinterpret_cast<CameraBuffer_internal*>(pInternal)
 
 	Result	matsys_initialize();
 	void	matsys_update();
 	Result	matsys_close();
 
 	Result matsys_shaderlibrary_compile(ShaderLibrary_internal& lib, const char* src);
-	Result matsys_shaderlibrary_construct(ShaderLibrary_internal& lib);
-
-	void	matsys_materials_close();
-	void	matsys_materials_update();
-	void	matsys_material_updatelist_add(Material_internal* mat);
-	void	matsys_material_updatelist_rmv(Material_internal* mat);
-	Result	matsys_material_create(Material_internal& mat, ShaderLibrary_internal* shaderLibrary, bool dynamic, bool addToUpdateList);
-	Result	matsys_material_destroy(Material_internal& mat);
-	Result	matsys_material_recreate(Material_internal& mat, ShaderLibrary_internal& lib);
-	void	matsys_material_update(Material_internal& mat, CommandList cmd);
 
 	Result matsys_asset_register();
 

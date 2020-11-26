@@ -51,13 +51,12 @@ namespace sv {
 
 		// Update camera buffer
 		{
-			rend.cameraBuffer.setViewMatrix(viewMatrix);
-			rend.cameraBuffer.setProjectionMatrix(projectionMatrix);
-			rend.cameraBuffer.setViewProjectionMatrix(viewProjectionMatrix);
-			rend.cameraBuffer.setPosition(position);
-			rend.cameraBuffer.setDirection(directionQuat);
+			rend.cameraBuffer.viewMatrix = viewMatrix;
+			rend.cameraBuffer.projectionMatrix = projectionMatrix;
+			rend.cameraBuffer.position = position;
+			rend.cameraBuffer.direction = directionQuat;
 
-			rend.cameraBuffer.update(cmd);
+			rend.cameraBuffer.updateGPU(cmd);
 		}
 
 		// Offscreen
@@ -149,8 +148,6 @@ namespace sv {
 		SceneRenderer_internal* rendering = new SceneRenderer_internal();
 		pInternal = rendering;
 		
-		rendering->cameraBuffer.create();
-
 		ecs_register<SpriteComponent>(ecs, scene_component_serialize_SpriteComponent, scene_component_deserialize_SpriteComponent);
 		ecs_register<AnimatedSpriteComponent>(ecs, scene_component_serialize_AnimatedSpriteComponent, scene_component_deserialize_AnimatedSpriteComponent);
 		ecs_register<CameraComponent>(ecs, scene_component_serialize_CameraComponent, scene_component_deserialize_CameraComponent);
@@ -160,7 +157,7 @@ namespace sv {
 		SceneRenderer_internal* rendering = reinterpret_cast<SceneRenderer_internal*>(pInternal);
 		if (rendering == nullptr) return;
 
-		rendering->cameraBuffer.destroy();
+		rendering->cameraBuffer.clear();
 
 		delete rendering;
 		pInternal = nullptr;

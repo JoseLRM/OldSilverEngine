@@ -22,9 +22,9 @@ namespace sv {
 		ShaderLibraryAsset lib;
 		svCheck(lib.load(asset.hashCode));
 
-		svCheck(asset.material.create(lib.get()));
+		svCheck(matsys_material_create(lib.get(), false, &asset.material));
 
-		const auto& attributes = lib->getAttributes();
+		const std::vector<MaterialAttribute>& attributes = matsys_shaderlibrary_attributes(lib.get());
 
 		XMMATRIX rawData;
 		std::string name;
@@ -39,7 +39,7 @@ namespace sv {
 
 			Result res = Result_Success;
 
-			if (type == ShaderAttributeType_Other) {
+			if (type == ui32_max) {
 
 				size_t hashCode;
 				file >> hashCode;
@@ -50,7 +50,7 @@ namespace sv {
 					res = tex.load(hashCode);
 
 					if (result_okay(res)) {
-						res = asset.material.setTexture(name.c_str(), tex);
+						res = matsys_material_texture_set(asset.material, name.c_str(), tex);
 					}
 				}
 			}
@@ -59,7 +59,7 @@ namespace sv {
 				ui32 typeSize = graphics_shader_attribute_size(type);
 				file.read(&rawData, typeSize);
 
-				res = asset.material.setRaw(name.c_str(), type, &rawData);
+				res = matsys_material_attribute_set(asset.material, type, name.c_str(), &rawData);
 			}
 
 			if (result_fail(res)) {
@@ -73,7 +73,7 @@ namespace sv {
 	Result destroyMaterialAsset(void* pObject)
 	{
 		MaterialAsset_internal& asset = *reinterpret_cast<MaterialAsset_internal*>(pObject);
-		Result res = asset.material.destroy();
+		Result res = matsys_material_destroy(asset.material);
 		return res;
 	}
 
@@ -88,26 +88,26 @@ namespace sv {
 	Result createShaderLibraryAsset(const char* filePath, void* pObject)
 	{
 		new(pObject) ShaderLibrary_internal();
-		ShaderLibrary& lib = *reinterpret_cast<ShaderLibrary*>(pObject);
-		return lib.createFromFile(filePath);
+		ShaderLibrary*& lib = reinterpret_cast<ShaderLibrary*&>(pObject);
+		return matsys_shaderlibrary_create_from_file(filePath, &lib);
 	}
 
 	Result destroyShaderLibraryAsset(void* pObject)
 	{
-		ShaderLibrary& lib = *reinterpret_cast<ShaderLibrary*>(pObject);
-		return lib.destroy();
+		ShaderLibrary* lib = reinterpret_cast<ShaderLibrary*>(pObject);
+		return matsys_shaderlibrary_destroy(lib);
 	}
 
 	Result recreateShaderLibraryAsset(const char* filePath, void* pObject)
 	{
-		ShaderLibrary& lib = *reinterpret_cast<ShaderLibrary*>(pObject);
-		return lib.createFromFile(filePath);
+		ShaderLibrary*& lib = reinterpret_cast<ShaderLibrary*&>(pObject);
+		return matsys_shaderlibrary_create_from_file(filePath, &lib);
 	}
 
-	bool isUsedShaderLibraryAsset(void* pObject)
+	bool isUnusedShaderLibraryAsset(void* pObject)
 	{
-		ShaderLibrary_internal* lib = *reinterpret_cast<ShaderLibrary_internal**>(pObject);
-		return lib->materials.empty();
+		ShaderLibrary_internal* lib = reinterpret_cast<ShaderLibrary_internal*>(pObject);
+		return lib->matCount.load() == 0;
 	}
 
 	Result matsys_asset_register()
@@ -122,8 +122,8 @@ namespace sv {
 		desc.createFn = createShaderLibraryAsset;
 		desc.destroyFn = destroyShaderLibraryAsset;
 		desc.recreateFn = recreateShaderLibraryAsset;
-		desc.isUnusedFn = isUsedShaderLibraryAsset;
-		desc.assetSize = sizeof(ShaderLibrary);
+		desc.isUnusedFn = isUnusedShaderLibraryAsset;
+		desc.assetSize = sizeof(ShaderLibrary_internal*);
 		desc.unusedLifeTime = 10.f;
 
 		svCheck(asset_register_type(&desc, nullptr));
@@ -155,17 +155,20 @@ namespace sv {
 		ShaderLibrary* shaderLibrary_ = libAsset.get();
 		if (shaderLibrary_ == nullptr) return Result_InvalidUsage;
 
-		ShaderLibrary_internal& lib = **reinterpret_cast<ShaderLibrary_internal**>(shaderLibrary_);
-		file << libAsset.getHashCode() << ui32(lib.attributes.size());
+		ShaderLibrary_internal& lib = *reinterpret_cast<ShaderLibrary_internal*>(shaderLibrary_);
+		file << libAsset.getHashCode() << ui32(lib.matInfo.attributes.size());
 
 		XMMATRIX rawData;
 		svZeroMemory(&rawData, sizeof(XMMATRIX));
 		
-		for (auto& att : lib.attributes) {
+		for (const MaterialAttribute& att : lib.matInfo.attributes) {
 			file << att.name << att.type;
+			file.write(&rawData, graphics_shader_attribute_size(att.type));
+		}
 
-			ui32 typeSize = (att.type == ShaderAttributeType_Other) ? sizeof(size_t) : graphics_shader_attribute_size(att.type);
-			file.write(&rawData, typeSize);
+		for (const std::string& tex : lib.matInfo.textures) {
+			file << tex << ui32_max;
+			file.write(&rawData, sizeof(size_t));
 		}
 
 		return file.save_file(absFilePath.c_str());
@@ -177,28 +180,27 @@ namespace sv {
 		if (filePath == nullptr) return Result_InvalidUsage;
 
 		MaterialAsset_internal& mat = *reinterpret_cast<MaterialAsset_internal*>(m_Ref.get());
-		ShaderLibrary_internal& lib = **reinterpret_cast<ShaderLibrary_internal**>(mat.material.getShaderLibrary());
+		ShaderLibrary_internal& lib = *reinterpret_cast<ShaderLibrary_internal*>(matsys_material_get_shaderlibrary(mat.material));
 
 		ArchiveO file;
-		file << mat.hashCode << ui32(lib.attributes.size());
+		file << mat.hashCode << ui32(lib.matInfo.attributes.size() + lib.matInfo.textures.size());
 
 		XMMATRIX rawData;
 
-		for (auto& att : lib.attributes) {
+		for (const MaterialAttribute& att : lib.matInfo.attributes) {
 			file << att.name << att.type;
 
-			if (att.type == ShaderAttributeType_Other) {
-				TextureAsset tex;
-				Result res = mat.material.getTexture(att.name.c_str(), tex);
-				SV_ASSERT(result_okay(res));
-				file << tex.getHashCode();
-			}
-			else {
-				ui32 typeSize = graphics_shader_attribute_size(att.type);
-				Result res = mat.material.getRaw(att.name.c_str(), att.type, &rawData);
-				SV_ASSERT(result_okay(res));
-				file.write(&rawData, typeSize);
-			}
+			Result res = matsys_material_attribute_get(mat.material, att.type, att.name.c_str(), &rawData);
+			SV_ASSERT(result_okay(res));
+			file.write(&rawData, graphics_shader_attribute_size(att.type));
+		}
+
+		for (const std::string& texName : lib.matInfo.textures) {
+			file << texName << ui32_max;
+			TextureAsset tex;
+			Result res = matsys_material_texture_get(mat.material, texName.c_str(), tex);
+			SV_ASSERT(result_okay(res));
+			file << tex.getHashCode();
 		}
 
 		// Save File

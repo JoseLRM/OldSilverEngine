@@ -1485,6 +1485,29 @@ namespace sv {
 		return &shader.info;
 	}
 
+	Result graphics_shader_include_write(const char* name, const char* str)
+	{
+		std::string filePath = "library/shader_utils/";
+		filePath += name;
+		filePath += ".hlsl";
+
+#ifdef SV_RES_PATH
+		filePath = SV_RES_PATH + filePath;
+#endif
+
+		if (std::filesystem::exists(filePath)) return Result_Success;
+
+		std::ofstream file(filePath);
+
+		if (!file.is_open()) return Result_NotFound;
+
+		file << str;
+
+		file.close();
+
+		return Result_Success;
+	}
+
 	ui32 graphics_shader_attribute_size(ShaderAttributeType type)
 	{
 		switch (type)
@@ -1519,10 +1542,14 @@ namespace sv {
 		case sv::ShaderAttributeType_Mat4:
 			return 64u;
 
-		case sv::ShaderAttributeType_Other:
 		default:
 			return 0u;
 		}
+	}
+
+	ShaderType graphics_shader_type(const Shader* shader)
+	{
+		return reinterpret_cast<const Shader_internal*>(shader)->shaderType;
 	}
 
 	ui32 graphics_image_get_width(GPUImage* image)

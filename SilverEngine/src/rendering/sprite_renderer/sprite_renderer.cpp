@@ -20,7 +20,10 @@ namespace sv {
 	static GPUImage* g_SpriteWhiteTexture = nullptr;
 	static Sampler* g_SpriteDefSampler = nullptr;
 
-	static ShaderLibrary g_DefShaderLibrary;
+	static ShaderLibrary* g_DefShaderLibrary;
+
+	static SubShaderID g_SubShader_Vertex;
+	static SubShaderID g_SubShader_Surface;
 
 	struct SpriteVertex {
 		vec4f position;
@@ -155,61 +158,139 @@ namespace sv {
 
 			svCheck(graphics_sampler_create(&desc, &g_SpriteDefSampler));
 		}
+		// Sprite Shader Utils
+		{
+			svCheck(graphics_shader_include_write("sprite_vertex0", R"(
+struct VertexInput {
+	float4 position : Position;
+	float2 texCoord : TexCoord;
+	float4 color : Color;
+};
+
+struct VertexOutput {
+	float4 color : FragColor;
+	float2 texCoord : FragTexCoord;
+	float4 position : SV_Position;
+};
+			)"));
+
+			svCheck(graphics_shader_include_write("sprite_vertex1", R"(
+// User Callbacks
+//struct UserVertexOutput : VertexOutput {};
+//UserVertexOutput spriteVertex(VertexInput input);
+
+// Main
+UserVertexOutput main(VertexInput input)
+{
+	return spriteVertex(input);
+}
+			)"));
+
+			svCheck(graphics_shader_include_write("sprite_surface0", R"(
+struct SurfaceInput {
+	float4 color : FragColor;
+	float2 texCoord : FragTexCoord;
+};
+
+struct SurfaceOutput {
+	float4 color : SV_Target;
+};
+
+SV_SAMPLER(sam, s0);
+SV_TEXTURE(_Albedo, t0);
+			)"));
+
+			svCheck(graphics_shader_include_write("sprite_surface1", R"(
+// User Callbacks
+// struct UserSurfaceInput : SurfaceInput {}
+// SurfaceOutput spriteSurface(UserSurfaceInput input);
+
+// Main
+SurfaceOutput main(UserSurfaceInput input)
+{
+	return spriteSurface(input);
+}
+			)"));
+		}
+		// Register Shaderlibrary type
+		{
+			const char* names[] = {
+				"SpriteVertex",
+				"SpriteSurface",
+			};
+
+			const char* preLibNames[] = {
+				"sprite_vertex0",
+				"sprite_surface0",
+			};
+			const char* postLibNames[] = {
+				"sprite_vertex1",
+				"sprite_surface1",
+			};
+
+			ShaderType types[] = {
+				ShaderType_Vertex,
+				ShaderType_Pixel,
+			};
+
+			ShaderLibraryTypeDesc desc;
+			desc.name = "Sprite";
+			desc.pSubShaderNames = names;
+			desc.pSubShaderPreLibName = preLibNames;
+			desc.pSubShaderPostLibName = postLibNames;
+			desc.pSubShaderTypes = types;
+			desc.subShaderCount = 2u;
+			
+			svCheck(matsys_shaderlibrary_type_register(&desc));
+
+			g_SubShader_Vertex = matsys_subshader_get("Sprite", "SpriteVertex");
+			g_SubShader_Surface = matsys_subshader_get("Sprite", "SpriteSurface");
+
+			if (g_SubShader_Vertex == ui32_max) return Result_UnknownError;
+			if (g_SubShader_Surface == ui32_max) return Result_UnknownError;
+		}
 		// Default Shader library
 		{
-			if (result_fail(g_DefShaderLibrary.createFromBinary("SilverEngine/DefaultSprite"))) {
+			if (result_fail(matsys_shaderlibrary_create_from_binary("SilverEngine/DefaultSprite", &g_DefShaderLibrary))) {
 
-				const char* src = 
-					"#name SilverEngine/DefaultSprite\n"
-					"#type Sprite\n"
-					"#VS_begin\n"
-					"#include \"core.hlsl\"\n"
-					"SV_DEFINE_CAMERA(b0);\n"
-					"struct Input\n"
-					"{\n"
-					"	float4 position : Position;\n"
-					"	float2 texCoord : TexCoord;\n"
-					"	float4 color : Color;\n"
-					"};\n"
-					"struct Output\n"
-					"{\n"
-					"	float4 color : FragColor;\n"
-					"	float2 texCoord : FragTexCoord;\n"
-					"	float4 position : SV_Position;\n"
-					"};\n"
-					"Output main(Input input)\n"
-					"{\n"
-					"	Output output;\n"
-					"	output.color = input.color;\n"
-					"	output.texCoord = input.texCoord;\n"
-					"	output.position = mul(camera.vpm, input.position);\n"
-					"	return output;\n"
-					"}\n"
-					"#VS_end\n"
-					"#PS_begin\n"
-					"#include \"core.hlsl\"\n"
-					"struct Input\n"
-					"{\n"
-					"	float4 fragColor : FragColor;\n"
-					"	float2 fragTexCoord : FragTexCoord;\n"
-					"};\n"
-					"struct Output\n"
-					"{\n"
-					"	float4 color : SV_Target;\n"
-					"};\n"
-					"SV_SAMPLER(sam, s0);\n"
-					"SV_TEXTURE(_Albedo, t0);\n"
-					"Output main(Input input)\n"
-					"{\n"
-					"	Output output;\n"
-					"	float4 texColor = _Albedo.Sample(sam, input.fragTexCoord);\n"
-					"	output.color = input.fragColor * texColor;\n"
-					"	if (output.color.a < 0.05f) discard;\n"
-					"	return output;\n"
-					"}\n"
-					"#PS_end\n";
+				const char* src = R"(
+#name SilverEngine/DefaultSprite
+#type Sprite
 
-				svCheck(g_DefShaderLibrary.createFromString(src));
+#begin SpriteVertex
+
+struct UserVertexOutput : VertexOutput {};
+
+SV_DEFINE_CAMERA(b0);
+
+UserVertexOutput spriteVertex(VertexInput input)
+{
+	UserVertexOutput output;
+	output.color = input.color;
+	output.texCoord = input.texCoord;
+	output.position = mul(camera.vpm, input.position);
+	return output;
+}
+
+#end
+
+#begin SpriteSurface
+
+struct UserSurfaceInput : SurfaceInput {};
+
+SurfaceOutput spriteSurface(UserSurfaceInput input)
+{
+	SurfaceOutput output;
+	float4 texColor = _Albedo.Sample(sam, input.texCoord);
+	output.color = input.color * texColor;
+	if (output.color.a < 0.05f) discard;
+	return output;
+}
+
+#end
+				)";
+
+				svCheck(matsys_shaderlibrary_create_from_string(src, &g_DefShaderLibrary));
 			}
 		}
 
@@ -226,7 +307,7 @@ namespace sv {
 		svCheck(graphics_destroy(g_SpriteDefSampler));
 		svCheck(graphics_destroy(g_SpriteInputLayoutState));
 
-		svCheck(g_DefShaderLibrary.destroy());
+		svCheck(matsys_shaderlibrary_destroy(g_DefShaderLibrary));
 
 		return Result_Success;
 	}
@@ -245,15 +326,28 @@ namespace sv {
 		GPUImage* texture = nullptr;
 
 		// Bind material
+		ShaderLibrary* shaderLib;
+
 		if (desc->material) {
-			ShaderLibrary* shaderLib = desc->material->getShaderLibrary();
-			SV_ASSERT(shaderLib->isType("Sprite"));
-			shaderLib->bind(desc->cameraBuffer, cmd);
-			desc->material->bind(cmd);
+			shaderLib = matsys_material_get_shaderlibrary(desc->material);
 		}
 		// Bind default material
 		else {
-			g_DefShaderLibrary.bind(desc->cameraBuffer, cmd);
+			shaderLib = g_DefShaderLibrary;
+		}
+
+		SV_ASSERT(shaderLib);
+		//SV_ASSERT(shaderLib->isType("Sprite"));
+
+		if (desc->cameraBuffer)
+			matsys_shaderlibrary_bind_camerabuffer(shaderLib, *desc->cameraBuffer, cmd);
+
+		matsys_shaderlibrary_bind_subshader(shaderLib, g_SubShader_Vertex, cmd);
+		matsys_shaderlibrary_bind_subshader(shaderLib, g_SubShader_Surface, cmd);
+		
+		if (desc->material) {
+			matsys_material_bind(desc->material, g_SubShader_Vertex,cmd);
+			matsys_material_bind(desc->material, g_SubShader_Surface,cmd);
 		}
 
 		// Get batch data

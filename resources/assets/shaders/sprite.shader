@@ -1,81 +1,51 @@
-#name default/Sprite
-
+#name custom/Sprite
 #type Sprite
 
 // Vertex Shader
-#VS_begin
-
-#include "core.hlsl"
+#begin SpriteVertex
 
 SV_DEFINE_CAMERA(b0);
 
-struct Input
+struct UserVertexOutput : VertexOutput
 {
-    float4 position : Position;
-    float2 texCoord : TexCoord;
-    float4 color : Color;
 };
 
-struct Output
+UserVertexOutput spriteVertex(VertexInput input)
 {
-    float4 color : FragColor;
-    float2 texCoord : FragTexCoord;
-    float4 position : SV_Position;
-};
-
-Output main(Input input)
-{
-    Output output;
+    UserVertexOutput output;
 	output.color = input.color;
 	output.texCoord = input.texCoord;
 	output.position = mul(camera.vpm, input.position);
     return output;
 }
 
-#VS_end
+#end
 
 // Pixel Shader
-#PS_begin
+#begin SpriteSurface
 
-#include "core.hlsl"
-
-struct Input
-{
-    float4 fragColor : FragColor;
-    float2 fragTexCoord : FragTexCoord;
+SV_DEFINE_MATERIAL(b0) {
+    matrix uwu;
+    float nepee;
 };
 
-struct Output
+SV_TEXTURE(Texture, t1);
+
+struct UserSurfaceInput : SurfaceInput
 {
-    float4 color : SV_Target;
 };
 
-SV_SAMPLER(sam, s0);
-SV_TEXTURE(_Albedo, t0);
-
-SV_DEFINE_MATERIAL(b0)
+SurfaceOutput spriteSurface(UserSurfaceInput input)
 {
-    float opacidad;
-    float2 pene;
-    int juan;
-}
+    SurfaceOutput output;
 
-
-Output main(Input input)
-{
-    Output output;
-
-    float4 texColor = _Albedo.Sample(sam, input.fragTexCoord);
-    output.color = input.fragColor * texColor;
+    float4 texColor = _Albedo.Sample(sam, input.texCoord) * Texture.Sample(sam, input.texCoord);
+    output.color = input.color * texColor;
 	if (output.color.a < 0.05f) discard;
 
-    output.color.a = opacidad;
-    output.color.x *= pene.x;
-    output.color.y *= pene.y;
-
-    if (juan == 2) output.color.y = 0.5f;
+    output.color.r = nepee;
 
     return output;
 }
 
-#PS_end
+#end

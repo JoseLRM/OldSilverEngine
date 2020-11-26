@@ -6,7 +6,7 @@ namespace fs = std::filesystem;
 
 namespace sv {
 
-	static std::vector<std::unique_ptr<AssetType_internal>> g_Types;
+	static std::vector<std::unique_ptr<AssetType_internal>> g_ShaderLibrariesTypes;
 
 	static std::unordered_map<std::string, AssetType_internal*> g_Extensions;
 	static std::unordered_map<size_t, const char*>				g_HashCodes;
@@ -32,7 +32,7 @@ namespace sv {
 
 	Result asset_close()
 	{
-		for (std::unique_ptr<AssetType_internal>& type : g_Types) {
+		for (std::unique_ptr<AssetType_internal>& type : g_ShaderLibrariesTypes) {
 			for (Asset_internal* asset : type->activeAssets) {
 				type->destroyFn((ui8*)(asset) + sizeof(Asset_internal));
 				type->allocator.free(asset);
@@ -42,7 +42,7 @@ namespace sv {
 			type->allocator.clear();
 		}
 
-		g_Types.clear();
+		g_ShaderLibrariesTypes.clear();
 		g_Extensions.clear();
 		g_HashCodes.clear();
 		g_FolderPath.clear();
@@ -78,7 +78,7 @@ namespace sv {
 			g_UnusedTimeCount -= UNUSED_CHECK_TIME;
 
 			float now = timer_now();
-			AssetType_internal& type = *g_Types[g_UnusedIndex].get();
+			AssetType_internal& type = *g_ShaderLibrariesTypes[g_UnusedIndex].get();
 
 			for (auto it = type.activeAssets.begin(); it != type.activeAssets.end(); ) {
 
@@ -107,7 +107,7 @@ namespace sv {
 				++it;
 			}
 
-			g_UnusedIndex = (g_UnusedIndex + 1) % ui32(g_Types.size());
+			g_UnusedIndex = (g_UnusedIndex + 1) % ui32(g_ShaderLibrariesTypes.size());
 		}
 	}
 
@@ -223,7 +223,7 @@ namespace sv {
 
 	void asset_free_unused()
 	{
-		for (auto it = g_Types.rbegin(); it != g_Types.rend(); ++it) {
+		for (auto it = g_ShaderLibrariesTypes.rbegin(); it != g_ShaderLibrariesTypes.rend(); ++it) {
 			asset_free_unused(reinterpret_cast<AssetType>((*it).get()));
 		}
 	}
@@ -276,7 +276,7 @@ namespace sv {
 		}
 
 		// Find if it exist
-		for (auto& type : g_Types) {
+		for (auto& type : g_ShaderLibrariesTypes) {
 			if (type->hashCode == hashCode) {
 
 				SV_LOG_ERROR("The asset type %s it already exist", desc->name);
@@ -286,7 +286,7 @@ namespace sv {
 		}
 
 		// Create type
-		std::unique_ptr<AssetType_internal>& type = g_Types.emplace_back();
+		std::unique_ptr<AssetType_internal>& type = g_ShaderLibrariesTypes.emplace_back();
 		type = std::make_unique<AssetType_internal>(sizeof(Asset_internal) + desc->assetSize);
 
 		type->name = desc->name;
@@ -321,7 +321,7 @@ namespace sv {
 
 	AssetType asset_type_get(const char* name)
 	{
-		for (std::unique_ptr<AssetType_internal>& type : g_Types) {
+		for (std::unique_ptr<AssetType_internal>& type : g_ShaderLibrariesTypes) {
 			if (strcmp(type->name.c_str(), name) == 0) return type.get();
 		}
 		return nullptr;
@@ -447,7 +447,7 @@ namespace sv {
 
 	void AssetRef::unload()
 	{
-		if (g_Types.empty()) return;
+		if (g_ShaderLibrariesTypes.empty()) return;
 		if (pInternal) {
 			Asset_internal* asset = reinterpret_cast<Asset_internal*>(pInternal);
 			asset->refCount.fetch_sub(1);

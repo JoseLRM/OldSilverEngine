@@ -42,19 +42,19 @@ namespace sv {
 
 		if (m_SelectedMaterial.hasReference()) {
 		
-			Material& mat = *m_SelectedMaterial.get();
-			ShaderLibrary& lib = *mat.getShaderLibrary();
-			const auto& attributes = lib.getAttributes();
+			Material* mat = m_SelectedMaterial.get();
+			ShaderLibrary* lib = matsys_material_get_shaderlibrary(mat);
+			const std::vector<MaterialAttribute>& attributes = matsys_shaderlibrary_attributes(lib);
 
 			gui_component_item_begin();
 			
-			for (const ShaderLibraryAttribute& attr : attributes) {
+			for (const MaterialAttribute& attr : attributes) {
 			
 				ImGui::PushID(attr.name.c_str());
 
 				bool add = false;
 				XMMATRIX data;
-				mat.getRaw(attr.name.c_str(), attr.type, &data);
+				matsys_material_attribute_get(mat, attr.type, attr.name.c_str(), &data);
 
 				gui_component_item_next(attr.name.c_str());
 			
@@ -137,25 +137,29 @@ namespace sv {
 					add = gui_component_item_mat4(f);
 				}
 					break;
-				case ShaderAttributeType_Other:
-				{
-					TextureAsset tex;
-					m_SelectedMaterial->getTexture(attr.name.c_str(), tex);
-					if (gui_component_item_texture(tex)) {
-						m_SelectedMaterial->setTexture(attr.name.c_str(), tex);
-					}
-				}
-				break;
+				
 				default:
 					break;
 				}
 			
 				if (add) {
-					mat.setRaw(attr.name.c_str(), attr.type, &data);
+					matsys_material_attribute_set(mat, attr.type, attr.name.c_str(), &data);
 				}
 
 				ImGui::PopID();
 			
+			}
+
+			const std::vector<std::string>& textures = matsys_shaderlibrary_textures(lib);
+
+			for (const std::string& name : textures) {
+
+				TextureAsset tex;
+				matsys_material_texture_get(mat, name.c_str(), tex);
+				if (gui_component_item_texture(tex)) {
+					matsys_material_texture_set(mat, name.c_str(), tex);
+				}
+
 			}
 
 			gui_component_item_end();

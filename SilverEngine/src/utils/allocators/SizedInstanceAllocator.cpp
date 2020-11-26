@@ -43,7 +43,7 @@ namespace sv {
 	SizedInstanceAllocator::SizedInstanceAllocator(size_t instanceSize, size_t poolSize)
 		: INSTANCE_SIZE(instanceSize), POOL_SIZE(poolSize)
 	{
-		SV_ASSERT(INSTANCE_SIZE >= sizeof(ui32), "The size must be greater than 4u");
+		SV_ASSERT(INSTANCE_SIZE >= sizeof(ui32) && "The size must be greater than 4u");
 	}
 	SizedInstanceAllocator::~SizedInstanceAllocator()
 	{

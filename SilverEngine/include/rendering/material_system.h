@@ -5,149 +5,83 @@
 
 namespace sv {
 
-	struct ShaderLibraryAttribute {
+	struct MaterialAttribute {
 		std::string			name;
 		ShaderAttributeType type;
 	};
 
-	class CameraBuffer;
+	struct CameraBuffer;
 
-	class ShaderLibrary {
+	SV_DEFINE_HANDLE(ShaderLibrary);
+	SV_DEFINE_HANDLE(Material);
 
-	public:
-		ShaderLibrary() = default;
+	typedef ui32 SubShaderID;
 
-		ShaderLibrary(const ShaderLibrary& other) = delete;
-		ShaderLibrary(ShaderLibrary&& other) noexcept;
-		ShaderLibrary& operator=(const ShaderLibrary& other) = delete;
-		ShaderLibrary& operator=(ShaderLibrary&& other) noexcept;
+	// Shader Library
 
-		Result createFromFile(const char* filePath);
-		Result createFromString(const char* src);
-		Result createFromBinary(const char* name);
-		Result createFromBinary(size_t hashCode);
+	Result matsys_shaderlibrary_create_from_file(const char* filePath, ShaderLibrary** pShaderLibrary);
+	Result matsys_shaderlibrary_create_from_string(const char* src, ShaderLibrary** pShaderLibrary);
+	Result matsys_shaderlibrary_create_from_binary(const char* name, ShaderLibrary** pShaderLibrary);
+	Result matsys_shaderlibrary_create_from_binary(size_t hashCode, ShaderLibrary** pShaderLibrary);
 
-		void bind(CameraBuffer* cameraBuffer, CommandList cmd) const;
+	Result matsys_shaderlibrary_destroy(ShaderLibrary* shaderLibrary);
 
-		Result destroy();
+	void matsys_shaderlibrary_bind_subshader(ShaderLibrary* shaderLibrary, SubShaderID subShaderID, CommandList cmd);
+	void matsys_shaderlibrary_bind_camerabuffer(ShaderLibrary* shaderLibrary, CameraBuffer& cameraBuffer, CommandList cmd);
 
-		// getters
+	const std::vector<MaterialAttribute>&	matsys_shaderlibrary_attributes(ShaderLibrary* shaderLibrary);
+	const std::vector<std::string>&			matsys_shaderlibrary_textures(ShaderLibrary* shaderLibrary);
 
-		const std::vector<ShaderLibraryAttribute>& getAttributes() const noexcept;
-		ui32 getTextureCount() const noexcept;
-		Shader* getShader(ShaderType type) const noexcept;
-		const std::string& getName() const noexcept;
-		size_t getNameHashCode() const noexcept;
+	// Material
 
-		const std::string& getType() const noexcept;
-		bool isType(const char* type) const noexcept;
+	Result matsys_material_create(ShaderLibrary* shaderLibrary, bool dynamic, Material** pMaterial);
+	Result matsys_material_destroy(Material* material);
 
-	private:
-		void* pInternal = nullptr;
+	void matsys_material_bind(Material* material, SubShaderID subShaderID, CommandList cmd);
+	void matsys_material_update(Material* material, CommandList cmd);
 
-	};
+	ShaderLibrary* matsys_material_get_shaderlibrary(Material* material);
 
-	class Material {
+	// Material Attributes
 
-	public:
-		Material() = default;
+	Result matsys_material_attribute_set(Material* material, ShaderAttributeType type, const char* name, const void* data);
+	Result matsys_material_attribute_get(Material* material, ShaderAttributeType type, const char* name, void* data);
 
-		Material(const Material& other) = delete;
-		Material(Material&& other) noexcept;
-		Material& operator=(const Material& other) = delete;
-		Material& operator=(Material&& other) noexcept;
+	Result matsys_material_texture_set(Material* material, const char* name, GPUImage* image);
+	Result matsys_material_texture_set(Material* material, const char* name, TextureAsset& texture);
+	Result matsys_material_texture_get(Material* material, const char* name, GPUImage** pImage);
+	Result matsys_material_texture_get(Material* material, const char* name, TextureAsset& texture);
 
-		Result create(ShaderLibrary* shaderLibrary, bool dynamic = false);
-		Result destroy();
+	// ShaderLibrary Types
 
-		void bind(CommandList cmd) const;
-		void update(CommandList cmd) const;
-
-		// Setters
-
-		Result setInt32(const char* name, i32 n) const noexcept;
-		Result setInt64(const char* name, i64 n) const noexcept;
-		Result setUInt32(const char* name, ui32 n) const noexcept;
-		Result setUInt64(const char* name, ui64 n) const noexcept;
-		// TODO: Result setHalf(const char* name, ? n) const noexcept;
-		Result setDouble(const char* name, double n) const noexcept;
-		Result setFloat(const char* name, float n) const noexcept;
-		Result setFloat2(const char* name, const vec2f& n) const noexcept;
-		Result setFloat3(const char* name, const vec3f& n) const noexcept;
-		Result setFloat4(const char* name, const vec4f& n) const noexcept;
-		Result setBool(const char* name, BOOL n) const noexcept;
-		Result setChar(const char* name, char n) const noexcept;
-		Result setMat3(const char* name, const XMFLOAT3X3& n) const noexcept;
-		Result setMat4(const char* name, const XMMATRIX& n) const noexcept;
+	struct ShaderLibraryTypeDesc {
 		
-		Result setRaw(const char* name, ShaderAttributeType type, const void* data) const noexcept;
-
-		Result setGPUImage(const char* name, GPUImage* image) const noexcept;
-		Result setTexture(const char* name, const TextureAsset& texture) const noexcept;
-
-		inline Result setMat4(const char* name, const XMFLOAT4X4& n) const noexcept { return setMat4(name, XMLoadFloat4x4(&n)); }
-		inline Result setFloat4(const char* name, const Color4f& n) const noexcept { return setFloat4(name, *reinterpret_cast<const vec4f*>(&n)); }
-		inline Result setFloat3(const char* name, const Color3f& n) const noexcept { return setFloat3(name, *reinterpret_cast<const vec3f*>(&n)); }
-		inline Result setFloat4(const char* name, const Color& n) const noexcept { return setFloat4(name, vec4f{ float(n.r) / 255.f, float(n.g) / 255.f, float(n.b) / 255.f, float(n.a) / 255.f }); }
-
-		// Getters
-
-		Result getInt32(const char* name, i32& n) const noexcept;
-		Result getInt64(const char* name, i64& n) const noexcept;
-		Result getUInt32(const char* name, ui32& n) const noexcept;
-		Result getUInt64(const char* name, ui64& n) const noexcept;
-		// Result getHalf(const char* name, ? n) const noexcept;
-		Result getDouble(const char* name, double& n) const noexcept;
-		Result getFloat(const char* name, float& n) const noexcept;
-		Result getFloat2(const char* name, vec2f& n) const noexcept;
-		Result getFloat3(const char* name, vec3f& n) const noexcept;
-		Result getFloat4(const char* name, vec4f& n) const noexcept;
-		Result getBool(const char* name, BOOL& n) const noexcept;
-		Result getChar(const char* name, char& n) const noexcept;
-		Result getMat3(const char* name, XMFLOAT3X3& n) const noexcept;
-		Result getMat4(const char* name, XMMATRIX& n) const noexcept;
-
-		Result getRaw(const char* name, ShaderAttributeType type, void* data) const noexcept;
-
-		Result getGPUImage(const char* name, GPUImage*& image) const noexcept;
-		Result getTexture(const char* name, TextureAsset& texture) const noexcept;
-		Result getImage(const char* name, GPUImage*& image) const noexcept;
-
-		inline Result getMat4(const char* name, XMFLOAT4X4& n) const noexcept { XMMATRIX m; Result res = getMat4(name, m); XMStoreFloat4x4(&n, m); return res; }
-		inline Result getFloat4(const char* name, Color4f& n) const noexcept { return getFloat4(name, *reinterpret_cast<vec4f*>(&n)); }
-		inline Result getFloat3(const char* name, Color3f& n) const noexcept { return getFloat3(name, *reinterpret_cast<vec3f*>(&n)); }
-		inline Result getFloat4(const char* name, Color& n) const noexcept { vec4f vec; Result res = getFloat4(name, vec); n = { ui8(vec.x * 255.f), ui8(vec.y * 255.f), ui8(vec.z * 255.f), ui8(vec.w * 255.f) }; return res; }
-
-		ShaderLibrary* getShaderLibrary() const noexcept;
-
-	private:
-		void* pInternal = nullptr;
+		const char*				name;
+		const char**			pSubShaderNames;
+		const char**			pSubShaderPreLibName;
+		const char**			pSubShaderPostLibName;
+		const ShaderType*		pSubShaderTypes;
+		ui32					subShaderCount;
 
 	};
 
-	class CameraBuffer {
+	Result				matsys_shaderlibrary_type_register(const ShaderLibraryTypeDesc* desc);
+	SubShaderID			matsys_subshader_get(const char* typeName, const char* subShaderName); // Return ui32_max if not found
 
-	public:
-		CameraBuffer() = default;
+	// Camera Buffer
 
-		CameraBuffer(const CameraBuffer& other) = delete;
-		CameraBuffer(CameraBuffer&& other) noexcept;
-		CameraBuffer& operator=(const CameraBuffer& other) = delete;
-		CameraBuffer& operator=(CameraBuffer&& other) noexcept;
+	struct CameraBuffer {
 
-		Result create();
-		Result destroy();
+		~CameraBuffer();
 
-		void setViewMatrix(const XMMATRIX& matrix);
-		void setProjectionMatrix(const XMMATRIX& matrix);
-		void setViewProjectionMatrix(const XMMATRIX& matrix);
-		void setPosition(const vec3f& position);
-		void setDirection(const vec4f& direction);
+		GPUBuffer* gpuBuffer = nullptr;
+		XMMATRIX	viewMatrix = XMMatrixIdentity();
+		XMMATRIX	projectionMatrix = XMMatrixIdentity();
+		vec3f		position;
+		vec4f		direction;
 
-		void update(CommandList cmd);
-
-	private:
-		void* pInternal = nullptr;
+		Result updateGPU(CommandList cmd);
+		Result clear();
 
 	};
 
@@ -161,7 +95,7 @@ namespace sv {
 
 	class MaterialAsset : public Asset {
 	public:
-		inline Material* get() const noexcept { return reinterpret_cast<Material*>(m_Ref.get()); }
+		inline Material* get() const noexcept { void* inter = m_Ref.get(); return inter ? *reinterpret_cast<Material**>(inter) : nullptr; }
 		inline Material* operator->() const noexcept { return get(); }
 
 		Result createFile(const char* filePath, ShaderLibraryAsset& shaderLibraryAsset);

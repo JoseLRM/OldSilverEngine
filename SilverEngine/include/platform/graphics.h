@@ -90,7 +90,6 @@ namespace sv {
 		ShaderAttributeType_Char,
 		ShaderAttributeType_Mat3,
 		ShaderAttributeType_Mat4,
-		ShaderAttributeType_Other,
 	};
 
 	struct ShaderAttribute {
@@ -657,7 +656,11 @@ namespace sv {
 
 	const ShaderInfo* graphics_shader_info_get(Shader* shader);
 
+	Result graphics_shader_include_write(const char* name, const char* str);
+
 	ui32 graphics_shader_attribute_size(ShaderAttributeType type);
+
+	ShaderType graphics_shader_type(const Shader* shader);
 
 	// Primitive getters
 

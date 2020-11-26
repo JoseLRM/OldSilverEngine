@@ -242,7 +242,8 @@ namespace sv {
 	{
 		Scene scene;
 		scene.create(sceneType);
-		svCheck(scene.serialize(filePath));
+		std::string absFilePath = std::move(asset_folderpath_get() + filePath);
+		svCheck(scene.serialize(absFilePath.c_str()));
 		return asset_refresh();
 	}
 

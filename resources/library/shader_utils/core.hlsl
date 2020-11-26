@@ -1,3 +1,4 @@
+
 #ifdef SV_API_VULKAN
 
 // VULKAN API
@@ -34,3 +35,4 @@ struct Camera {
 
 #define SV_DEFINE_MATERIAL(binding) SV_CONSTANT_BUFFER(__Material__, binding)
 #define SV_DEFINE_CAMERA(binding) SV_CONSTANT_BUFFER(__Camera__, binding) { Camera camera; };
+				
