@@ -4,24 +4,6 @@
 
 namespace sv {
 
-	/* SPRITE SHADER INSTRUCTIONS
-		
-		Input {
-			float4 position : Position; // Worldspace vertex position
-			float2 texCoord : TexCoord; // Sprite coord in texture atlas
-			float4 color	: Color;
-		}
-
-		Output {
-			float4 color : SV_Target;
-		}
-
-		Resources {
-			PS t0; // Albedo texture
-		}
-
-	*/
-
 	struct SpriteInstance {
 		XMMATRIX	tm;
 		vec4f		texCoord;
@@ -35,14 +17,15 @@ namespace sv {
 			: tm(m), texCoord(texCoord), pTexture(pTex), color(color) {}
 	};
 
-	struct SpriteRendererDrawDesc {
-		const SpriteInstance*	pInstances;
-		ui32					count;
-		GPUImage*				renderTarget;
-		Material*				material;
-		CameraBuffer*			cameraBuffer;
-	};
+	struct SpriteRenderer {
 
-	void sprite_renderer_draw(const SpriteRendererDrawDesc* desc, CommandList cmd);
+		static void enableDepthTest(GPUImage* depthStencil, CommandList cmd);
+		static void disableDepthTest(CommandList cmd);
+
+		static void prepare(GPUImage* renderTarget, CameraBuffer& cameraBuffer, CommandList cmd);
+
+		static void draw(Material* material, const SpriteInstance* instances, ui32 count, CommandList cmd);
+
+	};
 
 }

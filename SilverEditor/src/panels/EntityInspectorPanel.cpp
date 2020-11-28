@@ -23,6 +23,9 @@ namespace sv {
 		gui_component_item_next("Material");
 		gui_component_item_material(comp->material);
 
+		gui_component_item_next("Render Layer");
+		gui_component_item_renderLayer2D(comp->renderLayer);
+
 		gui_component_item_end();
 
 	}
@@ -38,6 +41,9 @@ namespace sv {
 
 		gui_component_item_next("Material");
 		gui_component_item_material(comp->material);
+
+		gui_component_item_next("Render Layer");
+		gui_component_item_renderLayer2D(comp->renderLayer);
 
 		gui_component_item_next("Animation");
 

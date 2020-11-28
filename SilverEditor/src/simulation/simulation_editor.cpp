@@ -52,11 +52,15 @@ namespace sv {
 	Result simulation_editor_initialize()
 	{
 		svCheck(debug_renderer_batch_create(&g_DebugBatch));
+
+		return Result_Success;
 	}
 
 	Result simulation_editor_close()
 	{
 		svCheck(debug_renderer_batch_destroy(g_DebugBatch));
+
+		return Result_Success;
 	}
 
 	void simulation_editor_camera_controller_2D(float dt)
@@ -383,7 +387,10 @@ namespace sv {
 	{
 		Scene& scene = *g_Scene.get();
 
-		scene.drawCamera(&g_DebugCamera.camera, g_DebugCamera.position, g_DebugCamera.rotation);
+		if (g_DebugCamera.camera.getProjectionType() == ProjectionType_Perspective)
+			SceneRenderer::drawCamera3D(scene, &g_DebugCamera.camera, g_DebugCamera.position, g_DebugCamera.rotation);
+		else
+			SceneRenderer::drawCamera2D(scene, &g_DebugCamera.camera, g_DebugCamera.position, g_DebugCamera.rotation);
 
 		// DEBUG RENDERING
 

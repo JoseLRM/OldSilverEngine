@@ -5,8 +5,6 @@
 
 namespace sv {
 
-	static constexpr ui32 BATCH_COUNT = 1000u;
-
 	// Sprite Primitives
 
 	static RenderPass* g_SpriteRenderPass = nullptr;
@@ -25,37 +23,22 @@ namespace sv {
 	static SubShaderID g_SubShader_Vertex;
 	static SubShaderID g_SubShader_Surface;
 
-	struct SpriteVertex {
-		vec4f position;
-		vec2f texCoord;
-		Color color;
-	};
+	static SpriteRendererContext g_Context[GraphicsLimit_CommandList];
 
-	struct SpriteData {
-		SpriteVertex data[BATCH_COUNT * 4u];
-	};
-
-	static SizedInstanceAllocator g_SpriteData(sizeof(SpriteData), 2u);
-
-	constexpr void ComputeIndexData(ui32* indices)
+	Result SpriteRenderer_internal::initialize()
 	{
-		ui32 indexCount = BATCH_COUNT * 6u;
-		ui32 index = 0u;
-		for (ui32 i = 0; i < indexCount; ) {
+		// Init context
+		{
+			for (ui32 i = 0u; i < GraphicsLimit_CommandList; ++i) {
 
-			indices[i++] = index;
-			indices[i++] = index + 1;
-			indices[i++] = index + 2;
-			indices[i++] = index + 1;
-			indices[i++] = index + 3;
-			indices[i++] = index + 2;
-
-			index += 4u;
+				SpriteRendererContext& ctx = g_Context[i];
+				ctx.pCameraBuffer = nullptr;
+				ctx.renderTarget = nullptr;
+				ctx.depthStencil = nullptr;
+				ctx.spriteData = new SpriteData();
+			}
 		}
-	}
 
-	Result sprite_renderer_initialize()
-	{
 		// Sprite Buffers
 		{
 			GPUBufferDesc desc;
@@ -63,19 +46,33 @@ namespace sv {
 			desc.CPUAccess = CPUAccess_Write;
 			desc.usage = ResourceUsage_Default;
 			desc.pData = nullptr;
-			desc.size = BATCH_COUNT * sizeof(SpriteVertex) * 4u;
+			desc.size = SPRITE_BATCH_COUNT * sizeof(SpriteVertex) * 4u;
 
 			svCheck(graphics_buffer_create(&desc, &g_SpriteVertexBuffer));
 
 			// Index Buffer
-			ui32* indexData = new ui32[BATCH_COUNT * 6u];
-			ComputeIndexData(indexData);
+			ui32* indexData = new ui32[SPRITE_BATCH_COUNT * 6u];
+			{
+				ui32 indexCount = SPRITE_BATCH_COUNT * 6u;
+				ui32 index = 0u;
+				for (ui32 i = 0; i < indexCount; ) {
+
+					indexData[i++] = index;
+					indexData[i++] = index + 1;
+					indexData[i++] = index + 2;
+					indexData[i++] = index + 1;
+					indexData[i++] = index + 3;
+					indexData[i++] = index + 2;
+
+					index += 4u;
+				}
+			}
 
 			desc.bufferType = GPUBufferType_Index;
 			desc.CPUAccess = CPUAccess_None;
 			desc.usage = ResourceUsage_Static;
 			desc.pData = indexData;
-			desc.size = BATCH_COUNT * 6u * sizeof(ui32);
+			desc.size = SPRITE_BATCH_COUNT * 6u * sizeof(ui32);
 			desc.indexType = IndexType_32;
 
 			svCheck(graphics_buffer_create(&desc, &g_SpriteIndexBuffer));
@@ -297,7 +294,7 @@ SurfaceOutput spriteSurface(UserSurfaceInput input)
 		return Result_Success;
 	}
 
-	Result sprite_renderer_close()
+	Result SpriteRenderer_internal::close()
 	{
 		svCheck(graphics_destroy(g_SpriteBlendState));
 		svCheck(graphics_destroy(g_SpriteRenderPass));
@@ -309,18 +306,55 @@ SurfaceOutput spriteSurface(UserSurfaceInput input)
 
 		svCheck(matsys_shaderlibrary_destroy(g_DefShaderLibrary));
 
+		// deallocate context
+		{
+			for (ui32 i = 0u; i < GraphicsLimit_CommandList; ++i) {
+
+				SpriteRendererContext& ctx = g_Context[i];
+				delete ctx.spriteData;
+			}
+		}
+
 		return Result_Success;
 	}
 
-	void renderer_sprite_draw_call(ui32 offset, ui32 size, CommandList cmd)
+	void drawCall(ui32 offset, ui32 size, CommandList cmd)
 	{
 		graphics_draw_indexed(size * 6u, 1u, offset * 6u, 0u, 0u, cmd);
 	}
 
-	void sprite_renderer_draw(const SpriteRendererDrawDesc* desc, CommandList cmd)
+	void SpriteRenderer::enableDepthTest(GPUImage* depthStencil, CommandList cmd)
 	{
+		g_Context[cmd].depthStencil = depthStencil;
+	}
+
+	void SpriteRenderer::disableDepthTest(CommandList cmd)
+	{
+		g_Context[cmd].depthStencil = nullptr;
+	}
+
+	void SpriteRenderer::prepare(GPUImage* renderTarget, CameraBuffer& cameraBuffer, CommandList cmd)
+	{
+		SpriteRendererContext& ctx = g_Context[cmd];
+
+		ctx.renderTarget = renderTarget;
+		ctx.pCameraBuffer = &cameraBuffer;
+
+		graphics_state_unbind(cmd);
+
+		graphics_vertexbuffer_bind(g_SpriteVertexBuffer, 0u, 0u, cmd);
+		graphics_indexbuffer_bind(g_SpriteIndexBuffer, 0u, cmd);
+		graphics_blendstate_bind(g_SpriteBlendState, cmd);
+		graphics_inputlayoutstate_bind(g_SpriteInputLayoutState, cmd);
+		graphics_sampler_bind(g_SpriteDefSampler, 0u, ShaderType_Pixel, cmd);
+	}
+
+	void SpriteRenderer::draw(Material* material, const SpriteInstance* instances, ui32 count, CommandList cmd)
+	{
+		SpriteRendererContext& ctx = g_Context[cmd];
+
 		GPUImage* att[] = {
-			desc->renderTarget
+			ctx.renderTarget, ctx.depthStencil
 		};
 
 		GPUImage* texture = nullptr;
@@ -328,8 +362,8 @@ SurfaceOutput spriteSurface(UserSurfaceInput input)
 		// Bind material
 		ShaderLibrary* shaderLib;
 
-		if (desc->material) {
-			shaderLib = matsys_material_get_shaderlibrary(desc->material);
+		if (material) {
+			shaderLib = matsys_material_get_shaderlibrary(material);
 		}
 		// Bind default material
 		else {
@@ -339,31 +373,29 @@ SurfaceOutput spriteSurface(UserSurfaceInput input)
 		SV_ASSERT(shaderLib);
 		//SV_ASSERT(shaderLib->isType("Sprite"));
 
-		if (desc->cameraBuffer)
-			matsys_shaderlibrary_bind_camerabuffer(shaderLib, *desc->cameraBuffer, cmd);
+		matsys_shaderlibrary_bind_camerabuffer(shaderLib, *ctx.pCameraBuffer, cmd);
 
 		matsys_shaderlibrary_bind_subshader(shaderLib, g_SubShader_Vertex, cmd);
 		matsys_shaderlibrary_bind_subshader(shaderLib, g_SubShader_Surface, cmd);
-		
-		if (desc->material) {
-			matsys_material_bind(desc->material, g_SubShader_Vertex,cmd);
-			matsys_material_bind(desc->material, g_SubShader_Surface,cmd);
+
+		if (material) {
+			matsys_material_bind(material, g_SubShader_Vertex, cmd);
+			matsys_material_bind(material, g_SubShader_Surface, cmd);
 		}
 
 		// Get batch data
-		SpriteData* pSpriteDataInstance = reinterpret_cast<SpriteData*>(g_SpriteData.alloc());
+		SpriteData* pSpriteDataInstance = ctx.spriteData;
 		SpriteVertex* sprData = pSpriteDataInstance->data;
 		SpriteVertex* sprDataIt = sprData;
 
-		ui32 count = desc->count;
-		const SpriteInstance* buffer = desc->pInstances;
+		const SpriteInstance* buffer = instances;
 		const SpriteInstance* initialPtr = buffer;
 
 		while (buffer < initialPtr + count) {
 
 			ui32 j = 0u;
 			ui32 currentInstance = ui32(buffer - initialPtr);
-			ui32 batchSize = BATCH_COUNT;
+			ui32 batchSize = SPRITE_BATCH_COUNT;
 			if (currentInstance + batchSize > count) {
 				batchSize = count - currentInstance;
 			}
@@ -403,12 +435,6 @@ SurfaceOutput spriteSurface(UserSurfaceInput input)
 			// Begin rendering
 			graphics_renderpass_begin(g_SpriteRenderPass, att, nullptr, 1.f, 0u, cmd);
 
-			graphics_vertexbuffer_bind(g_SpriteVertexBuffer, 0u, 0u, cmd);
-			graphics_indexbuffer_bind(g_SpriteIndexBuffer, 0u, cmd);
-			graphics_blendstate_bind(g_SpriteBlendState, cmd);
-			graphics_inputlayoutstate_bind(g_SpriteInputLayoutState, cmd);
-			graphics_sampler_bind(g_SpriteDefSampler, 0u, ShaderType_Pixel, cmd);
-
 			const SpriteInstance* beginBuffer = buffer;
 			const SpriteInstance* endBuffer;
 
@@ -417,7 +443,7 @@ SurfaceOutput spriteSurface(UserSurfaceInput input)
 				endBuffer = buffer + batchSize;
 
 				texture = buffer->pTexture;
-				
+
 				ui32 offset = ui32(buffer - beginBuffer);
 				while (buffer != endBuffer) {
 
@@ -425,7 +451,7 @@ SurfaceOutput spriteSurface(UserSurfaceInput input)
 						graphics_image_bind(texture ? texture : g_SpriteWhiteTexture, 0u, ShaderType_Pixel, cmd);
 						texture = buffer->pTexture;
 						ui32 batchPos = ui32(buffer - beginBuffer);
-						renderer_sprite_draw_call(offset, batchPos - offset, cmd);
+						drawCall(offset, batchPos - offset, cmd);
 						offset = batchPos;
 					}
 
@@ -434,15 +460,12 @@ SurfaceOutput spriteSurface(UserSurfaceInput input)
 
 				ui32 batchPos = ui32(buffer - beginBuffer);
 				graphics_image_bind(texture ? texture : g_SpriteWhiteTexture, 0u, ShaderType_Pixel, cmd);
-				renderer_sprite_draw_call(offset, batchPos - offset, cmd);
+				drawCall(offset, batchPos - offset, cmd);
 
 			}
 
 			graphics_renderpass_end(cmd);
 		}
-
-		g_SpriteData.free(pSpriteDataInstance);
-
 	}
 
 }

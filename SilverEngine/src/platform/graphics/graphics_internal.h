@@ -262,6 +262,8 @@ namespace sv {
 		std::unique_ptr<SizedInstanceAllocator> rasterizerStateAllocator;
 		std::mutex								rasterizerStateMutex;
 
+		GraphicsAPI api = GraphicsAPI_Invalid;
+
 	};
 
 	Result graphics_initialize();

@@ -89,20 +89,38 @@ namespace sv {
 
 	};
 
-	class SceneRenderer {
+	struct RenderLayer2D {
 
-	public:
-		SceneRenderer() = default;
-		~SceneRenderer();
+		std::string name;
+		bool frustumTest;
+		i32 sortValue;
 
-		void create(ECS* ecs);
-		void destroy();
+	};
 
-		void draw(ECS* ecs, Entity mainCamera, bool present = true);
-		void drawCamera2D(ECS* ecs, Camera* pCamera, const vec3f& position, const vec4f& directionQuat);
+	struct RenderLayer3D {
 
-	private:
-		void* pInternal = nullptr;
+		std::string name;
+
+	};
+
+	struct SceneRenderer {
+
+		SceneRenderer() = delete;
+
+		static void initECS(ECS* ecs);
+		
+		// Draw calls
+
+		static void draw(ECS* ecs, Entity mainCamera, bool present = true);
+		static void drawCamera2D(ECS* ecs, Camera* pCamera, const vec3f& position, const vec4f& directionQuat);
+		static void drawCamera3D(ECS* ecs, Camera* pCamera, const vec3f& position, const vec4f& directionQuat);
+
+		// RenderLayers 2D
+
+		static constexpr ui32 RENDER_LAYER_COUNT = 16u;
+
+		static RenderLayer2D renderLayers2D[RENDER_LAYER_COUNT];
+		static RenderLayer3D renderLayers3D[RENDER_LAYER_COUNT];
 
 	};
 
@@ -113,12 +131,12 @@ namespace sv {
 		MaterialAsset material;
 		Sprite sprite;
 		Color color = Color::White();
-		i32 spriteLayer; // TODO:
+		ui32 renderLayer = 0u;
 
 		SpriteComponent() {}
 		SpriteComponent(Color col) : color(col) {}
-		SpriteComponent(Sprite spr) : sprite(spr) {}
-		SpriteComponent(Sprite spr, Color col) : sprite(spr), color(col) {}
+		SpriteComponent(Sprite& spr) : sprite(spr) {}
+		SpriteComponent(Sprite& spr, Color col) : sprite(spr), color(col) {}
 
 	};
 
@@ -129,12 +147,12 @@ namespace sv {
 		MaterialAsset material;
 		AnimatedSprite sprite;
 		Color color = Color::White();
-		i32 spriteLayer; // TODO:
+		ui32 renderLayer = 0u;
 
 		AnimatedSpriteComponent() {}
 		AnimatedSpriteComponent(Color col) : color(col) {}
-		AnimatedSpriteComponent(AnimatedSprite spr) : sprite(spr) {}
-		AnimatedSpriteComponent(AnimatedSprite spr, Color col) : sprite(spr), color(col) {}
+		AnimatedSpriteComponent(AnimatedSprite& spr) : sprite(spr) {}
+		AnimatedSpriteComponent(AnimatedSprite& spr, Color col) : sprite(spr), color(col) {}
 
 	};
 

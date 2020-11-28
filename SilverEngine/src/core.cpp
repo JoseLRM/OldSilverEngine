@@ -8,6 +8,7 @@
 #include "rendering/material_system/material_system_internal.h"
 #include "rendering/debug_renderer/debug_renderer_internal.h"
 #include "rendering/sprite_renderer/sprite_renderer_internal.h"
+#include "rendering/scene_renderer/scene_renderer_internal.h"
 #include "platform/graphics/graphics_internal.h"
 #include "platform/input/input_internal.h"
 #include "platform/window/window_internal.h"
@@ -473,7 +474,11 @@ namespace sv {
 			svCheck(sprite_animator_initialize());
 			svCheck(matsys_initialize());
 			svCheck(debug_renderer_initialize());
-			svCheck(sprite_renderer_initialize());
+			
+			// Renderers
+			svCheck(SpriteRenderer_internal::initialize());
+			svCheck(SceneRenderer_internal::initialize());
+			
 			svCheck(scene_initialize());
 
 			// APPLICATION
@@ -546,7 +551,11 @@ namespace sv {
 			asset_free_unused();
 
 			if (result_fail(scene_close())) { SV_LOG_ERROR("Can't close the scene system"); }
-			if (result_fail(sprite_renderer_close())) { SV_LOG_ERROR("Can't close the sprite renderer"); }
+
+			// Renderers
+			if (result_fail(SceneRenderer_internal::close())) { SV_LOG_ERROR("Can't close Scene Renderer"); }
+			if (result_fail(SpriteRenderer_internal::close())) { SV_LOG_ERROR("Can't close the sprite renderer"); }
+
 			if (result_fail(debug_renderer_close())) { SV_LOG_ERROR("Can't close the debug renderer"); }
 			if (result_fail(matsys_close())) { SV_LOG_ERROR("Can't close the material system"); }
 			if (result_fail(sprite_animator_close())) { SV_LOG_ERROR("Can't close the sprite animator"); }

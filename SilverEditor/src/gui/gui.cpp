@@ -12,6 +12,7 @@
 #include "panels/SceneHierarchyPanel.h"
 #include "panels/EntityInspectorPanel.h"
 #include "panels/AssetPanel.h"
+#include "panels/RendererPanel.h"
 
 #include "utils/io.h"
 
@@ -45,6 +46,7 @@ namespace sv {
 				if (strcmp(name.c_str(), "Scene Hierarchy") == 0) panel_manager_add(name.c_str(), new SceneHierarchyPanel());
 				else if (strcmp(name.c_str(), "Entity Inspector") == 0) panel_manager_add(name.c_str(), new EntityInspectorPanel());
 				else if (strcmp(name.c_str(), "Assets") == 0) panel_manager_add(name.c_str(), new AssetPanel());
+				else if (strcmp(name.c_str(), "Renderer") == 0) panel_manager_add(name.c_str(), new RendererPanel());
 			}
 		}
 		else SV_LOG_ERROR("Can't deserialize Editor State");
@@ -60,12 +62,10 @@ namespace sv {
 
 			std::vector<const char*> panels;
 
-			if (panel_manager_get("Simulation")) panels.emplace_back("Simulation");
-			if (panel_manager_get("Scene Editor")) panels.emplace_back("Scene Editor");
 			if (panel_manager_get("Scene Hierarchy")) panels.emplace_back("Scene Hierarchy");
 			if (panel_manager_get("Entity Inspector")) panels.emplace_back("Entity Inspector");
 			if (panel_manager_get("Assets")) panels.emplace_back("Assets");
-			if (panel_manager_get("Simulation Tools")) panels.emplace_back("Simulation Tools");
+			if (panel_manager_get("Renderer")) panels.emplace_back("Renderer");
 
 			file << ui32(panels.size());
 
@@ -127,8 +127,6 @@ namespace sv {
 			graphics_barrier(barriers, simulationOffscreen ? 2u : 1u, g_Device->GetCMD());
 		}
 
-		static SceneType newSceneType;
-
 		bool newScene = false;
 
 		if (ImGui::BeginMainMenuBar()) {
@@ -153,7 +151,6 @@ namespace sv {
 
 				if (ImGui::MenuItem("New Scene")) {
 
-					newSceneType = SceneType_2D;
 					newScene = true;
 
 				}
@@ -183,36 +180,6 @@ namespace sv {
 
 			if (ImGui::BeginPopup("NewScenePopup")) {
 
-				auto getSceneTypeStr = [](SceneType type) -> const char* {
-				
-					switch (type)
-					{
-					case sv::SceneType_2D:
-						return "Type 2D";
-					case sv::SceneType_3D:
-						return "Type 3D";
-					default:
-						return "Invalid";
-					}
-				
-				};
-
-				if (ImGui::BeginCombo("Scene Type", getSceneTypeStr(newSceneType))) {
-
-					for (ui32 i = 1; i <= 2; ++i) {
-
-						SceneType t = (SceneType)i;
-						if (t == newSceneType) continue;
-
-						if (ImGui::MenuItem(getSceneTypeStr(t))) {
-							newSceneType = t;
-						}
-					}
-
-					ImGui::EndCombo();
-				}
-
-				ImGui::Separator();
 
 				if (ImGui::MenuItem("Create")) {
 
@@ -223,7 +190,7 @@ namespace sv {
 
 					std::string filePath = file_dialog_save(1u, filters, asset_folderpath_get().c_str());
 
-					simulation_scene_new(filePath.c_str(), newSceneType);
+					simulation_scene_new(filePath.c_str());
 
 				}
 
@@ -235,6 +202,7 @@ namespace sv {
 				panelCheckbox<SceneHierarchyPanel>("Scene Hierarchy");
 				panelCheckbox<EntityInspectorPanel>("Entity Inspector");
 				panelCheckbox<AssetPanel>("Assets");
+				panelCheckbox<RendererPanel>("Renderer");
 
 				ImGui::EndMenu();
 			}
@@ -976,6 +944,28 @@ namespace sv {
 			}
 
 			ImGui::EndPopup();
+		}
+
+		return result;
+	}
+
+	bool gui_component_item_renderLayer2D(ui32& index)
+	{
+		bool result = false;
+
+		if (ImGui::BeginCombo("##RenderLayers", SceneRenderer::renderLayers2D[index].name.c_str())) {
+
+			for (ui32 i = 0u; i < SceneRenderer::RENDER_LAYER_COUNT; ++i) {
+
+				if (i == index) continue;
+
+				if (ImGui::MenuItem(SceneRenderer::renderLayers2D[i].name.c_str())) {
+					index = i;
+					result = true;
+				}
+			}
+
+			ImGui::EndCombo();
 		}
 
 		return result;

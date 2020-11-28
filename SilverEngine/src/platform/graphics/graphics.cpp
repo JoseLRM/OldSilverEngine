@@ -305,6 +305,7 @@ namespace sv {
 
 		}
 
+		g_Device.api = GraphicsAPI_Invalid;
 		svCheck(g_Device.close());
 
 		svCheck(graphics_shader_close());
@@ -767,6 +768,12 @@ namespace sv {
 	Result graphics_destroy(Primitive* primitive)
 	{
 		if (primitive == nullptr) return Result_Success;
+
+		if (g_Device.api == GraphicsAPI_Invalid)
+		{
+			SV_LOG_ERROR("Trying to destroy a graphics primitive after the system is closed");
+			return Result_InvalidUsage;
+		}
 
 		Primitive_internal* p = reinterpret_cast<Primitive_internal*>(primitive);
 		Result res = g_Device.destroy(p);

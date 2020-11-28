@@ -48,7 +48,7 @@ namespace sv {
 
 	void matsys_material_bind(Material* pInternal, SubShaderID subShaderID, CommandList cmd)
 	{
-		ASSERT_PTR(pInternal);
+		ASSERT_PTR();
 		PARSE_MATERIAL();
 		SV_ASSERT(mat.shaderLibrary->type->subShaderCount > subShaderID);
 
@@ -82,7 +82,7 @@ namespace sv {
 
 	void matsys_material_update(Material* pInternal, CommandList cmd)
 	{
-		ASSERT_PTR(pInternal);
+		ASSERT_PTR();
 		PARSE_MATERIAL();
 		mat.update(cmd);
 		mat.rmvToUpdateList();

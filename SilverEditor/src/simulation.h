@@ -29,7 +29,7 @@ namespace sv {
 
 	Result simulation_scene_save();
 	Result simulation_scene_open(const char* filePath);
-	Result simulation_scene_new(const char* filePath, SceneType type);
+	Result simulation_scene_new(const char* filePath);
 
 	extern DebugCamera g_DebugCamera;
 	extern SceneAsset g_Scene;

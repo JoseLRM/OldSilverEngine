@@ -1,9 +1,5 @@
 #pragma once
 
-#ifdef NDEBUG
-#define NDEBUG
-#endif
-
 #ifdef SV_RES_PATH
 #define SV_RES_PATH_W L"" SV_RES_PATH
 #endif
@@ -159,12 +155,12 @@ namespace sv {
 
 #else
 
-#define SV_LOG_CLEAR()
-#define SV_LOG_SEPARATOR()
-#define SV_LOG()
-#define SV_LOG_INFO()
-#define SV_LOG_WARNING()
-#define SV_LOG_ERROR()
+#define SV_LOG_CLEAR() {}
+#define SV_LOG_SEPARATOR() {}
+#define SV_LOG(x, ...) {}
+#define SV_LOG_INFO(x, ...) {}
+#define SV_LOG_WARNING(x, ...) {}
+#define SV_LOG_ERROR(x, ...) {}
 
 #endif
 

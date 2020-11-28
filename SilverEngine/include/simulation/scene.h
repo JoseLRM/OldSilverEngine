@@ -13,14 +13,6 @@ namespace sv {
 
 	constexpr Version SCENE_MINIMUM_SUPPORTED_VERSION = { 0u, 0u, 0u };
 
-	enum SceneType : ui32 {
-
-		SceneType_Invalid,
-		SceneType_2D,
-		SceneType_3D
-
-	};
-
 	class Scene {
 
 	public:
@@ -29,7 +21,7 @@ namespace sv {
 
 		Scene(const Scene& other) = delete;
 
-		void create(SceneType sceneType);
+		void create();
 		void destroy();
 		void clear();
 
@@ -37,8 +29,6 @@ namespace sv {
 		Result	serialize(ArchiveO& archive);
 		Result	deserialize(const char* filePath);
 		Result	deserialize(ArchiveI& archive);
-
-		inline SceneType getSceneType() const noexcept { return m_SceneType; }
 
 		// entity system
 	public:
@@ -60,19 +50,12 @@ namespace sv {
 		// Is the most high level draw call. Takes the ECS data and the main camera and render everything. (OPTIONAL) Presents to screen
 		void draw(bool present = true);
 
-		// Is the second high level draw call, save the result in the camera
-		void drawCamera(Camera* pCamera, const vec3f& position, const vec4f& directionQuat);
-
-		inline SceneRenderer& getRenderer() noexcept { return m_Renderer; }
-
 		// attributes
 	private:
-		SceneType m_SceneType = SceneType_Invalid;
 		float m_TimeStep = 1.f;
 		Entity m_MainCamera = SV_ENTITY_NULL;
 		ECS* m_ECS = nullptr;
 
-		SceneRenderer	m_Renderer;
 		ScenePhysics	m_Physics;
 
 	};
@@ -83,7 +66,7 @@ namespace sv {
 		inline Scene* get() const noexcept { return reinterpret_cast<Scene*>(m_Ref.get()); }
 		inline Scene* operator->() const noexcept { return get(); }
 
-		Result createFile(const char* filePath, SceneType sceneType);
+		Result createFile(const char* filePath);
 		inline Result save() const noexcept { return get()->serialize((asset_folderpath_get() + getFilePath()).c_str()); }
 	};
 

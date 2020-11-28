@@ -119,6 +119,7 @@ namespace sv {
 		device.depthStencilStateAllocator = std::make_unique<SizedInstanceAllocator>(sizeof(DepthStencilState_vk), 200u);
 		device.rasterizerStateAllocator = std::make_unique<SizedInstanceAllocator>(sizeof(RasterizerState_vk), 200u);
 		
+		device.api = GraphicsAPI_Vulkan;
 	}
 
 	Result graphics_vulkan_initialize()

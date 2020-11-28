@@ -105,4 +105,27 @@ namespace sv {
 		return true;
 	}
 
+	bool BoundingBox2D::intersects_circle(const Circle2D& circle) const noexcept
+	{
+		vec2f boxHalf = (max - min) / 2.f;
+		vec2f boxCenter = min + boxHalf;
+
+		vec2f distance = circle.position - boxCenter;
+		vec2f distanceInsideBox = distance;
+		distanceInsideBox.x = std::max(std::min(distance.x, boxHalf.x), -boxHalf.x);
+		distanceInsideBox.y = std::max(std::min(distance.y, boxHalf.y), -boxHalf.y);
+
+		return (distance.length() - distanceInsideBox.length()) <= circle.radius;
+	}
+
+	bool FrustumOthographic::intersects_circle(const Circle2D& circle) const noexcept
+	{
+		vec2f distance = circle.position - position;
+		vec2f distanceInsideBox = distance;
+		distanceInsideBox.x = std::max(std::min(distance.x, halfSize.x), -halfSize.x);
+		distanceInsideBox.y = std::max(std::min(distance.y, halfSize.y), -halfSize.y);
+
+		return (distance.length() - distanceInsideBox.length()) <= circle.radius;
+	}
+
 }

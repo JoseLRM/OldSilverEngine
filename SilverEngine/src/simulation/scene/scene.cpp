@@ -71,10 +71,8 @@ namespace sv {
 		destroy();
 	}
 
-	void Scene::create(SceneType sceneType)
+	void Scene::create()
 	{
-		m_SceneType = sceneType;
-
 		// Initialize Entity Component System
 		ecs_create(&m_ECS);
 
@@ -92,7 +90,7 @@ namespace sv {
 		});
 
 		// Rendering
-		m_Renderer.create(m_ECS);
+		SceneRenderer::initECS(m_ECS);
 
 		// Physics
 		m_Physics.create(m_ECS);
@@ -102,40 +100,19 @@ namespace sv {
 		ecs_component_add<NameComponent>(m_ECS, m_MainCamera, "Camera");
 		Camera& camera = ecs_component_add<CameraComponent>(m_ECS, m_MainCamera)->camera;
 
-		switch (sceneType)
-		{
-		case sv::SceneType_2D:
-		{
-			camera.setProjectionType(ProjectionType_Orthographic);
-			camera.setProjectionLength(10.f);
-			camera.setResolution(1920u, 1080u);
-			camera.setNear(-1000.f);
-			camera.setFar(1000.f);
-			camera.activate();
-		}
-			break;
-		case sv::SceneType_3D:
-		{
-			camera.setProjectionType(ProjectionType_Perspective);
-			camera.setProjectionLength(0.1f);
-			camera.setResolution(1920u, 1080u);
-			camera.setNear(0.2f);
-			camera.setFar(100000.f);
-			camera.activate();
-		}
-			break;
-		}
+		camera.setProjectionType(ProjectionType_Orthographic);
+		camera.setProjectionLength(10.f);
+		camera.setResolution(1920u, 1080u);
+		camera.setNear(-1000.f);
+		camera.setFar(1000.f);
+		camera.activate();
 		
 	}
 
 	void Scene::destroy()
 	{
-		if (m_SceneType == SceneType_Invalid) return;
-		m_SceneType = SceneType_Invalid;
-
 		ecs_destroy(m_ECS);
 		m_ECS = nullptr;
-		m_Renderer.destroy();
 		m_Physics.destroy();
 		m_MainCamera = SV_ENTITY_NULL;
 	}
@@ -161,8 +138,6 @@ namespace sv {
 	Result Scene::serialize(ArchiveO& archive)
 	{
 		archive << engine_version_get();
-
-		archive << m_SceneType;
 
 		svCheck(ecs_serialize(m_ECS, archive));
 		archive << m_MainCamera;
@@ -192,13 +167,8 @@ namespace sv {
 			if (version < SCENE_MINIMUM_SUPPORTED_VERSION) return Result_UnsupportedVersion;
 		}
 
-		// Scene Type
-		archive >> m_SceneType;
-
-		if (m_SceneType != SceneType_2D && m_SceneType != SceneType_3D) return Result_InvalidFormat;
-
 		// Create the scene
-		create(m_SceneType);
+		create();
 
 		svCheck(ecs_deserialize(m_ECS, archive));
 
@@ -230,20 +200,14 @@ namespace sv {
 
 	void Scene::draw(bool present)
 	{
-		m_Renderer.draw(m_ECS, m_MainCamera, present);
+		SceneRenderer::draw(m_ECS, m_MainCamera, present);
 	}
 
-	void Scene::drawCamera(Camera* pCamera, const vec3f& position, const vec4f& directionQuat)
-	{
-		m_Renderer.drawCamera2D(m_ECS, pCamera, position, directionQuat);
-	}
-
-	Result SceneAsset::createFile(const char* filePath, SceneType sceneType)
+	Result SceneAsset::createFile(const char* filePath)
 	{
 		Scene scene;
-		scene.create(sceneType);
-		std::string absFilePath = std::move(asset_folderpath_get() + filePath);
-		svCheck(scene.serialize(absFilePath.c_str()));
+		scene.create();
+		svCheck(scene.serialize(filePath));
 		return asset_refresh();
 	}
 

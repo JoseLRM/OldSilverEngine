@@ -642,6 +642,10 @@ namespace sv {
 
 	};
 
+	// 2D INTERSECTIONS
+
+	struct Circle2D;
+
 	struct BoundingBox2D {
 
 		vec2f min, max;
@@ -660,6 +664,29 @@ namespace sv {
 		}
 
 		bool intersects_point(const vec2f& point) const noexcept;
+		bool intersects_circle(const Circle2D& circle) const noexcept;
+
+	};
+
+	struct FrustumOthographic {
+
+		vec2f position;
+		vec2f halfSize;
+
+		inline void init_center(const vec2f& center, const vec2f& dimensions)
+		{
+			halfSize = dimensions / 2.f;
+			position = center;
+		}
+
+		bool intersects_circle(const Circle2D& circle) const noexcept;
+
+	};
+
+	struct Circle2D {
+
+		vec2f position;
+		float radius;
 
 	};
 

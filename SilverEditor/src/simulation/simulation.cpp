@@ -33,8 +33,8 @@ namespace sv {
 		const char* sceneFilePath = "scenes/Test.scene";
 
 		if (g_Scene.load(sceneFilePath) != Result_Success) {
-			g_Scene.createFile(sceneFilePath, SceneType_2D);
-			g_Scene.load("assets/scenes/Test.scene");
+			g_Scene.createFile("assets/scenes/Test.scene");
+			g_Scene.load(sceneFilePath);
 		}
 
 		simulation_scene_open(sceneFilePath);
@@ -137,8 +137,8 @@ namespace sv {
 				CameraComponent* camera = ecs_component_get<CameraComponent>(scene, scene.getMainCamera());
 				if (camera) {
 					vec2u panelSize;
-					panelSize.x = g_ScreenBounds.z;
-					panelSize.y = g_ScreenBounds.w;
+					panelSize.x = ui32(g_ScreenBounds.z);
+					panelSize.y = ui32(g_ScreenBounds.w);
 
 					vec2u size = g_Gamemode ? window_size_get() : panelSize;
 					camera->camera.adjust(size.x, size.y);
@@ -220,6 +220,30 @@ namespace sv {
 
 			ImGui::Checkbox("Debug", &g_ShowDebug);
 
+			ImGui::SameLine();
+
+			bool mode3D = g_DebugCamera.camera.getProjectionType() == ProjectionType_Perspective;
+
+			if (ImGui::Checkbox("3D", &mode3D)) {
+
+				if (mode3D) {
+					g_DebugCamera.position = { 0.f, 0.f, -10.f };
+					g_DebugCamera.camera.setProjectionType(ProjectionType_Perspective);
+					g_DebugCamera.camera.setWidth(0.1f);
+					g_DebugCamera.camera.setHeight(0.1f);
+					g_DebugCamera.camera.setNear(0.1f);
+					g_DebugCamera.camera.setFar(100000.f);
+				}
+				else {
+					g_DebugCamera.position = { 0.f, 0.f, -10.f };
+					g_DebugCamera.camera.setProjectionType(ProjectionType_Orthographic);
+					g_DebugCamera.camera.setWidth(10.f);
+					g_DebugCamera.camera.setHeight(10.f);
+					g_DebugCamera.camera.setNear(-1000.f);
+					g_DebugCamera.camera.setFar(1000.f);
+				}
+			}
+
 			const ImVec4 transformButtonColor(0.2f, 0.8f, 0.2f, 1.f);
 
 			ImGui::Separator();
@@ -227,50 +251,67 @@ namespace sv {
 
 			// Rotation Button
 			{
+				bool pop;
+
 				if (g_TransformMode == TransformMode_Rotation) {
 					ImGui::PushStyleColor(ImGuiCol_Button, transformButtonColor);
 					ImGui::PushStyleColor(ImGuiCol_ButtonActive, transformButtonColor);
 					ImGui::PushStyleColor(ImGuiCol_ButtonHovered, transformButtonColor);
-				}
 
+					pop = true;
+				}
+				else pop = false;
 				
 
 				if (ImGui::Button("R", { 20.f, 20.f })) {
 					g_TransformMode = TransformMode_Rotation;
 				}
-				else if (g_TransformMode == TransformMode_Rotation) ImGui::PopStyleColor(3);
+				
+				if (pop) ImGui::PopStyleColor(3);
 
 				ImGui::SameLine(0.f, 0.f);
 			}
 
 			// Scale Button
 			{
+				bool pop;
+
 				if (g_TransformMode == TransformMode_Scale) {
 					ImGui::PushStyleColor(ImGuiCol_Button, transformButtonColor);
 					ImGui::PushStyleColor(ImGuiCol_ButtonHovered, transformButtonColor);
 					ImGui::PushStyleColor(ImGuiCol_ButtonActive, transformButtonColor);
+
+					pop = true;
 				}
+				else pop = false;
 
 				if (ImGui::Button("S", { 20.f, 20.f })) {
 					g_TransformMode = TransformMode_Scale;
 				}
-				else if (g_TransformMode == TransformMode_Scale) ImGui::PopStyleColor(3);
+				
+				if (pop) ImGui::PopStyleColor(3);
 
 				ImGui::SameLine(0.f, 0.f);
 			}
 
 			// Translation Button
 			{
+				bool pop;
+
 				if (g_TransformMode == TransformMode_Translation) {
 					ImGui::PushStyleColor(ImGuiCol_Button, transformButtonColor);
 					ImGui::PushStyleColor(ImGuiCol_ButtonActive, transformButtonColor);
 					ImGui::PushStyleColor(ImGuiCol_ButtonHovered, transformButtonColor);
+
+					pop = true;
 				}
+				else pop = false;
 
 				if (ImGui::Button("T", { 20.f, 20.f })) {
 					g_TransformMode = TransformMode_Translation;
 				}
-				else if (g_TransformMode == TransformMode_Translation) ImGui::PopStyleColor(3);
+				
+				if (pop) ImGui::PopStyleColor(3);
 			}
 
 			ImGui::NextColumn();
@@ -392,39 +433,22 @@ namespace sv {
 		
 		// Create debug camera
 
-		switch (g_Scene->getSceneType())
-		{
+		g_DebugCamera.position = { 0.f, 0.f, -10.f };
+		svCheck(g_DebugCamera.camera.setResolution(1920u, 1080u));
+		g_DebugCamera.camera.setProjectionType(ProjectionType_Orthographic);
+		g_DebugCamera.camera.setWidth(10.f);
+		g_DebugCamera.camera.setHeight(10.f);
+		g_DebugCamera.camera.setNear(-1000.f);
+		g_DebugCamera.camera.setFar(1000.f);
+		
+		
 
-		case SceneType_2D:
-		{
-			g_DebugCamera.position = { 0.f, 0.f, -10.f };
-			svCheck(g_DebugCamera.camera.setResolution(1920u, 1080u));
-			g_DebugCamera.camera.setProjectionType(ProjectionType_Orthographic);
-			g_DebugCamera.camera.setWidth(10.f);
-			g_DebugCamera.camera.setHeight(10.f);
-			g_DebugCamera.camera.setNear(-1000.f);
-			g_DebugCamera.camera.setFar(1000.f);
-			break;
-		}
-
-		case SceneType_3D:
-		{
-			g_DebugCamera.position = { 0.f, 0.f, -10.f };
-			svCheck(g_DebugCamera.camera.setResolution(1920u, 1080u));
-			g_DebugCamera.camera.setProjectionType(ProjectionType_Perspective);
-			g_DebugCamera.camera.setWidth(0.1f);
-			g_DebugCamera.camera.setHeight(0.1f);
-			g_DebugCamera.camera.setNear(0.1f);
-			g_DebugCamera.camera.setFar(100000.f);
-			break;
-		}
-
-		}
+		return Result_Success;
 	}
 
-	Result simulation_scene_new(const char* filePath, SceneType type)
+	Result simulation_scene_new(const char* filePath)
 	{
-		g_Scene.createFile(filePath, type);
+		g_Scene.createFile(filePath);
 		g_SelectedEntity = SV_ENTITY_NULL;
 		return g_Scene.load(filePath);
 	}

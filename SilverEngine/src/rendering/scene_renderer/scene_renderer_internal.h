@@ -14,9 +14,16 @@ namespace sv {
 	void scene_component_deserialize_AnimatedSpriteComponent(BaseComponent* comp, ArchiveI& archive);
 	void scene_component_deserialize_CameraComponent(BaseComponent* comp, ArchiveI& archive);
 
+	struct SceneRenderer_internal {
+		
+		static Result initialize();
+		static Result close();
+		
+	};
+
 	struct SpriteIntermediate {
 
-		SpriteInstance	instance;
+		SpriteInstance instance;
 		Material* material;
 		float depth;
 
@@ -26,12 +33,13 @@ namespace sv {
 
 	};
 
-	struct SceneRenderer_internal {
+	// Temporal data created while rendering
+	struct SceneRendererTemp {
 
 		CameraBuffer cameraBuffer;
 
 		// Allocators used to draw the scene without allocate memory every frame
-		FrameList<SpriteIntermediate>	spritesIntermediates;
+		FrameList<SpriteIntermediate>	spritesIntermediates[SceneRenderer::RENDER_LAYER_COUNT];
 		FrameList<SpriteInstance>		spritesInstances;
 
 	};

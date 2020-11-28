@@ -76,8 +76,6 @@ namespace sv {
 	{
 		std::scoped_lock lock(g_AnimatedSpritesMutex);
 
-		float dt;
-
 		for (auto& pool : g_AnimatedSprites) {
 			for (AnimatedSprite_internal& spr : pool) {
 				sprite_animator_update_animation(spr, deltaTime);
