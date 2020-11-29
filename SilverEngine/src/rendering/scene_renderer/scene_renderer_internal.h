@@ -18,7 +18,7 @@ namespace sv {
 		
 		static Result initialize();
 		static Result close();
-		
+
 	};
 
 	struct SpriteIntermediate {

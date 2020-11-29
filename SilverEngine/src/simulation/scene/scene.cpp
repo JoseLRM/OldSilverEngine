@@ -100,11 +100,8 @@ namespace sv {
 		ecs_component_add<NameComponent>(m_ECS, m_MainCamera, "Camera");
 		Camera& camera = ecs_component_add<CameraComponent>(m_ECS, m_MainCamera)->camera;
 
-		camera.setProjectionType(ProjectionType_Orthographic);
-		camera.setProjectionLength(10.f);
+		camera.setCameraType(CameraType_2D);
 		camera.setResolution(1920u, 1080u);
-		camera.setNear(-1000.f);
-		camera.setFar(1000.f);
 		camera.activate();
 		
 	}

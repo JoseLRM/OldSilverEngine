@@ -387,10 +387,7 @@ namespace sv {
 	{
 		Scene& scene = *g_Scene.get();
 
-		if (g_DebugCamera.camera.getProjectionType() == ProjectionType_Perspective)
-			SceneRenderer::drawCamera3D(scene, &g_DebugCamera.camera, g_DebugCamera.position, g_DebugCamera.rotation);
-		else
-			SceneRenderer::drawCamera2D(scene, &g_DebugCamera.camera, g_DebugCamera.position, g_DebugCamera.rotation);
+		SceneRenderer::drawCamera(scene, &g_DebugCamera.camera, g_DebugCamera.position, g_DebugCamera.rotation);
 
 		// DEBUG RENDERING
 
@@ -607,7 +604,7 @@ namespace sv {
 		}
 
 		// Draw 2D grid
-		if (g_DebugRendering_Grid && g_DebugCamera.camera.getProjectionType() == ProjectionType_Orthographic) {
+		if (g_DebugRendering_Grid && g_DebugCamera.camera.getCameraType() == CameraType_2D) {
 
 			debug_renderer_linewidth_set(g_DebugBatch, 2.f);
 

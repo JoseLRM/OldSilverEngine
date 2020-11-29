@@ -152,7 +152,7 @@ namespace sv {
 
 		// Debug
 		if (g_ShowDebug) {
-			if (g_DebugCamera.camera.getProjectionType() == ProjectionType_Orthographic)
+			if (g_DebugCamera.camera.getCameraType() == CameraType_2D)
 				simulation_editor_camera_controller_2D(dt);
 			else 
 				simulation_editor_camera_controller_3D(dt);
@@ -222,25 +222,17 @@ namespace sv {
 
 			ImGui::SameLine();
 
-			bool mode3D = g_DebugCamera.camera.getProjectionType() == ProjectionType_Perspective;
+			bool mode3D = g_DebugCamera.camera.getCameraType() == CameraType_3D;
 
 			if (ImGui::Checkbox("3D", &mode3D)) {
 
 				if (mode3D) {
 					g_DebugCamera.position = { 0.f, 0.f, -10.f };
-					g_DebugCamera.camera.setProjectionType(ProjectionType_Perspective);
-					g_DebugCamera.camera.setWidth(0.1f);
-					g_DebugCamera.camera.setHeight(0.1f);
-					g_DebugCamera.camera.setNear(0.1f);
-					g_DebugCamera.camera.setFar(100000.f);
+					g_DebugCamera.camera.setCameraType(CameraType_3D);
 				}
 				else {
 					g_DebugCamera.position = { 0.f, 0.f, -10.f };
-					g_DebugCamera.camera.setProjectionType(ProjectionType_Orthographic);
-					g_DebugCamera.camera.setWidth(10.f);
-					g_DebugCamera.camera.setHeight(10.f);
-					g_DebugCamera.camera.setNear(-1000.f);
-					g_DebugCamera.camera.setFar(1000.f);
+					g_DebugCamera.camera.setCameraType(CameraType_2D);
 				}
 			}
 
@@ -435,13 +427,7 @@ namespace sv {
 
 		g_DebugCamera.position = { 0.f, 0.f, -10.f };
 		svCheck(g_DebugCamera.camera.setResolution(1920u, 1080u));
-		g_DebugCamera.camera.setProjectionType(ProjectionType_Orthographic);
-		g_DebugCamera.camera.setWidth(10.f);
-		g_DebugCamera.camera.setHeight(10.f);
-		g_DebugCamera.camera.setNear(-1000.f);
-		g_DebugCamera.camera.setFar(1000.f);
-		
-		
+		g_DebugCamera.camera.setCameraType(CameraType_2D);
 
 		return Result_Success;
 	}

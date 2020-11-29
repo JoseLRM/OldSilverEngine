@@ -52,14 +52,14 @@ namespace sv {
 
 	Result Camera::serialize(ArchiveO& archive)
 	{
-		archive << m_Active << m_Projection << getResolution();
+		archive << m_Active << m_Projection << m_Type << getResolution();
 		return Result_Success;
 	}
 
 	Result Camera::deserialize(ArchiveI& archive)
 	{
 		vec2u res;
-		archive >> m_Active >> m_Projection >> res;
+		archive >> m_Active >> m_Projection >> m_Type >> res;
 		if (res.x != 0u && res.y != 0u) svCheck(setResolution(res.x, res.y));
 
 		return Result_Success;
@@ -101,6 +101,33 @@ namespace sv {
 		m_Projection.modified = true;
 	}
 
+	void Camera::setCameraType(CameraType type) noexcept
+	{
+		if (m_Type != type) {
+			m_Type = type;
+
+			switch (m_Type)
+			{
+			case sv::CameraType_2D:
+				m_Projection.width = 10.f;
+				m_Projection.height = 10.f;
+				m_Projection.near = -1000.f;
+				m_Projection.far = 1000.f;
+				break;
+
+			case sv::CameraType_3D:
+				m_Projection.width = 0.1f;
+				m_Projection.height = 0.1f;
+				m_Projection.near = 0.1f;
+				m_Projection.far = 1000.f;
+				break;
+			}
+			
+			m_Projection.matrix = XMMatrixIdentity();
+			m_Projection.modified = true;
+		}
+	}
+
 	float Camera::getProjectionLength() const noexcept
 	{
 		return math_sqrt(m_Projection.width * m_Projection.width + m_Projection.height * m_Projection.height);
@@ -139,26 +166,18 @@ namespace sv {
 		m_Projection.modified = true;
 	}
 
-	void Camera::setProjectionType(ProjectionType type) noexcept
-	{
-		if (m_Projection.type != type) {
-			m_Projection.type = type;
-			m_Projection.modified = true;
-		}
-	}
-
 	const XMMATRIX& Camera::getProjectionMatrix() noexcept
 	{
 		if (m_Projection.modified) {
 			m_Projection.modified = false;
 
-			switch (m_Projection.type)
+			switch (m_Type)
 			{
-			case ProjectionType_Orthographic:
+			case CameraType_2D:
 				m_Projection.matrix = XMMatrixOrthographicLH(m_Projection.width, m_Projection.height, m_Projection.near, m_Projection.far);
 				break;
 
-			case ProjectionType_Perspective:
+			case CameraType_3D:
 				m_Projection.matrix = XMMatrixPerspectiveLH(m_Projection.width, m_Projection.height, m_Projection.near, m_Projection.far);
 				break;
 

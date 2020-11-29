@@ -9,10 +9,9 @@
 
 namespace sv {
 
-	enum ProjectionType : ui32 {
-		ProjectionType_Clip,
-		ProjectionType_Orthographic,
-		ProjectionType_Perspective
+	enum CameraType : ui32 {
+		CameraType_2D,
+		CameraType_3D
 	};
 
 	// This class only contains information about projection and some images used during rendering (offscreen)
@@ -32,19 +31,21 @@ namespace sv {
 		inline void deactivate() noexcept { m_Active = false; }
 		bool isActive() const noexcept; //TODO: while implementing check if the resolution is defined
 
+		inline CameraType	getCameraType() const noexcept { return m_Type; }
+		void				setCameraType(CameraType type) noexcept;
+
+
 		// Projection
 
 		inline float			getWidth() const noexcept { return m_Projection.width; }
 		inline float			getHeight() const noexcept { return m_Projection.height; }
 		inline float			getNear() const noexcept { return m_Projection.near; }
 		inline float			getFar() const noexcept { return m_Projection.far; }
-		inline ProjectionType	getProjectionType() const noexcept { return m_Projection.type; }
 
 		void setWidth(float width) noexcept;
 		void setHeight(float height) noexcept;
 		void setNear(float near) noexcept;
 		void setFar(float far) noexcept;
-		void setProjectionType(ProjectionType type) noexcept;
 
 		Viewport	getViewport() const noexcept;
 		Scissor		getScissor() const noexcept;
@@ -76,7 +77,6 @@ namespace sv {
 		GPUImage* m_OffscreenDS = nullptr;
 
 		struct {
-			ProjectionType type;
 			float width = 1.f;
 			float height = 1.f;
 			float near = -1000.f;
@@ -84,6 +84,8 @@ namespace sv {
 			XMMATRIX matrix = XMMatrixIdentity();
 			bool modified = true;
 		} m_Projection;
+
+		CameraType m_Type = CameraType_2D;
 
 		bool m_Active = true;
 
@@ -112,8 +114,7 @@ namespace sv {
 		// Draw calls
 
 		static void draw(ECS* ecs, Entity mainCamera, bool present = true);
-		static void drawCamera2D(ECS* ecs, Camera* pCamera, const vec3f& position, const vec4f& directionQuat);
-		static void drawCamera3D(ECS* ecs, Camera* pCamera, const vec3f& position, const vec4f& directionQuat);
+		static void drawCamera(ECS* ecs, Camera* pCamera, const vec3f& position, const vec4f& directionQuat);
 
 		// RenderLayers 2D
 

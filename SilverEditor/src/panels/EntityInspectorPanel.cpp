@@ -123,29 +123,27 @@ namespace sv {
 
 	void showCameraComponentInfo(CameraComponent* comp)
 	{
-		ProjectionType projectionType = comp->camera.getProjectionType();
+		CameraType projectionType = comp->camera.getCameraType();
 		Camera& cam = comp->camera;
 
-		auto getPrjStr = [](ProjectionType type) {
+		auto getPrjStr = [](CameraType type) {
 			switch (type)
 			{
-			case sv::ProjectionType_Clip:
-				return "Clip";
-			case sv::ProjectionType_Orthographic:
-				return "Orthographic";
-			case sv::ProjectionType_Perspective:
-				return "Perspective";
+			case sv::CameraType_2D:
+				return "2D";
+			case sv::CameraType_3D:
+				return "3D";
 			default:
 				return "None";
 			}
 		};
 
-		auto getPrjNearMin = [](ProjectionType type) {
+		auto getPrjNearMin = [](CameraType type) {
 			switch (type)
 			{
-			case sv::ProjectionType_Orthographic:
+			case sv::CameraType_2D:
 				return float_min;
-			case sv::ProjectionType_Perspective:
+			case sv::CameraType_3D:
 				return 0.001f;
 			default:
 				return float_min;
@@ -154,39 +152,21 @@ namespace sv {
 
 		gui_component_item_begin();
 
-		ProjectionType types[] = {
-			ProjectionType_Clip,
-			ProjectionType_Orthographic,
-			ProjectionType_Perspective
+		CameraType types[] = {
+			CameraType_2D,
+			CameraType_3D
 		};
 	
-		gui_component_item_next("Projection");
-		if (ImGui::BeginCombo("##Projection", getPrjStr(cam.getProjectionType()))) {
+		gui_component_item_next("Type");
+		if (ImGui::BeginCombo("##Type", getPrjStr(cam.getCameraType()))) {
 
 			for (ui32 i = 0; i < 3; ++i) {
-				ProjectionType type = types[i];
+				CameraType type = types[i];
 
-				if (cam.getProjectionType() == type) continue;
+				if (cam.getCameraType() == type) continue;
 
 				if (ImGui::MenuItem(getPrjStr(type))) {
-					cam.setProjectionType(type);
-
-					// Initialize values
-					switch (type)
-					{
-					case sv::ProjectionType_Clip:
-						break;
-					case sv::ProjectionType_Orthographic:
-						cam.setNear(-1000.f);
-						cam.setFar(1000.f);
-						cam.setProjectionLength(10.f);
-						break;
-					case sv::ProjectionType_Perspective:
-						cam.setNear(0.1f);
-						cam.setFar(1000.f);
-						cam.setProjectionLength(0.1f);
-						break;
-					}
+					cam.setCameraType(type);
 				}
 			}
 
@@ -201,7 +181,7 @@ namespace sv {
 
 		gui_component_item_next("Near");
 		float near = cam.getNear();
-		if (ImGui::DragFloat("##Near", &near, 0.1f, getPrjNearMin(cam.getProjectionType()), float_max)) {
+		if (ImGui::DragFloat("##Near", &near, 0.1f, getPrjNearMin(cam.getCameraType()), float_max)) {
 			cam.setNear(near);
 		}
 
