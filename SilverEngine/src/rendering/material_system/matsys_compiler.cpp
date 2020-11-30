@@ -13,6 +13,8 @@ namespace sv {
 		ShaderTag_Type,
 		ShaderTag_Begin,
 		ShaderTag_End,
+		ShaderTag_UserBlock,
+		ShaderTag_ShaderType,
 
 	};
 
@@ -21,9 +23,9 @@ namespace sv {
 		std::string value;
 	};
 
-	struct SubShaderIntermediate {
-		SubShaderID ID;
-		std::vector<ui8> data;
+	struct UserBlock {
+		std::string name;
+		std::string src;
 	};
 
 	void decomposeDefine(const char* line, ui32 size, ShaderDefine& define)
@@ -41,6 +43,8 @@ namespace sv {
 		else if (line[0] == 't' && line[1] == 'y' && line[2] == 'p' && line[3] == 'e' && line[4] == ' ') { define.tag = ShaderTag_Type; valuePtr = line + 5; }
 		else if (line[0] == 'b' && line[1] == 'e' && line[2] == 'g' && line[3] == 'i' && line[4] == 'n' && line[5] == ' ') { define.tag = ShaderTag_Begin; valuePtr = line + 6; }
 		else if (line[0] == 'e' && line[1] == 'n' && line[2] == 'd') { define.tag = ShaderTag_End; }
+		else if (line[0] == 'u' && line[1] == 's' && line[2] == 'e' && line[3] == 'r' && line[4] == 'b' && line[5] == 'l' && line[6] == 'o' && line[7] == 'c' && line[8] == 'k' && line[9] == ' ') { define.tag = ShaderTag_UserBlock; valuePtr = line + 10; }
+		else if (line[0] == 's' && line[1] == 'h' && line[2] == 'a' && line[3] == 'd' && line[4] == 'e' && line[5] == 'r' && line[6] == 't' && line[7] == 'y' && line[8] == 'p' && line[9] == 'e' && line[10] == ' ') { define.tag = ShaderTag_ShaderType; valuePtr = line + 11; }
 		else { define.tag = ShaderTag_Unknown; valuePtr = line - 1u; }
 
 		if (valuePtr) {
@@ -76,9 +80,9 @@ namespace sv {
 		std::string name;
 		ShaderLibraryType_internal* type = nullptr;
 
-		const char* inShader = nullptr;
-		SubShaderID subShaderID = ui32_max;
-		std::vector<SubShaderIntermediate> intermediate;
+		const char* inBlock = nullptr;
+		std::string currentBlockName;
+		std::vector<UserBlock> userBlocks;
 
 		while (true) {
 
@@ -91,7 +95,7 @@ namespace sv {
 			if (define.tag != ShaderTag_Null) {
 
 				// Process shader define
-				if (inShader) {
+				if (inBlock) {
 
 					bool end = false;
 
@@ -105,50 +109,25 @@ namespace sv {
 					// End Compilation
 					if (end) {
 
-						SubShaderRegister& shaderReg = type->subShaderRegisters[subShaderID];
+						std::string src;
 
-						ShaderCompileDesc desc;
-						desc.api = graphics_api_get();
-						desc.entryPoint = "main";
-						desc.majorVersion = 6u;
-						desc.minorVersion = 0u;
-						desc.shaderType = shaderReg.type;
-
-						for (SubShaderIntermediate& i : intermediate) {
-							if (i.ID == subShaderID) {
-								SV_LOG_ERROR("Duplicated sub shader definition '%s'", shaderReg.name.c_str());
-								return Result_CompileError;
-							}
-						}
-
-						SubShaderIntermediate& inter = intermediate.emplace_back();
-						inter.ID = subShaderID;
-
-						std::string shaderSrc;
-						shaderSrc = "#include \"core.hlsl\"\n";
-
-						if (shaderReg.preLibName.size()) {
-							shaderSrc += "#include \"";
-							shaderSrc += shaderReg.preLibName;
-							shaderSrc += ".hlsl\"\n";
-						}
-
-						size_t beginSize = shaderSrc.size();
-
-						const char* beginSrc = inShader;
+						const char* beginSrc = inBlock;
 						const char* endSrc = line - 1u;
 
-						shaderSrc.resize(beginSize + endSrc - beginSrc);
-						memcpy(shaderSrc.data() + beginSize, beginSrc, shaderSrc.size() - beginSize);
+						src.resize(endSrc - beginSrc);
+						memcpy(src.data(), beginSrc, src.size());
 
-						if (shaderReg.postLibName.size()) {
-							shaderSrc += "\n#include \"";
-							shaderSrc += shaderReg.postLibName;
-							shaderSrc += ".hlsl\"\n";
+						if (src.empty() || currentBlockName.empty()) {
+							SV_LOG_ERROR("Unvalid block '%s'", currentBlockName.c_str());
 						}
+						else {
 
-						svCheck(graphics_shader_compile_string(&desc, shaderSrc.c_str(), ui32(strlen(shaderSrc.c_str())), inter.data));
-						inShader = nullptr;
+							UserBlock& ub = userBlocks.emplace_back();
+							ub.name = std::move(currentBlockName);
+							ub.src = std::move(src);
+
+						}
+						inBlock = nullptr;
 					}
 				}
 				else {
@@ -174,16 +153,8 @@ namespace sv {
 
 					case ShaderTag_Begin:
 					{
-						if (type == nullptr) {
-							SV_LOG_ERROR("Type undefined");
-							return Result_CompileError;
-						}
-
-						subShaderID = type->findSubShaderID(define.value.c_str());
-						if (subShaderID == ui32_max) {
-							SV_LOG_ERROR("Sub shader '%s' not found", define.value.c_str());
-						}
-						else inShader = line + lineSize + 1u;
+						currentBlockName = define.value;
+						inBlock = line + lineSize + 1u;
 					}break;
 
 					case ShaderTag_End:
@@ -218,26 +189,62 @@ namespace sv {
 			return Result_CompileError;
 		}
 
+		struct SubShaderIntermediate {
+			SubShaderID ID;
+			std::vector<ui8> binData;
+		};
+
+		std::vector<SubShaderIntermediate> intermediates;
+
 		// Asign subshaders
 		for (SubShaderID i = 0u; i < type->subShaderCount; ++i) {
 
 			SubShaderRegister& reg = type->subShaderRegisters[i];
-			SubShaderIntermediate* pInter = nullptr;
-
-			for (SubShaderIntermediate& inter : intermediate) {
-				if (inter.ID == i) {
-					pInter = &inter;
-					break;
-				}
+			
+			if (reg.userBlocks.empty()) {
+				lib.subShaders[i].shader = reg.defaultShader;
 			}
+			// Compile new subshader
+			else {
 
-			if (pInter == nullptr) {
+				std::string src = reg.src;
 
-				if (reg.defaultShader == nullptr) {
-					SV_LOG_ERROR("Sub Shader '%s' not found", reg.name.c_str());
-					return Result_CompileError;
+				// Replace blocks
+				bool found;
+
+				for (SubShaderUserBlock& requestBlock : reg.userBlocks) {
+
+					found = false;
+
+					for (UserBlock block : userBlocks) {
+
+						if (strcmp(requestBlock.name.c_str(), block.name.c_str()) == 0) {
+							src.insert(src.begin() + requestBlock.sourcePos, block.src.begin(), block.src.end());
+							found = true;
+							break;
+						}
+					}
+
+					if (!found) {
+						SV_LOG_ERROR("Subshader block '%s' not found", requestBlock.name.c_str());
+					}
 				}
-				else lib.subShaders[i].shader = reg.defaultShader;
+
+				// Compile
+				ShaderCompileDesc desc;
+				desc.api = graphics_api_get();
+				desc.entryPoint = "main";
+				desc.majorVersion = 6u;
+				desc.minorVersion = 0u;
+				desc.shaderType = reg.type;
+
+				std::vector<ui8> binData;
+
+				svCheck(graphics_shader_compile_string(&desc, src.c_str(), strlen(src.data()), binData));
+
+				SubShaderIntermediate& inter = intermediates.emplace_back();
+				inter.ID = i;
+				inter.binData = std::move(binData);
 			}
 
 		}
@@ -246,11 +253,11 @@ namespace sv {
 		{
 			ShaderDesc desc;
 
-			for (SubShaderIntermediate& inter : intermediate) {
+			for (SubShaderIntermediate& inter : intermediates) {
 
 				desc.shaderType = type->subShaderRegisters[inter.ID].type;
-				desc.binDataSize = inter.data.size();
-				desc.pBinData = inter.data.data();
+				desc.binDataSize = inter.binData.size();
+				desc.pBinData = inter.binData.data();
 
 				svCheck(graphics_shader_create(&desc, &lib.subShaders[inter.ID].shader));
 			}
@@ -268,11 +275,11 @@ namespace sv {
 			archive << lib.name;
 			archive << lib.type->name;
 
-			archive << ui32(intermediate.size());
+			archive << ui32(intermediates.size());
 
-			for (SubShaderIntermediate& inter : intermediate) {
+			for (SubShaderIntermediate& inter : intermediates) {
 				archive << inter.ID;
-				archive << inter.data;
+				archive << inter.binData;
 			}
 
 			// Compute hash and save it
@@ -285,6 +292,99 @@ namespace sv {
 				return binResult;
 			}
 		}
+
+		return Result_Success;
+	}
+
+	Result matsys_shaderlibrarytype_compile(ShaderLibraryType_internal& type, SubShaderID subShaderID, const char* includeName)
+	{
+		SubShaderRegister& ss = type.subShaderRegisters[subShaderID];
+		ss.type = (ShaderType)ui32_max;
+
+		// Open file
+		std::string filePath = "library/shader_utils/";
+		filePath += includeName;
+		filePath += ".hlsl";
+
+#ifdef SV_RES_PATH
+		filePath = SV_RES_PATH + filePath;
+#endif
+
+		std::ifstream file;
+
+		file.open(filePath);
+
+		if (!file.is_open()) return Result_NotFound;
+
+		file.seekg(0u);
+
+		// Read lines
+		std::string line;
+		std::stringstream src;
+		src << "#include \"core.hlsl\"\n";
+
+		ShaderDefine define;
+
+		while (std::getline(file, line)) {
+
+			decomposeDefine(line.c_str(), line.size(), define);
+
+			switch (define.tag)
+			{
+			case ShaderTag_Name:
+				if (ss.name.empty()) ss.name = define.value;
+				else SV_LOG_ERROR("Duplicated subshader name");
+				break;
+
+			case ShaderTag_UserBlock:
+				if (define.value.empty()) SV_LOG_ERROR("Invalid userblock name");
+				else {
+					SubShaderUserBlock& ub = type.subShaderRegisters[subShaderID].userBlocks.emplace_back();
+					ub.name = define.value;
+					ub.sourcePos = src.str().size();
+				}
+				break;
+
+			case ShaderTag_ShaderType:
+				if (ss.type == ui32_max) {
+
+					if (strcmp(define.value.c_str(), "VertexShader") == 0) {
+						ss.type = ShaderType_Vertex;
+					}
+					else if (strcmp(define.value.c_str(), "PixelShader") == 0) {
+						ss.type = ShaderType_Pixel;
+					}
+					//TODO: More
+					else {
+						SV_LOG_ERROR("Unknown shader type '%s'", define.value.c_str());
+					}
+
+				}
+				else {
+					SV_LOG_ERROR("Duplicated shader type");
+				}
+				break;
+
+			default:
+				if (!line.empty())
+					src << line << '\n';
+			}
+
+		}
+
+		file.close();
+
+		// Error checking
+		if (ss.name.empty()) {
+			SV_LOG_ERROR("The subshader must have a name");
+			return Result_CompileError;
+		}
+		if (ss.type == ui32_max) {
+			SV_LOG_ERROR("The subshader must have a shader type");
+			return Result_CompileError;
+		}
+
+		ss.src = src.str();
 
 		return Result_Success;
 	}

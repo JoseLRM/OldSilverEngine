@@ -183,10 +183,10 @@ namespace sv {
 		ui32 subShaderCount = lib.type->subShaderCount;
 		
 		// Initialization
-		for (ui32 i = 0u; i < MAX_SUBSHADERS; ++i)
+		for (ui32 i = 0u; i < SV_MATSYS_MAX_SUBSHADERS; ++i)
 			lib.matInfo.bufferSizes[i] = 0u;
 
-		for (ui32 i = 0u; i < MAX_SUBSHADERS; ++i)
+		for (ui32 i = 0u; i < SV_MATSYS_MAX_SUBSHADERS; ++i)
 			lib.matInfo.bufferBindings[i] = ui32_max;
 
 		lib.matInfo.bufferSizesCount = 0u;
@@ -323,7 +323,7 @@ namespace sv {
 		matInfo = other.matInfo;
 		name = other.name;
 		nameHashCode = other.nameHashCode;
-		for(ui32 i = 0u; i < MAX_SUBSHADERS; ++i) 
+		for(ui32 i = 0u; i < SV_MATSYS_MAX_SUBSHADERS; ++i) 
 			subShaders[i] = other.subShaders[i];
 		type = other.type;
 		return *this;
@@ -336,7 +336,7 @@ namespace sv {
 		matInfo = std::move(other.matInfo);
 		name = std::move(other.name);
 		nameHashCode = other.nameHashCode;
-		for (ui32 i = 0u; i < MAX_SUBSHADERS; ++i)
+		for (ui32 i = 0u; i < SV_MATSYS_MAX_SUBSHADERS; ++i)
 			subShaders[i] = std::move(other.subShaders[i]);
 		type = other.type;
 		return *this;

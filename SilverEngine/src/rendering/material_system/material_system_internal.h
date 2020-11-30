@@ -5,22 +5,25 @@
 
 namespace sv {
 
-	constexpr ui32 MAX_SUBSHADERS = 10u;
+	struct SubShaderUserBlock {
+		std::string name;
+		ui32 sourcePos;
+	};
 
 	struct SubShaderRegister {
 
 		std::string name;
-		std::string preLibName;
-		std::string postLibName;
-		Shader*		defaultShader;
+		std::string src;
 		ShaderType	type;
+		Shader*		defaultShader = nullptr;
+		std::vector<SubShaderUserBlock> userBlocks;
 
 	};
 
 	struct ShaderLibraryType_internal {
 
 		std::string			name;
-		SubShaderRegister	subShaderRegisters[MAX_SUBSHADERS];
+		SubShaderRegister	subShaderRegisters[SV_MATSYS_MAX_SUBSHADERS];
 		ui32				subShaderCount;
 
 		SubShaderID findSubShaderID(const char* name);
@@ -35,9 +38,9 @@ namespace sv {
 	};
 
 	struct SubShaderIndices {
-		ui32 i[MAX_SUBSHADERS]; // Buffer offsets, aligned with subshader list
+		ui32 i[SV_MATSYS_MAX_SUBSHADERS]; // Buffer offsets, aligned with subshader list
 
-		inline void init(ui32 n) { for (ui32 j = 0u; j < MAX_SUBSHADERS; ++j) i[j] = n; }
+		inline void init(ui32 n) { for (ui32 j = 0u; j < SV_MATSYS_MAX_SUBSHADERS; ++j) i[j] = n; }
 	};
 
 	struct MaterialInfo {
@@ -45,8 +48,8 @@ namespace sv {
 		std::vector<MaterialAttribute>	attributes; // Buffer data. Aligned with attributeOffsets
 		std::vector<SubShaderIndices>	attributeOffsets;
 		
-		ui32 bufferSizes[MAX_SUBSHADERS];		// Per subshader: buffer size
-		ui32 bufferBindings[MAX_SUBSHADERS];	// Per subshader: buffer binding
+		ui32 bufferSizes[SV_MATSYS_MAX_SUBSHADERS];		// Per subshader: buffer size
+		ui32 bufferBindings[SV_MATSYS_MAX_SUBSHADERS];	// Per subshader: buffer binding
 
 		ui32 bufferSizesCount = 0u; // The sum of all the material attributes
 
@@ -57,7 +60,7 @@ namespace sv {
 
 	struct ShaderLibrary_internal {
 
-		SubShader subShaders[MAX_SUBSHADERS];
+		SubShader subShaders[SV_MATSYS_MAX_SUBSHADERS];
 		GPUBuffer* cameraBuffer = nullptr;
 
 		MaterialInfo matInfo;
@@ -89,7 +92,7 @@ namespace sv {
 	struct Material_internal {
 
 		ShaderLibrary_internal*			shaderLibrary;
-		MaterialBuffer					buffers[MAX_SUBSHADERS];
+		MaterialBuffer					buffers[SV_MATSYS_MAX_SUBSHADERS];
 		std::vector<MaterialTexture>	textures;
 		bool							dynamic;
 		bool							inUpdateList = false;
@@ -140,6 +143,7 @@ namespace sv {
 	Result	matsys_close();
 
 	Result matsys_shaderlibrary_compile(ShaderLibrary_internal& lib, const char* src);
+	Result matsys_shaderlibrarytype_compile(ShaderLibraryType_internal& type, SubShaderID subShaderID, const char* includeName);
 
 	Result matsys_asset_register();
 

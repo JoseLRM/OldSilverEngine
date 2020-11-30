@@ -17,8 +17,8 @@ namespace sv {
 		}
 		SV_ASSERT(desc->name);
 
-		if (desc->subShaderCount > MAX_SUBSHADERS) {
-			SV_LOG_ERROR("Can't create a shader library with more than %u subshaders", MAX_SUBSHADERS);
+		if (desc->subShaderCount > SV_MATSYS_MAX_SUBSHADERS) {
+			SV_LOG_ERROR("Can't create a shader library with more than %u subshaders", SV_MATSYS_MAX_SUBSHADERS);
 			return Result_InvalidUsage;
 		}
 
@@ -27,31 +27,10 @@ namespace sv {
 		type.name = desc->name;
 		type.subShaderCount = desc->subShaderCount;
 
-		// Store Names
+		// Compile subshaders
 		for (ui32 i = 0u; i < type.subShaderCount; ++i) {
-			SV_ASSERT(desc->name[i]);
-			type.subShaderRegisters[i].name = desc->pSubShaderNames[i];
-		}
-		// TODO: Should check if has duplicated subshader names??
-
-		// Store LibNames
-		if (desc->pSubShaderPreLibName) {
-			for (ui32 i = 0u; i < type.subShaderCount; ++i) {
-				if (desc->pSubShaderPreLibName[i])
-					type.subShaderRegisters[i].preLibName = desc->pSubShaderPreLibName[i];
-			}
-		}
-		if (desc->pSubShaderPostLibName) {
-			for (ui32 i = 0u; i < type.subShaderCount; ++i) {
-				if (desc->pSubShaderPostLibName[i])
-					type.subShaderRegisters[i].postLibName = desc->pSubShaderPostLibName[i];
-			}
-		}
-
-		// Store Types
-		for (ui32 i = 0u; i < type.subShaderCount; ++i) {
-			if (desc->pSubShaderTypes[i])
-				type.subShaderRegisters[i].type = desc->pSubShaderTypes[i];
+			SV_ASSERT(desc->subshaderIncludeNames[i]);
+			svCheck(matsys_shaderlibrarytype_compile(type, i, desc->subshaderIncludeNames[i]));
 		}
 
 		// TODO: Default shaders

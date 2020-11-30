@@ -157,7 +157,10 @@ namespace sv {
 		}
 		// Sprite Shader Utils
 		{
-			svCheck(graphics_shader_include_write("sprite_vertex0", R"(
+			svCheck(graphics_shader_include_write("sprite_vertex", R"(
+#name SpriteVertex
+#shadertype VertexShader
+
 struct VertexInput {
 	float4 position : Position;
 	float2 texCoord : TexCoord;
@@ -169,9 +172,8 @@ struct VertexOutput {
 	float2 texCoord : FragTexCoord;
 	float4 position : SV_Position;
 };
-			)"));
 
-			svCheck(graphics_shader_include_write("sprite_vertex1", R"(
+#userblock SpriteVertex
 // User Callbacks
 //struct UserVertexOutput : VertexOutput {};
 //UserVertexOutput spriteVertex(VertexInput input);
@@ -183,7 +185,10 @@ UserVertexOutput main(VertexInput input)
 }
 			)"));
 
-			svCheck(graphics_shader_include_write("sprite_surface0", R"(
+			svCheck(graphics_shader_include_write("sprite_surface", R"(
+#name SpriteSurface
+#shadertype PixelShader
+
 struct SurfaceInput {
 	float4 color : FragColor;
 	float2 texCoord : FragTexCoord;
@@ -195,9 +200,8 @@ struct SurfaceOutput {
 
 SV_SAMPLER(sam, s0);
 SV_TEXTURE(_Albedo, t0);
-			)"));
 
-			svCheck(graphics_shader_include_write("sprite_surface1", R"(
+#userblock SpriteSurface
 // User Callbacks
 // struct UserSurfaceInput : SurfaceInput {}
 // SurfaceOutput spriteSurface(UserSurfaceInput input);
@@ -211,31 +215,10 @@ SurfaceOutput main(UserSurfaceInput input)
 		}
 		// Register Shaderlibrary type
 		{
-			const char* names[] = {
-				"SpriteVertex",
-				"SpriteSurface",
-			};
-
-			const char* preLibNames[] = {
-				"sprite_vertex0",
-				"sprite_surface0",
-			};
-			const char* postLibNames[] = {
-				"sprite_vertex1",
-				"sprite_surface1",
-			};
-
-			ShaderType types[] = {
-				ShaderType_Vertex,
-				ShaderType_Pixel,
-			};
-
 			ShaderLibraryTypeDesc desc;
 			desc.name = "Sprite";
-			desc.pSubShaderNames = names;
-			desc.pSubShaderPreLibName = preLibNames;
-			desc.pSubShaderPostLibName = postLibNames;
-			desc.pSubShaderTypes = types;
+			desc.subshaderIncludeNames[0] = "sprite_vertex";
+			desc.subshaderIncludeNames[1] = "sprite_surface";
 			desc.subShaderCount = 2u;
 			
 			svCheck(matsys_shaderlibrary_type_register(&desc));
