@@ -455,28 +455,10 @@ namespace sv {
 		}
 	}
 
-	void* AssetRef::get() const
-	{
-		if (pInternal) return (ui8*)(pInternal) + sizeof(Asset_internal);
-		return nullptr;
-	}
-
 	const char* AssetRef::getAssetTypeStr() const
 	{
-		if (pInternal) return reinterpret_cast<Asset_internal*>(pInternal)->assetType->name.c_str();
-		return nullptr;
+		return  pInternal ? reinterpret_cast<Asset_internal*>(pInternal)->assetType->name.c_str() : nullptr;
 	}
 
-	const char* AssetRef::getFilePath() const
-	{
-		if (pInternal) return reinterpret_cast<Asset_internal*>(pInternal)->filePath;
-		return nullptr;
-	}
-
-	size_t AssetRef::getHashCode() const
-	{
-		if (pInternal) return reinterpret_cast<Asset_internal*>(pInternal)->hashCode;
-		return 0u;
-	}
 
 }

@@ -11,6 +11,16 @@ namespace sv {
 	typedef bool(*AssetIsUnusedFn)(void* pObject);
 
 	class AssetRef {
+
+		// This is a copy of a internal struct to inline some getters
+		struct Internal {
+			std::atomic<int>	refCount = 0;
+			float				unusedTime = float_max;
+			const char*			filePath = nullptr;
+			size_t				hashCode = 0u;
+			void*				assetType = nullptr;
+		};
+
 	public:
 		AssetRef() = default;
 		~AssetRef();
@@ -25,10 +35,10 @@ namespace sv {
 		Result load(size_t hashCode);
 		void unload();
 
-		void*		get() const;
+		inline void* get() const { return pInternal ? (reinterpret_cast<ui8*>(pInternal) + sizeof(Internal)) : nullptr; }
 		const char* getAssetTypeStr() const;
-		const char* getFilePath() const;
-		size_t		getHashCode() const;
+		inline const char* getFilePath() const { return  pInternal ? reinterpret_cast<Internal*>(pInternal)->filePath : nullptr; }
+		inline size_t getHashCode() const { return  pInternal ? reinterpret_cast<Internal*>(pInternal)->hashCode : 0u; }
 		inline bool hasReference() const noexcept { return pInternal != nullptr; }
 
 	private:
