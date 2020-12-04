@@ -8,6 +8,7 @@
 #include "rendering/material_system/material_system_internal.h"
 #include "rendering/debug_renderer/debug_renderer_internal.h"
 #include "rendering/sprite_renderer/sprite_renderer_internal.h"
+#include "rendering/mesh_renderer/mesh_renderer_internal.h"
 #include "rendering/scene_renderer/scene_renderer_internal.h"
 #include "platform/graphics/graphics_internal.h"
 #include "platform/input/input_internal.h"
@@ -477,6 +478,7 @@ namespace sv {
 			
 			// Renderers
 			svCheck(SpriteRenderer_internal::initialize());
+			svCheck(MeshRenderer_internal::initialize());
 			svCheck(SceneRenderer_internal::initialize());
 			
 			svCheck(scene_initialize());
@@ -554,6 +556,7 @@ namespace sv {
 
 			// Renderers
 			if (result_fail(SceneRenderer_internal::close())) { SV_LOG_ERROR("Can't close Scene Renderer"); }
+			if (result_fail(MeshRenderer_internal::close())) { SV_LOG_ERROR("Can't close the mesh renderer"); }
 			if (result_fail(SpriteRenderer_internal::close())) { SV_LOG_ERROR("Can't close the sprite renderer"); }
 
 			if (result_fail(debug_renderer_close())) { SV_LOG_ERROR("Can't close the debug renderer"); }

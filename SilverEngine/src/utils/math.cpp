@@ -50,7 +50,7 @@ namespace sv {
 		XMVECTOR direction, pos, target;
 		
 		direction = XMVectorSet(0.f, 0.f, 1.f, 0.f);
-		pos = position.get_dx();
+		pos = position.getDX();
 
 		direction = XMVector3Transform(direction, XMMatrixRotationQuaternion(directionQuat.get_dx()));
 

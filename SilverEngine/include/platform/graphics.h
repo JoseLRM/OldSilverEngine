@@ -653,6 +653,7 @@ namespace sv {
 
 	Result graphics_shader_compile_string(const ShaderCompileDesc* desc, const char* str, ui32 size, std::vector<ui8>& data);
 	Result graphics_shader_compile_file(const ShaderCompileDesc* desc, const char* srcPath, std::vector<ui8>& data);
+	Result graphics_shader_compile_fastbin(const char* name, ShaderType shaderType, Shader** pShader, const char* src);
 
 	const ShaderInfo* graphics_shader_info_get(Shader* shader);
 
@@ -686,5 +687,25 @@ namespace sv {
 	};
 
 	GraphicsProperties graphics_properties_get();
+
+	// Debug
+
+	void graphics_event_begin(const char* name, CommandList cmd);
+	void graphics_event_mark(const char* name, CommandList cmd);
+	void graphics_event_end(CommandList cmd);
+
+#ifdef SV_ENABLE_VULKAN_VALIDATION_LAYERS
+	void __internal__do_not_call_this_please_or_you_will_die__graphics_name_set(Primitive* primitive, const char* name);
+#define graphics_name_set(primitive, name) __internal__do_not_call_this_please_or_you_will_die__graphics_name_set(primitive, name);
+#else
+#define graphics_name_set(primitive, name) {}
+#endif
+
+#ifdef SV_ENABLE_LOGGING
+	void __internal__do_not_call_this_please_or_you_will_die__graphics_state_log(GraphicsPipelineMode mode, CommandList cmd);
+#define graphics_state_log(mode, cmd) __internal__do_not_call_this_please_or_you_will_die__graphics_state_log(mode, cmd)
+#else
+#define graphics_state_log(cmd) {}
+#endif
 
 }

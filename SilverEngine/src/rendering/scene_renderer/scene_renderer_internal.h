@@ -2,6 +2,7 @@
 
 #include "rendering/scene_renderer.h"
 #include "rendering/sprite_renderer.h"
+#include "rendering/mesh_renderer.h"
 #include "utils/allocator.h"
 
 namespace sv {
@@ -41,6 +42,8 @@ namespace sv {
 		// Allocators used to draw the scene without allocate memory every frame
 		FrameList<SpriteIntermediate>	spritesIntermediates[SceneRenderer::RENDER_LAYER_COUNT];
 		FrameList<SpriteInstance>		spritesInstances;
+		FrameList<MeshInstance>			meshInstances;
+		FrameList<LightInstance>		lightInstances;
 
 	};
 

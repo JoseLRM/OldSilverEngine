@@ -248,7 +248,7 @@ UserVertexOutput spriteVertex(VertexInput input)
 	UserVertexOutput output;
 	output.color = input.color;
 	output.texCoord = input.texCoord;
-	output.position = mul(camera.vpm, input.position);
+	output.position = mul(input.position, camera.vpm);
 	return output;
 }
 

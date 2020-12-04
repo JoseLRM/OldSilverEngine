@@ -340,7 +340,7 @@ namespace sv {
 		{
 			*this = { v.x, v.y, v.z };
 		}
-		inline void set_dx(const XMVECTOR& v) noexcept
+		inline void setDX(const XMVECTOR& v) noexcept
 		{
 			*this = { XMVectorGetX(v), XMVectorGetY(v), XMVectorGetZ(v) };
 		}
@@ -354,7 +354,7 @@ namespace sv {
 		{
 			return { x, y, z, 0.f };
 		}
-		inline XMVECTOR get_dx() const noexcept
+		inline XMVECTOR getDX() const noexcept
 		{
 			return XMVectorSet(x, y, z, 0.f);
 		}

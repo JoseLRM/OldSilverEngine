@@ -11,6 +11,7 @@ namespace sv {
 
 		GPUImage* diffuse = nullptr;
 		GPUImage* normal = nullptr;
+		GPUImage* depthStencil = nullptr;
 
 		inline vec2u resolution() const noexcept { return (diffuse == nullptr) ? vec2u{ 0u, 0u } : vec2u{ graphics_image_get_width(diffuse), graphics_image_get_height(diffuse) }; }
 		inline vec2u resolutionWidth() const noexcept { return (diffuse == nullptr) ? 0u : graphics_image_get_width(diffuse); }
@@ -26,21 +27,22 @@ namespace sv {
 
 		XMMATRIX tm;
 		Mesh* pMesh;
-		Material* pMaterial;
+		Material* material;
+		float toCameraDistance;
 
 	};
 
-	struct MeshRendererDrawDesc {
-
-		const MeshInstance*		pInstances;
-		ui32					count;
-		GPUImage*				renderTarget;
-		GPUImage*				depthStencil;
-		GBuffer*				pGBuffer;
-		CameraBuffer*			cameraBuffer;
+	struct LightInstance {
 
 	};
+	
+	template<typename T>
+	class FrameList;
 
-	void mesh_renderer_draw(const MeshRendererDrawDesc* desc, CommandList cmd);
+	struct MeshRenderer {
+
+		static void drawMeshes(GPUImage* renderTarget, GBuffer& gBuffer, CameraBuffer& cameraBuffer, FrameList<MeshInstance>& meshes, FrameList<LightInstance>& lights, bool optimizeLists, CommandList cmd);
+
+	};
 
 }

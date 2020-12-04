@@ -49,6 +49,21 @@ namespace sv {
 		auto fn = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"));
 		if (fn) fn(instance, debug, nullptr);
 	}
+	void __stdcall vkCmdInsertDebugUtilsLabelEXT(VkInstance instance, VkCommandBuffer cmd, const VkDebugUtilsLabelEXT* info)
+	{
+		auto fn = reinterpret_cast<PFN_vkCmdInsertDebugUtilsLabelEXT>(vkGetInstanceProcAddr(instance, "vkCmdInsertDebugUtilsLabelEXT"));
+		if (fn) fn(cmd, info);
+	}
+	void __stdcall vkCmdBeginDebugUtilsLabelEXT(VkInstance instance, VkCommandBuffer cmd, const VkDebugUtilsLabelEXT* info)
+	{
+		auto fn = reinterpret_cast<PFN_vkCmdBeginDebugUtilsLabelEXT>(vkGetInstanceProcAddr(instance, "vkCmdBeginDebugUtilsLabelEXT"));
+		if (fn) fn(cmd, info);
+	}
+	void __stdcall vkCmdEndDebugUtilsLabelEXT(VkInstance instance, VkCommandBuffer cmd)
+	{
+		auto fn = reinterpret_cast<PFN_vkCmdEndDebugUtilsLabelEXT>(vkGetInstanceProcAddr(instance, "vkCmdEndDebugUtilsLabelEXT"));
+		if (fn) fn(cmd);
+	}
 
 	////////////////////////////////////////////ADAPTER/////////////////////////////////////////////////
 	Adapter_vk::Adapter_vk(VkPhysicalDevice device) : m_PhysicalDevice(device)
@@ -108,6 +123,9 @@ namespace sv {
 		device.image_blit				= graphics_vulkan_image_blit;
 		device.buffer_update			= graphics_vulkan_buffer_update;
 		device.barrier					= graphics_vulkan_barrier;
+		device.event_begin				= graphics_vulkan_event_begin;
+		device.event_mark				= graphics_vulkan_event_mark;
+		device.event_end				= graphics_vulkan_event_end;
 
 		device.bufferAllocator = std::make_unique<SizedInstanceAllocator>(sizeof(Buffer_vk), 200u);
 		device.imageAllocator = std::make_unique<SizedInstanceAllocator>(sizeof(Image_vk), 200u);
@@ -673,7 +691,7 @@ namespace sv {
 						layers = att.layers;
 					}
 				}
-
+				
 				VkFramebufferCreateInfo create_info{};
 				create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 				create_info.renderPass = renderPass.renderPass;
@@ -690,7 +708,7 @@ namespace sv {
 			else {
 				fb = it->second;
 			}
-		}
+		}	
 
 		VkRenderPassBeginInfo begin_info{};
 		begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -1065,6 +1083,35 @@ namespace sv {
 		vkCmdPipelineBarrier(cmd, srcStage, dstStage, 0u, memoryBarrierCount, memoryBarrier, bufferBarrierCount, bufferBarrier, imageBarrierCount, imageBarrier);
 	}
 
+	void graphics_vulkan_event_begin(const char* name, CommandList cmd)
+	{
+		VkDebugUtilsLabelEXT label = {};
+		label.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+		label.pLabelName = name;
+		label.color[0] = 1.f;
+		label.color[1] = 1.f;
+		label.color[2] = 1.f;
+		label.color[3] = 1.f;
+
+		vkCmdBeginDebugUtilsLabelEXT(g_API->instance, g_API->GetCMD(cmd), &label);
+	}
+	void graphics_vulkan_event_mark(const char* name, CommandList cmd)
+	{
+		VkDebugUtilsLabelEXT label = {};
+		label.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+		label.pLabelName = name;
+		label.color[0] = 1.f;
+		label.color[1] = 1.f;
+		label.color[2] = 1.f;
+		label.color[3] = 1.f;
+
+		vkCmdInsertDebugUtilsLabelEXT(g_API->instance, g_API->GetCMD(cmd), &label);
+	}
+	void graphics_vulkan_event_end(CommandList cmd)
+	{
+		vkCmdEndDebugUtilsLabelEXT(g_API->instance, g_API->GetCMD(cmd));
+	}
+
 	//////////////////////////////////////////// API /////////////////////////////////////////////////
 
 	Result graphics_vulkan_swapchain_create(VkSwapchainKHR oldSwapchain)
@@ -1324,8 +1371,8 @@ namespace sv {
 		// Bind Vertex Buffers
 		if (state.flags & GraphicsPipelineState_VertexBuffer) {
 			
-			VkBuffer buffers[GraphicsLimit_VertexBuffer];
-			VkDeviceSize offsets[GraphicsLimit_VertexBuffer];
+			VkBuffer buffers[GraphicsLimit_VertexBuffer] = {};
+			VkDeviceSize offsets[GraphicsLimit_VertexBuffer] = {};
 			for (ui32 i = 0; i < state.vertexBuffersCount; ++i) {
 				if (state.vertexBuffers[i] == nullptr) {
 					buffers[i] = VK_NULL_HANDLE;
@@ -1338,7 +1385,8 @@ namespace sv {
 			}
 			
 			// TODO: strides??
-			vkCmdBindVertexBuffers(cmd, 0u, state.vertexBuffersCount, buffers, offsets);
+			if (state.vertexBuffersCount)
+				vkCmdBindVertexBuffers(cmd, 0u, state.vertexBuffersCount, buffers, offsets);
 		}
 		// Bind Index Buffer
 		if (state.flags & GraphicsPipelineState_IndexBuffer && state.indexBuffer != nullptr) {
@@ -2082,12 +2130,25 @@ namespace sv {
 		}
 		// Create Shader Resource View
 		if (desc.type & GPUImageType_ShaderResource) {
-			vkCheck(graphics_vulkan_imageview_create(image.image, format, viewType, VK_IMAGE_ASPECT_COLOR_BIT, desc.layers, image.shaderResouceView));
 
-			// Set image info
-			image.image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			image.image_info.imageView = image.shaderResouceView;
-			image.image_info.sampler = VK_NULL_HANDLE;
+			if (desc.type & GPUImageType_DepthStencil) {
+
+				vkCheck(graphics_vulkan_imageview_create(image.image, format, viewType, VK_IMAGE_ASPECT_DEPTH_BIT, desc.layers, image.shaderResouceView));
+
+				// Set image info
+				image.image_info.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+				image.image_info.sampler = VK_NULL_HANDLE;
+				image.image_info.imageView = image.shaderResouceView;
+			}
+			else {
+
+				vkCheck(graphics_vulkan_imageview_create(image.image, format, viewType, VK_IMAGE_ASPECT_COLOR_BIT, desc.layers, image.shaderResouceView));
+				
+				// Set image info
+				image.image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				image.image_info.sampler = VK_NULL_HANDLE;
+				image.image_info.imageView = image.shaderResouceView;
+			}
 		}
 
 		// Set ID
@@ -2223,14 +2284,16 @@ namespace sv {
 			auto& uniforms = sr.uniform_buffers;
 			if (!uniforms.empty()) {
 
-				size_t initialIndex = bindings.size();
-				bindings.resize(initialIndex + uniforms.size());
-
 				SV_ASSERT(uniforms.size() <= GraphicsLimit_ConstantBuffer);
 
 				for (ui64 i = 0; i < uniforms.size(); ++i) {
 					auto& uniform = uniforms[i];
-					VkDescriptorSetLayoutBinding& binding = bindings[i + initialIndex];
+					
+					if (strcmp(uniform.name.c_str(), "type__Globals") == 0) {
+						continue;
+					}
+
+					VkDescriptorSetLayoutBinding& binding = bindings.emplace_back();
 					binding.binding = comp.get_decoration(uniform.id, spv::Decoration::DecorationBinding);
 					binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 					binding.descriptorCount = 1u;

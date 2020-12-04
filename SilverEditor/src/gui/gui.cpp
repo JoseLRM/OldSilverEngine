@@ -544,6 +544,14 @@ namespace sv {
 
 	bool gui_transform_show(Transform& trans)
 	{
+		static Entity currentEntity = SV_ENTITY_NULL;
+		static vec3f eulerAngles;
+
+		if (currentEntity != trans.entity) {
+			currentEntity = trans.entity;
+			eulerAngles = ToDegrees(trans.getLocalEulerRotation());
+		}
+
 		constexpr ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_FramePadding | ImGuiTreeNodeFlags_Framed;
 
 		ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[0]);
@@ -554,7 +562,6 @@ namespace sv {
 			
 			vec3f position = trans.getLocalPosition();
 			vec3f scale = trans.getLocalScale();
-			vec3f rotation = ToDegrees(trans.getLocalEulerRotation());
 
 			if (dragTransformVector("Position", position, 0.3f, 0.f))
 			{
@@ -564,8 +571,14 @@ namespace sv {
 			{
 				trans.setScale(scale);
 			}
-			if (dragTransformVector("Rotation", rotation, 1.f, 0.f)) {
-				trans.setEulerRotation(ToRadians(rotation));
+			if (dragTransformVector("Rotation", eulerAngles, 1.f, 0.f)) {
+				while (eulerAngles.x > 360.f) eulerAngles.x -= 360.f;
+				while (eulerAngles.x < 0.f) eulerAngles.x += 360.f;
+				while (eulerAngles.y > 360.f) eulerAngles.y -= 360.f;
+				while (eulerAngles.y < 0.f) eulerAngles.y += 360.f;
+				while (eulerAngles.z > 360.f) eulerAngles.z -= 360.f;
+				while (eulerAngles.z < 0.f) eulerAngles.z += 360.f;
+				trans.setEulerRotation(ToRadians(eulerAngles));
 			}
 
 			ImGui::Columns(1);

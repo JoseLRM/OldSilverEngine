@@ -4,9 +4,4 @@
 
 namespace sv {
 
-	struct MeshVertex {
-		vec3f position;
-		vec3f normal;
-	};
-
 }

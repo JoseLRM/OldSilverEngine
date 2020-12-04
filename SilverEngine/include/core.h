@@ -155,12 +155,12 @@ namespace sv {
 
 #else
 
-#define SV_LOG_CLEAR() {}
-#define SV_LOG_SEPARATOR() {}
-#define SV_LOG(x, ...) {}
-#define SV_LOG_INFO(x, ...) {}
-#define SV_LOG_WARNING(x, ...) {}
-#define SV_LOG_ERROR(x, ...) {}
+#define SV_LOG_CLEAR() do{}while(false)
+#define SV_LOG_SEPARATOR() do{}while(false)
+#define SV_LOG(x, ...) do{}while(false)
+#define SV_LOG_INFO(x, ...) do{}while(false)
+#define SV_LOG_WARNING(x, ...) do{}while(false)
+#define SV_LOG_ERROR(x, ...) do{}while(false)
 
 #endif
 
@@ -204,19 +204,19 @@ namespace sv {
 
 #else
 
-#define SV_PROFILER(content)
+#define SV_PROFILER(content) do{}while(false)
 
-#define SV_PROFILER_CHRONO_BEGIN(x)
-#define SV_PROFILER_CHRONO_END(x)
-#define SV_PROFILER_CHRONO_GET(x)
-#define SV_PROFILER_CHRONO_LOG(x)
+#define SV_PROFILER_CHRONO_BEGIN(x) do{}while(false)
+#define SV_PROFILER_CHRONO_END(x) do{}while(false)
+#define SV_PROFILER_CHRONO_GET(x) 0.0
+#define SV_PROFILER_CHRONO_LOG(x) do{}while(false)
 
-#define SV_PROFILER_SCALAR_SET(x, value)
-#define SV_PROFILER_SCALAR_ADD(x, value)
-#define SV_PROFILER_SCALAR_SUB(x, value)
-#define SV_PROFILER_SCALAR_MUL(x, value)
-#define SV_PROFILER_SCALAR_DIV(x, value)
-#define SV_PROFILER_SCALAR_GET(x)
+#define SV_PROFILER_SCALAR_SET(x, value) do{}while(false)
+#define SV_PROFILER_SCALAR_ADD(x, value) do{}while(false)
+#define SV_PROFILER_SCALAR_SUB(x, value) do{}while(false)
+#define SV_PROFILER_SCALAR_MUL(x, value) do{}while(false)
+#define SV_PROFILER_SCALAR_DIV(x, value) do{}while(false)
+#define SV_PROFILER_SCALAR_GET(x) 0.0
 
 #endif
 

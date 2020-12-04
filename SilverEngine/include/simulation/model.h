@@ -6,6 +6,11 @@ namespace sv {
 
 	typedef ui32 MeshIndex;
 
+	struct MeshVertex {
+		vec3f position;
+		vec3f normal;
+	};
+
 	struct Mesh {
 
 		std::vector<vec3f> positions;
@@ -16,12 +21,13 @@ namespace sv {
 		GPUBuffer* vertexBuffer = nullptr;
 		GPUBuffer* indexBuffer = nullptr;
 
-		void computeCube(const vec2f& offset = { 0.f, 0.f }, const vec2f& size = { 1.f, 1.f });
-		void computeSphere(const vec2f& offset = { 0.f, 0.f }, float radius = 1.f);
+		void applyPlane(const XMMATRIX& transform = XMMatrixIdentity());
+		void applyCube(const XMMATRIX& transform = XMMatrixIdentity());
+		void applySphere(const XMMATRIX& transform = XMMatrixIdentity());
 
 		void optimize();
 		void recalculateNormals();
-		Result createGPUBuffers();
+		Result createGPUBuffers(ResourceUsage usage = ResourceUsage_Static);
 		Result updateGPUBuffers(CommandList cmd);
 
 		Result clear();

@@ -9,6 +9,11 @@ namespace sv {
 
 	struct Primitive_internal {
 		GraphicsPrimitiveType type;
+
+#ifdef SV_ENABLE_VULKAN_VALIDATION_LAYERS
+		std::string name;
+#endif
+
 	};
 
 	struct GPUBuffer_internal : public Primitive_internal {
@@ -203,6 +208,10 @@ namespace sv {
 	typedef void(*FNP_graphics_api_buffer_update)(GPUBuffer*, void*, ui32, ui32, CommandList);
 	typedef void(*FNP_graphics_api_barrier)(const GPUBarrier*, ui32, CommandList);
 
+	typedef void(*FNP_graphics_api_event_begin)(const char*, CommandList);
+	typedef void(*FNP_graphics_api_event_mark)(const char*, CommandList);
+	typedef void(*FNP_graphics_api_event_end)(CommandList);
+
 	struct GraphicsDevice {
 
 		FNP_graphics_api_initialize	initialize;
@@ -234,6 +243,10 @@ namespace sv {
 		FNP_graphics_api_image_blit		image_blit;
 		FNP_graphics_api_buffer_update	buffer_update;
 		FNP_graphics_api_barrier		barrier;
+
+		FNP_graphics_api_event_begin	event_begin;
+		FNP_graphics_api_event_mark		event_mark;
+		FNP_graphics_api_event_end		event_end;
 
 		std::unique_ptr<SizedInstanceAllocator> bufferAllocator;
 		std::mutex								bufferMutex;

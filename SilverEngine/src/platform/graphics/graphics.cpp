@@ -1072,7 +1072,7 @@ namespace sv {
 
 		state.imagesCount[shaderType] = std::max(state.imagesCount[shaderType], beginSlot + count);
 
-		memcpy(state.images, images, sizeof(GPUImage*) * count);
+		memcpy(state.images[shaderType] + beginSlot, images, sizeof(GPUImage*) * count);
 		state.flags |= GraphicsPipelineState_Image;
 		state.flags |= graphics_pipelinestateflags_image(shaderType);
 	}
@@ -1593,5 +1593,226 @@ namespace sv {
 		GPUImage_internal& p = *reinterpret_cast<GPUImage_internal*>(image);
 		return { 0u, 0u, p.width, p.height };
 	}
+
+	// DEBUG
+
+	void graphics_event_begin(const char* name, CommandList cmd)
+	{
+		g_Device.event_begin(name, cmd);
+	}
+	void graphics_event_mark(const char* name, CommandList cmd)
+	{
+		g_Device.event_mark(name, cmd);
+	}
+	void graphics_event_end(CommandList cmd)
+	{
+		g_Device.event_end(cmd);
+	}
+
+#ifdef SV_ENABLE_VULKAN_VALIDATION_LAYERS
+	void __internal__do_not_call_this_please_or_you_will_die__graphics_name_set(Primitive* primitive_, const char* name)
+	{
+		if (primitive_ == nullptr) return;
+		Primitive_internal& primitive = *reinterpret_cast<Primitive_internal*>(primitive_);
+		primitive.name = name;
+	}
+#endif
+
+#ifdef SV_ENABLE_LOGGING
+	void __internal__do_not_call_this_please_or_you_will_die__graphics_state_log(GraphicsPipelineMode mode, CommandList cmd)
+	{
+		auto getUsageStr = [](ResourceUsage usage)-> const char* 
+		{
+			switch (usage)
+			{
+			case sv::ResourceUsage_Default:
+				return "Default";
+			case sv::ResourceUsage_Static:
+				return "Static";
+			case sv::ResourceUsage_Dynamic:
+				return "Dynamic";
+			case sv::ResourceUsage_Staging:
+				return "Staging";
+			default:
+				return "Unknown";
+			}
+		};
+
+		auto getCPUAccessStr = [](CPUAccessFlags access)-> const char*
+		{
+			switch (access)
+			{
+			case CPUAccess_None:
+				return "None";
+			case CPUAccess_Write:
+				return "Write Only";
+			case CPUAccess_Read:
+				return "Read Only";
+			case CPUAccess_Write | CPUAccess_Read:
+				return "Read-Write";
+			default:
+				return "Unknown";
+			}
+		};
+
+		switch (mode)
+		{
+		case sv::GraphicsPipelineMode_Graphics:
+		{
+			const GraphicsState& state = g_PipelineState.graphics[cmd];
+
+			std::stringstream ss;
+
+			ss << "\n\n----- GRAPHICS STATE (CMD " << cmd << ") -----\n\n";
+
+			ss << "-- RENDER PASS:\n";
+			ss << "TODO\n";
+
+			ss << "\n\n\n-- VERTEX BUFFERS:\n";
+			for (ui32 i = 0u; i < state.vertexBuffersCount; ++i) {
+				
+				ss << "\nSlot " << i << ": ";
+
+				if (state.vertexBuffers[i] == nullptr) {
+					ss << "null\n\n";
+					continue;
+				}
+
+				GPUBuffer_internal& b = *state.vertexBuffers[i];
+
+				ss << (b.name.empty() ? "Unnamed" : b.name.c_str()) << "\n\n";
+				ss << "   Usage: " << getUsageStr(b.usage) << "\n";
+				ss << "   CPU Access: " << getCPUAccessStr(b.cpuAccess) << "\n";
+				ss << "   Size: " << b.size << " bytes\n";
+				ss << "   Binding Offset: " << state.vertexBufferOffsets[i] << "\n";
+			}
+			
+			ss << "\n\n\n-- CONSTANT BUFFERS:\n";
+			ss << "TODO\n";
+
+			ss << "\n\n\n-- INDEX BUFFER: ";
+			if (state.indexBuffer) {
+
+				GPUBuffer_internal& b = *state.indexBuffer;
+
+				ss << (b.name.empty() ? "Unnamed" : b.name.c_str()) << "\n";
+				ss << "   Usage: " << getUsageStr(b.usage) << "\n";
+				ss << "   CPU Access: " << getCPUAccessStr(b.cpuAccess) << "\n";
+				ss << "   Size: " << b.size << "bytes\n";
+				ss << "   Binding Offset: " << state.indexBufferOffset << "\n";
+				ss << "   Index Type: ";
+				switch (b.indexType)
+				{
+				case IndexType_16:
+					ss << "16 bits";
+					break;
+				case IndexType_32:
+					ss << "32 bits";
+					break;
+				default:
+					ss << "Unknown";
+					break;
+				}
+				ss << '\n';
+			}
+			else ss << "null\n";
+
+			ss << "\n\n\n-- IMAGES:\n";
+			ss << "TODO\n";
+
+			ss << "\n\n\n-- SAMPLERS:\n";
+			ss << "TODO\n";
+
+			ss << "\n\n\n-- SHADERS:\n";
+			ss << "TODO\n";
+
+			ss << "\n\n\n-- INPUT LAYOUT STATE: ";
+			if (state.inputLayoutState) {
+
+				InputLayoutState_internal& p = *state.inputLayoutState;
+
+				ss << (p.name.empty() ? "Unnamed" : p.name.c_str()) << "\n\n";
+				ss << "   Slots:\n\n";
+				for (ui32 i = 0u; i < p.desc.slots.size(); ++i) {
+					
+					InputSlotDesc& slot = p.desc.slots[i];
+
+					ss << "      Slot " << i << ":\n";
+					ss << "         Instanced: " << (slot.instanced ? "true" : "false") << "\n";
+					ss << "         Input Slot: " << slot.slot << "\n";
+					ss << "         Stride: " << slot.stride << "\n";
+
+				}
+
+				ss << "   Elements:\n\n";
+				for (ui32 i = 0u; i < p.desc.elements.size(); ++i) {
+
+					InputElementDesc& ele = p.desc.elements[i];
+
+					ss << "      Element " << i << ":\n";
+					ss << "         Name: " << ele.name << "\n";
+					ss << "         Index: " << ele.index << "\n";
+					ss << "         Input Slot: " << ele.inputSlot << "\n";
+					ss << "         Offset: " << ele.offset << "\n";
+					ss << "         Format ID: " << ele.format << "\n";
+
+				}
+			}
+			else ss << "null\n";
+
+			ss << "\n\n\n-- BLEND STATE:\n";
+			ss << "TODO\n";
+
+			ss << "\n\n\n-- DEPTHSTENCIL STATE:\n";
+			ss << "TODO\n";
+
+			ss << "\n\n\n-- RASTERIZER STATE:\n";
+			ss << "TODO\n";
+
+			ss << "\n\n\n-- VIEWPORTS:\n";
+			ss << "TODO\n";
+
+			ss << "\n\n\n-- SCISSORS:\n";
+			ss << "TODO\n";
+
+			ss << "\n\n\n-- TOPOLOGY: ";
+
+			switch (state.topology)
+			{
+			case sv::GraphicsTopology_Points:
+				ss << "Points";
+				break;
+			case sv::GraphicsTopology_Lines:
+				ss << "Lines";
+				break;
+			case sv::GraphicsTopology_LineStrip:
+				ss << "Line Strip";
+				break;
+			case sv::GraphicsTopology_Triangles:
+				ss << "Triangles";
+				break;
+			case sv::GraphicsTopology_TriangleStrip:
+				ss << "Triangle Strip";
+				break;
+			default:
+				ss << "Unknown";
+				break;
+			}
+
+			ss << '\n';
+
+			ss << "\n\n\n-- STENCIL REF: " << state.stencilReference << '\n';
+			ss << "\n\n\n-- LINE WIDTH: " << state.lineWidth << '\n';
+
+			ss << "-----------------------------------";
+
+			SV_LOG_INFO("%s", ss.str().c_str());
+
+		}	break;
+		case sv::GraphicsPipelineMode_Compute:
+			break;
+		}
+	}
+#endif
 
 }

@@ -38,6 +38,10 @@ namespace sv {
 	void graphics_vulkan_buffer_update(GPUBuffer*, void*, ui32, ui32, CommandList);
 	void graphics_vulkan_barrier(const GPUBarrier*, ui32, CommandList);
 
+	void graphics_vulkan_event_begin(const char* name, CommandList cmd);
+	void graphics_vulkan_event_mark(const char* name, CommandList cmd);
+	void graphics_vulkan_event_end(CommandList cmd);
+
 }
 
 #ifdef SV_VULKAN_IMPLEMENTATION

@@ -49,6 +49,9 @@ struct Camera {
     matrix vm;
     matrix pm;
     matrix vpm;
+    matrix ivm;
+    matrix ipm;
+    matrix ivpm;
     float3 position;
     float4 direction;
 };

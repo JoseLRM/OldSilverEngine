@@ -15,7 +15,7 @@ namespace sv {
 		desc.pData = nullptr;
 		desc.size = 0u;
 		desc.layout = GPUImageLayout_RenderTarget;
-		desc.type = GPUImageType_RenderTarget;
+		desc.type = GPUImageType_RenderTarget | GPUImageType_ShaderResource;
 		desc.usage = ResourceUsage_Static;
 		desc.CPUAccess = CPUAccess_None;
 		desc.dimension = 2u;
@@ -32,6 +32,12 @@ namespace sv {
 		desc.format = GBUFFER_NORMAL_FORMAT;
 		svCheck(graphics_image_create(&desc, &normal));
 
+		// Depth Stencil
+		desc.format = GBUFFER_DEPTHSTENCIL_FORMAT;
+		desc.layout = GPUImageLayout_DepthStencil;
+		desc.type = GPUImageType_DepthStencil | GPUImageType_ShaderResource;
+		svCheck(graphics_image_create(&desc, &depthStencil));
+
 		return Result_Success;
 	}
 	
@@ -45,6 +51,7 @@ namespace sv {
 	{
 		svCheck(graphics_destroy(diffuse));
 		svCheck(graphics_destroy(normal));
+		svCheck(graphics_destroy(depthStencil));
 
 		return Result_Success;
 	}

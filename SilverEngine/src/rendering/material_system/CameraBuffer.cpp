@@ -16,15 +16,22 @@ namespace sv {
 			XMMATRIX viewMatrix;
 			XMMATRIX projectionMatrix;
 			XMMATRIX viewProjectionMatrix;
+			XMMATRIX inverseViewMatrix;
+			XMMATRIX inverseProjectionMatrix;
+			XMMATRIX inverseViewProjectionMatrix;
 			vec3f position;
 			float padding;
 			vec4f direction;
 		} data;
 
 		// Fill gpu data
-		data.viewMatrix = viewMatrix;
-		data.projectionMatrix = projectionMatrix;
+		data.viewMatrix = XMMatrixTranspose(viewMatrix);
+		data.inverseViewMatrix = XMMatrixTranspose(XMMatrixInverse(nullptr, viewMatrix));
+		data.projectionMatrix = XMMatrixTranspose(projectionMatrix);
+		data.inverseProjectionMatrix= XMMatrixTranspose(XMMatrixInverse(nullptr, projectionMatrix));
 		data.viewProjectionMatrix = XMMatrixMultiply(viewMatrix, projectionMatrix);
+		data.inverseViewProjectionMatrix = XMMatrixTranspose(XMMatrixInverse(nullptr, data.viewProjectionMatrix));
+		data.viewProjectionMatrix = XMMatrixTranspose(data.viewProjectionMatrix);
 		data.position = position;
 		data.direction = direction;
 

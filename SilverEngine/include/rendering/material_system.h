@@ -3,6 +3,8 @@
 #include "platform/graphics.h"
 #include "simulation/asset_system.h"
 
+#define SV_MATSYS_MAX_SUBSHADERS 10u
+
 namespace sv {
 
 	struct MaterialAttribute {
@@ -56,12 +58,9 @@ namespace sv {
 
 	struct ShaderLibraryTypeDesc {
 		
-		const char*				name;
-		const char**			pSubShaderNames;
-		const char**			pSubShaderPreLibName;
-		const char**			pSubShaderPostLibName;
-		const ShaderType*		pSubShaderTypes;
-		ui32					subShaderCount;
+		const char*	name;
+		const char* subshaderIncludeNames[SV_MATSYS_MAX_SUBSHADERS];
+		ui32		subShaderCount;
 
 	};
 

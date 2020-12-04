@@ -149,7 +149,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 
 	static RenderPass*			g_RenderPass;
 	static InputLayoutState*	g_InputLayout;
-	static BlendState*			g_BlendState;
+	static BlendState*			g_BlendState_Geometry;
 	static Sampler*				g_DefSampler;
 
 	// Shaders
@@ -277,7 +277,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 			desc.attachments[0].alphaBlendOp = BlendOperation_Add;
 			desc.attachments[0].colorWriteMask = ColorComponent_All;
 
-			svCheck(graphics_blendstate_create(&desc, &g_BlendState));
+			svCheck(graphics_blendstate_create(&desc, &g_BlendState_Geometry));
 		}
 
 		// Create Def sampler
@@ -300,7 +300,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		for (ui32 i = 0; i < GraphicsLimit_CommandList; ++i) graphics_destroy(g_VertexBuffer[i]);
 		graphics_destroy(g_RenderPass);
 		graphics_destroy(g_InputLayout);
-		graphics_destroy(g_BlendState);
+		graphics_destroy(g_BlendState_Geometry);
 		graphics_destroy(g_DefSampler);
 		graphics_destroy(g_QuadVertexShader);
 		graphics_destroy(g_QuadPixelShader);
@@ -482,7 +482,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		graphics_scissor_set(&scissor, 1u, cmd);
 
 		graphics_inputlayoutstate_bind(g_InputLayout, cmd);
-		graphics_blendstate_bind(g_BlendState, cmd);
+		graphics_blendstate_bind(g_BlendState_Geometry, cmd);
 
 		const DebugRendererDraw* end = batch.drawCalls.data() + batch.drawCalls.size();
 		const DebugRendererDraw* it = batch.drawCalls.data() + 1u;

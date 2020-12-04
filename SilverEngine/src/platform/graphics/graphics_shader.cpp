@@ -1,6 +1,7 @@
 #include "core.h"
 
 #include "graphics_internal.h"
+#include "utils/io.h"
 
 namespace sv {
 
@@ -183,6 +184,32 @@ namespace sv {
 		if (remove(filePath.c_str()) != 0) return Result_UnknownError;
 
 		return Result_Success;
+	}
+
+	Result graphics_shader_compile_fastbin(const char* name, ShaderType shaderType, Shader** pShader, const char* src)
+	{
+		std::vector<ui8> data;
+		size_t hash = hash_string(name);
+
+		ShaderDesc desc;
+		desc.shaderType = shaderType;
+
+		if (result_fail(bin_read(hash, data))) {
+			
+			ShaderCompileDesc c;
+			c.api = graphics_api_get();
+			c.entryPoint = "main";
+			c.majorVersion = 6u;
+			c.minorVersion = 0u;
+			c.shaderType = shaderType;
+
+			svCheck(graphics_shader_compile_string(&c, src, strlen(src), data));
+			svCheck(bin_write(hash, data.data(), data.size()));
+		}
+
+		desc.binDataSize = data.size();
+		desc.pBinData = data.data();
+		return graphics_shader_create(&desc, pShader);
 	}
 
 }

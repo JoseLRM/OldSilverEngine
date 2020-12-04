@@ -11,6 +11,10 @@ namespace sv {
 
 	static ui32 g_RenderLayerOrder2D[SceneRenderer::RENDER_LAYER_COUNT];
 
+	//TEMPORAL
+	static Mesh mesh;
+	static GBuffer gBuffer;
+
 	Result SceneRenderer_internal::initialize()
 	{
 		// Initialize Render Layers
@@ -60,6 +64,10 @@ namespace sv {
 			}
 		}
 
+		// TEMP
+		mesh.applyCube();
+		svCheck(mesh.createGPUBuffers());
+		svCheck(gBuffer.create(1920u, 1080u));
 		return Result_Success;
 	}
 
@@ -145,24 +153,25 @@ namespace sv {
 		XMMATRIX viewMatrix = math_matrix_view(position, directionQuat);
 
 		const XMMATRIX& projectionMatrix = pCamera->getProjectionMatrix();
-		XMMATRIX viewProjectionMatrix = viewMatrix * projectionMatrix;
 
 		// Begin command list
 		CommandList cmd = graphics_commandlist_begin();
 
-		SceneRendererTemp& rend = g_TempData[cmd];
+		graphics_event_begin("Scene Rendering", cmd);
+
+		SceneRendererTemp& ctx = g_TempData[cmd];
 
 		graphics_viewport_set(pCamera->getViewport(), 0u, cmd);
 		graphics_scissor_set(pCamera->getScissor(), 0u, cmd);
 
 		// Update camera buffer
 		{
-			rend.cameraBuffer.viewMatrix = viewMatrix;
-			rend.cameraBuffer.projectionMatrix = projectionMatrix;
-			rend.cameraBuffer.position = position;
-			rend.cameraBuffer.direction = directionQuat;
+			ctx.cameraBuffer.viewMatrix = viewMatrix;
+			ctx.cameraBuffer.projectionMatrix = projectionMatrix;
+			ctx.cameraBuffer.position = position;
+			ctx.cameraBuffer.direction = directionQuat;
 
-			rend.cameraBuffer.updateGPU(cmd);
+			ctx.cameraBuffer.updateGPU(cmd);
 		}
 
 		// Offscreen
@@ -183,7 +192,7 @@ namespace sv {
 
 			// Reset intermediate data
 			for (ui32 i = 0u; i < RENDER_LAYER_COUNT; ++i) {
-				rend.spritesIntermediates[i].reset();
+				ctx.spritesIntermediates[i].reset();
 			}
 
 			// Add sprites to intermediate list
@@ -191,7 +200,7 @@ namespace sv {
 				Transform trans = ecs_entity_transform_get(ecs, sprite.entity);
 
 				// Compute layer value
-				FrameList<SpriteIntermediate>& inter = rend.spritesIntermediates[sprite.renderLayer];
+				FrameList<SpriteIntermediate>& inter = ctx.spritesIntermediates[sprite.renderLayer];
 				const RenderLayer2D& rl = renderLayers2D[sprite.renderLayer];
 
 				bool draw = false;
@@ -209,7 +218,7 @@ namespace sv {
 				Transform trans = ecs_entity_transform_get(ecs, sprite.entity);
 
 				// Compute layer value
-				FrameList<SpriteIntermediate>& inter = rend.spritesIntermediates[sprite.renderLayer];
+				FrameList<SpriteIntermediate>& inter = ctx.spritesIntermediates[sprite.renderLayer];
 				const RenderLayer2D& rl = renderLayers2D[sprite.renderLayer];
 
 				bool draw = false;
@@ -229,7 +238,7 @@ namespace sv {
 			// Sort sprites per material
 			for (ui32 i = 0u; i < RENDER_LAYER_COUNT; ++i) {
 
-				FrameList<SpriteIntermediate>& inter = rend.spritesIntermediates[i];
+				FrameList<SpriteIntermediate>& inter = ctx.spritesIntermediates[i];
 
 				std::sort(inter.data(), inter.data() + inter.size(), [](const SpriteIntermediate& s0, const SpriteIntermediate& s1) {
 					if (s0.depth == s1.depth) {
@@ -246,12 +255,12 @@ namespace sv {
 
 				ui32 renderLayerIndex = g_RenderLayerOrder2D[i];
 				const RenderLayer2D& rl = renderLayers2D[renderLayerIndex];
-				FrameList<SpriteIntermediate>& inter = rend.spritesIntermediates[renderLayerIndex];
+				FrameList<SpriteIntermediate>& inter = ctx.spritesIntermediates[renderLayerIndex];
 
-				FrameList<SpriteInstance>& instances = rend.spritesInstances;
+				FrameList<SpriteInstance>& instances = ctx.spritesInstances;
 				instances.reset();
 
-				SpriteRenderer::prepare(rt, rend.cameraBuffer, cmd);
+				SpriteRenderer::prepare(rt, ctx.cameraBuffer, cmd);
 				SpriteRenderer::disableDepthTest(cmd);
 
 				auto drawCall = [&instances, cmd](Material* material) 
@@ -276,6 +285,35 @@ namespace sv {
 				drawCall(mat);
 			}
 		}
+
+
+		// TEMP
+		FrameList<MeshInstance>& meshes = ctx.meshInstances;
+		FrameList<LightInstance>& lights = ctx.lightInstances;
+		meshes.reset();
+		lights.reset();
+
+		static float t = 0.f;
+		t += engine_deltatime_get();
+
+		constexpr float X = 1.f;
+		constexpr float Y = 1.f;
+		constexpr float Z = 1.f;
+
+		for (float x = 0.f; x < X; ++x) {
+			for (float y = 0.f; y < Y; ++y) {
+				for (float z = 0.f; z < Z; ++z) {
+					MeshInstance& i = meshes.emplace_back();
+					i.material = nullptr;
+					i.pMesh = &mesh;
+					i.tm = XMMatrixRotationRollPitchYaw(t, t + x, t + z) * XMMatrixTranslation((x - X / 2.f) * 2.f, (y - Y / 2.f) * 2.f, (z - Z / 2.f) * 2.f);
+				}
+			}
+		}
+
+		MeshRenderer::drawMeshes(rt, gBuffer, ctx.cameraBuffer, meshes, lights, true, cmd);
+
+		graphics_event_end(cmd);
 	}
 
 	void SceneRenderer::initECS(ECS* ecs)
