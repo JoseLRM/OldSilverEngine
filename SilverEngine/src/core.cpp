@@ -18,6 +18,7 @@
 #include "simulation/event_system/event_system_internal.h"
 #include "simulation/sprite_animator/sprite_animator_internal.h"
 #include "simulation/scene/scene_internal.h"
+#include "simulation/model/model_internal.h"
 
 #ifdef SV_PLATFORM_WIN
 
@@ -474,6 +475,7 @@ namespace sv {
 			svCheck(graphics_initialize());
 			svCheck(sprite_animator_initialize());
 			svCheck(matsys_initialize());
+			svCheck(model_initialize());
 			svCheck(debug_renderer_initialize());
 			
 			// Renderers
@@ -561,6 +563,7 @@ namespace sv {
 
 			if (result_fail(debug_renderer_close())) { SV_LOG_ERROR("Can't close the debug renderer"); }
 			if (result_fail(matsys_close())) { SV_LOG_ERROR("Can't close the material system"); }
+			if (result_fail(model_close())) { SV_LOG_ERROR("Can't close the model system"); }
 			if (result_fail(sprite_animator_close())) { SV_LOG_ERROR("Can't close the sprite animator"); }
 			if (result_fail(graphics_close())) { SV_LOG_ERROR("Can't close graphics"); }
 			if (result_fail(window_close())) { SV_LOG_ERROR("Can't close the window"); }

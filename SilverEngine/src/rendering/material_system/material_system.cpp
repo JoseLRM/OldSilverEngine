@@ -6,7 +6,7 @@
 
 namespace sv {
 
-	InstanceAllocator<ShaderLibraryType_internal, 10u>	g_ShaderLibrariesTypes;
+	InstanceAllocator<ShaderLibraryType_internal, 10u>	g_AssetTypes;
 	InstanceAllocator<ShaderLibrary_internal, 50u>		g_ShaderLibraries;
 	InstanceAllocator<Material_internal, 100u>			g_Materials;
 
@@ -102,7 +102,7 @@ struct Camera {
 
 		// Clear allocators
 		{
-			g_ShaderLibrariesTypes.clear();
+			g_AssetTypes.clear();
 			g_ShaderLibraries.clear();
 			g_Materials.clear();
 		}

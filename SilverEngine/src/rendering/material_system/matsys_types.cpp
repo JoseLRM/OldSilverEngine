@@ -22,7 +22,7 @@ namespace sv {
 			return Result_InvalidUsage;
 		}
 
-		ShaderLibraryType_internal& type = g_ShaderLibrariesTypes.create();
+		ShaderLibraryType_internal& type = g_AssetTypes.create();
 
 		type.name = desc->name;
 		type.subShaderCount = desc->subShaderCount;

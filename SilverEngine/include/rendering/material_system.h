@@ -98,7 +98,6 @@ namespace sv {
 		inline Material* operator->() const noexcept { return get(); }
 
 		Result createFile(const char* filePath, ShaderLibraryAsset& shaderLibraryAsset);
-		Result serialize();
 	};
 
 }

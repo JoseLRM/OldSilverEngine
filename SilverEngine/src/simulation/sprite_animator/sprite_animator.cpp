@@ -25,13 +25,16 @@ namespace sv {
 		desc.name = "Sprite Animation";
 		desc.pExtensions = extensions;
 		desc.extensionsCount = 1u;
-		desc.createFn = sprite_animation_create;
+		desc.loadFileFn = sprite_animation_load_file;
+		desc.loadIDFn = nullptr;
+		desc.createFn = nullptr;
 		desc.destroyFn = sprite_animation_destroy;
-		desc.recreateFn = sprite_animation_recreate;
+		desc.reloadFileFn = sprite_animation_reload;
+		desc.serializeFn = sprite_animator_serialize;
 		desc.isUnusedFn = nullptr;
 		desc.assetSize = sizeof(SpriteAnimation);
 		desc.unusedLifeTime = 5.f;
-
+		
 		svCheck(asset_register_type(&desc, nullptr));
 
 		return Result_Success;
@@ -76,6 +79,7 @@ namespace sv {
 	{
 		std::scoped_lock lock(g_AnimatedSpritesMutex);
 
+		// TODO: multithreading
 		for (auto& pool : g_AnimatedSprites) {
 			for (AnimatedSprite_internal& spr : pool) {
 				sprite_animator_update_animation(spr, deltaTime);
@@ -203,7 +207,7 @@ namespace sv {
 		PARSE_ANIMATED_SPRITE();
 
 		Result res = Result_Success;
-		if (state.animationHashCode) res = spr.animation.load(state.animationHashCode);
+		if (state.animationHashCode) res = spr.animation.loadFromFile(state.animationHashCode);
 		
 		spr.duration = state.spriteDuration;
 		spr.repeatCount = state.repeatCount;
@@ -352,7 +356,7 @@ namespace sv {
 
 	// Sprite Animation Asset
 
-	Result sprite_animation_create(const char* filePath, void* pObject)
+	Result sprite_animation_load_file(const char* filePath, void* pObject)
 	{
 		// Create SpriteAnimation
 		SpriteAnimation& anim = *new(pObject) SpriteAnimation();
@@ -368,13 +372,12 @@ namespace sv {
 		}
 
 		for (Sprite& spr : anim.sprites) {
-			size_t hashCode;
-			file >> hashCode >> spr.texCoord;
-			if (hashCode) {
-				Result res = spr.texture.load(hashCode);
-				if (result_fail(res)) {
-					SV_LOG_ERROR("Can't find a texture deserializing SpriteAnimation: '%s'", filePath);
-				}
+
+			Result res = spr.texture.load(file);
+			file >> spr.texCoord;
+
+			if (result_fail(res)) {
+				SV_LOG_ERROR("Can't deserialize a texture in SpriteAnimation: '%s'", filePath);
 			}
 		}
 
@@ -388,10 +391,24 @@ namespace sv {
 		return Result_Success;
 	}
 
-	Result sprite_animation_recreate(const char* filePath, void* pObject)
+	Result sprite_animation_reload(const char* filePath, void* pObject)
 	{
 		svCheck(sprite_animation_destroy(pObject));
-		return sprite_animation_create(filePath, pObject);
+		return sprite_animation_load_file(filePath, pObject);
+	}
+
+	Result sprite_animator_serialize(ArchiveO& file, void* pObject)
+	{
+		SpriteAnimation& anim = *reinterpret_cast<SpriteAnimation*>(pObject);
+
+		file << ui32(anim.sprites.size());
+
+		for (Sprite& spr : anim.sprites) {
+			spr.texture.save(file);
+			file << spr.texCoord;
+		}
+
+		return Result_Success;
 	}
 
 	Result SpriteAnimationAsset::createFile(const char* filePath, const SpriteAnimation& animation)
@@ -405,22 +422,6 @@ namespace sv {
 
 		std::string absFilePath = asset_folderpath_get() + filePath;
 		return file.save_file(absFilePath.c_str());
-	}
-
-	Result SpriteAnimationAsset::serialize()
-	{
-		if (!hasReference()) return Result_InvalidUsage;
-
-		SpriteAnimation& anim = *get();
-
-		ArchiveO file;
-		file << ui32(anim.sprites.size());
-
-		for (Sprite& spr : anim.sprites) {
-			file << spr.texture.getHashCode() << spr.texCoord;
-		}
-
-		return file.save_file((asset_folderpath_get() + getFilePath()).c_str());
 	}
 
 }

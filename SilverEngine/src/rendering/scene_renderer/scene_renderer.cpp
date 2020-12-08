@@ -11,10 +11,6 @@ namespace sv {
 
 	static ui32 g_RenderLayerOrder2D[SceneRenderer::RENDER_LAYER_COUNT];
 
-	//TEMPORAL
-	static Mesh mesh;
-	static GBuffer gBuffer;
-
 	Result SceneRenderer_internal::initialize()
 	{
 		// Initialize Render Layers
@@ -64,10 +60,6 @@ namespace sv {
 			}
 		}
 
-		// TEMP
-		mesh.applyCube();
-		svCheck(mesh.createGPUBuffers());
-		svCheck(gBuffer.create(1920u, 1080u));
 		return Result_Success;
 	}
 
@@ -286,32 +278,38 @@ namespace sv {
 			}
 		}
 
+		// Draw Meshes
+		{
+			FrameList<MeshInstance>& meshes = ctx.meshInstances;
+			FrameList<LightInstance>& lights = ctx.lightInstances;
+			GBuffer& gBuffer = ctx.gBuffer;
+			meshes.reset();
+			lights.reset();
 
-		// TEMP
-		FrameList<MeshInstance>& meshes = ctx.meshInstances;
-		FrameList<LightInstance>& lights = ctx.lightInstances;
-		meshes.reset();
-		lights.reset();
+			if (gBuffer.diffuse == nullptr) 
+				gBuffer.create(1920u, 1080u);
 
-		static float t = 0.f;
-		t += engine_deltatime_get();
+			EntityView<MeshComponent> meshesComp(ecs);
+			for (MeshComponent& mesh : meshesComp) {
+				
+				Mesh* m = mesh.mesh.get();
+				if (m) {
 
-		constexpr float X = 1.f;
-		constexpr float Y = 1.f;
-		constexpr float Z = 1.f;
-
-		for (float x = 0.f; x < X; ++x) {
-			for (float y = 0.f; y < Y; ++y) {
-				for (float z = 0.f; z < Z; ++z) {
-					MeshInstance& i = meshes.emplace_back();
-					i.material = nullptr;
-					i.pMesh = &mesh;
-					i.tm = XMMatrixRotationRollPitchYaw(t, t + x, t + z) * XMMatrixTranslation((x - X / 2.f) * 2.f, (y - Y / 2.f) * 2.f, (z - Z / 2.f) * 2.f);
+					Transform trans = ecs_entity_transform_get(ecs, mesh.entity);
+					meshes.emplace_back(trans.getWorldMatrix(), m, mesh.material.get(), 10.f);
 				}
 			}
-		}
 
-		MeshRenderer::drawMeshes(rt, gBuffer, ctx.cameraBuffer, meshes, lights, true, cmd);
+			EntityView<LightComponent> lightsComp(ecs);
+			for (LightComponent& light : lightsComp) {
+
+				Transform trans = ecs_entity_transform_get(ecs, light.entity);
+
+				lights.emplace_back(trans.getWorldPosition(), 1.f, 1.f, 1.f);
+			}
+
+			MeshRenderer::drawMeshes(rt, gBuffer, ctx.cameraBuffer, meshes, lights, true, cmd);
+		}
 
 		graphics_event_end(cmd);
 	}
@@ -320,6 +318,8 @@ namespace sv {
 	{
 		ecs_register<SpriteComponent>(ecs, scene_component_serialize_SpriteComponent, scene_component_deserialize_SpriteComponent);
 		ecs_register<AnimatedSpriteComponent>(ecs, scene_component_serialize_AnimatedSpriteComponent, scene_component_deserialize_AnimatedSpriteComponent);
+		ecs_register<MeshComponent>(ecs, scene_component_serialize_MeshComponent, scene_component_deserialize_MeshComponent);
+		ecs_register<LightComponent>(ecs, scene_component_serialize_LightComponent, scene_component_deserialize_LightComponent);
 		ecs_register<CameraComponent>(ecs, scene_component_serialize_CameraComponent, scene_component_deserialize_CameraComponent);
 	}
 
@@ -344,6 +344,18 @@ namespace sv {
 		archive << comp->renderLayer;
 	}
 
+	void scene_component_serialize_MeshComponent(BaseComponent* comp_, ArchiveO& archive)
+	{
+		MeshComponent* comp = reinterpret_cast<MeshComponent*>(comp_);
+
+		comp->mesh.save(archive);
+		comp->material.save(archive);
+	}
+
+	void scene_component_serialize_LightComponent(BaseComponent* comp, ArchiveO& archive)
+	{
+	}
+
 	void scene_component_serialize_CameraComponent(BaseComponent* comp_, ArchiveO& archive)
 	{
 		CameraComponent* comp = reinterpret_cast<CameraComponent*>(comp_);
@@ -361,14 +373,14 @@ namespace sv {
 		archive >> hash;
 
 		if (hash != 0u) {
-			if (comp->sprite.texture.load(hash) != Result_Success) {
+			if (comp->sprite.texture.loadFromFile(hash) != Result_Success) {
 				SV_LOG_ERROR("Texture not found, hashcode: %u", hash);
 			}
 		}
 
 		archive >> hash;
 		if (hash != 0u) {
-			if (comp->material.load(hash) != Result_Success) {
+			if (comp->material.loadFromFile(hash) != Result_Success) {
 				SV_LOG_ERROR("Material not found, hashcode: %u", hash);
 			}
 		}
@@ -392,12 +404,24 @@ namespace sv {
 		size_t hash;
 		archive >> hash;
 		if (hash != 0u) {
-			if (comp->material.load(hash) != Result_Success) {
+			if (comp->material.loadFromFile(hash) != Result_Success) {
 				SV_LOG_ERROR("Material not found, hashcode: %u", hash);
 			}
 		}
 
 		archive >> comp->renderLayer;
+	}
+
+	void scene_component_deserialize_MeshComponent(BaseComponent* comp_, ArchiveI& archive)
+	{
+		MeshComponent* comp = new(comp_) MeshComponent();
+
+		comp->mesh.load(archive);
+		comp->material.load(archive);
+	}
+
+	void scene_component_deserialize_LightComponent(BaseComponent* comp, ArchiveI& archive)
+	{
 	}
 
 	void scene_component_deserialize_CameraComponent(BaseComponent* comp_, ArchiveI& archive)

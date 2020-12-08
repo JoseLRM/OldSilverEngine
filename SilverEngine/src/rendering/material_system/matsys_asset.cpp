@@ -7,7 +7,7 @@ namespace sv {
 
 	// Material
 
-	Result createMaterialAsset(const char* filePath, void* pObject)
+	Result loadFromFileMaterialAsset(const char* filePath, void* pObject)
 	{
 		new(pObject) MaterialAsset_internal();
 		MaterialAsset_internal& asset = *reinterpret_cast<MaterialAsset_internal*>(pObject);
@@ -20,7 +20,7 @@ namespace sv {
 		if (asset.hashCode == 0u) return Result_InvalidFormat;
 
 		ShaderLibraryAsset lib;
-		svCheck(lib.load(asset.hashCode));
+		svCheck(lib.loadFromFile(asset.hashCode));
 
 		svCheck(matsys_material_create(lib.get(), false, &asset.material));
 
@@ -41,17 +41,11 @@ namespace sv {
 
 			if (type == ui32_max) {
 
-				size_t hashCode;
-				file >> hashCode;
+				TextureAsset tex;
+				res = tex.load(file);
 
-				if (hashCode) {
-
-					TextureAsset tex;
-					res = tex.load(hashCode);
-
-					if (result_okay(res)) {
-						res = matsys_material_texture_set(asset.material, name.c_str(), tex);
-					}
+				if (result_okay(res)) {
+					res = matsys_material_texture_set(asset.material, name.c_str(), tex);
 				}
 			}
 			else {
@@ -77,15 +71,43 @@ namespace sv {
 		return res;
 	}
 
-	Result recreateMaterialAsset(const char* filePath, void* pObject)
+	Result reloadMaterialAsset(const char* filePath, void* pObject)
 	{
 		svCheck(destroyMaterialAsset(pObject));
-		return createMaterialAsset(filePath, pObject);
+		return loadFromFileMaterialAsset(filePath, pObject);
+	}
+
+	Result serializeMaterial(ArchiveO& file, void* pObject)
+	{
+		MaterialAsset_internal& mat = *reinterpret_cast<MaterialAsset_internal*>(pObject);
+		ShaderLibrary_internal& lib = *reinterpret_cast<ShaderLibrary_internal*>(matsys_material_get_shaderlibrary(mat.material));
+
+		file << mat.hashCode << ui32(lib.matInfo.attributes.size() + lib.matInfo.textures.size());
+
+		XMMATRIX rawData;
+
+		for (const MaterialAttribute& att : lib.matInfo.attributes) {
+			file << att.name << att.type;
+
+			Result res = matsys_material_attribute_get(mat.material, att.type, att.name.c_str(), &rawData);
+			SV_ASSERT(result_okay(res));
+			file.write(&rawData, graphics_shader_attribute_size(att.type));
+		}
+
+		for (const std::string& texName : lib.matInfo.textures) {
+			file << texName << ui32_max;
+			TextureAsset tex;
+			Result res = matsys_material_texture_get(mat.material, texName.c_str(), tex);
+			SV_ASSERT(result_okay(res));
+			tex.save(file);
+		}
+
+		return Result_Success;
 	}
 
 	// Shader library
 
-	Result createShaderLibraryAsset(const char* filePath, void* pObject)
+	Result loadFromFileShaderLibraryAsset(const char* filePath, void* pObject)
 	{
 		new(pObject) ShaderLibrary_internal();
 		ShaderLibrary*& lib = reinterpret_cast<ShaderLibrary*&>(pObject);
@@ -98,7 +120,7 @@ namespace sv {
 		return matsys_shaderlibrary_destroy(lib);
 	}
 
-	Result recreateShaderLibraryAsset(const char* filePath, void* pObject)
+	Result reloadShaderLibraryAsset(const char* filePath, void* pObject)
 	{
 		ShaderLibrary*& lib = reinterpret_cast<ShaderLibrary*&>(pObject);
 		return matsys_shaderlibrary_create_from_file(filePath, &lib);
@@ -119,9 +141,12 @@ namespace sv {
 
 		extension = "shader";
 		desc.name = "Shader Library";
-		desc.createFn = createShaderLibraryAsset;
+		desc.loadFileFn = loadFromFileShaderLibraryAsset;
+		desc.loadIDFn = nullptr;
+		desc.createFn = nullptr;
 		desc.destroyFn = destroyShaderLibraryAsset;
-		desc.recreateFn = recreateShaderLibraryAsset;
+		desc.reloadFileFn = reloadShaderLibraryAsset;
+		desc.serializeFn = nullptr;
 		desc.isUnusedFn = isUnusedShaderLibraryAsset;
 		desc.assetSize = sizeof(ShaderLibrary_internal*);
 		desc.unusedLifeTime = 10.f;
@@ -130,9 +155,12 @@ namespace sv {
 		
 		extension = "mat";
 		desc.name = "Material";
-		desc.createFn = createMaterialAsset;
+		desc.loadFileFn = loadFromFileMaterialAsset;
+		desc.loadIDFn = nullptr;
+		desc.createFn = nullptr;
 		desc.destroyFn = destroyMaterialAsset;
-		desc.recreateFn = recreateMaterialAsset;
+		desc.reloadFileFn = reloadMaterialAsset;
+		desc.serializeFn = serializeMaterial;
 		desc.isUnusedFn = nullptr;
 		desc.assetSize = sizeof(MaterialAsset_internal);
 		desc.unusedLifeTime = 4.f;
@@ -160,7 +188,7 @@ namespace sv {
 
 		XMMATRIX rawData;
 		svZeroMemory(&rawData, sizeof(XMMATRIX));
-		
+
 		for (const MaterialAttribute& att : lib.matInfo.attributes) {
 			file << att.name << att.type;
 			file.write(&rawData, graphics_shader_attribute_size(att.type));
@@ -171,40 +199,6 @@ namespace sv {
 			file.write(&rawData, sizeof(size_t));
 		}
 
-		return file.save_file(absFilePath.c_str());
-	}
-
-	Result MaterialAsset::serialize()
-	{
-		const char* filePath = getFilePath();
-		if (filePath == nullptr) return Result_InvalidUsage;
-
-		MaterialAsset_internal& mat = *reinterpret_cast<MaterialAsset_internal*>(m_Ref.get());
-		ShaderLibrary_internal& lib = *reinterpret_cast<ShaderLibrary_internal*>(matsys_material_get_shaderlibrary(mat.material));
-
-		ArchiveO file;
-		file << mat.hashCode << ui32(lib.matInfo.attributes.size() + lib.matInfo.textures.size());
-
-		XMMATRIX rawData;
-
-		for (const MaterialAttribute& att : lib.matInfo.attributes) {
-			file << att.name << att.type;
-
-			Result res = matsys_material_attribute_get(mat.material, att.type, att.name.c_str(), &rawData);
-			SV_ASSERT(result_okay(res));
-			file.write(&rawData, graphics_shader_attribute_size(att.type));
-		}
-
-		for (const std::string& texName : lib.matInfo.textures) {
-			file << texName << ui32_max;
-			TextureAsset tex;
-			Result res = matsys_material_texture_get(mat.material, texName.c_str(), tex);
-			SV_ASSERT(result_okay(res));
-			file << tex.getHashCode();
-		}
-
-		// Save File
-		std::string absFilePath = asset_folderpath_get() + filePath;
 		return file.save_file(absFilePath.c_str());
 	}
 

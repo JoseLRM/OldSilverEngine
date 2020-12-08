@@ -116,7 +116,7 @@ namespace sv {
 
 	};
 
-	extern InstanceAllocator<ShaderLibraryType_internal, 10u>		g_ShaderLibrariesTypes;
+	extern InstanceAllocator<ShaderLibraryType_internal, 10u>		g_AssetTypes;
 	extern InstanceAllocator<ShaderLibrary_internal, 50u>			g_ShaderLibraries;
 	extern InstanceAllocator<Material_internal, 100u>				g_Materials;
 

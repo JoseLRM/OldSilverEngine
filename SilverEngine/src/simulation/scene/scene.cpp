@@ -6,7 +6,7 @@
 
 namespace sv {
 
-	Result scene_asset_create(const char* filePath, void* pObj)
+	Result scene_asset_load_file(const char* filePath, void* pObj)
 	{
 		Scene* scene = new(pObj) Scene();
 		return scene->deserialize(filePath);
@@ -32,9 +32,12 @@ namespace sv {
 			desc.name = "Scene";
 			desc.pExtensions = extensions;
 			desc.extensionsCount = 1u;
-			desc.createFn = scene_asset_create;
+			desc.loadFileFn = scene_asset_load_file;
+			desc.loadIDFn = nullptr;
+			desc.createFn = nullptr;
 			desc.destroyFn = scene_asset_destroy;
-			desc.recreateFn = nullptr;
+			desc.reloadFileFn = nullptr;
+			desc.serializeFn = nullptr;
 			desc.isUnusedFn = nullptr;
 			desc.assetSize = sizeof(Scene);
 			desc.unusedLifeTime = 5.f;
@@ -48,6 +51,8 @@ namespace sv {
 			ecs_component_register<CameraComponent>("Camera");
 			ecs_component_register<SpriteComponent>("Sprite");
 			ecs_component_register<AnimatedSpriteComponent>("Animated Sprite");
+			ecs_component_register<MeshComponent>("Mesh");
+			ecs_component_register<LightComponent>("Light");
 			ecs_component_register<RigidBody2DComponent>("RigidBody 2D");
 			ecs_component_register<BoxCollider2DComponent>("BoxCollider 2D");
 			ecs_component_register<CircleCollider2DComponent>("CircleCollider 2D");

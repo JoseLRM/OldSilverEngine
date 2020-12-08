@@ -150,8 +150,19 @@ struct Output {
 	float4 color : SV_Target;
 };
 
+struct Light {
+	ui32 type;
+	float3 position;
+	float intensity;
+	float radius;
+	float smoothness;
+	float padding;
+};
+
 SV_CONSTANT_BUFFER(LightingBuffer, b0) {
 	uint2 resolution;
+	ui32 lightCount;
+	Light lights[20];
 };
 
 SV_DEFINE_CAMERA(b1);
@@ -180,15 +191,22 @@ Output main(Input input)
 	view.xyz /= view.w;
 	
 	float3 pos = view.xyz;
-
-	float3 lightPos = { 0.f, 0.f, 0.f };
-
-	float3 toLight = pos - lightPos;
-	toLight = normalize(toLight);
 	
-	float d = max(dot(toLight, normal), 0.f);
+	output.color.rgb = float3(0.f, 0.f, 0.f);
+	for (ui32 i = 0; i < lightCount; ++i) {
 	
-	output.color.rgb = diffuse * d;
+		Light l = lights[i];
+		
+		float3 toLight = pos - l.position;
+		toLight = normalize(toLight);
+	
+		float d = max(dot(toLight, normal), 0.f);
+		output.color.rgb += diffuse * d;
+	}
+
+	
+	
+	
 	output.color.a = 1.f;
 
 	// TEST
@@ -505,7 +523,7 @@ SurfaceOutput meshSurface(UserSurfaceInput input)
 
 				graphics_renderpass_begin(g_RenderPass_Geometry, att, nullptr, 0.f, 0u, cmd);
 				
-				graphics_draw_indexed(mesh->indices.size(), 1u, 0u, 0u, 0u, cmd);
+				graphics_draw_indexed((ui32)mesh->indices.size(), 1u, 0u, 0u, 0u, cmd);
 
 				graphics_renderpass_end(cmd);
 				
@@ -559,6 +577,23 @@ SurfaceOutput meshSurface(UserSurfaceInput input)
 			vec2u res = gBuffer.resolution();
 			data.resolutionWidth = res.x;
 			data.resolutionHeight = res.y;
+
+			data.lightCount = std::min((ui32)lights.size(), LIGHT_COUNT);
+			for (ui32 i = 0u; i < data.lightCount; ++i) {
+				LightData& ld = data.lights[i];
+				const LightInstance& li = lights[i];
+
+				ld.type = li.type;
+				switch (li.type)
+				{
+				case LightType_Point:
+					ld.positionOrDirection = li.point.position;
+					ld.intensity = li.point.intensity;
+					ld.radius = li.point.radius;
+					ld.smoothness = li.point.smoothness;
+					break;
+				}
+			}
 
 			graphics_buffer_update(g_CBuffer_Lighting, &data, sizeof(LightingData), 0u, cmd);
 

@@ -94,7 +94,7 @@ namespace sv {
 		// Debug info
 		ImGui::Separator();
 
-		ui32 drawCalls = SV_PROFILER_SCALAR_GET("Draw Calls");
+		ui32 drawCalls = (ui32) SV_PROFILER_SCALAR_GET("Draw Calls");
 		
 		ImGui::Text("Draw Calls: %u", drawCalls);
 

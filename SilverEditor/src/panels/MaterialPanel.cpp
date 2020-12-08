@@ -30,7 +30,7 @@ namespace sv {
 				if (mat.second.assetType == matType) {
 					if (mat.first.c_str() == selectedName) continue;
 					if (ImGui::Button(mat.first.c_str())) {
-						m_SelectedMaterial.load(mat.first.c_str());
+						m_SelectedMaterial.loadFromFile(mat.first.c_str());
 					}
 				}
 			}

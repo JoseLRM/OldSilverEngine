@@ -66,6 +66,12 @@ namespace sv {
 
 				if (ImGui::BeginMenu("3D")) {
 
+					if (ImGui::MenuItem("Create Cube")) {
+						Entity entity = ecs_entity_create(scene);
+						ecs_component_add<MeshComponent>(scene, entity, MeshAssetType_Cube);
+						ecs_component_add<NameComponent>(scene, entity, "Cube");
+					}
+
 					ImGui::EndMenu();
 				}
 

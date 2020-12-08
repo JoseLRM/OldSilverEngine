@@ -34,4 +34,16 @@ namespace sv {
 
 	};
 
+	enum MeshAssetType : ui32 {
+		MeshAssetType_Cube,
+		MeshAssetType_None = ui32_max,
+	};
+
+	struct MeshAsset : public Asset {
+		static AssetType assetType;
+		inline Mesh* get() const noexcept { return reinterpret_cast<Mesh*>(m_Ref.get()); }
+		inline Mesh* operator->() const noexcept { return get(); }
+		inline Result loadFromID(MeshAssetType type = MeshAssetType_None) { return Asset::loadFromID(assetType, type); }
+	};
+
 }

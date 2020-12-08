@@ -23,7 +23,7 @@ namespace sv {
 	static DepthStencilState*	g_DefDepthStencilState;
 	static RasterizerState*		g_DefRasterizerState;
 
-	Result createTextureAsset(const char* filePath, void* pObject)
+	Result loadFileTextureAsset(const char* filePath, void* pObject)
 	{
 		GPUImage*& image = *reinterpret_cast<GPUImage * *>(pObject);
 
@@ -55,6 +55,13 @@ namespace sv {
 		return res;
 	}
 
+	Result createTextureAsset(void* pObject)
+	{
+		GPUImage*& image = *reinterpret_cast<GPUImage**>(pObject);
+		image = nullptr;
+		return Result_Success;
+	}
+
 	Result destroyTextureAsset(void* pObject)
 	{
 		GPUImage*& image = *reinterpret_cast<GPUImage * *>(pObject);
@@ -66,7 +73,7 @@ namespace sv {
 	Result recreateTextureAsset(const char* filePath, void* pObject)
 	{
 		svCheck(destroyTextureAsset(pObject));
-		return createTextureAsset(filePath, pObject);
+		return loadFileTextureAsset(filePath, pObject);
 	}
 
 	Result graphics_initialize()
@@ -167,13 +174,16 @@ namespace sv {
 			desc.name = "Texture";
 			desc.pExtensions = extensions;
 			desc.extensionsCount = 1u;
+			desc.loadFileFn = loadFileTextureAsset;
+			desc.loadIDFn = nullptr;
 			desc.createFn = createTextureAsset;
 			desc.destroyFn = destroyTextureAsset;
-			desc.recreateFn = recreateTextureAsset;
+			desc.reloadFileFn = recreateTextureAsset;
+			desc.serializeFn = nullptr;
 			desc.isUnusedFn = nullptr;
 			desc.assetSize = sizeof(GPUImage*);
 			desc.unusedLifeTime = 3.f;
-
+			
 			asset_register_type(&desc, nullptr);
 		}
 

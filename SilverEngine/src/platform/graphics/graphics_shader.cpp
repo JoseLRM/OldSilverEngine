@@ -203,8 +203,8 @@ namespace sv {
 			c.minorVersion = 0u;
 			c.shaderType = shaderType;
 
-			svCheck(graphics_shader_compile_string(&c, src, strlen(src), data));
-			svCheck(bin_write(hash, data.data(), data.size()));
+			svCheck(graphics_shader_compile_string(&c, src, ui32(strlen(src)), data));
+			svCheck(bin_write(hash, data.data(), ui32(data.size())));
 		}
 
 		desc.binDataSize = data.size();

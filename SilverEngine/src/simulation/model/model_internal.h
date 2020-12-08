@@ -4,4 +4,7 @@
 
 namespace sv {
 
+	Result model_initialize();
+	Result model_close();
+
 }

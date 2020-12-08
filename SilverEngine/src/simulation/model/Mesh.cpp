@@ -37,12 +37,14 @@ namespace sv {
 
 		// Indices
 		ui32* ind = mesh.indices.data();
-		ind[indexOffset + 0u] = vertexOffset + 0u;
-		ind[indexOffset + 1u] = vertexOffset + 1u;
-		ind[indexOffset + 2u] = vertexOffset + 2u;
-		ind[indexOffset + 3u] = vertexOffset + 1u;
-		ind[indexOffset + 4u] = vertexOffset + 3u;
-		ind[indexOffset + 5u] = vertexOffset + 2u;
+		ui32 v0_32 = ui32(vertexOffset);
+
+		ind[indexOffset + 0u] = v0_32 + 0u;
+		ind[indexOffset + 1u] = v0_32 + 1u;
+		ind[indexOffset + 2u] = v0_32 + 2u;
+		ind[indexOffset + 3u] = v0_32 + 1u;
+		ind[indexOffset + 4u] = v0_32 + 3u;
+		ind[indexOffset + 5u] = v0_32 + 2u;
 	}
 
 	inline static void constructVertexData(Mesh& mesh, std::vector<MeshVertex>& vertices)
@@ -178,14 +180,14 @@ namespace sv {
 		desc.bufferType = GPUBufferType_Vertex;
 		desc.usage = usage;
 		desc.CPUAccess = (usage == ResourceUsage_Static) ? CPUAccess_None : CPUAccess_Write;
-		desc.size = vertexData.size() * sizeof(MeshVertex);
+		desc.size = ui32(vertexData.size() * sizeof(MeshVertex));
 		desc.pData = vertexData.data();
 
 		svCheck(graphics_buffer_create(&desc, &vertexBuffer));
 
 		desc.indexType = IndexType_32;
 		desc.bufferType = GPUBufferType_Index;
-		desc.size = indices.size() * sizeof(ui32);
+		desc.size = ui32(indices.size() * sizeof(ui32));
 		desc.pData = indices.data();
 
 		svCheck(graphics_buffer_create(&desc, &indexBuffer));

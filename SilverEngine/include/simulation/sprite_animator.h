@@ -19,7 +19,6 @@ namespace sv {
 		inline SpriteAnimation* operator->() const noexcept { return get(); }
 
 		Result createFile(const char* filePath, const SpriteAnimation& animation);
-		Result serialize();
 	};
 
 	class AnimatedSprite {

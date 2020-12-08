@@ -20,9 +20,10 @@ namespace sv {
 
 	};
 
-	Result sprite_animation_create(const char* filePath, void* pObject);
+	Result sprite_animation_load_file(const char* filePath, void* pObject);
 	Result sprite_animation_destroy(void* pObject);
-	Result sprite_animation_recreate(const char* filePath, void* pObject);
+	Result sprite_animation_reload(const char* filePath, void* pObject);
+	Result sprite_animator_serialize(ArchiveO& file, void* pObject);
 
 	Result	sprite_animator_initialize();
 	void	sprite_animator_update(float dt);

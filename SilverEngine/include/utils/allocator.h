@@ -457,6 +457,18 @@ namespace sv {
 			if (m_Size + size > m_Capacity) realloc(m_Size + size);
 		}
 
+		T& operator[](size_t index)
+		{
+			SV_ASSERT(index < m_Size);
+			return m_Data[index];
+		}
+
+		const T& operator[](size_t index) const
+		{
+			SV_ASSERT(index < m_Size);
+			return m_Data[index];
+		}
+
 		bool empty() const noexcept
 		{
 			return m_Size == 0u;

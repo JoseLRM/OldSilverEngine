@@ -9,10 +9,14 @@ namespace sv {
 
 	void scene_component_serialize_SpriteComponent(BaseComponent* comp, ArchiveO& archive);
 	void scene_component_serialize_AnimatedSpriteComponent(BaseComponent* comp, ArchiveO& archive);
+	void scene_component_serialize_MeshComponent(BaseComponent* comp, ArchiveO& archive);
+	void scene_component_serialize_LightComponent(BaseComponent* comp, ArchiveO& archive);
 	void scene_component_serialize_CameraComponent(BaseComponent* comp, ArchiveO& archive);
 
 	void scene_component_deserialize_SpriteComponent(BaseComponent* comp, ArchiveI& archive);
 	void scene_component_deserialize_AnimatedSpriteComponent(BaseComponent* comp, ArchiveI& archive);
+	void scene_component_deserialize_MeshComponent(BaseComponent* comp, ArchiveI& archive);
+	void scene_component_deserialize_LightComponent(BaseComponent* comp, ArchiveI& archive);
 	void scene_component_deserialize_CameraComponent(BaseComponent* comp, ArchiveI& archive);
 
 	struct SceneRenderer_internal {
@@ -34,7 +38,6 @@ namespace sv {
 
 	};
 
-	// Temporal data created while rendering
 	struct SceneRendererTemp {
 
 		CameraBuffer cameraBuffer;
@@ -44,6 +47,7 @@ namespace sv {
 		FrameList<SpriteInstance>		spritesInstances;
 		FrameList<MeshInstance>			meshInstances;
 		FrameList<LightInstance>		lightInstances;
+		GBuffer gBuffer;
 
 	};
 

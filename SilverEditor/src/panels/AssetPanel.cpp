@@ -209,7 +209,7 @@ namespace sv {
 			if (ImGui::Button("Done"))
 			{
 				ShaderLibraryAsset lib;
-				lib.load(assetName);
+				lib.loadFromFile(assetName);
 
 				MaterialAsset mat;
 				std::string filePath = m_CurrentFolder->path;

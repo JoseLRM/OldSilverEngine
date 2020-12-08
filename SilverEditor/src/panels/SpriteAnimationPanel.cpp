@@ -36,7 +36,7 @@ namespace sv {
 
 				if (ImGui::MenuItem(asset.first.c_str())) {
 					m_SelectedAnimation.serialize();
-					m_SelectedAnimation.load(asset.first.c_str());
+					m_SelectedAnimation.loadFromFile(asset.first.c_str());
 				}
 			}
 

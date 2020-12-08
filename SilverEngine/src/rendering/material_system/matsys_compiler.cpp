@@ -240,7 +240,7 @@ namespace sv {
 
 				std::vector<ui8> binData;
 
-				svCheck(graphics_shader_compile_string(&desc, src.c_str(), strlen(src.data()), binData));
+				svCheck(graphics_shader_compile_string(&desc, src.c_str(), ui32(strlen(src.data())), binData));
 
 				SubShaderIntermediate& inter = intermediates.emplace_back();
 				inter.ID = i;
@@ -327,7 +327,7 @@ namespace sv {
 
 		while (std::getline(file, line)) {
 
-			decomposeDefine(line.c_str(), line.size(), define);
+			decomposeDefine(line.c_str(), ui32(line.size()), define);
 
 			switch (define.tag)
 			{
@@ -341,7 +341,7 @@ namespace sv {
 				else {
 					SubShaderUserBlock& ub = type.subShaderRegisters[subShaderID].userBlocks.emplace_back();
 					ub.name = define.value;
-					ub.sourcePos = src.str().size();
+					ub.sourcePos = ui32(src.str().size());
 				}
 				break;
 

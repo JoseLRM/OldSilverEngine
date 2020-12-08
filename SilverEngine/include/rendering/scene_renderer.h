@@ -6,6 +6,7 @@
 #include "utils/io.h"
 #include "rendering/material_system.h"
 #include "simulation/sprite_animator.h"
+#include "simulation/model.h"
 
 namespace sv {
 
@@ -154,6 +155,25 @@ namespace sv {
 		AnimatedSpriteComponent(Color col) : color(col) {}
 		AnimatedSpriteComponent(AnimatedSprite& spr) : sprite(spr) {}
 		AnimatedSpriteComponent(AnimatedSprite& spr, Color col) : sprite(spr), color(col) {}
+
+	};
+
+	// Mesh Component
+
+	struct MeshComponent : public Component<MeshComponent> {
+
+		MaterialAsset	material;
+		MeshAsset		mesh;
+		ui32			renderLayer = 0u;
+
+		MeshComponent() = default;
+		MeshComponent(MeshAssetType assetType) { mesh.loadFromID(assetType); }
+
+	};
+
+	// Light Component
+
+	struct LightComponent : public Component<LightComponent> {
 
 	};
 

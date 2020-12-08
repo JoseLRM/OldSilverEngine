@@ -729,7 +729,7 @@ namespace sv {
 		const char* name = gui_asset_picker_show(textureType);
 
 		if (name) {
-			texture.load(name);
+			texture.loadFromFile(name);
 			result = true;
 		}
 
@@ -783,7 +783,7 @@ namespace sv {
 		const char* name = gui_asset_picker_show(type);
 
 		if (name) {
-			material.load(name);
+			material.loadFromFile(name);
 		}
 	}
 
@@ -841,7 +841,7 @@ namespace sv {
 		const char* name = gui_asset_picker_show(textureType);
 
 		if (name) {
-			spriteAnimation.load(name);
+			spriteAnimation.loadFromFile(name);
 			result = true;
 		}
 

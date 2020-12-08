@@ -32,9 +32,9 @@ namespace sv {
 	{
 		const char* sceneFilePath = "scenes/Test.scene";
 
-		if (g_Scene.load(sceneFilePath) != Result_Success) {
+		if (g_Scene.loadFromFile(sceneFilePath) != Result_Success) {
 			g_Scene.createFile("assets/scenes/Test.scene");
-			g_Scene.load(sceneFilePath);
+			g_Scene.loadFromFile(sceneFilePath);
 		}
 
 		simulation_scene_open(sceneFilePath);
@@ -421,7 +421,7 @@ namespace sv {
 		g_SelectedEntity = SV_ENTITY_NULL;
 		g_Scene.unload();
 		asset_free_unused(asset_type_get("Scene"));
-		svCheck(g_Scene.load(filePath));
+		svCheck(g_Scene.loadFromFile(filePath));
 		
 		// Create debug camera
 
@@ -436,7 +436,7 @@ namespace sv {
 	{
 		g_Scene.createFile(filePath);
 		g_SelectedEntity = SV_ENTITY_NULL;
-		return g_Scene.load(filePath);
+		return g_Scene.loadFromFile(filePath);
 	}
 
 	DebugCamera& simulation_debug_camera_get()
