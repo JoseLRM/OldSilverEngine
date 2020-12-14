@@ -4,7 +4,7 @@
 
 namespace sv {
 
-	typedef ui32 MeshIndex;
+	typedef u32 MeshIndex;
 
 	struct MeshVertex {
 		vec3f position;
@@ -34,9 +34,9 @@ namespace sv {
 
 	};
 
-	enum MeshAssetType : ui32 {
+	enum MeshAssetType : u32 {
 		MeshAssetType_Cube,
-		MeshAssetType_None = ui32_max,
+		MeshAssetType_None = u32_max,
 	};
 
 	struct MeshAsset : public Asset {

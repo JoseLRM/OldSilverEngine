@@ -21,12 +21,12 @@ namespace sv {
 			Stop();
 		}
 
-		inline void Reserve(ui32 cant) noexcept
+		inline void Reserve(u32 cant) noexcept
 		{
 			m_Threads.reserve(cant);
-			ui32 lastID = ui32(m_Threads.size());
-			for (ui32 i = 0; i < cant; ++i) {
-				ui32 ID = i + lastID;
+			u32 lastID = u32(m_Threads.size());
+			for (u32 i = 0; i < cant; ++i) {
+				u32 ID = i + lastID;
 				m_Threads.emplace_back([this, ID]() {
 					sv::TaskFunction task;
 					sv::ThreadContext* pContext;
@@ -64,13 +64,13 @@ namespace sv {
 			m_ConditionVar.notify_one();
 		}
 
-		inline void Execute(sv::TaskFunction* tasks, ui32 count, sv::ThreadContext* context = nullptr) noexcept
+		inline void Execute(sv::TaskFunction* tasks, u32 count, sv::ThreadContext* context = nullptr) noexcept
 		{
 			std::lock_guard<std::mutex> lock(m_ExecuteMutex);
 
 			if (context) context->taskCount.fetch_add(count);
 
-			for (ui32 i = 0; i < count; ++i) {
+			for (u32 i = 0; i < count; ++i) {
 				m_Tasks.emplace(std::make_pair(std::move(tasks[i]), context));
 			}
 
@@ -96,25 +96,25 @@ namespace sv {
 				m_Running = false;
 				m_ConditionVar.notify_all();
 
-				for (ui32 i = 0; i < m_Threads.size(); ++i) m_Threads[i].join();
+				for (u32 i = 0; i < m_Threads.size(); ++i) m_Threads[i].join();
 			}
 		}
 
-		inline ui32 GetThreadCount() const noexcept
+		inline u32 GetThreadCount() const noexcept
 		{
-			return ui32(m_Threads.size());
+			return u32(m_Threads.size());
 		}
 
 	};
 
 	static ThreadPool	g_ThreadPool;
-	static ui32			g_MinThreads = 0;
+	static u32			g_MinThreads = 0;
 	static std::mutex	g_BlockingTaskMutex;
 
-	Result task_initialize(ui32 minThreads)
+	Result task_initialize(u32 minThreads)
 	{
 		g_MinThreads = minThreads;
-		ui32 numThreads = std::thread::hardware_concurrency();
+		u32 numThreads = std::thread::hardware_concurrency();
 		if (numThreads < g_MinThreads) numThreads = g_MinThreads;
 
 		SV_LOG_INFO("Reserving %u threads", numThreads);
@@ -138,7 +138,7 @@ namespace sv {
 			g_ThreadPool.Reserve(1);
 		}
 	}
-	void task_execute(TaskFunction* task, ui32 count, ThreadContext* context, bool blockingTask)
+	void task_execute(TaskFunction* task, u32 count, ThreadContext* context, bool blockingTask)
 	{
 		g_ThreadPool.Execute(task, count, context);
 		if (blockingTask)
@@ -156,7 +156,7 @@ namespace sv {
 		return g_ThreadPool.Running(context);
 	}
 
-	ui32 task_thread_count() noexcept
+	u32 task_thread_count() noexcept
 	{
 		return std::thread::hardware_concurrency();
 	}

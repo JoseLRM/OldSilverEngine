@@ -28,14 +28,14 @@ namespace sv {
 		type.subShaderCount = desc->subShaderCount;
 
 		// Compile subshaders
-		for (ui32 i = 0u; i < type.subShaderCount; ++i) {
+		for (u32 i = 0u; i < type.subShaderCount; ++i) {
 			SV_ASSERT(desc->subshaderIncludeNames[i]);
 			svCheck(matsys_shaderlibrarytype_compile(type, i, desc->subshaderIncludeNames[i]));
 		}
 
 		// TODO: Default shaders
 		// Store default shaders
-		for (ui32 i = 0u; i < type.subShaderCount; ++i) {
+		for (u32 i = 0u; i < type.subShaderCount; ++i) {
 			type.subShaderRegisters[i].defaultShader = nullptr;
 		}
 		
@@ -47,7 +47,7 @@ namespace sv {
 
 	SubShaderID sv::ShaderLibraryType_internal::findSubShaderID(const char* name)
 	{
-		for (ui32 i = 0u; i < subShaderCount; ++i) {
+		for (u32 i = 0u; i < subShaderCount; ++i) {
 
 			SubShaderRegister& reg = subShaderRegisters[i];
 
@@ -56,13 +56,13 @@ namespace sv {
 			}
 		}
 
-		return ui32_max;
+		return u32_max;
 	}
 
 	SubShaderID matsys_subshader_get(const char* typeName, const char* name)
 	{
 		auto it = g_ShaderLibraryTypeNames.find(typeName);
-		if (it == g_ShaderLibraryTypeNames.end()) return ui32_max;
+		if (it == g_ShaderLibraryTypeNames.end()) return u32_max;
 
 		return it->second->findSubShaderID(name);
 	}

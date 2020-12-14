@@ -9,8 +9,8 @@
 
 namespace sv {
 
-	typedef ui16 CompID;
-	typedef ui32 Entity;
+	typedef u16 CompID;
+	typedef u32 Entity;
 	SV_DEFINE_HANDLE(ECS);
 
 	struct BaseComponent {
@@ -20,14 +20,14 @@ namespace sv {
 	template<typename T>
 	struct Component : public BaseComponent {
 		static CompID ID;
-		static ui32 SIZE;
+		static u32 SIZE;
 	};
 
 	template<typename T>
 	CompID Component<T>::ID(SV_COMPONENT_ID_INVALID);
 
 	template<typename T>
-	ui32 Component<T>::SIZE;
+	u32 Component<T>::SIZE;
 
 	typedef std::function<void(BaseComponent*)>							CreateComponentFunction;
 	typedef std::function<void(BaseComponent*)>							DestroyComponentFunction;
@@ -115,12 +115,12 @@ namespace sv {
 
 	// Component Register
 
-	CompID ecs_component_register(const char* name, ui32 compSize);
+	CompID ecs_component_register(const char* name, u32 compSize);
 
 	const char* ecs_component_name(CompID ID);
-	ui32		ecs_component_size(CompID ID);
+	u32		ecs_component_size(CompID ID);
 	CompID		ecs_component_id(const char* name);
-	ui32		ecs_component_register_count();
+	u32		ecs_component_register_count();
 
 	void ecs_register(ECS* ecs, const ComponentRegisterDesc* desc);
 
@@ -140,17 +140,17 @@ namespace sv {
 	Entity		ecs_entity_duplicate(ECS* ecs, Entity entity);
 	bool		ecs_entity_is_empty(ECS* ecs, Entity entity);
 	bool		ecs_entity_exist(ECS* ecs, Entity entity);
-	ui32		ecs_entity_childs_count(ECS* ecs, Entity parent);
+	u32		ecs_entity_childs_count(ECS* ecs, Entity parent);
 	void		ecs_entity_childs_get(ECS* ecs, Entity parent, Entity const** childsArray);
 	Entity		ecs_entity_parent_get(ECS* ecs, Entity entity);
 	Transform	ecs_entity_transform_get(ECS* ecs, Entity entity);
-	ui32		ecs_entity_component_count(ECS* ecs, Entity entity);
+	u32		ecs_entity_component_count(ECS* ecs, Entity entity);
 
-	void ecs_entities_create(ECS* ecs, ui32 count, Entity parent = SV_ENTITY_NULL, Entity* entities = nullptr);
-	void ecs_entities_destroy(ECS* ecs, Entity const* entities, ui32 count);
+	void ecs_entities_create(ECS* ecs, u32 count, Entity parent = SV_ENTITY_NULL, Entity* entities = nullptr);
+	void ecs_entities_destroy(ECS* ecs, Entity const* entities, u32 count);
 
-	ui32	ecs_entity_count(ECS* ecs);
-	Entity	ecs_entity_get(ECS* ecs, ui32 index);
+	u32	ecs_entity_count(ECS* ecs);
+	Entity	ecs_entity_get(ECS* ecs, u32 index);
 
 	// Components
 
@@ -158,11 +158,11 @@ namespace sv {
 	BaseComponent*	ecs_component_add_by_id(ECS* ecs, Entity entity, CompID componentID);
 
 	BaseComponent*						ecs_component_get_by_id(ECS* ecs, Entity entity, CompID componentID);
-	std::pair<CompID, BaseComponent*>	ecs_component_get_by_index(ECS* ecs, Entity entity, ui32 index);
+	std::pair<CompID, BaseComponent*>	ecs_component_get_by_index(ECS* ecs, Entity entity, u32 index);
 	
 	void ecs_component_remove_by_id(ECS* ecs, Entity entity, CompID componentID);
 
-	ui32 ecs_component_count(ECS* ecs, CompID ID);
+	u32 ecs_component_count(ECS* ecs, CompID ID);
 
 	// Listeners
 
@@ -200,7 +200,7 @@ namespace sv {
 		CompID compID;
 
 		BaseComponent* it;
-		ui32 pool;
+		u32 pool;
 
 	public:
 		ComponentIterator(ECS* ecs, CompID compID, bool end);
@@ -303,8 +303,8 @@ namespace sv {
 
 			inline bool operator==(const TemplatedComponentIterator& other) const noexcept { return it.equal(other.it); }
 			inline bool operator!=(const TemplatedComponentIterator& other) const noexcept { return !it.equal(other.it); }
-			inline void operator+=(ui32 count) { while (count-- > 0) it.next(); }
-			inline void operator-=(ui32 count) { while (count-- > 0) it.last(); }
+			inline void operator+=(u32 count) { while (count-- > 0) it.next(); }
+			inline void operator-=(u32 count) { while (count-- > 0) it.last(); }
 			inline void operator++() { it.next(); }
 			inline void operator--() { it.last(); }
 		};
@@ -312,7 +312,7 @@ namespace sv {
 	public:
 		EntityView(ECS* ecs) : m_ECS(ecs) {}
 
-		ui32 size()
+		u32 size()
 		{
 			return ecs_component_count(m_ECS, Component::ID);
 		}

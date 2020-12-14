@@ -25,14 +25,14 @@ namespace sv {
 
 		// KEYS
 		// reset pressed and released
-		for (ui8 i = 0; i < 255; ++i) {
+		for (u8 i = 0; i < 255; ++i) {
 			g_KeysPressed[i] = false;
 			g_KeysReleased[i] = false;
 		}
 
 		// MOUSE BUTTONS
 		// reset pressed and released
-		for (ui8 i = 0; i < 3; ++i) {
+		for (u8 i = 0; i < 3; ++i) {
 			g_MousePressed[i] = false;
 			g_MouseReleased[i] = false;
 		}
@@ -45,22 +45,22 @@ namespace sv {
 		return false;
 	}
 
-	void input_key_pressed_add(ui8 id)
+	void input_key_pressed_add(u8 id)
 	{
 		g_Keys[id] = true;
 		g_KeysPressed[id] = true;
 	}
-	void input_key_released_add(ui8 id)
+	void input_key_released_add(u8 id)
 	{
 		g_Keys[id] = false;
 		g_KeysReleased[id] = true;
 	}
-	void input_mouse_pressed_add(ui8 id)
+	void input_mouse_pressed_add(u8 id)
 	{
 		g_Mouse[id] = true;
 		g_MousePressed[id] = true;
 	}
-	void input_mouse_released_add(ui8 id)
+	void input_mouse_released_add(u8 id)
 	{
 		g_Mouse[id] = false;
 		g_MouseReleased[id] = true;
@@ -80,23 +80,23 @@ namespace sv {
 		g_Wheel = wheel;
 	}
 
-	bool input_key(ui8 id) {
+	bool input_key(u8 id) {
 		return g_Keys[id];
 	}
-	bool input_key_pressed(ui8 id) {
+	bool input_key_pressed(u8 id) {
 		return g_KeysPressed[id];
 	}
-	bool input_key_released(ui8 id) {
+	bool input_key_released(u8 id) {
 		return g_KeysReleased[id];
 	}
 
-	bool input_mouse(ui8 id) {
+	bool input_mouse(u8 id) {
 		return g_Mouse[id];
 	}
-	bool input_mouse_pressed(ui8 id) {
+	bool input_mouse_pressed(u8 id) {
 		return g_MousePressed[id];
 	}
-	bool input_mouse_released(ui8 id) {
+	bool input_mouse_released(u8 id) {
 		return g_MouseReleased[id];
 	}
 

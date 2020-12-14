@@ -73,7 +73,7 @@ namespace sv {
 		}
 
 		// Create default subshaders
-		ui32 customSubShaderRequest = 0u;
+		u32 customSubShaderRequest = 0u;
 		{
 			size_t subShaderCount = lib.type->subShaderCount;
 
@@ -89,7 +89,7 @@ namespace sv {
 
 		// Create custom subshaders
 		{
-			ui32 count;
+			u32 count;
 			archive >> count;
 
 			if (count != customSubShaderRequest) {
@@ -100,7 +100,7 @@ namespace sv {
 			while (count--) {
 
 				SubShaderID ID;
-				std::vector<ui8> data;
+				std::vector<u8> data;
 				archive >> ID >> data;
 
 				ShaderDesc desc;
@@ -146,7 +146,7 @@ namespace sv {
 		SubShader& shader = lib.subShaders[subShaderID];
 
 		// Bind Camera Buffer
-		if (shader.cameraSlot != ui32_max && lib.cameraBuffer) {
+		if (shader.cameraSlot != u32_max && lib.cameraBuffer) {
 			graphics_constantbuffer_bind(lib.cameraBuffer, shader.cameraSlot, graphics_shader_type(shader.shader), cmd);
 		}
 
@@ -180,19 +180,19 @@ namespace sv {
 
 	Result matsys_shaderlibrary_construct(ShaderLibrary_internal& lib)
 	{
-		ui32 subShaderCount = lib.type->subShaderCount;
+		u32 subShaderCount = lib.type->subShaderCount;
 		
 		// Initialization
-		for (ui32 i = 0u; i < SV_MATSYS_MAX_SUBSHADERS; ++i)
+		for (u32 i = 0u; i < SV_MATSYS_MAX_SUBSHADERS; ++i)
 			lib.matInfo.bufferSizes[i] = 0u;
 
-		for (ui32 i = 0u; i < SV_MATSYS_MAX_SUBSHADERS; ++i)
-			lib.matInfo.bufferBindings[i] = ui32_max;
+		for (u32 i = 0u; i < SV_MATSYS_MAX_SUBSHADERS; ++i)
+			lib.matInfo.bufferBindings[i] = u32_max;
 
 		lib.matInfo.bufferSizesCount = 0u;
 
 		// Construction
-		for (ui32 i = 0u; i < subShaderCount; ++i) {
+		for (u32 i = 0u; i < subShaderCount; ++i) {
 
 			SubShader& ss = lib.subShaders[i];
 			const ShaderInfo& sInfo = *graphics_shader_info_get(ss.shader);
@@ -205,10 +205,10 @@ namespace sv {
 
 					for (const ShaderAttribute& att : buffer.attributes) {
 
-						ui32 attIndex = ui32_max;
+						u32 attIndex = u32_max;
 
 						// Find if the attribute exist
-						for (ui32 j = 0u; j < lib.matInfo.attributes.size(); ++j) {
+						for (u32 j = 0u; j < lib.matInfo.attributes.size(); ++j) {
 
 							MaterialAttribute& matAtt = lib.matInfo.attributes[j];
 
@@ -219,20 +219,20 @@ namespace sv {
 						}
 
 						// If not found, create new attribute
-						if (attIndex == ui32_max) {
+						if (attIndex == u32_max) {
 
-							attIndex = ui32(lib.matInfo.attributes.size());
+							attIndex = u32(lib.matInfo.attributes.size());
 
 							MaterialAttribute& matAtt = lib.matInfo.attributes.emplace_back();
 							matAtt.name = att.name;
 							matAtt.type = att.type;
 
-							lib.matInfo.attributeOffsets.emplace_back().init(ui32_max);
+							lib.matInfo.attributeOffsets.emplace_back().init(u32_max);
 						}
 
 						// Save offset
 						SubShaderIndices& o = lib.matInfo.attributeOffsets[attIndex];
-						SV_ASSERT(o.i[i] == ui32_max);
+						SV_ASSERT(o.i[i] == u32_max);
 
 						o.i[i] = att.offset;
 					}
@@ -245,7 +245,7 @@ namespace sv {
 
 				// Camera
 				else if (strcmp(buffer.name.c_str(), "__Camera__") == 0) {
-					SV_ASSERT(ss.cameraSlot == ui32_max);
+					SV_ASSERT(ss.cameraSlot == u32_max);
 					ss.cameraSlot = buffer.bindingSlot;
 				}
 			}
@@ -254,10 +254,10 @@ namespace sv {
 			for (const ShaderInfo::ResourceImage& image : sInfo.images) {
 
 				if (image.name[0] == '_') continue;
-				ui32 imgSlot = ui32_max;
+				u32 imgSlot = u32_max;
 
 				// Find if texture exist
-				for (ui32 j = 0u; j < lib.matInfo.textures.size(); ++j) {
+				for (u32 j = 0u; j < lib.matInfo.textures.size(); ++j) {
 
 					const std::string& texStr = lib.matInfo.textures[j];
 
@@ -268,11 +268,11 @@ namespace sv {
 				}
 
 				// If not found, create new image
-				if (imgSlot == ui32_max) {
+				if (imgSlot == u32_max) {
 
-					imgSlot = ui32(lib.matInfo.textures.size());
+					imgSlot = u32(lib.matInfo.textures.size());
 					lib.matInfo.textures.emplace_back() = image.name; 
-					lib.matInfo.textureSlots.emplace_back().init(ui32_max);
+					lib.matInfo.textureSlots.emplace_back().init(u32_max);
 				}
 
 				SubShaderIndices& slots = lib.matInfo.textureSlots[imgSlot];
@@ -323,7 +323,7 @@ namespace sv {
 		matInfo = other.matInfo;
 		name = other.name;
 		nameHashCode = other.nameHashCode;
-		for(ui32 i = 0u; i < SV_MATSYS_MAX_SUBSHADERS; ++i) 
+		for(u32 i = 0u; i < SV_MATSYS_MAX_SUBSHADERS; ++i) 
 			subShaders[i] = other.subShaders[i];
 		type = other.type;
 		return *this;
@@ -336,7 +336,7 @@ namespace sv {
 		matInfo = std::move(other.matInfo);
 		name = std::move(other.name);
 		nameHashCode = other.nameHashCode;
-		for (ui32 i = 0u; i < SV_MATSYS_MAX_SUBSHADERS; ++i)
+		for (u32 i = 0u; i < SV_MATSYS_MAX_SUBSHADERS; ++i)
 			subShaders[i] = std::move(other.subShaders[i]);
 		type = other.type;
 		return *this;

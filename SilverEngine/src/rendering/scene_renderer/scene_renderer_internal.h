@@ -11,12 +11,14 @@ namespace sv {
 	void scene_component_serialize_AnimatedSpriteComponent(BaseComponent* comp, ArchiveO& archive);
 	void scene_component_serialize_MeshComponent(BaseComponent* comp, ArchiveO& archive);
 	void scene_component_serialize_LightComponent(BaseComponent* comp, ArchiveO& archive);
+	void scene_component_serialize_SkyComponent(BaseComponent* comp, ArchiveO& archive);
 	void scene_component_serialize_CameraComponent(BaseComponent* comp, ArchiveO& archive);
 
 	void scene_component_deserialize_SpriteComponent(BaseComponent* comp, ArchiveI& archive);
 	void scene_component_deserialize_AnimatedSpriteComponent(BaseComponent* comp, ArchiveI& archive);
 	void scene_component_deserialize_MeshComponent(BaseComponent* comp, ArchiveI& archive);
 	void scene_component_deserialize_LightComponent(BaseComponent* comp, ArchiveI& archive);
+	void scene_component_deserialize_SkyComponent(BaseComponent* comp, ArchiveI& archive);
 	void scene_component_deserialize_CameraComponent(BaseComponent* comp, ArchiveI& archive);
 
 	struct SceneRenderer_internal {
@@ -26,28 +28,16 @@ namespace sv {
 
 	};
 
-	struct SpriteIntermediate {
-
-		SpriteInstance instance;
-		Material* material;
-		float depth;
-
-		SpriteIntermediate() = default;
-		SpriteIntermediate(const XMMATRIX& m, const vec4f& texCoord, GPUImage* pTex, Color color, Material* material, float depth)
-			: instance(m, texCoord, pTex, color), material(material), depth(depth) {}
-
-	};
-
-	struct SceneRendererTemp {
+	struct SceneRendererContext {
 
 		CameraBuffer cameraBuffer;
 
-		// Allocators used to draw the scene without allocate memory every frame
-		FrameList<SpriteIntermediate>	spritesIntermediates[SceneRenderer::RENDER_LAYER_COUNT];
 		FrameList<SpriteInstance>		spritesInstances;
 		FrameList<MeshInstance>			meshInstances;
+		FrameList<MeshInstanceGroup>	meshGroups;
 		FrameList<LightInstance>		lightInstances;
-		GBuffer gBuffer;
+		Color3f							ambientLight;
+		GBuffer							gBuffer;
 
 	};
 

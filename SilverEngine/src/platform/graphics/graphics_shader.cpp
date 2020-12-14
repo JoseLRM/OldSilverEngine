@@ -17,8 +17,8 @@ namespace sv {
 
 	inline std::string graphics_shader_random_path()
 	{
-		static ui32 seed = 0u;
-		ui32 random = math_random(seed);
+		static u32 seed = 0u;
+		u32 random = math_random(seed);
 
 		seed += 100;
 		std::string filePath = std::to_string(random);
@@ -30,7 +30,7 @@ namespace sv {
 		return filePath;
 	}
 
-	Result graphics_shader_compile_string(const ShaderCompileDesc* desc, const char* str, ui32 size, std::vector<ui8>& data)
+	Result graphics_shader_compile_string(const ShaderCompileDesc* desc, const char* str, u32 size, std::vector<u8>& data)
 	{
 		std::string filePath = graphics_shader_random_path();
 
@@ -49,7 +49,7 @@ namespace sv {
 		return res;
 	}
 
-	Result graphics_shader_compile_file(const ShaderCompileDesc* desc, const char* srcPath, std::vector<ui8>& data)
+	Result graphics_shader_compile_file(const ShaderCompileDesc* desc, const char* srcPath, std::vector<u8>& data)
 	{
 		std::string filePath = graphics_shader_random_path();
 
@@ -66,7 +66,7 @@ namespace sv {
 			bat << "-spirv ";
 
 			// Shift resources
-			ui32 shift = GraphicsLimit_Sampler;
+			u32 shift = GraphicsLimit_Sampler;
 			bat << "-fvk-t-shift " << shift << " all ";
 			shift += GraphicsLimit_GPUImage;
 			bat << "-fvk-b-shift " << shift << " all ";
@@ -188,7 +188,7 @@ namespace sv {
 
 	Result graphics_shader_compile_fastbin(const char* name, ShaderType shaderType, Shader** pShader, const char* src)
 	{
-		std::vector<ui8> data;
+		std::vector<u8> data;
 		size_t hash = hash_string(name);
 
 		ShaderDesc desc;
@@ -203,8 +203,8 @@ namespace sv {
 			c.minorVersion = 0u;
 			c.shaderType = shaderType;
 
-			svCheck(graphics_shader_compile_string(&c, src, ui32(strlen(src)), data));
-			svCheck(bin_write(hash, data.data(), ui32(data.size())));
+			svCheck(graphics_shader_compile_string(&c, src, u32(strlen(src)), data));
+			svCheck(bin_write(hash, data.data(), u32(data.size())));
 		}
 
 		desc.binDataSize = data.size();

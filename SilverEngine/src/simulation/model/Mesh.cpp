@@ -36,8 +36,8 @@ namespace sv {
 		nor->setDX(v0);
 
 		// Indices
-		ui32* ind = mesh.indices.data();
-		ui32 v0_32 = ui32(vertexOffset);
+		u32* ind = mesh.indices.data();
+		u32 v0_32 = u32(vertexOffset);
 
 		ind[indexOffset + 0u] = v0_32 + 0u;
 		ind[indexOffset + 1u] = v0_32 + 1u;
@@ -180,14 +180,14 @@ namespace sv {
 		desc.bufferType = GPUBufferType_Vertex;
 		desc.usage = usage;
 		desc.CPUAccess = (usage == ResourceUsage_Static) ? CPUAccess_None : CPUAccess_Write;
-		desc.size = ui32(vertexData.size() * sizeof(MeshVertex));
+		desc.size = u32(vertexData.size() * sizeof(MeshVertex));
 		desc.pData = vertexData.data();
 
 		svCheck(graphics_buffer_create(&desc, &vertexBuffer));
 
 		desc.indexType = IndexType_32;
 		desc.bufferType = GPUBufferType_Index;
-		desc.size = ui32(indices.size() * sizeof(ui32));
+		desc.size = u32(indices.size() * sizeof(u32));
 		desc.pData = indices.data();
 
 		svCheck(graphics_buffer_create(&desc, &indexBuffer));

@@ -17,7 +17,7 @@ namespace sv {
 	SV_DEFINE_HANDLE(ShaderLibrary);
 	SV_DEFINE_HANDLE(Material);
 
-	typedef ui32 SubShaderID;
+	typedef u32 SubShaderID;
 
 	// Shader Library
 
@@ -60,12 +60,12 @@ namespace sv {
 		
 		const char*	name;
 		const char* subshaderIncludeNames[SV_MATSYS_MAX_SUBSHADERS];
-		ui32		subShaderCount;
+		u32		subShaderCount;
 
 	};
 
 	Result				matsys_shaderlibrary_type_register(const ShaderLibraryTypeDesc* desc);
-	SubShaderID			matsys_subshader_get(const char* typeName, const char* subShaderName); // Return ui32_max if not found
+	SubShaderID			matsys_subshader_get(const char* typeName, const char* subShaderName); // Return u32_max if not found
 
 	// Camera Buffer
 

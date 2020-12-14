@@ -1,10 +1,12 @@
 #pragma once
 
 #include "rendering/sprite_renderer.h"
+#include "utils/allocator.h"
 
 namespace sv {
 
-	constexpr ui32 SPRITE_BATCH_COUNT = 1000u;
+	constexpr u32 SPRITE_BATCH_COUNT = 1000u;
+	constexpr u32 SPRITE_LIGHT_COUNT = 10u;
 
 	struct SpriteVertex {
 		vec4f position;
@@ -16,12 +18,26 @@ namespace sv {
 		SpriteVertex data[SPRITE_BATCH_COUNT * 4u];
 	};
 
+	struct SpriteLight {
+		u32		type;
+		vec3f	position;
+		Color3f	color;
+		float	range;
+		float	intensity;
+		float	smoothness;
+		vec2f	padding;
+	};
+
+	struct SpriteLightData {
+		Color3f ambient;
+		u32 lightCount;
+		SpriteLight lights[SPRITE_LIGHT_COUNT];
+	};
+
 	struct SpriteRendererContext {
 
-		CameraBuffer* pCameraBuffer;
-		GPUImage* renderTarget;
-		GPUImage* depthStencil;
 		SpriteData* spriteData;
+		SpriteLightData* lightData;
 
 	};
 

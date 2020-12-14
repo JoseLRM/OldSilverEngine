@@ -52,6 +52,6 @@ namespace sv {
 	bool gui_component_item_string_with_extension(std::string& str, const char* extension);
 	bool gui_component_item_mat4(XMMATRIX& matrix);
 	bool gui_component_item_mat4(XMFLOAT4X4& matrix);
-	bool gui_component_item_renderLayer2D(ui32& index);
+	bool gui_component_item_renderLayer2D(u32& index);
 
 }

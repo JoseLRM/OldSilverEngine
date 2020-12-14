@@ -40,8 +40,8 @@ namespace sv {
 		ImGui::NextColumn();
 
 		if (ImGui::BeginChild(6969)) {
-			ui32 columns = ui32(std::max(ImGui::GetWindowSize().x / 105.f, 1.f));
-			ui32 count = columns;
+			u32 columns = u32(std::max(ImGui::GetWindowSize().x / 105.f, 1.f));
+			u32 count = columns;
 			ImGui::Columns(columns, 0, false);
 
 			bool shouldRefresh = false;
@@ -269,7 +269,7 @@ namespace sv {
 
 				ArchiveO file;
 
-				file << ui32(1u) << size_t(0u) << vec4f(0.f, 0.f, 1.f, 1.f);
+				file << u32(1u) << size_t(0u) << vec4f(0.f, 0.f, 1.f, 1.f);
 
 				file.save_file(filePath.c_str());
 

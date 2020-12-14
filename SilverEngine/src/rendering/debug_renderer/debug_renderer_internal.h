@@ -23,9 +23,9 @@ namespace sv {
 	};
 
 	struct DebugRendererDraw {
-		ui32 list;
-		ui32 index;
-		ui32 count;
+		u32 list;
+		u32 index;
+		u32 count;
 		union {
 			float lineWidth;
 			float stroke;
@@ -37,8 +37,8 @@ namespace sv {
 		};
 
 		DebugRendererDraw() {}
-		DebugRendererDraw(ui32 list, ui32 index, float lineWidth = 1.f) : list(list), index(index), count(1u), lineWidth(lineWidth) {}
-		DebugRendererDraw(ui32 list, ui32 index, GPUImage* image, Sampler* sampler, const vec4f& texCoord) 
+		DebugRendererDraw(u32 list, u32 index, float lineWidth = 1.f) : list(list), index(index), count(1u), lineWidth(lineWidth) {}
+		DebugRendererDraw(u32 list, u32 index, GPUImage* image, Sampler* sampler, const vec4f& texCoord) 
 			: list(list), index(index), count(1u), pImage(image), pSampler(sampler), texCoord(texCoord) {}
 	};
 

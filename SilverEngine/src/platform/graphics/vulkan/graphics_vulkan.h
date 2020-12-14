@@ -17,7 +17,7 @@ namespace sv {
 
 	CommandList graphics_vulkan_commandlist_begin();
 	CommandList graphics_vulkan_commandlist_last();
-	ui32		graphics_vulkan_commandlist_count();
+	u32		graphics_vulkan_commandlist_count();
 
 	void graphics_vulkan_renderpass_begin(CommandList);
 	void graphics_vulkan_renderpass_end(CommandList);
@@ -30,13 +30,13 @@ namespace sv {
 	void graphics_vulkan_frame_end();
 	void graphics_vulkan_present(GPUImage* image, const GPUImageRegion& region, GPUImageLayout layout, CommandList cmd); // Blit image into swapchain image
 
-	void graphics_vulkan_draw(ui32, ui32, ui32, ui32, CommandList);
-	void graphics_vulkan_draw_indexed(ui32, ui32, ui32, ui32, ui32, CommandList);
+	void graphics_vulkan_draw(u32, u32, u32, u32, CommandList);
+	void graphics_vulkan_draw_indexed(u32, u32, u32, u32, u32, CommandList);
 
-	void graphics_vulkan_image_clear(GPUImage*, GPUImageLayout, GPUImageLayout, const Color4f&, float, ui32, CommandList);
-	void graphics_vulkan_image_blit(GPUImage*, GPUImage*, GPUImageLayout, GPUImageLayout, ui32, const GPUImageBlit*, SamplerFilter, CommandList);
-	void graphics_vulkan_buffer_update(GPUBuffer*, void*, ui32, ui32, CommandList);
-	void graphics_vulkan_barrier(const GPUBarrier*, ui32, CommandList);
+	void graphics_vulkan_image_clear(GPUImage*, GPUImageLayout, GPUImageLayout, const Color4f&, float, u32, CommandList);
+	void graphics_vulkan_image_blit(GPUImage*, GPUImage*, GPUImageLayout, GPUImageLayout, u32, const GPUImageBlit*, SamplerFilter, CommandList);
+	void graphics_vulkan_buffer_update(GPUBuffer*, void*, u32, u32, CommandList);
+	void graphics_vulkan_barrier(const GPUBarrier*, u32, CommandList);
 
 	void graphics_vulkan_event_begin(const char* name, CommandList cmd);
 	void graphics_vulkan_event_mark(const char* name, CommandList cmd);
@@ -79,9 +79,9 @@ namespace sv {
 
 	Graphics_vk& graphics_vulkan_device_get();
 
-	constexpr ui32	VULKAN_MAX_DESCRIPTOR_SETS = 100u;
-	constexpr ui32	VULKAN_MAX_DESCRIPTOR_TYPES = 32u;
-	constexpr ui32	VULKAN_DESCRIPTOR_ALLOC_COUNT = 10u;
+	constexpr u32	VULKAN_MAX_DESCRIPTOR_SETS = 100u;
+	constexpr u32	VULKAN_MAX_DESCRIPTOR_TYPES = 32u;
+	constexpr u32	VULKAN_DESCRIPTOR_ALLOC_COUNT = 10u;
 	constexpr float VULKAN_UNUSED_OBJECTS_TIMECHECK = 30.f;
 	constexpr float VULKAN_UNUSED_OBJECTS_LIFETIME = 10.f;
 
@@ -93,24 +93,24 @@ namespace sv {
 			VkBuffer buffer = VK_NULL_HANDLE;
 			VmaAllocation allocation = VK_NULL_HANDLE;
 			void* mapData = nullptr;
-			ui32 frame = 0u;
+			u32 frame = 0u;
 		};
 
 		std::vector<StagingBuffer> m_StaggingBuffers;
 		std::vector<StagingBuffer> m_ActiveStaggingBuffers;
 		StagingBuffer m_CurrentStagingBuffer;
-		ui32 m_CurrentStagingBufferOffset = 0u;
-		ui64 m_LastFrame = UINT64_MAX;
+		u32 m_CurrentStagingBufferOffset = 0u;
+		u64 m_LastFrame = UINT64_MAX;
 		size_t m_BufferSize;
 
 	public:
 		void Create(size_t size);
-		void GetMappingData(ui32 size, VkBuffer& buffer, void** data, ui32& offset);
+		void GetMappingData(u32 size, VkBuffer& buffer, void** data, u32& offset);
 		void Clear();
 
 	private:
-		void Reset(ui32 frame);
-		StagingBuffer CreateStagingBuffer(ui32 currentFrame);
+		void Reset(u32 frame);
+		StagingBuffer CreateStagingBuffer(u32 currentFrame);
 
 	};
 
@@ -120,13 +120,13 @@ namespace sv {
 
 	struct VulkanDescriptorPool {
 		VkDescriptorPool pool;
-		ui32 count[3];
-		ui32 sets;
+		u32 count[3];
+		u32 sets;
 	};
 
 	struct VulkanDescriptorSet {
 		std::vector<VkDescriptorSet>	sets;
-		ui32							used = 0u;
+		u32							used = 0u;
 	};
 
 	struct DescriptorPool {
@@ -135,13 +135,13 @@ namespace sv {
 	};
 
 	struct ShaderResourceBinding {
-		ui32				vulkanBinding;
-		ui32				userBinding;
+		u32				vulkanBinding;
+		u32				userBinding;
 	};
 	struct ShaderDescriptorSetLayout {
 		VkDescriptorSetLayout setLayout;
 		std::vector<ShaderResourceBinding> bindings;
-		ui32 count[3];
+		u32 count[3];
 	};
 
 	VkDescriptorSet graphics_vulkan_descriptors_allocate_sets(DescriptorPool& descPool, const ShaderDescriptorSetLayout& layout);
@@ -167,7 +167,7 @@ namespace sv {
 		std::mutex						mutex;
 		std::mutex						creationMutex;
 
-		std::map<std::string, ui32>		semanticNames;
+		std::map<std::string, u32>		semanticNames;
 
 		VkPipelineLayout				layout = VK_NULL_HANDLE;
 		std::map<size_t, VkPipeline>	pipelines;
@@ -192,7 +192,7 @@ namespace sv {
 		VkPhysicalDeviceMemoryProperties	m_MemoryProps;
 
 		struct {
-			ui32 graphics = UINT32_MAX;
+			u32 graphics = UINT32_MAX;
 
 			inline bool IsComplete() const noexcept { return graphics != UINT32_MAX; }
 
@@ -227,7 +227,7 @@ namespace sv {
 		VkImageView				renderTargetView = VK_NULL_HANDLE;
 		VkImageView				depthStencilView = VK_NULL_HANDLE;
 		VkImageView				shaderResouceView = VK_NULL_HANDLE;
-		ui64					ID;
+		u64						ID;
 		VkDescriptorImageInfo	image_info;
 	};
 	// Sampler
@@ -238,9 +238,9 @@ namespace sv {
 	// Shader
 	struct Shader_vk : public Shader_internal {
 		VkShaderModule							module = VK_NULL_HANDLE;
-		std::unordered_map<std::string, ui32>	semanticNames;
+		std::unordered_map<std::string, u32>	semanticNames;
 		ShaderDescriptorSetLayout				layout;
-		ui64									ID;
+		u64									ID;
 	};
 	// RenderPass
 	struct RenderPass_vk : public RenderPass_internal {
@@ -295,7 +295,7 @@ namespace sv {
 		struct Image {
 			VkImage image;
 			VkImageView view;
-			ui64 ID;
+			u64 ID;
 		};
 		std::vector<Image> images;
 	};
@@ -324,12 +324,12 @@ namespace sv {
 
 		std::vector<Frame>		frames;
 		std::vector<VkFence>	imageFences;
-		ui32					frameCount;
-		ui32					currentFrame = 0u;
+		u32					frameCount;
+		u32					currentFrame = 0u;
 		std::mutex				mutexCMD;
-		ui32					activeCMDCount = 0u;
+		u32					activeCMDCount = 0u;
 
-		ui32					imageIndex;
+		u32					imageIndex;
 
 		inline Frame& GetFrame() noexcept { return frames[currentFrame]; }
 		inline VkCommandBuffer GetCMD(CommandList cmd) { return GetFrame().commandBuffers[cmd]; }
@@ -341,10 +341,10 @@ namespace sv {
 		std::mutex							pipelinesMutex;
 
 	private:
-		ui64 IDCount = 0u;
+		u64 IDCount = 0u;
 		std::mutex IDMutex;
 	public:
-		inline ui64 GetID() noexcept { std::lock_guard<std::mutex> lock(IDMutex); return IDCount++; }
+		inline u64 GetID() noexcept { std::lock_guard<std::mutex> lock(IDMutex); return IDCount++; }
 
 	};
 
@@ -360,7 +360,7 @@ namespace sv {
 	VkResult graphics_vulkan_singletimecmb_end(VkCommandBuffer cmd);
 
 	void graphics_vulkan_buffer_copy(VkCommandBuffer cmd, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize srcOffset, VkDeviceSize dstOffset, VkDeviceSize size);
-	VkResult graphics_vulkan_imageview_create(VkImage image, VkFormat format, VkImageViewType viewType, VkImageAspectFlags aspectFlags, ui32 layerCount, VkImageView& view);
+	VkResult graphics_vulkan_imageview_create(VkImage image, VkFormat format, VkImageViewType viewType, VkImageAspectFlags aspectFlags, u32 layerCount, VkImageView& view);
 
 	VkSemaphore graphics_vulkan_semaphore_create();
 	VkFence graphics_vulkan_fence_create(bool sign);

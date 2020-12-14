@@ -45,7 +45,7 @@ namespace sv {
 		float										unusedLifeTime;
 		SizedInstanceAllocator						allocator;
 		std::vector<Asset_internal*>				activeAssets;
-		std::unordered_map<ui32, Asset_internal*>	idMap;
+		std::unordered_map<size_t, Asset_internal*>	idMap;
 
 		AssetType_internal(size_t assetSize) : allocator(assetSize, 200u) {}
 

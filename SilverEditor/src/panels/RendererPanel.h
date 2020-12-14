@@ -14,7 +14,7 @@ namespace sv {
 		void onClose() override;
 
 	private:
-		ui32 m_RenderLayerSelected = ui32_max;
+		u32 m_RenderLayerSelected = u32_max;
 
 	};
 

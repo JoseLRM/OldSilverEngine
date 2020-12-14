@@ -3,6 +3,7 @@
 #define VMA_IMPLEMENTATION
 #define SV_VULKAN_IMPLEMENTATION
 #include "graphics_vulkan.h"
+#include "engine.h"
 
 namespace sv {
 
@@ -10,11 +11,11 @@ namespace sv {
 	{
 		m_BufferSize = size;
 	}
-	void MemoryManager::GetMappingData(ui32 size, VkBuffer& buffer, void** data, ui32& offset)
+	void MemoryManager::GetMappingData(u32 size, VkBuffer& buffer, void** data, u32& offset)
 	{
 		SV_ASSERT(size <= m_BufferSize);
 
-		ui32 currentFrame =  graphics_vulkan_device_get().currentFrame;
+		u32 currentFrame =  graphics_vulkan_device_get().currentFrame;
 
 		// Reset
 		if (m_LastFrame != sv::engine_frame_count()) {
@@ -37,7 +38,7 @@ namespace sv {
 
 			if (!m_StaggingBuffers.empty()) {
 				
-				for (ui32 i = 0; i < m_StaggingBuffers.size(); ++i) {
+				for (u32 i = 0; i < m_StaggingBuffers.size(); ++i) {
 					if (m_StaggingBuffers[i].frame == currentFrame) {
 						m_CurrentStagingBuffer = m_StaggingBuffers[i];
 						m_StaggingBuffers.erase(m_StaggingBuffers.begin() +i);
@@ -56,11 +57,11 @@ namespace sv {
 		// Set result
 		offset = m_CurrentStagingBufferOffset;
 		buffer = m_CurrentStagingBuffer.buffer;
-		*data = (ui8*)(m_CurrentStagingBuffer.mapData) + m_CurrentStagingBufferOffset;
+		*data = (u8*)(m_CurrentStagingBuffer.mapData) + m_CurrentStagingBufferOffset;
 		m_CurrentStagingBufferOffset += size;
 	}
 
-	void MemoryManager::Reset(ui32 frame)
+	void MemoryManager::Reset(u32 frame)
 	{
 		if (m_CurrentStagingBuffer.buffer != VK_NULL_HANDLE) {
 			m_ActiveStaggingBuffers.push_back(m_CurrentStagingBuffer);
@@ -86,11 +87,11 @@ namespace sv {
 			m_StaggingBuffers.push_back(m_CurrentStagingBuffer);
 			m_CurrentStagingBuffer = {};
 		}
-		for (ui32 i = 0; i < m_StaggingBuffers.size(); ++i) {
+		for (u32 i = 0; i < m_StaggingBuffers.size(); ++i) {
 			const StagingBuffer& b = m_StaggingBuffers[i];
 			vmaDestroyBuffer(gfx.allocator, b.buffer, b.allocation);
 		}
-		for (ui32 i = 0; i < m_ActiveStaggingBuffers.size(); ++i) {
+		for (u32 i = 0; i < m_ActiveStaggingBuffers.size(); ++i) {
 			const StagingBuffer& b = m_ActiveStaggingBuffers[i];
 			vmaDestroyBuffer(gfx.allocator, b.buffer, b.allocation);
 		}
@@ -98,7 +99,7 @@ namespace sv {
 		m_ActiveStaggingBuffers.clear();
 	}
 
-	MemoryManager::StagingBuffer MemoryManager::CreateStagingBuffer(ui32 currentFrame)
+	MemoryManager::StagingBuffer MemoryManager::CreateStagingBuffer(u32 currentFrame)
 	{
 		StagingBuffer res;
 		vkAssert(graphics_vulkan_memory_create_stagingbuffer(res.buffer, res.allocation, &res.mapData, m_BufferSize));
@@ -130,7 +131,7 @@ namespace sv {
 		return VK_SUCCESS;
 	}
 
-	constexpr ui32 graphics_vulkan_descriptors_indextype(VkDescriptorType type)
+	constexpr u32 graphics_vulkan_descriptors_indextype(VkDescriptorType type)
 	{
 		switch (type)
 		{
@@ -161,9 +162,9 @@ namespace sv {
 		VulkanDescriptorPool* pool = nullptr;
 		Graphics_vk& gfx = graphics_vulkan_device_get();
 
-		ui32 samplerIndex = graphics_vulkan_descriptors_indextype(VK_DESCRIPTOR_TYPE_SAMPLER);
-		ui32 imageIndex = graphics_vulkan_descriptors_indextype(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-		ui32 uniformIndex = graphics_vulkan_descriptors_indextype(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+		u32 samplerIndex = graphics_vulkan_descriptors_indextype(VK_DESCRIPTOR_TYPE_SAMPLER);
+		u32 imageIndex = graphics_vulkan_descriptors_indextype(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+		u32 uniformIndex = graphics_vulkan_descriptors_indextype(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
 		// Try to find existing pool
 		if (!descPool.pools.empty()) {
@@ -203,7 +204,7 @@ namespace sv {
 			vkAssert(vkCreateDescriptorPool(gfx.device, &create_info, nullptr, &pool->pool));
 
 			pool->sets = VULKAN_MAX_DESCRIPTOR_SETS;
-			for (ui32 i = 0; i < 3; ++i)	
+			for (u32 i = 0; i < 3; ++i)	
 				pool->count[i] = VULKAN_MAX_DESCRIPTOR_TYPES;
 		}
 
@@ -217,7 +218,7 @@ namespace sv {
 			sets.sets.resize(index + VULKAN_DESCRIPTOR_ALLOC_COUNT);
 
 			VkDescriptorSetLayout setLayouts[VULKAN_DESCRIPTOR_ALLOC_COUNT];
-			for (ui32 i = 0; i < VULKAN_DESCRIPTOR_ALLOC_COUNT; ++i)
+			for (u32 i = 0; i < VULKAN_DESCRIPTOR_ALLOC_COUNT; ++i)
 				setLayouts[i] = layout.setLayout;
 
 			VkDescriptorSetAllocateInfo alloc_info{};

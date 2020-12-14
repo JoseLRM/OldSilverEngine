@@ -7,10 +7,11 @@
 #include "rendering/material_system.h"
 #include "simulation/sprite_animator.h"
 #include "simulation/model.h"
+#include "rendering/render_utils.h"
 
 namespace sv {
 
-	enum CameraType : ui32 {
+	enum CameraType : u32 {
 		CameraType_2D,
 		CameraType_3D
 	};
@@ -51,7 +52,7 @@ namespace sv {
 		Viewport	getViewport() const noexcept;
 		Scissor		getScissor() const noexcept;
 
-		void adjust(ui32 width, ui32 height) noexcept;
+		void adjust(u32 width, u32 height) noexcept;
 		void adjust(float aspect) noexcept;
 
 		float	getProjectionLength() const noexcept;
@@ -63,19 +64,17 @@ namespace sv {
 
 		// Resolution
 
-		Result	setResolution(ui32 width, ui32 height);
-		ui32	getResolutionWidth() const noexcept;
-		ui32	getResolutionHeight() const noexcept;
+		Result	setResolution(u32 width, u32 height);
+		u32	getResolutionWidth() const noexcept;
+		u32	getResolutionHeight() const noexcept;
 		vec2u	getResolution() const noexcept;
 
 		// Offscreen getters
 
 		inline GPUImage* getOffscreenRT() const noexcept { return m_OffscreenRT; }
-		inline GPUImage* getOffscreenDS() const noexcept { return m_OffscreenDS; }
 
 	private:
 		GPUImage* m_OffscreenRT = nullptr;
-		GPUImage* m_OffscreenDS = nullptr;
 
 		struct {
 			float width = 1.f;
@@ -94,9 +93,11 @@ namespace sv {
 
 	struct RenderLayer2D {
 
-		std::string name;
-		bool frustumTest;
-		i32 sortValue;
+		std::string		name;
+		bool			frustumTest;
+		i32				sortValue;
+		float			lightMult;
+		float			ambientMult;
 
 	};
 
@@ -114,15 +115,21 @@ namespace sv {
 		
 		// Draw calls
 
-		static void draw(ECS* ecs, Entity mainCamera, bool present = true);
-		static void drawCamera(ECS* ecs, Camera* pCamera, const vec3f& position, const vec4f& directionQuat);
+		static void draw(ECS* ecs, Entity mainCamera);
+		static void drawDebug(
+			ECS* ecs,
+			Entity mainCamera,
+			bool drawECSCameras,
+			bool present,
+			u32 cameraCount,
+			Camera** pCameras,
+			vec3f* camerasPosition,
+			vec4f* camerasRotation
+		);
 
 		// RenderLayers 2D
-
-		static constexpr ui32 RENDER_LAYER_COUNT = 16u;
-
-		static RenderLayer2D renderLayers2D[RENDER_LAYER_COUNT];
-		static RenderLayer3D renderLayers3D[RENDER_LAYER_COUNT];
+		static RenderLayer2D renderLayers2D[RENDERLAYER_COUNT];
+		static RenderLayer3D renderLayers3D[RENDERLAYER_COUNT];
 
 	};
 
@@ -133,7 +140,7 @@ namespace sv {
 		MaterialAsset material;
 		Sprite sprite;
 		Color color = Color::White();
-		ui32 renderLayer = 0u;
+		u32 renderLayer = 0u;
 
 		SpriteComponent() {}
 		SpriteComponent(Color col) : color(col) {}
@@ -149,7 +156,7 @@ namespace sv {
 		MaterialAsset material;
 		AnimatedSprite sprite;
 		Color color = Color::White();
-		ui32 renderLayer = 0u;
+		u32 renderLayer = 0u;
 
 		AnimatedSpriteComponent() {}
 		AnimatedSpriteComponent(Color col) : color(col) {}
@@ -164,7 +171,7 @@ namespace sv {
 
 		MaterialAsset	material;
 		MeshAsset		mesh;
-		ui32			renderLayer = 0u;
+		u32			renderLayer = 0u;
 
 		MeshComponent() = default;
 		MeshComponent(MeshAssetType assetType) { mesh.loadFromID(assetType); }
@@ -174,7 +181,26 @@ namespace sv {
 	// Light Component
 
 	struct LightComponent : public Component<LightComponent> {
+		
+		LightType lightType;
+		Color3f color;
+		float intensity;
+		
+		union {
+			struct {
+				float range;
+				float smoothness;
+			} point;
+		};
 
+		LightComponent() : lightType(LightType_Point), color(Color3f::White()), intensity(0.7f), point({ 1.f, 0.6f }) {}
+
+	};
+
+	// Sky Component
+
+	struct SkyComponent : public Component<SkyComponent> {
+		Color3f ambient = Color3f::White();
 	};
 
 	// Camera Component
@@ -183,7 +209,7 @@ namespace sv {
 		Camera camera;
 
 		CameraComponent() = default;
-		CameraComponent(ui32 width, ui32 height) { camera.setResolution(width, height); }
+		CameraComponent(u32 width, u32 height) { camera.setResolution(width, height); }
 
 	};
 

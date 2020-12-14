@@ -365,7 +365,7 @@ namespace sv {
 			if (entityData.childsCount == 0) return;
 
 			auto& entities = ecs.entities;
-			for (ui32 i = 0; i < entityData.childsCount; ++i) {
+			for (u32 i = 0; i < entityData.childsCount; ++i) {
 				EntityTransform& et = list.get_transform(entities[entityData.handleIndex + 1 + i]);
 				et.modified = true;
 			}

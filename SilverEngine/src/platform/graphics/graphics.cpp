@@ -12,7 +12,7 @@ namespace sv {
 	static GraphicsDevice	g_Device;
 	
 	static std::vector<std::unique_ptr<Adapter>>	g_Adapters;
-	static ui32										g_AdapterIndex;
+	static u32										g_AdapterIndex;
 
 	// Default Primitives
 
@@ -29,8 +29,8 @@ namespace sv {
 
 		// Get file data
 		void* data;
-		ui32 width;
-		ui32 height;
+		u32 width;
+		u32 height;
 		svCheck(load_image(filePath, &data, &width, &height));
 
 		// Create Image
@@ -133,18 +133,18 @@ namespace sv {
 		g_DefGraphicsState.blendState = reinterpret_cast<BlendState_internal*>(g_DefBlendState);;
 		g_DefGraphicsState.depthStencilState = reinterpret_cast<DepthStencilState_internal*>(g_DefDepthStencilState);;
 		g_DefGraphicsState.rasterizerState = reinterpret_cast<RasterizerState_internal*>(g_DefRasterizerState);;
-		for (ui32 i = 0; i < GraphicsLimit_Viewport; ++i) {
+		for (u32 i = 0; i < GraphicsLimit_Viewport; ++i) {
 			g_DefGraphicsState.viewports[i] = { 0.f, 0.f, 100.f, 100.f, 0.f, 1.f };
 		}
 		g_DefGraphicsState.viewportsCount = GraphicsLimit_Viewport;
-		for (ui32 i = 0; i < GraphicsLimit_Scissor; ++i) {
+		for (u32 i = 0; i < GraphicsLimit_Scissor; ++i) {
 			g_DefGraphicsState.scissors[i] = { 0u, 0u, 100u, 100u };
 		}
 		g_DefGraphicsState.scissorsCount = GraphicsLimit_Scissor;
 		g_DefGraphicsState.topology = GraphicsTopology_Triangles;
 		g_DefGraphicsState.stencilReference = 0u;
 		g_DefGraphicsState.lineWidth = 1.f;
-		for (ui32 i = 0; i < GraphicsLimit_Attachment; ++i) {
+		for (u32 i = 0; i < GraphicsLimit_Attachment; ++i) {
 			g_DefGraphicsState.clearColors[i] = { 0.f, 0.f, 0.f, 1.f };
 		}
 		g_DefGraphicsState.clearDepthStencil.first = 1.f;
@@ -203,7 +203,7 @@ namespace sv {
 				g_Device.shaderMutex, g_Device.renderPassMutex, g_Device.inputLayoutStateMutex, g_Device.blendStateMutex,
 				g_Device.depthStencilStateMutex, g_Device.rasterizerStateMutex);
 
-			ui32 count;
+			u32 count;
 
 			count = g_Device.bufferAllocator->unfreed_count();
 			if (count) {
@@ -369,18 +369,18 @@ namespace sv {
 		size_t hash = 0u;
 		sv::hash_combine(hash, desc.slots.size());
 
-		for (ui32 i = 0; i < desc.slots.size(); ++i) {
+		for (u32 i = 0; i < desc.slots.size(); ++i) {
 			const InputSlotDesc& slot = desc.slots[i];
 			sv::hash_combine(hash, slot.slot);
 			sv::hash_combine(hash, slot.stride);
-			sv::hash_combine(hash, ui64(slot.instanced));
+			sv::hash_combine(hash, u64(slot.instanced));
 		}
 
 		sv::hash_combine(hash, desc.elements.size());
 
-		for (ui32 i = 0; i < desc.elements.size(); ++i) {
+		for (u32 i = 0; i < desc.elements.size(); ++i) {
 			const InputElementDesc& element = desc.elements[i];
-			sv::hash_combine(hash, ui64(element.format));
+			sv::hash_combine(hash, u64(element.format));
 			sv::hash_combine(hash, element.inputSlot);
 			sv::hash_combine(hash, element.offset);
 			sv::hash_combine(hash, sv::hash_string(element.name));
@@ -394,13 +394,13 @@ namespace sv {
 
 		const BlendStateDesc& desc = *d;
 		size_t hash = 0u;
-		sv::hash_combine(hash, ui64(double(desc.blendConstants.x) * 2550.0));
-		sv::hash_combine(hash, ui64(double(desc.blendConstants.y) * 2550.0));
-		sv::hash_combine(hash, ui64(double(desc.blendConstants.z) * 2550.0));
-		sv::hash_combine(hash, ui64(double(desc.blendConstants.w) * 2550.0));
+		sv::hash_combine(hash, u64(double(desc.blendConstants.x) * 2550.0));
+		sv::hash_combine(hash, u64(double(desc.blendConstants.y) * 2550.0));
+		sv::hash_combine(hash, u64(double(desc.blendConstants.z) * 2550.0));
+		sv::hash_combine(hash, u64(double(desc.blendConstants.w) * 2550.0));
 		sv::hash_combine(hash, desc.attachments.size());
 
-		for (ui32 i = 0; i < desc.attachments.size(); ++i)
+		for (u32 i = 0; i < desc.attachments.size(); ++i)
 		{
 			const BlendAttachmentDesc& att = desc.attachments[i];
 			sv::hash_combine(hash, att.alphaBlendOp);
@@ -457,7 +457,7 @@ namespace sv {
 			return true;
 		else return false;
 	}
-	constexpr ui32 graphics_format_size(Format format)
+	constexpr u32 graphics_format_size(Format format)
 	{
 		switch (format)
 		{
@@ -550,7 +550,7 @@ namespace sv {
 	{
 		return g_Adapters[g_AdapterIndex].get();
 	}
-	void graphics_adapter_set(ui32 index)
+	void graphics_adapter_set(u32 index)
 	{
 		g_AdapterIndex = index;
 		// TODO:
@@ -675,8 +675,8 @@ namespace sv {
 		// Set parameters
 		RenderPass_internal* p = reinterpret_cast<RenderPass_internal*>(*renderPass);
 		p->type = GraphicsPrimitiveType_RenderPass;
-		p->depthStencilAttachment = ui32(desc->attachments.size());
-		for (ui32 i = 0; i < desc->attachments.size(); ++i) {
+		p->depthStencilAttachment = u32(desc->attachments.size());
+		for (u32 i = 0; i < desc->attachments.size(); ++i) {
 			if (desc->attachments[i].type == AttachmentType_DepthStencil) {
 				p->depthStencilAttachment = i;
 				break;
@@ -869,7 +869,7 @@ namespace sv {
 		return (graphics_commandlist_count() != 0u) ? graphics_commandlist_last() : graphics_commandlist_begin();
 	}
 
-	ui32 graphics_commandlist_count()
+	u32 graphics_commandlist_count()
 	{
 		return g_Device.commandlist_count();
 	}
@@ -947,18 +947,18 @@ namespace sv {
 		graphics_sampler_unbind_commandlist(cmd);
 	}
 
-	void graphics_vertexbuffer_bind_array(GPUBuffer** buffers, ui32* offsets, ui32 count, ui32 beginSlot, CommandList cmd)
+	void graphics_vertexbuffer_bind_array(GPUBuffer** buffers, u32* offsets, u32 count, u32 beginSlot, CommandList cmd)
 	{
 		auto& state = g_PipelineState.graphics[cmd];
 
 		state.vertexBuffersCount = std::max(state.vertexBuffersCount, beginSlot + count);
 
 		memcpy(state.vertexBuffers + beginSlot, buffers, sizeof(GPUBuffer*) * count);
-		memcpy(state.vertexBufferOffsets + beginSlot, offsets, sizeof(ui32) * count);
+		memcpy(state.vertexBufferOffsets + beginSlot, offsets, sizeof(u32) * count);
 		state.flags |= GraphicsPipelineState_VertexBuffer;
 	}
 
-	void graphics_vertexbuffer_bind(GPUBuffer* buffer, ui32 offset, ui32 slot, CommandList cmd)
+	void graphics_vertexbuffer_bind(GPUBuffer* buffer, u32 offset, u32 slot, CommandList cmd)
 	{
 		auto& state = g_PipelineState.graphics[cmd];
 
@@ -968,7 +968,7 @@ namespace sv {
 		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_VertexBuffer;
 	}
 
-	void graphics_vertexbuffer_unbind(ui32 slot, CommandList cmd)
+	void graphics_vertexbuffer_unbind(u32 slot, CommandList cmd)
 	{
 		auto& state = g_PipelineState.graphics[cmd];
 
@@ -995,7 +995,7 @@ namespace sv {
 		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_VertexBuffer;
 	}
 
-	void graphics_indexbuffer_bind(GPUBuffer* buffer, ui32 offset, CommandList cmd)
+	void graphics_indexbuffer_bind(GPUBuffer* buffer, u32 offset, CommandList cmd)
 	{
 		auto& state = g_PipelineState.graphics[cmd];
 
@@ -1012,7 +1012,7 @@ namespace sv {
 		state.flags |= GraphicsPipelineState_IndexBuffer;
 	}
 
-	void graphics_constantbuffer_bind_array(GPUBuffer** buffers, ui32 count, ui32 beginSlot, ShaderType shaderType, CommandList cmd)
+	void graphics_constantbuffer_bind_array(GPUBuffer** buffers, u32 count, u32 beginSlot, ShaderType shaderType, CommandList cmd)
 	{
 		auto& state = g_PipelineState.graphics[cmd];
 
@@ -1023,7 +1023,7 @@ namespace sv {
 		state.flags |= graphics_pipelinestateflags_constantbuffer(shaderType);
 	}
 
-	void graphics_constantbuffer_bind(GPUBuffer* buffer, ui32 slot, ShaderType shaderType, CommandList cmd)
+	void graphics_constantbuffer_bind(GPUBuffer* buffer, u32 slot, ShaderType shaderType, CommandList cmd)
 	{
 		auto& state = g_PipelineState.graphics[cmd];
 
@@ -1034,14 +1034,14 @@ namespace sv {
 		state.flags |= graphics_pipelinestateflags_constantbuffer(shaderType);
 	}
 
-	void graphics_constantbuffer_unbind(ui32 slot, ShaderType shaderType, CommandList cmd)
+	void graphics_constantbuffer_unbind(u32 slot, ShaderType shaderType, CommandList cmd)
 	{
 		auto& state = g_PipelineState.graphics[cmd];
 
 		state.constantBuffers[shaderType][slot] = nullptr;
 
 		// Compute Constant Buffer Count
-		ui32& count = state.constantBuffersCount[shaderType];
+		u32& count = state.constantBuffersCount[shaderType];
 
 		for (i32 i = i32(count) - 1; i >= 0; --i) {
 			if (state.constantBuffers[shaderType][i] != nullptr) {
@@ -1069,14 +1069,14 @@ namespace sv {
 	{
 		auto& state = g_PipelineState.graphics[cmd];
 
-		for (ui32 i = 0; i < ShaderType_GraphicsCount; ++i) {
+		for (u32 i = 0; i < ShaderType_GraphicsCount; ++i) {
 			state.constantBuffersCount[i] = 0u;
 			state.flags |= graphics_pipelinestateflags_constantbuffer((ShaderType)i);
 		}
 		state.flags |= GraphicsPipelineState_ConstantBuffer;
 	}
 
-	void graphics_image_bind_array(GPUImage** images, ui32 count, ui32 beginSlot, ShaderType shaderType, CommandList cmd)
+	void graphics_image_bind_array(GPUImage** images, u32 count, u32 beginSlot, ShaderType shaderType, CommandList cmd)
 	{
 		auto& state = g_PipelineState.graphics[cmd];
 
@@ -1087,7 +1087,7 @@ namespace sv {
 		state.flags |= graphics_pipelinestateflags_image(shaderType);
 	}
 
-	void graphics_image_bind(GPUImage* image, ui32 slot, ShaderType shaderType, CommandList cmd)
+	void graphics_image_bind(GPUImage* image, u32 slot, ShaderType shaderType, CommandList cmd)
 	{
 		auto& state = g_PipelineState.graphics[cmd];
 
@@ -1097,14 +1097,14 @@ namespace sv {
 		state.flags |= graphics_pipelinestateflags_image(shaderType);
 	}
 
-	void graphics_image_unbind(ui32 slot, ShaderType shaderType, CommandList cmd)
+	void graphics_image_unbind(u32 slot, ShaderType shaderType, CommandList cmd)
 	{
 		auto& state = g_PipelineState.graphics[cmd];
 
 		state.images[shaderType][slot] = nullptr;
 
 		// Compute Images Count
-		ui32& count = state.imagesCount[shaderType];
+		u32& count = state.imagesCount[shaderType];
 
 		for (i32 i = i32(count) - 1; i >= 0; --i) {
 			if (state.images[shaderType][i] != nullptr) {
@@ -1132,14 +1132,14 @@ namespace sv {
 	{
 		auto& state = g_PipelineState.graphics[cmd];
 
-		for (ui32 i = 0; i < ShaderType_GraphicsCount; ++i) {
+		for (u32 i = 0; i < ShaderType_GraphicsCount; ++i) {
 			state.imagesCount[i] = 0u;
 			state.flags |= graphics_pipelinestateflags_image((ShaderType)i);
 		}
 		state.flags |= GraphicsPipelineState_Image;
 	}
 
-	void graphics_sampler_bind_array(Sampler** samplers, ui32 count, ui32 beginSlot, ShaderType shaderType, CommandList cmd)
+	void graphics_sampler_bind_array(Sampler** samplers, u32 count, u32 beginSlot, ShaderType shaderType, CommandList cmd)
 	{
 		auto& state = g_PipelineState.graphics[cmd];
 
@@ -1150,7 +1150,7 @@ namespace sv {
 		state.flags |= graphics_pipelinestateflags_sampler(shaderType);
 	}
 
-	void graphics_sampler_bind(Sampler* sampler, ui32 slot, ShaderType shaderType, CommandList cmd)
+	void graphics_sampler_bind(Sampler* sampler, u32 slot, ShaderType shaderType, CommandList cmd)
 	{
 		auto& state = g_PipelineState.graphics[cmd];
 
@@ -1160,14 +1160,14 @@ namespace sv {
 		state.flags |= graphics_pipelinestateflags_sampler(shaderType);
 	}
 
-	void graphics_sampler_unbind(ui32 slot, ShaderType shaderType, CommandList cmd)
+	void graphics_sampler_unbind(u32 slot, ShaderType shaderType, CommandList cmd)
 	{
 		auto& state = g_PipelineState.graphics[cmd];
 
 		state.samplers[shaderType][slot] = nullptr;
 
 		// Compute Images Count
-		ui32& count = state.samplersCount[shaderType];
+		u32& count = state.samplersCount[shaderType];
 
 		for (i32 i = i32(count) - 1; i >= 0; --i) {
 			if (state.samplers[shaderType][i] != nullptr) {
@@ -1195,7 +1195,7 @@ namespace sv {
 	{
 		auto& state = g_PipelineState.graphics[cmd];
 
-		for (ui32 i = 0; i < ShaderType_GraphicsCount; ++i) {
+		for (u32 i = 0; i < ShaderType_GraphicsCount; ++i) {
 			state.samplersCount[i] = 0u;
 			state.flags |= graphics_pipelinestateflags_sampler((ShaderType)i);
 		}
@@ -1338,7 +1338,7 @@ namespace sv {
 		g_PipelineState.mode[cmd] = mode;
 	}
 
-	void graphics_viewport_set(const Viewport* viewports, ui32 count, CommandList cmd)
+	void graphics_viewport_set(const Viewport* viewports, u32 count, CommandList cmd)
 	{
 		auto& state = g_PipelineState.graphics[cmd];
 		SV_ASSERT(count < GraphicsLimit_Viewport);
@@ -1347,7 +1347,7 @@ namespace sv {
 		state.flags |= GraphicsPipelineState_Viewport;
 	}
 
-	void graphics_viewport_set(const Viewport& viewport, ui32 slot, CommandList cmd)
+	void graphics_viewport_set(const Viewport& viewport, u32 slot, CommandList cmd)
 	{
 		auto& state = g_PipelineState.graphics[cmd];
 
@@ -1356,12 +1356,12 @@ namespace sv {
 		state.flags |= GraphicsPipelineState_Viewport;
 	}
 
-	void graphics_viewport_set(GPUImage* image, ui32 slot, CommandList cmd)
+	void graphics_viewport_set(GPUImage* image, u32 slot, CommandList cmd)
 	{
 		graphics_viewport_set(graphics_image_get_viewport(image), slot, cmd);
 	}
 
-	void graphics_scissor_set(const Scissor* scissors, ui32 count, CommandList cmd)
+	void graphics_scissor_set(const Scissor* scissors, u32 count, CommandList cmd)
 	{
 		auto& state = g_PipelineState.graphics[cmd];
 
@@ -1371,7 +1371,7 @@ namespace sv {
 		state.flags |= GraphicsPipelineState_Scissor;
 	}
 
-	void graphics_scissor_set(const Scissor& scissor, ui32 slot, CommandList cmd)
+	void graphics_scissor_set(const Scissor& scissor, u32 slot, CommandList cmd)
 	{
 		auto& state = g_PipelineState.graphics[cmd];
 
@@ -1380,17 +1380,17 @@ namespace sv {
 		state.flags |= GraphicsPipelineState_Scissor;
 	}
 
-	void graphics_scissor_set(GPUImage* image, ui32 slot, CommandList cmd)
+	void graphics_scissor_set(GPUImage* image, u32 slot, CommandList cmd)
 	{
 		graphics_scissor_set(graphics_image_get_scissor(image), slot, cmd);
 	}
 
-	Viewport graphics_viewport_get(ui32 slot, CommandList cmd)
+	Viewport graphics_viewport_get(u32 slot, CommandList cmd)
 	{
 		return g_PipelineState.graphics[cmd].viewports[slot];
 	}
 
-	Scissor graphics_scissor_get(ui32 slot, CommandList cmd)
+	Scissor graphics_scissor_get(u32 slot, CommandList cmd)
 	{
 		return g_PipelineState.graphics[cmd].scissors[slot];
 	}
@@ -1402,7 +1402,7 @@ namespace sv {
 		state.flags |= GraphicsPipelineState_Topology;
 	}
 
-	void graphics_stencil_reference_set(ui32 ref, CommandList cmd)
+	void graphics_stencil_reference_set(u32 ref, CommandList cmd)
 	{
 		auto& state = g_PipelineState.graphics[cmd];
 		state.stencilReference = ref;
@@ -1426,7 +1426,7 @@ namespace sv {
 		return g_PipelineState.graphics[cmd].topology;
 	}
 
-	ui32 graphics_stencil_reference_get(CommandList cmd)
+	u32 graphics_stencil_reference_get(CommandList cmd)
 	{
 		return g_PipelineState.graphics[cmd].stencilReference;
 	}
@@ -1436,14 +1436,14 @@ namespace sv {
 		return g_PipelineState.graphics[cmd].lineWidth;
 	}
 
-	void graphics_renderpass_begin(RenderPass* renderPass, GPUImage** attachments, const Color4f* colors, float depth, ui32 stencil, CommandList cmd)
+	void graphics_renderpass_begin(RenderPass* renderPass, GPUImage** attachments, const Color4f* colors, float depth, u32 stencil, CommandList cmd)
 	{
 		auto& state = g_PipelineState.graphics[cmd];
 
 		RenderPass_internal* rp = reinterpret_cast<RenderPass_internal*>(renderPass);
 		state.renderPass = rp;
 
-		ui32 attCount = ui32(rp->attachments.size());
+		u32 attCount = u32(rp->attachments.size());
 		memcpy(state.attachments, attachments, sizeof(GPUImage*) * attCount);
 		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_RenderPass;
 
@@ -1462,12 +1462,12 @@ namespace sv {
 
 	////////////////////////////////////////// DRAW CALLS /////////////////////////////////////////
 
-	void graphics_draw(ui32 vertexCount, ui32 instanceCount, ui32 startVertex, ui32 startInstance, CommandList cmd)
+	void graphics_draw(u32 vertexCount, u32 instanceCount, u32 startVertex, u32 startInstance, CommandList cmd)
 	{
 		SV_PROFILER_SCALAR_ADD("Draw Calls", 1);
 		g_Device.draw(vertexCount, instanceCount, startVertex, startInstance, cmd);
 	}
-	void graphics_draw_indexed(ui32 indexCount, ui32 instanceCount, ui32 startIndex, ui32 startVertex, ui32 startInstance, CommandList cmd)
+	void graphics_draw_indexed(u32 indexCount, u32 instanceCount, u32 startIndex, u32 startVertex, u32 startInstance, CommandList cmd)
 	{
 		SV_PROFILER_SCALAR_ADD("Draw Calls", 1);
 		g_Device.draw_indexed(indexCount, instanceCount, startIndex, startVertex, startInstance, cmd);
@@ -1475,22 +1475,22 @@ namespace sv {
 
 	////////////////////////////////////////// MEMORY /////////////////////////////////////////
 
-	void graphics_buffer_update(GPUBuffer* buffer, void* pData, ui32 size, ui32 offset, CommandList cmd)
+	void graphics_buffer_update(GPUBuffer* buffer, void* pData, u32 size, u32 offset, CommandList cmd)
 	{
 		g_Device.buffer_update(buffer, pData, size, offset, cmd);
 	}
 
-	void graphics_barrier(const GPUBarrier* barriers, ui32 count, CommandList cmd)
+	void graphics_barrier(const GPUBarrier* barriers, u32 count, CommandList cmd)
 	{
 		g_Device.barrier(barriers, count, cmd);
 	}
 
-	void graphics_image_blit(GPUImage* src, GPUImage* dst, GPUImageLayout srcLayout, GPUImageLayout dstLayout, ui32 count, const GPUImageBlit* imageBlit, SamplerFilter filter, CommandList cmd)
+	void graphics_image_blit(GPUImage* src, GPUImage* dst, GPUImageLayout srcLayout, GPUImageLayout dstLayout, u32 count, const GPUImageBlit* imageBlit, SamplerFilter filter, CommandList cmd)
 	{
 		g_Device.image_blit(src, dst, srcLayout, dstLayout, count, imageBlit, filter, cmd);
 	}
 
-	void graphics_image_clear(GPUImage* image, GPUImageLayout oldLayout, GPUImageLayout newLayout, const Color4f& clearColor, float depth, ui32 stencil, CommandList cmd)
+	void graphics_image_clear(GPUImage* image, GPUImageLayout oldLayout, GPUImageLayout newLayout, const Color4f& clearColor, float depth, u32 stencil, CommandList cmd)
 	{
 		g_Device.image_clear(image, oldLayout, newLayout, clearColor, depth, stencil, cmd);
 	}
@@ -1525,7 +1525,7 @@ namespace sv {
 		return Result_Success;
 	}
 
-	ui32 graphics_shader_attribute_size(ShaderAttributeType type)
+	u32 graphics_shader_attribute_size(ShaderAttributeType type)
 	{
 		switch (type)
 		{
@@ -1569,23 +1569,23 @@ namespace sv {
 		return reinterpret_cast<const Shader_internal*>(shader)->shaderType;
 	}
 
-	ui32 graphics_image_get_width(GPUImage* image)
+	u32 graphics_image_get_width(GPUImage* image)
 	{
 		return reinterpret_cast<GPUImage_internal*>(image)->width;
 	}
-	ui32 graphics_image_get_height(GPUImage* image)
+	u32 graphics_image_get_height(GPUImage* image)
 	{
 		return reinterpret_cast<GPUImage_internal*>(image)->height;
 	}
-	ui32 graphics_image_get_depth(GPUImage* image)
+	u32 graphics_image_get_depth(GPUImage* image)
 	{
 		return reinterpret_cast<GPUImage_internal*>(image)->depth;
 	}
-	ui32 graphics_image_get_layers(GPUImage* image)
+	u32 graphics_image_get_layers(GPUImage* image)
 	{
 		return reinterpret_cast<GPUImage_internal*>(image)->layers;
 	}
-	ui32 graphics_image_get_dimension(GPUImage* image)
+	u32 graphics_image_get_dimension(GPUImage* image)
 	{
 		return reinterpret_cast<GPUImage_internal*>(image)->dimension;
 	}
@@ -1626,7 +1626,6 @@ namespace sv {
 		Primitive_internal& primitive = *reinterpret_cast<Primitive_internal*>(primitive_);
 		primitive.name = name;
 	}
-#endif
 
 #ifdef SV_ENABLE_LOGGING
 	void __internal__do_not_call_this_please_or_you_will_die__graphics_state_log(GraphicsPipelineMode mode, CommandList cmd)
@@ -1679,7 +1678,7 @@ namespace sv {
 			ss << "TODO\n";
 
 			ss << "\n\n\n-- VERTEX BUFFERS:\n";
-			for (ui32 i = 0u; i < state.vertexBuffersCount; ++i) {
+			for (u32 i = 0u; i < state.vertexBuffersCount; ++i) {
 				
 				ss << "\nSlot " << i << ": ";
 
@@ -1743,7 +1742,7 @@ namespace sv {
 
 				ss << (p.name.empty() ? "Unnamed" : p.name.c_str()) << "\n\n";
 				ss << "   Slots:\n\n";
-				for (ui32 i = 0u; i < p.desc.slots.size(); ++i) {
+				for (u32 i = 0u; i < p.desc.slots.size(); ++i) {
 					
 					InputSlotDesc& slot = p.desc.slots[i];
 
@@ -1755,7 +1754,7 @@ namespace sv {
 				}
 
 				ss << "   Elements:\n\n";
-				for (ui32 i = 0u; i < p.desc.elements.size(); ++i) {
+				for (u32 i = 0u; i < p.desc.elements.size(); ++i) {
 
 					InputElementDesc& ele = p.desc.elements[i];
 
@@ -1823,6 +1822,7 @@ namespace sv {
 			break;
 		}
 	}
+#endif
 #endif
 
 }

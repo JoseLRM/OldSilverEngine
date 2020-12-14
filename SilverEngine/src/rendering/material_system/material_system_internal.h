@@ -7,7 +7,7 @@ namespace sv {
 
 	struct SubShaderUserBlock {
 		std::string name;
-		ui32 sourcePos;
+		u32 sourcePos;
 	};
 
 	struct SubShaderRegister {
@@ -24,7 +24,7 @@ namespace sv {
 
 		std::string			name;
 		SubShaderRegister	subShaderRegisters[SV_MATSYS_MAX_SUBSHADERS];
-		ui32				subShaderCount;
+		u32				subShaderCount;
 
 		SubShaderID findSubShaderID(const char* name);
 
@@ -33,14 +33,14 @@ namespace sv {
 	struct SubShader {
 
 		Shader* shader = nullptr;
-		ui32 cameraSlot = ui32_max;
+		u32 cameraSlot = u32_max;
 
 	};
 
 	struct SubShaderIndices {
-		ui32 i[SV_MATSYS_MAX_SUBSHADERS]; // Buffer offsets, aligned with subshader list
+		u32 i[SV_MATSYS_MAX_SUBSHADERS]; // Buffer offsets, aligned with subshader list
 
-		inline void init(ui32 n) { for (ui32 j = 0u; j < SV_MATSYS_MAX_SUBSHADERS; ++j) i[j] = n; }
+		inline void init(u32 n) { for (u32 j = 0u; j < SV_MATSYS_MAX_SUBSHADERS; ++j) i[j] = n; }
 	};
 
 	struct MaterialInfo {
@@ -48,10 +48,10 @@ namespace sv {
 		std::vector<MaterialAttribute>	attributes; // Buffer data. Aligned with attributeOffsets
 		std::vector<SubShaderIndices>	attributeOffsets;
 		
-		ui32 bufferSizes[SV_MATSYS_MAX_SUBSHADERS];		// Per subshader: buffer size
-		ui32 bufferBindings[SV_MATSYS_MAX_SUBSHADERS];	// Per subshader: buffer binding
+		u32 bufferSizes[SV_MATSYS_MAX_SUBSHADERS];		// Per subshader: buffer size
+		u32 bufferBindings[SV_MATSYS_MAX_SUBSHADERS];	// Per subshader: buffer binding
 
-		ui32 bufferSizesCount = 0u; // The sum of all the material attributes
+		u32 bufferSizesCount = 0u; // The sum of all the material attributes
 
 		std::vector<std::string>		textures;			// texture names. Aligned with textureSlots
 		std::vector<SubShaderIndices>	textureSlots;		// textures slots
@@ -78,10 +78,10 @@ namespace sv {
 
 	struct MaterialBuffer {
 		GPUBuffer* buffer = nullptr;
-		ui8* rawData = nullptr;
+		u8* rawData = nullptr;
 
-		ui32 updateBegin = 0u;
-		ui32 updateEnd = 0u;
+		u32 updateBegin = 0u;
+		u32 updateEnd = 0u;
 	};
 
 	struct MaterialTexture {
@@ -96,7 +96,7 @@ namespace sv {
 		std::vector<MaterialTexture>	textures;
 		bool							dynamic;
 		bool							inUpdateList = false;
-		ui8*							rawMemory = nullptr;
+		u8*							rawMemory = nullptr;
 
 		Result create(ShaderLibrary_internal* pShaderLibrary, bool dynamic, bool addToUpdateList);
 		Result destroy();

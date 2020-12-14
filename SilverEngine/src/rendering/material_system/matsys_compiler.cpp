@@ -5,7 +5,7 @@
 
 namespace sv {
 
-	enum ShaderTag : ui32 {
+	enum ShaderTag : u32 {
 
 		ShaderTag_Null,
 		ShaderTag_Unknown,
@@ -28,7 +28,7 @@ namespace sv {
 		std::string src;
 	};
 
-	void decomposeDefine(const char* line, ui32 size, ShaderDefine& define)
+	void decomposeDefine(const char* line, u32 size, ShaderDefine& define)
 	{
 		if (*line != '#') {
 			define.tag = ShaderTag_Null;
@@ -62,19 +62,19 @@ namespace sv {
 		}
 	}
 
-	bool getLineSize(const char* src, ui32& size)
+	bool getLineSize(const char* src, u32& size)
 	{
 		const char* it = src;
 		while (*it != '\n' && *it != '\0') ++it;
 
-		size = ui32(it - src);
+		size = u32(it - src);
 		return *it != '\0';
 	}
 
 	Result matsys_shaderlibrary_compile(ShaderLibrary_internal& lib, const char* src)
 	{
 		const char* line = src;
-		ui32 lineSize;
+		u32 lineSize;
 		ShaderDefine define;
 
 		std::string name;
@@ -191,7 +191,7 @@ namespace sv {
 
 		struct SubShaderIntermediate {
 			SubShaderID ID;
-			std::vector<ui8> binData;
+			std::vector<u8> binData;
 		};
 
 		std::vector<SubShaderIntermediate> intermediates;
@@ -238,9 +238,9 @@ namespace sv {
 				desc.minorVersion = 0u;
 				desc.shaderType = reg.type;
 
-				std::vector<ui8> binData;
+				std::vector<u8> binData;
 
-				svCheck(graphics_shader_compile_string(&desc, src.c_str(), ui32(strlen(src.data())), binData));
+				svCheck(graphics_shader_compile_string(&desc, src.c_str(), u32(strlen(src.data())), binData));
 
 				SubShaderIntermediate& inter = intermediates.emplace_back();
 				inter.ID = i;
@@ -275,7 +275,7 @@ namespace sv {
 			archive << lib.name;
 			archive << lib.type->name;
 
-			archive << ui32(intermediates.size());
+			archive << u32(intermediates.size());
 
 			for (SubShaderIntermediate& inter : intermediates) {
 				archive << inter.ID;
@@ -299,7 +299,7 @@ namespace sv {
 	Result matsys_shaderlibrarytype_compile(ShaderLibraryType_internal& type, SubShaderID subShaderID, const char* includeName)
 	{
 		SubShaderRegister& ss = type.subShaderRegisters[subShaderID];
-		ss.type = (ShaderType)ui32_max;
+		ss.type = (ShaderType)u32_max;
 
 		// Open file
 		std::string filePath = "library/shader_utils/";
@@ -327,7 +327,7 @@ namespace sv {
 
 		while (std::getline(file, line)) {
 
-			decomposeDefine(line.c_str(), ui32(line.size()), define);
+			decomposeDefine(line.c_str(), u32(line.size()), define);
 
 			switch (define.tag)
 			{
@@ -341,12 +341,12 @@ namespace sv {
 				else {
 					SubShaderUserBlock& ub = type.subShaderRegisters[subShaderID].userBlocks.emplace_back();
 					ub.name = define.value;
-					ub.sourcePos = ui32(src.str().size());
+					ub.sourcePos = u32(src.str().size());
 				}
 				break;
 
 			case ShaderTag_ShaderType:
-				if (ss.type == ui32_max) {
+				if (ss.type == u32_max) {
 
 					if (strcmp(define.value.c_str(), "VertexShader") == 0) {
 						ss.type = ShaderType_Vertex;
@@ -379,7 +379,7 @@ namespace sv {
 			SV_LOG_ERROR("The subshader must have a name");
 			return Result_CompileError;
 		}
-		if (ss.type == ui32_max) {
+		if (ss.type == u32_max) {
 			SV_LOG_ERROR("The subshader must have a shader type");
 			return Result_CompileError;
 		}

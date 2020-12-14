@@ -20,19 +20,19 @@ namespace sv {
 
 		GPUBufferType	bufferType;
 		ResourceUsage	usage;
-		ui32			size;
+		u32			size;
 		IndexType		indexType;
 		CPUAccessFlags	cpuAccess;
 
 	};
 
 	struct GPUImage_internal : public Primitive_internal {
-		ui8					dimension;
+		u8					dimension;
 		Format				format;
-		ui32				width;
-		ui32				height;
-		ui32				depth;
-		ui32				layers;
+		u32				width;
+		u32				height;
+		u32				depth;
+		u32				layers;
 		ImageTypeFlags		imageType;
 	};
 
@@ -45,7 +45,7 @@ namespace sv {
 	};
 
 	struct RenderPass_internal : public Primitive_internal {
-		ui32						depthStencilAttachment;
+		u32						depthStencilAttachment;
 		std::vector<AttachmentDesc>	attachments;
 	};
 
@@ -67,7 +67,7 @@ namespace sv {
 
 	// Pipeline state
 
-	enum GraphicsPipelineState : ui64 {
+	enum GraphicsPipelineState : u64 {
 		GraphicsPipelineState_None = 0,
 		GraphicsPipelineState_VertexBuffer = SV_BIT(0),
 		GraphicsPipelineState_IndexBuffer = SV_BIT(1),
@@ -122,24 +122,24 @@ namespace sv {
 		GraphicsPipelineState_LineWidth		= SV_BIT(43),
 	};
 
-	typedef ui64 GraphicsPipelineStateFlags;
+	typedef u64 GraphicsPipelineStateFlags;
 
 	struct GraphicsState {
 		GPUBuffer_internal*				vertexBuffers[GraphicsLimit_VertexBuffer];
-		ui32							vertexBufferOffsets[GraphicsLimit_VertexBuffer];
-		ui32							vertexBuffersCount;
+		u32							vertexBufferOffsets[GraphicsLimit_VertexBuffer];
+		u32							vertexBuffersCount;
 
 		GPUBuffer_internal*				indexBuffer;
-		ui32							indexBufferOffset;
+		u32							indexBufferOffset;
 
 		GPUBuffer_internal*				constantBuffers[ShaderType_GraphicsCount][GraphicsLimit_ConstantBuffer];
-		ui32							constantBuffersCount[ShaderType_GraphicsCount];
+		u32							constantBuffersCount[ShaderType_GraphicsCount];
 
 		GPUImage_internal*				images[ShaderType_GraphicsCount][GraphicsLimit_GPUImage];
-		ui32							imagesCount[ShaderType_GraphicsCount];
+		u32							imagesCount[ShaderType_GraphicsCount];
 
 		Sampler_internal*				samplers[ShaderType_GraphicsCount][GraphicsLimit_Sampler];
-		ui32							samplersCount[ShaderType_GraphicsCount];
+		u32							samplersCount[ShaderType_GraphicsCount];
 
 		Shader_internal*				vertexShader;
 		Shader_internal*				pixelShader;
@@ -151,17 +151,17 @@ namespace sv {
 		RasterizerState_internal*		rasterizerState;
 
 		sv::Viewport					viewports[GraphicsLimit_Viewport];
-		ui32							viewportsCount;
+		u32							viewportsCount;
 		sv::Scissor						scissors[GraphicsLimit_Scissor];
-		ui32							scissorsCount;
+		u32							scissorsCount;
 		GraphicsTopology				topology;
-		ui32							stencilReference;
+		u32							stencilReference;
 		float							lineWidth;
 
 		RenderPass_internal*			renderPass;
 		GPUImage_internal*				attachments[GraphicsLimit_Attachment];
 		sv::vec4f						clearColors[GraphicsLimit_Attachment];
-		std::pair<float, ui32>			clearDepthStencil;
+		std::pair<float, u32>			clearDepthStencil;
 
 		GraphicsPipelineStateFlags		flags;
 	};
@@ -187,7 +187,7 @@ namespace sv {
 
 	typedef CommandList(*FNP_graphics_api_commandlist_begin)();
 	typedef CommandList(*FNP_graphics_api_commandlist_last)();
-	typedef ui32(*FNP_graphics_api_commandlist_count)();
+	typedef u32(*FNP_graphics_api_commandlist_count)();
 
 	typedef void(*FNP_graphics_api_renderpass_begin)(CommandList);
 	typedef void(*FNP_graphics_api_renderpass_end)(CommandList);
@@ -200,13 +200,13 @@ namespace sv {
 	typedef void(*FNP_graphics_api_frame_end)();
 	typedef void(*FNP_graphics_api_present)(GPUImage*, const GPUImageRegion&, GPUImageLayout, CommandList);
 
-	typedef void(*FNP_graphics_api_draw)(ui32, ui32, ui32, ui32, CommandList);
-	typedef void(*FNP_graphics_api_draw_indexed)(ui32, ui32, ui32, ui32, ui32, CommandList);
+	typedef void(*FNP_graphics_api_draw)(u32, u32, u32, u32, CommandList);
+	typedef void(*FNP_graphics_api_draw_indexed)(u32, u32, u32, u32, u32, CommandList);
 
-	typedef void(*FNP_graphics_api_image_clear)(GPUImage*, GPUImageLayout, GPUImageLayout, const Color4f&, float, ui32, CommandList);
-	typedef void(*FNP_graphics_api_image_blit)(GPUImage*, GPUImage*, GPUImageLayout, GPUImageLayout, ui32, const GPUImageBlit*, SamplerFilter, CommandList);
-	typedef void(*FNP_graphics_api_buffer_update)(GPUBuffer*, void*, ui32, ui32, CommandList);
-	typedef void(*FNP_graphics_api_barrier)(const GPUBarrier*, ui32, CommandList);
+	typedef void(*FNP_graphics_api_image_clear)(GPUImage*, GPUImageLayout, GPUImageLayout, const Color4f&, float, u32, CommandList);
+	typedef void(*FNP_graphics_api_image_blit)(GPUImage*, GPUImage*, GPUImageLayout, GPUImageLayout, u32, const GPUImageBlit*, SamplerFilter, CommandList);
+	typedef void(*FNP_graphics_api_buffer_update)(GPUBuffer*, void*, u32, u32, CommandList);
+	typedef void(*FNP_graphics_api_barrier)(const GPUBarrier*, u32, CommandList);
 
 	typedef void(*FNP_graphics_api_event_begin)(const char*, CommandList);
 	typedef void(*FNP_graphics_api_event_mark)(const char*, CommandList);

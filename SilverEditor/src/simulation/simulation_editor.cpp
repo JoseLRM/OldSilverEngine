@@ -325,7 +325,7 @@ namespace sv {
 			if (selectedEntities.size()) {
 				Entity selected = selectedEntities.front();
 				float depth = ecs_entity_transform_get(scene, selected).getWorldPosition().z;
-				for (ui32 i = 1u; i < selectedEntities.size(); ++i) {
+				for (u32 i = 1u; i < selectedEntities.size(); ++i) {
 					Entity e = selectedEntities[i];
 
 					if (e == g_SelectedEntity) continue;
@@ -369,9 +369,9 @@ namespace sv {
 		ECS* ecs = g_Scene->getECS();
 		std::vector<Entity> selectedEntities;
 
-		ui32 entityCount = ecs_entity_count(ecs);
+		u32 entityCount = ecs_entity_count(ecs);
 
-		for (ui32 i = 0; i < entityCount; ++i) {
+		for (u32 i = 0; i < entityCount; ++i) {
 
 			Entity entity = ecs_entity_get(ecs, i);
 
@@ -386,8 +386,6 @@ namespace sv {
 	void simulation_editor_render()
 	{
 		Scene& scene = *g_Scene.get();
-
-		SceneRenderer::drawCamera(scene, &g_DebugCamera.camera, g_DebugCamera.position, g_DebugCamera.rotation);
 
 		// DEBUG RENDERING
 
@@ -556,7 +554,7 @@ namespace sv {
 
 				}
 
-				constexpr ui32 CIRCLE_RESOLUTION = 180u;
+				constexpr u32 CIRCLE_RESOLUTION = 180u;
 				constexpr float adv = 2.f * PI / float(CIRCLE_RESOLUTION);
 
 				float x0 = (cos(0.f) * radius) + pos.x;
@@ -612,7 +610,7 @@ namespace sv {
 			float height = g_DebugCamera.camera.getHeight();
 			float mag = g_DebugCamera.camera.getProjectionLength();
 
-			ui32 count = 0u;
+			u32 count = 0u;
 			for (float i = 0.01f; count < 3u; i *= 10.f) {
 
 				if (mag / i <= 50.f) {

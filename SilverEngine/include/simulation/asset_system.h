@@ -69,7 +69,7 @@ namespace sv {
 
 		Result serialize(const char* filePath = nullptr);
 
-		inline void* get() const { return pInternal ? (reinterpret_cast<ui8*>(pInternal) + sizeof(Internal)) : nullptr; }
+		inline void* get() const { return pInternal ? (reinterpret_cast<u8*>(pInternal) + sizeof(Internal)) : nullptr; }
 		const char* getAssetTypeStr() const;
 		
 		inline bool isAttachedToFile() const noexcept 
@@ -87,7 +87,7 @@ namespace sv {
 			if (pInternal == nullptr) return nullptr;
 			const char* filePath = reinterpret_cast<Internal*>(pInternal)->filePath;
 			if (filePath) return (filePath == (const char*)SIZE_MAX) ? nullptr : filePath;
-			else nullptr;
+			return nullptr;
 		}
 
 		inline size_t getHashCode() const noexcept
@@ -143,7 +143,7 @@ namespace sv {
 		AssetType assetType = nullptr;
 		void* pInternalAsset = nullptr;
 		std::filesystem::file_time_type lastModification;
-		ui32 refreshID;
+		u32 refreshID;
 
 	};
 
@@ -151,7 +151,7 @@ namespace sv {
 
 		const char*			name;
 		const char**		pExtensions;
-		ui32				extensionsCount;
+		u32				extensionsCount;
 		AssetLoadFromFileFn	loadFileFn;
 		AssetLoadFromIDFn	loadIDFn;
 		AssetCreateFn		createFn;

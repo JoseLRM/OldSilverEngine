@@ -23,7 +23,7 @@ namespace sv {
 		GraphicsAPI_Vulkan,
 	};
 
-	enum GraphicsLimit : ui32 {
+	enum GraphicsLimit : u32 {
 		GraphicsLimit_CommandList = 32,
 		GraphicsLimit_VertexBuffer = 32,
 		GraphicsLimit_ConstantBuffer = 32u,
@@ -38,7 +38,7 @@ namespace sv {
 		GraphicsLimit_Attachment = (GraphicsLimit_AttachmentRT + 1u)
 	};
 
-	enum GraphicsPrimitiveType : ui8 {
+	enum GraphicsPrimitiveType : u8 {
 		GraphicsPrimitiveType_Invalid,
 		GraphicsPrimitiveType_Image,
 		GraphicsPrimitiveType_Sampler,
@@ -51,19 +51,19 @@ namespace sv {
 		GraphicsPrimitiveType_RasterizerState,
 	};
 
-	enum GraphicsPipelineMode : ui8 {
+	enum GraphicsPipelineMode : u8 {
 		GraphicsPipelineMode_Graphics,
 		GraphicsPipelineMode_Compute,
 	};
 
-	enum GPUBufferType : ui8 {
+	enum GPUBufferType : u8 {
 		GPUBufferType_Invalid,
 		GPUBufferType_Vertex,
 		GPUBufferType_Index,
 		GPUBufferType_Constant,
 	};
 
-	enum ShaderType : ui32 {
+	enum ShaderType : u32 {
 		ShaderType_Vertex,
 		ShaderType_Pixel,
 		ShaderType_Geometry,
@@ -74,7 +74,7 @@ namespace sv {
 		ShaderType_Compute,
 	};
 
-	enum ShaderAttributeType : ui32 {
+	enum ShaderAttributeType : u32 {
 		ShaderAttributeType_Unknown,
 		ShaderAttributeType_Float,
 		ShaderAttributeType_Float2,
@@ -95,26 +95,26 @@ namespace sv {
 	struct ShaderAttribute {
 		std::string			name;
 		ShaderAttributeType type;
-		ui32				offset;
+		u32				offset;
 	};
 
 	struct ShaderInfo {
 
 		struct ResourceImage {
 			std::string name;
-			ui32		bindingSlot;
+			u32		bindingSlot;
 		};
 
 		struct ResourceSampler {
 			std::string name;
-			ui32		bindingSlot;
+			u32		bindingSlot;
 		};
 
 		struct ResourceBuffer {
 			std::string						name;
-			ui32							bindingSlot;
+			u32							bindingSlot;
 			std::vector<ShaderAttribute>	attributes;
-			ui32							size;
+			u32							size;
 		};
 
 		std::vector<ResourceImage>		images;
@@ -124,27 +124,27 @@ namespace sv {
 		std::vector<ShaderAttribute>	input;
 	};
 
-	enum GPUImageType : ui8 {
+	enum GPUImageType : u8 {
 		GPUImageType_RenderTarget	= SV_BIT(0),
 		GPUImageType_ShaderResource = SV_BIT(1),
 		GPUImageType_DepthStencil	= SV_BIT(2),
 	};
-	typedef ui8 ImageTypeFlags;
+	typedef u8 ImageTypeFlags;
 
-	enum ResourceUsage : ui8 {
+	enum ResourceUsage : u8 {
 		ResourceUsage_Default,
 		ResourceUsage_Static,
 		ResourceUsage_Dynamic,
 		ResourceUsage_Staging
 	};
 	
-	enum CPUAccess : ui8 {
+	enum CPUAccess : u8 {
 		CPUAccess_None = 0u,
 		CPUAccess_Read = SV_BIT(0),
 		CPUAccess_Write = SV_BIT(1),
 		CPUAccess_All = CPUAccess_Read | CPUAccess_Write,
 	};
-	typedef ui8 CPUAccessFlags;
+	typedef u8 CPUAccessFlags;
 
 	enum GPUImageLayout {
 		GPUImageLayout_Undefined,
@@ -224,7 +224,7 @@ namespace sv {
 		GraphicsTopology_TriangleStrip,
 	};
 	
-	enum IndexType : ui8 {
+	enum IndexType : u8 {
 		IndexType_16,
 		IndexType_32,
 	};
@@ -287,7 +287,7 @@ namespace sv {
 		ColorComponent_RGB = (ColorComponent_R | ColorComponent_G | ColorComponent_B),
 		ColorComponent_All = (ColorComponent_RGB | ColorComponent_A),
 	};
-	typedef ui8 ColorComponentFlags;
+	typedef u8 ColorComponentFlags;
 
 	enum BlendFactor {
 		BlendFactor_Zero,
@@ -326,7 +326,7 @@ namespace sv {
 	enum SamplerBorderColor {
 	};
 	
-	enum BarrierType : ui8 {
+	enum BarrierType : u8 {
 		BarrierType_Image
 	};
 
@@ -335,7 +335,7 @@ namespace sv {
 	};
 
 	struct Scissor {
-		ui32 x, y, width, height;
+		u32 x, y, width, height;
 	};
 
 	struct GPUBarrier {
@@ -372,8 +372,8 @@ namespace sv {
 	struct ShaderCompileDesc {
 		GraphicsAPI											api;
 		ShaderType											shaderType;
-		ui32												majorVersion;
-		ui32												minorVersion;
+		u32												majorVersion;
+		u32												minorVersion;
 		const char*											entryPoint;
 		std::vector<std::pair<const char*, const char*>>	macros;
 	};
@@ -384,24 +384,24 @@ namespace sv {
 		GPUBufferType	bufferType;
 		ResourceUsage	usage;
 		CPUAccessFlags	CPUAccess;
-		ui32			size;
+		u32			size;
 		IndexType		indexType;
 		void*			pData;
 	};
 
 	struct GPUImageDesc {
 		void*			pData;
-		ui32			size;
+		u32			size;
 		Format			format;
 		GPUImageLayout	layout;
 		ImageTypeFlags	type;
 		ResourceUsage	usage;
 		CPUAccessFlags	CPUAccess;
-		ui8				dimension;
-		ui32			width;
-		ui32			height;
-		ui32			depth;
-		ui32			layers;
+		u8				dimension;
+		u32			width;
+		u32			height;
+		u32			depth;
+		u32			layers;
 	};
 
 	struct SamplerDesc {
@@ -436,15 +436,15 @@ namespace sv {
 
 	struct InputElementDesc {
 		const char* name;
-		ui32		index;
-		ui32		inputSlot;
-		ui32		offset;
+		u32		index;
+		u32		inputSlot;
+		u32		offset;
 		Format		format;
 	};
 
 	struct InputSlotDesc {
-		ui32 slot;
-		ui32 stride;
+		u32 slot;
+		u32 stride;
 		bool instanced;
 	};
 
@@ -487,8 +487,8 @@ namespace sv {
 		bool					depthWriteEnabled;
 		CompareOperation		depthCompareOp;
 		bool					stencilTestEnabled;
-		ui32					readMask;
-		ui32					writeMask;
+		u32					readMask;
+		u32					writeMask;
 		StencilStateDesc		front;
 		StencilStateDesc		back;
 	};
@@ -496,16 +496,16 @@ namespace sv {
 	// Format functions
 
 	bool graphics_format_has_stencil(Format format);
-	constexpr ui32 graphics_format_size(Format format);
+	constexpr u32 graphics_format_size(Format format);
 
 	// Adapters
 
 	class Adapter {
 	protected:
-		ui32 m_Suitability = 0u;
+		u32 m_Suitability = 0u;
 
 	public:
-		inline ui32 GetSuitability() const noexcept { return m_Suitability; }
+		inline u32 GetSuitability() const noexcept { return m_Suitability; }
 
 	};
 
@@ -523,7 +523,7 @@ namespace sv {
 	struct DepthStencilState : public Primitive { DepthStencilState() = delete; ~DepthStencilState() = delete; };
 	struct RasterizerState : public Primitive { RasterizerState() = delete; ~RasterizerState() = delete; };
 
-	typedef ui32 CommandList;
+	typedef u32 CommandList;
 
 	void graphics_present(GPUImage* image, const GPUImageRegion& region, GPUImageLayout layout, CommandList cmd);
 
@@ -533,7 +533,7 @@ namespace sv {
 
 	const std::vector<std::unique_ptr<Adapter>>& graphics_adapter_get_list() noexcept;
 	Adapter* graphics_adapter_get() noexcept;
-	void graphics_adapter_set(ui32 index);
+	void graphics_adapter_set(u32 index);
 
 	// Hash functions
 
@@ -561,7 +561,7 @@ namespace sv {
 	CommandList graphics_commandlist_begin();
 	CommandList graphics_commandlist_last();
 	CommandList graphics_commandlist_get();
-	ui32		graphics_commandlist_count();
+	u32		graphics_commandlist_count();
 
 	void graphics_gpu_wait();
 
@@ -569,29 +569,29 @@ namespace sv {
 
 	void graphics_resources_unbind(CommandList cmd);
 
-	void graphics_vertexbuffer_bind_array(GPUBuffer** buffers, ui32* offsets, ui32 count, ui32 beginSlot, CommandList cmd);
-	void graphics_vertexbuffer_bind(GPUBuffer* buffer, ui32 offset, ui32 slot, CommandList cmd);
-	void graphics_vertexbuffer_unbind(ui32 slot, CommandList cmd);
+	void graphics_vertexbuffer_bind_array(GPUBuffer** buffers, u32* offsets, u32 count, u32 beginSlot, CommandList cmd);
+	void graphics_vertexbuffer_bind(GPUBuffer* buffer, u32 offset, u32 slot, CommandList cmd);
+	void graphics_vertexbuffer_unbind(u32 slot, CommandList cmd);
 	void graphics_vertexbuffer_unbind_commandlist(CommandList cmd);
 	
-	void graphics_indexbuffer_bind(GPUBuffer* buffer, ui32 offset, CommandList cmd);
+	void graphics_indexbuffer_bind(GPUBuffer* buffer, u32 offset, CommandList cmd);
 	void graphics_indexbuffer_unbind(CommandList cmd);
 
-	void graphics_constantbuffer_bind_array(GPUBuffer** buffers, ui32 count, ui32 beginSlot, ShaderType shaderType, CommandList cmd);
-	void graphics_constantbuffer_bind(GPUBuffer* buffer, ui32 slot, ShaderType shaderType, CommandList cmd);
-	void graphics_constantbuffer_unbind(ui32 slot, ShaderType shaderType, CommandList cmd);
+	void graphics_constantbuffer_bind_array(GPUBuffer** buffers, u32 count, u32 beginSlot, ShaderType shaderType, CommandList cmd);
+	void graphics_constantbuffer_bind(GPUBuffer* buffer, u32 slot, ShaderType shaderType, CommandList cmd);
+	void graphics_constantbuffer_unbind(u32 slot, ShaderType shaderType, CommandList cmd);
 	void graphics_constantbuffer_unbind_shader(ShaderType shaderType, CommandList cmd);
 	void graphics_constantbuffer_unbind_commandlist(CommandList cmd);
 
-	void graphics_image_bind_array(GPUImage** images, ui32 count, ui32 beginSlot, ShaderType shaderType, CommandList cmd);
-	void graphics_image_bind(GPUImage* image, ui32 slot, ShaderType shaderType, CommandList cmd);
-	void graphics_image_unbind(ui32 slot, ShaderType shaderType, CommandList cmd);
+	void graphics_image_bind_array(GPUImage** images, u32 count, u32 beginSlot, ShaderType shaderType, CommandList cmd);
+	void graphics_image_bind(GPUImage* image, u32 slot, ShaderType shaderType, CommandList cmd);
+	void graphics_image_unbind(u32 slot, ShaderType shaderType, CommandList cmd);
 	void graphics_image_unbind_shader(ShaderType shaderType, CommandList cmd);
 	void graphics_image_unbind_commandlist(CommandList cmd);
 
-	void graphics_sampler_bind_array(Sampler** samplers, ui32 count, ui32 beginSlot, ShaderType shaderType, CommandList cmd);
-	void graphics_sampler_bind(Sampler* sampler, ui32 slot, ShaderType shaderType, CommandList cmd);
-	void graphics_sampler_unbind(ui32 slot, ShaderType shaderType, CommandList cmd);
+	void graphics_sampler_bind_array(Sampler** samplers, u32 count, u32 beginSlot, ShaderType shaderType, CommandList cmd);
+	void graphics_sampler_bind(Sampler* sampler, u32 slot, ShaderType shaderType, CommandList cmd);
+	void graphics_sampler_unbind(u32 slot, ShaderType shaderType, CommandList cmd);
 	void graphics_sampler_unbind_shader(ShaderType shaderType, CommandList cmd);
 	void graphics_sampler_unbind_commandlist(CommandList cmd);
 
@@ -614,62 +614,62 @@ namespace sv {
 
 	void graphics_mode_set(GraphicsPipelineMode mode, CommandList cmd);
 	void graphics_topology_set(GraphicsTopology topology, CommandList cmd);
-	void graphics_stencil_reference_set(ui32 ref, CommandList cmd);
+	void graphics_stencil_reference_set(u32 ref, CommandList cmd);
 	void graphics_line_width_set(float lineWidth, CommandList cmd);
 
 	GraphicsPipelineMode	graphics_mode_get(CommandList cmd);
 	GraphicsTopology		graphics_topology_get(CommandList cmd);
-	ui32					graphics_stencil_reference_get(CommandList cmd);
+	u32					graphics_stencil_reference_get(CommandList cmd);
 	float					graphics_line_width_get(CommandList cmd);
 
-	void graphics_viewport_set(const Viewport* viewports, ui32 count, CommandList cmd);
-	void graphics_viewport_set(const Viewport& viewport, ui32 slot, CommandList cmd);
-	void graphics_viewport_set(GPUImage* image, ui32 slot, CommandList cmd);
-	void graphics_scissor_set(const Scissor* scissors, ui32 count, CommandList cmd);
-	void graphics_scissor_set(const Scissor& scissor, ui32 slot, CommandList cmd);
-	void graphics_scissor_set(GPUImage* image, ui32 slot, CommandList cmd);
+	void graphics_viewport_set(const Viewport* viewports, u32 count, CommandList cmd);
+	void graphics_viewport_set(const Viewport& viewport, u32 slot, CommandList cmd);
+	void graphics_viewport_set(GPUImage* image, u32 slot, CommandList cmd);
+	void graphics_scissor_set(const Scissor* scissors, u32 count, CommandList cmd);
+	void graphics_scissor_set(const Scissor& scissor, u32 slot, CommandList cmd);
+	void graphics_scissor_set(GPUImage* image, u32 slot, CommandList cmd);
 
-	Viewport graphics_viewport_get(ui32 slot, CommandList cmd);
-	Scissor	 graphics_scissor_get(ui32 slot, CommandList cmd);
+	Viewport graphics_viewport_get(u32 slot, CommandList cmd);
+	Scissor	 graphics_scissor_get(u32 slot, CommandList cmd);
 
 	// RenderPass functions
 
-	void graphics_renderpass_begin(RenderPass* renderPass, GPUImage** attachments, const Color4f* colors, float depth, ui32 stencil, CommandList cmd);
+	void graphics_renderpass_begin(RenderPass* renderPass, GPUImage** attachments, const Color4f* colors, float depth, u32 stencil, CommandList cmd);
 	void graphics_renderpass_end(CommandList cmd);
 
 	// Draw Calls
 
-	void graphics_draw(ui32 vertexCount, ui32 instanceCount, ui32 startVertex, ui32 startInstance, CommandList cmd);
-	void graphics_draw_indexed(ui32 indexCount, ui32 instanceCount, ui32 startIndex, ui32 startVertex, ui32 startInstance, CommandList cmd);
+	void graphics_draw(u32 vertexCount, u32 instanceCount, u32 startVertex, u32 startInstance, CommandList cmd);
+	void graphics_draw_indexed(u32 indexCount, u32 instanceCount, u32 startIndex, u32 startVertex, u32 startInstance, CommandList cmd);
 
 	// Memory
 
-	void graphics_buffer_update(GPUBuffer* buffer, void* pData, ui32 size, ui32 offset, CommandList cmd);
-	void graphics_barrier(const GPUBarrier* barriers, ui32 count, CommandList cmd);
-	void graphics_image_blit(GPUImage* src, GPUImage* dst, GPUImageLayout srcLayout, GPUImageLayout dstLayout, ui32 count, const GPUImageBlit* imageBlit, SamplerFilter filter, CommandList cmd);
-	void graphics_image_clear(GPUImage* image, GPUImageLayout oldLayout, GPUImageLayout newLayout, const Color4f& clearColor, float depth, ui32 stencil, CommandList cmd); // Not use if necessary, renderpasses have best performance!!
+	void graphics_buffer_update(GPUBuffer* buffer, void* pData, u32 size, u32 offset, CommandList cmd);
+	void graphics_barrier(const GPUBarrier* barriers, u32 count, CommandList cmd);
+	void graphics_image_blit(GPUImage* src, GPUImage* dst, GPUImageLayout srcLayout, GPUImageLayout dstLayout, u32 count, const GPUImageBlit* imageBlit, SamplerFilter filter, CommandList cmd);
+	void graphics_image_clear(GPUImage* image, GPUImageLayout oldLayout, GPUImageLayout newLayout, const Color4f& clearColor, float depth, u32 stencil, CommandList cmd); // Not use if necessary, renderpasses have best performance!!
 
 	// Shader utils
 
-	Result graphics_shader_compile_string(const ShaderCompileDesc* desc, const char* str, ui32 size, std::vector<ui8>& data);
-	Result graphics_shader_compile_file(const ShaderCompileDesc* desc, const char* srcPath, std::vector<ui8>& data);
+	Result graphics_shader_compile_string(const ShaderCompileDesc* desc, const char* str, u32 size, std::vector<u8>& data);
+	Result graphics_shader_compile_file(const ShaderCompileDesc* desc, const char* srcPath, std::vector<u8>& data);
 	Result graphics_shader_compile_fastbin(const char* name, ShaderType shaderType, Shader** pShader, const char* src);
 
 	const ShaderInfo* graphics_shader_info_get(Shader* shader);
 
 	Result graphics_shader_include_write(const char* name, const char* str);
 
-	ui32 graphics_shader_attribute_size(ShaderAttributeType type);
+	u32 graphics_shader_attribute_size(ShaderAttributeType type);
 
 	ShaderType graphics_shader_type(const Shader* shader);
 
 	// Primitive getters
 
-	ui32		graphics_image_get_width(GPUImage* image);
-	ui32		graphics_image_get_height(GPUImage* image);
-	ui32		graphics_image_get_depth(GPUImage* image);
-	ui32		graphics_image_get_layers(GPUImage* image);
-	ui32		graphics_image_get_dimension(GPUImage* image);
+	u32		graphics_image_get_width(GPUImage* image);
+	u32		graphics_image_get_height(GPUImage* image);
+	u32		graphics_image_get_depth(GPUImage* image);
+	u32		graphics_image_get_layers(GPUImage* image);
+	u32		graphics_image_get_dimension(GPUImage* image);
 	Format		graphics_image_get_format(GPUImage* image);
 	Viewport	graphics_image_get_viewport(GPUImage* image);
 	Scissor		graphics_image_get_scissor(GPUImage* image);

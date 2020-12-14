@@ -12,10 +12,10 @@ namespace sv {
 		
 		bool running = false;
 		float time = 0.f; 
-		ui32 repeatCount = 0u;
-		ui32 repeatIndex = 0u;
+		u32 repeatCount = 0u;
+		u32 repeatIndex = 0u;
 		float duration = 0.3f;
-		ui32 index = 0u;
+		u32 index = 0u;
 		SpriteAnimationAsset animation;
 
 	};

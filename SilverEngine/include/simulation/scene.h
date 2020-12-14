@@ -47,8 +47,8 @@ namespace sv {
 		// rendering
 	public:
 
-		// Is the most high level draw call. Takes the ECS data and the main camera and render everything. (OPTIONAL) Presents to screen
-		void draw(bool present = true);
+		// Is the most high level draw call. Takes the ECS data and the main camera and render everything
+		void draw();
 
 		// attributes
 	private:

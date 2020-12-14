@@ -854,7 +854,7 @@ namespace sv {
 	inline void graphics_vulkan_parse_spirvstruct(spirv_cross::Compiler& comp, const spirv_cross::TypeID& ID, std::vector<ShaderAttribute>& attributes)
 	{
 		const spirv_cross::SPIRType& structType = comp.get_type(ID);
-		ui32 i = 0u;
+		u32 i = 0u;
 
 		while (true) {
 
@@ -883,7 +883,7 @@ namespace sv {
 					ShaderAttribute& last = attributes[attributes.size() - 2u];
 
 					a.offset = last.offset + graphics_shader_attribute_size(last.type);
-					ui32 typeSize = graphics_shader_attribute_size(a.type);
+					u32 typeSize = graphics_shader_attribute_size(a.type);
 					if (a.offset / 16u != (a.offset + std::min(typeSize - 1u, 15u)) / 16) a.offset += 16 - (a.offset % 16);
 				}
 			}

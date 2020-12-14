@@ -79,7 +79,7 @@ namespace sv {
 		return bounds;
 	}
 
-	LRESULT CALLBACK WindowProcFn(HWND hWnd, ui32 msg, WPARAM wParam, LPARAM lParam)
+	LRESULT CALLBACK WindowProcFn(HWND hWnd, u32 msg, WPARAM wParam, LPARAM lParam)
 	{
 		// Call User Functions
 		if (g_UserProc) g_UserProc(hWnd, msg, wParam, lParam);
@@ -94,7 +94,7 @@ namespace sv {
 		case WM_KEYDOWN:
 		{
 			// input
-			ui8 keyCode = (ui8)wParam;
+			u8 keyCode = (u8)wParam;
 			if (keyCode > 255) {
 				SV_LOG_WARNING("Unknown keycode: %u", keyCode);
 			}
@@ -106,7 +106,7 @@ namespace sv {
 		case WM_KEYUP:
 		{
 			// input
-			ui8 keyCode = (ui8)wParam;
+			u8 keyCode = (u8)wParam;
 			if (keyCode > 255) {
 				SV_LOG_WARNING("Unknown keycode: %u", keyCode);
 			}
@@ -134,8 +134,8 @@ namespace sv {
 			break;
 		case WM_MOUSEMOVE:
 		{
-			ui16 _x = LOWORD(lParam);
-			ui16 _y = HIWORD(lParam);
+			u16 _x = LOWORD(lParam);
+			u16 _y = HIWORD(lParam);
 
 			float w = float(g_Bounds.z);
 			float h = float(g_Bounds.w);
@@ -460,7 +460,7 @@ namespace sv {
 		HWND desktop = GetDesktopWindow();
 		RECT rect;
 		GetWindowRect(desktop, &rect);
-		return { ui32(rect.right), ui32(rect.bottom) };
+		return { u32(rect.right), u32(rect.bottom) };
 #endif
 	}
 

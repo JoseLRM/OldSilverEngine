@@ -11,7 +11,7 @@ namespace sv {
 	void simulation_editor_camera_controller_2D(float dt);
 	void simulation_editor_camera_controller_3D(float dt);
 
-	enum TransformMode : ui32 {
+	enum TransformMode : u32 {
 
 		TransformMode_Translation,
 		TransformMode_Scale,

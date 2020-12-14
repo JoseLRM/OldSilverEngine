@@ -5,6 +5,7 @@
 #include "simulation.h"
 #include "panel_manager.h"
 #include "gui.h"
+#include "engine.h"
 
 using namespace sv;
 
@@ -61,7 +62,7 @@ namespace sv {
 
 		// FPS count
 		static float fpsTime = 0.f;
-		static ui32 fpsCount = 0u;
+		static u32 fpsCount = 0u;
 		fpsTime += dt;
 		fpsCount++;
 

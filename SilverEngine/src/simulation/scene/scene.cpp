@@ -3,6 +3,7 @@
 #include "scene_internal.h"
 
 #include "utils/allocator.h"
+#include "engine.h"
 
 namespace sv {
 
@@ -53,6 +54,7 @@ namespace sv {
 			ecs_component_register<AnimatedSpriteComponent>("Animated Sprite");
 			ecs_component_register<MeshComponent>("Mesh");
 			ecs_component_register<LightComponent>("Light");
+			ecs_component_register<SkyComponent>("Sky");
 			ecs_component_register<RigidBody2DComponent>("RigidBody 2D");
 			ecs_component_register<BoxCollider2DComponent>("BoxCollider 2D");
 			ecs_component_register<CircleCollider2DComponent>("CircleCollider 2D");
@@ -200,9 +202,9 @@ namespace sv {
 		return m_MainCamera;
 	}
 
-	void Scene::draw(bool present)
+	void Scene::draw()
 	{
-		SceneRenderer::draw(m_ECS, m_MainCamera, present);
+		SceneRenderer::draw(m_ECS, m_MainCamera);
 	}
 
 	Result SceneAsset::createFile(const char* filePath)

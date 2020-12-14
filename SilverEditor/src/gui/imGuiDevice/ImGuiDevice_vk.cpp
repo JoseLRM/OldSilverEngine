@@ -10,7 +10,7 @@ namespace sv {
 		vkAssert(res);
 	}
 
-	ui64 DeviceWindowProc(WindowHandle handle, ui32 msg, ui64 wParam, i64 lParam)
+	u64 DeviceWindowProc(WindowHandle handle, u32 msg, u64 wParam, i64 lParam)
 	{
 		return ImGui_ImplWin32_WndProcHandler((HWND)window_handle_get(), msg, wParam, lParam);
 	}
@@ -138,7 +138,7 @@ namespace sv {
 		info.PipelineCache = 0;
 		info.DescriptorPool = m_DescPool;
 		info.MinImageCount = gfx.swapChain.capabilities.minImageCount;
-		info.ImageCount = ui32(gfx.swapChain.images.size());
+		info.ImageCount = u32(gfx.swapChain.images.size());
 		info.CheckVkResultFn = ErrorHandler;
 
 		ImGui_ImplVulkan_Init(&info, m_RenderPass);
@@ -183,7 +183,7 @@ namespace sv {
 		Graphics_vk& gfx = graphics_vulkan_device_get();
 		ImGui::Render();
 
-		ui32 currentFrame = gfx.currentFrame;
+		u32 currentFrame = gfx.currentFrame;
 		
 		VkCommandBuffer cmd = gfx.GetCMD(m_CommandList);
 
@@ -280,7 +280,7 @@ namespace sv {
 			m_Frames.clear();
 			m_Frames.resize(fb.images.size());
 
-			for (ui32 i = 0; i < fb.images.size(); ++i) {
+			for (u32 i = 0; i < fb.images.size(); ++i) {
 				Frame& frame = m_Frames[i];
 
 				frame.view = fb.images[i].view;
@@ -305,7 +305,7 @@ namespace sv {
 	{
 		Graphics_vk& gfx = graphics_vulkan_device_get();
 
-		for (ui32 i = 0; i < m_Frames.size(); ++i) {
+		for (u32 i = 0; i < m_Frames.size(); ++i) {
 			vkDestroyFramebuffer(gfx.device, m_Frames[i].frameBuffer, nullptr);
 		}
 	}

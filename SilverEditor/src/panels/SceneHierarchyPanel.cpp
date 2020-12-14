@@ -17,7 +17,7 @@ namespace sv {
 
 		m_Popup = false;
 
-		for (ui32 i = 0; i < ecs_entity_count(scene); ++i) {
+		for (u32 i = 0; i < ecs_entity_count(scene); ++i) {
 
 			Entity entity = ecs_entity_get(scene, i);
 
@@ -133,7 +133,7 @@ namespace sv {
 
 				Entity const* childs;
 
-				for (ui32 i = 0; i < ecs_entity_childs_count(ecs, entity); ++i) {
+				for (u32 i = 0; i < ecs_entity_childs_count(ecs, entity); ++i) {
 
 					ecs_entity_childs_get(ecs, entity, &childs);
 

@@ -16,7 +16,7 @@ namespace sv {
 		WindowStyle_NoDecoration = WindowStyle_NoTitle | WindowStyle_NoBorder,
 		WindowStyle_Default = WindowStyle_Maximizable | WindowStyle_Minimizable | WindowStyle_Resizable,
 	};
-	typedef ui32 WindowStyleFlags;
+	typedef u32 WindowStyleFlags;
 
 	WindowHandle window_handle_get() noexcept;
 
@@ -41,7 +41,7 @@ namespace sv {
 	vec2u window_desktop_size();
 
 #ifdef SV_PLATFORM_WIN
-	typedef ui64(*WindowProc)(WindowHandle, ui32, ui64, i64);
+	typedef u64(*WindowProc)(WindowHandle, u32, u64, i64);
 
 	void window_userproc_set(WindowProc userProc);
 #endif

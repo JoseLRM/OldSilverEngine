@@ -1,6 +1,6 @@
 #include "core.h"
 
-#include "mesh_renderer_internal.h"
+#include "rendering/render_utils.h"
 
 namespace sv {
 
@@ -9,7 +9,7 @@ namespace sv {
 		destroy();
 	}
 
-	Result GBuffer::create(ui32 width, ui32 height)
+	Result GBuffer::create(u32 width, u32 height)
 	{
 		GPUImageDesc desc;
 		desc.pData = nullptr;
@@ -25,15 +25,15 @@ namespace sv {
 		desc.layers = 1u;
 
 		// Diffuse
-		desc.format = GBUFFER_DIFFUSE_FORMAT;
+		desc.format = FORMAT_DIFFUSE;
 		svCheck(graphics_image_create(&desc, &diffuse));
 
 		// Normal
-		desc.format = GBUFFER_NORMAL_FORMAT;
+		desc.format = FORMAT_NORMAL;
 		svCheck(graphics_image_create(&desc, &normal));
 
 		// Depth Stencil
-		desc.format = GBUFFER_DEPTHSTENCIL_FORMAT;
+		desc.format = FORMAT_DEPTHSTENCIL;
 		desc.layout = GPUImageLayout_DepthStencil;
 		desc.type = GPUImageType_DepthStencil | GPUImageType_ShaderResource;
 		svCheck(graphics_image_create(&desc, &depthStencil));
@@ -41,7 +41,7 @@ namespace sv {
 		return Result_Success;
 	}
 	
-	Result GBuffer::resize(ui32 width, ui32 height)
+	Result GBuffer::resize(u32 width, u32 height)
 	{
 		SV_LOG_ERROR("TODO: Resize GBuffer");
 		return Result_TODO;

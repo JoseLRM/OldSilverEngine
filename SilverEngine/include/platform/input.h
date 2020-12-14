@@ -104,13 +104,13 @@
 
 namespace sv {
 
-	bool input_key(ui8 id);
-	bool input_key_pressed(ui8 id);
-	bool input_key_released(ui8 id);
+	bool input_key(u8 id);
+	bool input_key_pressed(u8 id);
+	bool input_key_released(u8 id);
 
-	bool input_mouse(ui8 id);
-	bool input_mouse_pressed(ui8 id);
-	bool input_mouse_released(ui8 id);
+	bool input_mouse(u8 id);
+	bool input_mouse_pressed(u8 id);
+	bool input_mouse_released(u8 id);
 
 	vec2f input_mouse_position_get();
 	vec2f input_mouse_position_get_last();

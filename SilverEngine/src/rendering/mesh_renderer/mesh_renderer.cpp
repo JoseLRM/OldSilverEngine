@@ -8,7 +8,7 @@ namespace sv {
 
 	static MeshRendererContext g_Context[GraphicsLimit_CommandList];
 	
-	static ShaderLibrary* g_DefShaderLibrary = nullptr;
+	static ShaderLibrary* g_SpriteDefShaderLibrary = nullptr;
 
 	static RasterizerState* g_RasterizerState = nullptr;
 	static DepthStencilState* g_DepthStencilState = nullptr;
@@ -17,7 +17,7 @@ namespace sv {
 
 	static RenderPass* g_RenderPass_Geometry = nullptr;
 	static InputLayoutState* g_InputLayoutState_Geometry = nullptr;
-	static BlendState* g_BlendState_Geometry = nullptr;
+	static BlendState* g_BS_Geometry = nullptr;
 
 	static GPUBuffer* g_InstanceBuffer = nullptr;
 
@@ -36,7 +36,7 @@ namespace sv {
 	{
 		// Initialize Context
 		{
-			for (ui32 i = 0u; i < GraphicsLimit_CommandList; ++i) {
+			for (u32 i = 0u; i < GraphicsLimit_CommandList; ++i) {
 
 				MeshRendererContext& ctx = g_Context[i];
 				ctx.meshData = new MeshData[MESH_BATCH_COUNT];
@@ -114,7 +114,7 @@ struct Output {
 	float4 position : SV_Position;
 };
 
-Output main(ui32 id : SV_VertexID)
+Output main(u32 id : SV_VertexID)
 {
 	Output output;
 	
@@ -151,7 +151,7 @@ struct Output {
 };
 
 struct Light {
-	ui32 type;
+	u32 type;
 	float3 position;
 	float intensity;
 	float radius;
@@ -161,7 +161,7 @@ struct Light {
 
 SV_CONSTANT_BUFFER(LightingBuffer, b0) {
 	uint2 resolution;
-	ui32 lightCount;
+	u32 lightCount;
 	Light lights[20];
 };
 
@@ -193,7 +193,7 @@ Output main(Input input)
 	float3 pos = view.xyz;
 	
 	output.color.rgb = float3(0.f, 0.f, 0.f);
-	for (ui32 i = 0; i < lightCount; ++i) {
+	for (u32 i = 0; i < lightCount; ++i) {
 	
 		Light l = lights[i];
 		
@@ -230,8 +230,8 @@ Output main(Input input)
 			g_SubShader_GeometryVertexShader = matsys_subshader_get("Mesh", "MeshVertex");
 			g_SubShader_GeometryPixelShader = matsys_subshader_get("Mesh", "MeshSurface");
 
-			if (g_SubShader_GeometryVertexShader == ui32_max) return Result_UnknownError;
-			if (g_SubShader_GeometryPixelShader == ui32_max) return Result_UnknownError;
+			if (g_SubShader_GeometryVertexShader == u32_max) return Result_UnknownError;
+			if (g_SubShader_GeometryPixelShader == u32_max) return Result_UnknownError;
 		}
 		// Create Render Passes
 		{
@@ -240,7 +240,7 @@ Output main(Input input)
 			
 			desc.attachments[0].loadOp = AttachmentOperation_Load;
 			desc.attachments[0].storeOp = AttachmentOperation_Store;
-			desc.attachments[0].format = GBUFFER_DIFFUSE_FORMAT;
+			desc.attachments[0].format = GBuffer::FORMAT_DIFFUSE;
 			desc.attachments[0].initialLayout = GPUImageLayout_RenderTarget;
 			desc.attachments[0].layout = GPUImageLayout_RenderTarget;
 			desc.attachments[0].finalLayout = GPUImageLayout_RenderTarget;
@@ -248,7 +248,7 @@ Output main(Input input)
 
 			desc.attachments[1].loadOp = AttachmentOperation_Load;
 			desc.attachments[1].storeOp = AttachmentOperation_Store;
-			desc.attachments[1].format = GBUFFER_NORMAL_FORMAT;
+			desc.attachments[1].format = GBuffer::FORMAT_NORMAL;
 			desc.attachments[1].initialLayout = GPUImageLayout_RenderTarget;
 			desc.attachments[1].layout = GPUImageLayout_RenderTarget;
 			desc.attachments[1].finalLayout = GPUImageLayout_RenderTarget;
@@ -258,7 +258,7 @@ Output main(Input input)
 			desc.attachments[2].storeOp = AttachmentOperation_Store;
 			desc.attachments[2].stencilLoadOp = AttachmentOperation_Load;
 			desc.attachments[2].stencilStoreOp = AttachmentOperation_Store;
-			desc.attachments[2].format = GBUFFER_DEPTHSTENCIL_FORMAT;
+			desc.attachments[2].format = GBuffer::FORMAT_DEPTHSTENCIL;
 			desc.attachments[2].initialLayout = GPUImageLayout_DepthStencil;
 			desc.attachments[2].layout = GPUImageLayout_DepthStencil;
 			desc.attachments[2].finalLayout = GPUImageLayout_DepthStencil;
@@ -307,7 +307,7 @@ Output main(Input input)
 			desc.attachments[0].colorWriteMask = ColorComponent_All;
 			desc.attachments[1].colorWriteMask = ColorComponent_All;
 
-			svCheck(graphics_blendstate_create(&desc, &g_BlendState_Geometry));
+			svCheck(graphics_blendstate_create(&desc, &g_BS_Geometry));
 		}
 		// Create Input Layout State
 		{
@@ -346,7 +346,7 @@ Output main(Input input)
 		// Default shader library
 		{
 			// TEMP
-			if (result_fail(matsys_shaderlibrary_create_from_binary(hash_string("SilverEngine/DefaultMesh"), &g_DefShaderLibrary))) {
+			if (result_fail(matsys_shaderlibrary_create_from_binary(hash_string("SilverEngine/DefaultMesh"), &g_SpriteDefShaderLibrary))) {
 
 				const char* src = R"(
 
@@ -393,7 +393,7 @@ SurfaceOutput meshSurface(UserSurfaceInput input)
 #end
 				)";
 
-				svCheck(matsys_shaderlibrary_create_from_string(src, &g_DefShaderLibrary));
+				svCheck(matsys_shaderlibrary_create_from_string(src, &g_SpriteDefShaderLibrary));
 			}
 		}
 
@@ -403,13 +403,13 @@ SurfaceOutput meshSurface(UserSurfaceInput input)
 	Result MeshRenderer_internal::close()
 	{
 		// Deallocate context
-		for (ui32 i = 0u; i < GraphicsLimit_CommandList; ++i)
+		for (u32 i = 0u; i < GraphicsLimit_CommandList; ++i)
 			delete[] g_Context[i].meshData;
 
 		svCheck(graphics_destroy(g_RenderPass_Geometry));
 		svCheck(graphics_destroy(g_RenderPass_Lighting));
 		svCheck(graphics_destroy(g_InputLayoutState_Geometry));
-		svCheck(graphics_destroy(g_BlendState_Geometry));
+		svCheck(graphics_destroy(g_BS_Geometry));
 		svCheck(graphics_destroy(g_DepthStencilState));
 		svCheck(graphics_destroy(g_InstanceBuffer));
 		svCheck(graphics_destroy(g_RasterizerState));
@@ -417,28 +417,26 @@ SurfaceOutput meshSurface(UserSurfaceInput input)
 		return Result_Success;
 	}
 
-	void optimizeMeshList(FrameList<MeshInstance>& meshes)
-	{
-		std::sort(meshes.data(), meshes.data() + meshes.size(), [](const MeshInstance& i0, const MeshInstance& i1)
-		{
-			float toCameraDiference = abs(i0.toCameraDistance - i1.toCameraDistance);
-			if (toCameraDiference > 3.f) {
-				return i0.material < i1.material;
-			}
-			else return i0.toCameraDistance < i1.toCameraDistance;
-		});
-	}
-
-	void MeshRenderer::drawMeshes(GPUImage* renderTarget, GBuffer& gBuffer, CameraBuffer& cameraBuffer, FrameList<MeshInstance>& meshes, FrameList<LightInstance>& lights, bool optimizeLists, CommandList cmd)
+	void MeshRenderer::drawMeshes(GPUImage* renderTarget, GBuffer& gBuffer, CameraBuffer& cameraBuffer, FrameList<MeshInstanceGroup>& meshes, FrameList<LightInstance>& lights, bool optimizeLists, bool depthTest, CommandList cmd)
 	{
 		if (meshes.empty()) return;
 
-		graphics_image_clear(gBuffer.diffuse, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
-		graphics_image_clear(gBuffer.normal, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
-		graphics_image_clear(gBuffer.depthStencil, GPUImageLayout_DepthStencil, GPUImageLayout_DepthStencil, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
-
 		// Optimize lists
-		optimizeMeshList(meshes);
+		if (optimizeLists) {
+			for (MeshInstanceGroup& group : meshes) {
+
+				FrameList<MeshInstance>& m = *group.pInstances;
+
+				std::sort(m.data(), m.data() + m.size(), [](const MeshInstance& i0, const MeshInstance& i1)
+				{
+					float toCameraDiference = abs(i0.toCameraDistance - i1.toCameraDistance);
+					if (toCameraDiference > 3.f) {
+						return i0.material < i1.material;
+					}
+					else return i0.toCameraDistance < i1.toCameraDistance;
+				});
+			}
+		}
 
 		ThreadContext threadContext;
 		
@@ -450,83 +448,93 @@ SurfaceOutput meshSurface(UserSurfaceInput input)
 		{
 			MeshRendererContext& ctx = g_Context[cmd];
 
-			// Prepare
 			graphics_state_unbind(cmd);
-			graphics_event_begin("Deferred Geometry Pass", cmd);
+			graphics_event_begin("Mesh_DeferredGeometryPass", cmd);
 
-			// TODO: can change in some meshes
 			graphics_topology_set(GraphicsTopology_Triangles, cmd);
-
-			graphics_inputlayoutstate_bind(g_InputLayoutState_Geometry, cmd);
-			graphics_rasterizerstate_bind(g_RasterizerState, cmd);
-			graphics_blendstate_bind(g_BlendState_Geometry, cmd);
-			graphics_depthstencilstate_bind(g_DepthStencilState, cmd);
-
 			graphics_constantbuffer_bind(g_InstanceBuffer, 0u, ShaderType_Vertex, cmd);
+			graphics_blendstate_bind(g_BS_Geometry, cmd);
+			graphics_inputlayoutstate_bind(g_InputLayoutState_Geometry, cmd);
 
-			// Default binding
-			Material* material = nullptr;
-			Mesh* mesh = nullptr;
-			MeshData meshData;
+			if (depthTest)
+				graphics_depthstencilstate_bind(g_DepthStencilState, cmd);
+			else
+				graphics_depthstencilstate_unbind(cmd);
 
-			matsys_shaderlibrary_bind_camerabuffer(g_DefShaderLibrary, cameraBuffer, cmd);
-			matsys_shaderlibrary_bind_subshader(g_DefShaderLibrary, g_SubShader_GeometryVertexShader, cmd);
-			matsys_shaderlibrary_bind_subshader(g_DefShaderLibrary, g_SubShader_GeometryPixelShader, cmd);
+			for (const MeshInstanceGroup& group : meshes) {
 
-
-			// TODO: Instanced Rendering
-			for (MeshInstance& instance : meshes) {
-
-				if (instance.pMesh == nullptr) 
-					continue;
-
-				// Bind Mesh
-				if (instance.pMesh != mesh) {
-					mesh = instance.pMesh;
-
-					graphics_vertexbuffer_bind(mesh->vertexBuffer, 0u, 0u, cmd);
-					graphics_indexbuffer_bind(mesh->indexBuffer, 0u, cmd);
-				}
-				
-				// Bind Material
-				if (instance.material != material) {
-					graphics_shader_unbind_commandlist(cmd);
-
-					if (instance.material) {
-
-						ShaderLibrary* lib = matsys_material_get_shaderlibrary(instance.material);
-						matsys_shaderlibrary_bind_subshader(lib, g_SubShader_GeometryVertexShader, cmd);
-						matsys_shaderlibrary_bind_subshader(lib, g_SubShader_GeometryPixelShader, cmd);
-						
-						matsys_shaderlibrary_bind_camerabuffer(lib, cameraBuffer, cmd);
-
-						matsys_material_bind(instance.material, g_SubShader_GeometryVertexShader, cmd);
-						matsys_material_bind(instance.material, g_SubShader_GeometryPixelShader, cmd);
-					}
-					else {
-
-						matsys_shaderlibrary_bind_camerabuffer(g_DefShaderLibrary, cameraBuffer, cmd);
-						matsys_shaderlibrary_bind_subshader(g_DefShaderLibrary, g_SubShader_GeometryVertexShader, cmd);
-						matsys_shaderlibrary_bind_subshader(g_DefShaderLibrary, g_SubShader_GeometryPixelShader, cmd);
-					}
+				// Prepare
+				{
+					// TODO: Face culling
+					graphics_rasterizerstate_bind(g_RasterizerState, cmd);
+					
+					
 				}
 
-				// Instance Data
-				meshData.tm = XMMatrixTranspose(instance.tm);
-				graphics_buffer_update(g_InstanceBuffer, &meshData, sizeof(MeshData), 0u, cmd);
+				// Default binding
+				Material* material = nullptr;
+				Mesh* mesh = nullptr;
+				MeshData meshData;
 
-				GPUImage* att[] = {
-					gBuffer.diffuse,
-					gBuffer.normal,
-					gBuffer.depthStencil
-				};
+				matsys_shaderlibrary_bind_camerabuffer(g_SpriteDefShaderLibrary, cameraBuffer, cmd);
+				matsys_shaderlibrary_bind_subshader(g_SpriteDefShaderLibrary, g_SubShader_GeometryVertexShader, cmd);
+				matsys_shaderlibrary_bind_subshader(g_SpriteDefShaderLibrary, g_SubShader_GeometryPixelShader, cmd);
 
-				graphics_renderpass_begin(g_RenderPass_Geometry, att, nullptr, 0.f, 0u, cmd);
-				
-				graphics_draw_indexed((ui32)mesh->indices.size(), 1u, 0u, 0u, 0u, cmd);
 
-				graphics_renderpass_end(cmd);
-				
+				// TODO: Instanced Rendering
+				for (const MeshInstance& instance : *group.pInstances) {
+
+					if (instance.pMesh == nullptr)
+						continue;
+
+					// Bind Mesh
+					if (instance.pMesh != mesh) {
+						mesh = instance.pMesh;
+
+						graphics_vertexbuffer_bind(mesh->vertexBuffer, 0u, 0u, cmd);
+						graphics_indexbuffer_bind(mesh->indexBuffer, 0u, cmd);
+					}
+
+					// Bind Material
+					if (instance.material != material) {
+						graphics_shader_unbind_commandlist(cmd);
+
+						if (instance.material) {
+
+							ShaderLibrary* lib = matsys_material_get_shaderlibrary(instance.material);
+							matsys_shaderlibrary_bind_subshader(lib, g_SubShader_GeometryVertexShader, cmd);
+							matsys_shaderlibrary_bind_subshader(lib, g_SubShader_GeometryPixelShader, cmd);
+
+							matsys_shaderlibrary_bind_camerabuffer(lib, cameraBuffer, cmd);
+
+							matsys_material_bind(instance.material, g_SubShader_GeometryVertexShader, cmd);
+							matsys_material_bind(instance.material, g_SubShader_GeometryPixelShader, cmd);
+						}
+						else {
+
+							matsys_shaderlibrary_bind_camerabuffer(g_SpriteDefShaderLibrary, cameraBuffer, cmd);
+							matsys_shaderlibrary_bind_subshader(g_SpriteDefShaderLibrary, g_SubShader_GeometryVertexShader, cmd);
+							matsys_shaderlibrary_bind_subshader(g_SpriteDefShaderLibrary, g_SubShader_GeometryPixelShader, cmd);
+						}
+					}
+
+					// Instance Data
+					meshData.tm = XMMatrixTranspose(instance.tm);
+					graphics_buffer_update(g_InstanceBuffer, &meshData, sizeof(MeshData), 0u, cmd);
+
+					GPUImage* att[] = {
+						gBuffer.diffuse,
+						gBuffer.normal,
+						gBuffer.depthStencil
+					};
+
+					graphics_renderpass_begin(g_RenderPass_Geometry, att, nullptr, 0.f, 0u, cmd);
+
+					graphics_draw_indexed((u32)mesh->indices.size(), 1u, 0u, 0u, 0u, cmd);
+
+					graphics_renderpass_end(cmd);
+
+				}
 			}
 
 			graphics_event_end(cmd);
@@ -537,7 +545,7 @@ SurfaceOutput meshSurface(UserSurfaceInput input)
 
 		// LIGHTING PASS
 		{
-			graphics_event_begin("Deferred Lighting Pass", cmd);
+			graphics_event_begin("Mesh_DeferredLightingPass", cmd);
 
 			// Change gBuffer layout to Shader Resources
 			GPUBarrier barriers[3u];
@@ -578,18 +586,19 @@ SurfaceOutput meshSurface(UserSurfaceInput input)
 			data.resolutionWidth = res.x;
 			data.resolutionHeight = res.y;
 
-			data.lightCount = std::min((ui32)lights.size(), LIGHT_COUNT);
-			for (ui32 i = 0u; i < data.lightCount; ++i) {
-				LightData& ld = data.lights[i];
+			data.lightCount = std::min((u32)lights.size(), LIGHT_COUNT);
+			for (u32 i = 0u; i < data.lightCount; ++i) {
+				MeshLightData& ld = data.lights[i];
 				const LightInstance& li = lights[i];
 
 				ld.type = li.type;
+				ld.intensity = li.intensity;
+				
 				switch (li.type)
 				{
 				case LightType_Point:
 					ld.positionOrDirection = li.point.position;
-					ld.intensity = li.point.intensity;
-					ld.radius = li.point.radius;
+					ld.radius = li.point.range;
 					ld.smoothness = li.point.smoothness;
 					break;
 				}

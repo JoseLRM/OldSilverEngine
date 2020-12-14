@@ -85,11 +85,11 @@ namespace sv {
 
 	// ComponentPool
 
-	void ecs_allocator_component_pool_alloc(ComponentPool& pool, ui32 compSize)
+	void ecs_allocator_component_pool_alloc(ComponentPool& pool, u32 compSize)
 	{
 		ecs_allocator_component_pool_free(pool);
 		pool.compSize = compSize;
-		pool.data = new ui8[size_t(compSize) * ECS_COMPONENT_POOL_SIZE];
+		pool.data = new u8[size_t(compSize) * ECS_COMPONENT_POOL_SIZE];
 	}
 
 	void ecs_allocator_component_pool_free(ComponentPool& pool)
@@ -104,7 +104,7 @@ namespace sv {
 
 	void* ecs_allocator_component_pool_add(ComponentPool& pool)
 	{
-		ui8* ptr;
+		u8* ptr;
 
 		if (pool.freeList.empty()) {
 			ptr = pool.data + pool.size;
@@ -124,7 +124,7 @@ namespace sv {
 			pool.size -= pool.compSize;
 		}
 		else {
-			pool.freeList.push_back(reinterpret_cast<ui8*>(ptr));
+			pool.freeList.push_back(reinterpret_cast<u8*>(ptr));
 		}
 	}
 
@@ -138,9 +138,9 @@ namespace sv {
 		return ptr >= pool.data && ptr < (pool.data + pool.size);
 	}
 
-	ui32 ecs_allocator_component_pool_count(const ComponentPool& pool)
+	u32 ecs_allocator_component_pool_count(const ComponentPool& pool)
 	{
-		return ui32(pool.size / size_t(pool.compSize) - pool.freeList.size());
+		return u32(pool.size / size_t(pool.compSize) - pool.freeList.size());
 	}
 
 	// ComponentAllocator
@@ -171,8 +171,8 @@ namespace sv {
 	{
 		for (auto it = a.pools.begin(); it != a.pools.end(); ++it) {
 
-			ui8* ptr = it->data;
-			ui8* endPtr = it->data + it->size;
+			u8* ptr = it->data;
+			u8* endPtr = it->data + it->size;
 
 			while (ptr != endPtr) {
 
@@ -225,19 +225,19 @@ namespace sv {
 		}
 	}
 
-	ui32 ecs_allocator_component_count(ECS* ecs, const ComponentAllocator& a)
+	u32 ecs_allocator_component_count(ECS* ecs, const ComponentAllocator& a)
 	{
-		ui32 compSize = ecs_component_size(a.compID);
-		ui32 res = 0u;
+		u32 compSize = ecs_component_size(a.compID);
+		u32 res = 0u;
 		for (const ComponentPool& pool : a.pools) {
 			res += ecs_allocator_component_pool_count(pool);
 		}
 		return res;
 	}
 
-	ui32 ecs_allocator_component_empty(ECS* ecs, const ComponentAllocator& a)
+	u32 ecs_allocator_component_empty(ECS* ecs, const ComponentAllocator& a)
 	{
-		ui32 compSize = ecs_component_size(a.compID);
+		u32 compSize = ecs_component_size(a.compID);
 		for (const ComponentPool& pool : a.pools) {
 			if (ecs_allocator_component_pool_count(pool) > 0u) return false;
 		}

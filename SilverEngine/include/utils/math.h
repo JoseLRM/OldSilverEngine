@@ -532,9 +532,9 @@ namespace sv {
 	typedef Vector3D<float> vec3f;
 	typedef Vector4D<float> vec4f;
 
-	typedef Vector2D<ui32> vec2u;
-	typedef Vector3D<ui32> vec3u;
-	typedef Vector4D<ui32> vec4u;
+	typedef Vector2D<u32> vec2u;
+	typedef Vector3D<u32> vec3u;
+	typedef Vector4D<u32> vec4u;
 
 	typedef Vector2D<i32> vec2i;
 	typedef Vector3D<i32> vec3i;
@@ -543,15 +543,15 @@ namespace sv {
 	// Color
 
 	struct Color {
-		ui8 r, g, b, a;
+		u8 r, g, b, a;
 
-		constexpr static Color Red(ui8 a = 255u)			{ return { 255u	, 0u	, 0u	, a }; }
-		constexpr static Color Green(ui8 a = 255u)			{ return { 0u	, 255u	, 0u	, a }; }
-		constexpr static Color Blue(ui8 a = 255u)			{ return { 0u	, 0u	, 255u	, a }; }
-		constexpr static Color Orange(ui8 a = 255u)			{ return { 255u	, 153u	, 51u	, a }; }
-		constexpr static Color Black(ui8 a = 255u)			{ return { 0u	, 0u	, 0u	, a }; }
-		constexpr static Color Gray(ui8 v, ui8 a = 255u)	{ return { v	, v		, v		, a }; }
-		constexpr static Color White(ui8 a = 255u)			{ return { 255u	, 255u	, 255u	, a }; }
+		constexpr static Color Red(u8 a = 255u)			{ return { 255u	, 0u	, 0u	, a }; }
+		constexpr static Color Green(u8 a = 255u)			{ return { 0u	, 255u	, 0u	, a }; }
+		constexpr static Color Blue(u8 a = 255u)			{ return { 0u	, 0u	, 255u	, a }; }
+		constexpr static Color Orange(u8 a = 255u)			{ return { 255u	, 153u	, 51u	, a }; }
+		constexpr static Color Black(u8 a = 255u)			{ return { 0u	, 0u	, 0u	, a }; }
+		constexpr static Color Gray(u8 v, u8 a = 255u)	{ return { v	, v		, v		, a }; }
+		constexpr static Color White(u8 a = 255u)			{ return { 255u	, 255u	, 255u	, a }; }
 
 	};
 
@@ -581,13 +581,13 @@ namespace sv {
 
 	// Random
 
-	ui32 math_random(ui32 seed);
-	ui32 math_random(ui32 seed, ui32 max);
-	ui32 math_random(ui32 seed, ui32 min, ui32 max);
+	u32 math_random(u32 seed);
+	u32 math_random(u32 seed, u32 max);
+	u32 math_random(u32 seed, u32 min, u32 max);
 
-	float math_randomf(ui32 seed);
-	float math_randomf(ui32 seed, float max);
-	float math_randomf(ui32 seed, float min, float max);
+	float math_randomf(u32 seed);
+	float math_randomf(u32 seed, float max);
+	float math_randomf(u32 seed, float min, float max);
 
 	// Matrix
 

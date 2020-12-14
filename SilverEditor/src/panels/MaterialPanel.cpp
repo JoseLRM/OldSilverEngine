@@ -98,7 +98,7 @@ namespace sv {
 					break;
 				case ShaderAttributeType_UInt32:
 				{
-					ui32& ui = *reinterpret_cast<ui32*>(&data);
+					u32& ui = *reinterpret_cast<u32*>(&data);
 					int aux = ui;
 					add = ImGui::DragInt("##value", &aux, 1);
 					if (aux < 0) aux = 0;

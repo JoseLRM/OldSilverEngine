@@ -145,13 +145,13 @@ namespace sv {
 
 		if (animationAsset.hasReference()) {
 			// Adjust index
-			spr.index = std::min(spr.index, ui32(animationAsset->sprites.size() - 1u));
+			spr.index = std::min(spr.index, u32(animationAsset->sprites.size() - 1u));
 		}
 		// Make idle
 		else spr.running = false;
 	}
 
-	void AnimatedSprite::setIndex(ui32 index)
+	void AnimatedSprite::setIndex(u32 index)
 	{
 		create();
 		ASSERT_PTR();
@@ -160,11 +160,11 @@ namespace sv {
 
 		if (spr.animation.hasReference()) {
 			// Adjust index
-			spr.index = std::min(spr.index, ui32(spr.animation->sprites.size() - 1u));
+			spr.index = std::min(spr.index, u32(spr.animation->sprites.size() - 1u));
 		}
 	}
 
-	void AnimatedSprite::setRepeatCount(ui32 repeatCount)
+	void AnimatedSprite::setRepeatCount(u32 repeatCount)
 	{
 		create();
 		ASSERT_PTR();
@@ -174,7 +174,7 @@ namespace sv {
 		if (spr.repeatCount >= spr.repeatIndex) spr.running = false;
 	}
 
-	void AnimatedSprite::setRepeatIndex(ui32 repeatIndex)
+	void AnimatedSprite::setRepeatIndex(u32 repeatIndex)
 	{
 		create();
 		ASSERT_PTR();
@@ -229,7 +229,7 @@ namespace sv {
 		return spr.animation;
 	}
 
-	ui32 AnimatedSprite::getIndex()
+	u32 AnimatedSprite::getIndex()
 	{
 		create();
 		ASSERT_PTR();
@@ -237,7 +237,7 @@ namespace sv {
 		return spr.index;
 	}
 
-	ui32 AnimatedSprite::getRepeatCount()
+	u32 AnimatedSprite::getRepeatCount()
 	{
 		create();
 		ASSERT_PTR();
@@ -245,7 +245,7 @@ namespace sv {
 		return spr.repeatCount;
 	}
 
-	ui32 AnimatedSprite::getRepeatIndex()
+	u32 AnimatedSprite::getRepeatIndex()
 	{
 		create();
 		ASSERT_PTR();
@@ -366,7 +366,7 @@ namespace sv {
 		svCheck(file.open_file(filePath));
 
 		{
-			ui32 count;
+			u32 count;
 			file >> count;
 			anim.sprites.resize(count);
 		}
@@ -401,7 +401,7 @@ namespace sv {
 	{
 		SpriteAnimation& anim = *reinterpret_cast<SpriteAnimation*>(pObject);
 
-		file << ui32(anim.sprites.size());
+		file << u32(anim.sprites.size());
 
 		for (Sprite& spr : anim.sprites) {
 			spr.texture.save(file);
@@ -415,7 +415,7 @@ namespace sv {
 	{
 		ArchiveO file;
 
-		file << ui32(animation.sprites.size());
+		file << u32(animation.sprites.size());
 		for (const Sprite& spr : animation.sprites) {
 			file << spr.texture.getHashCode() << spr.texCoord;
 		}

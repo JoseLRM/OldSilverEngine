@@ -8,7 +8,7 @@ namespace sv {
 
 		size_t m_Size;
 		size_t m_Capacity;
-		ui8* m_Data;
+		u8* m_Data;
 
 	public:
 		ArchiveO();
@@ -79,7 +79,7 @@ namespace sv {
 	};
 
 	class ArchiveI {
-		ui8* m_Data;
+		u8* m_Data;
 		size_t m_Size;
 		size_t m_Pos;
 
@@ -135,9 +135,9 @@ namespace sv {
 
 	};
 
-	Result load_image(const char* filePath, void** pdata, ui32* width, ui32* height);
+	Result load_image(const char* filePath, void** pdata, u32* width, u32* height);
 
-	Result bin_read(size_t hash, std::vector<ui8>& data);
+	Result bin_read(size_t hash, std::vector<u8>& data);
 	Result bin_read(size_t hash, ArchiveI& archive);
 
 	Result bin_write(size_t hash, const void* data, size_t size);

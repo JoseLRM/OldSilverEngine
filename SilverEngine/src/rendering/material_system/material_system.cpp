@@ -42,8 +42,12 @@ namespace sv {
 
 // Types
 
-typedef unsigned int    ui32;
+typedef unsigned int    u32;
 typedef int             i32;
+
+// Macros
+
+#define foreach(_it, _end) for (u32 _it = 0u; _it < _end; ++_it)
 
 struct Camera {
     matrix vm;
@@ -80,7 +84,7 @@ struct Camera {
 
 	Result matsys_close()
 	{
-		ui32 count;
+		u32 count;
 
 		// Warning and destroy unfreed objects
 		{

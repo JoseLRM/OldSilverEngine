@@ -18,7 +18,7 @@ namespace sv {
 			m_Visible = true;
 			m_Focused = ImGui::IsWindowFocused();
 			ImVec2 size = ImGui::GetWindowSize();
-			m_Size.set(ui32(size.x), ui32(size.y));
+			m_Size.set(u32(size.x), u32(size.y));
 
 			if (!onDisplay()) m_Enabled = false;
 

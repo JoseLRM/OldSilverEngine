@@ -4,23 +4,25 @@
 
 namespace sv {
 
-	static SceneRendererTemp g_TempData[GraphicsLimit_CommandList];
+	static SceneRendererContext g_Context;
 
-	RenderLayer2D SceneRenderer::renderLayers2D[SceneRenderer::RENDER_LAYER_COUNT];
-	RenderLayer3D SceneRenderer::renderLayers3D[SceneRenderer::RENDER_LAYER_COUNT];
+	RenderLayer2D SceneRenderer::renderLayers2D[RENDERLAYER_COUNT];
+	RenderLayer3D SceneRenderer::renderLayers3D[RENDERLAYER_COUNT];
 
-	static ui32 g_RenderLayerOrder2D[SceneRenderer::RENDER_LAYER_COUNT];
+	static u32 g_RenderLayerOrder2D[RENDERLAYER_COUNT];
 
 	Result SceneRenderer_internal::initialize()
 	{
 		// Initialize Render Layers
 		{
-			for (ui32 i = 0u; i < SceneRenderer::RENDER_LAYER_COUNT; ++i) {
+			for (u32 i = 0u; i < RENDERLAYER_COUNT; ++i) {
 
 				RenderLayer2D& rl = SceneRenderer::renderLayers2D[i];
 
 				rl.frustumTest = true;
 				rl.sortValue = i;
+				rl.lightMult = 1.f;
+				rl.ambientMult = 1.f;
 
 				switch (i)
 				{
@@ -35,7 +37,7 @@ namespace sv {
 				}
 			}
 
-			for (ui32 i = 0u; i < SceneRenderer::RENDER_LAYER_COUNT; ++i) {
+			for (u32 i = 0u; i < RENDERLAYER_COUNT; ++i) {
 
 				RenderLayer3D& rl = SceneRenderer::renderLayers3D[i];
 
@@ -55,7 +57,7 @@ namespace sv {
 
 		// Set renderLayerSort indices
 		{
-			for (ui32 i = 0u; i < SceneRenderer::RENDER_LAYER_COUNT; ++i) {
+			for (u32 i = 0u; i < RENDERLAYER_COUNT; ++i) {
 				g_RenderLayerOrder2D[i] = i;
 			}
 		}
@@ -65,25 +67,23 @@ namespace sv {
 
 	Result SceneRenderer_internal::close()
 	{
-		for (ui32 i = 0u; i < GraphicsLimit_CommandList; ++i) {
-			SceneRendererTemp& temp = g_TempData[i];
+		// Destroy Context
+		SceneRendererContext& ctx = g_Context;
 
-			svCheck(temp.cameraBuffer.clear());
-			temp.spritesInstances.clear();
+		svCheck(ctx.cameraBuffer.clear());
+		ctx.spritesInstances.clear();
 
-			for (ui32 i = 0u; i < SceneRenderer::RENDER_LAYER_COUNT; ++i)
-				temp.spritesIntermediates[i].clear();
-		}
+		svCheck(ctx.gBuffer.destroy());
 
 		// Free heap memory from renderlayers
 		{
-			for (ui32 i = 0u; i < SceneRenderer::RENDER_LAYER_COUNT; ++i) {
+			for (u32 i = 0u; i < RENDERLAYER_COUNT; ++i) {
 
 				RenderLayer2D& rl = SceneRenderer::renderLayers2D[i];
 				rl.name.clear();
 			}
 
-			for (ui32 i = 0u; i < SceneRenderer::RENDER_LAYER_COUNT; ++i) {
+			for (u32 i = 0u; i < RENDERLAYER_COUNT; ++i) {
 
 				RenderLayer3D& rl = SceneRenderer::renderLayers3D[i];
 				rl.name.clear();
@@ -93,28 +93,7 @@ namespace sv {
 		return Result_Success;
 	}
 
-	void SceneRenderer::draw(ECS* ecs, Entity mainCamera, bool present)
-	{
-		// Draw Cameras
-		EntityView<CameraComponent> cameras(ecs);
-
-		for (CameraComponent& camera : cameras) {
-
-			Transform trans = ecs_entity_transform_get(ecs, camera.entity);
-
-			drawCamera(ecs, &camera.camera, trans.getWorldPosition(), trans.getWorldRotation());
-
-			if (present && camera.entity == mainCamera) {
-				GPUImage* image = camera.camera.getOffscreenRT();
-				if (image == nullptr) continue;
-				GPUImageRegion region;
-				region.offset = { 0u, 0u, 0u };
-				region.size = { graphics_image_get_width(image), graphics_image_get_height(image), 1u };
-
-				graphics_present(image, region, GPUImageLayout_RenderTarget, graphics_commandlist_get());
-			}
-		}
-	}
+	// RENDERING UTILS
 
 	inline bool frustumTest(const FrustumOthographic& frustum, Transform trans)
 	{
@@ -125,24 +104,83 @@ namespace sv {
 		return frustum.intersects_circle(circle);
 	}
 
-	void SceneRenderer::drawCamera(ECS* ecs, Camera* pCamera, const vec3f& position, const vec4f& directionQuat)
-	{
-		//TODO: Move this to other place 
-		// Sort render layers.
-		{
-			std::sort(g_RenderLayerOrder2D, g_RenderLayerOrder2D + RENDER_LAYER_COUNT, [](ui32 i0, ui32 i1)
-			{
-				const RenderLayer2D& rl0 = renderLayers2D[i0];
-				const RenderLayer2D& rl1 = renderLayers2D[i1];
+	// SCENE RENDERING
 
-				return rl0.sortValue < rl1.sortValue;
-			});
+	void drawCamera(Camera* pCamera, ECS* ecs, const vec3f& camPosition, const vec4f& camRotation);
+	void prepareRenderLayers();
+	void prepareLights(ECS* ecs);
+	void present(GPUImage* image);
+
+	// 2D
+
+	void drawLayers(Camera* pCamera, const vec3f& camPosition, ECS* ecs, CommandList cmd);
+	void drawLayer(Camera* pCamera, const vec3f& camPosition, ECS* ecs, u32 renderLayerIndex, CommandList cmd);
+
+	// 3D
+
+	void drawSprites(Camera* pCamera, const vec3f& camPosition, ECS* ecs, CommandList cmd);
+	void drawMeshes(Camera* pCamera, const vec3f& camPosition, ECS* ecs, CommandList cmd);
+
+	void SceneRenderer::draw(ECS* ecs, Entity mainCamera)
+	{
+		SceneRendererContext& ctx = g_Context;
+
+		prepareRenderLayers();
+		prepareLights(ecs);
+
+		// Draw Cameras
+		EntityView<CameraComponent> cameras(ecs);
+
+		for (CameraComponent& camera : cameras) {
+
+			Transform trans = ecs_entity_transform_get(ecs, camera.entity);
+
+			drawCamera(&camera.camera, ecs, trans.getWorldPosition(), trans.getWorldRotation());
+
+			if (camera.entity == mainCamera) {
+				present(camera.camera.getOffscreenRT());
+			}
 		}
+	}
+
+	void SceneRenderer::drawDebug(ECS* ecs, Entity mainCamera, bool drawECSCameras, bool present_, u32 cameraCount, Camera** pCameras, vec3f* camerasPosition, vec4f* camerasRotation)
+	{
+		SceneRendererContext& ctx = g_Context;
+
+		prepareRenderLayers();
+		prepareLights(ecs);
+
+		// Draw Cameras
+		if (drawECSCameras) {
+			EntityView<CameraComponent> cameras(ecs);
+
+			for (CameraComponent& camera : cameras) {
+
+				Transform trans = ecs_entity_transform_get(ecs, camera.entity);
+
+				drawCamera(&camera.camera, ecs, trans.getWorldPosition(), trans.getWorldRotation());
+
+				if (present_ && camera.entity == mainCamera) {
+					present(camera.camera.getOffscreenRT());
+				}
+			}
+		}
+
+		for (u32 i = 0u; i < cameraCount; ++i) {
+
+			Camera* pCamera = pCameras[i];
+			drawCamera(pCamera, ecs, camerasPosition[i], camerasRotation[i]);
+		}
+	}
+
+	void drawCamera(Camera* pCamera, ECS* ecs, const vec3f& camPosition, const vec4f& camRotation)
+	{
+		SceneRendererContext& ctx = g_Context;
 
 		if (!pCamera->isActive()) return;
 
 		// Compute View Matrix
-		XMMATRIX viewMatrix = math_matrix_view(position, directionQuat);
+		XMMATRIX viewMatrix = math_matrix_view(camPosition, camRotation);
 
 		const XMMATRIX& projectionMatrix = pCamera->getProjectionMatrix();
 
@@ -151,8 +189,6 @@ namespace sv {
 
 		graphics_event_begin("Scene Rendering", cmd);
 
-		SceneRendererTemp& ctx = g_TempData[cmd];
-
 		graphics_viewport_set(pCamera->getViewport(), 0u, cmd);
 		graphics_scissor_set(pCamera->getScissor(), 0u, cmd);
 
@@ -160,58 +196,129 @@ namespace sv {
 		{
 			ctx.cameraBuffer.viewMatrix = viewMatrix;
 			ctx.cameraBuffer.projectionMatrix = projectionMatrix;
-			ctx.cameraBuffer.position = position;
-			ctx.cameraBuffer.direction = directionQuat;
+			ctx.cameraBuffer.position = camPosition;
+			ctx.cameraBuffer.direction = camRotation;
 
 			ctx.cameraBuffer.updateGPU(cmd);
 		}
 
-		// Offscreen
+		// Offscreen and gBuffer
 		GPUImage* rt = pCamera->getOffscreenRT();
-		GPUImage* ds = pCamera->getOffscreenDS();
-
-		// this is not good for performance - remember to do image barrier here
-		graphics_image_clear(rt, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
-		graphics_image_clear(ds, GPUImageLayout_DepthStencil, GPUImageLayout_DepthStencil, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
-
-		FrustumOthographic frustum;
-		frustum.init_center(position.getVec2(), { pCamera->getWidth(), pCamera->getHeight() });
-
-		// Sprite rendering
 		{
+			graphics_image_clear(rt, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
+
+			if (ctx.gBuffer.diffuse == nullptr)
+				ctx.gBuffer.create(1920u, 1080u);
+			else {
+				graphics_image_clear(ctx.gBuffer.diffuse, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
+				graphics_image_clear(ctx.gBuffer.normal, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
+				graphics_image_clear(ctx.gBuffer.depthStencil, GPUImageLayout_DepthStencil, GPUImageLayout_DepthStencil, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
+			}
+		}
+
+		// Draw Render Components
+		switch (pCamera->getCameraType())
+		{
+		case CameraType_2D:
+			drawLayers(pCamera, camPosition, ecs, cmd);
+			break;
+		}
+
+		graphics_event_end(cmd);
+	}
+
+	void prepareRenderLayers()
+	{
+		SceneRendererContext& ctx = g_Context;
+
+		// Sort render layers.
+		{
+			std::sort(g_RenderLayerOrder2D, g_RenderLayerOrder2D + RENDERLAYER_COUNT, [](u32 i0, u32 i1)
+			{
+				const RenderLayer2D& rl0 = SceneRenderer::renderLayers2D[i0];
+				const RenderLayer2D& rl1 = SceneRenderer::renderLayers2D[i1];
+
+				return rl0.sortValue < rl1.sortValue;
+			});
+		}
+	}
+
+	void prepareLights(ECS* ecs)
+	{
+		SceneRendererContext& ctx = g_Context;
+
+		//TODO: In 2D do frustum culling to discard lights out of the camera
+
+		// Light Instances
+		FrameList<LightInstance>& lights = ctx.lightInstances;
+		lights.reset();
+		{
+			EntityView<LightComponent> comp(ecs);
+			for (LightComponent& light : comp) {
+
+				Transform trans = ecs_entity_transform_get(ecs, light.entity);
+
+				lights.emplace_back(trans.getWorldPosition(), light.color, light.point.range, light.intensity, light.point.smoothness);
+			}
+		}
+
+		// COMPUTE AMBIENT LIGHTING
+		{
+			Color3f& ambient = ctx.ambientLight;
+			ambient = Color3f::Black();
+
+			EntityView<SkyComponent> comp(ecs);
+			for (SkyComponent& sky : comp) {
+				ambient.r += sky.ambient.r;
+				ambient.g += sky.ambient.g;
+				ambient.b += sky.ambient.b;
+			}
+
+			ambient.r = std::max(std::min(ambient.r, 1.f), 0.f);
+			ambient.g = std::max(std::min(ambient.g, 1.f), 0.f);
+			ambient.b = std::max(std::min(ambient.b, 1.f), 0.f);
+		}
+	}
+
+	void drawLayers(Camera* pCamera, const vec3f& camPosition, ECS* ecs, CommandList cmd)
+	{
+		SceneRendererContext& ctx = g_Context;
+
+		for (u32 i = 0u; i < RENDERLAYER_COUNT; ++i) {
+
+			u32 index = g_RenderLayerOrder2D[i];
+
+			drawLayer(pCamera, camPosition, ecs, index, cmd);
+		}
+	}
+
+	void drawLayer(Camera* pCamera, const vec3f& camPosition, ECS* ecs, u32 renderLayerIndex, CommandList cmd)
+	{
+		SceneRendererContext& ctx = g_Context;
+		const RenderLayer2D& rl = SceneRenderer::renderLayers2D[renderLayerIndex];
+
+		// Reset FrameLists
+		ctx.spritesInstances.reset();
+
+		bool noAmbient = rl.ambientMult <= 0.f || (ctx.ambientLight.r == 0.f && ctx.ambientLight.g == 0.f && ctx.ambientLight.b == 0.f);
+		bool noLight = rl.lightMult <= 0.f || ctx.lightInstances.empty();
+
+		if (noAmbient && noLight) return;
+
+		// Sprite Rendering
+		{
+			FrustumOthographic frustum;
+			frustum.init_center(camPosition.getVec2(), { pCamera->getWidth(), pCamera->getHeight() });
+
 			EntityView<SpriteComponent> sprites(ecs);
-			EntityView<AnimatedSpriteComponent> animatedSprites(ecs);
+			FrameList<SpriteInstance>& instances = ctx.spritesInstances;
 
-			// Reset intermediate data
-			for (ui32 i = 0u; i < RENDER_LAYER_COUNT; ++i) {
-				ctx.spritesIntermediates[i].reset();
-			}
-
-			// Add sprites to intermediate list
+			// Add sprites to instance list
 			for (SpriteComponent& sprite : sprites) {
+
+				if (sprite.renderLayer != renderLayerIndex) continue;
+
 				Transform trans = ecs_entity_transform_get(ecs, sprite.entity);
-
-				// Compute layer value
-				FrameList<SpriteIntermediate>& inter = ctx.spritesIntermediates[sprite.renderLayer];
-				const RenderLayer2D& rl = renderLayers2D[sprite.renderLayer];
-
-				bool draw = false;
-
-				// Frustrum culling
-				if (rl.frustumTest) {
-					draw = frustumTest(frustum, trans);  
-				}
-				else draw = true;
-
-				if (draw) inter.emplace_back(trans.getWorldMatrix(), sprite.sprite.texCoord, sprite.sprite.texture.get(), sprite.color, sprite.material.get(), trans.getWorldPosition().z);
-			}
-
-			for (AnimatedSpriteComponent& sprite : animatedSprites) {
-				Transform trans = ecs_entity_transform_get(ecs, sprite.entity);
-
-				// Compute layer value
-				FrameList<SpriteIntermediate>& inter = ctx.spritesIntermediates[sprite.renderLayer];
-				const RenderLayer2D& rl = renderLayers2D[sprite.renderLayer];
 
 				bool draw = false;
 
@@ -221,97 +328,95 @@ namespace sv {
 				}
 				else draw = true;
 
-				if (draw) {
-					Sprite spr = sprite.sprite.getSprite();
-					inter.emplace_back(trans.getWorldMatrix(), spr.texCoord, spr.texture.get(), sprite.color, sprite.material.get(), trans.getWorldPosition().z);
-				}
+				if (draw) instances.emplace_back(trans.getWorldMatrix(), sprite.sprite.texCoord, sprite.material.get(), sprite.sprite.texture.get(), sprite.color);
 			}
 
-			// Sort sprites per material
-			for (ui32 i = 0u; i < RENDER_LAYER_COUNT; ++i) {
+			EntityView<AnimatedSpriteComponent> animatedSprites(ecs);
 
-				FrameList<SpriteIntermediate>& inter = ctx.spritesIntermediates[i];
+			// Add animated sprites to instance list
+			for (AnimatedSpriteComponent& anim : animatedSprites) {
 
-				std::sort(inter.data(), inter.data() + inter.size(), [](const SpriteIntermediate& s0, const SpriteIntermediate& s1) {
-					if (s0.depth == s1.depth) {
-						if (s0.material != s1.material)
-							return s0.material < s1.material;
-						else return s0.instance.pTexture < s1.instance.pTexture;
-					}
-					else return s0.depth < s1.depth;
-				});
+				if (anim.renderLayer != renderLayerIndex) continue;
+
+				Transform trans = ecs_entity_transform_get(ecs, anim.entity);
+
+				bool draw = false;
+
+				// Frustrum culling
+				if (rl.frustumTest) {
+					draw = frustumTest(frustum, trans);
+				}
+				else draw = true;
+
+				Sprite& spr = anim.sprite.getSprite();
+				if (draw) instances.emplace_back(trans.getWorldMatrix(), spr.texCoord, anim.material.get(), spr.texture.get(), anim.color);
 			}
 
-			// Draw sprites
-			for (ui32 i = 0u; i < RENDER_LAYER_COUNT; ++i) {
+			// If there are something
+			if (instances.size()) {
 
-				ui32 renderLayerIndex = g_RenderLayerOrder2D[i];
-				const RenderLayer2D& rl = renderLayers2D[renderLayerIndex];
-				FrameList<SpriteIntermediate>& inter = ctx.spritesIntermediates[renderLayerIndex];
+				// Draw sprites
+				SpriteRendererDrawDesc desc;
+				desc.renderTarget = pCamera->getOffscreenRT();
+				desc.pGBuffer = &ctx.gBuffer;
+				desc.pCameraBuffer = &ctx.cameraBuffer;
+				desc.pSprites = ctx.spritesInstances.data();
+				desc.spriteCount = u32(ctx.spritesInstances.size());
+				desc.pLights = ctx.lightInstances.data();
+				desc.lightCount = u32(ctx.lightInstances.size());
+				desc.lightMult = rl.lightMult;
+				desc.ambientLight = ctx.ambientLight;
+				desc.ambientLight.r *= rl.ambientMult;
+				desc.ambientLight.g *= rl.ambientMult;
+				desc.ambientLight.b *= rl.ambientMult;
 
-				FrameList<SpriteInstance>& instances = ctx.spritesInstances;
-				instances.reset();
+				SpriteRenderer::drawSprites(&desc, cmd);
+			}
+		}
+	}
 
-				SpriteRenderer::prepare(rt, ctx.cameraBuffer, cmd);
-				SpriteRenderer::disableDepthTest(cmd);
+	void drawSprites(Camera* pCamera, const vec3f& camPosition, ECS* ecs, CommandList cmd)
+	{
+		SceneRendererContext& ctx = g_Context;
 
-				auto drawCall = [&instances, cmd](Material* material) 
-				{
-					if (instances.empty()) return;
+		SV_LOG_ERROR("TODO-> 3D Sprite Rendering");
+	}
 
-					SpriteRenderer::draw(material, instances.data(), ui32(instances.size()), cmd);
-				};
+	void drawMeshes(Camera* pCamera, const vec3f& camPosition, ECS* ecs, CommandList cmd)
+	{
+		SceneRendererContext& ctx = g_Context;
 
-				Material* mat = nullptr;
+		FrameList<MeshInstance>& meshes = ctx.meshInstances;
+		FrameList<LightInstance>& lights = ctx.lightInstances;
+		FrameList<MeshInstanceGroup>& meshesGroup = ctx.meshGroups;
+		GBuffer& gBuffer = ctx.gBuffer;
+		meshes.reset();
+		meshesGroup.reset();
 
-				for (auto it = inter.cbegin(); it != inter.cend(); ++it) {
+		EntityView<MeshComponent> meshesComp(ecs);
+		for (MeshComponent& mesh : meshesComp) {
 
-					if (it->material != mat) {
-						drawCall(mat);
-						instances.reset();
-						mat = it->material;
-					}
+			Mesh* m = mesh.mesh.get();
+			if (m) {
 
-					instances.emplace_back(it->instance);
-				}
-				drawCall(mat);
+				Transform trans = ecs_entity_transform_get(ecs, mesh.entity);
+				meshes.emplace_back(trans.getWorldMatrix(), m, mesh.material.get(), 10.f);
 			}
 		}
 
-		// Draw Meshes
-		{
-			FrameList<MeshInstance>& meshes = ctx.meshInstances;
-			FrameList<LightInstance>& lights = ctx.lightInstances;
-			GBuffer& gBuffer = ctx.gBuffer;
-			meshes.reset();
-			lights.reset();
+		meshesGroup.emplace_back(&meshes, RasterizerCullMode_Back, false);
 
-			if (gBuffer.diffuse == nullptr) 
-				gBuffer.create(1920u, 1080u);
+		//MeshRenderer::drawMeshes(pCamera->getOffscreenRT(), gBuffer, ctx.cameraBuffer, meshesGroup, lights, true, true, cmd);
+	}
 
-			EntityView<MeshComponent> meshesComp(ecs);
-			for (MeshComponent& mesh : meshesComp) {
-				
-				Mesh* m = mesh.mesh.get();
-				if (m) {
+	void present(GPUImage* image)
+	{
+		if (image == nullptr) return;
+		GPUImageRegion region;
+		region.offset = { 0u, 0u, 0u };
+		region.size = { graphics_image_get_width(image), graphics_image_get_height(image), 1u };
 
-					Transform trans = ecs_entity_transform_get(ecs, mesh.entity);
-					meshes.emplace_back(trans.getWorldMatrix(), m, mesh.material.get(), 10.f);
-				}
-			}
-
-			EntityView<LightComponent> lightsComp(ecs);
-			for (LightComponent& light : lightsComp) {
-
-				Transform trans = ecs_entity_transform_get(ecs, light.entity);
-
-				lights.emplace_back(trans.getWorldPosition(), 1.f, 1.f, 1.f);
-			}
-
-			MeshRenderer::drawMeshes(rt, gBuffer, ctx.cameraBuffer, meshes, lights, true, cmd);
-		}
-
-		graphics_event_end(cmd);
+		graphics_present(image, region, GPUImageLayout_RenderTarget, graphics_commandlist_get());
 	}
 
 	void SceneRenderer::initECS(ECS* ecs)
@@ -320,6 +425,7 @@ namespace sv {
 		ecs_register<AnimatedSpriteComponent>(ecs, scene_component_serialize_AnimatedSpriteComponent, scene_component_deserialize_AnimatedSpriteComponent);
 		ecs_register<MeshComponent>(ecs, scene_component_serialize_MeshComponent, scene_component_deserialize_MeshComponent);
 		ecs_register<LightComponent>(ecs, scene_component_serialize_LightComponent, scene_component_deserialize_LightComponent);
+		ecs_register<SkyComponent>(ecs, scene_component_serialize_SkyComponent, scene_component_deserialize_SkyComponent);
 		ecs_register<CameraComponent>(ecs, scene_component_serialize_CameraComponent, scene_component_deserialize_CameraComponent);
 	}
 
@@ -330,9 +436,9 @@ namespace sv {
 		SpriteComponent* comp = reinterpret_cast<SpriteComponent*>(comp_);
 		archive << comp->color;
 		archive << comp->sprite.texCoord;
-		archive << comp->sprite.texture.getHashCode();
-		archive << comp->material.getHashCode();
 		archive << comp->renderLayer;
+		comp->sprite.texture.save(archive);
+		comp->material.save(archive);
 	}
 
 	void scene_component_serialize_AnimatedSpriteComponent(BaseComponent* comp_, ArchiveO& archive)
@@ -352,8 +458,23 @@ namespace sv {
 		comp->material.save(archive);
 	}
 
-	void scene_component_serialize_LightComponent(BaseComponent* comp, ArchiveO& archive)
+	void scene_component_serialize_LightComponent(BaseComponent* comp_, ArchiveO& archive)
 	{
+		LightComponent* comp = reinterpret_cast<LightComponent*>(comp_);
+
+		archive << comp->intensity << comp->color << comp->lightType;
+		switch (comp->lightType)
+		{
+		case LightType_Point:
+			archive << comp->point;
+			break;
+		}
+	}
+
+	void scene_component_serialize_SkyComponent(BaseComponent* comp_, ArchiveO& archive)
+	{
+		SkyComponent* comp = reinterpret_cast<SkyComponent*>(comp_);
+		archive << comp->ambient;
 	}
 
 	void scene_component_serialize_CameraComponent(BaseComponent* comp_, ArchiveO& archive)
@@ -369,23 +490,10 @@ namespace sv {
 		SpriteComponent* comp = reinterpret_cast<SpriteComponent*>(comp_);
 		archive >> comp->color;
 		archive >> comp->sprite.texCoord;
-		size_t hash;
-		archive >> hash;
-
-		if (hash != 0u) {
-			if (comp->sprite.texture.loadFromFile(hash) != Result_Success) {
-				SV_LOG_ERROR("Texture not found, hashcode: %u", hash);
-			}
-		}
-
-		archive >> hash;
-		if (hash != 0u) {
-			if (comp->material.loadFromFile(hash) != Result_Success) {
-				SV_LOG_ERROR("Material not found, hashcode: %u", hash);
-			}
-		}
-
 		archive >> comp->renderLayer;
+
+		comp->sprite.texture.load(archive);
+		comp->material.load(archive);
 	}
 
 	void scene_component_deserialize_AnimatedSpriteComponent(BaseComponent* comp_, ArchiveI& archive)
@@ -420,8 +528,23 @@ namespace sv {
 		comp->material.load(archive);
 	}
 
-	void scene_component_deserialize_LightComponent(BaseComponent* comp, ArchiveI& archive)
+	void scene_component_deserialize_LightComponent(BaseComponent* comp_, ArchiveI& archive)
 	{
+		LightComponent* comp = new(comp_) LightComponent();
+
+		archive >> comp->intensity >> comp->color >> comp->lightType;
+		switch (comp->lightType)
+		{
+		case LightType_Point:
+			archive >> comp->point;
+			break;
+		}
+	}
+
+	void scene_component_deserialize_SkyComponent(BaseComponent* comp_, ArchiveI& archive)
+	{
+		SkyComponent* comp = new(comp_) SkyComponent();
+		archive >> comp->ambient;
 	}
 
 	void scene_component_deserialize_CameraComponent(BaseComponent* comp_, ArchiveI& archive)

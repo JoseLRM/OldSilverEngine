@@ -32,12 +32,10 @@ namespace sv {
 	{
 		m_Active = other.m_Active;
 		m_OffscreenRT = other.m_OffscreenRT;
-		m_OffscreenDS = other.m_OffscreenDS;
 		m_Projection = other.m_Projection;
 
 		other.m_Active = false;
 		other.m_OffscreenRT = nullptr;
-		other.m_OffscreenDS = nullptr;
 	}
 
 	void Camera::clear()
@@ -45,9 +43,7 @@ namespace sv {
 		sv::Result res = graphics_destroy(m_OffscreenRT);
 		SV_ASSERT(result_okay(res));
 		m_OffscreenRT = nullptr;
-		res = graphics_destroy(m_OffscreenDS);
 		SV_ASSERT(result_okay(res));
-		m_OffscreenDS = nullptr;
 	}
 
 	Result Camera::serialize(ArchiveO& archive)
@@ -82,7 +78,7 @@ namespace sv {
 		return { 0u, 0u, res.x, res.y };
 	}
 
-	void Camera::adjust(ui32 width, ui32 height) noexcept
+	void Camera::adjust(u32 width, u32 height) noexcept
 	{
 		adjust(float(width) / float(height));
 	}
@@ -190,7 +186,7 @@ namespace sv {
 		return m_Projection.matrix;
 	}
 
-	Result Camera::setResolution(ui32 width, ui32 height)
+	Result Camera::setResolution(u32 width, u32 height)
 	{
 		if (width == 0u || height == 0u || width > 10000u || height > 10000u) return Result_InvalidUsage;
 		vec2u oldRes = getResolution();
@@ -202,10 +198,6 @@ namespace sv {
 			if (m_OffscreenRT) {
 				svCheck(graphics_destroy(m_OffscreenRT));
 				m_OffscreenRT = nullptr;
-			}
-			if (m_OffscreenDS) {
-				svCheck(graphics_destroy(m_OffscreenDS));
-				m_OffscreenDS = nullptr;
 			}
 
 			GPUImageDesc desc;
@@ -222,18 +214,12 @@ namespace sv {
 			desc.layers = 1u;
 
 			svCheck(graphics_image_create(&desc, &m_OffscreenRT));
-
-			desc.format = Format_D24_UNORM_S8_UINT;
-			desc.layout = GPUImageLayout_DepthStencil;
-			desc.type = GPUImageType_DepthStencil;
-
-			svCheck(graphics_image_create(&desc, &m_OffscreenDS));
 		}
 
 		return Result_Success;
 	}
 
-	ui32 Camera::getResolutionWidth() const noexcept
+	u32 Camera::getResolutionWidth() const noexcept
 	{
 		if (m_OffscreenRT) {
 			return graphics_image_get_width(m_OffscreenRT);
@@ -241,7 +227,7 @@ namespace sv {
 		return 0u;
 	}
 
-	ui32 Camera::getResolutionHeight() const noexcept
+	u32 Camera::getResolutionHeight() const noexcept
 	{
 		if (m_OffscreenRT) {
 			return graphics_image_get_height(m_OffscreenRT);

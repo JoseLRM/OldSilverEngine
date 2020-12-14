@@ -23,7 +23,7 @@ namespace sv {
 		hash_combine(hash, blendState.hash);
 		hash_combine(hash, depthStencilState.hash);
 		hash_combine(hash, rasterizerState.hash);
-		hash_combine(hash, ui64(state.topology));
+		hash_combine(hash, u64(state.topology));
 
 		return hash;
 	}
@@ -70,7 +70,7 @@ namespace sv {
 
 			VkPipelineLayoutCreateInfo layout_info{};
 			layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-			layout_info.setLayoutCount = ui32(layouts.size());
+			layout_info.setLayoutCount = u32(layouts.size());
 			layout_info.pSetLayouts = layouts.data();
 			layout_info.pushConstantRangeCount = 0u;
 
@@ -109,7 +109,7 @@ namespace sv {
 
 			// Shader Stages
 			VkPipelineShaderStageCreateInfo shaderStages[ShaderType_GraphicsCount] = {};
-			ui32 shaderStagesCount = 0u;
+			u32 shaderStagesCount = 0u;
 
 			Shader_vk* vertexShader = reinterpret_cast<Shader_vk*>(state.vertexShader);
 			Shader_vk* pixelShader = reinterpret_cast<Shader_vk*>(state.pixelShader);
@@ -151,21 +151,21 @@ namespace sv {
 			VkVertexInputAttributeDescription attributes[GraphicsLimit_InputElement];
 			{
 				const InputLayoutStateDesc& il = state.inputLayoutState->desc;
-				for (ui32 i = 0; i < il.slots.size(); ++i) {
+				for (u32 i = 0; i < il.slots.size(); ++i) {
 					bindings[i].binding = il.slots[i].slot;
 					bindings[i].inputRate = il.slots[i].instanced ? VK_VERTEX_INPUT_RATE_INSTANCE : VK_VERTEX_INPUT_RATE_VERTEX;
 					bindings[i].stride = il.slots[i].stride;
 				}
-				for (ui32 i = 0; i < il.elements.size(); ++i) {
+				for (u32 i = 0; i < il.elements.size(); ++i) {
 					attributes[i].binding = il.elements[i].inputSlot;
 					attributes[i].format = graphics_vulkan_parse_format(il.elements[i].format);
 					attributes[i].location = pipeline.semanticNames[il.elements[i].name] + il.elements[i].index;
 					attributes[i].offset = il.elements[i].offset;
 				}
-				vertexInput.vertexBindingDescriptionCount = ui32(il.slots.size());
+				vertexInput.vertexBindingDescriptionCount = u32(il.slots.size());
 				vertexInput.pVertexBindingDescriptions = bindings;
 				vertexInput.pVertexAttributeDescriptions = attributes;
-				vertexInput.vertexAttributeDescriptionCount = ui32(il.elements.size());
+				vertexInput.vertexAttributeDescriptionCount = u32(il.elements.size());
 			}
 
 			// Rasterizer State
@@ -193,7 +193,7 @@ namespace sv {
 			{
 				const BlendStateDesc& bDesc = state.blendState->desc;
 
-				for (ui32 i = 0; i < bDesc.attachments.size(); ++i)
+				for (u32 i = 0; i < bDesc.attachments.size(); ++i)
 				{
 					const BlendAttachmentDesc& b = bDesc.attachments[i];
 
@@ -211,7 +211,7 @@ namespace sv {
 				blendStateInfo.flags = 0u;
 				blendStateInfo.logicOpEnable = VK_FALSE;
 				blendStateInfo.logicOp;
-				blendStateInfo.attachmentCount = ui32(bDesc.attachments.size());
+				blendStateInfo.attachmentCount = u32(bDesc.attachments.size());
 				blendStateInfo.pAttachments = attachments;
 				blendStateInfo.blendConstants[0] = bDesc.blendConstants.x;
 				blendStateInfo.blendConstants[1] = bDesc.blendConstants.y;

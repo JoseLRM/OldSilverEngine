@@ -1,5 +1,6 @@
 #include "core_editor.h"
 
+#include "engine.h"
 #include "panel_manager.h"
 #include "simulation.h"
 #include "simulation/scene.h"
@@ -137,8 +138,8 @@ namespace sv {
 				CameraComponent* camera = ecs_component_get<CameraComponent>(scene, scene.getMainCamera());
 				if (camera) {
 					vec2u panelSize;
-					panelSize.x = ui32(g_ScreenBounds.z);
-					panelSize.y = ui32(g_ScreenBounds.w);
+					panelSize.x = u32(g_ScreenBounds.z);
+					panelSize.y = u32(g_ScreenBounds.w);
 
 					vec2u size = g_Gamemode ? window_size_get() : panelSize;
 					camera->camera.adjust(size.x, size.y);
@@ -185,11 +186,22 @@ namespace sv {
 
 	void simulation_render()
 	{
-		if (g_ShowDebug) {
-			simulation_editor_render();
-		}
+		if (g_Gamemode) g_Scene->draw();
 		else {
-			g_Scene->draw(g_Gamemode);
+
+			if (g_ShowDebug) {
+				
+				Camera* pCameras[] = {
+					&g_DebugCamera.camera
+				};
+
+				SceneRenderer::drawDebug(g_Scene->getECS(), g_Scene->getMainCamera(), false, false, 1u, pCameras, &g_DebugCamera.position, &g_DebugCamera.rotation);
+			}
+			else {
+				SceneRenderer::drawDebug(g_Scene->getECS(), g_Scene->getMainCamera(), true, false, 0u, nullptr, nullptr, nullptr);
+			}
+
+			if (g_ShowDebug) simulation_editor_render();
 		}
 	}
 

@@ -35,11 +35,11 @@ namespace sv {
 		ArchiveI file;
 		if (result_okay(bin_read(hash_string("Editor State"), file))) {
 
-			ui32 count;
+			u32 count;
 			file >> count;
 
 			std::string name;
-			for (ui32 i = 0; i < count; ++i) {
+			for (u32 i = 0; i < count; ++i) {
 
 				file >> name;
 
@@ -67,9 +67,9 @@ namespace sv {
 			if (panel_manager_get("Assets")) panels.emplace_back("Assets");
 			if (panel_manager_get("Renderer")) panels.emplace_back("Renderer");
 
-			file << ui32(panels.size());
+			file << u32(panels.size());
 
-			for (ui32 i = 0; i < panels.size(); ++i) {
+			for (u32 i = 0; i < panels.size(); ++i) {
 				file << panels[i];
 			}
 
@@ -655,7 +655,7 @@ namespace sv {
 		bool res = gui_component_item_color_picker(col);
 
 		if (res) {
-			color = { ui8(col.r * 255.f), ui8(col.g * 255.f) , ui8(col.b * 255.f) , ui8(col.a * 255.f) };
+			color = { u8(col.r * 255.f), u8(col.g * 255.f) , u8(col.b * 255.f) , u8(col.a * 255.f) };
 		}
 		return res;
 	}
@@ -850,13 +850,13 @@ namespace sv {
 
 	bool gui_component_item_string(std::string& str)
 	{
-		constexpr ui32 MAX_LENGTH = 32;
+		constexpr u32 MAX_LENGTH = 32;
 		char name[MAX_LENGTH];
 
 		// Set actual name into buffer
 		{
-			ui32 i;
-			ui32 size = ui32(str.size());
+			u32 i;
+			u32 size = u32(str.size());
 			if (size >= MAX_LENGTH) size = MAX_LENGTH - 1;
 			for (i = 0; i < size; ++i) {
 				name[i] = str[i];
@@ -962,13 +962,13 @@ namespace sv {
 		return result;
 	}
 
-	bool gui_component_item_renderLayer2D(ui32& index)
+	bool gui_component_item_renderLayer2D(u32& index)
 	{
 		bool result = false;
 
 		if (ImGui::BeginCombo("##RenderLayers", SceneRenderer::renderLayers2D[index].name.c_str())) {
 
-			for (ui32 i = 0u; i < SceneRenderer::RENDER_LAYER_COUNT; ++i) {
+			for (u32 i = 0u; i < RENDERLAYER_COUNT; ++i) {
 
 				if (i == index) continue;
 

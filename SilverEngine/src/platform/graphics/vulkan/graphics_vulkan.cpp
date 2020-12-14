@@ -75,12 +75,12 @@ namespace sv {
 		
 		// Choose FamilyQueueIndices
 		{
-			ui32 count = 0u;
+			u32 count = 0u;
 			vkGetPhysicalDeviceQueueFamilyProperties(device, &count, nullptr);
 			std::vector<VkQueueFamilyProperties> props(count);
 			vkGetPhysicalDeviceQueueFamilyProperties(device, &count, props.data());
 
-			for (ui32 i = 0; i < props.size(); ++i) {
+			for (u32 i = 0; i < props.size(); ++i) {
 				const VkQueueFamilyProperties& prop = props[i];
 
 				bool hasGraphics = prop.queueFlags & VK_QUEUE_GRAPHICS_BIT;
@@ -162,15 +162,15 @@ namespace sv {
 		{
 			// Check Extensions
 			{
-				ui32 count = 0u;
+				u32 count = 0u;
 				vkEnumerateInstanceExtensionProperties(nullptr, &count, nullptr);
 				std::vector<VkExtensionProperties> props(count);
 				vkEnumerateInstanceExtensionProperties(nullptr, &count, props.data());
 
-				for (ui32 i = 0; i < g_API->extensions.size(); ++i) {
+				for (u32 i = 0; i < g_API->extensions.size(); ++i) {
 					bool found = false;
 
-					for (ui32 j = 0; j < props.size(); ++j) {
+					for (u32 j = 0; j < props.size(); ++j) {
 						if (strcmp(props[j].extensionName, g_API->extensions[i]) == 0) {
 							found = true;
 							break;
@@ -186,15 +186,15 @@ namespace sv {
 
 			// Check Validation Layers
 			{
-				ui32 count = 0u;
+				u32 count = 0u;
 				vkEnumerateInstanceLayerProperties(&count, nullptr);
 				std::vector<VkLayerProperties> props(count);
 				vkEnumerateInstanceLayerProperties(&count, props.data());
 
-				for (ui32 i = 0; i < g_API->validationLayers.size(); ++i) {
+				for (u32 i = 0; i < g_API->validationLayers.size(); ++i) {
 					bool found = false;
 
-					for (ui32 j = 0; j < props.size(); ++j) {
+					for (u32 j = 0; j < props.size(); ++j) {
 						if (strcmp(props[j].layerName, g_API->validationLayers[i]) == 0) {
 							found = true;
 							break;
@@ -222,9 +222,9 @@ namespace sv {
 			create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 			create_info.pApplicationInfo = &app_info;
 
-			create_info.enabledExtensionCount = ui32(g_API->extensions.size());
+			create_info.enabledExtensionCount = u32(g_API->extensions.size());
 			create_info.ppEnabledExtensionNames = g_API->extensions.data();
-			create_info.enabledLayerCount = ui32(g_API->validationLayers.size());
+			create_info.enabledLayerCount = u32(g_API->validationLayers.size());
 			create_info.ppEnabledLayerNames = g_API->validationLayers.data();
 
 			create_info.flags = 0u;
@@ -256,26 +256,26 @@ namespace sv {
 		// Create adapter
 		{
 			// Enumerate Vulkan Adapters
-			ui32 count = 0u;
+			u32 count = 0u;
 			vkCheck(vkEnumeratePhysicalDevices(g_API->instance, &count, nullptr));
 
 			std::vector<VkPhysicalDevice> devices(count);
 			vkCheck(vkEnumeratePhysicalDevices(g_API->instance, &count, devices.data()));
 
 			// Allocate in Graphics member
-			for (ui32 i = 0; i < devices.size(); ++i) {
+			for (u32 i = 0; i < devices.size(); ++i) {
 				std::unique_ptr<Adapter> adapter = std::make_unique<Adapter_vk>(devices[i]);
 				if (adapter->GetSuitability() > 0)
 					graphics_adapter_add(std::move(adapter));
 			}
 
 			// Select the most suitable
-			ui32 maxSuitability = 0;
-			ui32 index = count;
+			u32 maxSuitability = 0;
+			u32 index = count;
 
 			const auto& adapters = graphics_adapter_get_list();
 
-			for (ui32 i = 0; i < adapters.size(); ++i) {
+			for (u32 i = 0; i < adapters.size(); ++i) {
 				Adapter_vk& adapter = *reinterpret_cast<Adapter_vk*>(adapters[i].get());
 				if (adapter.GetSuitability() > maxSuitability) index = i;
 			}
@@ -295,15 +295,15 @@ namespace sv {
 			VkPhysicalDevice physicalDevice = adapter.GetPhysicalDevice();
 
 			// Queue Create Info Structs
-			constexpr ui32 queueCount = 1u;
-			ui32 queueIndices[] = {
+			constexpr u32 queueCount = 1u;
+			u32 queueIndices[] = {
 				adapter.GetFamilyIndex().graphics
 			};
 
 			const float priorities = 1.f;
 
 			VkDeviceQueueCreateInfo queue_create_info[queueCount];
-			for (ui32 i = 0; i < queueCount; ++i) {
+			for (u32 i = 0; i < queueCount; ++i) {
 				queue_create_info[i] = {};
 				queue_create_info[i].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
 				queue_create_info[i].flags = 0u;
@@ -321,9 +321,9 @@ namespace sv {
 			create_info.queueCreateInfoCount = queueCount;
 			create_info.pQueueCreateInfos = queue_create_info;
 
-			create_info.enabledLayerCount = ui32(g_API->deviceValidationLayers.size());
+			create_info.enabledLayerCount = u32(g_API->deviceValidationLayers.size());
 			create_info.ppEnabledLayerNames = g_API->deviceValidationLayers.data();
-			create_info.enabledExtensionCount = ui32(g_API->deviceExtensions.size());
+			create_info.enabledExtensionCount = u32(g_API->deviceExtensions.size());
 			create_info.ppEnabledExtensionNames = g_API->deviceExtensions.data();
 
 			create_info.pEnabledFeatures = &adapter.GetFeatures();
@@ -356,7 +356,7 @@ namespace sv {
 			cmdPool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 			cmdPool_info.queueFamilyIndex = reinterpret_cast<Adapter_vk*>(graphics_adapter_get())->GetFamilyIndex().graphics;
 
-			for (ui32 i = 0; i < g_API->frameCount; ++i) {
+			for (u32 i = 0; i < g_API->frameCount; ++i) {
 				Frame& frame = g_API->frames[i];
 
 				frame.fence = graphics_vulkan_fence_create(true);
@@ -406,13 +406,13 @@ namespace sv {
 		g_API->pipelines.clear();
 
 		// Destroy frames
-		for (ui32 i = 0; i < g_API->frameCount; ++i) {
+		for (u32 i = 0; i < g_API->frameCount; ++i) {
 			Frame& frame = g_API->frames[i];
 			vkDestroyCommandPool(g_API->device, frame.commandPool, nullptr);
 			vkDestroyCommandPool(g_API->device, frame.transientCommandPool, nullptr);
 			vkDestroyFence(g_API->device, frame.fence, nullptr);
 
-			for (ui32 i = 0; i < GraphicsLimit_CommandList; ++i) {
+			for (u32 i = 0; i < GraphicsLimit_CommandList; ++i) {
 				graphics_vulkan_descriptors_clear(frame.descPool[i]);
 			}
 		}
@@ -625,7 +625,7 @@ namespace sv {
 		return g_API->activeCMDCount - 1u;
 	}
 
-	ui32 graphics_vulkan_commandlist_count()
+	u32 graphics_vulkan_commandlist_count()
 	{
 		std::lock_guard<std::mutex> lock(g_API->mutexCMD);
 		return g_API->activeCMDCount;
@@ -639,7 +639,7 @@ namespace sv {
 
 		// Color Attachments clear values
 		VkClearValue clearValues[GraphicsLimit_Attachment];
-		for (ui32 i = 0; i < ui32(renderPass.attachments.size()); ++i) {
+		for (u32 i = 0; i < u32(renderPass.attachments.size()); ++i) {
 
 			if (renderPass.depthStencilAttachment == i) {
 				clearValues[i].depthStencil.depth = state.clearDepthStencil.first;
@@ -661,7 +661,7 @@ namespace sv {
 			// Calculate hash value for attachments
 			size_t hash = 0u;
 			hash_combine(hash, renderPass.attachments.size());
-			for (ui32 i = 0; i < ui32(renderPass.attachments.size()); ++i) {
+			for (u32 i = 0; i < u32(renderPass.attachments.size()); ++i) {
 				Image_vk& att = *reinterpret_cast<Image_vk*>(state.attachments[i]);
 				hash_combine(hash, att.ID);
 			}
@@ -673,9 +673,9 @@ namespace sv {
 
 				// Create attachments views list
 				VkImageView views[GraphicsLimit_Attachment];
-				ui32 width = 0, height = 0, layers = 0;
+				u32 width = 0, height = 0, layers = 0;
 
-				for (ui32 i = 0; i < ui32(renderPass.attachments.size()); ++i) {
+				for (u32 i = 0; i < u32(renderPass.attachments.size()); ++i) {
 					Image_vk& att = *reinterpret_cast<Image_vk*>(state.attachments[i]);
 
 					if (renderPass.depthStencilAttachment == i) {
@@ -695,7 +695,7 @@ namespace sv {
 				VkFramebufferCreateInfo create_info{};
 				create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 				create_info.renderPass = renderPass.renderPass;
-				create_info.attachmentCount = ui32(renderPass.attachments.size());
+				create_info.attachmentCount = u32(renderPass.attachments.size());
 				create_info.pAttachments = views;
 				create_info.width = width;
 				create_info.height = height;
@@ -718,7 +718,7 @@ namespace sv {
 		begin_info.renderArea.offset.y = 0;
 		begin_info.renderArea.extent.width = state.attachments[0]->width;
 		begin_info.renderArea.extent.height = state.attachments[0]->height;
-		begin_info.clearValueCount = ui32(renderPass.attachments.size());
+		begin_info.clearValueCount = u32(renderPass.attachments.size());
 		begin_info.pClearValues = clearValues;
 
 		vkCmdBeginRenderPass(cmd, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
@@ -753,7 +753,7 @@ namespace sv {
 		float now = timer_now();
 
 		// Reset Descriptors
-		for (ui32 i = 0; i < GraphicsLimit_CommandList; ++i) {
+		for (u32 i = 0; i < GraphicsLimit_CommandList; ++i) {
 			graphics_vulkan_descriptors_reset(frame.descPool[i]);
 		}
 
@@ -807,19 +807,19 @@ namespace sv {
 		graphics_vulkan_image_blit(image, reinterpret_cast<GPUImage*>(&dstImage), layout, GPUImageLayout_Present, 1u, &blit, SamplerFilter_Linear, cmd);
 	}
 
-	void graphics_vulkan_draw(ui32 vertexCount, ui32 instanceCount, ui32 startVertex, ui32 startInstance, CommandList cmd)
+	void graphics_vulkan_draw(u32 vertexCount, u32 instanceCount, u32 startVertex, u32 startInstance, CommandList cmd)
 	{
 		graphics_vulkan_state_update_graphics(cmd);
 		vkCmdDraw(g_API->GetCMD(cmd), vertexCount, instanceCount, startVertex, startInstance);
 	}
 
-	void graphics_vulkan_draw_indexed(ui32 indexCount, ui32 instanceCount, ui32 startIndex, ui32 startVertex, ui32 startInstance, CommandList cmd)
+	void graphics_vulkan_draw_indexed(u32 indexCount, u32 instanceCount, u32 startIndex, u32 startVertex, u32 startInstance, CommandList cmd)
 	{
 		graphics_vulkan_state_update_graphics(cmd);
 		vkCmdDrawIndexed(g_API->GetCMD(cmd), indexCount, instanceCount, startIndex, startVertex, startInstance);
 	}
 
-	void graphics_vulkan_image_clear(GPUImage* image_, GPUImageLayout oldLayout, GPUImageLayout newLayout, const Color4f& clearColor, float depth, ui32 stencil, CommandList cmd_)
+	void graphics_vulkan_image_clear(GPUImage* image_, GPUImageLayout oldLayout, GPUImageLayout newLayout, const Color4f& clearColor, float depth, u32 stencil, CommandList cmd_)
 	{
 		Image_vk& image = *reinterpret_cast<Image_vk*>(image_);
 		VkCommandBuffer cmd = g_API->GetCMD(cmd_);
@@ -877,7 +877,7 @@ namespace sv {
 		vkCmdPipelineBarrier(cmd, srcStage, dstStage, 0u, 0u, nullptr, 0u, nullptr, 1u, &barrier);
 	}
 	
-	void graphics_vulkan_image_blit(GPUImage* src, GPUImage* dst, GPUImageLayout srcLayout, GPUImageLayout dstLayout, ui32 count, const GPUImageBlit* imageBlit, SamplerFilter filter, CommandList cmd_)
+	void graphics_vulkan_image_blit(GPUImage* src, GPUImage* dst, GPUImageLayout srcLayout, GPUImageLayout dstLayout, u32 count, const GPUImageBlit* imageBlit, SamplerFilter filter, CommandList cmd_)
 	{
 		VkCommandBuffer cmd = g_API->GetCMD(cmd_);
 
@@ -926,7 +926,7 @@ namespace sv {
 
 		VkImageBlit blits[16];
 
-		for (ui32 i = 0; i < count; ++i) {
+		for (u32 i = 0; i < count; ++i) {
 
 			blits[i].srcOffsets[0].x = imageBlit[i].srcRegion.offset.x;
 			blits[i].srcOffsets[0].y = imageBlit[i].srcRegion.offset.y;
@@ -969,7 +969,7 @@ namespace sv {
 		vkCmdPipelineBarrier(cmd, srcStage, dstStage, 0u, 0u, 0u, 0u, 0u, 2u, imgBarrier);
 	}
 
-	void graphics_vulkan_buffer_update(GPUBuffer* buffer_, void* pData, ui32 size, ui32 offset, CommandList cmd_)
+	void graphics_vulkan_buffer_update(GPUBuffer* buffer_, void* pData, u32 size, u32 offset, CommandList cmd_)
 	{
 		Buffer_vk& buffer = *reinterpret_cast<Buffer_vk*>(buffer_);
 
@@ -1012,9 +1012,9 @@ namespace sv {
 			// copy
 			void* mapData;
 			VkBuffer mapBuffer;
-			ui32 mapOffset;
+			u32 mapOffset;
 			buffer.memory.GetMappingData(size, mapBuffer, &mapData, mapOffset);
-			memcpy(mapData, pData, ui64(size));
+			memcpy(mapData, pData, u64(size));
 			graphics_vulkan_buffer_copy(cmd, mapBuffer, buffer.buffer, VkDeviceSize(mapOffset), VkDeviceSize(offset), VkDeviceSize(size));
 
 			// Memory Barrier
@@ -1024,29 +1024,29 @@ namespace sv {
 
 		}
 		else {
-			ui8* dst;
+			u8* dst;
 			vmaMapMemory(g_API->allocator, buffer.allocation, (void**)& dst);
-			memcpy(dst + ui64(offset), pData, ui64(size));
+			memcpy(dst + u64(offset), pData, u64(size));
 			vmaUnmapMemory(g_API->allocator, buffer.allocation);
 		}
 	}
 
-	void graphics_vulkan_barrier(const GPUBarrier* barriers, ui32 count, CommandList cmd_)
+	void graphics_vulkan_barrier(const GPUBarrier* barriers, u32 count, CommandList cmd_)
 	{
 		VkCommandBuffer cmd = g_API->GetCMD(cmd_);
 
 		VkPipelineStageFlags srcStage = 0u;
 		VkPipelineStageFlags dstStage = 0u;
 
-		ui32 memoryBarrierCount = 0u;
-		ui32 bufferBarrierCount = 0u;
-		ui32 imageBarrierCount = 0u;
+		u32 memoryBarrierCount = 0u;
+		u32 bufferBarrierCount = 0u;
+		u32 imageBarrierCount = 0u;
 
 		VkMemoryBarrier			memoryBarrier[GraphicsLimit_GPUBarrier];
 		VkBufferMemoryBarrier	bufferBarrier[GraphicsLimit_GPUBarrier];
 		VkImageMemoryBarrier	imageBarrier[GraphicsLimit_GPUBarrier];
 
-		for (ui32 i = 0; i < count; ++i) {
+		for (u32 i = 0; i < count; ++i) {
 
 			const GPUBarrier& barrier = barriers[i];
 
@@ -1120,8 +1120,8 @@ namespace sv {
 		VkPhysicalDevice physicalDevice = adapter.GetPhysicalDevice();
 
 		WindowHandle hWnd = window_handle_get();
-		ui32 width = window_size_get().x;
-		ui32 height = window_size_get().y;
+		u32 width = window_size_get().x;
+		u32 height = window_size_get().y;
 
 		// Create Surface
 		if (oldSwapchain == VK_NULL_HANDLE) 
@@ -1150,13 +1150,13 @@ namespace sv {
 		// Get Support Details
 		vkCheck(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, g_API->swapChain.surface, &g_API->swapChain.capabilities));
 		{
-			ui32 count = 0;
+			u32 count = 0;
 			vkCheck(vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, g_API->swapChain.surface, &count, nullptr));
 			g_API->swapChain.presentModes.resize(count);
 			vkCheck(vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, g_API->swapChain.surface, &count, g_API->swapChain.presentModes.data()));
 		}
 		{
-			ui32 count = 0;
+			u32 count = 0;
 			vkCheck(vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, g_API->swapChain.surface, &count, nullptr));
 			g_API->swapChain.formats.resize(count);
 			vkCheck(vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, g_API->swapChain.surface, &count, g_API->swapChain.formats.data()));
@@ -1165,7 +1165,7 @@ namespace sv {
 		// Create SwapChain
 		{
 			// Choose image count
-			ui32 imageCount = g_API->swapChain.capabilities.minImageCount + 1u;
+			u32 imageCount = g_API->swapChain.capabilities.minImageCount + 1u;
 			if (imageCount > g_API->swapChain.capabilities.maxImageCount && g_API->swapChain.capabilities.maxImageCount > 0)
 				imageCount = g_API->swapChain.capabilities.maxImageCount;
 
@@ -1173,7 +1173,7 @@ namespace sv {
 			VkSurfaceFormatKHR format = { VK_FORMAT_B8G8R8A8_SRGB, VK_COLORSPACE_SRGB_NONLINEAR_KHR };
 			if (!g_API->swapChain.formats.empty()) format = g_API->swapChain.formats[0];
 
-			for (ui32 i = 0; i < g_API->swapChain.formats.size(); ++i) {
+			for (u32 i = 0; i < g_API->swapChain.formats.size(); ++i) {
 				VkSurfaceFormatKHR f = g_API->swapChain.formats[i];
 				if (f.format == VK_FORMAT_B8G8R8A8_SRGB && f.colorSpace == VK_COLORSPACE_SRGB_NONLINEAR_KHR) {
 					format = f;
@@ -1204,7 +1204,7 @@ namespace sv {
 
 			// TODO: if familyqueue not support that surface, create presentQueue with other index
 			////////////// UNFINISHED ///////////////////////
-			ui32 indices[] = {
+			u32 indices[] = {
 					fi.graphics
 			};
 
@@ -1223,7 +1223,7 @@ namespace sv {
 			// Choose Present Mode
 			VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
 
-			for (ui32 i = 0; i < g_API->swapChain.presentModes.size(); ++i) {
+			for (u32 i = 0; i < g_API->swapChain.presentModes.size(); ++i) {
 				if (g_API->swapChain.presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
 				//if (g_API->swapChain.presentModes[i] == VK_PRESENT_MODE_FIFO_KHR) {
 				//if (g_API->swapChain.presentModes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR) {
@@ -1258,20 +1258,20 @@ namespace sv {
 		// Get Images Handles
 		{
 			std::vector<VkImage> images;
-			ui32 count = 0u;
+			u32 count = 0u;
 			vkCheck(vkGetSwapchainImagesKHR(g_API->device, g_API->swapChain.swapChain, &count, nullptr));
 			images.resize(count);
 			vkCheck(vkGetSwapchainImagesKHR(g_API->device, g_API->swapChain.swapChain, &count, images.data()));
 
 			g_API->swapChain.images.resize(images.size());
-			for (ui32 i = 0; i < g_API->swapChain.images.size(); ++i) {
+			for (u32 i = 0; i < g_API->swapChain.images.size(); ++i) {
 				g_API->swapChain.images[i].image = images[i];
 			}
 		}
 
 		// Create Views and IDs
 		{
-			for (ui32 i = 0; i < g_API->swapChain.images.size(); ++i) {
+			for (u32 i = 0; i < g_API->swapChain.images.size(); ++i) {
 				VkImage image = g_API->swapChain.images[i].image;
 
 				g_API->swapChain.images[i].ID = g_API->GetID();
@@ -1301,7 +1301,7 @@ namespace sv {
 			VkCommandBuffer cmd;
 			vkCheck(graphics_vulkan_singletimecmb_begin(&cmd));
 
-			for (ui32 i = 0; i < g_API->swapChain.images.size(); ++i) {
+			for (u32 i = 0; i < g_API->swapChain.images.size(); ++i) {
 
 				VkImageMemoryBarrier imageBarrier{};
 				imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -1338,7 +1338,7 @@ namespace sv {
 		vkDestroySemaphore(g_API->device, g_API->swapChain.semAcquireImage, nullptr);
 		vkDestroySemaphore(g_API->device, g_API->swapChain.semPresent, nullptr);
 
-		for (ui32 i = 0; i < g_API->swapChain.images.size(); ++i) {
+		for (u32 i = 0; i < g_API->swapChain.images.size(); ++i) {
 
 			vkDestroyImageView(g_API->device, g_API->swapChain.images[i].view, nullptr);
 		}
@@ -1373,7 +1373,7 @@ namespace sv {
 			
 			VkBuffer buffers[GraphicsLimit_VertexBuffer] = {};
 			VkDeviceSize offsets[GraphicsLimit_VertexBuffer] = {};
-			for (ui32 i = 0; i < state.vertexBuffersCount; ++i) {
+			for (u32 i = 0; i < state.vertexBuffersCount; ++i) {
 				if (state.vertexBuffers[i] == nullptr) {
 					buffers[i] = VK_NULL_HANDLE;
 					offsets[i] = 0u;
@@ -1442,7 +1442,7 @@ namespace sv {
 		if (state.flags & GraphicsPipelineState_Viewport) {
 			
 			VkViewport viewports[GraphicsLimit_Viewport];
-			for (ui32 i = 0; i < state.viewportsCount; ++i) {
+			for (u32 i = 0; i < state.viewportsCount; ++i) {
 				const Viewport& vp = state.viewports[i];
 
 				viewports[i].x			= vp.x;
@@ -1452,7 +1452,7 @@ namespace sv {
 				viewports[i].minDepth	= vp.minDepth;
 				viewports[i].maxDepth	= vp.maxDepth;
 			}
-			for (ui32 i = state.viewportsCount; i < GraphicsLimit_Viewport; ++i) {
+			for (u32 i = state.viewportsCount; i < GraphicsLimit_Viewport; ++i) {
 				viewports[i].x = 0.f;
 				viewports[i].y = 0.f;
 				viewports[i].width = 1.f;
@@ -1469,7 +1469,7 @@ namespace sv {
 		if (state.flags & GraphicsPipelineState_Scissor) {
 
 			VkRect2D scissors[GraphicsLimit_Scissor];
-			for (ui32 i = 0; i < state.scissorsCount; ++i) {
+			for (u32 i = 0; i < state.scissorsCount; ++i) {
 				const Scissor& sc = state.scissors[i];
 
 				scissors[i].offset.x = sc.x;
@@ -1477,7 +1477,7 @@ namespace sv {
 				scissors[i].extent.width = sc.width;
 				scissors[i].extent.height = sc.height;
 			}
-			for (ui32 i = state.scissorsCount; i < GraphicsLimit_Scissor; ++i) {
+			for (u32 i = state.scissorsCount; i < GraphicsLimit_Scissor; ++i) {
 				scissors[i].offset.x = 0u;
 				scissors[i].offset.y = 0u;
 				scissors[i].extent.width = 1u;
@@ -1526,8 +1526,8 @@ namespace sv {
 
 			}
 
-			ui32 offset = 0u;
-			for (ui32 i = 0; i < ShaderType_GraphicsCount; ++i) {
+			u32 offset = 0u;
+			for (u32 i = 0; i < ShaderType_GraphicsCount; ++i) {
 				if (pipeline.descriptorSets[i] == VK_NULL_HANDLE) {
 					if (i == offset) {
 						offset++;
@@ -1555,14 +1555,14 @@ namespace sv {
 		uniforms = true;
 
 		VkWriteDescriptorSet writeDesc[GraphicsLimit_ConstantBuffer + GraphicsLimit_GPUImage + GraphicsLimit_Sampler];
-		ui32 writeCount = 0u;
+		u32 writeCount = 0u;
 		const ShaderDescriptorSetLayout& layout = pipeline.setLayout.layouts[shaderType];
 
 		VkDescriptorSet descSet = graphics_vulkan_descriptors_allocate_sets(g_API->GetFrame().descPool[cmd_], layout);
 
 		// Write samplers
 		if (samplers) {
-			for (ui32 i = 0; i < layout.count[0]; ++i) {
+			for (u32 i = 0; i < layout.count[0]; ++i) {
 
 				const auto& binding = layout.bindings[i];
 
@@ -1586,8 +1586,8 @@ namespace sv {
 
 		// Write images
 		if (images) {
-			ui32 end = layout.count[0] + layout.count[1];
-			for (ui32 i = layout.count[0]; i < end; ++i) {
+			u32 end = layout.count[0] + layout.count[1];
+			for (u32 i = layout.count[0]; i < end; ++i) {
 
 				const auto& binding = layout.bindings[i];
 
@@ -1611,8 +1611,8 @@ namespace sv {
 
 		// Write uniforms
 		if (uniforms) {
-			ui32 end = layout.count[0] + layout.count[1] + layout.count[2];
-			for (ui32 i = layout.count[0] + layout.count[1]; i < end; ++i) {
+			u32 end = layout.count[0] + layout.count[1] + layout.count[2];
+			for (u32 i = layout.count[0] + layout.count[1]; i < end; ++i) {
 
 				const auto& binding = layout.bindings[i];
 
@@ -1703,7 +1703,7 @@ namespace sv {
 		vkCmdCopyBuffer(cmd, srcBuffer, dstBuffer, 1u, &copy_info);
 	}
 
-	VkResult graphics_vulkan_imageview_create(VkImage image, VkFormat format, VkImageViewType viewType, VkImageAspectFlags aspectFlags, ui32 layerCount, VkImageView& view)
+	VkResult graphics_vulkan_imageview_create(VkImage image, VkFormat format, VkImageViewType viewType, VkImageAspectFlags aspectFlags, u32 layerCount, VkImageView& view)
 	{
 		VkImageViewCreateInfo create_info{};
 		create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -1759,7 +1759,7 @@ namespace sv {
 		Frame& frame = g_API->GetFrame();
 
 		// End CommandBuffers & RenderPasses
-		for (ui32 i = 0; i < g_API->activeCMDCount; ++i) {
+		for (u32 i = 0; i < g_API->activeCMDCount; ++i) {
 
 			VkCommandBuffer cmd = g_API->GetCMD(i);
 			vkAssert(vkEndCommandBuffer(cmd));
@@ -2201,19 +2201,19 @@ namespace sv {
 			create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 			create_info.flags;
 			create_info.codeSize = desc.binDataSize;
-			create_info.pCode = reinterpret_cast<const ui32*>(desc.pBinData);
+			create_info.pCode = reinterpret_cast<const u32*>(desc.pBinData);
 
 			vkCheck(vkCreateShaderModule(g_API->device, &create_info, nullptr, &shader.module));
 		}
 
 		// Get Layout from sprv code
-		spirv_cross::Compiler comp(reinterpret_cast<const ui32*>(desc.pBinData), desc.binDataSize / sizeof(ui32));
+		spirv_cross::Compiler comp(reinterpret_cast<const u32*>(desc.pBinData), desc.binDataSize / sizeof(u32));
 		spirv_cross::ShaderResources sr = comp.get_shader_resources();
 
 		// Semantic Names
 		if (desc.shaderType == ShaderType_Vertex) {
 			
-			for (ui32 i = 0; i < sr.stage_inputs.size(); ++i) {
+			for (u32 i = 0; i < sr.stage_inputs.size(); ++i) {
 				auto& input = sr.stage_inputs[i];
 				shader.semanticNames[input.name.c_str() + 7] = comp.get_decoration(input.id, spv::Decoration::DecorationLocation);
 
@@ -2239,7 +2239,7 @@ namespace sv {
 
 				SV_ASSERT(samplers.size() <= GraphicsLimit_Sampler);
 
-				for (ui64 i = 0; i < samplers.size(); ++i) {
+				for (u64 i = 0; i < samplers.size(); ++i) {
 					auto& sampler = samplers[i];
 					VkDescriptorSetLayoutBinding& binding = bindings[i + initialIndex];
 					binding.binding = comp.get_decoration(sampler.id, spv::Decoration::DecorationBinding);
@@ -2249,7 +2249,7 @@ namespace sv {
 					binding.pImmutableSamplers = nullptr;
 				}
 			}
-			shader.layout.count[0] = ui32(bindings.size());
+			shader.layout.count[0] = u32(bindings.size());
 		}
 		
 		// Images
@@ -2262,7 +2262,7 @@ namespace sv {
 
 				SV_ASSERT(images.size() <= GraphicsLimit_GPUImage);
 
-				for (ui64 i = 0; i < images.size(); ++i) {
+				for (u64 i = 0; i < images.size(); ++i) {
 					auto& image = images[i];
 					VkDescriptorSetLayoutBinding& binding = bindings[i + initialIndex];
 					binding.binding = comp.get_decoration(image.id, spv::Decoration::DecorationBinding);
@@ -2277,7 +2277,7 @@ namespace sv {
 					res.bindingSlot = binding.binding - GraphicsLimit_Sampler;
 				}
 			}
-			shader.layout.count[1] = ui32(bindings.size()) - shader.layout.count[0];
+			shader.layout.count[1] = u32(bindings.size()) - shader.layout.count[0];
 		}
 
 		{
@@ -2286,7 +2286,7 @@ namespace sv {
 
 				SV_ASSERT(uniforms.size() <= GraphicsLimit_ConstantBuffer);
 
-				for (ui64 i = 0; i < uniforms.size(); ++i) {
+				for (u64 i = 0; i < uniforms.size(); ++i) {
 					auto& uniform = uniforms[i];
 					
 					if (strcmp(uniform.name.c_str(), "type__Globals") == 0) {
@@ -2308,11 +2308,11 @@ namespace sv {
 					res.size = res.attributes.empty() ? 0u : (res.attributes.back().offset + graphics_shader_attribute_size(res.attributes.back().type));
 				}
 			}
-			shader.layout.count[2] = ui32(bindings.size()) - shader.layout.count[0] - shader.layout.count[1];
+			shader.layout.count[2] = u32(bindings.size()) - shader.layout.count[0] - shader.layout.count[1];
 		}
 
 		// Calculate user bindings values
-		for (ui32 i = 0; i < bindings.size(); ++i) {
+		for (u32 i = 0; i < bindings.size(); ++i) {
 			const VkDescriptorSetLayoutBinding& binding = bindings[i];
 			ShaderResourceBinding& srb = shader.layout.bindings.emplace_back();
 			srb.vulkanBinding = binding.binding;
@@ -2339,7 +2339,7 @@ namespace sv {
 		{
 			VkDescriptorSetLayoutCreateInfo create_info{};
 			create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-			create_info.bindingCount = ui32(bindings.size());
+			create_info.bindingCount = u32(bindings.size());
 			create_info.pBindings = bindings.data();
 
 			vkCheck(vkCreateDescriptorSetLayout(g_API->device, &create_info, nullptr, &shader.layout.setLayout));
@@ -2361,9 +2361,9 @@ namespace sv {
 		VkSubpassDescription subpass_info{};
 
 		bool hasDepthStencil = false;
-		ui32 colorIt = 0u;
+		u32 colorIt = 0u;
 
-		for (ui32 i = 0; i < desc.attachments.size(); ++i) {
+		for (u32 i = 0; i < desc.attachments.size(); ++i) {
 			const AttachmentDesc& attDesc = desc.attachments[i];
 
 			attachments[i] = {};
@@ -2416,7 +2416,7 @@ namespace sv {
 		create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 		create_info.pSubpasses = &subpass_info;
 		create_info.subpassCount = 1u;
-		create_info.attachmentCount = ui32(desc.attachments.size());
+		create_info.attachmentCount = u32(desc.attachments.size());
 		create_info.pAttachments = attachments;
 
 		vkCheck(vkCreateRenderPass(g_API->device, &create_info, nullptr, &renderPass.renderPass));

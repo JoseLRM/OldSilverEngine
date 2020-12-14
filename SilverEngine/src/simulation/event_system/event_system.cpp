@@ -21,7 +21,7 @@ namespace sv {
 
     Result event_close()
     {
-		ui32 unfreed = g_Registers.unfreed_count();
+		u32 unfreed = g_Registers.unfreed_count();
 		if (unfreed) SV_LOG_ERROR("There are %u unbound event registers", unfreed);
 
 		unfreed = g_Listeners.unfreed_count();

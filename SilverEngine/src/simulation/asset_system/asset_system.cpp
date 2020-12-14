@@ -14,11 +14,11 @@ namespace sv {
 	// Asset file loading
 	static std::string									g_FolderPath;
 	static std::unordered_map<std::string, AssetFile>	g_Files;
-	static ui32											g_RefreshID = 0u; // ID used to know if a file is removed
+	static u32											g_RefreshID = 0u; // ID used to know if a file is removed
 
 	// Asset Unused
 	static float g_UnusedTimeCount = 0.f;
-	static ui32 g_UnusedIndex = 0u;
+	static u32 g_UnusedIndex = 0u;
 
 	Result asset_initialize(const char* assetsFolderPath)
 	{
@@ -34,7 +34,7 @@ namespace sv {
 	{
 		for (std::unique_ptr<AssetType_internal>& type : g_AssetTypes) {
 			for (Asset_internal* asset : type->activeAssets) {
-				type->destroyFn((ui8*)(asset) + sizeof(Asset_internal));
+				type->destroyFn((u8*)(asset) + sizeof(Asset_internal));
 				type->allocator.free(asset);
 			}
 
@@ -75,7 +75,7 @@ namespace sv {
 		}
 
 		if (asset->filePath == nullptr)
-			type.idMap.erase(ui32(asset->hashCode));
+			type.idMap.erase(u32(asset->hashCode));
 		else if (asset->filePath != MAX_SIZE)
 			g_Files[asset->filePath].pInternalAsset = nullptr;
 		
@@ -101,7 +101,7 @@ namespace sv {
 
 				if (asset->refCount.load() <= 0) {
 
-					void* pObject = (ui8*)asset + sizeof(Asset_internal);
+					void* pObject = (u8*)asset + sizeof(Asset_internal);
 					if (!type.isUnusedFn || (type.isUnusedFn && type.isUnusedFn(pObject))) {
 
 						if (asset->unusedTime == float_max) {
@@ -121,7 +121,7 @@ namespace sv {
 				++it;
 			}
 
-			g_UnusedIndex = (g_UnusedIndex + 1) % ui32(g_AssetTypes.size());
+			g_UnusedIndex = (g_UnusedIndex + 1) % u32(g_AssetTypes.size());
 		}
 	}
 
@@ -194,7 +194,7 @@ namespace sv {
 						if (type->reloadFileFn != nullptr) {
 
 							std::string absFilePath = g_FolderPath + path;
-							Result res = type->reloadFileFn(absFilePath.c_str(), (ui8*)(find->second.pInternalAsset) + sizeof(Asset_internal));
+							Result res = type->reloadFileFn(absFilePath.c_str(), (u8*)(find->second.pInternalAsset) + sizeof(Asset_internal));
 
 							if (result_okay(res)) {
 								SV_LOG_INFO("%s asset updated: '%s'", type->name.c_str(), reinterpret_cast<Asset_internal*>(find->second.pInternalAsset)->filePath);
@@ -253,7 +253,7 @@ namespace sv {
 
 			if (asset->refCount.load() <= 0) {
 
-				void* pObject = (ui8*)asset + sizeof(Asset_internal);
+				void* pObject = (u8*)asset + sizeof(Asset_internal);
 				if (!type.isUnusedFn || (type.isUnusedFn && type.isUnusedFn(pObject))) {
 
 					asset_destroy(type, asset, pObject);
@@ -277,7 +277,7 @@ namespace sv {
 		size_t hashCode = hash_string(desc->name);
 
 		// Check if repeat extensions
-		for (ui32 i = 0; i < desc->extensionsCount; ++i) {
+		for (u32 i = 0; i < desc->extensionsCount; ++i) {
 			if (g_Extensions.find(desc->pExtensions[i]) != g_Extensions.end()) {
 
 				SV_LOG_ERROR("The extension %s is in use", desc->pExtensions[i]);
@@ -312,14 +312,14 @@ namespace sv {
 		type->unusedLifeTime = desc->unusedLifeTime;
 
 		type->extensions.resize(desc->extensionsCount);
-		for (ui32 i = 0; i < desc->extensionsCount; ++i) {
+		for (u32 i = 0; i < desc->extensionsCount; ++i) {
 			type->extensions[i] = desc->pExtensions[i];
 		}
 
 		if (pAssetType) *pAssetType = type.get();
 
 		// Add extensions
-		for (ui32 i = 0; i < desc->extensionsCount; ++i) {
+		for (u32 i = 0; i < desc->extensionsCount; ++i) {
 			g_Extensions[desc->pExtensions[i]] = type.get();
 		}
 
@@ -428,7 +428,7 @@ namespace sv {
 			std::string absFilePath = g_FolderPath + filePath;
 
 			// Try to load, if fails deallocate unused asset
-			Result result = type.loadFileFn(absFilePath.c_str(), (ui8*)(pObject) + sizeof(Asset_internal));
+			Result result = type.loadFileFn(absFilePath.c_str(), (u8*)(pObject) + sizeof(Asset_internal));
 			if (result_fail(result)) {
 				SV_LOG_ERROR("Can't load %s asset: '%s'. Error code: %u", type.name.c_str(), filePath, result);
 				type.allocator.free(pObject);
@@ -491,7 +491,7 @@ namespace sv {
 				new(pObject) Asset_internal();
 
 				// Create Object
-				Result result = type.loadIDFn(ID, reinterpret_cast<ui8*>(pObject) + sizeof(Asset_internal));
+				Result result = type.loadIDFn(ID, reinterpret_cast<u8*>(pObject) + sizeof(Asset_internal));
 				if (result_fail(result)) {
 					SV_LOG_ERROR("Can't create %s asset. Error code: %u", type.name.c_str(), result);
 					type.allocator.free(pObject);
@@ -545,7 +545,7 @@ namespace sv {
 			new(pObject) Asset_internal();
 
 			// Create Object
-			Result result = type.createFn(reinterpret_cast<ui8*>(pObject) + sizeof(Asset_internal));
+			Result result = type.createFn(reinterpret_cast<u8*>(pObject) + sizeof(Asset_internal));
 			if (result_fail(result)) {
 				SV_LOG_ERROR("Can't create %s asset. Error code: %u", type.name.c_str(), result);
 				type.allocator.free(pObject);
@@ -580,16 +580,16 @@ namespace sv {
 		Asset_internal& asset = *reinterpret_cast<Asset_internal*>(pInternal);
 
 		if (pInternal == nullptr || asset.filePath == MAX_SIZE) {
-			archive << (ui8)(1u);
+			archive << (u8)(1u);
 		}
 		else {
 
 			if (asset.filePath) {
-				archive << (ui8)(2u);
+				archive << (u8)(2u);
 				archive << asset.hashCode;
 			}
 			else {
-				archive << (ui8)(3u);
+				archive << (u8)(3u);
 				archive << asset.assetType->hashCode;
 				archive << asset.hashCode;
 			}
@@ -598,7 +598,7 @@ namespace sv {
 
 	Result AssetRef::load(ArchiveI& archive)
 	{
-		ui8 type;
+		u8 type;
 		archive >> type;
 
 		switch (type)

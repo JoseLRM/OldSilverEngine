@@ -15,18 +15,18 @@ namespace sv {
 		inline Time TimeSince(Time time) const noexcept { return Time(time.m_Time - m_Time); }
 
 		inline float GetSecondsFloat() const noexcept { return m_Time; }
-		inline ui32 GetSecondsUInt() const noexcept { return ui32(m_Time); }
+		inline u32 GetSecondsUInt() const noexcept { return u32(m_Time); }
 		inline float GetMillisecondsFloat() const noexcept { return m_Time * 1000.f; }
-		inline ui32 GetMillisecondsUInt() const noexcept { return ui32(m_Time * 1000.f); }
+		inline u32 GetMillisecondsUInt() const noexcept { return u32(m_Time * 1000.f); }
 	};
 
 	struct Date {
-		ui32 year;
-		ui32 month;
-		ui32 day;
-		ui32 hour;
-		ui32 minute;
-		ui32 second;
+		u32 year;
+		u32 month;
+		u32 day;
+		u32 hour;
+		u32 minute;
+		u32 second;
 	};
 
 	Time timer_now();

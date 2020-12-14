@@ -73,13 +73,13 @@ namespace sv {
 			{
 				gui_component_item_next("Timeline");
 
-				ui32 count = ui32(anim->sprites.size());
+				u32 count = u32(anim->sprites.size());
 
 				float maxTime = float(count) * duration;
 				float currentTime = float(comp->sprite.getIndex()) * duration + comp->sprite.getSpriteTime();
 
 				if (ImGui::SliderFloat("##Timeline", &currentTime, 0.f, maxTime)) {
-					ui32 currentIndex = ui32(currentTime / duration);
+					u32 currentIndex = u32(currentTime / duration);
 					float time = currentTime - (currentIndex * duration);
 					comp->sprite.setIndex(currentIndex);
 					comp->sprite.setSpriteTime(time);
@@ -121,6 +121,42 @@ namespace sv {
 		gui_component_item_string(comp->name);
 	}
 
+	void showSkyComponentInfo(SkyComponent* comp)
+	{
+		gui_component_item_begin();
+
+		gui_component_item_next("Ambient Color");
+		gui_component_item_color_picker(comp->ambient);
+
+		gui_component_item_end();
+	}
+
+	void showLightComponentInfo(LightComponent* comp)
+	{
+		gui_component_item_begin();
+
+		gui_component_item_next("Color");
+		gui_component_item_color_picker(comp->color);
+
+		gui_component_item_next("Intensity");
+		ImGui::DragFloat("##intensity", &comp->intensity, 0.05f, 0.f, float_max);
+
+		switch (comp->lightType)
+		{
+		case LightType_Point:
+
+			gui_component_item_next("Range");
+			ImGui::DragFloat("##range", &comp->point.range, 0.05f, 0.f, float_max);
+
+			gui_component_item_next("Smoothness");
+			ImGui::DragFloat("##smoothness", &comp->point.smoothness, 0.01f, 0.f, float_max);
+
+			break;
+		}
+
+		gui_component_item_end();
+	}
+
 	void showCameraComponentInfo(CameraComponent* comp)
 	{
 		CameraType projectionType = comp->camera.getCameraType();
@@ -160,7 +196,7 @@ namespace sv {
 		gui_component_item_next("Type");
 		if (ImGui::BeginCombo("##Type", getPrjStr(cam.getCameraType()))) {
 
-			for (ui32 i = 0; i < 3; ++i) {
+			for (u32 i = 0; i < 3; ++i) {
 				CameraType type = types[i];
 
 				if (cam.getCameraType() == type) continue;
@@ -305,6 +341,8 @@ namespace sv {
 		if (ID == SpriteComponent::ID)					showSpriteComponentInfo(reinterpret_cast<SpriteComponent*>(comp));
 		else if (ID == AnimatedSpriteComponent::ID)		showAnimatedSpriteComponentInfo(reinterpret_cast<AnimatedSpriteComponent*>(comp));
 		else if (ID == NameComponent::ID)				showNameComponentInfo(reinterpret_cast<NameComponent*>(comp));
+		else if (ID == SkyComponent::ID)				showSkyComponentInfo(reinterpret_cast<SkyComponent*>(comp));
+		else if (ID == LightComponent::ID)				showLightComponentInfo(reinterpret_cast<LightComponent*>(comp));
 		else if (ID == CameraComponent::ID)				showCameraComponentInfo(reinterpret_cast<CameraComponent*>(comp));
 		else if (ID == RigidBody2DComponent::ID)		showRigidBody2DComponentInfo(reinterpret_cast<RigidBody2DComponent*>(comp));
 		else if (ID == BoxCollider2DComponent::ID)		showBoxCollider2DComponentInfo(reinterpret_cast<BoxCollider2DComponent*>(comp));
@@ -341,7 +379,7 @@ namespace sv {
 			gui_transform_show(ecs_entity_transform_get(ecs, g_SelectedEntity));
 
 			// Show components
-			for (ui32 i = 0; i < ecs_entity_component_count(ecs, g_SelectedEntity); ++i) {
+			for (u32 i = 0; i < ecs_entity_component_count(ecs, g_SelectedEntity); ++i) {
 
 				auto [compID, comp] = ecs_component_get_by_index(ecs, g_SelectedEntity, i);
 				gui_component_show(ecs, compID, comp, showComponentInfo);
@@ -351,7 +389,7 @@ namespace sv {
 
 			if (ImGui::BeginCombo("##Add", "Add Component")) {
 
-				for (ui16 ID = 0; ID < ecs_component_register_count(); ++ID) {
+				for (u16 ID = 0; ID < ecs_component_register_count(); ++ID) {
 
 					if (!ecs_register_exist(ecs, ID)) continue;
 
@@ -367,7 +405,7 @@ namespace sv {
 			}
 			if (ImGui::BeginCombo("##Rmv", "Remove Component")) {
 
-				for (ui32 i = 0; i < ecs_entity_component_count(ecs, g_SelectedEntity); ++i) {
+				for (u32 i = 0; i < ecs_entity_component_count(ecs, g_SelectedEntity); ++i) {
 					CompID ID = ecs_component_get_by_index(ecs, g_SelectedEntity, i).first;
 					const char* NAME = ecs_component_name(ID);
 					size_t SIZE = ecs_component_size(ID);

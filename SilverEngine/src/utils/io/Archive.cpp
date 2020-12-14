@@ -70,7 +70,7 @@ namespace sv {
 
 	void ArchiveO::allocate(size_t size)
 	{
-		ui8* newData = (ui8*)operator new(size);
+		u8* newData = (u8*)operator new(size);
 		if (m_Data) {
 			memcpy(newData, m_Data, m_Size);
 			operator delete[](m_Data);
@@ -121,7 +121,7 @@ namespace sv {
 		stream.seekg(0u);
 		m_Pos = 0u;
 
-		m_Data = new ui8[m_Size];
+		m_Data = new u8[m_Size];
 		stream.read((char*)m_Data, m_Size);
 
 		stream.close();
@@ -133,7 +133,7 @@ namespace sv {
 	{
 		if (m_Pos + size > m_Size) {
 			size_t invalidSize = (m_Pos + size) - m_Size;
-			svZeroMemory((ui8*)data + size - invalidSize, invalidSize);
+			svZeroMemory((u8*)data + size - invalidSize, invalidSize);
 			size -= invalidSize;
 			SV_LOG_WARNING("Archive reading, out of bounds");
 		}

@@ -7,7 +7,7 @@
 
 namespace sv {
 
-	Result load_image(const char* filePath, void** pdata, ui32* width, ui32* height)
+	Result load_image(const char* filePath, void** pdata, u32* width, u32* height)
 	{
 		int w = 0, h = 0, bits = 0;
 
@@ -37,7 +37,7 @@ namespace sv {
 		return filePath;
 	}
 
-	Result bin_read(size_t hash, std::vector<ui8>& data)
+	Result bin_read(size_t hash, std::vector<u8>& data)
 	{
 		std::string filePath = bin_filepath(hash);
 

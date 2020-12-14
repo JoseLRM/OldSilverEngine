@@ -4,12 +4,12 @@
 
 namespace sv {
 
-	enum ForceType : ui32 {
+	enum ForceType : u32 {
 		ForceType_Force,
 		ForceType_Impulse,
 	};
 
-	enum Collider2DType : ui32 {
+	enum Collider2DType : u32 {
 		Collider2DType_Null,
 		Collider2DType_Box,
 		Collider2DType_Circle,

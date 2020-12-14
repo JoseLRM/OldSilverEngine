@@ -15,9 +15,6 @@ struct VertexOutput {
 };
 
 #userblock SpriteVertex
-// User Callbacks
-//struct UserVertexOutput : VertexOutput {};
-//UserVertexOutput spriteVertex(VertexInput input);
 
 // Main
 UserVertexOutput main(VertexInput input)

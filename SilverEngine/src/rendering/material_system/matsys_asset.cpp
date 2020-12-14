@@ -30,16 +30,16 @@ namespace sv {
 		std::string name;
 		ShaderAttributeType type;
 
-		ui32 attCount;
+		u32 attCount;
 		file >> attCount;
 
-		for (ui32 i = 0; i < attCount; ++i) {
+		for (u32 i = 0; i < attCount; ++i) {
 
 			file >> name >> type;
 
 			Result res = Result_Success;
 
-			if (type == ui32_max) {
+			if (type == u32_max) {
 
 				TextureAsset tex;
 				res = tex.load(file);
@@ -50,7 +50,7 @@ namespace sv {
 			}
 			else {
 
-				ui32 typeSize = graphics_shader_attribute_size(type);
+				u32 typeSize = graphics_shader_attribute_size(type);
 				file.read(&rawData, typeSize);
 
 				res = matsys_material_attribute_set(asset.material, type, name.c_str(), &rawData);
@@ -82,7 +82,7 @@ namespace sv {
 		MaterialAsset_internal& mat = *reinterpret_cast<MaterialAsset_internal*>(pObject);
 		ShaderLibrary_internal& lib = *reinterpret_cast<ShaderLibrary_internal*>(matsys_material_get_shaderlibrary(mat.material));
 
-		file << mat.hashCode << ui32(lib.matInfo.attributes.size() + lib.matInfo.textures.size());
+		file << mat.hashCode << u32(lib.matInfo.attributes.size() + lib.matInfo.textures.size());
 
 		XMMATRIX rawData;
 
@@ -95,7 +95,7 @@ namespace sv {
 		}
 
 		for (const std::string& texName : lib.matInfo.textures) {
-			file << texName << ui32_max;
+			file << texName << u32_max;
 			TextureAsset tex;
 			Result res = matsys_material_texture_get(mat.material, texName.c_str(), tex);
 			SV_ASSERT(result_okay(res));
@@ -184,7 +184,7 @@ namespace sv {
 		if (shaderLibrary_ == nullptr) return Result_InvalidUsage;
 
 		ShaderLibrary_internal& lib = *reinterpret_cast<ShaderLibrary_internal*>(shaderLibrary_);
-		file << libAsset.getHashCode() << ui32(lib.matInfo.attributes.size());
+		file << libAsset.getHashCode() << u32(lib.matInfo.attributes.size());
 
 		XMMATRIX rawData;
 		svZeroMemory(&rawData, sizeof(XMMATRIX));
@@ -195,7 +195,7 @@ namespace sv {
 		}
 
 		for (const std::string& tex : lib.matInfo.textures) {
-			file << tex << ui32_max;
+			file << tex << u32_max;
 			file.write(&rawData, sizeof(size_t));
 		}
 

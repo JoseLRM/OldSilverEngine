@@ -5,12 +5,12 @@
 namespace sv {
 
 	struct Version {
-		ui32 major = 0u;
-		ui32 minor = 0u;
-		ui32 revision = 0u;
+		u32 major = 0u;
+		u32 minor = 0u;
+		u32 revision = 0u;
 
 		constexpr Version() = default;
-		constexpr Version(ui32 major, ui32 minor, ui32 revision) 
+		constexpr Version(u32 major, u32 minor, u32 revision) 
 			: major(major), minor(minor), revision(revision) {}
 
 		std::string toString() const noexcept {
@@ -18,9 +18,9 @@ namespace sv {
 			ss << major << '.' << minor << '.' << revision;
 			return ss.str();
 		}
-		ui64 getVersion() const noexcept
+		u64 getVersion() const noexcept
 		{
-			return ui64(major) * 1000000L + ui64(minor) * 1000L + ui64(revision);
+			return u64(major) * 1000000L + u64(minor) * 1000L + u64(revision);
 		}
 
 		bool operator== (const Version& other) const noexcept

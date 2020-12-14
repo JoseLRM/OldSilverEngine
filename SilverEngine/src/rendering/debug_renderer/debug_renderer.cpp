@@ -4,7 +4,7 @@
 
 namespace sv {
 
-	static constexpr ui32 BATCH_COUNT = 10000u;
+	static constexpr u32 BATCH_COUNT = 10000u;
 
 	static const char* QUAD_VERTEX_SHADER_SRC = 
 	"#include \"core.hlsl\"\n"
@@ -149,7 +149,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 
 	static RenderPass*			g_RenderPass;
 	static InputLayoutState*	g_InputLayout;
-	static BlendState*			g_BlendState_Geometry;
+	static BlendState*			g_BS_Geometry;
 	static Sampler*				g_DefSampler;
 
 	// Shaders
@@ -169,7 +169,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 	{
 		// Create Shaders
 		{
-			std::vector<ui8> quadVS, quadPS, ellipseVS, ellipsePS, spriteVS, spritePS;
+			std::vector<u8> quadVS, quadPS, ellipseVS, ellipsePS, spriteVS, spritePS;
 
 			// Compile Shaders
 			{
@@ -185,14 +185,14 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 
 				// TODO: Create and load from bin data
 
-				svCheck(graphics_shader_compile_string(&vsComileDesc, QUAD_VERTEX_SHADER_SRC, ui32(strlen(QUAD_VERTEX_SHADER_SRC)), quadVS));
-				svCheck(graphics_shader_compile_string(&psComileDesc, QUAD_PIXEL_SHADER_SRC, ui32(strlen(QUAD_PIXEL_SHADER_SRC)), quadPS));
+				svCheck(graphics_shader_compile_string(&vsComileDesc, QUAD_VERTEX_SHADER_SRC, u32(strlen(QUAD_VERTEX_SHADER_SRC)), quadVS));
+				svCheck(graphics_shader_compile_string(&psComileDesc, QUAD_PIXEL_SHADER_SRC, u32(strlen(QUAD_PIXEL_SHADER_SRC)), quadPS));
 
-				svCheck(graphics_shader_compile_string(&vsComileDesc, ELLIPSE_VERTEX_SHADER_SRC, ui32(strlen(ELLIPSE_VERTEX_SHADER_SRC)), ellipseVS));
-				svCheck(graphics_shader_compile_string(&psComileDesc, ELLIPSE_PIXEL_SHADER_SRC, ui32(strlen(ELLIPSE_PIXEL_SHADER_SRC)), ellipsePS));
+				svCheck(graphics_shader_compile_string(&vsComileDesc, ELLIPSE_VERTEX_SHADER_SRC, u32(strlen(ELLIPSE_VERTEX_SHADER_SRC)), ellipseVS));
+				svCheck(graphics_shader_compile_string(&psComileDesc, ELLIPSE_PIXEL_SHADER_SRC, u32(strlen(ELLIPSE_PIXEL_SHADER_SRC)), ellipsePS));
 
-				svCheck(graphics_shader_compile_string(&vsComileDesc, SPRITE_VERTEX_SHADER_SRC, ui32(strlen(SPRITE_VERTEX_SHADER_SRC)), spriteVS));
-				svCheck(graphics_shader_compile_string(&psComileDesc, SPRITE_PIXEL_SHADER_SRC, ui32(strlen(SPRITE_PIXEL_SHADER_SRC)), spritePS));
+				svCheck(graphics_shader_compile_string(&vsComileDesc, SPRITE_VERTEX_SHADER_SRC, u32(strlen(SPRITE_VERTEX_SHADER_SRC)), spriteVS));
+				svCheck(graphics_shader_compile_string(&psComileDesc, SPRITE_PIXEL_SHADER_SRC, u32(strlen(SPRITE_PIXEL_SHADER_SRC)), spritePS));
 			}
 
 			ShaderDesc desc;
@@ -277,7 +277,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 			desc.attachments[0].alphaBlendOp = BlendOperation_Add;
 			desc.attachments[0].colorWriteMask = ColorComponent_All;
 
-			svCheck(graphics_blendstate_create(&desc, &g_BlendState_Geometry));
+			svCheck(graphics_blendstate_create(&desc, &g_BS_Geometry));
 		}
 
 		// Create Def sampler
@@ -297,10 +297,10 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 
 	Result debug_renderer_close()
 	{
-		for (ui32 i = 0; i < GraphicsLimit_CommandList; ++i) graphics_destroy(g_VertexBuffer[i]);
+		for (u32 i = 0; i < GraphicsLimit_CommandList; ++i) graphics_destroy(g_VertexBuffer[i]);
 		graphics_destroy(g_RenderPass);
 		graphics_destroy(g_InputLayout);
-		graphics_destroy(g_BlendState_Geometry);
+		graphics_destroy(g_BS_Geometry);
 		graphics_destroy(g_DefSampler);
 		graphics_destroy(g_QuadVertexShader);
 		graphics_destroy(g_QuadPixelShader);
@@ -358,10 +358,10 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		batch.ellipses.clear();
 		batch.sprites.clear();
 		batch.drawCalls.resize(1u);
-		batch.drawCalls.back().list = ui32_max;
+		batch.drawCalls.back().list = u32_max;
 	}
 
-	constexpr ui32 debug_renderer_vertex_count(ui32 list)
+	constexpr u32 debug_renderer_vertex_count(u32 list)
 	{
 		switch (list)
 		{
@@ -379,7 +379,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		}
 	}
 
-	void debug_renderer_draw_call(ui32 batchOffset, const DebugRendererDraw& draw, ui32 vertexCount, GPUBuffer* buffer, CommandList cmd)
+	void debug_renderer_draw_call(u32 batchOffset, const DebugRendererDraw& draw, u32 vertexCount, GPUBuffer* buffer, CommandList cmd)
 	{
 		switch (draw.list)
 		{
@@ -423,7 +423,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		graphics_draw(vertexCount, 1u, batchOffset, 0u, cmd);
 	}
 
-	void debug_renderer_draw_batch(const DebugRendererDraw* begin, ui32 beginIndex, const DebugRendererDraw* end, ui32 endIndex, ui32 batchCount, DebugData* batchData, GPUImage* renderTarget, CommandList cmd)
+	void debug_renderer_draw_batch(const DebugRendererDraw* begin, u32 beginIndex, const DebugRendererDraw* end, u32 endIndex, u32 batchCount, DebugData* batchData, GPUImage* renderTarget, CommandList cmd)
 	{
 		GPUBuffer* buffer = g_VertexBuffer[cmd];
 
@@ -437,13 +437,13 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 
 		graphics_vertexbuffer_bind(buffer, 0u, 0u, cmd);
 
-		ui32 batchOffset = 0u;
+		u32 batchOffset = 0u;
 		
 		if (begin != end) {
 
 			{
-				ui32 count = begin->count - (beginIndex - begin->index);
-				ui32 vertexCount = debug_renderer_vertex_count(begin->list);
+				u32 count = begin->count - (beginIndex - begin->index);
+				u32 vertexCount = debug_renderer_vertex_count(begin->list);
 				debug_renderer_draw_call(0u, *begin, vertexCount * count, buffer, cmd);
 
 				batchOffset =+ vertexCount * count;
@@ -451,7 +451,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 
 			const DebugRendererDraw* it = begin + 1u;
 			while (it != end) {
-				ui32 vertexCount = debug_renderer_vertex_count(it->list);
+				u32 vertexCount = debug_renderer_vertex_count(it->list);
 				debug_renderer_draw_call(batchOffset, *it, vertexCount * it->count, buffer, cmd);
 				batchOffset += vertexCount * it->count;
 				++it;
@@ -459,7 +459,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 
 		}
 		
-		ui32 vertexCount = debug_renderer_vertex_count(end->list);
+		u32 vertexCount = debug_renderer_vertex_count(end->list);
 		debug_renderer_draw_call(batchOffset, *end, vertexCount * (endIndex - end->index), buffer, cmd);
 
 		graphics_renderpass_end(cmd);
@@ -482,14 +482,14 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		graphics_scissor_set(&scissor, 1u, cmd);
 
 		graphics_inputlayoutstate_bind(g_InputLayout, cmd);
-		graphics_blendstate_bind(g_BlendState_Geometry, cmd);
+		graphics_blendstate_bind(g_BS_Geometry, cmd);
 
 		const DebugRendererDraw* end = batch.drawCalls.data() + batch.drawCalls.size();
 		const DebugRendererDraw* it = batch.drawCalls.data() + 1u;
 
 		// Draw Data
 		const DebugRendererDraw* beginIt = it;
-		ui32 beginIndex = ui32_max;
+		u32 beginIndex = u32_max;
 
 		// Update Data
 		DebugData batchData[BATCH_COUNT];
@@ -500,19 +500,19 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 			
 			DebugRendererDraw draw = *it;
 
-			ui32 vertexCount = debug_renderer_vertex_count(draw.list);
-			ui32 currentIndex = draw.index;
+			u32 vertexCount = debug_renderer_vertex_count(draw.list);
+			u32 currentIndex = draw.index;
 
-			if (beginIndex == ui32_max) {
+			if (beginIndex == u32_max) {
 				beginIndex = draw.index;
 				beginIt = it;
 			}
 			
 			while (draw.count) {
 
-				ui32 capacity = ui32(endBatch - itBatch) / vertexCount;
+				u32 capacity = u32(endBatch - itBatch) / vertexCount;
 				
-				ui32 batchUsage = std::min(capacity, draw.count);
+				u32 batchUsage = std::min(capacity, draw.count);
 
 				draw.count -= batchUsage;
 
@@ -663,7 +663,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 				// Update & draw
 				if ((capacity - batchUsage) * vertexCount < 6u) { // 6 because is the max vertex count
 
-					debug_renderer_draw_batch(beginIt, beginIndex, it, currentIndex, ui32(itBatch - batchData), batchData, renderTarget, cmd);
+					debug_renderer_draw_batch(beginIt, beginIndex, it, currentIndex, u32(itBatch - batchData), batchData, renderTarget, cmd);
 					
 					itBatch = batchData;
 
@@ -672,7 +672,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 						beginIndex = currentIndex;
 					}
 					else {
-						beginIndex = ui32_max;
+						beginIndex = u32_max;
 					}
 				}
 
@@ -681,9 +681,9 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 			++it;
 		}
 
-		if (beginIndex != ui32_max) {
+		if (beginIndex != u32_max) {
 			--it;
-			debug_renderer_draw_batch(beginIt, beginIndex, it, it->index + it->count, ui32(itBatch - batchData), batchData, renderTarget, cmd);
+			debug_renderer_draw_batch(beginIt, beginIndex, it, it->index + it->count, u32(itBatch - batchData), batchData, renderTarget, cmd);
 		}
 	}
 
@@ -695,7 +695,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 
 		if (batch.drawCalls.back().list == 0u && batch.drawCalls.back().stroke == batch.stroke) ++batch.drawCalls.back().count;
 		else {
-			batch.drawCalls.emplace_back(0u, ui32(batch.quads.size()), batch.stroke);
+			batch.drawCalls.emplace_back(0u, u32(batch.quads.size()), batch.stroke);
 		}
 
 		batch.quads.emplace_back(matrix, color);
@@ -707,7 +707,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		
 		if (batch.drawCalls.back().list == 1u && batch.drawCalls.back().lineWidth == batch.lineWidth) ++batch.drawCalls.back().count;
 		else {
-			batch.drawCalls.emplace_back(1u, ui32(batch.lines.size()), batch.lineWidth);
+			batch.drawCalls.emplace_back(1u, u32(batch.lines.size()), batch.lineWidth);
 		}
 
 		batch.lines.emplace_back(p0, p1, color);
@@ -719,7 +719,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		
 		if (batch.drawCalls.back().list == 2u && batch.drawCalls.back().stroke == batch.stroke) ++batch.drawCalls.back().count;
 		else {
-			batch.drawCalls.emplace_back(2u, ui32(batch.ellipses.size()), batch.stroke);
+			batch.drawCalls.emplace_back(2u, u32(batch.ellipses.size()), batch.stroke);
 		}
 
 		batch.ellipses.emplace_back(matrix, color);
@@ -731,7 +731,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		
 		if (batch.sameSprite && batch.drawCalls.back().list == 3u && batch.drawCalls.back().pImage == image) ++batch.drawCalls.back().count;
 		else {
-			batch.drawCalls.emplace_back(3u, ui32(batch.sprites.size()), image, batch.pSampler, batch.texCoord);
+			batch.drawCalls.emplace_back(3u, u32(batch.sprites.size()), image, batch.pSampler, batch.texCoord);
 			batch.sameSprite = true;
 		}
 
