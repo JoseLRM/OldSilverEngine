@@ -7,6 +7,8 @@
 #include "rendering/sprite_renderer/sprite_renderer_internal.h"
 #include "rendering/mesh_renderer/mesh_renderer_internal.h"
 #include "rendering/scene_renderer/scene_renderer_internal.h"
+#include "rendering/postprocessing/postprocessing_internal.h"
+#include "rendering/render_utils/render_utils_internal.h"
 #include "platform/graphics/graphics_internal.h"
 #include "platform/input/input_internal.h"
 #include "platform/window/window_internal.h"
@@ -74,9 +76,11 @@ namespace sv {
 			svCheck(sprite_animator_initialize());
 			svCheck(matsys_initialize());
 			svCheck(model_initialize());
-			svCheck(debug_renderer_initialize());
+			svCheck(render_utils_initialize());
 
 			// Renderers
+			svCheck(DebugRenderer_internal::initialize());
+			svCheck(PostProcessing_internal::initialize());
 			svCheck(SpriteRenderer_internal::initialize());
 			svCheck(MeshRenderer_internal::initialize());
 			svCheck(SceneRenderer_internal::initialize());
@@ -124,6 +128,9 @@ namespace sv {
 			// Update User
 			g_App.update(g_DeltaTime);
 
+			// Update render utils
+			render_utils_update(g_DeltaTime);
+
 			// Begin Rendering
 			graphics_begin();
 
@@ -158,8 +165,10 @@ namespace sv {
 			if (result_fail(SceneRenderer_internal::close())) { SV_LOG_ERROR("Can't close Scene Renderer"); }
 			if (result_fail(MeshRenderer_internal::close())) { SV_LOG_ERROR("Can't close the mesh renderer"); }
 			if (result_fail(SpriteRenderer_internal::close())) { SV_LOG_ERROR("Can't close the sprite renderer"); }
+			if (result_fail(PostProcessing_internal::close())) { SV_LOG_ERROR("Can't close the postprocessing"); }
+			if (result_fail(DebugRenderer_internal::close())) { SV_LOG_ERROR("Can't close the debug renderer"); }
 
-			if (result_fail(debug_renderer_close())) { SV_LOG_ERROR("Can't close the debug renderer"); }
+			if (result_fail(render_utils_close())) { SV_LOG_ERROR("Can't close the render utils"); }
 			if (result_fail(matsys_close())) { SV_LOG_ERROR("Can't close the material system"); }
 			if (result_fail(model_close())) { SV_LOG_ERROR("Can't close the model system"); }
 			if (result_fail(sprite_animator_close())) { SV_LOG_ERROR("Can't close the sprite animator"); }

@@ -9,7 +9,7 @@ namespace sv {
 
 	// Rendering 
 
-	static RendererDebugBatch* g_DebugBatch;
+	static DebugRenderer g_DebugRenderer;
 	bool g_DebugRendering_Collisions = true;
 	bool g_DebugRendering_Grid = true;
 
@@ -51,14 +51,14 @@ namespace sv {
 
 	Result simulation_editor_initialize()
 	{
-		svCheck(debug_renderer_batch_create(&g_DebugBatch));
+		svCheck(g_DebugRenderer.create());
 
 		return Result_Success;
 	}
 
 	Result simulation_editor_close()
 	{
-		svCheck(debug_renderer_batch_destroy(g_DebugBatch));
+		svCheck(g_DebugRenderer.destroy());
 
 		return Result_Success;
 	}
@@ -392,14 +392,14 @@ namespace sv {
 		XMMATRIX viewProjectionMatrix = math_matrix_view(g_DebugCamera.position, g_DebugCamera.rotation) * g_DebugCamera.camera.getProjectionMatrix();
 		CommandList cmd = graphics_commandlist_get();
 
-		debug_renderer_batch_reset(g_DebugBatch);
+		g_DebugRenderer.reset();
 
 		// Draw 2D Colliders
 		if (g_DebugRendering_Collisions) {
 			
 			EntityView<RigidBody2DComponent> bodies(scene);
 
-			debug_renderer_stroke_set(g_DebugBatch, 0.05f);
+			g_DebugRenderer.setStroke(0.05f);
 
 			for (RigidBody2DComponent& body : bodies) {
 
@@ -422,7 +422,7 @@ namespace sv {
 
 						colliderPosition += offset;
 
-						debug_renderer_draw_quad(g_DebugBatch, vec3f(colliderPosition), vec2f(colliderScale), rotation, { 0u, 255u, 0u, 255u });
+						g_DebugRenderer.drawQuad(vec3f(colliderPosition), vec2f(colliderScale), rotation, { 0u, 255u, 0u, 255u });
 					}
 				}
 				{
@@ -445,7 +445,7 @@ namespace sv {
 
 						colliderPosition += offset;
 
-						debug_renderer_draw_ellipse(g_DebugBatch, vec3f(colliderPosition), vec2f(colliderScale), rotation, { 0u, 255u, 0u, 255u });
+						g_DebugRenderer.drawEllipse(vec3f(colliderPosition), vec2f(colliderScale), rotation, { 0u, 255u, 0u, 255u });
 					}
 				}
 			}
@@ -464,24 +464,24 @@ namespace sv {
 			p2 = XMVector3Transform(XMVectorSet(-0.5f, 0.5f, 0.f, 0.f), transformMatrix);
 			p3 = XMVector3Transform(XMVectorSet(0.5f, 0.5f, 0.f, 0.f), transformMatrix);
 
-			debug_renderer_linewidth_set(g_DebugBatch, 2.f);
+			g_DebugRenderer.setlinewidth(2.f);
 
 			vec3f pos = trans.getWorldPosition();
 			vec3f scale = trans.getWorldScale();
 			float maxScale = std::max(scale.x, scale.y);
 
-			debug_renderer_draw_line(g_DebugBatch, { -float_max / 1000.f, pos.y, pos.z }, { pos.x - maxScale, pos.y, pos.z }, Color::Orange(50u));
-			debug_renderer_draw_line(g_DebugBatch, { pos.x + maxScale, pos.y, pos.z }, { float_max / 1000.f, pos.y, pos.z }, Color::Orange(50u));
+			g_DebugRenderer.drawLine({ -float_max / 1000.f, pos.y, pos.z }, { pos.x - maxScale, pos.y, pos.z }, Color::Orange(50u));
+			g_DebugRenderer.drawLine({ pos.x + maxScale, pos.y, pos.z }, { float_max / 1000.f, pos.y, pos.z }, Color::Orange(50u));
 
-			debug_renderer_draw_line(g_DebugBatch, { pos.x, -float_max / 1000.f, pos.z }, { pos.x, pos.y - maxScale, pos.z }, Color::Orange(50u));
-			debug_renderer_draw_line(g_DebugBatch, { pos.x, pos.y + maxScale, pos.z }, { pos.x, float_max / 1000.f, pos.z }, Color::Orange(50u));
+			g_DebugRenderer.drawLine({ pos.x, -float_max / 1000.f, pos.z }, { pos.x, pos.y - maxScale, pos.z }, Color::Orange(50u));
+			g_DebugRenderer.drawLine({ pos.x, pos.y + maxScale, pos.z }, { pos.x, float_max / 1000.f, pos.z }, Color::Orange(50u));
 
-			debug_renderer_linewidth_set(g_DebugBatch, 5.f);
+			g_DebugRenderer.setlinewidth(5.f);
 
-			debug_renderer_draw_line(g_DebugBatch, vec3f(p0), vec3f(p1), Color::Orange());
-			debug_renderer_draw_line(g_DebugBatch, vec3f(p0), vec3f(p2), Color::Orange());
-			debug_renderer_draw_line(g_DebugBatch, vec3f(p2), vec3f(p3), Color::Orange());
-			debug_renderer_draw_line(g_DebugBatch, vec3f(p1), vec3f(p3), Color::Orange());
+			g_DebugRenderer.drawLine(vec3f(p0), vec3f(p1), Color::Orange());
+			g_DebugRenderer.drawLine(vec3f(p0), vec3f(p2), Color::Orange());
+			g_DebugRenderer.drawLine(vec3f(p2), vec3f(p3), Color::Orange());
+			g_DebugRenderer.drawLine(vec3f(p1), vec3f(p3), Color::Orange());
 
 			auto& data = g_TransformModeData;
 
@@ -495,8 +495,8 @@ namespace sv {
 				if (g_TransformMode == TransformMode_Translation && g_ActionMode == ActionMode_Transform) {
 					auto& data = g_TransformModeData;
 
-					debug_renderer_linewidth_set(g_DebugBatch, 4.f);
-					debug_renderer_draw_line(g_DebugBatch, data.beginPos.getVec3(), pos, Color::Gray(200));
+					g_DebugRenderer.setlinewidth(4.f);
+					g_DebugRenderer.drawLine(data.beginPos.getVec3(), pos, Color::Gray(200));
 				}
 
 				Color xAxisColor = Color::Red();
@@ -518,14 +518,14 @@ namespace sv {
 					if (data.selectedYAxis) yAxisColor = Color::White();
 				}
 
-				debug_renderer_draw_line(g_DebugBatch, pos, pos + xArrow.getVec3(), xAxisColor);
-				debug_renderer_draw_line(g_DebugBatch, pos, pos + yArrow.getVec3(), yAxisColor);
+				g_DebugRenderer.drawLine(pos, pos + xArrow.getVec3(), xAxisColor);
+				g_DebugRenderer.drawLine(pos, pos + yArrow.getVec3(), yAxisColor);
 
 				if (g_TransformMode == TransformMode_Scale) {
 
-					debug_renderer_stroke_set(g_DebugBatch, 1.f);
-					debug_renderer_draw_quad(g_DebugBatch, pos + xArrow.getVec3(), { arrowLength * 0.2f, arrowLength * 0.2f }, xAxisColor);
-					debug_renderer_draw_quad(g_DebugBatch, pos + yArrow.getVec3(), { arrowLength * 0.2f, arrowLength * 0.2f }, yAxisColor);
+					g_DebugRenderer.setStroke(1.f);
+					g_DebugRenderer.drawQuad(pos + xArrow.getVec3(), { arrowLength * 0.2f, arrowLength * 0.2f }, xAxisColor);
+					g_DebugRenderer.drawQuad(pos + yArrow.getVec3(), { arrowLength * 0.2f, arrowLength * 0.2f }, yAxisColor);
 
 				}
 				else {
@@ -567,7 +567,7 @@ namespace sv {
 					x1 = (cos(i) * radius) + pos.x;
 					y1 = (sin(i) * radius) + pos.y;
 
-					debug_renderer_draw_line(g_DebugBatch, { x0, y0, pos.z }, { x1, y1, pos.z }, circumferenceColor);
+					g_DebugRenderer.drawLine({ x0, y0, pos.z }, { x1, y1, pos.z }, circumferenceColor);
 
 					x0 = x1;
 					y0 = y1;
@@ -577,7 +577,7 @@ namespace sv {
 				x1 = (cos(0.f) * radius) + pos.x;
 				y1 = (sin(0.f) * radius) + pos.y;
 
-				debug_renderer_draw_line(g_DebugBatch, { x0, y0, pos.z }, { x1, y1, pos.z }, circumferenceColor);
+				g_DebugRenderer.drawLine({ x0, y0, pos.z }, { x1, y1, pos.z }, circumferenceColor);
 
 				if (g_ActionMode == ActionMode_Transform) {
 
@@ -593,8 +593,8 @@ namespace sv {
 						currentRotationVector.setAngle(toMouse.angle());
 					}
 
-					debug_renderer_draw_line(g_DebugBatch, pos, pos + beginRotationVector.getVec3(), Color::White());
-					debug_renderer_draw_line(g_DebugBatch, pos, pos + currentRotationVector.getVec3(), Color::White());
+					g_DebugRenderer.drawLine(pos, pos + beginRotationVector.getVec3(), Color::White());
+					g_DebugRenderer.drawLine(pos, pos + currentRotationVector.getVec3(), Color::White());
 				}
 
 				break;
@@ -604,7 +604,7 @@ namespace sv {
 		// Draw 2D grid
 		if (g_DebugRendering_Grid && g_DebugCamera.camera.getCameraType() == CameraType_2D) {
 
-			debug_renderer_linewidth_set(g_DebugBatch, 2.f);
+			g_DebugRenderer.setlinewidth(2.f);
 
 			float width = g_DebugCamera.camera.getWidth();
 			float height = g_DebugCamera.camera.getHeight();
@@ -638,8 +638,8 @@ namespace sv {
 
 					color.a = 10u;
 
-					debug_renderer_linewidth_set(g_DebugBatch, count + 1.f);
-					debug_renderer_draw_grid_orthographic(g_DebugBatch, g_DebugCamera.position.getVec2(), { width, height }, i, color);
+					g_DebugRenderer.setlinewidth(count + 1.f);
+					g_DebugRenderer.drawOrthographicGrip(g_DebugCamera.position.getVec2(), { width, height }, i, color);
 				}
 			}
 
@@ -647,12 +647,12 @@ namespace sv {
 			float centerSize = (g_DebugCamera.position.length() + mag) * 2.f;
 			Color centerColor = Color::Gray(100);
 			centerColor.a = 5u;
-			debug_renderer_linewidth_set(g_DebugBatch, 2.f);
-			debug_renderer_draw_line(g_DebugBatch, { -centerSize, -centerSize, 0.f }, { centerSize, centerSize, 0.f }, centerColor);
-			debug_renderer_draw_line(g_DebugBatch, { -centerSize, centerSize, 0.f }, { centerSize, -centerSize, 0.f }, centerColor);
+			g_DebugRenderer.setlinewidth(2.f);
+			g_DebugRenderer.drawLine({ -centerSize, -centerSize, 0.f }, { centerSize, centerSize, 0.f }, centerColor);
+			g_DebugRenderer.drawLine({ -centerSize, centerSize, 0.f }, { centerSize, -centerSize, 0.f }, centerColor);
 		}
 
-		debug_renderer_batch_render(g_DebugBatch, g_DebugCamera.camera.getOffscreenRT(), g_DebugCamera.camera.getViewport(), g_DebugCamera.camera.getScissor(), viewProjectionMatrix, cmd);
+		g_DebugRenderer.render(g_DebugCamera.camera.getOffscreenRT(), g_DebugCamera.camera.getViewport(), g_DebugCamera.camera.getScissor(), viewProjectionMatrix, cmd);
 	}
 
 }

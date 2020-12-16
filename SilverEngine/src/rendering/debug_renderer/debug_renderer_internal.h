@@ -4,8 +4,12 @@
 
 namespace sv {
 	
-	Result debug_renderer_initialize();
-	Result debug_renderer_close();
+	struct DebugRenderer_internal {
+
+		static Result initialize();
+		static Result close();
+
+	};
 
 	struct DebugRendererQuad {
 		XMMATRIX matrix;

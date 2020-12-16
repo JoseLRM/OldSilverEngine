@@ -187,7 +187,7 @@ namespace sv {
 		file << libAsset.getHashCode() << u32(lib.matInfo.attributes.size());
 
 		XMMATRIX rawData;
-		svZeroMemory(&rawData, sizeof(XMMATRIX));
+		SV_ZERO_MEMORY(&rawData, sizeof(XMMATRIX));
 
 		for (const MaterialAttribute& att : lib.matInfo.attributes) {
 			file << att.name << att.type;

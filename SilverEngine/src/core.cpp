@@ -99,7 +99,7 @@ namespace sv {
 		HWND hwnd = (HWND)window_handle_get();
 
 		OPENFILENAMEA file;
-		svZeroMemory(&file, sizeof(OPENFILENAMEA));
+		SV_ZERO_MEMORY(&file, sizeof(OPENFILENAMEA));
 
 		constexpr size_t FILE_MAX_SIZE = 300u;
 		char lpstrFile[FILE_MAX_SIZE] = {};

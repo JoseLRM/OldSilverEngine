@@ -7,8 +7,8 @@ namespace sv {
 	class Time {
 		float m_Time;
 	public:
-		Time() : m_Time(0.f) {}
-		Time(float t) : m_Time(t) {}
+		constexpr Time() : m_Time(0.f) {}
+		constexpr Time(float t) : m_Time(t) {}
 
 		inline operator float() const noexcept { return m_Time; }
 

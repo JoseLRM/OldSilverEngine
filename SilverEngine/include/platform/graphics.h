@@ -129,7 +129,7 @@ namespace sv {
 		GPUImageType_ShaderResource = SV_BIT(1),
 		GPUImageType_DepthStencil	= SV_BIT(2),
 	};
-	typedef u8 ImageTypeFlags;
+	typedef u8 GPUImageTypeFlags;
 
 	enum ResourceUsage : u8 {
 		ResourceUsage_Default,
@@ -156,7 +156,8 @@ namespace sv {
 		GPUImageLayout_Present,
 	};
 	
-	enum Format {
+	enum Format : u32 {
+
 		Format_Unknown,
 		Format_R32G32B32A32_FLOAT,
 		Format_R32G32B32A32_UINT,
@@ -384,24 +385,24 @@ namespace sv {
 		GPUBufferType	bufferType;
 		ResourceUsage	usage;
 		CPUAccessFlags	CPUAccess;
-		u32			size;
+		u32				size;
 		IndexType		indexType;
 		void*			pData;
 	};
 
 	struct GPUImageDesc {
 		void*			pData;
-		u32			size;
+		u32				size;
 		Format			format;
 		GPUImageLayout	layout;
-		ImageTypeFlags	type;
+		GPUImageTypeFlags	type;
 		ResourceUsage	usage;
 		CPUAccessFlags	CPUAccess;
 		u8				dimension;
-		u32			width;
-		u32			height;
-		u32			depth;
-		u32			layers;
+		u32				width;
+		u32				height;
+		u32				depth;
+		u32				layers;
 	};
 
 	struct SamplerDesc {
@@ -665,14 +666,15 @@ namespace sv {
 
 	// Primitive getters
 
-	u32		graphics_image_get_width(GPUImage* image);
-	u32		graphics_image_get_height(GPUImage* image);
-	u32		graphics_image_get_depth(GPUImage* image);
-	u32		graphics_image_get_layers(GPUImage* image);
-	u32		graphics_image_get_dimension(GPUImage* image);
-	Format		graphics_image_get_format(GPUImage* image);
-	Viewport	graphics_image_get_viewport(GPUImage* image);
-	Scissor		graphics_image_get_scissor(GPUImage* image);
+	u32				graphics_image_get_width(const GPUImage* image);
+	u32				graphics_image_get_height(const GPUImage* image);
+	u32				graphics_image_get_depth(const GPUImage* image);
+	u32				graphics_image_get_layers(const GPUImage* image);
+	u32				graphics_image_get_dimension(const GPUImage* image);
+	Format			graphics_image_get_format(const GPUImage* image);
+	Viewport		graphics_image_get_viewport(const GPUImage* image);
+	Scissor			graphics_image_get_scissor(const GPUImage* image);
+	GPUImageTypeFlags	graphics_image_get_type(const GPUImage* image);
 
 	// Assets
 

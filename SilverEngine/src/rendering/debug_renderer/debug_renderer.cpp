@@ -136,7 +136,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		"	return output;\n"
 		"}";
 
-#define parseBatch() sv::DebugRendererBatch_internal& batch = *reinterpret_cast<sv::DebugRendererBatch_internal*>(batch_)
+#define parseBatch() sv::DebugRendererBatch_internal& batch = *reinterpret_cast<sv::DebugRendererBatch_internal*>(pInternal)
 
 	struct DebugData {
 		vec4f position;
@@ -165,67 +165,17 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 
 	// MAIN FUNCTIONS
 
-	Result debug_renderer_initialize()
+	Result DebugRenderer_internal::initialize()
 	{
 		// Create Shaders
-		{
-			std::vector<u8> quadVS, quadPS, ellipseVS, ellipsePS, spriteVS, spritePS;
+		svCheck(graphics_shader_compile_fastbin("DefaultRenderer_QuadVertex", ShaderType_Vertex, &g_QuadVertexShader, QUAD_VERTEX_SHADER_SRC));
+		svCheck(graphics_shader_compile_fastbin("DefaultRenderer_QuadPixel", ShaderType_Pixel, &g_QuadPixelShader, QUAD_PIXEL_SHADER_SRC));
 
-			// Compile Shaders
-			{
-				ShaderCompileDesc vsComileDesc, psComileDesc;
-				vsComileDesc.api = graphics_api_get();
-				vsComileDesc.entryPoint = "main";
-				vsComileDesc.majorVersion = 6u;
-				vsComileDesc.minorVersion = 0u;
-				vsComileDesc.shaderType = ShaderType_Vertex;
+		svCheck(graphics_shader_compile_fastbin("DefaultRenderer_EllipseVertex", ShaderType_Vertex, &g_EllipseVertexShader, ELLIPSE_VERTEX_SHADER_SRC));
+		svCheck(graphics_shader_compile_fastbin("DefaultRenderer_EllipsePixel", ShaderType_Pixel, &g_EllipsePixelShader, ELLIPSE_PIXEL_SHADER_SRC));
 
-				psComileDesc = vsComileDesc;
-				psComileDesc.shaderType = ShaderType_Pixel;
-
-				// TODO: Create and load from bin data
-
-				svCheck(graphics_shader_compile_string(&vsComileDesc, QUAD_VERTEX_SHADER_SRC, u32(strlen(QUAD_VERTEX_SHADER_SRC)), quadVS));
-				svCheck(graphics_shader_compile_string(&psComileDesc, QUAD_PIXEL_SHADER_SRC, u32(strlen(QUAD_PIXEL_SHADER_SRC)), quadPS));
-
-				svCheck(graphics_shader_compile_string(&vsComileDesc, ELLIPSE_VERTEX_SHADER_SRC, u32(strlen(ELLIPSE_VERTEX_SHADER_SRC)), ellipseVS));
-				svCheck(graphics_shader_compile_string(&psComileDesc, ELLIPSE_PIXEL_SHADER_SRC, u32(strlen(ELLIPSE_PIXEL_SHADER_SRC)), ellipsePS));
-
-				svCheck(graphics_shader_compile_string(&vsComileDesc, SPRITE_VERTEX_SHADER_SRC, u32(strlen(SPRITE_VERTEX_SHADER_SRC)), spriteVS));
-				svCheck(graphics_shader_compile_string(&psComileDesc, SPRITE_PIXEL_SHADER_SRC, u32(strlen(SPRITE_PIXEL_SHADER_SRC)), spritePS));
-			}
-
-			ShaderDesc desc;
-			desc.pBinData = quadVS.data();
-			desc.binDataSize = quadVS.size();
-			desc.shaderType = ShaderType_Vertex;
-			svCheck(graphics_shader_create(&desc, &g_QuadVertexShader));
-
-			desc.pBinData = quadPS.data();
-			desc.binDataSize = quadPS.size();
-			desc.shaderType = ShaderType_Pixel;
-			svCheck(graphics_shader_create(&desc, &g_QuadPixelShader));
-
-			desc.pBinData = ellipseVS.data();
-			desc.binDataSize = ellipseVS.size();
-			desc.shaderType = ShaderType_Vertex;
-			svCheck(graphics_shader_create(&desc, &g_EllipseVertexShader));
-
-			desc.pBinData = ellipsePS.data();
-			desc.binDataSize = ellipsePS.size();
-			desc.shaderType = ShaderType_Pixel;
-			svCheck(graphics_shader_create(&desc, &g_EllipsePixelShader));
-
-			desc.pBinData = spriteVS.data();
-			desc.binDataSize = spriteVS.size();
-			desc.shaderType = ShaderType_Vertex;
-			svCheck(graphics_shader_create(&desc, &g_SpriteVertexShader));
-
-			desc.pBinData = spritePS.data();
-			desc.binDataSize = spritePS.size();
-			desc.shaderType = ShaderType_Pixel;
-			svCheck(graphics_shader_create(&desc, &g_SpritePixelShader));
-		}
+		svCheck(graphics_shader_compile_fastbin("DefaultRenderer_SpriteVertex", ShaderType_Vertex, &g_SpriteVertexShader, SPRITE_VERTEX_SHADER_SRC));
+		svCheck(graphics_shader_compile_fastbin("DefaultRenderer_SpritePixel", ShaderType_Pixel, &g_SpritePixelShader, SPRITE_PIXEL_SHADER_SRC));
 
 		// Create RenderPass
 		{
@@ -295,7 +245,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		return Result_Success;
 	}
 
-	Result debug_renderer_close()
+	Result DebugRenderer_internal::close()
 	{
 		for (u32 i = 0; i < GraphicsLimit_CommandList; ++i) graphics_destroy(g_VertexBuffer[i]);
 		graphics_destroy(g_RenderPass);
@@ -330,36 +280,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		return Result_Success;
 	}
 
-	// BATCH MANGEMENT
-
-	Result debug_renderer_batch_create(RendererDebugBatch** pBatch)
-	{
-		*pBatch = new DebugRendererBatch_internal();
-		debug_renderer_batch_reset(*pBatch);
-		return Result_Success;
-	}
-
-	Result debug_renderer_batch_destroy(RendererDebugBatch* batch_)
-	{
-		if (batch_ == nullptr) return Result_Success;
-		parseBatch();
-
-		delete &batch;
-		return Result_Success;
-	}
-
 	// BEGIN - END
-
-	void debug_renderer_batch_reset(RendererDebugBatch* batch_)
-	{
-		parseBatch();
-		batch.quads.clear();
-		batch.lines.clear();
-		batch.ellipses.clear();
-		batch.sprites.clear();
-		batch.drawCalls.resize(1u);
-		batch.drawCalls.back().list = u32_max;
-	}
 
 	constexpr u32 debug_renderer_vertex_count(u32 list)
 	{
@@ -466,7 +387,40 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 
 	}
 
-	void debug_renderer_batch_render(RendererDebugBatch* batch_, GPUImage* renderTarget, const Viewport& viewport, const Scissor& scissor, const XMMATRIX& viewProjectionMatrix, CommandList cmd)
+	DebugRenderer::~DebugRenderer()
+	{
+		destroy();
+	}
+
+	Result DebugRenderer::create()
+	{
+		pInternal = new DebugRendererBatch_internal();
+		reset();
+		return Result_Success;
+	}
+
+	Result DebugRenderer::destroy()
+	{
+		if (pInternal == nullptr) return Result_Success;
+		parseBatch();
+
+		delete& batch;
+		pInternal = nullptr;
+		return Result_Success;
+	}
+
+	void DebugRenderer::reset()
+	{
+		parseBatch();
+		batch.quads.clear();
+		batch.lines.clear();
+		batch.ellipses.clear();
+		batch.sprites.clear();
+		batch.drawCalls.resize(1u);
+		batch.drawCalls.back().list = u32_max;
+	}
+
+	void DebugRenderer::render(GPUImage* renderTarget, const Viewport& viewport, const Scissor& scissor, const XMMATRIX& viewProjectionMatrix, CommandList cmd)
 	{
 		parseBatch();
 		if (batch.drawCalls.size() <= 1u)
@@ -497,7 +451,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		DebugData* endBatch = batchData + BATCH_COUNT;
 
 		while (it != end) {
-			
+
 			DebugRendererDraw draw = *it;
 
 			u32 vertexCount = debug_renderer_vertex_count(draw.list);
@@ -507,11 +461,11 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 				beginIndex = draw.index;
 				beginIt = it;
 			}
-			
+
 			while (draw.count) {
 
 				u32 capacity = u32(endBatch - itBatch) / vertexCount;
-				
+
 				u32 batchUsage = std::min(capacity, draw.count);
 
 				draw.count -= batchUsage;
@@ -664,7 +618,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 				if ((capacity - batchUsage) * vertexCount < 6u) { // 6 because is the max vertex count
 
 					debug_renderer_draw_batch(beginIt, beginIndex, it, currentIndex, u32(itBatch - batchData), batchData, renderTarget, cmd);
-					
+
 					itBatch = batchData;
 
 					if (draw.count) {
@@ -687,9 +641,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		}
 	}
 
-	// DRAW
-
-	void debug_renderer_draw_quad(RendererDebugBatch* batch_, const XMMATRIX& matrix, Color color)
+	void DebugRenderer::drawQuad(const XMMATRIX& matrix, Color color)
 	{
 		parseBatch();
 
@@ -701,10 +653,10 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		batch.quads.emplace_back(matrix, color);
 	}
 
-	void debug_renderer_draw_line(RendererDebugBatch* batch_, const vec3f& p0, const vec3f& p1, Color color)
+	void DebugRenderer::drawLine(const vec3f& p0, const vec3f& p1, Color color)
 	{
 		parseBatch();
-		
+
 		if (batch.drawCalls.back().list == 1u && batch.drawCalls.back().lineWidth == batch.lineWidth) ++batch.drawCalls.back().count;
 		else {
 			batch.drawCalls.emplace_back(1u, u32(batch.lines.size()), batch.lineWidth);
@@ -713,10 +665,10 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		batch.lines.emplace_back(p0, p1, color);
 	}
 
-	void debug_renderer_draw_ellipse(RendererDebugBatch* batch_, const XMMATRIX& matrix, Color color)
+	void DebugRenderer::drawEllipse(const XMMATRIX& matrix, Color color)
 	{
 		parseBatch();
-		
+
 		if (batch.drawCalls.back().list == 2u && batch.drawCalls.back().stroke == batch.stroke) ++batch.drawCalls.back().count;
 		else {
 			batch.drawCalls.emplace_back(2u, u32(batch.ellipses.size()), batch.stroke);
@@ -725,10 +677,10 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		batch.ellipses.emplace_back(matrix, color);
 	}
 
-	void debug_renderer_draw_sprite(RendererDebugBatch* batch_, const XMMATRIX& matrix, Color color, GPUImage* image)
+	void DebugRenderer::drawSprite(const XMMATRIX& matrix, Color color, GPUImage* image)
 	{
 		parseBatch();
-		
+
 		if (batch.sameSprite && batch.drawCalls.back().list == 3u && batch.drawCalls.back().pImage == image) ++batch.drawCalls.back().count;
 		else {
 			batch.drawCalls.emplace_back(3u, u32(batch.sprites.size()), image, batch.pSampler, batch.texCoord);
@@ -738,120 +690,119 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		batch.sprites.emplace_back(matrix, color);
 	}
 
-
-	void debug_renderer_draw_quad(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, Color color)
+	void DebugRenderer::drawQuad(const vec3f& position, const vec2f& size, Color color)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixTranslation(position.x, position.y, position.z);
-		debug_renderer_draw_quad(batch, tm, color);
+		drawQuad(tm, color);
 	}
 
-	void debug_renderer_draw_quad(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, const vec3f& rotation, Color color)
+	void DebugRenderer::drawQuad(const vec3f& position, const vec2f& size, const vec3f& rotation, Color color)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixRotationRollPitchYaw(rotation.x, rotation.y, rotation.z) * XMMatrixTranslation(position.x, position.y, position.z);
-		debug_renderer_draw_quad(batch, tm, color);
+		drawQuad(tm, color);
 	}
 
-	void debug_renderer_draw_quad(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, const vec4f& rotationQuat, Color color)
+	void DebugRenderer::drawQuad(const vec3f& position, const vec2f& size, const vec4f& rotationQuat, Color color)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixRotationQuaternion(rotationQuat.get_dx()) * XMMatrixTranslation(position.x, position.y, position.z);
-		debug_renderer_draw_quad(batch, tm, color);
+		drawQuad(tm, color);
 	}
 
-	void debug_renderer_draw_ellipse(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, Color color)
+	void DebugRenderer::drawEllipse(const vec3f& position, const vec2f& size, Color color)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixTranslation(position.x, position.y, position.z);
-		debug_renderer_draw_ellipse(batch, tm, color);
+		drawEllipse(tm, color);
 	}
 
-	void debug_renderer_draw_ellipse(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, const vec3f& rotation, Color color)
+	void DebugRenderer::drawEllipse(const vec3f& position, const vec2f& size, const vec3f& rotation, Color color)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixRotationRollPitchYaw(rotation.x, rotation.y, rotation.z) * XMMatrixTranslation(position.x, position.y, position.z);
-		debug_renderer_draw_ellipse(batch, tm, color);
+		drawEllipse(tm, color);
 	}
 
-	void debug_renderer_draw_ellipse(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, const vec4f& rotationQuat, Color color)
+	void DebugRenderer::drawEllipse(const vec3f& position, const vec2f& size, const vec4f& rotationQuat, Color color)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixRotationQuaternion(rotationQuat.get_dx()) * XMMatrixTranslation(position.x, position.y, position.z);
-		debug_renderer_draw_ellipse(batch, tm, color);
+		drawEllipse(tm, color);
 	}
 
-	void debug_renderer_draw_sprite(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, Color color, GPUImage* image)
+	void DebugRenderer::drawSprite(const vec3f& position, const vec2f& size, Color color, GPUImage* image)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixTranslation(position.x, position.y, position.z);
-		debug_renderer_draw_sprite(batch, tm, color, image);
+		drawSprite(tm, color, image);
 	}
 
-	void debug_renderer_draw_sprite(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, const vec3f& rotation, Color color, GPUImage* image)
+	void DebugRenderer::drawSprite(const vec3f& position, const vec2f& size, const vec3f& rotation, Color color, GPUImage* image)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixRotationRollPitchYaw(rotation.x, rotation.y, rotation.z) * XMMatrixTranslation(position.x, position.y, position.z);
-		debug_renderer_draw_sprite(batch, tm, color, image);
+		drawSprite(tm, color, image);
 	}
 
-	void debug_renderer_draw_sprite(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, const vec4f& rotationQuat, Color color, GPUImage* image)
+	void DebugRenderer::drawSprite(const vec3f& position, const vec2f& size, const vec4f& rotationQuat, Color color, GPUImage* image)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixRotationQuaternion(rotationQuat.get_dx()) * XMMatrixTranslation(position.x, position.y, position.z);
-		debug_renderer_draw_sprite(batch, tm, color, image);
+		drawSprite(tm, color, image);
 	}
 
-	void debug_renderer_linewidth_set(RendererDebugBatch* batch_, float lineWidth)
+	void DebugRenderer::setlinewidth(f32 lineWidth)
 	{
 		parseBatch();
 		batch.lineWidth = lineWidth;
 	}
 
-	float debug_renderer_linewidth_get(RendererDebugBatch* batch_)
+	f32 DebugRenderer::getlinewidth()
 	{
 		parseBatch();
 		return batch.lineWidth;
 	}
 
-	void debug_renderer_stroke_set(RendererDebugBatch* batch_, float stroke)
+	void DebugRenderer::setStroke(f32 stroke)
 	{
 		parseBatch();
 		batch.stroke = stroke;
 	}
 
-	float debug_renderer_stroke_get(RendererDebugBatch* batch_)
+	f32 DebugRenderer::getStroke()
 	{
 		parseBatch();
 		return batch.stroke;
 	}
 
-	void debug_renderer_texcoord_set(RendererDebugBatch* batch_, const vec4f& texCoord)
+	void DebugRenderer::setTexcoord(const vec4f& texCoord)
 	{
 		parseBatch();
 		batch.texCoord = texCoord;
 		batch.sameSprite = false;
 	}
 
-	vec4f debug_renderer_texcoord_get(RendererDebugBatch* batch_)
+	vec4f DebugRenderer::getTexcoord()
 	{
 		parseBatch();
 		return batch.texCoord;
 	}
 
-	void debug_renderer_sampler_set_default(RendererDebugBatch* batch_)
+	void DebugRenderer::setSamplerDefault()
 	{
 		parseBatch();
 		batch.pSampler = nullptr;
 	}
 
-	void debug_renderer_sampler_set(RendererDebugBatch* batch_, Sampler* sampler)
+	void DebugRenderer::setSampler(Sampler* sampler)
 	{
 		parseBatch();
 		batch.pSampler = sampler;
 	}
 
-	void debug_renderer_draw_grid_orthographic(RendererDebugBatch* batch, const vec2f& position, const vec2f& size, float gridSize, Color color)
+	void DebugRenderer::drawOrthographicGrip(const vec2f& position, const vec2f& size, float gridSize, Color color)
 	{
 		vec2f begin = position - size / 2.f;
 		vec2f end = begin + size;
-		
+
 		for (float y = i32(begin.y / gridSize) * gridSize; y < end.y; y += gridSize) {
-			debug_renderer_draw_line(batch, { begin.x, y, 0.f }, { end.x, y, 0.f }, color);
+			drawLine({ begin.x, y, 0.f }, { end.x, y, 0.f }, color);
 		}
 		for (float x = i32(begin.x / gridSize) * gridSize; x < end.x; x += gridSize) {
-			debug_renderer_draw_line(batch, { x, begin.y, 0.f }, { x, end.y, 0.f }, color);
+			drawLine({ x, begin.y, 0.f }, { x, end.y, 0.f }, color);
 		}
 	}
 

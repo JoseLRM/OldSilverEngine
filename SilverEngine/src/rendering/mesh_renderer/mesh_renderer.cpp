@@ -8,7 +8,7 @@ namespace sv {
 
 	static MeshRendererContext g_Context[GraphicsLimit_CommandList];
 	
-	static ShaderLibrary* g_SpriteDefShaderLibrary = nullptr;
+	static ShaderLibrary* g_DefShaderLibrary = nullptr;
 
 	static RasterizerState* g_RasterizerState = nullptr;
 	static DepthStencilState* g_DepthStencilState = nullptr;
@@ -346,7 +346,7 @@ Output main(Input input)
 		// Default shader library
 		{
 			// TEMP
-			if (result_fail(matsys_shaderlibrary_create_from_binary(hash_string("SilverEngine/DefaultMesh"), &g_SpriteDefShaderLibrary))) {
+			if (result_fail(matsys_shaderlibrary_create_from_binary(hash_string("SilverEngine/DefaultMesh"), &g_DefShaderLibrary))) {
 
 				const char* src = R"(
 
@@ -393,7 +393,7 @@ SurfaceOutput meshSurface(UserSurfaceInput input)
 #end
 				)";
 
-				svCheck(matsys_shaderlibrary_create_from_string(src, &g_SpriteDefShaderLibrary));
+				svCheck(matsys_shaderlibrary_create_from_string(src, &g_DefShaderLibrary));
 			}
 		}
 
@@ -406,13 +406,18 @@ SurfaceOutput meshSurface(UserSurfaceInput input)
 		for (u32 i = 0u; i < GraphicsLimit_CommandList; ++i)
 			delete[] g_Context[i].meshData;
 
+		svCheck(matsys_shaderlibrary_destroy(g_DefShaderLibrary));
+
 		svCheck(graphics_destroy(g_RenderPass_Geometry));
 		svCheck(graphics_destroy(g_RenderPass_Lighting));
 		svCheck(graphics_destroy(g_InputLayoutState_Geometry));
 		svCheck(graphics_destroy(g_BS_Geometry));
+		svCheck(graphics_destroy(g_CBuffer_Lighting));
 		svCheck(graphics_destroy(g_DepthStencilState));
 		svCheck(graphics_destroy(g_InstanceBuffer));
 		svCheck(graphics_destroy(g_RasterizerState));
+		svCheck(graphics_destroy(g_Shader_LightingVertex));
+		svCheck(graphics_destroy(g_Shader_LightingPixel));
 
 		return Result_Success;
 	}
@@ -476,9 +481,9 @@ SurfaceOutput meshSurface(UserSurfaceInput input)
 				Mesh* mesh = nullptr;
 				MeshData meshData;
 
-				matsys_shaderlibrary_bind_camerabuffer(g_SpriteDefShaderLibrary, cameraBuffer, cmd);
-				matsys_shaderlibrary_bind_subshader(g_SpriteDefShaderLibrary, g_SubShader_GeometryVertexShader, cmd);
-				matsys_shaderlibrary_bind_subshader(g_SpriteDefShaderLibrary, g_SubShader_GeometryPixelShader, cmd);
+				matsys_shaderlibrary_bind_camerabuffer(g_DefShaderLibrary, cameraBuffer, cmd);
+				matsys_shaderlibrary_bind_subshader(g_DefShaderLibrary, g_SubShader_GeometryVertexShader, cmd);
+				matsys_shaderlibrary_bind_subshader(g_DefShaderLibrary, g_SubShader_GeometryPixelShader, cmd);
 
 
 				// TODO: Instanced Rendering
@@ -512,9 +517,9 @@ SurfaceOutput meshSurface(UserSurfaceInput input)
 						}
 						else {
 
-							matsys_shaderlibrary_bind_camerabuffer(g_SpriteDefShaderLibrary, cameraBuffer, cmd);
-							matsys_shaderlibrary_bind_subshader(g_SpriteDefShaderLibrary, g_SubShader_GeometryVertexShader, cmd);
-							matsys_shaderlibrary_bind_subshader(g_SpriteDefShaderLibrary, g_SubShader_GeometryPixelShader, cmd);
+							matsys_shaderlibrary_bind_camerabuffer(g_DefShaderLibrary, cameraBuffer, cmd);
+							matsys_shaderlibrary_bind_subshader(g_DefShaderLibrary, g_SubShader_GeometryVertexShader, cmd);
+							matsys_shaderlibrary_bind_subshader(g_DefShaderLibrary, g_SubShader_GeometryPixelShader, cmd);
 						}
 					}
 

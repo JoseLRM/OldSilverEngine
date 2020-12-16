@@ -44,6 +44,8 @@ namespace sv {
 
 typedef unsigned int    u32;
 typedef int             i32;
+typedef float           f32;
+typedef double          f64;
 
 // Macros
 
@@ -59,6 +61,8 @@ struct Camera {
     float3 position;
     float4 direction;
 };
+
+#define SV_LIGHT_TYPE_POINT 0
 
 #define SV_DEFINE_MATERIAL(binding) SV_CONSTANT_BUFFER(__Material__, binding)
 #define SV_DEFINE_CAMERA(binding) SV_CONSTANT_BUFFER(__Camera__, binding) { Camera camera; };

@@ -190,6 +190,16 @@ namespace sv {
 		return Result_Success;
 	}
 
+	static inline void destroyUnusedPrimitive(Primitive_internal& primitive)
+	{
+#ifdef SV_ENABLE_VULKAN_VALIDATION_LAYERS
+		if (primitive.name.size())
+			SV_LOG_WARNING("Destroing '%s'", primitive.name.c_str());
+#endif
+
+		g_Device.destroy(&primitive);
+	}
+
 	Result graphics_close()
 	{
 		svCheck(graphics_destroy(g_DefBlendState));
@@ -211,7 +221,7 @@ namespace sv {
 
 				for (auto pool : *(g_Device.bufferAllocator.get())) {
 					for (void* p : pool) {
-						g_Device.destroy(reinterpret_cast<Primitive_internal*>(p));
+						destroyUnusedPrimitive(*reinterpret_cast<Primitive_internal*>(p));
 					}
 				}
 			}
@@ -222,7 +232,7 @@ namespace sv {
 				
 				for (auto pool : *(g_Device.imageAllocator.get())) {
 					for (void* p : pool) {
-						g_Device.destroy(reinterpret_cast<Primitive_internal*>(p));
+						destroyUnusedPrimitive(*reinterpret_cast<Primitive_internal*>(p));
 					}
 				}
 			}
@@ -233,7 +243,7 @@ namespace sv {
 
 				for (auto pool : *(g_Device.samplerAllocator.get())) {
 					for (void* p : pool) {
-						g_Device.destroy(reinterpret_cast<Primitive_internal*>(p));
+						destroyUnusedPrimitive(*reinterpret_cast<Primitive_internal*>(p));
 					}
 				}
 			}
@@ -244,7 +254,7 @@ namespace sv {
 
 				for (auto pool : *(g_Device.shaderAllocator.get())) {
 					for (void* p : pool) {
-						g_Device.destroy(reinterpret_cast<Primitive_internal*>(p));
+						destroyUnusedPrimitive(*reinterpret_cast<Primitive_internal*>(p));
 					}
 				}
 			}
@@ -255,7 +265,7 @@ namespace sv {
 
 				for (auto pool : *(g_Device.renderPassAllocator.get())) {
 					for (void* p : pool) {
-						g_Device.destroy(reinterpret_cast<Primitive_internal*>(p));
+						destroyUnusedPrimitive(*reinterpret_cast<Primitive_internal*>(p));
 					}
 				}
 			}
@@ -266,7 +276,7 @@ namespace sv {
 
 				for (auto pool : *(g_Device.inputLayoutStateAllocator.get())) {
 					for (void* p : pool) {
-						g_Device.destroy(reinterpret_cast<Primitive_internal*>(p));
+						destroyUnusedPrimitive(*reinterpret_cast<Primitive_internal*>(p));
 					}
 				}
 			}
@@ -277,7 +287,7 @@ namespace sv {
 
 				for (auto pool : *(g_Device.blendStateAllocator.get())) {
 					for (void* p : pool) {
-						g_Device.destroy(reinterpret_cast<Primitive_internal*>(p));
+						destroyUnusedPrimitive(*reinterpret_cast<Primitive_internal*>(p));
 					}
 				}
 			}
@@ -288,7 +298,7 @@ namespace sv {
 
 				for (auto pool : *(g_Device.depthStencilStateAllocator.get())) {
 					for (void* p : pool) {
-						g_Device.destroy(reinterpret_cast<Primitive_internal*>(p));
+						destroyUnusedPrimitive(*reinterpret_cast<Primitive_internal*>(p));
 					}
 				}
 			}
@@ -299,7 +309,7 @@ namespace sv {
 
 				for (auto pool : *(g_Device.rasterizerStateAllocator.get())) {
 					for (void* p : pool) {
-						g_Device.destroy(reinterpret_cast<Primitive_internal*>(p));
+						destroyUnusedPrimitive(*reinterpret_cast<Primitive_internal*>(p));
 					}
 				}
 			}
@@ -989,7 +999,7 @@ namespace sv {
 	{
 		auto& state = g_PipelineState.graphics[cmd];
 
-		svZeroMemory(state.vertexBuffers, state.vertexBuffersCount * sizeof(GPUBuffer_internal*));
+		SV_ZERO_MEMORY(state.vertexBuffers, state.vertexBuffersCount * sizeof(GPUBuffer_internal*));
 		state.vertexBuffersCount = 0u;
 
 		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_VertexBuffer;
@@ -1058,7 +1068,7 @@ namespace sv {
 	{
 		auto& state = g_PipelineState.graphics[cmd];
 
-		svZeroMemory(state.constantBuffers[shaderType], state.constantBuffersCount[shaderType] * sizeof(GPUBuffer_internal*));
+		SV_ZERO_MEMORY(state.constantBuffers[shaderType], state.constantBuffersCount[shaderType] * sizeof(GPUBuffer_internal*));
 		state.constantBuffersCount[shaderType] = 0u;
 
 		state.flags |= GraphicsPipelineState_ConstantBuffer;
@@ -1121,7 +1131,7 @@ namespace sv {
 	{
 		auto& state = g_PipelineState.graphics[cmd];
 
-		svZeroMemory(state.images[shaderType], state.imagesCount[shaderType] * sizeof(GPUImage_internal*));
+		SV_ZERO_MEMORY(state.images[shaderType], state.imagesCount[shaderType] * sizeof(GPUImage_internal*));
 		state.imagesCount[shaderType] = 0u;
 
 		state.flags |= GraphicsPipelineState_Image;
@@ -1184,7 +1194,7 @@ namespace sv {
 	{
 		auto& state = g_PipelineState.graphics[cmd];
 
-		svZeroMemory(state.samplers[shaderType], state.samplersCount[shaderType] * sizeof(Sampler_internal*));
+		SV_ZERO_MEMORY(state.samplers[shaderType], state.samplersCount[shaderType] * sizeof(Sampler_internal*));
 		state.samplersCount[shaderType] = 0u;
 
 		state.flags |= GraphicsPipelineState_Sampler;
@@ -1569,39 +1579,45 @@ namespace sv {
 		return reinterpret_cast<const Shader_internal*>(shader)->shaderType;
 	}
 
-	u32 graphics_image_get_width(GPUImage* image)
+	u32 graphics_image_get_width(const GPUImage* image)
 	{
-		return reinterpret_cast<GPUImage_internal*>(image)->width;
+		return reinterpret_cast<const GPUImage_internal*>(image)->width;
 	}
-	u32 graphics_image_get_height(GPUImage* image)
+	u32 graphics_image_get_height(const GPUImage* image)
 	{
-		return reinterpret_cast<GPUImage_internal*>(image)->height;
+		return reinterpret_cast<const GPUImage_internal*>(image)->height;
 	}
-	u32 graphics_image_get_depth(GPUImage* image)
+	u32 graphics_image_get_depth(const GPUImage* image)
 	{
-		return reinterpret_cast<GPUImage_internal*>(image)->depth;
+		return reinterpret_cast<const GPUImage_internal*>(image)->depth;
 	}
-	u32 graphics_image_get_layers(GPUImage* image)
+	u32 graphics_image_get_layers(const GPUImage* image)
 	{
-		return reinterpret_cast<GPUImage_internal*>(image)->layers;
+		return reinterpret_cast<const GPUImage_internal*>(image)->layers;
 	}
-	u32 graphics_image_get_dimension(GPUImage* image)
+	u32 graphics_image_get_dimension(const GPUImage* image)
 	{
-		return reinterpret_cast<GPUImage_internal*>(image)->dimension;
+		return reinterpret_cast<const GPUImage_internal*>(image)->dimension;
 	}
-	Format graphics_image_get_format(GPUImage* image)
+	Format graphics_image_get_format(const GPUImage* image)
 	{
-		return reinterpret_cast<GPUImage_internal*>(image)->format;
+		return reinterpret_cast<const GPUImage_internal*>(image)->format;
 	}
-	Viewport graphics_image_get_viewport(GPUImage* image)
+	Viewport graphics_image_get_viewport(const GPUImage* image)
 	{
-		GPUImage_internal& p = *reinterpret_cast<GPUImage_internal*>(image);
+		const GPUImage_internal& p = *reinterpret_cast<const GPUImage_internal*>(image);
 		return { 0.f, 0.f, float(p.width), float(p.height), 0.f, 1.f };
 	}
-	Scissor graphics_image_get_scissor(GPUImage* image)
+	Scissor graphics_image_get_scissor(const GPUImage* image)
 	{
-		GPUImage_internal& p = *reinterpret_cast<GPUImage_internal*>(image);
+		const GPUImage_internal& p = *reinterpret_cast<const GPUImage_internal*>(image);
 		return { 0u, 0u, p.width, p.height };
+	}
+
+	GPUImageTypeFlags graphics_image_get_type(const GPUImage* image)
+	{
+		const GPUImage_internal& p = *reinterpret_cast<const GPUImage_internal*>(image);
+		return p.imageType;
 	}
 
 	// DEBUG

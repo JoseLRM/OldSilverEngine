@@ -133,7 +133,7 @@ namespace sv {
 	{
 		if (m_Pos + size > m_Size) {
 			size_t invalidSize = (m_Pos + size) - m_Size;
-			svZeroMemory((u8*)data + size - invalidSize, invalidSize);
+			SV_ZERO_MEMORY((u8*)data + size - invalidSize, invalidSize);
 			size -= invalidSize;
 			SV_LOG_WARNING("Archive reading, out of bounds");
 		}

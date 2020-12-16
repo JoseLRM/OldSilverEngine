@@ -106,7 +106,7 @@ namespace sv {
 
 			// Reserve rawdata and initialize to 0
 			rawMemory = new u8[info.bufferSizesCount];
-			svZeroMemory(rawMemory, info.bufferSizesCount);
+			SV_ZERO_MEMORY(rawMemory, info.bufferSizesCount);
 
 			// Asign memory ptrs
 			size_t offset = 0u;

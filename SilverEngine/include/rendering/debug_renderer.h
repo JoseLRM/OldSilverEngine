@@ -4,55 +4,62 @@
 
 namespace sv {
 
-	typedef void RendererDebugBatch;
+	struct DebugRenderer {
 
-	Result debug_renderer_batch_create(RendererDebugBatch** pBatch);
-	Result debug_renderer_batch_destroy(RendererDebugBatch* batch);
+		~DebugRenderer();
 
-	void debug_renderer_batch_reset(RendererDebugBatch* batch);
-	void debug_renderer_batch_render(RendererDebugBatch* batch, GPUImage* renderTarget, const Viewport& viewport, const Scissor& scissor, const XMMATRIX& viewProjectionMatrix, CommandList cmd);
+		Result create();
+		Result destroy();
 
-	// Draw calls
+		void reset();
+		void render(GPUImage* renderTarget, const Viewport& viewport, const Scissor& scissor, const XMMATRIX& viewProjectionMatrix, CommandList cmd);
 
-	void debug_renderer_draw_quad(RendererDebugBatch* batch, const XMMATRIX& matrix, Color color);
-	void debug_renderer_draw_line(RendererDebugBatch* batch, const vec3f& p0, const vec3f& p1, Color color);
-	void debug_renderer_draw_ellipse(RendererDebugBatch* batch, const XMMATRIX& matrix, Color color);
-	void debug_renderer_draw_sprite(RendererDebugBatch* batch, const XMMATRIX& matrix, Color color, GPUImage* image);
+		// Draw calls
 
-	// Helper draw calls
+		void drawQuad(const XMMATRIX& matrix, Color color);
+		void drawLine(const vec3f& p0, const vec3f& p1, Color color);
+		void drawEllipse(const XMMATRIX& matrix, Color color);
+		void drawSprite(const XMMATRIX& matrix, Color color, GPUImage* image);
 
-	void debug_renderer_draw_quad(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, Color color);
-	void debug_renderer_draw_quad(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, const vec3f& rotation, Color color);
-	void debug_renderer_draw_quad(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, const vec4f& rotationQuat, Color color);
+		// Helper draw calls
 
-	void debug_renderer_draw_ellipse(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, Color color);
-	void debug_renderer_draw_ellipse(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, const vec3f& rotation, Color color);
-	void debug_renderer_draw_ellipse(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, const vec4f& rotationQuat, Color color);
+		void drawQuad(const vec3f& position, const vec2f& size, Color color);
+		void drawQuad(const vec3f& position, const vec2f& size, const vec3f& rotation, Color color);
+		void drawQuad(const vec3f& position, const vec2f& size, const vec4f& rotationQuat, Color color);
 
-	void debug_renderer_draw_sprite(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, Color color, GPUImage* image);
-	void debug_renderer_draw_sprite(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, const vec3f& rotation, Color color, GPUImage* image);
-	void debug_renderer_draw_sprite(RendererDebugBatch* batch, const vec3f& position, const vec2f& size, const vec4f& rotationQuat, Color color, GPUImage* image);
+		void drawEllipse(const vec3f& position, const vec2f& size, Color color);
+		void drawEllipse(const vec3f& position, const vec2f& size, const vec3f& rotation, Color color);
+		void drawEllipse(const vec3f& position, const vec2f& size, const vec4f& rotationQuat, Color color);
 
-	// Attributes
+		void drawSprite(const vec3f& position, const vec2f& size, Color color, GPUImage* image);
+		void drawSprite(const vec3f& position, const vec2f& size, const vec3f& rotation, Color color, GPUImage* image);
+		void drawSprite(const vec3f& position, const vec2f& size, const vec4f& rotationQuat, Color color, GPUImage* image);
 
-	// Line rasterization width (pixels)
-	void	debug_renderer_linewidth_set(RendererDebugBatch* batch, float lineWidth);
-	float	debug_renderer_linewidth_get(RendererDebugBatch* batch);
+		// Attributes
 
-	// Quad and ellipse stroke: 1.f renders normally, 0.01f renders thin stroke around
-	void	debug_renderer_stroke_set(RendererDebugBatch* batch, float stroke);
-	float	debug_renderer_stroke_get(RendererDebugBatch* batch);
+		// Line rasterization width (pixels)
+		void	setlinewidth(f32 lineWidth);
+		f32		getlinewidth();
 
-	// Sprite texCoords
-	void	debug_renderer_texcoord_set(RendererDebugBatch* batch, const vec4f& texCoord);
-	vec4f	debug_renderer_texcoord_get(RendererDebugBatch* batch);
+		// Quad and ellipse stroke: 1.f renders normally, 0.01f renders thin stroke around
+		void	setStroke(f32 stroke);
+		f32		getStroke();
 
-	// Sprite sampler
-	void debug_renderer_sampler_set_default(RendererDebugBatch* batch);
-	void debug_renderer_sampler_set(RendererDebugBatch* batch, Sampler* sampler);
+		// Sprite texCoords
+		void	setTexcoord(const vec4f& texCoord);
+		vec4f	getTexcoord();
 
-	// High level draw calls
+		// Sprite sampler
+		void setSamplerDefault();
+		void setSampler(Sampler* sampler);
 
-	void debug_renderer_draw_grid_orthographic(RendererDebugBatch* batch, const vec2f& position, const vec2f& size, float gridSize, Color color);
+		// High level draw calls
+
+		void drawOrthographicGrip(const vec2f& position, const vec2f& size, float gridSize, Color color);
+
+	private:
+		void* pInternal;
+
+	};
 
 }

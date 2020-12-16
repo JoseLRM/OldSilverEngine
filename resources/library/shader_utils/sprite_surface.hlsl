@@ -30,6 +30,33 @@ SV_CONSTANT_BUFFER(LightBuffer, b0) {
 
 };
 
+// Lighting functions
+
+float3 lightingPoint(Light light, float2 fragPosition) 
+{
+	float distance = length(light.position.xy - fragPosition);
+	
+	float att = 1.f - smoothstep(light.range * light.smoothness, light.range, distance);
+	return light.color * att * light.intensity;
+}
+
+float3 lightingResult(float2 fragPosition) 
+{
+	float3 lightColor = 0.f;
+	foreach (i, lightCount) {
+
+		Light light = lights[i];
+
+		switch(light.type) {
+		case SV_LIGHT_TYPE_POINT:
+			lightColor += lightingPoint(light, fragPosition);
+			break;
+		}
+	}
+
+	return max(lightColor, ambientLight);
+}
+
 #userblock SpriteSurface
 
 // Main

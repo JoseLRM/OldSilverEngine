@@ -57,4 +57,12 @@ namespace sv {
 		LightInstance(const vec3f& pos, const Color3f& color, float range, float intensity, float smoothness) : type(LightType_Point), color(color), intensity(intensity), point({ pos, range, smoothness }) {}
 	};
 
+	// AUXILIAR IMAGES
+
+	u64	auximg_id(u32 width, u32 height, Format format, GPUImageTypeFlags imageType);
+
+	// Return the image and is index
+	std::pair<GPUImage*, size_t>	auximg_push(u64 id, GPUImageLayout layout, CommandList cmd);
+	void							auximg_pop(size_t index, GPUImageLayout layout, CommandList cmd);
+
 }

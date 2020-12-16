@@ -237,9 +237,11 @@ namespace sv {
 
 	void asset_free_unused()
 	{
-		for (auto it = g_AssetTypes.rbegin(); it != g_AssetTypes.rend(); ++it) {
-			asset_free_unused(reinterpret_cast<AssetType>((*it).get()));
-		}
+		// Trying to free multiple times because an asset may contain other assets
+		foreach (i, 4u)
+			for (auto it = g_AssetTypes.rbegin(); it != g_AssetTypes.rend(); ++it) {
+				asset_free_unused(reinterpret_cast<AssetType>((*it).get()));
+			}
 	}
 
 	void asset_free_unused(AssetType assetType)

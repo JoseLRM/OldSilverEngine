@@ -27,13 +27,15 @@ namespace sv {
 	};
 
 	struct GPUImage_internal : public Primitive_internal {
+		
 		u8					dimension;
 		Format				format;
-		u32				width;
-		u32				height;
-		u32				depth;
-		u32				layers;
-		ImageTypeFlags		imageType;
+		u32					width;
+		u32					height;
+		u32					depth;
+		u32					layers;
+		GPUImageTypeFlags	imageType;
+		
 	};
 
 	struct Sampler_internal : public Primitive_internal {

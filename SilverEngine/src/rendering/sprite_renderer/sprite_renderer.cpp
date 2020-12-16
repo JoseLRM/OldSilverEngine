@@ -9,7 +9,7 @@ namespace sv {
 	static GPUImage* g_SpriteWhiteTexture = nullptr;
 	static Sampler* g_SpriteDefSampler = nullptr;
 
-	static ShaderLibrary* g_SpriteDefShaderLibrary;
+	static ShaderLibrary* g_DefShaderLibrary;
 
 	static SubShaderID g_SpriteSubShader_Vertex;
 	static SubShaderID g_SpriteSubShader_Surface;
@@ -242,6 +242,33 @@ SV_CONSTANT_BUFFER(LightBuffer, b0) {
 
 };
 
+// Lighting functions
+
+float3 lightingPoint(Light light, float2 fragPosition) 
+{
+	float distance = length(light.position.xy - fragPosition);
+	
+	float att = 1.f - smoothstep(light.range * light.smoothness, light.range, distance);
+	return light.color * att * light.intensity;
+}
+
+float3 lightingResult(float2 fragPosition) 
+{
+	float3 lightColor = 0.f;
+	foreach (i, lightCount) {
+
+		Light light = lights[i];
+
+		switch(light.type) {
+		case SV_LIGHT_TYPE_POINT:
+			lightColor += lightingPoint(light, fragPosition);
+			break;
+		}
+	}
+
+	return max(lightColor, ambientLight);
+}
+
 #userblock SpriteSurface
 
 // Main
@@ -269,7 +296,7 @@ SurfaceOutput main(UserSurfaceInput input)
 		}
 		// Default Shader library
 		{
-			if (result_fail(matsys_shaderlibrary_create_from_binary("SilverEngine/DefaultSprite", &g_SpriteDefShaderLibrary))) {
+			if (result_fail(matsys_shaderlibrary_create_from_binary("SilverEngine/DefaultSprite", &g_DefShaderLibrary))) {
 
 				const char* src = R"(
 #name SilverEngine/DefaultSprite
@@ -311,17 +338,7 @@ SurfaceOutput spriteSurface(UserSurfaceInput input)
 	output.color = input.color * texColor;
 	
 	// Apply lights
-	float3 lightColor = 0.f;
-	foreach (i, lightCount) {
-
-		Light light = lights[i];
-		float distance = length(light.position.xy - input.position);
-		
-		float att = 1.f - smoothstep(light.range * light.smoothness, light.range, distance);
-		lightColor += light.color * att * light.intensity;
-	}
-
-	output.color.xyz *= max(lightColor, ambientLight);
+	output.color.xyz *= lightingResult(input.position);
 
 	return output;
 }
@@ -329,7 +346,7 @@ SurfaceOutput spriteSurface(UserSurfaceInput input)
 #end
 				)";
 
-				svCheck(matsys_shaderlibrary_create_from_string(src, &g_SpriteDefShaderLibrary));
+				svCheck(matsys_shaderlibrary_create_from_string(src, &g_DefShaderLibrary));
 			}
 		}
 
@@ -341,10 +358,12 @@ SurfaceOutput spriteSurface(UserSurfaceInput input)
 		svCheck(graphics_destroy(g_SpriteWhiteTexture));
 		svCheck(graphics_destroy(g_SpriteDefSampler));
 
-		svCheck(matsys_shaderlibrary_destroy(g_SpriteDefShaderLibrary));
+		svCheck(matsys_shaderlibrary_destroy(g_DefShaderLibrary));
 
 		// FORWARD RENDERING
 		svCheck(graphics_destroy(g_BS_Geometry));
+		svCheck(graphics_destroy(g_BS_FirstGeometry));
+		svCheck(graphics_destroy(g_SpriteLightBuffer));
 		svCheck(graphics_destroy(g_RenderPass_Geometry));
 		svCheck(graphics_destroy(g_SpriteVertexBuffer));
 		svCheck(graphics_destroy(g_ILS_Geometry));
@@ -377,10 +396,10 @@ SurfaceOutput spriteSurface(UserSurfaceInput input)
 			matsys_material_bind(material, g_SpriteSubShader_Surface, cmd);
 		}
 		else {
-			matsys_shaderlibrary_bind_camerabuffer(g_SpriteDefShaderLibrary, cameraBuffer, cmd);
+			matsys_shaderlibrary_bind_camerabuffer(g_DefShaderLibrary, cameraBuffer, cmd);
 
-			matsys_shaderlibrary_bind_subshader(g_SpriteDefShaderLibrary, g_SpriteSubShader_Vertex, cmd);
-			matsys_shaderlibrary_bind_subshader(g_SpriteDefShaderLibrary, g_SpriteSubShader_Surface, cmd);
+			matsys_shaderlibrary_bind_subshader(g_DefShaderLibrary, g_SpriteSubShader_Vertex, cmd);
+			matsys_shaderlibrary_bind_subshader(g_DefShaderLibrary, g_SpriteSubShader_Surface, cmd);
 		}
 	}
 
@@ -508,34 +527,32 @@ SurfaceOutput spriteSurface(UserSurfaceInput input)
 				end = it;
 				it -= instanceCount;
 
-				GPUImage* image = it->image;
-				Material* material = it->material;
-
-				bindMaterial(material, *desc->pCameraBuffer, cmd);
-				graphics_image_bind(image ? image : g_SpriteWhiteTexture, 0u, ShaderType_Pixel, cmd);
-
 				const SpriteInstance* begin = it;
 				const SpriteInstance* last = it;
-				++it;
+
+				graphics_image_bind(it->image ? it->image : g_SpriteWhiteTexture, 0u, ShaderType_Pixel, cmd);
+				bindMaterial(it->material, *desc->pCameraBuffer, cmd);
 
 				while (it != end) {
 
-					if (it->material != material || it->image != image) {
+					if (it->material != last->material || it->image != last->image) {
 
 						u32 spriteCount = u32(it - last);
 						u32 startVertex = u32(last - begin) * 4u;
-						last = it;
 
 						graphics_draw_indexed(spriteCount * 6u, 1u, 0u, startVertex, 0u, cmd);
 
-						if (it->material != material) {
-							material = it->material;
-							bindMaterial(material, *desc->pCameraBuffer, cmd);
+						if (it->image != last->image) {
+							graphics_image_bind(it->image ? it->image : g_SpriteWhiteTexture, 0u, ShaderType_Pixel, cmd);
 						}
-						if (it->image != image) {
-							image = it->image;
-							graphics_image_bind(image ? image : g_SpriteWhiteTexture, 0u, ShaderType_Pixel, cmd);
+						if (it->material != last->material) {
+							bindMaterial(it->material, *desc->pCameraBuffer, cmd);
+							
+							// TODO: For some reason this image doesn't bind correctly
+							graphics_image_bind(it->image ? it->image : g_SpriteWhiteTexture, 0u, ShaderType_Pixel, cmd);
 						}
+
+						last = it;
 					}
 
 					++it;
@@ -545,7 +562,6 @@ SurfaceOutput spriteSurface(UserSurfaceInput input)
 				{
 					u32 spriteCount = u32(it - last);
 					u32 startVertex = u32(last - begin) * 4u;
-					last = it;
 
 					graphics_draw_indexed(spriteCount * 6u, 1u, 0u, startVertex, 0u, cmd);
 				}
@@ -560,9 +576,8 @@ SurfaceOutput spriteSurface(UserSurfaceInput input)
 			{
 				ctx.lightData->ambient = Color3f::Black();
 				graphics_blendstate_bind(g_BS_Geometry, cmd);
+				firstDraw = false;
 			}
-
-			firstDraw = false;
 
 		} while (lightIt != lightEnd);
 	}
