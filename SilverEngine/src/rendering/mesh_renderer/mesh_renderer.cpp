@@ -270,7 +270,7 @@ Output main(Input input)
 
 			desc.attachments[0].loadOp = AttachmentOperation_Load;
 			desc.attachments[0].storeOp = AttachmentOperation_Store;
-			desc.attachments[0].format = Format_R8G8B8A8_SRGB;
+			desc.attachments[0].format = OFFSCREEN_FORMAT;
 			desc.attachments[0].initialLayout = GPUImageLayout_RenderTarget;
 			desc.attachments[0].layout = GPUImageLayout_RenderTarget;
 			desc.attachments[0].finalLayout = GPUImageLayout_RenderTarget;

@@ -1522,7 +1522,9 @@ namespace sv {
 		filePath = SV_RES_PATH + filePath;
 #endif
 
+#ifndef SV_ENABLE_VULKAN_VALIDATION_LAYERS
 		if (std::filesystem::exists(filePath)) return Result_Success;
+#endif
 
 		std::ofstream file(filePath);
 

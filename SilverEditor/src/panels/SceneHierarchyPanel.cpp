@@ -45,6 +45,18 @@ namespace sv {
 					ecs_component_add<NameComponent>(scene, entity, "Camera");
 				}
 
+				if (ImGui::MenuItem("Create Sky")) {
+					Entity entity = ecs_entity_create(scene);
+					ecs_component_add<SkyComponent>(scene, entity);
+					ecs_component_add<NameComponent>(scene, entity, "Sky");
+				}
+
+				if (ImGui::MenuItem("Create Light")) {
+					Entity entity = ecs_entity_create(scene);
+					ecs_component_add<LightComponent>(scene, entity);
+					ecs_component_add<NameComponent>(scene, entity, "Light");
+				}
+
 				ImGui::Separator();
 
 				if (ImGui::BeginMenu("2D")) {

@@ -654,7 +654,7 @@ namespace sv {
 
 	Result graphics_shader_compile_string(const ShaderCompileDesc* desc, const char* str, u32 size, std::vector<u8>& data);
 	Result graphics_shader_compile_file(const ShaderCompileDesc* desc, const char* srcPath, std::vector<u8>& data);
-	Result graphics_shader_compile_fastbin(const char* name, ShaderType shaderType, Shader** pShader, const char* src);
+	Result graphics_shader_compile_fastbin(const char* name, ShaderType shaderType, Shader** pShader, const char* src, bool alwaisCompile = false);
 
 	const ShaderInfo* graphics_shader_info_get(Shader* shader);
 

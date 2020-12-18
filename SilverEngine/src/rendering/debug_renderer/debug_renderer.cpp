@@ -1,6 +1,7 @@
 #include "core.h"
 
 #include "debug_renderer_internal.h"
+#include "rendering/render_utils.h"
 
 namespace sv {
 
@@ -186,7 +187,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 			att.storeOp = AttachmentOperation_Store;
 			att.stencilLoadOp = AttachmentOperation_DontCare;
 			att.stencilStoreOp = AttachmentOperation_DontCare;
-			att.format = Format_R8G8B8A8_SRGB;
+			att.format = OFFSCREEN_FORMAT;
 			att.initialLayout = GPUImageLayout_RenderTarget;
 			att.layout = GPUImageLayout_RenderTarget;
 			att.finalLayout = GPUImageLayout_RenderTarget;

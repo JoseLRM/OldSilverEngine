@@ -4,12 +4,12 @@
 
 namespace sv {
 
-	static constexpr Format OFFSCREEN_FORMAT = Format_R8G8B8A8_SRGB;
+	static constexpr Format OFFSCREEN_FORMAT = Format_R16G16B16A16_FLOAT;
 	static constexpr u32 RENDERLAYER_COUNT = 16u;
 
 	struct GBuffer {
 
-		static constexpr Format FORMAT_DIFFUSE = Format_R8G8B8A8_SRGB;
+		static constexpr Format FORMAT_DIFFUSE = Format_R16G16B16A16_FLOAT;
 		static constexpr Format FORMAT_NORMAL = Format_R16G16B16A16_FLOAT;
 		static constexpr Format FORMAT_DEPTHSTENCIL = Format_D24_UNORM_S8_UINT;
 

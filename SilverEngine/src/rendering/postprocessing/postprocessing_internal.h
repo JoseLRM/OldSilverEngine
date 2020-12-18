@@ -1,6 +1,7 @@
 #pragma once
 
 #include "rendering/postprocessing.h"
+#include "rendering/render_utils.h"
 
 namespace sv {
 
@@ -11,8 +12,13 @@ namespace sv {
 
 	};
 
+	Result pp_bloomInitialize();
+	Result pp_bloomClose();
 
-	Result pp_blurInitialize();
-	Result pp_blurClose();
+	Result pp_toneMappingInitialize();
+	Result pp_toneMappingClose();
+
+	extern Shader* g_VS_DefPostProcessing;
+	extern Shader* g_PS_DefPostProcessing;
 
 }

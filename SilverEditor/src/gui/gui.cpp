@@ -102,7 +102,7 @@ namespace sv {
 
 			CameraComponent* camera = ecs_component_get<CameraComponent>(scene, cameraEntity);
 			if (camera) {
-				simulationOffscreen = camera->camera.getOffscreenRT();
+				simulationOffscreen = camera->camera.getOffscreen();
 			}
 		}
 
@@ -119,7 +119,7 @@ namespace sv {
 		// Set the main camera and the editor camera offscreens to GPUImageLayout_ShaderResource
 		{
 			GPUImage* simulationOffscreen = gui_simulation_offscreen_get();
-			GPUImage* editorOffscreen = g_DebugCamera.camera.getOffscreenRT();
+			GPUImage* editorOffscreen = g_DebugCamera.camera.getOffscreen();
 
 			GPUBarrier barriers[2];
 			barriers[0] = GPUBarrier::Image(editorOffscreen, GPUImageLayout_RenderTarget, GPUImageLayout_ShaderResource);
@@ -258,7 +258,7 @@ namespace sv {
 		g_Device->EndFrame();
 
 		GPUImage* simulationOffscreen = gui_simulation_offscreen_get();
-		GPUImage* editorOffscreen = g_DebugCamera.camera.getOffscreenRT();
+		GPUImage* editorOffscreen = g_DebugCamera.camera.getOffscreen();
 
 		GPUBarrier barriers[2];
 		barriers[0] = GPUBarrier::Image(editorOffscreen, GPUImageLayout_ShaderResource, GPUImageLayout_RenderTarget);

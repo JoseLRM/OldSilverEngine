@@ -9,9 +9,6 @@
 #include "platform/input.h"
 #include "simulation_editor.h"
 
-//TEMP
-#include "rendering/postprocessing.h"
-
 namespace sv {
 
 	static bool g_Running = false;
@@ -146,6 +143,10 @@ namespace sv {
 
 					vec2u size = g_Gamemode ? window_size_get() : panelSize;
 					camera->camera.adjust(size.x, size.y);
+
+					// Set same PP to debug camera
+					g_DebugCamera.camera.getBloom() = camera->camera.getBloom();
+					g_DebugCamera.camera.getToneMapping() = camera->camera.getToneMapping();
 				}
 			}
 
@@ -199,13 +200,6 @@ namespace sv {
 				};
 
 				SceneRenderer::drawDebug(g_Scene->getECS(), g_Scene->getMainCamera(), false, false, 1u, pCameras, &g_DebugCamera.position, &g_DebugCamera.rotation);
-
-				//TEMP
-				static u32 samples = 30u;
-				if (input_key_pressed('W')) samples+=2;
-				if (input_key_pressed('S') && samples >= 2) samples-=2u;
-				if (samples > 1u && !input_key(SV_KEY_SPACE))
-					PostProcessing::blurBox(g_DebugCamera.camera.getOffscreenRT(), GPUImageLayout_RenderTarget, std::max(((sin(timer_now() * 15.f) + 1.f) / 2.f) * 0.1f, 0.001f), samples, true, true, graphics_commandlist_get());
 			}
 			else {
 				SceneRenderer::drawDebug(g_Scene->getECS(), g_Scene->getMainCamera(), true, false, 0u, nullptr, nullptr, nullptr);
@@ -344,7 +338,7 @@ namespace sv {
 
 			if (g_ShowDebug) {
 
-				ImGui::Image(gui_image_parse(g_DebugCamera.camera.getOffscreenRT()), size);
+				ImGui::Image(gui_image_parse(g_DebugCamera.camera.getOffscreen()), size);
 
 			}
 			else {
@@ -354,7 +348,7 @@ namespace sv {
 					
 					CameraComponent* camComp = ecs_component_get<CameraComponent>(scene, entityCamera);
 					if (camComp) {
-						ImGui::Image(gui_image_parse(camComp->camera.getOffscreenRT()), size);
+						ImGui::Image(gui_image_parse(camComp->camera.getOffscreen()), size);
 					}
 				}
 			}

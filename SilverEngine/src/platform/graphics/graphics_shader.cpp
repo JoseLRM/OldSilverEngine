@@ -186,7 +186,7 @@ namespace sv {
 		return Result_Success;
 	}
 
-	Result graphics_shader_compile_fastbin(const char* name, ShaderType shaderType, Shader** pShader, const char* src)
+	Result graphics_shader_compile_fastbin(const char* name, ShaderType shaderType, Shader** pShader, const char* src, bool alwaisCompile)
 	{
 		std::vector<u8> data;
 		size_t hash = hash_string(name);
@@ -194,7 +194,11 @@ namespace sv {
 		ShaderDesc desc;
 		desc.shaderType = shaderType;
 
+#ifdef SV_ENABLE_VULKAN_VALIDATION_LAYERS
+		if (alwaisCompile || result_fail(bin_read(hash, data))) {
+#else
 		if (result_fail(bin_read(hash, data))) {
+#endif
 			
 			ShaderCompileDesc c;
 			c.api = graphics_api_get();

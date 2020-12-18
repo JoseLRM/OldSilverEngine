@@ -16,7 +16,19 @@ namespace sv {
 		CameraType_3D
 	};
 
-	// This class only contains information about projection and some images used during rendering (offscreen)
+	struct CameraBloomData {
+		f32 threshold = 0.9f;
+		u32 blurIterations = 1u;
+		f32 blurRange = 10.f;
+		bool enabled = false;
+	};
+
+	struct CameraToneMappingData {
+		f32 exposure = 0.8f;
+		bool enabled = false;
+	};
+
+	// This class only contains information about projection, postprocessing and offscreen image
 	class Camera {
 	public:
 		Camera();
@@ -58,23 +70,29 @@ namespace sv {
 		float	getProjectionLength() const noexcept;
 		void	setProjectionLength(float length) noexcept;
 
-
-
 		const XMMATRIX& getProjectionMatrix() noexcept;
 
 		// Resolution
 
 		Result	setResolution(u32 width, u32 height);
-		u32	getResolutionWidth() const noexcept;
-		u32	getResolutionHeight() const noexcept;
+		u32		getResolutionWidth() const noexcept;
+		u32		getResolutionHeight() const noexcept;
 		vec2u	getResolution() const noexcept;
 
 		// Offscreen getters
 
-		inline GPUImage* getOffscreenRT() const noexcept { return m_OffscreenRT; }
+		inline GPUImage* getOffscreen() const noexcept { return m_Offscreen; }
+
+		// Get PP Data
+
+		inline CameraBloomData& getBloom() noexcept { return m_PP.bloom; };
+		inline const CameraBloomData& getBloom() const noexcept { return m_PP.bloom; };
+
+		inline CameraToneMappingData& getToneMapping() noexcept { return m_PP.toneMapping; };
+		inline const CameraToneMappingData& getToneMapping() const noexcept { return m_PP.toneMapping; };
 
 	private:
-		GPUImage* m_OffscreenRT = nullptr;
+		GPUImage* m_Offscreen = nullptr;
 
 		struct {
 			float width = 1.f;
@@ -89,6 +107,12 @@ namespace sv {
 
 		bool m_Active = true;
 
+		struct {
+
+			CameraBloomData bloom;
+			CameraToneMappingData toneMapping;
+
+		} m_PP;
 	};
 
 	struct RenderLayer2D {

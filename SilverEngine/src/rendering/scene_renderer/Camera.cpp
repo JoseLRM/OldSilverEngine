@@ -31,31 +31,31 @@ namespace sv {
 	Camera::Camera(Camera&& other) noexcept
 	{
 		m_Active = other.m_Active;
-		m_OffscreenRT = other.m_OffscreenRT;
+		m_Offscreen = other.m_Offscreen;
 		m_Projection = other.m_Projection;
 
 		other.m_Active = false;
-		other.m_OffscreenRT = nullptr;
+		other.m_Offscreen = nullptr;
 	}
 
 	void Camera::clear()
 	{
-		sv::Result res = graphics_destroy(m_OffscreenRT);
+		sv::Result res = graphics_destroy(m_Offscreen);
 		SV_ASSERT(result_okay(res));
-		m_OffscreenRT = nullptr;
+		m_Offscreen = nullptr;
 		SV_ASSERT(result_okay(res));
 	}
 
 	Result Camera::serialize(ArchiveO& archive)
 	{
-		archive << m_Active << m_Projection << m_Type << getResolution();
+		archive << m_Active << m_Projection << m_Type << getResolution() << m_PP;
 		return Result_Success;
 	}
 
 	Result Camera::deserialize(ArchiveI& archive)
 	{
 		vec2u res;
-		archive >> m_Active >> m_Projection >> m_Type >> res;
+		archive >> m_Active >> m_Projection >> m_Type >> res >> m_PP;
 		if (res.x != 0u && res.y != 0u) svCheck(setResolution(res.x, res.y));
 
 		return Result_Success;
@@ -63,7 +63,7 @@ namespace sv {
 
 	bool Camera::isActive() const noexcept
 	{
-		return m_Active && m_OffscreenRT != nullptr;
+		return m_Active && m_Offscreen != nullptr;
 	}
 
 	Viewport Camera::getViewport() const noexcept
@@ -195,14 +195,14 @@ namespace sv {
 
 		// TODO: Resize function
 		{
-			if (m_OffscreenRT) {
-				svCheck(graphics_destroy(m_OffscreenRT));
-				m_OffscreenRT = nullptr;
+			if (m_Offscreen) {
+				svCheck(graphics_destroy(m_Offscreen));
+				m_Offscreen = nullptr;
 			}
 
 			GPUImageDesc desc;
 			desc.pData = nullptr;
-			desc.format = Format_R8G8B8A8_SRGB;
+			desc.format = OFFSCREEN_FORMAT;
 			desc.layout = GPUImageLayout_RenderTarget;
 			desc.type = GPUImageType_RenderTarget | GPUImageType_ShaderResource;
 			desc.usage = ResourceUsage_Static;
@@ -213,7 +213,7 @@ namespace sv {
 			desc.depth = 1u;
 			desc.layers = 1u;
 
-			svCheck(graphics_image_create(&desc, &m_OffscreenRT));
+			svCheck(graphics_image_create(&desc, &m_Offscreen));
 		}
 
 		return Result_Success;
@@ -221,24 +221,24 @@ namespace sv {
 
 	u32 Camera::getResolutionWidth() const noexcept
 	{
-		if (m_OffscreenRT) {
-			return graphics_image_get_width(m_OffscreenRT);
+		if (m_Offscreen) {
+			return graphics_image_get_width(m_Offscreen);
 		}
 		return 0u;
 	}
 
 	u32 Camera::getResolutionHeight() const noexcept
 	{
-		if (m_OffscreenRT) {
-			return graphics_image_get_height(m_OffscreenRT);
+		if (m_Offscreen) {
+			return graphics_image_get_height(m_Offscreen);
 		}
 		return 0u;
 	}
 
 	vec2u Camera::getResolution() const noexcept
 	{
-		if (m_OffscreenRT) {
-			return { graphics_image_get_width(m_OffscreenRT), graphics_image_get_height(m_OffscreenRT) };
+		if (m_Offscreen) {
+			return { graphics_image_get_width(m_Offscreen), graphics_image_get_height(m_Offscreen) };
 		}
 		return { 0u, 0u };
 	}

@@ -6,15 +6,11 @@ namespace sv {
 
 	struct PostProcessing {
 
-		// BLUR EFFECTS
+		// Prefered Img Layout: GPUImageLayout_ShaderResource
+		static void bloom(GPUImage* img, GPUImageLayout imgLayout, GPUImageLayout newLayout, f32 threshold, f32 range, u32 iterations, CommandList cmd);
 
-		static void blurBox(GPUImage* img, GPUImageLayout imgLayout, float range, u32 samples, bool vertical, bool horizontal, CommandList cmd);
-		static void blurGaussian();
-		static void blurSolid();
-
-		// BLOOM EFFECT
-
-		static void bloom(GPUImage* src);
+		// Prefered Img Layout: GPUImageLayout_ShaderResource
+		static void toneMapping(GPUImage* img, GPUImageLayout imgLayout, GPUImageLayout newLayout, f32 exposure, CommandList cmd);
 
 	};
 

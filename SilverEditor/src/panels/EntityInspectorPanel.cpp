@@ -251,6 +251,41 @@ namespace sv {
 			else g_Scene->setMainCamera(SV_ENTITY_NULL);
 		}
 
+		ImGui::Separator();
+
+		CameraBloomData& bloom = comp->camera.getBloom();
+		CameraToneMappingData& toneMapping = comp->camera.getToneMapping();
+
+		gui_component_item_next("Bloom Enabled");
+		ImGui::Checkbox("##bloom", &bloom.enabled);
+
+		if (bloom.enabled) {
+
+			gui_component_item_next("Threshold");
+			ImGui::DragFloat("##Threshold", &bloom.threshold, 0.01f, 0.f, float_max);
+
+			gui_component_item_next("Blur Iterations");
+			i32 blurIt = bloom.blurIterations;
+			ImGui::SliderInt("##BlurIter", &blurIt, 1, 16);
+			bloom.blurIterations = blurIt;
+
+			gui_component_item_next("Blur Range");
+			ImGui::DragFloat("##BlurRange", &bloom.blurRange, 0.3f, 0.f, float_max);
+
+			ImGui::Separator();
+		}
+
+		gui_component_item_next("ToneMapping Enabled");
+		ImGui::Checkbox("##toneMapping", &toneMapping.enabled);
+
+		if (toneMapping.enabled) {
+
+			gui_component_item_next("Exposure");
+			ImGui::DragFloat("##ToneMappingExposure", &toneMapping.exposure, 0.01f, 0.f, float_max);
+
+			ImGui::Separator();
+		}
+
 		gui_component_item_end();
 	}
 

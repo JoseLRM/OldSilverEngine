@@ -652,7 +652,7 @@ namespace sv {
 			g_DebugRenderer.drawLine({ -centerSize, centerSize, 0.f }, { centerSize, -centerSize, 0.f }, centerColor);
 		}
 
-		g_DebugRenderer.render(g_DebugCamera.camera.getOffscreenRT(), g_DebugCamera.camera.getViewport(), g_DebugCamera.camera.getScissor(), viewProjectionMatrix, cmd);
+		g_DebugRenderer.render(g_DebugCamera.camera.getOffscreen(), g_DebugCamera.camera.getViewport(), g_DebugCamera.camera.getScissor(), viewProjectionMatrix, cmd);
 	}
 
 }

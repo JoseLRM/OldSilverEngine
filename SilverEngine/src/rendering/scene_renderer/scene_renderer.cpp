@@ -1,6 +1,7 @@
 #include "core.h"
 
 #include "scene_renderer_internal.h"
+#include "rendering/postprocessing.h"
 
 namespace sv {
 
@@ -138,7 +139,7 @@ namespace sv {
 			drawCamera(&camera.camera, ecs, trans.getWorldPosition(), trans.getWorldRotation());
 
 			if (camera.entity == mainCamera) {
-				present(camera.camera.getOffscreenRT());
+				present(camera.camera.getOffscreen());
 			}
 		}
 	}
@@ -161,7 +162,7 @@ namespace sv {
 				drawCamera(&camera.camera, ecs, trans.getWorldPosition(), trans.getWorldRotation());
 
 				if (present_ && camera.entity == mainCamera) {
-					present(camera.camera.getOffscreenRT());
+					present(camera.camera.getOffscreen());
 				}
 			}
 		}
@@ -203,7 +204,7 @@ namespace sv {
 		}
 
 		// Offscreen and gBuffer
-		GPUImage* rt = pCamera->getOffscreenRT();
+		GPUImage* rt = pCamera->getOffscreen();
 		{
 			graphics_image_clear(rt, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
 
@@ -223,6 +224,29 @@ namespace sv {
 			drawLayers(pCamera, camPosition, ecs, cmd);
 			break;
 		}
+
+		// PostProcessing
+
+		GPUImage* off = pCamera->getOffscreen();
+
+		const CameraBloomData& bloom = pCamera->getBloom();
+		const CameraToneMappingData& toneMapping = pCamera->getToneMapping();
+
+		GPUBarrier barrier;
+
+		barrier = GPUBarrier::Image(off, GPUImageLayout_RenderTarget, GPUImageLayout_ShaderResource);
+		graphics_barrier(&barrier, 1u, cmd);
+
+		if (bloom.enabled) {
+			PostProcessing::bloom(off, GPUImageLayout_ShaderResource, GPUImageLayout_ShaderResource, bloom.threshold, bloom.blurRange, bloom.blurIterations, cmd);
+		}
+
+		if (toneMapping.enabled) {
+			PostProcessing::toneMapping(off, GPUImageLayout_ShaderResource, GPUImageLayout_ShaderResource, toneMapping.exposure, cmd);
+		}
+
+		barrier = GPUBarrier::Image(off, GPUImageLayout_ShaderResource, GPUImageLayout_RenderTarget);
+		graphics_barrier(&barrier, 1u, cmd);
 
 		graphics_event_end(cmd);
 	}
@@ -357,7 +381,7 @@ namespace sv {
 
 				// Draw sprites
 				SpriteRendererDrawDesc desc;
-				desc.renderTarget = pCamera->getOffscreenRT();
+				desc.renderTarget = pCamera->getOffscreen();
 				desc.pGBuffer = &ctx.gBuffer;
 				desc.pCameraBuffer = &ctx.cameraBuffer;
 				desc.pSprites = ctx.spritesInstances.data();
