@@ -13,6 +13,7 @@
 #include "panels/EntityInspectorPanel.h"
 #include "panels/AssetPanel.h"
 #include "panels/RendererPanel.h"
+#include "panels/ProfilerPanel.h"
 
 #include "utils/io.h"
 
@@ -47,6 +48,7 @@ namespace sv {
 				else if (strcmp(name.c_str(), "Entity Inspector") == 0) panel_manager_add(name.c_str(), new EntityInspectorPanel());
 				else if (strcmp(name.c_str(), "Assets") == 0) panel_manager_add(name.c_str(), new AssetPanel());
 				else if (strcmp(name.c_str(), "Renderer") == 0) panel_manager_add(name.c_str(), new RendererPanel());
+				else if (strcmp(name.c_str(), "Profiler") == 0) panel_manager_add(name.c_str(), new ProfilerPanel());
 			}
 		}
 		else SV_LOG_ERROR("Can't deserialize Editor State");
@@ -66,6 +68,7 @@ namespace sv {
 			if (panel_manager_get("Entity Inspector")) panels.emplace_back("Entity Inspector");
 			if (panel_manager_get("Assets")) panels.emplace_back("Assets");
 			if (panel_manager_get("Renderer")) panels.emplace_back("Renderer");
+			if (panel_manager_get("Profiler")) panels.emplace_back("Profiler");
 
 			file << u32(panels.size());
 
@@ -203,6 +206,7 @@ namespace sv {
 				panelCheckbox<EntityInspectorPanel>("Entity Inspector");
 				panelCheckbox<AssetPanel>("Assets");
 				panelCheckbox<RendererPanel>("Renderer");
+				panelCheckbox<ProfilerPanel>("Profiler");
 
 				ImGui::EndMenu();
 			}

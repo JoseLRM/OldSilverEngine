@@ -60,6 +60,8 @@ namespace sv {
 		g_Name = "SilverEngine ";
 		g_Name += g_Version.toString();
 
+		Time initTimeBegin = timer_now();
+
 		// SYSTEMS
 		try {
 
@@ -93,8 +95,13 @@ namespace sv {
 		SV_CATCH;
 
 		SV_LOG_INFO("Initialized successfuly");
-		SV_LOG_SEPARATOR();
+		
+		Time initTimeEnd = timer_now();
 
+		SV_LOG_INFO("Time: %f", initTimeEnd - initTimeBegin);
+
+		SV_LOG_SEPARATOR();
+		
 		return Result_Success;
 	}
 
@@ -103,6 +110,8 @@ namespace sv {
 		static Time		lastTime = 0.f;
 
 		g_FrameCount++;
+
+		SV_PROFILER_CHRONO_BEGIN("CPU_Frame");
 
 		try {
 
@@ -113,14 +122,20 @@ namespace sv {
 
 			if (g_DeltaTime > 0.3f) g_DeltaTime = 0.3f;
 
+			SV_PROFILER_CHRONO_BEGIN("CPU_Update");
+
 			// Update Input
 			if (input_update()) return Result_CloseRequest;
 			window_update();
 
+			SV_PROFILER_CHRONO_BEGIN("CPU_Animations");
+			
 			// Update animations
 			if (g_EnableAnimations) {
 				sprite_animator_update(g_DeltaTime);
 			}
+
+			SV_PROFILER_CHRONO_END("CPU_Animations");
 
 			// Update assets
 			asset_update(g_DeltaTime);
@@ -131,6 +146,10 @@ namespace sv {
 			// Update render utils
 			render_utils_update(g_DeltaTime);
 
+			SV_PROFILER_CHRONO_END("CPU_Update");
+
+			SV_PROFILER_CHRONO_BEGIN("CPU_Render");
+
 			// Begin Rendering
 			graphics_begin();
 
@@ -139,11 +158,17 @@ namespace sv {
 
 			// User Rendering
 			g_App.render();
+			
+			SV_PROFILER_CHRONO_END("CPU_Render");
 
 			// End frame
 			graphics_end();
+
+			
 		}
 		SV_CATCH;
+
+		SV_PROFILER_CHRONO_END("CPU_Frame");
 
 		return Result_Success;
 	}

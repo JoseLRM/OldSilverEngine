@@ -348,8 +348,9 @@ namespace sv {
 #ifdef SV_ENABLE_PROFILER
 
 	struct ChronoProfile {
-		float beginTime;
-		float endTime;
+		f32 beginTime;
+		f32 endTime;
+		f32 resTime;
 	};
 
 	struct ScalarProfile {
@@ -370,14 +371,16 @@ namespace sv {
 	void __internal__do_not_call_this_please_or_you_will_die__profiler_chrono_end(const char* name)
 	{
 		std::scoped_lock lock(g_ProfilerChronoMutex);
-		g_ProfilerChrono[name].endTime = timer_now();
+		auto& prof = g_ProfilerChrono[name];
+		prof.endTime = timer_now();
+		prof.resTime = prof.endTime - prof.beginTime;
 	}
 
 	float __internal__do_not_call_this_please_or_you_will_die__profiler_chrono_get(const char* name)
 	{
 		std::shared_lock lock(g_ProfilerChronoMutex);
 		auto& prof = g_ProfilerChrono[name];
-		return prof.endTime - prof.beginTime;
+		return prof.resTime;
 	}
 
 	void __internal__do_not_call_this_please_or_you_will_die__profiler_scalar_set(const char* name, SV_PROFILER_SCALAR value)
