@@ -581,13 +581,36 @@ namespace sv {
 
 	// Random
 
+	// return value from 0u - (u32_max / 2u)
 	u32 math_random(u32 seed);
+	
+	/*
+		This functions create patterns with ranges inferiors to 9, should use randomf in this cases
+	*/
 	u32 math_random(u32 seed, u32 max);
 	u32 math_random(u32 seed, u32 min, u32 max);
 
 	float math_randomf(u32 seed);
 	float math_randomf(u32 seed, float max);
 	float math_randomf(u32 seed, float min, float max);
+
+	struct Random {
+
+		SV_INLINE void	setSeed(u32 seed) noexcept { this->seed = seed; }
+		SV_INLINE u32	getSeed() const noexcept { return seed; }
+
+		// return value from 0u - (u32_max / 2u)
+		SV_INLINE u32 random() { return math_random(++seed); }
+		SV_INLINE u32 random(u32 max) { if (max > 8u) return math_random(++seed, max); else return u32(math_randomf(++seed, f32(max))); }
+		SV_INLINE u32 random(u32 min, u32 max) { if (max - min > 8u) return math_random(++seed, min, max); else return u32(math_randomf(++seed, f32(min), f32(max))); }
+
+		SV_INLINE f32 randomf() { return math_randomf(++seed); }
+		SV_INLINE f32 randomf(f32 max) { return math_randomf(++seed, max); }
+		SV_INLINE f32 randomf(f32 min, f32 max) { return math_randomf(++seed, min, max); }
+
+	private:
+		u32 seed = 0u;
+	};
 
 	// Matrix
 
