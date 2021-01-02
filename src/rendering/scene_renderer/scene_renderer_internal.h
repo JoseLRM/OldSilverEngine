@@ -30,14 +30,10 @@ namespace sv {
 
 	struct SceneRendererContext {
 
-		CameraBuffer cameraBuffer;
-
 		FrameList<SpriteInstance>		spritesInstances;
+		
 		FrameList<MeshInstance>			meshInstances;
 		FrameList<MeshInstanceGroup>	meshGroups;
-		FrameList<LightInstance>		lightInstances;
-		Color3f							ambientLight;
-		GBuffer							gBuffer;
 
 	};
 

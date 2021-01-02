@@ -113,7 +113,7 @@ namespace sv {
 		inline Result loadFromID(AssetType assetType, size_t ID) { return m_Ref.loadFromID(assetType, ID); }
 		inline Result create(AssetType assetType) { return m_Ref.create(assetType); }
 		inline Result load(ArchiveI& archive) { return m_Ref.load(archive); }
-		inline void save(ArchiveO& archive) { m_Ref.save(archive); }
+		inline void save(ArchiveO& archive) const { m_Ref.save(archive); }
 		inline void unload() { m_Ref.unload(); }
 
 		Result serialize(const char* filePath = nullptr) { return m_Ref.serialize(filePath); }

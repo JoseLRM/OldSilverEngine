@@ -4,6 +4,7 @@
 #include "simulation/asset_system.h"
 #include "simulation/entity_system.h"
 #include "utils/io.h"
+#include "utils/allocator.h"
 #include "rendering/material_system.h"
 #include "simulation/sprite_animator.h"
 #include "simulation/model.h"
@@ -79,6 +80,11 @@ namespace sv {
 		u32		getResolutionHeight() const noexcept;
 		vec2u	getResolution() const noexcept;
 
+		// CameraBuffer
+
+		SV_INLINE CameraBuffer& getCameraBuffer() noexcept { return m_CameraBuffer; }
+		Result updateCameraBuffer(const vec3f& position, const vec4f& rotation, const XMMATRIX& viewMatrix, CommandList cmd);
+
 		// Offscreen getters
 
 		inline GPUImage* getOffscreen() const noexcept { return m_Offscreen; }
@@ -93,6 +99,7 @@ namespace sv {
 
 	private:
 		GPUImage* m_Offscreen = nullptr;
+		CameraBuffer m_CameraBuffer;
 
 		struct {
 			float width = 1.f;
@@ -118,10 +125,11 @@ namespace sv {
 	struct RenderLayer2D {
 
 		std::string		name;
-		bool			frustumTest;
 		i32				sortValue;
 		float			lightMult;
 		float			ambientMult;
+		bool			frustumTest;
+		bool			enabled;
 
 	};
 
@@ -131,29 +139,56 @@ namespace sv {
 
 	};
 
+	struct LightSceneData {
+
+		FrameList<LightInstance>	lights;
+		Color3f						ambientLight;
+
+	};
+
 	struct SceneRenderer {
 
 		SceneRenderer() = delete;
 
 		static void initECS(ECS* ecs);
 		
-		// Draw calls
+		/*
+			It only sort the renderLayerOrder2D array but is necesary to sort 2D properly
+		*/
+		static void prepareRenderLayers2D();
 
-		static void draw(ECS* ecs, Entity mainCamera);
-		static void drawDebug(
-			ECS* ecs,
-			Entity mainCamera,
-			bool drawECSCameras,
-			bool present,
-			u32 cameraCount,
-			Camera** pCameras,
-			vec3f* camerasPosition,
-			vec4f* camerasRotation
-		);
+		/*
+			Clear the camera offscreen
+		*/
+		static void clearScreen(Camera& camera, Color4f color, CommandList cmd);
+		static void clearGBuffer(GBuffer& gBuffer, Color4f color, f32 depth, u32 stencil, CommandList cmd);
+
+		/*
+			Prepare the lights instances and do shadow mapping
+		*/
+		static void processLighting(ECS* ecs, LightSceneData& lightData);
+
+		// 2D Layer Rendering
+
+		static void drawSprites2D(ECS* ecs, Camera& camera, GBuffer& gBuffer, LightSceneData& lightData, const vec3f& position, const vec4f& direction, u32 renderLayerIndex, CommandList cmd);
+
+		// 3D Rendering
+		static void drawSprites3D(ECS* ecs, Camera& camera, GBuffer& gBuffer, LightSceneData& lightData, const vec3f& position, const vec4f& direction, CommandList cmd);
+		static void drawMeshes3D(ECS* ecs, Camera& camera, GBuffer& gBuffer, LightSceneData& lightData, const vec3f& position, const vec4f& direction, CommandList cmd);
+
+		// PostProcessing
+
+		static void doPostProcessing(Camera& camera, GBuffer& gBuffer, CommandList cmd);
+
+		// Presents the image to the swapchain
+		static void present(GPUImage* image);
 
 		// RenderLayers 2D
-		static RenderLayer2D renderLayers2D[RENDERLAYER_COUNT];
-		static RenderLayer3D renderLayers3D[RENDERLAYER_COUNT];
+		static RenderLayer2D	renderLayers2D[RENDERLAYER_COUNT];
+		static u32				renderLayerOrder2D[RENDERLAYER_COUNT];
+
+		// RenderLayers 3D
+		static RenderLayer3D	renderLayers3D[RENDERLAYER_COUNT];
 
 	};
 

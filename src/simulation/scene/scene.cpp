@@ -204,7 +204,60 @@ namespace sv {
 
 	void Scene::draw()
 	{
-		SceneRenderer::draw(m_ECS, m_MainCamera);
+		// This should call only in 2D mode
+		SceneRenderer::prepareRenderLayers2D();
+		
+		SceneRenderer::processLighting(m_ECS, lightData);
+
+		EntityView<CameraComponent> cameras(m_ECS);
+
+		for (CameraComponent& cam : cameras) {
+
+			if (cam.camera.isActive()) {
+				
+				Transform trans = ecs_entity_transform_get(m_ECS, cam.entity);
+				vec3f position = trans.getWorldPosition();
+				vec4f rotation = trans.getWorldRotation();
+
+				// Begin CommandList
+				CommandList cmd = graphics_commandlist_begin();
+
+				graphics_event_begin("Scene Rendering", cmd);
+
+				// Update CameraBuffer
+				cam.camera.updateCameraBuffer(position, rotation, math_matrix_view(position, rotation), cmd);
+
+				// Clear Buffers
+				SceneRenderer::clearScreen(cam.camera, { 0.f, 0.f, 0.f, 1.f }, cmd);
+				
+				if (gBuffer.diffuse == nullptr)
+					// TODO: Should manage this better xd
+					gBuffer.create(1920u, 1080u);
+				else {
+					SceneRenderer::clearGBuffer(gBuffer, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
+				}
+
+				// Draw Render Components
+				graphics_viewport_set(cam.camera.getOffscreen(), 0u, cmd);
+				graphics_scissor_set(cam.camera.getOffscreen(), 0u, cmd);
+
+				switch (cam.camera.getCameraType())
+				{
+				case CameraType_2D:
+					for (u32 i = 0u; i < RENDERLAYER_COUNT; ++i) {
+						SceneRenderer::drawSprites2D(m_ECS, cam.camera, gBuffer, lightData, position, rotation, i, cmd);
+					}
+					break;
+
+				case CameraType_3D:
+					SceneRenderer::drawMeshes3D(m_ECS, cam.camera, gBuffer, lightData, position, rotation, cmd);
+					SceneRenderer::drawSprites3D(m_ECS, cam.camera, gBuffer, lightData, position, rotation, cmd);
+					break;
+				}
+
+				graphics_event_end(cmd);
+			}
+		}
 	}
 
 	Result SceneAsset::createFile(const char* filePath)

@@ -21,7 +21,7 @@ namespace sv {
 		const wchar*			windowTitle;
 		WindowStyle				windowStyle;
 		const wchar*			iconFilePath;
-		u32					minThreadsCount;
+		u32						minThreadsCount;
 		const char*				assetsFolderPath;
 
 	};

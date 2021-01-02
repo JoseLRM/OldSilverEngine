@@ -5,12 +5,11 @@
 
 namespace sv {
 
-	static SceneRendererContext g_Context;
+	static SceneRendererContext g_Context[GraphicsLimit_CommandList];
 
 	RenderLayer2D SceneRenderer::renderLayers2D[RENDERLAYER_COUNT];
+	u32 SceneRenderer::renderLayerOrder2D[RENDERLAYER_COUNT];
 	RenderLayer3D SceneRenderer::renderLayers3D[RENDERLAYER_COUNT];
-
-	static u32 g_RenderLayerOrder2D[RENDERLAYER_COUNT];
 
 	Result SceneRenderer_internal::initialize()
 	{
@@ -20,10 +19,11 @@ namespace sv {
 
 				RenderLayer2D& rl = SceneRenderer::renderLayers2D[i];
 
-				rl.frustumTest = true;
 				rl.sortValue = i;
 				rl.lightMult = 1.f;
 				rl.ambientMult = 1.f;
+				rl.frustumTest = true;
+				rl.enabled = false;
 
 				switch (i)
 				{
@@ -37,6 +37,7 @@ namespace sv {
 					break;
 				}
 			}
+			SceneRenderer::renderLayers2D[0].enabled = true;
 
 			for (u32 i = 0u; i < RENDERLAYER_COUNT; ++i) {
 
@@ -59,7 +60,7 @@ namespace sv {
 		// Set renderLayerSort indices
 		{
 			for (u32 i = 0u; i < RENDERLAYER_COUNT; ++i) {
-				g_RenderLayerOrder2D[i] = i;
+				SceneRenderer::renderLayerOrder2D[i] = i;
 			}
 		}
 
@@ -69,12 +70,14 @@ namespace sv {
 	Result SceneRenderer_internal::close()
 	{
 		// Destroy Context
-		SceneRendererContext& ctx = g_Context;
+		foreach(i, GraphicsLimit_CommandList) {
+			SceneRendererContext& ctx = g_Context[i];
 
-		svCheck(ctx.cameraBuffer.clear());
-		ctx.spritesInstances.clear();
-
-		svCheck(ctx.gBuffer.destroy());
+			ctx.spritesInstances.clear();
+			ctx.meshInstances.clear();
+			ctx.meshGroups.clear();
+		}
+		
 
 		// Free heap memory from renderlayers
 		{
@@ -107,179 +110,38 @@ namespace sv {
 
 	// SCENE RENDERING
 
-	void drawCamera(Camera* pCamera, ECS* ecs, const vec3f& camPosition, const vec4f& camRotation);
-	void prepareRenderLayers();
-	void prepareLights(ECS* ecs);
-	void present(GPUImage* image);
-
-	// 2D
-
-	void drawLayers(Camera* pCamera, const vec3f& camPosition, ECS* ecs, CommandList cmd);
-	void drawLayer(Camera* pCamera, const vec3f& camPosition, ECS* ecs, u32 renderLayerIndex, CommandList cmd);
-
-	// 3D
-
-	void drawSprites(Camera* pCamera, const vec3f& camPosition, ECS* ecs, CommandList cmd);
-	void drawMeshes(Camera* pCamera, const vec3f& camPosition, ECS* ecs, CommandList cmd);
-
-	void SceneRenderer::draw(ECS* ecs, Entity mainCamera)
+	void SceneRenderer::prepareRenderLayers2D()
 	{
-		SceneRendererContext& ctx = g_Context;
-
-		prepareRenderLayers();
-		prepareLights(ecs);
-
-		// Draw Cameras
-		EntityView<CameraComponent> cameras(ecs);
-
-		for (CameraComponent& camera : cameras) {
-
-			Transform trans = ecs_entity_transform_get(ecs, camera.entity);
-
-			drawCamera(&camera.camera, ecs, trans.getWorldPosition(), trans.getWorldRotation());
-
-			if (camera.entity == mainCamera) {
-				present(camera.camera.getOffscreen());
-			}
-		}
-	}
-
-	void SceneRenderer::drawDebug(ECS* ecs, Entity mainCamera, bool drawECSCameras, bool present_, u32 cameraCount, Camera** pCameras, vec3f* camerasPosition, vec4f* camerasRotation)
-	{
-		SceneRendererContext& ctx = g_Context;
-
-		prepareRenderLayers();
-		prepareLights(ecs);
-
-		// Draw Cameras
-		if (drawECSCameras) {
-			EntityView<CameraComponent> cameras(ecs);
-
-			for (CameraComponent& camera : cameras) {
-
-				Transform trans = ecs_entity_transform_get(ecs, camera.entity);
-
-				drawCamera(&camera.camera, ecs, trans.getWorldPosition(), trans.getWorldRotation());
-
-				if (present_ && camera.entity == mainCamera) {
-					present(camera.camera.getOffscreen());
-				}
-			}
-		}
-
-		for (u32 i = 0u; i < cameraCount; ++i) {
-
-			Camera* pCamera = pCameras[i];
-			drawCamera(pCamera, ecs, camerasPosition[i], camerasRotation[i]);
-		}
-	}
-
-	void drawCamera(Camera* pCamera, ECS* ecs, const vec3f& camPosition, const vec4f& camRotation)
-	{
-		SceneRendererContext& ctx = g_Context;
-
-		if (!pCamera->isActive()) return;
-
-		// Compute View Matrix
-		XMMATRIX viewMatrix = math_matrix_view(camPosition, camRotation);
-
-		const XMMATRIX& projectionMatrix = pCamera->getProjectionMatrix();
-
-		// Begin command list
-		CommandList cmd = graphics_commandlist_begin();
-
-		graphics_event_begin("Scene Rendering", cmd);
-
-		graphics_viewport_set(pCamera->getViewport(), 0u, cmd);
-		graphics_scissor_set(pCamera->getScissor(), 0u, cmd);
-
-		// Update camera buffer
-		{
-			ctx.cameraBuffer.viewMatrix = viewMatrix;
-			ctx.cameraBuffer.projectionMatrix = projectionMatrix;
-			ctx.cameraBuffer.position = camPosition;
-			ctx.cameraBuffer.direction = camRotation;
-
-			ctx.cameraBuffer.updateGPU(cmd);
-		}
-
-		// Offscreen and gBuffer
-		GPUImage* rt = pCamera->getOffscreen();
-		{
-			graphics_image_clear(rt, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
-
-			if (ctx.gBuffer.diffuse == nullptr)
-				ctx.gBuffer.create(1920u, 1080u);
-			else {
-				graphics_image_clear(ctx.gBuffer.diffuse, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
-				graphics_image_clear(ctx.gBuffer.normal, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
-				graphics_image_clear(ctx.gBuffer.depthStencil, GPUImageLayout_DepthStencil, GPUImageLayout_DepthStencil, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
-			}
-		}
-
-		// Draw Render Components
-		switch (pCamera->getCameraType())
-		{
-		case CameraType_2D:
-			drawLayers(pCamera, camPosition, ecs, cmd);
-			break;
-
-		case CameraType_3D:
-			drawMeshes(pCamera, camPosition, ecs, cmd);
-			drawSprites(pCamera, camPosition, ecs, cmd);
-			break;
-		}
-
-		// PostProcessing
-
-		GPUImage* off = pCamera->getOffscreen();
-
-		const CameraBloomData& bloom = pCamera->getBloom();
-		const CameraToneMappingData& toneMapping = pCamera->getToneMapping();
-
-		GPUBarrier barrier;
-
-		barrier = GPUBarrier::Image(off, GPUImageLayout_RenderTarget, GPUImageLayout_ShaderResource);
-		graphics_barrier(&barrier, 1u, cmd);
-
-		if (bloom.enabled) {
-			PostProcessing::bloom(off, GPUImageLayout_ShaderResource, GPUImageLayout_ShaderResource, bloom.threshold, bloom.blurRange, bloom.blurIterations, cmd);
-		}
-
-		if (toneMapping.enabled) {
-			PostProcessing::toneMapping(off, GPUImageLayout_ShaderResource, GPUImageLayout_ShaderResource, toneMapping.exposure, cmd);
-		}
-
-		barrier = GPUBarrier::Image(off, GPUImageLayout_ShaderResource, GPUImageLayout_RenderTarget);
-		graphics_barrier(&barrier, 1u, cmd);
-
-		graphics_event_end(cmd);
-	}
-
-	void prepareRenderLayers()
-	{
-		SceneRendererContext& ctx = g_Context;
-
 		// Sort render layers.
 		{
-			std::sort(g_RenderLayerOrder2D, g_RenderLayerOrder2D + RENDERLAYER_COUNT, [](u32 i0, u32 i1)
+			std::sort(renderLayerOrder2D, renderLayerOrder2D + RENDERLAYER_COUNT, [](u32 i0, u32 i1)
 			{
-				const RenderLayer2D& rl0 = SceneRenderer::renderLayers2D[i0];
-				const RenderLayer2D& rl1 = SceneRenderer::renderLayers2D[i1];
+				const RenderLayer2D& rl0 = renderLayers2D[i0];
+				const RenderLayer2D& rl1 = renderLayers2D[i1];
 
 				return rl0.sortValue < rl1.sortValue;
 			});
 		}
 	}
 
-	void prepareLights(ECS* ecs)
+	void SceneRenderer::clearScreen(Camera& camera, Color4f color, CommandList cmd)
 	{
-		SceneRendererContext& ctx = g_Context;
+		graphics_image_clear(camera.getOffscreen(), GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, color, 1.f, 0u, cmd);
+	}
 
+	void sv::SceneRenderer::clearGBuffer(GBuffer& gBuffer, Color4f color, f32 depth, u32 stencil, CommandList cmd)
+	{
+		graphics_image_clear(gBuffer.diffuse, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, color, depth, stencil, cmd);
+		graphics_image_clear(gBuffer.normal, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, color, depth, stencil, cmd);
+		graphics_image_clear(gBuffer.depthStencil, GPUImageLayout_DepthStencil, GPUImageLayout_DepthStencil, color, depth, stencil, cmd);
+	}
+
+	void SceneRenderer::processLighting(ECS* ecs, LightSceneData& lightData)
+	{
 		//TODO: In 2D do frustum culling to discard lights out of the camera
 
 		// Light Instances
-		FrameList<LightInstance>& lights = ctx.lightInstances;
+		FrameList<LightInstance>& lights = lightData.lights;
 		lights.reset();
 		{
 			EntityView<LightComponent> comp(ecs);
@@ -293,7 +155,7 @@ namespace sv {
 
 		// COMPUTE AMBIENT LIGHTING
 		{
-			Color3f& ambient = ctx.ambientLight;
+			Color3f& ambient = lightData.ambientLight;
 			ambient = Color3f::Black();
 
 			EntityView<SkyComponent> comp(ecs);
@@ -309,35 +171,27 @@ namespace sv {
 		}
 	}
 
-	void drawLayers(Camera* pCamera, const vec3f& camPosition, ECS* ecs, CommandList cmd)
+	void SceneRenderer::drawSprites2D(ECS* ecs, Camera& camera, GBuffer& gBuffer, LightSceneData& lightData, const vec3f& position, const vec4f& direction, u32 index, CommandList cmd)
 	{
-		SceneRendererContext& ctx = g_Context;
+		const RenderLayer2D& rl = SceneRenderer::renderLayers2D[index];
 
-		for (u32 i = 0u; i < RENDERLAYER_COUNT; ++i) {
+		if (!rl.enabled)
+			return;
 
-			u32 index = g_RenderLayerOrder2D[i];
-
-			drawLayer(pCamera, camPosition, ecs, index, cmd);
-		}
-	}
-
-	void drawLayer(Camera* pCamera, const vec3f& camPosition, ECS* ecs, u32 renderLayerIndex, CommandList cmd)
-	{
-		SceneRendererContext& ctx = g_Context;
-		const RenderLayer2D& rl = SceneRenderer::renderLayers2D[renderLayerIndex];
+		SceneRendererContext& ctx = g_Context[cmd];
 
 		// Reset FrameLists
 		ctx.spritesInstances.reset();
 
-		bool noAmbient = rl.ambientMult <= 0.f || (ctx.ambientLight.r == 0.f && ctx.ambientLight.g == 0.f && ctx.ambientLight.b == 0.f);
-		bool noLight = rl.lightMult <= 0.f || ctx.lightInstances.empty();
+		bool noAmbient = rl.ambientMult <= 0.f || (lightData.ambientLight.r == 0.f && lightData.ambientLight.g == 0.f && lightData.ambientLight.b == 0.f);
+		bool noLight = rl.lightMult <= 0.f || lightData.lights.empty();
 
 		if (noAmbient && noLight) return;
 
 		// Sprite Rendering
 		{
 			FrustumOthographic frustum;
-			frustum.init_center(camPosition.getVec2(), { pCamera->getWidth(), pCamera->getHeight() });
+			frustum.init_center(position.getVec2(), { camera.getWidth(), camera.getHeight() });
 
 			EntityView<SpriteComponent> sprites(ecs);
 			FrameList<SpriteInstance>& instances = ctx.spritesInstances;
@@ -345,7 +199,7 @@ namespace sv {
 			// Add sprites to instance list
 			for (SpriteComponent& sprite : sprites) {
 
-				if (sprite.renderLayer != renderLayerIndex) continue;
+				if (sprite.renderLayer != index) continue;
 
 				Transform trans = ecs_entity_transform_get(ecs, sprite.entity);
 
@@ -365,7 +219,7 @@ namespace sv {
 			// Add animated sprites to instance list
 			for (AnimatedSpriteComponent& anim : animatedSprites) {
 
-				if (anim.renderLayer != renderLayerIndex) continue;
+				if (anim.renderLayer != index) continue;
 
 				Transform trans = ecs_entity_transform_get(ecs, anim.entity);
 
@@ -386,15 +240,15 @@ namespace sv {
 
 				// Draw sprites
 				SpriteRendererDrawDesc desc;
-				desc.renderTarget = pCamera->getOffscreen();
-				desc.pGBuffer = &ctx.gBuffer;
-				desc.pCameraBuffer = &ctx.cameraBuffer;
+				desc.renderTarget = camera.getOffscreen();
+				desc.pGBuffer = &gBuffer;
+				desc.pCameraBuffer = &camera.getCameraBuffer();
 				desc.pSprites = ctx.spritesInstances.data();
 				desc.spriteCount = u32(ctx.spritesInstances.size());
-				desc.pLights = ctx.lightInstances.data();
-				desc.lightCount = u32(ctx.lightInstances.size());
+				desc.pLights = lightData.lights.data();
+				desc.lightCount = u32(lightData.lights.size());
 				desc.lightMult = rl.lightMult;
-				desc.ambientLight = ctx.ambientLight;
+				desc.ambientLight = lightData.ambientLight;
 				desc.ambientLight.r *= rl.ambientMult;
 				desc.ambientLight.g *= rl.ambientMult;
 				desc.ambientLight.b *= rl.ambientMult;
@@ -406,15 +260,15 @@ namespace sv {
 		}
 	}
 
-	void drawSprites(Camera* pCamera, const vec3f& camPosition, ECS* ecs, CommandList cmd)
+	void sv::SceneRenderer::drawSprites3D(ECS* ecs, Camera& camera, GBuffer& gBuffer, LightSceneData& lightData, const vec3f& position, const vec4f& direction, CommandList cmd)
 	{
-		SceneRendererContext& ctx = g_Context;
+		SceneRendererContext& ctx = g_Context[cmd];
 
 		// Reset FrameLists
 		ctx.spritesInstances.reset();
 
-		bool noAmbient = ctx.ambientLight.r == 0.f && ctx.ambientLight.g == 0.f && ctx.ambientLight.b == 0.f;
-		bool noLight = ctx.lightInstances.empty();
+		bool noAmbient = lightData.ambientLight.r == 0.f && lightData.ambientLight.g == 0.f && lightData.ambientLight.b == 0.f;
+		bool noLight = lightData.lights.empty();
 
 		if (noAmbient && noLight) return;
 
@@ -443,31 +297,29 @@ namespace sv {
 
 			// Draw sprites
 			SpriteRendererDrawDesc desc;
-			desc.renderTarget = pCamera->getOffscreen();
-			desc.pGBuffer = &ctx.gBuffer;
-			desc.pCameraBuffer = &ctx.cameraBuffer;
+			desc.renderTarget = camera.getOffscreen();
+			desc.pGBuffer = &gBuffer;
+			desc.pCameraBuffer = &camera.getCameraBuffer();
 			desc.pSprites = ctx.spritesInstances.data();
 			desc.spriteCount = u32(ctx.spritesInstances.size());
-			desc.pLights = ctx.lightInstances.data();
-			desc.lightCount = u32(ctx.lightInstances.size());
+			desc.pLights = lightData.lights.data();
+			desc.lightCount = u32(lightData.lights.size());
 			desc.lightMult = 1.f;
-			desc.ambientLight = ctx.ambientLight;
+			desc.ambientLight = lightData.ambientLight;
 			desc.depthTest = true;
 			desc.transparent = false;
 
 			SpriteRenderer::drawSprites(&desc, cmd);
 		}
-		
 	}
 
-	void drawMeshes(Camera* pCamera, const vec3f& camPosition, ECS* ecs, CommandList cmd)
+	void sv::SceneRenderer::drawMeshes3D(ECS* ecs, Camera& camera, GBuffer& gBuffer, LightSceneData& lightData, const vec3f& position, const vec4f& direction, CommandList cmd)
 	{
-		SceneRendererContext& ctx = g_Context;
+		SceneRendererContext& ctx = g_Context[cmd];
 
 		FrameList<MeshInstance>& meshes = ctx.meshInstances;
-		FrameList<LightInstance>& lights = ctx.lightInstances;
+		FrameList<LightInstance>& lights = lightData.lights;
 		FrameList<MeshInstanceGroup>& meshesGroup = ctx.meshGroups;
-		GBuffer& gBuffer = ctx.gBuffer;
 		meshes.reset();
 		meshesGroup.reset();
 
@@ -484,10 +336,34 @@ namespace sv {
 
 		meshesGroup.emplace_back(&meshes, RasterizerCullMode_Back, false);
 
-		MeshRenderer::drawMeshes(pCamera->getOffscreen(), gBuffer, ctx.cameraBuffer, meshesGroup, lights, true, true, cmd);
+		MeshRenderer::drawMeshes(camera.getOffscreen(), gBuffer, camera.getCameraBuffer(), meshesGroup, lights, true, true, cmd);
 	}
 
-	void present(GPUImage* image)
+	void sv::SceneRenderer::doPostProcessing(Camera& camera, GBuffer& gBuffer, CommandList cmd)
+	{
+		GPUImage* off = camera.getOffscreen();
+
+		const CameraBloomData& bloom = camera.getBloom();
+		const CameraToneMappingData& toneMapping = camera.getToneMapping();
+
+		GPUBarrier barrier;
+
+		barrier = GPUBarrier::Image(off, GPUImageLayout_RenderTarget, GPUImageLayout_ShaderResource);
+		graphics_barrier(&barrier, 1u, cmd);
+
+		if (bloom.enabled) {
+			PostProcessing::bloom(off, GPUImageLayout_ShaderResource, GPUImageLayout_ShaderResource, bloom.threshold, bloom.blurRange, bloom.blurIterations, cmd);
+		}
+
+		if (toneMapping.enabled) {
+			PostProcessing::toneMapping(off, GPUImageLayout_ShaderResource, GPUImageLayout_ShaderResource, toneMapping.exposure, cmd);
+		}
+
+		barrier = GPUBarrier::Image(off, GPUImageLayout_ShaderResource, GPUImageLayout_RenderTarget);
+		graphics_barrier(&barrier, 1u, cmd);
+	}
+
+	void sv::SceneRenderer::present(GPUImage* image)
 	{
 		if (image == nullptr) return;
 		GPUImageRegion region;

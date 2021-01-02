@@ -197,6 +197,7 @@ namespace sv {
 		{
 			if (m_Offscreen) {
 				svCheck(graphics_destroy(m_Offscreen));
+				m_CameraBuffer.clear();
 				m_Offscreen = nullptr;
 			}
 
@@ -241,6 +242,17 @@ namespace sv {
 			return { graphics_image_get_width(m_Offscreen), graphics_image_get_height(m_Offscreen) };
 		}
 		return { 0u, 0u };
+	}
+
+	Result Camera::updateCameraBuffer(const vec3f& position, const vec4f& rotation, const XMMATRIX& viewMatrix, CommandList cmd)
+	{
+		m_CameraBuffer.viewMatrix = viewMatrix;
+		m_CameraBuffer.projectionMatrix = getProjectionMatrix();
+		m_CameraBuffer.position = position;
+		m_CameraBuffer.direction = rotation;
+		
+		m_CameraBuffer.updateGPU(cmd);
+		return Result();
 	}
 
 }

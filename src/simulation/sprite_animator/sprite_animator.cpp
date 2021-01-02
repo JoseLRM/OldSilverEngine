@@ -417,7 +417,8 @@ namespace sv {
 
 		file << u32(animation.sprites.size());
 		for (const Sprite& spr : animation.sprites) {
-			file << spr.texture.getHashCode() << spr.texCoord;
+			spr.texture.save(file);
+			file << spr.texCoord;
 		}
 
 		std::string absFilePath = asset_folderpath_get() + filePath;
