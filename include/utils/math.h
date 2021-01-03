@@ -581,32 +581,54 @@ namespace sv {
 
 	// Random
 
-	// return value from 0u - (u32_max / 2u)
-	u32 math_random(u32 seed);
-	
-	/*
-		This functions create patterns with ranges inferiors to 9, should use randomf in this cases
-	*/
-	u32 math_random(u32 seed, u32 max);
-	u32 math_random(u32 seed, u32 min, u32 max);
+	// return value from 0u to (u32_max / 2u)
+	SV_INLINE u32 math_random_u32(u32 seed)
+	{
+		seed = (seed << 13) ^ seed;
+		return ((seed * (seed * seed * 15731u * 789221u) + 1376312589u) & 0x7fffffffu);
+	}
+	SV_INLINE u32 math_random_u32(u32 seed, u32 max)
+	{
+		if (max > 8u)
+			return math_random_u32(seed) % max;
+		else
+			return u32(math_random_f32(++seed, f32(max)));
+	}
+	SV_INLINE u32 math_random_u32(u32 seed, u32 min, u32 max)
+	{
+		if (max - min > 8u)
+			return min + (math_random_u32(seed) % (max - min));
+		else
+			return u32(math_random_f32(++seed, f32(min), f32(max)));
+	}
 
-	float math_randomf(u32 seed);
-	float math_randomf(u32 seed, float max);
-	float math_randomf(u32 seed, float min, float max);
+	SV_INLINE f32 math_random_f32(u32 seed)
+	{
+		return (f32(math_random_u32(seed)) * (1.f / f32(u32_max / 2u)));
+	}
+	SV_INLINE f32 math_random_f32(u32 seed, f32 max)
+	{
+		return math_random_f32(seed) * max;
+	}
+	SV_INLINE f32 math_random_f32(u32 seed, f32 min, f32 max)
+	{
+		SV_ASSERT(min <= max);
+		return min + math_random_f32(seed) * (max - min);
+	}
 
 	struct Random {
 
 		SV_INLINE void	setSeed(u32 seed) noexcept { this->seed = seed; }
 		SV_INLINE u32	getSeed() const noexcept { return seed; }
 
-		// return value from 0u - (u32_max / 2u)
-		SV_INLINE u32 random() { return math_random(++seed); }
-		SV_INLINE u32 random(u32 max) { if (max > 8u) return math_random(++seed, max); else return u32(math_randomf(++seed, f32(max))); }
-		SV_INLINE u32 random(u32 min, u32 max) { if (max - min > 8u) return math_random(++seed, min, max); else return u32(math_randomf(++seed, f32(min), f32(max))); }
+		// return value from 0u to (u32_max / 2u)
+		SV_INLINE u32 gen_u32() { return math_random_u32(++seed); }
+		SV_INLINE u32 gen_u32(u32 max) { return math_random_u32(++seed, max); }
+		SV_INLINE u32 gen_u32(u32 min, u32 max) { return math_random_u32(++seed, min, max); }
 
-		SV_INLINE f32 randomf() { return math_randomf(++seed); }
-		SV_INLINE f32 randomf(f32 max) { return math_randomf(++seed, max); }
-		SV_INLINE f32 randomf(f32 min, f32 max) { return math_randomf(++seed, min, max); }
+		SV_INLINE f32 gen_f32() { return math_random_f32(++seed); }
+		SV_INLINE f32 gen_f32(f32 max) { return math_random_f32(++seed, max); }
+		SV_INLINE f32 gen_f32(f32 min, f32 max) { return math_random_f32(++seed, min, max); }
 
 	private:
 		u32 seed = 0u;
