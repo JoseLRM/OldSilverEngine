@@ -306,17 +306,11 @@ namespace sv {
 		filePath += includeName;
 		filePath += ".hlsl";
 
-#ifdef SV_RES_PATH
-		filePath = SV_RES_PATH + filePath;
-#endif
+		FileI file;
 
-		std::ifstream file;
+		svCheck(file.open(filePath.c_str(), FileOpen_Text));
 
-		file.open(filePath);
-
-		if (!file.is_open()) return Result_NotFound;
-
-		file.seekg(0u);
+		file.setPos(0u);
 
 		// Read lines
 		std::string line;
@@ -325,7 +319,7 @@ namespace sv {
 
 		ShaderDefine define;
 
-		while (std::getline(file, line)) {
+		while (file.readLine(line)) {
 
 			decomposeDefine(line.c_str(), u32(line.size()), define);
 

@@ -5,6 +5,7 @@
 
 #include "platform/platform_impl.h"
 #include "platform/window.h"
+#include "utils/io.h"
 #include "core_internal.h"
 
 #ifdef SV_PLATFORM_WIN
@@ -178,7 +179,7 @@ namespace sv {
 
 #else
 	static std::mutex g_LogMutex;
-	std::ofstream g_LogFile;
+	static FileO g_LogFile;
 
 	std::string date_string(const Date& date)
 	{
@@ -201,9 +202,6 @@ namespace sv {
 #endif
 
 		std::string logFolder = "logs/";
-#ifdef SV_RES_PATH
-		logFolder = SV_RES_PATH + logFolder;
-#endif
 		Date date = timer_date();
 
 		std::string day;
@@ -233,17 +231,9 @@ namespace sv {
 
 		std::string absPath = logFolder + logFile;
 
-		g_LogFile.open(absPath.c_str());
-		if (!g_LogFile.is_open()) {
-
-			// Create logs folder
-			if (std::filesystem::create_directories(logFolder)) return Result_UnknownError;
-
-			g_LogFile.open(absPath.c_str());
-
-			if (!g_LogFile.is_open())
-				return Result_NotFound;
-		}
+		g_LogFile.open(absPath.c_str(), FileOpen_Text);
+		if (!g_LogFile.isOpen())
+			return Result_NotFound;
 
 		return Result_Success;
 	}
@@ -328,7 +318,7 @@ namespace sv {
 #endif
 
 		std::cout << logBuffer;
-		g_LogFile << logBuffer;
+		g_LogFile.writeLine(logBuffer);
 	}
 
 	void __internal__do_not_call_this_please_or_you_will_die__console_log(u32 id, const char* s, ...)

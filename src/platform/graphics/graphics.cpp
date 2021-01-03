@@ -1518,23 +1518,11 @@ namespace sv {
 		filePath += name;
 		filePath += ".hlsl";
 
-#ifdef SV_RES_PATH
-		filePath = SV_RES_PATH + filePath;
-#endif
-
 #ifndef SV_ENABLE_GFX_VALIDATION
 		if (std::filesystem::exists(filePath)) return Result_Success;
 #endif
 
-		std::ofstream file(filePath);
-
-		if (!file.is_open()) return Result_NotFound;
-
-		file << str;
-
-		file.close();
-
-		return Result_Success;
+		return file_write_text(filePath.c_str(), str, strlen(str));
 	}
 
 	u32 graphics_shader_attribute_size(ShaderAttributeType type)

@@ -18,7 +18,6 @@
 #include <mutex>
 #include <shared_mutex>
 #include <atomic>
-#include <fstream>
 #include <filesystem>
 
 using namespace DirectX;

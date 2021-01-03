@@ -174,10 +174,6 @@ namespace sv {
 	{
 		std::string absFilePath = asset_folderpath_get() + filePath;
 
-#ifdef SV_RES_PATH
-		absFilePath = absFilePath.c_str() + strlen(SV_RES_PATH);
-#endif
-
 		ArchiveO file;
 
 		ShaderLibrary* shaderLibrary_ = libAsset.get();

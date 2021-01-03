@@ -36,26 +36,13 @@ namespace sv {
 	std::string bin_filepath(size_t hash)
 	{
 		std::string filePath = "bin/" + std::to_string(hash) + ".bin";
-#ifdef SV_RES_PATH
-		filePath = SV_RES_PATH + filePath;
-#endif
 		return filePath;
 	}
 
 	Result bin_read(size_t hash, std::vector<u8>& data)
 	{
 		std::string filePath = bin_filepath(hash);
-
-		std::ifstream file(filePath, std::ios::binary | std::ios::ate);
-		if (!file.is_open()) return Result_NotFound;
-
-		size_t size = file.tellg();
-		file.seekg(0u);
-		data.resize(size);
-		file.read((char*)data.data(), size);
-
-		file.close();
-		return Result_Success;
+		return file_read_binary(filePath.c_str(), data);
 	}
 
 	Result bin_read(size_t hash, ArchiveI& archive)
@@ -68,14 +55,7 @@ namespace sv {
 	Result bin_write(size_t hash, const void* data, size_t size)
 	{
 		std::string filePath = bin_filepath(hash);
-
-		std::ofstream file(filePath, std::ios::binary);
-		if (!file.is_open()) return Result_NotFound;
-
-		file.write((const char*)data, size);
-		file.close();
-
-		return Result_Success;
+		return file_write_binary(filePath.c_str(), (u8*)data, size);
 	}
 
 	Result bin_write(size_t hash, ArchiveO& archive)

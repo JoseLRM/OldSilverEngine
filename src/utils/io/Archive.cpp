@@ -45,27 +45,7 @@ namespace sv {
 
 	Result ArchiveO::save_file(const char* filePath, bool append)
 	{
-#ifdef SV_RES_PATH
-		std::string filePathStr = SV_RES_PATH;
-		filePathStr += filePath;
-
-		if (!path_is_absolute(filePath))
-			filePath = filePathStr.c_str();
-#endif
-
-		std::ofstream stream;
-
-		int mode = std::ios::binary;
-		if (append) mode |= std::ios::app | std::ios::ate;
-
-		stream.open(filePath, mode);
-
-		if (!stream.is_open()) return Result_NotFound;
-
-		stream.write((const char*)m_Data, m_Size);
-
-		stream.close();
-		return Result_Success;
+		return file_write_binary(filePath, m_Data, m_Size, append);
 	}
 
 	void ArchiveO::allocate(size_t size)
@@ -102,31 +82,7 @@ namespace sv {
 
 	Result ArchiveI::open_file(const char* filePath)
 	{
-		std::ifstream stream;
-
-#ifdef SV_RES_PATH
-
-		std::string filePathStr = SV_RES_PATH;
-		filePathStr += filePath;
-
-		if (!path_is_absolute(filePath))
-			filePath = filePathStr.c_str();
-#endif
-
-		stream.open(filePath, std::ios::ate | std::ios::binary);
-
-		if (!stream.is_open()) return Result_NotFound;
-
-		m_Size = stream.tellg();
-		stream.seekg(0u);
-		m_Pos = 0u;
-
-		m_Data = new u8[m_Size];
-		stream.read((char*)m_Data, m_Size);
-
-		stream.close();
-
-		return Result_Success;
+		return file_read_binary(filePath, &m_Data, &m_Size);
 	}
 
 	void ArchiveI::read(void* data, size_t size)

@@ -1,8 +1,57 @@
 #pragma once
 
 #include "core.h"
+#include <fstream>
 
 namespace sv {
+
+	Result file_read_binary(const char* filePath, u8** pData, size_t* pSize);
+	Result file_read_binary(const char* filePath, std::vector<u8>& data);
+	Result file_write_binary(const char* filePath, const u8* data, size_t size, bool append = false);
+	Result file_write_text(const char* filePath, const char* str, size_t size, bool append = false);
+
+	Result file_remove(const char* filePath);
+
+	enum FileOpen : u32 {
+		FileOpen_Text = SV_BIT(0),
+		FileOpen_Append = SV_BIT(1),
+	};
+	typedef u32 FileOpenFlags;
+
+	struct FileO {
+
+		Result	open(const char* filePath, FileOpenFlags flags = 0u);
+		void	close();
+
+		bool isOpen();
+
+		void write(const u8* data, size_t size);
+		void writeLine(const char* str);
+		void writeLine(const std::string& str);
+
+	private:
+		std::ofstream stream;
+	};
+
+	struct FileI {
+
+		Result	open(const char* filePath, FileOpenFlags flags = 0u);
+		void	close();
+
+		bool isOpen();
+
+		void	setPos(size_t pos);
+		size_t	getPos();
+
+		size_t getSize();
+
+		void read(u8* data, size_t size);
+		bool readLine(char* buf, size_t bufSize);
+		bool readLine(std::string& str);
+
+	private:
+		std::ifstream stream;
+	};
 
 	class ArchiveO {
 

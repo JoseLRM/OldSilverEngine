@@ -10,23 +10,10 @@ namespace sv {
 
 	Result matsys_shaderlibrary_create_from_file(const char* filePath, ShaderLibrary** pShaderLibrary)
 	{
-#ifdef SV_RES_PATH
-		std::string filePathStr = SV_RES_PATH;
-		filePathStr += filePath;
-		filePath = filePathStr.c_str();
-#endif
+		std::vector<u8> src;
+		svCheck(file_read_binary(filePath, src));
 
-		std::ifstream file(filePath, std::ios::binary | std::ios::ate);
-		if (!file.is_open()) return Result_NotFound;
-
-		std::vector<char> src;
-		src.resize(file.tellg());
-		file.seekg(0u);
-		file.read(src.data(), src.size());
-
-		file.close();
-
-		return matsys_shaderlibrary_create_from_string(src.data(), pShaderLibrary);
+		return matsys_shaderlibrary_create_from_string((char*)src.data(), pShaderLibrary);
 	}
 
 	Result matsys_shaderlibrary_create_from_string(const char* src, ShaderLibrary** pShaderLibrary)

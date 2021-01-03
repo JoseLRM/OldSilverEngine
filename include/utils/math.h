@@ -587,20 +587,6 @@ namespace sv {
 		seed = (seed << 13) ^ seed;
 		return ((seed * (seed * seed * 15731u * 789221u) + 1376312589u) & 0x7fffffffu);
 	}
-	SV_INLINE u32 math_random_u32(u32 seed, u32 max)
-	{
-		if (max > 8u)
-			return math_random_u32(seed) % max;
-		else
-			return u32(math_random_f32(++seed, f32(max)));
-	}
-	SV_INLINE u32 math_random_u32(u32 seed, u32 min, u32 max)
-	{
-		if (max - min > 8u)
-			return min + (math_random_u32(seed) % (max - min));
-		else
-			return u32(math_random_f32(++seed, f32(min), f32(max)));
-	}
 
 	SV_INLINE f32 math_random_f32(u32 seed)
 	{
@@ -614,6 +600,21 @@ namespace sv {
 	{
 		SV_ASSERT(min <= max);
 		return min + math_random_f32(seed) * (max - min);
+	}
+
+	SV_INLINE u32 math_random_u32(u32 seed, u32 max)
+	{
+		if (max > 8u)
+			return math_random_u32(seed) % max;
+		else
+			return u32(math_random_f32(++seed, f32(max)));
+	}
+	SV_INLINE u32 math_random_u32(u32 seed, u32 min, u32 max)
+	{
+		if (max - min > 8u)
+			return min + (math_random_u32(seed) % (max - min));
+		else
+			return u32(math_random_f32(++seed, f32(min), f32(max)));
 	}
 
 	struct Random {

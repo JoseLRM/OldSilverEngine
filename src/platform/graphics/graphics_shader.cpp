@@ -18,14 +18,10 @@ namespace sv {
 	inline std::string graphics_shader_random_path()
 	{
 		static u32 seed = 0u;
-		u32 random = math_random(seed);
+		u32 random = math_random_u32(seed);
 
 		seed += 100;
 		std::string filePath = std::to_string(random);
-
-#ifdef SV_RES_PATH
-		filePath = SV_RES_PATH + filePath;
-#endif
 
 		return filePath;
 	}
@@ -34,17 +30,17 @@ namespace sv {
 	{
 		std::string filePath = graphics_shader_random_path();
 
-		std::ofstream tempFile(filePath, std::ios::ate | std::ios::binary);
-		if (!tempFile.is_open()) return Result_UnknownError;
+		FileO tempFile;
+		svCheck(tempFile.open(filePath.c_str()));
 
-		tempFile.write(str, size);
+		if (!tempFile.isOpen()) return Result_UnknownError;
+
+		tempFile.write((u8*)str, size);
 		tempFile.close();
 
 		Result res = graphics_shader_compile_file(desc, filePath.c_str(), data);
 
-		if (remove(filePath.c_str()) != 0) {
-			return Result_UnknownError;
-		}
+		svCheck(file_remove(filePath.c_str()));
 
 		return res;
 	}
@@ -168,27 +164,26 @@ namespace sv {
 		}
 
 		// Input - Output
-		bat << srcPath << " -Fo " << filePath;
+#ifdef SV_RES_PATH
+		bat << SV_RES_PATH;
+#endif
+		bat << srcPath << " -Fo ";
+#ifdef SV_RES_PATH
+		bat << SV_RES_PATH;
+#endif
+		bat << filePath;
 
 		// Execute
 		system(bat.str().c_str());
 
 		// Read from file
 		{
-			std::ifstream file(filePath, std::ios::ate | std::ios::binary);
-			if (!file.is_open()) return Result_CompileError;
-
-			size_t size = file.tellg();
-			file.seekg(0);
-			size_t index = data.size();
-			data.resize(index + size);
-			file.read((char*)data.data() + index, size);
-
-			file.close();
+			if (result_fail(file_read_binary(filePath.c_str(), data))) 
+				return Result_CompileError;
 		}
 
 		// Remove tem file
-		if (remove(filePath.c_str()) != 0) return Result_UnknownError;
+		svCheck(file_remove(filePath.c_str()));
 
 		return Result_Success;
 	}
