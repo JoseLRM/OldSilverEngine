@@ -6,7 +6,7 @@ namespace sv {
 
 	// EntityDataAllocator
 
-	Entity ecs_allocator_entity_alloc(EntityDataAllocator& a)
+	Entity entityAlloc(EntityDataAllocator& a)
 	{
 		if (a.freeList.empty()) {
 
@@ -53,7 +53,7 @@ namespace sv {
 		}
 	}
 
-	void ecs_allocator_entity_free(EntityDataAllocator& a, Entity entity)
+	void entityFree(EntityDataAllocator& a, Entity entity)
 	{
 		SV_ASSERT(a.size >= entity);
 		a.accessData[entity] = EntityData();
@@ -67,7 +67,7 @@ namespace sv {
 		}
 	}
 
-	void ecs_allocator_entity_clear(EntityDataAllocator& a)
+	void entityClear(EntityDataAllocator& a)
 	{
 		if (a.data) {
 			a.capacity = 0u;
@@ -85,90 +85,106 @@ namespace sv {
 
 	// ComponentPool
 
-	void ecs_allocator_component_pool_alloc(ComponentPool& pool, u32 compSize)
+	void componentPoolAlloc(ComponentPool& pool, size_t compSize)
 	{
-		ecs_allocator_component_pool_free(pool);
-		pool.compSize = compSize;
-		pool.data = new u8[size_t(compSize) * ECS_COMPONENT_POOL_SIZE];
+		componentPoolFree(pool);
+		pool.data = new u8[compSize * ECS_COMPONENT_POOL_SIZE];
+		pool.freeCount = 0u;
 	}
 
-	void ecs_allocator_component_pool_free(ComponentPool& pool)
+	void componentPoolFree(ComponentPool& pool)
 	{
 		if (pool.data != nullptr) {
 			delete[] pool.data;
 			pool.data = nullptr;
 		}
 		pool.size = 0u;
-		pool.freeList.clear();
 	}
 
-	void* ecs_allocator_component_pool_add(ComponentPool& pool)
+	void* componentPoolGetPtr(ComponentPool& pool, size_t compSize)
 	{
-		u8* ptr;
+		u8* ptr = nullptr;
 
-		if (pool.freeList.empty()) {
-			ptr = pool.data + pool.size;
-			pool.size += pool.compSize;
+		if (pool.freeCount) {
+			
+			u8* it = pool.data;
+			u8* end = it + pool.size;
+
+			while (it != end) {
+				
+				if (reinterpret_cast<BaseComponent*>(it)->entity == SV_ENTITY_NULL) {
+					ptr = it;
+					break;
+				}
+				it += compSize;
+			}
+			SV_ASSERT(ptr != nullptr && "Free component not found!!");
+			--pool.freeCount;
 		}
 		else {
-			ptr = pool.freeList.back();
-			pool.freeList.pop_back();
+			ptr = pool.data + pool.size;
+			pool.size += compSize;
 		}
 
 		return ptr;
 	}
 
-	void ecs_allocator_component_pool_remove(ComponentPool& pool, void* ptr)
+	void componentPoolRmvPtr(ComponentPool& pool, size_t compSize, void* ptr)
 	{
 		if (ptr == pool.data + pool.size) {
-			pool.size -= pool.compSize;
+			pool.size -= compSize;
 		}
 		else {
-			pool.freeList.push_back(reinterpret_cast<u8*>(ptr));
+			++pool.freeCount;
 		}
 	}
 
-	bool ecs_allocator_component_pool_is_filled(const ComponentPool& pool)
+	bool componentPoolFull(const ComponentPool& pool, size_t compSize)
 	{
-		return (pool.size / pool.compSize) == ECS_COMPONENT_POOL_SIZE;
+		return (pool.size == ECS_COMPONENT_POOL_SIZE * compSize) && pool.freeCount == 0u;
 	}
 
-	bool ecs_allocator_component_pool_exist(const ComponentPool& pool, void* ptr)
+	bool componentPoolPtrExist(const ComponentPool& pool, void* ptr)
 	{
 		return ptr >= pool.data && ptr < (pool.data + pool.size);
 	}
 
-	u32 ecs_allocator_component_pool_count(const ComponentPool& pool)
+	u32 componentPoolCount(const ComponentPool& pool, size_t compSize)
 	{
-		return u32(pool.size / size_t(pool.compSize) - pool.freeList.size());
+		return u32(pool.size / compSize - pool.freeCount);
 	}
 
 	// ComponentAllocator
 
-	ComponentPool& ecs_allocator_component_create_pool(ECS* ecs, ComponentAllocator& a)
+	SV_INLINE static ComponentPool& componentAllocatorCreatePool(ComponentAllocator& a, size_t compSize)
 	{
 		ComponentPool& pool = a.pools.emplace_back();
-		ecs_allocator_component_pool_alloc(pool, ecs_component_size(a.compID));
+		componentPoolAlloc(pool, compSize);
 		return pool;
 	}
 
-	ComponentPool& ecs_allocator_component_prepare_pool(ECS* ecs, ComponentAllocator& a)
+	SV_INLINE static ComponentPool& componentAllocatorPreparePool(ComponentAllocator& a, size_t compSize)
 	{
-		if (ecs_allocator_component_pool_is_filled(a.pools.back())) {
-			return ecs_allocator_component_create_pool(ecs, a);
+		if (componentPoolFull(a.pools.back(), compSize)) {
+			return componentAllocatorCreatePool(a, compSize);
 		}
 		return a.pools.back();
 	}
 
-	void ecs_allocator_component_create(ECS* ecs, ComponentAllocator& a, CompID ID)
+	void componentAllocatorCreate(ECS* ecs_, CompID compID)
 	{
-		ecs_allocator_component_destroy(ecs, a);
-		a.compID = ID;
-		ecs_allocator_component_create_pool(ecs, a);
+		parseECS();
+		componentAllocatorDestroy(ecs_, compID);
+		componentAllocatorCreatePool(ecs.components[compID], size_t(ecs_component_size(compID)));
 	}
 
-	void ecs_allocator_component_destroy(ECS* ecs, ComponentAllocator& a)
+	void componentAllocatorDestroy(ECS* ecs_, CompID compID)
 	{
+		parseECS();
+
+		ComponentAllocator& a = ecs.components[compID];
+		size_t compSize = size_t(ecs_component_size(compID));
+
 		for (auto it = a.pools.begin(); it != a.pools.end(); ++it) {
 
 			u8* ptr = it->data;
@@ -178,70 +194,93 @@ namespace sv {
 
 				BaseComponent* comp = reinterpret_cast<BaseComponent*>(ptr);
 				if (comp->entity != SV_ENTITY_NULL) {
-					ecs_register_destroy(ecs, a.compID, comp);
+					ecs_register_destroy(ecs_, compID, comp);
 				}
 
-				ptr += it->compSize;
+				ptr += compSize;
 			}
 
-			ecs_allocator_component_pool_free(*it);
+			componentPoolFree(*it);
 
 		}
 		a.pools.clear();
 	}
 
-	BaseComponent* ecs_allocator_component_alloc(ECS* ecs, ComponentAllocator& a, Entity entity, bool create)
+	BaseComponent* componentAlloc(ECS* ecs_, CompID compID, Entity entity, bool create)
 	{
-		ComponentPool& pool = ecs_allocator_component_prepare_pool(ecs, a);
-		BaseComponent* comp = reinterpret_cast<BaseComponent*>(ecs_allocator_component_pool_add(pool));
+		parseECS();
 
-		if (create) ecs_register_create(ecs, a.compID, comp, entity);
+		ComponentAllocator& a = ecs.components[compID];
+		size_t compSize = size_t(ecs_component_size(compID));
+
+		ComponentPool& pool = componentAllocatorPreparePool(a, compSize);
+		BaseComponent* comp = reinterpret_cast<BaseComponent*>(componentPoolGetPtr(pool, compSize));
+
+		if (create) ecs_register_create(ecs_, compID, comp, entity);
 
 		return comp;
 	}
 
-	BaseComponent* ecs_allocator_component_alloc(ECS* ecs, ComponentAllocator& a, BaseComponent* srcComp)
+	BaseComponent* componentAlloc(ECS* ecs_, CompID compID, BaseComponent* srcComp)
 	{
-		ComponentPool& pool = ecs_allocator_component_prepare_pool(ecs, a);
-		BaseComponent* comp = reinterpret_cast<BaseComponent*>(ecs_allocator_component_pool_add(pool));
+		parseECS();
 
-		ecs_register_copy(ecs, a.compID, srcComp, comp);
+		ComponentAllocator& a = ecs.components[compID];
+		size_t compSize = size_t(ecs_component_size(compID));
+
+		ComponentPool& pool = componentAllocatorPreparePool(a, compSize);
+		BaseComponent* comp = reinterpret_cast<BaseComponent*>(componentPoolGetPtr(pool, compSize));
+
+		ecs_register_copy(ecs_, compID, srcComp, comp);
 
 		return comp;
 	}
 
-	void ecs_allocator_component_free(ECS* ecs, ComponentAllocator& a, BaseComponent* comp)
+	void componentFree(ECS* ecs_, CompID compID, BaseComponent* comp)
 	{
+		parseECS();
 		SV_ASSERT(comp != nullptr);
+
+		ComponentAllocator& a = ecs.components[compID];
+		size_t compSize = size_t(ecs_component_size(compID));
 
 		for (auto it = a.pools.begin(); it != a.pools.end(); ++it) {
 
-			if (ecs_allocator_component_pool_exist(*it, comp)) {
+			if (componentPoolPtrExist(*it, comp)) {
 
-				ecs_register_destroy(ecs, a.compID, comp);
-				ecs_allocator_component_pool_remove(*it, comp);
+				ecs_register_destroy(ecs_, compID, comp);
+				componentPoolRmvPtr(*it, compSize, comp);
 
+				break;
 			}
 		}
 	}
 
-	u32 ecs_allocator_component_count(ECS* ecs, const ComponentAllocator& a)
+	u32 componentAllocatorCount(ECS* ecs_, CompID compID)
 	{
-		u32 compSize = ecs_component_size(a.compID);
+		parseECS();
+
+		const ComponentAllocator& a = ecs.components[compID];
+		u32 compSize = ecs_component_size(compID);
+
 		u32 res = 0u;
 		for (const ComponentPool& pool : a.pools) {
-			res += ecs_allocator_component_pool_count(pool);
+			res += componentPoolCount(pool, compSize);
 		}
 		return res;
 	}
 
-	u32 ecs_allocator_component_empty(ECS* ecs, const ComponentAllocator& a)
+	bool componentAllocatorIsEmpty(ECS* ecs_, CompID compID)
 	{
-		u32 compSize = ecs_component_size(a.compID);
+		parseECS();
+
+		const ComponentAllocator& a = ecs.components[compID];
+		u32 compSize = ecs_component_size(compID);
+
 		for (const ComponentPool& pool : a.pools) {
-			if (ecs_allocator_component_pool_count(pool) > 0u) return false;
+			if (componentPoolCount(pool, compSize) > 0u) return false;
 		}
 		return true;
 	}
-	
+
 }

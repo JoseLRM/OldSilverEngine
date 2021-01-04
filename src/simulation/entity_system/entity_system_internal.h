@@ -2,10 +2,12 @@
 
 #include "simulation/entity_system.h"
 
+#define parseECS() ECS_internal& ecs = *reinterpret_cast<ECS_internal*>(ecs_)
+
 namespace sv {
 
-	constexpr u32 ECS_COMPONENT_POOL_SIZE = 200u;
-	constexpr u32 ECS_ENTITY_ALLOC_SIZE = 1000u;
+	constexpr u32 ECS_COMPONENT_POOL_SIZE = 100u;
+	constexpr u32 ECS_ENTITY_ALLOC_SIZE = 100u;
 
 	struct ComponentType {
 
@@ -47,40 +49,38 @@ namespace sv {
 	};
 
 	struct EntityDataAllocator {
-		
-		EntityData*				data			= nullptr;
-		EntityTransform*		transformData	= nullptr;
 
-		EntityData*				accessData			= nullptr;
-		EntityTransform*		accessTransformData = nullptr;
+		EntityData* data = nullptr;
+		EntityTransform* transformData = nullptr;
+
+		EntityData* accessData = nullptr;
+		EntityTransform* accessTransformData = nullptr;
 
 		u32 size = 0u;
 		u32 capacity = 0u;
 		std::vector<Entity> freeList;
 
-		inline EntityData&			operator[](Entity entity) { SV_ASSERT(entity != SV_ENTITY_NULL); return accessData[entity]; }
-		inline EntityTransform&		get_transform(Entity entity) { SV_ASSERT(entity != SV_ENTITY_NULL); return accessTransformData[entity]; }
+		inline EntityData& operator[](Entity entity) { SV_ASSERT(entity != SV_ENTITY_NULL); return accessData[entity]; }
+		inline EntityTransform& get_transform(Entity entity) { SV_ASSERT(entity != SV_ENTITY_NULL); return accessTransformData[entity]; }
 
 	};
 
 	struct ComponentPool {
-		
-		u8* data;
-		size_t size;
-		u32 compSize;
-		std::vector<u8*> freeList;
+
+		u8*			data;
+		size_t		size;
+		size_t		freeCount;
 
 	};
 
 	struct ComponentAllocator {
 
 		std::vector<ComponentPool> pools;
-		CompID compID;
 
 	};
 
 	struct ECS_internal {
-		
+
 		std::vector<ComponentRegister>	registers;
 		std::vector<Entity>				entities;
 		EntityDataAllocator				entityData;
@@ -96,26 +96,25 @@ namespace sv {
 
 	// MEMORY
 
-	Entity	ecs_allocator_entity_alloc(EntityDataAllocator& allocator);
-	void	ecs_allocator_entity_free(EntityDataAllocator& allocator, Entity entity);
-	void	ecs_allocator_entity_clear(EntityDataAllocator& allocator);
+	Entity	entityAlloc(EntityDataAllocator& allocator);
+	void	entityFree(EntityDataAllocator& allocator, Entity entity);
+	void	entityClear(EntityDataAllocator& allocator);
 
-	void	ecs_allocator_component_pool_alloc(ComponentPool& pool, u32 compSize);
-	void	ecs_allocator_component_pool_free(ComponentPool& pool);
-	void*	ecs_allocator_component_pool_add(ComponentPool& pool);
-	void	ecs_allocator_component_pool_remove(ComponentPool& pool, void* ptr);
-	bool	ecs_allocator_component_pool_is_filled(const ComponentPool& pool);
-	bool	ecs_allocator_component_pool_exist(const ComponentPool& pool, void* ptr);
-	u32	ecs_allocator_component_pool_count(const ComponentPool& pool);
+	void	componentPoolAlloc(ComponentPool& pool, size_t compSize);						// Allocate components memory
+	void	componentPoolFree(ComponentPool& pool);											// Deallocate components memory
+	void*	componentPoolGetPtr(ComponentPool& pool, size_t compSize);						// Return new component
+	void	componentPoolRmvPtr(ComponentPool& pool, size_t compSize, void* ptr);			// Remove component
+	bool	componentPoolFull(const ComponentPool& pool, size_t compSize);					// Check if there are free space in the pool
+	bool	componentPoolPtrExist(const ComponentPool& pool, void* ptr);					// Check if the pool contains the ptr
+	u32		componentPoolCount(const ComponentPool& pool, size_t compSize);					// Return the number of valid components allocated in this pool
 
-	ComponentPool&	ecs_allocator_component_prepare_pool(ECS* ecs, ComponentAllocator& a);
-	void			ecs_allocator_component_create(ECS* ecs, ComponentAllocator& allocator, CompID ID);
-	void			ecs_allocator_component_destroy(ECS* ecs, ComponentAllocator& allocator);
-	BaseComponent*	ecs_allocator_component_alloc(ECS* ecs, ComponentAllocator& allocator, Entity entity, bool create = true);
-	BaseComponent*	ecs_allocator_component_alloc(ECS* ecs, ComponentAllocator& allocator, BaseComponent* srcComp);
-	void			ecs_allocator_component_free(ECS* ecs, ComponentAllocator& allocator, BaseComponent* comp);
-	u32			ecs_allocator_component_count(ECS* ecs, const ComponentAllocator& allocator);
-	u32			ecs_allocator_component_empty(ECS* ecs, const ComponentAllocator& allocator);
+	void			componentAllocatorCreate(ECS* ecs, CompID ID);									// Create the allocator
+	void			componentAllocatorDestroy(ECS* ecs, CompID ID);									// Destroy the allocator
+	BaseComponent*	componentAlloc(ECS* ecs, CompID compID, Entity entity, bool create = true);		// Allocate and create new component
+	BaseComponent*	componentAlloc(ECS* ecs, CompID compID, BaseComponent* srcComp);				// Allocate and copy new component
+	void			componentFree(ECS* ecs, CompID compID, BaseComponent* comp);					// Free and destroy component
+	u32				componentAllocatorCount(ECS* ecs, CompID compId);								// Return the number of valid components in all the pools
+	bool			componentAllocatorIsEmpty(ECS* ecs, CompID compID);								// Return if the allocator is empty
 
 	// EVENTS
 

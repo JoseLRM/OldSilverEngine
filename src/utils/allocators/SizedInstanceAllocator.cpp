@@ -5,18 +5,28 @@
 namespace sv {
 
 	SizedInstanceAllocatorPool::SizedInstanceAllocatorPool(size_t instanceSize) : INSTANCE_SIZE(instanceSize) {}
-	SizedInstanceAllocatorPool::SizedInstanceAllocatorPool(const SizedInstanceAllocatorPool& other)
+	SizedInstanceAllocatorPool::SizedInstanceAllocatorPool(SizedInstanceAllocatorPool&& other)
 		: INSTANCE_SIZE(other.INSTANCE_SIZE)
 	{
 		instances = other.instances;
 		size = other.size;
 		beginCount = other.beginCount;
+		INSTANCE_SIZE = other.INSTANCE_SIZE;
+		other.instances = nullptr;
+		other.size = 0u;
+		other.beginCount = 0u;
+		other.INSTANCE_SIZE = 0u;
 	}
-	SizedInstanceAllocatorPool& SizedInstanceAllocatorPool::operator=(const SizedInstanceAllocatorPool& other)
+	SizedInstanceAllocatorPool& SizedInstanceAllocatorPool::operator=(SizedInstanceAllocatorPool&& other) noexcept
 	{
 		instances = other.instances;
 		size = other.size;
 		beginCount = other.beginCount;
+		INSTANCE_SIZE = other.INSTANCE_SIZE;
+		other.instances = nullptr;
+		other.size = 0u;
+		other.beginCount = 0u;
+		other.INSTANCE_SIZE = 0u;
 		return *this;
 	}
 
@@ -40,10 +50,20 @@ namespace sv {
 		return iterator(instances + (size * INSTANCE_SIZE), nullptr, INSTANCE_SIZE);
 	}
 
+	SizedInstanceAllocator::SizedInstanceAllocator()
+		: INSTANCE_SIZE(0u), POOL_SIZE(0u)
+	{
+	}
+
 	SizedInstanceAllocator::SizedInstanceAllocator(size_t instanceSize, size_t poolSize)
 		: INSTANCE_SIZE(instanceSize), POOL_SIZE(poolSize)
 	{
-		SV_ASSERT(INSTANCE_SIZE >= sizeof(u32) && "The size must be greater than 4u");
+		SV_ASSERT(INSTANCE_SIZE >= sizeof(u32) && "The size must be greater than 4 bytes");
+	}
+	SizedInstanceAllocator::SizedInstanceAllocator(SizedInstanceAllocator&& other) noexcept 
+		: INSTANCE_SIZE(other.INSTANCE_SIZE), POOL_SIZE(other.POOL_SIZE)
+	{
+		m_Pools = std::move(other.m_Pools);
 	}
 	SizedInstanceAllocator::~SizedInstanceAllocator()
 	{
@@ -79,9 +99,9 @@ namespace sv {
 			m_Pools.emplace_back(INSTANCE_SIZE);
 
 		found:
-			Pool aux = m_Pools[poolIndex];
-			m_Pools[poolIndex] = m_Pools.back();
-			m_Pools.back() = aux;
+			Pool aux = std::move(m_Pools[poolIndex]);
+			m_Pools[poolIndex] = std::move(m_Pools.back());
+			m_Pools.back() = std::move(aux);
 
 		}
 

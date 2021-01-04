@@ -219,7 +219,7 @@ namespace sv {
 			if (count) {
 				SV_LOG_WARNING("There are %u unfreed buffers", count);
 
-				for (auto pool : *(g_Device.bufferAllocator.get())) {
+				for (auto& pool : *(g_Device.bufferAllocator.get())) {
 					for (void* p : pool) {
 						destroyUnusedPrimitive(*reinterpret_cast<Primitive_internal*>(p));
 					}
@@ -230,7 +230,7 @@ namespace sv {
 			if (count) {
 				SV_LOG_WARNING("There are %u unfreed images", count);
 				
-				for (auto pool : *(g_Device.imageAllocator.get())) {
+				for (auto& pool : *(g_Device.imageAllocator.get())) {
 					for (void* p : pool) {
 						destroyUnusedPrimitive(*reinterpret_cast<Primitive_internal*>(p));
 					}
@@ -241,7 +241,7 @@ namespace sv {
 			if (count) {
 				SV_LOG_WARNING("There are %u unfreed samplers", count);
 
-				for (auto pool : *(g_Device.samplerAllocator.get())) {
+				for (auto& pool : *(g_Device.samplerAllocator.get())) {
 					for (void* p : pool) {
 						destroyUnusedPrimitive(*reinterpret_cast<Primitive_internal*>(p));
 					}
@@ -252,7 +252,7 @@ namespace sv {
 			if (count) {
 				SV_LOG_WARNING("There are %u unfreed shaders", count);
 
-				for (auto pool : *(g_Device.shaderAllocator.get())) {
+				for (auto& pool : *(g_Device.shaderAllocator.get())) {
 					for (void* p : pool) {
 						destroyUnusedPrimitive(*reinterpret_cast<Primitive_internal*>(p));
 					}
@@ -263,7 +263,7 @@ namespace sv {
 			if (count) {
 				SV_LOG_WARNING("There are %u unfreed render passes", count);
 
-				for (auto pool : *(g_Device.renderPassAllocator.get())) {
+				for (auto& pool : *(g_Device.renderPassAllocator.get())) {
 					for (void* p : pool) {
 						destroyUnusedPrimitive(*reinterpret_cast<Primitive_internal*>(p));
 					}
@@ -274,7 +274,7 @@ namespace sv {
 			if (count) {
 				SV_LOG_WARNING("There are %u unfreed input layout states", count);
 
-				for (auto pool : *(g_Device.inputLayoutStateAllocator.get())) {
+				for (auto& pool : *(g_Device.inputLayoutStateAllocator.get())) {
 					for (void* p : pool) {
 						destroyUnusedPrimitive(*reinterpret_cast<Primitive_internal*>(p));
 					}
@@ -285,7 +285,7 @@ namespace sv {
 			if (count) {
 				SV_LOG_WARNING("There are %u unfreed blend states", count);
 
-				for (auto pool : *(g_Device.blendStateAllocator.get())) {
+				for (auto& pool : *(g_Device.blendStateAllocator.get())) {
 					for (void* p : pool) {
 						destroyUnusedPrimitive(*reinterpret_cast<Primitive_internal*>(p));
 					}
@@ -296,7 +296,7 @@ namespace sv {
 			if (count) {
 				SV_LOG_WARNING("There are %u unfreed depth stencil states", count);
 
-				for (auto pool : *(g_Device.depthStencilStateAllocator.get())) {
+				for (auto& pool : *(g_Device.depthStencilStateAllocator.get())) {
 					for (void* p : pool) {
 						destroyUnusedPrimitive(*reinterpret_cast<Primitive_internal*>(p));
 					}
@@ -307,7 +307,7 @@ namespace sv {
 			if (count) {
 				SV_LOG_WARNING("There are %u unfreed rasterizer states", count);
 
-				for (auto pool : *(g_Device.rasterizerStateAllocator.get())) {
+				for (auto& pool : *(g_Device.rasterizerStateAllocator.get())) {
 					for (void* p : pool) {
 						destroyUnusedPrimitive(*reinterpret_cast<Primitive_internal*>(p));
 					}

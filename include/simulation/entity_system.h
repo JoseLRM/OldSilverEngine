@@ -62,10 +62,10 @@ namespace sv {
 		const Entity entity = 0;
 
 		// getters
-		const vec3f&	getLocalPosition() const noexcept;
-		const vec4f&	getLocalRotation() const noexcept;
+		const vec3f& getLocalPosition() const noexcept;
+		const vec4f& getLocalRotation() const noexcept;
 		vec3f			getLocalEulerRotation() const noexcept;
-		const vec3f&	getLocalScale() const noexcept;
+		const vec3f& getLocalScale() const noexcept;
 		XMVECTOR getLocalPositionDXV() const noexcept;
 		XMVECTOR getLocalRotationDXV() const noexcept;
 		XMVECTOR getLocalScaleDXV() const noexcept;
@@ -124,10 +124,10 @@ namespace sv {
 
 	void ecs_register(ECS* ecs, const ComponentRegisterDesc* desc);
 
-	void		ecs_register_create(ECS* ecs,CompID ID, BaseComponent* ptr, Entity entity);
+	void		ecs_register_create(ECS* ecs, CompID ID, BaseComponent* ptr, Entity entity);
 	void		ecs_register_destroy(ECS* ecs, CompID ID, BaseComponent* ptr);
-	void		ecs_register_move(ECS* ecs,CompID ID, BaseComponent* from, BaseComponent* to);
-	void		ecs_register_copy(ECS* ecs,CompID ID, BaseComponent* from, BaseComponent* to);
+	void		ecs_register_move(ECS* ecs, CompID ID, BaseComponent* from, BaseComponent* to);
+	void		ecs_register_copy(ECS* ecs, CompID ID, BaseComponent* from, BaseComponent* to);
 	void		ecs_register_serialize(ECS* ecs, CompID ID, BaseComponent* comp, ArchiveO& archive);
 	void		ecs_register_deserialize(ECS* ecs, CompID ID, BaseComponent* comp, ArchiveI& archive);
 	bool		ecs_register_exist(ECS* ecs, CompID ID);
@@ -154,12 +154,12 @@ namespace sv {
 
 	// Components
 
-	BaseComponent*	ecs_component_add(ECS* ecs, Entity entity, BaseComponent* comp, CompID componentID, size_t componentSize);
-	BaseComponent*	ecs_component_add_by_id(ECS* ecs, Entity entity, CompID componentID);
+	BaseComponent* ecs_component_add(ECS* ecs, Entity entity, BaseComponent* comp, CompID componentID, size_t componentSize);
+	BaseComponent* ecs_component_add_by_id(ECS* ecs, Entity entity, CompID componentID);
 
-	BaseComponent*						ecs_component_get_by_id(ECS* ecs, Entity entity, CompID componentID);
+	BaseComponent* ecs_component_get_by_id(ECS* ecs, Entity entity, CompID componentID);
 	std::pair<CompID, BaseComponent*>	ecs_component_get_by_index(ECS* ecs, Entity entity, u32 index);
-	
+
 	void ecs_component_remove_by_id(ECS* ecs, Entity entity, CompID componentID);
 
 	u32 ecs_component_count(ECS* ecs, CompID ID);
@@ -167,25 +167,25 @@ namespace sv {
 	// Listeners
 
 	struct ECS_CreateEntityEvent : public Event {
-		ECS*	ecs;
+		ECS* ecs;
 		Entity	entity;
 	};
 
 	struct ECS_DestroyEntityEvent : public Event {
-		ECS*	ecs;
+		ECS* ecs;
 		Entity	entity;
 	};
 
 	struct ECS_AddComponentEvent : public Event {
-		ECS*			ecs;
+		ECS* ecs;
 		CompID			compID;
-		BaseComponent*	component;
+		BaseComponent* component;
 	};
 
 	struct ECS_RemoveComponentEvent : public Event {
-		ECS*			ecs;
+		ECS* ecs;
 		CompID			compID;
-		BaseComponent*	component;
+		BaseComponent* component;
 	};
 
 	EventListener* ecs_listener_OnEntityCreate(ECS* ecs);
@@ -206,7 +206,7 @@ namespace sv {
 		ComponentIterator(ECS* ecs, CompID compID, bool end);
 
 		BaseComponent* get_ptr();
-		
+
 		void start_begin();
 		void start_end();
 

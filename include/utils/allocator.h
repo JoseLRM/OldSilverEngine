@@ -12,7 +12,7 @@ namespace sv {
 
 		u8* ptr;
 		u8* nextFreeInstance;
-		const size_t INSTANCE_SIZE;
+		size_t INSTANCE_SIZE;
 
 		inline void* operator*() const noexcept { return ptr; }
 		
@@ -27,6 +27,7 @@ namespace sv {
 		inline bool operator>(const iterator& other) const noexcept { return ptr > other.ptr; }
 		inline bool operator>=(const iterator& other) const noexcept { return ptr >= other.ptr; }
 
+		inline iterator() : ptr(nullptr), nextFreeInstance(nullptr), INSTANCE_SIZE(0) {}
 		inline iterator(u8* ptr, u8* nextFreeInstance, size_t instanceSize)
 			: ptr(ptr), nextFreeInstance(nextFreeInstance), INSTANCE_SIZE(instanceSize)
 		{
@@ -62,11 +63,11 @@ namespace sv {
 		u8* instances = nullptr;
 		u32 size = 0u;
 		u32 beginCount = u32_max;
-		const size_t INSTANCE_SIZE;
+		size_t INSTANCE_SIZE;
 
 		SizedInstanceAllocatorPool(size_t instanceSize);
-		SizedInstanceAllocatorPool(const SizedInstanceAllocatorPool& other);
-		SizedInstanceAllocatorPool& operator=(const SizedInstanceAllocatorPool& other);
+		SizedInstanceAllocatorPool(SizedInstanceAllocatorPool&& other);
+		SizedInstanceAllocatorPool& operator=(SizedInstanceAllocatorPool&& other) noexcept;
 
 		u32 unfreed_count() const noexcept;
 
@@ -81,14 +82,17 @@ namespace sv {
 		using Pool = SizedInstanceAllocatorPool;
 		using PoolIterator = SizedInstanceAllocatorPoolIterator;
 
+		SizedInstanceAllocator();
 		SizedInstanceAllocator(size_t instanceSize, size_t poolSize);
+		SizedInstanceAllocator(const SizedInstanceAllocator& other) = delete;
+		SizedInstanceAllocator(SizedInstanceAllocator&& other) noexcept;
 		~SizedInstanceAllocator();
 
 		void* alloc();
 		void free(void* ptr_);
 		void clear();
 
-		inline u32 pool_count() { u32(m_Pools.size()); }
+		inline u32 pool_count() { return u32(m_Pools.size()); }
 		inline SizedInstanceAllocatorPool& operator[](size_t i) noexcept { return m_Pools[i]; };
 		inline const SizedInstanceAllocatorPool& operator[](size_t i) const noexcept { return m_Pools[i]; };
 
@@ -175,17 +179,23 @@ namespace sv {
 		u32 beginCount = u32_max;
 
 		InstanceAllocatorPool() {}
-		InstanceAllocatorPool(const InstanceAllocatorPool& other)
+		InstanceAllocatorPool(InstanceAllocatorPool&& other)
 		{
 			instances = other.instances;
 			size = other.size;
 			beginCount = other.beginCount;
+			other.instances = nullptr;
+			other.size = 0u;
+			other.beginCount = 0u;
 		}
-		InstanceAllocatorPool& operator=(const InstanceAllocatorPool& other)
+		InstanceAllocatorPool& operator=(InstanceAllocatorPool&& other) noexcept
 		{
 			instances = other.instances;
 			size = other.size;
 			beginCount = other.beginCount;
+			other.instances = nullptr;
+			other.size = 0u;
+			other.beginCount = 0u;
 			return *this;
 		}
 
@@ -257,9 +267,9 @@ namespace sv {
 				m_Pools.emplace_back();
 
 			found:
-				Pool aux = m_Pools[poolIndex];
-				m_Pools[poolIndex] = m_Pools.back();
-				m_Pools.back() = aux;
+				Pool aux = std::move(m_Pools[poolIndex]);
+				m_Pools[poolIndex] = std::move(m_Pools.back());
+				m_Pools.back() = std::move(aux);
 
 			}
 
