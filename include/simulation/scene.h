@@ -83,6 +83,9 @@ namespace sv {
 		NameComponent(const std::string& name) : name(name) {}
 		NameComponent(std::string&& name) : name(std::move(name)) {}
 
+		void serialize(ArchiveO& file);
+		void deserialize(ArchiveI& file);
+
 	};
 
 }

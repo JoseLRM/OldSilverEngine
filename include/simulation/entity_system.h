@@ -249,9 +249,17 @@ namespace sv {
 			new(to) Component(*from);
 		};
 
-		// TODO
-		desc.serializeFn = nullptr;
-		desc.deserializeFn = nullptr;
+		desc.serializeFn = [](BaseComponent* comp_, ArchiveO& file)
+		{
+			Component* comp = reinterpret_cast<Component*>(comp_);
+			comp->serialize(file);
+		};
+
+		desc.deserializeFn = [](BaseComponent* comp_, ArchiveI& file)
+		{
+			Component* comp = new(comp_) Component();
+			comp->deserialize(file);
+		};
 
 		Component::ID = ecs_component_register(&desc);
 	}

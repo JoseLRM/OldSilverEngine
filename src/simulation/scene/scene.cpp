@@ -80,19 +80,6 @@ namespace sv {
 		// Initialize Entity Component System
 		ecs_create(&m_ECS);
 
-		//ecs_register<NameComponent>(m_ECS,
-		//	[](BaseComponent* comp, ArchiveO& archive)
-		//{
-		//	NameComponent* name = reinterpret_cast<NameComponent*>(comp);
-		//	archive << name->name;
-		//},
-		//	[](BaseComponent* comp, ArchiveI& archive)
-		//{
-		//	new(comp) NameComponent();
-		//	NameComponent* name = reinterpret_cast<NameComponent*>(comp);
-		//	archive >> name->name;
-		//});
-
 		// Create main camera
 		m_MainCamera = ecs_entity_create(m_ECS);
 		ecs_component_add<NameComponent>(m_ECS, m_MainCamera, "Camera");
@@ -252,6 +239,16 @@ namespace sv {
 		scene.create();
 		svCheck(scene.serialize(filePath));
 		return asset_refresh();
+	}
+
+	void NameComponent::serialize(ArchiveO& file)
+	{
+		file << name;
+	}
+
+	void NameComponent::deserialize(ArchiveI& file)
+	{
+		file >> name;
 	}
 
 }

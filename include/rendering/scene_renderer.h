@@ -204,6 +204,9 @@ namespace sv {
 		SpriteComponent(Sprite& spr) : sprite(spr) {}
 		SpriteComponent(Sprite& spr, Color col) : sprite(spr), color(col) {}
 
+		void serialize(ArchiveO& file);
+		void deserialize(ArchiveI& file);
+
 	};
 
 	// Animated Sprite Component
@@ -220,6 +223,9 @@ namespace sv {
 		AnimatedSpriteComponent(AnimatedSprite& spr) : sprite(spr) {}
 		AnimatedSpriteComponent(AnimatedSprite& spr, Color col) : sprite(spr), color(col) {}
 
+		void serialize(ArchiveO& file);
+		void deserialize(ArchiveI& file);
+
 	};
 
 	// Mesh Component
@@ -232,6 +238,9 @@ namespace sv {
 
 		MeshComponent() = default;
 		MeshComponent(MeshAssetType assetType) { mesh.loadFromID(assetType); }
+
+		void serialize(ArchiveO& file);
+		void deserialize(ArchiveI& file);
 
 	};
 
@@ -252,12 +261,18 @@ namespace sv {
 
 		LightComponent() : lightType(LightType_Point), color(Color3f::White()), intensity(0.7f), point({ 1.f, 0.6f }) {}
 
+		void serialize(ArchiveO& file);
+		void deserialize(ArchiveI& file);
+
 	};
 
 	// Sky Component
 
 	struct SkyComponent : public Component<SkyComponent> {
 		Color3f ambient = Color3f::White();
+
+		void serialize(ArchiveO& file);
+		void deserialize(ArchiveI& file);
 	};
 
 	// Camera Component
@@ -268,6 +283,8 @@ namespace sv {
 		CameraComponent() = default;
 		CameraComponent(u32 width, u32 height) { camera.setResolution(width, height); }
 
+		void serialize(ArchiveO& file);
+		void deserialize(ArchiveI& file);
 	};
 
 }

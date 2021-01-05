@@ -24,6 +24,7 @@ namespace sv {
 	class AnimatedSprite {
 	public:
 		struct State {
+			// TODO: use the save/load methods form asset system
 			size_t animationHashCode;
 			float spriteDuration;
 			u32 repeatCount;

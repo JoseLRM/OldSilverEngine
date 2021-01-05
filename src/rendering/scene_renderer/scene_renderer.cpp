@@ -375,128 +375,102 @@ namespace sv {
 
 	// COMPONENTS
 
-	void scene_component_serialize_SpriteComponent(BaseComponent* comp_, ArchiveO& archive)
+	void SpriteComponent::serialize(ArchiveO& file)
 	{
-		SpriteComponent* comp = reinterpret_cast<SpriteComponent*>(comp_);
-		archive << comp->color;
-		archive << comp->sprite.texCoord;
-		archive << comp->renderLayer;
-		comp->sprite.texture.save(archive);
-		comp->material.save(archive);
+		file << color;
+		file << sprite.texCoord;
+		file << renderLayer;
+		sprite.texture.save(file);
+		material.save(file);
 	}
 
-	void scene_component_serialize_AnimatedSpriteComponent(BaseComponent* comp_, ArchiveO& archive)
+	void SpriteComponent::deserialize(ArchiveI& file)
 	{
-		AnimatedSpriteComponent* comp = reinterpret_cast<AnimatedSpriteComponent*>(comp_);
-		archive << comp->color;
-		archive << comp->sprite.getState();
-		archive << comp->material.getHashCode();
-		archive << comp->renderLayer;
+		file >> color;
+		file >> sprite.texCoord;
+		file >> renderLayer;
+
+		sprite.texture.load(file);
+		material.load(file);
 	}
 
-	void scene_component_serialize_MeshComponent(BaseComponent* comp_, ArchiveO& archive)
+	void AnimatedSpriteComponent::serialize(ArchiveO& file)
 	{
-		MeshComponent* comp = reinterpret_cast<MeshComponent*>(comp_);
-
-		comp->mesh.save(archive);
-		comp->material.save(archive);
+		file << color;
+		file << sprite.getState();
+		material.save(file);
+		file << renderLayer;
 	}
 
-	void scene_component_serialize_LightComponent(BaseComponent* comp_, ArchiveO& archive)
+	void AnimatedSpriteComponent::deserialize(ArchiveI& file)
 	{
-		LightComponent* comp = reinterpret_cast<LightComponent*>(comp_);
-
-		archive << comp->intensity << comp->color << comp->lightType;
-		switch (comp->lightType)
-		{
-		case LightType_Point:
-			archive << comp->point;
-			break;
-		}
-	}
-
-	void scene_component_serialize_SkyComponent(BaseComponent* comp_, ArchiveO& archive)
-	{
-		SkyComponent* comp = reinterpret_cast<SkyComponent*>(comp_);
-		archive << comp->ambient;
-	}
-
-	void scene_component_serialize_CameraComponent(BaseComponent* comp_, ArchiveO& archive)
-	{
-		CameraComponent* comp = reinterpret_cast<CameraComponent*>(comp_);
-		comp->camera.serialize(archive);
-	}
-
-	void scene_component_deserialize_SpriteComponent(BaseComponent* comp_, ArchiveI& archive)
-	{
-		new(comp_) SpriteComponent();
-
-		SpriteComponent* comp = reinterpret_cast<SpriteComponent*>(comp_);
-		archive >> comp->color;
-		archive >> comp->sprite.texCoord;
-		archive >> comp->renderLayer;
-
-		comp->sprite.texture.load(archive);
-		comp->material.load(archive);
-	}
-
-	void scene_component_deserialize_AnimatedSpriteComponent(BaseComponent* comp_, ArchiveI& archive)
-	{
-		new(comp_) AnimatedSpriteComponent();
-
-		AnimatedSpriteComponent* comp = reinterpret_cast<AnimatedSpriteComponent*>(comp_);
-		archive >> comp->color;
+		file >> color;
 
 		AnimatedSprite::State sprState;
-		archive >> sprState;
-		if (result_fail(comp->sprite.setState(sprState))) {
+		file >> sprState;
+		if (result_fail(sprite.setState(sprState))) {
 			SV_LOG_ERROR("Sprite Animation not found");
 		}
 
-		size_t hash;
-		archive >> hash;
-		if (hash != 0u) {
-			if (comp->material.loadFromFile(hash) != Result_Success) {
-				SV_LOG_ERROR("Material not found, hashcode: %u", hash);
-			}
+		if (result_fail(material.load(file))) {
+			SV_LOG_ERROR("Material in AnimatedSprite not found");
 		}
 
-		archive >> comp->renderLayer;
+		file >> renderLayer;
 	}
 
-	void scene_component_deserialize_MeshComponent(BaseComponent* comp_, ArchiveI& archive)
+	void MeshComponent::serialize(ArchiveO& file)
 	{
-		MeshComponent* comp = new(comp_) MeshComponent();
-
-		comp->mesh.load(archive);
-		comp->material.load(archive);
+		mesh.save(file);
+		material.save(file);
 	}
 
-	void scene_component_deserialize_LightComponent(BaseComponent* comp_, ArchiveI& archive)
+	void MeshComponent::deserialize(ArchiveI& file)
 	{
-		LightComponent* comp = new(comp_) LightComponent();
+		mesh.load(file);
+		material.load(file);
+	}
 
-		archive >> comp->intensity >> comp->color >> comp->lightType;
-		switch (comp->lightType)
+	void LightComponent::serialize(ArchiveO& file)
+	{
+		file << intensity << color << lightType;
+		switch (lightType)
 		{
 		case LightType_Point:
-			archive >> comp->point;
+			file << point;
 			break;
 		}
 	}
 
-	void scene_component_deserialize_SkyComponent(BaseComponent* comp_, ArchiveI& archive)
+	void LightComponent::deserialize(ArchiveI& file)
 	{
-		SkyComponent* comp = new(comp_) SkyComponent();
-		archive >> comp->ambient;
+		file >> intensity >> color >> lightType;
+		switch (lightType)
+		{
+		case LightType_Point:
+			file >> point;
+			break;
+		}
 	}
 
-	void scene_component_deserialize_CameraComponent(BaseComponent* comp_, ArchiveI& archive)
+	void SkyComponent::serialize(ArchiveO& file)
 	{
-		new(comp_) CameraComponent();
+		file << ambient;
+	}
 
-		CameraComponent* comp = reinterpret_cast<CameraComponent*>(comp_);
-		comp->camera.deserialize(archive);
+	void SkyComponent::deserialize(ArchiveI& file)
+	{
+		file >> ambient;
+	}
+
+	void CameraComponent::serialize(ArchiveO& file)
+	{
+		camera.serialize(file);
+	}
+
+	void CameraComponent::deserialize(ArchiveI& file)
+	{
+		camera.deserialize(file);
 	}
 
 }
