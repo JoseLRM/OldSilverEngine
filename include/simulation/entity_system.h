@@ -29,16 +29,17 @@ namespace sv {
 	template<typename T>
 	u32 Component<T>::SIZE;
 
-	typedef std::function<void(BaseComponent*)>							CreateComponentFunction;
-	typedef std::function<void(BaseComponent*)>							DestroyComponentFunction;
-	typedef std::function<void(BaseComponent* from, BaseComponent* to)> MoveComponentFunction;
-	typedef std::function<void(BaseComponent* from, BaseComponent* to)> CopyComponentFunction;
-	typedef std::function<void(BaseComponent* comp, ArchiveO&)>			SerializeComponentFunction;
-	typedef std::function<void(BaseComponent* comp, ArchiveI&)>			DeserializeComponentFunction;
+	typedef void(*CreateComponentFunction)(BaseComponent*);
+	typedef void(*DestroyComponentFunction)(BaseComponent*);
+	typedef void(*MoveComponentFunction)(BaseComponent* from, BaseComponent* to);
+	typedef void(*CopyComponentFunction)(BaseComponent* from, BaseComponent* to);
+	typedef void(*SerializeComponentFunction)(BaseComponent* comp, ArchiveO&);
+	typedef void(*DeserializeComponentFunction)(BaseComponent* comp, ArchiveI&);
 
 	struct ComponentRegisterDesc {
 
-		CompID							compID;
+		const char*						name;
+		u32								componentSize;
 		CreateComponentFunction			createFn;
 		DestroyComponentFunction		destroyFn;
 		MoveComponentFunction			moveFn;
@@ -115,22 +116,20 @@ namespace sv {
 
 	// Component Register
 
-	CompID ecs_component_register(const char* name, u32 compSize);
+	CompID ecs_component_register(const ComponentRegisterDesc* desc);
 
 	const char* ecs_component_name(CompID ID);
-	u32		ecs_component_size(CompID ID);
+	u32			ecs_component_size(CompID ID);
 	CompID		ecs_component_id(const char* name);
-	u32		ecs_component_register_count();
+	u32			ecs_component_register_count();
 
-	void ecs_register(ECS* ecs, const ComponentRegisterDesc* desc);
-
-	void		ecs_register_create(ECS* ecs, CompID ID, BaseComponent* ptr, Entity entity);
-	void		ecs_register_destroy(ECS* ecs, CompID ID, BaseComponent* ptr);
-	void		ecs_register_move(ECS* ecs, CompID ID, BaseComponent* from, BaseComponent* to);
-	void		ecs_register_copy(ECS* ecs, CompID ID, BaseComponent* from, BaseComponent* to);
-	void		ecs_register_serialize(ECS* ecs, CompID ID, BaseComponent* comp, ArchiveO& archive);
-	void		ecs_register_deserialize(ECS* ecs, CompID ID, BaseComponent* comp, ArchiveI& archive);
-	bool		ecs_register_exist(ECS* ecs, CompID ID);
+	void		ecs_component_create(CompID ID, BaseComponent* ptr, Entity entity);
+	void		ecs_component_destroy(CompID ID, BaseComponent* ptr);
+	void		ecs_component_move(CompID ID, BaseComponent* from, BaseComponent* to);
+	void		ecs_component_copy(CompID ID, BaseComponent* from, BaseComponent* to);
+	void		ecs_component_serialize(CompID ID, BaseComponent* comp, ArchiveO& archive);
+	void		ecs_component_deserialize(CompID ID, BaseComponent* comp, ArchiveI& archive);
+	bool		ecs_component_exist(CompID ID);
 
 	// Entity
 
@@ -140,11 +139,11 @@ namespace sv {
 	Entity		ecs_entity_duplicate(ECS* ecs, Entity entity);
 	bool		ecs_entity_is_empty(ECS* ecs, Entity entity);
 	bool		ecs_entity_exist(ECS* ecs, Entity entity);
-	u32		ecs_entity_childs_count(ECS* ecs, Entity parent);
+	u32			ecs_entity_childs_count(ECS* ecs, Entity parent);
 	void		ecs_entity_childs_get(ECS* ecs, Entity parent, Entity const** childsArray);
 	Entity		ecs_entity_parent_get(ECS* ecs, Entity entity);
 	Transform	ecs_entity_transform_get(ECS* ecs, Entity entity);
-	u32		ecs_entity_component_count(ECS* ecs, Entity entity);
+	u32			ecs_entity_component_count(ECS* ecs, Entity entity);
 
 	void ecs_entities_create(ECS* ecs, u32 count, Entity parent = SV_ENTITY_NULL, Entity* entities = nullptr);
 	void ecs_entities_destroy(ECS* ecs, Entity const* entities, u32 count);
@@ -221,16 +220,9 @@ namespace sv {
 	template<typename Component>
 	void ecs_component_register(const char* name)
 	{
-		Component::SIZE = sizeof(Component);
-		Component::ID = ecs_component_register(name, Component::SIZE);
-	}
-
-	template<typename Component>
-	void ecs_register(ECS* ecs, SerializeComponentFunction serializeFn = nullptr, DeserializeComponentFunction deserializeFn = nullptr)
-	{
 		ComponentRegisterDesc desc;
-
-		desc.compID = Component::ID;
+		desc.componentSize = sizeof(Component);
+		desc.name = name;
 
 		desc.createFn = [](BaseComponent* compPtr)
 		{
@@ -257,10 +249,11 @@ namespace sv {
 			new(to) Component(*from);
 		};
 
-		desc.serializeFn = serializeFn;
-		desc.deserializeFn = deserializeFn;
+		// TODO
+		desc.serializeFn = nullptr;
+		desc.deserializeFn = nullptr;
 
-		ecs_register(ecs, &desc);
+		Component::ID = ecs_component_register(&desc);
 	}
 
 	template<typename Component, typename... Args>

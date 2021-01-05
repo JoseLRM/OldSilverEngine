@@ -6,20 +6,36 @@
 
 namespace sv {
 
-	static InstanceAllocator<ECS_internal, 5u>	g_ECSAllocator;
+	static std::vector<ComponentRegister>			g_Registers;
+	static std::unordered_map<std::string, CompID>	g_CompNames;
 
-	static std::vector<ComponentType> g_CompTypes;
-	static std::unordered_map<std::string, CompID> g_CompNames;
-
-	void ecs_create(ECS * *ecs_)
+	void ecs_create(ECS** ecs_)
 	{
-		ECS_internal& ecs = g_ECSAllocator.create();
+		ECS_internal& ecs = *new ECS_internal();
 
 		// Open listeners
 		ecs.listenerOnEntityCreate = event_listener_open();
 		ecs.listenerOnEntityDestroy = event_listener_open();
 		ecs.listenerOnComponentAdd = event_listener_open();
 		ecs.listenerOnComponentRemove = event_listener_open();
+
+		// Allocate components
+		ecs.listenerComponents.resize(g_Registers.size());
+		ecs.components.resize(g_Registers.size());
+
+		for (CompID id = 0u; id < g_Registers.size(); ++id) {
+
+			componentAllocatorCreate(reinterpret_cast<ECS*>(&ecs), id);
+		}
+
+		// Open Listeners
+		for (CompID id = 0u; id < g_Registers.size(); ++id) {
+
+			auto& [onCompAdd, onCompRmv] = ecs.listenerComponents[id];
+
+			onCompAdd = event_listener_open();
+			onCompRmv = event_listener_open();
+		}
 
 		*ecs_ = reinterpret_cast<ECS*>(&ecs);
 	}
@@ -60,7 +76,7 @@ namespace sv {
 		ecs_dispatch_clear(ecs);
 
 		for (CompID i = 0; i < ecs_component_register_count(); ++i) {
-			if (ecs_register_exist(ecs_, i))
+			if (ecs_component_exist(i))
 				componentAllocatorDestroy(ecs_, i);
 		}
 		ecs.components.clear();
@@ -79,7 +95,7 @@ namespace sv {
 		}
 
 		// Deallocate
-		g_ECSAllocator.destroy(ecs);
+		delete& ecs;
 	}
 
 	void ecs_clear(ECS* ecs_)
@@ -90,7 +106,7 @@ namespace sv {
 		ecs_dispatch_clear(ecs);
 
 		for (CompID i = 0; i < ecs_component_register_count(); ++i) {
-			if (ecs_register_exist(ecs_, i))
+			if (ecs_component_exist(i))
 				componentAllocatorDestroy(ecs_, i);
 		}
 		ecs.entities.clear();
@@ -104,15 +120,15 @@ namespace sv {
 		// Registers
 		{
 			u32 registersCount = 0u;
-			for (CompID id = 0u; id < ecs.registers.size(); ++id) {
-				if (ecs_register_exist(ecs_, id))
+			for (CompID id = 0u; id < g_Registers.size(); ++id) {
+				if (ecs_component_exist(id))
 					++registersCount;
 			}
 			archive << registersCount;
 
-			for (CompID id = 0u; id < ecs.registers.size(); ++id) {
+			for (CompID id = 0u; id < g_Registers.size(); ++id) {
 
-				if (ecs_register_exist(ecs_, id))
+				if (ecs_component_exist(id))
 					archive << ecs_component_name(id) << ecs_component_size(id);
 
 			}
@@ -142,9 +158,9 @@ namespace sv {
 
 		// Components
 		{
-			for (CompID compID = 0u; compID < ecs.registers.size(); ++compID) {
+			for (CompID compID = 0u; compID < g_Registers.size(); ++compID) {
 
-				if (!ecs_register_exist(ecs_, compID)) continue;
+				if (!ecs_component_exist(compID)) continue;
 
 				u32 compSize = ecs_component_size(compID);
 
@@ -156,7 +172,7 @@ namespace sv {
 				while (!it.equal(end)) {
 					BaseComponent* component = it.get_ptr();
 					archive << component->entity;
-					ecs_register_serialize(ecs_, compID, component, archive);
+					ecs_component_serialize(compID, component, archive);
 
 					it.next();
 				}
@@ -199,7 +215,7 @@ namespace sv {
 		}
 
 		// Registers ID
-		CompID invalidCompID = CompID(ecs.registers.size());
+		CompID invalidCompID = CompID(g_Registers.size());
 		for (u32 i = 0; i < registers.size(); ++i) {
 
 			Register& reg = registers[i];
@@ -321,7 +337,7 @@ namespace sv {
 
 							BaseComponent* comp = reinterpret_cast<BaseComponent*>(it);
 							if (comp->entity != SV_ENTITY_NULL) {
-								ecs_register_destroy(ecs_, compID, comp);
+								ecs_component_destroy(compID, comp);
 							}
 
 							it += compSize;
@@ -338,7 +354,7 @@ namespace sv {
 					archive >> entity;
 
 					BaseComponent* comp = componentAlloc(ecs_, compID, entity, false);
-					ecs_register_deserialize(ecs_, compID, comp, archive);
+					ecs_component_deserialize(compID, comp, archive);
 					comp->entity = entity;
 
 					ecs.entityData[entity].components.emplace_back(compID, comp);
@@ -369,40 +385,47 @@ namespace sv {
 
 	///////////////////////////////////// COMPONENTS REGISTER ////////////////////////////////////////
 
-	CompID ecs_component_register(const char* name, u32 compSize)
+	CompID ecs_component_register(const ComponentRegisterDesc* desc)
 	{
 		// Check if is available
 		{
-			if (compSize < sizeof(u32)) {
-				SV_LOG_ERROR("Can't register a component type with size of %u", compSize);
+			if (desc->componentSize < sizeof(u32)) {
+				SV_LOG_ERROR("Can't register a component type with size of %u", desc->componentSize);
 				return SV_COMPONENT_ID_INVALID;
 			}
 
-			auto it = g_CompNames.find(name);
+			auto it = g_CompNames.find(desc->name);
 
 			if (it != g_CompNames.end()) {
 
-				SV_LOG_ERROR("Can't register a component type with name '%s', it currently exists", name);
+				SV_LOG_ERROR("Can't register a component type with name '%s', it currently exists", desc->name);
 				return SV_COMPONENT_ID_INVALID;
 			}
 		}
 
-		CompID id = CompID(g_CompTypes.size());
-		ComponentType& type = g_CompTypes.emplace_back();
-		type.name = name;
-		type.size = compSize;
+		CompID id = CompID(g_Registers.size());
+		ComponentRegister& reg = g_Registers.emplace_back();
+		reg.name = desc->name;
+		reg.size = desc->componentSize;
+		reg.createFn = desc->createFn;
+		reg.destroyFn = desc->destroyFn;
+		reg.moveFn = desc->moveFn;
+		reg.copyFn = desc->copyFn;
+		reg.serializeFn = desc->serializeFn;
+		reg.deserializeFn = desc->deserializeFn;
 
-		g_CompNames[name] = id;
+		g_CompNames[desc->name] = id;
 
 		return id;
 	}
+
 	const char* ecs_component_name(CompID ID)
 	{
-		return g_CompTypes[ID].name.c_str();
+		return g_Registers[ID].name.c_str();
 	}
 	u32 ecs_component_size(CompID ID)
 	{
-		return g_CompTypes[ID].size;
+		return g_Registers[ID].size;
 	}
 	CompID ecs_component_id(const char* name)
 	{
@@ -412,86 +435,46 @@ namespace sv {
 	}
 	u32 ecs_component_register_count()
 	{
-		return u32(g_CompTypes.size());
+		return u32(g_Registers.size());
 	}
 
-	void ecs_register(ECS* ecs_, const ComponentRegisterDesc* desc)
+	void ecs_component_create(CompID ID, BaseComponent* ptr, Entity entity)
 	{
-		parseECS();
-
-		if (desc->compID >= ecs.registers.size()) {
-			ecs.registers.resize(desc->compID + 1u);
-			ecs.listenerComponents.resize(desc->compID + 1u);
-		}
-
-		while (desc->compID >= ecs.components.size()) {
-			ecs.components.emplace_back();
-			//ecs.components.emplace_back(69u, 69u);
-		}
-		//new (&ecs.components[desc->compID]) SizedInstanceAllocator(ecs_component_size(desc->compID), ECS_COMPONENT_POOL_SIZE);
-
-		ComponentRegister& reg = ecs.registers[desc->compID];
-
-		reg.createFn = desc->createFn;
-		reg.destroyFn = desc->destroyFn;
-		reg.moveFn = desc->moveFn;
-		reg.copyFn = desc->copyFn;
-		reg.serializeFn = desc->serializeFn;
-		reg.deserializeFn = desc->deserializeFn;
-
-		componentAllocatorCreate(reinterpret_cast<ECS*>(&ecs), desc->compID);
-
-		// Open Listeners
-		auto& [onCompAdd, onCompRmv] = ecs.listenerComponents[desc->compID];
-
-		onCompAdd = event_listener_open();
-		onCompRmv = event_listener_open();
-	}
-
-	void ecs_register_create(ECS* ecs_, CompID ID, BaseComponent* ptr, Entity entity)
-	{
-		parseECS();
-		ecs.registers[ID].createFn(ptr);
+		g_Registers[ID].createFn(ptr);
 		ptr->entity = entity;
 	}
 
-	void ecs_register_destroy(ECS* ecs_, CompID ID, BaseComponent* ptr)
+	void ecs_component_destroy(CompID ID, BaseComponent* ptr)
 	{
-		parseECS();
-		ecs.registers[ID].destroyFn(ptr);
+		g_Registers[ID].destroyFn(ptr);
 		ptr->entity = SV_ENTITY_NULL;
 	}
 
-	void ecs_register_move(ECS* ecs_, CompID ID, BaseComponent* from, BaseComponent* to)
+	void ecs_component_move(CompID ID, BaseComponent* from, BaseComponent* to)
 	{
-		parseECS();
-		ecs.registers[ID].moveFn(from, to);
+		g_Registers[ID].moveFn(from, to);
 	}
 
-	void ecs_register_copy(ECS* ecs_, CompID ID, BaseComponent* from, BaseComponent* to)
+	void ecs_component_copy(CompID ID, BaseComponent* from, BaseComponent* to)
 	{
-		parseECS();
-		ecs.registers[ID].copyFn(from, to);
+		g_Registers[ID].copyFn(from, to);
 	}
 
-	void ecs_register_serialize(ECS* ecs_, CompID ID, BaseComponent* comp, ArchiveO& archive)
+	void ecs_component_serialize(CompID ID, BaseComponent* comp, ArchiveO& archive)
 	{
-		parseECS();
-		SerializeComponentFunction fn = ecs.registers[ID].serializeFn;
+		SerializeComponentFunction fn = g_Registers[ID].serializeFn;
 		if (fn) fn(comp, archive);
 	}
 
-	void ecs_register_deserialize(ECS* ecs_, CompID ID, BaseComponent* comp, ArchiveI& archive)
+	void ecs_component_deserialize(CompID ID, BaseComponent* comp, ArchiveI& archive)
 	{
-		parseECS();
-		DeserializeComponentFunction fn = ecs.registers[ID].deserializeFn;
+		DeserializeComponentFunction fn = g_Registers[ID].deserializeFn;
 		if (fn) fn(comp, archive);
 	}
 
-	bool ecs_register_exist(ECS* ecs_, CompID ID)
+	bool ecs_component_exist(CompID ID)
 	{
-		parseECS();
-		return ecs.registers.size() > ID && ecs.registers[ID].createFn != nullptr;
+		return g_Registers.size() > ID && g_Registers[ID].createFn != nullptr;
 	}
 
 	///////////////////////////////////// HELPER FUNCTIONS ////////////////////////////////////////

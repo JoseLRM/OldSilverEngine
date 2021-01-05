@@ -373,16 +373,6 @@ namespace sv {
 		graphics_present(image, region, GPUImageLayout_RenderTarget, graphics_commandlist_get());
 	}
 
-	void SceneRenderer::initECS(ECS* ecs)
-	{
-		ecs_register<SpriteComponent>(ecs, scene_component_serialize_SpriteComponent, scene_component_deserialize_SpriteComponent);
-		ecs_register<AnimatedSpriteComponent>(ecs, scene_component_serialize_AnimatedSpriteComponent, scene_component_deserialize_AnimatedSpriteComponent);
-		ecs_register<MeshComponent>(ecs, scene_component_serialize_MeshComponent, scene_component_deserialize_MeshComponent);
-		ecs_register<LightComponent>(ecs, scene_component_serialize_LightComponent, scene_component_deserialize_LightComponent);
-		ecs_register<SkyComponent>(ecs, scene_component_serialize_SkyComponent, scene_component_deserialize_SkyComponent);
-		ecs_register<CameraComponent>(ecs, scene_component_serialize_CameraComponent, scene_component_deserialize_CameraComponent);
-	}
-
 	// COMPONENTS
 
 	void scene_component_serialize_SpriteComponent(BaseComponent* comp_, ArchiveO& archive)

@@ -150,8 +150,6 @@ namespace sv {
 
 		SceneRenderer() = delete;
 
-		static void initECS(ECS* ecs);
-		
 		/*
 			It only sort the renderLayerOrder2D array but is necesary to sort 2D properly
 		*/

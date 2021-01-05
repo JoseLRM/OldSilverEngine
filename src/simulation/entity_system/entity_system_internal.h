@@ -9,21 +9,16 @@ namespace sv {
 	constexpr u32 ECS_COMPONENT_POOL_SIZE = 100u;
 	constexpr u32 ECS_ENTITY_ALLOC_SIZE = 100u;
 
-	struct ComponentType {
-
-		std::string name;
-		u32		size;
-
-	};
-
 	struct ComponentRegister {
 
-		CreateComponentFunction createFn = nullptr;
-		DestroyComponentFunction destroyFn = nullptr;
-		MoveComponentFunction moveFn = nullptr;
-		CopyComponentFunction copyFn = nullptr;
-		SerializeComponentFunction serializeFn = nullptr;
-		DeserializeComponentFunction deserializeFn = nullptr;
+		std::string						name;
+		u32								size;
+		CreateComponentFunction			createFn = nullptr;
+		DestroyComponentFunction		destroyFn = nullptr;
+		MoveComponentFunction			moveFn = nullptr;
+		CopyComponentFunction			copyFn = nullptr;
+		SerializeComponentFunction		serializeFn = nullptr;
+		DeserializeComponentFunction	deserializeFn = nullptr;
 
 	};
 
@@ -81,7 +76,6 @@ namespace sv {
 
 	struct ECS_internal {
 
-		std::vector<ComponentRegister>	registers;
 		std::vector<Entity>				entities;
 		EntityDataAllocator				entityData;
 		std::vector<ComponentAllocator>	components;

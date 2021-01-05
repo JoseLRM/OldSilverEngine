@@ -194,7 +194,7 @@ namespace sv {
 
 				BaseComponent* comp = reinterpret_cast<BaseComponent*>(ptr);
 				if (comp->entity != SV_ENTITY_NULL) {
-					ecs_register_destroy(ecs_, compID, comp);
+					ecs_component_destroy(compID, comp);
 				}
 
 				ptr += compSize;
@@ -216,7 +216,7 @@ namespace sv {
 		ComponentPool& pool = componentAllocatorPreparePool(a, compSize);
 		BaseComponent* comp = reinterpret_cast<BaseComponent*>(componentPoolGetPtr(pool, compSize));
 
-		if (create) ecs_register_create(ecs_, compID, comp, entity);
+		if (create) ecs_component_create(compID, comp, entity);
 
 		return comp;
 	}
@@ -231,7 +231,7 @@ namespace sv {
 		ComponentPool& pool = componentAllocatorPreparePool(a, compSize);
 		BaseComponent* comp = reinterpret_cast<BaseComponent*>(componentPoolGetPtr(pool, compSize));
 
-		ecs_register_copy(ecs_, compID, srcComp, comp);
+		ecs_component_copy(compID, srcComp, comp);
 
 		return comp;
 	}
@@ -248,7 +248,7 @@ namespace sv {
 
 			if (componentPoolPtrExist(*it, comp)) {
 
-				ecs_register_destroy(ecs_, compID, comp);
+				ecs_component_destroy(compID, comp);
 				componentPoolRmvPtr(*it, compSize, comp);
 
 				break;
