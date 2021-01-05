@@ -7,7 +7,6 @@
 #include "platform/graphics.h"
 
 #include "rendering/scene_renderer.h"
-#include "physics/scene_physics.h"
 
 namespace sv {
 
@@ -38,18 +37,14 @@ namespace sv {
 		void	setMainCamera(Entity camera);
 		Entity	getMainCamera();
 
-		// physics
-	public:
-		void physicsSimulate(float dt);
-
-		inline ScenePhysics& getPhysics() noexcept { return m_Physics; }
-
 		// rendering
 	private:
 		LightSceneData	lightData;
 		GBuffer			gBuffer;
 
 	public:
+
+		SV_INLINE GBuffer& getGBuffer() noexcept { return gBuffer; }
 
 		/*
 			Is the most high level draw call. Takes the ECS data and the main camera and render everything.
@@ -62,8 +57,6 @@ namespace sv {
 		float m_TimeStep = 1.f;
 		Entity m_MainCamera = SV_ENTITY_NULL;
 		ECS* m_ECS = nullptr;
-
-		ScenePhysics	m_Physics;
 
 	};
 

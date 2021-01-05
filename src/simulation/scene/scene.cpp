@@ -55,9 +55,6 @@ namespace sv {
 			ecs_component_register<MeshComponent>("Mesh");
 			ecs_component_register<LightComponent>("Light");
 			ecs_component_register<SkyComponent>("Sky");
-			ecs_component_register<RigidBody2DComponent>("RigidBody 2D");
-			ecs_component_register<BoxCollider2DComponent>("BoxCollider 2D");
-			ecs_component_register<CircleCollider2DComponent>("CircleCollider 2D");
 		}
 
 		return Result_Success;
@@ -99,9 +96,6 @@ namespace sv {
 		// Rendering
 		SceneRenderer::initECS(m_ECS);
 
-		// Physics
-		m_Physics.create(m_ECS);
-
 		// Create main camera
 		m_MainCamera = ecs_entity_create(m_ECS);
 		ecs_component_add<NameComponent>(m_ECS, m_MainCamera, "Camera");
@@ -117,7 +111,6 @@ namespace sv {
 	{
 		ecs_destroy(m_ECS);
 		m_ECS = nullptr;
-		m_Physics.destroy();
 		m_MainCamera = SV_ENTITY_NULL;
 	}
 
@@ -192,11 +185,6 @@ namespace sv {
 		else m_MainCamera = camera;
 	}
 
-	void Scene::physicsSimulate(float dt)
-	{
-		m_Physics.simulate(dt, m_ECS);
-	}
-
 	Entity Scene::getMainCamera()
 	{
 		return m_MainCamera;
@@ -245,7 +233,8 @@ namespace sv {
 				{
 				case CameraType_2D:
 					for (u32 i = 0u; i < RENDERLAYER_COUNT; ++i) {
-						SceneRenderer::drawSprites2D(m_ECS, cam.camera, gBuffer, lightData, position, rotation, i, cmd);
+						u32 index = SceneRenderer::renderLayerOrder2D[i];
+						SceneRenderer::drawSprites2D(m_ECS, cam.camera, gBuffer, lightData, position, rotation, index, cmd);
 					}
 					break;
 

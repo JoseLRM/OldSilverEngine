@@ -38,13 +38,3 @@ project "SilverEngine"
 	links {
 		"$(VULKAN_SDK)/Lib/vulkan-1.lib",
 	}
-
-	filter "configurations:Debug"
-		links {
-			"box2d_debug.lib"
-		}
-
-	filter "configurations:Release or configurations:Distribution"
-		links {
-			"box2d_release.lib"
-		}
