@@ -19,9 +19,9 @@ namespace sv {
 			XMMATRIX inverseViewMatrix;
 			XMMATRIX inverseProjectionMatrix;
 			XMMATRIX inverseViewProjectionMatrix;
-			vec3f position;
+			v3_f32 position;
 			float padding;
-			vec4f direction;
+			v4_f32 direction;
 		} data;
 
 		// Fill gpu data
@@ -33,7 +33,7 @@ namespace sv {
 		data.inverseViewProjectionMatrix = XMMatrixTranspose(XMMatrixInverse(nullptr, data.viewProjectionMatrix));
 		data.viewProjectionMatrix = XMMatrixTranspose(data.viewProjectionMatrix);
 		data.position = position;
-		data.direction = direction;
+		data.direction = rotation;
 
 		// Create GPU Buffer
 		if (gpuBuffer == nullptr) {

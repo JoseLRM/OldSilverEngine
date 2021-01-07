@@ -20,13 +20,13 @@ namespace sv {
 
 	WindowHandle window_handle_get() noexcept;
 
-	vec4u	window_bounds_get();
-	vec2u	window_position_get();
-	vec2u	window_size_get();
+	v4_u32	window_bounds_get();
+	v2_u32	window_position_get();
+	v2_u32	window_size_get();
 	float	window_aspect_get();
-	void	window_bounds_set(const vec4u& bounds);
-	void	window_position_set(const vec2u& position);
-	void	window_size_set(const vec2u& size);
+	void	window_bounds_set(const v4_u32& bounds);
+	void	window_position_set(const v2_u32& position);
+	void	window_size_set(const v2_u32& size);
 	void	window_aspect_set(float aspect);
 
 	Result			window_title_set(const wchar* title);
@@ -38,7 +38,7 @@ namespace sv {
 	WindowStyleFlags	window_style_get();
 	void				window_style_set(WindowStyleFlags style);
 	
-	vec2u window_desktop_size();
+	v2_u32 window_desktop_size();
 
 #ifdef SV_PLATFORM_WIN
 	typedef u64(*WindowProc)(WindowHandle, u32, u64, i64);

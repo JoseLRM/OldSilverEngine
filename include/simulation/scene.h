@@ -40,12 +40,9 @@ namespace sv {
 		// rendering
 	private:
 		LightSceneData	lightData;
-		GBuffer			gBuffer;
+		CameraBuffer	cameraBuffer;
 
 	public:
-
-		SV_INLINE GBuffer& getGBuffer() noexcept { return gBuffer; }
-
 		/*
 			Is the most high level draw call. Takes the ECS data and the main camera and render everything.
 			This method doesn't present anything to the swapchain

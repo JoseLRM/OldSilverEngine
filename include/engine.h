@@ -17,7 +17,7 @@ namespace sv {
 	struct InitializationDesc {
 
 		ApplicationCallbacks	callbacks;
-		vec4u					windowBounds;
+		v4_u32					windowBounds;
 		const wchar*			windowTitle;
 		WindowStyle				windowStyle;
 		const wchar*			iconFilePath;

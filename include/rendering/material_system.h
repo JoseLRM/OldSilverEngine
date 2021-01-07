@@ -76,8 +76,8 @@ namespace sv {
 		GPUBuffer* gpuBuffer = nullptr;
 		XMMATRIX	viewMatrix = XMMatrixIdentity();
 		XMMATRIX	projectionMatrix = XMMatrixIdentity();
-		vec3f		position;
-		vec4f		direction;
+		v3_f32		position;
+		v4_f32		rotation;
 
 		Result updateGPU(CommandList cmd);
 		Result clear();

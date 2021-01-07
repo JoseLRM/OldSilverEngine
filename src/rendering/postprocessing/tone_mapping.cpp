@@ -8,7 +8,7 @@ namespace sv {
 
 	struct ToneMappingData {
 		f32 exposure;
-		vec3f padding;
+		v3_f32 padding;
 	};
 
 	static RenderPass*	g_RenderPass_ToneMapping = nullptr;
@@ -54,7 +54,7 @@ Output main(Input input)
 
 			desc.attachments[0].loadOp = AttachmentOperation_DontCare;
 			desc.attachments[0].storeOp = AttachmentOperation_Store;
-			desc.attachments[0].format = OFFSCREEN_FORMAT;
+			desc.attachments[0].format = GBuffer::FORMAT_OFFSCREEN;
 			desc.attachments[0].initialLayout = GPUImageLayout_RenderTarget;
 			desc.attachments[0].layout = GPUImageLayout_RenderTarget;
 			desc.attachments[0].finalLayout = GPUImageLayout_RenderTarget;
@@ -108,7 +108,7 @@ Output main(Input input)
 
 		// Get aux image
 		{
-			u64 id = auximg_id(graphics_image_get_width(img), graphics_image_get_height(img), OFFSCREEN_FORMAT, GPUImageType_ShaderResource | GPUImageType_RenderTarget);
+			u64 id = auximg_id(graphics_image_get_width(img), graphics_image_get_height(img), GBuffer::FORMAT_OFFSCREEN, GPUImageType_ShaderResource | GPUImageType_RenderTarget);
 
 			auto res = auximg_push(id, GPUImageLayout_RenderTarget, cmd);
 

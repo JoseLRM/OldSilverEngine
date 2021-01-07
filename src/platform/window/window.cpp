@@ -10,14 +10,14 @@ namespace sv {
 
 	static WindowHandle g_WindowHandle;
 
-	static vec4u g_Bounds;
-	static vec4u g_BoundsNew;
+	static v4_u32 g_Bounds;
+	static v4_u32 g_BoundsNew;
 	static WindowStyleFlags g_Style;
 	static bool g_StyleModified = false;
 	static WindowStyleFlags g_StyleNew = false;
 	static bool g_Resized = false;
 
-	static vec4u g_LastFullscreen_Bounds;
+	static v4_u32 g_LastFullscreen_Bounds;
 	static bool g_LastFullscreen_Maximized;
 
 	static std::wstring g_Title;
@@ -65,11 +65,11 @@ namespace sv {
 		h = rect.bottom - rect.top;
 	}
 
-	vec4i window_adjusted_bounds(DWORD style)
+	v4_i32 window_adjusted_bounds(DWORD style)
 	{
-		vec4i bounds;
+		v4_i32 bounds;
 		if (g_Style & WindowStyle_Fullscreen) {
-			vec2u res = window_desktop_size();
+			v2_u32 res = window_desktop_size();
 			bounds = { 0, 0, int(res.x), int(res.y) };
 		}
 		else {
@@ -220,7 +220,7 @@ namespace sv {
 	}
 #endif
 
-	Result window_initialize(WindowStyle s, const vec4u& bounds, const wchar* title, const wchar* iconFilePath)
+	Result window_initialize(WindowStyle s, const v4_u32& bounds, const wchar* title, const wchar* iconFilePath)
 	{
 #ifdef SV_PLATFORM_WIN
 
@@ -248,7 +248,7 @@ namespace sv {
 		g_Style = s;
 
 		if (s & WindowStyle_Fullscreen) {
-			vec2u res = window_desktop_size();
+			v2_u32 res = window_desktop_size();
 			g_Bounds = { 0u, 0u, res.x, res.y };
 		}
 		else {
@@ -294,7 +294,7 @@ namespace sv {
 		if (g_Bounds.x != g_BoundsNew.x || g_Bounds.y != g_BoundsNew.y || g_Bounds.z != g_BoundsNew.z || g_Bounds.w != g_BoundsNew.w) {
 			g_Bounds = g_BoundsNew;
 #ifdef SV_PLATFORM_WIN
-			vec4i bounds = window_adjusted_bounds((DWORD)GetWindowLongPtr((HWND)g_WindowHandle, GWL_STYLE));
+			v4_i32 bounds = window_adjusted_bounds((DWORD)GetWindowLongPtr((HWND)g_WindowHandle, GWL_STYLE));
 			SetWindowPos((HWND)g_WindowHandle, 0u, bounds.x, bounds.y, bounds.z, bounds.w, 0);
 #endif
 		}
@@ -326,7 +326,7 @@ namespace sv {
 			}
 			SetWindowLongPtrW((HWND)sv::window_handle_get(), GWL_STYLE, (LONG_PTR)style);
 
-			vec4i bounds = window_adjusted_bounds(style);
+			v4_i32 bounds = window_adjusted_bounds(style);
 			SetWindowPos((HWND)g_WindowHandle, 0u, bounds.x, bounds.y, bounds.z, bounds.w, 0);
 #endif
 
@@ -351,17 +351,17 @@ namespace sv {
 
 	// BOUNDS
 
-	vec4u window_bounds_get()
+	v4_u32 window_bounds_get()
 	{
 		return g_Bounds;
 	}
 
-	vec2u window_position_get()
+	v2_u32 window_position_get()
 	{
 		return { g_Bounds.x, g_Bounds.y };
 	}
 
-	vec2u window_size_get()
+	v2_u32 window_size_get()
 	{
 		return { g_Bounds.z, g_Bounds.w };
 	}
@@ -371,18 +371,18 @@ namespace sv {
 		return float(g_Bounds.z) / float(g_Bounds.w);
 	}
 
-	void window_bounds_set(const vec4u& bounds)
+	void window_bounds_set(const v4_u32& bounds)
 	{
 		g_BoundsNew = bounds;
 	}
 
-	void window_position_set(const vec2u& position)
+	void window_position_set(const v2_u32& position)
 	{
 		g_BoundsNew.x = position.x;
 		g_BoundsNew.y = position.y;
 	}
 
-	void window_size_set(const vec2u& size)
+	void window_size_set(const v2_u32& size)
 	{
 		g_BoundsNew.z = size.x;
 		g_BoundsNew.w = size.y;
@@ -454,7 +454,7 @@ namespace sv {
 
 	// UTILS
 
-	vec2u window_desktop_size()
+	v2_u32 window_desktop_size()
 	{
 #ifdef SV_PLATFORM_WIN
 		HWND desktop = GetDesktopWindow();

@@ -20,11 +20,11 @@ namespace sv {
 	};
 
 	struct DebugRendererLine {
-		vec3f point0;
-		vec3f point1;
+		v3_f32 point0;
+		v3_f32 point1;
 		Color color;
 
-		DebugRendererLine(const vec3f& p0, const vec3f& p1, Color color) : point0(p0), point1(p1), color(color) {}
+		DebugRendererLine(const v3_f32& p0, const v3_f32& p1, Color color) : point0(p0), point1(p1), color(color) {}
 	};
 
 	struct DebugRendererDraw {
@@ -37,13 +37,13 @@ namespace sv {
 			struct {
 				GPUImage* pImage;
 				Sampler* pSampler;
-				vec4f texCoord;
+				v4_f32 texCoord;
 			};
 		};
 
 		DebugRendererDraw() {}
 		DebugRendererDraw(u32 list, u32 index, float lineWidth = 1.f) : list(list), index(index), count(1u), lineWidth(lineWidth) {}
-		DebugRendererDraw(u32 list, u32 index, GPUImage* image, Sampler* sampler, const vec4f& texCoord) 
+		DebugRendererDraw(u32 list, u32 index, GPUImage* image, Sampler* sampler, const v4_f32& texCoord) 
 			: list(list), index(index), count(1u), pImage(image), pSampler(sampler), texCoord(texCoord) {}
 	};
 
@@ -58,7 +58,7 @@ namespace sv {
 		float lineWidth = 1.f;
 		float stroke = 1.f;
 
-		vec4f texCoord = { 0.f, 0.f, 1.f, 1.f };
+		v4_f32 texCoord = { 0.f, 0.f, 1.f, 1.f };
 		Sampler* pSampler = nullptr;
 		bool sameSprite = false;
 

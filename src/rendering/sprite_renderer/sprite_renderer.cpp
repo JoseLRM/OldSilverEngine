@@ -101,7 +101,7 @@ namespace sv {
 			desc.attachments[0].storeOp = AttachmentOperation_Store;
 			desc.attachments[0].stencilLoadOp = AttachmentOperation_DontCare;
 			desc.attachments[0].stencilStoreOp = AttachmentOperation_DontCare;
-			desc.attachments[0].format = OFFSCREEN_FORMAT;
+			desc.attachments[0].format = GBuffer::FORMAT_OFFSCREEN;
 			desc.attachments[0].initialLayout = GPUImageLayout_RenderTarget;
 			desc.attachments[0].layout = GPUImageLayout_RenderTarget;
 			desc.attachments[0].finalLayout = GPUImageLayout_RenderTarget;
@@ -464,8 +464,8 @@ SurfaceOutput spriteSurface(UserSurfaceInput input)
 		}
 
 		GPUImage* att[2];
-		att[0] = desc->renderTarget;
-		att[1] = desc->pGBuffer->depthStencil;
+		att[0] = desc->pCameraData->pGBuffer->offscreen;
+		att[1] = desc->pCameraData->pGBuffer->depthStencil;
 
 		XMVECTOR pos0, pos1, pos2, pos3;
 
@@ -484,12 +484,12 @@ SurfaceOutput spriteSurface(UserSurfaceInput input)
 		bool firstDraw = true;
 		ctx.lightData->ambient = desc->ambientLight;
 
+		SpriteLightData& ld = *ctx.lightData;
+
 		do {
 
 			// Prepare light data
 			{
-				SpriteLightData& ld = *ctx.lightData;
-				
 				u32 currentLight = lightIt ? (lightIt - desc->pLights) : 0u;
 
 				ld.lightCount = std::min(SPRITE_LIGHT_COUNT, desc->lightCount - currentLight);
@@ -549,16 +549,16 @@ SurfaceOutput spriteSurface(UserSurfaceInput input)
 					pos2 = XMVector4Transform(pos2, spr.tm);
 					pos3 = XMVector4Transform(pos3, spr.tm);
 
-					*batchIt = { vec4f(pos0), {spr.texCoord.x, spr.texCoord.y}, spr.color };
+					*batchIt = { v4_f32(pos0), {spr.texCoord.x, spr.texCoord.y}, spr.color };
 					++batchIt;
 
-					*batchIt = { vec4f(pos1), {spr.texCoord.z, spr.texCoord.y}, spr.color };
+					*batchIt = { v4_f32(pos1), {spr.texCoord.z, spr.texCoord.y}, spr.color };
 					++batchIt;
 
-					*batchIt = { vec4f(pos2), {spr.texCoord.x, spr.texCoord.w}, spr.color };
+					*batchIt = { v4_f32(pos2), {spr.texCoord.x, spr.texCoord.w}, spr.color };
 					++batchIt;
 
-					*batchIt = { vec4f(pos3), {spr.texCoord.z, spr.texCoord.w}, spr.color };
+					*batchIt = { v4_f32(pos3), {spr.texCoord.z, spr.texCoord.w}, spr.color };
 					++batchIt;
 				}
 
@@ -575,7 +575,7 @@ SurfaceOutput spriteSurface(UserSurfaceInput input)
 				const SpriteInstance* last = it;
 
 				graphics_image_bind(it->image ? it->image : g_SpriteWhiteTexture, 0u, ShaderType_Pixel, cmd);
-				bindMaterial(it->material, *desc->pCameraBuffer, cmd);
+				bindMaterial(it->material, *desc->pCameraData->pCameraBuffer, cmd);
 
 				while (it != end) {
 
@@ -590,7 +590,7 @@ SurfaceOutput spriteSurface(UserSurfaceInput input)
 							graphics_image_bind(it->image ? it->image : g_SpriteWhiteTexture, 0u, ShaderType_Pixel, cmd);
 						}
 						if (it->material != last->material) {
-							bindMaterial(it->material, *desc->pCameraBuffer, cmd);
+							bindMaterial(it->material, *desc->pCameraData->pCameraBuffer, cmd);
 							
 							// TODO: For some reason this image doesn't bind correctly
 							graphics_image_bind(it->image ? it->image : g_SpriteWhiteTexture, 0u, ShaderType_Pixel, cmd);
@@ -624,5 +624,9 @@ SurfaceOutput spriteSurface(UserSurfaceInput input)
 			}
 
 		} while (lightIt != lightEnd);
+	}
+
+	void SpriteRenderer::drawSameSprites(const SpriteRendererSameDrawDesc* desc, CommandList cmd)
+	{
 	}
 }

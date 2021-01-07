@@ -104,7 +104,7 @@ namespace sv {
 					void* pObject = (u8*)asset + sizeof(Asset_internal);
 					if (!type.isUnusedFn || (type.isUnusedFn && type.isUnusedFn(pObject))) {
 
-						if (asset->unusedTime == float_max) {
+						if (asset->unusedTime == f32_max) {
 
 							asset->unusedTime = timer_now();
 							
@@ -414,7 +414,7 @@ namespace sv {
 			pInternal = it->second.pInternalAsset;
 			Asset_internal* asset = reinterpret_cast<Asset_internal*>(pInternal);
 			asset->refCount.fetch_add(1);
-			asset->unusedTime = float_max;
+			asset->unusedTime = f32_max;
 			return Result_Success;
 		}
 		else {
@@ -442,7 +442,7 @@ namespace sv {
 			pObject->filePath = it->first.c_str();
 			pObject->hashCode = hash_string(filePath);
 			pObject->refCount.fetch_add(1);
-			pObject->unusedTime = float_max;
+			pObject->unusedTime = f32_max;
 
 			// Move to active assets
 			type.activeAssets.push_back(pObject);
@@ -505,7 +505,7 @@ namespace sv {
 				pObject->filePath = nullptr;
 				pObject->hashCode = ID;
 				pObject->refCount.fetch_add(1);
-				pObject->unusedTime = float_max;
+				pObject->unusedTime = f32_max;
 
 				// Move to active assets
 				type.activeAssets.push_back(pObject);
@@ -522,7 +522,7 @@ namespace sv {
 				pInternal = it->second;
 				Asset_internal* asset = reinterpret_cast<Asset_internal*>(pInternal);
 				asset->refCount.fetch_add(1);
-				asset->unusedTime = float_max;
+				asset->unusedTime = f32_max;
 			}
 
 			return Result_Success;
@@ -559,7 +559,7 @@ namespace sv {
 			pObject->filePath = MAX_SIZE;
 			pObject->hashCode = 0u;
 			pObject->refCount.fetch_add(1);
-			pObject->unusedTime = float_max;
+			pObject->unusedTime = f32_max;
 
 			// Move to active assets
 			type.activeAssets.push_back(pObject);

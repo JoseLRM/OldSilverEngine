@@ -6,7 +6,7 @@ namespace sv {
 
 	struct Sprite {
 		TextureAsset texture;
-		vec4f texCoord = { 0.f, 0.f, 1.f, 1.f };
+		v4_f32 texCoord = { 0.f, 0.f, 1.f, 1.f };
 	};
 
 	struct SpriteAnimation {

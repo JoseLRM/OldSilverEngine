@@ -19,7 +19,7 @@ namespace sv {
 		// This is a copy of a internal struct to inline some getters
 		struct Internal {
 			std::atomic<int>	refCount = 0;
-			float				unusedTime = float_max;
+			float				unusedTime = f32_max;
 			const char*			filePath = nullptr;
 			size_t				hashCode = 0u;
 			void*				assetType = nullptr;

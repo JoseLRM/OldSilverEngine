@@ -140,8 +140,8 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 #define parseBatch() sv::DebugRendererBatch_internal& batch = *reinterpret_cast<sv::DebugRendererBatch_internal*>(pInternal)
 
 	struct DebugData {
-		vec4f position;
-		vec2f texCoord;
+		v4_f32 position;
+		v2_f32 texCoord;
 		float stroke;
 		Color color;
 	};
@@ -187,7 +187,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 			att.storeOp = AttachmentOperation_Store;
 			att.stencilLoadOp = AttachmentOperation_DontCare;
 			att.stencilStoreOp = AttachmentOperation_DontCare;
-			att.format = OFFSCREEN_FORMAT;
+			att.format = GBuffer::FORMAT_OFFSCREEN;
 			att.initialLayout = GPUImageLayout_RenderTarget;
 			att.layout = GPUImageLayout_RenderTarget;
 			att.finalLayout = GPUImageLayout_RenderTarget;
@@ -488,7 +488,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 
 						XMMATRIX mvpMatrix;
 						Color color;
-						vec4f texCoord;
+						v4_f32 texCoord;
 						float stroke = 1.f;
 
 						switch (draw.list)
@@ -548,37 +548,37 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 						p2 = XMVector3Transform(p2, mvpMatrix);
 						p3 = XMVector3Transform(p3, mvpMatrix);
 
-						itBatch->position = vec4f(p0);
+						itBatch->position = v4_f32(p0);
 						itBatch->texCoord = { texCoord.x, texCoord.y };
 						itBatch->stroke = stroke;
 						itBatch->color = color;
 						++itBatch;
 
-						itBatch->position = vec4f(p1);
+						itBatch->position = v4_f32(p1);
 						itBatch->texCoord = { texCoord.z, texCoord.y };
 						itBatch->stroke = stroke;
 						itBatch->color = color;
 						++itBatch;
 
-						itBatch->position = vec4f(p2);
+						itBatch->position = v4_f32(p2);
 						itBatch->texCoord = { texCoord.x, texCoord.w };
 						itBatch->stroke = stroke;
 						itBatch->color = color;
 						++itBatch;
 
-						itBatch->position = vec4f(p1);
+						itBatch->position = v4_f32(p1);
 						itBatch->texCoord = { texCoord.z, texCoord.y };
 						itBatch->stroke = stroke;
 						itBatch->color = color;
 						++itBatch;
 
-						itBatch->position = vec4f(p3);
+						itBatch->position = v4_f32(p3);
 						itBatch->texCoord = { texCoord.z, texCoord.w };
 						itBatch->stroke = stroke;
 						itBatch->color = color;
 						++itBatch;
 
-						itBatch->position = vec4f(p2);
+						itBatch->position = v4_f32(p2);
 						itBatch->texCoord = { texCoord.x, texCoord.w };
 						itBatch->stroke = stroke;
 						itBatch->color = color;
@@ -598,12 +598,12 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 						XMVECTOR p0 = XMVector4Transform(XMVectorSet(line.point0.x, line.point0.y, line.point0.z, 1.f), viewProjectionMatrix);
 						XMVECTOR p1 = XMVector4Transform(XMVectorSet(line.point1.x, line.point1.y, line.point1.z, 1.f), viewProjectionMatrix);
 
-						itBatch->position = vec4f(p0);
+						itBatch->position = v4_f32(p0);
 						itBatch->color = line.color;
 						itBatch->stroke = 1.f;
 						++itBatch;
 
-						itBatch->position = vec4f(p1);
+						itBatch->position = v4_f32(p1);
 						itBatch->color = line.color;
 						itBatch->stroke = 1.f;
 						++itBatch;
@@ -654,7 +654,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		batch.quads.emplace_back(matrix, color);
 	}
 
-	void DebugRenderer::drawLine(const vec3f& p0, const vec3f& p1, Color color)
+	void DebugRenderer::drawLine(const v3_f32& p0, const v3_f32& p1, Color color)
 	{
 		parseBatch();
 
@@ -691,55 +691,55 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		batch.sprites.emplace_back(matrix, color);
 	}
 
-	void DebugRenderer::drawQuad(const vec3f& position, const vec2f& size, Color color)
+	void DebugRenderer::drawQuad(const v3_f32& position, const v2_f32& size, Color color)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixTranslation(position.x, position.y, position.z);
 		drawQuad(tm, color);
 	}
 
-	void DebugRenderer::drawQuad(const vec3f& position, const vec2f& size, const vec3f& rotation, Color color)
+	void DebugRenderer::drawQuad(const v3_f32& position, const v2_f32& size, const v3_f32& rotation, Color color)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixRotationRollPitchYaw(rotation.x, rotation.y, rotation.z) * XMMatrixTranslation(position.x, position.y, position.z);
 		drawQuad(tm, color);
 	}
 
-	void DebugRenderer::drawQuad(const vec3f& position, const vec2f& size, const vec4f& rotationQuat, Color color)
+	void DebugRenderer::drawQuad(const v3_f32& position, const v2_f32& size, const v4_f32& rotationQuat, Color color)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixRotationQuaternion(rotationQuat.get_dx()) * XMMatrixTranslation(position.x, position.y, position.z);
 		drawQuad(tm, color);
 	}
 
-	void DebugRenderer::drawEllipse(const vec3f& position, const vec2f& size, Color color)
+	void DebugRenderer::drawEllipse(const v3_f32& position, const v2_f32& size, Color color)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixTranslation(position.x, position.y, position.z);
 		drawEllipse(tm, color);
 	}
 
-	void DebugRenderer::drawEllipse(const vec3f& position, const vec2f& size, const vec3f& rotation, Color color)
+	void DebugRenderer::drawEllipse(const v3_f32& position, const v2_f32& size, const v3_f32& rotation, Color color)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixRotationRollPitchYaw(rotation.x, rotation.y, rotation.z) * XMMatrixTranslation(position.x, position.y, position.z);
 		drawEllipse(tm, color);
 	}
 
-	void DebugRenderer::drawEllipse(const vec3f& position, const vec2f& size, const vec4f& rotationQuat, Color color)
+	void DebugRenderer::drawEllipse(const v3_f32& position, const v2_f32& size, const v4_f32& rotationQuat, Color color)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixRotationQuaternion(rotationQuat.get_dx()) * XMMatrixTranslation(position.x, position.y, position.z);
 		drawEllipse(tm, color);
 	}
 
-	void DebugRenderer::drawSprite(const vec3f& position, const vec2f& size, Color color, GPUImage* image)
+	void DebugRenderer::drawSprite(const v3_f32& position, const v2_f32& size, Color color, GPUImage* image)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixTranslation(position.x, position.y, position.z);
 		drawSprite(tm, color, image);
 	}
 
-	void DebugRenderer::drawSprite(const vec3f& position, const vec2f& size, const vec3f& rotation, Color color, GPUImage* image)
+	void DebugRenderer::drawSprite(const v3_f32& position, const v2_f32& size, const v3_f32& rotation, Color color, GPUImage* image)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixRotationRollPitchYaw(rotation.x, rotation.y, rotation.z) * XMMatrixTranslation(position.x, position.y, position.z);
 		drawSprite(tm, color, image);
 	}
 
-	void DebugRenderer::drawSprite(const vec3f& position, const vec2f& size, const vec4f& rotationQuat, Color color, GPUImage* image)
+	void DebugRenderer::drawSprite(const v3_f32& position, const v2_f32& size, const v4_f32& rotationQuat, Color color, GPUImage* image)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixRotationQuaternion(rotationQuat.get_dx()) * XMMatrixTranslation(position.x, position.y, position.z);
 		drawSprite(tm, color, image);
@@ -769,14 +769,14 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		return batch.stroke;
 	}
 
-	void DebugRenderer::setTexcoord(const vec4f& texCoord)
+	void DebugRenderer::setTexcoord(const v4_f32& texCoord)
 	{
 		parseBatch();
 		batch.texCoord = texCoord;
 		batch.sameSprite = false;
 	}
 
-	vec4f DebugRenderer::getTexcoord()
+	v4_f32 DebugRenderer::getTexcoord()
 	{
 		parseBatch();
 		return batch.texCoord;
@@ -794,10 +794,10 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		batch.pSampler = sampler;
 	}
 
-	void DebugRenderer::drawOrthographicGrip(const vec2f& position, const vec2f& size, float gridSize, Color color)
+	void DebugRenderer::drawOrthographicGrip(const v2_f32& position, const v2_f32& size, float gridSize, Color color)
 	{
-		vec2f begin = position - size / 2.f;
-		vec2f end = begin + size;
+		v2_f32 begin = position - size / 2.f;
+		v2_f32 end = begin + size;
 
 		for (float y = i32(begin.y / gridSize) * gridSize; y < end.y; y += gridSize) {
 			drawLine({ begin.x, y, 0.f }, { end.x, y, 0.f }, color);

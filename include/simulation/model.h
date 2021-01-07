@@ -7,14 +7,14 @@ namespace sv {
 	typedef u32 MeshIndex;
 
 	struct MeshVertex {
-		vec3f position;
-		vec3f normal;
+		v3_f32 position;
+		v3_f32 normal;
 	};
 
 	struct Mesh {
 
-		std::vector<vec3f> positions;
-		std::vector<vec3f> normals;
+		std::vector<v3_f32> positions;
+		std::vector<v3_f32> normals;
 
 		std::vector<MeshIndex> indices;
 

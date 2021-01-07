@@ -2,6 +2,7 @@
 
 #include "scene_renderer_internal.h"
 #include "rendering/postprocessing.h"
+#include "simulation/particle_emission.h"
 
 namespace sv {
 
@@ -124,13 +125,9 @@ namespace sv {
 		}
 	}
 
-	void SceneRenderer::clearScreen(Camera& camera, Color4f color, CommandList cmd)
-	{
-		graphics_image_clear(camera.getOffscreen(), GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, color, 1.f, 0u, cmd);
-	}
-
 	void sv::SceneRenderer::clearGBuffer(GBuffer& gBuffer, Color4f color, f32 depth, u32 stencil, CommandList cmd)
 	{
+		graphics_image_clear(gBuffer.offscreen, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, color, 1.f, 0u, cmd);
 		graphics_image_clear(gBuffer.diffuse, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, color, depth, stencil, cmd);
 		graphics_image_clear(gBuffer.normal, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, color, depth, stencil, cmd);
 		graphics_image_clear(gBuffer.depthStencil, GPUImageLayout_DepthStencil, GPUImageLayout_DepthStencil, color, depth, stencil, cmd);
@@ -171,7 +168,7 @@ namespace sv {
 		}
 	}
 
-	void SceneRenderer::drawSprites2D(ECS* ecs, Camera& camera, GBuffer& gBuffer, LightSceneData& lightData, const vec3f& position, const vec4f& direction, u32 index, CommandList cmd)
+	void SceneRenderer::drawSprites2D(ECS* ecs, CameraData& cameraData, LightSceneData& lightData, u32 index, CommandList cmd)
 	{
 		const RenderLayer2D& rl = SceneRenderer::renderLayers2D[index];
 
@@ -191,7 +188,7 @@ namespace sv {
 		// Sprite Rendering
 		{
 			FrustumOthographic frustum;
-			frustum.init_center(position.getVec2(), { camera.getWidth(), camera.getHeight() });
+			frustum.init_center(cameraData.position.getVec2(), { cameraData.pProjection->width, cameraData.pProjection->height });
 
 			EntityView<SpriteComponent> sprites(ecs);
 			FrameList<SpriteInstance>& instances = ctx.spritesInstances;
@@ -240,9 +237,7 @@ namespace sv {
 
 				// Draw sprites
 				SpriteRendererDrawDesc desc;
-				desc.renderTarget = camera.getOffscreen();
-				desc.pGBuffer = &gBuffer;
-				desc.pCameraBuffer = &camera.getCameraBuffer();
+				desc.pCameraData = &cameraData;
 				desc.pSprites = ctx.spritesInstances.data();
 				desc.spriteCount = u32(ctx.spritesInstances.size());
 				desc.pLights = lightData.lights.data();
@@ -260,7 +255,21 @@ namespace sv {
 		}
 	}
 
-	void sv::SceneRenderer::drawSprites3D(ECS* ecs, Camera& camera, GBuffer& gBuffer, LightSceneData& lightData, const vec3f& position, const vec4f& direction, CommandList cmd)
+	void sv::SceneRenderer::drawParticles2D(ECS* ecs, CameraData& cameraData, LightSceneData& lightData, u32 index, CommandList cmd)
+	{
+		if (!renderLayers2D[index].enabled) return;
+
+		EntityView<Particle2DEmitterComponent_CPU> particles(ecs);
+
+		for (Particle2DEmitterComponent_CPU& emitter : particles) {
+
+			if (emitter.renderLayer != index) continue;
+
+			partsys_render(ecs, emitter, cameraData, cmd);
+		}
+	}
+
+	void sv::SceneRenderer::drawSprites3D(ECS* ecs, CameraData& cameraData, LightSceneData& lightData, CommandList cmd)
 	{
 		SceneRendererContext& ctx = g_Context[cmd];
 
@@ -297,9 +306,7 @@ namespace sv {
 
 			// Draw sprites
 			SpriteRendererDrawDesc desc;
-			desc.renderTarget = camera.getOffscreen();
-			desc.pGBuffer = &gBuffer;
-			desc.pCameraBuffer = &camera.getCameraBuffer();
+			desc.pCameraData = &cameraData;
 			desc.pSprites = ctx.spritesInstances.data();
 			desc.spriteCount = u32(ctx.spritesInstances.size());
 			desc.pLights = lightData.lights.data();
@@ -313,7 +320,7 @@ namespace sv {
 		}
 	}
 
-	void sv::SceneRenderer::drawMeshes3D(ECS* ecs, Camera& camera, GBuffer& gBuffer, LightSceneData& lightData, const vec3f& position, const vec4f& direction, CommandList cmd)
+	void sv::SceneRenderer::drawMeshes3D(ECS* ecs, CameraData& cameraData, LightSceneData& lightData, CommandList cmd)
 	{
 		SceneRendererContext& ctx = g_Context[cmd];
 
@@ -336,31 +343,7 @@ namespace sv {
 
 		meshesGroup.emplace_back(&meshes, RasterizerCullMode_Back, false);
 
-		MeshRenderer::drawMeshes(camera.getOffscreen(), gBuffer, camera.getCameraBuffer(), meshesGroup, lights, true, true, cmd);
-	}
-
-	void sv::SceneRenderer::doPostProcessing(Camera& camera, GBuffer& gBuffer, CommandList cmd)
-	{
-		GPUImage* off = camera.getOffscreen();
-
-		const CameraBloomData& bloom = camera.getBloom();
-		const CameraToneMappingData& toneMapping = camera.getToneMapping();
-
-		GPUBarrier barrier;
-
-		barrier = GPUBarrier::Image(off, GPUImageLayout_RenderTarget, GPUImageLayout_ShaderResource);
-		graphics_barrier(&barrier, 1u, cmd);
-
-		if (bloom.enabled) {
-			PostProcessing::bloom(off, GPUImageLayout_ShaderResource, GPUImageLayout_ShaderResource, bloom.threshold, bloom.blurRange, bloom.blurIterations, cmd);
-		}
-
-		if (toneMapping.enabled) {
-			PostProcessing::toneMapping(off, GPUImageLayout_ShaderResource, GPUImageLayout_ShaderResource, toneMapping.exposure, cmd);
-		}
-
-		barrier = GPUBarrier::Image(off, GPUImageLayout_ShaderResource, GPUImageLayout_RenderTarget);
-		graphics_barrier(&barrier, 1u, cmd);
+		MeshRenderer::drawMeshes(cameraData.pGBuffer->offscreen, *cameraData.pGBuffer, *cameraData.pCameraBuffer, meshesGroup, lights, true, true, cmd);
 	}
 
 	void sv::SceneRenderer::present(GPUImage* image)
@@ -465,12 +448,16 @@ namespace sv {
 
 	void CameraComponent::serialize(ArchiveO& file)
 	{
-		camera.serialize(file);
+		file << projection.width << projection.height << projection.near << projection.far << projection.projectionType;
+		file << gBuffer.getResolution();
 	}
 
 	void CameraComponent::deserialize(ArchiveI& file)
 	{
-		camera.deserialize(file);
+		file >> projection.width >> projection.height >> projection.near >> projection.far >> projection.projectionType;
+		v2_u32 res;
+		file >> res;
+		gBuffer.create(res.x, res.y);
 	}
 
 }

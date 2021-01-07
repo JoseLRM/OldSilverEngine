@@ -9,6 +9,18 @@ namespace sv {
 		destroy();
 	}
 
+	Viewport GBuffer::getViewport() const noexcept
+	{
+		v2_u32 res = getResolution();
+		return { 0.f, 0.f, f32(res.x), f32(res.y), 0.f, 1.f };
+	}
+
+	Scissor GBuffer::getScissor() const noexcept
+	{
+		v2_u32 res = getResolution();
+		return { 0u, 0u, res.x, res.y };
+	}
+
 	Result GBuffer::create(u32 width, u32 height)
 	{
 		GPUImageDesc desc;
@@ -23,6 +35,10 @@ namespace sv {
 		desc.height = height;
 		desc.depth = 1u;
 		desc.layers = 1u;
+
+		// Offscreen
+		desc.format = FORMAT_OFFSCREEN;
+		svCheck(graphics_image_create(&desc, &offscreen));
 
 		// Diffuse
 		desc.format = FORMAT_DIFFUSE;
@@ -49,6 +65,7 @@ namespace sv {
 
 	Result GBuffer::destroy()
 	{
+		svCheck(graphics_destroy(offscreen));
 		svCheck(graphics_destroy(diffuse));
 		svCheck(graphics_destroy(normal));
 		svCheck(graphics_destroy(depthStencil));

@@ -16,7 +16,7 @@ namespace sv {
 	struct Asset_internal {
 		
 		std::atomic<int>	refCount = 0;
-		float				unusedTime = float_max;
+		float				unusedTime = f32_max;
 
 		/*
 			Used to know the attachment type:

@@ -6,12 +6,12 @@ namespace sv {
 
 	struct BloomThresholdData {
 		f32 threshold;
-		vec3f padding;
+		v3_f32 padding;
 	};
 
 	struct BloomBlurData {
 		f32 range;
-		vec3f padding;
+		v3_f32 padding;
 	};
 
 	// THRESHOLD PASS
@@ -190,7 +190,7 @@ Output main(Input input)
 
 			desc.attachments[0].loadOp = AttachmentOperation_Clear;
 			desc.attachments[0].storeOp = AttachmentOperation_Store;
-			desc.attachments[0].format = OFFSCREEN_FORMAT;
+			desc.attachments[0].format = GBuffer::FORMAT_OFFSCREEN;
 			desc.attachments[0].initialLayout = GPUImageLayout_RenderTarget;
 			desc.attachments[0].layout = GPUImageLayout_RenderTarget;
 			desc.attachments[0].finalLayout = GPUImageLayout_RenderTarget;
@@ -266,7 +266,7 @@ Output main(Input input)
 
 	void PostProcessing::bloom(GPUImage* img, GPUImageLayout imgLayout, GPUImageLayout newLayout, f32 threshold, f32 range, u32 iterations, CommandList cmd)
 	{
-		SV_ASSERT(graphics_image_get_format(img) == OFFSCREEN_FORMAT);
+		SV_ASSERT(graphics_image_get_format(img) == GBuffer::FORMAT_OFFSCREEN);
 
 		u32 imgWidth = graphics_image_get_width(img);
 		u32 imgHeight = graphics_image_get_height(img);
@@ -288,7 +288,7 @@ Output main(Input input)
 
 		// Get aux images
 		{
-			u64 id = auximg_id(auxWidth, auxHeight, OFFSCREEN_FORMAT, GPUImageType_ShaderResource | GPUImageType_RenderTarget);
+			u64 id = auximg_id(auxWidth, auxHeight, GBuffer::FORMAT_OFFSCREEN, GPUImageType_ShaderResource | GPUImageType_RenderTarget);
 
 			auto res = auximg_push(id, GPUImageLayout_RenderTarget, cmd);
 

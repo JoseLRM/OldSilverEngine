@@ -4,6 +4,7 @@
 
 #include "utils/allocator.h"
 #include "engine.h"
+#include "rendering/postprocessing.h"
 
 namespace sv {
 
@@ -83,12 +84,11 @@ namespace sv {
 		// Create main camera
 		m_MainCamera = ecs_entity_create(m_ECS);
 		ecs_component_add<NameComponent>(m_ECS, m_MainCamera, "Camera");
-		Camera& camera = ecs_component_add<CameraComponent>(m_ECS, m_MainCamera)->camera;
+		CameraComponent& camera = *ecs_component_add<CameraComponent>(m_ECS, m_MainCamera);
 
-		camera.setCameraType(CameraType_2D);
-		camera.setResolution(1920u, 1080u);
-		camera.activate();
-		
+		camera.enabled = true;
+		camera.gBuffer.create(1920u, 1080u);
+		camera.projection.updateMatrix();
 	}
 
 	void Scene::destroy()
@@ -185,11 +185,16 @@ namespace sv {
 
 		for (CameraComponent& cam : cameras) {
 
-			if (cam.camera.isActive()) {
+			if (cam.enabled) {
+
+				if (cam.gBuffer.offscreen == nullptr) {
+					SV_LOG_ERROR("The gBuffer must be created");
+					continue;
+				}
 				
 				Transform trans = ecs_entity_transform_get(m_ECS, cam.entity);
-				vec3f position = trans.getWorldPosition();
-				vec4f rotation = trans.getWorldRotation();
+				v3_f32 position = trans.getWorldPosition();
+				v4_f32 rotation = trans.getWorldRotation();
 
 				// Begin CommandList
 				CommandList cmd = graphics_commandlist_begin();
@@ -197,36 +202,65 @@ namespace sv {
 				graphics_event_begin("Scene Rendering", cmd);
 
 				// Update CameraBuffer
-				cam.camera.updateCameraBuffer(position, rotation, math_matrix_view(position, rotation), cmd);
+				cameraBuffer.position = position;
+				cameraBuffer.rotation = rotation;
+				cameraBuffer.projectionMatrix = cam.projection.projectionMatrix;
+				cameraBuffer.viewMatrix = math_matrix_view(position, rotation);
+				cameraBuffer.updateGPU(cmd);
 
-				// Clear Buffers
-				SceneRenderer::clearScreen(cam.camera, { 0.f, 0.f, 0.f, 1.f }, cmd);
+				// Clear GBuffer
+				SceneRenderer::clearGBuffer(cam.gBuffer, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
 				
-				if (gBuffer.diffuse == nullptr)
-					// TODO: Should manage this better xd
-					gBuffer.create(1920u, 1080u);
-				else {
-					SceneRenderer::clearGBuffer(gBuffer, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
-				}
-
 				// Draw Render Components
-				graphics_viewport_set(cam.camera.getOffscreen(), 0u, cmd);
-				graphics_scissor_set(cam.camera.getOffscreen(), 0u, cmd);
+				graphics_viewport_set(cam.gBuffer.getViewport(), 0u, cmd);
+				graphics_scissor_set(cam.gBuffer.getScissor(), 0u, cmd);
 
-				switch (cam.camera.getCameraType())
+				// Camera Struct
+				CameraData cameraData;
+				cameraData.position = position;
+				cameraData.rotation = rotation;
+				cameraData.pProjection = &cam.projection;
+				cameraData.pGBuffer = &cam.gBuffer;
+				cameraData.pCameraBuffer = &cameraBuffer;
+
+				int temp = 0;
+				switch (temp)
 				{
-				case CameraType_2D:
+				case 0:
 					for (u32 i = 0u; i < RENDERLAYER_COUNT; ++i) {
 						u32 index = SceneRenderer::renderLayerOrder2D[i];
-						SceneRenderer::drawSprites2D(m_ECS, cam.camera, gBuffer, lightData, position, rotation, index, cmd);
+						SceneRenderer::drawParticles2D(m_ECS, cameraData, lightData, index, cmd);
+						SceneRenderer::drawSprites2D(m_ECS, cameraData, lightData, index, cmd);
 					}
 					break;
 
-				case CameraType_3D:
-					SceneRenderer::drawMeshes3D(m_ECS, cam.camera, gBuffer, lightData, position, rotation, cmd);
-					SceneRenderer::drawSprites3D(m_ECS, cam.camera, gBuffer, lightData, position, rotation, cmd);
+				case 1:
+					SceneRenderer::drawMeshes3D(m_ECS, cameraData, lightData, cmd);
+					SceneRenderer::drawSprites3D(m_ECS, cameraData, lightData, cmd);
 					break;
 				}
+
+				// PostProcessing
+				GPUImage* off = cameraData.pGBuffer->offscreen;
+
+				const CameraBloomData& bloom = cam.bloom;
+				const CameraToneMappingData& toneMapping = cam.toneMapping;
+
+				GPUBarrier barrier;
+
+				barrier = GPUBarrier::Image(off, GPUImageLayout_RenderTarget, GPUImageLayout_ShaderResource);
+				graphics_barrier(&barrier, 1u, cmd);
+
+				if (bloom.enabled) {
+					PostProcessing::bloom(off, GPUImageLayout_ShaderResource, GPUImageLayout_ShaderResource, bloom.threshold, bloom.blurRange, bloom.blurIterations, cmd);
+				}
+
+				if (toneMapping.enabled) {
+					PostProcessing::toneMapping(off, GPUImageLayout_ShaderResource, GPUImageLayout_ShaderResource, toneMapping.exposure, cmd);
+				}
+
+				barrier = GPUBarrier::Image(off, GPUImageLayout_ShaderResource, GPUImageLayout_RenderTarget);
+				graphics_barrier(&barrier, 1u, cmd);
 
 				graphics_event_end(cmd);
 			}

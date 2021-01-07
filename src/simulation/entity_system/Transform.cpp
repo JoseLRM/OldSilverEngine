@@ -9,22 +9,22 @@ namespace sv {
 	Transform::Transform(Entity entity, void* transform, ECS* ecs)
 		: entity(entity), trans(transform), pECS(ecs) {}
 
-	const vec3f& Transform::getLocalPosition() const noexcept 
+	const v3_f32& Transform::getLocalPosition() const noexcept 
 	{ 
 		parse();
-		return *(vec3f*)& t->localPosition;
+		return *(v3_f32*)& t->localPosition;
 	}
 
-	const vec4f& Transform::getLocalRotation() const noexcept 
+	const v4_f32& Transform::getLocalRotation() const noexcept 
 	{ 
 		parse();
-		return *(vec4f*)& t->localRotation;
+		return *(v4_f32*)& t->localRotation;
 	}
 
-	vec3f Transform::getLocalEulerRotation() const noexcept
+	v3_f32 Transform::getLocalEulerRotation() const noexcept
 	{
 		parse();
-		vec3f euler;
+		v3_f32 euler;
 
 		// roll (x-axis rotation)
 
@@ -58,10 +58,10 @@ namespace sv {
 		return euler;
 	}
 
-	const vec3f& Transform::getLocalScale() const noexcept 
+	const v3_f32& Transform::getLocalScale() const noexcept 
 	{ 
 		parse();
-		return *(vec3f*)& t->localScale;
+		return *(v3_f32*)& t->localScale;
 	}
 
 	XMVECTOR Transform::getLocalPositionDXV() const noexcept 
@@ -89,27 +89,27 @@ namespace sv {
 			* XMMatrixTranslation(t->localPosition.x, t->localPosition.y, t->localPosition.z);
 	}
 
-	vec3f Transform::getWorldPosition() noexcept
+	v3_f32 Transform::getWorldPosition() noexcept
 	{
 		parse();
 		if (t->modified) updateWorldMatrix();
-		return *(vec3f*)& t->worldMatrix._41;
+		return *(v3_f32*)& t->worldMatrix._41;
 	}
 
-	vec4f Transform::getWorldRotation() noexcept
+	v4_f32 Transform::getWorldRotation() noexcept
 	{
 		parse();
 		if (t->modified) updateWorldMatrix();
-		return *(vec4f*)& getWorldRotationDXV();
+		return *(v4_f32*)& getWorldRotationDXV();
 	}
 
-	vec3f Transform::getWorldEulerRotation() noexcept
+	v3_f32 Transform::getWorldEulerRotation() noexcept
 	{
 		parse();
 		XMFLOAT4X4 rm;
 		XMStoreFloat4x4(&rm, XMMatrixTranspose(XMMatrixRotationQuaternion(getWorldRotationDXV())));
 
-		vec3f euler;
+		v3_f32 euler;
 
 		if (rm._13 < 1.f) {
 			if (rm._13 > -1.f) {
@@ -139,11 +139,11 @@ namespace sv {
 		return euler;
 	}
 
-	vec3f Transform::getWorldScale() noexcept
+	v3_f32 Transform::getWorldScale() noexcept
 	{
 		parse();
 		if (t->modified) updateWorldMatrix();
-		return { (*(vec3f*)& t->worldMatrix._11).length(), (*(vec3f*)& t->worldMatrix._21).length(), (*(vec3f*)& t->worldMatrix._31).length() };
+		return { (*(v3_f32*)& t->worldMatrix._11).length(), (*(v3_f32*)& t->worldMatrix._21).length(), (*(v3_f32*)& t->worldMatrix._31).length() };
 	}
 
 	XMVECTOR Transform::getWorldPositionDXV() noexcept
@@ -151,7 +151,7 @@ namespace sv {
 		parse();
 		if (t->modified) updateWorldMatrix();
 
-		vec3f position = getWorldPosition();
+		v3_f32 position = getWorldPosition();
 		return XMVectorSet(position.x, position.y, position.z, 0.f);
 	}
 
@@ -205,7 +205,7 @@ namespace sv {
 		else return XMMatrixIdentity();
 	}
 
-	void Transform::setPosition(const vec3f& position) noexcept
+	void Transform::setPosition(const v3_f32& position) noexcept
 	{
 		notify();
 
@@ -237,7 +237,7 @@ namespace sv {
 		t->localPosition.z = z;
 	}
 
-	void Transform::setRotation(const vec4f& rotation) noexcept
+	void Transform::setRotation(const v4_f32& rotation) noexcept
 	{
 		notify();
 
@@ -245,7 +245,7 @@ namespace sv {
 		t->localRotation = *(XMFLOAT4*)& rotation;
 	}
 
-	void Transform::setEulerRotation(const vec3f& r) noexcept
+	void Transform::setEulerRotation(const v3_f32& r) noexcept
 	{
 		notify();
 
@@ -256,7 +256,7 @@ namespace sv {
 		float cr = cos(r.x * 0.5f);
 		float sr = sin(r.x * 0.5f);
 
-		vec4f q;
+		v4_f32 q;
 		q.w = cr * cp * cy + sr * sp * sy;
 		q.x = sr * cp * cy - cr * sp * sy;
 		q.y = cr * sp * cy + sr * cp * sy;
@@ -298,7 +298,7 @@ namespace sv {
 		t->localRotation.w = w;
 	}
 
-	void Transform::setScale(const vec3f& scale) noexcept
+	void Transform::setScale(const v3_f32& scale) noexcept
 	{
 		parse();
 

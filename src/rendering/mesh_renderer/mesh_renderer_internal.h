@@ -14,7 +14,7 @@ namespace sv {
 
 	struct MeshLightData {
 		LightType type;
-		vec3f positionOrDirection;
+		v3_f32 positionOrDirection;
 		float intensity;
 		float radius;
 		float smoothness;

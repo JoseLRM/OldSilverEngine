@@ -270,7 +270,7 @@ Output main(Input input)
 
 			desc.attachments[0].loadOp = AttachmentOperation_Load;
 			desc.attachments[0].storeOp = AttachmentOperation_Store;
-			desc.attachments[0].format = OFFSCREEN_FORMAT;
+			desc.attachments[0].format = GBuffer::FORMAT_OFFSCREEN;
 			desc.attachments[0].initialLayout = GPUImageLayout_RenderTarget;
 			desc.attachments[0].layout = GPUImageLayout_RenderTarget;
 			desc.attachments[0].finalLayout = GPUImageLayout_RenderTarget;
@@ -321,7 +321,7 @@ Output main(Input input)
 
 			desc.elements.resize(2u);
 			desc.elements[0u] = { "Position", 0u, 0u, 0u, Format_R32G32B32_FLOAT };
-			desc.elements[1u] = { "Normal", 0u, 0u, sizeof(vec3f), Format_R32G32B32_FLOAT };
+			desc.elements[1u] = { "Normal", 0u, 0u, sizeof(v3_f32), Format_R32G32B32_FLOAT };
 			
 			svCheck(graphics_inputlayoutstate_create(&desc, &g_InputLayoutState_Geometry));
 		}
@@ -579,7 +579,7 @@ SurfaceOutput meshSurface(UserSurfaceInput input)
 
 			// Light data
 			LightingData data;
-			vec2u res = gBuffer.resolution();
+			v2_u32 res = gBuffer.getResolution();
 			data.resolutionWidth = res.x;
 			data.resolutionHeight = res.y;
 

@@ -286,18 +286,18 @@ void CompilerMSL::build_implicit_builtins()
 			uint32_t var_id = offset + 2;
 
 			// Create gl_FragCoord.
-			SPIRType vec4f_type;
-			vec4f_type.basetype = SPIRType::Float;
-			vec4f_type.width = 32;
-			vec4f_type.vecsize = 4;
-			set<SPIRType>(type_id, vec4f_type);
+			SPIRType v4_f32_type;
+			v4_f32_type.basetype = SPIRType::Float;
+			v4_f32_type.width = 32;
+			v4_f32_type.vecsize = 4;
+			set<SPIRType>(type_id, v4_f32_type);
 
-			SPIRType vec4f_type_ptr;
-			vec4f_type_ptr = vec4f_type;
-			vec4f_type_ptr.pointer = true;
-			vec4f_type_ptr.parent_type = type_id;
-			vec4f_type_ptr.storage = StorageClassInput;
-			auto &ptr_type = set<SPIRType>(type_ptr_id, vec4f_type_ptr);
+			SPIRType v4_f32_type_ptr;
+			v4_f32_type_ptr = v4_f32_type;
+			v4_f32_type_ptr.pointer = true;
+			v4_f32_type_ptr.parent_type = type_id;
+			v4_f32_type_ptr.storage = StorageClassInput;
+			auto &ptr_type = set<SPIRType>(type_ptr_id, v4_f32_type_ptr);
 			ptr_type.self = type_id;
 
 			set<SPIRVariable>(var_id, type_ptr_id, StorageClassInput);

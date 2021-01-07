@@ -61,8 +61,18 @@ constexpr i16	i16_max = std::numeric_limits<i16>::max();
 constexpr i32	i32_max = std::numeric_limits<i32>::max();
 constexpr i64	i64_max = std::numeric_limits<i64>::max();
 
-constexpr float	float_min = std::numeric_limits<float>::min();
-constexpr float	float_max = std::numeric_limits<float>::max();
+constexpr f32	f32_min = std::numeric_limits<f32>::min();
+constexpr f64	f64_min = std::numeric_limits<f64>::min();
+
+constexpr f32	f32_max = std::numeric_limits<f32>::max();
+constexpr f64	f64_max = std::numeric_limits<f64>::max();
+
+static_assert(std::numeric_limits<f32>::is_iec559, "IEEE 754 required");
+constexpr f32	f32_inf = std::numeric_limits<f32>::infinity();
+constexpr f32	f32_ninf = -1.f * std::numeric_limits<f32>::infinity();
+static_assert(std::numeric_limits<f64>::is_iec559, "IEEE 754 required");
+constexpr f64	f64_inf = std::numeric_limits<f64>::infinity();
+constexpr f64	f64_ninf = -1.0 * std::numeric_limits<f64>::infinity();
 
 // Misc
 

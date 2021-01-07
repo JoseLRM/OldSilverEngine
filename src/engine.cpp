@@ -18,6 +18,7 @@
 #include "simulation/sprite_animator/sprite_animator_internal.h"
 #include "simulation/scene/scene_internal.h"
 #include "simulation/model/model_internal.h"
+#include "simulation/particle_emission/particle_emission_internal.h"
 
 namespace sv {
 
@@ -86,6 +87,8 @@ namespace sv {
 			svCheck(SpriteRenderer_internal::initialize());
 			svCheck(MeshRenderer_internal::initialize());
 			svCheck(SceneRenderer_internal::initialize());
+
+			svCheck(partsys_initialize());
 
 			svCheck(scene_initialize());
 
@@ -185,6 +188,8 @@ namespace sv {
 			asset_free_unused();
 
 			if (result_fail(scene_close())) { SV_LOG_ERROR("Can't close the scene system"); }
+
+			if (result_fail(partsys_close())) { SV_LOG_ERROR("Can't close Particle System"); }
 
 			// Renderers
 			if (result_fail(SceneRenderer_internal::close())) { SV_LOG_ERROR("Can't close Scene Renderer"); }

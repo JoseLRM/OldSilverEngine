@@ -20,7 +20,7 @@ namespace sv {
 		v2 = XMVector3Transform(XMVectorSet(-0.5f, 0.f,  0.5f, 0.f), transformMatrix);
 		v3 = XMVector3Transform(XMVectorSet( 0.5f, 0.f,  0.5f, 0.f), transformMatrix);
 		
-		vec3f* pos = mesh.positions.data() + vertexOffset;
+		v3_f32* pos = mesh.positions.data() + vertexOffset;
 		pos->setDX(v0); ++pos;
 		pos->setDX(v1); ++pos;
 		pos->setDX(v2); ++pos;
@@ -29,7 +29,7 @@ namespace sv {
 		// Normals
 		v0 = XMVector3Rotate(XMVectorSet(0.f, -1.f, 0.f, 0.f), rotationQuaternion);
 
-		vec3f* nor = mesh.normals.data() + vertexOffset;
+		v3_f32* nor = mesh.normals.data() + vertexOffset;
 		nor->setDX(v0); ++nor;
 		nor->setDX(v0); ++nor;
 		nor->setDX(v0); ++nor;
@@ -58,7 +58,7 @@ namespace sv {
 			it = vertices.data();
 			end = vertices.data() + vertices.size();
 
-			const vec3f* posIt = mesh.positions.data();
+			const v3_f32* posIt = mesh.positions.data();
 
 			while (it != end)
 			{
@@ -73,7 +73,7 @@ namespace sv {
 			it = vertices.data();
 			end = vertices.data() + vertices.size();
 
-			const vec3f* norIt = mesh.normals.data();
+			const v3_f32* norIt = mesh.normals.data();
 
 			while (it != end)
 			{

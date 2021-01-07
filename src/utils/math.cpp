@@ -4,7 +4,7 @@ namespace sv {
 
 	// MATRIX
 
-	XMMATRIX math_matrix_view(const vec3f& position, const vec4f& directionQuat)
+	XMMATRIX math_matrix_view(const v3_f32& position, const v4_f32& directionQuat)
 	{
 		XMVECTOR direction, pos, target;
 		
@@ -19,7 +19,7 @@ namespace sv {
 
 	// Intersection
 
-	bool BoundingBox3D::intersects_point(const vec3f& point) const noexcept
+	bool BoundingBox3D::intersects_point(const v3_f32& point) const noexcept
 	{
 		if (point.x < min.x) return false;
 		if (point.x > max.x) return false;
@@ -55,7 +55,7 @@ namespace sv {
 		return tmax >= tmin;
 	}
 
-	bool BoundingBox2D::intersects_point(const vec2f& point) const noexcept
+	bool BoundingBox2D::intersects_point(const v2_f32& point) const noexcept
 	{
 		if (point.x < min.x) return false;
 		if (point.x > max.x) return false;
@@ -66,11 +66,11 @@ namespace sv {
 
 	bool BoundingBox2D::intersects_circle(const Circle2D& circle) const noexcept
 	{
-		vec2f boxHalf = (max - min) / 2.f;
-		vec2f boxCenter = min + boxHalf;
+		v2_f32 boxHalf = (max - min) / 2.f;
+		v2_f32 boxCenter = min + boxHalf;
 
-		vec2f distance = circle.position - boxCenter;
-		vec2f distanceInsideBox = distance;
+		v2_f32 distance = circle.position - boxCenter;
+		v2_f32 distanceInsideBox = distance;
 		distanceInsideBox.x = std::max(std::min(distance.x, boxHalf.x), -boxHalf.x);
 		distanceInsideBox.y = std::max(std::min(distance.y, boxHalf.y), -boxHalf.y);
 
@@ -79,8 +79,8 @@ namespace sv {
 
 	bool FrustumOthographic::intersects_circle(const Circle2D& circle) const noexcept
 	{
-		vec2f distance = circle.position - position;
-		vec2f distanceInsideBox = distance;
+		v2_f32 distance = circle.position - position;
+		v2_f32 distanceInsideBox = distance;
 		distanceInsideBox.x = std::max(std::min(distance.x, halfSize.x), -halfSize.x);
 		distanceInsideBox.y = std::max(std::min(distance.y, halfSize.y), -halfSize.y);
 

@@ -9,8 +9,8 @@ namespace sv {
 	constexpr u32 SPRITE_LIGHT_COUNT = 10u;
 
 	struct SpriteVertex {
-		vec4f position;
-		vec2f texCoord;
+		v4_f32 position;
+		v2_f32 texCoord;
 		Color color;
 	};
 
@@ -20,12 +20,12 @@ namespace sv {
 
 	struct SpriteLight {
 		u32		type;
-		vec3f	position;
+		v3_f32	position;
 		Color3f	color;
 		float	range;
 		float	intensity;
 		float	smoothness;
-		vec2f	padding;
+		v2_f32	padding;
 	};
 
 	struct SpriteLightData {

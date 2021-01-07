@@ -361,8 +361,8 @@ namespace sv {
 	};
 
 	struct GPUImageRegion {
-		vec3u offset;
-		vec3u size;
+		v3_u32 offset;
+		v3_u32 size;
 	};
 
 	struct GPUImageBlit {
@@ -467,7 +467,7 @@ namespace sv {
 
 	struct BlendStateDesc {
 		std::vector<BlendAttachmentDesc>	attachments;
-		vec4f								blendConstants;
+		v4_f32								blendConstants;
 	};
 
 	struct RasterizerStateDesc {

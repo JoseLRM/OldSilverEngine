@@ -1458,7 +1458,7 @@ namespace sv {
 		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_RenderPass;
 
 		if (colors != nullptr)
-			memcpy(g_PipelineState.graphics[cmd].clearColors, colors, rp->attachments.size() * sizeof(vec4f));
+			memcpy(g_PipelineState.graphics[cmd].clearColors, colors, rp->attachments.size() * sizeof(v4_f32));
 		g_PipelineState.graphics[cmd].clearDepthStencil = std::make_pair(depth, stencil);
 
 		g_Device.renderpass_begin(cmd);
