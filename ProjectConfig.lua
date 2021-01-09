@@ -1,40 +1,32 @@
-project "SilverEngine"
-	kind "StaticLib"
-	language "c++"
-	cppdialect "C++17"
+project 'SilverEngine'
+	kind 'StaticLib'
+	language 'c++'
+	cppdialect 'C++17'
 
-	files {
-		"src/**.cpp",
-		"src/**.h",
-		"include/**.cpp",
-		"include/**.h"
-	}
-
-	-- PRECOMILED HEADER
-
-	filter {
-		"files:src/external/**",
-	}
-		flags { "NoPCH" }
-	filter {}
-
-	pchheader "core.h"
-	pchsource "%{prj.location}/src/core.cpp"
+	_includeDir = 	'modules/include/'
+	_srcDir = 		'modules/src/'
+	_libDir = 		'modules/lib/'
+	
+	-- PROJECT LOCATION
+	location (engineDir .. 'modules')
 
 	-- INCLUDE DIRS
 
 	includedirs {
-		"$(VULKAN_SDK)/Include/",
-		"include/",
-		"src/"
+		_includeDir,
+		_srcDir
 	}
 
-	-- LIBRARIES
+	-- LIBS
 
 	libdirs {
-		"lib/"
+		_libDir
 	}
 
-	links {
-		"$(VULKAN_SDK)/Lib/vulkan-1.lib",
-	}
+	-- PRECOMILED HEADER
+	pchheader 'core.h'
+	pchsource 'modules/src/core/core.cpp'
+
+	-- INCLUDE CORE MODULE
+	
+	include 'modules/build/core.lua'

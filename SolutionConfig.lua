@@ -5,6 +5,11 @@
 -- SV_ENABLE_GFX_VALIDATION
 -- SV_RES_PATH
 
+_outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
+
+targetdir (binDir .. _outputdir)
+objdir (binDir .. _outputdir .. "/int/%{prj.name}")
+
 configurations {
     "Debug",
     "Release",
