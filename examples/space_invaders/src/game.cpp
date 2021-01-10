@@ -37,9 +37,9 @@ void game_update(f32 dt)
 #endif
 
 	// Adjust camera
-	CameraComponent& camera = g_State->getCamera();
-	camera.projection.adjust(window_aspect_get());
-	camera.projection.updateMatrix(); // TODO: Use the event system
+	CameraProjection& camera = g_State->getCamera();
+	camera.adjust(window_aspect_get());
+	camera.updateMatrix(); // TODO: Use the event system
 
 	// Update State
 	g_State->update(dt);

@@ -23,16 +23,15 @@ workspace 'SpaceInvaders'
 	}
 
     filter {}
-    
+
     -- MODULES
 
     include (engineDir .. 'ProjectConfig.lua')
     
 	buildDir = (engineDir .. 'modules/build/')
     include (buildDir .. 'sprite.lua')
-    include (buildDir .. 'mesh.lua')
     include (buildDir .. 'particle.lua')
-    include (buildDir .. 'scene.lua')
+    -- include (buildDir .. 'mesh.lua')
 
     filter 'configurations:not Distribution'
         include(buildDir .. 'editor.lua')

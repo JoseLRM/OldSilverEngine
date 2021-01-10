@@ -1,7 +1,7 @@
 #pragma once
 
 #include "game.h"
-#include "particle/particle_emission.h"
+#include "particle/particle_system.h"
 
 enum ShipType : u32 {
 	ShipType_Player,
@@ -18,6 +18,9 @@ enum BulletType {
 };
 
 struct ShipComponent : public Component<ShipComponent> {
+
+	Color color = Color::Black();
+
 	v2_f32 vel;
 	f32 maxVel = 10.f;
 	f32 acc = 0.f;
@@ -28,6 +31,7 @@ struct ShipComponent : public Component<ShipComponent> {
 
 	void serialize(ArchiveO& file) {}
 	void deserialize(ArchiveI& file) {}
+	
 };
 
 struct ProjectileComponent : public Component<ProjectileComponent> {
@@ -52,6 +56,7 @@ struct BulletComponent : public Component<BulletComponent> {
 struct AsteroidComponent : public Component<AsteroidComponent> {
 	f32 rotVel = PI;
 	f32 health = 1.f;
+	u32 asteroidID = 0u;
 
 	void serialize(ArchiveO& file) {}
 	void deserialize(ArchiveI& file) {}
@@ -64,7 +69,9 @@ enum ExplosionType : u32 {
 };
 
 struct ExplosionComponent : public Component<ExplosionComponent> {
-	ExplosionType explosionType;
+
+	AnimatedSprite	sprite;
+	ExplosionType	explosionType;
 
 	void serialize(ArchiveO& file) {}
 	void deserialize(ArchiveI& file) {}
@@ -111,7 +118,7 @@ struct SpaceState : public GameState {
 	void render() override;
 	Result close() override;
 
-	CameraComponent& getCamera() override;
+	CameraProjection& getCamera() override;
 
 	void shipShot(ShipComponent& ship, f32 dir, bool condition, f32 dt);
 
@@ -128,7 +135,7 @@ struct SpaceState : public GameState {
 
 		v2_f32 playerPos;
 		if (player != SV_ENTITY_NULL) {
-			Transform trans = ecs_entity_transform_get(scene, player);
+			Transform trans = ecs_entity_transform_get(ecs, player);
 			playerPos = trans.getLocalPosition().getVec2();
 		}
 		else playerPos = { w, h };
@@ -174,46 +181,43 @@ struct SpaceState : public GameState {
 
 	Entity createShip(v2_f32 pos, ShipType type)
 	{
-		Entity e = ecs_entity_create(scene);
-		SpriteComponent& spr = *ecs_component_add<SpriteComponent>(scene, e);
-		ShipComponent& ship = *ecs_component_add<ShipComponent>(scene, e);
+		Entity e = ecs_entity_create(ecs);
+		ShipComponent& ship = *ecs_component_add<ShipComponent>(ecs, e);
 		ship.shipType = type;
 
-		Particle2DEmitterComponent_CPU& part = *ecs_component_add<Particle2DEmitterComponent_CPU>(scene, e);
-		part.rateTime = 0.01f;
+		Particle2DEmitterComponent_CPU& ps = *ecs_component_add<Particle2DEmitterComponent_CPU>(ecs, e);
+
+		Particle2DEmitterCPU& part = ps.ps.emitters.emplace_back();
 
 		part.start.lifeTime0 = 0.1f;
 		part.start.lifeTime1 = 0.4f;
-		part.shape = Particle2DShape_Cone;
-		part.shapeCone.angle = PI / 3.f;
-		part.shapeCone.direction = PI;
+		part.emission.shape = Particle2DShape_Cone;
+		part.emission.shapeCone.angle = PI / 3.5f;
+		part.emission.shapeCone.direction = PI;
 		part.duration = 0.f;
 		part.start.velocity0 = 20.f;
 		part.start.velocity1 = 28.f;
 		part.start.opacity0 = 20u;
 		part.start.opacity1 = 100u;
-		part.draw = Particle2DDraw_Sprite;
+		part.render.draw = Particle2DDraw_Sprite;
 
 		Color partColor;
 
-		Transform trans = ecs_entity_transform_get(scene, e);
+		Transform trans = ecs_entity_transform_get(ecs, e);
 		trans.setPosition(pos.getVec3());
 
 		switch (type)
 		{
 		case ShipType_Player:
-			spr.sprite.texture.loadFromFile("images/ships0.png");
-			spr.sprite.texCoord = { 2.f / 3.f, 2.f / 3.f, 3.f / 3.f, 3.f / 3.f };
 			ship.health = 1.f;
 			trans.setScale({ 2.f, 2.f, 0.f });
-			part.start.size0 = 0.4f;
-			part.start.size1 = 0.8f;
+			part.start.size0 = 0.2f;
+			part.start.size1 = 0.3f;
 			partColor = Color::Orange();
+			part.emission.rateTime = 0.005f;
 			break;
 
 		case ShipType_Kamikaze:
-			spr.sprite.texture.loadFromFile("images/ships0.png");
-			spr.sprite.texCoord = { 0.f / 3.f, 1.f / 3.f, 1.f / 3.f, 2.f / 3.f };
 			ship.health = 1.f;
 			trans.setScale({ 1.f, 1.f, 0.f });
 			part.start.size0 = 0.1f;
@@ -222,8 +226,6 @@ struct SpaceState : public GameState {
 			break;
 
 		case ShipType_Shooter:
-			spr.sprite.texture.loadFromFile("images/ships0.png");
-			spr.sprite.texCoord = { 1.f / 3.f, 0.f / 3.f, 2.f / 3.f, 1.f / 3.f };
 			ship.health = 1.f;
 			trans.setScale({ 1.f, 1.f, 0.f });
 			part.start.size0 = 0.1f;
@@ -232,8 +234,6 @@ struct SpaceState : public GameState {
 			break;
 
 		case ShipType_Daddy:
-			spr.sprite.texture.loadFromFile("images/ships0.png");
-			spr.sprite.texCoord = { 0.f / 3.f, 2.f / 3.f, 1.f / 3.f, 3.f / 3.f };
 			ship.health = 20.f;
 			trans.setScale({ 10.f, 10.f, 0.f });
 			part.start.size0 = 0.9f;
@@ -245,8 +245,6 @@ struct SpaceState : public GameState {
 			SV_LOG_ERROR("Unknown ship type");
 			break;
 		}
-
-		spr.renderLayer = 0u;
 
 		part.start.red0 = partColor.r;
 		part.start.red1 = partColor.r;
@@ -260,39 +258,20 @@ struct SpaceState : public GameState {
 
 	Entity createAsteroid(v2_f32 pos, f32 size, f32 vel, f32 dir)
 	{
-		Entity e = ecs_entity_create(scene);
-		SpriteComponent& spr = *ecs_component_add<SpriteComponent>(scene, e);
-		spr.sprite.texture.loadFromFile("images/asteroid.png");
+		Entity e = ecs_entity_create(ecs);
 
 		u32 type = random.gen_u32(4u);
 
-		switch (type)
-		{
-		case 0:
-			spr.sprite.texCoord = { 0.f, 0.f, 0.5f, 0.5f };
-			break;
-		case 1:
-			spr.sprite.texCoord = { 0.5f, 0.f, 1.f, 0.5f };
-			break;
-		case 2:
-			spr.sprite.texCoord = { 0.f, 0.5f, 0.5f, 1.f };
-			break;
-		case 3:
-			spr.sprite.texCoord = { 0.5f, 0.5f, 1.f, 1.f };
-			break;
-		}
-
-		spr.color = { 115u, 77u, 38u, 255u };
-
-		ProjectileComponent& prj = *ecs_component_add<ProjectileComponent>(scene, e);
+		ProjectileComponent& prj = *ecs_component_add<ProjectileComponent>(ecs, e);
 		prj.vel = vel;
 		prj.dir = dir;
 
-		AsteroidComponent& a = *ecs_component_add<AsteroidComponent>(scene, e);
+		AsteroidComponent& a = *ecs_component_add<AsteroidComponent>(ecs, e);
 		a.rotVel = random.gen_f32(0.01f, 0.1f);
 		a.health = size * 0.8f;
+		a.asteroidID = random.gen_u32(4u);
 
-		Transform trans = ecs_entity_transform_get(scene, e);
+		Transform trans = ecs_entity_transform_get(ecs, e);
 		trans.setScale({ size, size, 0.f });
 		trans.setPosition(pos.getVec3());
 		trans.setEulerRotation({ 0.f, 0.f, dir });
@@ -302,53 +281,29 @@ struct SpaceState : public GameState {
 
 	Entity createBullet(Entity from, f32 vel, f32 dir, f32 size, f32 lifeTime = 4.f, f32 damage = 1.f, bool penetrate = false)
 	{
-		Entity e = ecs_entity_create(scene);
-		SpriteComponent& spr = *ecs_component_add<SpriteComponent>(scene, e);
-		spr.color = Color::Orange();
-		ProjectileComponent& prj = *ecs_component_add<ProjectileComponent>(scene, e);
+		Entity e = ecs_entity_create(ecs);
+		//spr.color = Color::Orange();
+		ProjectileComponent& prj = *ecs_component_add<ProjectileComponent>(ecs, e);
 		prj.vel = vel;
 		prj.dir = dir;
 
-		BulletComponent& bullet = *ecs_component_add<BulletComponent>(scene, e);
+		BulletComponent& bullet = *ecs_component_add<BulletComponent>(ecs, e);
 		bullet.from = from;
 		bullet.lifeTime = lifeTime;
 		bullet.damage = damage;
 		bullet.penetrate = penetrate;
 
-		Particle2DEmitterComponent_CPU& emitter = *ecs_component_add<Particle2DEmitterComponent_CPU>(scene, e);
-		emitter.shape = Particle2DShape_Circle;
-		emitter.shapeCircle.radius = size * 0.5f;
-		emitter.start.velocity0 = 0.4f;
-		emitter.start.velocity1 = 0.8f;
-		emitter.start.size0 = 0.05f;
-		emitter.start.size1 = 0.1f;
-		emitter.start.lifeTime0 = 0.8f;
-		emitter.start.lifeTime1 = 2.5f;
-		emitter.start.opacity0 = 5u;
-		emitter.start.opacity1 = 10u;
-		emitter.rateTime = 1.f / 500.f;
-		emitter.start.red0 = spr.color.r;
-		emitter.start.green0 = spr.color.g;
-		emitter.start.blue0 = spr.color.b;
-		emitter.draw = Particle2DDraw_Sprite;
-
-		Transform fromTrans = ecs_entity_transform_get(scene, from);
-		Transform trans = ecs_entity_transform_get(scene, e);
+		Transform fromTrans = ecs_entity_transform_get(ecs, from);
+		Transform trans = ecs_entity_transform_get(ecs, e);
 		trans.setPosition(fromTrans.getWorldPosition());
 		trans.setScale({ size, size, 0.f });
-
-		spr.renderLayer = 1u;
-		emitter.renderLayer = 1u;
-
-		ecs_component_remove<Particle2DEmitterComponent_CPU>(scene, e);
 
 		return e;
 	}
 
 	Entity createExplosion(const v2_f32& pos, f32 size, ExplosionType type)
 	{
-		Entity e = ecs_entity_create(scene);
-		AnimatedSpriteComponent& spr = *ecs_component_add<AnimatedSpriteComponent>(scene, e);
+		Entity e = ecs_entity_create(ecs);
 
 		SpriteAnimationAsset asset;
 
@@ -367,15 +322,15 @@ struct SpaceState : public GameState {
 			break;
 		}
 
-		spr.sprite.setAnimation(asset);
-		spr.sprite.setSpriteDuration(0.1f);
-		spr.sprite.setRepeatCount(1u);
-		spr.sprite.start();
-
-		ExplosionComponent& exp = *ecs_component_add<ExplosionComponent>(scene, e);
+		ExplosionComponent& exp = *ecs_component_add<ExplosionComponent>(ecs, e);
 		exp.explosionType = type;
 
-		Transform trans = ecs_entity_transform_get(scene, e);
+		exp.sprite.setAnimation(asset);
+		exp.sprite.setSpriteDuration(0.1f);
+		exp.sprite.setRepeatCount(1u);
+		exp.sprite.start();
+
+		Transform trans = ecs_entity_transform_get(ecs, e);
 		trans.setScale({ size, size, 0.f });
 		trans.setPosition(pos.getVec3());
 
@@ -393,18 +348,18 @@ struct SpaceState : public GameState {
 
 		}
 
-		Transform trans = ecs_entity_transform_get(scene, s.entity);
+		Transform trans = ecs_entity_transform_get(ecs, s.entity);
 
 		createExplosion(trans.getWorldPosition().getVec2(), trans.getWorldScale().getVec2().length() * 2.f, (s.shipType == ShipType_Kamikaze ? ExplosionType_Dangerous : ExplosionType_Ship));
 
-		ecs_entity_destroy(scene, s.entity);
+		ecs_entity_destroy(ecs, s.entity);
 	}
 
 	void destroyAsteroid(AsteroidComponent& a)
 	{
-		ProjectileComponent& p = *ecs_component_get<ProjectileComponent>(scene, a.entity);
+		ProjectileComponent& p = *ecs_component_get<ProjectileComponent>(ecs, a.entity);
 
-		Transform trans = ecs_entity_transform_get(scene, a.entity);
+		Transform trans = ecs_entity_transform_get(ecs, a.entity);
 		v2_f32 pos = trans.getWorldPosition().getVec2();
 		f32 scale = trans.getWorldScale().getVec2().length();
 
@@ -420,34 +375,34 @@ struct SpaceState : public GameState {
 
 		createExplosion(pos, scale, ExplosionType_Asteroid);
 
-		ecs_entity_destroy(scene, a.entity);
+		ecs_entity_destroy(ecs, a.entity);
 	}
 
 	void destroyBullet(BulletComponent& bullet)
 	{
-		ecs_entity_destroy(scene, bullet.entity);
+		ecs_entity_destroy(ecs, bullet.entity);
 	}
 
 	void destroyExplosion(ExplosionComponent& e)
 	{
-		ecs_entity_destroy(scene, e.entity);
+		ecs_entity_destroy(ecs, e.entity);
 	}
 
 	template<typename Comp0, typename Comp1, typename OnCollideFn>
 	void collideObjects(f32 radiusMult0, f32 radiusMult1, OnCollideFn onCollide)
 	{
-		EntityView<Comp0> comp0(scene);
+		EntityView<Comp0> comp0(ecs);
 
 		for (Comp0& c0 : comp0) {
 
-			Transform trans0 = ecs_entity_transform_get(scene, c0.entity);
+			Transform trans0 = ecs_entity_transform_get(ecs, c0.entity);
 			f32 radius0 = trans0.getWorldScale().getVec2().length() * radiusMult0;
 			v2_f32 pos0 = trans0.getWorldPosition().getVec2();
 
-			EntityView<Comp1> comp1(scene);
+			EntityView<Comp1> comp1(ecs);
 			for (Comp1& c1 : comp1) {
 
-				Transform trans1 = ecs_entity_transform_get(scene, c1.entity);
+				Transform trans1 = ecs_entity_transform_get(ecs, c1.entity);
 				f32 radius1 = trans1.getWorldScale().getVec2().length() * radiusMult0;
 				v2_f32 pos1 = trans1.getWorldPosition().getVec2();
 
@@ -460,10 +415,26 @@ struct SpaceState : public GameState {
 		}
 	}
 
-	Scene scene;
+	ECS* ecs;
+
+	CameraProjection			projection;
+	GBuffer						gBuffer;
+
+	FrameList<SpriteInstance>		sprite_instances;
+	FrameList<Particle2DInstance>	particle_instances;
+
 	Entity player, background;
 	Random random;
 
 	ShipGenerator shipGenerator;
+
+	Sprite sprite_Player;
+	Sprite sprite_Kamikaze;
+	Sprite sprite_Shooter;
+	Sprite sprite_Daddy;
+	Sprite sprite_Asteroid0;
+	Sprite sprite_Asteroid1;
+	Sprite sprite_Asteroid2;
+	Sprite sprite_Asteroid3;
 
 };

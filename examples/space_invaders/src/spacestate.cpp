@@ -1,5 +1,7 @@
 #include "spacestate.h"
 
+#include "core/rendering/postprocessing.h"
+
 void SpaceState::shipShot(ShipComponent& ship, f32 dir, bool condition, f32 dt)
 {
 	ship.shotTime += dt;
@@ -56,13 +58,38 @@ void SpaceState::shipShot(ShipComponent& ship, f32 dir, bool condition, f32 dt)
 	else ship.shotTime = std::min(ship.shotTime, rate);
 }
 
-Result createAssets()
+Result createAssets(SpaceState& s)
 {
 	// TEXTURES
-	TextureAsset playerTex;
 	TextureAsset explosionTex;
 
-	svCheck(playerTex.loadFromFile("images/ship.png"));
+	// SHIPS
+	svCheck(s.sprite_Player.texture.loadFromFile("images/ships0.png"));
+	s.sprite_Player.texCoord = { 2.f / 3.f, 2.f / 3.f, 3.f / 3.f, 3.f / 3.f };
+
+	svCheck(s.sprite_Kamikaze.texture.loadFromFile("images/ships0.png"));
+	s.sprite_Kamikaze.texCoord = { 0.f / 3.f, 1.f / 3.f, 1.f / 3.f, 2.f / 3.f };
+
+	svCheck(s.sprite_Shooter.texture.loadFromFile("images/ships0.png"));
+	s.sprite_Shooter.texCoord = { 1.f / 3.f, 0.f / 3.f, 2.f / 3.f, 1.f / 3.f };
+
+	svCheck(s.sprite_Daddy.texture.loadFromFile("images/ships0.png"));
+	s.sprite_Daddy.texCoord = { 0.f / 3.f, 2.f / 3.f, 1.f / 3.f, 3.f / 3.f };
+
+	// ASTEROIDS
+
+	svCheck(s.sprite_Asteroid0.texture.loadFromFile("images/asteroid.png"));
+	s.sprite_Asteroid1 = s.sprite_Asteroid0;
+	s.sprite_Asteroid2 = s.sprite_Asteroid0;
+	s.sprite_Asteroid3 = s.sprite_Asteroid0;
+
+	s.sprite_Asteroid0.texCoord = texcoord_from_atlas(2u, 2u, 0u);
+	s.sprite_Asteroid1.texCoord = texcoord_from_atlas(2u, 2u, 1u);
+	s.sprite_Asteroid2.texCoord = texcoord_from_atlas(2u, 2u, 2u);
+	s.sprite_Asteroid3.texCoord = texcoord_from_atlas(2u, 2u, 3u);
+
+	// EXPLOSIONS
+
 	svCheck(explosionTex.loadFromFile("images/explosion.png"));
 
 	// ANIMATED SPRITES
@@ -99,75 +126,72 @@ Result SpaceState::initialize()
 	ecs_component_register<AsteroidComponent>("Asteroid");
 	ecs_component_register<BulletComponent>("Bullet");
 	ecs_component_register<ExplosionComponent>("Explosion");
-	
-	scene.create();
 
-	if (result_fail(createAssets())) {
+	if (result_fail(createAssets(*this))) {
 		SV_LOG_ERROR("Can't create the assets");
 	}
 
-	random.setSeed(timer_now().GetMillisecondsUInt());
+	ecs_create(&ecs);
 
-	// Create sky
-	ecs_component_add<SkyComponent>(scene, ecs_entity_create(scene));
+	random.setSeed(timer_now().GetMillisecondsUInt());
 
 	// Create player
 	player = createShip({}, ShipType_Player);
 
-	// Adjust RenderLayers
-	SceneRenderer::renderLayers2D[0].name = "Ships";
-	SceneRenderer::renderLayers2D[0].sortValue = 10;
-	SceneRenderer::renderLayers2D[0].enabled = true;
-
-	SceneRenderer::renderLayers2D[1].name = "Bullets";
-	SceneRenderer::renderLayers2D[1].sortValue = 5;
-	SceneRenderer::renderLayers2D[1].enabled = true;
-
-	SceneRenderer::renderLayers2D[2].name = "Background";
-	SceneRenderer::renderLayers2D[2].sortValue = 0;
-	SceneRenderer::renderLayers2D[2].enabled = true;
 
 	shipGenerator.addDefaultGenerations();
 
 	// Generate background particles
 	{
-		background = ecs_entity_create(scene);
-		Particle2DEmitterComponent_CPU& e = *ecs_component_add<Particle2DEmitterComponent_CPU>(scene, background);
-		e.renderLayer = 2u;
-		e.rateTime = 1.f / 100.f;
-		e.maxParticles = 20u;
-		e.draw = Particle2DDraw_Sprite;
+		background = ecs_entity_create(ecs);
+		Particle2DEmitterComponent_CPU& ps = *ecs_component_add<Particle2DEmitterComponent_CPU>(ecs, background);
+
+		Particle2DEmitterCPU& e = ps.ps.emitters.emplace_back();
+
+		ps.renderLayer = 2u;
+		e.emission.rateTime = 1.f / 100.f;
+		e.maxParticles = 200u;
+		e.render.draw = Particle2DDraw_Sprite;
 		e.start.velocity0 = 0.f;
 		e.start.velocity1 = 0.2f;
-		e.start.size0 = 0.05f;
-		e.start.size1 = 0.2f;
+		e.start.size0 = 0.08f;
+		e.start.size1 = 0.3f;
 		e.start.opacity0 = 10u;
 		e.start.opacity1 = 50u;
-		e.shape = Particle2DShape_Quad;
-		e.shapeQuad.size = { 1080.f / 15.f, 720.f / 15.f };
+		e.fadeOut.fadeTime = 1.f;
+		e.start.lifeTime0 = 1.f;
+		e.start.lifeTime1 = 3.f;
+		e.emission.shape = Particle2DShape_Quad;
+		e.emission.shapeQuad.size = { 1080.f / 15.f, 720.f / 15.f };
 	}
 
-	// Adjust Main Camera
-	CameraComponent& cam = *ecs_component_get<CameraComponent>(scene, scene.getMainCamera());
-	cam.projection.projectionType = ProjectionType_Orthographic;
-	cam.projection.width = 1080.f / 15.f;
-	cam.projection.height = 720.f / 15.f;
-	cam.projection.near = -100.f;
-	cam.projection.far = 100.f;
+	// Adjust Camera
+	gBuffer.create(1920, 1080);
 
-	cam.projection.updateMatrix();
+	projection.projectionType = ProjectionType_Orthographic;
+	projection.width = 1080.f / 15.f;
+	projection.height = 720.f / 15.f;
+	projection.near = -100.f;
+	projection.far = 100.f;
+
+	projection.updateMatrix();
 
 	return Result_Success;
 }
 
 void SpaceState::update(f32 dt)
 {
-	partsys_update(scene, dt);
+	// TEMP
+	{
+		EntityView<Particle2DEmitterComponent_CPU> particles(ecs);
 
-	//Particle2DEmitterComponent_CPU& e = *ecs_component_get<Particle2DEmitterComponent_CPU>(scene, background);
-	//SV_LOG("Particles: %u", e.particles.size());
-	//return;
+		for (Particle2DEmitterComponent_CPU& p : particles) {
 
+			Transform trans = ecs_entity_transform_get(ecs, p.entity);
+
+			partsys_update(trans.getWorldPosition().getVec2(), trans.getWorldEulerRotation().z, p.ps, nullptr, dt);
+		}
+	}
 
 	// Asteroid Generator
 	{
@@ -192,9 +216,9 @@ void SpaceState::update(f32 dt)
 
 	// Player controller
 	if (player != SV_ENTITY_NULL) {
-		Transform trans = ecs_entity_transform_get(scene, player);
+		Transform trans = ecs_entity_transform_get(ecs, player);
 
-		ShipComponent& ship = *ecs_component_get<ShipComponent>(scene, player);
+		ShipComponent& ship = *ecs_component_get<ShipComponent>(ecs, player);
 		v2_f32 pos = trans.getLocalPosition().getVec2();
 		v2_f32 scale = trans.getLocalScale().getVec2();
 
@@ -222,11 +246,11 @@ void SpaceState::update(f32 dt)
 
 	// Ship AI
 	{
-		EntityView<ShipComponent> ships(scene);
+		EntityView<ShipComponent> ships(ecs);
 
 		v2_f32 pPos;
 		if (player != SV_ENTITY_NULL) {
-			Transform pTrans = ecs_entity_transform_get(scene, player);
+			Transform pTrans = ecs_entity_transform_get(ecs, player);
 			pPos = pTrans.getLocalPosition().getVec2();
 		}
 
@@ -235,7 +259,7 @@ void SpaceState::update(f32 dt)
 			if (ship.shipType == ShipType_Player)
 				continue;
 
-			Transform trans = ecs_entity_transform_get(scene, ship.entity);
+			Transform trans = ecs_entity_transform_get(ecs, ship.entity);
 
 			switch (ship.shipType)
 			{
@@ -244,8 +268,10 @@ void SpaceState::update(f32 dt)
 
 					v2_f32 to = pPos - trans.getWorldPosition().getVec2();
 
-					ship.acc += dt * random.gen_f32(0.8f, 1.2f);
+					ship.acc += dt * random.gen_f32(0.2f, .8f);
 					trans.setEulerRotation({ 0.f, 0.f, to.angle() });
+
+					ship.color.r = u8(abs(sin(timer_now() * 7.f + f32(ship.entity) * 10.32f)) * 255.f) * 0.4f;
 				}
 				break;
 
@@ -294,7 +320,7 @@ void SpaceState::update(f32 dt)
 	{
 		// Destroy Bullets
 		{
-			EntityView<BulletComponent> bullets(scene);
+			EntityView<BulletComponent> bullets(ecs);
 
 			for (BulletComponent& bullet : bullets) {
 
@@ -309,7 +335,7 @@ void SpaceState::update(f32 dt)
 
 		// Destroy Ships
 		{
-			EntityView<ShipComponent> ships(scene);
+			EntityView<ShipComponent> ships(ecs);
 
 			for (ShipComponent& s : ships) {
 
@@ -321,11 +347,11 @@ void SpaceState::update(f32 dt)
 		}
 		// Destroy Asteroids
 		{
-			EntityView<AsteroidComponent> asteroids(scene);
+			EntityView<AsteroidComponent> asteroids(ecs);
 
 			for (AsteroidComponent& a : asteroids) {
 
-				Transform trans = ecs_entity_transform_get(scene, a.entity);
+				Transform trans = ecs_entity_transform_get(ecs, a.entity);
 				v2_f32 pos = trans.getWorldPosition().getVec2();
 				f32 scale = trans.getWorldScale().getVec2().length();
 
@@ -342,13 +368,11 @@ void SpaceState::update(f32 dt)
 		}
 		// Destroy Explosions
 		{
-			EntityView<ExplosionComponent> explosions(scene);
+			EntityView<ExplosionComponent> explosions(ecs);
 
 			for (ExplosionComponent& e : explosions) {
 
-				AnimatedSpriteComponent& s = *ecs_component_get<AnimatedSpriteComponent>(scene, e.entity);
-
-				if (!s.sprite.isRunning())
+				if (!e.sprite.isRunning())
 				{
 					destroyExplosion(e);
 					continue;
@@ -362,11 +386,11 @@ void SpaceState::fixedUpdate()
 {
 	// Move projectiles
 	{
-		EntityView<ProjectileComponent> projectiles(scene);
+		EntityView<ProjectileComponent> projectiles(ecs);
 
 		for (ProjectileComponent& prj : projectiles) {
 
-			Transform trans = ecs_entity_transform_get(scene, prj.entity);
+			Transform trans = ecs_entity_transform_get(ecs, prj.entity);
 
 			v2_f32 vel = { prj.vel, 0.f };
 			vel.setAngle(prj.dir);
@@ -377,11 +401,11 @@ void SpaceState::fixedUpdate()
 
 	// Rotate asteroids
 	{
-		EntityView<AsteroidComponent> asteroids(scene);
+		EntityView<AsteroidComponent> asteroids(ecs);
 
 		for (AsteroidComponent& a : asteroids) {
 
-			Transform trans = ecs_entity_transform_get(scene, a.entity);
+			Transform trans = ecs_entity_transform_get(ecs, a.entity);
 			v3_f32 rot = trans.getLocalEulerRotation();
 			rot.z += a.rotVel;
 			trans.setEulerRotation(rot);
@@ -390,23 +414,23 @@ void SpaceState::fixedUpdate()
 
 	// Move ships
 	{
-		EntityView<ShipComponent> ships(scene);
+		EntityView<ShipComponent> ships(ecs);
 
 		for (ShipComponent& ship : ships) {
 
-			Transform trans = ecs_entity_transform_get(scene, ship.entity);
+			Transform trans = ecs_entity_transform_get(ecs, ship.entity);
 
 			f32 dir = trans.getWorldEulerRotation().z;
 
-			Particle2DEmitterComponent_CPU* emitter = ecs_component_get<Particle2DEmitterComponent_CPU>(scene, ship.entity);
+			Particle2DEmitterComponent_CPU* emitter = ecs_component_get<Particle2DEmitterComponent_CPU>(ecs, ship.entity);
 
 			// Active particles
 			if (emitter) {
 				if (ship.acc > 0.f) {
 
-					emitter->flags |= ParticleEmitterFlag_Enable;
+					emitter->ps.emitters.back().flags |= ParticleEmitterFlag_Enable;
 				}
-				else emitter->flags &= ~ParticleEmitterFlag_Enable;
+				else emitter->ps.emitters.back().flags &= ~ParticleEmitterFlag_Enable;
 			}
 
 			// Apply acc
@@ -534,21 +558,190 @@ void SpaceState::fixedUpdate()
 
 void SpaceState::render()
 {
-	scene.draw();
-	// partsys_render(scene, getCamera(), scene.getGBuffer(), graphics_commandlist_get());
-	SceneRenderer::present(ecs_component_get<CameraComponent>(scene, scene.getMainCamera())->gBuffer.offscreen);
+	CommandList cmd = graphics_commandlist_begin();
+
+	// Clear screen
+	graphics_image_clear(gBuffer.offscreen, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
+	graphics_image_clear(gBuffer.emissive, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
+	graphics_image_clear(gBuffer.depthStencil, GPUImageLayout_DepthStencil, GPUImageLayout_DepthStencil, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
+
+	graphics_viewport_set(gBuffer.offscreen, 0u, cmd);
+	graphics_scissor_set(gBuffer.offscreen, 0u, cmd);
+
+	particle_instances.reset();
+
+	// Draw background particles
+	{
+		Transform trans = ecs_entity_transform_get(ecs, background);
+
+		Particle2DInstance instance(trans.getWorldPosition().getVec2(), trans.getWorldEulerRotation().z, &ecs_component_get<Particle2DEmitterComponent_CPU>(ecs, background)->ps);
+		partsys_render(&instance, 1u, projection.projectionMatrix,gBuffer.offscreen, gBuffer.emissive, cmd);
+	}
+
+	// Draw all particles
+	{
+		EntityView<Particle2DEmitterComponent_CPU> particles(ecs);
+
+		for (Particle2DEmitterComponent_CPU& e : particles) {
+
+			if (e.entity == background) continue;
+
+			Transform trans = ecs_entity_transform_get(ecs, e.entity);
+
+			particle_instances.emplace_back(trans.getWorldPosition().getVec2(), trans.getWorldEulerRotation().z, &e.ps);
+
+		}
+
+		partsys_render(particle_instances.data(), particle_instances.size(), projection.projectionMatrix, gBuffer.offscreen, gBuffer.emissive, cmd);
+	}
+
+	sprite_instances.reset();
+
+	// Draw Bullets
+	{
+		EntityView<BulletComponent> bullets(ecs);
+		XMMATRIX tm;
+
+		for (BulletComponent& b : bullets) {
+
+			Transform trans = ecs_entity_transform_get(ecs, b.entity);
+			tm = trans.getWorldMatrix();
+
+			sprite_instances.emplace_back(tm, v4_f32{ 0.f, 0.f, 1.f, 1.f }, nullptr, Color::Blue(), Color::Blue());
+		}
+	}
+
+	// Draw Ships
+	{
+		EntityView<ShipComponent> ships(ecs);
+		XMMATRIX tm;
+
+		for (ShipComponent& ship : ships) {
+
+			Transform trans = ecs_entity_transform_get(ecs, ship.entity);
+			tm = trans.getWorldMatrix();
+
+			v4_f32 texCoord = { 0.f, 0.f, 1.f, 1.f };
+			GPUImage* image = nullptr;
+
+			switch (ship.shipType)
+			{
+			case ShipType_Player:
+				image = sprite_Player.texture.get();
+				texCoord = sprite_Player.texCoord;
+				break;
+
+			case ShipType_Kamikaze:
+				image = sprite_Kamikaze.texture.get();
+				texCoord = sprite_Kamikaze.texCoord;
+				break;
+
+			case ShipType_Shooter:
+				image = sprite_Shooter.texture.get();
+				texCoord = sprite_Shooter.texCoord;
+				break;
+
+			case ShipType_Daddy:
+				image = sprite_Daddy.texture.get();
+				texCoord = sprite_Daddy.texCoord;
+				break;
+			}
+
+			sprite_instances.emplace_back(tm, texCoord, image, Color::White(), ship.color);
+		}
+	}
+
+	// Draw Asteroids
+	{
+		EntityView<AsteroidComponent> asteroids(ecs);
+		XMMATRIX tm;
+
+		for (AsteroidComponent& a : asteroids) {
+
+			Transform trans = ecs_entity_transform_get(ecs, a.entity);
+			tm = trans.getWorldMatrix();
+
+			v4_f32 texCoord;
+			GPUImage* image;
+
+			switch (a.asteroidID)
+			{
+			case 0:
+				texCoord = sprite_Asteroid0.texCoord;
+				image = sprite_Asteroid0.texture.get();
+				break;
+
+			case 1:
+				texCoord = sprite_Asteroid1.texCoord;
+				image = sprite_Asteroid0.texture.get();
+				break;
+
+			case 2:
+				texCoord = sprite_Asteroid2.texCoord;
+				image = sprite_Asteroid0.texture.get();
+				break;
+
+			case 3:
+				texCoord = sprite_Asteroid3.texCoord;
+				image = sprite_Asteroid0.texture.get();
+				break;
+
+			default:
+				continue;
+			}
+
+			sprite_instances.emplace_back(tm, texCoord, image, Color{ 115u, 77u, 38u, 255u });
+		}
+	}
+
+	// Draw Explosions
+	{
+		EntityView<ExplosionComponent> explosions(ecs);
+		XMMATRIX tm;
+
+		for (ExplosionComponent& e : explosions) {
+
+			Transform trans = ecs_entity_transform_get(ecs, e.entity);
+			tm = trans.getWorldMatrix();
+
+			Sprite s = e.sprite.getSprite();
+			sprite_instances.emplace_back(tm, s.texCoord, s.texture.get(), Color::White());
+		}
+	}
+
+	// Draw Sprites
+	draw_sprites(sprite_instances.data(), sprite_instances.size(), projection.projectionMatrix, gBuffer.offscreen, gBuffer.emissive, cmd);
+
+	// PostProcessing
+	postprocess_bloom(
+		gBuffer.offscreen, 
+		GPUImageLayout_RenderTarget, 
+		GPUImageLayout_RenderTarget, 
+		gBuffer.emissive,
+		GPUImageLayout_RenderTarget,
+		GPUImageLayout_RenderTarget,
+		0.9f, 
+		80.f, 
+		5u, 
+		cmd
+	);
+
+	// Present
+	graphics_present(gBuffer.offscreen, GPUImageLayout_RenderTarget, cmd);
 }
 
 Result SpaceState::close()
 {
-	scene.destroy();
+	ecs_destroy(ecs);
+
+	gBuffer.destroy();
 
 	return Result_Success;
 }
 
-CameraComponent& SpaceState::getCamera()
+CameraProjection& SpaceState::getCamera()
 {
-	return *ecs_component_get<CameraComponent>(scene, scene.getMainCamera());
+	return projection;
 }
 
 

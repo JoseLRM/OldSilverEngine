@@ -1,24 +1,25 @@
+#include "core.hlsl"
 
-#name SpriteVertex
-#shadertype VertexShader
-
-struct VertexInput {
+struct Input {
 	float4 position : Position;
 	float2 texCoord : TexCoord;
 	float4 color : Color;
+	float4 eColor : EmissionColor;
 };
 
-struct VertexOutput {
+struct Output {
 	float4 color : FragColor;
+	float4 eColor : FragEmissionColor;
 	float2 texCoord : FragTexCoord;
 	float4 position : SV_Position;
 };
 
-#userblock SpriteVertex
-
-// Main
-UserVertexOutput main(VertexInput input)
+Output main(Input input)
 {
-	return spriteVertex(input);
+	Output output;
+	output.color = input.color;
+	output.eColor = input.eColor;
+	output.texCoord = input.texCoord;
+	output.position = input.position;
+	return output;
 }
-			

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "scene/scene.h"
 #include "core/input.h"
+#include "core/rendering/render_utils.h"
 
 #define GAME_TITLE L"Game Test"
 
@@ -21,11 +21,11 @@ struct GameState {
 	virtual void	render() = 0;
 	virtual Result	close() = 0;
 
-	virtual CameraComponent& getCamera() = 0;
+	virtual CameraProjection& getCamera() = 0;
 
-	SV_INLINE f32 camWidth() { return getCamera().projection.width; }
-	SV_INLINE f32 camHeight() { return getCamera().projection.height; }
-	SV_INLINE v2_f32 camSize() { CameraComponent& cam = getCamera(); return { cam.projection.width, cam.projection.height }; }
+	SV_INLINE f32 camWidth() { return getCamera().width; }
+	SV_INLINE f32 camHeight() { return getCamera().height; }
+	SV_INLINE v2_f32 camSize() { CameraProjection& cam = getCamera(); return { cam.width, cam.height }; }
 
 	SV_INLINE i32 inScreenX(f32 x, f32 r)
 	{
