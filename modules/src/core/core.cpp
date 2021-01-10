@@ -5,7 +5,7 @@
 
 #include "core/platform/impl.h"
 #include "core/window.h"
-#include "utils/io.h"
+#include "core/utils/io.h"
 #include "core_internal.h"
 
 #ifdef SV_PLATFORM_WIN

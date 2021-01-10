@@ -24,6 +24,10 @@ namespace sv {
 
 	// EMISSIVE PASS
 
+	static RenderPass*	g_RenderPass_Emissive = nullptr;
+	static BlendState*	g_BS_Emissive = nullptr;
+	static Sampler*		g_Sampler_Emissive = nullptr;
+
 	// BLUR PASS
 
 	static RenderPass*	g_RenderPass_Blur = nullptr;
@@ -40,7 +44,7 @@ namespace sv {
 
 	Result pp_bloomInitialize()
 	{
-		svCheck(graphics_shader_compile_fastbin("PS_BloomThreshold", ShaderType_Pixel, &g_PS_Threshold, R"(
+		svCheck(graphics_shader_compile_fastbin_from_string("PS_BloomThreshold", ShaderType_Pixel, &g_PS_Threshold, R"(
 #include "core.hlsl"
 
 struct Input {
@@ -71,7 +75,7 @@ Output main(Input input)
 }
 		)", true));
 
-		svCheck(graphics_shader_compile_fastbin("PS_BloomBlur", ShaderType_Pixel, &g_PS_Blur, R"(
+		svCheck(graphics_shader_compile_fastbin_from_string("PS_BloomBlur", ShaderType_Pixel, &g_PS_Blur, R"(
 #include "core.hlsl"
 
 struct Input {
@@ -88,33 +92,33 @@ SV_CONSTANT_BUFFER(BlurBuffer, b0) {
 };
 SV_SAMPLER(Sam, s0);
 
+static const u32 SAMPLES = 17u;	
+
+static const f32 weights[] = {
+
+	0.08714879632386216,
+	0.08509506327289246,
+	0.07922052979655275,
+	0.07031660076677806,
+	0.059506661727330365,
+	0.048013354392469045,
+	0.03693577601198269,
+	0.027090706403713718,
+	0.018944381870605587,
+	0.012630687290649084,
+	0.008028971914424055,
+	0.004866086962193581,
+	0.00281182201322326,
+	0.0015491206978279991,
+	0.0008137178183738435,
+	0.0004075259886298812,
+	0.00019459491042249266
+
+};
+
 Output main(Input input) 
 {
 	Output output;
-
-	const u32 SAMPLES = 17u;	
-
-	const f32 weights[SAMPLES] = {
-
-		0.08714879632386216,
-		0.08509506327289246,
-		0.07922052979655275,
-		0.07031660076677806,
-		0.059506661727330365,
-		0.048013354392469045,
-		0.03693577601198269,
-		0.027090706403713718,
-		0.018944381870605587,
-		0.012630687290649084,
-		0.008028971914424055,
-		0.004866086962193581,
-		0.00281182201322326,
-		0.0015491206978279991,
-		0.0008137178183738435,
-		0.0004075259886298812,
-		0.00019459491042249266
-
-	};
 
 	f32 stepRange = abs(range) / f32(SAMPLES);
 
@@ -175,6 +179,9 @@ Output main(Input input)
 			svCheck(graphics_sampler_create(&desc, &g_Sampler_Threshold));
 			graphics_name_set(g_Sampler_Threshold, "Sampler_BloomThreshold");
 
+			svCheck(graphics_sampler_create(&desc, &g_Sampler_Emissive));
+			graphics_name_set(g_Sampler_Emissive, "Sampler_BloomEmissive");
+
 			desc.addressModeU = SamplerAddressMode_Mirror;
 			desc.addressModeV = SamplerAddressMode_Mirror;
 			desc.addressModeW = SamplerAddressMode_Mirror;
@@ -198,6 +205,11 @@ Output main(Input input)
 
 			svCheck(graphics_renderpass_create(&desc, &g_RenderPass_Threshold));
 			graphics_name_set(g_RenderPass_Threshold, "RenderPass_BloomThreshold");
+
+			desc.attachments[0].loadOp = AttachmentOperation_Load;
+
+			svCheck(graphics_renderpass_create(&desc, &g_RenderPass_Emissive));
+			graphics_name_set(g_RenderPass_Emissive, "RenderPass_BloomEmissive");
 
 			desc.attachments[0].loadOp = AttachmentOperation_DontCare;
 
@@ -225,6 +237,9 @@ Output main(Input input)
 
 			svCheck(graphics_blendstate_create(&desc, &g_BS_Threshold));
 			graphics_name_set(g_BS_Threshold, "BlendState_BloomThreshold");
+
+			svCheck(graphics_blendstate_create(&desc, &g_BS_Emissive));
+			graphics_name_set(g_BS_Emissive, "BlendState_BloomEmissive");
 
 			desc.attachments[0].dstColorBlendFactor = BlendFactor_Zero;
 			desc.attachments[0].dstAlphaBlendFactor = BlendFactor_Zero;
@@ -264,7 +279,18 @@ Output main(Input input)
 		return Result_Success;
 	}
 
-	void PostProcessing::bloom(GPUImage* img, GPUImageLayout imgLayout, GPUImageLayout newLayout, f32 threshold, f32 range, u32 iterations, CommandList cmd)
+	void postprocess_bloom(
+		GPUImage* img,
+		GPUImageLayout imgOldLayout,
+		GPUImageLayout imgNewLayout,
+		GPUImage* emission,
+		GPUImageLayout emissionOldLayout,
+		GPUImageLayout emissionNewLayout,
+		f32 threshold,
+		f32 range,
+		u32 iterations,
+		CommandList cmd
+	)
 	{
 		SV_ASSERT(graphics_image_get_format(img) == GBuffer::FORMAT_OFFSCREEN);
 
@@ -306,10 +332,20 @@ Output main(Input input)
 			}
 		}
 
-		// Set img as ShaderResource
-		if (imgLayout != GPUImageLayout_ShaderResource) {
-			GPUBarrier barrier = GPUBarrier::Image(img, imgLayout, GPUImageLayout_ShaderResource);
-			graphics_barrier(&barrier, 1u, cmd);
+		// Set img and emission as ShaderResource
+		{
+			u32 barrierCount = 0u;
+			GPUBarrier barrier[2u];
+
+			if (imgOldLayout != GPUImageLayout_ShaderResource) {
+				barrier[barrierCount++] = GPUBarrier::Image(img, imgOldLayout, GPUImageLayout_ShaderResource);
+			}
+
+			if (emission && emissionOldLayout != GPUImageLayout_ShaderResource) {
+				barrier[barrierCount++] = GPUBarrier::Image(emission, emissionOldLayout, GPUImageLayout_ShaderResource);
+			}
+			
+			graphics_barrier(barrier, barrierCount, cmd);
 		}
 
 		graphics_state_unbind(cmd);
@@ -347,7 +383,19 @@ Output main(Input input)
 			graphics_renderpass_end(cmd);
 		}
 
-		// TODO: EMISIVE PASS
+		// EMISSION PASS 
+		if (emission) {
+
+			graphics_shader_bind(g_PS_DefPostProcessing, cmd);
+			graphics_blendstate_bind(g_BS_Emissive, cmd);
+
+			graphics_image_bind(emission, 0u, ShaderType_Pixel, cmd);
+			graphics_sampler_bind(g_Sampler_Emissive, 0u, ShaderType_Pixel, cmd);
+
+			graphics_renderpass_begin(g_RenderPass_Emissive, att, nullptr, 0.f, 0u, cmd);
+			graphics_draw(3u, 1u, 0u, 0u, cmd);
+			graphics_renderpass_end(cmd);
+		}
 
 		// BLUR PASS
 		{
@@ -438,9 +486,19 @@ Output main(Input input)
 			}
 		}
 
-		if (newLayout != GPUImageLayout_RenderTarget) {
-			GPUBarrier barrier = GPUBarrier::Image(img, GPUImageLayout_RenderTarget, newLayout);
-			graphics_barrier(&barrier, 1u, cmd);
+		{
+			u32 barrierCount = 0u;
+			GPUBarrier barrier[2u];
+
+			if (imgNewLayout != GPUImageLayout_ShaderResource) {
+				barrier[barrierCount++] = GPUBarrier::Image(img, GPUImageLayout_RenderTarget, imgNewLayout);
+			}
+
+			if (emission && emissionNewLayout != GPUImageLayout_ShaderResource) {
+				barrier[barrierCount++] = GPUBarrier::Image(emission, GPUImageLayout_ShaderResource, emissionNewLayout);
+			}
+
+			graphics_barrier(barrier, barrierCount, cmd);
 		}
 		
 		auximg_pop(aux0Index, GPUImageLayout_ShaderResource, cmd);

@@ -18,7 +18,7 @@ namespace sv {
 
 	Result pp_toneMappingInitialize()
 	{
-		svCheck(graphics_shader_compile_fastbin("PS_ToneMapping", ShaderType_Pixel, &g_PS_ToneMapping, R"(
+		svCheck(graphics_shader_compile_fastbin_from_string("PS_ToneMapping", ShaderType_Pixel, &g_PS_ToneMapping, R"(
 #include "core.hlsl"
 
 struct Input {
@@ -101,7 +101,7 @@ Output main(Input input)
 		return Result_Success;
 	}
 
-	void PostProcessing::toneMapping(GPUImage* img, GPUImageLayout imgLayout, GPUImageLayout newLayout, f32 exposure, CommandList cmd)
+	void postprocess_toneMapping(GPUImage* img, GPUImageLayout imgLayout, GPUImageLayout newLayout, f32 exposure, CommandList cmd)
 	{
 		GPUImage* aux;
 		size_t auxIndex;

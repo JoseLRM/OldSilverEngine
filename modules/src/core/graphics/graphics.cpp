@@ -350,6 +350,17 @@ namespace sv {
 		g_Device.present(image, region, layout, cmd);
 	}
 
+	void graphics_present(GPUImage* image, GPUImageLayout layout, CommandList cmd)
+	{
+		GPUImage_internal& img = *reinterpret_cast<GPUImage_internal*>(image);
+
+		GPUImageRegion reg;
+		reg.offset = { 0u, 0u, 0u };
+		reg.size = { img.width, img.height, 1u };
+
+		g_Device.present(image, reg, layout, cmd);
+	}
+
 	void graphics_swapchain_resize()
 	{
 		g_Device.swapchain_resize();

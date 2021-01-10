@@ -48,6 +48,10 @@ namespace sv {
 		desc.format = FORMAT_NORMAL;
 		svCheck(graphics_image_create(&desc, &normal));
 
+		// Emissive
+		desc.format = FORMAT_EMISSIVE;
+		svCheck(graphics_image_create(&desc, &emissive));
+
 		// Depth Stencil
 		desc.format = FORMAT_DEPTHSTENCIL;
 		desc.layout = GPUImageLayout_DepthStencil;
@@ -68,6 +72,7 @@ namespace sv {
 		svCheck(graphics_destroy(offscreen));
 		svCheck(graphics_destroy(diffuse));
 		svCheck(graphics_destroy(normal));
+		svCheck(graphics_destroy(emissive));
 		svCheck(graphics_destroy(depthStencil));
 
 		return Result_Success;

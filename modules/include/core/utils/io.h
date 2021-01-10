@@ -7,6 +7,7 @@ namespace sv {
 
 	Result file_read_binary(const char* filePath, u8** pData, size_t* pSize);
 	Result file_read_binary(const char* filePath, std::vector<u8>& data);
+	Result file_read_text(const char* filePath, std::string& str);
 	Result file_write_binary(const char* filePath, const u8* data, size_t size, bool append = false);
 	Result file_write_text(const char* filePath, const char* str, size_t size, bool append = false);
 

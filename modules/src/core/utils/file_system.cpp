@@ -2,6 +2,7 @@
 
 #include "core/utils/helper.h"
 #include "core/utils/io.h"
+#include "io.h"
 
 #ifdef SV_RES_PATH
 #define PARSE_RES_PATH() std::string filePathStr; \
@@ -51,6 +52,26 @@ namespace sv {
 		stream.seekg(0u);
 
 		stream.read((char*)data.data(), data.size());
+
+		stream.close();
+
+		return Result_Success;
+	}
+
+	Result file_read_text(const char* filePath, std::string& str)
+	{
+		PARSE_RES_PATH();
+
+		std::ifstream stream;
+		stream.open(filePath, std::ios::ate);
+		if (!stream.is_open())
+			return Result_NotFound;
+
+		str.resize(stream.tellg());
+
+		stream.seekg(0u);
+
+		stream.read(str.data(), str.size());
 
 		stream.close();
 

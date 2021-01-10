@@ -9,7 +9,7 @@ namespace sv {
 
 	Result PostProcessing_internal::initialize()
 	{
-		svCheck(graphics_shader_compile_fastbin("PPShader_DefaultVertex", ShaderType_Vertex, &g_VS_DefPostProcessing, R"(
+		svCheck(graphics_shader_compile_fastbin_from_string("PPShader_DefaultVertex", ShaderType_Vertex, &g_VS_DefPostProcessing, R"(
 #include "core.hlsl"
 
 struct Output {
@@ -30,7 +30,7 @@ Output main(u32 id : SV_VertexID)
 }
 		)"));
 
-		svCheck(graphics_shader_compile_fastbin("PPShader_DefaultPixel", ShaderType_Pixel, &g_PS_DefPostProcessing, R"(
+		svCheck(graphics_shader_compile_fastbin_from_string("PPShader_DefaultPixel", ShaderType_Pixel, &g_PS_DefPostProcessing, R"(
 #include "core.hlsl"
 
 struct Input {

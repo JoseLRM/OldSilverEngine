@@ -133,17 +133,18 @@ namespace sv {
 
 	// Entity
 
-	Entity		ecs_entity_create(ECS* ecs, Entity parent = SV_ENTITY_NULL);
-	void		ecs_entity_destroy(ECS* ecs, Entity entity);
-	void		ecs_entity_clear(ECS* ecs, Entity entity);
-	Entity		ecs_entity_duplicate(ECS* ecs, Entity entity);
-	bool		ecs_entity_is_empty(ECS* ecs, Entity entity);
-	bool		ecs_entity_exist(ECS* ecs, Entity entity);
-	u32			ecs_entity_childs_count(ECS* ecs, Entity parent);
-	void		ecs_entity_childs_get(ECS* ecs, Entity parent, Entity const** childsArray);
-	Entity		ecs_entity_parent_get(ECS* ecs, Entity entity);
-	Transform	ecs_entity_transform_get(ECS* ecs, Entity entity);
-	u32			ecs_entity_component_count(ECS* ecs, Entity entity);
+	Entity			ecs_entity_create(ECS* ecs, Entity parent = SV_ENTITY_NULL, const char* name = nullptr);
+	void			ecs_entity_destroy(ECS* ecs, Entity entity);
+	void			ecs_entity_clear(ECS* ecs, Entity entity);
+	Entity			ecs_entity_duplicate(ECS* ecs, Entity entity);
+	bool			ecs_entity_is_empty(ECS* ecs, Entity entity);
+	bool			ecs_entity_exist(ECS* ecs, Entity entity);
+	std::string&	ecs_entity_name(ECS* ecs, Entity entity);
+	u32				ecs_entity_childs_count(ECS* ecs, Entity parent);
+	void			ecs_entity_childs_get(ECS* ecs, Entity parent, Entity const** childsArray);
+	Entity			ecs_entity_parent_get(ECS* ecs, Entity entity);
+	Transform		ecs_entity_transform_get(ECS* ecs, Entity entity);
+	u32				ecs_entity_component_count(ECS* ecs, Entity entity);
 
 	void ecs_entities_create(ECS* ecs, u32 count, Entity parent = SV_ENTITY_NULL, Entity* entities = nullptr);
 	void ecs_entities_destroy(ECS* ecs, Entity const* entities, u32 count);

@@ -2,7 +2,6 @@
 
 #include "core/engine.h"
 #include "core/core_internal.h"
-#include "core/rendering/material_system/material_system_internal.h"
 #include "core/rendering/debug_renderer/debug_renderer_internal.h"
 #include "core/rendering/postprocessing/postprocessing_internal.h"
 #include "core/rendering/render_utils/render_utils_internal.h"
@@ -23,11 +22,7 @@
 #include "mesh/model/model_internal.h"
 #endif
 
-#ifdef SV_MODULE_SCENE
-#include "scene/scene_internal.h"
-#endif
-
-#include "particle/particle_emission/particle_emission_internal.h"
+#include "particle/particle_system_internal.h"
 
 namespace sv {
 
@@ -86,20 +81,23 @@ namespace sv {
 			svCheck(window_initialize(desc.windowStyle, desc.windowBounds, desc.windowTitle, desc.iconFilePath));
 			svCheck(graphics_initialize());
 			svCheck(sprite_animator_initialize());
-			svCheck(matsys_initialize());
+
+#ifdef SV_MODULE_MESH
 			svCheck(model_initialize());
+#endif
+
 			svCheck(render_utils_initialize());
 
 			// Renderers
 			svCheck(DebugRenderer_internal::initialize());
 			svCheck(PostProcessing_internal::initialize());
-			svCheck(SpriteRenderer_internal::initialize());
+			svCheck(sprite_module_initialize());
+
+#ifdef SV_MODULE_MESH
 			svCheck(MeshRenderer_internal::initialize());
-			svCheck(SceneRenderer_internal::initialize());
+#endif
 
 			svCheck(partsys_initialize());
-
-			svCheck(scene_initialize());
 
 			// APPLICATION
 			svCheck(g_App.initialize());
@@ -165,9 +163,6 @@ namespace sv {
 			// Begin Rendering
 			graphics_begin();
 
-			// Before rendering, update materials
-			matsys_update();
-
 			// User Rendering
 			g_App.render();
 			
@@ -196,20 +191,23 @@ namespace sv {
 
 			asset_free_unused();
 
-			if (result_fail(scene_close())) { SV_LOG_ERROR("Can't close the scene system"); }
-
 			if (result_fail(partsys_close())) { SV_LOG_ERROR("Can't close Particle System"); }
 
 			// Renderers
-			if (result_fail(SceneRenderer_internal::close())) { SV_LOG_ERROR("Can't close Scene Renderer"); }
+#ifdef SV_MODULE_MESH
 			if (result_fail(MeshRenderer_internal::close())) { SV_LOG_ERROR("Can't close the mesh renderer"); }
-			if (result_fail(SpriteRenderer_internal::close())) { SV_LOG_ERROR("Can't close the sprite renderer"); }
+#endif
+
+			if (result_fail(sprite_module_close())) { SV_LOG_ERROR("Can't close the sprite renderer"); }
 			if (result_fail(PostProcessing_internal::close())) { SV_LOG_ERROR("Can't close the postprocessing"); }
 			if (result_fail(DebugRenderer_internal::close())) { SV_LOG_ERROR("Can't close the debug renderer"); }
 
 			if (result_fail(render_utils_close())) { SV_LOG_ERROR("Can't close the render utils"); }
-			if (result_fail(matsys_close())) { SV_LOG_ERROR("Can't close the material system"); }
+
+#ifdef SV_MODULE_MESH
 			if (result_fail(model_close())) { SV_LOG_ERROR("Can't close the model system"); }
+#endif
+
 			if (result_fail(sprite_animator_close())) { SV_LOG_ERROR("Can't close the sprite animator"); }
 			if (result_fail(graphics_close())) { SV_LOG_ERROR("Can't close graphics"); }
 			if (result_fail(window_close())) { SV_LOG_ERROR("Can't close the window"); }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "particle/particle_emission.h"
+#include "particle/particle_system.h"
 
 namespace sv {
 

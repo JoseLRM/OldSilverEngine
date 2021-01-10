@@ -527,7 +527,7 @@ namespace sv {
 
 	///////////////////////////////////// ENTITIES ////////////////////////////////////////
 
-	Entity ecs_entity_create(ECS* ecs_, Entity parent)
+	Entity ecs_entity_create(ECS* ecs_, Entity parent, const char* name)
 	{
 		parseECS();
 
@@ -560,6 +560,9 @@ namespace sv {
 				}
 			}
 		}
+
+		if (name)
+			ecs.entityData[entity].name = name;
 
 		ecs_dispatch_OnEntityCreate(ecs, entity);
 
@@ -690,6 +693,13 @@ namespace sv {
 
 		EntityData& ed = ecs.entityData[entity];
 		return ed.handleIndex != u64_max;
+	}
+
+	std::string& ecs_entity_name(ECS* ecs_, Entity entity)
+	{
+		parseECS();
+		SV_ASSERT(ecs_entity_exist(ecs_, entity));
+		return ecs.entityData[entity].name;
 	}
 
 	u32 ecs_entity_childs_count(ECS* ecs_, Entity parent)

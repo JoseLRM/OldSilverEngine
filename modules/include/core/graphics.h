@@ -527,6 +527,7 @@ namespace sv {
 	typedef u32 CommandList;
 
 	void graphics_present(GPUImage* image, const GPUImageRegion& region, GPUImageLayout layout, CommandList cmd);
+	void graphics_present(GPUImage* image, GPUImageLayout layout, CommandList cmd);
 
 	GraphicsAPI graphics_api_get();
 
@@ -654,7 +655,12 @@ namespace sv {
 
 	Result graphics_shader_compile_string(const ShaderCompileDesc* desc, const char* str, u32 size, std::vector<u8>& data);
 	Result graphics_shader_compile_file(const ShaderCompileDesc* desc, const char* srcPath, std::vector<u8>& data);
-	Result graphics_shader_compile_fastbin(const char* name, ShaderType shaderType, Shader** pShader, const char* src, bool alwaisCompile = false);
+	
+	/*
+		Compiles the shader if doesn't exist in the bin file
+	*/
+	Result graphics_shader_compile_fastbin_from_string(const char* name, ShaderType shaderType, Shader** pShader, const char* src, bool alwaisCompile = false);
+	Result graphics_shader_compile_fastbin_from_file(const char* name, ShaderType shaderType, Shader** pShader, const char* filePath, bool alwaisCompile = false);
 
 	const ShaderInfo* graphics_shader_info_get(Shader* shader);
 

@@ -188,7 +188,7 @@ namespace sv {
 		return Result_Success;
 	}
 
-	Result graphics_shader_compile_fastbin(const char* name, ShaderType shaderType, Shader** pShader, const char* src, bool alwaisCompile)
+	Result graphics_shader_compile_fastbin_from_string(const char* name, ShaderType shaderType, Shader** pShader, const char* src, bool alwaisCompile)
 	{
 		std::vector<u8> data;
 		size_t hash = hash_string(name);
@@ -210,6 +210,38 @@ namespace sv {
 			c.shaderType = shaderType;
 
 			svCheck(graphics_shader_compile_string(&c, src, u32(strlen(src)), data));
+			svCheck(bin_write(hash, data.data(), u32(data.size())));
+		}
+
+		desc.binDataSize = data.size();
+		desc.pBinData = data.data();
+		return graphics_shader_create(&desc, pShader);
+	}
+
+	Result graphics_shader_compile_fastbin_from_file(const char* name, ShaderType shaderType, Shader** pShader, const char* filePath, bool alwaisCompile)
+	{
+		std::vector<u8> data;
+		size_t hash = hash_string(name);
+
+		ShaderDesc desc;
+		desc.shaderType = shaderType;
+
+#ifdef SV_ENABLE_GFX_VALIDATION
+		if (alwaisCompile || result_fail(bin_read(hash, data))) {
+#else
+		if (result_fail(bin_read(hash, data))) {
+#endif
+			std::string str;
+			svCheck(file_read_text(filePath, str));
+
+			ShaderCompileDesc c;
+			c.api = graphics_api_get();
+			c.entryPoint = "main";
+			c.majorVersion = 6u;
+			c.minorVersion = 0u;
+			c.shaderType = shaderType;
+
+			svCheck(graphics_shader_compile_string(&c, str.data(), strlen(str.data()), data));
 			svCheck(bin_write(hash, data.data(), u32(data.size())));
 		}
 

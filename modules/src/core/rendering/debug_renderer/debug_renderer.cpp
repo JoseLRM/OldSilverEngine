@@ -169,14 +169,14 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 	Result DebugRenderer_internal::initialize()
 	{
 		// Create Shaders
-		svCheck(graphics_shader_compile_fastbin("DefaultRenderer_QuadVertex", ShaderType_Vertex, &g_QuadVertexShader, QUAD_VERTEX_SHADER_SRC));
-		svCheck(graphics_shader_compile_fastbin("DefaultRenderer_QuadPixel", ShaderType_Pixel, &g_QuadPixelShader, QUAD_PIXEL_SHADER_SRC));
+		svCheck(graphics_shader_compile_fastbin_from_string("DefaultRenderer_QuadVertex", ShaderType_Vertex, &g_QuadVertexShader, QUAD_VERTEX_SHADER_SRC));
+		svCheck(graphics_shader_compile_fastbin_from_string("DefaultRenderer_QuadPixel", ShaderType_Pixel, &g_QuadPixelShader, QUAD_PIXEL_SHADER_SRC));
 
-		svCheck(graphics_shader_compile_fastbin("DefaultRenderer_EllipseVertex", ShaderType_Vertex, &g_EllipseVertexShader, ELLIPSE_VERTEX_SHADER_SRC));
-		svCheck(graphics_shader_compile_fastbin("DefaultRenderer_EllipsePixel", ShaderType_Pixel, &g_EllipsePixelShader, ELLIPSE_PIXEL_SHADER_SRC));
+		svCheck(graphics_shader_compile_fastbin_from_string("DefaultRenderer_EllipseVertex", ShaderType_Vertex, &g_EllipseVertexShader, ELLIPSE_VERTEX_SHADER_SRC));
+		svCheck(graphics_shader_compile_fastbin_from_string("DefaultRenderer_EllipsePixel", ShaderType_Pixel, &g_EllipsePixelShader, ELLIPSE_PIXEL_SHADER_SRC));
 
-		svCheck(graphics_shader_compile_fastbin("DefaultRenderer_SpriteVertex", ShaderType_Vertex, &g_SpriteVertexShader, SPRITE_VERTEX_SHADER_SRC));
-		svCheck(graphics_shader_compile_fastbin("DefaultRenderer_SpritePixel", ShaderType_Pixel, &g_SpritePixelShader, SPRITE_PIXEL_SHADER_SRC));
+		svCheck(graphics_shader_compile_fastbin_from_string("DefaultRenderer_SpriteVertex", ShaderType_Vertex, &g_SpriteVertexShader, SPRITE_VERTEX_SHADER_SRC));
+		svCheck(graphics_shader_compile_fastbin_from_string("DefaultRenderer_SpritePixel", ShaderType_Pixel, &g_SpritePixelShader, SPRITE_PIXEL_SHADER_SRC));
 
 		// Create RenderPass
 		{

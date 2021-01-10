@@ -1,11 +1,9 @@
 #pragma once
 
-#include "core/rendering/material_system.h"
+#include "core/graphics.h"
+#include "core/utils/allocator.h"
 
 namespace sv {
-
-	// TODO: Move to SceneRenderer
-	static constexpr u32 RENDERLAYER_COUNT = 16u;
 
 	// TODO: Copy & Move operator
 	struct GBuffer {
@@ -13,6 +11,7 @@ namespace sv {
 		static constexpr Format FORMAT_OFFSCREEN = Format_R16G16B16A16_FLOAT;
 		static constexpr Format FORMAT_DIFFUSE = Format_R16G16B16A16_FLOAT;
 		static constexpr Format FORMAT_NORMAL = Format_R16G16B16A16_FLOAT;
+		static constexpr Format FORMAT_EMISSIVE = Format_R8G8B8A8_UNORM;
 		static constexpr Format FORMAT_DEPTHSTENCIL = Format_D24_UNORM_S8_UINT;
 
 		~GBuffer();
@@ -20,6 +19,7 @@ namespace sv {
 		GPUImage* offscreen		= nullptr;
 		GPUImage* diffuse		= nullptr;
 		GPUImage* normal		= nullptr;
+		GPUImage* emissive		= nullptr;
 		GPUImage* depthStencil	= nullptr;
 
 		//TODO: setResolution();
@@ -73,7 +73,6 @@ namespace sv {
 		v3_f32				position;
 		v4_f32				rotation;
 		CameraProjection*	pProjection;
-		CameraBuffer*		pCameraBuffer;
 		GBuffer*			pGBuffer;
 
 	};
@@ -82,13 +81,13 @@ namespace sv {
 
 		LightType type;
 		Color3f color;
-		float intensity;
+		f32 intensity;
 
 		union {
 			struct {
-				v3_f32 position;
-				float range;
-				float smoothness;
+				v3_f32	position;
+				f32		range;
+				f32		smoothness;
 			} point;
 
 			struct {
@@ -99,6 +98,13 @@ namespace sv {
 		LightInstance() = default;
 		LightInstance(const LightInstance& other) = default;
 		LightInstance(const v3_f32& pos, const Color3f& color, float range, float intensity, float smoothness) : type(LightType_Point), color(color), intensity(intensity), point({ pos, range, smoothness }) {}
+	};
+
+	struct LightData {
+
+		FrameList<LightInstance>	lights;
+		Color3f						ambientLight;
+
 	};
 
 	// AUXILIAR IMAGES

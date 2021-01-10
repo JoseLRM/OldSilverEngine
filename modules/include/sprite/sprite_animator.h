@@ -1,13 +1,9 @@
 #pragma once
 
-#include "core/rendering/material_system.h"
+#include "core/graphics.h"
+#include "sprite.h"
 
 namespace sv {
-
-	struct Sprite {
-		TextureAsset texture;
-		v4_f32 texCoord = { 0.f, 0.f, 1.f, 1.f };
-	};
 
 	struct SpriteAnimation {
 		std::vector<Sprite> sprites;
