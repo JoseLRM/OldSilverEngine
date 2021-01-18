@@ -222,7 +222,7 @@ void SpaceState::update(f32 dt)
 		v2_f32 pos = trans.getLocalPosition().getVec2();
 		v2_f32 scale = trans.getLocalScale().getVec2();
 
-		v2_f32 mousePos = input_mouse_position_get() * camSize();
+		v2_f32 mousePos = input_mouse_position() * camSize();
 		v2_f32 toMouse = mousePos - pos;
 		f32 dir = toMouse.angle();
 
