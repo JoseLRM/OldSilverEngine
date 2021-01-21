@@ -17,9 +17,9 @@ namespace sv {
 		u32 currentFrame =  graphics_vulkan_device_get().currentFrame;
 
 		// Reset
-		if (m_LastFrame != g_Engine.frame_count) {
+		if (m_LastFrame != engine.frame_count) {
 			Reset(currentFrame);
-			m_LastFrame = g_Engine.frame_count;
+			m_LastFrame = engine.frame_count;
 		}
 
 		// Get new staging buffer

@@ -94,7 +94,7 @@ namespace sv {
 		startPath = startPathStr.c_str();
 #endif
 
-		HWND hwnd = (HWND)window_handle(g_Engine.window);
+		HWND hwnd = (HWND)window_handle(engine.window);
 
 		OPENFILENAMEA file;
 		SV_ZERO_MEMORY(&file, sizeof(OPENFILENAMEA));

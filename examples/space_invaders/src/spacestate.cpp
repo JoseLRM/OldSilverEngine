@@ -1,7 +1,5 @@
 #include "spacestate.h"
 
-#include "core/rendering/postprocessing.h"
-
 void SpaceState::shipShot(ShipComponent& ship, f32 dir, bool condition, f32 dt)
 {
 	ship.shotTime += dt;
@@ -88,33 +86,7 @@ Result createAssets(SpaceState& s)
 	s.sprite_Asteroid2.texCoord = texcoord_from_atlas(2u, 2u, 2u);
 	s.sprite_Asteroid3.texCoord = texcoord_from_atlas(2u, 2u, 3u);
 
-	// EXPLOSIONS
-
-	svCheck(explosionTex.loadFromFile("images/explosion.png"));
-
-	// ANIMATED SPRITES
-	SpriteAnimationAsset spr;
-
-	if (result_fail(spr.loadFromFile("animations/explosion.anim"))) {
-		SpriteAnimation a;
-
-		constexpr f32 offset = 1.f / 5.f;
-
-		Sprite s;
-		s.texture = explosionTex;
-		s.texCoord = { 0.f, 0.f, 1.f, 1.f };
-
-		a.sprites.push_back(Sprite{ explosionTex, { offset * 0.f, 0.f, offset * 1.f, 1.f } });
-		a.sprites.push_back(Sprite{ explosionTex, { offset * 1.f, 0.f, offset * 2.f, 1.f } });
-		a.sprites.push_back(Sprite{ explosionTex, { offset * 2.f, 0.f, offset * 3.f, 1.f } });
-		a.sprites.push_back(Sprite{ explosionTex, { offset * 3.f, 0.f, offset * 4.f, 1.f } });
-		a.sprites.push_back(Sprite{ explosionTex, { offset * 4.f, 0.f, offset * 5.f, 1.f } });
-
-		spr.createFile("animations/explosion.anim", a);
-	}
-
 	svCheck(asset_refresh());
-	svCheck(spr.loadFromFile("animations/explosion.anim"));
 
 	return Result_Success;
 }
@@ -125,7 +97,6 @@ Result SpaceState::initialize()
 	ecs_component_register<ProjectileComponent>("Projectile");
 	ecs_component_register<AsteroidComponent>("Asteroid");
 	ecs_component_register<BulletComponent>("Bullet");
-	ecs_component_register<ExplosionComponent>("Explosion");
 
 	if (result_fail(createAssets(*this))) {
 		SV_LOG_ERROR("Can't create the assets");
@@ -133,7 +104,7 @@ Result SpaceState::initialize()
 
 	ecs_create(&ecs);
 
-	random.setSeed(timer_now().GetMillisecondsUInt());
+	random.setSeed(timer_now().toMillis_u32());
 
 	// Create player
 	player = createShip({}, ShipType_Player);
@@ -144,36 +115,21 @@ Result SpaceState::initialize()
 	// Generate background particles
 	{
 		background = ecs_entity_create(ecs);
-		Particle2DEmitterComponent_CPU& ps = *ecs_component_add<Particle2DEmitterComponent_CPU>(ecs, background);
-
-		Particle2DEmitterCPU& e = ps.ps.emitters.emplace_back();
-
-		ps.renderLayer = 2u;
-		e.emission.rateTime = 1.f / 100.f;
-		e.maxParticles = 200u;
-		e.render.draw = Particle2DDraw_Sprite;
-		e.start.velocity0 = 0.f;
-		e.start.velocity1 = 0.2f;
-		e.start.size0 = 0.08f;
-		e.start.size1 = 0.3f;
-		e.start.opacity0 = 10u;
-		e.start.opacity1 = 50u;
-		e.fadeOut.fadeTime = 1.f;
-		e.start.lifeTime0 = 1.f;
-		e.start.lifeTime1 = 3.f;
-		e.emission.shape = Particle2DShape_Quad;
-		e.emission.shapeQuad.size = { 1080.f / 15.f, 720.f / 15.f };
+		// TODO
 	}
 
-	// Adjust Camera
-	gBuffer.create(1920, 1080);
+	// TEMP
+	// Create font
+	svCheck(font_create(font, "C:/Windows/Fonts/arial.ttf", 128.f, 0));
 
+	svCheck(graphics_offscreen_create(1920u, 1080u, &offscreen));
+
+	// Adjust Camera
 	projection.projectionType = ProjectionType_Orthographic;
 	projection.width = 1080.f / 15.f;
 	projection.height = 720.f / 15.f;
 	projection.near = -100.f;
 	projection.far = 100.f;
-
 	projection.updateMatrix();
 
 	return Result_Success;
@@ -181,18 +137,6 @@ Result SpaceState::initialize()
 
 void SpaceState::update(f32 dt)
 {
-	// TEMP
-	{
-		EntityView<Particle2DEmitterComponent_CPU> particles(ecs);
-
-		for (Particle2DEmitterComponent_CPU& p : particles) {
-
-			Transform trans = ecs_entity_transform_get(ecs, p.entity);
-
-			partsys_update(trans.getWorldPosition().getVec2(), trans.getWorldEulerRotation().z, p.ps, nullptr, dt);
-		}
-	}
-
 	// Asteroid Generator
 	{
 		static f32 timer = 0.f;
@@ -240,7 +184,7 @@ void SpaceState::update(f32 dt)
 		exitCount += dt;
 
 		if (exitCount > 1.5f) {
-			engine_request_close();
+			engine.close_request = true;
 		}
 	}
 
@@ -366,19 +310,6 @@ void SpaceState::update(f32 dt)
 				}
 			}
 		}
-		// Destroy Explosions
-		{
-			EntityView<ExplosionComponent> explosions(ecs);
-
-			for (ExplosionComponent& e : explosions) {
-
-				if (!e.sprite.isRunning())
-				{
-					destroyExplosion(e);
-					continue;
-				}
-			}
-		}
 	}
 }
 
@@ -421,17 +352,6 @@ void SpaceState::fixedUpdate()
 			Transform trans = ecs_entity_transform_get(ecs, ship.entity);
 
 			f32 dir = trans.getWorldEulerRotation().z;
-
-			Particle2DEmitterComponent_CPU* emitter = ecs_component_get<Particle2DEmitterComponent_CPU>(ecs, ship.entity);
-
-			// Active particles
-			if (emitter) {
-				if (ship.acc > 0.f) {
-
-					emitter->ps.emitters.back().flags |= ParticleEmitterFlag_Enable;
-				}
-				else emitter->ps.emitters.back().flags &= ~ParticleEmitterFlag_Enable;
-			}
 
 			// Apply acc
 			if (ship.acc != 0.f) {
@@ -561,39 +481,10 @@ void SpaceState::render()
 	CommandList cmd = graphics_commandlist_begin();
 
 	// Clear screen
-	graphics_image_clear(gBuffer.offscreen, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
-	graphics_image_clear(gBuffer.emissive, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
-	graphics_image_clear(gBuffer.depthStencil, GPUImageLayout_DepthStencil, GPUImageLayout_DepthStencil, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
+	graphics_image_clear(offscreen, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, { 0.f, 0.f, 0.f, 1.f }, 1.f, 0u, cmd);
 
-	graphics_viewport_set(gBuffer.offscreen, 0u, cmd);
-	graphics_scissor_set(gBuffer.offscreen, 0u, cmd);
-
-	particle_instances.reset();
-
-	// Draw background particles
-	{
-		Transform trans = ecs_entity_transform_get(ecs, background);
-
-		Particle2DInstance instance(trans.getWorldPosition().getVec2(), trans.getWorldEulerRotation().z, &ecs_component_get<Particle2DEmitterComponent_CPU>(ecs, background)->ps);
-		partsys_render(&instance, 1u, projection.projectionMatrix,gBuffer.offscreen, gBuffer.emissive, cmd);
-	}
-
-	// Draw all particles
-	{
-		EntityView<Particle2DEmitterComponent_CPU> particles(ecs);
-
-		for (Particle2DEmitterComponent_CPU& e : particles) {
-
-			if (e.entity == background) continue;
-
-			Transform trans = ecs_entity_transform_get(ecs, e.entity);
-
-			particle_instances.emplace_back(trans.getWorldPosition().getVec2(), trans.getWorldEulerRotation().z, &e.ps);
-
-		}
-
-		partsys_render(particle_instances.data(), particle_instances.size(), projection.projectionMatrix, gBuffer.offscreen, gBuffer.emissive, cmd);
-	}
+	graphics_viewport_set(offscreen, 0u, cmd);
+	graphics_scissor_set(offscreen, 0u, cmd);
 
 	sprite_instances.reset();
 
@@ -607,7 +498,7 @@ void SpaceState::render()
 			Transform trans = ecs_entity_transform_get(ecs, b.entity);
 			tm = trans.getWorldMatrix();
 
-			sprite_instances.emplace_back(tm, v4_f32{ 0.f, 0.f, 1.f, 1.f }, nullptr, Color::Blue(), Color::Blue());
+			sprite_instances.emplace_back(tm, v4_f32{ 0.f, 0.f, 1.f, 1.f }, nullptr, Color::Blue());
 		}
 	}
 
@@ -647,7 +538,7 @@ void SpaceState::render()
 				break;
 			}
 
-			sprite_instances.emplace_back(tm, texCoord, image, Color::White(), ship.color);
+			sprite_instances.emplace_back(tm, texCoord, image, Color::White());
 		}
 	}
 
@@ -694,52 +585,42 @@ void SpaceState::render()
 		}
 	}
 
-	// Draw Explosions
-	{
-		EntityView<ExplosionComponent> explosions(ecs);
-		XMMATRIX tm;
-
-		for (ExplosionComponent& e : explosions) {
-
-			Transform trans = ecs_entity_transform_get(ecs, e.entity);
-			tm = trans.getWorldMatrix();
-
-			Sprite s = e.sprite.getSprite();
-			sprite_instances.emplace_back(tm, s.texCoord, s.texture.get(), Color::White());
-		}
-	}
-
 	// Draw Sprites
-	draw_sprites(sprite_instances.data(), sprite_instances.size(), projection.projectionMatrix, gBuffer.offscreen, gBuffer.emissive, cmd);
+	draw_sprites(sprite_instances.data(), sprite_instances.size(), projection.projectionMatrix, offscreen, cmd);
 
-	// PostProcessing
-	postprocess_bloom(
-		gBuffer.offscreen, 
-		GPUImageLayout_RenderTarget, 
-		GPUImageLayout_RenderTarget, 
-		gBuffer.emissive,
-		GPUImageLayout_RenderTarget,
-		GPUImageLayout_RenderTarget,
-		0.9f, 
-		80.f, 
-		5u, 
-		cmd
-	);
+	// TODO: PostProcessing
+	//postprocess_bloom(
+	//	gBuffer.offscreen, 
+	//	GPUImageLayout_RenderTarget, 
+	//	GPUImageLayout_RenderTarget, 
+	//	gBuffer.emissive,
+	//	GPUImageLayout_RenderTarget,
+	//	GPUImageLayout_RenderTarget,
+	//	0.9f, 
+	//	80.f, 
+	//	5u, 
+	//	cmd
+	//);
+
+	// TEMP Draw some text
+	std::string score = "Score: ";
+	score += std::to_string(timer_now().toSeconds_u32());
+	draw_text(score.c_str(), 0.01f, 0.99f, 0.3f, 1u, 0.05f, projection.width / projection.height, TextSpace_Normal, TextAlignment_Left, &font, offscreen, cmd);
 
 	// Present
-	graphics_present(gBuffer.offscreen, GPUImageLayout_RenderTarget, cmd);
+	graphics_present(engine.window, offscreen, GPUImageLayout_RenderTarget, cmd);
 }
 
 Result SpaceState::close()
 {
 	ecs_destroy(ecs);
 
-	gBuffer.destroy();
+	graphics_destroy(offscreen);
 
 	return Result_Success;
 }
 
-CameraProjection& SpaceState::getCamera()
+CameraProjection& SpaceState::getCameraProjection()
 {
 	return projection;
 }

@@ -924,6 +924,31 @@ namespace sv {
 		return Result_Success;
 	}
 
+	Result graphics_destroy_struct(void* data, size_t size)
+	{
+		SV_ASSERT(size % sizeof(void*) == 0u);
+
+		u8* it = (u8*)data;
+		u8* end = it + size;
+
+		Result res = Result_Success;
+
+		while (it != end) {
+
+			Primitive*& primitive = *reinterpret_cast<Primitive**>(it);
+			Result res0 = graphics_destroy(primitive);
+			primitive = nullptr;
+
+			if (result_fail(res0)) {
+				res = res0;
+			}
+
+			it += sizeof(void*);
+		}
+
+		return res;
+	}
+
 	CommandList graphics_commandlist_begin()
 	{
 		CommandList cmd = g_Device.commandlist_begin();

@@ -1,7 +1,7 @@
 workspace 'SpaceInvaders'
 
     binDir = '%{wks.location}/bin/'
-	engineDir = '%{wks.location}/../../'
+	engineDir = '%{wks.location}/../../project/'
 
 	include (engineDir .. "SolutionConfig.lua")
 
@@ -19,23 +19,14 @@ workspace 'SpaceInvaders'
 		'SV_ENABLE_LOGGING',
 		'SV_ENABLE_ASSERTION',
 
-		'SV_RES_PATH=\"resources/\"',
+		'SV_RES_PATH=\"res/\"',
 	}
 
     filter {}
 
-    -- MODULES
+	-- INCLUDE SILVER ENGINE PROJECT
 
     include (engineDir .. 'ProjectConfig.lua')
-    
-	buildDir = (engineDir .. 'modules/build/')
-    include (buildDir .. 'sprite.lua')
-    include (buildDir .. 'particle.lua')
-    -- include (buildDir .. 'mesh.lua')
-
-    filter 'configurations:not Distribution'
-        include(buildDir .. 'editor.lua')
-    filter {}
     
     -- GAME PROJECT
 
@@ -52,7 +43,7 @@ workspace 'SpaceInvaders'
 	    -- INCLUDE DIRS
 
        	includedirs {
-            (engineDir .. 'modules/include/'),
+            (engineDir .. 'include/'),
             '/src/',
     	}
 

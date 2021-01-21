@@ -32,7 +32,7 @@ namespace sv {
 
 	} static gfx = {};
 
-	static TextData* g_text_data[GraphicsLimit_CommandList] = {};
+	static TextData* text_data[GraphicsLimit_CommandList] = {};
 
 	Result text_initialize()
 	{
@@ -181,22 +181,17 @@ Output main(float4 color : FragColor, float2 texCoord : FragTexCoord)
 
 	Result text_close()
 	{
-		svCheck(graphics_destroy(gfx.vs));
-		svCheck(graphics_destroy(gfx.ps));
-		svCheck(graphics_destroy(gfx.buffer_vertices));
-		svCheck(graphics_destroy(gfx.buffer_indices));
-		svCheck(graphics_destroy(gfx.ils));
-		svCheck(graphics_destroy(gfx.sampler));
+		svCheck(graphics_destroy_struct(&gfx, sizeof(gfx)));
 
 		// Free text data
 		foreach(i, GraphicsLimit_CommandList) {
-			if (g_text_data[i]) delete g_text_data[i];
+			if (text_data[i]) delete text_data[i];
 		}
 
 		return Result_Success;
 	}
 
-	u32 draw_text(GPUImage* rendertarget, const char* text, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextSpace space, TextAlignment alignment, Font* pFont, CommandList cmd)
+	u32 draw_text(const char* text, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextSpace space, TextAlignment alignment, Font* pFont, GPUImage* rendertarget, CommandList cmd)
 	{
 		if (text == nullptr) return 0u;
 
@@ -229,10 +224,10 @@ Output main(float4 color : FragColor, float2 texCoord : FragTexCoord)
 
 		graphics_inputlayoutstate_bind(gfx.ils, cmd);
 
-		if (g_text_data[cmd] == nullptr) {
-			g_text_data[cmd] = new TextData();
+		if (text_data[cmd] == nullptr) {
+			text_data[cmd] = new TextData();
 		}
-		TextData& data = *g_text_data[cmd];
+		TextData& data = *text_data[cmd];
 
 		// Text space transformation
 		f32 xmult = 0.f;

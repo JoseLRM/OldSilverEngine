@@ -1,20 +1,63 @@
 #include "SilverEngine/core.h"
 
 #include "SilverEngine/engine.h"
+#include "SilverEngine/platform/impl.h"
 #include "core_internal.h"
 
 #include "task_system/task_system_internal.h"
 #include "asset_system/asset_system_internal.h"
 #include "event_system/event_system_internal.h"
 #include "window/window_internal.h"
-#include "input/input_internal.h"
 #include "graphics/graphics_internal.h"
 #include "render_utils/render_utils_internal.h"
 
+#include "sprite/sprite_internal.h"
 
 namespace sv {
 
-	GlobalEngineData g_Engine;
+	GlobalEngineData	engine;
+	GlobalInputData		input;
+
+	void update_input()
+	{
+		input.text.clear();
+		input.text_commands.resize(1u);
+		input.text_commands.back() = TextCommand_Null;
+
+		// KEYS
+		// reset pressed and released
+		for (Key i = Key(0); i < Key_MaxEnum; ++(u32&)i) {
+
+			if (input.keys[i] == InputState_Pressed) {
+				input.keys[i] = InputState_Hold;
+			}
+			else if (input.keys[i] == InputState_Released) input.keys[i] = InputState_None;
+		}
+
+		// MOUSE BUTTONS
+		// reset pressed and released
+		for (MouseButton i = MouseButton(0); i < MouseButton_MaxEnum; ++(u32&)i) {
+
+			if (input.mouse_buttons[i] == InputState_Pressed) {
+				input.mouse_buttons[i] = InputState_Hold;
+			}
+			else if (input.mouse_buttons[i] == InputState_Released) input.mouse_buttons[i] = InputState_None;
+		}
+
+		input.mouse_last_pos = input.mouse_position;
+		input.mouse_dragged.x = 0.f;
+		input.mouse_dragged.y = 0.f;
+		input.mouse_wheel = 0.f;
+
+#ifdef SV_PLATFORM_WIN
+		MSG msg;
+
+		while (PeekMessageW(&msg, 0, 0u, 0u, PM_REMOVE) > 0) {
+			TranslateMessage(&msg);
+			DispatchMessageW(&msg);
+		}
+#endif
+	}
 
 #define CATCH catch (std::exception e) {\
 					SV_LOG_ERROR("STD Exception: %s", e.what()); \
@@ -48,7 +91,7 @@ namespace sv {
 
 		// Initialization Parameters
 		const InitializationDesc& desc = *d;
-		g_Engine.app_callbacks = desc.callbacks;
+		engine.app_callbacks = desc.callbacks;
 
 		Time initTimeBegin = timer_now();
 
@@ -64,8 +107,9 @@ namespace sv {
 			}
 
 			SV_LOG_CLEAR();
-			SV_LOG_INFO("Initializing %s", g_Engine.name.c_str());
+			SV_LOG_INFO("Initializing %s", engine.name.c_str());
 
+			// CORE
 			INIT_SYSTEM("TaskSystem", task_initialize(desc.minThreadsCount));
 			INIT_SYSTEM("EventSystem", event_initialize());
 			INIT_SYSTEM("AssetSystem", asset_initialize(desc.assetsFolderPath));
@@ -73,15 +117,18 @@ namespace sv {
 			INIT_SYSTEM("GraphicsAPI", graphics_initialize());
 			INIT_SYSTEM("RenderUtils", render_utils_initialize());
 
+			// SPRITE
+			INIT_SYSTEM("SpriteRenderer", sprite_renderer_initialize());
+
 			// Open Main Window
-			res = window_create(&desc.windowDesc, &g_Engine.window);
+			res = window_create(&desc.windowDesc, &engine.window);
 			if (result_fail(res)) {
 				SV_LOG_ERROR("Can't open the main window...");
 				return res;
 			}
 
 			// APPLICATION
-			INIT_SYSTEM("Application", g_Engine.app_callbacks.initialize());
+			INIT_SYSTEM("Application", engine.app_callbacks.initialize());
 		}
 		CATCH;
 
@@ -93,19 +140,19 @@ namespace sv {
 
 		SV_LOG_SEPARATOR();
 
-		g_Engine.able_to_run = true;
+		engine.able_to_run = true;
 		
 		return Result_Success;
 	}
 
 	Result engine_loop()
 	{
-		if (!g_Engine.able_to_run) {
+		if (!engine.able_to_run) {
 			printf("The engine is not able to run\n");
 			return Result_CloseRequest;
 		}
 
-		if (g_Engine.close_request)
+		if (engine.close_request)
 		{
 			return Result_CloseRequest;
 		}
@@ -117,34 +164,31 @@ namespace sv {
 
 			// Calculate DeltaTime
 			Time actualTime = timer_now();
-			g_Engine.deltatime = f32(actualTime - lastTime);
+			engine.deltatime = f32(actualTime - lastTime);
 			lastTime = actualTime;
 
-			if (g_Engine.deltatime > 0.3f) g_Engine.deltatime = 0.3f;
+			if (engine.deltatime > 0.3f) engine.deltatime = 0.3f;
 
 			// Calculate FPS
 			{
 				static f32 fpsTimeCount = 0.f;
 				static u32 fpsCount = 0u;
 
-				fpsTimeCount += g_Engine.deltatime;
+				fpsTimeCount += engine.deltatime;
 				++fpsCount;
 				if (fpsTimeCount > 0.25f) {
 					fpsTimeCount -= 0.25f;
-					g_Engine.FPS = fpsCount * 4u;
+					engine.FPS = fpsCount * 4u;
 					fpsCount = 0u;
 				}
 			}
 
 			// Update Input
-			input_update();
+			update_input();
 
-			// Update Window
-			window_update();
-
-			if (!window_update(g_Engine.window)) {
-				g_Engine.close_request = true;
-				g_Engine.window = nullptr;
+			if (!window_update(engine.window)) {
+				engine.close_request = true;
+				engine.window = nullptr;
 				return Result_CloseRequest;
 			}
 
@@ -152,50 +196,55 @@ namespace sv {
 			asset_update();
 
 			// Update User
-			g_Engine.app_callbacks.update();
+			engine.app_callbacks.update();
 
-			if (window_has_valid_surface(g_Engine.window)) {
+			if (window_has_valid_surface(engine.window)) {
 
 				// Begin Rendering
 				graphics_begin();
 
 				// User Rendering
-				g_Engine.app_callbacks.render();
+				engine.app_callbacks.render();
 
 				// End frame
 				graphics_end();
 			}
+			else std::this_thread::sleep_for(std::chrono::milliseconds(10u));
 		}
 		CATCH;
 
-		++g_Engine.frame_count;
+		++engine.frame_count;
 
 		if (exception_catched) 
-			g_Engine.close_request = true;
+			engine.close_request = true;
 
 		return Result_Success;
 	}
 
 	Result engine_close()
 	{
-		if (!g_Engine.able_to_run) {
+		if (!engine.able_to_run) {
 			printf("The engine is not able to close\n");
 			return Result_InvalidUsage;
 		}
-		g_Engine.able_to_run = false;
+		engine.able_to_run = false;
 
 		bool exception_catched = false;
 
 		SV_LOG_SEPARATOR();
-		SV_LOG_INFO("Closing %s", g_Engine.name.c_str());
+		SV_LOG_INFO("Closing %s", engine.name.c_str());
 
 		// APPLICATION
 		try {
-			svCheck(g_Engine.app_callbacks.close());
+			svCheck(engine.app_callbacks.close());
 
 			// Close Window
-			svCheck(window_destroy(g_Engine.window));
+			svCheck(window_destroy(engine.window));
 
+			// SPRITE
+			if (result_fail(sprite_renderer_close())) { SV_LOG_ERROR("Can't close sprite renderer"); }
+
+			// CORE
 			if (result_fail(render_utils_close())) { SV_LOG_ERROR("Can't close render utils"); }
 			if (result_fail(graphics_close())) { SV_LOG_ERROR("Can't close graphicsAPI"); }
 			if (result_fail(window_close())) { SV_LOG_ERROR("Can't close window"); }

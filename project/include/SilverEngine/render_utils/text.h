@@ -47,6 +47,6 @@ namespace sv {
 	/*
 		Return the number of character rendered
 	*/
-	u32 draw_text(GPUImage* rendertarget, const char* text, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextSpace space, TextAlignment alignment, Font* pFont, CommandList cmd);
+	u32 draw_text(const char* text, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextSpace space, TextAlignment alignment, Font* pFont, GPUImage* rendertarget, CommandList cmd);
 
 }

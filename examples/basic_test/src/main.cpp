@@ -6,6 +6,9 @@ GPUImage* offscreen = nullptr;
 Window* win = nullptr;
 DebugRenderer rend;
 Font font;
+f32 p = 0.f;
+
+GUI* gui;
 
 Result init()
 {
@@ -32,6 +35,47 @@ Result init()
 		//svCheck(font_create(font, "C:/Windows/Fonts/consola.ttf", 128.f, 0));
 	}
 
+	// Create gui
+	{
+		gui = gui_create(window_width_get(engine.window), window_height_get(engine.window));
+
+		GuiContainer& cont = *gui_window_create(gui)->container;
+		cont.color = Color::Green();
+		cont.x.value = 0.5f;
+		cont.y.value = 0.5f;
+
+		GuiButton& button = gui_button_create(gui, &cont);
+		button.x.constraint = GuiConstraint_Center;
+		button.y.value = 1.f;
+		button.y.constraint = GuiConstraint_Relative;
+		button.y.alignment = GuiCoordAlignment_Top;
+
+		button.w.constraint = GuiConstraint_Relative;
+		button.w.value = 0.2f;
+		button.h.value = 1.f;
+		button.h.constraint = GuiConstraint_Aspect;
+
+		button.color = Color::Orange();
+		button.user_id = 69u;
+
+		GuiSlider& slider = gui_slider_create(gui, &cont);
+		slider.x.constraint = GuiConstraint_Center;
+		slider.x.alignment = GuiCoordAlignment_Center;
+
+		slider.y.value = 0.4f;
+		slider.y.constraint = GuiConstraint_Relative;
+		slider.y.alignment = GuiCoordAlignment_Bottom;
+
+		slider.w.value = 0.95f;
+		slider.w.constraint = GuiConstraint_Relative;
+
+		slider.h.value = 0.08f;
+		slider.h.constraint = GuiConstraint_Aspect;
+
+		slider.min = 0.f;
+		slider.max = 0.5f;
+	}
+
 	rend.create();
 
 	return Result_Success;
@@ -39,14 +83,15 @@ Result init()
 
 void update()
 {
-	//if (input_key_pressed(' '))
-	//	window_state_set(g_Engine.window, window_state_get(g_Engine.window) == WindowState_Fullscreen ? WindowState_Windowed : WindowState_Fullscreen);
-
-	//static u32 lastFPS = 0u;
-	//if (lastFPS != g_Engine.FPS) {
-	//	SV_LOG("FPS: %u", g_Engine.FPS);
-	//	lastFPS = g_Engine.FPS;
-	//}
+	if (input.keys[Key_F11] == InputState_Pressed) {
+		engine.close_request = true;
+	}
+	if (input.keys[Key_F10] == InputState_Pressed) {
+		if (window_state_get(engine.window) == WindowState_Fullscreen) {
+			window_state_set(engine.window, WindowState_Windowed);
+		}
+		else window_state_set(engine.window, WindowState_Fullscreen);
+	}
 
 	if (win) {
 		if (!window_update(win)) {
@@ -54,6 +99,51 @@ void update()
 		}
 	}
 
+	gui_resize(gui, window_width_get(engine.window), window_height_get(engine.window));
+	gui_update(gui);
+
+	if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
+
+		if (gui_locked_input(gui).mouse_click) {
+			SV_LOG("Clicked inside");
+		}
+		else {
+			SV_LOG("Clicked outside");
+		}
+
+	}
+
+	GuiWidget* widget = gui_widget_hovered(gui);
+	if (widget && widget->user_id == 69u) {
+
+		GuiButton& button = *reinterpret_cast<GuiButton*>(widget);
+		if (button.hover_state == HoverState_Hover) {
+			button.w.value = 0.2f + sin(timer_now() * 5.f) * 0.03f;
+		}
+		else if (button.hover_state == HoverState_Leave) {
+			button.w.value = 0.2f;
+		}
+	}
+
+	widget = gui_widget_clicked(gui);
+	if (widget) {
+	}
+
+	widget = gui_widget_focused(gui);
+
+	if (widget) {
+
+		switch (widget->type)
+		{
+		case GuiWidgetType_Slider:
+		{
+			GuiSlider& slider = *reinterpret_cast<GuiSlider*>(widget);
+			p = slider.value;
+		}
+		break;
+
+		}
+	}
 }
 
 void render()
@@ -81,14 +171,13 @@ void render()
 
 	static std::string text = "";
 
-	const char* input = input_text();
-	if (input)
-		text += input;
+	const char* inp = input.text.c_str();
+	if (inp)
+		text += inp;
 
-	const TextCommand* commands = input_text_commands();
-	while (*commands != TextCommand_Null) {
+	for (const TextCommand& cmd : input.text_commands) {
 
-		switch (*commands)
+		switch (cmd)
 		{
 		case TextCommand_DeleteLeft:
 			if (text.size()) text.pop_back();
@@ -97,82 +186,24 @@ void render()
 			text += '\n';
 			break;
 		}
-
-		++commands;
 	}
 
-	static TextSpace space = TextSpace_Clip;
-
-	if (input_mouse_pressed(SV_MOUSE_LEFT)) {
-		space = TextSpace((u32(space) + 1u) % (u32(TextSpace_Offscreen) + 1u));
-
-		switch (space)
-		{
-		case TextSpace_Clip:
-			SV_LOG("Clip space!!");
-			break;
-		case TextSpace_Normal:
-			SV_LOG("Normal space!!");
-			break;
-		case TextSpace_Offscreen:
-			SV_LOG("Offscreen space!!");
-			break;
-		}
-	}
-
-	f32 x = 0.005f;
+	f32 x = 0.005f + p;
 	f32 y = 0.55f;
 	f32 size = 0.05f;
 	f32 width = 0.2f;
 
-	switch (space)
-	{
-	case TextSpace_Clip:
-		x = x * 2.f - 1.f;
-		y = y * 2.f - 1.f;
-		size *= 2.f;
-		width *= 2.f;
-		break;
-	case TextSpace_Offscreen:
-		x *= 1920.f;
-		y *= 1080.f;
-		size *= 1080.f;
-		width *= 1920.f;
-		break;
-	}
-
-	if (input_mouse(SV_MOUSE_CENTER)) {
-		const v2_f32& p = input_mouse_position();
-		x = p.x;
-		y = p.y;
-
-		switch (space)
-		{
-		case TextSpace_Clip:
-			x *= 2.f;
-			y *= 2.f;
-			break;
-		case TextSpace_Normal:
-			x += 0.5f;
-			y += 0.5f;
-			break;
-		case TextSpace_Offscreen:
-			x = (x + 0.5f) * 1920.f;
-			y = (y + 0.5f) * 1080.f;
-			break;
-		}
-	}
-
-
-	rend.drawQuad({ x + width * 0.5f, y - 1.f, 0.f }, { width, 2.f }, Color::Red(30u));
+	rend.drawQuad({ (x * 2.f - 1.f) + width * 2.f * 0.5f, y * 2.f - 1.f, 0.f }, { width * 2.f, 2.f }, Color::Red(30u));
 	rend.render(offscreen, XMMatrixIdentity(), cmd);
 	
-	f32 window_aspect = f32(window_width_get(g_Engine.window)) / f32(window_height_get(g_Engine.window));
+	f32 window_aspect = f32(window_width_get(engine.window)) / f32(window_height_get(engine.window));
 
-	u32 num = draw_text(offscreen, text.c_str(), x, y, width, 4u, size, window_aspect, space, TextAlignment_Center, &font, cmd);
+	u32 num = draw_text(text.c_str(), x, y, width, 4u, size, window_aspect, TextSpace_Normal, TextAlignment_Center, &font, offscreen, cmd);
 	text.resize(num);
 
-	graphics_present(g_Engine.window, offscreen, GPUImageLayout_RenderTarget, cmd);
+	gui_render(gui, offscreen, cmd);
+
+	graphics_present(engine.window, offscreen, GPUImageLayout_RenderTarget, cmd);
 
 	if (win) {
 		graphics_image_clear(offscreen, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, Color4f::Blue(), 1.f, 0u, cmd);
@@ -184,6 +215,8 @@ Result close()
 {
 	svCheck(graphics_destroy(offscreen));
 	svCheck(window_destroy(win));
+
+	gui_destroy(gui);
 
 	return Result_Success;
 }
@@ -201,6 +234,7 @@ int main()
 	desc.windowDesc.flags = WindowFlag_Default;
 	desc.windowDesc.iconFilePath = nullptr;
 	desc.windowDesc.state = WindowState_Windowed;
+	desc.windowDesc.state = WindowState_Fullscreen;
 	desc.windowDesc.title = L"Test";
 
 	if (result_fail(engine_initialize(&desc))) {

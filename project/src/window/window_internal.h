@@ -6,7 +6,6 @@
 namespace sv {
 
 	Result window_initialize();
-	void window_update();
 	Result window_close();
 
 	struct Window_internal {

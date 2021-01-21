@@ -1,7 +1,5 @@
 #include "game.h"
 
-#include "core/window.h"
-
 #include "spacestate.h"
 
 std::unique_ptr<GameState> g_State;
@@ -13,8 +11,10 @@ Result game_initialize()
 	return g_State->initialize();
 }
 
-void game_update(f32 dt)
+void game_update()
 {
+	f32 dt = engine.deltatime;
+
 #ifdef FPS_MODE
 	static f32 fpsTime = 0.f;
 	static u32 fpsCount = 0u;
@@ -31,14 +31,14 @@ void game_update(f32 dt)
 		fpsCount = 0u;
 		fpsTime -= 0.25f;
 
-		window_title_set(title.c_str());
+		window_title_set(engine.window, title.c_str());
 	}
 
 #endif
-
+	
 	// Adjust camera
-	CameraProjection& camera = g_State->getCamera();
-	camera.adjust(window_aspect_get());
+	CameraProjection& camera = g_State->getCameraProjection();
+	camera.adjust(window_aspect_get(engine.window));
 	camera.updateMatrix(); // TODO: Use the event system
 
 	// Update State

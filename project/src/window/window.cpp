@@ -2,7 +2,6 @@
 
 #include "SilverEngine/platform/impl.h"
 #include "window_internal.h"
-#include "input/input_internal.h"
 #include "graphics/graphics_internal.h"
 
 #ifndef SV_PLATFORM_WIN
@@ -40,14 +39,78 @@ namespace sv {
 		return Result_Success;
 	}
 
-	void window_update()
+	Key wparam_to_key(WPARAM wParam)
 	{
-		MSG msg;
+		Key key;
 
-		while (PeekMessageW(&msg, 0, 0u, 0u, PM_REMOVE) > 0) {
-			TranslateMessage(&msg);
-			DispatchMessageW(&msg);
+		if (wParam >= 'A' && wParam <= 'Z') {
+
+			key = Key(u32(Key_A) + u32(wParam) - 'A');
 		}
+		else if (wParam >= '0' && wParam <= '9') {
+
+			key = Key(u32(Key_Num0) + u32(wParam) - '0');
+		}
+		else if (wParam >= VK_F1 && wParam <= VK_F24) {
+
+			key = Key(u32(Key_F1) + u32(wParam) - VK_F1);
+		}
+		else {
+			switch (wParam)
+			{
+
+			case VK_INSERT:
+				key = Key_Insert;
+				break;
+
+			case VK_SPACE:
+				key = Key_Space;
+				break;
+
+			case VK_SHIFT:
+				key = Key_Shift;
+				break;
+
+			case VK_CONTROL:
+				key = Key_Control;
+				break;
+
+			case VK_ESCAPE:
+				key = Key_Escape;
+				break;
+
+			case 13:
+				key = Key_Enter;
+				break;
+
+			case 8:
+				key = Key_Delete;
+				break;
+			
+			case 46:
+				key = Key_Supr;
+				break;
+
+			case VK_TAB:
+				key = Key_Tab;
+				break;
+
+			case VK_CAPITAL:
+				key = Key_Capital;
+				break;
+
+			case VK_MENU:
+				key = Key_Alt;
+				break;
+
+			default:
+				SV_LOG_WARNING("Unknown keycode: %u", wParam);
+				key = Key_None;
+				break;
+			}
+		}
+
+		return key;
 	}
 
 	Result window_close()
@@ -77,45 +140,74 @@ namespace sv {
 		case WM_SYSKEYDOWN:
 		case WM_KEYDOWN:
 		{
-			// input
-			u8 keyCode = (u8)wParam;
-			if (keyCode > 255) {
-				SV_LOG_WARNING("Unknown keycode: %u", keyCode);
+			if (~lParam & (1 << 30)) {
+
+				Key key = wparam_to_key(wParam);
+
+				if (key != Key_None) {
+
+					input.keys[key] = InputState_Pressed;
+				}
 			}
-			else if (~lParam & (1 << 30)) input_key_pressed_add(keyCode);
 
 			break;
 		}
 		case WM_SYSKEYUP:
 		case WM_KEYUP:
 		{
-			// input
-			u8 keyCode = (u8)wParam;
-			if (keyCode > 255) {
-				SV_LOG_WARNING("Unknown keycode: %u", keyCode);
+			Key key = wparam_to_key(wParam);
+
+			if (key != Key_None) {
+
+				input.keys[key] = InputState_Released;
 			}
-			else input_key_released_add(keyCode);
 
 			break;
 		}
 		case WM_LBUTTONDOWN:
-			input_mouse_pressed_add(0);
-			break;
 		case WM_RBUTTONDOWN:
-			input_mouse_pressed_add(1);
-			break;
 		case WM_MBUTTONDOWN:
-			input_mouse_pressed_add(2);
-			break;
 		case WM_LBUTTONUP:
-			input_mouse_released_add(0);
-			break;
 		case WM_RBUTTONUP:
-			input_mouse_released_add(1);
-			break;
 		case WM_MBUTTONUP:
-			input_mouse_released_add(2);
+		{
+			MouseButton button;
+
+			switch (msg)
+			{
+			case WM_LBUTTONDOWN:
+			case WM_LBUTTONUP:
+				button = MouseButton_Left;
+				break;
+
+			case WM_RBUTTONDOWN:
+			case WM_RBUTTONUP:
+				button = MouseButton_Right;
+				break;
+
+			case WM_MBUTTONDOWN:
+			case WM_MBUTTONUP:
+				button = MouseButton_Center;
+				break;
+			}
+
+			switch (msg)
+			{
+			case WM_LBUTTONDOWN:
+			case WM_RBUTTONDOWN:
+			case WM_MBUTTONDOWN:
+				input.mouse_buttons[button] = InputState_Pressed;
+				break;
+
+			case WM_LBUTTONUP:
+			case WM_RBUTTONUP:
+			case WM_MBUTTONUP:
+				input.mouse_buttons[button] = InputState_Released;
+				break;
+			}
+		}
 			break;
+
 		case WM_MOUSEMOVE:
 		{
 			u16 _x = LOWORD(lParam);
@@ -124,10 +216,9 @@ namespace sv {
 			f32 w = f32(wnd.bounds.z);
 			f32 h = f32(wnd.bounds.w);
 
-			f32 x = (f32(_x) / w) - 0.5f;
-			f32 y = -(f32(_y) / h) + 0.5f;
+			input.mouse_position.x = (f32(_x) / w) - 0.5f;
+			input.mouse_position.y = -(f32(_y) / h) + 0.5f;
 
-			input_mouse_position_set(x, y);
 			break;
 		}
 		case WM_CHAR:
@@ -135,7 +226,7 @@ namespace sv {
 			switch (wParam)
 			{
 			case 0x08:
-				input_text_command_add(TextCommand_DeleteLeft);
+				input.text_commands.push_back(TextCommand_DeleteLeft);
 				break;
 
 			case 0x0A:
@@ -145,25 +236,25 @@ namespace sv {
 				break;
 
 			case 0x1B:
-				input_text_command_add(TextCommand_Escape);
+				input.text_commands.push_back(TextCommand_Escape);
 				break;
 
 			case 0x09:
 
 				// TODO: Tabulations input
-				input_text_add(' ');
-				input_text_add(' ');
-				input_text_add(' ');
-				input_text_add(' ');
+				input.text.push_back(' ');
+				input.text.push_back(' ');
+				input.text.push_back(' ');
+				input.text.push_back(' ');
 
 				break;
 
 			case 0x0D:
-				input_text_command_add(TextCommand_Enter);
+				input.text_commands.push_back(TextCommand_Enter);
 				break;
 
 			default:
-				input_text_add(wParam);
+				input.text.push_back(wParam);
 				break;
 			}
 
@@ -221,18 +312,17 @@ namespace sv {
 		}
 		case WM_MOUSEWHEEL:
 		{
-			float wheel = float(GET_WHEEL_DELTA_WPARAM(wParam)) / WHEEL_DELTA;
-			input_mouse_wheel_set(wheel);
+			input.mouse_wheel = f32(GET_WHEEL_DELTA_WPARAM(wParam)) / WHEEL_DELTA;
 			break;
 		}
 		case WM_SETFOCUS:
 		{
-			input_focussed_window_set((Window*)&wnd);
+			input.focused_window = (Window*)wndPtr;
 			break;
 		}
 		case WM_KILLFOCUS:
 		{
-			input_focussed_window_set(nullptr);
+			input.focused_window = nullptr;
 			break;
 		}
 
@@ -330,7 +420,7 @@ namespace sv {
 		*pWindow = reinterpret_cast<Window*>(&wnd);
 
 		SetWindowLongPtrW((HWND)wnd.handle, GWLP_USERDATA, (LONG_PTR)&wnd);
-		if (GetFocus() == wnd.handle) input_focussed_window_set(*pWindow);
+		if (GetFocus() == wnd.handle) input.focused_window = *pWindow;
 
 		// Set Icon
 		if (desc->iconFilePath != nullptr) {
@@ -399,6 +489,20 @@ namespace sv {
 		}
 
 		wnd.resized = false;
+
+#ifndef SV_DIST
+		if (window == engine.window) {
+
+			static u32 last_fps = 0u;
+			if (last_fps != engine.FPS) {
+				last_fps = engine.FPS;
+
+				std::wstring title = wnd.title + L" || ";
+				title += std::to_wstring(engine.FPS);
+				SetWindowTextW((HWND)wnd.handle, title.c_str());
+			}
+		}
+#endif
 
 		return true;
 	}
@@ -523,6 +627,12 @@ namespace sv {
 	{
 		const Window_internal& wnd = *reinterpret_cast<const Window_internal*>(window);
 		return { wnd.bounds.z, wnd.bounds.w };
+	}
+
+	f32 window_aspect_get(const Window* window)
+	{
+		const Window_internal& wnd = *reinterpret_cast<const Window_internal*>(window);
+		return f32(wnd.bounds.z) / f32(wnd.bounds.w);
 	}
 
 	const wchar* window_title_get(const Window* window)

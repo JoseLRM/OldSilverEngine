@@ -210,6 +210,8 @@ namespace sv {
 
 			svCheck(graphics_shader_compile_string(&c, src, u32(strlen(src)), data));
 			svCheck(bin_write(hash, data.data(), u32(data.size())));
+
+			SV_LOG_INFO("Shader Compiled: '%s'", name);
 		}
 
 		desc.binDataSize = data.size();
@@ -242,6 +244,8 @@ namespace sv {
 
 			svCheck(graphics_shader_compile_string(&c, str.data(), u32(strlen(str.data())), data));
 			svCheck(bin_write(hash, data.data(), u32(data.size())));
+
+			SV_LOG_INFO("Shader Compiled: '%s'", name);
 		}
 
 		desc.binDataSize = data.size();

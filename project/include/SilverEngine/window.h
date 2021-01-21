@@ -66,6 +66,7 @@ namespace sv {
 	u32				window_width_get(const Window* window);
 	u32				window_height_get(const Window* window);
 	v2_u32			window_size_get(const Window* window);
+	f32				window_aspect_get(const Window* window);
 
 	const wchar*	window_title_get(const Window* window);
 

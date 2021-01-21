@@ -1,7 +1,9 @@
 #pragma once
 
 #include "game.h"
-#include "particle/particle_system.h"
+
+#include "SilverEngine.h"
+#include "SilverEngine/utils/allocators/FrameList.h"
 
 enum ShipType : u32 {
 	ShipType_Player,
@@ -62,21 +64,6 @@ struct AsteroidComponent : public Component<AsteroidComponent> {
 	void deserialize(ArchiveI& file) {}
 };
 
-enum ExplosionType : u32 {
-	ExplosionType_Ship,
-	ExplosionType_Asteroid,
-	ExplosionType_Dangerous
-};
-
-struct ExplosionComponent : public Component<ExplosionComponent> {
-
-	AnimatedSprite	sprite;
-	ExplosionType	explosionType;
-
-	void serialize(ArchiveO& file) {}
-	void deserialize(ArchiveI& file) {}
-};
-
 struct SpaceState;
 
 struct ShipGeneration {
@@ -118,7 +105,7 @@ struct SpaceState : public GameState {
 	void render() override;
 	Result close() override;
 
-	CameraProjection& getCamera() override;
+	CameraProjection& getCameraProjection() override;
 
 	void shipShot(ShipComponent& ship, f32 dir, bool condition, f32 dt);
 
@@ -185,24 +172,6 @@ struct SpaceState : public GameState {
 		ShipComponent& ship = *ecs_component_add<ShipComponent>(ecs, e);
 		ship.shipType = type;
 
-		Particle2DEmitterComponent_CPU& ps = *ecs_component_add<Particle2DEmitterComponent_CPU>(ecs, e);
-
-		Particle2DEmitterCPU& part = ps.ps.emitters.emplace_back();
-
-		part.start.lifeTime0 = 0.1f;
-		part.start.lifeTime1 = 0.4f;
-		part.emission.shape = Particle2DShape_Cone;
-		part.emission.shapeCone.angle = PI / 3.5f;
-		part.emission.shapeCone.direction = PI;
-		part.duration = 0.f;
-		part.start.velocity0 = 20.f;
-		part.start.velocity1 = 28.f;
-		part.start.opacity0 = 20u;
-		part.start.opacity1 = 100u;
-		part.render.draw = Particle2DDraw_Sprite;
-
-		Color partColor;
-
 		Transform trans = ecs_entity_transform_get(ecs, e);
 		trans.setPosition(pos.getVec3());
 
@@ -211,47 +180,27 @@ struct SpaceState : public GameState {
 		case ShipType_Player:
 			ship.health = 1.f;
 			trans.setScale({ 2.f, 2.f, 0.f });
-			part.start.size0 = 0.2f;
-			part.start.size1 = 0.3f;
-			partColor = Color::Orange();
-			part.emission.rateTime = 0.005f;
 			break;
 
 		case ShipType_Kamikaze:
 			ship.health = 1.f;
 			trans.setScale({ 1.f, 1.f, 0.f });
-			part.start.size0 = 0.1f;
-			part.start.size1 = 0.5f;
-			partColor = Color::Orange();
 			break;
 
 		case ShipType_Shooter:
 			ship.health = 1.f;
 			trans.setScale({ 1.f, 1.f, 0.f });
-			part.start.size0 = 0.1f;
-			part.start.size1 = 0.5f;
-			partColor = Color::Orange();
 			break;
 
 		case ShipType_Daddy:
 			ship.health = 20.f;
 			trans.setScale({ 10.f, 10.f, 0.f });
-			part.start.size0 = 0.9f;
-			part.start.size1 = 2.f;
-			partColor = Color::Orange();
 			break;
 
 		default:
 			SV_LOG_ERROR("Unknown ship type");
 			break;
 		}
-
-		part.start.red0 = partColor.r;
-		part.start.red1 = partColor.r;
-		part.start.green0 = partColor.g;
-		part.start.green1 = partColor.g;
-		part.start.blue0 = partColor.b;
-		part.start.blue1 = partColor.b;
 
 		return e;
 	}
@@ -301,42 +250,6 @@ struct SpaceState : public GameState {
 		return e;
 	}
 
-	Entity createExplosion(const v2_f32& pos, f32 size, ExplosionType type)
-	{
-		Entity e = ecs_entity_create(ecs);
-
-		SpriteAnimationAsset asset;
-
-		switch (type)
-		{
-		case ExplosionType_Ship:
-			asset.loadFromFile("animations/explosion.anim");
-			break;
-
-		case ExplosionType_Asteroid:
-			asset.loadFromFile("animations/explosion.anim");
-			break;
-
-		case ExplosionType_Dangerous:
-			asset.loadFromFile("animations/explosion.anim");
-			break;
-		}
-
-		ExplosionComponent& exp = *ecs_component_add<ExplosionComponent>(ecs, e);
-		exp.explosionType = type;
-
-		exp.sprite.setAnimation(asset);
-		exp.sprite.setSpriteDuration(0.1f);
-		exp.sprite.setRepeatCount(1u);
-		exp.sprite.start();
-
-		Transform trans = ecs_entity_transform_get(ecs, e);
-		trans.setScale({ size, size, 0.f });
-		trans.setPosition(pos.getVec3());
-
-		return e;
-	}
-
 	void destroyShip(ShipComponent& s)
 	{
 		switch (s.shipType)
@@ -349,8 +262,6 @@ struct SpaceState : public GameState {
 		}
 
 		Transform trans = ecs_entity_transform_get(ecs, s.entity);
-
-		createExplosion(trans.getWorldPosition().getVec2(), trans.getWorldScale().getVec2().length() * 2.f, (s.shipType == ShipType_Kamikaze ? ExplosionType_Dangerous : ExplosionType_Ship));
 
 		ecs_entity_destroy(ecs, s.entity);
 	}
@@ -373,19 +284,12 @@ struct SpaceState : public GameState {
 			}
 		}
 
-		createExplosion(pos, scale, ExplosionType_Asteroid);
-
 		ecs_entity_destroy(ecs, a.entity);
 	}
 
 	void destroyBullet(BulletComponent& bullet)
 	{
 		ecs_entity_destroy(ecs, bullet.entity);
-	}
-
-	void destroyExplosion(ExplosionComponent& e)
-	{
-		ecs_entity_destroy(ecs, e.entity);
 	}
 
 	template<typename Comp0, typename Comp1, typename OnCollideFn>
@@ -417,16 +321,16 @@ struct SpaceState : public GameState {
 
 	ECS* ecs;
 
+	FrameList<SpriteInstance>	sprite_instances;
 	CameraProjection			projection;
-	GBuffer						gBuffer;
-
-	FrameList<SpriteInstance>		sprite_instances;
-	FrameList<Particle2DInstance>	particle_instances;
+	Font font;
 
 	Entity player, background;
 	Random random;
 
 	ShipGenerator shipGenerator;
+
+	GPUImage* offscreen = nullptr;
 
 	Sprite sprite_Player;
 	Sprite sprite_Kamikaze;

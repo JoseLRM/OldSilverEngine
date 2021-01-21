@@ -1,12 +1,11 @@
 #pragma once
 
-#include "core/input.h"
-#include "core/rendering/render_utils.h"
+#include "SilverEngine.h"
 
 #define GAME_TITLE L"Game Test"
 
 #ifndef SV_DIST
-#define FPS_MODE
+//#define FPS_MODE
 #endif
 
 using namespace sv;
@@ -21,11 +20,11 @@ struct GameState {
 	virtual void	render() = 0;
 	virtual Result	close() = 0;
 
-	virtual CameraProjection& getCamera() = 0;
+	virtual CameraProjection& getCameraProjection() = 0;
 
-	SV_INLINE f32 camWidth() { return getCamera().width; }
-	SV_INLINE f32 camHeight() { return getCamera().height; }
-	SV_INLINE v2_f32 camSize() { CameraProjection& cam = getCamera(); return { cam.width, cam.height }; }
+	SV_INLINE f32 camWidth() { return getCameraProjection().width; }
+	SV_INLINE f32 camHeight() { return getCameraProjection().height; }
+	SV_INLINE v2_f32 camSize() { CameraProjection& p = getCameraProjection(); return { p.width, p.height }; }
 
 	SV_INLINE i32 inScreenX(f32 x, f32 r)
 	{
@@ -53,6 +52,6 @@ struct GameState {
 extern std::unique_ptr<GameState> g_State;
 
 Result	game_initialize();
-void	game_update(f32 dt);
+void	game_update();
 void	game_render();
 Result	game_close();

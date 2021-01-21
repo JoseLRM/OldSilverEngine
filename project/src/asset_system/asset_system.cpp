@@ -88,7 +88,7 @@ namespace sv {
 	{
 		if (g_AssetTypes.empty()) return;
 
-		f32 dt = g_Engine.deltatime;
+		f32 dt = engine.deltatime;
 
 		g_UnusedTimeCount += dt;
 
