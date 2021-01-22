@@ -262,22 +262,24 @@ namespace sv {
 		}
 
 		// RAW MOUSE
-		//case WM_INPUT:
-		//{
-		//	UINT size;
-		//	if (GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, nullptr, &size, sizeof(RAWINPUTHEADER)) == -1) break;
-		//
-		//	rawMouseBuffer.resize(size);
-		//	if (GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, rawMouseBuffer.data(), &size, sizeof(RAWINPUTHEADER)) == -1) break;
-		//
-		//	RAWINPUT& rawInput = reinterpret_cast<RAWINPUT&>(*rawMouseBuffer.data());
-		//	if (rawInput.header.dwType == RIM_TYPEMOUSE) {
-		//		if (rawInput.data.mouse.lLastX != 0 || rawInput.data.mouse.lLastY != 0) {
-		//			jshInput::MouseDragged(rawInput.data.mouse.lLastX, rawInput.data.mouse.lLastY);
-		//		}
-		//	}
-		//}
-		//break;
+		case WM_INPUT:
+		{
+			UINT size;
+			if (GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, nullptr, &size, sizeof(RAWINPUTHEADER)) == -1) break;
+		
+			wnd.raw_mouse_buffer.resize(size);
+			if (GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, wnd.raw_mouse_buffer.data(), &size, sizeof(RAWINPUTHEADER)) == -1) break;
+		
+			RAWINPUT& rawInput = reinterpret_cast<RAWINPUT&>(*wnd.raw_mouse_buffer.data());
+			if (rawInput.header.dwType == RIM_TYPEMOUSE) {
+				if (rawInput.data.mouse.lLastX != 0 || rawInput.data.mouse.lLastY != 0) {
+
+					wnd.mouse_dragging_acumulation.x = rawInput.data.mouse.lLastX;
+					wnd.mouse_dragging_acumulation.y = -rawInput.data.mouse.lLastY;
+				}
+			}
+		}
+		break;
 		case WM_SIZE:
 		{
 			wnd.bounds.z = LOWORD(lParam);
@@ -432,6 +434,15 @@ namespace sv {
 
 		// Create SwapChain
 		svCheck(graphics_swapchain_create(*pWindow, &wnd.swap_chain));
+
+		// register raw mouse input
+		RAWINPUTDEVICE rid;
+		rid.usUsagePage = 1;
+		rid.usUsage = 2;
+		rid.hwndTarget = nullptr;
+		rid.dwFlags = 0;
+
+		if (!RegisterRawInputDevices(&rid, 1u, sizeof(RAWINPUTDEVICE))) return Result_PlatformError;
 
 		SV_LOG_INFO("Window created");
 #endif

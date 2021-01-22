@@ -46,6 +46,7 @@ namespace sv {
 
 		input.mouse_last_pos = input.mouse_position;
 		input.mouse_wheel = 0.f;
+		input.mouse_dragged = 0.f;
 
 #ifdef SV_PLATFORM_WIN
 		MSG msg;
@@ -55,8 +56,18 @@ namespace sv {
 			DispatchMessageW(&msg);
 		}
 #endif
+		
+		if (input.focused_window) {
 
-		input.mouse_dragged = input.mouse_position - input.mouse_last_pos;
+			Window_internal& win = *reinterpret_cast<Window_internal*>(input.focused_window);
+
+			if (win.mouse_dragging_acumulation.length() > 0.1f)
+				input.mouse_dragged = win.mouse_dragging_acumulation * 0.1f;
+			else
+				input.mouse_dragged = win.mouse_dragging_acumulation;
+
+			win.mouse_dragging_acumulation -= input.mouse_dragged;
+		}
 	}
 
 #define CATCH catch (std::exception e) {\

@@ -561,6 +561,7 @@ namespace sv {
 		if (gui.mouse_clicked) {
 			gui.locked.mouse_click = gui.widget_clicked != nullptr || gui.widget_focused != nullptr;
 		}
+		else if (gui.widget_focused == nullptr) gui.locked.mouse_click = false;
 	}
 
 	void draw_widget(GUI_internal& gui, GuiWidget& widget, const v4_f32& parent_bounds)
