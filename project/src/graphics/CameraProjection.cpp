@@ -9,7 +9,7 @@ namespace sv {
 		adjust(f32(width) / f32(height));
 	}
 
-	void CameraProjection::adjust(float aspect) noexcept
+	void CameraProjection::adjust(f32 aspect) noexcept
 	{
 		if (width / height == aspect) return;
 		v2_f32 res = { width, height };
@@ -27,7 +27,7 @@ namespace sv {
 		return math_sqrt(width * width + height * height);
 	}
 
-	void CameraProjection::setProjectionLength(float length) noexcept
+	void CameraProjection::setProjectionLength(f32 length) noexcept
 	{
 		f32 currentLength = getProjectionLength();
 		if (currentLength == length) return;

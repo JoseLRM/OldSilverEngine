@@ -150,19 +150,19 @@ namespace sv {
 
 	// HELPER FUNCTIONS
 
-	SV_INLINE GuiContainer& gui_container_create(GUI* gui, GuiContainer* container = nullptr)
+	SV_INLINE GuiContainer* gui_container_create(GUI* gui, GuiContainer* container = nullptr)
 	{
-		return *reinterpret_cast<GuiContainer*>(gui_widget_create(gui, GuiWidgetType_Container, container));
+		return reinterpret_cast<GuiContainer*>(gui_widget_create(gui, GuiWidgetType_Container, container));
 	}
 
-	SV_INLINE GuiButton& gui_button_create(GUI* gui, GuiContainer* container = nullptr)
+	SV_INLINE GuiButton* gui_button_create(GUI* gui, GuiContainer* container = nullptr)
 	{
-		return *reinterpret_cast<GuiButton*>(gui_widget_create(gui, GuiWidgetType_Button, container));
+		return reinterpret_cast<GuiButton*>(gui_widget_create(gui, GuiWidgetType_Button, container));
 	}
 
-	SV_INLINE GuiSlider& gui_slider_create(GUI* gui, GuiContainer* container = nullptr)
+	SV_INLINE GuiSlider* gui_slider_create(GUI* gui, GuiContainer* container = nullptr)
 	{
-		return *reinterpret_cast<GuiSlider*>(gui_widget_create(gui, GuiWidgetType_Slider, container));
+		return reinterpret_cast<GuiSlider*>(gui_widget_create(gui, GuiWidgetType_Slider, container));
 	}
 
 }

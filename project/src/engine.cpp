@@ -45,8 +45,6 @@ namespace sv {
 		}
 
 		input.mouse_last_pos = input.mouse_position;
-		input.mouse_dragged.x = 0.f;
-		input.mouse_dragged.y = 0.f;
 		input.mouse_wheel = 0.f;
 
 #ifdef SV_PLATFORM_WIN
@@ -57,6 +55,8 @@ namespace sv {
 			DispatchMessageW(&msg);
 		}
 #endif
+
+		input.mouse_dragged = input.mouse_position - input.mouse_last_pos;
 	}
 
 #define CATCH catch (std::exception e) {\

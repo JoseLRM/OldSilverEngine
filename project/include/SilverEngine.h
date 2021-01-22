@@ -12,3 +12,4 @@
 
 #include "SilverEngine/sprite.h"
 #include "SilverEngine/gui.h"
+#include "SilverEngine/editor.h"

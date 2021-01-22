@@ -6,9 +6,60 @@ GPUImage* offscreen = nullptr;
 Window* win = nullptr;
 DebugRenderer rend;
 Font font;
-f32 p = 0.f;
+v2_f32				camera_position;
+CameraProjection	camera;
 
 GUI* gui;
+GuiWindow* gui_window;
+
+void create_color_sliders(GuiContainer& cont, u64 begin_id, f32 y)
+{
+	GuiSlider* slider;
+	slider = gui_slider_create(gui, &cont);
+	slider->x.constraint = GuiConstraint_Relative;
+	slider->x.value = 0.05f;
+	slider->x.alignment = GuiCoordAlignment_Left;
+	slider->y.value = y;
+	slider->y.constraint = GuiConstraint_Relative;
+	slider->y.alignment = GuiCoordAlignment_Bottom;
+	slider->w.value = 0.95f / 3.5f;
+	slider->w.constraint = GuiConstraint_Relative;
+	slider->h.value = 0.05f;
+	slider->h.constraint = GuiConstraint_Relative;
+	slider->min = 0.f;
+	slider->max = 1.f;
+	slider->user_id = begin_id++;
+
+	slider = gui_slider_create(gui, &cont);
+	slider->x.constraint = GuiConstraint_Relative;
+	slider->x.value = 0.5f;
+	slider->x.alignment = GuiCoordAlignment_Center;
+	slider->y.value = y;
+	slider->y.constraint = GuiConstraint_Relative;
+	slider->y.alignment = GuiCoordAlignment_Bottom;
+	slider->w.value = 0.95f / 3.5f;
+	slider->w.constraint = GuiConstraint_Relative;
+	slider->h.value = 0.05f;
+	slider->h.constraint = GuiConstraint_Relative;
+	slider->min = 0.f;
+	slider->max = 1.f;
+	slider->user_id = begin_id++;
+
+	slider = gui_slider_create(gui, &cont);
+	slider->x.constraint = GuiConstraint_Relative;
+	slider->x.value = 0.05f;
+	slider->x.alignment = GuiCoordAlignment_InverseRight;
+	slider->y.value = y;
+	slider->y.constraint = GuiConstraint_Relative;
+	slider->y.alignment = GuiCoordAlignment_Bottom;
+	slider->w.value = 0.95f / 3.5f;
+	slider->w.constraint = GuiConstraint_Relative;
+	slider->h.value = 0.05f;
+	slider->h.constraint = GuiConstraint_Relative;
+	slider->min = 0.f;
+	slider->max = 1.f;
+	slider->user_id = begin_id;
+}
 
 Result init()
 {
@@ -39,42 +90,61 @@ Result init()
 	{
 		gui = gui_create(window_width_get(engine.window), window_height_get(engine.window));
 
-		GuiContainer& cont = *gui_window_create(gui)->container;
+		gui_window = gui_window_create(gui);
+		GuiContainer& cont = *gui_window->container;
 		cont.color = Color::Green();
 		cont.x.value = 0.5f;
 		cont.y.value = 0.5f;
 
-		GuiButton& button = gui_button_create(gui, &cont);
-		button.x.constraint = GuiConstraint_Center;
-		button.y.value = 1.f;
-		button.y.constraint = GuiConstraint_Relative;
-		button.y.alignment = GuiCoordAlignment_Top;
+		GuiSlider* slider = gui_slider_create(gui, &cont);
+		slider->x.constraint = GuiConstraint_Center;
+		slider->x.alignment = GuiCoordAlignment_Center;
+		slider->y.value = 0.9f;
+		slider->y.constraint = GuiConstraint_Relative;
+		slider->y.alignment = GuiCoordAlignment_Bottom;
+		slider->w.value = 0.95f;
+		slider->w.constraint = GuiConstraint_Relative;
+		slider->h.value = 0.05f;
+		slider->h.constraint = GuiConstraint_Relative;
+		slider->min = 0.f;
+		slider->max = 0.05f;
+		slider->user_id = 1u;
 
-		button.w.constraint = GuiConstraint_Relative;
-		button.w.value = 0.2f;
-		button.h.value = 1.f;
-		button.h.constraint = GuiConstraint_Aspect;
+		slider = gui_slider_create(gui, &cont);
+		slider->x.constraint = GuiConstraint_Center;
+		slider->x.alignment = GuiCoordAlignment_Center;
+		slider->y.value = 0.8f;
+		slider->y.constraint = GuiConstraint_Relative;
+		slider->y.alignment = GuiCoordAlignment_Bottom;
+		slider->w.value = 0.95f;
+		slider->w.constraint = GuiConstraint_Relative;
+		slider->h.value = 0.05f;
+		slider->h.constraint = GuiConstraint_Relative;
+		slider->min = 0.f;
+		slider->max = 0.1f;
+		slider->user_id = 2u;
 
-		button.color = Color::Orange();
-		button.user_id = 69u;
+		create_color_sliders(cont, 3u, 0.7f);
+		create_color_sliders(cont, 6u, 0.6f);
+		create_color_sliders(cont, 9u, 0.5f);
 
-		GuiSlider& slider = gui_slider_create(gui, &cont);
-		slider.x.constraint = GuiConstraint_Center;
-		slider.x.alignment = GuiCoordAlignment_Center;
-
-		slider.y.value = 0.4f;
-		slider.y.constraint = GuiConstraint_Relative;
-		slider.y.alignment = GuiCoordAlignment_Bottom;
-
-		slider.w.value = 0.95f;
-		slider.w.constraint = GuiConstraint_Relative;
-
-		slider.h.value = 0.08f;
-		slider.h.constraint = GuiConstraint_Aspect;
-
-		slider.min = 0.f;
-		slider.max = 0.5f;
+		GuiButton* button = gui_button_create(gui, &cont);
+		button->x.constraint = GuiConstraint_Center;
+		button->x.alignment = GuiCoordAlignment_Center;
+		button->y.value = 0.45f;
+		button->y.constraint = GuiConstraint_Relative;
+		button->y.alignment = GuiCoordAlignment_Bottom;
+		button->w.value = 1.f;
+		button->w.constraint = GuiConstraint_Aspect;
+		button->h.value = 0.1f;
+		button->h.constraint = GuiConstraint_Relative;
+		button->user_id = 12u;
+		
 	}
+
+	camera.width = 10.f;
+	camera.height = 10.f;
+	camera.updateMatrix();
 
 	rend.create();
 
@@ -93,14 +163,14 @@ void update()
 		else window_state_set(engine.window, WindowState_Fullscreen);
 	}
 
-	if (win) {
-		if (!window_update(win)) {
-			win = nullptr;
-		}
-	}
-
 	gui_resize(gui, window_width_get(engine.window), window_height_get(engine.window));
 	gui_update(gui);
+
+	camera.adjust(window_width_get(engine.window), window_height_get(engine.window));
+
+	if (!gui_locked_input(gui).mouse_click) {
+		editor_camera_controller2D(camera_position, camera);
+	}
 
 	if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
 
@@ -114,15 +184,7 @@ void update()
 	}
 
 	GuiWidget* widget = gui_widget_hovered(gui);
-	if (widget && widget->user_id == 69u) {
-
-		GuiButton& button = *reinterpret_cast<GuiButton*>(widget);
-		if (button.hover_state == HoverState_Hover) {
-			button.w.value = 0.2f + sin(timer_now() * 5.f) * 0.03f;
-		}
-		else if (button.hover_state == HoverState_Leave) {
-			button.w.value = 0.2f;
-		}
+	if (widget) {
 	}
 
 	widget = gui_widget_clicked(gui);
@@ -138,7 +200,61 @@ void update()
 		case GuiWidgetType_Slider:
 		{
 			GuiSlider& slider = *reinterpret_cast<GuiSlider*>(widget);
-			p = slider.value;
+			
+			switch (slider.user_id)
+			{
+			case 1:
+				gui_window->outline_size = slider.value;
+				break;
+			case 2:
+				gui_window->decoration_height = slider.value;
+				break;
+
+			case 3:
+				gui_window->color.r = u8(slider.value * 255.f);
+				break;
+
+			case 4:
+				gui_window->color.g = u8(slider.value * 255.f);
+				slider.color.g = u8(slider.value * 255.f);
+				break;
+
+			case 5:
+				gui_window->color.b = u8(slider.value * 255.f);
+				slider.color.b = u8(slider.value * 255.f);
+				break;
+
+			case 6:
+				gui_window->decoration_color.r = u8(slider.value * 255.f);
+				slider.color.r = u8(slider.value * 255.f);
+				break;
+
+			case 7:
+				gui_window->decoration_color.g = u8(slider.value * 255.f);
+				slider.color.g = u8(slider.value * 255.f);
+				break;
+
+			case 8:
+				gui_window->decoration_color.b = u8(slider.value * 255.f);
+				slider.color.b = u8(slider.value * 255.f);
+				break;
+
+			case 9:
+				gui_window->container->color.r = u8(slider.value * 255.f);
+				slider.color.r = u8(slider.value * 255.f);
+				break;
+
+			case 10:
+				gui_window->container->color.g = u8(slider.value * 255.f);
+				slider.color.g = u8(slider.value * 255.f);
+				break;
+
+			case 11:
+				gui_window->container->color.b = u8(slider.value * 255.f);
+				slider.color.b = u8(slider.value * 255.f);
+				break;
+			}
+
 		}
 		break;
 
@@ -188,13 +304,13 @@ void render()
 		}
 	}
 
-	f32 x = 0.005f + p;
+	f32 x = 0.005f;
 	f32 y = 0.55f;
 	f32 size = 0.05f;
 	f32 width = 0.2f;
 
-	rend.drawQuad({ (x * 2.f - 1.f) + width * 2.f * 0.5f, y * 2.f - 1.f, 0.f }, { width * 2.f, 2.f }, Color::Red(30u));
-	rend.render(offscreen, XMMatrixIdentity(), cmd);
+	XMMATRIX vp_matrix = XMMatrixTranslation(camera_position.x, camera_position.y, 0.f) * camera.projectionMatrix;
+	rend.render(offscreen, vp_matrix, cmd);
 	
 	f32 window_aspect = f32(window_width_get(engine.window)) / f32(window_height_get(engine.window));
 

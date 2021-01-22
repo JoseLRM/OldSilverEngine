@@ -559,7 +559,7 @@ namespace sv {
 
 
 		if (gui.mouse_clicked) {
-			gui.locked.mouse_click = gui.widget_clicked != nullptr;
+			gui.locked.mouse_click = gui.widget_clicked != nullptr || gui.widget_focused != nullptr;
 		}
 	}
 
@@ -738,7 +738,7 @@ namespace sv {
 		PARSE_GUI();
 		GuiWindow& window = gui.windows.create();
 
-		window.container = &gui_container_create(gui_);
+		window.container = gui_container_create(gui_);
 
 		window.container->x.value = 0.f;
 		window.container->x.constraint = GuiConstraint_Relative;
