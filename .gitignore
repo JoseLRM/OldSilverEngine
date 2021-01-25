@@ -14,3 +14,7 @@ bin/
 
 # VisualStudioCode files
 *.vscode
+
+# GMake files
+*.make
+**MakeFile
