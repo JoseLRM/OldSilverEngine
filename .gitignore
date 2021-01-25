@@ -17,4 +17,4 @@ bin/
 
 # GMake files
 *.make
-**MakeFile
+**/Makefile
