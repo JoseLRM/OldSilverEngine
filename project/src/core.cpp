@@ -430,20 +430,51 @@ namespace sv {
 
 	///////////////////////////////////////////////// FILE MANAGEMENT /////////////////////////////////////////////////
 
-#ifdef SV_RES_PATH
-#define PARSE_RES_PATH() std::string filePathStr; \
-	if (!sv::path_is_absolute(filePath)) { \
+#if defined(SV_RES_PATH) && defined(SV_SYS_PATH)
+
+#define PARSE_FILEPATH() std::string filepath_str; \
+	if (!sv::path_is_absolute(filepath)) { \
+		if (filepath[0] == '$') { \
+			filepath_str = SV_SYS_PATH; \	
+			++filepath \
+		} \
+		else \
+			filepath_str = SV_RES_PATH; \	
+		filepath_str += filepath; \
+		filepath = filepath_str.c_str(); \
+	} 
+
+#elif defined(SV_SYS_PATH) 
+
+#define PARSE_FILEPATH() std::string filepath_str; \
+	if (!sv::path_is_absolute(filepath)) { \
+		if (filepath[0] == '$') { \
+			filepath_str = SV_SYS_PATH; \	
+			filepath_str += filepath + 1u; \
+			filepath = filepath_str.c_str(); \
+		} \
+	} 
+
+#elif defined(SV_RES_PATH)
+
+#define PARSE_FILEPATH() std::string filePathStr; \
+	if (!sv::path_is_absolute(filePath) && *filepath != '$') { \
 		filePathStr = SV_RES_PATH; \
 		filePathStr += filePath; \
 		filePath = filePathStr.c_str(); \
 	} 
+
 #else
-#define PARSE_RES_PATH()
+
+#define PARSE_FILEPATH() if (!sv::path_is_absolute(filepath)) { \
+		if (*filepath == '$') ++filepath; \
+	} \
+
 #endif
 
-	bool path_is_absolute(const char* filePath)
+	bool path_is_absolute(const char* filepath)
 	{
-		return filePath[0] != '\0' && filePath[1] == ':';
+		return filepath[0] != '\0' && filepath[1] == ':';
 	}
 	void path_clear(char* path)
 	{
@@ -464,17 +495,17 @@ namespace sv {
 		}
 	}
 
-	bool path_is_absolute(const wchar* filePath)
+	bool path_is_absolute(const wchar* filepath)
 	{
-		return filePath[0] != L'\0' && filePath[1] == L':';
+		return filepath[0] != L'\0' && filepath[1] == L':';
 	}
 
-	Result file_read_binary(const char* filePath, u8** pData, size_t* pSize)
+	Result file_read_binary(const char* filepath, u8** pData, size_t* pSize)
 	{
-		PARSE_RES_PATH();
+		PARSE_FILEPATH();
 
 		std::ifstream stream;
-		stream.open(filePath, std::ios::binary | std::ios::ate);
+		stream.open(filepath, std::ios::binary | std::ios::ate);
 		if (!stream.is_open())
 			return Result_NotFound;
 
@@ -490,12 +521,12 @@ namespace sv {
 		return Result_Success;
 	}
 
-	Result file_read_binary(const char* filePath, std::vector<u8>& data)
+	Result file_read_binary(const char* filepath, std::vector<u8>& data)
 	{
-		PARSE_RES_PATH();
+		PARSE_FILEPATH();
 
 		std::ifstream stream;
-		stream.open(filePath, std::ios::binary | std::ios::ate);
+		stream.open(filepath, std::ios::binary | std::ios::ate);
 		if (!stream.is_open())
 			return Result_NotFound;
 
@@ -510,12 +541,12 @@ namespace sv {
 		return Result_Success;
 	}
 
-	Result file_read_text(const char* filePath, std::string& str)
+	Result file_read_text(const char* filepath, std::string& str)
 	{
-		PARSE_RES_PATH();
+		PARSE_FILEPATH();
 
 		std::ifstream stream;
-		stream.open(filePath, std::ios::ate);
+		stream.open(filepath, std::ios::ate);
 		if (!stream.is_open())
 			return Result_NotFound;
 
@@ -530,12 +561,12 @@ namespace sv {
 		return Result_Success;
 	}
 
-	Result file_write_binary(const char* filePath, const u8* data, size_t size, bool append)
+	Result file_write_binary(const char* filepath, const u8* data, size_t size, bool append)
 	{
-		PARSE_RES_PATH();
+		PARSE_FILEPATH();
 
 		std::ofstream stream;
-		stream.open(filePath, std::ios::binary | (append ? std::ios::app : 0u));
+		stream.open(filepath, std::ios::binary | (append ? std::ios::app : 0u));
 		if (!stream.is_open())
 			return Result_NotFound;
 
@@ -546,12 +577,12 @@ namespace sv {
 		return Result_Success;
 	}
 
-	Result file_write_text(const char* filePath, const char* str, size_t size, bool append)
+	Result file_write_text(const char* filepath, const char* str, size_t size, bool append)
 	{
-		PARSE_RES_PATH();
+		PARSE_FILEPATH();
 
 		std::ofstream stream;
-		stream.open(filePath, (append ? std::ios::app : 0u));
+		stream.open(filepath, (append ? std::ios::app : 0u));
 		if (!stream.is_open())
 			return Result_NotFound;
 
@@ -562,24 +593,24 @@ namespace sv {
 		return Result_Success;
 	}
 
-	Result file_remove(const char* filePath)
+	Result file_remove(const char* filepath)
 	{
-		PARSE_RES_PATH();
-		return (remove(filePath) != 0) ? Result_NotFound : Result_Success;
+		PARSE_FILEPATH();
+		return (remove(filepath) != 0) ? Result_NotFound : Result_Success;
 	}
 
-	Result FileO::open(const char* filePath, bool text, bool append)
+	Result FileO::open(const char* filepath, bool text, bool append)
 	{
 		close();
 
-		PARSE_RES_PATH();
+		PARSE_FILEPATH();
 
 		u32 f = 0u;
 
 		if (append) f |= std::ios::app;
 		if (!text) f |= std::ios::binary;
 
-		stream.open(filePath, f);
+		stream.open(filepath, f);
 
 		if (stream.is_open()) {
 			return Result_Success;
@@ -616,7 +647,7 @@ namespace sv {
 	{
 		close();
 
-		PARSE_RES_PATH();
+		PARSE_FILEPATH();
 
 		u32 f = 0u;
 

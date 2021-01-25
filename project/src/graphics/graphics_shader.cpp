@@ -52,12 +52,12 @@ namespace sv {
 
 		// .exe path
 		{
-#ifdef SV_RES_PATH
-			std::string resPath = SV_RES_PATH;
-			for (char& c : resPath) if (c == '/') c = '\\';
-			bat << resPath;
+#ifdef SV_SYS_PATH
+			std::string syspath = SV_SYS_PATH;
+			for (char& c : syspath) if (c == '/') c = '\\';
+			bat << syspath;
 #endif
-			bat << "library\\compilers\\dxc.exe ";
+			bat << "system\\compilers\\dxc.exe ";
 		}
 
 		// API Specific

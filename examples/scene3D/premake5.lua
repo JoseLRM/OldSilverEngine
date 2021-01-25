@@ -1,7 +1,7 @@
 workspace 'Scene3D'
 
-    binDir = '%{wks.location}/bin/'
-	engineDir = '%{wks.location}/../../project/'
+	binDir = '%{wks.location}/bin/'
+	engineDir = '../../project/'
 
 	include (engineDir .. "SolutionConfig.lua")
 
@@ -18,11 +18,12 @@ workspace 'Scene3D'
 	defines {
 		'SV_ENABLE_LOGGING',
 		'SV_ENABLE_ASSERTION',
-
-		'SV_RES_PATH=\"res/\"',
 	}
 
-    filter {}
+	sysPath = engineDir
+	resPath = 'res/'
+
+	filter {}
 
 	-- INCLUDE SILVER ENGINE PROJECT
 

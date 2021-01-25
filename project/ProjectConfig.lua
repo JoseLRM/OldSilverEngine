@@ -52,3 +52,24 @@ project 'SilverEngine'
 	links {
 		'$(VULKAN_SDK)/Lib/vulkan-1.lib',
 	}
+
+project '*'
+	
+	-- PATHS
+
+	if resPath ~= '' or resPath ~= '/' then
+
+		defines {
+			'SV_RES_PATH=\"' .. resPath .. '\"',
+		}
+
+	end
+
+
+	if sysPath ~= '' or sysPath ~= '/' then
+
+		defines {
+			'SV_SYS_PATH=\"' .. sysPath .. '\"',
+		}
+	
+	end

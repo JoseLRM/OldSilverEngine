@@ -7,6 +7,9 @@
 
 _outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
+sysPath = ""
+resPath = ""
+
 targetdir (binDir .. _outputdir)
 objdir (binDir .. _outputdir .. "/int/%{prj.name}")
 
