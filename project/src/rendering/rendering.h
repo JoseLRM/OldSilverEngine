@@ -52,46 +52,55 @@ namespace sv {
 
 	struct GraphicsObjects {
 
-		GPUImage* image_white;
-		Sampler* sampler_def_linear;
-		Sampler* sampler_def_nearest;
-		GPUBuffer* vbuffer_batch[GraphicsLimit_CommandList];
+		GPUImage*			image_white;
+		Sampler*			sampler_def_linear;
+		Sampler*			sampler_def_nearest;
+		GPUBuffer*			vbuffer_batch[GraphicsLimit_CommandList];
+		DepthStencilState*	dss_default_depth;
+		RasterizerState*	rs_back_culling;
 
 		// DEBUG
 
-		Shader* vs_debug_quad;
-		Shader* ps_debug_quad;
-		Shader* vs_debug_ellipse;
-		Shader* ps_debug_ellipse;
-		Shader* vs_debug_sprite;
-		Shader* ps_debug_sprite;
-		RenderPass* renderpass_debug;
-		InputLayoutState* ils_debug;
-		BlendState* bs_debug;
+		Shader*				vs_debug_quad;
+		Shader*				ps_debug_quad;
+		Shader*				vs_debug_ellipse;
+		Shader*				ps_debug_ellipse;
+		Shader*				vs_debug_sprite;
+		Shader*				ps_debug_sprite;
+		RenderPass*			renderpass_debug;
+		InputLayoutState*	ils_debug;
+		BlendState*			bs_debug;
 
 		// TEXT
 
-		Shader* vs_text;
-		Shader* ps_text;
-		RenderPass* renderpass_text;
-		GPUBuffer* ibuffer_text;
-		InputLayoutState* ils_text;
+		Shader*				vs_text;
+		Shader*				ps_text;
+		RenderPass*			renderpass_text;
+		GPUBuffer*			ibuffer_text;
+		InputLayoutState*	ils_text;
 
 		// SPRITE
 
-		Shader* vs_sprite;
-		Shader* ps_sprite;
-		RenderPass* renderpass_sprite;
-		InputLayoutState* ils_sprite;
-		BlendState* bs_sprite;
-		GPUBuffer* ibuffer_sprite;
+		Shader*				vs_sprite;
+		Shader*				ps_sprite;
+		RenderPass*			renderpass_sprite;
+		InputLayoutState*	ils_sprite;
+		BlendState*			bs_sprite;
+		GPUBuffer*			ibuffer_sprite;
+
+		// MESH
+
+		Shader*				vs_mesh;
+		Shader*				ps_mesh;
+		RenderPass*			renderpass_mesh;
+		InputLayoutState*	ils_mesh;
+		BlendState*			bs_mesh;
+		GPUBuffer*			cbuffer_mesh_instance[GraphicsLimit_CommandList];
 
 	};
 	
 	struct RenderingUtils {
-
 		u8* batch_data;
-
 	};
 
 	extern GraphicsObjects gfx;

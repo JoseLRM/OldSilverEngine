@@ -3,7 +3,6 @@
 -- SV_ENABLE_ASSERTION
 -- SV_ENABLE_PROFILER
 -- SV_ENABLE_GFX_VALIDATION
--- SV_RES_PATH
 
 _outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 

@@ -976,7 +976,7 @@ namespace sv {
 		vkCmdPipelineBarrier(cmd, srcStage, dstStage, 0u, 0u, 0u, 0u, 0u, 2u, imgBarrier);
 	}
 
-	void graphics_vulkan_buffer_update(GPUBuffer* buffer_, void* pData, u32 size, u32 offset, CommandList cmd_)
+	void graphics_vulkan_buffer_update(GPUBuffer* buffer_, const void* pData, u32 size, u32 offset, CommandList cmd_)
 	{
 		Buffer_vk& buffer = *reinterpret_cast<Buffer_vk*>(buffer_);
 

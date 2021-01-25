@@ -1,6 +1,8 @@
 #pragma once
 
 #include "SilverEngine/graphics.h"
+#include "SilverEngine/gui.h"
+#include "SilverEngine/entity_system.h"
 
 namespace sv {
 

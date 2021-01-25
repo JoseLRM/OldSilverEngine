@@ -434,13 +434,11 @@ namespace sv {
 
 #define PARSE_FILEPATH() std::string filepath_str; \
 	if (!sv::path_is_absolute(filepath)) { \
-		if (filepath[0] == '$') { \
-			filepath_str = SV_SYS_PATH; \	
-			++filepath \
+		if (*filepath == '$') { \
+			filepath_str = SV_SYS_PATH; ++filepath; \
 		} \
 		else \
-			filepath_str = SV_RES_PATH; \	
-		filepath_str += filepath; \
+			filepath_str = SV_RES_PATH; filepath_str += filepath; \
 		filepath = filepath_str.c_str(); \
 	} 
 
@@ -449,19 +447,17 @@ namespace sv {
 #define PARSE_FILEPATH() std::string filepath_str; \
 	if (!sv::path_is_absolute(filepath)) { \
 		if (filepath[0] == '$') { \
-			filepath_str = SV_SYS_PATH; \	
-			filepath_str += filepath + 1u; \
+			filepath_str = SV_SYS_PATH; filepath_str += filepath + 1u; \
 			filepath = filepath_str.c_str(); \
 		} \
 	} 
 
 #elif defined(SV_RES_PATH)
 
-#define PARSE_FILEPATH() std::string filePathStr; \
-	if (!sv::path_is_absolute(filePath)) { \
-		filePathStr = SV_RES_PATH; \
-		filePathStr += filePath; \
-		filePath = filePathStr.c_str(); \
+#define PARSE_FILEPATH() std::string filepath_str; \
+	if (!sv::path_is_absolute(filepath)) { \
+		filepath_str = SV_RES_PATH; filepath_str += filepath; \
+		filepath = filepath_str.c_str(); \
 	} 
 
 #else
@@ -641,7 +637,7 @@ namespace sv {
 		stream.write(str.data(), str.size());
 	}
 
-	Result FileI::open(const char* filePath, bool text)
+	Result FileI::open(const char* filepath, bool text)
 	{
 		close();
 
@@ -651,7 +647,7 @@ namespace sv {
 
 		if (!text) f |= std::ios::binary;
 
-		stream.open(filePath, f);
+		stream.open(filepath, f);
 
 		if (stream.is_open()) {
 			return Result_Success;
@@ -839,33 +835,32 @@ namespace sv {
 
 	std::string bin_filepath(size_t hash)
 	{
-		std::string filePath = "bin/" + std::to_string(hash) + ".bin";
-		return filePath;
+		return "bin/" + std::to_string(hash) + ".bin";
 	}
 
 	Result bin_read(size_t hash, std::vector<u8>& data)
 	{
-		std::string filePath = bin_filepath(hash);
-		return file_read_binary(filePath.c_str(), data);
+		std::string filepath = bin_filepath(hash);
+		return file_read_binary(filepath.c_str(), data);
 	}
 
 	Result bin_read(size_t hash, ArchiveI& archive)
 	{
-		std::string filePath = "bin/" + std::to_string(hash) + ".bin";
-		svCheck(archive.open_file(filePath.c_str()));
+		std::string filepath = "bin/" + std::to_string(hash) + ".bin";
+		svCheck(archive.open_file(filepath.c_str()));
 		return Result_Success;
 	}
 
 	Result bin_write(size_t hash, const void* data, size_t size)
 	{
-		std::string filePath = bin_filepath(hash);
-		return file_write_binary(filePath.c_str(), (u8*)data, size);
+		std::string filepath = bin_filepath(hash);
+		return file_write_binary(filepath.c_str(), (u8*)data, size);
 	}
 
 	Result bin_write(size_t hash, ArchiveO& archive)
 	{
-		std::string filePath = "bin/" + std::to_string(hash) + ".bin";
-		svCheck(archive.save_file(filePath.c_str()));
+		std::string filepath = bin_filepath(hash);
+		svCheck(archive.save_file(filepath.c_str()));
 		return Result_Success;
 	}
 

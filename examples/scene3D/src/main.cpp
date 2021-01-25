@@ -3,15 +3,18 @@
 using namespace sv;
 
 GPUImage* offscreen = nullptr;
+GPUImage* zbuffer = nullptr;
 DebugRenderer rend;
 Font font;
 v3_f32				camera_position;
 v2_f32				camera_rotation;
 CameraProjection	camera;
+Mesh mesh;
 
 Result init()
 {
 	svCheck(graphics_offscreen_create(1920u, 1080u, &offscreen));
+	svCheck(graphics_zbuffer_create(1920u, 1080u, &zbuffer));
 
 	// Init font
 	{
@@ -30,6 +33,10 @@ Result init()
 	camera.far = 1000.f;
 
 	rend.create();
+
+	// TEMP: create cube mesh
+	mesh_apply_cube(mesh);
+	mesh_create_buffers(mesh);
 
 	return Result_Success;
 }
@@ -58,6 +65,7 @@ void render()
 	CommandList cmd = graphics_commandlist_begin();
 
 	graphics_image_clear(offscreen, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, Color4f::Blue(), 1.f, 0u, cmd);
+	graphics_image_clear(zbuffer, GPUImageLayout_DepthStencil, GPUImageLayout_DepthStencil, Color4f::White(), 1.f, 0u, cmd);
 
 	graphics_viewport_set(offscreen, 0u, cmd);
 	graphics_scissor_set(offscreen, 0u, cmd);
@@ -72,6 +80,8 @@ void render()
 
 	XMMATRIX vp_matrix = math_matrix_view(camera_position, v4_f32(XMQuaternionRotationRollPitchYawFromVector(camera_rotation.getDX()))) * camera.projectionMatrix;
 	rend.render(offscreen, vp_matrix, cmd);
+
+	draw_mesh(&mesh, vp_matrix, zbuffer, offscreen, cmd);
 	
 	graphics_present(engine.window, offscreen, GPUImageLayout_RenderTarget, cmd);
 }
@@ -109,6 +119,8 @@ int main()
 		engine_close();
 	}
 
+#ifdef SV_ENABLE_LOGGING
 	system("pause");
+#endif
 
 }

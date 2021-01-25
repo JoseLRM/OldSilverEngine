@@ -6,7 +6,7 @@
 #define PARSE_GUI() sv::GUI_internal& gui = *reinterpret_cast<sv::GUI_internal*>(gui_)
 
 // TEMP
-#include "SilverEngine/render_utils/debug_renderer.h"
+#include "SilverEngine/debug_renderer.h"
 
 namespace sv {
 

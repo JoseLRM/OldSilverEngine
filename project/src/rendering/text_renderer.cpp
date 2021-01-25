@@ -1,6 +1,6 @@
 #include "SilverEngine/core.h"
 
-#include "SilverEngine/render_utils/text.h"	
+#include "SilverEngine/text.h"	
 #include "rendering/rendering.h"	
 
 namespace sv {

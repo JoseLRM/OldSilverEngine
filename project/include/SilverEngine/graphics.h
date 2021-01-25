@@ -690,6 +690,7 @@ namespace sv {
 	// RenderPass functions
 
 	void graphics_renderpass_begin(RenderPass* renderPass, GPUImage** attachments, const Color4f* colors, float depth, u32 stencil, CommandList cmd);
+	void graphics_renderpass_begin(RenderPass* renderPass, GPUImage** attachments, CommandList cmd);
 	void graphics_renderpass_end(CommandList cmd);
 
 	// Draw Calls
@@ -699,7 +700,7 @@ namespace sv {
 
 	// Memory
 
-	void graphics_buffer_update(GPUBuffer* buffer, void* pData, u32 size, u32 offset, CommandList cmd);
+	void graphics_buffer_update(GPUBuffer* buffer, const void* pData, u32 size, u32 offset, CommandList cmd);
 	void graphics_barrier(const GPUBarrier* barriers, u32 count, CommandList cmd);
 	void graphics_image_blit(GPUImage* src, GPUImage* dst, GPUImageLayout srcLayout, GPUImageLayout dstLayout, u32 count, const GPUImageBlit* imageBlit, SamplerFilter filter, CommandList cmd);
 	void graphics_image_clear(GPUImage* image, GPUImageLayout oldLayout, GPUImageLayout newLayout, const Color4f& clearColor, float depth, u32 stencil, CommandList cmd); // Not use if necessary, renderpasses have best performance!!
@@ -741,10 +742,12 @@ namespace sv {
 	// Constants
 
 	constexpr Format OFFSCREEN_FORMAT = Format_R16G16B16A16_FLOAT;
+	constexpr Format ZBUFFER_FORMAT = Format_D24_UNORM_S8_UINT;
 
 	// Enums
 
-	Result	graphics_offscreen_create(u32 width, u32 height, GPUImage** pImage);
+	Result graphics_offscreen_create(u32 width, u32 height, GPUImage** pImage);
+	Result graphics_zbuffer_create(u32 width, u32 height, GPUImage** pImage);
 
 	enum ProjectionType : u32 {
 		ProjectionType_Clip,
@@ -763,10 +766,10 @@ namespace sv {
 		XMMATRIX		projectionMatrix = XMMatrixIdentity();
 
 		void adjust(u32 width, u32 height) noexcept;
-		void adjust(float aspect) noexcept;
+		void adjust(f32 aspect) noexcept;
 
 		f32		getProjectionLength() const noexcept;
-		void	setProjectionLength(float length) noexcept;
+		void	setProjectionLength(f32 length) noexcept;
 
 		void updateMatrix();
 

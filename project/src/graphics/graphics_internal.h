@@ -196,7 +196,7 @@ namespace sv {
 
 	typedef void(*FNP_graphics_api_image_clear)(GPUImage*, GPUImageLayout, GPUImageLayout, const Color4f&, float, u32, CommandList);
 	typedef void(*FNP_graphics_api_image_blit)(GPUImage*, GPUImage*, GPUImageLayout, GPUImageLayout, u32, const GPUImageBlit*, SamplerFilter, CommandList);
-	typedef void(*FNP_graphics_api_buffer_update)(GPUBuffer*, void*, u32, u32, CommandList);
+	typedef void(*FNP_graphics_api_buffer_update)(GPUBuffer*, const void*, u32, u32, CommandList);
 	typedef void(*FNP_graphics_api_barrier)(const GPUBarrier*, u32, CommandList);
 
 	typedef void(*FNP_graphics_api_event_begin)(const char*, CommandList);

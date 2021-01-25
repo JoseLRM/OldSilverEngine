@@ -18,26 +18,20 @@ namespace sv {
 
 		std::vector<MeshIndex> indices;
 
-		GPUBuffer* vertexBuffer = nullptr;
-		GPUBuffer* indexBuffer = nullptr;
-
-		void applyPlane(const XMMATRIX& transform = XMMatrixIdentity());
-		void applyCube(const XMMATRIX& transform = XMMatrixIdentity());
-		void applySphere(const XMMATRIX& transform = XMMatrixIdentity());
-
-		void optimize();
-		void recalculateNormals();
-		Result createGPUBuffers(ResourceUsage usage = ResourceUsage_Static);
-		Result updateGPUBuffers(CommandList cmd);
-
-		Result clear();
+		GPUBuffer* vbuffer = nullptr;
+		GPUBuffer* ibuffer = nullptr;
 
 	};
 
-	struct MeshMaterial {
+	void mesh_apply_plane(Mesh& mesh, const XMMATRIX& transform = XMMatrixIdentity());
+	void mesh_apply_cube(Mesh& mesh, const XMMATRIX& transform = XMMatrixIdentity());
+	void mesh_apply_sphere(Mesh& mesh, const XMMATRIX& transform = XMMatrixIdentity());
 
-	};
-
-	void draw_mesh(const Mesh* mesh, const MeshMaterial* material, const XMMATRIX& transform_matrix, GPUImage* offscreen, CommandList cmd);
+	void mesh_optimize(Mesh& mesh);
+	void mesh_recalculate_normals(Mesh& mesh);
+	
+	Result mesh_create_buffers(Mesh& mesh, ResourceUsage usage = ResourceUsage_Static);
+	Result mesh_update_buffers(Mesh& mesh, CommandList cmd);
+	Result mesh_clear(Mesh& mesh);
 
 }

@@ -2,6 +2,8 @@
 
 #include "rendering.h"
 
+#include "SilverEngine/mesh.h"
+
 namespace sv {
 
 	GraphicsObjects gfx = {};
@@ -30,6 +32,9 @@ namespace sv {
 
 		COMPILE_VS(gfx.vs_sprite, "sprite/default.hlsl");
 		COMPILE_PS(gfx.vs_sprite, "sprite/default.hlsl");
+
+		COMPILE_VS_(gfx.vs_mesh, "mesh/default.hlsl");
+		COMPILE_PS_(gfx.ps_mesh, "mesh/default.hlsl");
 
 		return Result_Success;
 	}
@@ -83,6 +88,30 @@ namespace sv {
 
 		desc.attachmentCount = 1u;
 		CREATE_RENDERPASS("SpriteRenderPass", gfx.renderpass_sprite);
+
+		// Mesh
+		att[0].loadOp = AttachmentOperation_Load;
+		att[0].storeOp = AttachmentOperation_Store;
+		att[0].stencilLoadOp = AttachmentOperation_DontCare;
+		att[0].stencilStoreOp = AttachmentOperation_DontCare;
+		att[0].format = OFFSCREEN_FORMAT;
+		att[0].initialLayout = GPUImageLayout_RenderTarget;
+		att[0].layout = GPUImageLayout_RenderTarget;
+		att[0].finalLayout = GPUImageLayout_RenderTarget;
+		att[0].type = AttachmentType_RenderTarget;
+
+		att[1].loadOp = AttachmentOperation_Load;
+		att[1].storeOp = AttachmentOperation_Store;
+		att[1].stencilLoadOp = AttachmentOperation_Load;
+		att[1].stencilStoreOp = AttachmentOperation_Store;
+		att[1].format = ZBUFFER_FORMAT;
+		att[1].initialLayout = GPUImageLayout_DepthStencil;
+		att[1].layout = GPUImageLayout_DepthStencil;
+		att[1].finalLayout = GPUImageLayout_DepthStencil;
+		att[1].type = AttachmentType_DepthStencil;
+
+		desc.attachmentCount = 2u;
+		CREATE_RENDERPASS("MeshRenderPass", gfx.renderpass_mesh);
 
 		return Result_Success;
 	}
@@ -235,6 +264,16 @@ namespace sv {
 			desc.elementCount = 3u;
 			desc.slotCount = 1u;
 			svCheck(graphics_inputlayoutstate_create(&desc, &gfx.ils_sprite));
+
+			// MESH
+			slots[0] = { 0u, sizeof(MeshVertex), false };
+
+			elements[0] = { "Position", 0u, 0u, 0u, Format_R32G32B32_FLOAT };
+			elements[1] = { "Normal", 0u, 0u, 3u * sizeof(f32), Format_R32G32B32_FLOAT };
+
+			desc.elementCount = 2u;
+			desc.slotCount = 1u;
+			svCheck(graphics_inputlayoutstate_create(&desc, &gfx.ils_mesh));
 		}
 
 		// Create BlendStates
@@ -271,6 +310,35 @@ namespace sv {
 			desc.blendConstants = { 0.f, 0.f, 0.f, 0.f };
 
 			svCheck(graphics_blendstate_create(&desc, &gfx.bs_sprite));
+
+			// MESH
+			att[0].blendEnabled = false;
+			att[0].colorWriteMask = ColorComponent_All;
+
+			desc.attachmentCount = 1u;
+
+			svCheck(graphics_blendstate_create(&desc, &gfx.bs_mesh));
+		}
+
+		// Create DepthStencilStates
+		{
+			DepthStencilStateDesc desc;
+			desc.depthTestEnabled = true;
+			desc.depthWriteEnabled = true;
+			desc.depthCompareOp = CompareOperation_Less;
+			desc.stencilTestEnabled = false;
+
+			graphics_depthstencilstate_create(&desc, &gfx.dss_default_depth);
+		}
+
+		// Create RasterizerStates
+		{
+			RasterizerStateDesc desc;
+			desc.wireframe = false;
+			desc.cullMode = RasterizerCullMode_Back;
+			desc.clockwise = true;
+
+			graphics_rasterizerstate_create(&desc, &gfx.rs_back_culling);
 		}
 	}
 

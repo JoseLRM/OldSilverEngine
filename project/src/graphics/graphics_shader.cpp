@@ -20,7 +20,11 @@ namespace sv {
 		u32 random = math_random_u32(seed);
 
 		seed += 100;
-		std::string filePath = std::to_string(random);
+#ifdef SV_SYS_PATH
+		std::string filePath = "$system/" + std::to_string(random);
+#else
+		std::string filePath = "system/" + std::to_string(random);
+#endif
 
 		return filePath;
 	}
@@ -37,7 +41,11 @@ namespace sv {
 		tempFile.write((u8*)str, size);
 		tempFile.close();
 
+#ifdef SV_SYS_PATH
+		Result res = graphics_shader_compile_file(desc, filePath.c_str() + 1u, data);
+#else
 		Result res = graphics_shader_compile_file(desc, filePath.c_str(), data);
+#endif
 
 		svCheck(file_remove(filePath.c_str()));
 
@@ -52,8 +60,12 @@ namespace sv {
 
 		// .exe path
 		{
+#if defined(SV_SYS_PATH) || defined(SV_RES_PATH)
 #ifdef SV_SYS_PATH
 			std::string syspath = SV_SYS_PATH;
+#else
+			std::string syspath = SV_RES_PATH;
+#endif
 			for (char& c : syspath) if (c == '/') c = '\\';
 			bat << syspath;
 #endif
@@ -103,15 +115,15 @@ namespace sv {
 
 		// Include path
 		{
-			const char* includePath = "library/shader_utils";
+			const char* includepath = "system/shaders";
 
-#ifdef SV_RES_PATH
-			std::string includePathStr = SV_RES_PATH;
-			includePathStr += includePath;
-			includePath = includePathStr.c_str();
+#ifdef SV_SYS_PATH
+			std::string includepath_str = SV_SYS_PATH;
+			includepath_str += includepath;
+			includepath = includepath_str.c_str();
 #endif
 
-			bat << "-I " << includePath << ' ';
+			bat << "-I " << includepath << ' ';
 
 		}
 
@@ -163,14 +175,16 @@ namespace sv {
 		}
 
 		// Input - Output
-#ifdef SV_RES_PATH
-		bat << SV_RES_PATH;
+#ifdef SV_SYS_PATH
+		bat << SV_SYS_PATH;
 #endif
 		bat << srcPath << " -Fo ";
-#ifdef SV_RES_PATH
-		bat << SV_RES_PATH;
+#ifdef SV_SYS_PATH
+		bat << SV_SYS_PATH;
+		bat << filePath.c_str() + 1u;
+#else
+		bat << filePath.c_str();
 #endif
-		bat << filePath;
 
 		// Execute
 		system(bat.str().c_str());

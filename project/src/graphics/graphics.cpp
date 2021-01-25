@@ -4,6 +4,7 @@
 #include "window/window_internal.h"
 
 #include "vulkan/graphics_vulkan.h"
+#include "..\..\include\SilverEngine\graphics.h"
 
 namespace sv {
 
@@ -1612,6 +1613,19 @@ namespace sv {
 
 		g_Device.renderpass_begin(cmd);
 	}
+	void graphics_renderpass_begin(RenderPass* renderPass, GPUImage** attachments, CommandList cmd)
+	{
+		auto& state = g_PipelineState.graphics[cmd];
+
+		RenderPass_internal* rp = reinterpret_cast<RenderPass_internal*>(renderPass);
+		state.renderPass = rp;
+
+		u32 attCount = u32(rp->info.attachments.size());
+		memcpy(state.attachments, attachments, sizeof(GPUImage*) * attCount);
+		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_RenderPass;
+
+		g_Device.renderpass_begin(cmd);
+	}
 	void graphics_renderpass_end(CommandList cmd)
 	{
 		g_Device.renderpass_end(cmd);
@@ -1634,7 +1648,7 @@ namespace sv {
 
 	////////////////////////////////////////// MEMORY /////////////////////////////////////////
 
-	void graphics_buffer_update(GPUBuffer* buffer, void* pData, u32 size, u32 offset, CommandList cmd)
+	void graphics_buffer_update(GPUBuffer* buffer, const void* pData, u32 size, u32 offset, CommandList cmd)
 	{
 		g_Device.buffer_update(buffer, pData, size, offset, cmd);
 	}
@@ -1728,6 +1742,17 @@ namespace sv {
 		desc.width = width;
 		desc.height = height;
 
+		return graphics_image_create(&desc, pImage);
+	}
+
+	Result graphics_zbuffer_create(u32 width, u32 height, GPUImage** pImage)
+	{
+		GPUImageDesc desc;
+		desc.width = width;
+		desc.height = height;
+		desc.format = ZBUFFER_FORMAT;
+		desc.layout = GPUImageLayout_DepthStencil;
+		desc.type = GPUImageType_DepthStencil;
 		return graphics_image_create(&desc, pImage);
 	}
 

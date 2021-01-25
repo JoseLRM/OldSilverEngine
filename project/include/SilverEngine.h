@@ -9,7 +9,9 @@
 #include "SilverEngine/task_system.h"
 #include "SilverEngine/text.h"
 #include "SilverEngine/debug_renderer.h"
+#include "SilverEngine/renderer.h"
 
 #include "SilverEngine/sprite.h"
+#include "SilverEngine/mesh.h"
 #include "SilverEngine/gui.h"
 #include "SilverEngine/editor.h"

@@ -2,7 +2,7 @@
 
 #include "SilverEngine/mesh.h"
 
-#define ASSERT_VERTICES() SV_ASSERT(positions.size() == normals.size())
+#define ASSERT_VERTICES() SV_ASSERT(mesh.positions.size() == mesh.normals.size())
 
 namespace sv {
 
@@ -85,96 +85,95 @@ namespace sv {
 		}
 	}
 
-	void Mesh::applyPlane(const XMMATRIX& transformMatrix)
+	void mesh_apply_plane(Mesh& mesh, const XMMATRIX& transform)
 	{
 		ASSERT_VERTICES();
 
-		size_t vertexOffset = positions.size();
-		size_t indexOffset = indices.size();
+		size_t vertexOffset = mesh.positions.size();
+		size_t indexOffset = mesh.indices.size();
 
-		positions.resize(vertexOffset + 4u);
-		normals.resize(vertexOffset + 4u);
+		mesh.positions.resize(vertexOffset + 4u);
+		mesh.normals.resize(vertexOffset + 4u);
 
-		indices.resize(indexOffset + 6u);
+		mesh.indices.resize(indexOffset + 6u);
 
-		computePlane(*this, transformMatrix, XMQuaternionRotationMatrix(transformMatrix), vertexOffset, indexOffset);
+		computePlane(mesh, transform, XMQuaternionRotationMatrix(transform), vertexOffset, indexOffset);
 	}
 
-	void Mesh::applyCube(const XMMATRIX& transformMatrix)
+	void mesh_apply_cube(Mesh& mesh, const XMMATRIX& transform)
 	{
 		ASSERT_VERTICES();
 
-		size_t vertexOffset = positions.size();
-		size_t indexOffset = indices.size();
+		size_t vertexOffset = mesh.positions.size();
+		size_t indexOffset = mesh.indices.size();
 
-		positions.resize(vertexOffset + 6u * 4u);
-		normals.resize(vertexOffset + 6u * 4u);
+		mesh.positions.resize(vertexOffset + 6u * 4u);
+		mesh.normals.resize(vertexOffset + 6u * 4u);
 
-		indices.resize(indexOffset + 6u * 6u);
+		mesh.indices.resize(indexOffset + 6u * 6u);
 
 		XMMATRIX faceTransform, faceRotation;
 		XMVECTOR quat;
 
 		// UP
-		faceTransform = XMMatrixTranslation(0.f, 0.5f, 0.f) * transformMatrix;
+		faceTransform = XMMatrixTranslation(0.f, 0.5f, 0.f) * transform;
 		quat = XMQuaternionRotationMatrix(faceTransform);
-		computePlane(*this, faceTransform, quat, vertexOffset + 4u * 0u, indexOffset + 6 * 0u);
+		computePlane(mesh, faceTransform, quat, vertexOffset + 4u * 0u, indexOffset + 6 * 0u);
 
 		// DOWN
 		faceRotation = XMMatrixRotationRollPitchYaw(0.f, 0.f, ToRadians(180.f));
-		faceTransform = XMMatrixTranslation(0.f, 0.5f, 0.f) * faceRotation * transformMatrix;
+		faceTransform = XMMatrixTranslation(0.f, 0.5f, 0.f) * faceRotation * transform;
 		quat = XMQuaternionRotationMatrix(faceTransform);
-		computePlane(*this, faceTransform, quat, vertexOffset + 4u * 1u, indexOffset + 6 * 1u);
+		computePlane(mesh, faceTransform, quat, vertexOffset + 4u * 1u, indexOffset + 6 * 1u);
 
 		// LEFT
 		faceRotation = XMMatrixRotationRollPitchYaw(0.f, 0.f, ToRadians(-90.f));
-		faceTransform = XMMatrixTranslation(0.f, 0.5f, 0.f) * faceRotation * transformMatrix;
+		faceTransform = XMMatrixTranslation(0.f, 0.5f, 0.f) * faceRotation * transform;
 		quat = XMQuaternionRotationMatrix(faceTransform);
-		computePlane(*this, faceTransform, quat, vertexOffset + 4u * 2u, indexOffset + 6 * 2u);
+		computePlane(mesh, faceTransform, quat, vertexOffset + 4u * 2u, indexOffset + 6 * 2u);
 
 		// RIGHT
 		faceRotation = XMMatrixRotationRollPitchYaw(0.f, 0.f, ToRadians(90.f));
-		faceTransform = XMMatrixTranslation(0.f, 0.5f, 0.f) * faceRotation * transformMatrix;
+		faceTransform = XMMatrixTranslation(0.f, 0.5f, 0.f) * faceRotation * transform;
 		quat = XMQuaternionRotationMatrix(faceTransform);
-		computePlane(*this, faceTransform, quat, vertexOffset + 4u * 3u, indexOffset + 6 * 3u);
+		computePlane(mesh, faceTransform, quat, vertexOffset + 4u * 3u, indexOffset + 6 * 3u);
 
 		// FRONT
 		faceRotation = XMMatrixRotationRollPitchYaw(ToRadians(-90.f), 0.f, 0.f);
-		faceTransform = XMMatrixTranslation(0.f, 0.5f, 0.f) * faceRotation * transformMatrix;
+		faceTransform = XMMatrixTranslation(0.f, 0.5f, 0.f) * faceRotation * transform;
 		quat = XMQuaternionRotationMatrix(faceTransform);
-		computePlane(*this, faceTransform, quat, vertexOffset + 4u * 4u, indexOffset + 6 * 4u);
+		computePlane(mesh, faceTransform, quat, vertexOffset + 4u * 4u, indexOffset + 6 * 4u);
 
 		// BACK
 		faceRotation = XMMatrixRotationRollPitchYaw(ToRadians(90.f), 0.f, 0.f);
-		faceTransform = XMMatrixTranslation(0.f, 0.5f, 0.f) * faceRotation * transformMatrix;
+		faceTransform = XMMatrixTranslation(0.f, 0.5f, 0.f) * faceRotation * transform;
 		quat = XMQuaternionRotationMatrix(faceTransform);
-		computePlane(*this, faceTransform, quat, vertexOffset + 4u * 5u, indexOffset + 6 * 5u);
-
+		computePlane(mesh, faceTransform, quat, vertexOffset + 4u * 5u, indexOffset + 6 * 5u);
 	}
 
-	void Mesh::applySphere(const XMMATRIX& transform)
+	void mesh_apply_sphere(Mesh& mesh, const XMMATRIX& transform)
 	{
 		SV_LOG_ERROR("TODO");
 	}
 
-	void Mesh::optimize()
+	void mesh_optimize(Mesh& mesh)
 	{
 		SV_LOG_ERROR("TODO");
 	}
 
-	void Mesh::recalculateNormals()
+	void mesh_recalculate_normals(Mesh& mesh)
 	{
 		SV_LOG_ERROR("TODO");
 	}
 
-	Result Mesh::createGPUBuffers(ResourceUsage usage)
+	Result mesh_create_buffers(Mesh& mesh, ResourceUsage usage)
 	{
 		ASSERT_VERTICES();
 		SV_ASSERT(usage != ResourceUsage_Staging);
-		if (vertexBuffer || indexBuffer) return Result_Duplicated;
+		if (mesh.vbuffer || mesh.ibuffer) return Result_Duplicated;
 
 		std::vector<MeshVertex> vertexData;
-		constructVertexData(*this, vertexData);
+		constructVertexData(mesh, vertexData);
 
 		GPUBufferDesc desc;
 		desc.bufferType = GPUBufferType_Vertex;
@@ -183,44 +182,37 @@ namespace sv {
 		desc.size = u32(vertexData.size() * sizeof(MeshVertex));
 		desc.pData = vertexData.data();
 
-		svCheck(graphics_buffer_create(&desc, &vertexBuffer));
+		svCheck(graphics_buffer_create(&desc, &mesh.vbuffer));
 
 		desc.indexType = IndexType_32;
 		desc.bufferType = GPUBufferType_Index;
-		desc.size = u32(indices.size() * sizeof(u32));
-		desc.pData = indices.data();
+		desc.size = u32(mesh.indices.size() * sizeof(u32));
+		desc.pData = mesh.indices.data();
 
-		svCheck(graphics_buffer_create(&desc, &indexBuffer));
+		svCheck(graphics_buffer_create(&desc, &mesh.ibuffer));
 
-		graphics_name_set(vertexBuffer, "MeshVertexBuffer");
-		graphics_name_set(indexBuffer, "MeshIndexBuffer");
+		graphics_name_set(mesh.vbuffer, "MeshVertexBuffer");
+		graphics_name_set(mesh.ibuffer, "MeshIndexBuffer");
 
 		return Result_Success;
 	}
 
-	Result Mesh::updateGPUBuffers(CommandList cmd)
+	Result mesh_update_buffers(Mesh& mesh, CommandList cmd)
 	{
 		SV_LOG_ERROR("TODO");
 		return Result_TODO;
 	}
 
-	Result Mesh::clear()
+	Result mesh_clear(Mesh& mesh)
 	{
-		positions.clear();
-		normals.clear();
+		mesh.positions.clear();
+		mesh.normals.clear();
 
-		indices.clear();
+		mesh.indices.clear();
 
-		svCheck(graphics_destroy(vertexBuffer));
-		svCheck(graphics_destroy(indexBuffer));
+		svCheck(graphics_destroy(mesh.vbuffer));
+		svCheck(graphics_destroy(mesh.ibuffer));
 		return Result_Success;
-	}
-
-	// DRAW CALLS
-
-	void draw_mesh(const Mesh* mesh, const MeshMaterial* material, const XMMATRIX& transform_matrix, GPUImage* offscreen, CommandList cmd)
-	{
-
 	}
 
 }

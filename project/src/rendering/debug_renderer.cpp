@@ -1,6 +1,6 @@
 #include "SilverEngine/core.h"
 
-#include "SilverEngine/render_utils/debug_renderer.h"
+#include "SilverEngine/debug_renderer.h"
 #include "SilverEngine/utils/allocators/FrameList.h"
 #include "rendering/rendering.h"
 

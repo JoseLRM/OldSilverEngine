@@ -160,7 +160,7 @@ namespace sv {
 
 		SV_LOG_SEPARATOR();
 
-		engine.able_to_run = result_okay(Result_Success);
+		engine.able_to_run = result_okay(res);
 		
 		return Result_Success;
 	}
@@ -260,9 +260,6 @@ namespace sv {
 
 			// Close Window
 			svCheck(window_destroy(engine.window));
-
-			// SPRITE
-			if (result_fail(sprite_renderer_close())) { SV_LOG_ERROR("Can't close sprite renderer"); }
 
 			// CORE
 			if (result_fail(rendering_close())) { SV_LOG_ERROR("Can't close render utils"); }

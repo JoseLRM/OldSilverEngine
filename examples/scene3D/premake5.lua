@@ -20,8 +20,15 @@ workspace 'Scene3D'
 		'SV_ENABLE_ASSERTION',
 	}
 
+	-- PATHS
+
 	sysPath = engineDir
 	resPath = 'res/'
+
+	defines {
+		'SV_RES_PATH=\"' .. resPath .. '\"',
+		'SV_SYS_PATH=\"' .. sysPath .. '\"',
+	}
 
 	filter {}
 
