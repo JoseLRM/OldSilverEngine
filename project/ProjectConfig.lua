@@ -17,6 +17,12 @@ project 'SilverEngine'
 		"lib/"
 	}
 
+	-- DEFINES
+
+	defines {
+		"SILVER_ENGINE"
+	}
+
 	-- PRECOMILED HEADER
 	pchheader 'SilverEngine/core.h'
 	pchsource 'src/core.cpp'

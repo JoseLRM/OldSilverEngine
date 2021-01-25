@@ -2,7 +2,7 @@
 
 #include "SilverEngine/render_utils/debug_renderer.h"
 #include "SilverEngine/utils/allocators/FrameList.h"
-#include "render_utils/render_utils_internal.h"
+#include "rendering/rendering.h"
 
 namespace sv {
 
@@ -58,294 +58,7 @@ namespace sv {
 
 	};
 
-	static constexpr u32 BATCH_COUNT = 10000u;
-
-	static const char* QUAD_VERTEX_SHADER_SRC = 
-	"#include \"core.hlsl\"\n"
-	"struct Input {\n"
-	"float4 position : Position; \n"
-	"float2 texCoord : TexCoord;\n"
-	"float stroke : Stroke;\n"
-	"float4 color : Color;\n"
-	"}; \n"
-	"struct Output {\n"
-	"	float4 color : PxColor;\n"
-	"	float2 texCoord : PxTexCoord;\n"
-	"	float2 stroke : PxStroke;\n"
-	"	float4 position : SV_Position;\n"
-	"};\n"
-	"\n"
-	"Output main(Input input)\n"
-	"{\n"
-	"	Output output;\n"
-	"	output.position = input.position;\n"
-	"	output.color = input.color;\n"
-	"	float2 halfSize = abs(input.texCoord);\n"
-	"	output.texCoord = input.texCoord;\n"
-	"	output.stroke = halfSize - (input.stroke * min(halfSize.x, halfSize.y));\n"
-	"	return output;\n"
-	"}";
-
-	static const char* QUAD_PIXEL_SHADER_SRC = 
-		"#include \"core.hlsl\"\n"
-		"struct Input {\n"
-		"float4 color : PxColor; \n"
-		"float2 texCoord : PxTexCoord; \n"
-		"float2 stroke : PxStroke; \n"
-		"};\n"
-
-		"struct Output {\n"
-		"	float4 color : SV_Target;\n"
-		"};\n"
-		"Output main(Input input)\n"
-		"{\n"
-		"	Output output;\n"
-		"	if (abs(input.texCoord.x) < input.stroke.x && abs(input.texCoord.y) < input.stroke.y) discard;\n"
-		"	output.color = input.color;\n"
-		"	return output;\n"
-		"};";
-
-	static const char* ELLIPSE_VERTEX_SHADER_SRC = 
-		"#include \"core.hlsl\"\n"
-		"struct Input {\n"
-		"	float4 position : Position;\n"
-
-		"	float2 texCoord : TexCoord;\n"
-		"	float stroke : Stroke;\n"
-		"	float4 color : Color;\n"
-		"};\n"
-		"struct Output {\n"
-		"	float2 texCoord : PxTexCoord;\n"
-		"	float4 color : PxColor;\n"
-		"	float stroke : PxStroke;\n"
-		"	float4 position : SV_Position;\n"
-		"};\n"
-		"Output main(Input input)\n"
-		"{\n"
-		"	Output output;\n"
-		"	output.position = input.position;\n"
-		"	output.color = input.color;\n"
-		"	output.texCoord = input.texCoord;\n"
-		"	float2 halfSize = abs(input.texCoord);\n"
-		"	float s = min(halfSize.x, halfSize.y);\n"
-		"	output.stroke = s - (input.stroke * s);\n"
-		"	return output;\n"
-		"}";
-
-	static const char* ELLIPSE_PIXEL_SHADER_SRC = 
-		"#include \"core.hlsl\"\n"
-		"struct Input {\n"
-		"	float2 texCoord : PxTexCoord; \n"
-		"	float4 color : PxColor; \n"
-		"	float stroke : PxStroke; \n"
-		"};\n"
-		"struct Output {\n"
-		"	float4 color : SV_Target;\n"
-		"};\n"
-		"Output main(Input input)\n"
-		"{\n"
-		"	float distance = length(input.texCoord);\n"
-		"	if (distance > 0.5f || distance < input.stroke) discard;\n"
-		"	Output output;\n"
-		"	output.color = input.color;\n"
-		"	return output;\n"
-		"}";
-
-static const char* SPRITE_VERTEX_SHADER_SRC = 
-		"#include \"core.hlsl\"\n"
-		"struct Input {\n"
-		"	float4 position : Position;\n"
-		"	float2 texCoord : TexCoord;\n"
-		"	float stroke : Stroke;\n"
-		"	float4 color : Color;\n"
-		"};\n"
-		"struct Output {\n"
-		"	float4 color : PxColor;\n"
-		"	float2 texCoord : PxTexCoord;\n"
-		"	float4 position : SV_Position;\n"
-		"};\n"
-		"Output main(Input input)\n"
-		"{\n"
-		"	Output output;\n"
-		"	output.position = input.position;\n"
-		"	output.color = input.color;\n"
-		"	output.texCoord = input.texCoord;\n"
-		"	return output;\n"
-		"}";
-
-static const char* SPRITE_PIXEL_SHADER_SRC = 
-		"#include \"core.hlsl\"\n"
-		"struct Input {\n"
-		"	float4 color : PxColor;\n"
-		"	float2 texCoord : PxTexCoord;\n"
-		"};\n"
-		"struct Output {\n"
-		"	float4 color : SV_Target;\n"
-		"};\n"
-		"SV_TEXTURE(tex, t0);\n"
-		"SV_SAMPLER(sam, s0);\n"
-		"Output main(Input input)\n"
-		"{\n"
-		"	Output output;\n"
-		"	output.color = input.color * tex.Sample(sam, input.texCoord);\n"
-		"	return output;\n"
-		"}";
-
 #define parseBatch() sv::DebugRendererBatch_internal& batch = *reinterpret_cast<sv::DebugRendererBatch_internal*>(pInternal)
-
-	struct DebugData {
-		v4_f32 position;
-		v2_f32 texCoord;
-		float stroke;
-		Color color;
-	};
-
-	static GPUBuffer* g_VertexBuffer[GraphicsLimit_CommandList] = {};
-
-	static RenderPass*			g_RenderPass;
-	static InputLayoutState*	g_InputLayout;
-	static BlendState*			g_BS_Geometry;
-	static Sampler*				g_DefSampler;
-
-	// Shaders
-
-	static Shader*			g_QuadVertexShader;
-	static Shader*			g_QuadPixelShader;
-
-	static Shader*			g_EllipseVertexShader;
-	static Shader*			g_EllipsePixelShader;
-	
-	static Shader*			g_SpriteVertexShader;
-	static Shader*			g_SpritePixelShader;
-
-	// MAIN FUNCTIONS
-
-	Result debug_renderer_initialize()
-	{
-		// Create Shaders
-		svCheck(graphics_shader_compile_fastbin_from_string("DefaultRenderer_QuadVertex", ShaderType_Vertex, &g_QuadVertexShader, QUAD_VERTEX_SHADER_SRC));
-		svCheck(graphics_shader_compile_fastbin_from_string("DefaultRenderer_QuadPixel", ShaderType_Pixel, &g_QuadPixelShader, QUAD_PIXEL_SHADER_SRC));
-
-		svCheck(graphics_shader_compile_fastbin_from_string("DefaultRenderer_EllipseVertex", ShaderType_Vertex, &g_EllipseVertexShader, ELLIPSE_VERTEX_SHADER_SRC));
-		svCheck(graphics_shader_compile_fastbin_from_string("DefaultRenderer_EllipsePixel", ShaderType_Pixel, &g_EllipsePixelShader, ELLIPSE_PIXEL_SHADER_SRC));
-
-		svCheck(graphics_shader_compile_fastbin_from_string("DefaultRenderer_SpriteVertex", ShaderType_Vertex, &g_SpriteVertexShader, SPRITE_VERTEX_SHADER_SRC));
-		svCheck(graphics_shader_compile_fastbin_from_string("DefaultRenderer_SpritePixel", ShaderType_Pixel, &g_SpritePixelShader, SPRITE_PIXEL_SHADER_SRC));
-
-		// Create RenderPass
-		{
-			AttachmentDesc att;
-			att.loadOp = AttachmentOperation_Load;
-			att.storeOp = AttachmentOperation_Store;
-			att.stencilLoadOp = AttachmentOperation_DontCare;
-			att.stencilStoreOp = AttachmentOperation_DontCare;
-			att.format = OFFSCREEN_FORMAT;
-			att.initialLayout = GPUImageLayout_RenderTarget;
-			att.layout = GPUImageLayout_RenderTarget;
-			att.finalLayout = GPUImageLayout_RenderTarget;
-			att.type = AttachmentType_RenderTarget;
-
-			RenderPassDesc desc;
-			desc.attachmentCount = 1u;
-			desc.pAttachments = &att;
-
-			svCheck(graphics_renderpass_create(&desc, &g_RenderPass));
-		}
-
-		// Create Input layout
-		{
-			InputSlotDesc slot;
-			slot.instanced = false;
-			slot.slot = 0u;
-			slot.stride = sizeof(DebugData);
-
-			InputElementDesc elements[] = 
-			{ 
-				{ "Position", 0u, 0u, 0u, Format_R32G32B32A32_FLOAT },
-				{ "TexCoord", 0u, 0u, 4u * sizeof(float), Format_R32G32_FLOAT },
-				{ "Stroke", 0u, 0u, 6u * sizeof(float), Format_R32_FLOAT },
-				{ "Color", 0u, 0u, 7u * sizeof(float), Format_R8G8B8A8_UNORM },
-			};
-
-			InputLayoutStateDesc desc;
-			desc.elementCount = 4u;
-			desc.slotCount = 1u;
-			desc.pElements = elements;
-			desc.pSlots = &slot;
-
-			svCheck(graphics_inputlayoutstate_create(&desc, &g_InputLayout));
-		}
-		
-		// Create Blend State
-		{
-			BlendAttachmentDesc att;
-			att.blendEnabled = true;
-			att.srcColorBlendFactor = BlendFactor_SrcAlpha;
-			att.dstColorBlendFactor = BlendFactor_OneMinusSrcAlpha;
-			att.colorBlendOp = BlendOperation_Add;
-			att.srcAlphaBlendFactor = BlendFactor_One;
-			att.dstAlphaBlendFactor = BlendFactor_One;
-			att.alphaBlendOp = BlendOperation_Add;
-			att.colorWriteMask = ColorComponent_All;
-
-
-			BlendStateDesc desc;
-			desc.attachmentCount = 1u;
-			desc.pAttachments = &att;
-			desc.blendConstants = { 0.f, 0.f, 0.f, 0.f };
-
-			svCheck(graphics_blendstate_create(&desc, &g_BS_Geometry));
-		}
-
-		// Create Def sampler
-		{
-			SamplerDesc desc;
-			desc.addressModeU = SamplerAddressMode_Wrap;
-			desc.addressModeV = SamplerAddressMode_Wrap;
-			desc.addressModeW = SamplerAddressMode_Wrap;
-			desc.minFilter = SamplerFilter_Nearest;
-			desc.magFilter = SamplerFilter_Nearest;
-
-			svCheck(graphics_sampler_create(&desc, &g_DefSampler));
-		}
-
-		return Result_Success;
-	}
-
-	Result debug_renderer_close()
-	{
-		for (u32 i = 0; i < GraphicsLimit_CommandList; ++i) graphics_destroy(g_VertexBuffer[i]);
-		graphics_destroy(g_RenderPass);
-		graphics_destroy(g_InputLayout);
-		graphics_destroy(g_BS_Geometry);
-		graphics_destroy(g_DefSampler);
-		graphics_destroy(g_QuadVertexShader);
-		graphics_destroy(g_QuadPixelShader);
-		graphics_destroy(g_EllipseVertexShader);
-		graphics_destroy(g_EllipsePixelShader);
-		graphics_destroy(g_SpriteVertexShader);
-		graphics_destroy(g_SpritePixelShader);
-
-		return Result_Success;
-	}
-
-	Result debug_renderer_create_buffer(CommandList cmd)
-	{
-		if (g_VertexBuffer[cmd] == nullptr) {
-
-			GPUBufferDesc desc;
-			desc.bufferType = GPUBufferType_Vertex;
-			desc.usage = ResourceUsage_Default;
-			desc.CPUAccess = CPUAccess_Write;
-			desc.size = BATCH_COUNT * sizeof(DebugData);
-			desc.pData = nullptr;
-
-			return graphics_buffer_create(&desc, &g_VertexBuffer[cmd]);
-
-		}
-
-		return Result_Success;
-	}
 
 	// BEGIN - END
 
@@ -373,27 +86,27 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		{
 		case 0u:
 			graphics_topology_set(GraphicsTopology_Triangles, cmd);
-			graphics_shader_bind(g_QuadVertexShader, cmd);
-			graphics_shader_bind(g_QuadPixelShader, cmd);
+			graphics_shader_bind(gfx.vs_debug_quad, cmd);
+			graphics_shader_bind(gfx.ps_debug_quad, cmd);
 			break;
 
 		case 1u:
 			graphics_topology_set(GraphicsTopology_Lines, cmd);
-			graphics_shader_bind(g_QuadVertexShader, cmd);
-			graphics_shader_bind(g_QuadPixelShader, cmd);
+			graphics_shader_bind(gfx.vs_debug_quad, cmd);
+			graphics_shader_bind(gfx.ps_debug_quad, cmd);
 			graphics_line_width_set(draw.lineWidth, cmd);
 			break;
 
 		case 2u:
 			graphics_topology_set(GraphicsTopology_Triangles, cmd);
-			graphics_shader_bind(g_EllipseVertexShader, cmd);
-			graphics_shader_bind(g_EllipsePixelShader, cmd);
+			graphics_shader_bind(gfx.vs_debug_ellipse, cmd);
+			graphics_shader_bind(gfx.ps_debug_ellipse, cmd);
 			break;
 
 		case 3u:
 			graphics_topology_set(GraphicsTopology_Triangles, cmd);
-			graphics_shader_bind(g_SpriteVertexShader, cmd);
-			graphics_shader_bind(g_SpritePixelShader, cmd);
+			graphics_shader_bind(gfx.vs_debug_sprite, cmd);
+			graphics_shader_bind(gfx.ps_debug_sprite, cmd);
 
 			graphics_image_bind(draw.pImage, 0u, ShaderType_Pixel, cmd);
 
@@ -401,7 +114,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 				graphics_sampler_bind(draw.pSampler, 0u, ShaderType_Pixel, cmd);
 			}
 			else {
-				graphics_sampler_bind(g_DefSampler, 0u, ShaderType_Pixel, cmd);
+				graphics_sampler_bind(gfx.sampler_def_nearest, 0u, ShaderType_Pixel, cmd);
 			}
 
 			break;
@@ -411,17 +124,17 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		graphics_draw(vertexCount, 1u, batchOffset, 0u, cmd);
 	}
 
-	void debug_renderer_draw_batch(const DebugRendererDraw* begin, u32 beginIndex, const DebugRendererDraw* end, u32 endIndex, u32 batchCount, DebugData* batchData, GPUImage* renderTarget, CommandList cmd)
+	void debug_renderer_draw_batch(const DebugRendererDraw* begin, u32 beginIndex, const DebugRendererDraw* end, u32 endIndex, u32 batchCount, DebugVertex* batchData, GPUImage* renderTarget, CommandList cmd)
 	{
-		GPUBuffer* buffer = g_VertexBuffer[cmd];
+		GPUBuffer* buffer = get_batch_buffer(cmd);
 
-		graphics_buffer_update(buffer, batchData, batchCount * sizeof(DebugData), 0u, cmd);
+		graphics_buffer_update(buffer, batchData, batchCount * sizeof(DebugVertex), 0u, cmd);
 
 		GPUImage* attachments[] = {
 			renderTarget
 		};
 
-		graphics_renderpass_begin(g_RenderPass, attachments, nullptr, 1.f, 0u, cmd);
+		graphics_renderpass_begin(gfx.renderpass_debug, attachments, nullptr, 1.f, 0u, cmd);
 
 		graphics_vertexbuffer_bind(buffer, 0u, 0u, cmd);
 
@@ -493,13 +206,10 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		if (batch.drawCalls.size() <= 1u)
 			return;
 
-		sv::Result result = debug_renderer_create_buffer(cmd);
-		SV_ASSERT(result_okay(result));
-
 		graphics_mode_set(GraphicsPipelineMode_Graphics, cmd);
 
-		graphics_inputlayoutstate_bind(g_InputLayout, cmd);
-		graphics_blendstate_bind(g_BS_Geometry, cmd);
+		graphics_inputlayoutstate_bind(gfx.ils_debug, cmd);
+		graphics_blendstate_bind(gfx.bs_debug, cmd);
 
 		const DebugRendererDraw* end = batch.drawCalls.data() + batch.drawCalls.size();
 		const DebugRendererDraw* it = batch.drawCalls.data() + 1u;
@@ -508,10 +218,9 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 		const DebugRendererDraw* beginIt = it;
 		u32 beginIndex = u32_max;
 
-		// Update Data
-		DebugData batchData[BATCH_COUNT];
-		DebugData* itBatch = batchData;
-		DebugData* endBatch = batchData + BATCH_COUNT;
+		DebugVertex* batchData = reinterpret_cast<DebugData*>(rend_utils[cmd].batch_data)->vertices;
+		DebugVertex* itBatch = batchData;
+		DebugVertex* endBatch = batchData + DEBUG_VERTEX_COUNT;
 
 		// Vertex vectors
 		XMVECTOR v0;
@@ -549,7 +258,7 @@ static const char* SPRITE_PIXEL_SHADER_SRC =
 
 				draw.count -= batchUsage;
 
-				DebugData* itBatchEnd = itBatch + (batchUsage * vertexCount);
+				DebugVertex* itBatchEnd = itBatch + (batchUsage * vertexCount);
 
 				switch (draw.list)
 				{

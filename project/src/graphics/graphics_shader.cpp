@@ -128,22 +128,22 @@ namespace sv {
 		switch (desc->shaderType)
 		{
 		case sv::ShaderType_Vertex:
-			bat << "-D " << "SV_SHADER_TYPE_VERTEX ";
+			bat << "-D " << "SV_VERTEX_SHADER ";
 			break;
 		case sv::ShaderType_Pixel:
-			bat << "-D " << "SV_SHADER_TYPE_PIXEL ";
+			bat << "-D " << "SV_PIXEL_SHADER ";
 			break;
 		case sv::ShaderType_Geometry:
-			bat << "-D " << "SV_SHADER_TYPE_GEOMETRY ";
+			bat << "-D " << "SV_GEOMETRY_SHADER ";
 			break;
 		case sv::ShaderType_Hull:
-			bat << "-D " << "SV_SHADER_TYPE_HULL ";
+			bat << "-D " << "SV_HULL_SHADER ";
 			break;
 		case sv::ShaderType_Domain:
-			bat << "-D " << "SV_SHADER_TYPE_DOMAIN ";
+			bat << "-D " << "SV_DOMAIN_SHADER ";
 			break;
 		case sv::ShaderType_Compute:
-			bat << "-D " << "SV_SHADER_TYPE_COMPUTE ";
+			bat << "-D " << "SV_COMPUTE_SHADER ";
 			break;
 		}
 
@@ -191,6 +191,7 @@ namespace sv {
 	{
 		std::vector<u8> data;
 		size_t hash = hash_string(name);
+		hash_combine(hash, shaderType);
 
 		ShaderDesc desc;
 		desc.shaderType = shaderType;
@@ -223,6 +224,7 @@ namespace sv {
 	{
 		std::vector<u8> data;
 		size_t hash = hash_string(name);
+		hash_combine(hash, shaderType);
 
 		ShaderDesc desc;
 		desc.shaderType = shaderType;

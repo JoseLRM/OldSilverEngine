@@ -4,7 +4,7 @@
 
 #include "external/stb_truetype.h"
 
-#include "SilverEngine/render_utils/text.h"
+#include "SilverEngine/text.h"
 
 namespace sv {
 

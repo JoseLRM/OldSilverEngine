@@ -9,16 +9,54 @@
 #include "event_system/event_system_internal.h"
 #include "window/window_internal.h"
 #include "graphics/graphics_internal.h"
-#include "render_utils/render_utils_internal.h"
 
-#include "sprite/sprite_internal.h"
+#include "rendering/rendering.h"
 
 namespace sv {
 
 	GlobalEngineData	engine;
 	GlobalInputData		input;
+	
 
-	void update_input()
+	// Initialization
+
+#define INIT_SYSTEM(name, fn) res = fn; if (result_okay(res)) SV_LOG_INFO(name ": %s", result_str(res)); else { SV_LOG_ERROR(name ": %s", result_str(res)); return res; }
+
+	static Result initialize(const InitializationDesc& desc)
+	{
+		Result res;
+
+		res = logging_initialize();
+		if (result_fail(res)) {
+			printf("Can't initialize the logging system: %s\n", result_str(res));
+			return res;
+		}
+
+		SV_LOG_CLEAR();
+		SV_LOG_INFO("Initializing %s", engine.name.c_str());
+
+		// CORE
+		INIT_SYSTEM("TaskSystem",		task_initialize(desc.minThreadsCount));
+		INIT_SYSTEM("EventSystem",		event_initialize());
+		INIT_SYSTEM("AssetSystem",		asset_initialize(desc.assetsFolderPath));
+		INIT_SYSTEM("Window",			window_initialize());
+		INIT_SYSTEM("GraphicsAPI",		graphics_initialize());
+		INIT_SYSTEM("Rendering",		rendering_initialize());
+
+		// Open Main Window
+		res = window_create(&desc.windowDesc, &engine.window);
+		if (result_fail(res)) {
+			SV_LOG_ERROR("Can't open the main window...");
+			return res;
+		}
+
+		// APPLICATION
+		INIT_SYSTEM("Application", engine.app_callbacks.initialize());
+
+		return res;
+	}
+
+	static void update_input()
 	{
 		input.text.clear();
 		input.text_commands.resize(1u);
@@ -89,10 +127,6 @@ namespace sv {
 					return Result_UnknownError;\
 				}
 
-	// Initialization
-
-#define INIT_SYSTEM(name, fn) res = fn; if (result_okay(res)) SV_LOG_INFO(name ": %s", result_str(res)); else { SV_LOG_ERROR(name ": %s", result_str(res)); return res; }
-
 
 	Result engine_initialize(const InitializationDesc* d)
 	{
@@ -107,43 +141,18 @@ namespace sv {
 		Time initTimeBegin = timer_now();
 
 		// SYSTEMS
+		Result res;
 		try {
-
-			Result res;
-
-			res = logging_initialize();
-			if (result_fail(res)) {
-				printf("Can't initialize the logging system: %s\n", result_str(res));
-				return res;
-			}
-
-			SV_LOG_CLEAR();
-			SV_LOG_INFO("Initializing %s", engine.name.c_str());
-
-			// CORE
-			INIT_SYSTEM("TaskSystem", task_initialize(desc.minThreadsCount));
-			INIT_SYSTEM("EventSystem", event_initialize());
-			INIT_SYSTEM("AssetSystem", asset_initialize(desc.assetsFolderPath));
-			INIT_SYSTEM("Window", window_initialize());
-			INIT_SYSTEM("GraphicsAPI", graphics_initialize());
-			INIT_SYSTEM("RenderUtils", render_utils_initialize());
-
-			// SPRITE
-			INIT_SYSTEM("SpriteRenderer", sprite_renderer_initialize());
-
-			// Open Main Window
-			res = window_create(&desc.windowDesc, &engine.window);
-			if (result_fail(res)) {
-				SV_LOG_ERROR("Can't open the main window...");
-				return res;
-			}
-
-			// APPLICATION
-			INIT_SYSTEM("Application", engine.app_callbacks.initialize());
+			res = initialize(desc);
 		}
 		CATCH;
 
-		SV_LOG_INFO("Initialized successfuly");
+		if (result_okay(res)) {
+			SV_LOG_INFO("Initialized successfuly");
+		}
+		else {
+			SV_LOG_ERROR("Initialization failed");
+		}
 		
 		Time initTimeEnd = timer_now();
 
@@ -151,7 +160,7 @@ namespace sv {
 
 		SV_LOG_SEPARATOR();
 
-		engine.able_to_run = true;
+		engine.able_to_run = result_okay(Result_Success);
 		
 		return Result_Success;
 	}
@@ -256,7 +265,7 @@ namespace sv {
 			if (result_fail(sprite_renderer_close())) { SV_LOG_ERROR("Can't close sprite renderer"); }
 
 			// CORE
-			if (result_fail(render_utils_close())) { SV_LOG_ERROR("Can't close render utils"); }
+			if (result_fail(rendering_close())) { SV_LOG_ERROR("Can't close render utils"); }
 			if (result_fail(graphics_close())) { SV_LOG_ERROR("Can't close graphicsAPI"); }
 			if (result_fail(window_close())) { SV_LOG_ERROR("Can't close window"); }
 			if (result_fail(asset_close())) { SV_LOG_ERROR("Can't close the asset system"); }

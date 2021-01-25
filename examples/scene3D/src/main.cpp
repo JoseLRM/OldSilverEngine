@@ -3,7 +3,6 @@
 using namespace sv;
 
 GPUImage* offscreen = nullptr;
-Window* win = nullptr;
 DebugRenderer rend;
 Font font;
 v3_f32				camera_position;
@@ -12,33 +11,22 @@ CameraProjection	camera;
 
 Result init()
 {
-	{
-		svCheck(graphics_offscreen_create(1920u, 1080u, &offscreen));
-	}
-	{
-		WindowDesc desc;
-		desc.bounds = { 0u, 0u, 1080u, 720u };
-		desc.flags = WindowFlag_Default;
-		desc.iconFilePath = nullptr;
-		desc.state = WindowState_Windowed;
-		desc.title = L"Test2!!";
-		//svCheck(window_create(&desc, &win));
-	}
+	svCheck(graphics_offscreen_create(1920u, 1080u, &offscreen));
 
 	// Init font
 	{
-		//svCheck(font_create(font, "C:/Windows/Fonts/arial.ttf", 128.f, 0));
+		svCheck(font_create(font, "C:/Windows/Fonts/arial.ttf", 128.f, 0));
 		//svCheck(font_create(font, "C:/Windows/Fonts/SourceCodePro-Black.ttf", 128.f, 0));
-		svCheck(font_create(font, "C:/Windows/Fonts/VIVALDII.TTF", 300.f, 0));
+		//svCheck(font_create(font, "C:/Windows/Fonts/VIVALDII.TTF", 300.f, 0));
 		//svCheck(font_create(font, "C:/Windows/Fonts/ROCCB___.TTF", 200.f, 0));
 		//svCheck(font_create(font, "C:/Windows/Fonts/LiberationMono-BoldItalic.ttf", 200.f, 0));
 		//svCheck(font_create(font, "C:/Windows/Fonts/consola.ttf", 128.f, 0));
 	}
 
 	camera.projectionType = ProjectionType_Perspective;
-	camera.width = 0.1f;
-	camera.height = 0.1f;
-	camera.near = 0.1f;
+	camera.width = 0.3f;
+	camera.height = 0.3f;
+	camera.near = 0.2f;
 	camera.far = 1000.f;
 
 	rend.create();
@@ -86,17 +74,11 @@ void render()
 	rend.render(offscreen, vp_matrix, cmd);
 	
 	graphics_present(engine.window, offscreen, GPUImageLayout_RenderTarget, cmd);
-
-	if (win) {
-		graphics_image_clear(offscreen, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, Color4f::Blue(), 1.f, 0u, cmd);
-		graphics_present(win, offscreen, GPUImageLayout_RenderTarget, cmd);
-	}
 }
 
 Result close()
 {
 	svCheck(graphics_destroy(offscreen));
-	svCheck(window_destroy(win));
 
 	return Result_Success;
 }
