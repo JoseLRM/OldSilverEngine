@@ -458,7 +458,7 @@ namespace sv {
 #elif defined(SV_RES_PATH)
 
 #define PARSE_FILEPATH() std::string filePathStr; \
-	if (!sv::path_is_absolute(filePath) && *filepath != '$') { \
+	if (!sv::path_is_absolute(filePath)) { \
 		filePathStr = SV_RES_PATH; \
 		filePathStr += filePath; \
 		filePath = filePathStr.c_str(); \
@@ -466,9 +466,7 @@ namespace sv {
 
 #else
 
-#define PARSE_FILEPATH() if (!sv::path_is_absolute(filepath)) { \
-		if (*filepath == '$') ++filepath; \
-	} \
+#define PARSE_FILEPATH()
 
 #endif
 

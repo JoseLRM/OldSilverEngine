@@ -88,6 +88,12 @@ constexpr f64	f64_ninf = -1.0 * std::numeric_limits<f64>::infinity();
 #	define SV_INLINE inline
 #endif
 
+#ifdef SV_SYS_PATH
+#define SV_SYS(filepath) "$" filepath
+#else
+#define SV_SYS(filepath) filepath
+#endif
+
 // Result
 
 namespace sv {
