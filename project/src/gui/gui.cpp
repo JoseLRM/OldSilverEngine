@@ -607,6 +607,11 @@ namespace sv {
 	{
 		PARSE_GUI();
 
+		// prepare
+		graphics_depthstencilstate_unbind(cmd);
+		graphics_blendstate_unbind(cmd);
+		graphics_rasterizerstate_unbind(cmd);
+
 		gui.debug.reset();
 
 		// Draw windows

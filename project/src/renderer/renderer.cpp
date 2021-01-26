@@ -1,13 +1,14 @@
 #include "SilverEngine/core.h"
 
-#include "rendering.h"
+#include "renderer/renderer_internal.h"
 
 #include "SilverEngine/mesh.h"
 
 namespace sv {
 
-	GraphicsObjects gfx = {};
-	RenderingUtils	rend_utils[GraphicsLimit_CommandList] = {};
+	GraphicsObjects		gfx = {};
+	RenderingUtils		rend_utils[GraphicsLimit_CommandList] = {};
+	RenderingContext	render_context[GraphicsLimit_CommandList] = {};
 
 	// SHADER COMPILATION
 
@@ -31,7 +32,7 @@ namespace sv {
 		COMPILE_PS(gfx.ps_text, "text.hlsl");
 
 		COMPILE_VS(gfx.vs_sprite, "sprite/default.hlsl");
-		COMPILE_PS(gfx.vs_sprite, "sprite/default.hlsl");
+		COMPILE_PS(gfx.ps_sprite, "sprite/default.hlsl");
 
 		COMPILE_VS_(gfx.vs_mesh, "mesh/default.hlsl");
 		COMPILE_PS_(gfx.ps_mesh, "mesh/default.hlsl");
@@ -365,7 +366,7 @@ namespace sv {
 		return Result_Success;
 	}
 
-	Result rendering_initialize()
+	Result renderer_initialize()
 	{
 		svCheck(compile_shaders());
 		svCheck(create_renderpasses());
@@ -384,7 +385,7 @@ namespace sv {
 		return Result_Success;
 	}
 
-	Result rendering_close()
+	Result renderer_close()
 	{
 		// Free graphics objects
 		// TODO
@@ -399,6 +400,18 @@ namespace sv {
 		}
 
 		return Result_Success;
+	}
+
+	void renderer_begin_frame()
+	{
+		// Restart context
+		foreach(i, GraphicsLimit_CommandList) {
+			
+			RenderingContext& ctx = render_context[i];
+			ctx.offscreen = nullptr;
+			ctx.zbuffer = nullptr;
+			ctx.camera_buffer = nullptr;
+		}
 	}
 
 }

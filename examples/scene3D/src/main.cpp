@@ -4,35 +4,32 @@ using namespace sv;
 
 GPUImage* offscreen = nullptr;
 GPUImage* zbuffer = nullptr;
-DebugRenderer rend;
-Font font;
 v3_f32				camera_position;
 v2_f32				camera_rotation;
 CameraProjection	camera;
+CameraBuffer		camera_buffer;
 Mesh mesh;
+
+GUI* gui;
+Editor* editor;
 
 Result init()
 {
-	svCheck(graphics_offscreen_create(1920u, 1080u, &offscreen));
-	svCheck(graphics_zbuffer_create(1920u, 1080u, &zbuffer));
+	svCheck(offscreen_create(1920u, 1080u, &offscreen));
+	svCheck(zbuffer_create(1920u, 1080u, &zbuffer));
 
-	// Init font
-	{
-		svCheck(font_create(font, "C:/Windows/Fonts/arial.ttf", 128.f, 0));
-		//svCheck(font_create(font, "C:/Windows/Fonts/SourceCodePro-Black.ttf", 128.f, 0));
-		//svCheck(font_create(font, "C:/Windows/Fonts/VIVALDII.TTF", 300.f, 0));
-		//svCheck(font_create(font, "C:/Windows/Fonts/ROCCB___.TTF", 200.f, 0));
-		//svCheck(font_create(font, "C:/Windows/Fonts/LiberationMono-BoldItalic.ttf", 200.f, 0));
-		//svCheck(font_create(font, "C:/Windows/Fonts/consola.ttf", 128.f, 0));
-	}
-
-	camera.projectionType = ProjectionType_Perspective;
+	camera.projection_type = ProjectionType_Perspective;
 	camera.width = 0.3f;
 	camera.height = 0.3f;
 	camera.near = 0.2f;
 	camera.far = 1000.f;
 
-	rend.create();
+	svCheck(camerabuffer_create(&camera_buffer));
+
+	gui = gui_create(window_width_get(engine.window), window_height_get(engine.window));
+	editor = editor_create(gui);
+
+	editor_runtime_create(editor);
 
 	// TEMP: create cube mesh
 	mesh_apply_cube(mesh);
@@ -43,26 +40,32 @@ Result init()
 
 void update()
 {
-	if (input.keys[Key_F11] == InputState_Pressed) {
-		engine.close_request = true;
-	}
-	if (input.keys[Key_F10] == InputState_Pressed) {
-		if (window_state_get(engine.window) == WindowState_Fullscreen) {
-			window_state_set(engine.window, WindowState_Windowed);
-		}
-		else window_state_set(engine.window, WindowState_Fullscreen);
-	}
+	editor_key_shortcuts(editor);
 
-	camera.adjust(window_width_get(engine.window), window_height_get(engine.window));
+	gui_resize(gui, window_width_get(engine.window), window_height_get(engine.window));
+	gui_update(gui);
+	editor_update(editor);
+
+	projection_adjust(camera, f32(window_width_get(engine.window)) / f32(window_height_get(engine.window)));
 
 	editor_camera_controller3D(camera_position, camera_rotation, camera);
 
-	camera.updateMatrix();
+	projection_update_matrix(camera);
 }
 
 void render()
 {
 	CommandList cmd = graphics_commandlist_begin();
+
+	render_context[cmd].offscreen = offscreen;
+	render_context[cmd].zbuffer = zbuffer;
+	render_context[cmd].camera_buffer = &camera_buffer;
+
+	camera_buffer.rotation = v4_f32(XMQuaternionRotationRollPitchYawFromVector(camera_rotation.getDX()));
+	camera_buffer.view_matrix = math_matrix_view(camera_position, camera_buffer.rotation);
+	camera_buffer.projection_matrix = camera.projection_matrix;
+	camera_buffer.position = camera_position;
+	camerabuffer_update(&camera_buffer, cmd);
 
 	graphics_image_clear(offscreen, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, Color4f::Blue(), 1.f, 0u, cmd);
 	graphics_image_clear(zbuffer, GPUImageLayout_DepthStencil, GPUImageLayout_DepthStencil, Color4f::White(), 1.f, 0u, cmd);
@@ -70,18 +73,9 @@ void render()
 	graphics_viewport_set(offscreen, 0u, cmd);
 	graphics_scissor_set(offscreen, 0u, cmd);
 
-	rend.reset();
-	rend.setTexcoord({ 0.f, 0.f, 1.f, 1.f });
+	draw_mesh(&mesh, XMMatrixRotationY(cos(timer_now()) * 5.f) * XMMatrixTranslation(sin(timer_now()) * 2.f - 1.f, 0.f, 0.f), cmd);
 
-	for (f32 x = 0.f; x < 10.f; x += 2.f)
-	for (f32 y = 0.f; y < 10.f; y += 2.f)
-	for (f32 z = 0.f; z < 10.f; z += 2.f)
-		rend.drawSprite(v3_f32{ x, y, z }, v2_f32{ 0.5f, 0.5f }, Color::White(), font.image);
-
-	XMMATRIX vp_matrix = math_matrix_view(camera_position, v4_f32(XMQuaternionRotationRollPitchYawFromVector(camera_rotation.getDX()))) * camera.projectionMatrix;
-	rend.render(offscreen, vp_matrix, cmd);
-
-	draw_mesh(&mesh, vp_matrix, zbuffer, offscreen, cmd);
+	gui_render(gui, offscreen, cmd);
 	
 	graphics_present(engine.window, offscreen, GPUImageLayout_RenderTarget, cmd);
 }
@@ -89,6 +83,11 @@ void render()
 Result close()
 {
 	svCheck(graphics_destroy(offscreen));
+	svCheck(graphics_destroy(zbuffer));
+
+	mesh_clear(mesh);
+	editor_destroy(editor);
+	gui_destroy(gui);
 
 	return Result_Success;
 }

@@ -7,7 +7,7 @@
 #include "SilverEngine/entity_system.h"
 #include "SilverEngine/event_system.h"
 #include "SilverEngine/task_system.h"
-#include "SilverEngine/text.h"
+#include "SilverEngine/font.h"
 #include "SilverEngine/debug_renderer.h"
 #include "SilverEngine/renderer.h"
 

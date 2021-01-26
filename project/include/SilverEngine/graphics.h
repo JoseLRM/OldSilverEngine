@@ -737,44 +737,6 @@ namespace sv {
 
 	extern GraphicsProperties graphics_properties;
 
-	// HIGH LEVEL
-
-	// Constants
-
-	constexpr Format OFFSCREEN_FORMAT = Format_R16G16B16A16_FLOAT;
-	constexpr Format ZBUFFER_FORMAT = Format_D24_UNORM_S8_UINT;
-
-	// Enums
-
-	Result graphics_offscreen_create(u32 width, u32 height, GPUImage** pImage);
-	Result graphics_zbuffer_create(u32 width, u32 height, GPUImage** pImage);
-
-	enum ProjectionType : u32 {
-		ProjectionType_Clip,
-		ProjectionType_Orthographic,
-		ProjectionType_Perspective,
-	};
-
-	struct CameraProjection {
-
-		f32 width = 1.f;
-		f32 height = 1.f;
-		f32 near = -1000.f;
-		f32 far = 1000.f;
-
-		ProjectionType	projectionType = ProjectionType_Orthographic;
-		XMMATRIX		projectionMatrix = XMMatrixIdentity();
-
-		void adjust(u32 width, u32 height) noexcept;
-		void adjust(f32 aspect) noexcept;
-
-		f32		getProjectionLength() const noexcept;
-		void	setProjectionLength(f32 length) noexcept;
-
-		void updateMatrix();
-
-	};
-
 	// DEBUG
 
 #ifdef SV_ENABLE_GFX_VALIDATION
@@ -784,7 +746,6 @@ namespace sv {
 	void graphics_event_end(CommandList cmd);
 
 	void graphics_name_set(Primitive* primitive, const char* name);
-	bool graphics_offscreen_validation(GPUImage* offscreen);
 
 #else
 #define graphics_event_begin(name, cmd) {}

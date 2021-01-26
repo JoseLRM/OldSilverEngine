@@ -10,7 +10,7 @@
 #include "window/window_internal.h"
 #include "graphics/graphics_internal.h"
 
-#include "rendering/rendering.h"
+#include "renderer/renderer_internal.h"
 
 namespace sv {
 
@@ -41,7 +41,7 @@ namespace sv {
 		INIT_SYSTEM("AssetSystem",		asset_initialize(desc.assetsFolderPath));
 		INIT_SYSTEM("Window",			window_initialize());
 		INIT_SYSTEM("GraphicsAPI",		graphics_initialize());
-		INIT_SYSTEM("Rendering",		rendering_initialize());
+		INIT_SYSTEM("Renderer",			renderer_initialize());
 
 		// Open Main Window
 		res = window_create(&desc.windowDesc, &engine.window);
@@ -222,6 +222,7 @@ namespace sv {
 
 				// Begin Rendering
 				graphics_begin();
+				renderer_begin_frame();
 
 				// User Rendering
 				engine.app_callbacks.render();
@@ -262,7 +263,7 @@ namespace sv {
 			svCheck(window_destroy(engine.window));
 
 			// CORE
-			if (result_fail(rendering_close())) { SV_LOG_ERROR("Can't close render utils"); }
+			if (result_fail(renderer_close())) { SV_LOG_ERROR("Can't close render utils"); }
 			if (result_fail(graphics_close())) { SV_LOG_ERROR("Can't close graphicsAPI"); }
 			if (result_fail(window_close())) { SV_LOG_ERROR("Can't close window"); }
 			if (result_fail(asset_close())) { SV_LOG_ERROR("Can't close the asset system"); }

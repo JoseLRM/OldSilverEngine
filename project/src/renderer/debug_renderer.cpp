@@ -2,7 +2,7 @@
 
 #include "SilverEngine/debug_renderer.h"
 #include "SilverEngine/utils/allocators/FrameList.h"
-#include "rendering/rendering.h"
+#include "renderer/renderer_internal.h"
 
 namespace sv {
 

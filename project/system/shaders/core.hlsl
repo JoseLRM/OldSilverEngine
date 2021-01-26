@@ -31,13 +31,12 @@ typedef double          f64;
 
 #define foreach(_it, _end) for (u32 _it = 0u; _it < _end; ++_it)
 
+// Camera
+
 struct Camera {
     matrix vm;
     matrix pm;
     matrix vpm;
-    matrix ivm;
-    matrix ipm;
-    matrix ivpm;
     float3 position;
     float4 direction;
 };

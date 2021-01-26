@@ -1,12 +1,14 @@
 #include "SilverEngine/core.h"
 
-#include "SilverEngine/sprite.h"
-#include "rendering/rendering.h"
+#include "SilverEngine/renderer.h"
+#include "renderer/renderer_internal.h"
 
 namespace sv {
 
-	void draw_sprites(const SpriteInstance* sprites, u32 count, const XMMATRIX& view_projection_matrix, GPUImage* offscreen, CommandList cmd)
+	void draw_sprites(const SpriteInstance* sprites, u32 count, const XMMATRIX& view_projection_matrix, CommandList cmd)
 	{
+		SV_ASSERT_OFFSCREEN();
+
 		if (count == 0u) return;
 
 		SpriteData& data = *(SpriteData*)rend_utils[cmd].batch_data;
@@ -25,7 +27,7 @@ namespace sv {
 		graphics_blendstate_bind(gfx.bs_sprite, cmd);
 
 		GPUImage* att[1];
-		att[0] = offscreen;
+		att[0] = render_context[cmd].offscreen;
 
 		XMMATRIX matrix;
 		XMVECTOR pos0, pos1, pos2, pos3;

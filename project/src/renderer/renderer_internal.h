@@ -1,8 +1,22 @@
 #pragma once
 
-#include "SilverEngine/graphics.h"
+#include "SilverEngine/renderer.h"
+
+// CONTEXT ASSERTIONS
+
+#define SV_ASSERT_OFFSCREEN() SV_ASSERT(sv::render_context[cmd].offscreen)
+#define SV_ASSERT_ZBUFFER() SV_ASSERT(sv::render_context[cmd].zbuffer)
+#define SV_ASSERT_CAMERA_BUFFER() SV_ASSERT(sv::render_context[cmd].camera_buffer && sv::render_context[cmd].camera_buffer->buffer)
 
 namespace sv {
+
+	struct CameraBuffer_GPU {
+		XMMATRIX	view_matrix;
+		XMMATRIX	projection_matrix;
+		XMMATRIX	view_projection_matrix;
+		v4_f32		position;
+		v4_f32		rotation;
+	};
 
 	constexpr u32 TEXT_BATCH_COUNT = 100u; // Num of letters
 	constexpr u32 DEBUG_VERTEX_COUNT = 1000u;
@@ -106,8 +120,9 @@ namespace sv {
 	extern GraphicsObjects gfx;
 	extern RenderingUtils rend_utils[GraphicsLimit_CommandList];
 
-	Result rendering_initialize();
-	Result rendering_close();
+	Result	renderer_initialize();
+	Result	renderer_close();
+	void	renderer_begin_frame();
 
 	SV_INLINE GPUBuffer* get_batch_buffer(CommandList cmd)
 	{

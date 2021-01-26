@@ -1,7 +1,7 @@
 #include "SilverEngine/core.h"
 
 #include "SilverEngine/mesh.h"
-#include "rendering/rendering.h"
+#include "renderer/renderer_internal.h"
 #include "SilverEngine/renderer.h"
 
 namespace sv {
@@ -19,8 +19,14 @@ namespace sv {
 		return gfx.cbuffer_mesh_instance[cmd];
 	}
 
-	void draw_mesh(const Mesh* mesh, const XMMATRIX& transform_matrix, GPUImage* zbuffer, GPUImage* offscreen, CommandList cmd)
+	void draw_mesh(const Mesh* mesh, const XMMATRIX& transform_matrix, CommandList cmd)
 	{
+		SV_ASSERT_OFFSCREEN();
+		SV_ASSERT_ZBUFFER();
+		SV_ASSERT_CAMERA_BUFFER();
+
+		RenderingContext& ctx = render_context[cmd];
+
 		// Prepare state
 		graphics_shader_bind(gfx.vs_mesh, cmd);
 		graphics_shader_bind(gfx.ps_mesh, cmd);
@@ -33,14 +39,15 @@ namespace sv {
 		GPUBuffer* instance_buffer = get_instance_buffer(cmd);
 
 		graphics_constantbuffer_bind(instance_buffer, 0u, ShaderType_Vertex, cmd);
+		graphics_constantbuffer_bind(ctx.camera_buffer->buffer, 1u, ShaderType_Vertex, cmd);
 		graphics_vertexbuffer_bind(mesh->vbuffer, 0u, 0u, cmd);
 		graphics_indexbuffer_bind(mesh->ibuffer, 0u, cmd);
 
 		// Update instance data
-		graphics_buffer_update(instance_buffer, &transform_matrix, sizeof(XMMATRIX), 0u, cmd);
+		graphics_buffer_update(instance_buffer, &XMMatrixTranspose(transform_matrix), sizeof(XMMATRIX), 0u, cmd);
 
 		// Begin renderpass
-		GPUImage* att[] = { offscreen, zbuffer };
+		GPUImage* att[] = { ctx.offscreen, ctx.zbuffer };
 		graphics_renderpass_begin(gfx.renderpass_mesh, att, cmd);
 		
 		// Draw

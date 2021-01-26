@@ -4,6 +4,80 @@
 
 namespace sv {
 
+	struct Editor_internal {
+
+		std::vector<EditorPanel*> panels;
+		GUI* gui;
+
+	};
+
+#define PARSE_EDITOR() sv::Editor_internal& editor = *reinterpret_cast<sv::Editor_internal*>(editor_)
+
+	Editor* editor_create(GUI* gui)
+	{
+		SV_ASSERT(gui);
+
+		Editor_internal& editor = *new Editor_internal();
+
+		editor.gui = gui;
+
+		return (Editor*)&editor;
+	}
+
+	void editor_destroy(Editor* editor_)
+	{
+		PARSE_EDITOR();
+
+		for (EditorPanel* panel : editor.panels) {
+			delete panel;
+		}
+		editor.panels.clear();
+
+		delete& editor;
+	}
+
+	void editor_update(Editor* editor)
+	{
+	}
+
+	ConsolePanel* editor_console_create(Editor* editor_)
+	{
+		PARSE_EDITOR();
+
+		return nullptr;
+	}
+
+	RuntimePanel* editor_runtime_create(Editor* editor_)
+	{
+		PARSE_EDITOR();
+
+		RuntimePanel& panel = *new RuntimePanel();
+		editor.panels.emplace_back(&panel);
+
+		panel.window = gui_window_create(editor.gui);
+
+		return &panel;
+	}
+
+	std::pair<EditorPanel**, u32> editor_panels(Editor* editor_)
+	{
+		PARSE_EDITOR();
+		return std::pair<EditorPanel**, u32>(editor.panels.data(), u32(editor.panels.size()));
+	}
+
+	void editor_key_shortcuts(Editor* editor)
+	{
+		if (input.keys[Key_F11] == InputState_Pressed) {
+			engine.close_request = true;
+		}
+		if (input.keys[Key_F10] == InputState_Pressed) {
+			if (window_state_get(engine.window) == WindowState_Fullscreen) {
+				window_state_set(engine.window, WindowState_Windowed);
+			}
+			else window_state_set(engine.window, WindowState_Fullscreen);
+		}
+	}
+
 	void editor_camera_controller2D(v2_f32& position, CameraProjection& projection)
 	{
 		InputState button_state = input.mouse_buttons[MouseButton_Center];
@@ -18,8 +92,8 @@ namespace sv {
 			f32 force = 0.05f;
 			if (input.keys[Key_Shift] == InputState_Hold) force *= 3.f;
 
-			f32 length = projection.getProjectionLength();
-			projection.setProjectionLength(length - input.mouse_wheel * length * force);
+			f32 length = projection_length_get(projection);
+			projection_length_set(projection, length - input.mouse_wheel * length * force);
 		}
 	}
 

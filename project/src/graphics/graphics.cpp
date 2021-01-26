@@ -1731,31 +1731,6 @@ namespace sv {
 		return { 0u, 0u, p.info.width, p.info.height };
 	}
 
-	// HIGH LEVEL
-
-	Result graphics_offscreen_create(u32 width, u32 height, GPUImage** pImage)
-	{
-		GPUImageDesc desc;
-		desc.format = OFFSCREEN_FORMAT;
-		desc.layout = GPUImageLayout_RenderTarget;
-		desc.type = GPUImageType_RenderTarget | GPUImageType_ShaderResource;
-		desc.width = width;
-		desc.height = height;
-
-		return graphics_image_create(&desc, pImage);
-	}
-
-	Result graphics_zbuffer_create(u32 width, u32 height, GPUImage** pImage)
-	{
-		GPUImageDesc desc;
-		desc.width = width;
-		desc.height = height;
-		desc.format = ZBUFFER_FORMAT;
-		desc.layout = GPUImageLayout_DepthStencil;
-		desc.type = GPUImageType_DepthStencil;
-		return graphics_image_create(&desc, pImage);
-	}
-
 	// DEBUG
 
 #ifdef SV_ENABLE_GFX_VALIDATION
@@ -1780,16 +1755,6 @@ namespace sv {
 		primitive.name = name;
 	}
 
-	bool graphics_offscreen_validation(GPUImage* offscreen)
-	{
-		const GPUImageInfo& info = graphics_image_info(offscreen);
-		if (info.depth != 1u) { SV_LOG_ERROR("Invalid offscreen depth"); return false; }
-		if (info.dimension != 2u) { SV_LOG_ERROR("Invalid offscreen dimensions"); return false; }
-		if (info.format != OFFSCREEN_FORMAT) { SV_LOG_ERROR("Invalid offscreen format"); return false; }
-		if (info.type != (GPUImageType_RenderTarget | GPUImageType_ShaderResource)) { SV_LOG_ERROR("Invalid offscreen image type"); return false; }
-
-		return true;
-	}
 #endif
 
 }

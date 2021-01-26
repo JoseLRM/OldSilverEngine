@@ -9,33 +9,6 @@ namespace sv {
 		v4_f32			texCoord;
 	};
 
-	struct SpriteInstance {
-		XMMATRIX	tm;
-		v4_f32		texcoord;
-		GPUImage*	image;
-		Color		color;
-
-		SpriteInstance() = default;
-		SpriteInstance(const XMMATRIX& m, const v4_f32& texcoord, GPUImage* image, Color color)
-			: tm(m), texcoord(texcoord), image(image), color(color) {}
-	};
-
-	struct EmissiveSpriteInstance {
-		XMMATRIX	tm;
-		v4_f32		texcoord;
-		GPUImage*	diffuse_image;
-		GPUImage*	emission_image;
-		Color		diffuse_color;
-		Color		emission_color;
-
-		EmissiveSpriteInstance() = default;
-		EmissiveSpriteInstance(const XMMATRIX& m, const v4_f32& texcoord, GPUImage* diffuse_image, Color diffuse_color, GPUImage* emission_image, Color emission_color)
-			: tm(m), texcoord(texcoord), diffuse_image(diffuse_image), diffuse_color(diffuse_color), emission_image(emission_image), emission_color(emission_color) {}
-	};
-
-	void draw_sprites(const SpriteInstance* sprites, u32 count, const XMMATRIX& view_projection_matrix, GPUImage* offscreen, CommandList cmd);
-	void draw_sprites_emissive(const EmissiveSpriteInstance* sprites, u32 count, const XMMATRIX& view_projection_matrix, GPUImage* offscreen, GPUImage* emissive, CommandList cmd);
-
 	// TEXTURE ATLAS UTILS
 
 	SV_INLINE v4_f32 texcoord_from_atlas(u32 num_columns, u32 num_rows, u32 index)

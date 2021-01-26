@@ -1,12 +1,15 @@
 #include "SilverEngine/core.h"
 
-#include "SilverEngine/text.h"	
-#include "rendering/rendering.h"	
+#include "SilverEngine/renderer.h"	
+#include "SilverEngine/font.h"	
+#include "renderer/renderer_internal.h"
 
 namespace sv {
 
-	u32 draw_text(const char* text, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextSpace space, TextAlignment alignment, Font* pFont, GPUImage* rendertarget, CommandList cmd)
+	u32 draw_text(const char* text, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextSpace space, TextAlignment alignment, Font* pFont, CommandList cmd)
 	{
+		SV_ASSERT_OFFSCREEN();
+
 		if (text == nullptr) return 0u;
 
 		// Text size
@@ -18,7 +21,7 @@ namespace sv {
 			return 0u;
 		}
 
-		graphics_offscreen_validation(rendertarget);
+		GPUImage* rendertarget = render_context[cmd].offscreen;
 		const GPUImageInfo& info = graphics_image_info(rendertarget);
 
 		// Select font

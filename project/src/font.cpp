@@ -4,7 +4,7 @@
 
 #include "external/stb_truetype.h"
 
-#include "SilverEngine/text.h"
+#include "SilverEngine/font.h"
 
 namespace sv {
 
@@ -233,6 +233,12 @@ namespace sv {
 		delete[] atlas;
 
 		return Result_Success;
+	}
+
+	Result font_destroy(Font& font)
+	{
+		font.glyphs.clear();
+		return graphics_destroy(font.image);
 	}
 
 	f32 font_text_width(const char* text, Font* pFont)

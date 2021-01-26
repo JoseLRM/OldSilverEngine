@@ -9,19 +9,28 @@ struct Input {
 
 struct Output {
     float3 normal : FragNormal;
+    float3 frag_position : FragPosition;
     float4 position : SV_Position;
 };
 
-SV_CONSTANT_BUFFER(cbufferpro, b0) {
-    matrix m;
+SV_CONSTANT_BUFFER(instance_buffer, b0) {
+    matrix tm;
+};
+
+SV_CONSTANT_BUFFER(camera_buffer, b1) {
+    Camera camera;
 };
 
 Output main(Input input) 
 {
     Output output;
 
-    output.position = mul(m, float4(input.position, 1.f));
-    output.normal = mul((float3x3)m, input.normal);
+    matrix mvm = mul(tm, camera.vm);
+
+    float4 pos = mul(float4(input.position, 1.f), mvm);
+    output.frag_position = pos.xyz;
+    output.position = mul(pos, camera.pm);
+    output.normal = mul((float3x3)mvm, input.normal);
 
     return output;
 }
@@ -32,6 +41,7 @@ Output main(Input input)
 
 struct Input {
     float3 normal : FragNormal;
+    float3 position : FragPosition;
 };
 
 struct Output {
@@ -42,7 +52,7 @@ Output main(Input input)
 {
     Output output;
 
-    output.color = float4(input.normal, 1.f);
+    output.color = float4(abs(input.normal), 1.f);
 
     return output;
 }
