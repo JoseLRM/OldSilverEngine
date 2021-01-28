@@ -982,8 +982,22 @@ namespace sv {
 
 		VmaAllocationInfo info;
 		vmaGetAllocationInfo(g_API->allocator, buffer.allocation, &info);
-		// TODO: For now
-		if (true) {
+		
+		if (buffer.info.bufferType == GPUBufferType_Constant && buffer.info.usage == ResourceUsage_Dynamic) {
+
+			void* mapData;
+			VkBuffer mapBuffer;
+			u32 mapOffset;
+			buffer.memory.GetMappingData(size, mapBuffer, &mapData, mapOffset);
+			memcpy(mapData, pData, u64(size));
+
+			void* dst;
+			vmaMapMemory(g_API->allocator, buffer.allocation, (void**)& dst);
+			memcpy((u8*)dst + u64(offset), mapData, u64(size));
+			vmaUnmapMemory(g_API->allocator, buffer.allocation);
+		}
+		else {
+
 			VkCommandBuffer cmd = g_API->frames[g_API->currentFrame].commandBuffers[cmd_];
 
 			// Transfer dst Memory Barrier
@@ -1028,13 +1042,6 @@ namespace sv {
 
 			std::swap(bufferBarrier.srcAccessMask, bufferBarrier.dstAccessMask);
 			vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, stages, 0u, 0u, nullptr, 1u, &bufferBarrier, 0u, nullptr);
-
-		}
-		else {
-			u8* dst;
-			vmaMapMemory(g_API->allocator, buffer.allocation, (void**)& dst);
-			memcpy(dst + u64(offset), pData, u64(size));
-			vmaUnmapMemory(g_API->allocator, buffer.allocation);
 		}
 	}
 
@@ -1858,7 +1865,7 @@ namespace sv {
 	{
 		VkBufferUsageFlags bufferUsage = 0u;
 		bool deviceMemory = !(desc.usage == ResourceUsage_Dynamic && desc.bufferType == GPUBufferType_Constant);
-		VmaMemoryUsage memoryUsage = deviceMemory ? VMA_MEMORY_USAGE_GPU_ONLY : VMA_MEMORY_USAGE_CPU_TO_GPU;
+		//VmaMemoryUsage memoryUsage = deviceMemory ? VMA_MEMORY_USAGE_GPU_ONLY : VMA_MEMORY_USAGE_CPU_TO_GPU;
 
 		// Usage Flags
 		switch (desc.bufferType)
@@ -1890,7 +1897,8 @@ namespace sv {
 
 			VmaAllocationCreateInfo alloc_info{};
 			//alloc_info.usage = memoryUsage;
-			alloc_info.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+			alloc_info.requiredFlags = deviceMemory ? VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+			
 
 			vkCheck(vmaCreateBuffer(g_API->allocator, &buffer_info, &alloc_info, &buffer.buffer, &buffer.allocation, nullptr));
 			buffer.memory.Create(desc.size);

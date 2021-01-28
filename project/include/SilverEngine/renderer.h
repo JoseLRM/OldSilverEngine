@@ -15,6 +15,12 @@ namespace sv {
 		ProjectionType_Perspective,
 	};
 
+	enum LightType {
+		LightType_None,
+		LightType_Point,
+		LightType_Direction,
+	};
+
 	struct CameraProjection {
 
 		f32 width = 1.f;
@@ -38,6 +44,34 @@ namespace sv {
 
 	};
 
+	struct LightInstance {
+
+		Color3f color;
+		LightType type;
+
+		union {
+			struct {
+				v3_f32		position;
+				f32			range;
+				f32			intensity;
+				f32			smoothness;
+			} point;
+
+			struct {
+				v3_f32		direction;
+				f32			intensity;
+			} direction;
+		};
+
+		LightInstance() : color(Color3f::White()), type(LightType_None), point({}) {}
+
+		LightInstance(const Color3f& color, const v3_f32& position, f32 range, f32 intensity, f32 smoothness)
+			: color(color), type(LightType_Point), point({ position, range, intensity, smoothness }) {}
+
+		LightInstance(const Color3f& color, const v3_f32& direction, f32 intensity)
+			: color(color), type(LightType_Direction), direction({ direction, intensity }) {}
+	};
+
 	// CONTEXT
 
 	struct RenderingContext {
@@ -56,6 +90,7 @@ namespace sv {
 	Result zbuffer_create(u32 width, u32 height, GPUImage** pImage);
 
 	Result	camerabuffer_create(CameraBuffer* camera_buffer);
+	Result	camerabuffer_destroy(CameraBuffer* camera_buffer);
 	void	camerabuffer_update(CameraBuffer* camera_buffer, CommandList cmd);
 
 	void	projection_adjust(CameraProjection& projection, f32 aspect);
@@ -104,6 +139,21 @@ namespace sv {
 
 	struct Mesh;
 
-	void draw_mesh(const Mesh* mesh, const XMMATRIX& transform_matrix, CommandList cmd);
+	struct Material {
+		Color4f color;
+	};
+
+	struct MeshInstance {
+
+		XMMATRIX	transform_matrix;
+		Mesh* mesh;
+		Material* material;
+
+		MeshInstance(const XMMATRIX& transform_matrix, Mesh* mesh, Material* material)
+			: transform_matrix(transform_matrix), mesh(mesh), material(material) {}
+
+	};
+
+	void draw_meshes(const MeshInstance* meshes, u32 mesh_count, const LightInstance* lights, u32 light_count, CommandList cmd);
 
 }

@@ -366,6 +366,8 @@ namespace sv {
 		return Result_Success;
 	}
 
+	// RENDERER RUNTIME
+
 	Result renderer_initialize()
 	{
 		svCheck(compile_shaders());

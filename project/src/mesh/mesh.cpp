@@ -15,10 +15,10 @@ namespace sv {
 		XMVECTOR v0, v1, v2, v3;
 
 		// Positions
-		v0 = XMVector3Transform(XMVectorSet(-0.5f, 0.f, -0.5f, 0.f), transformMatrix);
-		v1 = XMVector3Transform(XMVectorSet(0.5f, 0.f, -0.5f, 0.f), transformMatrix);
-		v2 = XMVector3Transform(XMVectorSet(-0.5f, 0.f, 0.5f, 0.f), transformMatrix);
-		v3 = XMVector3Transform(XMVectorSet(0.5f, 0.f, 0.5f, 0.f), transformMatrix);
+		v0 = XMVector3Transform(XMVectorSet(-0.5f, 0.f, 0.5f, 0.f), transformMatrix);
+		v1 = XMVector3Transform(XMVectorSet(0.5f, 0.f, 0.5f, 0.f), transformMatrix);
+		v2 = XMVector3Transform(XMVectorSet(-0.5f, 0.f, -0.5f, 0.f), transformMatrix);
+		v3 = XMVector3Transform(XMVectorSet(0.5f, 0.f, -0.5f, 0.f), transformMatrix);
 
 		v3_f32* pos = mesh.positions.data() + vertexOffset;
 		pos->setDX(v0); ++pos;
@@ -27,7 +27,7 @@ namespace sv {
 		pos->setDX(v3);
 
 		// Normals
-		v0 = XMVector3Rotate(XMVectorSet(0.f, -1.f, 0.f, 0.f), rotationQuaternion);
+		v0 = XMVector3Rotate(XMVectorSet(0.f, 1.f, 0.f, 0.f), rotationQuaternion);
 
 		v3_f32* nor = mesh.normals.data() + vertexOffset;
 		nor->setDX(v0); ++nor;

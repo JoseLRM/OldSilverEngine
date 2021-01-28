@@ -1,4 +1,5 @@
 #include "SilverEngine.h"
+#include "SilverEngine/utils/allocators/FrameList.h"
 
 using namespace sv;
 
@@ -8,7 +9,8 @@ v3_f32				camera_position;
 v2_f32				camera_rotation;
 CameraProjection	camera;
 CameraBuffer		camera_buffer;
-Mesh mesh;
+Mesh cube;
+Mesh plane;
 
 GUI* gui;
 Editor* editor;
@@ -32,8 +34,11 @@ Result init()
 	editor_runtime_create(editor);
 
 	// TEMP: create cube mesh
-	mesh_apply_cube(mesh);
-	mesh_create_buffers(mesh);
+	mesh_apply_cube(cube);
+	mesh_create_buffers(cube);
+	
+	mesh_apply_plane(plane, XMMatrixScaling(30.f, 0.f, 30.f));
+	mesh_create_buffers(plane);
 
 	return Result_Success;
 }
@@ -67,13 +72,33 @@ void render()
 	camera_buffer.position = camera_position;
 	camerabuffer_update(&camera_buffer, cmd);
 
-	graphics_image_clear(offscreen, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, Color4f::Blue(), 1.f, 0u, cmd);
+	graphics_image_clear(offscreen, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, Color4f::Black(), 1.f, 0u, cmd);
 	graphics_image_clear(zbuffer, GPUImageLayout_DepthStencil, GPUImageLayout_DepthStencil, Color4f::White(), 1.f, 0u, cmd);
 
 	graphics_viewport_set(offscreen, 0u, cmd);
 	graphics_scissor_set(offscreen, 0u, cmd);
 
-	draw_mesh(&mesh, XMMatrixRotationY(cos(timer_now()) * 5.f) * XMMatrixTranslation(sin(timer_now()) * 2.f - 1.f, 0.f, 0.f), cmd);
+	static f32 time = 0.f;
+	if (input.mouse_buttons[MouseButton_Left]) {
+		time += engine.deltatime;
+	}
+
+	static FrameList<MeshInstance> meshes;
+
+	meshes.reset();
+
+	Material cube_mat;
+	cube_mat.color = Color4f::Green();
+
+	Material plane_mat;
+	plane_mat.color = { 0.05f, 0.5f, 0.8f, 1.f };
+	
+	meshes.emplace_back(XMMatrixRotationY(cos(time) * 5.f) * XMMatrixTranslation(sin(time) * 2.f - 1.f, 2.f, 0.f), &cube, &cube_mat);
+	meshes.emplace_back(XMMatrixTranslation(0.f, 0.f, 0.f), &plane, &plane_mat);
+
+	LightInstance lights = LightInstance(Color3f::White(), v3_f32{ camera_position.x, camera_position.y, camera_position.z }, 3.f, 1.f, 0.5f);
+
+	draw_meshes(meshes.data(), u32(meshes.size()), &lights, 1u, cmd);
 
 	gui_render(gui, offscreen, cmd);
 	
@@ -85,7 +110,9 @@ Result close()
 	svCheck(graphics_destroy(offscreen));
 	svCheck(graphics_destroy(zbuffer));
 
-	mesh_clear(mesh);
+	camerabuffer_destroy(&camera_buffer);
+	mesh_clear(cube);
+	mesh_clear(plane);
 	editor_destroy(editor);
 	gui_destroy(gui);
 
@@ -105,7 +132,7 @@ int main()
 	desc.windowDesc.flags = WindowFlag_Default;
 	desc.windowDesc.iconFilePath = nullptr;
 	desc.windowDesc.state = WindowState_Windowed;
-	desc.windowDesc.state = WindowState_Fullscreen;
+	//desc.windowDesc.state = WindowState_Fullscreen;
 	desc.windowDesc.title = L"Test";
 
 	if (result_fail(engine_initialize(&desc))) {

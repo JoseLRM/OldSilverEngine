@@ -10,6 +10,24 @@
 
 namespace sv {
 
+	constexpr u32 LIGHT_COUNT = 10u;
+
+	struct LightData {
+		v3_f32		position;
+		LightType	type;
+		f32			range;
+		f32			intensity;
+		f32			smoothness;
+		f32 padding0;
+		Color3f		color;
+		f32 padding1;
+	};
+
+	struct MeshData {
+		XMMATRIX model_view_matrix;
+		XMMATRIX inv_model_view_matrix;
+	};
+
 	struct CameraBuffer_GPU {
 		XMMATRIX	view_matrix;
 		XMMATRIX	projection_matrix;
@@ -109,7 +127,9 @@ namespace sv {
 		RenderPass*			renderpass_mesh;
 		InputLayoutState*	ils_mesh;
 		BlendState*			bs_mesh;
+		GPUBuffer*			cbuffer_material[GraphicsLimit_CommandList];
 		GPUBuffer*			cbuffer_mesh_instance[GraphicsLimit_CommandList];
+		GPUBuffer*			cbuffer_light_instances[GraphicsLimit_CommandList];
 
 	};
 	

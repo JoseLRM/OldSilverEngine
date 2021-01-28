@@ -180,7 +180,8 @@ namespace sv {
 				rasterizerStateInfo.rasterizerDiscardEnable = VK_FALSE;
 				rasterizerStateInfo.polygonMode = rDesc.wireframe ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
 				rasterizerStateInfo.cullMode = graphics_vulkan_parse_cullmode(rDesc.cullMode);
-				rasterizerStateInfo.frontFace = rDesc.clockwise ? VK_FRONT_FACE_CLOCKWISE : VK_FRONT_FACE_COUNTER_CLOCKWISE;
+				// Is inverted beacuse the scene is rendered inverse and is flipped at presentation!!!
+				rasterizerStateInfo.frontFace = rDesc.clockwise ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE;
 				rasterizerStateInfo.depthBiasEnable = VK_FALSE;
 				rasterizerStateInfo.depthBiasConstantFactor = 0;
 				rasterizerStateInfo.depthBiasClamp = 0;

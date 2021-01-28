@@ -42,12 +42,20 @@ namespace sv {
 		return graphics_buffer_create(&desc, &camera_buffer->buffer);
 	}
 
+	Result camerabuffer_destroy(CameraBuffer* camera_buffer)
+	{
+		SV_ASSERT(camera_buffer);
+		return graphics_destroy(camera_buffer->buffer);
+	}
+
 	void camerabuffer_update(CameraBuffer* camera_buffer, CommandList cmd)
 	{
+		SV_ASSERT(camera_buffer);
+
 		CameraBuffer_GPU data;
-		data.view_matrix			= XMMatrixTranspose(camera_buffer->view_matrix);
-		data.projection_matrix		= XMMatrixTranspose(camera_buffer->projection_matrix);
-		data.view_projection_matrix = XMMatrixTranspose(camera_buffer->view_matrix * camera_buffer->projection_matrix);
+		data.view_matrix			= camera_buffer->view_matrix;
+		data.projection_matrix		= camera_buffer->projection_matrix;
+		data.view_projection_matrix = camera_buffer->view_matrix * camera_buffer->projection_matrix;
 		data.position				= camera_buffer->position.getVec4(0.f);
 		data.rotation				= camera_buffer->rotation;
 
