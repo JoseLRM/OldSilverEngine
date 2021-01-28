@@ -46,6 +46,15 @@ namespace sv {
 
 #ifdef SV_VULKAN_IMPLEMENTATION
 
+/*
+TODO list:
+	- Per frame and per commandlist GPU allocator
+	- Remove per buffer memory allocators
+	- Reset uniform descriptors after updating a dynamic buffer
+	- At the beginning of the frame reuse memory and free unused memory if it has
+
+*/
+
 #include "SilverEngine/platform/impl.h"
 
 #ifdef SV_PLATFORM_WIN
@@ -337,9 +346,6 @@ namespace sv {
 	};
 
 	// API FUNCTIONS
-
-	void graphics_vulkan_state_update_graphics(CommandList cmd);
-	VkDescriptorSet graphics_vulkan_state_update_graphics_descriptors(VulkanPipeline& pipeline, ShaderType shaderType, GraphicsState& state, bool samplers, bool images, bool uniforms, CommandList cmd);
 
 	VkResult graphics_vulkan_singletimecmb_begin(VkCommandBuffer* pCmd);
 	VkResult graphics_vulkan_singletimecmb_end(VkCommandBuffer cmd);

@@ -816,13 +816,13 @@ namespace sv {
 
 	void graphics_vulkan_draw(u32 vertexCount, u32 instanceCount, u32 startVertex, u32 startInstance, CommandList cmd)
 	{
-		graphics_vulkan_state_update_graphics(cmd);
+		update_graphics_state(cmd);
 		vkCmdDraw(g_API->frames[g_API->currentFrame].commandBuffers[cmd], vertexCount, instanceCount, startVertex, startInstance);
 	}
 
 	void graphics_vulkan_draw_indexed(u32 indexCount, u32 instanceCount, u32 startIndex, u32 startVertex, u32 startInstance, CommandList cmd)
 	{
-		graphics_vulkan_state_update_graphics(cmd);
+		update_graphics_state(cmd);
 		vkCmdDrawIndexed(g_API->frames[g_API->currentFrame].commandBuffers[cmd], indexCount, instanceCount, startIndex, startVertex, startInstance);
 	}
 
@@ -883,6 +883,8 @@ namespace sv {
 
 		vkCmdPipelineBarrier(cmd, srcStage, dstStage, 0u, 0u, nullptr, 0u, nullptr, 1u, &barrier);
 	}
+
+	
 	
 	void graphics_vulkan_image_blit(GPUImage* src, GPUImage* dst, GPUImageLayout srcLayout, GPUImageLayout dstLayout, u32 count, const GPUImageBlit* imageBlit, SamplerFilter filter, CommandList cmd_)
 	{
@@ -1367,9 +1369,14 @@ namespace sv {
 		return Result_Success;
 	}
 
-	void graphics_vulkan_state_update_graphics(CommandList cmd_)
+	static VkDescriptorSet update_graphics_descriptors(VulkanPipeline& pipeline, ShaderType shaderType, GraphicsState& state, bool samplers, bool images, bool uniforms, CommandList cmd_);
+
+	static void update_graphics_state(CommandList cmd_)
 	{
 		GraphicsState& state = graphics_state_get().graphics[cmd_];
+
+		// That means the state is not changed
+		if (state.flags == 0u) return;
 
 		RenderPass_vk& renderPass = *reinterpret_cast<RenderPass_vk*>(state.renderPass);
 
@@ -1525,19 +1532,19 @@ namespace sv {
 
 			if (state.flags & (GraphicsPipelineState_ConstantBuffer_VS | GraphicsPipelineState_Sampler_VS | GraphicsPipelineState_Image_VS)) {
 
-				pipeline.descriptorSets[ShaderType_Vertex] = graphics_vulkan_state_update_graphics_descriptors(pipeline, ShaderType_Vertex, state, state.flags & GraphicsPipelineState_Sampler_VS,
+				pipeline.descriptorSets[ShaderType_Vertex] = update_graphics_descriptors(pipeline, ShaderType_Vertex, state, state.flags & GraphicsPipelineState_Sampler_VS,
 					state.flags& GraphicsPipelineState_Image_VS, state.flags& GraphicsPipelineState_ConstantBuffer_VS, cmd_);
 				
 			}
 			if (state.flags & (GraphicsPipelineState_ConstantBuffer_PS | GraphicsPipelineState_Sampler_PS | GraphicsPipelineState_Image_PS)) {
 
-				pipeline.descriptorSets[ShaderType_Pixel] = graphics_vulkan_state_update_graphics_descriptors(pipeline, ShaderType_Pixel, state, state.flags& GraphicsPipelineState_Sampler_PS,
+				pipeline.descriptorSets[ShaderType_Pixel] = update_graphics_descriptors(pipeline, ShaderType_Pixel, state, state.flags& GraphicsPipelineState_Sampler_PS,
 					state.flags& GraphicsPipelineState_Image_PS, state.flags& GraphicsPipelineState_ConstantBuffer_PS, cmd_);
 
 			}
 			if (state.flags & (GraphicsPipelineState_ConstantBuffer_GS | GraphicsPipelineState_Sampler_GS | GraphicsPipelineState_Image_GS)) {
 
-				pipeline.descriptorSets[ShaderType_Geometry] = graphics_vulkan_state_update_graphics_descriptors(pipeline, ShaderType_Geometry, state, state.flags& GraphicsPipelineState_Sampler_GS,
+				pipeline.descriptorSets[ShaderType_Geometry] = update_graphics_descriptors(pipeline, ShaderType_Geometry, state, state.flags& GraphicsPipelineState_Sampler_GS,
 					state.flags& GraphicsPipelineState_Image_GS, state.flags& GraphicsPipelineState_ConstantBuffer_GS, cmd_);
 
 			}
@@ -1562,7 +1569,7 @@ namespace sv {
 		state.flags = 0u;
 	}
 
-	VkDescriptorSet graphics_vulkan_state_update_graphics_descriptors(VulkanPipeline& pipeline, ShaderType shaderType, GraphicsState& state, bool samplers, bool images, bool uniforms, CommandList cmd_)
+	static VkDescriptorSet update_graphics_descriptors(VulkanPipeline& pipeline, ShaderType shaderType, GraphicsState& state, bool samplers, bool images, bool uniforms, CommandList cmd_)
 	{
 		VkCommandBuffer cmd = g_API->frames[g_API->currentFrame].commandBuffers[cmd_];
 
@@ -1864,8 +1871,12 @@ namespace sv {
 	Result graphics_vulkan_buffer_create(Buffer_vk& buffer, const GPUBufferDesc& desc)
 	{
 		VkBufferUsageFlags bufferUsage = 0u;
-		bool deviceMemory = !(desc.usage == ResourceUsage_Dynamic && desc.bufferType == GPUBufferType_Constant);
-		//VmaMemoryUsage memoryUsage = deviceMemory ? VMA_MEMORY_USAGE_GPU_ONLY : VMA_MEMORY_USAGE_CPU_TO_GPU;
+
+		// Special case: It uses dynamic memory from an allocator
+		if (desc.usage == ResourceUsage_Dynamic && desc.bufferType == GPUBufferType_Constant)
+		{
+			return Result_Success;
+		}
 
 		// Usage Flags
 		switch (desc.bufferType)
@@ -1881,7 +1892,7 @@ namespace sv {
 			break;
 		}
 
-		if (deviceMemory) bufferUsage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+		bufferUsage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
 		// Create Buffer
 		{
@@ -1896,9 +1907,7 @@ namespace sv {
 			buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 			VmaAllocationCreateInfo alloc_info{};
-			//alloc_info.usage = memoryUsage;
-			alloc_info.requiredFlags = deviceMemory ? VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-			
+			alloc_info.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
 			vkCheck(vmaCreateBuffer(g_API->allocator, &buffer_info, &alloc_info, &buffer.buffer, &buffer.allocation, nullptr));
 			buffer.memory.Create(desc.size);
@@ -1906,79 +1915,71 @@ namespace sv {
 
 		// Set data
 		if (desc.pData) {
-			if (deviceMemory) {
-				VkCommandBuffer cmd;
-				vkCheck(graphics_vulkan_singletimecmb_begin(&cmd));
+			
+			VkCommandBuffer cmd;
+			vkCheck(graphics_vulkan_singletimecmb_begin(&cmd));
 
-				VkBuffer stagingBuffer;
-				VmaAllocation stagingAllocation;
-				void* mapData;
+			VkBuffer stagingBuffer;
+			VmaAllocation stagingAllocation;
+			void* mapData;
 
-				vkCheck(graphics_vulkan_memory_create_stagingbuffer(stagingBuffer, stagingAllocation, &mapData, desc.size));
-				memcpy(mapData, desc.pData, desc.size);
+			vkCheck(graphics_vulkan_memory_create_stagingbuffer(stagingBuffer, stagingAllocation, &mapData, desc.size));
+			memcpy(mapData, desc.pData, desc.size);
 
-				VkBufferMemoryBarrier bufferBarrier{};
+			VkBufferMemoryBarrier bufferBarrier{};
 
-				bufferBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-				bufferBarrier.srcAccessMask = 0;
-				bufferBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-				bufferBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-				bufferBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-				bufferBarrier.buffer = buffer.buffer;
-				bufferBarrier.offset = 0u;
-				bufferBarrier.size = VK_WHOLE_SIZE;
+			bufferBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+			bufferBarrier.srcAccessMask = 0;
+			bufferBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			bufferBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			bufferBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			bufferBarrier.buffer = buffer.buffer;
+			bufferBarrier.offset = 0u;
+			bufferBarrier.size = VK_WHOLE_SIZE;
 
-				vkCmdPipelineBarrier(cmd,
-					VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-					VK_PIPELINE_STAGE_TRANSFER_BIT,
-					0u,
-					0u,
-					nullptr,
-					1u,
-					&bufferBarrier,
-					0u,
-					nullptr);
+			vkCmdPipelineBarrier(cmd,
+				VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+				VK_PIPELINE_STAGE_TRANSFER_BIT,
+				0u,
+				0u,
+				nullptr,
+				1u,
+				&bufferBarrier,
+				0u,
+				nullptr);
 
-				graphics_vulkan_buffer_copy(cmd, stagingBuffer, buffer.buffer, 0u, 0u, desc.size);
+			graphics_vulkan_buffer_copy(cmd, stagingBuffer, buffer.buffer, 0u, 0u, desc.size);
 
-				bufferBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-				bufferBarrier.dstAccessMask = 0u;
+			bufferBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			bufferBarrier.dstAccessMask = 0u;
 
-				switch (desc.bufferType)
-				{
-				case GPUBufferType_Vertex:
-					bufferBarrier.dstAccessMask |= VK_ACCESS_INDEX_READ_BIT;
-					break;
-				case GPUBufferType_Index:
-					bufferBarrier.dstAccessMask |= VK_ACCESS_INDEX_READ_BIT;
-					break;
-				case GPUBufferType_Constant:
-					bufferBarrier.dstAccessMask |= VK_ACCESS_UNIFORM_READ_BIT;
-					break;
-				}
-
-				vkCmdPipelineBarrier(cmd,
-					VK_PIPELINE_STAGE_TRANSFER_BIT,
-					VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
-					0u,
-					0u,
-					nullptr,
-					1u,
-					&bufferBarrier,
-					0u,
-					nullptr);
-
-				vkCheck(graphics_vulkan_singletimecmb_end(cmd));
-
-				vmaDestroyBuffer(g_API->allocator, stagingBuffer, stagingAllocation);
-				
+			switch (desc.bufferType)
+			{
+			case GPUBufferType_Vertex:
+				bufferBarrier.dstAccessMask |= VK_ACCESS_INDEX_READ_BIT;
+				break;
+			case GPUBufferType_Index:
+				bufferBarrier.dstAccessMask |= VK_ACCESS_INDEX_READ_BIT;
+				break;
+			case GPUBufferType_Constant:
+				bufferBarrier.dstAccessMask |= VK_ACCESS_UNIFORM_READ_BIT;
+				break;
 			}
-			else {
-				void* d;
-				vmaMapMemory(g_API->allocator, buffer.allocation, &d);
-				memcpy(d, desc.pData, desc.size);
-				vmaUnmapMemory(g_API->allocator, buffer.allocation);
-			}
+
+			vkCmdPipelineBarrier(cmd,
+				VK_PIPELINE_STAGE_TRANSFER_BIT,
+				VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+				0u,
+				0u,
+				nullptr,
+				1u,
+				&bufferBarrier,
+				0u,
+				nullptr);
+
+			vkCheck(graphics_vulkan_singletimecmb_end(cmd));
+
+			vmaDestroyBuffer(g_API->allocator, stagingBuffer, stagingAllocation);
 		}
 
 		// Desc
