@@ -315,7 +315,76 @@ namespace sv {
 				queue_create_info[i].pQueuePriorities = &priorities;
 			}
 
-			// TODO: Check Extensions And ValidationLayers
+			// Get available extensions and validation layers
+			std::vector<VkExtensionProperties> available_extensions;
+			std::vector<VkLayerProperties> available_layers;
+			{
+				u32 available_extension_count;
+				u32 available_layer_count;
+
+				vkEnumerateDeviceExtensionProperties(card.physicalDevice, nullptr, &available_extension_count, nullptr);
+				vkEnumerateDeviceLayerProperties(card.physicalDevice, &available_layer_count, nullptr);
+
+				if (available_extension_count == 0u) {
+					SV_LOG_ERROR("There's no available device extensions");
+					return Result_GraphicsAPIError;
+				}
+				if (available_layer_count == 0u) {
+					SV_LOG_ERROR("There's no available device validation layers");
+					return Result_GraphicsAPIError;
+				}
+
+				available_extensions.resize(available_extension_count);
+				vkEnumerateDeviceExtensionProperties(card.physicalDevice, nullptr, &available_extension_count, available_extensions.data());
+				available_layers.resize(available_layers_count);
+				vkEnumerateDeviceLayerProperties(card.physicalDevice, &available_layer_count, available_layers.data());
+			}
+
+			// Check device extensions
+			for (auto it = g_API->deviceExtensions.begin(), it != g_API->deviceExtensions.end(); ) {
+
+				const char* ext = *it;
+
+				bool found = false;
+
+				for (const VkExtensionProperties& e : available_extensions) {
+
+					if (strcmp(e.extensionName, ext) == 0) {
+						found = true;
+						break;
+					}
+				}
+
+				if (!found) {
+
+					SV_LOG_ERROR("Device extension '%s' not available", ext);
+					it = g_API->deviceExtensions.erase(it);
+				}
+				else ++it;
+			}
+
+			// Check device validationLayers
+			for (auto it = g_API->deviceValidationLayers.begin(), it != g_API->deviceValidationLayers.end(); ) {
+
+				const char* layer = *it;
+
+				bool found = false;
+
+				for (const VkLayerProperties& e : available_layers) {
+
+					if (strcmp(e.layerName, ext) == 0) {
+						found = true;
+						break;
+					}
+				}
+
+				if (!found) {
+
+					SV_LOG_ERROR("Device validation layer '%s' not available", ext);
+					it = g_API->deviceValidationLayers.erase(it);
+				}
+				else ++it;
+			}
 
 			// Create
 			VkDeviceCreateInfo create_info{};
