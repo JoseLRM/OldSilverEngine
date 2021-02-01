@@ -29,6 +29,9 @@ namespace sv {
 		Font& font = *pFont;
 
 		// Prepare
+		graphics_rasterizerstate_unbind(cmd);
+		graphics_blendstate_unbind(cmd);
+		graphics_depthstencilstate_unbind(cmd);
 		graphics_topology_set(GraphicsTopology_Triangles, cmd);
 
 		graphics_shader_bind(gfx.vs_text, cmd);
@@ -42,7 +45,7 @@ namespace sv {
 
 		graphics_inputlayoutstate_bind(gfx.ils_text, cmd);
 
-		TextData& data = *reinterpret_cast<TextData*>(rend_utils->batch_data[cmd]);
+		TextData& data = *reinterpret_cast<TextData*>(rend_utils[cmd].batch_data);
 
 		// Text space transformation
 		f32 xmult = 0.f;

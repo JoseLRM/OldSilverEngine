@@ -45,7 +45,7 @@ Result init()
 
 void update()
 {
-	editor_key_shortcuts(editor);
+	editor_key_shortcuts();
 
 	gui_resize(gui, window_width_get(engine.window), window_height_get(engine.window));
 	gui_update(gui);

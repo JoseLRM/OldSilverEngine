@@ -104,6 +104,14 @@ namespace sv {
 
 	};
 
+	struct GuiTextField : public GuiWidget {
+
+		std::string text;
+
+		GuiTextField() : GuiWidget(GuiWidgetType_TextField) {}
+
+	};
+
 	// WINDOW
 
 	struct GuiWindow {
@@ -131,18 +139,16 @@ namespace sv {
 
 	SV_DEFINE_HANDLE(GUI);
 
-	GUI*							gui_create(u32 width, u32 height);
+	GUI*							gui_create();
 	void							gui_destroy(GUI* gui);
-	void							gui_resize(GUI* gui, u32 width, u32 height);
-	void							gui_update(GUI* gui);
-	void							gui_render(GUI* gui, GPUImage* rendertarget, CommandList cmd);
+	void							gui_update(GUI* gui, f32 width, f32 height);
+	void							gui_render(GUI* gui, CommandList cmd);
 	const std::vector<GuiWidget*>&	gui_root_get(GUI* gui);
 	const GuiLockedInput&			gui_locked_input(GUI* gui);
 
 	GuiWidget*	gui_widget_create(GUI* gui, GuiWidgetType widget_type, GuiContainer* container = nullptr);
 	void		gui_widget_destroy(GUI* gui, GuiWidget* widget);
 	GuiWidget*	gui_widget_clicked(GUI* gui);
-	GuiWidget*	gui_widget_hovered(GUI* gui);
 	GuiWidget*	gui_widget_focused(GUI* gui);
 
 	GuiWindow*	gui_window_create(GUI* gui);
@@ -163,6 +169,11 @@ namespace sv {
 	SV_INLINE GuiSlider* gui_slider_create(GUI* gui, GuiContainer* container = nullptr)
 	{
 		return reinterpret_cast<GuiSlider*>(gui_widget_create(gui, GuiWidgetType_Slider, container));
+	}
+
+	SV_INLINE GuiTextField* gui_textfield_create(GUI* gui, GuiContainer* container = nullptr)
+	{
+		return reinterpret_cast<GuiTextField*>(gui_widget_create(gui, GuiWidgetType_TextField, container));
 	}
 
 }

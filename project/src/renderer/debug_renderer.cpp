@@ -193,6 +193,8 @@ namespace sv {
 
 		graphics_mode_set(GraphicsPipelineMode_Graphics, cmd);
 
+		graphics_rasterizerstate_unbind(cmd);
+		graphics_depthstencilstate_unbind(cmd);
 		graphics_inputlayoutstate_bind(gfx.ils_debug, cmd);
 		graphics_blendstate_bind(gfx.bs_debug, cmd);
 
@@ -289,7 +291,7 @@ namespace sv {
 
 							mvpMatrix = spr.matrix;
 							color = spr.color;
-							texCoord = batch.texCoord;
+							texCoord = draw.texCoord;
 						}
 						break;
 						}

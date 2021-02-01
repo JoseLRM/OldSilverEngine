@@ -79,6 +79,14 @@ namespace sv {
 				key = Key_Escape;
 				break;
 
+			case VK_LEFT:
+				key = Key_Left;
+				break;
+			
+			case VK_RIGHT:
+				key = Key_Right;
+				break;
+
 			case 13:
 				key = Key_Enter;
 				break;

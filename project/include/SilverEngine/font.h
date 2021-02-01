@@ -28,6 +28,6 @@ namespace sv {
 	Result font_create(Font& font, const char* filepath, f32 pixelHeight, FontFlags flags);
 	Result font_destroy(Font& font);
 
-	f32 font_text_width(const char* text, Font* pFont);
+	f32 font_text_width(const char* text, u32 count, f32 font_size, f32 aspect, Font* pFont);
 
 }

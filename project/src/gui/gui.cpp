@@ -2,6 +2,7 @@
 
 #include "SilverEngine/gui.h"
 #include "SilverEngine/utils/allocators/InstanceAllocator.h"
+#include "SilverEngine/font.h"
 
 #include "renderer/renderer_internal.h"
 
@@ -14,29 +15,34 @@ namespace sv {
 		InstanceAllocator<GuiContainer, 10u>	containers;
 		InstanceAllocator<GuiButton, 10u>		buttons;
 		InstanceAllocator<GuiSlider, 10u>		sliders;
+		InstanceAllocator<GuiTextField, 10u>	textfields;
 
 		InstanceAllocator<GuiWindow, 5u>		windows;
 
-		std::vector<GuiWidget*>				root;
-		v2_f32								resolution;
-		GuiWidget* widget_focused = nullptr;
-		GuiWidget* widget_clicked;
-		GuiWidget* widget_hovered;
-		GuiWidget* widget_last_hovered = nullptr;
-		GuiLockedInput						locked;
+		std::vector<GuiWidget*>	root;
+		v2_f32					resolution;
+		GuiWidget*				widget_focused = nullptr;
+		GuiWidget*				widget_clicked;
+		GuiLockedInput			locked;
 
 		// used during update
 		v2_f32		mouse_position;
 		bool		mouse_clicked;
 		v2_f32		dragged_begin_pos;
 		u32			dragged_action_id = 0u;
+		u32			text_position = 0u;
+
+		// TEMP
+		Font temp_font;
 
 	};
 
-	GUI* gui_create(u32 width, u32 height)
+	GUI* gui_create()
 	{
 		GUI_internal& gui = *new GUI_internal();
-		gui.resolution = { f32(width), f32(height) };
+
+		//TEMP
+		font_create(gui.temp_font, "C:/Windows/Fonts/arial.ttf", 228.f, 0u);
 
 		return reinterpret_cast<GUI*>(&gui);
 	}
@@ -45,9 +51,13 @@ namespace sv {
 	{
 		PARSE_GUI();
 
+		//TEMP
+		font_destroy(gui.temp_font);
+
 		gui.containers.clear();
 		gui.buttons.clear();
 		gui.sliders.clear();
+		gui.textfields.clear();
 
 		gui.windows.clear();
 
@@ -56,15 +66,9 @@ namespace sv {
 		delete& gui;
 	}
 
-	void gui_resize(GUI* gui_, u32 width, u32 height)
-	{
-		PARSE_GUI();
-		gui.resolution = { f32(width), f32(height) };
-	}
-
 	// BOUNDS FUNCTIONS
 
-	SV_INLINE static f32 compute_coord(const GUI_internal& gui, const GuiWidget::Coord& coord, f32 aspect_coord, f32 dimension, f32 resolution, f32 aspect)
+	SV_INLINE static f32 compute_coord(const GUI_internal& gui, const GuiWidget::Coord& coord, f32 aspect_coord, f32 dimension, f32 resolution, f32 aspect, f32 parent_coord, f32 parent_dimension)
 	{
 		f32 res = 0.5f;
 
@@ -72,11 +76,11 @@ namespace sv {
 		switch (coord.constraint)
 		{
 		case GuiConstraint_Relative:
-			res = coord.value;
+			res = coord.value * parent_dimension;
 			break;
 
 		case GuiConstraint_Center:
-			res = 0.5f;
+			res = 0.5f * parent_dimension;
 			break;
 
 		case GuiConstraint_Pixel:
@@ -84,16 +88,20 @@ namespace sv {
 			break;
 
 		case GuiConstraint_Aspect:
-			res = aspect_coord * coord.value * aspect;
+			res = aspect_coord * coord.value * aspect * parent_dimension;
 			break;
 
 		}
 
-		// Align coord
+		// Inverse coord
 		if (coord.alignment >= 3u) {
-			res = 1.f - res;
+			res = parent_dimension - res;
 		}
+		
+		// Parent offset
+		res += (parent_coord - parent_dimension * 0.5f);
 
+		// Alignment
 		switch (coord.alignment)
 		{
 		case GuiCoordAlignment_Left:
@@ -110,7 +118,7 @@ namespace sv {
 		return res;
 	}
 
-	SV_INLINE static f32 compute_dimension(const GUI_internal& gui, const GuiWidget::Dimension& dimension, f32 inv_dimension, f32 resolution, f32 aspect)
+	SV_INLINE static f32 compute_dimension(const GUI_internal& gui, const GuiWidget::Dimension& dimension, f32 inv_dimension, f32 resolution, f32 aspect, f32 parent_dimension)
 	{
 		f32 res = 0.5f;
 
@@ -118,11 +126,11 @@ namespace sv {
 		switch (dimension.constraint)
 		{
 		case GuiConstraint_Relative:
-			res = dimension.value;
+			res = dimension.value * parent_dimension;
 			break;
 
 		case GuiConstraint_Center:
-			res = 0.5f;
+			res = 0.5f * parent_dimension;
 			break;
 
 		case GuiConstraint_Pixel:
@@ -130,7 +138,7 @@ namespace sv {
 			break;
 
 		case GuiConstraint_Aspect:
-			res = inv_dimension * dimension.value * aspect;
+			res = inv_dimension * dimension.value * aspect * parent_dimension;
 			break;
 		}
 
@@ -163,30 +171,21 @@ namespace sv {
 		f32 haspect = 1.f / vaspect;
 
 		if (widget.w.constraint == GuiConstraint_Aspect) {
-			h = compute_dimension(gui, widget.h, 0.5f, gui.resolution.y, vaspect);
-			w = compute_dimension(gui, widget.w, h, gui.resolution.x, haspect);
+			h = compute_dimension(gui, widget.h, 0.5f, gui.resolution.y, vaspect, parent_bounds.w);
+			w = compute_dimension(gui, widget.w, h, gui.resolution.x, haspect, parent_bounds.z);
 		}
 		else {
-			w = compute_dimension(gui, widget.w, 0.5f, gui.resolution.x, haspect);
-			h = compute_dimension(gui, widget.h, w, gui.resolution.y, vaspect);
+			w = compute_dimension(gui, widget.w, 0.5f, gui.resolution.x, haspect, parent_bounds.z);
+			h = compute_dimension(gui, widget.h, w, gui.resolution.y, vaspect, parent_bounds.w);
 		}
 
 		if (widget.x.constraint == GuiConstraint_Aspect) {
-			y = compute_coord(gui, widget.y, 0.5f, h, gui.resolution.y, vaspect);
-			x = compute_coord(gui, widget.x, y, w, gui.resolution.x, haspect);
+			y = compute_coord(gui, widget.y, 0.5f, h, gui.resolution.y, vaspect, parent_bounds.y, parent_bounds.w);
+			x = compute_coord(gui, widget.x, y, w, gui.resolution.x, haspect, parent_bounds.x, parent_bounds.w);
 		}
 		else {
-			x = compute_coord(gui, widget.x, 0.5f, w, gui.resolution.x, haspect);
-			y = compute_coord(gui, widget.y, x, h, gui.resolution.y, vaspect);
-		}
-
-		// Adjust to parent bounds
-		if (widget.parent) {
-
-			x = (parent_bounds.x - parent_bounds.z * 0.5f) + (x * parent_bounds.z);
-			y = (parent_bounds.y - parent_bounds.w * 0.5f) + (y * parent_bounds.w);
-			w *= parent_bounds.z;
-			h *= parent_bounds.w;
+			x = compute_coord(gui, widget.x, 0.5f, w, gui.resolution.x, haspect, parent_bounds.x, parent_bounds.w);
+			y = compute_coord(gui, widget.y, x, h, gui.resolution.y, vaspect, parent_bounds.y, parent_bounds.w);
 		}
 
 		return { x, y, w, h };
@@ -194,7 +193,7 @@ namespace sv {
 
 	static v4_f32 compute_widget_bounds(const GUI_internal& gui, GuiWidget& widget)
 	{
-		v4_f32 parent_bounds = { 0.f, 0.f, 1.f, 1.f };
+		v4_f32 parent_bounds = { 0.5f, 0.5f, 1.f, 1.f };
 
 		if (widget.parent != nullptr) {
 			parent_bounds = compute_widget_bounds(gui, *widget.parent);
@@ -235,8 +234,6 @@ namespace sv {
 		v4_f32 decoration_bounds = compute_window_decoration_bounds(gui, window, container_bounds);
 		
 		if (mouse_in_bounds(gui, decoration_bounds)) {
-
-			gui.widget_hovered = window.container;
 
 			if (gui.mouse_clicked) {
 
@@ -361,8 +358,6 @@ namespace sv {
 
 				}
 
-				gui.widget_hovered = &widget;
-
 				if (gui.mouse_clicked)
 					gui.widget_clicked = &widget;
 			}
@@ -377,25 +372,21 @@ namespace sv {
 		break;
 
 		case GuiWidgetType_Slider:
+		case GuiWidgetType_TextField:
 		{
-			GuiSlider& slider = *reinterpret_cast<GuiSlider*>(&widget);
-			v4_f32 bounds = compute_widget_bounds(gui, slider, parent_bounds);
+			v4_f32 bounds = compute_widget_bounds(gui, widget, parent_bounds);
 
-			// Mouse in button
-			if (mouse_in_bounds(gui, bounds)) {
+			// Mouse widget
+			if (gui.mouse_clicked && mouse_in_bounds(gui, bounds)) {
 
-				gui.widget_hovered = &widget;
+				gui.text_position = 0u;
+				gui.widget_clicked = &widget;
 
-				if (gui.mouse_clicked) {
+				InputState mouse_state = input.mouse_buttons[MouseButton_Left];
 
-					gui.widget_clicked = &widget;
+				if (mouse_state == InputState_Pressed) {
 
-					InputState mouse_state = input.mouse_buttons[MouseButton_Left];
-
-					if (mouse_state == InputState_Pressed) {
-
-						gui.widget_focused = &widget;
-					}
+					gui.widget_focused = &widget;
 				}
 			}
 		}
@@ -404,14 +395,15 @@ namespace sv {
 		}
 	}
 
-	void gui_update(GUI* gui_)
+	void gui_update(GUI* gui_, f32 width, f32 height)
 	{
 		PARSE_GUI();
+
+		gui.resolution = { f32(width), f32(height) };
 
 		// Init update
 		gui.mouse_position = input.mouse_position + 0.5f;
 		gui.widget_clicked = nullptr;
-		gui.widget_hovered = nullptr;
 		gui.mouse_clicked = false;
 		for (MouseButton b = MouseButton(0); b < MouseButton_MaxEnum; ++(u32&)b) 
 			if (input.mouse_buttons[b] != InputState_None) {
@@ -426,16 +418,7 @@ namespace sv {
 			}
 		}
 		for (GuiWidget* root : gui.root) {
-			update_widget(gui, *root, { 0.f, 0.f, 1.f, 1.f });
-		}
-
-		// Save the last hovered to know if it is leaved
-		{
-			GuiWidget* temp = gui.widget_last_hovered;
-			gui.widget_last_hovered = gui.widget_hovered;
-			if (temp) {
-				gui.widget_hovered = temp;
-			}
+			update_widget(gui, *root, { 0.5f, 0.5f, 1.f, 1.f });
 		}
 
 		// Set the locked data and update focused widget
@@ -579,6 +562,53 @@ namespace sv {
 			}
 			break;
 
+			case GuiWidgetType_TextField:
+			{
+				GuiTextField& field = *reinterpret_cast<GuiTextField*>(gui.widget_focused);
+
+				// Assert that the position is lower than the text size
+				gui.text_position = std::min(gui.text_position, u32(field.text.size()));
+
+				// Move text position
+				if (input.keys[Key_Left] == InputState_Pressed) {
+					gui.text_position = (gui.text_position == 0u) ? 0u : (gui.text_position - 1u);
+				}
+				if (input.keys[Key_Right] == InputState_Pressed) {
+					gui.text_position = std::min(gui.text_position + 1u, u32(field.text.size()));
+				}
+
+				// Text commands
+				for (TextCommand command : input.text_commands) {
+
+					switch (command)
+					{
+					case TextCommand_DeleteLeft:
+						if (gui.text_position != 0u) {
+							--gui.text_position;
+							field.text.erase(field.text.begin() + gui.text_position);
+						}
+						break;
+					case TextCommand_DeleteRight:
+						if (gui.text_position < field.text.size()) {
+							field.text.erase(field.text.begin() + gui.text_position);
+						}
+						break;
+					case TextCommand_Enter:
+					case TextCommand_Escape:
+						gui.widget_focused = nullptr;
+						break;
+					}
+				}
+
+				// Append text
+				if (input.text.size()) {
+
+					field.text.insert(field.text.begin() + gui.text_position, input.text.begin(), input.text.end());
+					gui.text_position += u32(input.text.size());
+				}
+			}
+			break;
+
 			}
 		}
 
@@ -601,8 +631,12 @@ namespace sv {
 
 		case GuiWidgetType_Container:
 		{
+			begin_debug_batch(cmd);
+
 			GuiContainer& container = *reinterpret_cast<GuiContainer*>(&widget);
 			draw_debug_quad(pos.getVec3(), size, widget.color, cmd);
+
+			end_debug_batch(XMMatrixIdentity(), cmd);
 
 			for (GuiWidget* son : container.sons) {
 				draw_widget(gui, *son, bounds, cmd);
@@ -612,6 +646,8 @@ namespace sv {
 
 		case GuiWidgetType_Slider:
 		{
+			begin_debug_batch(cmd);
+
 			GuiSlider& slider = *reinterpret_cast<GuiSlider*>(&widget);
 			
 			f32 normalized_value = (slider.value - slider.min) / (slider.max - slider.min);
@@ -619,19 +655,69 @@ namespace sv {
 
 			draw_debug_quad(pos.getVec3(), size, widget.color, cmd);
 			draw_debug_quad({ subpos, pos.y, 0.f }, { size.x * 0.05f, size.y * 1.1f }, slider.button_color, cmd);
+
+			end_debug_batch(XMMatrixIdentity(), cmd);
+		}
+		break;
+
+		case GuiWidgetType_Button:
+		{
+			GuiButton& button = *reinterpret_cast<GuiButton*>(&widget);
+
+			begin_debug_batch(cmd);
+			draw_debug_quad(pos.getVec3(), size, widget.color, cmd);
+			end_debug_batch(XMMatrixIdentity(), cmd);
+
+			if (button.text.size()) {
+
+				// TODO: Should use information about the largest character in the font
+				f32 text_y = pos.y + size.y * 0.6f;
+				draw_text(button.text.c_str(), pos.x - size.x * 0.5f, text_y, size.x, 1u, size.y, gui.resolution.x / gui.resolution.y, TextSpace_Clip, TextAlignment_Center, &gui.temp_font, cmd);
+			}
+		}
+		break;
+
+		case GuiWidgetType_TextField:
+		{
+			GuiTextField& field = *reinterpret_cast<GuiTextField*>(&widget);
+
+			begin_debug_batch(cmd);
+			draw_debug_quad(pos.getVec3(), size, widget.color, cmd);
+			end_debug_batch(XMMatrixIdentity(), cmd);
+
+			if (field.text.size()) {
+
+				// TODO: Should use information about the largest character in the font
+				f32 text_y = pos.y + size.y * 0.6f;
+				f32 text_x = pos.x - size.x * 0.5f;
+				f32 aspect = gui.resolution.x / gui.resolution.y;
+
+				draw_text(field.text.c_str(), text_x, text_y, size.x, 1u, size.y, aspect, TextSpace_Clip, TextAlignment_Left, &gui.temp_font, cmd);
+
+				if (&widget == gui.widget_focused && sin(f32(timer_now()) * 5.f) > 0.f) {
+					
+					f32 line_x = text_x + font_text_width(field.text.c_str(), gui.text_position, size.y, aspect, &gui.temp_font);
+
+					begin_debug_batch(cmd);
+					draw_debug_line({ line_x, text_y, 0.f }, { line_x, text_y - size.y, 0.f }, Color::White(), cmd);
+					end_debug_batch(XMMatrixIdentity(), cmd);
+				}
+			}
 		}
 		break;
 
 		default:
+			begin_debug_batch(cmd);
 			draw_debug_quad(pos.getVec3(), size, widget.color, cmd);
+			end_debug_batch(XMMatrixIdentity(), cmd);
 			break;
 		}
 	}
 
-	void gui_render(GUI* gui_, GPUImage* rendertarget, CommandList cmd)
+	void gui_render(GUI* gui_, CommandList cmd)
 	{
 		PARSE_GUI();
-
+		
 		// prepare
 		graphics_depthstencilstate_unbind(cmd);
 		graphics_blendstate_unbind(cmd);
@@ -665,13 +751,13 @@ namespace sv {
 			}
 		}
 
+		end_debug_batch(XMMatrixIdentity(), cmd);
+
 		// Draw widgets
 
 		for (GuiWidget* root : gui.root) {
-			draw_widget(gui, *root, { 0.f, 0.f, 1.f, 1.f }, cmd);
+			draw_widget(gui, *root, { 0.5f, 0.5f, 1.f, 1.f }, cmd);
 		}
-
-		end_debug_batch(XMMatrixIdentity(), cmd);
 	}
 
 	GuiWidget* gui_widget_create(GUI* gui_, GuiWidgetType widget_type, GuiContainer* container)
@@ -693,6 +779,10 @@ namespace sv {
 
 		case GuiWidgetType_Slider:
 			widget = &gui.sliders.create();
+			break;
+
+		case GuiWidgetType_TextField:
+			widget = &gui.textfields.create();
 			break;
 
 		default:
@@ -743,6 +833,10 @@ namespace sv {
 		case GuiWidgetType_Slider:
 			gui.sliders.destroy(*reinterpret_cast<GuiSlider*>(widget));
 			break;
+
+		case GuiWidgetType_TextField:
+			gui.textfields.destroy(*reinterpret_cast<GuiTextField*>(widget));
+			break;
 		}
 	}
 
@@ -750,12 +844,6 @@ namespace sv {
 	{
 		PARSE_GUI();
 		return gui.widget_clicked;
-	}
-
-	GuiWidget* gui_widget_hovered(GUI* gui_)
-	{
-		PARSE_GUI();
-		return gui.widget_hovered;
 	}
 
 	GuiWidget* gui_widget_focused(GUI* gui_)

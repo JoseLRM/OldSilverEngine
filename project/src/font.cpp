@@ -241,10 +241,10 @@ namespace sv {
 		return graphics_destroy(font.image);
 	}
 
-	f32 font_text_width(const char* text, Font* pFont)
+	f32 font_text_width(const char* text, u32 count, f32 font_size, f32 aspect, Font* pFont)
 	{
 		const char* it = text;
-		const char* end = it + strlen(text);
+		const char* end = it + size_t(count);
 
 		Font& font = *pFont;
 
@@ -261,7 +261,7 @@ namespace sv {
 			++it;
 		}
 
-		return width;
+		return width * font_size / aspect;
 	}
 
 }
