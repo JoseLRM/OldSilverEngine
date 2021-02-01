@@ -259,6 +259,8 @@ namespace sv {
 		try {
 			svCheck(engine.app_callbacks.close());
 
+			asset_free_unused();
+
 			// Close Window
 			svCheck(window_destroy(engine.window));
 

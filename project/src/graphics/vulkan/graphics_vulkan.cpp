@@ -14,6 +14,9 @@ namespace sv {
 		return *reinterpret_cast<Graphics_vk*>(graphics_internaldevice_get());
 	}
 
+	static VkDescriptorSet update_graphics_descriptors(VulkanPipeline& pipeline, ShaderType shaderType, GraphicsState& state, bool samplers, bool images, bool uniforms, CommandList cmd_);
+	static void update_graphics_state(CommandList cmd_);
+
 	////////////////////////////////////////////DEBUG/////////////////////////////////////////////////
 	VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
 		VkDebugUtilsMessageSeverityFlagBitsEXT msgSeverity,
@@ -336,12 +339,12 @@ namespace sv {
 
 				available_extensions.resize(available_extension_count);
 				vkEnumerateDeviceExtensionProperties(card.physicalDevice, nullptr, &available_extension_count, available_extensions.data());
-				available_layers.resize(available_layers_count);
+				available_layers.resize(available_layer_count);
 				vkEnumerateDeviceLayerProperties(card.physicalDevice, &available_layer_count, available_layers.data());
 			}
 
 			// Check device extensions
-			for (auto it = g_API->deviceExtensions.begin(), it != g_API->deviceExtensions.end(); ) {
+			for (auto it = g_API->deviceExtensions.begin(); it != g_API->deviceExtensions.end(); ) {
 
 				const char* ext = *it;
 
@@ -364,7 +367,7 @@ namespace sv {
 			}
 
 			// Check device validationLayers
-			for (auto it = g_API->deviceValidationLayers.begin(), it != g_API->deviceValidationLayers.end(); ) {
+			for (auto it = g_API->deviceValidationLayers.begin(); it != g_API->deviceValidationLayers.end(); ) {
 
 				const char* layer = *it;
 
@@ -372,7 +375,7 @@ namespace sv {
 
 				for (const VkLayerProperties& e : available_layers) {
 
-					if (strcmp(e.layerName, ext) == 0) {
+					if (strcmp(e.layerName, layer) == 0) {
 						found = true;
 						break;
 					}
@@ -380,7 +383,7 @@ namespace sv {
 
 				if (!found) {
 
-					SV_LOG_ERROR("Device validation layer '%s' not available", ext);
+					SV_LOG_ERROR("Device validation layer '%s' not available", layer);
 					it = g_API->deviceValidationLayers.erase(it);
 				}
 				else ++it;
@@ -1437,8 +1440,6 @@ namespace sv {
 		}
 		return Result_Success;
 	}
-
-	static VkDescriptorSet update_graphics_descriptors(VulkanPipeline& pipeline, ShaderType shaderType, GraphicsState& state, bool samplers, bool images, bool uniforms, CommandList cmd_);
 
 	static void update_graphics_state(CommandList cmd_)
 	{

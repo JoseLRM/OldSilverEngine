@@ -8,7 +8,6 @@
 #include "SilverEngine/event_system.h"
 #include "SilverEngine/task_system.h"
 #include "SilverEngine/font.h"
-#include "SilverEngine/debug_renderer.h"
 #include "SilverEngine/renderer.h"
 
 #include "SilverEngine/sprite.h"

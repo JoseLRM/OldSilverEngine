@@ -1,6 +1,5 @@
 #include "SilverEngine/core.h"
 
-#include "SilverEngine/debug_renderer.h"
 #include "SilverEngine/utils/allocators/FrameList.h"
 #include "renderer/renderer_internal.h"
 
@@ -41,7 +40,7 @@ namespace sv {
 			: list(list), index(index), count(1u), pImage(image), pSampler(sampler), texCoord(texCoord) {}
 	};
 
-	struct DebugRendererBatch_internal {
+	struct DebugRendererBatch {
 
 		FrameList<DebugRendererQuad>	quads;
 		FrameList<DebugRendererLine>	lines;
@@ -58,7 +57,7 @@ namespace sv {
 
 	};
 
-#define parseBatch() sv::DebugRendererBatch_internal& batch = *reinterpret_cast<sv::DebugRendererBatch_internal*>(pInternal)
+	static DebugRendererBatch debug_batches[GraphicsLimit_CommandList];
 
 	// BEGIN - END
 
@@ -167,31 +166,12 @@ namespace sv {
 
 	}
 
-	DebugRenderer::~DebugRenderer()
-	{
-		destroy();
-	}
+#define DEF_BATCH() sv::DebugRendererBatch& batch = debug_batches[cmd];
 
-	Result DebugRenderer::create()
+	void begin_debug_batch(CommandList cmd)
 	{
-		pInternal = new DebugRendererBatch_internal();
-		reset();
-		return Result_Success;
-	}
+		DEF_BATCH();
 
-	Result DebugRenderer::destroy()
-	{
-		if (pInternal == nullptr) return Result_Success;
-		parseBatch();
-
-		delete& batch;
-		pInternal = nullptr;
-		return Result_Success;
-	}
-
-	void DebugRenderer::reset()
-	{
-		parseBatch();
 		batch.quads.reset();
 		batch.lines.reset();
 		batch.ellipses.reset();
@@ -200,9 +180,14 @@ namespace sv {
 		batch.drawCalls.emplace_back().list = u32_max;
 	}
 
-	void DebugRenderer::render(GPUImage* renderTarget, const XMMATRIX& viewProjectionMatrix, CommandList cmd)
+	void end_debug_batch(const XMMATRIX& viewProjectionMatrix, CommandList cmd)
 	{
-		parseBatch();
+		DEF_BATCH();
+
+		SV_ASSERT_OFFSCREEN();
+		
+		GPUImage* offscreen = render_context[cmd].offscreen;
+
 		if (batch.drawCalls.size() <= 1u)
 			return;
 
@@ -327,13 +312,13 @@ namespace sv {
 
 						p0 = v0;
 						p0 = XMVector3Transform(p0, mvpMatrix);
-						
+
 						p1 = v1;
 						p1 = XMVector3Transform(p1, mvpMatrix);
-						
+
 						p2 = v2;
 						p2 = XMVector3Transform(p2, mvpMatrix);
-						
+
 						p3 = v3;
 						p3 = XMVector3Transform(p3, mvpMatrix);
 
@@ -407,7 +392,7 @@ namespace sv {
 				// Update & draw
 				if ((capacity - batchUsage) * vertexCount < 6u) { // 6 because is the max vertex count
 
-					debug_renderer_draw_batch(beginIt, beginIndex, it, currentIndex, u32(itBatch - batchData), batchData, renderTarget, cmd);
+					debug_renderer_draw_batch(beginIt, beginIndex, it, currentIndex, u32(itBatch - batchData), batchData, offscreen, cmd);
 
 					itBatch = batchData;
 
@@ -427,13 +412,13 @@ namespace sv {
 
 		if (beginIndex != u32_max) {
 			--it;
-			debug_renderer_draw_batch(beginIt, beginIndex, it, it->index + it->count, u32(itBatch - batchData), batchData, renderTarget, cmd);
+			debug_renderer_draw_batch(beginIt, beginIndex, it, it->index + it->count, u32(itBatch - batchData), batchData, offscreen, cmd);
 		}
 	}
 
-	void DebugRenderer::drawQuad(const XMMATRIX& matrix, Color color)
+	void draw_debug_quad(const XMMATRIX& matrix, Color color, CommandList cmd)
 	{
-		parseBatch();
+		DEF_BATCH();
 
 		if (batch.drawCalls.back().list == 0u && batch.drawCalls.back().stroke == batch.stroke) ++batch.drawCalls.back().count;
 		else {
@@ -443,9 +428,9 @@ namespace sv {
 		batch.quads.emplace_back(matrix, color);
 	}
 
-	void DebugRenderer::drawLine(const v3_f32& p0, const v3_f32& p1, Color color)
+	void draw_debug_line(const v3_f32& p0, const v3_f32& p1, Color color, CommandList cmd)
 	{
-		parseBatch();
+		DEF_BATCH();
 
 		if (batch.drawCalls.back().list == 1u && batch.drawCalls.back().lineWidth == batch.lineWidth) ++batch.drawCalls.back().count;
 		else {
@@ -455,9 +440,9 @@ namespace sv {
 		batch.lines.emplace_back(p0, p1, color);
 	}
 
-	void DebugRenderer::drawEllipse(const XMMATRIX& matrix, Color color)
+	void draw_debug_ellipse(const XMMATRIX& matrix, Color color, CommandList cmd)
 	{
-		parseBatch();
+		DEF_BATCH();
 
 		if (batch.drawCalls.back().list == 2u && batch.drawCalls.back().stroke == batch.stroke) ++batch.drawCalls.back().count;
 		else {
@@ -467,9 +452,9 @@ namespace sv {
 		batch.ellipses.emplace_back(matrix, color);
 	}
 
-	void DebugRenderer::drawSprite(const XMMATRIX& matrix, Color color, GPUImage* image)
+	void draw_debug_sprite(const XMMATRIX& matrix, Color color, GPUImage* image, CommandList cmd)
 	{
-		parseBatch();
+		DEF_BATCH();
 
 		if (batch.sameSprite && batch.drawCalls.back().list == 3u && batch.drawCalls.back().pImage == image) ++batch.drawCalls.back().count;
 		else {
@@ -480,121 +465,122 @@ namespace sv {
 		batch.sprites.emplace_back(matrix, color);
 	}
 
-	void DebugRenderer::drawQuad(const v3_f32& position, const v2_f32& size, Color color)
+	void draw_debug_quad(const v3_f32& position, const v2_f32& size, Color color, CommandList cmd)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixTranslation(position.x, position.y, position.z);
-		drawQuad(tm, color);
+		draw_debug_quad(tm, color, cmd);
 	}
 
-	void DebugRenderer::drawQuad(const v3_f32& position, const v2_f32& size, const v3_f32& rotation, Color color)
+	void draw_debug_quad(const v3_f32& position, const v2_f32& size, const v3_f32& rotation, Color color, CommandList cmd)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixRotationRollPitchYaw(rotation.x, rotation.y, rotation.z) * XMMatrixTranslation(position.x, position.y, position.z);
-		drawQuad(tm, color);
+		draw_debug_quad(tm, color, cmd);
 	}
 
-	void DebugRenderer::drawQuad(const v3_f32& position, const v2_f32& size, const v4_f32& rotationQuat, Color color)
+	void draw_debug_quad(const v3_f32& position, const v2_f32& size, const v4_f32& rotationQuat, Color color, CommandList cmd)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixRotationQuaternion(rotationQuat.get_dx()) * XMMatrixTranslation(position.x, position.y, position.z);
-		drawQuad(tm, color);
+		draw_debug_quad(tm, color, cmd);
 	}
 
-	void DebugRenderer::drawEllipse(const v3_f32& position, const v2_f32& size, Color color)
+	void draw_debug_ellipse(const v3_f32& position, const v2_f32& size, Color color, CommandList cmd)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixTranslation(position.x, position.y, position.z);
-		drawEllipse(tm, color);
+		draw_debug_ellipse(tm, color, cmd);
 	}
 
-	void DebugRenderer::drawEllipse(const v3_f32& position, const v2_f32& size, const v3_f32& rotation, Color color)
+	void draw_debug_ellipse(const v3_f32& position, const v2_f32& size, const v3_f32& rotation, Color color, CommandList cmd)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixRotationRollPitchYaw(rotation.x, rotation.y, rotation.z) * XMMatrixTranslation(position.x, position.y, position.z);
-		drawEllipse(tm, color);
+		draw_debug_ellipse(tm, color, cmd);
 	}
 
-	void DebugRenderer::drawEllipse(const v3_f32& position, const v2_f32& size, const v4_f32& rotationQuat, Color color)
+	void draw_debug_ellipse(const v3_f32& position, const v2_f32& size, const v4_f32& rotationQuat, Color color, CommandList cmd)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixRotationQuaternion(rotationQuat.get_dx()) * XMMatrixTranslation(position.x, position.y, position.z);
-		drawEllipse(tm, color);
+		draw_debug_ellipse(tm, color, cmd);
 	}
 
-	void DebugRenderer::drawSprite(const v3_f32& position, const v2_f32& size, Color color, GPUImage* image)
+	void draw_debug_sprite(const v3_f32& position, const v2_f32& size, Color color, GPUImage* image, CommandList cmd)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixTranslation(position.x, position.y, position.z);
-		drawSprite(tm, color, image);
+		draw_debug_sprite(tm, color, image, cmd);
 	}
 
-	void DebugRenderer::drawSprite(const v3_f32& position, const v2_f32& size, const v3_f32& rotation, Color color, GPUImage* image)
+	void draw_debug_sprite(const v3_f32& position, const v2_f32& size, const v3_f32& rotation, Color color, GPUImage* image, CommandList cmd)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixRotationRollPitchYaw(rotation.x, rotation.y, rotation.z) * XMMatrixTranslation(position.x, position.y, position.z);
-		drawSprite(tm, color, image);
+		draw_debug_sprite(tm, color, image, cmd);
 	}
 
-	void DebugRenderer::drawSprite(const v3_f32& position, const v2_f32& size, const v4_f32& rotationQuat, Color color, GPUImage* image)
+	void draw_debug_sprite(const v3_f32& position, const v2_f32& size, const v4_f32& rotationQuat, Color color, GPUImage* image, CommandList cmd)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixRotationQuaternion(rotationQuat.get_dx()) * XMMatrixTranslation(position.x, position.y, position.z);
-		drawSprite(tm, color, image);
+		draw_debug_sprite(tm, color, image, cmd);
 	}
 
-	void DebugRenderer::setlinewidth(f32 lineWidth)
+	void set_debug_linewidth(f32 lineWidth, CommandList cmd)
 	{
-		parseBatch();
+		DEF_BATCH();
 		batch.lineWidth = lineWidth;
 	}
 
-	f32 DebugRenderer::getlinewidth()
+	f32	 get_debug_linewidth(CommandList cmd)
 	{
-		parseBatch();
+		DEF_BATCH();
 		return batch.lineWidth;
 	}
 
-	void DebugRenderer::setStroke(f32 stroke)
+	void set_debug_stroke(f32 stroke, CommandList cmd)
 	{
-		parseBatch();
+		DEF_BATCH();
 		batch.stroke = stroke;
 	}
 
-	f32 DebugRenderer::getStroke()
+	f32	get_debug_stroke(CommandList cmd)
 	{
-		parseBatch();
+		DEF_BATCH();
 		return batch.stroke;
 	}
 
-	void DebugRenderer::setTexcoord(const v4_f32& texCoord)
+	void set_debug_texcoord(const v4_f32& texCoord, CommandList cmd)
 	{
-		parseBatch();
+		DEF_BATCH();
 
 		batch.texCoord = texCoord;
 		batch.sameSprite = false;
 	}
 
-	v4_f32 DebugRenderer::getTexcoord()
+	v4_f32 get_debug_texcoord(CommandList cmd)
 	{
-		parseBatch();
+		DEF_BATCH();
 		return batch.texCoord;
 	}
 
-	void DebugRenderer::setSamplerDefault()
+	void set_debug_sampler_default(CommandList cmd)
 	{
-		parseBatch();
+		DEF_BATCH();
 		batch.pSampler = nullptr;
 	}
 
-	void DebugRenderer::setSampler(Sampler* sampler)
+	void set_debug_sampler(Sampler* sampler, CommandList cmd)
 	{
-		parseBatch();
+		DEF_BATCH();
 		batch.pSampler = sampler;
 	}
 
-	void DebugRenderer::drawOrthographicGrip(const v2_f32& position, const v2_f32& size, float gridSize, Color color)
+	void draw_debug_orthographic_grip(const v2_f32& position, const v2_f32& size, float gridSize, Color color, CommandList cmd)
 	{
+		DEF_BATCH();
+
 		v2_f32 begin = position - size / 2.f;
 		v2_f32 end = begin + size;
 
 		for (float y = i32(begin.y / gridSize) * gridSize; y < end.y; y += gridSize) {
-			drawLine({ begin.x, y, 0.f }, { end.x, y, 0.f }, color);
+			draw_debug_line({ begin.x, y, 0.f }, { end.x, y, 0.f }, color, cmd);
 		}
 		for (float x = i32(begin.x / gridSize) * gridSize; x < end.x; x += gridSize) {
-			drawLine({ x, begin.y, 0.f }, { x, end.y, 0.f }, color);
+			draw_debug_line({ x, begin.y, 0.f }, { x, end.y, 0.f }, color, cmd);
 		}
 	}
-
 }

@@ -65,7 +65,7 @@ namespace sv {
 		return std::pair<EditorPanel**, u32>(editor.panels.data(), u32(editor.panels.size()));
 	}
 
-	void editor_key_shortcuts(Editor* editor)
+	void editor_key_shortcuts()
 	{
 		if (input.keys[Key_F11] == InputState_Pressed) {
 			engine.close_request = true;
@@ -84,7 +84,9 @@ namespace sv {
 
 		if (button_state != InputState_None) {
 
-			position += input.mouse_dragged * v2_f32{ projection.width, projection.height };
+			v2_f32 drag = input.mouse_position - input.mouse_last_pos;
+
+			position -= drag * v2_f32{ projection.width, projection.height };
 		}
 
 		if (input.mouse_wheel != 0.f) {

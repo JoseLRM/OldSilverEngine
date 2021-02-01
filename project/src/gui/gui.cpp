@@ -1,15 +1,42 @@
 #include "SilverEngine/core.h"
 
-#include "gui_internal.h"
+#include "SilverEngine/gui.h"
+#include "SilverEngine/utils/allocators/InstanceAllocator.h"
+
+#include "renderer/renderer_internal.h"
+
+#define PARSE_GUI() sv::GUI_internal& gui = *reinterpret_cast<sv::GUI_internal*>(gui_)
 
 namespace sv {
+
+	struct GUI_internal {
+
+		InstanceAllocator<GuiContainer, 10u>	containers;
+		InstanceAllocator<GuiButton, 10u>		buttons;
+		InstanceAllocator<GuiSlider, 10u>		sliders;
+
+		InstanceAllocator<GuiWindow, 5u>		windows;
+
+		std::vector<GuiWidget*>				root;
+		v2_f32								resolution;
+		GuiWidget* widget_focused = nullptr;
+		GuiWidget* widget_clicked;
+		GuiWidget* widget_hovered;
+		GuiWidget* widget_last_hovered = nullptr;
+		GuiLockedInput						locked;
+
+		// used during update
+		v2_f32		mouse_position;
+		bool		mouse_clicked;
+		v2_f32		dragged_begin_pos;
+		u32			dragged_action_id = 0u;
+
+	};
 
 	GUI* gui_create(u32 width, u32 height)
 	{
 		GUI_internal& gui = *new GUI_internal();
 		gui.resolution = { f32(width), f32(height) };
-
-		gui.debug.create();
 
 		return reinterpret_cast<GUI*>(&gui);
 	}
@@ -25,8 +52,6 @@ namespace sv {
 		gui.windows.clear();
 
 		gui.root.clear();
-
-		gui.debug.destroy();
 
 		delete& gui;
 	}
@@ -564,7 +589,7 @@ namespace sv {
 		else if (gui.widget_focused == nullptr) gui.locked.mouse_click = false;
 	}
 
-	void draw_widget(GUI_internal& gui, GuiWidget& widget, const v4_f32& parent_bounds)
+	void draw_widget(GUI_internal& gui, GuiWidget& widget, const v4_f32& parent_bounds, CommandList cmd)
 	{
 		v4_f32 bounds = compute_widget_bounds(gui, widget, parent_bounds);
 
@@ -577,10 +602,10 @@ namespace sv {
 		case GuiWidgetType_Container:
 		{
 			GuiContainer& container = *reinterpret_cast<GuiContainer*>(&widget);
-			gui.debug.drawQuad(pos.getVec3(), size, widget.color);
+			draw_debug_quad(pos.getVec3(), size, widget.color, cmd);
 
 			for (GuiWidget* son : container.sons) {
-				draw_widget(gui, *son, bounds);
+				draw_widget(gui, *son, bounds, cmd);
 			}
 		}
 		break;
@@ -592,13 +617,13 @@ namespace sv {
 			f32 normalized_value = (slider.value - slider.min) / (slider.max - slider.min);
 			f32 subpos = pos.x - size.x * 0.5f + normalized_value * size.x;
 
-			gui.debug.drawQuad(pos.getVec3(), size, widget.color);
-			gui.debug.drawQuad({ subpos, pos.y, 0.f }, { size.x * 0.05f, size.y * 1.1f }, slider.button_color);
+			draw_debug_quad(pos.getVec3(), size, widget.color, cmd);
+			draw_debug_quad({ subpos, pos.y, 0.f }, { size.x * 0.05f, size.y * 1.1f }, slider.button_color, cmd);
 		}
 		break;
 
 		default:
-			gui.debug.drawQuad(pos.getVec3(), size, widget.color);
+			draw_debug_quad(pos.getVec3(), size, widget.color, cmd);
 			break;
 		}
 	}
@@ -612,7 +637,7 @@ namespace sv {
 		graphics_blendstate_unbind(cmd);
 		graphics_rasterizerstate_unbind(cmd);
 
-		gui.debug.reset();
+		begin_debug_batch(cmd);
 
 		// Draw windows
 		for (auto& pool : gui.windows) {
@@ -628,7 +653,7 @@ namespace sv {
 				v2_f32 size = v2_f32{ decoration_bounds.z, decoration_bounds.w };
 				size = size * 2.f;
 
-				gui.debug.drawQuad(pos.getVec3(), size, window.decoration_color);
+				draw_debug_quad(pos.getVec3(), size, window.decoration_color, cmd);
 
 				pos = v2_f32{ bounds.x, bounds.y };
 				pos = pos * 2.f - 1.f;
@@ -636,17 +661,17 @@ namespace sv {
 				size = v2_f32{ bounds.z, bounds.w };
 				size = size * 2.f;
 
-				gui.debug.drawQuad(pos.getVec3(), size, window.color);
+				draw_debug_quad(pos.getVec3(), size, window.color, cmd);
 			}
 		}
 
 		// Draw widgets
 
 		for (GuiWidget* root : gui.root) {
-			draw_widget(gui, *root, { 0.f, 0.f, 1.f, 1.f });
+			draw_widget(gui, *root, { 0.f, 0.f, 1.f, 1.f }, cmd);
 		}
 
-		gui.debug.render(rendertarget, XMMatrixIdentity(), cmd);
+		end_debug_batch(XMMatrixIdentity(), cmd);
 	}
 
 	GuiWidget* gui_widget_create(GUI* gui_, GuiWidgetType widget_type, GuiContainer* container)
