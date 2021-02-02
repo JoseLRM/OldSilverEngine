@@ -98,6 +98,34 @@ namespace sv {
 	void	projection_length_set(CameraProjection& projection, f32 length);
 	void	projection_update_matrix(CameraProjection& projection);
 
+	// FONT
+
+	struct Glyph {
+		v4_f32 texCoord;
+		f32 advance;
+		f32 xoff, yoff;
+		f32 w, h;
+		f32 left_side_bearing;
+	};
+
+	enum FontFlag : u32 {
+		FontFlag_None,
+		FontFlag_Monospaced,
+	};
+	typedef u32 FontFlags;
+
+	struct Font {
+
+		std::unordered_map<char, Glyph>	glyphs;
+		GPUImage* image = nullptr;
+
+	};
+
+	Result font_create(Font& font, const char* filepath, f32 pixelHeight, FontFlags flags);
+	Result font_destroy(Font& font);
+
+	f32 compute_text_width(const char* text, u32 count, f32 font_size, f32 aspect, Font* pFont);
+
 	// TEXT RENDERING
 
 	struct Font;

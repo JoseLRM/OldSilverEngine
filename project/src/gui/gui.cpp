@@ -687,7 +687,7 @@ namespace sv {
 
 				if (&widget == gui.widget_focused && sin(f32(timer_now()) * 5.f) > 0.f) {
 					
-					f32 line_x = text_x + font_text_width(field.text.c_str(), gui.text_position, size.y, aspect, nullptr);
+					f32 line_x = text_x + compute_text_width(field.text.c_str(), gui.text_position, size.y, aspect, nullptr);
 
 					begin_debug_batch(cmd);
 					draw_debug_line({ line_x, text_y, 0.f }, { line_x, text_y - size.y, 0.f }, Color::White(), cmd);

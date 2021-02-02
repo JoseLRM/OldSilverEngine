@@ -4,7 +4,7 @@
 
 #include "external/stb_truetype.h"
 
-#include "SilverEngine/font.h"
+#include "renderer/renderer_internal.h"
 
 namespace sv {
 
@@ -241,7 +241,7 @@ namespace sv {
 		return graphics_destroy(font.image);
 	}
 
-	f32 font_text_width(const char* text, u32 count, f32 font_size, f32 aspect, Font* pFont)
+	f32 compute_text_width(const char* text, u32 count, f32 font_size, f32 aspect, Font* pFont)
 	{
 		const char* it = text;
 		const char* end = it + size_t(count);
