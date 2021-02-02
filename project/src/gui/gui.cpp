@@ -10,12 +10,18 @@
 
 namespace sv {
 
+	/*
+		TODO LIST:
+		- Change the "event" handling, define getters to specific widget types and not get the clicked widget
+	*/
+
 	struct GUI_internal {
 
 		InstanceAllocator<GuiContainer, 10u>	containers;
 		InstanceAllocator<GuiButton, 10u>		buttons;
 		InstanceAllocator<GuiSlider, 10u>		sliders;
 		InstanceAllocator<GuiTextField, 10u>	textfields;
+		InstanceAllocator<GuiCheckbox, 10u>		checkboxes;
 
 		InstanceAllocator<GuiWindow, 5u>		windows;
 
@@ -49,6 +55,7 @@ namespace sv {
 		gui.buttons.clear();
 		gui.sliders.clear();
 		gui.textfields.clear();
+		gui.checkboxes.clear();
 
 		gui.windows.clear();
 
@@ -383,6 +390,19 @@ namespace sv {
 		}
 		break;
 
+		case GuiWidgetType_Checkbox:
+		{
+			GuiCheckbox& cbox = *reinterpret_cast<GuiCheckbox*>(&widget);
+			v4_f32 bounds = compute_widget_bounds(gui, cbox, parent_bounds);
+
+			if (mouse_in_bounds(bounds) && input.mouse_buttons[MouseButton_Left] == InputState_Released) {
+
+				cbox.active = !cbox.active;
+				gui.widget_clicked = &widget;
+			}
+		}
+		break;
+
 		}
 	}
 
@@ -697,6 +717,23 @@ namespace sv {
 		}
 		break;
 
+		case GuiWidgetType_Checkbox:
+		{
+			GuiCheckbox& cbox = *reinterpret_cast<GuiCheckbox*>(&widget);
+
+			begin_debug_batch(cmd);
+			draw_debug_quad(pos.getVec3(), size, widget.color, cmd);
+
+			if (cbox.active) {
+				draw_debug_quad(pos.getVec3(), size * 0.7f, cbox.color_check, cmd);
+			}
+
+			end_debug_batch(XMMatrixIdentity(), cmd);
+
+			if ()
+		}
+		break;
+
 		default:
 			begin_debug_batch(cmd);
 			draw_debug_quad(pos.getVec3(), size, widget.color, cmd);
@@ -776,6 +813,10 @@ namespace sv {
 			widget = &gui.textfields.create();
 			break;
 
+		case GuiWidgetType_Checkbox:
+			widget = &gui.checkboxes.create();
+			break;
+
 		default:
 			SV_LOG_ERROR("Unknown widget type: %u", widget_type);
 			return nullptr;
@@ -827,6 +868,10 @@ namespace sv {
 
 		case GuiWidgetType_TextField:
 			gui.textfields.destroy(*reinterpret_cast<GuiTextField*>(widget));
+			break;
+
+		case GuiWidgetType_Checkbox:
+			gui.checkboxes.destroy(*reinterpret_cast<GuiCheckbox*>(widget));
 			break;
 		}
 	}

@@ -112,6 +112,15 @@ namespace sv {
 
 	};
 
+	struct GuiCheckbox : public GuiWidget {
+
+		bool active = false;
+		Color color_check = Color::Gray(200u);
+
+		GuiCheckbox() : GuiWidget(GuiWidgetType_Checkbox) {}
+
+	};
+
 	// WINDOW
 
 	struct GuiWindow {
