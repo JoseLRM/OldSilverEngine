@@ -13,6 +13,7 @@ namespace sv {
 	/*
 		TODO LIST:
 		- Change the "event" handling, define getters to specific widget types and not get the clicked widget
+		- GuiDraw structure that defines the rendering of a widget or some component (PD: Should not contain inherited alpha)
 	*/
 
 	struct GUI_internal {
@@ -28,7 +29,7 @@ namespace sv {
 		std::vector<GuiWidget*>	root;
 		v2_f32					resolution;
 		GuiWidget*				widget_focused = nullptr;
-		GuiWidget*				widget_clicked;
+		GuiWidget*				widget_clicked = nullptr;
 		GuiLockedInput			locked;
 
 		// used during update
