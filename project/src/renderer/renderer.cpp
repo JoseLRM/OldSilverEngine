@@ -9,6 +9,7 @@ namespace sv {
 	GraphicsObjects		gfx = {};
 	RenderingUtils		rend_utils[GraphicsLimit_CommandList] = {};
 	RenderingContext	render_context[GraphicsLimit_CommandList] = {};
+	Font				font_opensans;
 
 	// SHADER COMPILATION
 
@@ -376,6 +377,9 @@ namespace sv {
 		svCheck(create_buffers());
 		svCheck(create_images());
 		svCheck(create_states());
+
+		// Create default fonts
+		svCheck(font_create(font_opensans, "$system/fonts/OpenSans-Regular.ttf", 228.f, 0u));
 
 		// Allocate batch memory
 		{

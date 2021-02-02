@@ -140,6 +140,8 @@ namespace sv {
 	extern GraphicsObjects gfx;
 	extern RenderingUtils rend_utils[GraphicsLimit_CommandList];
 
+	extern Font font_opensans;
+
 	Result	renderer_initialize();
 	Result	renderer_close();
 	void	renderer_begin_frame();

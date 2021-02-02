@@ -32,17 +32,11 @@ namespace sv {
 		u32			dragged_action_id = 0u;
 		u32			text_position = 0u;
 
-		// TEMP
-		Font temp_font;
-
 	};
 
 	GUI* gui_create()
 	{
 		GUI_internal& gui = *new GUI_internal();
-
-		//TEMP
-		font_create(gui.temp_font, "C:/Windows/Fonts/arial.ttf", 228.f, 0u);
 
 		return reinterpret_cast<GUI*>(&gui);
 	}
@@ -50,9 +44,6 @@ namespace sv {
 	void gui_destroy(GUI* gui_)
 	{
 		PARSE_GUI();
-
-		//TEMP
-		font_destroy(gui.temp_font);
 
 		gui.containers.clear();
 		gui.buttons.clear();
@@ -672,7 +663,7 @@ namespace sv {
 
 				// TODO: Should use information about the largest character in the font
 				f32 text_y = pos.y + size.y * 0.6f;
-				draw_text(button.text.c_str(), pos.x - size.x * 0.5f, text_y, size.x, 1u, size.y, gui.resolution.x / gui.resolution.y, TextSpace_Clip, TextAlignment_Center, &gui.temp_font, cmd);
+				draw_text(button.text.c_str(), pos.x - size.x * 0.5f, text_y, size.x, 1u, size.y, gui.resolution.x / gui.resolution.y, TextSpace_Clip, TextAlignment_Center, nullptr, cmd);
 			}
 		}
 		break;
@@ -692,11 +683,11 @@ namespace sv {
 				f32 text_x = pos.x - size.x * 0.5f;
 				f32 aspect = gui.resolution.x / gui.resolution.y;
 
-				draw_text(field.text.c_str(), text_x, text_y, size.x, 1u, size.y, aspect, TextSpace_Clip, TextAlignment_Left, &gui.temp_font, cmd);
+				draw_text(field.text.c_str(), text_x, text_y, size.x, 1u, size.y, aspect, TextSpace_Clip, TextAlignment_Left, nullptr, cmd);
 
 				if (&widget == gui.widget_focused && sin(f32(timer_now()) * 5.f) > 0.f) {
 					
-					f32 line_x = text_x + font_text_width(field.text.c_str(), gui.text_position, size.y, aspect, &gui.temp_font);
+					f32 line_x = text_x + font_text_width(field.text.c_str(), gui.text_position, size.y, aspect, nullptr);
 
 					begin_debug_batch(cmd);
 					draw_debug_line({ line_x, text_y, 0.f }, { line_x, text_y - size.y, 0.f }, Color::White(), cmd);

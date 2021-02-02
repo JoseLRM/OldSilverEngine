@@ -266,6 +266,7 @@ namespace sv {
 		std::unique_ptr<SizedInstanceAllocator> rasterizerStateAllocator;
 		std::mutex								rasterizerStateMutex;
 
+		// TODO: Do not use this allocator, this should be simpler
 		std::unique_ptr<SizedInstanceAllocator> swapChainAllocator;
 		std::mutex								swapChainMutex;
 

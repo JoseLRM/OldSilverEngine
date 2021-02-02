@@ -26,7 +26,7 @@ namespace sv {
 
 		// Select font
 		// TODO: Default font
-		Font& font = *pFont;
+		Font& font = pFont ? *pFont : font_opensans;
 
 		// Prepare
 		graphics_rasterizerstate_unbind(cmd);

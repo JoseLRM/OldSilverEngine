@@ -83,15 +83,15 @@ namespace sv {
 		add_glyph('(', info, height_scale, glyphs);
 		add_glyph(')', info, height_scale, glyphs);
 		add_glyph('?', info, height_scale, glyphs);
-		add_glyph('¿', info, height_scale, glyphs);
+		add_glyph('ï¿½', info, height_scale, glyphs);
 		add_glyph('!', info, height_scale, glyphs);
-		add_glyph('¡', info, height_scale, glyphs);
+		add_glyph('ï¿½', info, height_scale, glyphs);
 		add_glyph('#', info, height_scale, glyphs);
 		add_glyph('@', info, height_scale, glyphs);
 		add_glyph('<', info, height_scale, glyphs);
 		add_glyph('>', info, height_scale, glyphs);
-		add_glyph('ñ', info, height_scale, glyphs);
-		add_glyph('Ñ', info, height_scale, glyphs);
+		add_glyph('ï¿½', info, height_scale, glyphs);
+		add_glyph('ï¿½', info, height_scale, glyphs);
 		add_glyph(':', info, height_scale, glyphs);
 		add_glyph(';', info, height_scale, glyphs);
 		add_glyph('[', info, height_scale, glyphs);
@@ -246,7 +246,7 @@ namespace sv {
 		const char* it = text;
 		const char* end = it + size_t(count);
 
-		Font& font = *pFont;
+		Font& font = pFont ? *pFont : font_opensans;
 
 		f32 width = 0u;
 
