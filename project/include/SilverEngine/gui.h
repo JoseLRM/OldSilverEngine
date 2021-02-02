@@ -184,10 +184,21 @@ namespace sv {
 		return reinterpret_cast<GuiTextField*>(gui_widget_create(gui, GuiWidgetType_TextField, container));
 	}
 
-	SV_INLINE GuiButton* gui_button_clicked(GUI* gui)
+	SV_INLINE GuiCheckbox* gui_checkbox_create(GUI* gui, GuiContainer* container = nullptr)
+	{
+		return reinterpret_cast<GuiCheckbox*>(gui_widget_create(gui, GuiWidgetType_Checkbox, container));
+	}
+
+	SV_INLINE GuiButton* gui_button_pressed(GUI* gui)
 	{
 		GuiWidget* widget = gui_widget_focused(gui);
-		return (widget->type == GuiWidgetType_Button) ? reinterpret_cast<GuiButton*>(widget) : nullptr;
+		return (widget && widget->type == GuiWidgetType_Button && input.mouse_buttons[MouseButton_Left] == InputState_Pressed) ? reinterpret_cast<GuiButton*>(widget) : nullptr;
+	}
+
+	SV_INLINE GuiButton* gui_button_released(GUI* gui)
+	{
+		GuiWidget* widget = gui_widget_focused(gui);
+		return (widget && widget->type == GuiWidgetType_Button && input.mouse_buttons[MouseButton_Left] == InputState_Released) ? reinterpret_cast<GuiButton*>(widget) : nullptr;
 	}
 
 }

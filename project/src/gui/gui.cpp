@@ -2,7 +2,6 @@
 
 #include "SilverEngine/gui.h"
 #include "SilverEngine/utils/allocators/InstanceAllocator.h"
-#include "SilverEngine/font.h"
 
 #include "renderer/renderer_internal.h"
 
@@ -12,7 +11,6 @@ namespace sv {
 
 	/*
 		TODO LIST:
-		- Change the "event" handling, define getters to specific widget types and not get the clicked widget
 		- GuiDraw structure that defines the rendering of a widget or some component (PD: Should not contain inherited alpha)
 	*/
 
@@ -65,7 +63,7 @@ namespace sv {
 
 	// BOUNDS FUNCTIONS
 
-	SV_INLINE static f32 compute_coord(const GUI_internal& gui, const GuiWidget::Coord& coord, f32 aspect_coord, f32 dimension, f32 resolution, f32 aspect, f32 parent_coord, f32 parent_dimension)
+	SV_INLINE static f32 compute_coord(const GUI_internal& gui, const GuiWidget::Coord& coord, f32 aspect_coord, f32 dimension, f32 resolution, bool vertical, f32 parent_coord, f32 parent_dimension)
 	{
 		f32 res = 0.5f;
 
@@ -85,7 +83,7 @@ namespace sv {
 			break;
 
 		case GuiConstraint_Aspect:
-			res = aspect_coord * coord.value * aspect * parent_dimension;
+			res = aspect_coord * coord.value * (vertical ? (gui.resolution.x / gui.resolution.y) : (gui.resolution.y / gui.resolution.x));
 			break;
 
 		}
@@ -115,7 +113,7 @@ namespace sv {
 		return res;
 	}
 
-	SV_INLINE static f32 compute_dimension(const GUI_internal& gui, const GuiWidget::Dimension& dimension, f32 inv_dimension, f32 resolution, f32 aspect, f32 parent_dimension)
+	SV_INLINE static f32 compute_dimension(const GUI_internal& gui, const GuiWidget::Dimension& dimension, f32 inv_dimension, f32 resolution, bool vertical, f32 parent_dimension)
 	{
 		f32 res = 0.5f;
 
@@ -135,7 +133,7 @@ namespace sv {
 			break;
 
 		case GuiConstraint_Aspect:
-			res = inv_dimension * dimension.value * aspect * parent_dimension;
+			res = inv_dimension * (vertical ? (gui.resolution.x / gui.resolution.y) : (gui.resolution.y / gui.resolution.x));
 			break;
 		}
 
@@ -164,25 +162,22 @@ namespace sv {
 		f32 x;
 		f32 y;
 
-		f32 vaspect = (gui.resolution.x * parent_bounds.z) / (gui.resolution.y * parent_bounds.w);
-		f32 haspect = 1.f / vaspect;
-
 		if (widget.w.constraint == GuiConstraint_Aspect) {
-			h = compute_dimension(gui, widget.h, 0.5f, gui.resolution.y, vaspect, parent_bounds.w);
-			w = compute_dimension(gui, widget.w, h, gui.resolution.x, haspect, parent_bounds.z);
+			h = compute_dimension(gui, widget.h, 0.5f, gui.resolution.y, true, parent_bounds.w);
+			w = compute_dimension(gui, widget.w, h, gui.resolution.x, false, parent_bounds.z);
 		}
 		else {
-			w = compute_dimension(gui, widget.w, 0.5f, gui.resolution.x, haspect, parent_bounds.z);
-			h = compute_dimension(gui, widget.h, w, gui.resolution.y, vaspect, parent_bounds.w);
+			w = compute_dimension(gui, widget.w, 0.5f, gui.resolution.x, false, parent_bounds.z);
+			h = compute_dimension(gui, widget.h, w, gui.resolution.y, true, parent_bounds.w);
 		}
 
 		if (widget.x.constraint == GuiConstraint_Aspect) {
-			y = compute_coord(gui, widget.y, 0.5f, h, gui.resolution.y, vaspect, parent_bounds.y, parent_bounds.w);
-			x = compute_coord(gui, widget.x, y, w, gui.resolution.x, haspect, parent_bounds.x, parent_bounds.w);
+			y = compute_coord(gui, widget.y, 0.5f, h, gui.resolution.y, true, parent_bounds.y, parent_bounds.w);
+			x = compute_coord(gui, widget.x, y, w, gui.resolution.x, false, parent_bounds.x, parent_bounds.w);
 		}
 		else {
-			x = compute_coord(gui, widget.x, 0.5f, w, gui.resolution.x, haspect, parent_bounds.x, parent_bounds.w);
-			y = compute_coord(gui, widget.y, x, h, gui.resolution.y, vaspect, parent_bounds.y, parent_bounds.w);
+			x = compute_coord(gui, widget.x, 0.5f, w, gui.resolution.x, false, parent_bounds.x, parent_bounds.w);
+			y = compute_coord(gui, widget.y, x, h, gui.resolution.y, true, parent_bounds.y, parent_bounds.w);
 		}
 
 		return { x, y, w, h };
@@ -386,9 +381,9 @@ namespace sv {
 			GuiCheckbox& cbox = *reinterpret_cast<GuiCheckbox*>(&widget);
 			v4_f32 bounds = compute_widget_bounds(gui, cbox, parent_bounds);
 
-			if (mouse_in_bounds(bounds) && input.mouse_buttons[MouseButton_Left] == InputState_Released) {
+			if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed && mouse_in_bounds(gui, bounds)) {
 
-				cbox.active = !cbox.active;
+				gui.widget_focused = &widget;
 			}
 		}
 		break;
@@ -535,13 +530,21 @@ namespace sv {
 			break;
 
 			case GuiWidgetType_Button:
+			case GuiWidgetType_Checkbox:
 			{
 				GuiButton& button = *reinterpret_cast<GuiButton*>(gui.widget_focused);
-
+				v4_f32 bounds = compute_widget_bounds(gui, *gui.widget_focused);
 				InputState state = input.mouse_buttons[MouseButton_Left];
 
-				if (state == InputState_Released || state == InputState_None) {
+				if (!mouse_in_bounds(gui, bounds) || state == InputState_None) {
+					
 					gui.widget_focused = nullptr;
+				}
+
+				else if (state == InputState_Released && gui.widget_focused->type == GuiWidgetType_Checkbox) {
+					
+					GuiCheckbox& cbox = *reinterpret_cast<GuiCheckbox*>(gui.widget_focused);
+					cbox.active = !cbox.active;
 				}
 			}
 			break;
@@ -721,8 +724,6 @@ namespace sv {
 			}
 
 			end_debug_batch(XMMatrixIdentity(), cmd);
-
-			if ()
 		}
 		break;
 
