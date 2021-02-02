@@ -157,7 +157,6 @@ namespace sv {
 
 	GuiWidget*	gui_widget_create(GUI* gui, GuiWidgetType widget_type, GuiContainer* container = nullptr);
 	void		gui_widget_destroy(GUI* gui, GuiWidget* widget);
-	GuiWidget*	gui_widget_clicked(GUI* gui);
 	GuiWidget*	gui_widget_focused(GUI* gui);
 
 	GuiWindow*	gui_window_create(GUI* gui);
@@ -183,6 +182,12 @@ namespace sv {
 	SV_INLINE GuiTextField* gui_textfield_create(GUI* gui, GuiContainer* container = nullptr)
 	{
 		return reinterpret_cast<GuiTextField*>(gui_widget_create(gui, GuiWidgetType_TextField, container));
+	}
+
+	SV_INLINE GuiButton* gui_button_clicked(GUI* gui)
+	{
+		GuiWidget* widget = gui_widget_focused(gui);
+		return (widget->type == GuiWidgetType_Button) ? reinterpret_cast<GuiButton*>(widget) : nullptr;
 	}
 
 }

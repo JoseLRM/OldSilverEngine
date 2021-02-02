@@ -29,12 +29,10 @@ namespace sv {
 		std::vector<GuiWidget*>	root;
 		v2_f32					resolution;
 		GuiWidget*				widget_focused = nullptr;
-		GuiWidget*				widget_clicked = nullptr;
 		GuiLockedInput			locked;
 
 		// used during update
 		v2_f32		mouse_position;
-		bool		mouse_clicked;
 		v2_f32		dragged_begin_pos;
 		u32			dragged_action_id = 0u;
 		u32			text_position = 0u;
@@ -234,26 +232,19 @@ namespace sv {
 		
 		if (mouse_in_bounds(gui, decoration_bounds)) {
 
-			if (gui.mouse_clicked) {
+			InputState mouse_state = input.mouse_buttons[MouseButton_Left];
 
-				gui.widget_clicked = window.container;
-
-				InputState mouse_state = input.mouse_buttons[MouseButton_Left];
-
-				if (mouse_state == InputState_Pressed) {
+			if (mouse_state == InputState_Pressed) {
 
 					gui.widget_focused = window.container;
 					gui.dragged_begin_pos = gui.mouse_position - v2_f32{ container_bounds.x, container_bounds.y };
 					gui.dragged_action_id = 0u;
-				}
 			}
 		}
 		else {
 
 			v4_f32 bounds = compute_window_bounds(gui, window, container_bounds);
 			if (mouse_in_bounds(gui, bounds) && !mouse_in_bounds(gui, container_bounds)) {
-
-				gui.widget_clicked = window.container;
 
 				InputState mouse_state = input.mouse_buttons[MouseButton_Left];
 
@@ -357,8 +348,8 @@ namespace sv {
 
 				}
 
-				if (gui.mouse_clicked)
-					gui.widget_clicked = &widget;
+				if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed)
+					gui.widget_focused = &button;
 			}
 			else {
 
@@ -376,10 +367,9 @@ namespace sv {
 			v4_f32 bounds = compute_widget_bounds(gui, widget, parent_bounds);
 
 			// Mouse widget
-			if (gui.mouse_clicked && mouse_in_bounds(gui, bounds)) {
-
+			if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed && mouse_in_bounds(gui, bounds)) {
+ 
 				gui.text_position = 0u;
-				gui.widget_clicked = &widget;
 
 				InputState mouse_state = input.mouse_buttons[MouseButton_Left];
 
@@ -399,7 +389,6 @@ namespace sv {
 			if (mouse_in_bounds(bounds) && input.mouse_buttons[MouseButton_Left] == InputState_Released) {
 
 				cbox.active = !cbox.active;
-				gui.widget_clicked = &widget;
 			}
 		}
 		break;
@@ -415,13 +404,6 @@ namespace sv {
 
 		// Init update
 		gui.mouse_position = input.mouse_position + 0.5f;
-		gui.widget_clicked = nullptr;
-		gui.mouse_clicked = false;
-		for (MouseButton b = MouseButton(0); b < MouseButton_MaxEnum; ++(u32&)b) 
-			if (input.mouse_buttons[b] != InputState_None) {
-				gui.mouse_clicked = true;
-				break;
-			}
 
 		// Update windows and widgets
 		for (auto& pool : gui.windows) {
@@ -552,6 +534,18 @@ namespace sv {
 			}
 			break;
 
+			case GuiWidgetType_Button:
+			{
+				GuiButton& button = *reinterpret_cast<GuiButton*>(gui.widget_focused);
+
+				InputState state = input.mouse_buttons[MouseButton_Left];
+
+				if (state == InputState_Released || state == InputState_None) {
+					gui.widget_focused = nullptr;
+				}
+			}
+			break;
+
 			case GuiWidgetType_Slider:
 			{
 				GuiSlider& slider = *reinterpret_cast<GuiSlider*>(gui.widget_focused);
@@ -624,11 +618,8 @@ namespace sv {
 			}
 		}
 
-
-		if (gui.mouse_clicked) {
-			gui.locked.mouse_click = gui.widget_clicked != nullptr || gui.widget_focused != nullptr;
-		}
-		else if (gui.widget_focused == nullptr) gui.locked.mouse_click = false;
+		// TODO: check the focus type
+		gui.locked.mouse_click = gui.widget_focused != nullptr;
 	}
 
 	void draw_widget(GUI_internal& gui, GuiWidget& widget, const v4_f32& parent_bounds, CommandList cmd)
@@ -875,12 +866,6 @@ namespace sv {
 			gui.checkboxes.destroy(*reinterpret_cast<GuiCheckbox*>(widget));
 			break;
 		}
-	}
-
-	GuiWidget* gui_widget_clicked(GUI* gui_)
-	{
-		PARSE_GUI();
-		return gui.widget_clicked;
 	}
 
 	GuiWidget* gui_widget_focused(GUI* gui_)
