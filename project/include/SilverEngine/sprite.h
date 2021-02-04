@@ -4,9 +4,14 @@
 
 namespace sv {
 
+    struct Sprite {
+	TextureAsset texture;
+	v4_f32       texcoord;
+    };
+    
     struct SpriteAnimationInfo {
 	
-	std::vector<v4_f32> texcoords;
+	std::vector<Sprite> sprites;
 	GPUImage*           image       = nullptr;
 	f32                 sprite_time = 0.1f;
 	
@@ -32,7 +37,7 @@ namespace sv {
 	while (anim.current_time >= info.sprite_time) {
 
 	    anim.current_time -= info.sprite_time;
-	    anim.index = (anim.index + 1u) % u32(info.texcoords.size());
+	    anim.index = (anim.index + 1u) % u32(info.sprites.size());
 	}
     }
 
