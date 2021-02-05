@@ -571,18 +571,18 @@ namespace sv {
 		batch.pSampler = sampler;
 	}
 
-	void draw_debug_orthographic_grip(const v2_f32& position, const v2_f32& size, float gridSize, Color color, CommandList cmd)
+	void draw_debug_orthographic_grip(const v2_f32& position, const v2_f32& offset, const v2_f32& size, const v2_f32& gridSize, Color color, CommandList cmd)
 	{
 		DEF_BATCH();
 
-		v2_f32 begin = position - size / 2.f;
+		v2_f32 begin = position - offset - size / 2.f;
 		v2_f32 end = begin + size;
 
-		for (float y = i32(begin.y / gridSize) * gridSize; y < end.y; y += gridSize) {
-			draw_debug_line({ begin.x, y, 0.f }, { end.x, y, 0.f }, color, cmd);
+		for (f32 y = i32(begin.y / gridSize.y) * gridSize.y; y < end.y; y += gridSize.y) {
+			draw_debug_line({ begin.x + offset.x, y + offset.y, 0.f }, { end.x + offset.x, y + offset.y, 0.f }, color, cmd);
 		}
-		for (float x = i32(begin.x / gridSize) * gridSize; x < end.x; x += gridSize) {
-			draw_debug_line({ x, begin.y, 0.f }, { x, end.y, 0.f }, color, cmd);
+		for (f32 x = i32(begin.x / gridSize.x) * gridSize.x; x < end.x; x += gridSize.x) {
+			draw_debug_line({ x + offset.x, begin.y + offset.y, 0.f }, { x + offset.x, end.y + offset.y, 0.f }, color, cmd);
 		}
 	}
 }

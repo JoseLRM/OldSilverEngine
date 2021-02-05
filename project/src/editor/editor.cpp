@@ -78,7 +78,7 @@ namespace sv {
 		}
 	}
 
-	void editor_camera_controller2D(v2_f32& position, CameraProjection& projection)
+	void editor_camera_controller2D(v2_f32& position, CameraProjection& projection, f32 max_projection_length)
 	{
 		InputState button_state = input.mouse_buttons[MouseButton_Center];
 
@@ -95,7 +95,9 @@ namespace sv {
 			if (input.keys[Key_Shift] == InputState_Hold) force *= 3.f;
 
 			f32 length = projection_length_get(projection);
-			projection_length_set(projection, length - input.mouse_wheel * length * force);
+
+			f32 new_length = std::min(length - input.mouse_wheel * length * force, max_projection_length);
+			projection_length_set(projection, new_length);
 		}
 	}
 

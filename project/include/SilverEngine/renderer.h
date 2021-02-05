@@ -228,6 +228,6 @@ namespace sv {
 
 	// High level draw calls
 
-	void draw_debug_orthographic_grip(const v2_f32& position, const v2_f32& size, float gridSize, Color color, CommandList cmd);
+	void draw_debug_orthographic_grip(const v2_f32& position, const v2_f32& offset, const v2_f32& size, const v2_f32& gridSize, Color color, CommandList cmd);
 
 }

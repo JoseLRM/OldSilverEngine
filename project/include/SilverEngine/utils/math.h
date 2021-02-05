@@ -848,9 +848,6 @@ namespace sv {
 
 	struct Random {
 
-		SV_INLINE void	setSeed(u32 seed) noexcept { this->seed = seed; }
-		SV_INLINE u32	getSeed() const noexcept { return seed; }
-
 		// return value from 0u to (u32_max / 2u)
 		SV_INLINE u32 gen_u32() { return math_random_u32(++seed); }
 		SV_INLINE u32 gen_u32(u32 max) { return math_random_u32(++seed, max); }
@@ -860,7 +857,6 @@ namespace sv {
 		SV_INLINE f32 gen_f32(f32 max) { return math_random_f32(++seed, max); }
 		SV_INLINE f32 gen_f32(f32 min, f32 max) { return math_random_f32(++seed, min, max); }
 
-	private:
 		u32 seed = 0u;
 	};
 
