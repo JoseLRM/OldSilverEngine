@@ -8,13 +8,14 @@ project 'SilverEngine'
 	includedirs {
 		"include/",
 		"src/",
+		"src/external/",
 		'$(VULKAN_SDK)/Include/',
 	}
 
 	-- LIB DIRS
 
 	libdirs {
-		"lib/"
+		"lib/",
 	}
 
 	-- DEFINES
@@ -39,16 +40,18 @@ project 'SilverEngine'
 		'include/**.h',
 	}
 
-	-- PRECOMILED HEADER
+	-- EXTERNAL FILES
 
 	filter {
 		'files:src/external/**',
 	}
 		flags { 'NoPCH' }
+
 	filter {}
 
 	-- LIBS
 
 	links {
 		'$(VULKAN_SDK)/Lib/vulkan-1.lib',
+		'assimp.lib',
 	}

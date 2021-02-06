@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SilverEngine/graphics.h"
+#include "SilverEngine/mesh.h"
 
 namespace sv {
 
@@ -164,12 +165,6 @@ namespace sv {
 	void draw_sprites(const SpriteInstance* sprites, u32 count, const XMMATRIX& view_projection_matrix, CommandList cmd);
 
 	// MESH RENDERING
-
-	struct Mesh;
-
-	struct Material {
-		Color4f color;
-	};
 
 	struct MeshInstance {
 

@@ -2,6 +2,11 @@
 
 #include "SilverEngine/mesh.h"
 
+#include "external/assimp/Importer.hpp"
+#include "external/assimp/postprocess.h"
+#include "external/assimp/scene.h"
+#include "external/assimp/material.h"
+
 #define ASSERT_VERTICES() SV_ASSERT(mesh.positions.size() == mesh.normals.size())
 
 namespace sv {
@@ -212,6 +217,74 @@ namespace sv {
 
 		svCheck(graphics_destroy(mesh.vbuffer));
 		svCheck(graphics_destroy(mesh.ibuffer));
+		return Result_Success;
+	}
+
+	Result model_load(const char* filepath, ModelInfo& model_info)
+	{
+		SV_PARSE_FILEPATH();
+
+		Assimp::Importer importer;
+
+		const aiScene const* scene = importer.ReadFile(filepath, aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_CalcTangentSpace | aiProcess_OptimizeMeshes);
+		if (scene == nullptr || !scene->HasMeshes()) return Result_InvalidFormat;
+
+		model_info.meshes.resize(scene->mNumMeshes);
+		model_info.materials.resize(scene->mNumMaterials);
+
+		// Create materials
+		foreach(i, scene->mNumMaterials) {
+
+			const aiMaterial& m0 = *scene->mMaterials[i];
+			MaterialInfo& m1 = model_info.materials[i];
+
+			aiColor3D color;
+
+			m0.Get(AI_MATKEY_NAME, m1.name);
+			m0.Get(AI_MATKEY_COLOR_DIFFUSE, color); m1.color = { color.r, color.g, color.b, 1.f };
+		}
+
+		foreach(i, scene->mNumMeshes) {
+
+			const aiMesh& m0 = *scene->mMeshes[i];
+			MeshInfo& m1 = model_info.meshes[i];
+
+			// Material index
+			m1.material_index = m0.mMaterialIndex;
+
+			// Indices
+			foreach(j, m0.mNumFaces) {
+
+				const aiFace& face = m0.mFaces[j];
+				
+				SV_ASSERT(face.mNumIndices % 3u == 0u);
+
+				u32* it = face.mIndices;
+				u32* end = it + face.mNumIndices;
+
+				while (it != end) {
+
+					m1.indices.push_back(*it);
+					++it;
+				}
+			}
+
+			// Vertices
+			m1.positions.resize(m0.mNumVertices);
+			m1.normals.resize(m0.mNumVertices);
+
+			foreach(j, m0.mNumVertices) {
+
+				aiVector3D v = m0.mVertices[j];
+				m1.positions[j] = { v.x, v.y, v.z };
+			}
+			foreach(j, m0.mNumVertices) {
+
+				aiVector3D v = m0.mNormals[j];
+				m1.normals[j] = { v.x, v.y, v.z };
+			}
+		}
+
 		return Result_Success;
 	}
 

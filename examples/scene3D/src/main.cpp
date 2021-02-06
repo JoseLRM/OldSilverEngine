@@ -9,8 +9,9 @@ v3_f32				camera_position;
 v2_f32				camera_rotation;
 CameraProjection	camera;
 CameraBuffer		camera_buffer;
-Mesh cube;
 Mesh plane;
+Mesh model;
+Material mat;
 
 GUI* gui;
 Editor* editor;
@@ -28,17 +29,29 @@ Result init()
 
 	svCheck(camerabuffer_create(&camera_buffer));
 
-	gui = gui_create(window_width_get(engine.window), window_height_get(engine.window));
+	gui = gui_create();
 	editor = editor_create(gui);
 
 	editor_runtime_create(editor);
 
-	// TEMP: create cube mesh
-	mesh_apply_cube(cube);
-	mesh_create_buffers(cube);
-	
+	// TEMP: create meshes
 	mesh_apply_plane(plane, XMMatrixScaling(30.f, 0.f, 30.f));
 	mesh_create_buffers(plane);
+
+	ModelInfo info;
+	if (result_fail(model_load("assets/dragon.obj", info))) {
+		SV_LOG_ERROR("Can't load the model");
+	}
+	else {
+
+		model.positions = std::move(info.meshes.back().positions);
+		model.normals = std::move(info.meshes.back().normals);
+		model.indices = std::move(info.meshes.back().indices);
+		
+		mesh_create_buffers(model);
+
+		mat.color = info.materials.back().color;
+	}
 
 	return Result_Success;
 }
@@ -47,8 +60,7 @@ void update()
 {
 	editor_key_shortcuts();
 
-	gui_resize(gui, window_width_get(engine.window), window_height_get(engine.window));
-	gui_update(gui);
+	gui_update(gui, window_width_get(engine.window), window_height_get(engine.window));
 	editor_update(editor);
 
 	projection_adjust(camera, f32(window_width_get(engine.window)) / f32(window_height_get(engine.window)));
@@ -87,20 +99,17 @@ void render()
 
 	meshes.reset();
 
-	Material cube_mat;
-	cube_mat.color = Color4f::Green();
-
 	Material plane_mat;
 	plane_mat.color = { 0.05f, 0.5f, 0.8f, 1.f };
 	
-	meshes.emplace_back(XMMatrixRotationY(cos(time) * 5.f) * XMMatrixTranslation(sin(time) * 2.f - 1.f, 2.f, 0.f), &cube, &cube_mat);
+	meshes.emplace_back(XMMatrixRotationY(cos(time) * 5.f) * XMMatrixTranslation(sin(time) * 2.f - 1.f, 2.f, 0.f), &model, &mat);
 	meshes.emplace_back(XMMatrixTranslation(0.f, 0.f, 0.f), &plane, &plane_mat);
 
 	LightInstance lights = LightInstance(Color3f::White(), v3_f32{ camera_position.x, camera_position.y, camera_position.z }, 3.f, 1.f, 0.5f);
 
 	draw_meshes(meshes.data(), u32(meshes.size()), &lights, 1u, cmd);
 
-	gui_render(gui, offscreen, cmd);
+	gui_render(gui, cmd);
 	
 	graphics_present(engine.window, offscreen, GPUImageLayout_RenderTarget, cmd);
 }
@@ -111,7 +120,7 @@ Result close()
 	svCheck(graphics_destroy(zbuffer));
 
 	camerabuffer_destroy(&camera_buffer);
-	mesh_clear(cube);
+	mesh_clear(model);
 	mesh_clear(plane);
 	editor_destroy(editor);
 	gui_destroy(gui);

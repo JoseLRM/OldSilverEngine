@@ -391,6 +391,42 @@ namespace sv {
 
 	// File Management
 
+#if defined(SV_RES_PATH) && defined(SV_SYS_PATH)
+
+#define SV_PARSE_FILEPATH() std::string filepath_str; \
+	if (!sv::path_is_absolute(filepath)) { \
+		if (*filepath == '$') { \
+			filepath_str = SV_SYS_PATH; ++filepath; \
+		} \
+		else \
+			filepath_str = SV_RES_PATH; filepath_str += filepath; \
+		filepath = filepath_str.c_str(); \
+	} 
+
+#elif defined(SV_SYS_PATH) 
+
+#define SV_PARSE_FILEPATH() std::string filepath_str; \
+	if (!sv::path_is_absolute(filepath)) { \
+		if (filepath[0] == '$') { \
+			filepath_str = SV_SYS_PATH; filepath_str += filepath + 1u; \
+			filepath = filepath_str.c_str(); \
+		} \
+	} 
+
+#elif defined(SV_RES_PATH)
+
+#define SV_PARSE_FILEPATH() std::string filepath_str; \
+	if (!sv::path_is_absolute(filepath)) { \
+		filepath_str = SV_RES_PATH; filepath_str += filepath; \
+		filepath = filepath_str.c_str(); \
+	} 
+
+#else
+
+#define SV_PARSE_FILEPATH()
+
+#endif
+
 	bool path_is_absolute(const char* path);
 	void path_clear(char* path);
 
