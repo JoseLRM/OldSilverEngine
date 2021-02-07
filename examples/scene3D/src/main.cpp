@@ -14,7 +14,6 @@ Mesh model;
 Material mat;
 
 GUI* gui;
-Editor* editor;
 
 Result init()
 {
@@ -30,9 +29,6 @@ Result init()
 	svCheck(camerabuffer_create(&camera_buffer));
 
 	gui = gui_create();
-	editor = editor_create(gui);
-
-	editor_runtime_create(editor);
 
 	// TEMP: create meshes
 	mesh_apply_plane(plane, XMMatrixScaling(30.f, 0.f, 30.f));
@@ -58,14 +54,13 @@ Result init()
 
 void update()
 {
-	editor_key_shortcuts();
+	key_shortcuts();
 
 	gui_update(gui, window_width_get(engine.window), window_height_get(engine.window));
-	editor_update(editor);
 
 	projection_adjust(camera, f32(window_width_get(engine.window)) / f32(window_height_get(engine.window)));
 
-	editor_camera_controller3D(camera_position, camera_rotation, camera);
+	camera_controller3D(camera_position, camera_rotation, camera);
 
 	projection_update_matrix(camera);
 }
@@ -122,7 +117,6 @@ Result close()
 	camerabuffer_destroy(&camera_buffer);
 	mesh_clear(model);
 	mesh_clear(plane);
-	editor_destroy(editor);
 	gui_destroy(gui);
 
 	return Result_Success;

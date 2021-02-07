@@ -1,71 +1,11 @@
 #include "SilverEngine/core.h"
 
-#include "SilverEngine/editor.h"
+#include "SilverEngine/editor_utils.h"
+#include "SilverEngine/renderer.h"
 
 namespace sv {
 
-	struct Editor_internal {
-
-		std::vector<EditorPanel*> panels;
-		GUI* gui;
-
-	};
-
-#define PARSE_EDITOR() sv::Editor_internal& editor = *reinterpret_cast<sv::Editor_internal*>(editor_)
-
-	Editor* editor_create(GUI* gui)
-	{
-		SV_ASSERT(gui);
-
-		Editor_internal& editor = *new Editor_internal();
-
-		editor.gui = gui;
-
-		return (Editor*)&editor;
-	}
-
-	void editor_destroy(Editor* editor_)
-	{
-		PARSE_EDITOR();
-
-		for (EditorPanel* panel : editor.panels) {
-			delete panel;
-		}
-		editor.panels.clear();
-
-		delete& editor;
-	}
-
-	void editor_update(Editor* editor)
-	{
-	}
-
-	ConsolePanel* editor_console_create(Editor* editor_)
-	{
-		PARSE_EDITOR();
-
-		return nullptr;
-	}
-
-	RuntimePanel* editor_runtime_create(Editor* editor_)
-	{
-		PARSE_EDITOR();
-
-		RuntimePanel& panel = *new RuntimePanel();
-		editor.panels.emplace_back(&panel);
-
-		panel.window = gui_window_create(editor.gui);
-
-		return &panel;
-	}
-
-	std::pair<EditorPanel**, u32> editor_panels(Editor* editor_)
-	{
-		PARSE_EDITOR();
-		return std::pair<EditorPanel**, u32>(editor.panels.data(), u32(editor.panels.size()));
-	}
-
-	void editor_key_shortcuts()
+	void key_shortcuts()
 	{
 		if (input.keys[Key_F11] == InputState_Pressed) {
 			engine.close_request = true;
@@ -78,7 +18,7 @@ namespace sv {
 		}
 	}
 
-	void editor_camera_controller2D(v2_f32& position, CameraProjection& projection, f32 max_projection_length)
+	void camera_controller2D(v2_f32& position, CameraProjection& projection, f32 max_projection_length)
 	{
 		InputState button_state = input.mouse_buttons[MouseButton_Center];
 
@@ -101,7 +41,7 @@ namespace sv {
 		}
 	}
 
-	void editor_camera_controller3D(v3_f32& position, v2_f32& rotation, CameraProjection& projection)
+	void camera_controller3D(v3_f32& position, v2_f32& rotation, CameraProjection& projection)
 	{
 		XMVECTOR direction;
 		XMMATRIX rotation_matrix;
