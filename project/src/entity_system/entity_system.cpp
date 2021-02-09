@@ -623,6 +623,12 @@ namespace sv {
 		return Transform(entity, &ecs.entityData.get_transform(entity), ecs_);
 	}
 
+        u32 ecs_entity_flags(ECS* ecs_, Entity entity)
+        {
+	    parseECS();
+            return &ecs.entityData[entity].flags;
+        }
+
 	u32 ecs_entity_component_count(ECS* ecs_, Entity entity)
 	{
 		parseECS();

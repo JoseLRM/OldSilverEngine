@@ -142,6 +142,7 @@ namespace sv {
 	void			ecs_entity_childs_get(ECS* ecs, Entity parent, Entity const** childsArray);
 	Entity			ecs_entity_parent_get(ECS* ecs, Entity entity);
 	Transform		ecs_entity_transform_get(ECS* ecs, Entity entity);
+	u32*                    ecs_entity_flags(ECS* ecs, Entity entity);
 	u32				ecs_entity_component_count(ECS* ecs, Entity entity);
 
 	void ecs_entities_create(ECS* ecs, u32 count, Entity parent = SV_ENTITY_NULL, Entity* entities = nullptr);

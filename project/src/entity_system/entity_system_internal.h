@@ -39,6 +39,7 @@ namespace sv {
 		size_t handleIndex = u64_max;
 		Entity parent = SV_ENTITY_NULL;
 		u32 childsCount = 0u;
+	        u32 flags = 0u;
 		std::vector<std::pair<CompID, BaseComponent*>> components;
 		std::string name;
 
