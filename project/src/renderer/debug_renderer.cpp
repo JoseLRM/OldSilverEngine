@@ -107,7 +107,7 @@ namespace sv {
 			graphics_shader_bind(gfx.vs_debug_sprite, cmd);
 			graphics_shader_bind(gfx.ps_debug_sprite, cmd);
 
-			graphics_image_bind(draw.pImage, 0u, ShaderType_Pixel, cmd);
+			graphics_image_bind(draw.pImage ? draw.pImage : gfx.image_white, 0u, ShaderType_Pixel, cmd);
 
 			if (draw.pSampler) {
 				graphics_sampler_bind(draw.pSampler, 0u, ShaderType_Pixel, cmd);

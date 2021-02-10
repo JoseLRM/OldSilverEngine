@@ -89,7 +89,7 @@ namespace sv {
 
 					EntityTransform& transform = ecs.entityData.get_transform(entity);
 
-					archive << i << ed.childsCount << ed.handleIndex << transform.localPosition;
+					archive << i << ed.flags << ed.childsCount << ed.handleIndex << transform.localPosition;
 					archive << transform.localRotation << transform.localScale;
 				}
 			}
@@ -189,7 +189,7 @@ namespace sv {
 			EntityData& ed = entityData[entity];
 			EntityTransform& et = entityTransform[entity];
 
-			archive >> ed.childsCount >> ed.handleIndex >>
+			archive >> ed.flags >> ed.childsCount >> ed.handleIndex >>
 				et.localPosition >> et.localRotation >> et.localScale;
 		}
 
@@ -546,6 +546,7 @@ namespace sv {
 		EntityData& copyEd = ecs.entityData[copy];
 
 		ecs.entityData.get_transform(copy) = ecs.entityData.get_transform(duplicated);
+		copyEd.flags = duplicatedEd.flags;
 
 		for (u32 i = 0; i < duplicatedEd.components.size(); ++i) {
 			CompID ID = duplicatedEd.components[i].first;
@@ -623,11 +624,11 @@ namespace sv {
 		return Transform(entity, &ecs.entityData.get_transform(entity), ecs_);
 	}
 
-        u32 ecs_entity_flags(ECS* ecs_, Entity entity)
-        {
-	    parseECS();
-            return &ecs.entityData[entity].flags;
-        }
+	u32* ecs_entity_flags(ECS* ecs_, Entity entity)
+	{
+		parseECS();
+		return &ecs.entityData[entity].flags;
+	}
 
 	u32 ecs_entity_component_count(ECS* ecs_, Entity entity)
 	{

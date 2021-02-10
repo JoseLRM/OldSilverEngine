@@ -20,12 +20,6 @@ Result init()
 	svCheck(offscreen_create(1920u, 1080u, &offscreen));
 	svCheck(zbuffer_create(1920u, 1080u, &zbuffer));
 
-	camera.projection_type = ProjectionType_Perspective;
-	camera.width = 0.3f;
-	camera.height = 0.3f;
-	camera.near = 0.2f;
-	camera.far = 1000.f;
-
 	svCheck(camerabuffer_create(&camera_buffer));
 
 	gui = gui_create();
@@ -35,7 +29,7 @@ Result init()
 	mesh_create_buffers(plane);
 
 	ModelInfo info;
-	if (result_fail(model_load("assets/dragon.obj", info))) {
+	if (result_fail(model_load("assets/MP44/MP44.obj", info))) {
 		SV_LOG_ERROR("Can't load the model");
 	}
 	else {
@@ -94,10 +88,20 @@ void render()
 
 	meshes.reset();
 
+	camera.projection_type = ProjectionType_Perspective;
+	camera.width = 0.3f;
+	camera.height = 0.3f;
+	camera.near = 0.01f;
+	camera.far = 1000.f;
+
+	camerabuffer_update(&camera_buffer, cmd);
+
+	XMMATRIX gun_matrix = XMMatrixTranslation(camera_position.x, camera_position.y, camera_position.z + 1.f);
+
 	Material plane_mat;
 	plane_mat.color = { 0.05f, 0.5f, 0.8f, 1.f };
 	
-	meshes.emplace_back(XMMatrixRotationY(cos(time) * 5.f) * XMMatrixTranslation(sin(time) * 2.f - 1.f, 2.f, 0.f), &model, &mat);
+	meshes.emplace_back(gun_matrix, &model, &mat);
 	meshes.emplace_back(XMMatrixTranslation(0.f, 0.f, 0.f), &plane, &plane_mat);
 
 	LightInstance lights = LightInstance(Color3f::White(), v3_f32{ camera_position.x, camera_position.y, camera_position.z }, 3.f, 1.f, 0.5f);

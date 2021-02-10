@@ -161,6 +161,17 @@ namespace sv {
 		SV_LOG_ERROR("TODO");
 	}
 
+	void mesh_set_scale(Mesh& mesh, f32 scale)
+	{
+		v2_f32 min, max;
+		min.x = f32_max;
+		min.y = f32_max;
+		max.x = f32_min;
+		max.y = f32_min;
+
+		SV_LOG_ERROR("TODO");
+	}
+
 	void mesh_optimize(Mesh& mesh)
 	{
 		SV_LOG_ERROR("TODO");

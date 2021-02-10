@@ -31,6 +31,7 @@ namespace sv {
 	void mesh_apply_cube(Mesh& mesh, const XMMATRIX& transform = XMMatrixIdentity());
 	void mesh_apply_sphere(Mesh& mesh, const XMMATRIX& transform = XMMatrixIdentity());
 
+	void mesh_set_scale(Mesh& mesh, f32 scale);
 	void mesh_optimize(Mesh& mesh);
 	void mesh_recalculate_normals(Mesh& mesh);
 	
