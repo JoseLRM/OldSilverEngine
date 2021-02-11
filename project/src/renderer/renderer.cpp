@@ -272,6 +272,7 @@ namespace sv {
 
 			elements[0] = { "Position", 0u, 0u, 0u, Format_R32G32B32_FLOAT };
 			elements[1] = { "Normal", 0u, 0u, 3u * sizeof(f32), Format_R32G32B32_FLOAT };
+			elements[2] = { "Texcoord", 0u, 0u, 6u * sizeof(f32), Format_R32G32_FLOAT };
 
 			desc.elementCount = 2u;
 			desc.slotCount = 1u;

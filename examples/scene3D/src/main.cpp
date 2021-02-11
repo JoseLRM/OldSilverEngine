@@ -36,13 +36,14 @@ Result init()
 
 		model.positions = std::move(info.meshes.back().positions);
 		model.normals = std::move(info.meshes.back().normals);
+		model.texcoord = std::move(info.meshes.back().texcoord);
 		model.indices = std::move(info.meshes.back().indices);
 		
 		mesh_set_scale(model, 1.f, true);
 
 		mesh_create_buffers(model);
 
-		mat.color = info.materials.back().color;
+		mat.diffuse_color = info.materials.back().diffuse_color;
 	}
 
 	return Result_Success;
@@ -126,7 +127,7 @@ void render()
 
 	
 	Material plane_mat;
-	plane_mat.color = { 0.05f, 0.5f, 0.8f, 1.f };
+	plane_mat.diffuse_color = { 0.05f, 0.5f, 0.8f, 1.f };
 
 	meshes.emplace_back(XMMatrixTranslation(0.f, 0.f, 0.f), &plane, &plane_mat);
 

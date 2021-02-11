@@ -7,7 +7,7 @@
 #include "external/assimp/scene.h"
 #include "external/assimp/material.h"
 
-#define ASSERT_VERTICES() SV_ASSERT(mesh.positions.size() == mesh.normals.size())
+#define ASSERT_VERTICES() SV_ASSERT(mesh.positions.size() == mesh.normals.size() && (mesh.texcoords.empty() || mesh.positions.size() == mesh.texcoords.size()))
 
 namespace sv {
 
@@ -85,6 +85,21 @@ namespace sv {
 				it->normal = *norIt;
 
 				++norIt;
+				++it;
+			}
+		}
+		// TEX COORDS
+		{
+			it = vertices.data();
+			end = vertices.data() + vertices.size();
+
+			const v2_f32* texIt = mesh.texcoords.data();
+
+			while (it != end)
+			{
+				it->texcoord = *texIt;
+
+				++texIt;
 				++it;
 			}
 		}
@@ -281,9 +296,13 @@ namespace sv {
 			MaterialInfo& m1 = model_info.materials[i];
 
 			aiColor3D color;
+			aiString filepath;
 
 			m0.Get(AI_MATKEY_NAME, m1.name);
-			m0.Get(AI_MATKEY_COLOR_DIFFUSE, color); m1.color = { color.r, color.g, color.b, 1.f };
+			m0.Get(AI_MATKEY_COLOR_DIFFUSE, color); m1.diffuse_color = { color.r, color.g, color.b, 1.f };
+			m0.Get(AI_TEXTURE(aiTextureType_DIFFUSE, 0), filepath);
+
+			m1.diffuse_map.loadFromFile(filepath.c_str());
 		}
 
 		foreach(i, scene->mNumMeshes) {
@@ -314,6 +333,7 @@ namespace sv {
 			// Vertices
 			m1.positions.resize(m0.mNumVertices);
 			m1.normals.resize(m0.mNumVertices);
+			m1.texcoords.resize(m.mNumVertices);
 
 			foreach(j, m0.mNumVertices) {
 
@@ -324,6 +344,11 @@ namespace sv {
 
 				aiVector3D v = m0.mNormals[j];
 				m1.normals[j] = { v.x, v.y, v.z };
+			}
+			foreach(j, m0.mNumVertices) {
+
+				aiVector2D v = m0.mTextureCoords[0][j];
+				m1.texcoords[j] = { v.x, v.y };
 			}
 		}
 

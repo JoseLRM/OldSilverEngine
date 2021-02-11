@@ -9,12 +9,14 @@ namespace sv {
 	struct MeshVertex {
 		v3_f32 position;
 		v3_f32 normal;
+   	        v2_f32 texcoord;
 	};
 
 	struct Mesh {
 
 		std::vector<v3_f32> positions;
 		std::vector<v3_f32> normals;
+	        std::vector<v2_f32> texcoords;
 
 		std::vector<MeshIndex> indices;
 
@@ -24,7 +26,8 @@ namespace sv {
 	};
 
 	struct Material {
-		Color4f color;
+		Color4f diffuse_color;
+	        TextureAsset diffuse_map
 	};
 
 	void mesh_apply_plane(Mesh& mesh, const XMMATRIX& transform = XMMatrixIdentity());
@@ -45,7 +48,8 @@ namespace sv {
 
 		std::vector<v3_f32> positions;
 		std::vector<v3_f32> normals;
-
+	        std::vector<v2_f32> texcoords;
+	    
 		std::vector<MeshIndex> indices;
 
 		u32 material_index = u32_max;
@@ -54,7 +58,8 @@ namespace sv {
 
 	struct MaterialInfo {
 		std::string name;
-		Color4f color;
+		Color4f diffuse_color;
+	        TextureAsset diffuse_map;
 	};
 
 	struct ModelInfo {

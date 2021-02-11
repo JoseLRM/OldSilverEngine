@@ -28,6 +28,10 @@ namespace sv {
 		XMMATRIX inv_model_view_matrix;
 	};
 
+	struct MaterialData {
+	        v3_f32 diffuse_color;
+	};
+
 	struct CameraBuffer_GPU {
 		XMMATRIX	view_matrix;
 		XMMATRIX	projection_matrix;

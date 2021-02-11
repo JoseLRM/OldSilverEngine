@@ -48,7 +48,7 @@ struct Output {
 };
 
 struct Material {
-	float4 color;
+	float4 diffuse_color;
 };
 
 #define LIGHT_TYPE_POINT 1u
@@ -74,6 +74,10 @@ SV_CONSTANT_BUFFER(material_buffer, b0) {
 SV_CONSTANT_BUFFER(light_instances_buffer, b1) {
 	Light lights[LIGHT_COUNT];
 };
+
+SV_TEXTURE(diffuse_map, t0);
+
+SV_SAMPLER(sam, s0);
 
 Output main(Input input) 
 {
@@ -106,7 +110,9 @@ Output main(Input input)
 		}
 	}
 
-    output.color = material.color * float4(light_accumulation, 1.f);
+    float4 diffuse = diffuse_map.Sample(sam, input.texcoord) * float4(material.diffuse_color, 1.f);
+    
+    output.color = diffuse * float4(light_accumulation, 1.f);
 
     return output;
 }

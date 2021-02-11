@@ -72,6 +72,7 @@ namespace sv {
 		graphics_depthstencilstate_bind(gfx.dss_default_depth, cmd);
 		graphics_rasterizerstate_bind(gfx.rs_back_culling, cmd);
 		graphics_blendstate_bind(gfx.bs_mesh, cmd);
+		graphics_sampler_bind(gfx.sampler_def_linear, 0u, ShaderType_Pixel, cmd);
 
 		// Bind resources
 		GPUBuffer* instance_buffer			= get_instance_buffer(cmd);
@@ -125,8 +126,16 @@ namespace sv {
 			mesh_data.model_view_matrix = inst.transform_matrix * ctx.camera_buffer->view_matrix;
 			mesh_data.inv_model_view_matrix = XMMatrixTranspose(XMMatrixInverse(nullptr, mesh_data.model_view_matrix));
 
+			MaterialData material_data;
+			material_data.diffuse_color = inst.material->diffuse_color;
+
 			graphics_buffer_update(instance_buffer, &mesh_data, sizeof(MeshData), 0u, cmd);
 			graphics_buffer_update(material_buffer, inst.material, sizeof(Material), 0u, cmd);
+
+			// Bind material resources
+			GPUImage* diffuse_map = inst.material->diffuse_map.get();
+
+			if (diffuse_map) graphics_image_bind(diffuse_map, 0u, ShaderType_Pixel, cmd);
 
 			// Begin renderpass
 			GPUImage* att[] = { ctx.offscreen, ctx.zbuffer };
