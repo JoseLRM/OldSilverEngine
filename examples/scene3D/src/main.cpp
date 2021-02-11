@@ -38,6 +38,8 @@ Result init()
 		model.normals = std::move(info.meshes.back().normals);
 		model.indices = std::move(info.meshes.back().indices);
 		
+		mesh_set_scale(model, 1.f, true);
+
 		mesh_create_buffers(model);
 
 		mat.color = info.materials.back().color;
@@ -55,8 +57,6 @@ void update()
 	projection_adjust(camera, f32(window_width_get(engine.window)) / f32(window_height_get(engine.window)));
 
 	camera_controller3D(camera_position, camera_rotation, camera);
-
-	projection_update_matrix(camera);
 }
 
 void render()
@@ -67,46 +67,72 @@ void render()
 	render_context[cmd].zbuffer = zbuffer;
 	render_context[cmd].camera_buffer = &camera_buffer;
 
-	camera_buffer.rotation = v4_f32(XMQuaternionRotationRollPitchYawFromVector(camera_rotation.getDX()));
-	camera_buffer.view_matrix = math_matrix_view(camera_position, camera_buffer.rotation);
-	camera_buffer.projection_matrix = camera.projection_matrix;
-	camera_buffer.position = camera_position;
-	camerabuffer_update(&camera_buffer, cmd);
-
 	graphics_image_clear(offscreen, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, Color4f::Black(), 1.f, 0u, cmd);
 	graphics_image_clear(zbuffer, GPUImageLayout_DepthStencil, GPUImageLayout_DepthStencil, Color4f::White(), 1.f, 0u, cmd);
 
 	graphics_viewport_set(offscreen, 0u, cmd);
 	graphics_scissor_set(offscreen, 0u, cmd);
 
-	static f32 time = 0.f;
-	if (input.mouse_buttons[MouseButton_Left]) {
-		time += engine.deltatime;
-	}
+	// Process lighting
+
+	LightInstance lights[] = { LightInstance(Color3f::White(), v3_f32{ camera_position.x, camera_position.y, camera_position.z }, 3.f, 1.f, 0.5f) };
+
+	// Mesh rendering
 
 	static FrameList<MeshInstance> meshes;
+
+	// Draw gun
 
 	meshes.reset();
 
 	camera.projection_type = ProjectionType_Perspective;
 	camera.width = 0.3f;
 	camera.height = 0.3f;
-	camera.near = 0.01f;
+	camera.near = 0.1f;
 	camera.far = 1000.f;
+	projection_update_matrix(camera);
 
+	camera_buffer.rotation = v4_f32(XMQuaternionRotationRollPitchYaw(0.f, 0.f, 0.f));
+	camera_buffer.view_matrix = XMMatrixIdentity();
+	camera_buffer.projection_matrix = camera.projection_matrix;
+	camera_buffer.position = {};
 	camerabuffer_update(&camera_buffer, cmd);
 
-	XMMATRIX gun_matrix = XMMatrixTranslation(camera_position.x, camera_position.y, camera_position.z + 1.f);
+	XMMATRIX gun_matrix = XMMatrixRotationY(ToRadians(180.f))
+		* XMMatrixTranslation(0.2f, -0.2f, 0.35f);
 
+	meshes.emplace_back(gun_matrix, &model, &mat);
+
+	lights[0] = { LightInstance(Color3f::White(), v3_f32{ }, 3.f, 1.f, 0.5f) };
+
+	draw_meshes(meshes.data(), u32(meshes.size()), lights, 1u, cmd);
+
+	// Draw rest of the scene
+
+	meshes.reset();
+
+	camera.projection_type = ProjectionType_Perspective;
+	camera.width = 0.3f;
+	camera.height = 0.3f;
+	camera.near = 0.3f;
+	camera.far = 1000.f;
+	projection_update_matrix(camera);
+
+	camera_buffer.rotation = v4_f32(XMQuaternionRotationRollPitchYawFromVector(camera_rotation.getDX()));
+	camera_buffer.view_matrix = math_matrix_view(camera_position, camera_buffer.rotation);
+	camera_buffer.projection_matrix = camera.projection_matrix;
+	camera_buffer.position = camera_position;
+	camerabuffer_update(&camera_buffer, cmd);
+
+	
 	Material plane_mat;
 	plane_mat.color = { 0.05f, 0.5f, 0.8f, 1.f };
-	
-	meshes.emplace_back(gun_matrix, &model, &mat);
+
 	meshes.emplace_back(XMMatrixTranslation(0.f, 0.f, 0.f), &plane, &plane_mat);
 
-	LightInstance lights = LightInstance(Color3f::White(), v3_f32{ camera_position.x, camera_position.y, camera_position.z }, 3.f, 1.f, 0.5f);
+	lights[0] = { LightInstance(Color3f::White(), v3_f32{ camera_position.x, camera_position.y, camera_position.z }, 3.f, 1.f, 0.5f) };
 
-	draw_meshes(meshes.data(), u32(meshes.size()), &lights, 1u, cmd);
+	draw_meshes(meshes.data(), u32(meshes.size()), lights, 1u, cmd);
 
 	gui_render(gui, cmd);
 	

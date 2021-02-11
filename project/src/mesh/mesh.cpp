@@ -161,15 +161,46 @@ namespace sv {
 		SV_LOG_ERROR("TODO");
 	}
 
-	void mesh_set_scale(Mesh& mesh, f32 scale)
+	void mesh_set_scale(Mesh& mesh, f32 scale, bool center)
 	{
-		v2_f32 min, max;
+		v3_f32 min, max;
 		min.x = f32_max;
 		min.y = f32_max;
 		max.x = f32_min;
 		max.y = f32_min;
 
-		SV_LOG_ERROR("TODO");
+		// Compute bounds
+		for (const v3_f32& pos : mesh.positions) {
+
+			if (pos.x < min.x) min.x = pos.x;
+			if (pos.x > max.x) max.x = pos.x;
+			if (pos.y < min.y) min.y = pos.y;
+			if (pos.y > max.y) max.y = pos.y;
+			if (pos.z < min.z) min.z = pos.z;
+			if (pos.z > max.z) max.z = pos.z;
+		}
+
+		// Scale mesh
+		v3_f32 dimensions = max - min;
+		f32 inv_dim = 1.f / std::max(std::max(dimensions.x, dimensions.y), dimensions.z);
+
+		for (v3_f32& pos : mesh.positions) {
+
+			pos = (((pos - min) * inv_dim) - 0.5f) * scale;
+		}
+
+		// Center
+		if (center) {
+
+			max = (((max - min) * inv_dim) - 0.5f) * scale;
+			min = -0.5f * scale;
+
+			v3_f32 addition = (min + (max - min) * 0.5f);
+
+			for (v3_f32& pos : mesh.positions) {
+				pos -= addition;
+			}
+		}
 	}
 
 	void mesh_optimize(Mesh& mesh)
