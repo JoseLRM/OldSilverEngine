@@ -5,11 +5,13 @@
 struct Input {
     float3 position : Position;
     float3 normal : Normal;
+	float2 texcoord : Texcoord;
 };
 
 struct Output {
     float3 frag_position : FragPosition;
     float3 normal : FragNormal;
+	float2 texcoord : FragTexcoord;
     float4 position : SV_Position;
 };
 
@@ -30,6 +32,7 @@ Output main(Input input)
     output.frag_position = pos.xyz;
     output.position = mul(camera.pm, pos);
     output.normal = mul((float3x3)imvm, input.normal);
+	output.texcoord = input.texcoord;
 
     return output;
 }
@@ -41,6 +44,7 @@ Output main(Input input)
 struct Input {
     float3 position : FragPosition;
     float3 normal : FragNormal;
+	float2 texcoord : FragTexcoord;
 };
 
 struct Output {
@@ -48,7 +52,7 @@ struct Output {
 };
 
 struct Material {
-	float4 diffuse_color;
+	float3 diffuse_color;
 };
 
 #define LIGHT_TYPE_POINT 1u

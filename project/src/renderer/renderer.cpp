@@ -32,11 +32,11 @@ namespace sv {
 		COMPILE_VS(gfx.vs_text, "text.hlsl");
 		COMPILE_PS(gfx.ps_text, "text.hlsl");
 
-		COMPILE_VS(gfx.vs_sprite, "sprite/default.hlsl");
-		COMPILE_PS(gfx.ps_sprite, "sprite/default.hlsl");
+		COMPILE_VS_(gfx.vs_sprite, "sprite/default.hlsl");
+		COMPILE_PS_(gfx.ps_sprite, "sprite/default.hlsl");
 
-		COMPILE_VS_(gfx.vs_mesh, "mesh/default.hlsl");
-		COMPILE_PS_(gfx.ps_mesh, "mesh/default.hlsl");
+		COMPILE_VS(gfx.vs_mesh, "mesh/default.hlsl");
+		COMPILE_PS(gfx.ps_mesh, "mesh/default.hlsl");
 
 		return Result_Success;
 	}
@@ -274,7 +274,7 @@ namespace sv {
 			elements[1] = { "Normal", 0u, 0u, 3u * sizeof(f32), Format_R32G32B32_FLOAT };
 			elements[2] = { "Texcoord", 0u, 0u, 6u * sizeof(f32), Format_R32G32_FLOAT };
 
-			desc.elementCount = 2u;
+			desc.elementCount = 3u;
 			desc.slotCount = 1u;
 			svCheck(graphics_inputlayoutstate_create(&desc, &gfx.ils_mesh));
 		}

@@ -89,7 +89,7 @@ namespace sv {
 			}
 		}
 		// TEX COORDS
-		{
+		if (mesh.texcoords.size()) {
 			it = vertices.data();
 			end = vertices.data() + vertices.size();
 
@@ -277,6 +277,19 @@ namespace sv {
 		return Result_Success;
 	}
 
+	static Result get_texture(aiString& filepath, const aiMaterial& mat, TextureAsset& tex, aiTextureType type)
+	{
+		mat.GetTexture(type, 0u, &filepath);
+
+		if (filepath.length == 0u) return Result_NotFound;
+
+		for (u32 i = 0u; i < filepath.length; ++i) {
+			if (filepath.data[i] == '\\') filepath.data[i] = '/';
+		}
+
+		return tex.loadFromFile(filepath.C_Str());
+	}
+
 	Result model_load(const char* filepath, ModelInfo& model_info)
 	{
 		SV_PARSE_FILEPATH();
@@ -299,10 +312,9 @@ namespace sv {
 			aiString filepath;
 
 			m0.Get(AI_MATKEY_NAME, m1.name);
-			m0.Get(AI_MATKEY_COLOR_DIFFUSE, color); m1.diffuse_color = { color.r, color.g, color.b, 1.f };
-			m0.Get(AI_TEXTURE(aiTextureType_DIFFUSE, 0), filepath);
-
-			m1.diffuse_map.loadFromFile(filepath.c_str());
+			m0.Get(AI_MATKEY_COLOR_DIFFUSE, color); m1.diffuse_color = { color.r, color.g, color.b };
+			
+			get_texture(filepath, m0, m1.diffuse_map, aiTextureType_DIFFUSE);
 		}
 
 		foreach(i, scene->mNumMeshes) {
@@ -333,7 +345,6 @@ namespace sv {
 			// Vertices
 			m1.positions.resize(m0.mNumVertices);
 			m1.normals.resize(m0.mNumVertices);
-			m1.texcoords.resize(m.mNumVertices);
 
 			foreach(j, m0.mNumVertices) {
 
@@ -345,10 +356,16 @@ namespace sv {
 				aiVector3D v = m0.mNormals[j];
 				m1.normals[j] = { v.x, v.y, v.z };
 			}
-			foreach(j, m0.mNumVertices) {
 
-				aiVector2D v = m0.mTextureCoords[0][j];
-				m1.texcoords[j] = { v.x, v.y };
+			if (m0.mTextureCoords[0] != nullptr) {
+
+				m1.texcoords.resize(m0.mNumVertices);
+
+				foreach(j, m0.mNumVertices) {
+
+					aiVector3D v = m0.mTextureCoords[0][j];
+					m1.texcoords[j] = { v.x, v.y };
+				}
 			}
 		}
 

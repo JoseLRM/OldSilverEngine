@@ -48,6 +48,12 @@ namespace sv {
 			if (m_Size + size > m_Capacity) realloc(m_Size + size);
 		}
 
+		void resize(size_t size)
+		{
+			reserve(size);
+			m_Size = size;
+		}
+
 		T& operator[](size_t index)
 		{
 			SV_ASSERT(index < m_Size);

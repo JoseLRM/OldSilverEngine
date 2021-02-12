@@ -135,7 +135,7 @@ namespace sv {
 			// Bind material resources
 			GPUImage* diffuse_map = inst.material->diffuse_map.get();
 
-			if (diffuse_map) graphics_image_bind(diffuse_map, 0u, ShaderType_Pixel, cmd);
+			graphics_image_bind(diffuse_map ? diffuse_map : gfx.image_white, 0u, ShaderType_Pixel, cmd);
 
 			// Begin renderpass
 			GPUImage* att[] = { ctx.offscreen, ctx.zbuffer };

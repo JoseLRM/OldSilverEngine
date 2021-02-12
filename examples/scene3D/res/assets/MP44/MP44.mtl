@@ -12,8 +12,8 @@ newmtl MP44
 	Kd 0.8000 0.8000 0.8000
 	Ks 0.2000 0.2000 0.2000
 	Ke 0.0000 0.0000 0.0000
-	map_Ka C:\Users\user\Desktop\MP44\textures\MP44_ao.tga
-	map_Kd C:\Users\user\Desktop\MP44\textures\MP44_albedo.tga
-	map_Ks C:\Users\user\Desktop\MP44\textures\MP44_metalness.tga
-	map_bump C:\Users\user\Desktop\MP44\textures\MP44_normal.tga
-	bump C:\Users\user\Desktop\MP44\textures\MP44_normal.tga
+	map_Ka \textures\MP44_ao.tga
+	map_Kd \textures\MP44_albedo.tga
+	map_Ks \textures\MP44_metalness.tga
+	map_bump \textures\MP44_normal.tga
+	bump \textures\MP44_normal.tga

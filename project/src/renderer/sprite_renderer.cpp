@@ -5,7 +5,7 @@
 
 namespace sv {
 
-	void draw_sprites(const SpriteInstance* sprites, u32 count, const XMMATRIX& view_projection_matrix, CommandList cmd)
+	void draw_sprites(const SpriteInstance* sprites, u32 count, const XMMATRIX& view_projection_matrix, bool linear_sampler, CommandList cmd)
 	{
 		SV_ASSERT_OFFSCREEN();
 
@@ -21,7 +21,7 @@ namespace sv {
 		graphics_vertexbuffer_bind(batch_buffer, 0u, 0u, cmd);
 		graphics_indexbuffer_bind(gfx.ibuffer_sprite, 0u, cmd);
 		graphics_inputlayoutstate_bind(gfx.ils_sprite, cmd);
-		graphics_sampler_bind(gfx.sampler_def_linear, 0u, ShaderType_Pixel, cmd);
+		graphics_sampler_bind(linear_sampler ? gfx.sampler_def_linear : gfx.sampler_def_nearest, 0u, ShaderType_Pixel, cmd);
 		graphics_shader_bind(gfx.vs_sprite, cmd);
 		graphics_shader_bind(gfx.ps_sprite, cmd);
 		graphics_blendstate_bind(gfx.bs_sprite, cmd);
@@ -58,10 +58,10 @@ namespace sv {
 
 				matrix = XMMatrixMultiply(spr.tm, view_projection_matrix);
 
-				pos0 = XMVectorSet(-0.5f, -0.5f, 0.f, 1.f);
-				pos1 = XMVectorSet(0.5f, -0.5f, 0.f, 1.f);
-				pos2 = XMVectorSet(-0.5f, 0.5f, 0.f, 1.f);
-				pos3 = XMVectorSet(0.5f, 0.5f, 0.f, 1.f);
+				pos0 = XMVectorSet(-0.5f, 0.5f, 0.f, 1.f);
+				pos1 = XMVectorSet(0.5f, 0.5f, 0.f, 1.f);
+				pos2 = XMVectorSet(-0.5f, -0.5f, 0.f, 1.f);
+				pos3 = XMVectorSet(0.5f, -0.5f, 0.f, 1.f);
 
 				pos0 = XMVector4Transform(pos0, matrix);
 				pos1 = XMVector4Transform(pos1, matrix);

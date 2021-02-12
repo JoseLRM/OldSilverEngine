@@ -162,7 +162,7 @@ namespace sv {
 			: tm(m), texcoord(texcoord), image(image), color(color) {}
 	};
 
-	void draw_sprites(const SpriteInstance* sprites, u32 count, const XMMATRIX& view_projection_matrix, CommandList cmd);
+	void draw_sprites(const SpriteInstance* sprites, u32 count, const XMMATRIX& view_projection_matrix, bool linear_sampler, CommandList cmd);
 
 	// MESH RENDERING
 

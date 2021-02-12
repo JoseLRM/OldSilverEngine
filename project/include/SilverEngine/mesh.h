@@ -9,14 +9,14 @@ namespace sv {
 	struct MeshVertex {
 		v3_f32 position;
 		v3_f32 normal;
-   	        v2_f32 texcoord;
+		v2_f32 texcoord;
 	};
 
 	struct Mesh {
 
 		std::vector<v3_f32> positions;
 		std::vector<v3_f32> normals;
-	        std::vector<v2_f32> texcoords;
+		std::vector<v2_f32> texcoords;
 
 		std::vector<MeshIndex> indices;
 
@@ -26,8 +26,8 @@ namespace sv {
 	};
 
 	struct Material {
-		Color4f diffuse_color;
-	        TextureAsset diffuse_map
+		Color3f diffuse_color;
+		TextureAsset diffuse_map;
 	};
 
 	void mesh_apply_plane(Mesh& mesh, const XMMATRIX& transform = XMMatrixIdentity());
@@ -37,7 +37,7 @@ namespace sv {
 	void mesh_set_scale(Mesh& mesh, f32 scale, bool center = false);
 	void mesh_optimize(Mesh& mesh);
 	void mesh_recalculate_normals(Mesh& mesh);
-	
+
 	Result mesh_create_buffers(Mesh& mesh, ResourceUsage usage = ResourceUsage_Static);
 	Result mesh_update_buffers(Mesh& mesh, CommandList cmd);
 	Result mesh_clear(Mesh& mesh);
@@ -48,8 +48,8 @@ namespace sv {
 
 		std::vector<v3_f32> positions;
 		std::vector<v3_f32> normals;
-	        std::vector<v2_f32> texcoords;
-	    
+		std::vector<v2_f32> texcoords;
+
 		std::vector<MeshIndex> indices;
 
 		u32 material_index = u32_max;
@@ -58,8 +58,8 @@ namespace sv {
 
 	struct MaterialInfo {
 		std::string name;
-		Color4f diffuse_color;
-	        TextureAsset diffuse_map;
+		Color3f diffuse_color;
+		TextureAsset diffuse_map;
 	};
 
 	struct ModelInfo {
