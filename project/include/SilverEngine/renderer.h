@@ -1,7 +1,6 @@
 #pragma once
 
-#include "SilverEngine/graphics.h"
-#include "SilverEngine/mesh.h"
+#include "SilverEngine/scene.h"
 
 namespace sv {
 
@@ -10,86 +9,18 @@ namespace sv {
 	constexpr Format OFFSCREEN_FORMAT = Format_R16G16B16A16_FLOAT;
 	constexpr Format ZBUFFER_FORMAT = Format_D24_UNORM_S8_UINT;
 
-	enum ProjectionType : u32 {
-		ProjectionType_Clip,
-		ProjectionType_Orthographic,
-		ProjectionType_Perspective,
-	};
-
 	enum LightType {
 		LightType_None,
 		LightType_Point,
 		LightType_Direction,
 	};
 
-	struct CameraProjection {
-
-		f32 width = 1.f;
-		f32 height = 1.f;
-		f32 near = -1000.f;
-		f32 far = 1000.f;
-
-		ProjectionType	projection_type = ProjectionType_Orthographic;
-		XMMATRIX		projection_matrix = XMMatrixIdentity();
-
-	};
-
-	struct CameraBuffer {
-
-		XMMATRIX	view_matrix = XMMatrixIdentity();
-		XMMATRIX	projection_matrix = XMMatrixIdentity();
-		v3_f32		position;
-		v4_f32		rotation;
-
-		GPUBuffer* buffer = nullptr;
-
-	};
-
-	struct LightInstance {
-
-		Color3f color;
-		LightType type;
-	        f32	intensity;
-
-		union {
-			struct {
-				v3_f32		position;
-				f32			range;
-				f32			smoothness;
-			} point;
-
-		        v3_f32 direction;
-		};
-
-		LightInstance() : color(Color3f::White()), type(LightType_None), point({}) {}
-
-	    SV_INLINE static LightInstance create_point(const Color3f& color, const v3_f32& position, f32 range, f32 intensity, f32 smoothness)
-		{
-		    LightInstance l;
-		    l.color = color;
-		    l.type = LightType_Point;
-		    l.intensity = intensity;
-		    l.point.position = position;
-		    l.point.range = range;
-		    l.point.smoothness = smoothness;
-		}
-	    
-	    SV_INLINE static LightInstance create_direction(const Color3f& color, const v3_f32& direction, f32 intensity)
-		{
-		    LightInstance l;
-		    l.color = color;
-		    l.type = LightType_Direction;
-		    l.intensity = intensity;
-		    l.direction = direction;
-		}
-	};
-
 	// CONTEXT
 
 	struct RenderingContext {
 
-		GPUImage*		offscreen;
-		GPUImage*		zbuffer;
+		GPUImage*	offscreen;
+		GPUImage*	zbuffer;
 		CameraBuffer*	camera_buffer;
 
 	};
@@ -189,6 +120,10 @@ namespace sv {
 	};
 
 	void draw_meshes(const MeshInstance* meshes, u32 mesh_count, const LightInstance* lights, u32 light_count, CommandList cmd);
+
+	// SCENE
+
+	void draw_scene(ECS* ecs);
 
 	// DEBUG RENDERER
 
