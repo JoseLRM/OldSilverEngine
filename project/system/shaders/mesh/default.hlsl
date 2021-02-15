@@ -58,7 +58,7 @@ struct Material {
 };
 
 #define LIGHT_TYPE_POINT 1u
-#define LIGHT_TYPE_DIRECTION 1u
+#define LIGHT_TYPE_DIRECTION 2u
 
 struct Light {
 	float3 position;
@@ -106,14 +106,26 @@ Output main(Input input)
 			to_light = normalize(to_light);
 
 			// Diffuse
-			f32 diffuse = max(dot(normal, to_light), 0.1f);
+			f32 diffuse = max(dot(normal, to_light), 0.f);
 
 			// Specular
 			float specular = pow(max(dot(normalize(-input.position), reflect(-to_light, normal)), 0.f), material.shininess);
 
-			// TODO attenuation and intensity
+			// TODO attenuation
 
-			light_accumulation += light.color * ((diffuse * material.diffuse_color) + (specular * material.specular_color));
+			light_accumulation += light.color * ((diffuse * material.diffuse_color) + (specular * material.specular_color)) * light.intensity;
+		}
+		break;
+
+		case LIGHT_TYPE_DIRECTION:
+		{
+			// Diffuse
+			f32 diffuse = max(dot(normal, light.position), 0.f);
+
+			// Specular
+			float specular = pow(max(dot(normalize(-input.position), reflect(-light.position, normal)), 0.f), material.shininess);
+
+			light_accumulation += light.color * ((diffuse * material.diffuse_color) + (specular * material.specular_color)) * light.intensity;
 		}
 		break;
 

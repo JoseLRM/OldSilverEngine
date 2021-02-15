@@ -49,28 +49,39 @@ namespace sv {
 
 		Color3f color;
 		LightType type;
+	        f32	intensity;
 
 		union {
 			struct {
 				v3_f32		position;
 				f32			range;
-				f32			intensity;
 				f32			smoothness;
 			} point;
 
-			struct {
-				v3_f32		direction;
-				f32			intensity;
-			} direction;
+		        v3_f32 direction;
 		};
 
 		LightInstance() : color(Color3f::White()), type(LightType_None), point({}) {}
 
-		LightInstance(const Color3f& color, const v3_f32& position, f32 range, f32 intensity, f32 smoothness)
-			: color(color), type(LightType_Point), point({ position, range, intensity, smoothness }) {}
-
-		LightInstance(const Color3f& color, const v3_f32& direction, f32 intensity)
-			: color(color), type(LightType_Direction), direction({ direction, intensity }) {}
+	    SV_INLINE static LightInstance create_point(const Color3f& color, const v3_f32& position, f32 range, f32 intensity, f32 smoothness)
+		{
+		    LightInstance l;
+		    l.color = color;
+		    l.type = LightType_Point;
+		    l.intensity = intensity;
+		    l.point.position = position;
+		    l.point.range = range;
+		    l.point.smoothness = smoothness;
+		}
+	    
+	    SV_INLINE static LightInstance create_direction(const Color3f& color, const v3_f32& direction, f32 intensity)
+		{
+		    LightInstance l;
+		    l.color = color;
+		    l.type = LightType_Direction;
+		    l.intensity = intensity;
+		    l.direction = direction;
+		}
 	};
 
 	// CONTEXT

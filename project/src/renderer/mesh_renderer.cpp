@@ -97,16 +97,20 @@ namespace sv {
 				LightData& l0 = light_data[i];
 				const LightInstance& l1 = lights[i];
 
+				l0.type = l1.type;
+				l0.color = l1.color;
+				l0.intensity = l1.intensity;
+				
 				switch (l1.type)
 				{
 				case LightType_Point:
-					l0.type = l1.type;
-
-					l0.position = v3_f32(XMVector4Transform(l1.point.position.getDX(1.f), view_matrix));
-					l0.intensity = l1.point.intensity;
+				        l0.position = v3_f32(XMVector3Normalize(XMVector4Transform(l1.point.position.getDX(1.f), view_matrix)));
 					l0.range = l1.point.range;
 					l0.smoothness = l1.point.smoothness;
-					l0.color = l1.color;
+					break;
+
+				case LightType_Direction:
+					l0.position = v3_f32(XMVector4Transform(l1.direction.getDX(1.f), view_matrix));
 					break;
 				}
 			}

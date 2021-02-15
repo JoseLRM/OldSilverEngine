@@ -8,11 +8,9 @@ struct TexturedMesh {
 	u32 mat_index;
 };
 
-struct Model {
-
-	std::vector<TexturedMesh> meshes;
-	std::vector<Material> material;
-
+struct MeshComponent : public Component<MeshComponent> {
+    Mesh     mesh;
+    Material material;
 };
 
 GPUImage* offscreen = nullptr;
@@ -21,11 +19,11 @@ v3_f32				camera_position;
 v2_f32				camera_rotation;
 CameraProjection	camera;
 CameraBuffer		camera_buffer;
-Model sponza;
 
+ECS* ecs;
 GUI* gui;
 
-void load_model(Model& model, const char* filepath, f32 scale = f32_max)
+void load_model(ECS* ecs, const char* filepath, f32 scale = f32_max)
 {
 	ModelInfo info;
 	if (result_fail(model_load(filepath, info))) {
@@ -33,33 +31,29 @@ void load_model(Model& model, const char* filepath, f32 scale = f32_max)
 	}
 	else {
 
-		model.meshes.resize(info.meshes.size());
-		model.material.resize(info.materials.size());
-
 		for (u32 i = 0u; i < info.meshes.size(); ++i) {
-
+		    
 			MeshInfo& m = info.meshes[i];
 
-			model.meshes[i].mesh.positions = std::move(m.positions);
-			model.meshes[i].mesh.normals = std::move(m.normals);
-			model.meshes[i].mesh.texcoords = std::move(m.texcoords);
-			model.meshes[i].mesh.indices = std::move(m.indices);
+			Entity e = ecs_entity_create(ecs);
+
+			MeshComponent& comp = *ecs_component_add<MeshComponent>(ecs, e);
+			
+			comp.mesh.positions = std::move(m.positions);
+			comp.mesh.normals = std::move(m.normals);
+			comp.mesh.texcoords = std::move(m.texcoords);
+			comp.mesh.indices = std::move(m.indices);
 
 			if (scale != f32_max)
-				mesh_set_scale(model.meshes[i].mesh, scale, true);
-			mesh_create_buffers(model.meshes[i].mesh);
+				mesh_set_scale(comp.mesh, scale, true);
+			mesh_create_buffers(comp.mesh);
 
-			model.meshes[i].mat_index = m.material_index;
-		}
+			MaterialInfo& mat = info.materials[m.material_index];
 
-		for (u32 i = 0u; i < info.materials.size(); ++i) {
-
-			MaterialInfo& m = info.materials[i];
-
-			model.material[i].diffuse_color = m.diffuse_color;
-			model.material[i].specular_color = m.specular_color;
-			model.material[i].shininess = m.shininess;
-			model.material[i].diffuse_map = m.diffuse_map;
+			comp.material.diffuse_color = mat.diffuse_color;
+			comp.material.specular_color = mat.specular_color;
+			comp.material.shininess = mat.shininess;
+			comp.material.diffuse_map = mat.diffuse_map;
 		}
 	}
 }
@@ -69,12 +63,16 @@ Result init()
 	svCheck(offscreen_create(1920u, 1080u, &offscreen));
 	svCheck(zbuffer_create(1920u, 1080u, &zbuffer));
 
+	ecs_component_register<MeshComponent>("Mesh");
+	
+	ecs_create(&ecs);
+	
 	svCheck(camerabuffer_create(&camera_buffer));
 
 	gui = gui_create();
 
-	//load_model(sponza, "assets/dragon.obj");
-	load_model(sponza, "assets/gobber/GoblinX.obj");
+	//load_model(ecs, "assets/dragon.obj");
+	load_model(ecs, "assets/gobber/GoblinX.obj");
 
 	return Result_Success;
 }
@@ -130,9 +128,10 @@ void render()
 	camera_buffer.position = camera_position;
 	camerabuffer_update(&camera_buffer, cmd);
 
-	for (u32 i = 0u; i < sponza.meshes.size(); ++i) {
+	EntityView<MeshComponent> entities(ecs);
 
-		meshes.emplace_back(XMMatrixScaling(1.01f, 1.01f,1.01f) * XMMatrixRotationY(timer_now() * 0.5f), &sponza.meshes[i].mesh, &sponza.material[sponza.meshes[i].mat_index]);
+	for (MeshComponent& mesh : entities) {
+	    		meshes.emplace_back(XMMatrixScaling(1.01f, 1.01f,1.01f) * XMMatrixRotationY(timer_now() * 0.5f), &mesh.mesh, &mesh.material);
 	}
 
 	draw_meshes(meshes.data(), u32(meshes.size()), lights, 1u, cmd);

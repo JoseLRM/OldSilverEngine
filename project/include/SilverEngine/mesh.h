@@ -43,7 +43,7 @@ namespace sv {
 	Result mesh_create_buffers(Mesh& mesh, ResourceUsage usage = ResourceUsage_Static);
 	Result mesh_update_buffers(Mesh& mesh, CommandList cmd);
 	Result mesh_clear(Mesh& mesh);
-
+	
 	// Model loading
 
 	struct MeshInfo {
@@ -70,7 +70,7 @@ namespace sv {
 		std::vector<MeshInfo> meshes;
 		std::vector<MaterialInfo> materials;
 	};
-
+	
 	Result model_load(const char* filepath, ModelInfo& model_info);
 
 }
