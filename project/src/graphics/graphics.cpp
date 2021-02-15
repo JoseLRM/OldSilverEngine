@@ -21,9 +21,9 @@ namespace sv {
 	static DepthStencilState*	g_DefDepthStencilState;
 	static RasterizerState*		g_DefRasterizerState;
 
-	Result loadFileTextureAsset(const char* filePath, void* pObject)
+	Result loadFileTextureAsset(void* pObject, const char* filePath)
 	{
-		GPUImage*& image = *reinterpret_cast<GPUImage * *>(pObject);
+		GPUImage*& image = *reinterpret_cast<GPUImage**>(pObject);
 
 		// Get file data
 		void* data;
@@ -53,13 +53,6 @@ namespace sv {
 		return res;
 	}
 
-	Result createTextureAsset(void* pObject)
-	{
-		GPUImage*& image = *reinterpret_cast<GPUImage**>(pObject);
-		image = nullptr;
-		return Result_Success;
-	}
-
 	Result destroyTextureAsset(void* pObject)
 	{
 		GPUImage*& image = *reinterpret_cast<GPUImage * *>(pObject);
@@ -68,10 +61,10 @@ namespace sv {
 		return Result_Success;
 	}
 
-	Result recreateTextureAsset(const char* filePath, void* pObject)
+	Result recreateTextureAsset(void* pObject, const char* filePath)
 	{
 		svCheck(destroyTextureAsset(pObject));
-		return loadFileTextureAsset(filePath, pObject);
+		return loadFileTextureAsset(pObject, filePath);
 	}
 
 	Result graphics_initialize()
@@ -169,24 +162,20 @@ namespace sv {
 		// Register Texture Asset
 		{
 			const char* extensions[] = {
-			"png"
+			"png", "tga", "jpg"
 			};
 
-			AssetRegisterTypeDesc desc;
+			AssetTypeDesc desc;
 			desc.name = "Texture";
-			desc.pExtensions = extensions;
-			desc.extensionsCount = 1u;
-			desc.loadFileFn = loadFileTextureAsset;
-			desc.loadIDFn = nullptr;
-			desc.createFn = createTextureAsset;
-			desc.destroyFn = destroyTextureAsset;
-			desc.reloadFileFn = recreateTextureAsset;
-			desc.serializeFn = nullptr;
-			desc.isUnusedFn = nullptr;
-			desc.assetSize = sizeof(GPUImage*);
-			desc.unusedLifeTime = 3.f;
+			desc.asset_size = sizeof(GPUImage*);
+			desc.extensions = extensions;
+			desc.extension_count = 3u;
+			desc.load_file = loadFileTextureAsset;
+			desc.free = destroyTextureAsset;
+			desc.reload_file = recreateTextureAsset;
+			desc.unused_time = 3.f;
 			
-			asset_register_type(&desc, nullptr);
+			svCheck(register_asset_type(&desc));
 		}
 
 		return Result_Success;

@@ -52,7 +52,9 @@ struct Output {
 };
 
 struct Material {
-	float3 diffuse_color;
+	float3	diffuse_color;
+	f32		shininess;
+	float3	specular_color;
 };
 
 #define LIGHT_TYPE_POINT 1u
@@ -100,21 +102,25 @@ Output main(Input input)
 		case LIGHT_TYPE_POINT:
 		{
 			float3 to_light = light.position - input.position;
-
 			f32 distance = length(to_light);
 			to_light = normalize(to_light);
 
-			f32 intensity = max(dot(normal, to_light), 0.1f);
-			intensity *= light.intensity;
+			// Diffuse
+			f32 diffuse = max(dot(normal, to_light), 0.1f);
 
-			light_accumulation += light.color * intensity;
+			// Specular
+			float specular = pow(max(dot(normalize(-input.position), reflect(-to_light, normal)), 0.f), material.shininess);
+
+			// TODO attenuation and intensity
+
+			light_accumulation += light.color * ((diffuse * material.diffuse_color) + (specular * material.specular_color));
 		}
 		break;
 
 		}
 	}
 
-    float4 diffuse = diffuse_map.Sample(sam, input.texcoord) * float4(material.diffuse_color, 1.f);
+    float4 diffuse = diffuse_map.Sample(sam, input.texcoord);
     
     output.color = diffuse * float4(light_accumulation, 1.f);
 

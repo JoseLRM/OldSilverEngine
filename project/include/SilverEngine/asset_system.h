@@ -4,187 +4,141 @@
 
 namespace sv {
 
-	typedef void* AssetType;
+	struct AssetPtr {
 
-	typedef Result(*AssetLoadFromFileFn)(const char* filePath, void* pObject);
-	typedef Result(*AssetLoadFromIDFn)(size_t ID, void* pObject);
-	typedef Result(*AssetCreateFn)(void* pObject);
-	typedef Result(*AssetDestroyFn)(void* pObject);
-	typedef Result(*AssetSerializeFn)(ArchiveO& archive, void* pObject);
-	typedef bool(*AssetIsUnusedFn)(void* pObject);
+		AssetPtr() = default;
 
-	class AssetRef {
-
-		// This is a copy of a internal struct to inline some getters
-		struct Internal {
-			std::atomic<int>	refCount = 0;
-			float				unusedTime = f32_max;
-			const char*			filePath = nullptr;
-			size_t				hashCode = 0u;
-			void*				assetType = nullptr;
-		};
-
-	public:
-		AssetRef() = default;
-		~AssetRef();
-		AssetRef(const AssetRef& other);
-		AssetRef& operator=(const AssetRef& other);
-		AssetRef(AssetRef&& other) noexcept;
-		AssetRef& operator=(AssetRef&& other) noexcept;
-		inline bool operator==(const AssetRef& other) const noexcept { return pInternal == other.pInternal; }
-		inline bool operator!=(const AssetRef& other) const noexcept { return pInternal != other.pInternal; }
-
-		/*
-			Load a asset attached to a external file
-		*/
-		Result loadFromFile(const char* filePath);
-		Result loadFromFile(size_t hashCode);
-
-		/*
-			Load a asset assigned with an ID
-		*/
-		Result loadFromID(AssetType assetType, const char* str);
-		Result loadFromID(AssetType assetType, size_t ID);
-
-		/*
-			Create a asset attached to anything
-		*/
-		Result create(AssetType assetType);
-
-		/*
-			Try to load from a saved archive
-		*/
-		Result loadFromArchive(ArchiveI& archive);
-
-		/*
-			Save the asset to be loaded in other execution
-		*/
-		void saveToArchive(ArchiveO& archive) const;
-
-		/*
-			Dereference to the global asset, if it is unused it will be removed
-		*/
-		void unload();
-
-		Result serialize(const char* filePath = nullptr);
-
-		inline void* get() const { return pInternal ? (reinterpret_cast<u8*>(pInternal) + sizeof(Internal)) : nullptr; }
-		const char* getAssetTypeStr() const;
-		
-		inline bool isAttachedToFile() const noexcept 
-		{ 
-			const char* filePath = reinterpret_cast<Internal*>(pInternal)->filePath;
-			return filePath && filePath != (const char*)SIZE_MAX;
-		}
-		inline bool isAttachedToID() const noexcept 
+		AssetPtr::AssetPtr(void* ptr) : ptr(ptr)
 		{
-			return reinterpret_cast<Internal*>(pInternal)->filePath == nullptr;
+			std::atomic<i32>* ref = reinterpret_cast<std::atomic<i32>*>(ptr);
+			ref->fetch_add(1);
 		}
 
-		inline const char* getFilePath() const noexcept
+		AssetPtr::~AssetPtr()
 		{
-			if (pInternal == nullptr) return nullptr;
-			const char* filePath = reinterpret_cast<Internal*>(pInternal)->filePath;
-			if (filePath) return (filePath == (const char*)SIZE_MAX) ? nullptr : filePath;
-			return nullptr;
+			if (ptr) {
+				std::atomic<i32>* ref = reinterpret_cast<std::atomic<i32>*>(ptr);
+				ref->fetch_add(-1);
+				ptr = nullptr;
+			}
 		}
 
-		inline size_t getHashCode() const noexcept
-		{ 
-			return pInternal ? reinterpret_cast<Internal*>(pInternal)->hashCode : 0u;
-		}
-		inline size_t getID() const noexcept
-		{ 
-			return getHashCode();
+		AssetPtr::AssetPtr(const AssetPtr& other)
+		{
+			if (other.ptr) {
+				ptr = other.ptr;
+				std::atomic<i32>* ref = reinterpret_cast<std::atomic<i32>*>(ptr);
+				ref->fetch_add(1);
+			}
 		}
 
-		inline bool hasReference() const noexcept { return pInternal != nullptr; }
+		AssetPtr& AssetPtr::operator=(const AssetPtr& other)
+		{
+			if (ptr) {
+				std::atomic<i32>* ref = reinterpret_cast<std::atomic<i32>*>(ptr);
+				ref->fetch_add(-1);
+			}
 
-	private:
-		void* pInternal = nullptr;
+			ptr = other.ptr;
+
+			if (ptr) {
+				std::atomic<i32>* ref = reinterpret_cast<std::atomic<i32>*>(ptr);
+				ref->fetch_add(1);
+			}
+
+			return *this;
+		}
+
+		AssetPtr::AssetPtr(AssetPtr&& other) noexcept
+		{
+			ptr = other.ptr;
+			other.ptr = nullptr;
+		}
+
+		AssetPtr& AssetPtr::operator=(AssetPtr&& other) noexcept
+		{
+			if (ptr) {
+				std::atomic<i32>* ref = reinterpret_cast<std::atomic<i32>*>(ptr);
+				ref->fetch_add(-1);
+			}
+
+			ptr = other.ptr;
+			other.ptr = nullptr;
+
+			return *this;
+		}
+
+		inline bool operator==(const AssetPtr& other) const noexcept { return ptr == other.ptr; }
+		inline bool operator!=(const AssetPtr& other) const noexcept { return ptr != other.ptr; }
+
+		void* ptr = nullptr;
 
 	};
 
-	class Asset {
-	public:
-		inline Result loadFromFile(const char* filePath) { return m_Ref.loadFromFile(filePath); }
-		inline Result loadFromFile(size_t hashCode) { return m_Ref.loadFromFile(hashCode); }
-		inline Result loadFromID(AssetType assetType, size_t ID) { return m_Ref.loadFromID(assetType, ID); }
-		inline Result create(AssetType assetType) { return m_Ref.create(assetType); }
-		inline Result load(ArchiveI& archive) { return m_Ref.loadFromArchive(archive); }
-		inline void save(ArchiveO& archive) const { m_Ref.saveToArchive(archive); }
-		inline void unload() { m_Ref.unload(); }
+	Result	load_asset_from_file(AssetPtr& asset_ptr, const char* filepath);
+	void	unload_asset(AssetPtr& asset_ptr);
 
-		Result serialize(const char* filePath = nullptr) { return m_Ref.serialize(filePath); }
+	void*		get_asset_content(const AssetPtr& asset_ptr);
+	const char* get_asset_filepath(const AssetPtr& asset_ptr);
 
-		inline void* get() const { return m_Ref.get(); }
-		inline const char* getAssetTypeStr() const { return m_Ref.getAssetTypeStr(); }
+	typedef Result(*AssetLoadFileFn)(void* asset, const char* filepath);
+	typedef Result(*AssetReloadFileFn)(void* asset, const char* filepath);
+	typedef Result(*AssetCreateFn)();
+	typedef Result(*AssetFreeFn)(void* asset);
 
-		inline bool isAttachedToFile() const noexcept { return m_Ref.isAttachedToFile(); }
-		inline bool isAttachedToID() const noexcept { return m_Ref.isAttachedToID(); }
-
-		inline const char* getFilePath() const noexcept { return m_Ref.getFilePath(); }
-		inline size_t getHashCode() const noexcept { return m_Ref.getHashCode(); }
-		inline size_t getID() const noexcept { return m_Ref.getID(); }
-
-		inline bool hasReference() const noexcept { return m_Ref.hasReference(); }
-
-		inline AssetRef& getRef() noexcept { return m_Ref; }
-		inline const AssetRef& getRef() const noexcept { return m_Ref; }
-
-	protected:
-		AssetRef m_Ref;
+	struct AssetTypeDesc {
+	
+		std::string			name;
+		u32					asset_size;
+		const char**		extensions;
+		u32					extension_count;
+		AssetLoadFileFn		load_file;
+		AssetReloadFileFn	reload_file;
+		AssetCreateFn		create;
+		AssetFreeFn			free;
+		f32					unused_time;
 
 	};
 
-	SV_INLINE ArchiveO& operator<<(ArchiveO& file, Asset& asset)
+	Result register_asset_type(const AssetTypeDesc* desc);
+
+	void update_asset_files();
+	void free_unused_assets();
+
+	SV_INLINE void load_asset(ArchiveI& archive, AssetPtr& asset_ptr)
 	{
-		asset.getRef().saveToArchive(file);
-		return file;
-	}
-	SV_INLINE ArchiveI& operator<<(ArchiveI& file, Asset& asset)
-	{
-		asset.getRef().loadFromArchive(file);
-		return file;
+		u8 type;
+		archive >> type;
+
+		switch (type)
+		{
+		case 1u:
+		{
+			std::string filepath;
+			archive >> filepath;
+
+			if (result_fail(load_asset_from_file(asset_ptr, filepath.c_str()))) {
+				SV_LOG_ERROR("Can't load the asset '%s'", filepath.c_str());
+			}
+		}break;
+		}
 	}
 
-	struct AssetFile {
-		
-		AssetType assetType = nullptr;
-		void* pInternalAsset = nullptr;
-		std::filesystem::file_time_type lastModification;
-		u32 refreshID;
+	SV_INLINE void save_asset(ArchiveO& archive, const AssetPtr& asset_ptr)
+	{
+		if (asset_ptr.ptr == nullptr) archive << u8(0u);
+		else {
+			const char* filepath = get_asset_filepath(asset_ptr);
 
-	};
+			if (filepath == nullptr) {
+				archive << (u8)(0u);
+			}
+			else {
 
-	struct AssetRegisterTypeDesc {
-
-		const char*			name;
-		const char**		pExtensions;
-		u32				extensionsCount;
-		AssetLoadFromFileFn	loadFileFn;
-		AssetLoadFromIDFn	loadIDFn;
-		AssetCreateFn		createFn;
-		AssetDestroyFn		destroyFn;
-		AssetLoadFromFileFn	reloadFileFn;
-		AssetSerializeFn	serializeFn;
-		AssetIsUnusedFn		isUnusedFn;
-		size_t				assetSize;
-		float				unusedLifeTime;
-
-	};
-
-	Result asset_refresh();
-
-	void asset_free_unused();
-	void asset_free_unused(AssetType assetType);
-
-	Result asset_register_type(const AssetRegisterTypeDesc* desc, AssetType* pAssetType);
-
-	const char* asset_filepath_get(size_t hashCode);
-	AssetType asset_type_get(const char* name);
-	const std::string& asset_folderpath_get();
-
-	const std::unordered_map<std::string, AssetFile>& asset_map_get();
+				archive << (u8)(1u);
+				archive << filepath;
+			}
+		}
+	}
 
 }

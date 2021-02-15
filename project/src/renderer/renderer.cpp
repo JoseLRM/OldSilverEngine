@@ -32,11 +32,11 @@ namespace sv {
 		COMPILE_VS(gfx.vs_text, "text.hlsl");
 		COMPILE_PS(gfx.ps_text, "text.hlsl");
 
-		COMPILE_VS_(gfx.vs_sprite, "sprite/default.hlsl");
-		COMPILE_PS_(gfx.ps_sprite, "sprite/default.hlsl");
+		COMPILE_VS(gfx.vs_sprite, "sprite/default.hlsl");
+		COMPILE_PS(gfx.ps_sprite, "sprite/default.hlsl");
 
-		COMPILE_VS(gfx.vs_mesh, "mesh/default.hlsl");
-		COMPILE_PS(gfx.ps_mesh, "mesh/default.hlsl");
+		COMPILE_VS_(gfx.vs_mesh, "mesh/default.hlsl");
+		COMPILE_PS_(gfx.ps_mesh, "mesh/default.hlsl");
 
 		return Result_Success;
 	}
@@ -405,6 +405,8 @@ namespace sv {
 				rend_utils[i].batch_data = nullptr;
 			}
 		}
+
+		svCheck(font_destroy(font_opensans));
 
 		return Result_Success;
 	}

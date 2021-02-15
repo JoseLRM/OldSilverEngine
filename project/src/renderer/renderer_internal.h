@@ -30,6 +30,8 @@ namespace sv {
 
 	struct MaterialData {
 		Color3f diffuse_color;
+		f32 shininess;
+		Color3f specular_color;
 	};
 
 	struct CameraBuffer_GPU {
@@ -69,7 +71,6 @@ namespace sv {
 		v4_f32 position;
 		v2_f32 texCoord;
 		Color color;
-		Color emissionColor;
 	};
 
 	struct SpriteData {

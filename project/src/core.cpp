@@ -776,17 +776,12 @@ namespace sv {
 
 namespace sv {
 
-	Result load_image(const char* filePath, void** pdata, u32* width, u32* height)
+	Result load_image(const char* filepath, void** pdata, u32* width, u32* height)
 	{
-		int w = 0, h = 0, bits = 0;
+		SV_PARSE_FILEPATH();
 
-#ifdef SV_RES_PATH
-		std::string filePathStr = SV_RES_PATH;
-		filePathStr += filePath;
-		void* data = stbi_load(filePathStr.c_str(), &w, &h, &bits, 4);
-#else
-		void* data = stbi_load(filePath, &w, &h, &bits, 4);
-#endif
+		int w = 0, h = 0, bits = 0;
+		void* data = stbi_load(filepath, &w, &h, &bits, 4);
 
 		* pdata = nullptr;
 		*width = w;

@@ -128,9 +128,11 @@ namespace sv {
 
 			MaterialData material_data;
 			material_data.diffuse_color = inst.material->diffuse_color;
+			material_data.specular_color = inst.material->specular_color;
+			material_data.shininess = inst.material->shininess;
 
 			graphics_buffer_update(instance_buffer, &mesh_data, sizeof(MeshData), 0u, cmd);
-			graphics_buffer_update(material_buffer, inst.material, sizeof(Material), 0u, cmd);
+			graphics_buffer_update(material_buffer, &material_data, sizeof(MaterialData), 0u, cmd);
 
 			// Bind material resources
 			GPUImage* diffuse_map = inst.material->diffuse_map.get();

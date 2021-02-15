@@ -277,21 +277,27 @@ namespace sv {
 		return Result_Success;
 	}
 
-	static Result get_texture(aiString& filepath, const aiMaterial& mat, TextureAsset& tex, aiTextureType type)
+	static Result get_texture(const std::string& folderpath, std::string& str, const aiMaterial& mat, TextureAsset& tex, aiTextureType type)
 	{
-		mat.GetTexture(type, 0u, &filepath);
+		// I hate you
+		aiString aistr;
+		mat.GetTexture(type, 0u, &aistr);
 
-		if (filepath.length == 0u) return Result_NotFound;
+		if (aistr.length == 0u) return Result_NotFound;
 
-		for (u32 i = 0u; i < filepath.length; ++i) {
-			if (filepath.data[i] == '\\') filepath.data[i] = '/';
+		for (u32 i = 0u; i < aistr.length; ++i) {
+			if (aistr.data[i] == '\\') aistr.data[i] = '/';
 		}
 
-		return tex.loadFromFile(filepath.C_Str());
+		str = folderpath + aistr.data;
+
+		return load_asset_from_file(tex.asset_ptr, str.c_str());
 	}
 
 	Result model_load(const char* filepath, ModelInfo& model_info)
 	{
+		std::string folderpath = filepath;
+
 		SV_PARSE_FILEPATH();
 
 		Assimp::Importer importer;
@@ -299,22 +305,47 @@ namespace sv {
 		const aiScene const* scene = importer.ReadFile(filepath, aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_CalcTangentSpace | aiProcess_OptimizeMeshes);
 		if (scene == nullptr || !scene->HasMeshes()) return Result_InvalidFormat;
 
+		// Compute folder path
+		{
+			const char* filepath = folderpath.data();
+
+			const char* it = filepath + strlen(filepath);
+			const char* end = filepath - 1u;
+			
+			while (it != end) {
+
+				if (*it == '/') {
+
+					++it;
+					size_t size = it - filepath;
+					folderpath.resize(size);
+					memcpy(folderpath.data(), filepath, size);
+					break;
+				}
+
+				--it;
+			}
+		}
+
 		model_info.meshes.resize(scene->mNumMeshes);
 		model_info.materials.resize(scene->mNumMaterials);
 
 		// Create materials
+		std::string path;
+
 		foreach(i, scene->mNumMaterials) {
 
 			const aiMaterial& m0 = *scene->mMaterials[i];
 			MaterialInfo& m1 = model_info.materials[i];
 
 			aiColor3D color;
-			aiString filepath;
 
 			m0.Get(AI_MATKEY_NAME, m1.name);
 			m0.Get(AI_MATKEY_COLOR_DIFFUSE, color); m1.diffuse_color = { color.r, color.g, color.b };
+			m0.Get(AI_MATKEY_COLOR_SPECULAR, color); m1.specular_color = { color.r, color.g, color.b };
+			m0.Get(AI_MATKEY_SHININESS, m1.shininess);
 			
-			get_texture(filepath, m0, m1.diffuse_map, aiTextureType_DIFFUSE);
+			get_texture(folderpath, path, m0, m1.diffuse_map, aiTextureType_DIFFUSE);
 		}
 
 		foreach(i, scene->mNumMeshes) {
@@ -364,7 +395,7 @@ namespace sv {
 				foreach(j, m0.mNumVertices) {
 
 					aiVector3D v = m0.mTextureCoords[0][j];
-					m1.texcoords[j] = { v.x, v.y };
+					m1.texcoords[j] = { v.x, 1.f - v.y };
 				}
 			}
 		}

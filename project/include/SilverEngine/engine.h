@@ -9,7 +9,6 @@ namespace sv {
 		ApplicationCallbacks	callbacks;
 		WindowDesc				windowDesc;
 		u32						minThreadsCount;
-		const char*				assetsFolderPath;
 
 	};
 

@@ -722,9 +722,14 @@ namespace sv {
 
 	// Assets
 
-	class TextureAsset : public Asset {
-	public:
-		inline GPUImage* get() const noexcept { GPUImage** ptr = reinterpret_cast<GPUImage**>(m_Ref.get()); return ptr ? *ptr : nullptr; }
+	struct TextureAsset {
+	
+		inline GPUImage* get() const noexcept { GPUImage** ptr = reinterpret_cast<GPUImage**>(get_asset_content(asset_ptr)); return ptr ? *ptr : nullptr; }
+
+		SV_INLINE operator AssetPtr& () { return asset_ptr; }
+		SV_INLINE operator const AssetPtr& () const { return asset_ptr; }
+
+		AssetPtr asset_ptr;
 	};
 
 	// Properties

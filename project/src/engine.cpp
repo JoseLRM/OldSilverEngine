@@ -1,11 +1,11 @@
 #include "SilverEngine/core.h"
 
 #include "SilverEngine/engine.h"
+#include "SilverEngine/asset_system.h"
 #include "SilverEngine/platform/impl.h"
 #include "core_internal.h"
 
 #include "task_system/task_system_internal.h"
-#include "asset_system/asset_system_internal.h"
 #include "event_system/event_system_internal.h"
 #include "window/window_internal.h"
 #include "graphics/graphics_internal.h"
@@ -38,7 +38,6 @@ namespace sv {
 		// CORE
 		INIT_SYSTEM("TaskSystem",		task_initialize(desc.minThreadsCount));
 		INIT_SYSTEM("EventSystem",		event_initialize());
-		INIT_SYSTEM("AssetSystem",		asset_initialize(desc.assetsFolderPath));
 		INIT_SYSTEM("Window",			window_initialize());
 		INIT_SYSTEM("GraphicsAPI",		graphics_initialize());
 		INIT_SYSTEM("Renderer",			renderer_initialize());
@@ -165,6 +164,9 @@ namespace sv {
 		return Result_Success;
 	}
 
+	void update_assets();
+	void close_assets();
+
 	Result engine_loop()
 	{
 		if (!engine.able_to_run) {
@@ -213,7 +215,7 @@ namespace sv {
 			}
 
 			// Update assets
-			asset_update();
+			update_assets();
 
 			// Update User
 			engine.app_callbacks.update();
@@ -259,7 +261,7 @@ namespace sv {
 		try {
 			svCheck(engine.app_callbacks.close());
 
-			asset_free_unused();
+			free_unused_assets();
 
 			// Close Window
 			svCheck(window_destroy(engine.window));
@@ -268,7 +270,7 @@ namespace sv {
 			if (result_fail(renderer_close())) { SV_LOG_ERROR("Can't close render utils"); }
 			if (result_fail(graphics_close())) { SV_LOG_ERROR("Can't close graphicsAPI"); }
 			if (result_fail(window_close())) { SV_LOG_ERROR("Can't close window"); }
-			if (result_fail(asset_close())) { SV_LOG_ERROR("Can't close the asset system"); }
+			close_assets();
 			if (result_fail(event_close())) { SV_LOG_ERROR("Can't close the event system"); }
 			if (result_fail(task_close())) { SV_LOG_ERROR("Can't close the task system"); }
 			logging_close();

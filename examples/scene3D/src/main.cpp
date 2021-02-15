@@ -3,17 +3,66 @@
 
 using namespace sv;
 
+struct TexturedMesh {
+	Mesh mesh;
+	u32 mat_index;
+};
+
+struct Model {
+
+	std::vector<TexturedMesh> meshes;
+	std::vector<Material> material;
+
+};
+
 GPUImage* offscreen = nullptr;
 GPUImage* zbuffer = nullptr;
 v3_f32				camera_position;
 v2_f32				camera_rotation;
 CameraProjection	camera;
 CameraBuffer		camera_buffer;
-Mesh plane;
-Mesh model;
-Material mat;
+Model sponza;
 
 GUI* gui;
+
+void load_model(Model& model, const char* filepath, f32 scale = f32_max)
+{
+	ModelInfo info;
+	if (result_fail(model_load(filepath, info))) {
+		SV_LOG_ERROR("Can't load the model");
+	}
+	else {
+
+		model.meshes.resize(info.meshes.size());
+		model.material.resize(info.materials.size());
+
+		for (u32 i = 0u; i < info.meshes.size(); ++i) {
+
+			MeshInfo& m = info.meshes[i];
+
+			model.meshes[i].mesh.positions = std::move(m.positions);
+			model.meshes[i].mesh.normals = std::move(m.normals);
+			model.meshes[i].mesh.texcoords = std::move(m.texcoords);
+			model.meshes[i].mesh.indices = std::move(m.indices);
+
+			if (scale != f32_max)
+				mesh_set_scale(model.meshes[i].mesh, scale, true);
+			mesh_create_buffers(model.meshes[i].mesh);
+
+			model.meshes[i].mat_index = m.material_index;
+		}
+
+		for (u32 i = 0u; i < info.materials.size(); ++i) {
+
+			MaterialInfo& m = info.materials[i];
+
+			model.material[i].diffuse_color = m.diffuse_color;
+			model.material[i].specular_color = m.specular_color;
+			model.material[i].shininess = m.shininess;
+			model.material[i].diffuse_map = m.diffuse_map;
+		}
+	}
+}
 
 Result init()
 {
@@ -24,27 +73,8 @@ Result init()
 
 	gui = gui_create();
 
-	// TEMP: create meshes
-	mesh_apply_plane(plane, XMMatrixScaling(30.f, 0.f, 30.f));
-	mesh_create_buffers(plane);
-
-	ModelInfo info;
-	if (result_fail(model_load("assets/MP44/MP44.obj", info))) {
-		SV_LOG_ERROR("Can't load the model");
-	}
-	else {
-
-		model.positions = std::move(info.meshes.back().positions);
-		model.normals = std::move(info.meshes.back().normals);
-		model.texcoords = std::move(info.meshes.back().texcoords);
-		model.indices = std::move(info.meshes.back().indices);
-		
-		mesh_set_scale(model, 1.f, true);
-
-		mesh_create_buffers(model);
-
-		mat.diffuse_color = info.materials.back().diffuse_color;
-	}
+	//load_model(sponza, "assets/dragon.obj");
+	load_model(sponza, "assets/gobber/GoblinX.obj");
 
 	return Result_Success;
 }
@@ -76,47 +106,22 @@ void render()
 
 	// Process lighting
 
-	LightInstance lights[] = { LightInstance(Color3f::White(), v3_f32{ camera_position.x, camera_position.y, camera_position.z }, 3.f, 1.f, 0.5f) };
+	LightInstance lights[] = { LightInstance(Color3f::White(), v3_f32{ 0.f, 2.f, 0.f }, 3.f, 1.f, 0.5f) };
 
 	// Mesh rendering
 
 	static FrameList<MeshInstance> meshes;
 
-	// Draw gun
+	// Draw scene
 
 	meshes.reset();
 
 	camera.projection_type = ProjectionType_Perspective;
-	camera.width = 0.3f;
-	camera.height = 0.3f;
-	camera.near = 0.1f;
-	camera.far = 1000.f;
-	projection_update_matrix(camera);
-
-	camera_buffer.rotation = v4_f32(XMQuaternionRotationRollPitchYaw(0.f, 0.f, 0.f));
-	camera_buffer.view_matrix = XMMatrixIdentity();
-	camera_buffer.projection_matrix = camera.projection_matrix;
-	camera_buffer.position = {};
-	camerabuffer_update(&camera_buffer, cmd);
-
-	XMMATRIX gun_matrix = XMMatrixRotationY(ToRadians(180.f))
-		* XMMatrixTranslation(0.2f, -0.2f, 0.35f);
-
-	meshes.emplace_back(gun_matrix, &model, &mat);
-
-	lights[0] = { LightInstance(Color3f::White(), v3_f32{ }, 3.f, 1.f, 0.5f) };
-
-	draw_meshes(meshes.data(), u32(meshes.size()), lights, 1u, cmd);
-
-	// Draw rest of the scene
-
-	meshes.reset();
-
-	camera.projection_type = ProjectionType_Perspective;
-	camera.width = 0.3f;
-	camera.height = 0.3f;
+	camera.width = 0.5f;
+	camera.height = 0.5f;
 	camera.near = 0.3f;
-	camera.far = 1000.f;
+	camera.far = 10000.f;
+	projection_adjust(camera, window_aspect_get(engine.window));
 	projection_update_matrix(camera);
 
 	camera_buffer.rotation = v4_f32(XMQuaternionRotationRollPitchYawFromVector(camera_rotation.getDX()));
@@ -125,13 +130,10 @@ void render()
 	camera_buffer.position = camera_position;
 	camerabuffer_update(&camera_buffer, cmd);
 
-	
-	Material plane_mat;
-	plane_mat.diffuse_color = { 0.05f, 0.5f, 0.8f };
+	for (u32 i = 0u; i < sponza.meshes.size(); ++i) {
 
-	meshes.emplace_back(XMMatrixTranslation(0.f, 0.f, 0.f), &plane, &plane_mat);
-
-	lights[0] = { LightInstance(Color3f::White(), v3_f32{ camera_position.x, camera_position.y, camera_position.z }, 3.f, 1.f, 0.5f) };
+		meshes.emplace_back(XMMatrixScaling(1.01f, 1.01f,1.01f) * XMMatrixRotationY(timer_now() * 0.5f), &sponza.meshes[i].mesh, &sponza.material[sponza.meshes[i].mat_index]);
+	}
 
 	draw_meshes(meshes.data(), u32(meshes.size()), lights, 1u, cmd);
 
@@ -146,8 +148,7 @@ Result close()
 	svCheck(graphics_destroy(zbuffer));
 
 	camerabuffer_destroy(&camera_buffer);
-	mesh_clear(model);
-	mesh_clear(plane);
+	
 	gui_destroy(gui);
 
 	return Result_Success;
@@ -156,7 +157,6 @@ Result close()
 int main()
 {
 	InitializationDesc desc;
-	desc.assetsFolderPath = "assets/";
 	desc.minThreadsCount = 2u;
 	desc.callbacks.initialize = init;
 	desc.callbacks.update = update;
