@@ -12,6 +12,7 @@ namespace sv {
 	/*
 	  TODO LIST:
 	  - GuiDraw structure that defines the rendering of a widget or some component (PD: Should not contain inherited alpha)
+	  - GuiDrag Widget.
 	*/
 
 	struct GUI_internal {
@@ -854,8 +855,17 @@ namespace sv {
 		switch (widget->type)
 		{
 		case GuiWidgetType_Container:
-			gui.containers.destroy(*reinterpret_cast<GuiContainer*>(widget));
-			break;
+		{
+		        GuiContainer& container = *reinterpret_cast<GuiContainer*>(widget);
+
+			for (GuiWidget* son : container.sons) {
+
+			    gui_widget_destroy(gui_ son);
+			}
+			
+			gui.containers.destroy(container);
+		}
+		break;
 
 		case GuiWidgetType_Button:
 			gui.buttons.destroy(*reinterpret_cast<GuiButton*>(widget));
