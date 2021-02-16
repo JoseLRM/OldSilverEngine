@@ -123,6 +123,7 @@ namespace sv {
 		// Register components
 		{
 			ecs_component_register<SpriteComponent>("Sprite");
+			ecs_component_register<NameComponent>("Name");
 			ecs_component_register<CameraComponent>("Camera");
 			ecs_component_register<MeshComponent>("Mesh");
 			ecs_component_register<PointLightComponent>("Point light");

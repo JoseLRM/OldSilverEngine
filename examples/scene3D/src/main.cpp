@@ -10,6 +10,9 @@ CameraComponent* camera;
 ECS* ecs;
 GUI* gui;
 
+GuiWindow* window;
+Editor_ECS* editor_ecs;
+
 void load_model(ECS* ecs, const char* filepath, f32 scale = f32_max)
 {
 	ModelInfo info;
@@ -75,6 +78,10 @@ Result init()
 	//load_model(ecs, "assets/dragon.obj");
 	load_model(ecs, "assets/gobber/GoblinX.obj");
 
+	// Editor stuff
+	window = gui_window_create(gui);
+	editor_ecs = create_editor_ecs(ecs, gui, window->container);
+
 	return Result_Success;
 }
 
@@ -83,6 +90,8 @@ void update()
 	key_shortcuts();
 
 	gui_update(gui, window_width_get(engine.window), window_height_get(engine.window));
+
+	update_editor_ecs(editor_ecs);
 
 	camera->adjust(f32(window_width_get(engine.window)) / f32(window_height_get(engine.window)));
 

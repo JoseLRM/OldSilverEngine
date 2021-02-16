@@ -5,7 +5,7 @@
 #include "SilverEngine/mesh.h"
 
 namespace sv {
-
+    
 	SV_DEFINE_COMPONENT(SpriteComponent) {
 
 		TextureAsset texture;
@@ -16,6 +16,15 @@ namespace sv {
 		void deserialize(ArchiveI& archive) {};
 
 	};
+
+	SV_DEFINE_COMPONENT(NameComponent) {
+
+	        std::string name;
+
+		void serialize(ArchiveO& archive) {};
+		void deserialize(ArchiveI& archive) {};
+
+	};	
 
 	enum ProjectionType : u32 {
 		ProjectionType_Clip,

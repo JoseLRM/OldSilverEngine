@@ -88,4 +88,75 @@ namespace sv {
 		trans.setPosition(position);
 	}
 
+    	Editor_ECS* create_editor_ecs(ECS* ecs, GUI* gui, GuiContainer* parent)
+	{
+	    Editor_ECS* e = new Editor_ECS();
+	    
+	    e->container = ecs_container_create(gui, parent);
+	    e->gui = gui;
+	    e->ecs = ecs;
+	    
+	    return e;
+	}
+	void update_editor_ecs(Editor_ECS* e)
+	{
+	    // Update entity buttons
+	    {
+		u32 count = ecs_entity_count(e->ecs);
+
+		// Update count
+		if (e->button_entity.size() != count) {
+		    e->button_entity.resize(count, nullptr);
+
+		    foreach(i, count) {
+
+			GuiButton*& button = e->button_entity[i];
+			
+			if (button == nullptr) {
+			    button = ecs_button_create(e->gui, e->container);
+			}
+
+			constexpr f32 PIXEL_HEIGHT = 20.f;
+			f32 y_value = 5.f + (f32(i) * (PIXEL_HEIGHT + 3.f));
+
+			button->x = { 0.f, GuiConstraint_Center, GuiCoordAlignment_Center };
+			button->y = { y_value, GuiConstraint_Pixel, GuiCoordAlignment_InverseTop };
+			button->w = { 0.9f, GuiConstraint_Relative };
+			button->h = { PIXEL_HEIGHT, GuiConstraint_Pixel };
+
+			button->user_id = u64(ecs_entity_get(e->ecs, i));
+			button->color = Color::Gray(100u);
+		    }
+		}
+		
+		// Update names and parents
+		foreach(i, count) {
+
+		    GuiButton* button = e->button_entity[i];
+		    Entity button_entity = Entity(button->user_id);
+		    Entity entity = ecs_entity_get(e->ecs, i);
+
+		    if (button_entity != entity) {
+
+			button->user_id = u64(entity);
+			button_entity = entity;
+
+			// TODO: update parents			
+		    }
+
+		    const char* entity_name = "Entity";
+		    
+		    NameComponent* name = ecs_component_get(e->ecs, entity);
+		    if (name && name->name.size()) {
+			entity_name = name->name.c_str();
+		    }
+
+		    if (strcmp(entity_name, button->text.c_str()) != 0) {
+			button->text = entity_name;
+		    }
+		}
+	    }
+	    
+	}
+
 }
