@@ -13,6 +13,7 @@ namespace sv {
 	  TODO LIST:
 	  - GuiDraw structure that defines the rendering of a widget or some component (PD: Should not contain inherited alpha)
 	  - GuiDrag Widget.
+	  - Option in guicontainer that resize auto
 	*/
 
 	struct GUI_internal {
