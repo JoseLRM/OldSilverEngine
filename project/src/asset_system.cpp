@@ -12,8 +12,8 @@ namespace sv {
 	struct AssetType_internal {
 
 		std::string					name;
-		AssetLoadFileFn				load_file;
 		AssetCreateFn				create;
+		AssetLoadFileFn				load_file;
 		AssetFreeFn					free;
 		f32							unused_time;
 		Time						last_update = 0.0;
@@ -52,12 +52,11 @@ namespace sv {
 
 		if (filepath) {
 			SV_LOG_INFO("%s freed: %s", type->name.c_str(), filepath);
+			filepath_map.erase(filepath);
 		}
 		else {
-			SV_LOG_INFO("%s freed");
+			SV_LOG_INFO("%s freed", type->name.c_str());
 		}
-
-		filepath_map.erase(filepath);
 
 		return res;
 	}
@@ -168,6 +167,47 @@ namespace sv {
 			SV_LOG_ERROR("The filepath '%s' has no extension", filepath);
 			return nullptr;
 		}
+	}
+
+	SV_INLINE static AssetType_internal* get_type_from_typename(const char* name)
+	{
+		for (AssetType_internal* type : asset_types) {
+			if (strcmp(type->name.c_str(), name) == 0) {
+				return type;
+			}
+		}
+		return nullptr;
+	}
+
+	Result create_asset(AssetPtr& asset_ptr, const char* asset_type_name)
+	{
+		AssetType_internal* type = get_type_from_typename(asset_type_name);
+		if (type == nullptr) {
+			SV_LOG_ERROR("Asset type '%s' not found", asset_type_name);
+			return Result_NotFound;
+		}
+
+		if (type->create == nullptr) {
+			SV_LOG_ERROR("The asset type '%u' can't create assets by default", asset_type_name);
+			return Result_InvalidUsage;
+		}
+
+		Asset_internal* asset = new(type->allocator.alloc()) Asset_internal();
+		asset->type = type;
+
+		Result res = type->create(asset + 1u);
+
+		if (result_fail(res)) {
+
+			type->allocator.free(asset);
+			return res;
+		}
+
+		asset_ptr = AssetPtr(asset);
+
+		SV_LOG_INFO("%s created", type->name.c_str());
+
+		return Result_Success;
 	}
 
 	Result load_asset_from_file(AssetPtr& asset_ptr, const char* filepath)

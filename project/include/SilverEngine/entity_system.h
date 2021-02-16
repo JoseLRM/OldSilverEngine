@@ -4,6 +4,7 @@
 
 #define SV_ENTITY_NULL 0u
 #define SV_COMPONENT_ID_INVALID std::numeric_limits<sv::CompID>::max()
+#define SV_DEFINE_COMPONENT(name) struct name : public sv::Component<name> 
 
 namespace sv {
 

@@ -30,6 +30,7 @@ typedef double          f64;
 // Macros
 
 #define foreach(_it, _end) for (u32 _it = 0u; _it < _end; ++_it)
+#define SV_BIT(x) (1ULL << x) 
 
 // Camera
 

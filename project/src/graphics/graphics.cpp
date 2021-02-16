@@ -21,52 +21,6 @@ namespace sv {
 	static DepthStencilState*	g_DefDepthStencilState;
 	static RasterizerState*		g_DefRasterizerState;
 
-	Result loadFileTextureAsset(void* pObject, const char* filePath)
-	{
-		GPUImage*& image = *reinterpret_cast<GPUImage**>(pObject);
-
-		// Get file data
-		void* data;
-		u32 width;
-		u32 height;
-		svCheck(load_image(filePath, &data, &width, &height));
-
-		// Create Image
-		GPUImageDesc desc;
-
-		desc.pData = data;
-		desc.size = width * height * 4u;
-		desc.format = Format_R8G8B8A8_UNORM;
-		desc.layout = GPUImageLayout_ShaderResource;
-		desc.type = GPUImageType_ShaderResource;
-		desc.usage = ResourceUsage_Static;
-		desc.CPUAccess = CPUAccess_None;
-		desc.dimension = 2u;
-		desc.width = width;
-		desc.height = height;
-		desc.depth = 1u;
-		desc.layers = 1u;
-
-		Result res = graphics_image_create(&desc, &image);
-
-		delete[] data;
-		return res;
-	}
-
-	Result destroyTextureAsset(void* pObject)
-	{
-		GPUImage*& image = *reinterpret_cast<GPUImage * *>(pObject);
-		svCheck(graphics_destroy(image));
-		image = nullptr;
-		return Result_Success;
-	}
-
-	Result recreateTextureAsset(void* pObject, const char* filePath)
-	{
-		svCheck(destroyTextureAsset(pObject));
-		return loadFileTextureAsset(pObject, filePath);
-	}
-
 	Result graphics_initialize()
 	{
 		Result res;
@@ -159,24 +113,6 @@ namespace sv {
 
 		svCheck(graphics_shader_initialize());
 
-		// Register Texture Asset
-		{
-			const char* extensions[] = {
-			"png", "tga", "jpg"
-			};
-
-			AssetTypeDesc desc;
-			desc.name = "Texture";
-			desc.asset_size = sizeof(GPUImage*);
-			desc.extensions = extensions;
-			desc.extension_count = 3u;
-			desc.load_file = loadFileTextureAsset;
-			desc.free = destroyTextureAsset;
-			desc.reload_file = recreateTextureAsset;
-			desc.unused_time = 3.f;
-			
-			svCheck(register_asset_type(&desc));
-		}
 
 		return Result_Success;
 	}

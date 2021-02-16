@@ -5,12 +5,13 @@
 struct Input {
     float3 position : Position;
     float3 normal : Normal;
+    float3 tangent : Tangent;
 	float2 texcoord : Texcoord;
 };
 
 struct Output {
     float3 frag_position : FragPosition;
-    float3 normal : FragNormal;
+    float3x3 TBN : TBN;
 	float2 texcoord : FragTexcoord;
     float4 position : SV_Position;
 };
@@ -31,7 +32,11 @@ Output main(Input input)
     float4 pos = mul(mvm, float4(input.position, 1.f));
     output.frag_position = pos.xyz;
     output.position = mul(camera.pm, pos);
-    output.normal = mul((float3x3)imvm, input.normal);
+
+	float3 bitangent = cross(input.normal, input.tangent);
+	output.TBN = float3x3(input.tangent, bitangent, input.normal);
+	output.TBN = mul((float3x3)imvm, output.TBN);
+
 	output.texcoord = input.texcoord;
 
     return output;
@@ -43,7 +48,7 @@ Output main(Input input)
 
 struct Input {
     float3 position : FragPosition;
-    float3 normal : FragNormal;
+    float3x3 TBN : TBN;
 	float2 texcoord : FragTexcoord;
 };
 
@@ -53,9 +58,12 @@ struct Output {
 
 struct Material {
 	float3	diffuse_color;
-	f32		shininess;
+	u32		flags;
 	float3	specular_color;
+	f32		shininess;
 };
+
+#define MAT_FLAG_NORMAL_MAPPING SV_BIT(0u)
 
 #define LIGHT_TYPE_POINT 1u
 #define LIGHT_TYPE_DIRECTION 2u
@@ -82,6 +90,7 @@ SV_CONSTANT_BUFFER(light_instances_buffer, b1) {
 };
 
 SV_TEXTURE(diffuse_map, t0);
+SV_TEXTURE(normal_map, t1);
 
 SV_SAMPLER(sam, s0);
 
@@ -89,7 +98,13 @@ Output main(Input input)
 {
     Output output;
 
-	float3 normal = normalize(input.normal);
+	float3 normal;
+
+	if (material.flags & MAT_FLAG_NORMAL_MAPPING) 
+		normal = normalize(mul(input.TBN, (normal_map.Sample(sam, input.texcoord).xyz * 2.f - 1.f)));
+	else
+		normal = normalize(float3(input.TBN._13, input.TBN._23, input.TBN._33));
+
 	float3 light_accumulation = float3(0.f, 0.f, 0.f);
 
 	[unroll]
@@ -106,7 +121,7 @@ Output main(Input input)
 			to_light = normalize(to_light);
 
 			// Diffuse
-			f32 diffuse = max(dot(normal, to_light), 0.f);
+			f32 diffuse = max(dot(normal, to_light), 0.1f);
 
 			// Specular
 			float specular = pow(max(dot(normalize(-input.position), reflect(-to_light, normal)), 0.f), material.shininess);
@@ -132,7 +147,7 @@ Output main(Input input)
 		}
 	}
 
-    float4 diffuse = diffuse_map.Sample(sam, input.texcoord);
+	float4 diffuse = diffuse_map.Sample(sam, input.texcoord);
     
     output.color = diffuse * float4(light_accumulation, 1.f);
 

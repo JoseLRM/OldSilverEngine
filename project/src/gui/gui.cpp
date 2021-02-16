@@ -628,7 +628,7 @@ namespace sv {
 		gui.locked.mouse_click = gui.widget_focused != nullptr;
 	}
 
-	void draw_widget(GUI_internal& gui, GuiWidget& widget, const v4_f32& parent_bounds, CommandList cmd)
+	static void draw_widget(GUI_internal& gui, GPUImage* offscreen, GuiWidget& widget, const v4_f32& parent_bounds, CommandList cmd)
 	{
 		v4_f32 bounds = compute_widget_bounds(gui, widget, parent_bounds);
 
@@ -648,10 +648,10 @@ namespace sv {
 
 			draw_debug_quad(pos.getVec3(), size, widget.color, cmd);
 
-			end_debug_batch(XMMatrixIdentity(), cmd);
+			end_debug_batch(offscreen, XMMatrixIdentity(), cmd);
 
 			for (GuiWidget* son : container.sons) {
-				draw_widget(gui, *son, bounds, cmd);
+				draw_widget(gui, offscreen, *son, bounds, cmd);
 			}
 		}
 		break;
@@ -668,7 +668,7 @@ namespace sv {
 			draw_debug_quad(pos.getVec3(), size, widget.color, cmd);
 			draw_debug_quad({ subpos, pos.y, 0.f }, { size.x * 0.05f, size.y * 1.1f }, slider.button_color, cmd);
 
-			end_debug_batch(XMMatrixIdentity(), cmd);
+			end_debug_batch(offscreen, XMMatrixIdentity(), cmd);
 		}
 		break;
 
@@ -678,13 +678,13 @@ namespace sv {
 
 			begin_debug_batch(cmd);
 			draw_debug_quad(pos.getVec3(), size, widget.color, cmd);
-			end_debug_batch(XMMatrixIdentity(), cmd);
+			end_debug_batch(offscreen, XMMatrixIdentity(), cmd);
 
 			if (button.text.size()) {
 
 				// TODO: Should use information about the largest character in the font
 				f32 text_y = pos.y + size.y * 0.6f;
-				draw_text(button.text.c_str(), pos.x - size.x * 0.5f, text_y, size.x, 1u, size.y, gui.resolution.x / gui.resolution.y, TextSpace_Clip, TextAlignment_Center, nullptr, cmd);
+				draw_text(offscreen, button.text.c_str(), pos.x - size.x * 0.5f, text_y, size.x, 1u, size.y, gui.resolution.x / gui.resolution.y, TextSpace_Clip, TextAlignment_Center, nullptr, cmd);
 			}
 		}
 		break;
@@ -695,7 +695,7 @@ namespace sv {
 
 			begin_debug_batch(cmd);
 			draw_debug_quad(pos.getVec3(), size, widget.color, cmd);
-			end_debug_batch(XMMatrixIdentity(), cmd);
+			end_debug_batch(offscreen, XMMatrixIdentity(), cmd);
 
 			if (field.text.size()) {
 
@@ -704,7 +704,7 @@ namespace sv {
 				f32 text_x = pos.x - size.x * 0.5f;
 				f32 aspect = gui.resolution.x / gui.resolution.y;
 
-				draw_text(field.text.c_str(), text_x, text_y, size.x, 1u, size.y, aspect, TextSpace_Clip, TextAlignment_Left, nullptr, cmd);
+				draw_text(offscreen, field.text.c_str(), text_x, text_y, size.x, 1u, size.y, aspect, TextSpace_Clip, TextAlignment_Left, nullptr, cmd);
 
 				if (&widget == gui.widget_focused && sin(f32(timer_now()) * 5.f) > 0.f) {
 
@@ -712,7 +712,7 @@ namespace sv {
 
 					begin_debug_batch(cmd);
 					draw_debug_line({ line_x, text_y, 0.f }, { line_x, text_y - size.y, 0.f }, Color::White(), cmd);
-					end_debug_batch(XMMatrixIdentity(), cmd);
+					end_debug_batch(offscreen, XMMatrixIdentity(), cmd);
 				}
 			}
 		}
@@ -729,19 +729,19 @@ namespace sv {
 				draw_debug_quad(pos.getVec3(), size * 0.7f, cbox.color_check, cmd);
 			}
 
-			end_debug_batch(XMMatrixIdentity(), cmd);
+			end_debug_batch(offscreen, XMMatrixIdentity(), cmd);
 		}
 		break;
 
 		default:
 			begin_debug_batch(cmd);
 			draw_debug_quad(pos.getVec3(), size, widget.color, cmd);
-			end_debug_batch(XMMatrixIdentity(), cmd);
+			end_debug_batch(offscreen, XMMatrixIdentity(), cmd);
 			break;
 		}
 	}
 
-	void gui_render(GUI* gui_, CommandList cmd)
+	void gui_render(GUI* gui_, GPUImage* offscreen, CommandList cmd)
 	{
 		PARSE_GUI();
 
@@ -778,12 +778,12 @@ namespace sv {
 			}
 		}
 
-		end_debug_batch(XMMatrixIdentity(), cmd);
+		end_debug_batch(offscreen, XMMatrixIdentity(), cmd);
 
 		// Draw widgets
 
 		for (GuiWidget* root : gui.root) {
-			draw_widget(gui, *root, { 0.5f, 0.5f, 1.f, 1.f }, cmd);
+			draw_widget(gui, offscreen, *root, { 0.5f, 0.5f, 1.f, 1.f }, cmd);
 		}
 	}
 

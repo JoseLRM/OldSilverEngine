@@ -3,12 +3,12 @@
 #include "renderer/renderer_internal.h"
 
 #include "SilverEngine/mesh.h"
+#include "SilverEngine/utils/allocators/FrameList.h"
 
 namespace sv {
 
 	GraphicsObjects		gfx = {};
 	RenderingUtils		rend_utils[GraphicsLimit_CommandList] = {};
-	RenderingContext	render_context[GraphicsLimit_CommandList] = {};
 	Font				font_opensans;
 
 	// SHADER COMPILATION
@@ -124,6 +124,17 @@ namespace sv {
 	{
 		GPUBufferDesc desc;
 
+		// Camera buffer
+		{
+			desc.bufferType = GPUBufferType_Constant;
+			desc.usage = ResourceUsage_Default;
+			desc.CPUAccess = CPUAccess_Write;
+			desc.size = sizeof(CameraBuffer_GPU);
+			desc.pData = nullptr;
+
+			svCheck(graphics_buffer_create(&desc, &gfx.cbuffer_camera));
+		}
+
 		// set text index data
 		{
 			constexpr u32 index_count = TEXT_BATCH_COUNT * 6u;
@@ -187,6 +198,32 @@ namespace sv {
 			delete[] index_data;
 
 			graphics_name_set(gfx.ibuffer_sprite, "Sprite_IndexBuffer");
+		}
+
+		// Mesh
+		{
+			desc.pData = nullptr;
+
+			desc.bufferType = GPUBufferType_Constant;
+			desc.size = sizeof(MeshData);
+			desc.usage = ResourceUsage_Default;
+			desc.CPUAccess = CPUAccess_Write;
+
+			svCheck(graphics_buffer_create(&desc, &gfx.cbuffer_mesh_instance));
+
+			desc.bufferType = GPUBufferType_Constant;
+			desc.size = sizeof(Material);
+			desc.usage = ResourceUsage_Default;
+			desc.CPUAccess = CPUAccess_Write;
+
+			svCheck(graphics_buffer_create(&desc, &gfx.cbuffer_material));
+
+			desc.bufferType = GPUBufferType_Constant;
+			desc.size = sizeof(LightData) * LIGHT_COUNT;
+			desc.usage = ResourceUsage_Default;
+			desc.CPUAccess = CPUAccess_Write;
+
+			svCheck(graphics_buffer_create(&desc, &gfx.cbuffer_light_instances));
 		}
 
 		return Result_Success;
@@ -272,9 +309,10 @@ namespace sv {
 
 			elements[0] = { "Position", 0u, 0u, 0u, Format_R32G32B32_FLOAT };
 			elements[1] = { "Normal", 0u, 0u, 3u * sizeof(f32), Format_R32G32B32_FLOAT };
-			elements[2] = { "Texcoord", 0u, 0u, 6u * sizeof(f32), Format_R32G32_FLOAT };
+			elements[2] = { "Tangent", 0u, 0u, 6u * sizeof(f32), Format_R32G32B32_FLOAT };
+			elements[3] = { "Texcoord", 0u, 0u, 9u * sizeof(f32), Format_R32G32_FLOAT };
 
-			desc.elementCount = 3u;
+			desc.elementCount = 4u;
 			desc.slotCount = 1u;
 			svCheck(graphics_inputlayoutstate_create(&desc, &gfx.ils_mesh));
 		}
@@ -411,16 +449,248 @@ namespace sv {
 		return Result_Success;
 	}
 
-	void renderer_begin_frame()
+	struct MeshInstance {
+
+		XMMATRIX	transform_matrix;
+		Mesh* mesh;
+		Material* material;
+
+		MeshInstance(const XMMATRIX& transform_matrix, Mesh* mesh, Material* material)
+			: transform_matrix(transform_matrix), mesh(mesh), material(material) {}
+
+	};
+
+	struct LightInstance {
+
+		Color3f		color;
+		LightType	type;
+		v3_f32		position;
+		f32			range;
+		f32			intensity;
+		f32			smoothness;
+
+		// None
+		LightInstance() = default;
+
+		// Point
+		LightInstance(const Color3f& color, const v3_f32& position, f32 range, f32 intensity, f32 smoothness)
+			: color(color), type(LightType_Point), position(position), range(range), intensity(intensity), smoothness(smoothness) {}
+		
+		// Direction
+		LightInstance(const Color3f& color, const v3_f32& direction, f32 intensity)
+			: color(color), type(LightType_Direction), position(direction), intensity(intensity) {}
+	};
+
+	// Temp data
+	static FrameList<MeshInstance> mesh_instances;
+	static FrameList<LightInstance> light_instances;
+
+	void draw_scene(ECS* ecs, GPUImage* offscreen, GPUImage* depthstencil)
 	{
-		// Restart context
-		foreach(i, GraphicsLimit_CommandList) {
-			
-			RenderingContext& ctx = render_context[i];
-			ctx.offscreen = nullptr;
-			ctx.zbuffer = nullptr;
-			ctx.camera_buffer = nullptr;
+		mesh_instances.reset();
+		light_instances.reset();
+
+		CommandList cmd = graphics_commandlist_begin();
+
+		graphics_image_clear(offscreen, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, Color4f::Black(), 1.f, 0u, cmd);
+		graphics_image_clear(depthstencil, GPUImageLayout_DepthStencil, GPUImageLayout_DepthStencil, Color4f::Black(), 1.f, 0u, cmd);
+
+		graphics_viewport_set(offscreen, 0u, cmd);
+		graphics_scissor_set(offscreen, 0u, cmd);
+
+		// Get lights
+		{
+			EntityView<PointLightComponent> lights(ecs);
+
+			for (const PointLightComponent& l : lights) {
+				Transform trans = ecs_entity_transform_get(ecs, l.entity);
+				light_instances.emplace_back(l.color, trans.getWorldEulerRotation(), l.range, l.intensity, l.smoothness);
+			}
 		}
+		{
+			// TODO: Spot light
+			/*EntityView<SpotLightComponent> lights(ecs);
+
+			for (const SpotLightComponent& l : lights) {
+				Transform trans = ecs_entity_transform_get(ecs, l.entity);
+				light_instances.emplace_back(l.color, trans.getWorldPosition(), l.range, l.intensity, l.smoothness);
+			}*/
+		}
+		{
+			EntityView<DirectionLightComponent> lights(ecs);
+
+			for (const DirectionLightComponent& l : lights) {
+				Transform trans = ecs_entity_transform_get(ecs, l.entity);
+				light_instances.emplace_back(l.color, trans.getWorldPosition(), l.intensity);
+			}
+		}
+
+		// Draw cameras
+		{
+			EntityView<CameraComponent> cameras(ecs);
+
+			for (CameraComponent& camera : cameras) {
+				
+				Transform camera_trans = ecs_entity_transform_get(ecs, camera.entity);
+
+				CameraBuffer_GPU camera_data;
+				{
+#ifndef SV_DIST
+					if (camera.near >= camera.far) {
+						SV_LOG_WARNING("Computing the projection matrix. The far must be grater than near");
+					}
+
+					switch (camera.projection_type)
+					{
+					case ProjectionType_Orthographic:
+						break;
+
+					case ProjectionType_Perspective:
+						if (camera.near <= 0.f) {
+							SV_LOG_WARNING("In perspective projection, near must be greater to 0");
+						}
+						break;
+					}
+#endif
+
+					switch (camera.projection_type)
+					{
+					case ProjectionType_Orthographic:
+						camera_data.projection_matrix = XMMatrixOrthographicLH(camera.width, camera.height, camera.near, camera.far);
+						break;
+
+					case ProjectionType_Perspective:
+						camera_data.projection_matrix = XMMatrixPerspectiveLH(camera.width, camera.height, camera.near, camera.far);
+						break;
+
+					default:
+						camera_data.projection_matrix = XMMatrixIdentity();
+						break;
+					}
+
+					camera_data.position = camera_trans.getWorldPosition().getVec4(0.f);
+					camera_data.rotation = camera_trans.getWorldRotation();
+					camera_data.view_matrix = math_matrix_view(camera_data.position.get_vec3(), camera_data.rotation);
+					camera_data.view_projection_matrix = camera_data.view_matrix * camera_data.projection_matrix;
+				}
+
+				graphics_buffer_update(gfx.cbuffer_camera, &camera_data, sizeof(CameraBuffer_GPU), 0u, cmd);
+				
+
+				// Draw meshes
+				{
+					EntityView<MeshComponent> meshes(ecs);
+
+					for (MeshComponent& mesh : meshes) {
+
+						Transform trans = ecs_entity_transform_get(ecs, mesh.entity);
+						mesh_instances.emplace_back(trans.getWorldMatrix(), mesh.mesh.get(), &mesh.material);
+					}
+
+					/* TODO LIST:
+					- Undefined lights
+					- Begin render pass once
+					- Dinamic material and instance buffer
+					*/
+
+					// Prepare state
+					graphics_shader_bind(gfx.vs_mesh, cmd);
+					graphics_shader_bind(gfx.ps_mesh, cmd);
+					graphics_inputlayoutstate_bind(gfx.ils_mesh, cmd);
+					graphics_depthstencilstate_bind(gfx.dss_default_depth, cmd);
+					graphics_rasterizerstate_bind(gfx.rs_back_culling, cmd);
+					graphics_blendstate_bind(gfx.bs_mesh, cmd);
+					graphics_sampler_bind(gfx.sampler_def_linear, 0u, ShaderType_Pixel, cmd);
+
+					// Bind resources
+					GPUBuffer* instance_buffer = gfx.cbuffer_mesh_instance;
+					GPUBuffer* material_buffer = gfx.cbuffer_material;
+					GPUBuffer* light_instances_buffer = gfx.cbuffer_light_instances;
+
+					graphics_constantbuffer_bind(instance_buffer, 0u, ShaderType_Vertex, cmd);
+					graphics_constantbuffer_bind(gfx.cbuffer_camera, 1u, ShaderType_Vertex, cmd);
+					graphics_constantbuffer_bind(material_buffer, 0u, ShaderType_Pixel, cmd);
+					graphics_constantbuffer_bind(light_instances_buffer, 1u, ShaderType_Pixel, cmd);
+
+					u32 light_count = std::min(LIGHT_COUNT, u32(light_instances.size()));
+
+					// Send light data
+					if (light_count) {
+						LightData light_data[LIGHT_COUNT];
+
+						foreach(i, light_count) {
+
+							LightData& l0 = light_data[i];
+							const LightInstance& l1 = light_instances[i];
+
+							l0.type = l1.type;
+							l0.color = l1.color;
+							l0.intensity = l1.intensity;
+
+							switch (l1.type)
+							{
+							case LightType_Point:
+								l0.position = v3_f32(XMVector4Transform(l1.position.getDX(1.f), camera_data.view_matrix));
+								l0.range = l1.range;
+								l0.smoothness = l1.smoothness;
+								break;
+
+							case LightType_Direction:
+								l0.position = v3_f32(XMVector3Normalize(XMVector4Transform(l1.position.getDX(1.f), camera_data.view_matrix)));
+								break;
+							}
+						}
+
+						graphics_buffer_update(light_instances_buffer, light_data, sizeof(LightData) * light_count, 0u, cmd);
+					}
+
+					foreach(i, mesh_instances.size()) {
+
+						const MeshInstance& inst = mesh_instances[i];
+
+						graphics_vertexbuffer_bind(inst.mesh->vbuffer, 0u, 0u, cmd);
+						graphics_indexbuffer_bind(inst.mesh->ibuffer, 0u, cmd);
+
+						// Update material data
+						{
+							MaterialData material_data;
+							material_data.flags = 0u;
+
+							GPUImage* diffuse_map = inst.material->diffuse_map.get();
+							GPUImage* normal_map = inst.material->normal_map.get();
+
+							graphics_image_bind(diffuse_map ? diffuse_map : gfx.image_white, 0u, ShaderType_Pixel, cmd);
+							if (normal_map) { graphics_image_bind(normal_map, 1u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_NORMAL_MAPPING; }
+
+							material_data.diffuse_color = inst.material->diffuse_color;
+							material_data.specular_color = inst.material->specular_color;
+							material_data.shininess = inst.material->shininess;
+
+							graphics_buffer_update(material_buffer, &material_data, sizeof(MaterialData), 0u, cmd);
+						}
+
+						// Update instance data
+						{
+							MeshData mesh_data;
+							mesh_data.model_view_matrix = inst.transform_matrix * camera_data.view_matrix;
+							mesh_data.inv_model_view_matrix = XMMatrixTranspose(XMMatrixInverse(nullptr, mesh_data.model_view_matrix));
+
+							graphics_buffer_update(instance_buffer, &mesh_data, sizeof(MeshData), 0u, cmd);
+						}
+
+						// Begin renderpass
+						GPUImage* att[] = { offscreen, depthstencil };
+						graphics_renderpass_begin(gfx.renderpass_mesh, att, cmd);
+
+						// Draw
+						graphics_draw_indexed(u32(inst.mesh->indices.size()), 1u, 0u, 0u, 0u, cmd);
+
+						graphics_renderpass_end(cmd);
+					}
+				}
+			}
+		}
+		
 	}
 
 }

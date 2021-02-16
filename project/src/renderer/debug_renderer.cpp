@@ -180,13 +180,9 @@ namespace sv {
 		batch.drawCalls.emplace_back().list = u32_max;
 	}
 
-	void end_debug_batch(const XMMATRIX& viewProjectionMatrix, CommandList cmd)
+	void end_debug_batch(GPUImage* offscreen, const XMMATRIX& viewProjectionMatrix, CommandList cmd)
 	{
 		DEF_BATCH();
-
-		SV_ASSERT_OFFSCREEN();
-		
-		GPUImage* offscreen = render_context[cmd].offscreen;
 
 		if (batch.drawCalls.size() <= 1u)
 			return;

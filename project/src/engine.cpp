@@ -17,6 +17,77 @@ namespace sv {
 	GlobalEngineData	engine;
 	GlobalInputData		input;
 	
+	// Asset functions
+
+	static Result create_image_asset(void* asset)
+	{
+		GPUImage*& image = *reinterpret_cast<GPUImage**>(asset);
+		image = nullptr;
+		return Result_Success;
+	}
+
+	static Result load_image_asset(void* asset, const char* filepath)
+	{
+		GPUImage*& image = *reinterpret_cast<GPUImage**>(asset);
+
+		// Get file data
+		void* data;
+		u32 width;
+		u32 height;
+		svCheck(load_image(filepath, &data, &width, &height));
+
+		// Create Image
+		GPUImageDesc desc;
+
+		desc.pData = data;
+		desc.size = width * height * 4u;
+		desc.format = Format_R8G8B8A8_UNORM;
+		desc.layout = GPUImageLayout_ShaderResource;
+		desc.type = GPUImageType_ShaderResource;
+		desc.usage = ResourceUsage_Static;
+		desc.CPUAccess = CPUAccess_None;
+		desc.dimension = 2u;
+		desc.width = width;
+		desc.height = height;
+		desc.depth = 1u;
+		desc.layers = 1u;
+
+		Result res = graphics_image_create(&desc, &image);
+
+		delete[] data;
+		return res;
+	}
+
+	static Result destroy_image_asset(void* asset)
+	{
+		GPUImage*& image = *reinterpret_cast<GPUImage**>(asset);
+		svCheck(graphics_destroy(image));
+		image = nullptr;
+		return Result_Success;
+	}
+
+	static Result reload_image_asset(void* asset, const char* filepath)
+	{
+		svCheck(destroy_image_asset(asset));
+		return load_image_asset(asset, filepath);
+	}
+
+	static Result create_mesh_asset(void* asset)
+	{
+		Mesh& mesh = *new(asset) Mesh();
+		return Result_Success;
+	}
+
+	static Result free_mesh_asset(void* asset)
+	{
+		Mesh& mesh = *reinterpret_cast<Mesh*>(asset);
+
+		graphics_destroy(mesh.vbuffer);
+		graphics_destroy(mesh.ibuffer);
+
+		mesh.~Mesh();
+		return Result_Success;
+	}
 
 	// Initialization
 
@@ -47,6 +118,52 @@ namespace sv {
 		if (result_fail(res)) {
 			SV_LOG_ERROR("Can't open the main window...");
 			return res;
+		}
+
+		// Register components
+		{
+			ecs_component_register<SpriteComponent>("Sprite");
+			ecs_component_register<CameraComponent>("Camera");
+			ecs_component_register<MeshComponent>("Mesh");
+			ecs_component_register<PointLightComponent>("Point light");
+			ecs_component_register<DirectionLightComponent>("Direction light");
+			ecs_component_register<SpotLightComponent>("Spot light");
+		}
+
+		// Register assets
+		{
+			AssetTypeDesc desc;
+			const char* extensions[5u];
+			desc.extensions = extensions;
+
+
+			// Texture
+			extensions[0] = "png";
+			extensions[1] = "tga";
+			extensions[2] = "jpg";
+
+			desc.name = "Texture";
+			desc.asset_size = sizeof(GPUImage*);
+			desc.extension_count = 3u;
+			desc.create = create_image_asset;
+			desc.load_file = load_image_asset;
+			desc.free = destroy_image_asset;
+			desc.reload_file = reload_image_asset;
+			desc.unused_time = 3.f;
+
+			svCheck(register_asset_type(&desc));
+
+			// Mesh
+			desc.name = "Mesh";
+			desc.asset_size = sizeof(Mesh);
+			desc.extension_count = 0u;
+			desc.create = create_mesh_asset;
+			desc.load_file = nullptr;
+			desc.free = free_mesh_asset;
+			desc.reload_file = nullptr;
+			desc.unused_time = 5.f;
+
+			svCheck(register_asset_type(&desc));
 		}
 
 		// APPLICATION
@@ -224,7 +341,6 @@ namespace sv {
 
 				// Begin Rendering
 				graphics_begin();
-				renderer_begin_frame();
 
 				// User Rendering
 				engine.app_callbacks.render();

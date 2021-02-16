@@ -7,7 +7,7 @@
 #include "external/assimp/scene.h"
 #include "external/assimp/material.h"
 
-#define ASSERT_VERTICES() SV_ASSERT(mesh.positions.size() == mesh.normals.size() && (mesh.texcoords.empty() || mesh.positions.size() == mesh.texcoords.size()))
+#define ASSERT_VERTICES() SV_ASSERT(mesh.positions.size() == mesh.normals.size() && mesh.positions.size() == mesh.tangents.size() && (mesh.texcoords.empty() || mesh.positions.size() == mesh.texcoords.size()))
 
 namespace sv {
 
@@ -88,6 +88,21 @@ namespace sv {
 				++it;
 			}
 		}
+		// NORMALS
+		{
+			it = vertices.data();
+			end = vertices.data() + vertices.size();
+
+			const v3_f32* tanIt = mesh.tangents.data();
+
+			while (it != end)
+			{
+				it->tangents = *tanIt;
+
+				++tanIt;
+				++it;
+			}
+		}
 		// TEX COORDS
 		if (mesh.texcoords.size()) {
 			it = vertices.data();
@@ -108,7 +123,7 @@ namespace sv {
 	void mesh_apply_plane(Mesh& mesh, const XMMATRIX& transform)
 	{
 		ASSERT_VERTICES();
-
+		
 		size_t vertexOffset = mesh.positions.size();
 		size_t indexOffset = mesh.indices.size();
 
@@ -346,6 +361,7 @@ namespace sv {
 			m0.Get(AI_MATKEY_SHININESS, m1.shininess);
 			
 			get_texture(folderpath, path, m0, m1.diffuse_map, aiTextureType_DIFFUSE);
+			get_texture(folderpath, path, m0, m1.normal_map, aiTextureType_NORMALS);
 		}
 
 		foreach(i, scene->mNumMeshes) {
@@ -376,6 +392,7 @@ namespace sv {
 			// Vertices
 			m1.positions.resize(m0.mNumVertices);
 			m1.normals.resize(m0.mNumVertices);
+			m1.tangents.resize(m0.mNumVertices);
 
 			foreach(j, m0.mNumVertices) {
 
@@ -386,6 +403,11 @@ namespace sv {
 
 				aiVector3D v = m0.mNormals[j];
 				m1.normals[j] = { v.x, v.y, v.z };
+			}
+			foreach(j, m0.mNumVertices) {
+
+				aiVector3D v = m0.mTangents[j];
+				m1.tangents[j] = { v.x, v.y, v.z };
 			}
 
 			if (m0.mTextureCoords[0] != nullptr) {

@@ -4,69 +4,108 @@
 #include "SilverEngine/graphics.h"
 #include "SilverEngine/mesh.h"
 
-#define SV_DEFINE_COMPONENT(name) struct name : public sv::Component<name> 
-
 namespace sv {
 
-    SV_DEFINE_COMPONENT(SpriteComponent) {
+	SV_DEFINE_COMPONENT(SpriteComponent) {
 
-	TextureAsset texture;
-	v4_f32 texcoords = { 0.f, 0.f, 1.f, 1.f };
-	u32 layer = 0u;
-	
-    };
+		TextureAsset texture;
+		v4_f32 texcoords = { 0.f, 0.f, 1.f, 1.f };
+		u32 layer = 0u;
 
-    enum ProjectionType : u32 {
-	ProjectionType_Clip,
-	ProjectionType_Orthographic,
-	ProjectionType_Perspective,
-    };
+		void serialize(ArchiveO& archive) {};
+		void deserialize(ArchiveI& archive) {};
 
-    struct CameraBuffer {
+	};
 
-	XMMATRIX	view_matrix = XMMatrixIdentity();
-	XMMATRIX	projection_matrix = XMMatrixIdentity();
-	v3_f32		position;
-	v4_f32		rotation;
-	
-	GPUBuffer* buffer = nullptr;
-	
-    };
-    
-    SV_DEFINE_COMPONENT(CameraComponent) {
-	
-	f32 near = -1000.f;
-	f32 far = 1000.f;
-	
-	ProjectionType	projection_type = ProjectionType_Orthographic;
+	enum ProjectionType : u32 {
+		ProjectionType_Clip,
+		ProjectionType_Orthographic,
+		ProjectionType_Perspective,
+	};
 
-	CameraBuffer _buffer;
-	
-    };
+	SV_DEFINE_COMPONENT(CameraComponent) {
 
-    SV_DEFINE_COMPONENT(MeshComponent) {
-	// TODO
-    };
+		ProjectionType projection_type = ProjectionType_Orthographic;
+		f32 near = -1000.f;
+		f32 far = 1000.f;
+		f32 width = 10.f;
+		f32 height = 10.f;
 
-    SV_DEFINE_COMPONENT(PointLightComponent) {
-	Color3f color = Color3f::White();
-	f32 intensity = 1.f;
-	f32 range = 5.f;
-	f32 smoothness = 0.5f;
-    };
+		void serialize(ArchiveO & archive) {};
+		void deserialize(ArchiveI & archive) {};
 
-    SV_DEFINE_COMPONENT(DirectionLightComponent) {
-	Color3f color = Color3f::White();
-	f32 intensity = 1.f;
-	v3_f32 direction = { 0.f, 0.f, 1.f };
-    };
+		SV_INLINE void adjust(f32 aspect)
+		{
+			if (width / height == aspect) return;
+			v2_f32 res = { width, height };
+			f32 mag = res.length();
+			res.x = aspect;
+			res.y = 1.f;
+			res.normalize();
+			res *= mag;
+			width = res.x;
+			height = res.y;
+		}
 
-    SV_DEFINE_COMPONENT(SpotLightComponent) {
-	Color3f color = Color3f::White();
-	f32 intensity = 1.f;
-	v3_f32 direction = { 0.f, 0.f, 1.f };
-	f32 range = 5.f;
-	f32 smoothness = 0.5f;
-    };
-    
+		SV_INLINE f32 getProjectionLength()
+		{
+			return math_sqrt(width * width + height * height);
+		}
+
+		SV_INLINE void setProjectionLength(f32 length)
+		{
+			f32 currentLength = getProjectionLength();
+			if (currentLength == length) return;
+			width = width / currentLength * length;
+			height = height / currentLength * length;
+		}
+
+	};
+
+	SV_DEFINE_COMPONENT(MeshComponent) {
+		
+		MeshAsset	mesh;
+		Material	material;
+
+		void serialize(ArchiveO & archive) {};
+		void deserialize(ArchiveI & archive) {};
+
+	};
+
+	SV_DEFINE_COMPONENT(PointLightComponent) {
+
+		Color3f color = Color3f::White();
+		f32 intensity = 1.f;
+		f32 range = 5.f;
+		f32 smoothness = 0.5f;
+
+		void serialize(ArchiveO & archive) {};
+		void deserialize(ArchiveI & archive) {};
+
+	};
+
+	SV_DEFINE_COMPONENT(DirectionLightComponent) {
+
+		Color3f color = Color3f::White();
+		f32 intensity = 1.f;
+		v3_f32 direction = { 0.f, 0.f, 1.f };
+
+		void serialize(ArchiveO & archive) {};
+		void deserialize(ArchiveI & archive) {};
+
+	};
+
+	SV_DEFINE_COMPONENT(SpotLightComponent) {
+
+		Color3f color = Color3f::White();
+		f32 intensity = 1.f;
+		v3_f32 direction = { 0.f, 0.f, 1.f };
+		f32 range = 5.f;
+		f32 smoothness = 0.5f;
+
+		void serialize(ArchiveO & archive) {};
+		void deserialize(ArchiveI & archive) {};
+
+	};
+
 }

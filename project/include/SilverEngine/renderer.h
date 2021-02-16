@@ -9,37 +9,10 @@ namespace sv {
 	constexpr Format OFFSCREEN_FORMAT = Format_R16G16B16A16_FLOAT;
 	constexpr Format ZBUFFER_FORMAT = Format_D24_UNORM_S8_UINT;
 
-	enum LightType {
-		LightType_None,
-		LightType_Point,
-		LightType_Direction,
-	};
-
-	// CONTEXT
-
-	struct RenderingContext {
-
-		GPUImage*	offscreen;
-		GPUImage*	zbuffer;
-		CameraBuffer*	camera_buffer;
-
-	};
-
-	extern RenderingContext render_context[GraphicsLimit_CommandList];
-
 	// Functions
 
 	Result offscreen_create(u32 width, u32 height, GPUImage** pImage);
 	Result zbuffer_create(u32 width, u32 height, GPUImage** pImage);
-
-	Result	camerabuffer_create(CameraBuffer* camera_buffer);
-	Result	camerabuffer_destroy(CameraBuffer* camera_buffer);
-	void	camerabuffer_update(CameraBuffer* camera_buffer, CommandList cmd);
-
-	void	projection_adjust(CameraProjection& projection, f32 aspect);
-	f32		projection_length_get(CameraProjection& projection);
-	void	projection_length_set(CameraProjection& projection, f32 length);
-	void	projection_update_matrix(CameraProjection& projection);
 
 	// FONT
 
@@ -89,7 +62,7 @@ namespace sv {
 	/*
 		Return the number of character rendered
 	*/
-	u32 draw_text(const char* text, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextSpace space, TextAlignment alignment, Font* pFont, CommandList cmd);
+	u32 draw_text(GPUImage* offscreen, const char* text, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextSpace space, TextAlignment alignment, Font* pFont, CommandList cmd);
 
 	// SPRITE RENDERING
 
@@ -104,31 +77,16 @@ namespace sv {
 			: tm(m), texcoord(texcoord), image(image), color(color) {}
 	};
 
-	void draw_sprites(const SpriteInstance* sprites, u32 count, const XMMATRIX& view_projection_matrix, bool linear_sampler, CommandList cmd);
-
-	// MESH RENDERING
-
-	struct MeshInstance {
-
-		XMMATRIX	transform_matrix;
-		Mesh* mesh;
-		Material* material;
-
-		MeshInstance(const XMMATRIX& transform_matrix, Mesh* mesh, Material* material)
-			: transform_matrix(transform_matrix), mesh(mesh), material(material) {}
-
-	};
-
-	void draw_meshes(const MeshInstance* meshes, u32 mesh_count, const LightInstance* lights, u32 light_count, CommandList cmd);
+	void draw_sprites(GPUImage* offscreen, const SpriteInstance* sprites, u32 count, const XMMATRIX& view_projection_matrix, bool linear_sampler, CommandList cmd);
 
 	// SCENE
 
-	void draw_scene(ECS* ecs);
+	void draw_scene(ECS* ecs, GPUImage* offscreen, GPUImage* depthstencil);
 
 	// DEBUG RENDERER
 
 	void begin_debug_batch(CommandList cmd);
-	void end_debug_batch(const XMMATRIX& viewProjectionMatrix, CommandList cmd);
+	void end_debug_batch(GPUImage* offscreen, const XMMATRIX& viewProjectionMatrix, CommandList cmd);
 
 	void draw_debug_quad(const XMMATRIX& matrix, Color color, CommandList cmd);
 	void draw_debug_line(const v3_f32& p0, const v3_f32& p1, Color color, CommandList cmd);

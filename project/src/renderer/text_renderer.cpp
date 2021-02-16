@@ -5,10 +5,8 @@
 
 namespace sv {
 
-	u32 draw_text(const char* text, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextSpace space, TextAlignment alignment, Font* pFont, CommandList cmd)
+	u32 draw_text(GPUImage* offscreen, const char* text, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextSpace space, TextAlignment alignment, Font* pFont, CommandList cmd)
 	{
-		SV_ASSERT_OFFSCREEN();
-
 		if (text == nullptr) return 0u;
 
 		// Text size
@@ -20,8 +18,7 @@ namespace sv {
 			return 0u;
 		}
 
-		GPUImage* rendertarget = render_context[cmd].offscreen;
-		const GPUImageInfo& info = graphics_image_info(rendertarget);
+		const GPUImageInfo& info = graphics_image_info(offscreen);
 
 		// Select font
 		// TODO: Default font
@@ -219,7 +216,7 @@ namespace sv {
 		graphics_buffer_update(buffer, data.vertices, vertex_count * sizeof(TextVertex), 0u, cmd);
 
 		GPUImage* att[1];
-		att[0] = rendertarget;
+		att[0] = offscreen;
 
 		graphics_renderpass_begin(gfx.renderpass_text, att, nullptr, 1.f, 0u, cmd);
 		graphics_draw_indexed(vertex_count / 4u * 6u, 1u, 0u, 0u, 0u, cmd);

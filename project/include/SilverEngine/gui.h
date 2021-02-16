@@ -152,7 +152,7 @@ namespace sv {
 	GUI* gui_create();
 	void							gui_destroy(GUI* gui);
 	void							gui_update(GUI* gui, f32 width, f32 height);
-	void							gui_render(GUI* gui, CommandList cmd);
+	void							gui_render(GUI* gui, GPUImage* offscreen, CommandList cmd);
 	const std::vector<GuiWidget*>& gui_root_get(GUI* gui);
 	const GuiLockedInput& gui_locked_input(GUI* gui);
 

@@ -75,15 +75,16 @@ namespace sv {
 
 	};
 
+	Result	create_asset(AssetPtr& asset_ptr, const char* asset_type_name);
 	Result	load_asset_from_file(AssetPtr& asset_ptr, const char* filepath);
 	void	unload_asset(AssetPtr& asset_ptr);
 
 	void*		get_asset_content(const AssetPtr& asset_ptr);
 	const char* get_asset_filepath(const AssetPtr& asset_ptr);
 
+	typedef Result(*AssetCreateFn)(void* asset);
 	typedef Result(*AssetLoadFileFn)(void* asset, const char* filepath);
 	typedef Result(*AssetReloadFileFn)(void* asset, const char* filepath);
-	typedef Result(*AssetCreateFn)();
 	typedef Result(*AssetFreeFn)(void* asset);
 
 	struct AssetTypeDesc {
@@ -92,9 +93,9 @@ namespace sv {
 		u32					asset_size;
 		const char**		extensions;
 		u32					extension_count;
+		AssetCreateFn		create;
 		AssetLoadFileFn		load_file;
 		AssetReloadFileFn	reload_file;
-		AssetCreateFn		create;
 		AssetFreeFn			free;
 		f32					unused_time;
 

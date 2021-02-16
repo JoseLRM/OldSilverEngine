@@ -2,15 +2,15 @@
 
 #include "SilverEngine/renderer.h"
 
-// CONTEXT ASSERTIONS
-
-#define SV_ASSERT_OFFSCREEN() SV_ASSERT(sv::render_context[cmd].offscreen)
-#define SV_ASSERT_ZBUFFER() SV_ASSERT(sv::render_context[cmd].zbuffer)
-#define SV_ASSERT_CAMERA_BUFFER() SV_ASSERT(sv::render_context[cmd].camera_buffer && sv::render_context[cmd].camera_buffer->buffer)
-
 namespace sv {
 
 	constexpr u32 LIGHT_COUNT = 10u;
+
+	enum LightType {
+		LightType_None,
+		LightType_Point,
+		LightType_Direction,
+	};
 
 	struct LightData {
 		v3_f32		position;
@@ -30,9 +30,12 @@ namespace sv {
 
 	struct MaterialData {
 		Color3f diffuse_color;
-		f32 shininess;
+		u32 flags;
 		Color3f specular_color;
+		f32 shininess;
 	};
+
+#define MAT_FLAG_NORMAL_MAPPING SV_BIT(0u)
 
 	struct CameraBuffer_GPU {
 		XMMATRIX	view_matrix;
@@ -95,6 +98,7 @@ namespace sv {
 		GPUBuffer* vbuffer_batch[GraphicsLimit_CommandList];
 		DepthStencilState* dss_default_depth;
 		RasterizerState* rs_back_culling;
+		GPUBuffer* cbuffer_camera;
 
 		// DEBUG
 
@@ -132,9 +136,9 @@ namespace sv {
 		RenderPass* renderpass_mesh;
 		InputLayoutState* ils_mesh;
 		BlendState* bs_mesh;
-		GPUBuffer* cbuffer_material[GraphicsLimit_CommandList];
-		GPUBuffer* cbuffer_mesh_instance[GraphicsLimit_CommandList];
-		GPUBuffer* cbuffer_light_instances[GraphicsLimit_CommandList];
+		GPUBuffer* cbuffer_material;
+		GPUBuffer* cbuffer_mesh_instance;
+		GPUBuffer* cbuffer_light_instances;
 
 	};
 
@@ -149,7 +153,6 @@ namespace sv {
 
 	Result	renderer_initialize();
 	Result	renderer_close();
-	void	renderer_begin_frame();
 
 	SV_INLINE GPUBuffer* get_batch_buffer(CommandList cmd)
 	{
