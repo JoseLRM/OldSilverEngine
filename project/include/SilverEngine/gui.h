@@ -70,6 +70,8 @@ namespace sv {
 		Color	  color = Color::White();
 		f32		  rounded_radius = 0.f;
 
+	        bool enabled = true;
+
 		const GuiWidgetType	type;
 
 		GuiWidget(GuiWidgetType type) : type(type) {}
@@ -78,7 +80,6 @@ namespace sv {
 	struct GuiContainer : public GuiWidget {
 
 		std::vector<GuiWidget*> sons;
-		bool enabled = true;
 
 		GuiContainer() : GuiWidget(GuiWidgetType_Container) {}
 

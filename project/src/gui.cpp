@@ -309,18 +309,17 @@ namespace sv {
 
 	static void update_widget(GUI_internal& gui, GuiWidget& widget, const v4_f32& parent_bounds)
 	{
+	        if (!widget.enabled) return;
+	    
 		switch (widget.type)
 		{
 		case GuiWidgetType_Container:
 		{
 			GuiContainer& container = *reinterpret_cast<GuiContainer*>(&widget);
-			if (container.enabled) {
+			v4_f32 bounds = compute_widget_bounds(gui, container, parent_bounds);
 
-				v4_f32 bounds = compute_widget_bounds(gui, container, parent_bounds);
-
-				for (GuiWidget* son : container.sons) {
-					update_widget(gui, *son, bounds);
-				}
+			for (GuiWidget* son : container.sons) {
+			    update_widget(gui, *son, bounds);
 			}
 		}
 		break;
@@ -630,6 +629,9 @@ namespace sv {
 
 	static void draw_widget(GUI_internal& gui, GPUImage* offscreen, GuiWidget& widget, const v4_f32& parent_bounds, CommandList cmd)
 	{
+	        // TODO: Should use the alpha and inherited_alpha value
+	        if (!widget.enabled) return;
+		
 		v4_f32 bounds = compute_widget_bounds(gui, widget, parent_bounds);
 
 		v2_f32 pos = v2_f32{ bounds.x, bounds.y } *2.f - 1.f;
@@ -642,8 +644,6 @@ namespace sv {
 		{
 			GuiContainer& container = *reinterpret_cast<GuiContainer*>(&widget);
 
-			// TODO: Should use the alpha and inherited_alpha value
-			if (!container.enabled) return;
 			begin_debug_batch(cmd);
 
 			draw_debug_quad(pos.getVec3(), size, widget.color, cmd);
