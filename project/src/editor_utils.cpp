@@ -77,12 +77,15 @@ namespace sv {
 		}
 
 		// Camera rotation
-		if (input.mouse_buttons[MouseButton_Center] == InputState_Hold && (input.mouse_dragged.x != 0.f || input.mouse_dragged.y != 0.f)) {
+		if ((input.mouse_dragged.x != 0.f || input.mouse_dragged.y != 0.f)) {
 
 			set_cursor_position(engine.window, 0.f, 0.f);
 
 			v2_f32 drag = input.mouse_dragged;
-			rotation = XMQuaternionMultiply(rotation, XMQuaternionRotationRollPitchYaw(drag.y, drag.x, 0.f));
+			XMVECTOR yaw = XMQuaternionRotationAxis(XMVectorSet(0.f, 1.f, 0.f, 0.f), drag.x);
+			XMVECTOR pitch = XMQuaternionRotationAxis(XMVectorSet(1.f, 0.f, 0.f, 0.f), -drag.y);
+
+			rotation = XMQuaternionMultiply(XMQuaternionMultiply(rotation, yaw), pitch);
 		}
 
 		trans.setRotation(v4_f32(rotation));

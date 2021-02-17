@@ -4,7 +4,7 @@
 
 namespace sv {
 
-	constexpr u32 LIGHT_COUNT = 10u;
+	constexpr u32 LIGHT_COUNT = 1u;
 
 	enum LightType : u32 {
 		LightType_None,
@@ -15,11 +15,11 @@ namespace sv {
 	struct LightData {
 		v3_f32		position;
 		LightType	type;
+		Color3f		color;
 		f32			range;
 		f32			intensity;
 		f32			smoothness;
 		f32 padding0;
-		Color3f		color;
 		f32 padding1;
 	};
 

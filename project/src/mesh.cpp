@@ -88,7 +88,7 @@ namespace sv {
 				++it;
 			}
 		}
-		// NORMALS
+		// TANGENTS
 		{
 			it = vertices.data();
 			end = vertices.data() + vertices.size();
@@ -100,6 +100,21 @@ namespace sv {
 				it->tangents = *tanIt;
 
 				++tanIt;
+				++it;
+			}
+		}
+		// BITANGENTS
+		{
+			it = vertices.data();
+			end = vertices.data() + vertices.size();
+
+			const v3_f32* biIt = mesh.bitangents.data();
+
+			while (it != end)
+			{
+				it->bitangents = *biIt;
+
+				++biIt;
 				++it;
 			}
 		}
@@ -397,6 +412,7 @@ namespace sv {
 			m1.positions.resize(m0.mNumVertices);
 			m1.normals.resize(m0.mNumVertices);
 			m1.tangents.resize(m0.mNumVertices);
+			m1.bitangents.resize(m0.mNumVertices);
 
 			foreach(j, m0.mNumVertices) {
 
@@ -412,6 +428,11 @@ namespace sv {
 
 				aiVector3D v = m0.mTangents[j];
 				m1.tangents[j] = { v.x, v.y, v.z };
+			}
+			foreach(j, m0.mNumVertices) {
+
+				aiVector3D v = m0.mBitangents[j];
+				m1.bitangents[j] = { v.x, v.y, v.z };
 			}
 
 			if (m0.mTextureCoords[0] != nullptr) {

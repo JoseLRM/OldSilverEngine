@@ -10,6 +10,7 @@ namespace sv {
 		v3_f32 position;
 		v3_f32 normal;
 		v3_f32 tangents;
+		v3_f32 bitangents;
 		v2_f32 texcoord;
 	};
 
@@ -18,6 +19,7 @@ namespace sv {
 		std::vector<v3_f32> positions;
 		std::vector<v3_f32> normals;
 		std::vector<v3_f32> tangents;
+		std::vector<v3_f32> bitangents;
 		std::vector<v2_f32> texcoords;
 
 		std::vector<MeshIndex> indices;
@@ -67,6 +69,7 @@ namespace sv {
 		std::vector<v3_f32> positions;
 		std::vector<v3_f32> normals;
 		std::vector<v3_f32> tangents;
+		std::vector<v3_f32> bitangents;
 		std::vector<v2_f32> texcoords;
 
 		std::vector<MeshIndex> indices;

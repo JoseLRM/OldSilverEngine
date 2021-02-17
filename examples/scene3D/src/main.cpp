@@ -6,7 +6,9 @@ using namespace sv;
 GPUImage* offscreen = nullptr;
 GPUImage* zbuffer = nullptr;
 
+bool update_camera = false;
 CameraComponent* camera;
+PointLightComponent* light;
 ECS* ecs;
 GUI* gui;
 
@@ -35,6 +37,7 @@ void load_model(ECS* ecs, const char* filepath, f32 scale = f32_max)
 			mesh.positions = std::move(m.positions);
 			mesh.normals = std::move(m.normals);
 			mesh.tangents = std::move(m.tangents);
+			mesh.bitangents = std::move(m.bitangents);
 			mesh.texcoords = std::move(m.texcoords);
 			mesh.indices = std::move(m.indices);
 
@@ -74,14 +77,14 @@ Result init()
 	camera->height = 0.5f;
 	camera->projection_type = ProjectionType_Perspective;
 
-	auto l = ecs_component_add<PointLightComponent>(ecs, ecs_entity_create(ecs));
-	Transform t = ecs_entity_transform_get(ecs, l->entity);
+	light = ecs_component_add<PointLightComponent>(ecs, ecs_entity_create(ecs));
+	Transform t = ecs_entity_transform_get(ecs, light->entity);
 	t.setPosition({ 0.f, 0.f, -2.f });
 
 	gui = gui_create();
 
-	load_model(ecs, "assets/dragon.obj");
-	//load_model(ecs, "assets/gobber/GoblinX.obj");
+	//load_model(ecs, "assets/dragon.obj");
+	load_model(ecs, "assets/gobber/GoblinX.obj");
 
 	// Editor stuff
 	window = gui_window_create(gui);
@@ -100,7 +103,17 @@ void update()
 
 	camera->adjust(f32(window_width_get(engine.window)) / f32(window_height_get(engine.window)));
 
-	camera_controller3D(ecs, *camera);
+	Transform l = ecs_entity_transform_get(ecs, light->entity);
+	static f32 t = 0.f;
+	if (input.keys[Key_Left]) t -= engine.deltatime;
+	if (input.keys[Key_Right]) t += engine.deltatime;
+	l.setPosition({ sin(t) * 3.f, 0.f, cos(t) * 3.f });
+
+	if (input.keys[Key_C] == InputState_Released)
+		update_camera = !update_camera;
+
+	if (update_camera)
+		camera_controller3D(ecs, *camera);
 }
 
 void render()

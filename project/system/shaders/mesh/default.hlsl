@@ -6,6 +6,7 @@ struct Input {
     float3 position : Position;
     float3 normal : Normal;
     float3 tangent : Tangent;
+    float3 bitangent : Bitangent;
 	float2 texcoord : Texcoord;
 };
 
@@ -35,10 +36,9 @@ Output main(Input input)
     output.frag_position = pos.xyz;
     output.position = mul(pos, camera.pm);
 
-	float3 bitangent = cross(input.normal, input.tangent);
 	output.normal = mul((float3x3)imvm, input.normal);
 	output.tangent = mul((float3x3)imvm, input.tangent);
-	output.bitangent = mul((float3x3)imvm, bitangent);
+	output.bitangent = mul((float3x3)imvm, input.bitangent);
 
 	output.texcoord = input.texcoord;
 
@@ -76,15 +76,13 @@ struct Material {
 struct Light {
 	float3 position;
 	u32 type;
+	float3 color;
 	f32	range;
 	f32 intensity;
 	f32 smoothness;
-	f32 _padding0;
-	float3 color;
-	f32 _padding1;
 };
 
-#define LIGHT_COUNT 10u
+#define LIGHT_COUNT 1u
 
 SV_CONSTANT_BUFFER(material_buffer, b0) {
 	Material material;
@@ -108,7 +106,9 @@ Output main(Input input)
 	if (material.flags & MAT_FLAG_NORMAL_MAPPING) {
 
 		float3x3 TBN = transpose(float3x3(normalize(input.tangent), normalize(input.bitangent), normalize(input.normal)));
-		normal = mul(input.normal, TBN);
+
+		normal = normal_map.Sample(sam, input.texcoord).xyz * 2.f - 1.f;
+		normal = mul(TBN, normal);
 	}
 	else
 		normal = normalize(input.normal);

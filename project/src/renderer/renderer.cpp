@@ -310,9 +310,10 @@ namespace sv {
 			elements[0] = { "Position", 0u, 0u, 0u, Format_R32G32B32_FLOAT };
 			elements[1] = { "Normal", 0u, 0u, 3u * sizeof(f32), Format_R32G32B32_FLOAT };
 			elements[2] = { "Tangent", 0u, 0u, 6u * sizeof(f32), Format_R32G32B32_FLOAT };
-			elements[3] = { "Texcoord", 0u, 0u, 9u * sizeof(f32), Format_R32G32_FLOAT };
+			elements[3] = { "Bitangent", 0u, 0u, 9u * sizeof(f32), Format_R32G32B32_FLOAT };
+			elements[4] = { "Texcoord", 0u, 0u, 12u * sizeof(f32), Format_R32G32_FLOAT };
 
-			desc.elementCount = 4u;
+			desc.elementCount = 5u;
 			desc.slotCount = 1u;
 			svCheck(graphics_inputlayoutstate_create(&desc, &gfx.ils_mesh));
 		}
@@ -518,7 +519,7 @@ namespace sv {
 
 			for (const PointLightComponent& l : lights) {
 				Transform trans = ecs_entity_transform_get(ecs, l.entity);
-				light_instances.emplace_back(l.color, trans.getWorldEulerRotation(), l.range, l.intensity, l.smoothness);
+				light_instances.emplace_back(l.color, trans.getWorldPosition(), l.range, l.intensity, l.smoothness);
 			}
 		}
 		{
@@ -535,7 +536,7 @@ namespace sv {
 
 			for (const DirectionLightComponent& l : lights) {
 				Transform trans = ecs_entity_transform_get(ecs, l.entity);
-				light_instances.emplace_back(l.color, trans.getWorldPosition(), l.intensity);
+				light_instances.emplace_back(l.color, trans.getWorldEulerRotation(), l.intensity);
 			}
 		}
 
@@ -814,7 +815,7 @@ namespace sv {
 								GPUImage* normal_map = inst.material->normal_map.get();
 
 								graphics_image_bind(diffuse_map ? diffuse_map : gfx.image_white, 0u, ShaderType_Pixel, cmd);
-								if (normal_map && false) { graphics_image_bind(normal_map, 1u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_NORMAL_MAPPING; }
+								if (normal_map) { graphics_image_bind(normal_map, 1u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_NORMAL_MAPPING; }
 
 								material_data.diffuse_color = inst.material->diffuse_color;
 								material_data.specular_color = inst.material->specular_color;
