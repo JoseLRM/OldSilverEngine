@@ -17,6 +17,7 @@ namespace sv {
 		GuiWidgetType_Container,
 		GuiWidgetType_Button,
 		GuiWidgetType_Slider,
+		GuiWidgetType_Drag,
 		GuiWidgetType_TextField,
 		GuiWidgetType_Checkbox,
 	};
@@ -88,6 +89,7 @@ namespace sv {
 	struct GuiButton : public GuiWidget {
 
 		HoverState hover_state = HoverState_None;
+		Color hover_color = Color::Gray(100u);
 		std::string text;
 
 		GuiButton() : GuiWidget(GuiWidgetType_Button) {}
@@ -103,6 +105,14 @@ namespace sv {
 		f32 value = 0.5f;
 
 		GuiSlider() : GuiWidget(GuiWidgetType_Slider) {}
+
+	};
+
+	struct GuiDrag : public GuiWidget {
+
+		f32 value = 0.f;
+
+		GuiDrag() : GuiWidget(GuiWidgetType_Drag) {}
 
 	};
 
@@ -179,6 +189,11 @@ namespace sv {
 	SV_INLINE GuiSlider* gui_slider_create(GUI* gui, GuiContainer* container = nullptr)
 	{
 		return reinterpret_cast<GuiSlider*>(gui_widget_create(gui, GuiWidgetType_Slider, container));
+	}
+
+	SV_INLINE GuiDrag* gui_drag_create(GUI* gui, GuiContainer* container = nullptr)
+	{
+		return reinterpret_cast<GuiDrag*>(gui_widget_create(gui, GuiWidgetType_Drag, container));
 	}
 
 	SV_INLINE GuiTextField* gui_textfield_create(GUI* gui, GuiContainer* container = nullptr)

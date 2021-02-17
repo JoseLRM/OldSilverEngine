@@ -449,6 +449,18 @@ namespace sv {
 		return Result_Success;
 	}
 
+	struct SpriteInstance {
+		XMMATRIX	tm;
+		v4_f32		texcoord;
+		GPUImage*	image;
+		Color		color;
+		u32			layer;
+
+		SpriteInstance() = default;
+		SpriteInstance(const XMMATRIX& m, const v4_f32& texcoord, GPUImage* image, Color color, u32 layer)
+			: tm(m), texcoord(texcoord), image(image), color(color), layer(layer) {}
+	};
+
 	struct MeshInstance {
 
 		XMMATRIX	transform_matrix;
@@ -482,6 +494,7 @@ namespace sv {
 	};
 
 	// Temp data
+	static FrameList<SpriteInstance> sprite_instances;
 	static FrameList<MeshInstance> mesh_instances;
 	static FrameList<LightInstance> light_instances;
 
@@ -489,6 +502,7 @@ namespace sv {
 	{
 		mesh_instances.reset();
 		light_instances.reset();
+		sprite_instances.reset();
 
 		CommandList cmd = graphics_commandlist_begin();
 
@@ -576,15 +590,155 @@ namespace sv {
 
 				graphics_buffer_update(gfx.cbuffer_camera, &camera_data, sizeof(CameraBuffer_GPU), 0u, cmd);
 				
-
-				// Draw meshes
+				// DRAW SPRITES
 				{
-					EntityView<MeshComponent> meshes(ecs);
+					{
+						EntityView<SpriteComponent> sprites(ecs);
 
-					for (MeshComponent& mesh : meshes) {
+						for (SpriteComponent& spr : sprites) {
 
-						Transform trans = ecs_entity_transform_get(ecs, mesh.entity);
-						mesh_instances.emplace_back(trans.getWorldMatrix(), mesh.mesh.get(), &mesh.material);
+							Transform trans = ecs_entity_transform_get(ecs, spr.entity);
+							sprite_instances.emplace_back(trans.getWorldMatrix(), spr.texcoord, spr.texture.get(), spr.color, spr.layer);
+						}
+					}
+
+					if (sprite_instances.size()) {
+
+						// Sort sprites
+						std::sort(sprite_instances.data(), sprite_instances.data() + sprite_instances.size(), [](const SpriteInstance& s0, const SpriteInstance& s1)
+						{
+							return s0.layer < s1.layer;
+						});
+
+						SpriteData& data = *(SpriteData*)rend_utils[cmd].batch_data;
+						GPUBuffer* batch_buffer = get_batch_buffer(cmd);
+
+						// Prepare
+						graphics_event_begin("Sprite_GeometryPass", cmd);
+
+						graphics_topology_set(GraphicsTopology_Triangles, cmd);
+						graphics_vertexbuffer_bind(batch_buffer, 0u, 0u, cmd);
+						graphics_indexbuffer_bind(gfx.ibuffer_sprite, 0u, cmd);
+						graphics_inputlayoutstate_bind(gfx.ils_sprite, cmd);
+						graphics_sampler_bind(gfx.sampler_def_nearest, 0u, ShaderType_Pixel, cmd);
+						graphics_shader_bind(gfx.vs_sprite, cmd);
+						graphics_shader_bind(gfx.ps_sprite, cmd);
+						graphics_blendstate_bind(gfx.bs_sprite, cmd);
+
+						GPUImage* att[1];
+						att[0] = offscreen;
+
+						XMMATRIX matrix;
+						XMVECTOR pos0, pos1, pos2, pos3;
+
+						// Batch data, used to update the vertex buffer
+						SpriteVertex* batchIt = data.data;
+
+						// Used to draw
+						u32 instanceCount;
+
+						const SpriteInstance* it = sprite_instances.data();
+						const SpriteInstance* end = it + sprite_instances.size();
+
+						while (it != end) {
+
+							// Compute the end ptr of the vertex data
+							SpriteVertex* batchEnd;
+							{
+								size_t batchCount = batchIt - data.data + SPRITE_BATCH_COUNT * 4u;
+								instanceCount = std::min(batchCount / 4u, size_t(end - it));
+								batchEnd = batchIt + instanceCount * 4u;
+							}
+
+							// Fill batch buffer
+							while (batchIt != batchEnd) {
+
+								const SpriteInstance& spr = *it++;
+
+								matrix = XMMatrixMultiply(spr.tm, camera_data.view_projection_matrix);
+
+								pos0 = XMVectorSet(-0.5f, 0.5f, 0.f, 1.f);
+								pos1 = XMVectorSet(0.5f, 0.5f, 0.f, 1.f);
+								pos2 = XMVectorSet(-0.5f, -0.5f, 0.f, 1.f);
+								pos3 = XMVectorSet(0.5f, -0.5f, 0.f, 1.f);
+
+								pos0 = XMVector4Transform(pos0, matrix);
+								pos1 = XMVector4Transform(pos1, matrix);
+								pos2 = XMVector4Transform(pos2, matrix);
+								pos3 = XMVector4Transform(pos3, matrix);
+
+								*batchIt = { v4_f32(pos0), {spr.texcoord.x, spr.texcoord.y}, spr.color };
+								++batchIt;
+
+								*batchIt = { v4_f32(pos1), {spr.texcoord.z, spr.texcoord.y}, spr.color };
+								++batchIt;
+
+								*batchIt = { v4_f32(pos2), {spr.texcoord.x, spr.texcoord.w}, spr.color };
+								++batchIt;
+
+								*batchIt = { v4_f32(pos3), {spr.texcoord.z, spr.texcoord.w}, spr.color };
+								++batchIt;
+							}
+
+							// Draw
+
+							graphics_buffer_update(batch_buffer, data.data, instanceCount * 4u * sizeof(SpriteVertex), 0u, cmd);
+
+							graphics_renderpass_begin(gfx.renderpass_sprite, att, nullptr, 1.f, 0u, cmd);
+
+							end = it;
+							it -= instanceCount;
+
+							const SpriteInstance* begin = it;
+							const SpriteInstance* last = it;
+
+							graphics_image_bind(it->image ? it->image : gfx.image_white, 0u, ShaderType_Pixel, cmd);
+
+							while (it != end) {
+
+								if (it->image != last->image) {
+
+									u32 spriteCount = u32(it - last);
+									u32 startVertex = u32(last - begin) * 4u;
+
+									graphics_draw_indexed(spriteCount * 6u, 1u, 0u, startVertex, 0u, cmd);
+
+									if (it->image != last->image) {
+										graphics_image_bind(it->image ? it->image : gfx.image_white, 0u, ShaderType_Pixel, cmd);
+									}
+
+									last = it;
+								}
+
+								++it;
+							}
+
+							// Last draw call
+							{
+								u32 spriteCount = u32(it - last);
+								u32 startVertex = u32(last - begin) * 4u;
+
+								graphics_draw_indexed(spriteCount * 6u, 1u, 0u, startVertex, 0u, cmd);
+							}
+
+							graphics_renderpass_end(cmd);
+
+							end = sprite_instances.data() + sprite_instances.size();
+							batchIt = data.data;
+						}
+					}
+				}
+
+				// DRAW MESHES
+				{
+					{
+						EntityView<MeshComponent> meshes(ecs);
+
+						for (MeshComponent& mesh : meshes) {
+
+							Transform trans = ecs_entity_transform_get(ecs, mesh.entity);
+							mesh_instances.emplace_back(trans.getWorldMatrix(), mesh.mesh.get(), &mesh.material);
+						}
 					}
 
 					/* TODO LIST:
@@ -592,100 +746,101 @@ namespace sv {
 					- Begin render pass once
 					- Dinamic material and instance buffer
 					*/
+					if (mesh_instances.size()) {
+						// Prepare state
+						graphics_shader_bind(gfx.vs_mesh, cmd);
+						graphics_shader_bind(gfx.ps_mesh, cmd);
+						graphics_inputlayoutstate_bind(gfx.ils_mesh, cmd);
+						graphics_depthstencilstate_bind(gfx.dss_default_depth, cmd);
+						graphics_rasterizerstate_bind(gfx.rs_back_culling, cmd);
+						graphics_blendstate_bind(gfx.bs_mesh, cmd);
+						graphics_sampler_bind(gfx.sampler_def_linear, 0u, ShaderType_Pixel, cmd);
 
-					// Prepare state
-					graphics_shader_bind(gfx.vs_mesh, cmd);
-					graphics_shader_bind(gfx.ps_mesh, cmd);
-					graphics_inputlayoutstate_bind(gfx.ils_mesh, cmd);
-					graphics_depthstencilstate_bind(gfx.dss_default_depth, cmd);
-					graphics_rasterizerstate_bind(gfx.rs_back_culling, cmd);
-					graphics_blendstate_bind(gfx.bs_mesh, cmd);
-					graphics_sampler_bind(gfx.sampler_def_linear, 0u, ShaderType_Pixel, cmd);
+						// Bind resources
+						GPUBuffer* instance_buffer = gfx.cbuffer_mesh_instance;
+						GPUBuffer* material_buffer = gfx.cbuffer_material;
+						GPUBuffer* light_instances_buffer = gfx.cbuffer_light_instances;
 
-					// Bind resources
-					GPUBuffer* instance_buffer = gfx.cbuffer_mesh_instance;
-					GPUBuffer* material_buffer = gfx.cbuffer_material;
-					GPUBuffer* light_instances_buffer = gfx.cbuffer_light_instances;
+						graphics_constantbuffer_bind(instance_buffer, 0u, ShaderType_Vertex, cmd);
+						graphics_constantbuffer_bind(gfx.cbuffer_camera, 1u, ShaderType_Vertex, cmd);
+						graphics_constantbuffer_bind(material_buffer, 0u, ShaderType_Pixel, cmd);
+						graphics_constantbuffer_bind(light_instances_buffer, 1u, ShaderType_Pixel, cmd);
 
-					graphics_constantbuffer_bind(instance_buffer, 0u, ShaderType_Vertex, cmd);
-					graphics_constantbuffer_bind(gfx.cbuffer_camera, 1u, ShaderType_Vertex, cmd);
-					graphics_constantbuffer_bind(material_buffer, 0u, ShaderType_Pixel, cmd);
-					graphics_constantbuffer_bind(light_instances_buffer, 1u, ShaderType_Pixel, cmd);
+						u32 light_count = std::min(LIGHT_COUNT, u32(light_instances.size()));
 
-					u32 light_count = std::min(LIGHT_COUNT, u32(light_instances.size()));
+						// Send light data
+						if (light_count) {
+							LightData light_data[LIGHT_COUNT];
 
-					// Send light data
-					if (light_count) {
-						LightData light_data[LIGHT_COUNT];
+							foreach(i, light_count) {
 
-						foreach(i, light_count) {
+								LightData& l0 = light_data[i];
+								const LightInstance& l1 = light_instances[i];
 
-							LightData& l0 = light_data[i];
-							const LightInstance& l1 = light_instances[i];
+								l0.type = l1.type;
+								l0.color = l1.color;
+								l0.intensity = l1.intensity;
 
-							l0.type = l1.type;
-							l0.color = l1.color;
-							l0.intensity = l1.intensity;
+								switch (l1.type)
+								{
+								case LightType_Point:
+									l0.position = v3_f32(XMVector4Transform(l1.position.getDX(1.f), camera_data.view_matrix));
+									l0.range = l1.range;
+									l0.smoothness = l1.smoothness;
+									break;
 
-							switch (l1.type)
-							{
-							case LightType_Point:
-								l0.position = v3_f32(XMVector4Transform(l1.position.getDX(1.f), camera_data.view_matrix));
-								l0.range = l1.range;
-								l0.smoothness = l1.smoothness;
-								break;
-
-							case LightType_Direction:
-								l0.position = v3_f32(XMVector3Normalize(XMVector4Transform(l1.position.getDX(1.f), camera_data.view_matrix)));
-								break;
+								case LightType_Direction:
+									l0.position = v3_f32(XMVector3Normalize(XMVector4Transform(l1.position.getDX(1.f), camera_data.view_matrix)));
+									break;
+								}
 							}
+
+							graphics_buffer_update(light_instances_buffer, light_data, sizeof(LightData) * light_count, 0u, cmd);
 						}
 
-						graphics_buffer_update(light_instances_buffer, light_data, sizeof(LightData) * light_count, 0u, cmd);
-					}
+						foreach(i, mesh_instances.size()) {
 
-					foreach(i, mesh_instances.size()) {
+							const MeshInstance& inst = mesh_instances[i];
 
-						const MeshInstance& inst = mesh_instances[i];
+							graphics_vertexbuffer_bind(inst.mesh->vbuffer, 0u, 0u, cmd);
+							graphics_indexbuffer_bind(inst.mesh->ibuffer, 0u, cmd);
 
-						graphics_vertexbuffer_bind(inst.mesh->vbuffer, 0u, 0u, cmd);
-						graphics_indexbuffer_bind(inst.mesh->ibuffer, 0u, cmd);
+							// Update material data
+							{
+								MaterialData material_data;
+								material_data.flags = 0u;
 
-						// Update material data
-						{
-							MaterialData material_data;
-							material_data.flags = 0u;
+								GPUImage* diffuse_map = inst.material->diffuse_map.get();
+								GPUImage* normal_map = inst.material->normal_map.get();
 
-							GPUImage* diffuse_map = inst.material->diffuse_map.get();
-							GPUImage* normal_map = inst.material->normal_map.get();
+								graphics_image_bind(diffuse_map ? diffuse_map : gfx.image_white, 0u, ShaderType_Pixel, cmd);
+								if (normal_map && false) { graphics_image_bind(normal_map, 1u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_NORMAL_MAPPING; }
 
-							graphics_image_bind(diffuse_map ? diffuse_map : gfx.image_white, 0u, ShaderType_Pixel, cmd);
-							if (normal_map) { graphics_image_bind(normal_map, 1u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_NORMAL_MAPPING; }
+								material_data.diffuse_color = inst.material->diffuse_color;
+								material_data.specular_color = inst.material->specular_color;
+								material_data.shininess = inst.material->shininess;
 
-							material_data.diffuse_color = inst.material->diffuse_color;
-							material_data.specular_color = inst.material->specular_color;
-							material_data.shininess = inst.material->shininess;
+								graphics_buffer_update(material_buffer, &material_data, sizeof(MaterialData), 0u, cmd);
+							}
 
-							graphics_buffer_update(material_buffer, &material_data, sizeof(MaterialData), 0u, cmd);
+							// Update instance data
+							{
+								MeshData mesh_data;
+								mesh_data.model_view_matrix = inst.transform_matrix * camera_data.view_matrix;
+								mesh_data.inv_model_view_matrix = XMMatrixInverse(nullptr, mesh_data.model_view_matrix);
+
+								graphics_buffer_update(instance_buffer, &mesh_data, sizeof(MeshData), 0u, cmd);
+							}
+
+							// Begin renderpass
+							GPUImage* att[] = { offscreen, depthstencil };
+							graphics_renderpass_begin(gfx.renderpass_mesh, att, cmd);
+
+							// Draw
+							graphics_draw_indexed(u32(inst.mesh->indices.size()), 1u, 0u, 0u, 0u, cmd);
+
+							graphics_renderpass_end(cmd);
 						}
-
-						// Update instance data
-						{
-							MeshData mesh_data;
-							mesh_data.model_view_matrix = inst.transform_matrix * camera_data.view_matrix;
-							mesh_data.inv_model_view_matrix = XMMatrixTranspose(XMMatrixInverse(nullptr, mesh_data.model_view_matrix));
-
-							graphics_buffer_update(instance_buffer, &mesh_data, sizeof(MeshData), 0u, cmd);
-						}
-
-						// Begin renderpass
-						GPUImage* att[] = { offscreen, depthstencil };
-						graphics_renderpass_begin(gfx.renderpass_mesh, att, cmd);
-
-						// Draw
-						graphics_draw_indexed(u32(inst.mesh->indices.size()), 1u, 0u, 0u, 0u, cmd);
-
-						graphics_renderpass_end(cmd);
 					}
 				}
 			}

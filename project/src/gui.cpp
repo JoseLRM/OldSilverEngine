@@ -21,6 +21,7 @@ namespace sv {
 		InstanceAllocator<GuiContainer, 10u> containers;
 		InstanceAllocator<GuiButton, 10u>    buttons;
 		InstanceAllocator<GuiSlider, 10u>    sliders;
+		InstanceAllocator<GuiDrag, 10u>		 drags;
 		InstanceAllocator<GuiTextField, 10u> textfields;
 		InstanceAllocator<GuiCheckbox, 10u>  checkboxes;
 
@@ -53,6 +54,7 @@ namespace sv {
 		gui.containers.clear();
 		gui.buttons.clear();
 		gui.sliders.clear();
+		gui.drags.clear();
 		gui.textfields.clear();
 		gui.checkboxes.clear();
 
@@ -355,6 +357,10 @@ namespace sv {
 				if (button.hover_state == HoverState_Enter || button.hover_state == HoverState_Hover) {
 
 					button.hover_state = HoverState_Leave;
+				}
+				else if (button.hover_state == HoverState_Leave) {
+					
+					button.hover_state = HoverState_None;
 				}
 			}
 		}
@@ -679,7 +685,13 @@ namespace sv {
 			GuiButton& button = *reinterpret_cast<GuiButton*>(&widget);
 
 			begin_debug_batch(cmd);
-			draw_debug_quad(pos.getVec3(), size, widget.color, cmd);
+
+			Color color;
+
+			if (button.hover_state) color = button.hover_color;
+			else color = button.color;
+
+			draw_debug_quad(pos.getVec3(), size, color, cmd);
 			end_debug_batch(offscreen, XMMatrixIdentity(), cmd);
 
 			if (button.text.size()) {
@@ -748,6 +760,8 @@ namespace sv {
 		PARSE_GUI();
 
 		// prepare
+		graphics_viewport_set(offscreen, 0u, cmd);
+		graphics_scissor_set(offscreen, 0u, cmd);
 		graphics_depthstencilstate_unbind(cmd);
 		graphics_blendstate_unbind(cmd);
 		graphics_rasterizerstate_unbind(cmd);
@@ -810,6 +824,10 @@ namespace sv {
 			widget = &gui.sliders.create();
 			break;
 
+		case GuiWidgetType_Drag:
+			widget = &gui.drags.create();
+			break;
+
 		case GuiWidgetType_TextField:
 			widget = &gui.textfields.create();
 			break;
@@ -861,7 +879,7 @@ namespace sv {
 
 			for (GuiWidget* son : container.sons) {
 
-			    gui_widget_destroy(gui_ son);
+			    gui_widget_destroy(gui_, son);
 			}
 			
 			gui.containers.destroy(container);
@@ -874,6 +892,10 @@ namespace sv {
 
 		case GuiWidgetType_Slider:
 			gui.sliders.destroy(*reinterpret_cast<GuiSlider*>(widget));
+			break;
+
+		case GuiWidgetType_Drag:
+			gui.drags.destroy(*reinterpret_cast<GuiDrag*>(widget));
 			break;
 
 		case GuiWidgetType_TextField:

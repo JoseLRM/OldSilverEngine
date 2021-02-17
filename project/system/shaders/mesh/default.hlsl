@@ -11,7 +11,9 @@ struct Input {
 
 struct Output {
     float3 frag_position : FragPosition;
-    float3x3 TBN : TBN;
+	float3 normal : FragNormal;
+	float3 tangent : FragTangent;
+	float3 bitangent : FragBitangent;
 	float2 texcoord : FragTexcoord;
     float4 position : SV_Position;
 };
@@ -29,13 +31,14 @@ Output main(Input input)
 {
     Output output;
 
-    float4 pos = mul(mvm, float4(input.position, 1.f));
+    float4 pos = mul(float4(input.position, 1.f), mvm);
     output.frag_position = pos.xyz;
-    output.position = mul(camera.pm, pos);
+    output.position = mul(pos, camera.pm);
 
 	float3 bitangent = cross(input.normal, input.tangent);
-	output.TBN = float3x3(input.tangent, bitangent, input.normal);
-	output.TBN = mul((float3x3)imvm, output.TBN);
+	output.normal = mul((float3x3)imvm, input.normal);
+	output.tangent = mul((float3x3)imvm, input.tangent);
+	output.bitangent = mul((float3x3)imvm, bitangent);
 
 	output.texcoord = input.texcoord;
 
@@ -48,7 +51,9 @@ Output main(Input input)
 
 struct Input {
     float3 position : FragPosition;
-    float3x3 TBN : TBN;
+    float3 normal : FragNormal;
+    float3 tangent : FragTangent;
+    float3 bitangent : FragBitangent;
 	float2 texcoord : FragTexcoord;
 };
 
@@ -100,10 +105,13 @@ Output main(Input input)
 
 	float3 normal;
 
-	if (material.flags & MAT_FLAG_NORMAL_MAPPING) 
-		normal = normalize(mul(input.TBN, (normal_map.Sample(sam, input.texcoord).xyz * 2.f - 1.f)));
+	if (material.flags & MAT_FLAG_NORMAL_MAPPING) {
+
+		float3x3 TBN = transpose(float3x3(normalize(input.tangent), normalize(input.bitangent), normalize(input.normal)));
+		normal = mul(input.normal, TBN);
+	}
 	else
-		normal = normalize(float3(input.TBN._13, input.TBN._23, input.TBN._33));
+		normal = normalize(input.normal);
 
 	float3 light_accumulation = float3(0.f, 0.f, 0.f);
 

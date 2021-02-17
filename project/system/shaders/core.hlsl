@@ -1,3 +1,4 @@
+#pragma pack_matrix( row_major )
 
 #ifdef SV_API_VULKAN
 

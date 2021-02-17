@@ -369,6 +369,10 @@ namespace sv {
 			const aiMesh& m0 = *scene->mMeshes[i];
 			MeshInfo& m1 = model_info.meshes[i];
 
+			if (m0.mName.length) {
+				m1.name = m0.mName.data;
+			}
+
 			// Material index
 			m1.material_index = m0.mMaterialIndex;
 

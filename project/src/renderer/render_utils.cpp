@@ -18,7 +18,7 @@ namespace sv {
 		return graphics_image_create(&desc, pImage);
 	}
 
-	Result zbuffer_create(u32 width, u32 height, GPUImage** pImage)
+	Result depthstencil_create(u32 width, u32 height, GPUImage** pImage)
 	{
 		GPUImageDesc desc;
 		desc.width = width;

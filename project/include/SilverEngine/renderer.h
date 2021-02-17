@@ -12,7 +12,7 @@ namespace sv {
 	// Functions
 
 	Result offscreen_create(u32 width, u32 height, GPUImage** pImage);
-	Result zbuffer_create(u32 width, u32 height, GPUImage** pImage);
+	Result depthstencil_create(u32 width, u32 height, GPUImage** pImage);
 
 	// FONT
 
@@ -63,21 +63,6 @@ namespace sv {
 		Return the number of character rendered
 	*/
 	u32 draw_text(GPUImage* offscreen, const char* text, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextSpace space, TextAlignment alignment, Font* pFont, CommandList cmd);
-
-	// SPRITE RENDERING
-
-	struct SpriteInstance {
-		XMMATRIX	tm;
-		v4_f32		texcoord;
-		GPUImage*	image;
-		Color		color;
-
-		SpriteInstance() = default;
-		SpriteInstance(const XMMATRIX& m, const v4_f32& texcoord, GPUImage* image, Color color)
-			: tm(m), texcoord(texcoord), image(image), color(color) {}
-	};
-
-	void draw_sprites(GPUImage* offscreen, const SpriteInstance* sprites, u32 count, const XMMATRIX& view_projection_matrix, bool linear_sampler, CommandList cmd);
 
 	// SCENE
 

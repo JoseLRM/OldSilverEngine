@@ -62,6 +62,8 @@ namespace sv {
 
 	struct MeshInfo {
 
+		std::string name;
+
 		std::vector<v3_f32> positions;
 		std::vector<v3_f32> normals;
 		std::vector<v3_f32> tangents;

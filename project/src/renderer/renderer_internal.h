@@ -6,7 +6,7 @@ namespace sv {
 
 	constexpr u32 LIGHT_COUNT = 10u;
 
-	enum LightType {
+	enum LightType : u32 {
 		LightType_None,
 		LightType_Point,
 		LightType_Direction,

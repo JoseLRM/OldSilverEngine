@@ -5,26 +5,27 @@
 #include "SilverEngine/mesh.h"
 
 namespace sv {
-    
+
 	SV_DEFINE_COMPONENT(SpriteComponent) {
 
-		TextureAsset texture;
-		v4_f32 texcoords = { 0.f, 0.f, 1.f, 1.f };
-		u32 layer = 0u;
+		TextureAsset	texture;
+		v4_f32			texcoord = { 0.f, 0.f, 1.f, 1.f };
+		Color			color = Color::White();
+		u32				layer = 0u;
 
-		void serialize(ArchiveO& archive) {};
-		void deserialize(ArchiveI& archive) {};
+		void serialize(ArchiveO & archive);
+		void deserialize(ArchiveI & archive);
 
 	};
 
 	SV_DEFINE_COMPONENT(NameComponent) {
 
-	        std::string name;
+		std::string name;
 
-		void serialize(ArchiveO& archive) {};
-		void deserialize(ArchiveI& archive) {};
+		void serialize(ArchiveO & archive);
+		void deserialize(ArchiveI & archive);
 
-	};	
+	};
 
 	enum ProjectionType : u32 {
 		ProjectionType_Clip,
@@ -40,8 +41,8 @@ namespace sv {
 		f32 width = 10.f;
 		f32 height = 10.f;
 
-		void serialize(ArchiveO & archive) {};
-		void deserialize(ArchiveI & archive) {};
+		void serialize(ArchiveO & archive);
+		void deserialize(ArchiveI & archive);
 
 		SV_INLINE void adjust(f32 aspect)
 		{
@@ -72,12 +73,12 @@ namespace sv {
 	};
 
 	SV_DEFINE_COMPONENT(MeshComponent) {
-		
+
 		MeshAsset	mesh;
 		Material	material;
 
-		void serialize(ArchiveO & archive) {};
-		void deserialize(ArchiveI & archive) {};
+		void serialize(ArchiveO & archive) {}
+		void deserialize(ArchiveI & archive) {}
 
 	};
 
@@ -88,8 +89,8 @@ namespace sv {
 		f32 range = 5.f;
 		f32 smoothness = 0.5f;
 
-		void serialize(ArchiveO & archive) {};
-		void deserialize(ArchiveI & archive) {};
+		void serialize(ArchiveO & archive) {}
+		void deserialize(ArchiveI & archive) {}
 
 	};
 
@@ -99,8 +100,8 @@ namespace sv {
 		f32 intensity = 1.f;
 		v3_f32 direction = { 0.f, 0.f, 1.f };
 
-		void serialize(ArchiveO & archive) {};
-		void deserialize(ArchiveI & archive) {};
+		void serialize(ArchiveO & archive) {}
+		void deserialize(ArchiveI & archive) {}
 
 	};
 
@@ -112,8 +113,8 @@ namespace sv {
 		f32 range = 5.f;
 		f32 smoothness = 0.5f;
 
-		void serialize(ArchiveO & archive) {};
-		void deserialize(ArchiveI & archive) {};
+		void serialize(ArchiveO & archive) {}
+		void deserialize(ArchiveI & archive) {}
 
 	};
 

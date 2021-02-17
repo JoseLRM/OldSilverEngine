@@ -42,6 +42,11 @@ void load_model(ECS* ecs, const char* filepath, f32 scale = f32_max)
 				mesh_set_scale(mesh, scale, true);
 			mesh_create_buffers(mesh);
 
+			if (m.name.size()) {
+
+				ecs_component_add<NameComponent>(ecs, e)->name = m.name;
+			}
+
 			MaterialInfo& mat = info.materials[m.material_index];
 
 			comp.material.diffuse_color = mat.diffuse_color;
@@ -57,7 +62,7 @@ void load_model(ECS* ecs, const char* filepath, f32 scale = f32_max)
 Result init()
 {
 	svCheck(offscreen_create(1920u, 1080u, &offscreen));
-	svCheck(zbuffer_create(1920u, 1080u, &zbuffer));
+	svCheck(depthstencil_create(1920u, 1080u, &zbuffer));
 
 	ecs_create(&ecs);
 
@@ -71,12 +76,12 @@ Result init()
 
 	auto l = ecs_component_add<PointLightComponent>(ecs, ecs_entity_create(ecs));
 	Transform t = ecs_entity_transform_get(ecs, l->entity);
-	t.setPosition({ 0.f, 5.f, 0.f });
+	t.setPosition({ 0.f, 0.f, -2.f });
 
 	gui = gui_create();
 
-	//load_model(ecs, "assets/dragon.obj");
-	load_model(ecs, "assets/gobber/GoblinX.obj");
+	load_model(ecs, "assets/dragon.obj");
+	//load_model(ecs, "assets/gobber/GoblinX.obj");
 
 	// Editor stuff
 	window = gui_window_create(gui);
@@ -115,6 +120,8 @@ Result close()
 	svCheck(graphics_destroy(zbuffer));
 
 	ecs_destroy(ecs);
+
+	destroy_editor_ecs(editor_ecs);
 
 	gui_destroy(gui);
 
