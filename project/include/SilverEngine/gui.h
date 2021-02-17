@@ -111,6 +111,9 @@ namespace sv {
 	struct GuiDrag : public GuiWidget {
 
 		f32 value = 0.f;
+		f32 advance = 0.1f;
+		f32 min = f32_min;
+		f32 max = f32_max;
 
 		GuiDrag() : GuiWidget(GuiWidgetType_Drag) {}
 

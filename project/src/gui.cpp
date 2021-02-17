@@ -635,6 +635,69 @@ namespace sv {
 		gui.locked.mouse_click = gui.widget_focused != nullptr;
 	}
 
+    static constexpr MAX_FLOAT_CHARS = 7u;
+
+    static void float_to_string(f32 n, char* str, u32* size, const u32 buffer_size)
+    {
+	bool negative = n < 0.f;
+
+	n = abs(n);
+	u32 n0 = u32(n);
+	u32 n1 = u32((n - i32(n)) * 100000.f);
+
+	char* it = str;
+	char* end = str + buffer_size;
+
+	if (negative) {
+	    *it = '-';
+	    ++it;
+	}
+
+	if (n0 == 0u) {
+	    *it = '0';
+	    ++it;
+	}
+	
+	while (it != end) {
+
+	    if (n0 != 0u) {
+
+		u32 number = n0 % 10u;
+		n0 /= 10u;
+
+		char c = number + '0';
+		*it = c;
+		++it;
+
+		if (n == 0u) {
+		    if (it == end) break;
+
+		    *it = '.';
+		    ++it;
+		}
+	    }
+	    else {
+
+		if (n1 == 0u) {
+		    break;
+		}
+		
+		u32 number = n1 % 10u;
+		n1 /= 10u;
+
+		char c = number + '0';
+		*it = c;
+		++it;
+	    }
+	}
+
+	--it;
+	while (*it == '0') --it;
+	++it;
+	
+	*size = it - str;
+    }
+
 	static void draw_widget(GUI_internal& gui, GPUImage* offscreen, GuiWidget& widget, const v4_f32& parent_bounds, CommandList cmd)
 	{
 	        // TODO: Should use the alpha and inherited_alpha value
@@ -700,6 +763,27 @@ namespace sv {
 				f32 text_y = pos.y + size.y * 0.6f;
 				draw_text(offscreen, button.text.c_str(), pos.x - size.x * 0.5f, text_y, size.x, 1u, size.y, gui.resolution.x / gui.resolution.y, TextSpace_Clip, TextAlignment_Center, nullptr, cmd);
 			}
+		}
+		break;
+
+		case GuiWidgetType_Drag:
+		{
+			GuiDrag& drag = *reinterpret_cast<GuiDrag*>(&widget);
+
+			begin_debug_batch(cmd);
+
+			draw_debug_quad(pos.getVec3(), size, drag.color, cmd);
+			
+			end_debug_batch(offscreen, XMMatrixIdentity(), cmd);
+
+			char strbuff[MAX_FLOAT_CHARS + 1u];
+			u32 size;
+			float_to_string(drag.value, strbuff, &size, MAX_FLOAT_CHARS);
+			strbuff[size] = '\0';
+
+			// TODO: Should use information about the largest character in the font
+			f32 text_y = pos.y + size.y * 0.6f;
+			draw_text(offscreen, strbuff, pos.x - size.x * 0.5f, text_y, size.x, 1u, size.y, gui.resolution.x / gui.resolution.y, TextSpace_Clip, TextAlignment_Center, nullptr, cmd);
 		}
 		break;
 
