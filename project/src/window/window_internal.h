@@ -22,8 +22,6 @@ namespace sv {
 		WindowState			new_state;
 		WindowFlags			new_flags;
 		SwapChain_internal* swap_chain = nullptr;
-		std::vector<u8>		raw_mouse_buffer;
-		v2_f32				mouse_dragging_acumulation;
 
 	};
 

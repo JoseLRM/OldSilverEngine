@@ -28,7 +28,7 @@ namespace sv {
 
 		if (button_state != InputState_None) {
 
-			v2_f32 drag = input.mouse_position - input.mouse_last_pos;
+			v2_f32 drag = input.mouse_dragged;
 
 			position -= drag * v2_f32{ camera.width, camera.height };
 		}
@@ -79,8 +79,9 @@ namespace sv {
 		// Camera rotation
 		if (input.mouse_buttons[MouseButton_Center] == InputState_Hold && (input.mouse_dragged.x != 0.f || input.mouse_dragged.y != 0.f)) {
 
-			v2_f32 drag = input.mouse_dragged * 0.01f;
+			set_cursor_position(engine.window, 0.f, 0.f);
 
+			v2_f32 drag = input.mouse_dragged;
 			rotation = XMQuaternionMultiply(rotation, XMQuaternionRotationRollPitchYaw(drag.y, drag.x, 0.f));
 		}
 

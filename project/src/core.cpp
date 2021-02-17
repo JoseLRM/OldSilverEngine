@@ -13,128 +13,6 @@
 
 namespace sv {
 
-	///////////////////////////////////////////////// PLATFORM /////////////////////////////////////////////////
-
-#ifdef SV_PLATFORM_WIN
-
-	int show_message(const wchar* title, const wchar* content, MessageStyleFlags style)
-	{
-		UINT flags = 0u;
-
-		if (style & MessageStyle_IconInfo) flags |= MB_ICONINFORMATION;
-		else if (style & MessageStyle_IconWarning) flags |= MB_ICONWARNING;
-		else if (style & MessageStyle_IconError) flags |= MB_ICONERROR;
-
-		if (style & MessageStyle_Ok) flags |= MB_OK;
-		else if (style & MessageStyle_OkCancel) flags |= MB_OKCANCEL;
-		else if (style & MessageStyle_YesNo) flags |= MB_YESNO;
-		else if (style & MessageStyle_YesNoCancel) flags |= MB_YESNOCANCEL;
-
-		int res = MessageBox(0, content, title, flags);
-
-		if (style & MessageStyle_Ok) {
-			if (res == IDOK) return 0;
-			else return -1;
-		}
-		else if (style & MessageStyle_OkCancel) {
-			switch (res)
-			{
-			case IDOK:
-				return 0;
-			case IDCANCEL:
-				return 1;
-			default:
-				return -1;
-			}
-		}
-		else if (style & MessageStyle_YesNo) {
-			switch (res)
-			{
-			case IDYES:
-				return 0;
-			case IDNO:
-				return 1;
-			default:
-				return -1;
-			}
-		}
-		else if (style & MessageStyle_YesNoCancel) {
-			switch (res)
-			{
-			case IDYES:
-				return 0;
-			case IDNO:
-				return 1;
-			case IDCANCEL:
-				return 2;
-			default:
-				return -1;
-			}
-		}
-
-		return res;
-	}
-
-	inline std::string file_dialog(u32 filterCount, const char** filters, const char* startPath, bool open)
-	{
-		std::stringstream absFilterStream;
-
-		for (u32 i = 0; i < filterCount; ++i) {
-			absFilterStream << filters[i * 2u];
-			absFilterStream << '\0';
-			absFilterStream << filters[i * 2u + 1u];
-			absFilterStream << '\0';
-		}
-
-		std::string absFilter = std::move(absFilterStream.str());
-
-#ifdef SV_RES_PATH
-		std::string startPathStr = SV_RES_PATH;
-		startPathStr += startPath;
-		startPath = startPathStr.c_str();
-#endif
-
-		HWND hwnd = (HWND)window_handle(engine.window);
-
-		OPENFILENAMEA file;
-		SV_ZERO_MEMORY(&file, sizeof(OPENFILENAMEA));
-
-		constexpr size_t FILE_MAX_SIZE = 300u;
-		char lpstrFile[FILE_MAX_SIZE] = {};
-
-		file.lStructSize = sizeof(OPENFILENAMEA);
-		file.hwndOwner = hwnd;
-		file.lpstrFilter = absFilter.c_str();
-		file.nFilterIndex = 1u;
-		file.lpstrFile = lpstrFile;
-		file.lpstrInitialDir = startPath;
-		file.nMaxFile = FILE_MAX_SIZE;
-		file.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
-
-		BOOL result;
-
-		if (open) result = GetOpenFileNameA(&file);
-		else result = GetSaveFileNameA(&file);
-
-		if (result == TRUE) {
-			path_clear(lpstrFile);
-			return lpstrFile;
-		}
-		else return std::string();
-	}
-
-	std::string file_dialog_open(u32 filterCount, const char** filters, const char* startPath)
-	{
-		return file_dialog(filterCount, filters, startPath, true);
-	}
-
-	std::string file_dialog_save(u32 filterCount, const char** filters, const char* startPath)
-	{
-		return file_dialog(filterCount, filters, startPath, false);
-	}
-
-#endif
-
 	///////////////////////////////////////////////// ASSERTION /////////////////////////////////////////////////
 
 	void throw_assertion(const char* content, u32 line, const char* file)
@@ -395,6 +273,139 @@ namespace sv {
 	}
 
 #endif
+
+	///////////////////////////////////////////////// PLATFORM /////////////////////////////////////////////////
+
+#ifdef SV_PLATFORM_WIN
+
+	int show_message(const wchar* title, const wchar* content, MessageStyleFlags style)
+	{
+		UINT flags = 0u;
+
+		if (style & MessageStyle_IconInfo) flags |= MB_ICONINFORMATION;
+		else if (style & MessageStyle_IconWarning) flags |= MB_ICONWARNING;
+		else if (style & MessageStyle_IconError) flags |= MB_ICONERROR;
+
+		if (style & MessageStyle_Ok) flags |= MB_OK;
+		else if (style & MessageStyle_OkCancel) flags |= MB_OKCANCEL;
+		else if (style & MessageStyle_YesNo) flags |= MB_YESNO;
+		else if (style & MessageStyle_YesNoCancel) flags |= MB_YESNOCANCEL;
+
+		int res = MessageBox(0, content, title, flags);
+
+		if (style & MessageStyle_Ok) {
+			if (res == IDOK) return 0;
+			else return -1;
+		}
+		else if (style & MessageStyle_OkCancel) {
+			switch (res)
+			{
+			case IDOK:
+				return 0;
+			case IDCANCEL:
+				return 1;
+			default:
+				return -1;
+			}
+		}
+		else if (style & MessageStyle_YesNo) {
+			switch (res)
+			{
+			case IDYES:
+				return 0;
+			case IDNO:
+				return 1;
+			default:
+				return -1;
+			}
+		}
+		else if (style & MessageStyle_YesNoCancel) {
+			switch (res)
+			{
+			case IDYES:
+				return 0;
+			case IDNO:
+				return 1;
+			case IDCANCEL:
+				return 2;
+			default:
+				return -1;
+			}
+		}
+
+		return res;
+	}
+
+	inline std::string file_dialog(u32 filterCount, const char** filters, const char* startPath, bool open)
+	{
+		std::stringstream absFilterStream;
+
+		for (u32 i = 0; i < filterCount; ++i) {
+			absFilterStream << filters[i * 2u];
+			absFilterStream << '\0';
+			absFilterStream << filters[i * 2u + 1u];
+			absFilterStream << '\0';
+		}
+
+		std::string absFilter = std::move(absFilterStream.str());
+
+#ifdef SV_RES_PATH
+		std::string startPathStr = SV_RES_PATH;
+		startPathStr += startPath;
+		startPath = startPathStr.c_str();
+#endif
+
+		HWND hwnd = (HWND)window_handle(engine.window);
+
+		OPENFILENAMEA file;
+		SV_ZERO_MEMORY(&file, sizeof(OPENFILENAMEA));
+
+		constexpr size_t FILE_MAX_SIZE = 300u;
+		char lpstrFile[FILE_MAX_SIZE] = {};
+
+		file.lStructSize = sizeof(OPENFILENAMEA);
+		file.hwndOwner = hwnd;
+		file.lpstrFilter = absFilter.c_str();
+		file.nFilterIndex = 1u;
+		file.lpstrFile = lpstrFile;
+		file.lpstrInitialDir = startPath;
+		file.nMaxFile = FILE_MAX_SIZE;
+		file.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
+
+		BOOL result;
+
+		if (open) result = GetOpenFileNameA(&file);
+		else result = GetSaveFileNameA(&file);
+
+		if (result == TRUE) {
+			path_clear(lpstrFile);
+			return lpstrFile;
+		}
+		else return std::string();
+	}
+
+	std::string file_dialog_open(u32 filterCount, const char** filters, const char* startPath)
+	{
+		return file_dialog(filterCount, filters, startPath, true);
+	}
+
+	std::string file_dialog_save(u32 filterCount, const char** filters, const char* startPath)
+	{
+		return file_dialog(filterCount, filters, startPath, false);
+	}
+
+#endif
+
+	extern v2_f32 next_mouse_position;
+	extern bool new_mouse_position;
+
+	void set_cursor_position(Window* window, f32 x, f32 y)
+	{
+		x = std::max(std::min(x, 0.5f), -0.5f) + 0.5f;
+		y = std::max(std::min(y, 0.5f), -0.5f) + 0.5f;
+		next_mouse_position = { x, y };
+		new_mouse_position = true;
+	}
 
 	///////////////////////////////////////////////// TIMER /////////////////////////////////////////////////
 

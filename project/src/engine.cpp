@@ -173,6 +173,9 @@ namespace sv {
 		return res;
 	}
 
+	v2_f32 next_mouse_position;
+	bool new_mouse_position = false;
+
 	static void update_input()
 	{
 		input.text.clear();
@@ -201,7 +204,6 @@ namespace sv {
 
 		input.mouse_last_pos = input.mouse_position;
 		input.mouse_wheel = 0.f;
-		input.mouse_dragged = 0.f;
 
 #ifdef SV_PLATFORM_WIN
 		MSG msg;
@@ -211,17 +213,30 @@ namespace sv {
 			DispatchMessageW(&msg);
 		}
 #endif
-		
-		if (input.focused_window) {
 
-			Window_internal& win = *reinterpret_cast<Window_internal*>(input.focused_window);
+		input.mouse_dragged = input.mouse_position - input.mouse_last_pos;
 
-			if (win.mouse_dragging_acumulation.length() > 0.1f)
-				input.mouse_dragged = win.mouse_dragging_acumulation * 0.1f;
-			else
-				input.mouse_dragged = win.mouse_dragging_acumulation;
+		// Move mouse
+		if (new_mouse_position) {
 
-			win.mouse_dragging_acumulation -= input.mouse_dragged;
+			Window* window = input.focused_window;
+
+			if (window) {
+
+				v2_u32 size = window_size_get(window);
+				v2_u32 pos = window_position_get(window);
+#ifdef SV_PLATFORM_WIN
+				SetCursorPos(pos.x + (f32(size.x) * next_mouse_position.x), pos.y + (f32(size.y) * (1.f - next_mouse_position.y)));
+
+				MSG msg;
+				PeekMessageW(&msg, 0, 0u, 0u, PM_REMOVE);
+#endif
+
+				input.mouse_position = next_mouse_position - 0.5f;
+				input.mouse_last_pos = input.mouse_position;
+			}
+
+			new_mouse_position = false;
 		}
 	}
 

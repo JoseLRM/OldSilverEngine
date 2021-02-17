@@ -156,31 +156,6 @@ namespace sv {
 // Ptr Handle
 #define SV_DEFINE_HANDLE(x) struct x { x() = delete; ~x() = delete; }
 
-// Platform
-
-namespace sv {
-
-	enum MessageStyle : u32 {
-		MessageStyle_None = 0u,
-
-		MessageStyle_IconInfo		= SV_BIT(0),
-		MessageStyle_IconWarning	= SV_BIT(1),
-		MessageStyle_IconError		= SV_BIT(2),
-
-		MessageStyle_Ok				= SV_BIT(3),
-		MessageStyle_OkCancel		= SV_BIT(4),
-		MessageStyle_YesNo			= SV_BIT(5),
-		MessageStyle_YesNoCancel	= SV_BIT(6),
-	};
-	typedef u32 MessageStyleFlags;
-
-	int show_message(const wchar* title, const wchar* content, MessageStyleFlags style = MessageStyle_None);
-
-	std::string file_dialog_open(u32 filterCount, const char** filters, const char* startPath);
-	std::string file_dialog_save(u32 filterCount, const char** filters, const char* startPath);
-
-}
-
 // Assertion
 
 namespace sv {
@@ -283,7 +258,30 @@ namespace sv {
 #include "utils/math.h"
 #include "window.h"
 
+// Platform
+
 namespace sv {
+
+	enum MessageStyle : u32 {
+		MessageStyle_None = 0u,
+
+		MessageStyle_IconInfo = SV_BIT(0),
+		MessageStyle_IconWarning = SV_BIT(1),
+		MessageStyle_IconError = SV_BIT(2),
+
+		MessageStyle_Ok = SV_BIT(3),
+		MessageStyle_OkCancel = SV_BIT(4),
+		MessageStyle_YesNo = SV_BIT(5),
+		MessageStyle_YesNoCancel = SV_BIT(6),
+	};
+	typedef u32 MessageStyleFlags;
+
+	int show_message(const wchar* title, const wchar* content, MessageStyleFlags style = MessageStyle_None);
+
+	std::string file_dialog_open(u32 filterCount, const char** filters, const char* startPath);
+	std::string file_dialog_save(u32 filterCount, const char** filters, const char* startPath);
+
+	void set_cursor_position(Window* window, f32 x, f32 y);
 
 	// Hash functions
 
