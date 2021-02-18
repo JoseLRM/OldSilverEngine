@@ -95,6 +95,8 @@ namespace sv {
 		void setRotationZ(float z) noexcept;
 		void setRotationW(float w) noexcept;
 
+		void rotateRollPitchYaw(f32 roll, f32 pitch, f32 yaw);
+
 		void setScale(const v3_f32& scale) noexcept;
 		void setScaleX(float x) noexcept;
 		void setScaleY(float y) noexcept;
