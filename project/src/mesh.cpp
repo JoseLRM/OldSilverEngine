@@ -377,6 +377,7 @@ namespace sv {
 			
 			get_texture(folderpath, path, m0, m1.diffuse_map, aiTextureType_DIFFUSE);
 			get_texture(folderpath, path, m0, m1.normal_map, aiTextureType_NORMALS);
+			get_texture(folderpath, path, m0, m1.specular_map, aiTextureType_SPECULAR);
 		}
 
 		foreach(i, scene->mNumMeshes) {

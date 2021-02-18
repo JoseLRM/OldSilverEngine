@@ -35,6 +35,7 @@ namespace sv {
 		f32		shininess;
 		TextureAsset diffuse_map;
 		TextureAsset normal_map;
+  	        TextureAsset specular_map;
 	};
 
 	// Assets
@@ -85,6 +86,7 @@ namespace sv {
 		f32 shininess;
 		TextureAsset diffuse_map;
 		TextureAsset normal_map;
+  	        TextureAsset specular_map;
 	};
 
 	struct ModelInfo {

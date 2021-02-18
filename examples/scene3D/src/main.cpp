@@ -57,6 +57,7 @@ void load_model(ECS* ecs, const char* filepath, f32 scale = f32_max)
 			comp.material.shininess = mat.shininess;
 			comp.material.diffuse_map = mat.diffuse_map;
 			comp.material.normal_map = mat.normal_map;
+			comp.material.specular_map = mat.specular_map;
 		}
 	}
 }

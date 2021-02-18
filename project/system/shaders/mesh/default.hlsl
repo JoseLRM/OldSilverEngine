@@ -69,6 +69,7 @@ struct Material {
 };
 
 #define MAT_FLAG_NORMAL_MAPPING SV_BIT(0u)
+#define MAT_FLAG_SPECULAR_MAPPING SV_BIT(1u)
 
 #define LIGHT_TYPE_POINT 1u
 #define LIGHT_TYPE_DIRECTION 2u
@@ -94,6 +95,7 @@ SV_CONSTANT_BUFFER(light_instances_buffer, b1) {
 
 SV_TEXTURE(diffuse_map, t0);
 SV_TEXTURE(normal_map, t1);
+SV_TEXTURE(specular_map, t2);
 
 SV_SAMPLER(sam, s0);
 
@@ -112,6 +114,12 @@ Output main(Input input)
 	}
 	else
 		normal = normalize(input.normal);
+
+	float specular_mul;
+	if (material.flags & MAT_FLAG_SPECULAR_MAPPING) {
+	   specular_mul = specular_map.Sample(sam, input.texcoord).r;
+	}
+	else specular_mul = 1.f;
 
 	float3 light_accumulation = float3(0.f, 0.f, 0.f);
 
@@ -132,7 +140,7 @@ Output main(Input input)
 			f32 diffuse = max(dot(normal, to_light), 0.1f);
 
 			// Specular
-			float specular = pow(max(dot(normalize(-input.position), reflect(-to_light, normal)), 0.f), material.shininess);
+			float specular = pow(max(dot(normalize(-input.position), reflect(-to_light, normal)), 0.f), material.shininess) * specular_mul;
 
 			// TODO attenuation
 
@@ -146,7 +154,7 @@ Output main(Input input)
 			f32 diffuse = max(dot(normal, light.position), 0.f);
 
 			// Specular
-			float specular = pow(max(dot(normalize(-input.position), reflect(-light.position, normal)), 0.f), material.shininess);
+			float specular = pow(max(dot(normalize(-input.position), reflect(-light.position, normal)), 0.f), material.shininess) * specular_mul;
 
 			light_accumulation += light.color * ((diffuse * material.diffuse_color) + (specular * material.specular_color)) * light.intensity;
 		}

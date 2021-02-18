@@ -813,11 +813,16 @@ namespace sv {
 
 								GPUImage* diffuse_map = inst.material->diffuse_map.get();
 								GPUImage* normal_map = inst.material->normal_map.get();
+								GPUImage* specular_map = inst.material->specular_map.get();
 
 								graphics_image_bind(diffuse_map ? diffuse_map : gfx.image_white, 0u, ShaderType_Pixel, cmd);
 								if (normal_map) { graphics_image_bind(normal_map, 1u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_NORMAL_MAPPING; }
 								// TODO: I don't know why i need to do this. The shader shouldn't sample this texture without the flag...
 								else graphics_image_bind(gfx.image_white, 1u, ShaderType_Pixel, cmd);
+								
+								if (specular_map) { graphics_image_bind(specular_map, 2u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_SPECULAR_MAPPING; }
+								// TODO: I don't know why i need to do this. The shader shouldn't sample this texture without the flag...
+								else graphics_image_bind(gfx.image_white, 2u, ShaderType_Pixel, cmd);
 
 								material_data.diffuse_color = inst.material->diffuse_color;
 								material_data.specular_color = inst.material->specular_color;
