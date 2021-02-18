@@ -816,6 +816,8 @@ namespace sv {
 
 								graphics_image_bind(diffuse_map ? diffuse_map : gfx.image_white, 0u, ShaderType_Pixel, cmd);
 								if (normal_map) { graphics_image_bind(normal_map, 1u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_NORMAL_MAPPING; }
+								// TODO: I don't know why i need to do this. The shader shouldn't sample this texture without the flag...
+								else graphics_image_bind(gfx.image_white, 1u, ShaderType_Pixel, cmd);
 
 								material_data.diffuse_color = inst.material->diffuse_color;
 								material_data.specular_color = inst.material->specular_color;

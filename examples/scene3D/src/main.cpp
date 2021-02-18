@@ -84,7 +84,8 @@ Result init()
 	gui = gui_create();
 
 	//load_model(ecs, "assets/dragon.obj");
-	load_model(ecs, "assets/gobber/GoblinX.obj");
+	//load_model(ecs, "assets/gobber/GoblinX.obj");
+	load_model(ecs, "assets/Sponza/sponza.obj");
 
 	// Editor stuff
 	window = gui_window_create(gui);
