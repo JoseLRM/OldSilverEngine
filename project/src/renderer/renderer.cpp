@@ -814,6 +814,7 @@ namespace sv {
 								GPUImage* diffuse_map = inst.material->diffuse_map.get();
 								GPUImage* normal_map = inst.material->normal_map.get();
 								GPUImage* specular_map = inst.material->specular_map.get();
+								GPUImage* emissive_map = inst.material->emissive_map.get();
 
 								graphics_image_bind(diffuse_map ? diffuse_map : gfx.image_white, 0u, ShaderType_Pixel, cmd);
 								if (normal_map) { graphics_image_bind(normal_map, 1u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_NORMAL_MAPPING; }
@@ -824,8 +825,13 @@ namespace sv {
 								// TODO: I don't know why i need to do this. The shader shouldn't sample this texture without the flag...
 								else graphics_image_bind(gfx.image_white, 2u, ShaderType_Pixel, cmd);
 
+								if (emissive_map) { graphics_image_bind(emissive_map, 3u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_EMISSIVE_MAPPING; }
+								// TODO: I don't know why i need to do this. The shader shouldn't sample this texture without the flag...
+								else graphics_image_bind(gfx.image_white, 3u, ShaderType_Pixel, cmd);
+
 								material_data.diffuse_color = inst.material->diffuse_color;
 								material_data.specular_color = inst.material->specular_color;
+								material_data.emissive_color = inst.material->emissive_color;
 								material_data.shininess = inst.material->shininess;
 
 								graphics_buffer_update(material_buffer, &material_data, sizeof(MaterialData), 0u, cmd);

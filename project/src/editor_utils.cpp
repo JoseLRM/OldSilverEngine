@@ -81,15 +81,15 @@ namespace sv {
 
 			set_cursor_position(engine.window, 0.f, 0.f);
 
-			v2_f32 drag = input.mouse_dragged;
+			v2_f32 drag = input.mouse_dragged * 2.f;
 
-			// TODO: pitch rotation
+			// TODO: pitch limit
+			XMVECTOR pitch = XMQuaternionRotationAxis(XMVectorSet(1.f, 0.f, 0.f, 0.f), -drag.y);
 			XMVECTOR yaw = XMQuaternionRotationAxis(XMVectorSet(0.f, 1.f, 0.f, 0.f), drag.x);
-			//XMVECTOR pitch = XMQuaternionRotationAxis(XMVectorSet(1.f, 0.f, 0.f, 0.f), -drag.y);
 
-			//rotation = XMQuaternionMultiply(XMQuaternionMultiply(rotation, yaw), pitch);
+			rotation = XMQuaternionMultiply(pitch, rotation);
 			rotation = XMQuaternionMultiply(rotation, yaw);
-			rotation = XMQuaternionNormalize(rotation); // I need this??
+			rotation = XMQuaternionNormalize(rotation);
 		}
 
 		trans.setRotation(v4_f32(rotation));
@@ -277,49 +277,74 @@ namespace sv {
 
 			if (focused) {
 
-			    foreach(i, 3u) {
+				foreach(i, 3u) {
 
-				if (focused == e->drag_coord[i]) {
+					if (focused == e->drag_coord[i]) {
 
-				    GuiDrag& drag = *e->drag_coord[i];
+						GuiDrag& drag = *e->drag_coord[i];
 
-				    switch (i)
-				    {
-				    case 0:
-					trans.setPositionX(drag.value);
-					break;
+						switch (i)
+						{
+						case 0:
+							trans.setPositionX(drag.value);
+							break;
 
-				    case 1:
-					trans.setPositionY(drag.value);
-					break;
+						case 1:
+							trans.setPositionY(drag.value);
+							break;
 
-				    default:
-					trans.setPositionZ(drag.value);
-					break;
-				    }
-				    
-				    break;
+						default:
+							trans.setPositionZ(drag.value);
+							break;
+						}
+
+						break;
+					}
 				}
-			    }
+
+				foreach(i, 3u) {
+
+					if (focused == e->drag_scale[i]) {
+
+						GuiDrag& drag = *e->drag_scale[i];
+
+						switch (i)
+						{
+						case 0:
+							trans.setScaleX(drag.value);
+							break;
+
+						case 1:
+							trans.setScaleY(drag.value);
+							break;
+
+						default:
+							trans.setScaleZ(drag.value);
+							break;
+						}
+
+						break;
+					}
+				}
 			}
 
 			// Update drag values
 			v3_f32 position = trans.getLocalPosition();
 			v3_f32 rotation = trans.getLocalEulerRotation();
 			v3_f32 scale = trans.getLocalScale();
-			
+
 			e->drag_coord[0u]->value = position.x;
 			e->drag_coord[1u]->value = position.y;
 			e->drag_coord[2u]->value = position.z;
 
 			e->drag_rotation[0u]->value = rotation.x;
-			e->drag_rotation[1u]->value = rotaiton.y;
+			e->drag_rotation[1u]->value = rotation.y;
 			e->drag_rotation[2u]->value = rotation.z;
 
 			e->drag_scale[0u]->value = scale.x;
 			e->drag_scale[1u]->value = scale.y;
 			e->drag_scale[2u]->value = scale.z;
-			
+
 			//TEMP
 			if (input.keys[Key_B]) e->selected_entity = SV_ENTITY_NULL;
 		}

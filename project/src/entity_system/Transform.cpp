@@ -303,7 +303,7 @@ namespace sv {
 	        notify();
 		parse();
 		
-		XMVECTOR quaternion = XMLoadFloat4x4(&t->localRotation);
+		XMVECTOR quaternion = XMLoadFloat4(&t->localRotation);
 		XMVECTOR roll_quat = XMQuaternionRotationAxis(XMVectorSet(0.f, 0.f, 1.f, 0.f), roll);
 		XMVECTOR pitch_quat = XMQuaternionRotationAxis(XMVectorSet(1.f, 0.f, 0.f, 0.f), pitch);
 		XMVECTOR yaw_quat = XMQuaternionRotationAxis(XMVectorSet(0.f, 1.f, 0.f, 0.f), yaw);

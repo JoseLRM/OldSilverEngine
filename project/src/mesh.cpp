@@ -373,11 +373,13 @@ namespace sv {
 			m0.Get(AI_MATKEY_NAME, m1.name);
 			m0.Get(AI_MATKEY_COLOR_DIFFUSE, color); m1.diffuse_color = { color.r, color.g, color.b };
 			m0.Get(AI_MATKEY_COLOR_SPECULAR, color); m1.specular_color = { color.r, color.g, color.b };
+			m0.Get(AI_MATKEY_COLOR_EMISSIVE, color); m1.emissive_color = { color.r, color.g, color.b };
 			m0.Get(AI_MATKEY_SHININESS, m1.shininess);
 			
 			get_texture(folderpath, path, m0, m1.diffuse_map, aiTextureType_DIFFUSE);
 			get_texture(folderpath, path, m0, m1.normal_map, aiTextureType_NORMALS);
 			get_texture(folderpath, path, m0, m1.specular_map, aiTextureType_SPECULAR);
+			get_texture(folderpath, path, m0, m1.emissive_map, aiTextureType_EMISSIVE);
 		}
 
 		foreach(i, scene->mNumMeshes) {

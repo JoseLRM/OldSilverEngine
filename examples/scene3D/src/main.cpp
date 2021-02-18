@@ -54,10 +54,17 @@ void load_model(ECS* ecs, const char* filepath, f32 scale = f32_max)
 
 			comp.material.diffuse_color = mat.diffuse_color;
 			comp.material.specular_color = mat.specular_color;
-			comp.material.shininess = mat.shininess;
+			comp.material.emissive_color = mat.emissive_color;
+			comp.material.emissive_color = Color3f::Blue();
+			comp.material.shininess = std::max(mat.shininess, 0.1f);
 			comp.material.diffuse_map = mat.diffuse_map;
 			comp.material.normal_map = mat.normal_map;
 			comp.material.specular_map = mat.specular_map;
+			comp.material.emissive_map = mat.emissive_map;
+
+			Transform trans = ecs_entity_transform_get(ecs, e);
+			//trans.setScale({ 0.01f, 0.01f, 0.01f });
+			//trans.setEulerRotation({ -PI * 0.5f, 0.f, 0.f });
 		}
 	}
 }
@@ -84,9 +91,9 @@ Result init()
 
 	gui = gui_create();
 
-	//load_model(ecs, "assets/dragon.obj");
+	load_model(ecs, "assets/dragon.obj");
 	//load_model(ecs, "assets/gobber/GoblinX.obj");
-	load_model(ecs, "assets/Sponza/sponza.obj");
+	//load_model(ecs, "assets/Sponza/sponza.obj");
 
 	// Editor stuff
 	window = gui_window_create(gui);
@@ -109,7 +116,7 @@ void update()
 	static f32 t = 0.f;
 	if (input.keys[Key_Left]) t -= engine.deltatime;
 	if (input.keys[Key_Right]) t += engine.deltatime;
-	l.setPosition({ sin(t) * 3.f, 0.f, cos(t) * 3.f });
+	l.setPosition({ sin(t) * 7.f, 0.f, cos(t) * 7.f });
 
 	if (input.keys[Key_C] == InputState_Released)
 		update_camera = !update_camera;

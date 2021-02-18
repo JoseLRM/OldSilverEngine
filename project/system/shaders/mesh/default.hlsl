@@ -3,38 +3,38 @@
 #ifdef SV_VERTEX_SHADER
 
 struct Input {
-    float3 position : Position;
-    float3 normal : Normal;
-    float3 tangent : Tangent;
-    float3 bitangent : Bitangent;
+	float3 position : Position;
+	float3 normal : Normal;
+	float3 tangent : Tangent;
+	float3 bitangent : Bitangent;
 	float2 texcoord : Texcoord;
 };
 
 struct Output {
-    float3 frag_position : FragPosition;
+	float3 frag_position : FragPosition;
 	float3 normal : FragNormal;
 	float3 tangent : FragTangent;
 	float3 bitangent : FragBitangent;
 	float2 texcoord : FragTexcoord;
-    float4 position : SV_Position;
+	float4 position : SV_Position;
 };
 
 SV_CONSTANT_BUFFER(instance_buffer, b0) {
-    matrix mvm;
+	matrix mvm;
 	matrix imvm;
 };
 
 SV_CONSTANT_BUFFER(camera_buffer, b1) {
-    Camera camera;
+	Camera camera;
 };
 
-Output main(Input input) 
+Output main(Input input)
 {
-    Output output;
+	Output output;
 
-    float4 pos = mul(float4(input.position, 1.f), mvm);
-    output.frag_position = pos.xyz;
-    output.position = mul(pos, camera.pm);
+	float4 pos = mul(float4(input.position, 1.f), mvm);
+	output.frag_position = pos.xyz;
+	output.position = mul(pos, camera.pm);
 
 	output.normal = mul((float3x3)imvm, input.normal);
 	output.tangent = mul((float3x3)imvm, input.tangent);
@@ -42,7 +42,7 @@ Output main(Input input)
 
 	output.texcoord = input.texcoord;
 
-    return output;
+	return output;
 }
 
 #endif
@@ -50,15 +50,15 @@ Output main(Input input)
 #ifdef SV_PIXEL_SHADER
 
 struct Input {
-    float3 position : FragPosition;
-    float3 normal : FragNormal;
-    float3 tangent : FragTangent;
-    float3 bitangent : FragBitangent;
+	float3 position : FragPosition;
+	float3 normal : FragNormal;
+	float3 tangent : FragTangent;
+	float3 bitangent : FragBitangent;
 	float2 texcoord : FragTexcoord;
 };
 
 struct Output {
-    float4 color : SV_Target0;
+	float4 color : SV_Target0;
 };
 
 struct Material {
@@ -66,6 +66,7 @@ struct Material {
 	u32		flags;
 	float3	specular_color;
 	f32		shininess;
+	float3	emissive_color;
 };
 
 #define MAT_FLAG_NORMAL_MAPPING SV_BIT(0u)
@@ -96,15 +97,17 @@ SV_CONSTANT_BUFFER(light_instances_buffer, b1) {
 SV_TEXTURE(diffuse_map, t0);
 SV_TEXTURE(normal_map, t1);
 SV_TEXTURE(specular_map, t2);
+SV_TEXTURE(emissive_map, t3);
 
 SV_SAMPLER(sam, s0);
 
-Output main(Input input) 
+Output main(Input input)
 {
-    Output output;
+	Output output;
 
 	float3 normal;
 
+	// Normal mapping
 	if (material.flags & MAT_FLAG_NORMAL_MAPPING) {
 
 		float3x3 TBN = transpose(float3x3(normalize(input.tangent), normalize(input.bitangent), normalize(input.normal)));
@@ -115,12 +118,14 @@ Output main(Input input)
 	else
 		normal = normalize(input.normal);
 
+	// Specular mapping
 	float specular_mul;
 	if (material.flags & MAT_FLAG_SPECULAR_MAPPING) {
-	   specular_mul = specular_map.Sample(sam, input.texcoord).r;
+		specular_mul = specular_map.Sample(sam, input.texcoord).r;
 	}
 	else specular_mul = 1.f;
 
+	// Compute lighting
 	float3 light_accumulation = float3(0.f, 0.f, 0.f);
 
 	[unroll]
@@ -164,10 +169,12 @@ Output main(Input input)
 	}
 
 	float4 diffuse = diffuse_map.Sample(sam, input.texcoord);
-    
-    output.color = diffuse * float4(light_accumulation, 1.f);
 
-    return output;
+	output.color = diffuse * float4(light_accumulation, 1.f);
+
+	// TODO: Emissive
+
+	return output;
 }
 
 #endif

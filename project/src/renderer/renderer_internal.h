@@ -33,10 +33,12 @@ namespace sv {
 		u32 flags;
 		Color3f specular_color;
 		f32 shininess;
+		Color3f emissive_color;
 	};
 
 #define MAT_FLAG_NORMAL_MAPPING SV_BIT(0u)
 #define MAT_FLAG_SPECULAR_MAPPING SV_BIT(1u)
+#define MAT_FLAG_EMISSIVE_MAPPING SV_BIT(2u)
 
 	struct CameraBuffer_GPU {
 		XMMATRIX	view_matrix;
