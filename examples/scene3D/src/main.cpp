@@ -15,6 +15,73 @@ GUI* gui;
 GuiWindow* window;
 Editor_ECS* editor_ecs;
 
+Entity select_mesh()
+{
+    v2_f32 mouse = input.mouse_position;
+    
+    // Screen to clip space
+    mouse *= 2.f;
+
+    // clip to world
+    XMMATRIX vpm = XMMatrixIdentity(); // TODO
+    vpm = XMMatrixInverse(nullptr, vpm);
+
+    XMVECTOR mouse_world = XMVectorSet(mouse.x, mouse.y, 0.f, 1.f);
+    mouse_world = XMVector3Transform(mouse_world, vpm);
+
+    // Ray
+    Transform trans = ecs_entity_transform_get(ecs, camera->entity);
+    v3_f32 camera_position = trans.getWorldPosition();
+
+    v3_f32 ray_origin = camera_position;
+    v3_f32 ray_direction = v3_f32(mouse_world) - camera_position;
+    ray_direction.normalize();
+
+    Entity selected = SV_ENTITY_NULL;
+    f32 distance = f32_max;
+    
+    EntityView<MeshComponent> meshes(ecs);
+
+    for (MeshComponent& m : meshes) {
+
+	Transform trans = ecs_entity_transform_get(ecs, m.entity);
+	v3_f32 position = trans.getWorldPosition();
+	v3_f32 scale = trans.getWorldScale();
+
+	f32 radius = std::max(std::max(scale.x, scale.y), scale.z) * 0.5f;
+
+	v2_f32 to_sphere = position - ray_origin;
+	
+	f32 dot = to_sphere.dot(ray_direction);
+
+	if (dot <= 0.f) {
+
+	    if (abs(dot) > r) continue;
+	    if (abs(dot) == r) {
+
+		f32 d = (position - ray_origin).length();
+		if (d < distance) {
+
+		    distance = d;
+		    selected = m.entity;
+		}
+		continue;
+	    }
+	    else {
+		
+	    }
+	}
+	else {
+
+	    v3_f32 projection = ray_origin + ray_direction * dot;
+	    
+	}
+    }
+
+    return selected;
+}
+
+
 void load_model(ECS* ecs, const char* filepath, f32 scale = f32_max)
 {
 	ModelInfo info;
