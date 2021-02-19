@@ -149,7 +149,7 @@ namespace sv {
 		return abs(bounds.x - gui.mouse_position.x) <= bounds.z * 0.5f && abs(bounds.y - gui.mouse_position.y) <= bounds.w * 0.5f;
 	}
 
-	static v4_f32 compute_widget_bounds(const GUI_internal& gui, GuiWidget& widget, const v4_f32& parent_bounds)
+	static v4_f32 compute_widget_bounds(const GUI_internal& gui, GuiWidget& widget, v4_f32 parent_bounds)
 	{
 #ifndef SV_DIST
 		if (widget.x.constraint == GuiConstraint_Aspect && widget.x.constraint == widget.y.constraint) {
@@ -159,6 +159,13 @@ namespace sv {
 			SV_LOG_WARNING("Gui dimensions has both aspect constraint, that's not possible...");
 		}
 #endif
+
+		// Scroll offset
+		if (widget.parent && widget.parent->type = GuiType_Container) {
+
+		    GuiContainer& container = *reinterpret_cast<GuiContainer*>(widget.parent);
+		    parent_bounds.y += container.vertical_offset;
+		}
 
 		// Compute local bounds
 		f32 w;
@@ -324,6 +331,42 @@ namespace sv {
 
 			for (GuiWidget* son : container.sons) {
 				update_widget(gui, *son, bounds);
+			}
+
+			// Scroll stuff
+			if (container.vertical_scroll && gui.widget_focused == nullptr && input.mouse_wheel != 0.f && mouse_in_bounds(gui, bounds)) {
+
+			    // Compute vertical scroll space
+			    
+			    if (container.sons.empty()) {
+
+				container.up_extension = 0.f;
+				container.down_extension = 0.f;
+			    }
+			    else {
+				
+				f32 min = f32_max;
+				f32 max = f32_min;
+				
+				for (GuiWidget* son : container.sons) {
+				
+				    v4_f32 son_bounds = compute_widget_bounds(gui, *son, bounds);
+
+				    min = std::min(min, son_bounds.y - son_bounds.w * 0.5f);
+				    max = std::max(max, son_bounds.y + son_bounds.w * 0.5f);
+				}
+
+				f32 min_pos = bounds.y - bounds.w * 0.5f;
+				f32 max_pos = bounds.y + bounds.w * 0.5f;
+
+				container.up_extension = std::max(max - max_pos, 0.f);
+				container.down_extension = std::max(min_pos - min, 0.f);
+			    }
+
+			    f32 up_height = bounds.w * 0.5f + container.up_extension;
+			    f32 down_height = bounds.w * 0.5f + container.down_extension;
+			    
+			    container.vertical_offset = std::min(std::max(input.mouse_wheel + container.vertical_offset, -down_height), up_height);
 			}
 		}
 		break;
