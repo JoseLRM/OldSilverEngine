@@ -63,7 +63,7 @@ void load_model(ECS* ecs, const char* filepath, f32 scale = f32_max)
 			comp.material.emissive_map = mat.emissive_map;
 
 			Transform trans = ecs_entity_transform_get(ecs, e);
-			//trans.setScale({ 0.01f, 0.01f, 0.01f });
+			trans.setScale({ 0.01f, 0.01f, 0.01f });
 			//trans.setEulerRotation({ -PI * 0.5f, 0.f, 0.f });
 		}
 	}
@@ -91,9 +91,9 @@ Result init()
 
 	gui = gui_create();
 
-	load_model(ecs, "assets/dragon.obj");
+	//load_model(ecs, "assets/dragon.obj");
 	//load_model(ecs, "assets/gobber/GoblinX.obj");
-	//load_model(ecs, "assets/Sponza/sponza.obj");
+	load_model(ecs, "assets/Sponza/sponza.obj");
 
 	// Editor stuff
 	window = gui_window_create(gui);

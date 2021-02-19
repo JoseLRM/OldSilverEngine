@@ -223,11 +223,8 @@ namespace sv {
 		desc.type = GPUImageType_ShaderResource;
 		desc.usage = ResourceUsage_Static;
 		desc.CPUAccess = CPUAccess_None;
-		desc.dimension = 2u;
 		desc.width = atlas_width;
 		desc.height = atlas_height;
-		desc.depth = 1u;
-		desc.layers = 1u;
 		
 		svCheck(graphics_image_create(&desc, &font.image));
 		delete[] atlas;

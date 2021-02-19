@@ -46,11 +46,8 @@ namespace sv {
 		desc.type = GPUImageType_ShaderResource;
 		desc.usage = ResourceUsage_Static;
 		desc.CPUAccess = CPUAccess_None;
-		desc.dimension = 2u;
 		desc.width = width;
 		desc.height = height;
-		desc.depth = 1u;
-		desc.layers = 1u;
 
 		Result res = graphics_image_create(&desc, &image);
 

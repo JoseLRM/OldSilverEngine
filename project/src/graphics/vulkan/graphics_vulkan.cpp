@@ -754,7 +754,7 @@ namespace sv {
 					if (i == 0) {
 						width = att.info.width;
 						height = att.info.height;
-						layers = att.info.layers;
+						layers = att.layers;
 					}
 				}
 				
@@ -876,7 +876,7 @@ namespace sv {
 		// Image blit
 		Image_vk dstImage;
 		dstImage.image = swapChainImage.image;
-		dstImage.info.layers = 1u;
+		dstImage.layers = 1u;
 
 		GPUImageBlit blit;
 		blit.src_region = region;
@@ -908,7 +908,7 @@ namespace sv {
 		range.baseMipLevel = 0u;
 		range.levelCount = 1u;
 		range.baseArrayLayer = 0u;
-		range.layerCount = image.info.layers;
+		range.layerCount = image.layers;
 
 		// Image Barrier: from oldLayout to VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
 		VkPipelineStageFlags srcStage = graphics_vulkan_stage_from_image_layout(oldLayout);
@@ -982,7 +982,7 @@ namespace sv {
 		imgBarrier[0].subresourceRange.aspectMask = graphics_vulkan_aspect_from_image_layout(srcLayout);
 		imgBarrier[0].subresourceRange.baseArrayLayer = 0u;
 		imgBarrier[0].subresourceRange.baseMipLevel = 0u;
-		imgBarrier[0].subresourceRange.layerCount = srcImage.info.layers;
+		imgBarrier[0].subresourceRange.layerCount = srcImage.layers;
 		imgBarrier[0].subresourceRange.levelCount = 1u;
 
 		imgBarrier[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -997,7 +997,7 @@ namespace sv {
 		imgBarrier[1].subresourceRange.aspectMask = graphics_vulkan_aspect_from_image_layout(dstLayout);
 		imgBarrier[1].subresourceRange.baseArrayLayer = 0u;
 		imgBarrier[1].subresourceRange.baseMipLevel = 0u;
-		imgBarrier[1].subresourceRange.layerCount = dstImage.info.layers;
+		imgBarrier[1].subresourceRange.layerCount = dstImage.layers;
 		imgBarrier[1].subresourceRange.levelCount = 1u;
 
 		VkPipelineStageFlags srcStage = graphics_vulkan_stage_from_image_layout(srcLayout) | graphics_vulkan_stage_from_image_layout(dstLayout);
@@ -1027,12 +1027,12 @@ namespace sv {
 
 			blits[i].srcSubresource.aspectMask = graphics_vulkan_aspect_from_image_layout(srcLayout);
 			blits[i].srcSubresource.baseArrayLayer = 0u;
-			blits[i].srcSubresource.layerCount = srcImage.info.layers;
+			blits[i].srcSubresource.layerCount = srcImage.layers;
 			blits[i].srcSubresource.mipLevel = 0u;
 
 			blits[i].dstSubresource.aspectMask = graphics_vulkan_aspect_from_image_layout(dstLayout);
 			blits[i].dstSubresource.baseArrayLayer = 0u;
-			blits[i].dstSubresource.layerCount = dstImage.info.layers;
+			blits[i].dstSubresource.layerCount = dstImage.layers;
 			blits[i].dstSubresource.mipLevel = 0u;
 
 		}
@@ -1154,7 +1154,7 @@ namespace sv {
 				imageBarrier[imageBarrierCount].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 				imageBarrier[imageBarrierCount].image = image.image;
 				imageBarrier[imageBarrierCount].subresourceRange.aspectMask = graphics_vulkan_aspect_from_image_layout(barrier.image.oldLayout, image.info.format);
-				imageBarrier[imageBarrierCount].subresourceRange.layerCount = image.info.layers;
+				imageBarrier[imageBarrierCount].subresourceRange.layerCount = image.layers;
 				imageBarrier[imageBarrierCount].subresourceRange.levelCount = 1u;
 				imageBarrier[imageBarrierCount].subresourceRange.baseArrayLayer = 0u;
 				imageBarrier[imageBarrierCount].subresourceRange.baseMipLevel = 0u;
@@ -2062,25 +2062,13 @@ namespace sv {
 
 	Result graphics_vulkan_image_create(Image_vk& image, const GPUImageDesc& desc)
 	{
-		VkImageType imageType = VK_IMAGE_TYPE_MAX_ENUM;
+		VkImageType imageType = VK_IMAGE_TYPE_2D;
 		VkFormat format = graphics_vulkan_parse_format(desc.format);
 		VkImageUsageFlags imageUsage = 0u;
-		VkImageViewType viewType = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+		VkImageViewType view_type = VK_IMAGE_VIEW_TYPE_2D;
+		u32 image_flags = 0u;
 		
 		{
-			switch (desc.dimension)
-			{
-			case 1:
-				imageType = VK_IMAGE_TYPE_1D;
-				break;
-			case 2:
-				imageType = VK_IMAGE_TYPE_2D;
-				break;
-			case 3:
-				imageType = VK_IMAGE_TYPE_3D;
-				break;
-			}
-
 			if (desc.type & GPUImageType_RenderTarget) {
 				imageUsage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 			}
@@ -2090,21 +2078,14 @@ namespace sv {
 			if (desc.type & GPUImageType_DepthStencil) {
 				imageUsage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 			}
+		}
 
-			switch (desc.dimension)
-			{
-			case 1:
-				if (desc.layers > 1) viewType = VK_IMAGE_VIEW_TYPE_1D_ARRAY;
-				else viewType = VK_IMAGE_VIEW_TYPE_1D;
-				break;
-			case 2:
-				if (desc.layers > 1) viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-				else viewType = VK_IMAGE_VIEW_TYPE_2D;
-				break;
-			case 3:
-				if (desc.layers > 1) viewType = VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
-				else viewType = VK_IMAGE_VIEW_TYPE_CUBE;
-				break;
+		// Image flags
+		{
+			if (desc.type & GPUImageType_CubeMap) {
+				image_flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+				image.layers = 6u;
+				view_type = VK_IMAGE_VIEW_TYPE_CUBE;
 			}
 		}
 
@@ -2112,13 +2093,13 @@ namespace sv {
 		{
 			VkImageCreateInfo create_info{};
 			create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-			create_info.flags = 0u;
+			create_info.flags = image_flags;
 			create_info.imageType = imageType;
 			create_info.format = format;
 			create_info.extent.width = desc.width;
 			create_info.extent.height = desc.height;
-			create_info.extent.depth = desc.depth;
-			create_info.arrayLayers = desc.layers;
+			create_info.extent.depth = 1u;
+			create_info.arrayLayers = image.layers;
 			create_info.samples = VK_SAMPLE_COUNT_1_BIT;
 			create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
 			create_info.usage = imageUsage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
@@ -2154,7 +2135,7 @@ namespace sv {
 			memBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			memBarrier.image = image.image;
 			memBarrier.subresourceRange.aspectMask = aspect;
-			memBarrier.subresourceRange.layerCount = desc.layers;
+			memBarrier.subresourceRange.layerCount = image.layers;
 			memBarrier.subresourceRange.levelCount = 1u;
 
 			vkCmdPipelineBarrier(cmd,
@@ -2183,10 +2164,10 @@ namespace sv {
 			copy_info.bufferImageHeight = 0u;
 			copy_info.imageSubresource.aspectMask = aspect;
 			copy_info.imageSubresource.baseArrayLayer = 0u;
-			copy_info.imageSubresource.layerCount = desc.layers;
+			copy_info.imageSubresource.layerCount = image.layers;
 			copy_info.imageSubresource.mipLevel = 0u;
 			copy_info.imageOffset = { 0, 0, 0 };
-			copy_info.imageExtent = { desc.width, desc.height, desc.depth };
+			copy_info.imageExtent = { desc.width, desc.height, 1u };
 
 			vkCmdCopyBufferToImage(cmd, stagingBuffer, image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1u, &copy_info);
 			
@@ -2224,7 +2205,7 @@ namespace sv {
 			memBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			memBarrier.image = image.image;
 			memBarrier.subresourceRange.aspectMask = graphics_vulkan_aspect_from_image_layout(desc.layout, desc.format);
-			memBarrier.subresourceRange.layerCount = desc.layers;
+			memBarrier.subresourceRange.layerCount = image.layers;
 			memBarrier.subresourceRange.levelCount = 1u;
 
 			vkCmdPipelineBarrier(cmd,
@@ -2245,7 +2226,7 @@ namespace sv {
 
 		// Create Render Target View
 		if (desc.type & GPUImageType_RenderTarget) {
-			vkCheck(graphics_vulkan_imageview_create(image.image, format, viewType, VK_IMAGE_ASPECT_COLOR_BIT, desc.layers, image.renderTargetView));
+			vkCheck(graphics_vulkan_imageview_create(image.image, format, view_type, VK_IMAGE_ASPECT_COLOR_BIT, image.layers, image.renderTargetView));
 		}
 		// Create Depth Stencil View
 		if (desc.type & GPUImageType_DepthStencil) {
@@ -2253,14 +2234,14 @@ namespace sv {
 			
 			if (graphics_format_has_stencil(desc.format)) aspect |= VK_IMAGE_ASPECT_STENCIL_BIT;
 
-			vkCheck(graphics_vulkan_imageview_create(image.image, format, viewType, aspect, desc.layers, image.depthStencilView));
+			vkCheck(graphics_vulkan_imageview_create(image.image, format, view_type, aspect, image.layers, image.depthStencilView));
 		}
 		// Create Shader Resource View
 		if (desc.type & GPUImageType_ShaderResource) {
 
 			if (desc.type & GPUImageType_DepthStencil) {
 
-				vkCheck(graphics_vulkan_imageview_create(image.image, format, viewType, VK_IMAGE_ASPECT_DEPTH_BIT, desc.layers, image.shaderResouceView));
+				vkCheck(graphics_vulkan_imageview_create(image.image, format, view_type, VK_IMAGE_ASPECT_DEPTH_BIT, image.layers, image.shaderResouceView));
 
 				// Set image info
 				image.image_info.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
@@ -2269,7 +2250,7 @@ namespace sv {
 			}
 			else {
 
-				vkCheck(graphics_vulkan_imageview_create(image.image, format, viewType, VK_IMAGE_ASPECT_COLOR_BIT, desc.layers, image.shaderResouceView));
+				vkCheck(graphics_vulkan_imageview_create(image.image, format, view_type, VK_IMAGE_ASPECT_COLOR_BIT, image.layers, image.shaderResouceView));
 				
 				// Set image info
 				image.image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;

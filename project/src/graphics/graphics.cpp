@@ -579,12 +579,9 @@ namespace sv {
 		// Set parameters
 		GPUImage_internal* p = reinterpret_cast<GPUImage_internal*>(*image);
 		p->type = GraphicsPrimitiveType_Image;
-		p->info.dimension = desc->dimension;
 		p->info.format = desc->format;
 		p->info.width = desc->width;
 		p->info.height = desc->height;
-		p->info.depth = desc->depth;
-		p->info.layers = desc->layers;
 		p->info.type = desc->type;
 
 		return Result_Success;

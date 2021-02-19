@@ -103,6 +103,7 @@ namespace sv {
 		GPUImageType_RenderTarget	= SV_BIT(0),
 		GPUImageType_ShaderResource = SV_BIT(1),
 		GPUImageType_DepthStencil	= SV_BIT(2),
+		GPUImageType_CubeMap		= SV_BIT(3),
 	};
 	typedef u8 GPUImageTypeFlags;
 
@@ -381,11 +382,8 @@ namespace sv {
 		GPUImageTypeFlags	type;
 		ResourceUsage		usage		= ResourceUsage_Static;
 		CPUAccessFlags		CPUAccess	= CPUAccess_None;
-		u8					dimension	= 2u;
 		u32					width;
 		u32					height;
-		u32					depth		= 1u;
-		u32					layers		= 1u;
 	};
 
 	struct GPUImageInfo {
@@ -393,11 +391,8 @@ namespace sv {
 		GPUImageTypeFlags	type;
 		ResourceUsage		usage;
 		CPUAccessFlags		CPUAccess;
-		u8					dimension;
 		u32					width;
 		u32					height;
-		u32					depth;
-		u32					layers;
 	};
 
 	struct SamplerDesc {

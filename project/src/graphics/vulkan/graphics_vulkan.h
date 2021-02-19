@@ -208,6 +208,7 @@ namespace sv {
 		VkImageView				renderTargetView = VK_NULL_HANDLE;
 		VkImageView				depthStencilView = VK_NULL_HANDLE;
 		VkImageView				shaderResouceView = VK_NULL_HANDLE;
+		u32						layers = 1u;
 		u64						ID;
 		VkDescriptorImageInfo	image_info;
 	};

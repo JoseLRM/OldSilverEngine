@@ -382,6 +382,8 @@ namespace sv {
 
 			graphics_rasterizerstate_create(&desc, &gfx.rs_back_culling);
 		}
+
+		return Result_Success;
 	}
 
 	// SAMPLER CREATION
