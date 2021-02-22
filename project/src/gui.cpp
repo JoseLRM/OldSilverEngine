@@ -1186,10 +1186,10 @@ namespace sv {
 
 		window.container = gui_container_create(gui_);
 
-		window.container->x.value = 0.f;
+		window.container->x.value = 0.15f;
 		window.container->x.constraint = GuiConstraint_Relative;
 		window.container->x.alignment = GuiCoordAlignment_Center;
-		window.container->y.value = 0.f;
+		window.container->y.value = 0.85f;
 		window.container->y.constraint = GuiConstraint_Relative;
 		window.container->y.alignment = GuiCoordAlignment_Center;
 		window.container->w.value = 0.2f;

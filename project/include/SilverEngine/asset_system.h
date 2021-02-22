@@ -75,6 +75,21 @@ namespace sv {
 
 	};
 
+#define SV_DEFINE_ASSET_PTR(name, ptr_type) struct name { \
+		SV_INLINE ptr_type get() const noexcept { ptr_type* ptr = reinterpret_cast<ptr_type*>(get_asset_content(asset_ptr)); return ptr ? *ptr : nullptr; } \
+		SV_INLINE operator AssetPtr& () { return asset_ptr; } \
+		SV_INLINE operator const AssetPtr& () const { return asset_ptr; } \
+		AssetPtr asset_ptr; \
+	}
+
+#define SV_DEFINE_ASSET(name, type) struct name { \
+		SV_INLINE type* get() const noexcept { return reinterpret_cast<type*>(get_asset_content(asset_ptr)); } \
+		SV_INLINE type* operator->() const noexcept { return get(); } \
+ 		SV_INLINE operator AssetPtr& () { return asset_ptr; } \
+		SV_INLINE operator const AssetPtr& () const { return asset_ptr; } \
+		AssetPtr asset_ptr; \
+	}
+
 	Result	create_asset(AssetPtr& asset_ptr, const char* asset_type_name);
 	Result	load_asset_from_file(AssetPtr& asset_ptr, const char* filepath);
 	void	unload_asset(AssetPtr& asset_ptr);

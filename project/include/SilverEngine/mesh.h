@@ -38,18 +38,9 @@ namespace sv {
 		TextureAsset normal_map;
 		TextureAsset specular_map;
 		TextureAsset emissive_map;
-	};
+	}; 
 
-	// Assets
-
-	struct MeshAsset {
-		SV_INLINE Mesh* get() const noexcept { return reinterpret_cast<Mesh*>(get_asset_content(asset_ptr)); }
-
-		SV_INLINE operator AssetPtr& () { return asset_ptr; }
-		SV_INLINE operator const AssetPtr& () const { return asset_ptr; }
-
-		AssetPtr asset_ptr;
-	};
+	SV_DEFINE_ASSET(MeshAsset, Mesh);
 
 	void mesh_apply_plane(Mesh& mesh, const XMMATRIX& transform = XMMatrixIdentity());
 	void mesh_apply_cube(Mesh& mesh, const XMMATRIX& transform = XMMatrixIdentity());
