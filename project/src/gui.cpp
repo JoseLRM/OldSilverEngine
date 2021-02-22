@@ -29,13 +29,13 @@ namespace sv {
 
 		std::vector<GuiWidget*>	root;
 		v2_f32                  resolution;
-		GuiWidget* widget_focused = nullptr;
+		GuiWidget*              widget_focused = nullptr;
+	        u32                     focus_action = 0u;
 		GuiLockedInput          locked;
 
 		// used during update
 		v2_f32 mouse_position;
 		v2_f32 dragged_begin_pos;
-		u32    dragged_action_id = 0u;
 		u32    text_position = 0u;
 
 	};
@@ -263,7 +263,7 @@ namespace sv {
 
 				gui.widget_focused = window.container;
 				gui.dragged_begin_pos = gui.mouse_position - v2_f32{ container_bounds.x, container_bounds.y };
-				gui.dragged_action_id = 0u;
+				gui.focus_action = 0u;
 			}
 		}
 		else {
@@ -286,21 +286,21 @@ namespace sv {
 					if (vertical) {
 						if (top) {
 							gui.dragged_begin_pos.y = container_bounds.y - container_bounds.w * 0.5f;
-							gui.dragged_action_id = 1u;
+							gui.focus_action = 1u;
 						}
 						else {
 							gui.dragged_begin_pos.y = container_bounds.y + container_bounds.w * 0.5f;
-							gui.dragged_action_id = 2u;
+							gui.focus_action = 2u;
 						}
 					}
 					else if (horizontal) {
 						if (right) {
 							gui.dragged_begin_pos.x = container_bounds.x - container_bounds.z * 0.5f;
-							gui.dragged_action_id = 3u;
+							gui.focus_action = 3u;
 						}
 						else {
 							gui.dragged_begin_pos.x = container_bounds.x + container_bounds.z * 0.5f;
-							gui.dragged_action_id = 4u;
+							gui.focus_action = 4u;
 						}
 					}
 					else {
@@ -320,16 +320,16 @@ namespace sv {
 						}
 
 						if (top && !right) {
-							gui.dragged_action_id = 5u;
+							gui.focus_action = 5u;
 						}
 						else if (top && right) {
-							gui.dragged_action_id = 6u;
+							gui.focus_action = 6u;
 						}
 						else if (!top && !right) {
-							gui.dragged_action_id = 7u;
+							gui.focus_action = 7u;
 						}
 						else if (!top && right) {
-							gui.dragged_action_id = 8u;
+							gui.focus_action = 8u;
 						}
 					}
 				}
@@ -388,30 +388,25 @@ namespace sv {
 
 				if (container_has_vertical_scroll(container)) {
 
+				        f32 wheel;
+				    
 					if (mouse_in_bounds(gui, bounds)) {
 
-						if (gui.widget_focused == nullptr && input.mouse_wheel != 0.f) {
-
-							f32 min_scroll = -container.down_extension;
-							f32 max_scroll = container.up_extension;
-
-							container.vertical_offset = std::min(std::max(input.mouse_wheel * 0.05f + container.vertical_offset, min_scroll), max_scroll);
-						}
+					        wheel = (gui.widget_focused == nullptr) ? input.mouse_wheel : 0.f;
 
 						// Dragging scroll
 						if (input.mouse_buttons[MouseButton_Left] && gui.mouse_position.x > (bounds.x + bounds.z * 0.5f - get_scroll_width(gui, bounds.z))) {
 							
-							f32 button_height = get_button_scroll_height(container, bounds.w);
-							f32 button_space = bounds.w - button_height;
-
-							f32 prop = (gui.mouse_position.y - (bounds.y - bounds.w * 0.5f + button_height * 0.5f)) / button_space;
-							prop = std::max(std::min(prop, 1.f), 0.f);
-
-							container.vertical_offset = prop * (container.up_extension + container.down_extension) - container.down_extension;
-							// TODO
-							//gui.widget_focused = &container;
+							gui.widget_focused = &container;
+							gui.focus_action = 10u;
 						}
 					}
+					else wheel = 0.f;
+
+					f32 min_scroll = -container.down_extension;
+					f32 max_scroll = container.up_extension;
+						
+					container.vertical_offset = std::min(std::max(wheel * 0.05f + container.vertical_offset, min_scroll), max_scroll);
 				}
 			}
 		}
@@ -520,7 +515,6 @@ namespace sv {
 			switch (gui.widget_focused->type)
 			{
 
-				// A container can't be focused, so it should be a window
 			case GuiWidgetType_Container:
 			{
 				GuiContainer& container = *reinterpret_cast<GuiContainer*>(gui.widget_focused);
@@ -530,7 +524,7 @@ namespace sv {
 				if (mouse_state == InputState_Released || mouse_state == InputState_None) {
 					gui.widget_focused = nullptr;
 				}
-				else {
+				else if (gui.focus_action < 9u) {
 
 					v2_f32 move = gui.mouse_position - gui.dragged_begin_pos;
 
@@ -539,7 +533,7 @@ namespace sv {
 					container.y.constraint = GuiConstraint_Relative;
 					container.y.alignment = GuiCoordAlignment_Center;
 
-					switch (gui.dragged_action_id)
+					switch (gui.focus_action)
 					{
 					case 0:
 						container.x.value = move.x;
@@ -625,6 +619,18 @@ namespace sv {
 					break;
 
 					}
+				}
+				else {
+
+				        v4_f32 bounds = compute_widget_bounds(gui, container);
+				    
+				        f32 button_height = get_button_scroll_height(container, bounds.w);
+					f32 button_space = bounds.w - button_height;
+					
+					f32 prop = (gui.mouse_position.y - (bounds.y - bounds.w * 0.5f + button_height * 0.5f)) / button_space;
+					prop = std::max(std::min(prop, 1.f), 0.f);
+					
+					container.vertical_offset = prop * (container.up_extension + container.down_extension) - container.down_extension;
 				}
 			}
 			break;
