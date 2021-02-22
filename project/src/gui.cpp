@@ -14,6 +14,7 @@ namespace sv {
 	  - GuiDraw structure that defines the rendering of a widget or some component (PD: Should not contain inherited alpha)
 	  - GuiDrag Widget.
 	  - Option in guicontainer that resize auto
+	  - Align gui widgets
 	*/
 
 	struct GUI_internal {
@@ -21,9 +22,10 @@ namespace sv {
 		InstanceAllocator<GuiContainer, 10u> containers;
 		InstanceAllocator<GuiButton, 10u>    buttons;
 		InstanceAllocator<GuiSlider, 10u>    sliders;
-		InstanceAllocator<GuiDrag, 10u>		 drags;
+		InstanceAllocator<GuiDrag, 10u>	     drags;
 		InstanceAllocator<GuiTextField, 10u> textfields;
 		InstanceAllocator<GuiCheckbox, 10u>  checkboxes;
+	        InstanceAllocator<GuiLabel, 10u>     labels;
 
 		InstanceAllocator<GuiWindow, 5u> windows;
 
@@ -1012,6 +1014,26 @@ namespace sv {
 		}
 		break;
 
+		case GuiWidgetType_Label:
+		{
+			GuiLabel& label = *reinterpret_cast<GuiLabel*>(&widget);
+
+			begin_debug_batch(cmd);
+			draw_debug_quad(pos.getVec3(), size, widget.color, cmd);
+			end_debug_batch(offscreen, XMMatrixIdentity(), cmd);
+
+			if (label.text.size()) {
+
+				// TODO: Should use information about the largest character in the font
+				f32 text_y = pos.y + size.y * 0.6f;
+				f32 text_x = pos.x - size.x * 0.5f;
+				f32 aspect = gui.resolution.x / gui.resolution.y;
+
+				draw_text(offscreen, label.text.c_str(), text_x, text_y, size.x, 1u, size.y, aspect, TextSpace_Clip, TextAlignment_Left, nullptr, cmd);
+			}
+		}
+		break;
+
 		default:
 			begin_debug_batch(cmd);
 			draw_debug_quad(pos.getVec3(), size, widget.color, cmd);
@@ -1099,6 +1121,10 @@ namespace sv {
 
 		case GuiWidgetType_Checkbox:
 			widget = &gui.checkboxes.create();
+			break;
+
+		case GuiWidgetType_Label:
+			widget = &gui.labels.create();
 			break;
 
 		default:

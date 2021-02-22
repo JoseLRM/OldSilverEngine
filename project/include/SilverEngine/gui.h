@@ -20,6 +20,7 @@ namespace sv {
 		GuiWidgetType_Drag,
 		GuiWidgetType_TextField,
 		GuiWidgetType_Checkbox,
+		GuiWidgetType_Label,
 	};
 
 	enum GuiCoordAlignment : u32 {
@@ -140,6 +141,12 @@ namespace sv {
 
 	};
 
+	struct GuiLabel : public GuiWidget {
+
+	        std::string text;
+	    
+	};
+
 	// WINDOW
 
 	struct GuiWindow {
@@ -211,6 +218,11 @@ namespace sv {
 	SV_INLINE GuiCheckbox* gui_checkbox_create(GUI* gui, GuiContainer* container = nullptr)
 	{
 		return reinterpret_cast<GuiCheckbox*>(gui_widget_create(gui, GuiWidgetType_Checkbox, container));
+	}
+
+	SV_INLINE GuiLabel* gui_label_create(GUI* gui, GuiContainer* container = nullptr)
+	{
+		return reinterpret_cast<GuiLabel*>(gui_widget_create(gui, GuiWidgetType_Label, container));
 	}
 
 	SV_INLINE GuiButton* gui_button_pressed(GUI* gui)
