@@ -123,7 +123,7 @@ namespace sv {
 					break;
 				}
 				
-				if (!char_is_letter(*line_end) && !char_is_number(*line_end)) {
+				if (!char_is_letter(*line_end) && !char_is_number(*line_end) && *line_end != '-') {
 					
 					if ((*line_end == '.' || *line_end == ',') && char_is_number(*begin_word))  {
 					}
