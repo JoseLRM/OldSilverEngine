@@ -17,68 +17,83 @@ Editor_ECS* editor_ecs;
 
 Entity select_mesh()
 {
-    v2_f32 mouse = input.mouse_position;
-    
-    // Screen to clip space
-    mouse *= 2.f;
+	v2_f32 mouse = input.mouse_position;
 
-    // clip to world
-    XMMATRIX vpm = XMMatrixIdentity(); // TODO
-    vpm = XMMatrixInverse(nullptr, vpm);
+	// Screen to clip space
+	mouse *= 2.f;
 
-    XMVECTOR mouse_world = XMVectorSet(mouse.x, mouse.y, 0.f, 1.f);
-    mouse_world = XMVector3Transform(mouse_world, vpm);
+	// clip to world
+	XMMATRIX vpm = XMMatrixIdentity(); // TODO
+	vpm = XMMatrixInverse(nullptr, vpm);
 
-    // Ray
-    Transform trans = ecs_entity_transform_get(ecs, camera->entity);
-    v3_f32 camera_position = trans.getWorldPosition();
+	XMVECTOR mouse_world = XMVectorSet(mouse.x, mouse.y, 0.f, 1.f);
+	mouse_world = XMVector3Transform(mouse_world, vpm);
 
-    v3_f32 ray_origin = camera_position;
-    v3_f32 ray_direction = v3_f32(mouse_world) - camera_position;
-    ray_direction.normalize();
+	// Ray
+	Transform trans = ecs_entity_transform_get(ecs, camera->entity);
+	v3_f32 camera_position = trans.getWorldPosition();
 
-    Entity selected = SV_ENTITY_NULL;
-    f32 distance = f32_max;
-    
-    EntityView<MeshComponent> meshes(ecs);
+	v3_f32 ray_origin = camera_position;
+	v3_f32 ray_direction = v3_f32(mouse_world) - camera_position;
+	ray_direction.normalize();
 
-    for (MeshComponent& m : meshes) {
+	Entity selected = SV_ENTITY_NULL;
+	f32 distance = f32_max;
 
-	Transform trans = ecs_entity_transform_get(ecs, m.entity);
-	v3_f32 position = trans.getWorldPosition();
-	v3_f32 scale = trans.getWorldScale();
+	EntityView<MeshComponent> meshes(ecs);
 
-	f32 radius = std::max(std::max(scale.x, scale.y), scale.z) * 0.5f;
+	for (MeshComponent& m : meshes) {
 
-	v2_f32 to_sphere = position - ray_origin;
-	
-	f32 dot = to_sphere.dot(ray_direction);
+		Transform trans = ecs_entity_transform_get(ecs, m.entity);
+		v3_f32 position = trans.getWorldPosition();
+		v3_f32 scale = trans.getWorldScale();
 
-	if (dot <= 0.f) {
+		f32 radius = std::max(std::max(scale.x, scale.y), scale.z) * 0.5f;
 
-	    if (abs(dot) > r) continue;
-	    if (abs(dot) == r) {
+		v3_f32 to_sphere = position - ray_origin;
 
-		f32 d = (position - ray_origin).length();
-		if (d < distance) {
+		f32 dot = to_sphere.dot(ray_direction);
 
-		    distance = d;
-		    selected = m.entity;
+		if (dot <= 0.f) {
+
+			if (abs(dot) > radius) continue;
+			if (abs(dot) == radius) {
+
+				f32 d = (position - ray_origin).length();
+				if (d < distance) {
+
+					distance = d;
+					selected = m.entity;
+				}
+				continue;
+			}
+			else {
+
+			}
 		}
-		continue;
-	    }
-	    else {
-		
-	    }
-	}
-	else {
+		else {
 
-	    v3_f32 projection = ray_origin + ray_direction * dot;
-	    
-	}
-    }
+			v3_f32 projection = ray_origin + ray_direction * dot;
 
-    return selected;
+			f32 projection_to_center = (projection - position).length();
+
+			if (projection_to_center > radius) continue;
+
+			f32 dist = math_sqrt(radius * radius - projection_to_center * projection_to_center);
+
+			f32 d0 = dot - dist;
+			f32 d1 = dot + dist;
+			f32 d = std::min(d0, d1);
+			if (d < distance) {
+
+				distance = d;
+				selected = m.entity;
+			}
+			continue;
+		}
+	}
+
+	return selected;
 }
 
 
@@ -91,13 +106,13 @@ void load_model(ECS* ecs, const char* filepath, f32 scale = f32_max)
 	else {
 
 		for (u32 i = 0u; i < info.meshes.size(); ++i) {
-		    
+
 			MeshInfo& m = info.meshes[i];
 
 			Entity e = ecs_entity_create(ecs);
 
 			MeshComponent& comp = *ecs_component_add<MeshComponent>(ecs, e);
-			
+
 			create_asset(comp.mesh, "Mesh");
 			Mesh& mesh = *comp.mesh.get();
 
@@ -130,8 +145,7 @@ void load_model(ECS* ecs, const char* filepath, f32 scale = f32_max)
 			comp.material.emissive_map = mat.emissive_map;
 
 			Transform trans = ecs_entity_transform_get(ecs, e);
-			trans.setScale({ 0.01f, 0.01f, 0.01f });
-			//trans.setEulerRotation({ -PI * 0.5f, 0.f, 0.f });
+			trans.setMatrix(m.transform_matrix);
 		}
 	}
 }
@@ -188,8 +202,15 @@ void update()
 	if (input.keys[Key_C] == InputState_Released)
 		update_camera = !update_camera;
 
+	if (input.mouse_buttons[MouseButton_Left] == InputState_Released) {
+		Entity selected = select_mesh();
+
+		if (selected != SV_ENTITY_NULL)
+			SV_LOG("Selected %u", selected);
+	}
+
 	if (update_camera)
-		camera_controller3D(ecs, *camera);
+		camera_controller3D(ecs, *camera, 0.1f);
 }
 
 void render()
@@ -199,7 +220,7 @@ void render()
 	draw_scene(ecs, offscreen, zbuffer);
 
 	gui_render(gui, offscreen, cmd);
-	
+
 	graphics_present(engine.window, offscreen, GPUImageLayout_RenderTarget, cmd);
 }
 

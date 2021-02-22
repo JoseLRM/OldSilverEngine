@@ -77,6 +77,7 @@ namespace sv {
 
 		std::vector<MeshIndex> indices;
 
+		XMMATRIX transform_matrix;
 		u32 material_index = u32_max;
 
 	};

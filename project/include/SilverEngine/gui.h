@@ -81,7 +81,7 @@ namespace sv {
 	struct GuiContainer : public GuiWidget {
 
 		std::vector<GuiWidget*> sons;
-		bool vertical_scroll = true;
+		bool vertical_scroll = false;
 		f32 vertical_offset = 0.f;
 		f32 up_extension = 0.f;
 		f32 down_extension = 0.f;

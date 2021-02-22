@@ -47,7 +47,7 @@ namespace sv {
 		trans.setPosition(position.getVec3());
 	}
 
-	void camera_controller3D(ECS* ecs, CameraComponent& camera)
+	void camera_controller3D(ECS* ecs, CameraComponent& camera, f32 velocity)
 	{
 		Transform trans = ecs_entity_transform_get(ecs, camera.entity);
 
@@ -69,7 +69,7 @@ namespace sv {
 		// Zoom
 		if (input.mouse_wheel != 0.f) {
 
-			f32 force = 0.1f;
+			f32 force = velocity;
 			if (input.keys[Key_Shift] == InputState_Hold)
 				force *= 3.f;
 
@@ -112,6 +112,7 @@ namespace sv {
 		e->container_hierarchy->w = { 1.f, GuiConstraint_Relative };
 		e->container_hierarchy->h = { 1.f, GuiConstraint_Relative };
 		e->container_hierarchy->color = Color::Gray(200u);
+		e->container_hierarchy->vertical_scroll = true;
 
 		e->container_entity = gui_container_create(gui, e->container);
 		e->container_entity->x = { 0.f, GuiConstraint_Center, GuiCoordAlignment_Center };
@@ -212,9 +213,9 @@ namespace sv {
 						constexpr f32 PIXEL_HEIGHT = 20.f;
 						f32 y_value = 5.f + (f32(i) * (PIXEL_HEIGHT + 3.f));
 
-						button->x = { 0.01f, GuiConstraint_Relative, GuiCoordAlignment_Left };
+						button->x = { 0.0f, GuiConstraint_Relative, GuiCoordAlignment_Left };
 						button->y = { y_value, GuiConstraint_Pixel, GuiCoordAlignment_InverseTop };
-						button->w = { 0.9f, GuiConstraint_Relative };
+						button->w = { 1.f, GuiConstraint_Relative };
 						button->h = { PIXEL_HEIGHT, GuiConstraint_Pixel };
 
 						button->user_id = u64(ecs_entity_get(e->ecs, i));

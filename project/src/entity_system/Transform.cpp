@@ -343,6 +343,22 @@ namespace sv {
 		t->localScale.z = z;
 	}
 
+	void Transform::setMatrix(const XMMATRIX& matrix) noexcept
+	{
+		notify();
+		parse();
+		
+		XMVECTOR scale;
+		XMVECTOR rotation;
+		XMVECTOR position;
+
+		XMMatrixDecompose(&scale, &rotation, &position, matrix);
+
+		XMStoreFloat3(&t->localScale, scale);
+		XMStoreFloat4(&t->localRotation, rotation);
+		XMStoreFloat3(&t->localPosition, position);
+	}
+
 	void Transform::updateWorldMatrix()
 	{
 		parse();

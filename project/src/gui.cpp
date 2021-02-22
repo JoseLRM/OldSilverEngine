@@ -149,6 +149,21 @@ namespace sv {
 		return abs(bounds.x - gui.mouse_position.x) <= bounds.z * 0.5f && abs(bounds.y - gui.mouse_position.y) <= bounds.w * 0.5f;
 	}
 
+	SV_INLINE static f32 get_scroll_width(const GUI_internal& gui, f32 container_width)
+	{
+		return std::min(10.f / gui.resolution.x, container_width);
+	}
+
+	SV_INLINE static bool container_has_vertical_scroll(const GuiContainer& container)
+	{
+		return container.vertical_scroll && (container.up_extension != 0.f || container.down_extension != 0.f);
+	}
+
+	SV_INLINE static f32 get_button_scroll_height(const GuiContainer& container, f32 container_height)
+	{
+		return container_height * 0.1f;
+	}
+
 	static v4_f32 compute_widget_bounds(const GUI_internal& gui, GuiWidget& widget, v4_f32 parent_bounds)
 	{
 #ifndef SV_DIST
@@ -160,11 +175,15 @@ namespace sv {
 		}
 #endif
 
-		// Scroll offset
-		if (widget.parent && widget.parent->type = GuiType_Container) {
+		// Scroll adjust
+		if (widget.parent && container_has_vertical_scroll(*widget.parent)) {
 
-		    GuiContainer& container = *reinterpret_cast<GuiContainer*>(widget.parent);
-		    parent_bounds.y += container.vertical_offset;
+			parent_bounds.y -= widget.parent->vertical_offset;
+
+			f32 scroll_width = get_scroll_width(gui, parent_bounds.z);
+
+			parent_bounds.x -= scroll_width * 0.5f;
+			parent_bounds.z -= scroll_width;
 		}
 
 		// Compute local bounds
@@ -334,39 +353,66 @@ namespace sv {
 			}
 
 			// Scroll stuff
-			if (container.vertical_scroll && gui.widget_focused == nullptr && input.mouse_wheel != 0.f && mouse_in_bounds(gui, bounds)) {
+			if (container.vertical_scroll) {
 
-			    // Compute vertical scroll space
-			    
-			    if (container.sons.empty()) {
+				// Compute extensions
 
-				container.up_extension = 0.f;
-				container.down_extension = 0.f;
-			    }
-			    else {
-				
-				f32 min = f32_max;
-				f32 max = f32_min;
-				
-				for (GuiWidget* son : container.sons) {
-				
-				    v4_f32 son_bounds = compute_widget_bounds(gui, *son, bounds);
+				if (container.sons.empty()) {
 
-				    min = std::min(min, son_bounds.y - son_bounds.w * 0.5f);
-				    max = std::max(max, son_bounds.y + son_bounds.w * 0.5f);
+					container.up_extension = 0.f;
+					container.down_extension = 0.f;
+				}
+				else {
+
+					f32 min = f32_max;
+					f32 max = f32_min;
+
+					// There is no need to compute the bounds with the scroll
+					v4_f32 temp_bounds = bounds;
+					temp_bounds.y += container.vertical_offset;
+
+					for (GuiWidget* son : container.sons) {
+
+						v4_f32 son_bounds = compute_widget_bounds(gui, *son, temp_bounds);
+
+						min = std::min(min, son_bounds.y - son_bounds.w * 0.5f);
+						max = std::max(max, son_bounds.y + son_bounds.w * 0.5f);
+					}
+
+					f32 min_pos = bounds.y - bounds.w * 0.5f;
+					f32 max_pos = bounds.y + bounds.w * 0.5f;
+
+					container.up_extension = std::max(max - max_pos, 0.f);
+					container.down_extension = std::max(min_pos - min, 0.f);
 				}
 
-				f32 min_pos = bounds.y - bounds.w * 0.5f;
-				f32 max_pos = bounds.y + bounds.w * 0.5f;
+				if (container_has_vertical_scroll(container)) {
 
-				container.up_extension = std::max(max - max_pos, 0.f);
-				container.down_extension = std::max(min_pos - min, 0.f);
-			    }
+					if (mouse_in_bounds(gui, bounds)) {
 
-			    f32 up_height = bounds.w * 0.5f + container.up_extension;
-			    f32 down_height = bounds.w * 0.5f + container.down_extension;
-			    
-			    container.vertical_offset = std::min(std::max(input.mouse_wheel + container.vertical_offset, -down_height), up_height);
+						if (gui.widget_focused == nullptr && input.mouse_wheel != 0.f) {
+
+							f32 min_scroll = -container.down_extension;
+							f32 max_scroll = container.up_extension;
+
+							container.vertical_offset = std::min(std::max(input.mouse_wheel * 0.05f + container.vertical_offset, min_scroll), max_scroll);
+						}
+
+						// Dragging scroll
+						if (input.mouse_buttons[MouseButton_Left] && gui.mouse_position.x > (bounds.x + bounds.z * 0.5f - get_scroll_width(gui, bounds.z))) {
+							
+							f32 button_height = get_button_scroll_height(container, bounds.w);
+							f32 button_space = bounds.w - button_height;
+
+							f32 prop = (gui.mouse_position.y - (bounds.y - bounds.w * 0.5f + button_height * 0.5f)) / button_space;
+							prop = std::max(std::min(prop, 1.f), 0.f);
+
+							container.vertical_offset = prop * (container.up_extension + container.down_extension) - container.down_extension;
+							// TODO
+							//gui.widget_focused = &container;
+						}
+					}
+				}
 			}
 		}
 		break;
@@ -825,6 +871,28 @@ namespace sv {
 			begin_debug_batch(cmd);
 
 			draw_debug_quad(pos.getVec3(), size, widget.color, cmd);
+
+			if (container_has_vertical_scroll(container)) {
+
+				f32 scroll_width = get_scroll_width(gui, size.x) * 2.f;
+
+				v2_f32 scroll_pos = pos;
+				scroll_pos.x = (scroll_pos.x + size.x * 0.5f) - scroll_width * 0.5f;
+
+				draw_debug_quad(scroll_pos.getVec3(), { scroll_width, size.y }, Color::Red(), cmd);
+
+				f32 min_scroll = -container.down_extension;
+				f32 max_scroll = container.up_extension;
+
+				f32 prop = (container.vertical_offset + container.down_extension) / (container.up_extension + container.down_extension);
+
+				f32 button_height = get_button_scroll_height(container, size.y);
+				f32 button_space = size.y - button_height;
+
+				f32 button_y_pos = pos.y - size.y * 0.5f + button_height * 0.5f + prop * button_space;
+
+				draw_debug_quad({ scroll_pos.x, button_y_pos, 0.f }, { scroll_width, button_height }, Color::Blue(), cmd);
+			}
 
 			end_debug_batch(offscreen, XMMatrixIdentity(), cmd);
 

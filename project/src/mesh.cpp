@@ -448,6 +448,23 @@ namespace sv {
 					m1.texcoords[j] = { v.x, 1.f - v.y };
 				}
 			}
+
+			// Center positions
+			v3_f32 center;
+			f32 mult = 1.f / f32(m1.positions.size());
+
+			for (const v3_f32& pos : m1.positions) {
+
+				center += pos * mult;
+			}
+
+			for (v3_f32& pos : m1.positions) {
+
+				pos -= center;
+			}
+
+			// Compute transform matrix
+			m1.transform_matrix = XMMatrixTranslation(center.x, center.y, center.z);
 		}
 
 		return Result_Success;

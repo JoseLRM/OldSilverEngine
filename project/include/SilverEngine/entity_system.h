@@ -102,6 +102,8 @@ namespace sv {
 		void setScaleY(float y) noexcept;
 		void setScaleZ(float z) noexcept;
 
+		void setMatrix(const XMMATRIX& matrix) noexcept;
+
 	private:
 		void updateWorldMatrix();
 		void notify();
