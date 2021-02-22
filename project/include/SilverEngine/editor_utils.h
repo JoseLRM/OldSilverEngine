@@ -21,9 +21,10 @@ namespace sv {
 
 	    std::vector<GuiButton*> button_entity;
 
-		GuiDrag* drag_coord[3] = {};
-		GuiDrag* drag_rotation[3] = {};
-		GuiDrag* drag_scale[3] = {};
+	    GuiLabel* label_entity_name = nullptr;
+	    GuiDrag* drag_coord[3] = {};
+	    GuiDrag* drag_rotation[3] = {};
+	    GuiDrag* drag_scale[3] = {};
 	};
 	
 	Editor_ECS*    create_editor_ecs(ECS* ecs, GUI* gui, GuiContainer* parent);

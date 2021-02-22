@@ -126,6 +126,16 @@ namespace sv {
 
 		f32 y = 5.f;
 
+		// Create entity name
+		constexpr f32 NAME_HEIGHT = 40.f;
+		
+		e->label_entity_name = ecs_label_create(e->gui, e->container_entity);
+		e->label_entity_name->x = { 0.f, GuiConstraint_Center, GuiCoordAlignment_Center };
+		e->label_entity_name->y = { y, GuiConstraint_Pixel, GuiCoordAlignment_InverseTop };
+		e->label_entity_name->w = { 1.f, GuiConstraint_Relative };
+		e->label_entity_name->h = { NAME_HEIGHT, GuiConstraint_Pixel };
+		y += NAME_HEIGHT + 5.f;
+
 		// Create entity transform gui
 		foreach(i, 3u) {
 
@@ -273,9 +283,23 @@ namespace sv {
 
 			Transform trans = ecs_entity_transform_get(e->ecs, e->selected_entity);
 
+			// Update entity name
+			{
+			        const char* name = "Unnamed";
+
+				NameComponent* name_comp = ecs_component_get<NameComponent>(e->ecs, e->selected_entity);
+				if (name_comp) name = name_comp->name.c_str();
+				
+				if (strcmp(e->label_entity_name->text.c_str(), name) != 0) {
+				    e->label_entity_name->text = name;
+				}
+			}
+			
 			// Update entity transform
 			GuiWidget* focused = gui_widget_focused(e->gui);
 
+			// TODO: handle euler rotation
+			
 			if (focused) {
 
 				foreach(i, 3u) {
