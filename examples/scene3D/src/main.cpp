@@ -15,6 +15,42 @@ GUI* gui;
 GuiWindow* window;
 Editor_ECS* editor_ecs;
 
+SV_INLINE bool intersect_ray_vs_traingle(const v3_f32& rayOrigin,
+		const v3_f32& rayVector,
+		const v3_f32& v0,
+		const v3_f32& v1,
+		const v3_f32& v2,
+		v3_f32& outIntersectionPoint)
+{
+	const float EPSILON = 0.0000001;
+	v3_f32 edge1, edge2, h, s, q;
+	float a, f, u, v;
+	edge1 = v1 - v0;
+	edge2 = v2 - v0;
+	h = rayVector.cross(edge2);
+	a = edge1.dot(h);
+	if (a > -EPSILON && a < EPSILON)
+		return false;    // This ray is parallel to this triangle.
+	f = 1.0 / a;
+	s = rayOrigin - v0;
+	u = f * s.dot(h);
+	if (u < 0.0 || u > 1.0)
+		return false;
+	q = s.cross(edge1);
+	v = f * rayVector.dot(q);
+	if (v < 0.0 || u + v > 1.0)
+		return false;
+	// At this stage we can compute t to find out where the intersection point is on the line.
+	float t = f * edge2.dot(q);
+	if (t > EPSILON) // ray intersection
+	{
+		outIntersectionPoint = rayOrigin + rayVector * t;
+		return true;
+	}
+	else // This means that there is a line intersection but not a ray intersection.
+		return false;
+}
+
 Entity select_mesh()
 {
 	v2_f32 mouse = input.mouse_position;
@@ -23,19 +59,22 @@ Entity select_mesh()
 	mouse *= 2.f;
 
 	// clip to world
-	XMMATRIX vpm = XMMatrixIdentity(); // TODO
-	vpm = XMMatrixInverse(nullptr, vpm);
+	Transform camera_trans = ecs_entity_transform_get(ecs, camera->entity);
+	v3_f32 camera_position = camera_trans.getWorldPosition();
+	v4_f32 camera_rotation = camera_trans.getWorldRotation();
 
-	XMVECTOR mouse_world = XMVectorSet(mouse.x, mouse.y, 0.f, 1.f);
-	mouse_world = XMVector3Transform(mouse_world, vpm);
+	XMMATRIX ivm = XMMatrixInverse(0, camera_view_matrix(camera_position, camera_rotation, *camera));
+	XMMATRIX ipm = XMMatrixInverse(0, camera_projection_matrix(*camera));
+
+	XMVECTOR mouse_world = XMVectorSet(mouse.x, mouse.y, 1.f, 1.f);
+	mouse_world = XMVector4Transform(mouse_world, ipm);
+	mouse_world = XMVectorSetZ(mouse_world, 1.f);
+	mouse_world = XMVector4Transform(mouse_world, ivm);
+	mouse_world = XMVector3Normalize(mouse_world);
 
 	// Ray
-	Transform trans = ecs_entity_transform_get(ecs, camera->entity);
-	v3_f32 camera_position = trans.getWorldPosition();
-
-	v3_f32 ray_origin = camera_position;
-	v3_f32 ray_direction = v3_f32(mouse_world) - camera_position;
-	ray_direction.normalize();
+	XMVECTOR ray_origin = camera_position.getDX(1.f);
+	XMVECTOR ray_direction = mouse_world;
 
 	Entity selected = SV_ENTITY_NULL;
 	f32 distance = f32_max;
@@ -45,51 +84,36 @@ Entity select_mesh()
 	for (MeshComponent& m : meshes) {
 
 		Transform trans = ecs_entity_transform_get(ecs, m.entity);
-		v3_f32 position = trans.getWorldPosition();
-		v3_f32 scale = trans.getWorldScale();
 
-		f32 radius = std::max(std::max(scale.x, scale.y), scale.z) * 0.5f;
+		XMMATRIX itm = XMMatrixInverse(0, trans.getWorldMatrix());
 
-		v3_f32 to_sphere = position - ray_origin;
+		v3_f32 o = v3_f32(XMVector4Transform(ray_origin, itm));
+		v3_f32 d = v3_f32(XMVector4Transform(ray_direction, itm));
+		
+		Mesh& mesh = *m.mesh.get();
+		
+		u32 triangles = u32(mesh.indices.size()) / 3u;
 
-		f32 dot = to_sphere.dot(ray_direction);
+		for (u32 i = 0u; i < triangles; ++i) {
 
-		if (dot <= 0.f) {
+			u32 i0 = mesh.indices[i * 3u + 0u];
+			u32 i1 = mesh.indices[i * 3u + 1u];
+			u32 i2 = mesh.indices[i * 3u + 2u];
 
-			if (abs(dot) > radius) continue;
-			if (abs(dot) == radius) {
+			v3_f32 p0 = mesh.positions[i0];
+			v3_f32 p1 = mesh.positions[i1];
+			v3_f32 p2 = mesh.positions[i2];
 
-				f32 d = (position - ray_origin).length();
-				if (d < distance) {
+			v3_f32 intersection;
 
-					distance = d;
+			if (intersect_ray_vs_traingle(o, d, p0, p1, p2, intersection)) {
+
+				f32 dis = intersection.length();
+				if (dis < distance) {
+					distance = dis;
 					selected = m.entity;
 				}
-				continue;
 			}
-			else {
-
-			}
-		}
-		else {
-
-			v3_f32 projection = ray_origin + ray_direction * dot;
-
-			f32 projection_to_center = (projection - position).length();
-
-			if (projection_to_center > radius) continue;
-
-			f32 dist = math_sqrt(radius * radius - projection_to_center * projection_to_center);
-
-			f32 d0 = dot - dist;
-			f32 d1 = dot + dist;
-			f32 d = std::min(d0, d1);
-			if (d < distance) {
-
-				distance = d;
-				selected = m.entity;
-			}
-			continue;
 		}
 	}
 
@@ -172,7 +196,7 @@ Result init()
 
 	gui = gui_create();
 
-	//load_model(ecs, "assets/dragon.obj");
+	load_model(ecs, "assets/dragon.obj");
 	//load_model(ecs, "assets/gobber/GoblinX.obj");
 	load_model(ecs, "assets/Sponza/sponza.obj");
 
@@ -205,8 +229,15 @@ void update()
 	if (input.mouse_buttons[MouseButton_Left] == InputState_Released) {
 		Entity selected = select_mesh();
 
-		if (selected != SV_ENTITY_NULL)
-			SV_LOG("Selected %u", selected);
+		if (selected != SV_ENTITY_NULL) {
+
+			NameComponent* n = ecs_component_get<NameComponent>(ecs, selected);
+
+			if (n)
+				SV_LOG("Selected '%s'", n->name.c_str());
+			else 
+				SV_LOG("Selected %u", selected);
+		}
 	}
 
 	if (update_camera)
@@ -220,6 +251,13 @@ void render()
 	draw_scene(ecs, offscreen, zbuffer);
 
 	gui_render(gui, offscreen, cmd);
+
+	begin_debug_batch(cmd);
+
+	Transform trans = ecs_entity_transform_get(ecs, camera->entity);
+	v3_f32 pos = trans.getWorldPosition();
+	v4_f32 rot = trans.getWorldRotation();
+	end_debug_batch(offscreen, camera_view_projection_matrix(pos, rot, *camera), cmd);
 
 	graphics_present(engine.window, offscreen, GPUImageLayout_RenderTarget, cmd);
 }

@@ -127,13 +127,14 @@ namespace sv {
 		f32 y = 5.f;
 
 		// Create entity name
-		constexpr f32 NAME_HEIGHT = 40.f;
+		constexpr f32 NAME_HEIGHT = 20.f;
 		
-		e->label_entity_name = ecs_label_create(e->gui, e->container_entity);
+		e->label_entity_name = gui_label_create(e->gui, e->container_entity);
 		e->label_entity_name->x = { 0.f, GuiConstraint_Center, GuiCoordAlignment_Center };
 		e->label_entity_name->y = { y, GuiConstraint_Pixel, GuiCoordAlignment_InverseTop };
 		e->label_entity_name->w = { 1.f, GuiConstraint_Relative };
 		e->label_entity_name->h = { NAME_HEIGHT, GuiConstraint_Pixel };
+		e->label_entity_name->color = Color::White(0.f);
 		y += NAME_HEIGHT + 5.f;
 
 		// Create entity transform gui

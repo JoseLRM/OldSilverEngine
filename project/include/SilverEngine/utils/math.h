@@ -406,6 +406,15 @@ namespace sv {
 			return x * v.x + y * v.y + z * v.z;
 		}
 
+		SV_INLINE vec cross(const vec& v) const noexcept
+		{
+			vec r;
+			r.x = y * v.z - z * v.y;
+			r.y = z * v.x - x * v.z;
+			r.z = x * v.y - y * v.x;
+			return r;
+		}
+
 		// normal should be normalized
 		SV_INLINE vec reflection(const vec& normal) const noexcept
 		{

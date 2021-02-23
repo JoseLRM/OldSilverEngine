@@ -552,42 +552,10 @@ namespace sv {
 
 				CameraBuffer_GPU camera_data;
 				{
-#ifndef SV_DIST
-					if (camera.near >= camera.far) {
-						SV_LOG_WARNING("Computing the projection matrix. The far must be grater than near");
-					}
-
-					switch (camera.projection_type)
-					{
-					case ProjectionType_Orthographic:
-						break;
-
-					case ProjectionType_Perspective:
-						if (camera.near <= 0.f) {
-							SV_LOG_WARNING("In perspective projection, near must be greater to 0");
-						}
-						break;
-					}
-#endif
-
-					switch (camera.projection_type)
-					{
-					case ProjectionType_Orthographic:
-						camera_data.projection_matrix = XMMatrixOrthographicLH(camera.width, camera.height, camera.near, camera.far);
-						break;
-
-					case ProjectionType_Perspective:
-						camera_data.projection_matrix = XMMatrixPerspectiveLH(camera.width, camera.height, camera.near, camera.far);
-						break;
-
-					default:
-						camera_data.projection_matrix = XMMatrixIdentity();
-						break;
-					}
-
+					camera_data.projection_matrix = camera_projection_matrix(camera);
 					camera_data.position = camera_trans.getWorldPosition().getVec4(0.f);
 					camera_data.rotation = camera_trans.getWorldRotation();
-					camera_data.view_matrix = math_matrix_view(camera_data.position.get_vec3(), camera_data.rotation);
+					camera_data.view_matrix = camera_view_matrix(camera_data.position.get_vec3(), camera_data.rotation, camera);
 					camera_data.view_projection_matrix = camera_data.view_matrix * camera_data.projection_matrix;
 				}
 
@@ -862,6 +830,55 @@ namespace sv {
 			}
 		}
 		
+	}
+
+	XMMATRIX camera_view_matrix(const v3_f32& position, const v4_f32 rotation, CameraComponent& camera)
+	{
+		return math_matrix_view(position, rotation);
+	}
+
+	XMMATRIX camera_projection_matrix(CameraComponent& camera)
+	{
+#ifndef SV_DIST
+		if (camera.near >= camera.far) {
+			SV_LOG_WARNING("Computing the projection matrix. The far must be grater than near");
+		}
+
+		switch (camera.projection_type)
+		{
+		case ProjectionType_Orthographic:
+			break;
+
+		case ProjectionType_Perspective:
+			if (camera.near <= 0.f) {
+				SV_LOG_WARNING("In perspective projection, near must be greater to 0");
+			}
+			break;
+		}
+#endif
+		XMMATRIX projection_matrix;
+
+		switch (camera.projection_type)
+		{
+		case ProjectionType_Orthographic:
+			projection_matrix = XMMatrixOrthographicLH(camera.width, camera.height, camera.near, camera.far);
+			break;
+
+		case ProjectionType_Perspective:
+			projection_matrix = XMMatrixPerspectiveLH(camera.width, camera.height, camera.near, camera.far);
+			break;
+
+		default:
+			projection_matrix = XMMatrixIdentity();
+			break;
+		}
+
+		return projection_matrix;
+	}
+
+	XMMATRIX camera_view_projection_matrix(const v3_f32& position, const v4_f32 rotation, CameraComponent& camera)
+	{
+		return camera_view_matrix(position, rotation, camera) * camera_projection_matrix(camera);
 	}
 
 }

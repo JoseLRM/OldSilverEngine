@@ -25,14 +25,14 @@ namespace sv {
 		InstanceAllocator<GuiDrag, 10u>	     drags;
 		InstanceAllocator<GuiTextField, 10u> textfields;
 		InstanceAllocator<GuiCheckbox, 10u>  checkboxes;
-	        InstanceAllocator<GuiLabel, 10u>     labels;
+		InstanceAllocator<GuiLabel, 10u>     labels;
 
 		InstanceAllocator<GuiWindow, 5u> windows;
 
 		std::vector<GuiWidget*>	root;
 		v2_f32                  resolution;
-		GuiWidget*              widget_focused = nullptr;
-	        u32                     focus_action = 0u;
+		GuiWidget* widget_focused = nullptr;
+		u32                     focus_action = 0u;
 		GuiLockedInput          locked;
 
 		// used during update
@@ -390,15 +390,15 @@ namespace sv {
 
 				if (container_has_vertical_scroll(container)) {
 
-				        f32 wheel;
-				    
-					if (mouse_in_bounds(gui, bounds)) {
+					f32 wheel;
 
-					        wheel = (gui.widget_focused == nullptr) ? input.mouse_wheel : 0.f;
+					if (mouse_in_bounds(gui, bounds) && gui.widget_focused == nullptr) {
+
+						wheel = input.mouse_wheel;
 
 						// Dragging scroll
 						if (input.mouse_buttons[MouseButton_Left] && gui.mouse_position.x > (bounds.x + bounds.z * 0.5f - get_scroll_width(gui, bounds.z))) {
-							
+
 							gui.widget_focused = &container;
 							gui.focus_action = 10u;
 						}
@@ -407,7 +407,7 @@ namespace sv {
 
 					f32 min_scroll = -container.down_extension;
 					f32 max_scroll = container.up_extension;
-						
+
 					container.vertical_offset = std::min(std::max(wheel * 0.05f + container.vertical_offset, min_scroll), max_scroll);
 				}
 			}
@@ -624,14 +624,14 @@ namespace sv {
 				}
 				else {
 
-				        v4_f32 bounds = compute_widget_bounds(gui, container);
-				    
-				        f32 button_height = get_button_scroll_height(container, bounds.w);
+					v4_f32 bounds = compute_widget_bounds(gui, container);
+
+					f32 button_height = get_button_scroll_height(container, bounds.w);
 					f32 button_space = bounds.w - button_height;
-					
+
 					f32 prop = (gui.mouse_position.y - (bounds.y - bounds.w * 0.5f + button_height * 0.5f)) / button_space;
 					prop = std::max(std::min(prop, 1.f), 0.f);
-					
+
 					container.vertical_offset = prop * (container.up_extension + container.down_extension) - container.down_extension;
 				}
 			}
@@ -1029,7 +1029,7 @@ namespace sv {
 				f32 text_x = pos.x - size.x * 0.5f;
 				f32 aspect = gui.resolution.x / gui.resolution.y;
 
-				draw_text(offscreen, label.text.c_str(), text_x, text_y, size.x, 1u, size.y, aspect, TextSpace_Clip, TextAlignment_Left, nullptr, cmd);
+				draw_text(offscreen, label.text.c_str(), text_x, text_y, size.x, 1u, size.y, aspect, TextSpace_Clip, TextAlignment_Center, nullptr, cmd);
 			}
 		}
 		break;
@@ -1215,7 +1215,7 @@ namespace sv {
 		window.container->x.value = 0.15f;
 		window.container->x.constraint = GuiConstraint_Relative;
 		window.container->x.alignment = GuiCoordAlignment_Center;
-		window.container->y.value = 0.85f;
+		window.container->y.value = 0.7f;
 		window.container->y.constraint = GuiConstraint_Relative;
 		window.container->y.alignment = GuiCoordAlignment_Center;
 		window.container->w.value = 0.2f;

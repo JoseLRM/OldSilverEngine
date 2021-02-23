@@ -68,6 +68,10 @@ namespace sv {
 
 	void draw_scene(ECS* ecs, GPUImage* offscreen, GPUImage* depthstencil);
 
+	XMMATRIX camera_view_matrix(const v3_f32& position, const v4_f32 rotation, CameraComponent& camera);
+	XMMATRIX camera_projection_matrix(CameraComponent& camera);
+	XMMATRIX camera_view_projection_matrix(const v3_f32& position, const v4_f32 rotation, CameraComponent& camera);
+
 	// DEBUG RENDERER
 
 	void begin_debug_batch(CommandList cmd);

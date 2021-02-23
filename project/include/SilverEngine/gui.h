@@ -72,7 +72,7 @@ namespace sv {
 		Color	  color = Color::White();
 		f32		  rounded_radius = 0.f;
 
-	        bool enabled = true;
+		bool enabled = true;
 
 		const GuiWidgetType	type;
 
@@ -143,8 +143,9 @@ namespace sv {
 
 	struct GuiLabel : public GuiWidget {
 
-	        std::string text;
-	    
+		std::string text;
+
+		GuiLabel() : GuiWidget(GuiWidgetType_Label) {}
 	};
 
 	// WINDOW
