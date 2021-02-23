@@ -77,6 +77,7 @@ namespace sv {
 	void begin_debug_batch(CommandList cmd);
 	void end_debug_batch(GPUImage* offscreen, const XMMATRIX& viewProjectionMatrix, CommandList cmd);
 
+
 	void draw_debug_quad(const XMMATRIX& matrix, Color color, CommandList cmd);
 	void draw_debug_line(const v3_f32& p0, const v3_f32& p1, Color color, CommandList cmd);
 	void draw_debug_ellipse(const XMMATRIX& matrix, Color color, CommandList cmd);

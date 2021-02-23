@@ -126,10 +126,14 @@ namespace sv {
 
 		f32 y = 5.f;
 
+		// Create entity editor containers
+		e->container_entity_base = gui_container_create(gui, e->container_entity);
+		e->container_entity_components = gui_container_create(gui, e->container_entity);
+
 		// Create entity name
 		constexpr f32 NAME_HEIGHT = 20.f;
 		
-		e->label_entity_name = gui_label_create(e->gui, e->container_entity);
+		e->label_entity_name = gui_label_create(e->gui, e->container_entity_base);
 		e->label_entity_name->x = { 0.f, GuiConstraint_Center, GuiCoordAlignment_Center };
 		e->label_entity_name->y = { y, GuiConstraint_Pixel, GuiCoordAlignment_InverseTop };
 		e->label_entity_name->w = { 1.f, GuiConstraint_Relative };
@@ -154,9 +158,9 @@ namespace sv {
 				break;
 			}
 
-			drags[0u] = gui_drag_create(e->gui, e->container_entity);
-			drags[1u] = gui_drag_create(e->gui, e->container_entity);
-			drags[2u] = gui_drag_create(e->gui, e->container_entity);
+			drags[0u] = gui_drag_create(e->gui, e->container_entity_base);
+			drags[1u] = gui_drag_create(e->gui, e->container_entity_base);
+			drags[2u] = gui_drag_create(e->gui, e->container_entity_base);
 
 			constexpr f32 HEIGHT = 20.f;
 
@@ -187,6 +191,18 @@ namespace sv {
 			y += HEIGHT + 3.f;
 		}
 
+		// Adjust containers
+		e->container_entity_base->x = { 0.f, GuiConstraint_Center, GuiCoordAlignment_Center };
+		e->container_entity_base->y = { 0.f, GuiConstraint_Pixel, GuiCoordAlignment_InverseTop };
+		e->container_entity_base->w = { 1.f, GuiConstraint_Relative };
+		e->container_entity_base->h = { y, GuiConstraint_Pixel };
+		e->container_entity_base->vertical_scroll = true;
+
+		e->container_entity_components->x = { 0.f, GuiConstraint_Center, GuiCoordAlignment_Center };
+		e->container_entity_components->y = { y, GuiConstraint_Pixel, GuiCoordAlignment_InverseTop };
+		e->container_entity_components->w = { 1.f, GuiConstraint_Relative };
+		e->container_entity_components->h = { 40.f, GuiConstraint_Pixel };
+		
 		return e;
 	}
 

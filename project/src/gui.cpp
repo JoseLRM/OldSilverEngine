@@ -12,9 +12,9 @@ namespace sv {
 	/*
 	  TODO LIST:
 	  - GuiDraw structure that defines the rendering of a widget or some component (PD: Should not contain inherited alpha)
-	  - GuiDrag Widget.
-	  - Option in guicontainer that resize auto
 	  - Align gui widgets
+	  - Popups
+	  - Combobox
 	*/
 
 	struct GUI_internal {
@@ -25,6 +25,7 @@ namespace sv {
 		InstanceAllocator<GuiDrag, 10u>	     drags;
 		InstanceAllocator<GuiTextField, 10u> textfields;
 		InstanceAllocator<GuiCheckbox, 10u>  checkboxes;
+	        InstanceAllocator<GuiCombobox, 10u>  comboboxes;
 		InstanceAllocator<GuiLabel, 10u>     labels;
 
 		InstanceAllocator<GuiWindow, 5u> windows;
@@ -59,6 +60,8 @@ namespace sv {
 		gui.drags.clear();
 		gui.textfields.clear();
 		gui.checkboxes.clear();
+		gui.comboboxes.clear();
+		gui.labels.clear();
 
 		gui.windows.clear();
 
@@ -455,6 +458,7 @@ namespace sv {
 		case GuiWidgetType_Drag:
 		case GuiWidgetType_Slider:
 		case GuiWidgetType_TextField:
+		case GuiWidgetType_Checkbox:
 		{
 			v4_f32 bounds = compute_widget_bounds(gui, widget, parent_bounds);
 
@@ -462,25 +466,31 @@ namespace sv {
 			if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed && mouse_in_bounds(gui, bounds)) {
 
 				gui.text_position = 0u;
-
-				InputState mouse_state = input.mouse_buttons[MouseButton_Left];
-
-				if (mouse_state == InputState_Pressed) {
-
-					gui.widget_focused = &widget;
-				}
+				gui.widget_focused = &widget;
 			}
 		}
 		break;
 
-		case GuiWidgetType_Checkbox:
+		case GuiWidgetType_Combobox:
 		{
-			GuiCheckbox& cbox = *reinterpret_cast<GuiCheckbox*>(&widget);
-			v4_f32 bounds = compute_widget_bounds(gui, cbox, parent_bounds);
+		    	v4_f32 bounds = compute_widget_bounds(gui, widget, parent_bounds);
+			GuiCombobox& cbox = *reinterpret_cast<GuiCombobox*>(&widget);
 
-			if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed && mouse_in_bounds(gui, bounds)) {
+			InputState input_state = input.mouse_buttons[MouseButton_Left];
+			
+			if (cbox.open) {
 
-				gui.widget_focused = &widget;
+			    // Close combobox
+			    if (input_state == InputState_Pressed) cbox.open = false;
+
+			    
+			}
+			else {
+			    
+			    // Mouse widget
+			    if (input_state == InputState_Released && mouse_in_bounds(gui, bounds)) {
+				cbox.open = true;
+			    }
 			}
 		}
 		break;
@@ -1123,6 +1133,10 @@ namespace sv {
 			widget = &gui.checkboxes.create();
 			break;
 
+		case GuiWidgetType_Combobox:
+			widget = &gui.comboboxes.create();
+			break;
+
 		case GuiWidgetType_Label:
 			widget = &gui.labels.create();
 			break;
@@ -1195,6 +1209,14 @@ namespace sv {
 
 		case GuiWidgetType_Checkbox:
 			gui.checkboxes.destroy(*reinterpret_cast<GuiCheckbox*>(widget));
+			break;
+
+		case GuiWidgetType_Combobox:
+			gui.comboboxes.destroy(*reinterpret_cast<GuiCombobox*>(widget));
+			break;
+
+		case GuiWidgetType_Label:
+			gui.labels.destroy(*reinterpret_cast<GuiLabel*>(widget));
 			break;
 		}
 	}

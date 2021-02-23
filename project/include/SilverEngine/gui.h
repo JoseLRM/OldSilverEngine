@@ -20,6 +20,7 @@ namespace sv {
 		GuiWidgetType_Drag,
 		GuiWidgetType_TextField,
 		GuiWidgetType_Checkbox,
+		GuiWidgetType_Combobox,
 		GuiWidgetType_Label,
 	};
 
@@ -141,11 +142,29 @@ namespace sv {
 
 	};
 
+	struct GuiComboItem {
+
+	    std::string name;
+	    HoverState hover_state = HoverState_None;
+	    u64 user_id = 0u;
+	    
+	};
+
+	struct GuiCombobox : public GuiWidget {
+
+	        std::vector<GuiComboItem> items;
+		bool open = false;
+	    
+	        GuiCombobox() : GuiWidget(GuiWidgetType_Combobox) {}
+	    
+	};
+
 	struct GuiLabel : public GuiWidget {
 
 		std::string text;
 
 		GuiLabel() : GuiWidget(GuiWidgetType_Label) {}
+		
 	};
 
 	// WINDOW
@@ -158,6 +177,13 @@ namespace sv {
 		Color			decoration_color = Color::Gray(200u);
 		Color			color = Color::Gray(150u);
 
+	};
+	
+	struct GuiPopup {
+
+	    GuiContainer* container;
+	    
+	    
 	};
 
 	// INPUT

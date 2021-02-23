@@ -21,6 +21,8 @@ namespace sv {
 
 	    std::vector<GuiButton*> button_entity;
 
+	    GuiContainer* container_entity_base;
+	    GuiContainer* container_entity_components;
 	    GuiLabel* label_entity_name = nullptr;
 	    GuiDrag* drag_coord[3] = {};
 	    GuiDrag* drag_rotation[3] = {};
