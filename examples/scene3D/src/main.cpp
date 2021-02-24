@@ -16,11 +16,11 @@ GuiWindow* window;
 Editor_ECS* editor_ecs;
 
 SV_INLINE bool intersect_ray_vs_traingle(const v3_f32& rayOrigin,
-		const v3_f32& rayVector,
-		const v3_f32& v0,
-		const v3_f32& v1,
-		const v3_f32& v2,
-		v3_f32& outIntersectionPoint)
+	const v3_f32& rayVector,
+	const v3_f32& v0,
+	const v3_f32& v1,
+	const v3_f32& v2,
+	v3_f32& outIntersectionPoint)
 {
 	const float EPSILON = 0.0000001;
 	v3_f32 edge1, edge2, h, s, q;
@@ -89,9 +89,9 @@ Entity select_mesh()
 
 		v3_f32 o = v3_f32(XMVector4Transform(ray_origin, itm));
 		v3_f32 d = v3_f32(XMVector4Transform(ray_direction, itm));
-		
+
 		Mesh& mesh = *m.mesh.get();
-		
+
 		u32 triangles = u32(mesh.indices.size()) / 3u;
 
 		for (u32 i = 0u; i < triangles; ++i) {
@@ -235,13 +235,13 @@ void update()
 
 			if (n)
 				SV_LOG("Selected '%s'", n->name.c_str());
-			else 
+			else
 				SV_LOG("Selected %u", selected);
 		}
 	}
 
 	if (update_camera)
-		camera_controller3D(ecs, *camera, 0.1f);
+		camera_controller3D(ecs, *camera, 10.f);
 }
 
 void render()

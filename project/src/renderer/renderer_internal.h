@@ -143,6 +143,16 @@ namespace sv {
 		GPUBuffer* cbuffer_mesh_instance;
 		GPUBuffer* cbuffer_light_instances;
 
+		// SKY
+
+		Shader* vs_sky;
+		Shader* ps_sky;
+		RenderPass* renderpass_sky;
+		GPUImage* image_sky;
+		GPUBuffer* vbuffer_skybox;
+		GPUBuffer* cbuffer_skybox;
+		InputLayoutState* ils_sky;
+
 	};
 
 	struct RenderingUtils {

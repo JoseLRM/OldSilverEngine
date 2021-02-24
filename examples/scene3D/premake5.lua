@@ -10,7 +10,7 @@ workspace 'Scene3D'
 	filter 'configurations:not Distribution'
 
 	defines {
-		-- 'SV_ENABLE_GFX_VALIDATION',
+		--'SV_ENABLE_GFX_VALIDATION',
 		'SV_ENABLE_LOGGING',
 		'SV_ENABLE_ASSERTION',
 	}

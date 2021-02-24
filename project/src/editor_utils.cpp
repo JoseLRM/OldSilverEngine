@@ -120,6 +120,7 @@ namespace sv {
 		e->container_entity->w = { 1.f, GuiConstraint_Relative };
 		e->container_entity->h = { 1.f, GuiConstraint_Relative };
 		e->container_entity->color = Color::Gray(200u);
+		e->container_entity->vertical_scroll = true;
 
 		e->gui = gui;
 		e->ecs = ecs;
@@ -128,7 +129,9 @@ namespace sv {
 
 		// Create entity editor containers
 		e->container_entity_base = gui_container_create(gui, e->container_entity);
+		e->container_entity_base->color = Color::Gray(210u);
 		e->container_entity_components = gui_container_create(gui, e->container_entity);
+		e->container_entity_components->color = Color::Gray(210u);
 
 		// Create entity name
 		constexpr f32 NAME_HEIGHT = 20.f;
@@ -193,10 +196,9 @@ namespace sv {
 
 		// Adjust containers
 		e->container_entity_base->x = { 0.f, GuiConstraint_Center, GuiCoordAlignment_Center };
-		e->container_entity_base->y = { 0.f, GuiConstraint_Pixel, GuiCoordAlignment_InverseTop };
-		e->container_entity_base->w = { 1.f, GuiConstraint_Relative };
+		e->container_entity_base->y = { 2.f, GuiConstraint_Pixel, GuiCoordAlignment_InverseTop };
+		e->container_entity_base->w = { 0.99f, GuiConstraint_Relative };
 		e->container_entity_base->h = { y, GuiConstraint_Pixel };
-		e->container_entity_base->vertical_scroll = true;
 
 		e->container_entity_components->x = { 0.f, GuiConstraint_Center, GuiCoordAlignment_Center };
 		e->container_entity_components->y = { y, GuiConstraint_Pixel, GuiCoordAlignment_InverseTop };

@@ -2149,27 +2149,66 @@ namespace sv {
 				1u,
 				&memBarrier);
 
-			// Create staging buffer and copy desc.pData
 			VkBuffer stagingBuffer;
 			VmaAllocation stagingAllocation;
-			void* mapData;
 
-			graphics_vulkan_memory_create_stagingbuffer(stagingBuffer, stagingAllocation, &mapData, desc.size);
-			memcpy(mapData, desc.pData, desc.size);
+			// Create staging buffer and copy desc.pData
+			if (desc.type & GPUImageType_CubeMap) {
 
-			// Copy buffer to image
-			VkBufferImageCopy copy_info{};
-			copy_info.bufferOffset = 0u;
-			copy_info.bufferRowLength = 0u;
-			copy_info.bufferImageHeight = 0u;
-			copy_info.imageSubresource.aspectMask = aspect;
-			copy_info.imageSubresource.baseArrayLayer = 0u;
-			copy_info.imageSubresource.layerCount = image.layers;
-			copy_info.imageSubresource.mipLevel = 0u;
-			copy_info.imageOffset = { 0, 0, 0 };
-			copy_info.imageExtent = { desc.width, desc.height, 1u };
+				void* mapData;
+				graphics_vulkan_memory_create_stagingbuffer(stagingBuffer, stagingAllocation, &mapData, desc.size * 6u);
 
-			vkCmdCopyBufferToImage(cmd, stagingBuffer, image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1u, &copy_info);
+				u8** images = (u8 * *)desc.pData;
+
+				foreach(i, 6u) {
+					
+					u32 k = i;
+
+					if (k == 0u) k = 4u;
+					else if (k == 1u) k = 5u;
+					else if (k == 4u) k = 0u;
+					else if (k == 5u) k = 1u;
+
+					memcpy((u8*)mapData + desc.size * k, images[i], desc.size);
+				}
+
+				foreach(i, 6u) {
+
+					// Copy buffer to image
+					VkBufferImageCopy copy_info{};
+					copy_info.bufferOffset = desc.size * i;
+					copy_info.bufferRowLength = 0u;
+					copy_info.bufferImageHeight = 0u;
+					copy_info.imageSubresource.aspectMask = aspect;
+					copy_info.imageSubresource.baseArrayLayer = i;
+					copy_info.imageSubresource.layerCount = 1u;
+					copy_info.imageSubresource.mipLevel = 0u;
+					copy_info.imageOffset = { 0, 0, 0 };
+					copy_info.imageExtent = { desc.width, desc.height, 1u };
+
+					vkCmdCopyBufferToImage(cmd, stagingBuffer, image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1u, &copy_info);
+				}
+			}
+			else {
+				void* mapData;
+
+				graphics_vulkan_memory_create_stagingbuffer(stagingBuffer, stagingAllocation, &mapData, desc.size);
+				memcpy(mapData, desc.pData, desc.size);
+
+				// Copy buffer to image
+				VkBufferImageCopy copy_info{};
+				copy_info.bufferOffset = 0u;
+				copy_info.bufferRowLength = 0u;
+				copy_info.bufferImageHeight = 0u;
+				copy_info.imageSubresource.aspectMask = aspect;
+				copy_info.imageSubresource.baseArrayLayer = 0u;
+				copy_info.imageSubresource.layerCount = 1u;
+				copy_info.imageSubresource.mipLevel = 0u;
+				copy_info.imageOffset = { 0, 0, 0 };
+				copy_info.imageExtent = { desc.width, desc.height, 1u };
+
+				vkCmdCopyBufferToImage(cmd, stagingBuffer, image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1u, &copy_info);
+			}
 			
 			// Set the layout to desc.layout
 			memBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;

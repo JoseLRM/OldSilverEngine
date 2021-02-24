@@ -35,8 +35,11 @@ namespace sv {
 		COMPILE_VS(gfx.vs_sprite, "sprite/default.hlsl");
 		COMPILE_PS(gfx.ps_sprite, "sprite/default.hlsl");
 
-		COMPILE_VS_(gfx.vs_mesh, "mesh/default.hlsl");
-		COMPILE_PS_(gfx.ps_mesh, "mesh/default.hlsl");
+		COMPILE_VS(gfx.vs_mesh, "mesh/default.hlsl");
+		COMPILE_PS(gfx.ps_mesh, "mesh/default.hlsl");
+
+		COMPILE_VS_(gfx.vs_sky, "skymapping.hlsl");
+		COMPILE_PS_(gfx.ps_sky, "skymapping.hlsl");
 
 		return Result_Success;
 	}
@@ -114,6 +117,20 @@ namespace sv {
 
 		desc.attachmentCount = 2u;
 		CREATE_RENDERPASS("MeshRenderPass", gfx.renderpass_mesh);
+
+		// Skymap
+		att[0].loadOp = AttachmentOperation_Load;
+		att[0].storeOp = AttachmentOperation_Store;
+		att[0].stencilLoadOp = AttachmentOperation_DontCare;
+		att[0].stencilStoreOp = AttachmentOperation_DontCare;
+		att[0].format = OFFSCREEN_FORMAT;
+		att[0].initialLayout = GPUImageLayout_RenderTarget;
+		att[0].layout = GPUImageLayout_RenderTarget;
+		att[0].finalLayout = GPUImageLayout_RenderTarget;
+		att[0].type = AttachmentType_RenderTarget;
+
+		desc.attachmentCount = 1u;
+		CREATE_RENDERPASS("SkymapRenderPass", gfx.renderpass_sky);
 
 		return Result_Success;
 	}
@@ -226,6 +243,70 @@ namespace sv {
 			svCheck(graphics_buffer_create(&desc, &gfx.cbuffer_light_instances));
 		}
 
+		// Sky box
+		{
+			f32 box[] = {
+				-1.0f,  1.0f, -1.0f,
+				-1.0f, -1.0f, -1.0f,
+				 1.0f, -1.0f, -1.0f,
+				 1.0f, -1.0f, -1.0f,
+				 1.0f,  1.0f, -1.0f,
+				-1.0f,  1.0f, -1.0f,
+
+				-1.0f, -1.0f,  1.0f,
+				-1.0f, -1.0f, -1.0f,
+				-1.0f,  1.0f, -1.0f,
+				-1.0f,  1.0f, -1.0f,
+				-1.0f,  1.0f,  1.0f,
+				-1.0f, -1.0f,  1.0f,
+
+				 1.0f, -1.0f, -1.0f,
+				 1.0f, -1.0f,  1.0f,
+				 1.0f,  1.0f,  1.0f,
+				 1.0f,  1.0f,  1.0f,
+				 1.0f,  1.0f, -1.0f,
+				 1.0f, -1.0f, -1.0f,
+
+				-1.0f, -1.0f,  1.0f,
+				-1.0f,  1.0f,  1.0f,
+				 1.0f,  1.0f,  1.0f,
+				 1.0f,  1.0f,  1.0f,
+				 1.0f, -1.0f,  1.0f,
+				-1.0f, -1.0f,  1.0f,
+
+				-1.0f,  1.0f, -1.0f,
+				 1.0f,  1.0f, -1.0f,
+				 1.0f,  1.0f,  1.0f,
+				 1.0f,  1.0f,  1.0f,
+				-1.0f,  1.0f,  1.0f,
+				-1.0f,  1.0f, -1.0f,
+
+				-1.0f, -1.0f, -1.0f,
+				-1.0f, -1.0f,  1.0f,
+				 1.0f, -1.0f, -1.0f,
+				 1.0f, -1.0f, -1.0f,
+				-1.0f, -1.0f,  1.0f,
+				 1.0f, -1.0f,  1.0f
+			};
+
+
+			desc.pData = box;
+			desc.bufferType = GPUBufferType_Vertex;
+			desc.size = sizeof(v3_f32) * 36u;
+			desc.usage = ResourceUsage_Static;
+			desc.CPUAccess = CPUAccess_None;
+
+			svCheck(graphics_buffer_create(&desc, &gfx.vbuffer_skybox));
+
+			desc.pData = nullptr;
+			desc.bufferType = GPUBufferType_Constant;
+			desc.size = sizeof(XMMATRIX);
+			desc.usage = ResourceUsage_Default;
+			desc.CPUAccess = CPUAccess_Write;
+
+			svCheck(graphics_buffer_create(&desc, &gfx.cbuffer_skybox));
+		}
+
 		return Result_Success;
 	}
 
@@ -252,6 +333,84 @@ namespace sv {
 
 			svCheck(graphics_image_create(&desc, &gfx.image_white));
 		}
+
+		Color* data;
+		u32 w, h;
+		svCheck(load_image(SV_SYS("system/skymap.jpg"), (void**)&data, &w, &h));
+
+
+		u32 image_width = w / 4u;
+		u32 image_height = h / 3u;
+
+		Color* images[6u] = {};
+		Color* mem = (Color*)malloc(image_width * image_height * 4u * 6u);
+
+		foreach(i, 6u) {
+
+			images[i] = mem + image_width * image_height * i;
+
+			u32 xoff;
+			u32 yoff;
+
+			switch (i)
+			{
+			case 0:
+				xoff = image_width;
+				yoff = image_height;
+				break;
+			case 1:
+				xoff = image_width * 3u;
+				yoff = image_height;
+				break;
+			case 2:
+				xoff = image_width;
+				yoff = 0u;
+				break;
+			case 3:
+				xoff = image_width;
+				yoff = image_height * 2u;
+				break;
+			case 4:
+				xoff = image_width * 2u;
+				yoff = image_height;
+				break;
+			default:
+				xoff = 0u;
+				yoff = image_height;
+				break;
+			}
+
+			for (u32 y = yoff; y < yoff + image_height; ++y) {
+
+				Color* src = data + xoff + y * w;
+
+				Color* dst = images[i] + (y - yoff) * image_width;
+				Color* dst_end = dst + image_width;
+
+				while (dst != dst_end) {
+
+					*dst = *src;
+
+					++src;
+					++dst;
+				}
+			}
+		}
+
+		desc.pData = images;
+		desc.size = image_width * image_height * 4u;
+		desc.format = Format_R8G8B8A8_UNORM;
+		desc.layout = GPUImageLayout_ShaderResource;
+		desc.type = GPUImageType_ShaderResource | GPUImageType_CubeMap;
+		desc.usage = ResourceUsage_Static;
+		desc.CPUAccess = CPUAccess_None;
+		desc.width = image_width;
+		desc.height = image_height;
+
+		svCheck(graphics_image_create(&desc, &gfx.image_sky));
+		
+		free(mem);
+		delete[] data;
 
 		return Result_Success;
 	}
@@ -316,6 +475,15 @@ namespace sv {
 			desc.elementCount = 5u;
 			desc.slotCount = 1u;
 			svCheck(graphics_inputlayoutstate_create(&desc, &gfx.ils_mesh));
+
+			// SKY BOX
+			slots[0] = { 0u, sizeof(v3_f32), false };
+
+			elements[0] = { "Position", 0u, 0u, 0u, Format_R32G32B32_FLOAT };
+
+			desc.elementCount = 1u;
+			desc.slotCount = 1u;
+			svCheck(graphics_inputlayoutstate_create(&desc, &gfx.ils_sky));
 		}
 
 		// Create BlendStates
@@ -558,6 +726,8 @@ namespace sv {
 					camera_data.view_matrix = camera_view_matrix(camera_data.position.get_vec3(), camera_data.rotation, camera);
 					camera_data.view_projection_matrix = camera_data.view_matrix * camera_data.projection_matrix;
 				}
+
+				draw_sky(offscreen, camera_data.view_matrix, camera_data.projection_matrix, cmd);
 
 				graphics_buffer_update(gfx.cbuffer_camera, &camera_data, sizeof(CameraBuffer_GPU), 0u, cmd);
 				
@@ -830,6 +1000,39 @@ namespace sv {
 			}
 		}
 		
+	}
+
+	void draw_sky(GPUImage* offscreen, XMMATRIX view_matrix, const XMMATRIX& projection_matrix, CommandList cmd)
+	{
+		graphics_depthstencilstate_unbind(cmd);
+		graphics_blendstate_unbind(cmd);
+		graphics_inputlayoutstate_bind(gfx.ils_sky, cmd);
+		graphics_rasterizerstate_unbind(cmd);
+
+		graphics_vertexbuffer_bind(gfx.vbuffer_skybox, 0u, 0u, cmd);
+		graphics_constantbuffer_bind(gfx.cbuffer_skybox, 0u, ShaderType_Vertex, cmd);
+		graphics_image_bind(gfx.image_sky, 0u, ShaderType_Pixel, cmd);
+		graphics_sampler_bind(gfx.sampler_def_linear, 0u, ShaderType_Pixel, cmd);
+
+		XMFLOAT4X4 vm;
+		XMStoreFloat4x4(&vm, view_matrix);
+		vm._41 = 0.f;
+		vm._42 = 0.f;
+		vm._43 = 0.f;
+		vm._44 = 1.f;
+
+		view_matrix = XMLoadFloat4x4(&vm);
+		view_matrix = view_matrix * projection_matrix;
+
+		graphics_buffer_update(gfx.cbuffer_skybox, &view_matrix, sizeof(XMMATRIX), 0u, cmd);
+
+		graphics_shader_bind(gfx.vs_sky, cmd);
+		graphics_shader_bind(gfx.ps_sky, cmd);
+
+		GPUImage* att[] = { offscreen };
+		graphics_renderpass_begin(gfx.renderpass_sky, att, 0, 1.f, 0u, cmd);
+		graphics_draw(36u, 1u, 0u, 0u, cmd);
+		graphics_renderpass_end(cmd);
 	}
 
 	XMMATRIX camera_view_matrix(const v3_f32& position, const v4_f32 rotation, CameraComponent& camera)
