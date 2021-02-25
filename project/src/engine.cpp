@@ -123,9 +123,7 @@ namespace sv {
 			ecs_component_register<NameComponent>("Name");
 			ecs_component_register<CameraComponent>("Camera");
 			ecs_component_register<MeshComponent>("Mesh");
-			ecs_component_register<PointLightComponent>("Point light");
-			ecs_component_register<DirectionLightComponent>("Direction light");
-			ecs_component_register<SpotLightComponent>("Spot light");
+			ecs_component_register<LightComponent>("Light");
 		}
 
 		// Register assets

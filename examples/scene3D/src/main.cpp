@@ -3,16 +3,9 @@
 
 using namespace sv;
 
-GPUImage* offscreen = nullptr;
-GPUImage* zbuffer = nullptr;
-
 bool update_camera = false;
-CameraComponent* camera;
-PointLightComponent* light;
-ECS* ecs;
-GUI* gui;
 
-GuiWindow* window;
+Scene* scene;
 Editor_ECS* editor_ecs;
 
 SV_INLINE bool intersect_ray_vs_traingle(const v3_f32& rayOrigin,
@@ -57,6 +50,9 @@ Entity select_mesh()
 
 	// Screen to clip space
 	mouse *= 2.f;
+
+	ECS* ecs = scene->ecs;
+	CameraComponent* camera = get_main_camera(scene);
 
 	// clip to world
 	Transform camera_trans = ecs_entity_transform_get(ecs, camera->entity);
@@ -177,32 +173,32 @@ void load_model(ECS* ecs, const char* filepath, f32 scale = f32_max)
 
 Result init()
 {
-	svCheck(offscreen_create(1920u, 1080u, &offscreen));
-	svCheck(depthstencil_create(1920u, 1080u, &zbuffer));
-
-	ecs_create(&ecs);
+	svCheck(create_scene(&scene));
+	
+	ECS* ecs = scene->ecs;
 
 	Entity cam = ecs_entity_create(ecs);
-	camera = ecs_component_add<CameraComponent>(ecs, cam);
+	scene->main_camera = cam;
+	CameraComponent* camera = ecs_component_add<CameraComponent>(ecs, cam);
 	camera->far = 10000.f;
 	camera->near = 0.2f;
 	camera->width = 0.5f;
 	camera->height = 0.5f;
 	camera->projection_type = ProjectionType_Perspective;
 
-	light = ecs_component_add<PointLightComponent>(ecs, ecs_entity_create(ecs));
+	LightComponent* light = ecs_component_add<LightComponent>(ecs, ecs_entity_create(ecs));
 	Transform t = ecs_entity_transform_get(ecs, light->entity);
+	light->light_type = LightType_Direction;
 	t.setPosition({ 0.f, 0.f, -2.f });
-
-	gui = gui_create();
+	t.setEulerRotation({ PI * 0.4f, 0.f, 0.f });
 
 	load_model(ecs, "assets/dragon.obj");
 	//load_model(ecs, "assets/gobber/GoblinX.obj");
 	load_model(ecs, "assets/Sponza/sponza.obj");
 
 	// Editor stuff
-	window = gui_window_create(gui);
-	editor_ecs = create_editor_ecs(ecs, gui, window->container);
+	GuiWindow* window = gui_window_create(scene->gui);
+	editor_ecs = create_editor_ecs(ecs, scene->gui, window->container);
 
 	return Result_Success;
 }
@@ -211,17 +207,13 @@ void update()
 {
 	key_shortcuts();
 
-	gui_update(gui, window_width_get(engine.window), window_height_get(engine.window));
-
+	
+	update_scene(scene);
 	update_editor_ecs(editor_ecs);
 
-	camera->adjust(f32(window_width_get(engine.window)) / f32(window_height_get(engine.window)));
-
-	Transform l = ecs_entity_transform_get(ecs, light->entity);
-	static f32 t = 0.f;
-	if (input.keys[Key_Left]) t -= engine.deltatime;
-	if (input.keys[Key_Right]) t += engine.deltatime;
-	l.setPosition({ sin(t) * 7.f, 0.f, cos(t) * 7.f });
+	Transform t0 = ecs_entity_transform_get(scene->ecs, 1u);
+	Transform t1 = ecs_entity_transform_get(scene->ecs, 2u);
+	t1.setRotation(t0.getWorldRotation());
 
 	if (input.keys[Key_C] == InputState_Released)
 		update_camera = !update_camera;
@@ -231,7 +223,7 @@ void update()
 
 		if (selected != SV_ENTITY_NULL) {
 
-			NameComponent* n = ecs_component_get<NameComponent>(ecs, selected);
+			NameComponent* n = ecs_component_get<NameComponent>(scene->ecs, selected);
 
 			if (n)
 				SV_LOG("Selected '%s'", n->name.c_str());
@@ -241,37 +233,22 @@ void update()
 	}
 
 	if (update_camera)
-		camera_controller3D(ecs, *camera, 10.f);
+		camera_controller3D(scene->ecs, *get_main_camera(scene), 10.f);
 }
 
 void render()
 {
 	CommandList cmd = graphics_commandlist_begin();
 
-	draw_scene(ecs, offscreen, zbuffer);
+	draw_scene(scene);
 
-	gui_render(gui, offscreen, cmd);
-
-	begin_debug_batch(cmd);
-
-	Transform trans = ecs_entity_transform_get(ecs, camera->entity);
-	v3_f32 pos = trans.getWorldPosition();
-	v4_f32 rot = trans.getWorldRotation();
-	end_debug_batch(offscreen, camera_view_projection_matrix(pos, rot, *camera), cmd);
-
-	graphics_present(engine.window, offscreen, GPUImageLayout_RenderTarget, cmd);
+	graphics_present(engine.window, scene->offscreen, GPUImageLayout_RenderTarget, cmd);
 }
 
 Result close()
 {
-	svCheck(graphics_destroy(offscreen));
-	svCheck(graphics_destroy(zbuffer));
-
-	ecs_destroy(ecs);
-
 	destroy_editor_ecs(editor_ecs);
-
-	gui_destroy(gui);
+	destroy_scene(scene);
 
 	return Result_Success;
 }

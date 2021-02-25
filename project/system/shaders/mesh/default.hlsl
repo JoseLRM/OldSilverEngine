@@ -72,8 +72,8 @@ struct Material {
 #define MAT_FLAG_NORMAL_MAPPING SV_BIT(0u)
 #define MAT_FLAG_SPECULAR_MAPPING SV_BIT(1u)
 
-#define LIGHT_TYPE_POINT 1u
-#define LIGHT_TYPE_DIRECTION 2u
+#define LIGHT_TYPE_POINT 0u
+#define LIGHT_TYPE_DIRECTION 1u
 
 struct Light {
 	float3 position;
@@ -145,11 +145,12 @@ Output main(Input input)
 			f32 diffuse = max(dot(normal, to_light), 0.1f);
 
 			// Specular
-			float specular = pow(max(dot(normalize(-input.position), reflect(-to_light, normal)), 0.f), material.shininess) * specular_mul;
+			f32 specular = pow(max(dot(normalize(-input.position), reflect(-to_light, normal)), 0.f), material.shininess) * specular_mul;
 
-			// TODO attenuation
+			// attenuation TODO: Smoothness
+			f32 att = 1.f - smoothstep(light.smoothness * light.range, light.range, distance);
 
-			light_accumulation += light.color * ((diffuse * material.diffuse_color) + (specular * material.specular_color)) * light.intensity;
+			light_accumulation += light.color * ((diffuse * material.diffuse_color) + (specular * material.specular_color)) * light.intensity * att;
 		}
 		break;
 

@@ -66,7 +66,7 @@ namespace sv {
 
 	// SCENE
 
-	void draw_scene(ECS* ecs, GPUImage* offscreen, GPUImage* depthstencil);
+	void draw_scene(Scene* scene);
 
 	void draw_sky(GPUImage* offscreen, XMMATRIX view_matrix, const XMMATRIX& projection_matrix, CommandList cmd);
 

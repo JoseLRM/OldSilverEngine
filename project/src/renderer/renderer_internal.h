@@ -6,12 +6,6 @@ namespace sv {
 
 	constexpr u32 LIGHT_COUNT = 1u;
 
-	enum LightType : u32 {
-		LightType_None,
-		LightType_Point,
-		LightType_Direction,
-	};
-
 	struct LightData {
 		v3_f32		position;
 		LightType	type;

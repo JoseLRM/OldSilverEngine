@@ -3,8 +3,30 @@
 #include "SilverEngine/entity_system.h"
 #include "SilverEngine/graphics.h"
 #include "SilverEngine/mesh.h"
+#include "SilverEngine/gui.h"
 
 namespace sv {
+
+	struct CameraComponent;
+
+	struct Scene {
+
+		ECS* ecs;
+		GUI* gui;
+
+		Entity main_camera = SV_ENTITY_NULL;
+
+		GPUImage* offscreen = nullptr;
+		GPUImage* depthstencil = nullptr;
+
+	};
+
+	Result create_scene(Scene** pscene);
+	Result destroy_scene(Scene* scene);
+
+	void update_scene(Scene* scene);
+
+	CameraComponent* get_main_camera(Scene* scene);
 
 	SV_DEFINE_COMPONENT(SpriteComponent) {
 
@@ -22,8 +44,8 @@ namespace sv {
 
 		std::string name;
 
-		void serialize(ArchiveO & archive);
-		void deserialize(ArchiveI & archive);
+		void serialize(ArchiveO& archive);
+		void deserialize(ArchiveI& archive);
 
 	};
 
@@ -82,34 +104,17 @@ namespace sv {
 
 	};
 
-	SV_DEFINE_COMPONENT(PointLightComponent) {
-
-		Color3f color = Color3f::White();
-		f32 intensity = 1.f;
-		f32 range = 5.f;
-		f32 smoothness = 0.5f;
-
-		void serialize(ArchiveO & archive) {}
-		void deserialize(ArchiveI & archive) {}
-
+	enum LightType : u32 {
+		LightType_Point,
+		LightType_Direction,
+		LightType_Spot,
 	};
 
-	SV_DEFINE_COMPONENT(DirectionLightComponent) {
+	SV_DEFINE_COMPONENT(LightComponent) {
 
+		LightType light_type = LightType_Point;
 		Color3f color = Color3f::White();
 		f32 intensity = 1.f;
-		v3_f32 direction = { 0.f, 0.f, 1.f };
-
-		void serialize(ArchiveO & archive) {}
-		void deserialize(ArchiveI & archive) {}
-
-	};
-
-	SV_DEFINE_COMPONENT(SpotLightComponent) {
-
-		Color3f color = Color3f::White();
-		f32 intensity = 1.f;
-		v3_f32 direction = { 0.f, 0.f, 1.f };
 		f32 range = 5.f;
 		f32 smoothness = 0.5f;
 
