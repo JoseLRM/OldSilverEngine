@@ -6,6 +6,7 @@ using namespace sv;
 bool update_camera = false;
 
 Scene* scene;
+IGUI* igui;
 Editor_ECS* editor_ecs;
 
 SV_INLINE bool intersect_ray_vs_traingle(const v3_f32& rayOrigin,
@@ -176,6 +177,7 @@ Result init()
 	svCheck(create_scene(&scene));
 	
 	ECS* ecs = scene->ecs;
+	igui = igui_create();
 
 	Entity cam = ecs_entity_create(ecs);
 	scene->main_camera = cam;
@@ -188,13 +190,13 @@ Result init()
 
 	LightComponent* light = ecs_component_add<LightComponent>(ecs, ecs_entity_create(ecs));
 	Transform t = ecs_entity_transform_get(ecs, light->entity);
-	light->light_type = LightType_Direction;
+	light->light_type = LightType_Point;
 	t.setPosition({ 0.f, 0.f, -2.f });
 	t.setEulerRotation({ PI * 0.4f, 0.f, 0.f });
 
 	load_model(ecs, "assets/dragon.obj");
 	//load_model(ecs, "assets/gobber/GoblinX.obj");
-	load_model(ecs, "assets/Sponza/sponza.obj");
+	//load_model(ecs, "assets/Sponza/sponza.obj");
 
 	// Editor stuff
 	GuiWindow* window = gui_window_create(scene->gui);
@@ -207,7 +209,6 @@ void update()
 {
 	key_shortcuts();
 
-	
 	update_scene(scene);
 	update_editor_ecs(editor_ecs);
 
@@ -233,7 +234,29 @@ void update()
 	}
 
 	if (update_camera)
-		camera_controller3D(scene->ecs, *get_main_camera(scene), 10.f);
+		camera_controller3D(scene->ecs, *get_main_camera(scene), 0.3f);
+
+	igui_begin(igui);
+	
+	if (igui_begin_window(igui, "Test")) {
+
+		if (igui_button(igui, "Hola")) {
+			SV_LOG("Holaaa!");
+		}
+		if (input.keys[Key_A] && igui_button(igui, "Adios")) {
+			SV_LOG("Adioos! :)");
+		}
+
+		static f32 drag = 0.f;
+		if (igui_drag(igui, "Drag", &drag, 0.1f)) {
+
+			SV_LOG("Dragging %f", drag);
+		}
+
+		igui_end_window(igui);
+	}
+	
+	igui_end(igui, f32(window_width_get(engine.window)), f32(window_height_get(engine.window)));
 }
 
 void render()
@@ -242,6 +265,8 @@ void render()
 
 	draw_scene(scene);
 
+	igui_render(igui, scene->offscreen, cmd);
+
 	graphics_present(engine.window, scene->offscreen, GPUImageLayout_RenderTarget, cmd);
 }
 
@@ -249,6 +274,8 @@ Result close()
 {
 	destroy_editor_ecs(editor_ecs);
 	destroy_scene(scene);
+
+	igui_destroy(igui);
 
 	return Result_Success;
 }

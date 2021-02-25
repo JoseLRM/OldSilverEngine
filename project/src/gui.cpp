@@ -70,6 +70,21 @@ namespace sv {
 		delete& gui;
 	}
 
+	void gui_clear(GUI* gui_)
+	{
+		PARSE_GUI();
+
+		while (gui.root.size()) {
+
+			GuiWidget* widget = gui.root.back();
+			gui.root.pop_back();
+
+			gui_widget_destroy(gui_, widget);
+		}
+
+		gui.windows.clear();
+	}
+
 	// BOUNDS FUNCTIONS
 
 	SV_INLINE static f32 compute_coord(const GUI_internal& gui, const GuiWidget::Coord& coord, f32 aspect_coord, f32 dimension, f32 resolution, bool vertical, f32 parent_coord, f32 parent_dimension)

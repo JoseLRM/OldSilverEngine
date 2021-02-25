@@ -205,6 +205,7 @@ namespace sv {
 	void							gui_destroy(GUI* gui);
 	void							gui_update(GUI* gui, f32 width, f32 height);
 	void							gui_render(GUI* gui, GPUImage* offscreen, CommandList cmd);
+	void							gui_clear(GUI* gui);
 	const std::vector<GuiWidget*>& gui_root_get(GUI* gui);
 	const GuiLockedInput& gui_locked_input(GUI* gui);
 
@@ -263,5 +264,22 @@ namespace sv {
 		GuiWidget* widget = gui_widget_focused(gui);
 		return (widget && widget->type == GuiWidgetType_Button && input.mouse_buttons[MouseButton_Left] == InputState_Released) ? reinterpret_cast<GuiButton*>(widget) : nullptr;
 	}
+
+	// IMMEDIATE GUI
+
+	SV_DEFINE_HANDLE(IGUI);
+
+	IGUI* igui_create();
+	void igui_destroy(IGUI* igui);
+	
+	void igui_begin(IGUI* igui);
+	void igui_end(IGUI* igui, f32 width, f32 height);
+	void igui_render(IGUI* igui, GPUImage* offscreen, CommandList cmd);
+
+	bool igui_begin_window(IGUI* igui, const char* name);
+	void igui_end_window(IGUI* igui);
+
+	bool igui_button(IGUI* igui, const char* text);
+	bool igui_drag(IGUI* igui, const char* text, f32* n, f32 adv = 0.1f);
 
 }
