@@ -734,11 +734,15 @@ namespace sv {
 
 	// Globals
 
+	struct Scene;
+
 	struct ApplicationCallbacks {
 		Result(*initialize)();
 		void(*update)();
 		void(*render)();
 		Result(*close)();
+		Result(*initialize_scene)(Scene* scene);
+		Result(*close_scene)(Scene* scene);
 	};
 
 	struct GlobalEngineData {
@@ -752,11 +756,8 @@ namespace sv {
 		bool					close_request = false;
 		bool					able_to_run = false;
 		Window*					window = nullptr;
-
-		// TODO
-		// struct {
-		// 	bool sprite = true;
-		// } enabled_modules;
+		Scene*					scene = nullptr;
+		std::string				next_scene_name;
 	};
 
 	struct GlobalInputData {

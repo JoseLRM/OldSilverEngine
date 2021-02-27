@@ -7,11 +7,13 @@ namespace sv {
 
 	struct Scene_internal : public Scene {
 
+
+
 	};
 
 #define PARSE_SCENE() sv::Scene_internal& scene = *reinterpret_cast<sv::Scene_internal*>(scene_)
 
-	Result create_scene(Scene** pscene)
+	Result initialize_scene(Scene** pscene, const char* name)
 	{
 		Scene_internal& scene = *new Scene_internal();
 
@@ -20,14 +22,20 @@ namespace sv {
 		svCheck(offscreen_create(1920u, 1080u, &scene.offscreen));
 		svCheck(depthstencil_create(1920u, 1080u, &scene.depthstencil));
 
+		scene.name = name;
+
 		*pscene = reinterpret_cast<Scene*>(&scene);
+
+		svCheck(engine.app_callbacks.initialize_scene(*pscene));
 
 		return Result_Success;
 	}
 
-	Result destroy_scene(Scene* scene_)
+	Result close_scene(Scene* scene_)
 	{
 		PARSE_SCENE();
+
+		svCheck(engine.app_callbacks.close_scene(scene_));
 
 		ecs_destroy(scene.ecs);
 		gui_destroy(scene.gui);
@@ -35,6 +43,11 @@ namespace sv {
 		graphics_destroy(scene.depthstencil);
 
 		return Result_Success;
+	}
+
+	void set_active_scene(const char* name)
+	{
+		engine.next_scene_name = name;
 	}
 
 	void update_scene(Scene* scene)
@@ -46,6 +59,8 @@ namespace sv {
 			camera->adjust(f32(window_width_get(engine.window)) / f32(window_height_get(engine.window)));
 		}
 
+		engine.app_callbacks.update();
+
 		gui_update(scene->gui, window_width_get(engine.window), window_height_get(engine.window));
 	}
 
@@ -53,6 +68,18 @@ namespace sv {
 	{
 		if (scene->main_camera == SV_ENTITY_NULL || !ecs_entity_exist(scene->ecs, scene->main_camera)) return nullptr;
 		return ecs_component_get<CameraComponent>(scene->ecs, scene->main_camera);
+	}
+
+	const char* get_entity_name(ECS* ecs, Entity entity)
+	{
+		if (!ecs_entity_exist(ecs, entity)) return nullptr;
+		
+		const char* name = "Unnamed";
+
+		NameComponent* comp = ecs_component_get<NameComponent>(ecs, entity);
+		if (comp && comp->name.size()) name = comp->name.c_str();
+
+		return name;
 	}
 
 	void SpriteComponent::serialize(ArchiveO& archive)

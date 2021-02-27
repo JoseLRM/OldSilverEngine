@@ -16,6 +16,13 @@ namespace sv {
 
 	GlobalEngineData	engine;
 	GlobalInputData		input;
+
+	void update_assets();
+	void close_assets();
+	Result initialize_editor();
+	Result close_editor();
+	void update_editor();
+	void draw_editor();
 	
 	// Asset functions
 
@@ -162,6 +169,8 @@ namespace sv {
 			svCheck(register_asset_type(&desc));
 		}
 
+		svCheck(initialize_editor());
+
 		// APPLICATION
 		INIT_SYSTEM("Application", engine.app_callbacks.initialize());
 
@@ -292,9 +301,6 @@ namespace sv {
 		return Result_Success;
 	}
 
-	void update_assets();
-	void close_assets();
-
 	Result engine_loop()
 	{
 		if (!engine.able_to_run) {
@@ -345,8 +351,26 @@ namespace sv {
 			// Update assets
 			update_assets();
 
-			// Update User
-			engine.app_callbacks.update();
+			// Update scene
+			{
+				if (engine.next_scene_name.size()) {
+
+					// Close last scene
+					if (engine.scene) {
+						Result res = close_scene(engine.scene);
+						// TOOD: handle error
+					}
+
+					Result res = initialize_scene(&engine.scene, engine.next_scene_name.c_str());
+					engine.next_scene_name.clear();
+					// Handle error
+
+				}
+			}
+
+			update_editor();
+			// Update scene
+			if (engine.scene) update_scene(engine.scene);
 
 			if (window_has_valid_surface(engine.window)) {
 
@@ -355,6 +379,11 @@ namespace sv {
 
 				// User Rendering
 				engine.app_callbacks.render();
+
+				// Draw scene
+				if (engine.scene) draw_scene(engine.scene);
+
+				draw_editor();
 
 				// End frame
 				graphics_end();
@@ -386,6 +415,7 @@ namespace sv {
 
 		// APPLICATION
 		try {
+			if (engine.scene) svCheck(close_scene(engine.scene));
 			svCheck(engine.app_callbacks.close());
 
 			free_unused_assets();

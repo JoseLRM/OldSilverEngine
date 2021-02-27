@@ -9,6 +9,8 @@ namespace sv {
 
 	struct CameraComponent;
 
+	
+
 	struct Scene {
 
 		ECS* ecs;
@@ -16,17 +18,31 @@ namespace sv {
 
 		Entity main_camera = SV_ENTITY_NULL;
 
+		std::string name;
+
 		GPUImage* offscreen = nullptr;
 		GPUImage* depthstencil = nullptr;
 
 	};
 
-	Result create_scene(Scene** pscene);
-	Result destroy_scene(Scene* scene);
+	void set_active_scene(const char* name);
+
+	Result initialize_scene(Scene** pscene, const char* name);
+	Result close_scene(Scene* scene);
 
 	void update_scene(Scene* scene);
 
 	CameraComponent* get_main_camera(Scene* scene);
+	const char* get_entity_name(ECS* ecs, Entity entity);
+
+	// CONSOLE TODO: This should be in core
+
+	typedef Result(*CommandFn)(const char** args, u32 argc);
+
+	Result execute_command(const char* command);
+	Result register_command(const char* name, CommandFn command_fn);
+
+	// COMPONENTS
 
 	SV_DEFINE_COMPONENT(SpriteComponent) {
 

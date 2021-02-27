@@ -3,11 +3,11 @@
 
 using namespace sv;
 
-bool update_camera = false;
-
-Scene* scene;
-IGUI* igui;
-Editor_ECS* editor_ecs;
+const char* SCENES[] = {
+	"Sponza", "Goblin", "Dragon"
+};
+constexpr u32 SCENE_COUNT = 3u;
+u32 scene_id;
 
 SV_INLINE bool intersect_ray_vs_traingle(const v3_f32& rayOrigin,
 	const v3_f32& rayVector,
@@ -52,8 +52,8 @@ Entity select_mesh()
 	// Screen to clip space
 	mouse *= 2.f;
 
-	ECS* ecs = scene->ecs;
-	CameraComponent* camera = get_main_camera(scene);
+	ECS* ecs = engine.scene->ecs;
+	CameraComponent* camera = get_main_camera(engine.scene);
 
 	// clip to world
 	Transform camera_trans = ecs_entity_transform_get(ecs, camera->entity);
@@ -171,16 +171,18 @@ void load_model(ECS* ecs, const char* filepath, f32 scale = f32_max)
 	}
 }
 
-
-Result init()
+Result command_hello(Scene* scene, const char** args, u32 argc)
 {
-	svCheck(create_scene(&scene));
-	
-	ECS* ecs = scene->ecs;
-	igui = igui_create();
+	SV_LOG("Hola crack ;)");
+	return Result_Success;
+}
+
+Result app_init_scene(Scene* scene)
+{
+	ECS* ecs = engine.scene->ecs;
 
 	Entity cam = ecs_entity_create(ecs);
-	scene->main_camera = cam;
+	engine.scene->main_camera = cam;
 	CameraComponent* camera = ecs_component_add<CameraComponent>(ecs, cam);
 	camera->far = 10000.f;
 	camera->near = 0.2f;
@@ -194,88 +196,87 @@ Result init()
 	t.setPosition({ 0.f, 0.f, -2.f });
 	t.setEulerRotation({ PI * 0.4f, 0.f, 0.f });
 
-	load_model(ecs, "assets/dragon.obj");
-	//load_model(ecs, "assets/gobber/GoblinX.obj");
-	//load_model(ecs, "assets/Sponza/sponza.obj");
+	if (strcmp(scene->name.c_str(), "Sponza") == 0) {
 
-	// Editor stuff
-	GuiWindow* window = gui_window_create(scene->gui);
-	editor_ecs = create_editor_ecs(ecs, scene->gui, window->container);
+		load_model(ecs, "assets/Sponza/sponza.obj");
+		scene_id = 0u;
+	}
+	if (strcmp(scene->name.c_str(), "Goblin") == 0) {
+
+		load_model(ecs, "assets/gobber/GoblinX.obj");
+		scene_id = 1u;
+	}
+	if (strcmp(scene->name.c_str(), "Dragon") == 0) {
+
+		load_model(ecs, "assets/dragon.obj");
+		scene_id = 2u;
+	}
+
+	return Result_Success;
+}
+
+Result app_close_scene(Scene* scene)
+{
+
+	return Result_Success;
+}
+
+Result init()
+{
+	set_active_scene("Goblin");
 
 	return Result_Success;
 }
 
 void update()
 {
-	key_shortcuts();
-
-	update_scene(scene);
-	update_editor_ecs(editor_ecs);
-
-	Transform t0 = ecs_entity_transform_get(scene->ecs, 1u);
-	Transform t1 = ecs_entity_transform_get(scene->ecs, 2u);
+	Transform t0 = ecs_entity_transform_get(engine.scene->ecs, 1u);
+	Transform t1 = ecs_entity_transform_get(engine.scene->ecs, 2u);
 	t1.setRotation(t0.getWorldRotation());
-
-	if (input.keys[Key_C] == InputState_Released)
-		update_camera = !update_camera;
 
 	if (input.mouse_buttons[MouseButton_Left] == InputState_Released) {
 		Entity selected = select_mesh();
 
 		if (selected != SV_ENTITY_NULL) {
 
-			NameComponent* n = ecs_component_get<NameComponent>(scene->ecs, selected);
+			NameComponent* n = ecs_component_get<NameComponent>(engine.scene->ecs, selected);
 
 			if (n)
 				SV_LOG("Selected '%s'", n->name.c_str());
 			else
 				SV_LOG("Selected %u", selected);
 		}
+	}		
+
+	// TEMP
+	if (input.keys[Key_H] == InputState_Released)
+		execute_command("  hello  ");
+	if (input.keys[Key_F] == InputState_Released)
+		execute_command("  hellp  ");
+
+
+
+	if (input.keys[Key_Right] == InputState_Released) {
+
+		u32 next = (scene_id + 1u) % SCENE_COUNT;
+		set_active_scene(SCENES[next]);
 	}
+	if (input.keys[Key_Left] == InputState_Released) {
 
-	if (update_camera)
-		camera_controller3D(scene->ecs, *get_main_camera(scene), 0.3f);
-
-	igui_begin(igui);
-	
-	if (igui_begin_window(igui, "Test")) {
-
-		if (igui_button(igui, "Hola")) {
-			SV_LOG("Holaaa!");
-		}
-		if (input.keys[Key_A] && igui_button(igui, "Adios")) {
-			SV_LOG("Adioos! :)");
-		}
-
-		static f32 drag = 0.f;
-		if (igui_drag(igui, "Drag", &drag, 0.1f)) {
-
-			SV_LOG("Dragging %f", drag);
-		}
-
-		igui_end_window(igui);
+		u32 next = (scene_id - 1u) % SCENE_COUNT;
+		set_active_scene(SCENES[next]);
 	}
-	
-	igui_end(igui, f32(window_width_get(engine.window)), f32(window_height_get(engine.window)));
 }
 
 void render()
 {
 	CommandList cmd = graphics_commandlist_begin();
 
-	draw_scene(scene);
-
-	igui_render(igui, scene->offscreen, cmd);
-
-	graphics_present(engine.window, scene->offscreen, GPUImageLayout_RenderTarget, cmd);
+	graphics_present(engine.window, engine.scene->offscreen, GPUImageLayout_RenderTarget, cmd);
 }
 
 Result close()
 {
-	destroy_editor_ecs(editor_ecs);
-	destroy_scene(scene);
-
-	igui_destroy(igui);
 
 	return Result_Success;
 }
@@ -288,6 +289,8 @@ int main()
 	desc.callbacks.update = update;
 	desc.callbacks.render = render;
 	desc.callbacks.close = close;
+	desc.callbacks.initialize_scene = app_init_scene;
+	desc.callbacks.close_scene = app_close_scene;
 	desc.windowDesc.bounds = { 0u, 0u, 1080u, 720u };
 	desc.windowDesc.flags = WindowFlag_Default;
 	desc.windowDesc.iconFilePath = nullptr;

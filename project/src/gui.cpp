@@ -70,9 +70,22 @@ namespace sv {
 		delete& gui;
 	}
 
+	static void gui_window_destroy_internal(GUI* gui_, GuiWindow* window)
+	{
+		PARSE_GUI();
+		gui_widget_destroy(gui_, window->container);
+	}
+
 	void gui_clear(GUI* gui_)
 	{
 		PARSE_GUI();
+
+		for (auto& pool : gui.windows) {
+			for (GuiWindow& wnd : pool) {
+				gui_window_destroy_internal(gui_, &wnd);
+			}
+		}
+		gui.windows.clear();
 
 		while (gui.root.size()) {
 
@@ -82,7 +95,7 @@ namespace sv {
 			gui_widget_destroy(gui_, widget);
 		}
 
-		gui.windows.clear();
+		gui.widget_focused = nullptr;
 	}
 
 	// BOUNDS FUNCTIONS
@@ -256,6 +269,20 @@ namespace sv {
 		return decoration_bounds;
 	}
 
+	SV_INLINE static v4_f32 compute_window_closebutton_bounds(const GUI_internal& gui, GuiWindow& window, const v4_f32& container_bounds)
+	{
+		f32 aspect = gui.resolution.x / gui.resolution.y;
+
+		f32 button_size = window.decoration_height * 0.2f;
+
+		v4_f32 closebutton_bounds;
+		closebutton_bounds.x = container_bounds.x + container_bounds.z * 0.5f - button_size;
+		closebutton_bounds.y = container_bounds.y + container_bounds.w * 0.5f + (window.outline_size + window.decoration_height * 0.5f) * aspect;
+		closebutton_bounds.z = button_size;
+		closebutton_bounds.w = button_size * aspect;
+		return closebutton_bounds;
+	}
+
 	SV_INLINE static v4_f32 compute_window_bounds(const GUI_internal& gui, GuiWindow& window, const v4_f32& container_bounds)
 	{
 		f32 aspect = gui.resolution.x / gui.resolution.y;
@@ -279,7 +306,13 @@ namespace sv {
 
 			InputState mouse_state = input.mouse_buttons[MouseButton_Left];
 
-			if (mouse_state == InputState_Pressed) {
+			if (mouse_state && window.close_button && mouse_in_bounds(gui, compute_window_closebutton_bounds(gui, window, container_bounds))) {
+
+				if (mouse_state == InputState_Released) {
+					window.close_request = true;
+				}
+			}
+			else if (mouse_state == InputState_Pressed) {
 
 				gui.widget_focused = window.container;
 				gui.dragged_begin_pos = gui.mouse_position - v2_f32{ container_bounds.x, container_bounds.y };
@@ -1078,35 +1111,53 @@ namespace sv {
 		graphics_blendstate_unbind(cmd);
 		graphics_rasterizerstate_unbind(cmd);
 
-		begin_debug_batch(cmd);
+		
 
 		// Draw windows
 		for (auto& pool : gui.windows) {
 			for (GuiWindow& window : pool) {
 
+				begin_debug_batch(cmd);
+
 				v4_f32 container_bounds = compute_widget_bounds(gui, *window.container);
 				v4_f32 bounds = compute_window_bounds(gui, window, container_bounds);
 				v4_f32 decoration_bounds = compute_window_decoration_bounds(gui, window, container_bounds);
 
-				v2_f32 pos = v2_f32{ decoration_bounds.x, decoration_bounds.y };
+				v2_f32 dec_pos = v2_f32{ decoration_bounds.x, decoration_bounds.y };
+				dec_pos = dec_pos * 2.f - 1.f;
+
+				v2_f32 dec_size = v2_f32{ decoration_bounds.z, decoration_bounds.w };
+				dec_size = dec_size * 2.f;
+
+				draw_debug_quad(dec_pos.getVec3(), dec_size, window.decoration_color, cmd);
+
+				v2_f32 pos = v2_f32{ bounds.x, bounds.y };
 				pos = pos * 2.f - 1.f;
 
-				v2_f32 size = v2_f32{ decoration_bounds.z, decoration_bounds.w };
-				size = size * 2.f;
-
-				draw_debug_quad(pos.getVec3(), size, window.decoration_color, cmd);
-
-				pos = v2_f32{ bounds.x, bounds.y };
-				pos = pos * 2.f - 1.f;
-
-				size = v2_f32{ bounds.z, bounds.w };
+				v2_f32 size = v2_f32{ bounds.z, bounds.w };
 				size = size * 2.f;
 
 				draw_debug_quad(pos.getVec3(), size, window.color, cmd);
+				
+				if (window.close_button) {
+
+					v4_f32 closebutton_bounds = compute_window_closebutton_bounds(gui, window, container_bounds);
+					
+					v2_f32 cb_pos = v2_f32{ closebutton_bounds.x, closebutton_bounds.y };
+					cb_pos = cb_pos * 2.f - 1.f;
+
+					v2_f32 cb_size = v2_f32{ closebutton_bounds.z, closebutton_bounds.w };
+					cb_size = cb_size * 2.f;
+
+					draw_debug_quad(cb_pos.getVec3(), cb_size, Color::Red(), cmd);
+				}
+
+				end_debug_batch(offscreen, XMMatrixIdentity(), cmd);
+
+				if (window.title.size())
+					draw_text(offscreen, window.title.c_str(), dec_pos.x - dec_size.x * 0.5f + 0.03f, dec_pos.y + dec_size.y * 0.5f, dec_size.x, 1u, dec_size.y * 0.5f, gui.resolution.x / gui.resolution.y, TextSpace_Clip, TextAlignment_Left, 0, cmd);
 			}
 		}
-
-		end_debug_batch(offscreen, XMMatrixIdentity(), cmd);
 
 		// Draw widgets
 
@@ -1189,6 +1240,15 @@ namespace sv {
 				}
 			}
 		}
+		// Remove from root
+		else {
+			for (auto it = gui.root.begin(); it != gui.root.end(); ++it) {
+				if (*it == widget) {
+					gui.root.erase(it);
+					break;
+				}
+			}
+		}
 
 		// Deallocate widget
 		switch (widget->type)
@@ -1199,6 +1259,7 @@ namespace sv {
 
 			for (GuiWidget* son : container.sons) {
 
+				son->parent = nullptr;
 				gui_widget_destroy(gui_, son);
 			}
 
@@ -1282,5 +1343,377 @@ namespace sv {
 		PARSE_GUI();
 		return gui.locked;
 	}
+
+	////////////////////////////////////////////////////////////////////////// IMMEDIATE GUI //////////////////////////////////////////////////////////////////////////
+
+	struct IGUI_WindowInfo {
+
+		bool closed = false;
+		v4_f32 bounds;
+		f32 vertical_offset;
+		GuiWindow* window;
+		f32 yoff;
+
+	};
+
+	struct IGUI_WidgetInfo {
+
+		GuiWidget* widget;
+
+		union {
+
+			struct {
+				bool clicked;
+			} button;
+
+			struct {
+				bool dragging;
+				f32* value;
+			} drag;
+
+		};
+
+	};
+
+	struct IGUI_Style {
+
+		Color color_window_decoration = Color::Black();
+		Color color_window_background = Color::White(90u);
+		Color color_window_border = Color::Black(150u);
+		Color color_button = Color::Orange(100u);
+		Color color_button_hover = Color::Orange(255u);
+
+	};
+
+	struct IGUI_internal {
+
+		GUI* gui;
+
+		IGUI_Style style;
+
+		IGUI_WindowInfo* current_window = nullptr;
+
+		IGUI_WindowInfo* window_focused = nullptr;
+		IGUI_WidgetInfo* widget_focused = nullptr;
+
+		std::unordered_map<const char*, IGUI_WindowInfo> window_info;
+		std::unordered_map<u64, IGUI_WidgetInfo> widget_info;
+
+	};
+#define PARSE_IGUI() sv::IGUI_internal& igui = *reinterpret_cast<sv::IGUI_internal*>(igui_);
+
+	IGUI* igui_create()
+	{
+		IGUI_internal& igui = *new IGUI_internal();
+
+		igui.gui = gui_create();
+
+		return reinterpret_cast<IGUI*>(&igui);
+	}
+
+	void igui_destroy(IGUI* igui_)
+	{
+		PARSE_IGUI();
+
+		gui_destroy(igui.gui);
+
+		delete& igui;
+	}
+
+	void igui_begin(IGUI* igui_)
+	{
+		PARSE_IGUI();
+
+		gui_clear(igui.gui);
+	}
+
+	void igui_end(IGUI* igui_, f32 width, f32 height)
+	{
+		PARSE_IGUI();
+
+		GUI_internal* gui = reinterpret_cast<GUI_internal*>(igui.gui);
+
+		// Set widget focused
+		if (igui.widget_focused) {
+
+			gui->widget_focused = igui.widget_focused->widget;
+		}
+		else if (igui.window_focused) {
+
+			gui->widget_focused = igui.window_focused->window->container;
+		}
+
+		gui_update(igui.gui, width, height);
+
+		// Update windows
+		for (auto& it : igui.window_info) {
+
+			IGUI_WindowInfo& info = it.second;
+			if (info.window) {
+
+				info.bounds.x = info.window->container->x.value;
+				info.bounds.y = info.window->container->y.value;
+				info.bounds.z = info.window->container->w.value;
+				info.bounds.w = info.window->container->h.value;
+				info.vertical_offset = info.window->container->vertical_offset;
+				info.closed = info.window->close_request;
+
+				info.window = nullptr;
+			}
+		}
+
+		// Update focused widget
+		GuiWidget* focus = gui_widget_focused(igui.gui);
+		igui.widget_focused = nullptr;
+		igui.window_focused = nullptr;
+
+		if (focus) {
+
+			u64 id = focus->user_id;
+
+			auto it = igui.widget_info.find(id);
+			if (it != igui.widget_info.end()) {
+
+				IGUI_WidgetInfo& info = it->second;
+				igui.widget_focused = &info;
+
+				switch (info.widget->type)
+				{
+				case GuiWidgetType_Button:
+				{
+					if (input.mouse_buttons[MouseButton_Left] == InputState_Released) {
+						info.button.clicked = true;
+					}
+				}
+				break;
+
+				case GuiWidgetType_Drag:
+				{
+					info.drag.dragging = true;
+					*info.drag.value = reinterpret_cast<GuiDrag*>(info.widget)->value;
+				}
+				break;
+				}
+			}
+			else {
+
+				auto it = igui.window_info.find((const char*)id);
+				if (it != igui.window_info.end()) {
+
+					IGUI_WindowInfo& info = it->second;
+					igui.window_focused = &info;
+				}
+			}
+		}
+	}
+
+	void igui_render(IGUI* igui_, GPUImage* offscreen, CommandList cmd)
+	{
+		PARSE_IGUI();
+
+		gui_render(igui.gui, offscreen, cmd);
+	}
+
+	SV_INLINE IGUI_WindowInfo* create_window_info(IGUI_internal& igui, const char* name)
+	{
+		IGUI_WindowInfo* info;
+
+		auto it = igui.window_info.find(name);
+		if (it == igui.window_info.end()) {
+
+			IGUI_WindowInfo i;
+			i.bounds = { 0.5f, 0.5f, 0.1f, 0.2f };
+			i.vertical_offset = 0.f;
+
+			igui.window_info[name] = i;
+			info = &igui.window_info[name];
+		}
+		else info = &it->second;
+
+		return info;
+	}
+
+	SV_INLINE IGUI_WindowInfo* get_window_info(IGUI_internal& igui, const char* name)
+	{
+		auto it = igui.window_info.find(name);
+		if (it != igui.window_info.end()) {
+
+			return &it->second;
+		}
+
+		return nullptr;
+	}
+
+	bool igui_begin_window(IGUI* igui_, const char* name)
+	{
+		PARSE_IGUI();
+		SV_ASSERT(igui.current_window == nullptr);
+		
+		IGUI_WindowInfo* info = create_window_info(igui, name);
+		if (info->closed) return false;
+
+		GuiWindow* window = gui_window_create(igui.gui);
+
+		info->window = window;
+		info->yoff = 5.f;
+
+		window->container->x = { info->bounds.x, GuiConstraint_Relative, GuiCoordAlignment_Center };
+		window->container->y = { info->bounds.y, GuiConstraint_Relative, GuiCoordAlignment_Center };
+		window->container->w = { info->bounds.z, GuiConstraint_Relative };
+		window->container->h = { info->bounds.w, GuiConstraint_Relative };
+		window->container->vertical_offset = info->vertical_offset;
+		window->container->vertical_scroll = true;
+		window->container->user_id = (u64)name;
+		window->container->color = igui.style.color_window_background;
+		window->color = igui.style.color_window_border;
+		window->decoration_color = igui.style.color_window_decoration;
+		window->title = name;
+		window->close_button = true;
+
+		igui.current_window = info;
+
+		return true;
+	}
+
+	void igui_end_window(IGUI* igui_)
+	{
+		PARSE_IGUI();
+		SV_ASSERT(igui.current_window);
+
+		igui.current_window = nullptr;
+	}
+
+	void igui_open_window(IGUI* igui_, const char* name)
+	{
+		PARSE_IGUI();
+		IGUI_WindowInfo* info = get_window_info(igui, name);
+		if (info) info->closed = false;
+	}
+
+	void igui_close_window(IGUI* igui_, const char* name)
+	{
+		PARSE_IGUI();
+		IGUI_WindowInfo* info = get_window_info(igui, name);
+		if (info) info->closed = true;
+	}
+
+	bool igui_is_open_window(IGUI* igui_, const char* name)
+	{
+		PARSE_IGUI();
+		IGUI_WindowInfo* info = get_window_info(igui, name);
+		return info ? !info->closed : false;
+	}
+
+	SV_INLINE static bool get_widget_info(IGUI_internal& igui, u64 id, IGUI_WidgetInfo** pinfo)
+	{
+		auto it = igui.widget_info.find(id);
+		if (it == igui.widget_info.end()) {
+
+			igui.widget_info[id] = {};
+			*pinfo = &igui.widget_info[id];
+
+			return true;
+		}
+		else *pinfo = &it->second;
+
+		return false;
+	}
+
+	bool igui_button(IGUI* igui_, u64 id, const char* text)
+	{
+		PARSE_IGUI();
+		SV_ASSERT(igui.current_window);
+
+		GuiButton* button = gui_button_create(igui.gui, igui.current_window->window->container);
+
+		IGUI_WidgetInfo* info;
+		if (get_widget_info(igui, id, &info)) {
+
+			info->button.clicked = false;
+		}
+
+		info->widget = button;
+
+		constexpr f32 BUTTON_HEIGHT = 20.f;
+
+		button->x = { 0.f, GuiConstraint_Center, GuiCoordAlignment_Center };
+		button->y = { igui.current_window->yoff, GuiConstraint_Pixel, GuiCoordAlignment_InverseTop };
+		button->w = { 0.6f, GuiConstraint_Relative };
+		button->h = { BUTTON_HEIGHT, GuiConstraint_Pixel };
+		button->color = igui.style.color_button;
+		button->hover_color = igui.style.color_button_hover;
+		button->user_id = id;
+		button->text = text;
+		button->inherited_alpha = 1.f;
+
+		igui.current_window->yoff += BUTTON_HEIGHT + 3.f;
+
+		bool result = info->button.clicked;
+		info->button.clicked = false;
+		return result;
+	}
+
+	bool igui_drag(IGUI* igui_, u64 id, const char* text, f32* n, f32 adv)
+	{
+		PARSE_IGUI();
+		SV_ASSERT(igui.current_window);
+
+		GuiDrag* drag = gui_drag_create(igui.gui, igui.current_window->window->container);
+
+		IGUI_WidgetInfo* info;
+		if (get_widget_info(igui, id, &info)) {
+
+			info->drag.dragging = false;
+		}
+
+		info->widget = drag;
+		info->drag.value = n;
+
+		constexpr f32 DRAG_HEIGHT = 20.f;
+
+		drag->x = { 0.f, GuiConstraint_Center, GuiCoordAlignment_Center };
+		drag->y = { igui.current_window->yoff, GuiConstraint_Pixel, GuiCoordAlignment_InverseTop };
+		drag->w = { 0.6f, GuiConstraint_Relative };
+		drag->h = { DRAG_HEIGHT, GuiConstraint_Pixel };
+		drag->color = Color::Red();
+		drag->user_id = id;
+		drag->value = *n;
+		drag->advance = adv;
+
+		igui.current_window->yoff += DRAG_HEIGHT + 3.f;
+
+		bool result = info->drag.dragging;
+		info->drag.dragging = false;
+		return result;
+	}
+
+	void igui_text(IGUI* igui_, u64 id, const char* text)
+	{
+		PARSE_IGUI();
+		SV_ASSERT(igui.current_window);
+
+		GuiLabel* label = gui_label_create(igui.gui, igui.current_window->window->container);
+
+		IGUI_WidgetInfo* info;
+		if (get_widget_info(igui, id, &info)) {
+
+			info->drag.dragging = false;
+		}
+
+		info->widget = label;
+
+		constexpr f32 DRAG_HEIGHT = 20.f;
+
+		label->x = { 0.f, GuiConstraint_Center, GuiCoordAlignment_Center };
+		label->y = { igui.current_window->yoff, GuiConstraint_Pixel, GuiCoordAlignment_InverseTop };
+		label->w = { 0.6f, GuiConstraint_Relative };
+		label->h = { DRAG_HEIGHT, GuiConstraint_Pixel };
+		label->color = Color::Red();
+		label->user_id = id;
+		label->text = text;
+
+		igui.current_window->yoff += DRAG_HEIGHT + 3.f;
+	}
+
 
 }
