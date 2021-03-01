@@ -179,6 +179,72 @@ namespace sv {
 		}
 	}
 
+	SV_INLINE static void select_entity()
+	{
+		v2_f32 mouse = input.mouse_position;
+		
+		ECS* ecs = engine.scene->ecs;
+		CameraComponent* camera = get_main_camera(engine.scene);
+
+		if (camera == nullptr) return;
+		
+		Transform camera_trans = ecs_entity_transform_get(ecs, camera->entity);
+		v3_f32 camera_position = camera_trans.getWorldPosition();
+		v4_f32 camera_rotation = camera_trans.getWorldRotation();
+
+		Ray ray = screen_to_world_ray(mouse, camera_position, camera_rotation, camera);
+		
+		XMVECTOR ray_origin = ray.origin.getDX(1.f);
+		XMVECTOR ray_direction = ray.direction.getDX(1.f);
+		
+		Entity selected = SV_ENTITY_NULL;
+		f32 distance = f32_max;
+		
+		EntityView<MeshComponent> meshes(ecs);
+		
+		for (MeshComponent& m : meshes) {
+			
+			Transform trans = ecs_entity_transform_get(ecs, m.entity);
+			
+			XMMATRIX itm = XMMatrixInverse(0, trans.getWorldMatrix());
+			
+			v3_f32 o = v3_f32(XMVector4Transform(ray_origin, itm));
+			v3_f32 d = v3_f32(XMVector4Transform(ray_direction, itm));
+			
+			Mesh& mesh = *m.mesh.get();
+			
+			u32 triangles = u32(mesh.indices.size()) / 3u;
+			
+			for (u32 i = 0u; i < triangles; ++i) {
+				
+				u32 i0 = mesh.indices[i * 3u + 0u];
+				u32 i1 = mesh.indices[i * 3u + 1u];
+				u32 i2 = mesh.indices[i * 3u + 2u];
+				
+				v3_f32 p0 = mesh.positions[i0];
+				v3_f32 p1 = mesh.positions[i1];
+				v3_f32 p2 = mesh.positions[i2];
+				
+				v3_f32 intersection;
+				
+				if (intersect_ray_vs_traingle(o, d, p0, p1, p2, intersection)) {
+					
+					f32 dis = intersection.length();
+					if (dis < distance) {
+						distance = dis;
+						selected = m.entity;
+					}
+				}
+			}
+		}
+		
+		if (selected != SV_ENTITY_NULL) {
+
+			editor.selected_entity = selected;
+		}
+	}
+
+
 	void update_editor()
 	{
 		IGUI* g = editor.igui;
@@ -214,6 +280,10 @@ namespace sv {
 			if (input.keys[Key_F1]) display_window_manager();
 			display_entity_inspector();
 			display_entity_hierarchy();
+
+			// Entity selection
+			if (input.mouse_button[MouseButton_Left] == InputState_Released)
+				select_entity();
 		}
 
 		igui_end(g, f32(window_width_get(engine.window)), f32(window_height_get(engine.window)));

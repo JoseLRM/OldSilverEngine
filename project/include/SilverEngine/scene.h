@@ -7,9 +7,7 @@
 
 namespace sv {
 
-	struct CameraComponent;
-
-	
+	struct CameraComponent;	
 
 	struct Scene {
 
@@ -35,6 +33,8 @@ namespace sv {
 	CameraComponent* get_main_camera(Scene* scene);
 	const char* get_entity_name(ECS* ecs, Entity entity);	
 
+	Ray screen_to_world_ray(v2_f32 position, const v3_f32& camera_position, const v4_f32& camera_rotation, CameraComponent* camera);
+	
 	// COMPONENTS
 
 	SV_DEFINE_COMPONENT(SpriteComponent) {

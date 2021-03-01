@@ -82,6 +82,23 @@ namespace sv {
 		return name;
 	}
 
+	Ray screen_to_world_ray(v2_f32 position, const v3_f32& camera_position, const v4_f32& camera_rotation, CameraComponent* camera)
+	{
+		// Screen to clip space
+		position *= 2.f;
+
+		XMMATRIX ivm = XMMatrixInverse(0, camera_view_matrix(camera_position, camera_rotation, *camera));
+		XMMATRIX ipm = XMMatrixInverse(0, camera_projection_matrix(*camera));
+
+		XMVECTOR mouse_world = XMVectorSet(position.x, position.y, 1.f, 1.f);
+		mouse_world = XMVector4Transform(mouse_world, ipm);
+		mouse_world = XMVectorSetZ(mouse_world, 1.f);
+		mouse_world = XMVector4Transform(mouse_world, ivm);
+		mouse_world = XMVector3Normalize(mouse_world);
+
+		return { camera_position, v3_f32(mouse_world) };
+	}
+	
 	void SpriteComponent::serialize(ArchiveO& archive)
 	{
 		save_asset(archive, texture);

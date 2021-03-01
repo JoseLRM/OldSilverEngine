@@ -907,104 +907,46 @@ namespace sv {
 
 	XMMATRIX math_matrix_view(const v3_f32& position, const v4_f32& directionQuat);
 
-	// MOSTLY INSPIRED IN WICKED ENGINE !!!!!!!!!!
 	// Intersection
 
-	struct Ray3D;
-
-	struct BoundingBox3D {
-
-		v3_f32 min, max;
-
-		SV_INLINE void init_center(const v3_f32& center, const v3_f32& dimensions)
-		{
-			v3_f32 half = dimensions / 2.f;
-			min = center - half;
-			max = center + half;
-		}
-
-		SV_INLINE void init_minmax(const v3_f32& min, const v3_f32& max)
-		{
-			this->min = min;
-			this->max = max;
-		}
-
-		SV_INLINE v3_f32 getCenter() const noexcept { return min + (getDimensions() / 2.f); }
-		SV_INLINE v3_f32 getDimensions() const noexcept { return max - min; }
-
-		bool intersects_point(const v3_f32& point) const noexcept;
-		bool intersects_ray3D(const Ray3D& ray) const noexcept;
-
+	struct Ray {
+		v3_f32 origin;
+		v3_f32 direction;
 	};
-
-	struct Ray3D {
-
-		v3_f32 origin, direction, directionInverse;
-
-		inline void init_line(const v3_f32& point0, const v3_f32& point1)
+	
+	SV_INLINE bool intersect_ray_vs_traingle(const Ray& ray,
+						 const v3_f32& v0,
+						 const v3_f32& v1,
+						 const v3_f32& v2,
+						 v3_f32& outIntersectionPoint)
+	{
+		const float EPSILON = 0.0000001;
+		v3_f32 edge1, edge2, h, s, q;
+		float a, f, u, v;
+		edge1 = v1 - v0;
+		edge2 = v2 - v0;
+		h = ray.direction.cross(edge2);
+		a = edge1.dot(h);
+		if (a > -EPSILON && a < EPSILON)
+			return false;    // This ray is parallel to this triangle.
+		f = 1.0 / a;
+		s = ray.origin - v0;
+		u = f * s.dot(h);
+		if (u < 0.0 || u > 1.0)
+			return false;
+		q = s.cross(edge1);
+		v = f * ray.direction.dot(q);
+		if (v < 0.0 || u + v > 1.0)
+			return false;
+		// At this stage we can compute t to find out where the intersection point is on the line.
+		float t = f * edge2.dot(q);
+		if (t > EPSILON) // ray intersection
 		{
-			origin = point0;
-			direction = point1 - origin;
-			direction.normalize();
-			directionInverse = { 1.f / direction.x, 1.f / direction.y, 1.f / direction.z };
+			outIntersectionPoint = ray.origin + ray.direction * t;
+			return true;
 		}
-
-		inline void init_direction(const v3_f32& origin, const v3_f32& direction)
-		{
-			this->origin = origin;
-			this->direction = direction;
-		}
-
-		inline bool intersects_boundingBox3D(const BoundingBox3D& aabb) const noexcept { return aabb.intersects_ray3D(*this); }
-
-	};
-
-	// 2D INTERSECTIONS
-
-	struct Circle2D;
-
-	struct BoundingBox2D {
-
-		v2_f32 min, max;
-
-		inline void init_center(const v2_f32& center, const v2_f32& dimensions)
-		{
-			v2_f32 half = dimensions / 2.f;
-			min = center - half;
-			max = center + half;
-		}
-
-		inline void init_minmax(const v2_f32& min, const v2_f32& max)
-		{
-			this->min = min;
-			this->max = max;
-		}
-
-		bool intersects_point(const v2_f32& point) const noexcept;
-		bool intersects_circle(const Circle2D& circle) const noexcept;
-
-	};
-
-	struct FrustumOthographic {
-
-		v2_f32 position;
-		v2_f32 halfSize;
-
-		inline void init_center(const v2_f32& center, const v2_f32& dimensions)
-		{
-			halfSize = dimensions / 2.f;
-			position = center;
-		}
-
-		bool intersects_circle(const Circle2D& circle) const noexcept;
-
-	};
-
-	struct Circle2D {
-
-		v2_f32 position;
-		float radius;
-
-	};
+		else // This means that there is a line intersection but not a ray intersection.
+			return false;
+	}
 
 }
