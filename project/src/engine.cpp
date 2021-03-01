@@ -3,7 +3,6 @@
 #include "SilverEngine/engine.h"
 #include "SilverEngine/asset_system.h"
 #include "SilverEngine/platform/impl.h"
-#include "core_internal.h"
 
 #include "task_system/task_system_internal.h"
 #include "event_system/event_system_internal.h"
@@ -23,7 +22,11 @@ namespace sv {
 	Result close_editor();
 	void update_editor();
 	void draw_editor();
-	
+	void initialize_console();
+	void close_console();
+	void update_console();
+	void draw_console(GPUImage* offscreen, CommandList cmd);
+
 	// Asset functions
 
 	static Result create_image_asset(void* asset)
@@ -101,13 +104,8 @@ namespace sv {
 	{
 		Result res;
 
-		res = logging_initialize();
-		if (result_fail(res)) {
-			printf("Can't initialize the logging system: %s\n", result_str(res));
-			return res;
-		}
+		initialize_console();
 
-		SV_LOG_CLEAR();
 		SV_LOG_INFO("Initializing %s", engine.name.c_str());
 
 		// CORE
@@ -348,8 +346,8 @@ namespace sv {
 				return Result_CloseRequest;
 			}
 
-			// Update assets
 			update_assets();
+			update_console();
 
 			// Update scene
 			{
@@ -384,6 +382,8 @@ namespace sv {
 				if (engine.scene) draw_scene(engine.scene);
 
 				draw_editor();
+
+				draw_console(engine.scene->offscreen, graphics_commandlist_get());
 
 				// End frame
 				graphics_end();
@@ -430,7 +430,7 @@ namespace sv {
 			close_assets();
 			if (result_fail(event_close())) { SV_LOG_ERROR("Can't close the event system"); }
 			if (result_fail(task_close())) { SV_LOG_ERROR("Can't close the task system"); }
-			logging_close();
+			close_console();
 		}
 		CATCH;
 

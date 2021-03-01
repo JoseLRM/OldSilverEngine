@@ -168,35 +168,27 @@ namespace sv {
 #define SV_ASSERT(x)
 #endif
 
-// Logging
-
-#ifdef SV_ENABLE_LOGGING
+// Console
 
 namespace sv {
 	
-	void __internal__do_not_call_this_please_or_you_will_die__console_log(u32 id, const char* s, ...);
-	void __internal__do_not_call_this_please_or_you_will_die__console_clear();
+	typedef Result(*CommandFn)(const char** args, u32 argc);
+
+	Result execute_command(const char* command);
+	Result register_command(const char* name, CommandFn command_fn);
+
+	void console_print(const char* str, ...);
+	void console_notify(const char* title, const char* str, ...);
+	void console_clear();
 
 }
 
 #define SV_LOG_CLEAR() sv::__internal__do_not_call_this_please_or_you_will_die__console_clear()
-#define SV_LOG_SEPARATOR() sv::__internal__do_not_call_this_please_or_you_will_die__console_log(0u, "----------------------------------------------------")
-#define SV_LOG(x, ...) sv::__internal__do_not_call_this_please_or_you_will_die__console_log(0u, x, __VA_ARGS__)
-#define SV_LOG_INFO(x, ...) sv::__internal__do_not_call_this_please_or_you_will_die__console_log(1u, "[INFO] " x, __VA_ARGS__)
-#define SV_LOG_WARNING(x, ...) sv::__internal__do_not_call_this_please_or_you_will_die__console_log(2u, "[WARNING] " x, __VA_ARGS__)
-#define SV_LOG_ERROR(x, ...) sv::__internal__do_not_call_this_please_or_you_will_die__console_log(3u, "[ERROR] " x, __VA_ARGS__)
-
-
-#else
-
-#define SV_LOG_CLEAR() do{}while(false)
-#define SV_LOG_SEPARATOR() do{}while(false)
-#define SV_LOG(x, ...) do{}while(false)
-#define SV_LOG_INFO(x, ...) do{}while(false)
-#define SV_LOG_WARNING(x, ...) do{}while(false)
-#define SV_LOG_ERROR(x, ...) do{}while(false)
-
-#endif
+#define SV_LOG_SEPARATOR() sv::console_print("----------------------------------------------------\n")
+#define SV_LOG(x, ...) sv::console_print(x, __VA_ARGS__)
+#define SV_LOG_INFO(x, ...) sv::console_notify("INFO", x, __VA_ARGS__)
+#define SV_LOG_WARNING(x, ...) sv::console_notify("WARNING", x, __VA_ARGS__)
+#define SV_LOG_ERROR(x, ...) sv::console_notify("ERROR", x, __VA_ARGS__)
 
 // Debug profiler
 
@@ -223,6 +215,7 @@ namespace sv {
 #define SV_PROFILER_CHRONO_END(x) sv::__internal__do_not_call_this_please_or_you_will_die__profiler_chrono_end(x)
 #define SV_PROFILER_CHRONO_GET(x) sv::__internal__do_not_call_this_please_or_you_will_die__profiler_chrono_get(x)
 
+// TODO
 #ifdef SV_ENABLE_LOGGING
 #define SV_PROFILER_CHRONO_LOG(x) sv::__internal__do_not_call_this_please_or_you_will_die__console_log(5u, "[PROFILER] %s: %fms", x, sv::__internal__do_not_call_this_please_or_you_will_die__profiler_chrono_get(x))
 #else
@@ -282,6 +275,8 @@ namespace sv {
 	std::string file_dialog_save(u32 filterCount, const char** filters, const char* startPath);
 
 	void set_cursor_position(Window* window, f32 x, f32 y);
+
+	void system_pause();
 
 	// Hash functions
 
@@ -758,6 +753,7 @@ namespace sv {
 		Window*					window = nullptr;
 		Scene*					scene = nullptr;
 		std::string				next_scene_name;
+		bool					console_active = false;
 	};
 
 	struct GlobalInputData {

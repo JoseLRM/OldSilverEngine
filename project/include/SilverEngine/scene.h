@@ -33,14 +33,7 @@ namespace sv {
 	void update_scene(Scene* scene);
 
 	CameraComponent* get_main_camera(Scene* scene);
-	const char* get_entity_name(ECS* ecs, Entity entity);
-
-	// CONSOLE TODO: This should be in core
-
-	typedef Result(*CommandFn)(const char** args, u32 argc);
-
-	Result execute_command(const char* command);
-	Result register_command(const char* name, CommandFn command_fn);
+	const char* get_entity_name(ECS* ecs, Entity entity);	
 
 	// COMPONENTS
 

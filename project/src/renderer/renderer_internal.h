@@ -157,6 +157,7 @@ namespace sv {
 	extern RenderingUtils rend_utils[GraphicsLimit_CommandList];
 
 	extern Font font_opensans;
+	extern Font font_console;
 
 	Result	renderer_initialize();
 	Result	renderer_close();

@@ -3,12 +3,6 @@
 
 using namespace sv;
 
-const char* SCENES[] = {
-	"Sponza", "Goblin", "Dragon"
-};
-constexpr u32 SCENE_COUNT = 3u;
-u32 scene_id;
-
 SV_INLINE bool intersect_ray_vs_traingle(const v3_f32& rayOrigin,
 	const v3_f32& rayVector,
 	const v3_f32& v0,
@@ -171,9 +165,9 @@ void load_model(ECS* ecs, const char* filepath, f32 scale = f32_max)
 	}
 }
 
-Result command_hello(Scene* scene, const char** args, u32 argc)
+Result command_hello(const char** args, u32 argc)
 {
-	SV_LOG("Hola crack ;)");
+	console_notify("MIAU", "Hola que tal");
 	return Result_Success;
 }
 
@@ -199,17 +193,14 @@ Result app_init_scene(Scene* scene)
 	if (strcmp(scene->name.c_str(), "Sponza") == 0) {
 
 		load_model(ecs, "assets/Sponza/sponza.obj");
-		scene_id = 0u;
 	}
 	if (strcmp(scene->name.c_str(), "Goblin") == 0) {
 
 		load_model(ecs, "assets/gobber/GoblinX.obj");
-		scene_id = 1u;
 	}
 	if (strcmp(scene->name.c_str(), "Dragon") == 0) {
 
 		load_model(ecs, "assets/dragon.obj");
-		scene_id = 2u;
 	}
 
 	return Result_Success;
@@ -224,6 +215,8 @@ Result app_close_scene(Scene* scene)
 Result init()
 {
 	set_active_scene("Goblin");
+
+	register_command("hola", command_hello);
 
 	return Result_Success;
 }
@@ -247,25 +240,6 @@ void update()
 				SV_LOG("Selected %u", selected);
 		}
 	}		
-
-	// TEMP
-	if (input.keys[Key_H] == InputState_Released)
-		execute_command("  hello  ");
-	if (input.keys[Key_F] == InputState_Released)
-		execute_command("  hellp  ");
-
-
-
-	if (input.keys[Key_Right] == InputState_Released) {
-
-		u32 next = (scene_id + 1u) % SCENE_COUNT;
-		set_active_scene(SCENES[next]);
-	}
-	if (input.keys[Key_Left] == InputState_Released) {
-
-		u32 next = (scene_id - 1u) % SCENE_COUNT;
-		set_active_scene(SCENES[next]);
-	}
 }
 
 void render()
@@ -308,8 +282,6 @@ int main()
 		engine_close();
 	}
 
-#ifdef SV_ENABLE_LOGGING
-	system("pause");
-#endif
+	system_pause();
 
 }

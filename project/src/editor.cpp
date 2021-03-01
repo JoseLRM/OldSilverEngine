@@ -182,8 +182,13 @@ namespace sv {
 				}
 				else window_state_set(engine.window, WindowState_Fullscreen);
 			}
+			if (input.keys[Key_F3] == InputState_Pressed) {
+				editor.camera_controller = false;
+				engine.console_active = !engine.console_active;
+			}
 			if (input.keys[Key_F2] == InputState_Pressed) {
 				editor.camera_controller = !editor.camera_controller;
+				engine.console_active = false;
 			}
 		}
 

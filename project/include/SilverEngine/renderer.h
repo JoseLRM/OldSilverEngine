@@ -62,7 +62,12 @@ namespace sv {
 	/*
 		Return the number of character rendered
 	*/
-	u32 draw_text(GPUImage* offscreen, const char* text, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextSpace space, TextAlignment alignment, Font* pFont, CommandList cmd);
+	u32 draw_text(GPUImage* offscreen, const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextSpace space, TextAlignment alignment, Font* pFont, Color color, CommandList cmd);
+
+	SV_INLINE u32 draw_text(GPUImage* offscreen, const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextSpace space, TextAlignment alignment, Font* pFont, CommandList cmd)
+	{
+		return draw_text(offscreen, text, text_size, x, y, max_line_width, max_lines, font_size, aspect, space, alignment, pFont, Color::White(), cmd);
+	}
 
 	// SCENE
 

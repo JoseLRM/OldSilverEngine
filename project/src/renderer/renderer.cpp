@@ -10,6 +10,7 @@ namespace sv {
 	GraphicsObjects		gfx = {};
 	RenderingUtils		rend_utils[GraphicsLimit_CommandList] = {};
 	Font				font_opensans;
+	Font				font_console;
 
 	// SHADER COMPILATION
 
@@ -590,6 +591,7 @@ namespace sv {
 
 		// Create default fonts
 		svCheck(font_create(font_opensans, "$system/fonts/OpenSans-Regular.ttf", 228.f, 0u));
+		font_create(font_console, "C:/Windows/Fonts/consola.ttf", 228.f, 0u);
 
 		// Allocate batch memory
 		{
@@ -616,6 +618,7 @@ namespace sv {
 		}
 
 		svCheck(font_destroy(font_opensans));
+		svCheck(font_destroy(font_console));
 
 		return Result_Success;
 	}
@@ -1095,18 +1098,23 @@ namespace sv {
 		return projection_matrix;
 	}
 
-	u32 draw_text(GPUImage* offscreen, const char* text, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextSpace space, TextAlignment alignment, Font* pFont, CommandList cmd)
+	SV_INLINE static void text_draw_call(GPUImage* offscreen, GPUBuffer* buffer, TextData& data, u32 vertex_count, CommandList cmd)
+	{
+		graphics_buffer_update(buffer, data.vertices, vertex_count * sizeof(TextVertex), 0u, cmd);
+
+		GPUImage* att[1];
+		att[0] = offscreen;
+
+		graphics_renderpass_begin(gfx.renderpass_text, att, nullptr, 1.f, 0u, cmd);
+		graphics_draw_indexed(vertex_count / 4u * 6u, 1u, 0u, 0u, 0u, cmd);
+		graphics_renderpass_end(cmd);
+	}
+
+	u32 draw_text(GPUImage* offscreen, const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextSpace space, TextAlignment alignment, Font* pFont, Color color, CommandList cmd)
 	{
 		if (text == nullptr) return 0u;
 
-		// Text size
-		size_t text_size = strlen(text);
-
 		if (text_size == 0u) return 0u;
-		if (text_size > TEXT_BATCH_COUNT) {
-			SV_LOG_ERROR("The text exceed the limits");
-			return 0u;
-		}
 
 		const GPUImageInfo& info = graphics_image_info(offscreen);
 
@@ -1246,6 +1254,12 @@ namespace sv {
 				++line_end;
 			}
 
+			if (vertex_count + (line_end - it) > TEXT_BATCH_COUNT) {
+
+				text_draw_call(offscreen, buffer, data, vertex_count, cmd);
+				vertex_count = 0u;
+			}
+
 			// Fill batch
 			while (it != line_end) {
 
@@ -1263,10 +1277,10 @@ namespace sv {
 						f32 width = g.w * xmult;
 						f32 height = g.h * ymult;
 
-						data.vertices[vertex_count++] = { v4_f32{ xpos			, ypos + height	, 0.f, 1.f }, v2_f32{ g.texCoord.x, g.texCoord.w }, Color::White() };
-						data.vertices[vertex_count++] = { v4_f32{ xpos + width	, ypos + height	, 0.f, 1.f }, v2_f32{ g.texCoord.z, g.texCoord.w }, Color::White() };
-						data.vertices[vertex_count++] = { v4_f32{ xpos			, ypos			, 0.f, 1.f }, v2_f32{ g.texCoord.x, g.texCoord.y }, Color::White() };
-						data.vertices[vertex_count++] = { v4_f32{ xpos + width	, ypos			, 0.f, 1.f }, v2_f32{ g.texCoord.z, g.texCoord.y }, Color::White() };
+						data.vertices[vertex_count++] = { v4_f32{ xpos			, ypos + height	, 0.f, 1.f }, v2_f32{ g.texCoord.x, g.texCoord.w }, color };
+						data.vertices[vertex_count++] = { v4_f32{ xpos + width	, ypos + height	, 0.f, 1.f }, v2_f32{ g.texCoord.z, g.texCoord.w }, color };
+						data.vertices[vertex_count++] = { v4_f32{ xpos			, ypos			, 0.f, 1.f }, v2_f32{ g.texCoord.x, g.texCoord.y }, color };
+						data.vertices[vertex_count++] = { v4_f32{ xpos + width	, ypos			, 0.f, 1.f }, v2_f32{ g.texCoord.z, g.texCoord.y }, color };
 					}
 
 					xoff += advance;
@@ -1302,15 +1316,7 @@ namespace sv {
 
 		number_of_chars = it - text;
 
-		// Send to GPU
-		graphics_buffer_update(buffer, data.vertices, vertex_count * sizeof(TextVertex), 0u, cmd);
-
-		GPUImage* att[1];
-		att[0] = offscreen;
-
-		graphics_renderpass_begin(gfx.renderpass_text, att, nullptr, 1.f, 0u, cmd);
-		graphics_draw_indexed(vertex_count / 4u * 6u, 1u, 0u, 0u, 0u, cmd);
-		graphics_renderpass_end(cmd);
+		text_draw_call(offscreen, buffer, data, vertex_count, cmd);
 
 		return number_of_chars;
 	}

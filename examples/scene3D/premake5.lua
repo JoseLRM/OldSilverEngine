@@ -11,7 +11,6 @@ workspace 'Scene3D'
 
 	defines {
 		'SV_ENABLE_GFX_VALIDATION',
-		'SV_ENABLE_LOGGING',
 		'SV_ENABLE_ASSERTION',
 	}
 

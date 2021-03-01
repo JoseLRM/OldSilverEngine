@@ -5,7 +5,6 @@
 
 #include "SilverEngine/platform/impl.h"
 #include "SilverEngine/window.h"
-#include "core_internal.h"
 
 #ifdef SV_PLATFORM_WIN
 #include <commdlg.h> // File Dialogs
@@ -17,9 +16,8 @@ namespace sv {
 
 	void throw_assertion(const char* content, u32 line, const char* file)
 	{
-#ifdef SV_ENABLE_LOGGING
-		__internal__do_not_call_this_please_or_you_will_die__console_log(4u, "[ASSERTION] '%s', file: '%s', line: %u", content, file, line);
-#endif
+		console_notify("ASSERTION", "'%s', file: '%s', line: %u", content, file, line);
+		
 		std::wstringstream ss;
 		ss << L"'";
 		ss << parse_wstring(content);
@@ -33,180 +31,6 @@ namespace sv {
 			exit(1u);
 		}
 	}
-
-	///////////////////////////////////////////////// LOGGING /////////////////////////////////////////////////
-
-#ifndef SV_ENABLE_LOGGING
-
-	Result logging_initialize()
-	{
-#ifdef SV_PLATFORM_WIN
-		ShowWindow(GetConsoleWindow(), SW_HIDE);
-#endif
-		return Result_Success;
-	}
-
-	Result logging_close()
-	{
-		return Result_Success;
-	}
-
-
-#else
-	static std::mutex g_LogMutex;
-	static FileO g_LogFile;
-
-	std::string date_string(const Date& date)
-	{
-		std::stringstream stream;
-		stream << '[';
-		if (date.hour < 10u) stream << '0';
-		stream << date.hour << ':';
-		if (date.minute < 10u) stream << '0';
-		stream << date.minute << ':';
-		if (date.second < 10u) stream << '0';
-		stream << date.second << ']';
-		std::string res = stream.str();
-		return res;
-	}
-
-	Result logging_initialize()
-	{
-#ifdef SV_PLATFORM_WIN
-		ShowWindow(GetConsoleWindow(), SW_SHOWDEFAULT);
-#endif
-
-		std::string logFolder = "logs/";
-		Date date = timer_date();
-
-		std::string day;
-		if (date.day < 10) day = '0';
-		day += std::to_string(date.day);
-
-		std::string month;
-		if (date.month < 10) month = '0';
-		month += std::to_string(date.month);
-
-		std::string year = std::to_string(date.year);
-
-		std::string hour;
-		if (date.hour < 10) hour = '0';
-		hour += std::to_string(date.hour);
-
-		std::string minute;
-		if (date.minute < 10) minute = '0';
-		minute += std::to_string(date.minute);
-
-		std::string second;
-		if (date.second < 10) second = '0';
-		second += std::to_string(date.second);
-
-		std::string logFile;
-		logFile = '[' + day + '-' + month + '-' + year + "][" + hour + '-' + minute + '-' + second + "].log";
-
-		std::string absPath = logFolder + logFile;
-
-		g_LogFile.open(absPath.c_str(), true);
-		if (!g_LogFile.isOpen())
-			return Result_NotFound;
-
-		return Result_Success;
-	}
-
-	Result logging_close()
-	{
-		g_LogFile.close();
-		return Result_Success;
-	}
-
-	void __internal__do_not_call_this_please_or_you_will_die__console_clear()
-	{
-		std::lock_guard<std::mutex> lock(g_LogMutex);
-		system("CLS");
-	}
-
-	void log(const char* title, const char* s1, va_list args, u32 id)
-	{
-		char logBuffer[1001];
-		size_t offset = 0u;
-
-		// Date
-		{
-			std::string dateStr = date_string(timer_date());
-			memcpy(logBuffer, dateStr.data(), dateStr.size());
-			offset += dateStr.size();
-		}
-
-		// Title
-		{
-			size_t titleSize = strlen(title);
-			if (titleSize != 0u) {
-				logBuffer[offset++] = '[';
-				logBuffer[offset + titleSize] = ']';
-				memcpy(logBuffer + offset, title, titleSize);
-				offset += titleSize + 1u;
-			}
-		}
-
-		// Content
-		vsnprintf(logBuffer + offset, 1000 - offset, s1, args);
-
-		size_t size = strlen(logBuffer);
-		logBuffer[size] = '\n';
-		logBuffer[size + 1u] = '\0';
-
-#ifdef SV_PLATFORM_WIN
-		u32 platformFlags = 0u;
-
-		switch (id)
-		{
-		case 0u:
-			platformFlags |= FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
-			break;
-
-		case 1u:
-			platformFlags |= FOREGROUND_GREEN;
-			break;
-
-		case 2u:
-			platformFlags |= FOREGROUND_GREEN | FOREGROUND_BLUE;
-			break;
-
-		case 3u:
-			platformFlags |= FOREGROUND_RED;
-			break;
-
-		case 4u:
-			platformFlags |= FOREGROUND_RED | FOREGROUND_BLUE;
-			break;
-
-		case 5u:
-			platformFlags |= FOREGROUND_RED | FOREGROUND_GREEN;
-			break;
-		}
-#endif
-
-		std::lock_guard<std::mutex> lock(g_LogMutex);
-
-#ifdef SV_PLATFORM_WIN
-		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), platformFlags);
-#endif
-
-		std::cout << logBuffer;
-		g_LogFile.writeLine(logBuffer);
-	}
-
-	void __internal__do_not_call_this_please_or_you_will_die__console_log(u32 id, const char* s, ...)
-	{
-		va_list args;
-		va_start(args, s);
-
-		log("", s, args, id);
-
-		va_end(args);
-	}
-
-#endif
 
 	///////////////////////////////////////////////// PROFILER /////////////////////////////////////////////////
 
@@ -405,6 +229,27 @@ namespace sv {
 		y = std::max(std::min(y, 0.5f), -0.5f) + 0.5f;
 		next_mouse_position = { x, y };
 		new_mouse_position = true;
+	}
+
+	void system_pause()
+	{
+		bool show_console = IsWindowVisible(GetConsoleWindow());
+
+#ifdef SV_PLATFORM_WIN
+		
+		if (!show_console) {
+
+			ShowWindow(GetConsoleWindow(), SW_SHOWDEFAULT);
+		}
+		
+		system("pause");
+
+		if (!show_console) {
+
+			ShowWindow(GetConsoleWindow(), SW_HIDE);
+		}
+#endif
+
 	}
 
 	///////////////////////////////////////////////// TIMER /////////////////////////////////////////////////

@@ -1002,7 +1002,7 @@ namespace sv {
 
 				// TODO: Should use information about the largest character in the font
 				f32 text_y = pos.y + size.y * 0.6f;
-				draw_text(offscreen, button.text.c_str(), pos.x - size.x * 0.5f, text_y, size.x, 1u, size.y, gui.resolution.x / gui.resolution.y, TextSpace_Clip, TextAlignment_Center, nullptr, cmd);
+				draw_text(offscreen, button.text.c_str(), button.text.size(), pos.x - size.x * 0.5f, text_y, size.x, 1u, size.y, gui.resolution.x / gui.resolution.y, TextSpace_Clip, TextAlignment_Center, nullptr, cmd);
 			}
 		}
 		break;
@@ -1020,11 +1020,10 @@ namespace sv {
 			char strbuff[MAX_FLOAT_CHARS + 1u];
 			u32 strsize;
 			float_to_string(drag.value, strbuff, &strsize, MAX_FLOAT_CHARS);
-			strbuff[strsize] = '\0';
 
 			// TODO: Should use information about the largest character in the font
 			f32 text_y = pos.y + size.y * 0.6f;
-			draw_text(offscreen, strbuff, pos.x - size.x * 0.5f, text_y, size.x, 1u, size.y, gui.resolution.x / gui.resolution.y, TextSpace_Clip, TextAlignment_Center, nullptr, cmd);
+			draw_text(offscreen, strbuff, strsize, pos.x - size.x * 0.5f, text_y, size.x, 1u, size.y, gui.resolution.x / gui.resolution.y, TextSpace_Clip, TextAlignment_Center, nullptr, cmd);
 		}
 		break;
 
@@ -1043,7 +1042,7 @@ namespace sv {
 				f32 text_x = pos.x - size.x * 0.5f;
 				f32 aspect = gui.resolution.x / gui.resolution.y;
 
-				draw_text(offscreen, field.text.c_str(), text_x, text_y, size.x, 1u, size.y, aspect, TextSpace_Clip, TextAlignment_Left, nullptr, cmd);
+				draw_text(offscreen, field.text.c_str(), field.text.size(), text_x, text_y, size.x, 1u, size.y, aspect, TextSpace_Clip, TextAlignment_Left, nullptr, cmd);
 
 				if (&widget == gui.widget_focused && sin(f32(timer_now()) * 5.f) > 0.f) {
 
@@ -1087,7 +1086,7 @@ namespace sv {
 				f32 text_x = pos.x - size.x * 0.5f;
 				f32 aspect = gui.resolution.x / gui.resolution.y;
 
-				draw_text(offscreen, label.text.c_str(), text_x, text_y, size.x, 1u, size.y, aspect, TextSpace_Clip, TextAlignment_Center, nullptr, cmd);
+				draw_text(offscreen, label.text.c_str(), label.text.size(), text_x, text_y, size.x, 1u, size.y, aspect, TextSpace_Clip, TextAlignment_Center, nullptr, cmd);
 			}
 		}
 		break;
@@ -1155,7 +1154,7 @@ namespace sv {
 				end_debug_batch(offscreen, XMMatrixIdentity(), cmd);
 
 				if (window.title.size())
-					draw_text(offscreen, window.title.c_str(), dec_pos.x - dec_size.x * 0.5f + 0.03f, dec_pos.y + dec_size.y * 0.5f, dec_size.x, 1u, dec_size.y * 0.5f, gui.resolution.x / gui.resolution.y, TextSpace_Clip, TextAlignment_Left, 0, cmd);
+					draw_text(offscreen, window.title.c_str(), window.title.size(), dec_pos.x - dec_size.x * 0.5f + 0.03f, dec_pos.y + dec_size.y * 0.5f, dec_size.x, 1u, dec_size.y * 0.5f, gui.resolution.x / gui.resolution.y, TextSpace_Clip, TextAlignment_Left, 0, cmd);
 			}
 		}
 
