@@ -57,6 +57,10 @@ namespace sv {
 		TextAlignment_Center,
 		TextAlignment_Right,
 		TextAlignment_Justified,
+		TextAlignment_InverseLeft,
+		TextAlignment_InverseCenter,
+		TextAlignment_InverseRight,
+		TextAlignment_InverseJustified,
 	};
 
 	/*

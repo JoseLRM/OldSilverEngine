@@ -1110,6 +1110,71 @@ namespace sv {
 		graphics_renderpass_end(cmd);
 	}
 
+        SV_INLINE static const char* process_line(const char* it, size_t size, f32 limit, Font& font, f32 xmult)
+	{
+		// Create line
+		f32 line_width = 0.f;
+
+		// Add begin offset
+		if (*it != ' ') {
+			auto res = font.glyphs.find(*it);
+
+			if (res != font.glyphs.end()) {
+				
+				Glyph& g = res->second;
+				
+				f32 offset = abs(std::min(g.xoff, 0.f) * xmult);
+				line_width += offset;
+				xoff += offset;
+			}
+		}
+
+		const char* end = it + size;
+		const char* begin_line = it;
+		const char* begin_word = it;
+
+		while (it != end) {
+
+			if (*it == '\n') {
+				++it;
+				break;
+			}			
+			
+			// Add line width
+			auto res = font.glyphs.find(*line_end);
+
+			if (res != font.glyphs.end()) {
+
+				Glyph& g = res->second;
+
+				f32 real_line_width = line_width + std::max(g.w, g.advance) * xmult;
+				
+				if (real_line_width > limit) {
+					
+					if (begin_word != it && (char_is_letter(*it) || char_is_number(*it))) {
+						
+						it = begin_word;
+					}
+					break;
+				}
+				
+				line_width += g.advance * xmult;
+			}
+
+			// Create lines
+			if (*it == ' ') {
+				begin_word = nullptr;
+			}
+			else if (begin_world == nullptr && *it != ' ') {
+				begin_word = it;
+			}
+
+			++it;
+		}
+
+		return it;
+	}
+    
 	u32 draw_text(GPUImage* offscreen, const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextSpace space, TextAlignment alignment, Font* pFont, Color color, CommandList cmd)
 	{
 		if (text == nullptr) return 0u;
@@ -1194,65 +1259,9 @@ namespace sv {
 			yoff -= line_height;
 			u32 line_begin_index = vertex_count;
 
-			// Create line
-			f32 line_width = 0.f;
-
-			// Add begin offset
-			if (*it != ' ') {
-				auto res = font.glyphs.find(*it);
-
-				if (res != font.glyphs.end()) {
-
-					Glyph& g = res->second;
-
-					f32 offset = abs(std::min(g.xoff, 0.f) * xmult);
-					line_width += offset;
-					xoff += offset;
-				}
-			}
-
-			const char* line_end = it;
-			const char* begin_word = line_end;
-
-			while (line_end != end) {
-
-				if (*line_end == '\n') {
-					++line_end;
-					break;
-				}
-
-				if (!char_is_letter(*line_end) && !char_is_number(*line_end) && *line_end != '-') {
-
-					if ((*line_end == '.' || *line_end == ',') && char_is_number(*begin_word)) {
-					}
-					else begin_word = line_end + 1u;
-				}
-
-				auto res = font.glyphs.find(*line_end);
-
-				if (res != font.glyphs.end()) {
-
-					Glyph& g = res->second;
-
-					f32 real_line_width = line_width + std::max(g.w, g.advance) * xmult;
-
-					if (real_line_width > max_line_width) {
-						if (begin_word != it && (char_is_letter(*line_end) || char_is_number(*line_end))) {
-
-							line_end = begin_word;
-						}
-						break;
-					}
-
-					line_width += g.advance * xmult;
-				}
-
-				++line_end;
-			}
-
-			if (line_end == it) {
-				++line_end;
-			}
+			// TODO: add first char offset to xoff
+			const char* line_end = process_line(it, text_size - (it - text), max_line_width, font, xmult);
+			SV_ASSERT(line_end != it);
 
 			if (vertex_count + (line_end - it) > TEXT_BATCH_COUNT) {
 
