@@ -161,6 +161,18 @@ namespace sv {
 				const char* name = get_entity_name(ecs, editor.selected_entity);
 
 				igui_text(g, 0x43F32, name);
+
+				// TODO: Transform
+
+				// Display components
+				u32 component_count = ecs_entity_component_count(ecs, editor.selected_entity);
+
+				foreach(i, component_count) {
+
+					auto[comp_id, comp] = ecs_component_get_by_index(ecs, editor.selected_entity, i);
+					
+					igui_text(g, 0x743B + i, ecs_component_name(comp_id));
+				}
 			}
 
 			igui_end_window(g);

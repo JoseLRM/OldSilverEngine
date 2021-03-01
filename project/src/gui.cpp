@@ -1352,6 +1352,8 @@ namespace sv {
 		f32 vertical_offset;
 		GuiWindow* window;
 		f32 yoff;
+		bool same_line = false;
+		u32 line_count = 0u; // Elements in the same line
 
 	};
 
@@ -1618,6 +1620,14 @@ namespace sv {
 		return false;
 	}
 
+	void igui_same_line(IGUI* igui_)
+	{
+		PARSE_IGUI();
+		SV_ASSERT(igui.current_window);
+
+		igui.same_line = true;
+	}
+	
 	bool igui_button(IGUI* igui_, u64 id, const char* text)
 	{
 		PARSE_IGUI();

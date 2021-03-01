@@ -278,13 +278,15 @@ namespace sv {
 	void igui_begin(IGUI* igui);
 	void igui_end(IGUI* igui, f32 width, f32 height);
 	void igui_render(IGUI* igui, GPUImage* offscreen, CommandList cmd);
-
+	
 	bool igui_begin_window(IGUI* igui, const char* name);
 	void igui_end_window(IGUI* igui);
 	void igui_open_window(IGUI* igui, const char* name);
 	void igui_close_window(IGUI* igui, const char* name);
 	bool igui_is_open_window(IGUI* igui, const char* name);
 
+	void igui_same_line(IGUI* igui);
+	
 	bool igui_button(IGUI* igui, u64 id, const char* text);
 	bool igui_drag(IGUI* igui, u64 id, const char* text, f32* n, f32 adv = 0.1f);
 	void igui_text(IGUI* igui, u64 id, const char* text);
