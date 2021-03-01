@@ -730,6 +730,11 @@ namespace sv {
 	// Globals
 
 	struct Scene;
+	struct BaseComponent;
+	struct IGUI;
+
+	typedef u16 CompID;
+	typedef u32 Entity;
 
 	struct ApplicationCallbacks {
 		Result(*initialize)();
@@ -737,6 +742,7 @@ namespace sv {
 		void(*render)();
 		Result(*close)();
 		Result(*initialize_scene)(Scene* scene);
+		void(*show_component)(IGUI* igui, CompID comp_id, BaseComponent* comp);
 		Result(*close_scene)(Scene* scene);
 	};
 

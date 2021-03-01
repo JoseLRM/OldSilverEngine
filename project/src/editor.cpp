@@ -149,6 +149,35 @@ namespace sv {
 		}
 	}
 
+	static void show_component_info(CompID comp_id, BaseComponent* comp)
+	{
+		IGUI* igui = editor.igui;
+		
+		switch (comp_id) {
+
+		case SpriteComponent::ID:
+			break;
+
+		case CameraComponent::ID:
+			break;
+
+		case LightComponent::ID:
+			break;
+
+		case MeshComponent::ID:
+			break;
+
+		case NameComponent::ID:
+			break;
+
+		default:
+			if (engine.app_callbacks.display_component) {
+				engine.app_callbacks.show_component(igui, comp_id, comp);
+			}
+			
+		}
+	}
+
 	static void display_entity_inspector()
 	{
 		ECS* ecs = engine.scene->ecs;

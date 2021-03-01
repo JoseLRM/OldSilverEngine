@@ -156,11 +156,12 @@ int main()
 	desc.callbacks.close = close;
 	desc.callbacks.initialize_scene = app_init_scene;
 	desc.callbacks.close_scene = app_close_scene;
+	desc.callbacks.show_component = nullptr;
 	desc.windowDesc.bounds = { 0u, 0u, 1080u, 720u };
 	desc.windowDesc.flags = WindowFlag_Default;
 	desc.windowDesc.iconFilePath = nullptr;
-	desc.windowDesc.state = WindowState_Windowed;
-	//desc.windowDesc.state = WindowState_Fullscreen;
+	//desc.windowDesc.state = WindowState_Windowed;
+	desc.windowDesc.state = WindowState_Fullscreen;
 	desc.windowDesc.title = L"Test";
 
 	if (result_fail(engine_initialize(&desc))) {
