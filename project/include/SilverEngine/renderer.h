@@ -32,46 +32,52 @@ namespace sv {
 
 	struct Font {
 
-		std::unordered_map<char, Glyph>	glyphs;
+		static constexpr u32 CHAR_COUNT = u32('~') + 1u;
+
+		Glyph* glyphs = nullptr;
 		GPUImage* image = nullptr;
+
+		Glyph* get(u32 index) { 
+			if (index < CHAR_COUNT)
+				return glyphs + index; 
+			return nullptr;
+		}
 
 	};
 
 	Result font_create(Font& font, const char* filepath, f32 pixelHeight, FontFlags flags);
 	Result font_destroy(Font& font);
 
+	// In Clip space
 	f32 compute_text_width(const char* text, u32 count, f32 font_size, f32 aspect, Font* pFont);
+	f32 compute_text_height(const char* text, u32 count, f32 font_size, f32 max_line_width, f32 aspect, Font* pFont);
+	u32 compute_text_lines(const char* text, u32 count, f32 font_size, f32 max_line_width, f32 aspect, Font* pFont);
+
+	const char* process_text_line(const char* it, u32 count, f32 max_line_width, Font& font);
 
 	// TEXT RENDERING
 
 	struct Font;
-
-	enum TextSpace : u32 {
-		TextSpace_Clip,
-		TextSpace_Normal,
-		TextSpace_Offscreen,
-	};
 
 	enum TextAlignment : u32 {
 		TextAlignment_Left,
 		TextAlignment_Center,
 		TextAlignment_Right,
 		TextAlignment_Justified,
-		TextAlignment_InverseLeft,
-		TextAlignment_InverseCenter,
-		TextAlignment_InverseRight,
-		TextAlignment_InverseJustified,
 	};
 
 	/*
+		Clip space rendering
 		Return the number of character rendered
 	*/
-	u32 draw_text(GPUImage* offscreen, const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextSpace space, TextAlignment alignment, Font* pFont, Color color, CommandList cmd);
+	u32 draw_text(GPUImage* offscreen, const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, Font* pFont, Color color, CommandList cmd);
 
-	SV_INLINE u32 draw_text(GPUImage* offscreen, const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextSpace space, TextAlignment alignment, Font* pFont, CommandList cmd)
+	SV_INLINE u32 draw_text(GPUImage* offscreen, const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, Font* pFont, CommandList cmd)
 	{
-		return draw_text(offscreen, text, text_size, x, y, max_line_width, max_lines, font_size, aspect, space, alignment, pFont, Color::White(), cmd);
+		return draw_text(offscreen, text, text_size, x, y, max_line_width, max_lines, font_size, aspect, alignment, pFont, Color::White(), cmd);
 	}
+
+	void draw_text_area(GPUImage* offscreen, const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, u32 line_offset, bool bottom_top, Font* pFont, Color color, CommandList cmd);
 
 	// SCENE
 

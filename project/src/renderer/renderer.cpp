@@ -337,7 +337,7 @@ namespace sv {
 
 		Color* data;
 		u32 w, h;
-		svCheck(load_image(SV_SYS("system/skymap.jpg"), (void**)&data, &w, &h));
+		svCheck(load_image(SV_SYS("system/skymap.jpg"), (void**)& data, &w, &h));
 
 
 		u32 image_width = w / 4u;
@@ -409,7 +409,7 @@ namespace sv {
 		desc.height = image_height;
 
 		svCheck(graphics_image_create(&desc, &gfx.image_sky));
-		
+
 		free(mem);
 		delete[] data;
 
@@ -427,7 +427,7 @@ namespace sv {
 			InputLayoutStateDesc desc;
 			desc.pSlots = slots;
 			desc.pElements = elements;
-			
+
 			// DEBUG
 			slots[0].instanced = false;
 			slots[0].slot = 0u;
@@ -560,21 +560,21 @@ namespace sv {
 	static Result create_samplers()
 	{
 		SamplerDesc desc;
-		
+
 		desc.addressModeU = SamplerAddressMode_Wrap;
 		desc.addressModeV = SamplerAddressMode_Wrap;
 		desc.addressModeW = SamplerAddressMode_Wrap;
 		desc.minFilter = SamplerFilter_Linear;
 		desc.magFilter = SamplerFilter_Linear;
 		svCheck(graphics_sampler_create(&desc, &gfx.sampler_def_linear));
-		
+
 		desc.addressModeU = SamplerAddressMode_Wrap;
 		desc.addressModeV = SamplerAddressMode_Wrap;
 		desc.addressModeW = SamplerAddressMode_Wrap;
 		desc.minFilter = SamplerFilter_Nearest;
 		desc.magFilter = SamplerFilter_Nearest;
 		svCheck(graphics_sampler_create(&desc, &gfx.sampler_def_nearest));
-		
+
 		return Result_Success;
 	}
 
@@ -626,7 +626,7 @@ namespace sv {
 	struct SpriteInstance {
 		XMMATRIX	tm;
 		v4_f32		texcoord;
-		GPUImage*	image;
+		GPUImage* image;
 		Color		color;
 		u32			layer;
 
@@ -661,7 +661,7 @@ namespace sv {
 		// Point
 		LightInstance(const Color3f& color, const v3_f32& position, f32 range, f32 intensity, f32 smoothness)
 			: color(color), type(LightType_Point), position(position), range(range), intensity(intensity), smoothness(smoothness) {}
-		
+
 		// Direction
 		LightInstance(const Color3f& color, const v3_f32& direction, f32 intensity)
 			: color(color), type(LightType_Direction), position(direction), intensity(intensity) {}
@@ -721,7 +721,7 @@ namespace sv {
 			EntityView<CameraComponent> cameras(ecs);
 
 			for (CameraComponent& camera : cameras) {
-				
+
 				Transform camera_trans = ecs_entity_transform_get(ecs, camera.entity);
 
 				CameraBuffer_GPU camera_data;
@@ -736,7 +736,7 @@ namespace sv {
 				draw_sky(scene->offscreen, camera_data.view_matrix, camera_data.projection_matrix, cmd);
 
 				graphics_buffer_update(gfx.cbuffer_camera, &camera_data, sizeof(CameraBuffer_GPU), 0u, cmd);
-				
+
 				// DRAW SPRITES
 				{
 					{
@@ -955,6 +955,7 @@ namespace sv {
 							}
 
 							graphics_buffer_update(light_instances_buffer, light_data, sizeof(LightData) * light_count, 0u, cmd);
+
 						}
 
 						foreach(i, mesh_instances.size()) {
@@ -978,7 +979,7 @@ namespace sv {
 								if (normal_map) { graphics_image_bind(normal_map, 1u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_NORMAL_MAPPING; }
 								// TODO: I don't know why i need to do this. The shader shouldn't sample this texture without the flag...
 								else graphics_image_bind(gfx.image_white, 1u, ShaderType_Pixel, cmd);
-								
+
 								if (specular_map) { graphics_image_bind(specular_map, 2u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_SPECULAR_MAPPING; }
 								// TODO: I don't know why i need to do this. The shader shouldn't sample this texture without the flag...
 								else graphics_image_bind(gfx.image_white, 2u, ShaderType_Pixel, cmd);
@@ -1017,7 +1018,7 @@ namespace sv {
 				}
 			}
 		}
-		
+
 		gui_render(scene->gui, scene->offscreen, cmd);
 	}
 
@@ -1110,83 +1111,14 @@ namespace sv {
 		graphics_renderpass_end(cmd);
 	}
 
-        SV_INLINE static const char* process_line(const char* it, size_t size, f32 limit, Font& font, f32 xmult)
-	{
-		// Create line
-		f32 line_width = 0.f;
-
-		// Add begin offset
-		if (*it != ' ') {
-			auto res = font.glyphs.find(*it);
-
-			if (res != font.glyphs.end()) {
-				
-				Glyph& g = res->second;
-				
-				f32 offset = abs(std::min(g.xoff, 0.f) * xmult);
-				line_width += offset;
-				xoff += offset;
-			}
-		}
-
-		const char* end = it + size;
-		const char* begin_line = it;
-		const char* begin_word = it;
-
-		while (it != end) {
-
-			if (*it == '\n') {
-				++it;
-				break;
-			}			
-			
-			// Add line width
-			auto res = font.glyphs.find(*line_end);
-
-			if (res != font.glyphs.end()) {
-
-				Glyph& g = res->second;
-
-				f32 real_line_width = line_width + std::max(g.w, g.advance) * xmult;
-				
-				if (real_line_width > limit) {
-					
-					if (begin_word != it && (char_is_letter(*it) || char_is_number(*it))) {
-						
-						it = begin_word;
-					}
-					break;
-				}
-				
-				line_width += g.advance * xmult;
-			}
-
-			// Create lines
-			if (*it == ' ') {
-				begin_word = nullptr;
-			}
-			else if (begin_world == nullptr && *it != ' ') {
-				begin_word = it;
-			}
-
-			++it;
-		}
-
-		return it;
-	}
-    
-	u32 draw_text(GPUImage* offscreen, const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextSpace space, TextAlignment alignment, Font* pFont, Color color, CommandList cmd)
+	u32 draw_text(GPUImage* offscreen, const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, Font* pFont, Color color, CommandList cmd)
 	{
 		if (text == nullptr) return 0u;
-
 		if (text_size == 0u) return 0u;
 
-		const GPUImageInfo& info = graphics_image_info(offscreen);
-
 		// Select font
-		// TODO: Default font
 		Font& font = pFont ? *pFont : font_opensans;
-
+		
 		// Prepare
 		graphics_rasterizerstate_unbind(cmd);
 		graphics_blendstate_unbind(cmd);
@@ -1207,40 +1139,8 @@ namespace sv {
 		TextData& data = *reinterpret_cast<TextData*>(rend_utils[cmd].batch_data);
 
 		// Text space transformation
-		f32 xmult = 0.f;
-		f32 ymult = 0.f;
-
-		switch (space)
-		{
-		case TextSpace_Clip:
-			xmult = font_size / aspect;
-			ymult = font_size;
-			break;
-
-		case TextSpace_Normal:
-			xmult = font_size / aspect * 2.f;
-			ymult = font_size * 2.f;
-			x = x * 2.f - 1.f;
-			y = y * 2.f - 1.f;
-			max_line_width *= 2.f;
-			break;
-
-		case TextSpace_Offscreen:
-		{
-			f32 inv_offwidth = 1.f / f32(info.width) * 2.f;
-			f32 inv_offheight = 1.f / f32(info.height) * 2.f;
-
-			aspect /= f32(info.width) / f32(info.height);
-
-			xmult = font_size * inv_offwidth / aspect;
-			ymult = font_size * inv_offheight;
-			x = x * inv_offwidth - 1.f;
-			y = y * inv_offheight - 1.f;
-			max_line_width *= inv_offwidth;
-		} break;
-		}
-
-		// Write line
+		f32 xmult = font_size / aspect;
+		f32 ymult = font_size;
 
 		u32 vertex_count = 0u;
 		f32 line_height = ymult;
@@ -1260,7 +1160,7 @@ namespace sv {
 			u32 line_begin_index = vertex_count;
 
 			// TODO: add first char offset to xoff
-			const char* line_end = process_line(it, text_size - (it - text), max_line_width, font, xmult);
+			const char* line_end = process_text_line(it, text_size - (it - text), max_line_width / xmult, font);
 			SV_ASSERT(line_end != it);
 
 			if (vertex_count + (line_end - it) > TEXT_BATCH_COUNT) {
@@ -1269,14 +1169,19 @@ namespace sv {
 				vertex_count = 0u;
 			}
 
+			if (yoff + y > 1.f || yoff + line_height + y < -1.f) {
+				it = line_end;
+				continue;
+			}
+
 			// Fill batch
 			while (it != line_end) {
 
-				auto res = font.glyphs.find(*it);
+				Glyph* g_ = font.get(*it);
 
-				if (res != font.glyphs.end()) {
+				if (g_) {
 
-					Glyph& g = res->second;
+					Glyph& g = *g_;
 
 					f32 advance = g.advance * xmult;
 
@@ -1328,6 +1233,64 @@ namespace sv {
 		text_draw_call(offscreen, buffer, data, vertex_count, cmd);
 
 		return number_of_chars;
+	}
+
+	void draw_text_area(GPUImage* offscreen, const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, u32 line_offset, bool bottom_top, Font* pFont, Color color, CommandList cmd)
+	{
+		if (text == nullptr) return;
+		if (text_size == 0u) return;
+
+		// Select font
+		Font& font = pFont ? *pFont : font_opensans;
+
+		f32 transformed_max_width = max_line_width / (font_size / aspect);
+
+		// Select text to render
+		if (bottom_top) {
+			
+			// Count lines
+			u32 lines = 0u;
+
+			const char* it = text;
+			const char* end = text + text_size;
+
+			while (it != end) {
+
+				it = process_text_line(it, text_size - (it - text), transformed_max_width, font);
+				++lines;
+			}
+
+			u32 begin_line_index = lines - std::min(max_lines, lines);
+			begin_line_index -= std::min(begin_line_index, line_offset);
+
+			it = text;
+			lines = 0u;
+
+			while (it != end && lines != begin_line_index) {
+
+				it = process_text_line(it, text_size - (it - text), transformed_max_width, font);
+				++lines;
+			}
+
+			text_size = text_size - (it - text);
+			text = it;
+		}
+		else if (line_offset) {
+
+			const char* it = text;
+			const char* end = text + text_size;
+
+			foreach (i, line_offset) {
+
+				it = process_text_line(it, text_size - (it - text), max_line_width / font_size / aspect, font);
+				if (it == end) return;
+			}
+
+			text_size = text_size - (it - text);
+			text = it;
+		}
+
+		draw_text(offscreen, text, text_size, x, y, max_line_width, max_lines, font_size, aspect, alignment, &font, cmd);
 	}
 
 	XMMATRIX camera_view_projection_matrix(const v3_f32& position, const v4_f32 rotation, CameraComponent& camera)

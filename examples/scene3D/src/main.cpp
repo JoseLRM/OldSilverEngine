@@ -117,20 +117,6 @@ void update()
 	Transform t0 = ecs_entity_transform_get(engine.scene->ecs, 1u);
 	Transform t1 = ecs_entity_transform_get(engine.scene->ecs, 2u);
 	t1.setRotation(t0.getWorldRotation());
-
-	if (input.mouse_buttons[MouseButton_Left] == InputState_Released) {
-		Entity selected = select_mesh();
-
-		if (selected != SV_ENTITY_NULL) {
-
-			NameComponent* n = ecs_component_get<NameComponent>(engine.scene->ecs, selected);
-
-			if (n)
-				SV_LOG("Selected '%s'", n->name.c_str());
-			else
-				SV_LOG("Selected %u", selected);
-		}
-	}		
 }
 
 void render()

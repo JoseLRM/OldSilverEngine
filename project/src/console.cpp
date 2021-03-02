@@ -10,8 +10,17 @@ namespace sv {
 	static std::unordered_map<std::string, CommandFn> commands;
 	static std::string current_command;
 	static u32 cursor_pos = 0u;
+	static f32 text_offset = 0.f;
+	static u32 line_count = 0u;
+	static bool scroll_selected = false;
 	
 	static constexpr u32 CONSOLE_SIZE = 10000u;
+	static constexpr f32 CONSOLE_HEIGHT = 1.7f;
+	static constexpr u32 LINE_COUNT = 35u;
+	static constexpr f32 TEXT_SIZE = CONSOLE_HEIGHT / f32(LINE_COUNT);
+	static constexpr f32 COMMAND_TEXT_SIZE = 0.06f;
+	static constexpr f32 SCROLL_WIDTH = 0.03f;
+	static constexpr f32 SCROLL_HEIGHT = 0.12f;
 
 	struct ConsoleBuffer {
 		char* buff;
@@ -33,10 +42,16 @@ namespace sv {
 		return Result_Success;
 	}
 
-	static Result command_console_test(const char** args, u32 argc)
+	static Result command_test(const char** args, u32 argc)
 	{
+		if (argc == 0u)
 		foreach(i, 100) {
 			console_print("Hola que tal, esto es un test %u\n", i);
+		}
+
+		else
+		foreach(i, argc) {
+			console_notify("ARG", args[i]);
 		}
 
 		return Result_Success;
@@ -57,7 +72,7 @@ namespace sv {
 		// Register default commands
 		register_command("exit", command_exit);
 		register_command("close", command_close);
-		register_command("console_test", command_console_test);
+		register_command("test", command_test);
 		register_command("clear", command_clear);
 	}
 
@@ -103,7 +118,35 @@ namespace sv {
 			return Result_NotFound;
 		}
 
-		return it->second(0, 0);
+		std::vector<char*> args;
+
+		while (*command == ' ') ++command;
+
+		while (*command != '\0') {
+
+			name = command;
+
+			while (*command != '\0' && *command != ' ') {
+
+				++command;
+			}
+
+			size_t arg_size = command - name;
+			char*& arg = args.emplace_back();
+			arg = (char*)malloc(arg_size + 1u);
+			memcpy(arg, name, arg_size);
+			arg[arg_size] = '\0';
+
+			while (*command == ' ') ++command;
+		}
+
+		Result res = it->second((const char**)args.data(), u32(args.size()));
+
+		// Free
+		for (char* arg : args)
+			free(arg);
+
+		return res;
 	}
 
 	Result register_command(const char* name, CommandFn command_fn)
@@ -163,6 +206,8 @@ namespace sv {
 
 	void console_print(const char* str, ...)
 	{
+		text_offset = 0.f;
+
 		va_list args;
 		va_start(args, str);
 
@@ -178,6 +223,8 @@ namespace sv {
 
 	void console_notify(const char* title, const char* str, ...)
 	{
+		text_offset = 0.f;
+
 		va_list args;
 		va_start(args, str);
 
@@ -256,6 +303,26 @@ namespace sv {
 			cursor_pos = 0u;
 		}
 
+		text_offset = std::max(text_offset + input.mouse_wheel, 0.f);
+
+		if (!scroll_selected && line_count > LINE_COUNT && input.mouse_buttons[MouseButton_Left] == InputState_Pressed && input.mouse_position.x > 0.5f - SCROLL_WIDTH * 0.5f && input.mouse_position.y > 0.5f - CONSOLE_HEIGHT * 0.5f) {
+
+			scroll_selected = true;
+		}
+		else if (scroll_selected) {
+
+			if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed || input.mouse_buttons[MouseButton_Left] == InputState_None)
+				scroll_selected = false;
+			else {
+
+				f32 min = 0.5f - CONSOLE_HEIGHT * 0.5f + SCROLL_HEIGHT * 0.25f;
+				f32 max = 0.5f - SCROLL_HEIGHT * 0.25f;
+				f32 value = (input.mouse_position.y - min) / (max - min);
+
+				text_offset = std::max(0.f, value * f32(line_count - std::min(line_count, LINE_COUNT)));
+			}
+		}
+
 		input.text_commands.clear();
 		input.text.clear();
 	}
@@ -282,13 +349,29 @@ namespace sv {
 		f32 window_height = (f32)window_height_get(engine.window);
 		f32 aspect = window_width / window_height;
 
+		line_count = compute_text_lines(console_buffer.buff, console_buffer.pos, TEXT_SIZE, 2.f, aspect, &font_console);
+		text_offset = std::min(text_offset, std::max(f32(line_count) - f32(LINE_COUNT), 0.f));
+
 		begin_debug_batch(cmd);
 
-		constexpr f32 CONSOLE_HEIGHT = 1.7f;
-		constexpr f32 TEXT_HEIGHT = 0.06f;
+		f32 console_width = 2.f;
+		f32 console_x = 0.f;
 
-		draw_debug_quad({ 0.f, 1.f - CONSOLE_HEIGHT * 0.5f, 0.f }, { 2.f, CONSOLE_HEIGHT }, Color::Black(130u), cmd);
-		draw_debug_quad({ 0.f, 1.f - CONSOLE_HEIGHT - TEXT_HEIGHT * 0.5f, 0.f }, { 2.f, TEXT_HEIGHT }, Color::Black(), cmd);
+		if (line_count > LINE_COUNT) {
+
+			console_width -= SCROLL_WIDTH;
+			console_x -= SCROLL_WIDTH * 0.5f;
+
+			// Draw scroll
+			draw_debug_quad({ 1.f - SCROLL_WIDTH * 0.5f, 1.f - CONSOLE_HEIGHT * 0.5f, 0.f }, { SCROLL_WIDTH, CONSOLE_HEIGHT }, Color::Gray(20u), cmd);
+
+			f32 value = text_offset / f32(line_count - std::min(line_count, LINE_COUNT));
+
+			draw_debug_quad({ 1.f - SCROLL_WIDTH * 0.5f, (1.f - CONSOLE_HEIGHT + SCROLL_HEIGHT * 0.5f) + (CONSOLE_HEIGHT - SCROLL_HEIGHT) * value, 0.f }, { SCROLL_WIDTH, SCROLL_HEIGHT }, Color::White(), cmd);
+		}
+
+		draw_debug_quad({ console_x, 1.f - CONSOLE_HEIGHT * 0.5f, 0.f }, { console_width, CONSOLE_HEIGHT }, Color::Black(180u), cmd);
+		draw_debug_quad({ 0.f, 1.f - CONSOLE_HEIGHT - COMMAND_TEXT_SIZE * 0.5f, 0.f }, { 2.f, COMMAND_TEXT_SIZE }, Color::Black(), cmd);
 
 		end_debug_batch(offscreen, XMMatrixIdentity(), cmd);
 
@@ -300,20 +383,20 @@ namespace sv {
 
 		if (current_command.size()) {
 			
-			draw_text(offscreen, current_command.c_str(), current_command.size(), text_x, text_y, 2.f, 1u, TEXT_HEIGHT, aspect, TextSpace_Clip, TextAlignment_Left, &font_console, Color::White(), cmd);
+			draw_text(offscreen, current_command.c_str(), current_command.size(), text_x, text_y, 2.f, 1u, COMMAND_TEXT_SIZE, aspect, TextAlignment_Left, &font_console, Color::White(), cmd);
 		}
 
 		if (console_buffer.pos) {
-			//TODO: compute text lines
-			draw_text(offscreen, console_buffer.buff, console_buffer.pos, buffer_x, buffer_y, 2.f, u32_max, TEXT_HEIGHT, aspect, TextSpace_Clip, TextAlignment_Left, &font_console, Color::White(), cmd);
+
+			draw_text_area(offscreen, console_buffer.buff, console_buffer.pos, buffer_x, buffer_y, console_width, LINE_COUNT, TEXT_SIZE, aspect, TextAlignment_Left, u32(text_offset), true, &font_console, Color::White(), cmd);
 		}
 
 		begin_debug_batch(cmd);
 
-		f32 width = compute_text_width(current_command.c_str(), cursor_pos, TEXT_HEIGHT, aspect, &font_console);
-		f32 char_width = font_console.glyphs['i'].w * TEXT_HEIGHT;
+		f32 width = compute_text_width(current_command.c_str(), cursor_pos, COMMAND_TEXT_SIZE, aspect, &font_console);
+		f32 char_width = font_console.glyphs['i'].w * COMMAND_TEXT_SIZE;
 
-		draw_debug_quad({ text_x + width + char_width * 0.5f, text_y - TEXT_HEIGHT * 0.5f, 0.f }, { char_width, TEXT_HEIGHT }, Color::Red(100u), cmd);
+		draw_debug_quad({ text_x + width + char_width * 0.5f, text_y - COMMAND_TEXT_SIZE * 0.5f, 0.f }, { char_width, COMMAND_TEXT_SIZE }, Color::Red(100u), cmd);
 
 		end_debug_batch(offscreen, XMMatrixIdentity(), cmd);
 	}

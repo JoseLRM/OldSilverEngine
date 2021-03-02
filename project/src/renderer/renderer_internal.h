@@ -42,7 +42,7 @@ namespace sv {
 		v4_f32		rotation;
 	};
 
-	constexpr u32 TEXT_BATCH_COUNT = 100u; // Num of letters
+	constexpr u32 TEXT_BATCH_COUNT = 1000u; // Num of letters
 	constexpr u32 DEBUG_VERTEX_COUNT = 1000u;
 	constexpr u32 SPRITE_BATCH_COUNT = 1000u;
 

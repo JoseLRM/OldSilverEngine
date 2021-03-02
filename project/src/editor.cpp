@@ -118,7 +118,7 @@ namespace sv {
 
 			foreach(i, WINDOW_COUNT) {
 
-				if (!igui_is_open_window(g, WINDOWS[i]) &&  igui_button(g, 0x3248B + i, WINDOWS[i])) igui_open_window(g, WINDOWS[i]);
+				if (!igui_is_open_window(g, WINDOWS[i]) && igui_button(g, 0x3248B + i, WINDOWS[i])) igui_open_window(g, WINDOWS[i]);
 			}
 
 			igui_end_window(g);
@@ -152,29 +152,13 @@ namespace sv {
 	static void show_component_info(CompID comp_id, BaseComponent* comp)
 	{
 		IGUI* igui = editor.igui;
-		
-		switch (comp_id) {
 
-		case SpriteComponent::ID:
-			break;
+		if (comp_id == SpriteComponent::ID) {
 
-		case CameraComponent::ID:
-			break;
+		}
 
-		case LightComponent::ID:
-			break;
-
-		case MeshComponent::ID:
-			break;
-
-		case NameComponent::ID:
-			break;
-
-		default:
-			if (engine.app_callbacks.display_component) {
-				engine.app_callbacks.show_component(igui, comp_id, comp);
-			}
-			
+		else if (engine.app_callbacks.show_component) {
+			engine.app_callbacks.show_component(igui, comp_id, comp);
 		}
 	}
 
@@ -198,8 +182,8 @@ namespace sv {
 
 				foreach(i, component_count) {
 
-					auto[comp_id, comp] = ecs_component_get_by_index(ecs, editor.selected_entity, i);
-					
+					auto [comp_id, comp] = ecs_component_get_by_index(ecs, editor.selected_entity, i);
+
 					igui_text(g, 0x743B + i, ecs_component_name(comp_id));
 				}
 			}
@@ -211,53 +195,53 @@ namespace sv {
 	SV_INLINE static void select_entity()
 	{
 		v2_f32 mouse = input.mouse_position;
-		
+
 		ECS* ecs = engine.scene->ecs;
 		CameraComponent* camera = get_main_camera(engine.scene);
 
 		if (camera == nullptr) return;
-		
+
 		Transform camera_trans = ecs_entity_transform_get(ecs, camera->entity);
 		v3_f32 camera_position = camera_trans.getWorldPosition();
 		v4_f32 camera_rotation = camera_trans.getWorldRotation();
 
 		Ray ray = screen_to_world_ray(mouse, camera_position, camera_rotation, camera);
-		
+
 		XMVECTOR ray_origin = ray.origin.getDX(1.f);
 		XMVECTOR ray_direction = ray.direction.getDX(1.f);
-		
+
 		Entity selected = SV_ENTITY_NULL;
 		f32 distance = f32_max;
-		
+
 		EntityView<MeshComponent> meshes(ecs);
-		
+
 		for (MeshComponent& m : meshes) {
-			
+
 			Transform trans = ecs_entity_transform_get(ecs, m.entity);
-			
+
 			XMMATRIX itm = XMMatrixInverse(0, trans.getWorldMatrix());
-			
-			v3_f32 o = v3_f32(XMVector4Transform(ray_origin, itm));
-			v3_f32 d = v3_f32(XMVector4Transform(ray_direction, itm));
+
+			ray.origin = v3_f32(XMVector4Transform(ray_origin, itm));
+			ray.direction = v3_f32(XMVector4Transform(ray_direction, itm));
 			
 			Mesh& mesh = *m.mesh.get();
-			
+
 			u32 triangles = u32(mesh.indices.size()) / 3u;
-			
+
 			for (u32 i = 0u; i < triangles; ++i) {
-				
+
 				u32 i0 = mesh.indices[i * 3u + 0u];
 				u32 i1 = mesh.indices[i * 3u + 1u];
 				u32 i2 = mesh.indices[i * 3u + 2u];
-				
+
 				v3_f32 p0 = mesh.positions[i0];
 				v3_f32 p1 = mesh.positions[i1];
 				v3_f32 p2 = mesh.positions[i2];
-				
+
 				v3_f32 intersection;
-				
-				if (intersect_ray_vs_traingle(o, d, p0, p1, p2, intersection)) {
-					
+
+				if (intersect_ray_vs_traingle(ray, p0, p1, p2, intersection)) {
+
 					f32 dis = intersection.length();
 					if (dis < distance) {
 						distance = dis;
@@ -266,7 +250,7 @@ namespace sv {
 				}
 			}
 		}
-		
+
 		if (selected != SV_ENTITY_NULL) {
 
 			editor.selected_entity = selected;
@@ -303,15 +287,15 @@ namespace sv {
 			camera_controller3D(engine.scene->ecs, *get_main_camera(engine.scene), 0.3f);
 
 		igui_begin(g);
-		
+
 		if (!editor.camera_controller) {
-			
+
 			if (input.keys[Key_F1]) display_window_manager();
 			display_entity_inspector();
 			display_entity_hierarchy();
 
 			// Entity selection
-			if (input.mouse_button[MouseButton_Left] == InputState_Released)
+			if (input.mouse_buttons[MouseButton_Left] == InputState_Released)
 				select_entity();
 		}
 

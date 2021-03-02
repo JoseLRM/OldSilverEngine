@@ -45,6 +45,8 @@ namespace sv {
 
 		stbtt_fontinfo info;
 		stbtt_InitFont(&info, data.data(), 0);
+
+		font.glyphs = new Glyph[Font::CHAR_COUNT];
 		
 		// TODO: Resize
 		std::vector<TempGlyph> glyphs;
@@ -83,15 +85,11 @@ namespace sv {
 		add_glyph('(', info, height_scale, glyphs);
 		add_glyph(')', info, height_scale, glyphs);
 		add_glyph('?', info, height_scale, glyphs);
-		add_glyph('�', info, height_scale, glyphs);
 		add_glyph('!', info, height_scale, glyphs);
-		add_glyph('�', info, height_scale, glyphs);
 		add_glyph('#', info, height_scale, glyphs);
 		add_glyph('@', info, height_scale, glyphs);
 		add_glyph('<', info, height_scale, glyphs);
 		add_glyph('>', info, height_scale, glyphs);
-		add_glyph('�', info, height_scale, glyphs);
-		add_glyph('�', info, height_scale, glyphs);
 		add_glyph(':', info, height_scale, glyphs);
 		add_glyph(';', info, height_scale, glyphs);
 		add_glyph('[', info, height_scale, glyphs);
@@ -195,24 +193,28 @@ namespace sv {
 		}
 
 		// Free bitmaps and set data to the font
-		font.glyphs.reserve(glyphs.size());
-
 		for (const TempGlyph& g0 : glyphs) {
 			stbtt_FreeBitmap(g0.bitmap, 0);
 
-			Glyph& g = font.glyphs[g0.c];
-			g.advance = g0.advance / line_height;
-			g.left_side_bearing = g0.left_side_bearing / line_height;
-			g.xoff = g0.xoff / line_height;
-			g.w = g0.w / line_height;
-			g.h = g0.h / line_height;
+			Glyph* g_ = font.get(u32(g0.c));
 
-			// Top - bottom to bottom - top
-			g.yoff = (f32(-g0.yoff) - f32(g0.h)) / line_height;
-			g.texCoord.x = g0.texCoord.x;
-			g.texCoord.y = g0.texCoord.w;
-			g.texCoord.z = g0.texCoord.z;
-			g.texCoord.w = g0.texCoord.y;
+			if (g_) {
+			
+				Glyph& g = *g_;
+
+				g.advance = g0.advance / line_height;
+				g.left_side_bearing = g0.left_side_bearing / line_height;
+				g.xoff = g0.xoff / line_height;
+				g.w = g0.w / line_height;
+				g.h = g0.h / line_height;
+
+				// Top - bottom to bottom - top
+				g.yoff = (f32(-g0.yoff) - f32(g0.h)) / line_height;
+				g.texCoord.x = g0.texCoord.x;
+				g.texCoord.y = g0.texCoord.w;
+				g.texCoord.z = g0.texCoord.z;
+				g.texCoord.w = g0.texCoord.y;
+			}
 		}
 
 		GPUImageDesc desc;
@@ -234,7 +236,7 @@ namespace sv {
 
 	Result font_destroy(Font& font)
 	{
-		font.glyphs.clear();
+		delete[] font.glyphs;
 		return graphics_destroy(font.image);
 	}
 
@@ -249,16 +251,98 @@ namespace sv {
 
 		while (it != end) {
 
-			auto glyphit = font.glyphs.find(*it);
+			Glyph* glyphit = font.get(*it);
 
-			if (glyphit != font.glyphs.end()) {
-				width += glyphit->second.advance;
+			if (glyphit) {
+				width += glyphit->advance;
 			}
 
 			++it;
 		}
 
 		return width * font_size / aspect;
+	}
+
+	f32 compute_text_height(const char* text, u32 count, f32 font_size, f32 max_line_width, f32 aspect, Font* pFont)
+	{
+		u32 lines = compute_text_lines(text, count, font_size, max_line_width, aspect, pFont);
+		return f32(lines) * font_size;
+	}
+
+	u32 compute_text_lines(const char* text, u32 count, f32 font_size, f32 max_line_width, f32 aspect, Font* pFont)
+	{
+		u32 lines = 0u;
+
+		const char* it = text;
+		const char* end = text + size_t(count);
+
+		while (it != end) {
+			it = process_text_line(it, count - (it - text), max_line_width / (font_size / aspect), *pFont);
+			++lines;
+		}
+
+		return lines;
+	}
+
+	const char* process_text_line(const char* it, u32 count, f32 max_line_width, Font& font)
+	{
+		// Create line
+		f32 line_width = 0.f;
+
+		// Add begin offset
+		if (*it != ' ') {
+			auto g = font.get(*it);
+
+			if (g) {
+
+				f32 offset = abs(std::min(g->xoff, 0.f));
+				line_width += offset;
+				//xoff += offset;
+			}
+		}
+
+		const char* end = it + size_t(count);
+		const char* begin_line = it;
+		const char* begin_word = it;
+
+		while (it != end) {
+
+			if (*it == '\n') {
+				++it;
+				break;
+			}
+
+			// Add line width
+			auto g = font.get(*it);
+
+			if (g) {
+
+				f32 real_line_width = line_width + std::max(g->w, g->advance);
+
+				if (real_line_width > max_line_width) {
+
+					if (begin_word != begin_line && (char_is_letter(*it) || char_is_number(*it))) {
+
+						it = begin_word;
+					}
+					break;
+				}
+
+				line_width += g->advance;
+			}
+
+			// Create lines
+			if (*it == ' ') {
+				begin_word = nullptr;
+			}
+			else if (begin_word == nullptr && *it != ' ') {
+				begin_word = it;
+			}
+
+			++it;
+		}
+
+		return it;
 	}
 
 }
