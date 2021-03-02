@@ -2,6 +2,7 @@
 
 #include "window/window_internal.h"
 
+#define VMA_IMPLEMENTATION
 #define SV_VULKAN_IMPLEMENTATION
 #include "graphics_vulkan.h"
 
@@ -66,6 +67,225 @@ namespace sv {
 	{
 		auto fn = reinterpret_cast<PFN_vkCmdEndDebugUtilsLabelEXT>(vkGetInstanceProcAddr(instance, "vkCmdEndDebugUtilsLabelEXT"));
 		if (fn) fn(cmd);
+	}
+
+	//////////////////////////////////////////// MEMORY //////////////////////////////////////////////////
+
+	SV_INLINE static VkResult create_stagingbuffer(StagingBuffer& buffer, VkDeviceSize size)
+	{
+		VkBufferCreateInfo buffer_info{};
+		buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		buffer_info.size = size;
+		buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+
+		buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		buffer_info.queueFamilyIndexCount = 0u;
+		buffer_info.pQueueFamilyIndices = nullptr;
+
+		VmaAllocationCreateInfo alloc_info{};
+		alloc_info.usage = VMA_MEMORY_USAGE_CPU_ONLY;
+		alloc_info.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+
+		vkExt(vmaCreateBuffer(g_API->allocator, &buffer_info, &alloc_info, &buffer.buffer, &buffer.allocation, nullptr));
+
+		buffer.mapData = buffer.allocation->GetMappedData();
+
+		return VK_SUCCESS;
+	}
+
+	SV_INLINE static VkResult destroy_stagingbuffer(StagingBuffer& buffer)
+	{
+		vmaDestroyBuffer(g_API->allocator, buffer.buffer, buffer.allocation);
+		return VK_SUCCESS;
+	}
+
+	constexpr u32 ALLOCATOR_BLOCK_SIZE = 500000u;
+
+	SV_INLINE static VulkanGPUAllocator::Buffer create_allocator_buffer(u32 size)
+	{
+		VulkanGPUAllocator::Buffer buffer;
+
+		buffer.offset = 0u;
+		create_stagingbuffer(buffer.staging_buffer, size);
+		// TODO: handle error
+
+		return buffer;
+	}
+
+	SV_INLINE static DynamicAllocation allocate_gpu(u32 size, CommandList cmd)
+	{
+		VulkanGPUAllocator& allocator = g_API->GetFrame().allocator[cmd];
+		DynamicAllocation a;
+
+		if (size >= ALLOCATOR_BLOCK_SIZE) {
+
+			VulkanGPUAllocator::Buffer& buffer = allocator.buffers.emplace_back();
+			buffer = create_allocator_buffer(size);
+
+			a.buffer = buffer.staging_buffer.buffer;
+			a.data = (u8*)buffer.staging_buffer.mapData;
+			a.offset = 0u;
+
+			buffer.offset = size;
+			buffer.size = size;
+		}
+		else {
+
+			// Using active buffers
+
+			for (VulkanGPUAllocator::Buffer& b : allocator.buffers) {
+
+				if (b.size - b.offset >= size) {
+
+					a.buffer = b.staging_buffer.buffer;
+					a.data = (u8*)b.staging_buffer.mapData + b.offset;
+					a.offset = b.offset;
+
+					b.offset += size;
+					break;
+				}
+			}
+
+			if (!a.isValid()) {
+
+				// Create new buffer
+
+				VulkanGPUAllocator::Buffer& buffer = allocator.buffers.emplace_back();
+				buffer = create_allocator_buffer(ALLOCATOR_BLOCK_SIZE);
+
+				a.buffer = buffer.staging_buffer.buffer;
+				a.data = (u8*)buffer.staging_buffer.mapData;
+				a.offset = 0u;
+				
+				buffer.offset = size;
+				buffer.size = ALLOCATOR_BLOCK_SIZE;
+			}
+		}
+
+		return a;
+	}
+
+	//////////////////////////////////////////// DESCRIPTORS ///////////////////////////////////////////////
+
+	static constexpr u32 graphics_vulkan_descriptors_indextype(VkDescriptorType type)
+	{
+		switch (type)
+		{
+		case VK_DESCRIPTOR_TYPE_SAMPLER:
+			return 0u;
+		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+			return 1u;
+		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+			return 2u;
+		default:
+			return 0u;
+		}
+	}
+
+	VkDescriptorSet graphics_vulkan_descriptors_allocate_sets(DescriptorPool& descPool, const ShaderDescriptorSetLayout& layout)
+	{
+		// Try to use allocated set
+		auto it = descPool.sets.find(layout.setLayout);
+		if (it != descPool.sets.end()) {
+			VulkanDescriptorSet& sets = it->second;
+			if (sets.used < sets.sets.size()) {
+				return sets.sets[sets.used++];
+			}
+		}
+
+		if (it == descPool.sets.end()) descPool.sets[layout.setLayout] = {};
+		VulkanDescriptorSet& sets = descPool.sets[layout.setLayout];
+		VulkanDescriptorPool* pool = nullptr;
+		Graphics_vk& gfx = graphics_vulkan_device_get();
+
+		u32 samplerIndex = graphics_vulkan_descriptors_indextype(VK_DESCRIPTOR_TYPE_SAMPLER);
+		u32 imageIndex = graphics_vulkan_descriptors_indextype(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+		u32 uniformIndex = graphics_vulkan_descriptors_indextype(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+
+		// Try to find existing pool
+		if (!descPool.pools.empty()) {
+			for (auto it = descPool.pools.begin(); it != descPool.pools.end(); ++it) {
+				if (it->sets + VULKAN_DESCRIPTOR_ALLOC_COUNT >= VULKAN_MAX_DESCRIPTOR_SETS &&
+					it->count[samplerIndex] >= layout.count[samplerIndex] * VULKAN_DESCRIPTOR_ALLOC_COUNT &&
+					it->count[imageIndex] >= layout.count[imageIndex] * VULKAN_DESCRIPTOR_ALLOC_COUNT &&
+					it->count[uniformIndex] >= layout.count[uniformIndex] * VULKAN_DESCRIPTOR_ALLOC_COUNT) {
+					pool = it._Ptr;
+					break;
+				}
+			}
+		}
+
+		// Create new pool if necessary
+		if (pool == nullptr) {
+
+			pool = &descPool.pools.emplace_back();
+
+			VkDescriptorPoolSize sizes[3];
+
+			sizes[0].descriptorCount = VULKAN_MAX_DESCRIPTOR_TYPES * VULKAN_MAX_DESCRIPTOR_SETS;
+			sizes[0].type = VK_DESCRIPTOR_TYPE_SAMPLER;
+
+			sizes[1].descriptorCount = VULKAN_MAX_DESCRIPTOR_TYPES * VULKAN_MAX_DESCRIPTOR_SETS;
+			sizes[1].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+
+			sizes[2].descriptorCount = VULKAN_MAX_DESCRIPTOR_TYPES * VULKAN_MAX_DESCRIPTOR_SETS;
+			sizes[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+
+			VkDescriptorPoolCreateInfo create_info{};
+			create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+			create_info.maxSets = VULKAN_MAX_DESCRIPTOR_SETS;
+			create_info.poolSizeCount = 3u;
+			create_info.pPoolSizes = sizes;
+
+			vkAssert(vkCreateDescriptorPool(gfx.device, &create_info, nullptr, &pool->pool));
+
+			pool->sets = VULKAN_MAX_DESCRIPTOR_SETS;
+			for (u32 i = 0; i < 3; ++i)
+				pool->count[i] = VULKAN_MAX_DESCRIPTOR_TYPES;
+		}
+
+		// Allocate sets
+		{
+			pool->count[samplerIndex] -= layout.count[samplerIndex] * VULKAN_DESCRIPTOR_ALLOC_COUNT;
+			pool->count[imageIndex] -= layout.count[imageIndex] * VULKAN_DESCRIPTOR_ALLOC_COUNT;
+			pool->count[uniformIndex] -= layout.count[uniformIndex] * VULKAN_DESCRIPTOR_ALLOC_COUNT;
+
+			size_t index = sets.sets.size();
+			sets.sets.resize(index + VULKAN_DESCRIPTOR_ALLOC_COUNT);
+
+			VkDescriptorSetLayout setLayouts[VULKAN_DESCRIPTOR_ALLOC_COUNT];
+			for (u32 i = 0; i < VULKAN_DESCRIPTOR_ALLOC_COUNT; ++i)
+				setLayouts[i] = layout.setLayout;
+
+			VkDescriptorSetAllocateInfo alloc_info{};
+			alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+			alloc_info.descriptorPool = pool->pool;
+			alloc_info.descriptorSetCount = VULKAN_DESCRIPTOR_ALLOC_COUNT;
+			alloc_info.pSetLayouts = setLayouts;
+
+			vkAssert(vkAllocateDescriptorSets(gfx.device, &alloc_info, sets.sets.data() + index));
+
+			return sets.sets[sets.used++];
+		}
+	}
+
+	void graphics_vulkan_descriptors_reset(DescriptorPool& descPool)
+	{
+		for (auto& set : descPool.sets) {
+			set.second.used = 0u;
+		}
+	}
+
+	void graphics_vulkan_descriptors_clear(DescriptorPool& descPool)
+	{
+		Graphics_vk& gfx = graphics_vulkan_device_get();
+
+		for (auto it = descPool.pools.begin(); it != descPool.pools.end(); ++it) {
+			vkDestroyDescriptorPool(gfx.device, it->pool, nullptr);
+		}
+
+		descPool.sets.clear();
+		descPool.pools.clear();
 	}
 	
 	//////////////////////////////////////////// DEVICE /////////////////////////////////////////////////
@@ -475,12 +695,24 @@ namespace sv {
 			vkDestroyCommandPool(g_API->device, frame.transientCommandPool, nullptr);
 			vkDestroyFence(g_API->device, frame.fence, nullptr);
 
-			for (u32 i = 0; i < GraphicsLimit_CommandList; ++i) {
+			foreach (i, GraphicsLimit_CommandList) {
 				graphics_vulkan_descriptors_clear(frame.descPool[i]);
+			}
+
+			// Destroy dynamic allocators
+			foreach(i, GraphicsLimit_CommandList) {
+				
+				VulkanGPUAllocator& allocator = frame.allocator[i];
+
+				for (VulkanGPUAllocator::Buffer& buffer : allocator.buffers) {
+					destroy_stagingbuffer(buffer.staging_buffer);
+				}
+
+				allocator.buffers.clear();
 			}
 		}
 
-		// Destroy Allocator
+		// Destroy VMA Allocator
 		vmaDestroyAllocator(g_API->allocator);
 
 		// Destroy device and vulkan instance
@@ -828,9 +1060,25 @@ namespace sv {
 	{
 		Time now = timer_now();
 
+		Frame& frame = g_API->frames[g_API->currentFrame];
+
 		// Reset Descriptors
 		for (u32 i = 0; i < GraphicsLimit_CommandList; ++i) {
-			graphics_vulkan_descriptors_reset(g_API->frames[g_API->currentFrame].descPool[i]);
+			graphics_vulkan_descriptors_reset(frame.descPool[i]);
+		}
+
+		// Reset dynamic allocator
+		{
+			// TODO: free unused memory
+
+			foreach(i, GraphicsLimit_CommandList) {
+			
+				VulkanGPUAllocator& allocator = frame.allocator[i];
+
+				for (VulkanGPUAllocator::Buffer& buffer : allocator.buffers) {
+					buffer.offset = 0u;
+				}
+			}
 		}
 
 		// Destroy unused objects
@@ -853,9 +1101,9 @@ namespace sv {
 			g_API->lastTime = now;
 		}
 
-		vkAssert(vkWaitForFences(g_API->device, 1, &g_API->frames[g_API->currentFrame].fence, VK_TRUE, UINT64_MAX));
+		vkAssert(vkWaitForFences(g_API->device, 1, &frame.fence, VK_TRUE, UINT64_MAX));
 
-		vkAssert(vkResetCommandPool(g_API->device, g_API->frames[g_API->currentFrame].commandPool, 0u));
+		vkAssert(vkResetCommandPool(g_API->device, frame.commandPool, 0u));
 	}
 
 	void graphics_vulkan_frame_end()
@@ -1059,16 +1307,17 @@ namespace sv {
 		
 		if (buffer.info.bufferType == GPUBufferType_Constant && buffer.info.usage == ResourceUsage_Dynamic) {
 
-			void* mapData;
-			VkBuffer mapBuffer;
-			u32 mapOffset;
-			buffer.memory.GetMappingData(size, mapBuffer, &mapData, mapOffset);
-			memcpy(mapData, pData, u64(size));
-
-			void* dst;
-			vmaMapMemory(g_API->allocator, buffer.allocation, (void**)& dst);
-			memcpy((u8*)dst + u64(offset), mapData, u64(size));
-			vmaUnmapMemory(g_API->allocator, buffer.allocation);
+			SV_LOG_ERROR("TODO-> Update buffer in renderpass");
+			//void* mapData;
+			//VkBuffer mapBuffer;
+			//u32 mapOffset;
+			//buffer.memory.GetMappingData(size, mapBuffer, &mapData, mapOffset);
+			//memcpy(mapData, pData, u64(size));
+			//
+			//void* dst;
+			//vmaMapMemory(g_API->allocator, buffer.allocation, (void**)& dst);
+			//memcpy((u8*)dst + u64(offset), mapData, u64(size));
+			//vmaUnmapMemory(g_API->allocator, buffer.allocation);
 		}
 		else {
 
@@ -1105,12 +1354,10 @@ namespace sv {
 			vkCmdPipelineBarrier(cmd, stages, VK_PIPELINE_STAGE_TRANSFER_BIT, 0u, 0u, nullptr, 1u, &bufferBarrier, 0u, nullptr);
 
 			// copy
-			void* mapData;
-			VkBuffer mapBuffer;
-			u32 mapOffset;
-			buffer.memory.GetMappingData(size, mapBuffer, &mapData, mapOffset);
-			memcpy(mapData, pData, u64(size));
-			graphics_vulkan_buffer_copy(cmd, mapBuffer, buffer.buffer, VkDeviceSize(mapOffset), VkDeviceSize(offset), VkDeviceSize(size));
+			DynamicAllocation allocation = allocate_gpu(size, cmd_);
+			
+			memcpy(allocation.data, pData, u64(size));
+			graphics_vulkan_buffer_copy(cmd, allocation.buffer, buffer.buffer, VkDeviceSize(allocation.offset), VkDeviceSize(offset), VkDeviceSize(size));
 
 			// Memory Barrier
 
@@ -1980,7 +2227,6 @@ namespace sv {
 			alloc_info.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
 			vkCheck(vmaCreateBuffer(g_API->allocator, &buffer_info, &alloc_info, &buffer.buffer, &buffer.allocation, nullptr));
-			buffer.memory.Create(desc.size);
 		}
 
 		// Set data
@@ -1989,12 +2235,10 @@ namespace sv {
 			VkCommandBuffer cmd;
 			vkCheck(graphics_vulkan_singletimecmb_begin(&cmd));
 
-			VkBuffer stagingBuffer;
-			VmaAllocation stagingAllocation;
-			void* mapData;
+			StagingBuffer staging_buffer;
 
-			vkCheck(graphics_vulkan_memory_create_stagingbuffer(stagingBuffer, stagingAllocation, &mapData, desc.size));
-			memcpy(mapData, desc.pData, desc.size);
+			vkCheck(create_stagingbuffer(staging_buffer, desc.size));
+			memcpy(staging_buffer.mapData, desc.pData, desc.size);
 
 			VkBufferMemoryBarrier bufferBarrier{};
 
@@ -2018,7 +2262,7 @@ namespace sv {
 				0u,
 				nullptr);
 
-			graphics_vulkan_buffer_copy(cmd, stagingBuffer, buffer.buffer, 0u, 0u, desc.size);
+			graphics_vulkan_buffer_copy(cmd, staging_buffer.buffer, buffer.buffer, 0u, 0u, desc.size);
 
 			bufferBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 			bufferBarrier.dstAccessMask = 0u;
@@ -2049,7 +2293,7 @@ namespace sv {
 
 			vkCheck(graphics_vulkan_singletimecmb_end(cmd));
 
-			vmaDestroyBuffer(g_API->allocator, stagingBuffer, stagingAllocation);
+			vkCheck(destroy_stagingbuffer(staging_buffer));
 		}
 
 		// Desc
@@ -2149,14 +2393,12 @@ namespace sv {
 				1u,
 				&memBarrier);
 
-			VkBuffer stagingBuffer;
-			VmaAllocation stagingAllocation;
+			StagingBuffer staging_buffer;
 
 			// Create staging buffer and copy desc.pData
 			if (desc.type & GPUImageType_CubeMap) {
 
-				void* mapData;
-				graphics_vulkan_memory_create_stagingbuffer(stagingBuffer, stagingAllocation, &mapData, desc.size * 6u);
+				create_stagingbuffer(staging_buffer, desc.size * 6u);
 
 				u8** images = (u8 * *)desc.pData;
 
@@ -2169,7 +2411,7 @@ namespace sv {
 					else if (k == 4u) k = 0u;
 					else if (k == 5u) k = 1u;
 
-					memcpy((u8*)mapData + desc.size * k, images[i], desc.size);
+					memcpy((u8*)staging_buffer.mapData + desc.size * k, images[i], desc.size);
 				}
 
 				foreach(i, 6u) {
@@ -2186,14 +2428,13 @@ namespace sv {
 					copy_info.imageOffset = { 0, 0, 0 };
 					copy_info.imageExtent = { desc.width, desc.height, 1u };
 
-					vkCmdCopyBufferToImage(cmd, stagingBuffer, image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1u, &copy_info);
+					vkCmdCopyBufferToImage(cmd, staging_buffer.buffer, image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1u, &copy_info);
 				}
 			}
 			else {
-				void* mapData;
 
-				graphics_vulkan_memory_create_stagingbuffer(stagingBuffer, stagingAllocation, &mapData, desc.size);
-				memcpy(mapData, desc.pData, desc.size);
+				create_stagingbuffer(staging_buffer, desc.size);
+				memcpy(staging_buffer.mapData, desc.pData, desc.size);
 
 				// Copy buffer to image
 				VkBufferImageCopy copy_info{};
@@ -2207,7 +2448,7 @@ namespace sv {
 				copy_info.imageOffset = { 0, 0, 0 };
 				copy_info.imageExtent = { desc.width, desc.height, 1u };
 
-				vkCmdCopyBufferToImage(cmd, stagingBuffer, image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1u, &copy_info);
+				vkCmdCopyBufferToImage(cmd, staging_buffer.buffer, image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1u, &copy_info);
 			}
 			
 			// Set the layout to desc.layout
@@ -2229,8 +2470,7 @@ namespace sv {
 
 			vkCheck(graphics_vulkan_singletimecmb_end(cmd));
 
-			// Destroy staging buffer
-			vmaDestroyBuffer(g_API->allocator, stagingBuffer, stagingAllocation);
+			vkCheck(destroy_stagingbuffer(staging_buffer));
 		}
 		else {
 
@@ -2604,7 +2844,6 @@ namespace sv {
 	Result graphics_vulkan_buffer_destroy(Buffer_vk& buffer)
 	{
 		vmaDestroyBuffer(g_API->allocator, buffer.buffer, buffer.allocation);
-		buffer.memory.Clear();
 		return Result_Success;
 	}
 

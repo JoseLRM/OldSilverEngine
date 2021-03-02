@@ -56,6 +56,7 @@ TODO list:
 */
 
 #include "SilverEngine/platform/impl.h"
+#include "SilverEngine/utils/allocators/FrameList.h"
 
 #ifdef SV_PLATFORM_WIN
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -96,34 +97,30 @@ namespace sv {
 
 	// MEMORY
 
-	class MemoryManager {
-
-		struct StagingBuffer {
-			VkBuffer buffer = VK_NULL_HANDLE;
-			VmaAllocation allocation = VK_NULL_HANDLE;
-			void* mapData = nullptr;
-			u32 frame = 0u;
-		};
-
-		std::vector<StagingBuffer> m_StaggingBuffers;
-		std::vector<StagingBuffer> m_ActiveStaggingBuffers;
-		StagingBuffer m_CurrentStagingBuffer;
-		u32 m_CurrentStagingBufferOffset = 0u;
-		u64 m_LastFrame = UINT64_MAX;
-		size_t m_BufferSize;
-
-	public:
-		void Create(size_t size);
-		void GetMappingData(u32 size, VkBuffer& buffer, void** data, u32& offset);
-		void Clear();
-
-	private:
-		void Reset(u32 frame);
-		StagingBuffer CreateStagingBuffer(u32 currentFrame);
-
+	struct StagingBuffer {
+		VkBuffer buffer = VK_NULL_HANDLE;
+		VmaAllocation allocation = VK_NULL_HANDLE;
+		void* mapData = nullptr;
 	};
 
-	VkResult graphics_vulkan_memory_create_stagingbuffer(VkBuffer& buffer, VmaAllocation& allocation, void** mapData, VkDeviceSize size);
+	struct VulkanGPUAllocator {
+		
+		struct Buffer {
+			StagingBuffer staging_buffer;
+			u32 offset = 0u;
+			u32 size = 0u;
+		};
+
+		FrameList<Buffer> buffers;
+	};
+
+	struct DynamicAllocation {
+		VkBuffer buffer = VK_NULL_HANDLE;
+		void* data = nullptr;
+		u32 offset = 0u;
+
+		SV_INLINE bool isValid() const noexcept { return buffer != VK_NULL_HANDLE && data != nullptr; }
+	};
 
 	// DESCRIPTORS
 
@@ -152,10 +149,6 @@ namespace sv {
 		std::vector<ShaderResourceBinding> bindings;
 		u32 count[3];
 	};
-
-	VkDescriptorSet graphics_vulkan_descriptors_allocate_sets(DescriptorPool& descPool, const ShaderDescriptorSetLayout& layout);
-	void			graphics_vulkan_descriptors_reset(DescriptorPool& descPool);
-	void			graphics_vulkan_descriptors_clear(DescriptorPool& descPool);
 
 	// PIPELINE
 
@@ -199,7 +192,6 @@ namespace sv {
 		VkBuffer				buffer;
 		VmaAllocation			allocation;
 		VkDescriptorBufferInfo	buffer_info;
-		MemoryManager			memory;
 	};
 	// Image
 	struct Image_vk : public GPUImage_internal {
@@ -256,6 +248,7 @@ namespace sv {
 		VkCommandPool		transientCommandPool;
 		VkFence				fence;
 		DescriptorPool		descPool[GraphicsLimit_CommandList];
+		VulkanGPUAllocator	allocator[GraphicsLimit_CommandList];
 	};
 
 	struct SwapChain_vk : public SwapChain_internal {
