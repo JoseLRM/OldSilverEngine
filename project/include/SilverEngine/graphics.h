@@ -583,9 +583,9 @@ namespace sv {
 	Result graphics_depthstencilstate_create(const DepthStencilStateDesc* desc, DepthStencilState** depthStencilState);
 	Result graphics_rasterizerstate_create(const RasterizerStateDesc* desc, RasterizerState** rasterizerState);
 
-	Result graphics_destroy(Primitive* primitive);
+	void graphics_destroy(Primitive* primitive);
 	
-	Result graphics_destroy_struct(void* data, size_t size);
+	void graphics_destroy_struct(void* data, size_t size);
 
 	// CommandList functions
 

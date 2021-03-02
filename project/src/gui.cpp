@@ -15,6 +15,7 @@ namespace sv {
 	  - Align gui widgets
 	  - Popups
 	  - Combobox
+	  - Not use depthstencil
 	*/
 
 	struct GUI_internal {
@@ -913,7 +914,7 @@ namespace sv {
 		*size = it - str;
 	}
 
-	static void draw_widget(GUI_internal& gui, GPUImage* offscreen, GuiWidget& widget, const v4_f32& parent_bounds, CommandList cmd)
+	static void draw_widget(GUI_internal& gui, GPUImage* offscreen, GPUImage* depthstencil, GuiWidget& widget, const v4_f32& parent_bounds, CommandList cmd)
 	{
 		// TODO: Should use the alpha and inherited_alpha value
 		if (!widget.enabled) return;
@@ -956,10 +957,10 @@ namespace sv {
 				draw_debug_quad({ scroll_pos.x, button_y_pos, 0.f }, { scroll_width, button_height }, Color::Blue(), cmd);
 			}
 
-			end_debug_batch(offscreen, XMMatrixIdentity(), cmd);
+			end_debug_batch(offscreen, depthstencil, XMMatrixIdentity(), cmd);
 
 			for (GuiWidget* son : container.sons) {
-				draw_widget(gui, offscreen, *son, bounds, cmd);
+				draw_widget(gui, offscreen, depthstencil, *son, bounds, cmd);
 			}
 		}
 		break;
@@ -976,7 +977,7 @@ namespace sv {
 			draw_debug_quad(pos.getVec3(), size, widget.color, cmd);
 			draw_debug_quad({ subpos, pos.y, 0.f }, { size.x * 0.05f, size.y * 1.1f }, slider.button_color, cmd);
 
-			end_debug_batch(offscreen, XMMatrixIdentity(), cmd);
+			end_debug_batch(offscreen, depthstencil, XMMatrixIdentity(), cmd);
 		}
 		break;
 
@@ -992,7 +993,7 @@ namespace sv {
 			else color = button.color;
 
 			draw_debug_quad(pos.getVec3(), size, color, cmd);
-			end_debug_batch(offscreen, XMMatrixIdentity(), cmd);
+			end_debug_batch(offscreen, depthstencil, XMMatrixIdentity(), cmd);
 
 			if (button.text.size()) {
 
@@ -1011,7 +1012,7 @@ namespace sv {
 
 			draw_debug_quad(pos.getVec3(), size, drag.color, cmd);
 
-			end_debug_batch(offscreen, XMMatrixIdentity(), cmd);
+			end_debug_batch(offscreen, depthstencil, XMMatrixIdentity(), cmd);
 
 			char strbuff[MAX_FLOAT_CHARS + 1u];
 			u32 strsize;
@@ -1029,7 +1030,7 @@ namespace sv {
 
 			begin_debug_batch(cmd);
 			draw_debug_quad(pos.getVec3(), size, widget.color, cmd);
-			end_debug_batch(offscreen, XMMatrixIdentity(), cmd);
+			end_debug_batch(offscreen, depthstencil, XMMatrixIdentity(), cmd);
 
 			if (field.text.size()) {
 
@@ -1046,7 +1047,7 @@ namespace sv {
 
 					begin_debug_batch(cmd);
 					draw_debug_line({ line_x, text_y, 0.f }, { line_x, text_y - size.y, 0.f }, Color::White(), cmd);
-					end_debug_batch(offscreen, XMMatrixIdentity(), cmd);
+					end_debug_batch(offscreen, depthstencil, XMMatrixIdentity(), cmd);
 				}
 			}
 		}
@@ -1063,7 +1064,7 @@ namespace sv {
 				draw_debug_quad(pos.getVec3(), size * 0.7f, cbox.color_check, cmd);
 			}
 
-			end_debug_batch(offscreen, XMMatrixIdentity(), cmd);
+			end_debug_batch(offscreen, depthstencil, XMMatrixIdentity(), cmd);
 		}
 		break;
 
@@ -1073,7 +1074,7 @@ namespace sv {
 
 			begin_debug_batch(cmd);
 			draw_debug_quad(pos.getVec3(), size, widget.color, cmd);
-			end_debug_batch(offscreen, XMMatrixIdentity(), cmd);
+			end_debug_batch(offscreen, depthstencil, XMMatrixIdentity(), cmd);
 
 			if (label.text.size()) {
 
@@ -1090,7 +1091,7 @@ namespace sv {
 		default:
 			begin_debug_batch(cmd);
 			draw_debug_quad(pos.getVec3(), size, widget.color, cmd);
-			end_debug_batch(offscreen, XMMatrixIdentity(), cmd);
+			end_debug_batch(offscreen, depthstencil, XMMatrixIdentity(), cmd);
 			break;
 		}
 	}
@@ -1106,7 +1107,8 @@ namespace sv {
 		graphics_blendstate_unbind(cmd);
 		graphics_rasterizerstate_unbind(cmd);
 
-		
+		// TEMP
+		GPUImage* depthstencil = engine.scene->depthstencil;
 
 		// Draw windows
 		for (auto& pool : gui.windows) {
@@ -1147,7 +1149,7 @@ namespace sv {
 					draw_debug_quad(cb_pos.getVec3(), cb_size, Color::Red(), cmd);
 				}
 
-				end_debug_batch(offscreen, XMMatrixIdentity(), cmd);
+				end_debug_batch(offscreen, depthstencil, XMMatrixIdentity(), cmd);
 
 				if (window.title.size())
 					draw_text(offscreen, window.title.c_str(), window.title.size(), dec_pos.x - dec_size.x * 0.5f + 0.03f, dec_pos.y + dec_size.y * 0.5f, dec_size.x, 1u, dec_size.y * 0.5f, gui.resolution.x / gui.resolution.y, TextAlignment_Left, 0, cmd);
@@ -1157,7 +1159,7 @@ namespace sv {
 		// Draw widgets
 
 		for (GuiWidget* root : gui.root) {
-			draw_widget(gui, offscreen, *root, { 0.5f, 0.5f, 1.f, 1.f }, cmd);
+			draw_widget(gui, offscreen, depthstencil, *root, { 0.5f, 0.5f, 1.f, 1.f }, cmd);
 		}
 	}
 

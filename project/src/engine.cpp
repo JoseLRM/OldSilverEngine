@@ -68,7 +68,7 @@ namespace sv {
 	static Result destroy_image_asset(void* asset)
 	{
 		GPUImage*& image = *reinterpret_cast<GPUImage**>(asset);
-		svCheck(graphics_destroy(image));
+		graphics_destroy(image);
 		image = nullptr;
 		return Result_Success;
 	}

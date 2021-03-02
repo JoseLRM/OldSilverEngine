@@ -16,7 +16,7 @@ namespace sv {
 		v3_f32 p0, p1;
 		Color color;
 		
-		DebugLine(const v3_f32& p0, const v3_f32& p1, Color color) : point0(p0), point1(p1), color(color) {}
+		DebugLine(const v3_f32& p0, const v3_f32& p1, Color color) : p0(p0), p1(p1), color(color) {}
 	};
 
 	struct DebugRendererBatch {
@@ -38,35 +38,130 @@ namespace sv {
 		batch.lines.reset();
 	}
 
-	constexpr u32 
+	constexpr u32 QUAD_COUNT = 100u;
+	constexpr u32 LINE_COUNT = 100u;
 	
-	void end_debug_batch(GPUImage* offscreen, GPUImage* depthstencil, const XMMATRIX& viewProjectionMatrix, CommandList cmd)
+	void end_debug_batch(GPUImage* offscreen, GPUImage* depthstencil, const XMMATRIX& view_projection_matrix, CommandList cmd)
 	{
 		SV_PARSE_BATCH();
+
+		GPUImage* att[2u];
+		att[0] = offscreen;
+		att[1] = depthstencil;
 		
+		graphics_blendstate_bind(gfx.bs_transparent, cmd);
+			
 		// DRAW QUADS
 		if (batch.quads.size()) {
 
+			GPUBuffer* buffer = get_batch_buffer(QUAD_COUNT * sizeof(DebugVertex_Solid) * 6u, cmd);
+
+			graphics_inputlayoutstate_bind(gfx.ils_debug_solid_batch, cmd);
+			graphics_shader_bind(gfx.vs_debug_solid_batch, cmd);
+			graphics_shader_bind(gfx.ps_debug_solid_batch, cmd);
+			graphics_topology_set(GraphicsTopology_Triangles, cmd);
+			graphics_vertexbuffer_bind(buffer, 0u, 0u, cmd);
+
+			DebugVertex_Solid* data = (DebugVertex_Solid*)batch_data[cmd];
+			DebugVertex_Solid* it = data;
+			DebugVertex_Solid* end = data + QUAD_COUNT * 6u;
+
+			XMVECTOR p0 = XMVectorSet(-0.5f, 0.5f, 0.f, 1.f);
+			XMVECTOR p1 = XMVectorSet(0.5f, 0.5f, 0.f, 1.f);
+			XMVECTOR p2 = XMVectorSet(-0.5f, -0.5f, 0.f, 1.f);
+			XMVECTOR p3 = XMVectorSet(0.5f, -0.5f, 0.f, 1.f);
+
+			XMVECTOR v0;
+			XMVECTOR v1;
+			XMVECTOR v2;
+			XMVECTOR v3;
+
+			XMMATRIX mvp_matrix;
+
 			for (const DebugQuad& q : batch.quads) {
 				
+				mvp_matrix = q.matrix * view_projection_matrix;
+
+				v0 = XMVector4Transform(p0, mvp_matrix);
+				v1 = XMVector4Transform(p1, mvp_matrix);
+				v2 = XMVector4Transform(p2, mvp_matrix);
+				v3 = XMVector4Transform(p3, mvp_matrix);
+
+				*it = { v4_f32(v0), q.color }; ++it;
+				*it = { v4_f32(v1), q.color }; ++it;
+				*it = { v4_f32(v2), q.color }; ++it;
+
+				*it = { v4_f32(v1), q.color }; ++it;
+				*it = { v4_f32(v3), q.color }; ++it;
+				*it = { v4_f32(v2), q.color }; ++it;
+
+				if (it == end) {
+
+					graphics_buffer_update(buffer, data, QUAD_COUNT * sizeof(DebugVertex_Solid) * 6u, 0u, cmd);
+
+					graphics_renderpass_begin(gfx.renderpass_world, att, nullptr, 1.f, 0u, cmd);
+					graphics_draw(QUAD_COUNT * 6u, 1u, 0u, 0u, cmd);
+					graphics_renderpass_end(cmd);
+
+					it = data;
+				}
+			}
+
+			if (it != data) {
+				graphics_buffer_update(buffer, data, (it - data) * sizeof(DebugVertex_Solid), 0u, cmd);
+
+				graphics_renderpass_begin(gfx.renderpass_world, att, nullptr, 1.f, 0u, cmd);
+				graphics_draw(it - data, 1u, 0u, 0u, cmd);
+				graphics_renderpass_end(cmd);
 			}
 		}
 
 		// DRAW LINES
 		if (batch.lines.size()) {
 
+			GPUBuffer* buffer = get_batch_buffer(LINE_COUNT * sizeof(DebugVertex_Solid) * 2u, cmd);
+
+			graphics_inputlayoutstate_bind(gfx.ils_debug_solid_batch, cmd);
+			graphics_shader_bind(gfx.vs_debug_solid_batch, cmd);
+			graphics_shader_bind(gfx.ps_debug_solid_batch, cmd);
+			graphics_topology_set(GraphicsTopology_Lines, cmd);
+			graphics_vertexbuffer_bind(buffer, 0u, 0u, cmd);
+
+			DebugVertex_Solid* data = (DebugVertex_Solid*)batch_data[cmd];
+			DebugVertex_Solid* it = data;
+			DebugVertex_Solid* end = data + LINE_COUNT * 2u;
+
+			XMVECTOR v0;
+			XMVECTOR v1;
+
 			for (const DebugLine& l : batch.lines) {
-				
+
+				v0 = XMVector4Transform(l.p0.getDX(), view_projection_matrix);
+				v1 = XMVector4Transform(l.p1.getDX(), view_projection_matrix);
+
+				*it = { v4_f32(v0), l.color }; ++it;
+				*it = { v4_f32(v1), l.color }; ++it;
+
+				if (it == end) {
+
+					graphics_buffer_update(buffer, data, LINE_COUNT * sizeof(DebugVertex_Solid) * 2u, 0u, cmd);
+
+					graphics_renderpass_begin(gfx.renderpass_world, att, nullptr, 1.f, 0u, cmd);
+					graphics_draw(LINE_COUNT * 2u, 1u, 0u, 0u, cmd);
+					graphics_renderpass_end(cmd);
+
+					it = data;
+				}
+			}
+
+			if (it != data) {
+				graphics_buffer_update(buffer, data, (it - data) * sizeof(DebugVertex_Solid), 0u, cmd);
+
+				graphics_renderpass_begin(gfx.renderpass_world, att, nullptr, 1.f, 0u, cmd);
+				graphics_draw(it - data, 1u, 0u, 0u, cmd);
+				graphics_renderpass_end(cmd);
 			}
 		}
-
-		GPUImage* att[2u];
-		att[0] = offscreen;
-		att[1] = depthstencil;
-		
-		graphics_renderpass_begin(gfx.renderpass_world, att, nullptr, 1.f, 0u, cmd);
-
-		graphics_renderpass_end(cmd);
 	}
 
 	void draw_debug_quad(const XMMATRIX& matrix, Color color, CommandList cmd)
@@ -78,7 +173,7 @@ namespace sv {
 	void draw_debug_line(const v3_f32& p0, const v3_f32& p1, Color color, CommandList cmd)
 	{
 		SV_PARSE_BATCH();
-		batch.lines.emplace_back(p0, p1, color, cmd);
+		batch.lines.emplace_back(p0, p1, color);
 	}
 
 	// HELPER
@@ -103,8 +198,6 @@ namespace sv {
 	
 	void draw_debug_orthographic_grip(const v2_f32& position, const v2_f32& offset, const v2_f32& size, const v2_f32& gridSize, Color color, CommandList cmd)
 	{
-		DEF_BATCH();
-
 		v2_f32 begin = position - offset - size / 2.f;
 		v2_f32 end = begin + size;
 

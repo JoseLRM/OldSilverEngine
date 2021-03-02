@@ -234,10 +234,10 @@ namespace sv {
 		return Result_Success;
 	}
 
-	Result font_destroy(Font& font)
+	void font_destroy(Font& font)
 	{
 		delete[] font.glyphs;
-		return graphics_destroy(font.image);
+		graphics_destroy(font.image);
 	}
 
 	f32 compute_text_width(const char* text, u32 count, f32 font_size, f32 aspect, Font* pFont)

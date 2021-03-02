@@ -435,7 +435,7 @@ namespace sv {
 		if (window == nullptr) return Result_Success;
 
 		Window_internal& wnd = *reinterpret_cast<Window_internal*>(window);
-		svCheck(graphics_destroy(reinterpret_cast<Primitive*>(wnd.swap_chain)));
+		graphics_destroy(reinterpret_cast<Primitive*>(wnd.swap_chain));
 		Result res = DestroyWindow((HWND(wnd.handle))) ? Result_Success : Result_PlatformError;
 		delete& wnd;
 		return res;

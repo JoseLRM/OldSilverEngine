@@ -69,6 +69,11 @@ namespace sv {
 		SpriteVertex data[SPRITE_BATCH_COUNT * 4u];
 	};
 
+	struct DebugVertex_Solid {
+		v4_f32 position;
+		Color color;
+	};
+
 	struct GraphicsObjects {
 
 		GPUImage* image_white;
@@ -80,13 +85,13 @@ namespace sv {
 		GPUBuffer* cbuffer_camera;
 		RenderPass* renderpass_off;
 		RenderPass* renderpass_world;
+		BlendState* bs_transparent;
 
 		// DEBUG
 
 		Shader* vs_debug_solid_batch;
 		Shader* ps_debug_solid_batch;
 		InputLayoutState* ils_debug_solid_batch;
-		BlendState* bs_debug;
 
 		// TEXT
 
@@ -100,7 +105,6 @@ namespace sv {
 		Shader* vs_sprite;
 		Shader* ps_sprite;
 		InputLayoutState* ils_sprite;
-		BlendState* bs_sprite;
 		GPUBuffer* ibuffer_sprite;
 
 		// MESH
@@ -152,8 +156,8 @@ namespace sv {
 			desc.size = size;
 			desc.pData = nullptr;
 
-			graphics_buffer_create(&desc, &gfx.vbuffer_batch[cmd]);
-			graphics_name_set(gfx.vbuffer_batch[cmd], "BatchBuffer");
+			graphics_buffer_create(&desc, &buffer);
+			graphics_name_set(buffer, "BatchBuffer");
 
 			batch_data[cmd] = (u8*)malloc(size);
 		}

@@ -387,12 +387,12 @@ namespace sv {
 			// DEBUG
 			slots[0].instanced = false;
 			slots[0].slot = 0u;
-			slots[0].stride = sizeof(DebugVertex);
+			slots[0].stride = sizeof(DebugVertex_Solid);
 
 			elements[0] = { "Position", 0u, 0u, 0u, Format_R32G32B32A32_FLOAT };
-			elements[3] = { "Color", 0u, 0u, 4u * sizeof(float), Format_R8G8B8A8_UNORM };
+			elements[1] = { "Color", 0u, 0u, 4u * sizeof(f32), Format_R8G8B8A8_UNORM };
 
-			desc.elementCount = 4u;
+			desc.elementCount = 2u;
 			desc.slotCount = 1u;
 			svCheck(graphics_inputlayoutstate_create(&desc, &gfx.ils_debug_solid_batch));
 
@@ -447,7 +447,7 @@ namespace sv {
 			BlendStateDesc desc;
 			desc.pAttachments = att;
 
-			// DEBUG
+			// TRANSPARENT
 			att[0].blendEnabled = true;
 			att[0].srcColorBlendFactor = BlendFactor_SrcAlpha;
 			att[0].dstColorBlendFactor = BlendFactor_OneMinusSrcAlpha;
@@ -459,22 +459,7 @@ namespace sv {
 
 			desc.attachmentCount = 1u;
 			desc.blendConstants = { 0.f, 0.f, 0.f, 0.f };
-			svCheck(graphics_blendstate_create(&desc, &gfx.bs_debug));
-
-			// SPRITE
-			att[0].blendEnabled = true;
-			att[0].srcColorBlendFactor = BlendFactor_SrcAlpha;
-			att[0].dstColorBlendFactor = BlendFactor_OneMinusSrcAlpha;
-			att[0].colorBlendOp = BlendOperation_Add;
-			att[0].srcAlphaBlendFactor = BlendFactor_One;
-			att[0].dstAlphaBlendFactor = BlendFactor_One;
-			att[0].alphaBlendOp = BlendOperation_Add;
-			att[0].colorWriteMask = ColorComponent_All;
-
-			desc.attachmentCount = 1u;
-			desc.blendConstants = { 0.f, 0.f, 0.f, 0.f };
-
-			svCheck(graphics_blendstate_create(&desc, &gfx.bs_sprite));
+			svCheck(graphics_blendstate_create(&desc, &gfx.bs_transparent));
 
 			// MESH
 			att[0].blendEnabled = false;
@@ -553,7 +538,7 @@ namespace sv {
 	Result renderer_close()
 	{
 		// Free graphics objects
-		svCheck(graphics_destroy_struct(&gfx, sizeof(gfx)));
+		graphics_destroy_struct(&gfx, sizeof(gfx));
 
 		// Deallocte batch memory
 		{
@@ -566,8 +551,8 @@ namespace sv {
 			}
 		}
 
-		svCheck(font_destroy(font_opensans));
-		svCheck(font_destroy(font_console));
+		font_destroy(font_opensans);
+		font_destroy(font_console);
 
 		return Result_Success;
 	}
@@ -706,8 +691,8 @@ namespace sv {
 							return s0.layer < s1.layer;
 						});
 
-						SpriteData& data = *(SpriteData*)rend_utils[cmd].batch_data;
-						GPUBuffer* batch_buffer = get_batch_buffer(cmd);
+						GPUBuffer* batch_buffer = get_batch_buffer(sizeof(SpriteData), cmd);
+						SpriteData& data = *(SpriteData*)batch_data[cmd];
 
 						// Prepare
 						graphics_event_begin("Sprite_GeometryPass", cmd);
@@ -719,8 +704,8 @@ namespace sv {
 						graphics_sampler_bind(gfx.sampler_def_nearest, 0u, ShaderType_Pixel, cmd);
 						graphics_shader_bind(gfx.vs_sprite, cmd);
 						graphics_shader_bind(gfx.ps_sprite, cmd);
-						graphics_blendstate_bind(gfx.bs_sprite, cmd);
-						graphics_depthstencil_bind(gfx.dss_default_depth, cmd);
+						graphics_blendstate_bind(gfx.bs_transparent, cmd);
+						graphics_depthstencilstate_bind(gfx.dss_default_depth, cmd);
 
 						GPUImage* att[2];
 						att[0] = scene->offscreen;
@@ -1079,7 +1064,7 @@ namespace sv {
 		graphics_shader_bind(gfx.vs_text, cmd);
 		graphics_shader_bind(gfx.ps_text, cmd);
 
-		GPUBuffer* buffer = get_batch_buffer(cmd);
+		GPUBuffer* buffer = get_batch_buffer(sizeof(TextData), cmd);
 		graphics_vertexbuffer_bind(buffer, 0u, 0u, cmd);
 		graphics_indexbuffer_bind(gfx.ibuffer_text, 0u, cmd);
 		graphics_image_bind(font.image, 0u, ShaderType_Pixel, cmd);
@@ -1087,7 +1072,7 @@ namespace sv {
 
 		graphics_inputlayoutstate_bind(gfx.ils_text, cmd);
 
-		TextData& data = *reinterpret_cast<TextData*>(rend_utils[cmd].batch_data);
+		TextData& data = *reinterpret_cast<TextData*>(batch_data[cmd]);
 
 		// Text space transformation
 		f32 xmult = font_size / aspect;

@@ -4,7 +4,8 @@
 #include "window/window_internal.h"
 
 #include "vulkan/graphics_vulkan.h"
-#include "..\..\include\SilverEngine\graphics.h"
+#include "SilverEngine\graphics.h"
+#include "SilverEngine/utils/allocators/FrameList.h"
 
 namespace sv {
 
@@ -20,6 +21,9 @@ namespace sv {
 	static BlendState*			g_DefBlendState;
 	static DepthStencilState*	g_DefDepthStencilState;
 	static RasterizerState*		g_DefRasterizerState;
+
+	static FrameList<Primitive*> primitives_to_destroy;
+	static std::mutex primitives_to_destroy_mutex;
 
 	Result graphics_initialize()
 	{
@@ -127,12 +131,16 @@ namespace sv {
 		g_Device.destroy(&primitive);
 	}
 
+	static void destroy_primitives();
+
 	Result graphics_close()
 	{
-		svCheck(graphics_destroy(g_DefBlendState));
-		svCheck(graphics_destroy(g_DefDepthStencilState));
-		svCheck(graphics_destroy(g_DefInputLayoutState));
-		svCheck(graphics_destroy(g_DefRasterizerState));
+		graphics_destroy(g_DefBlendState);
+		graphics_destroy(g_DefDepthStencilState);
+		graphics_destroy(g_DefInputLayoutState);
+		graphics_destroy(g_DefRasterizerState);
+
+		destroy_primitives();
 
 		if (g_Device.bufferAllocator.get()) {
 
@@ -272,9 +280,102 @@ namespace sv {
 		return Result_Success;
 	}
 
+	SV_INLINE static Result destroy_graphics_primitive(Primitive* primitive)
+	{
+		if (g_Device.api == GraphicsAPI_Invalid)
+		{
+			SV_LOG_ERROR("Trying to destroy a graphics primitive after the system is closed");
+			return Result_InvalidUsage;
+		}
+
+		Primitive_internal* p = reinterpret_cast<Primitive_internal*>(primitive);
+		Result res = g_Device.destroy(p);
+
+		switch (p->type)
+		{
+		case GraphicsPrimitiveType_Image:
+		{
+			std::scoped_lock lock(g_Device.imageMutex);
+			g_Device.imageAllocator->free(p);
+			break;
+		}
+		case GraphicsPrimitiveType_Sampler:
+		{
+			std::scoped_lock lock(g_Device.samplerMutex);
+			g_Device.samplerAllocator->free(p);
+			break;
+		}
+		case GraphicsPrimitiveType_Buffer:
+		{
+			std::scoped_lock lock(g_Device.bufferMutex);
+			g_Device.bufferAllocator->free(p);
+			break;
+		}
+		case GraphicsPrimitiveType_Shader:
+		{
+			std::scoped_lock lock(g_Device.shaderMutex);
+			g_Device.shaderAllocator->free(p);
+			break;
+		}
+		case GraphicsPrimitiveType_RenderPass:
+		{
+			std::scoped_lock lock(g_Device.renderPassMutex);
+			g_Device.renderPassAllocator->free(p);
+			break;
+		}
+		case GraphicsPrimitiveType_InputLayoutState:
+		{
+			std::scoped_lock lock(g_Device.inputLayoutStateMutex);
+			g_Device.inputLayoutStateAllocator->free(p);
+			break;
+		}
+		case GraphicsPrimitiveType_BlendState:
+		{
+			std::scoped_lock lock(g_Device.blendStateMutex);
+			g_Device.blendStateAllocator->free(p);
+			break;
+		}
+		case GraphicsPrimitiveType_DepthStencilState:
+		{
+			std::scoped_lock lock(g_Device.depthStencilStateMutex);
+			g_Device.depthStencilStateAllocator->free(p);
+			break;
+		}
+		case GraphicsPrimitiveType_RasterizerState:
+		{
+			std::scoped_lock lock(g_Device.rasterizerStateMutex);
+			g_Device.rasterizerStateAllocator->free(p);
+			break;
+		}
+		case GraphicsPrimitiveType_SwapChain:
+		{
+			std::scoped_lock lock(g_Device.swapChainMutex);
+			g_Device.swapChainAllocator->free(p);
+			break;
+		}
+		}
+
+		return Result_Success;
+	}
+
+	static void destroy_primitives()
+	{
+		std::scoped_lock lock(primitives_to_destroy_mutex);
+		for (Primitive* p : primitives_to_destroy) {
+
+			Result res = destroy_graphics_primitive(p);
+			// TODO: handle error
+		}
+		primitives_to_destroy.clear();
+	}
+
 	void graphics_begin()
 	{
 		SV_PROFILER_SCALAR_SET("Draw Calls", 0);
+
+		if (engine.frame_count % 20u == 0u) {
+			destroy_primitives();
+		}
 
 		g_Device.frame_begin();
 	}
@@ -767,109 +868,28 @@ namespace sv {
 		return Result_Success;
 	}
 
-	Result graphics_destroy(Primitive* primitive)
+	void graphics_destroy(Primitive* primitive)
 	{
-		if (primitive == nullptr) return Result_Success;
-
-		if (g_Device.api == GraphicsAPI_Invalid)
-		{
-			SV_LOG_ERROR("Trying to destroy a graphics primitive after the system is closed");
-			return Result_InvalidUsage;
-		}
-
-		Primitive_internal* p = reinterpret_cast<Primitive_internal*>(primitive);
-		Result res = g_Device.destroy(p);
-		
-		switch (p->type)
-		{
-		case GraphicsPrimitiveType_Image:
-		{
-			std::scoped_lock lock(g_Device.imageMutex);
-			g_Device.imageAllocator->free(p);
-			break;
-		}
-		case GraphicsPrimitiveType_Sampler:
-		{
-			std::scoped_lock lock(g_Device.samplerMutex);
-			g_Device.samplerAllocator->free(p);
-			break;
-		}
-		case GraphicsPrimitiveType_Buffer:
-		{
-			std::scoped_lock lock(g_Device.bufferMutex);
-			g_Device.bufferAllocator->free(p);
-			break;
-		}
-		case GraphicsPrimitiveType_Shader:
-		{
-			std::scoped_lock lock(g_Device.shaderMutex);
-			g_Device.shaderAllocator->free(p);
-			break;
-		}
-		case GraphicsPrimitiveType_RenderPass:
-		{
-			std::scoped_lock lock(g_Device.renderPassMutex);
-			g_Device.renderPassAllocator->free(p);
-			break;
-		}
-		case GraphicsPrimitiveType_InputLayoutState:
-		{
-			std::scoped_lock lock(g_Device.inputLayoutStateMutex);
-			g_Device.inputLayoutStateAllocator->free(p);
-			break;
-		}
-		case GraphicsPrimitiveType_BlendState:
-		{
-			std::scoped_lock lock(g_Device.blendStateMutex);
-			g_Device.blendStateAllocator->free(p);
-			break;
-		}
-		case GraphicsPrimitiveType_DepthStencilState:
-		{
-			std::scoped_lock lock(g_Device.depthStencilStateMutex);
-			g_Device.depthStencilStateAllocator->free(p);
-			break;
-		}
-		case GraphicsPrimitiveType_RasterizerState:
-		{
-			std::scoped_lock lock(g_Device.rasterizerStateMutex);
-			g_Device.rasterizerStateAllocator->free(p);
-			break;
-		}
-		case GraphicsPrimitiveType_SwapChain:
-		{
-			std::scoped_lock lock(g_Device.swapChainMutex);
-			g_Device.swapChainAllocator->free(p);
-			break;
-		}
-		}
-
-		return Result_Success;
+		if (primitive == nullptr) return;
+		std::scoped_lock lock(primitives_to_destroy_mutex);
+		primitives_to_destroy.push_back(primitive);
 	}
 
-	Result graphics_destroy_struct(void* data, size_t size)
+	void graphics_destroy_struct(void* data, size_t size)
 	{
 		SV_ASSERT(size % sizeof(void*) == 0u);
 
 		u8* it = (u8*)data;
 		u8* end = it + size;
 
-		Result res = Result_Success;
-
 		while (it != end) {
 
 			Primitive*& primitive = *reinterpret_cast<Primitive**>(it);
-			Result res0 = graphics_destroy(primitive);
+			graphics_destroy(primitive);
 			primitive = nullptr;
-
-			if (result_fail(res0)) {
-				res = res0;
-			}
 
 			it += sizeof(void*);
 		}
-
-		return res;
 	}
 
 	CommandList graphics_commandlist_begin()

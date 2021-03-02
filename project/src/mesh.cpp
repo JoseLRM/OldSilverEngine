@@ -302,8 +302,8 @@ namespace sv {
 
 		mesh.indices.clear();
 
-		svCheck(graphics_destroy(mesh.vbuffer));
-		svCheck(graphics_destroy(mesh.ibuffer));
+		graphics_destroy(mesh.vbuffer);
+		graphics_destroy(mesh.ibuffer);
 		return Result_Success;
 	}
 
