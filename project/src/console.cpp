@@ -259,8 +259,10 @@ namespace sv {
 
 	void update_console()
 	{
-		if (!engine.console_active) return;
+		if (!engine.console_active || !input.unused) return;
 
+		input.unused = false;
+		
 		current_command.insert(current_command.begin() + cursor_pos, input.text.begin(), input.text.end());
 		cursor_pos += u32(input.text.size());
 

@@ -775,6 +775,8 @@ namespace sv {
 		v2_f32	mouse_dragged;
 		f32		mouse_wheel;
 
+		bool unused;
+
 		Window* focused_window = nullptr;
 
 	};

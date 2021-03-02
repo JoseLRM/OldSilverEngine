@@ -30,6 +30,7 @@ namespace sv {
 			camera.setProjectionLength(new_length);
 		}
 
+		input.unused = false;
 		trans.setPosition(position.getVec3());
 	}
 
@@ -78,6 +79,7 @@ namespace sv {
 			rotation = XMQuaternionNormalize(rotation);
 		}
 
+		input.unused = false;
 		trans.setRotation(v4_f32(rotation));
 		trans.setPosition(position);
 	}
@@ -293,13 +295,16 @@ namespace sv {
 			if (input.keys[Key_F1]) display_window_manager();
 			display_entity_inspector();
 			display_entity_hierarchy();
+		}
+
+		igui_end(g, f32(window_width_get(engine.window)), f32(window_height_get(engine.window)));
+
+		if (input.unused) {
 
 			// Entity selection
 			if (input.mouse_buttons[MouseButton_Left] == InputState_Released)
 				select_entity();
 		}
-
-		igui_end(g, f32(window_width_get(engine.window)), f32(window_height_get(engine.window)));
 	}
 
 	void draw_editor()

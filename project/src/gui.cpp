@@ -34,7 +34,6 @@ namespace sv {
 		v2_f32                  resolution;
 		GuiWidget* widget_focused = nullptr;
 		u32                     focus_action = 0u;
-		GuiLockedInput          locked;
 
 		// used during update
 		v2_f32 mouse_position;
@@ -555,6 +554,8 @@ namespace sv {
 		// Init update
 		gui.mouse_position = input.mouse_position + 0.5f;
 
+		if (!input.unused) return;
+		
 		// Update windows and widgets
 		for (auto& pool : gui.windows) {
 			for (GuiWindow& window : pool) {
@@ -565,12 +566,10 @@ namespace sv {
 			update_widget(gui, *root, { 0.5f, 0.5f, 1.f, 1.f });
 		}
 
-		// Set the locked data and update focused widget
-		gui.locked.keyboard = false;
-
+		// Update focused widget
 		if (gui.widget_focused != nullptr) {
 
-			gui.locked.keyboard = false;
+			input.unused = false;
 
 			switch (gui.widget_focused->type)
 			{
@@ -803,9 +802,6 @@ namespace sv {
 
 			}
 		}
-
-		// TODO: check the focus type
-		gui.locked.mouse_click = gui.widget_focused != nullptr;
 	}
 
 	static constexpr u32 MAX_FLOAT_CHARS = 20u;
@@ -1335,12 +1331,6 @@ namespace sv {
 	{
 		PARSE_GUI();
 		return gui.root;
-	}
-
-	const GuiLockedInput& gui_locked_input(GUI* gui_)
-	{
-		PARSE_GUI();
-		return gui.locked;
 	}
 
 	////////////////////////////////////////////////////////////////////////// IMMEDIATE GUI //////////////////////////////////////////////////////////////////////////

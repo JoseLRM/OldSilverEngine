@@ -189,17 +189,6 @@ namespace sv {
 	    
 	};
 
-	// INPUT
-
-	struct GuiLockedInput {
-
-		bool mouse_click = false;
-		bool mouse_move = false;
-		bool mouse_wheel = false;
-		bool keyboard = false;
-
-	};
-
 	// FUNCTIONS
 
 	SV_DEFINE_HANDLE(GUI);
@@ -210,7 +199,6 @@ namespace sv {
 	void							gui_render(GUI* gui, GPUImage* offscreen, CommandList cmd);
 	void							gui_clear(GUI* gui);
 	const std::vector<GuiWidget*>& gui_root_get(GUI* gui);
-	const GuiLockedInput& gui_locked_input(GUI* gui);
 
 	GuiWidget* gui_widget_create(GUI* gui, GuiWidgetType widget_type, GuiContainer* container = nullptr);
 	void		gui_widget_destroy(GUI* gui, GuiWidget* widget);

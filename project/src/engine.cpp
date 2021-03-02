@@ -184,6 +184,9 @@ namespace sv {
 		input.text_commands.resize(1u);
 		input.text_commands.back() = TextCommand_Null;
 
+		// Reset unused input
+		input.unused = true;
+
 		// KEYS
 		// reset pressed and released
 		for (Key i = Key(0); i < Key_MaxEnum; ++(u32&)i) {
