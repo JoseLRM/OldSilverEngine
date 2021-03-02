@@ -5,464 +5,84 @@
 
 namespace sv {
 
-	struct DebugRendererQuad {
+	struct DebugQuad {
 		XMMATRIX matrix;
 		Color color;
-
-		DebugRendererQuad(const XMMATRIX& matrix, Color color) : matrix(matrix), color(color) {}
+		
+		DebugQuad(const XMMATRIX& matrix, Color color) : matrix(matrix), color(color) {}
 	};
 
-	struct DebugRendererLine {
-		v3_f32 point0;
-		v3_f32 point1;
+	struct DebugLine {
+		v3_f32 p0, p1;
 		Color color;
-
-		DebugRendererLine(const v3_f32& p0, const v3_f32& p1, Color color) : point0(p0), point1(p1), color(color) {}
-	};
-
-	struct DebugRendererDraw {
-		u32 list;
-		u32 index;
-		u32 count;
-		union {
-			float lineWidth;
-			float stroke;
-			struct {
-				GPUImage* pImage;
-				Sampler* pSampler;
-				v4_f32 texCoord;
-			};
-		};
-
-		DebugRendererDraw() {}
-		DebugRendererDraw(u32 list, u32 index, float lineWidth = 1.f) : list(list), index(index), count(1u), lineWidth(lineWidth) {}
-		DebugRendererDraw(u32 list, u32 index, GPUImage* image, Sampler* sampler, const v4_f32& texCoord)
-			: list(list), index(index), count(1u), pImage(image), pSampler(sampler), texCoord(texCoord) {}
+		
+		DebugLine(const v3_f32& p0, const v3_f32& p1, Color color) : point0(p0), point1(p1), color(color) {}
 	};
 
 	struct DebugRendererBatch {
 
-		FrameList<DebugRendererQuad>	quads;
-		FrameList<DebugRendererLine>	lines;
-		FrameList<DebugRendererQuad>	ellipses;
-		FrameList<DebugRendererQuad>	sprites;
-
-		FrameList<DebugRendererDraw> drawCalls;
-		float lineWidth = 1.f;
-		float stroke = 1.f;
-
-		v4_f32 texCoord = { 0.f, 0.f, 1.f, 1.f };
-		Sampler* pSampler = nullptr;
-		bool sameSprite = false;
-
+		FrameList<DebugQuad> quads;
+		FrameList<DebugLine> lines;
+		
 	};
 
+#define SV_PARSE_BATCH() sv::DebugRendererBatch& batch = sv::debug_batches[cmd]
+	
 	static DebugRendererBatch debug_batches[GraphicsLimit_CommandList];
-
-	// BEGIN - END
-
-	constexpr u32 debug_renderer_vertex_count(u32 list)
-	{
-		switch (list)
-		{
-		case 0:
-			return 6u;
-		case 1:
-			return 2u;
-		case 2:
-			return 6u;
-		case 3:
-			return 6u;
-		default:
-			SV_LOG_ERROR("Unknown list: %u", list);
-			return 0u;
-		}
-	}
-
-	void debug_renderer_draw_call(u32 batchOffset, const DebugRendererDraw& draw, u32 vertexCount, GPUBuffer* buffer, CommandList cmd)
-	{
-		switch (draw.list)
-		{
-		case 0u:
-			graphics_topology_set(GraphicsTopology_Triangles, cmd);
-			graphics_shader_bind(gfx.vs_debug_quad, cmd);
-			graphics_shader_bind(gfx.ps_debug_quad, cmd);
-			break;
-
-		case 1u:
-			graphics_topology_set(GraphicsTopology_Lines, cmd);
-			graphics_shader_bind(gfx.vs_debug_quad, cmd);
-			graphics_shader_bind(gfx.ps_debug_quad, cmd);
-			graphics_line_width_set(draw.lineWidth, cmd);
-			break;
-
-		case 2u:
-			graphics_topology_set(GraphicsTopology_Triangles, cmd);
-			graphics_shader_bind(gfx.vs_debug_ellipse, cmd);
-			graphics_shader_bind(gfx.ps_debug_ellipse, cmd);
-			break;
-
-		case 3u:
-			graphics_topology_set(GraphicsTopology_Triangles, cmd);
-			graphics_shader_bind(gfx.vs_debug_sprite, cmd);
-			graphics_shader_bind(gfx.ps_debug_sprite, cmd);
-
-			graphics_image_bind(draw.pImage ? draw.pImage : gfx.image_white, 0u, ShaderType_Pixel, cmd);
-
-			if (draw.pSampler) {
-				graphics_sampler_bind(draw.pSampler, 0u, ShaderType_Pixel, cmd);
-			}
-			else {
-				graphics_sampler_bind(gfx.sampler_def_nearest, 0u, ShaderType_Pixel, cmd);
-			}
-
-			break;
-
-		}
-
-		graphics_draw(vertexCount, 1u, batchOffset, 0u, cmd);
-	}
-
-	void debug_renderer_draw_batch(const DebugRendererDraw* begin, u32 beginIndex, const DebugRendererDraw* end, u32 endIndex, u32 batchCount, DebugVertex* batchData, GPUImage* renderTarget, CommandList cmd)
-	{
-		GPUBuffer* buffer = get_batch_buffer(cmd);
-
-		graphics_buffer_update(buffer, batchData, batchCount * sizeof(DebugVertex), 0u, cmd);
-
-		GPUImage* attachments[] = {
-			renderTarget
-		};
-
-		graphics_renderpass_begin(gfx.renderpass_debug, attachments, nullptr, 1.f, 0u, cmd);
-
-		graphics_vertexbuffer_bind(buffer, 0u, 0u, cmd);
-
-		u32 batchOffset = 0u;
-		
-		if (begin != end) {
-
-			{
-				u32 count = begin->count - (beginIndex - begin->index);
-				u32 vertexCount = debug_renderer_vertex_count(begin->list);
-				debug_renderer_draw_call(0u, *begin, vertexCount * count, buffer, cmd);
-
-				batchOffset =+ vertexCount * count;
-			}
-
-			const DebugRendererDraw* it = begin + 1u;
-			while (it != end) {
-				u32 vertexCount = debug_renderer_vertex_count(it->list);
-				debug_renderer_draw_call(batchOffset, *it, vertexCount * it->count, buffer, cmd);
-				batchOffset += vertexCount * it->count;
-				++it;
-			}
-
-		}
-		
-		u32 vertexCount = debug_renderer_vertex_count(end->list);
-		debug_renderer_draw_call(batchOffset, *end, vertexCount * (endIndex - end->index), buffer, cmd);
-
-		graphics_renderpass_end(cmd);
-
-	}
-
-#define DEF_BATCH() sv::DebugRendererBatch& batch = debug_batches[cmd];
 
 	void begin_debug_batch(CommandList cmd)
 	{
-		DEF_BATCH();
+		SV_PARSE_BATCH();
 
 		batch.quads.reset();
 		batch.lines.reset();
-		batch.ellipses.reset();
-		batch.sprites.reset();
-		batch.drawCalls.reset();
-		batch.drawCalls.emplace_back().list = u32_max;
 	}
 
-	void end_debug_batch(GPUImage* offscreen, const XMMATRIX& viewProjectionMatrix, CommandList cmd)
+	constexpr u32 
+	
+	void end_debug_batch(GPUImage* offscreen, GPUImage* depthstencil, const XMMATRIX& viewProjectionMatrix, CommandList cmd)
 	{
-		DEF_BATCH();
+		SV_PARSE_BATCH();
+		
+		// DRAW QUADS
+		if (batch.quads.size()) {
 
-		if (batch.drawCalls.size() <= 1u)
-			return;
-
-		graphics_mode_set(GraphicsPipelineMode_Graphics, cmd);
-
-		graphics_rasterizerstate_unbind(cmd);
-		graphics_depthstencilstate_unbind(cmd);
-		graphics_inputlayoutstate_bind(gfx.ils_debug, cmd);
-		graphics_blendstate_bind(gfx.bs_debug, cmd);
-
-		const DebugRendererDraw* end = batch.drawCalls.data() + batch.drawCalls.size();
-		const DebugRendererDraw* it = batch.drawCalls.data() + 1u;
-
-		// Draw Data
-		const DebugRendererDraw* beginIt = it;
-		u32 beginIndex = u32_max;
-
-		DebugVertex* batchData = reinterpret_cast<DebugData*>(rend_utils[cmd].batch_data)->vertices;
-		DebugVertex* itBatch = batchData;
-		DebugVertex* endBatch = batchData + DEBUG_VERTEX_COUNT;
-
-		// Vertex vectors
-		XMVECTOR v0;
-		XMVECTOR v1;
-		XMVECTOR v2;
-		XMVECTOR v3;
-
-		v0 = XMVectorSet(-0.5f, 0.5f, 0.f, 1.f);
-		v1 = XMVectorSet(0.5f, 0.5f, 0.f, 1.f);
-		v2 = XMVectorSet(-0.5f, -0.5f, 0.f, 1.f);
-		v3 = XMVectorSet(0.5f, -0.5f, 0.f, 1.f);
-
-		XMVECTOR p0;
-		XMVECTOR p1;
-		XMVECTOR p2;
-		XMVECTOR p3;
-
-		while (it != end) {
-
-			DebugRendererDraw draw = *it;
-
-			u32 vertexCount = debug_renderer_vertex_count(draw.list);
-			u32 currentIndex = draw.index;
-
-			if (beginIndex == u32_max) {
-				beginIndex = draw.index;
-				beginIt = it;
+			for (const DebugQuad& q : batch.quads) {
+				
 			}
-
-			while (draw.count) {
-
-				u32 capacity = u32(endBatch - itBatch) / vertexCount;
-
-				u32 batchUsage = std::min(capacity, draw.count);
-
-				draw.count -= batchUsage;
-
-				DebugVertex* itBatchEnd = itBatch + (batchUsage * vertexCount);
-
-				switch (draw.list)
-				{
-				case 0:
-				case 2:
-				case 3:
-				{
-					while (itBatch != itBatchEnd) {
-
-						XMMATRIX mvpMatrix;
-						Color color;
-						v4_f32 texCoord;
-						float stroke = 1.f;
-
-						switch (draw.list)
-						{
-						case 0:
-						{
-							DebugRendererQuad& quad = batch.quads[currentIndex];
-
-							mvpMatrix = quad.matrix;
-							color = quad.color;
-							stroke = draw.stroke;
-							texCoord.x = 69.f;
-						}
-
-						break;
-
-						case 2:
-						{
-							DebugRendererQuad& ellipse = batch.ellipses[currentIndex];
-
-							mvpMatrix = ellipse.matrix;
-							color = ellipse.color;
-							stroke = draw.stroke;
-							texCoord.x = 69.f;
-						}
-						break;
-
-						case 3:
-						{
-							DebugRendererQuad& spr = batch.sprites[currentIndex];
-
-							mvpMatrix = spr.matrix;
-							color = spr.color;
-							texCoord = draw.texCoord;
-						}
-						break;
-						}
-
-						// Compute size
-						if (texCoord.x == 69.f) {
-							XMFLOAT4X4 m;
-							XMStoreFloat4x4(&m, mvpMatrix);
-
-							float width = XMVectorGetX(XMVector3Length(XMVectorSet(m._11, m._12, m._13, 0.f)));
-							float height = XMVectorGetX(XMVector3Length(XMVectorSet(m._21, m._22, m._23, 0.f)));
-
-							texCoord.z = width / 2.f;
-							texCoord.w = height / 2.f;
-							texCoord.x = -texCoord.z;
-							texCoord.y = -texCoord.w;
-						}
-
-						mvpMatrix *= viewProjectionMatrix;
-
-						p0 = v0;
-						p0 = XMVector3Transform(p0, mvpMatrix);
-
-						p1 = v1;
-						p1 = XMVector3Transform(p1, mvpMatrix);
-
-						p2 = v2;
-						p2 = XMVector3Transform(p2, mvpMatrix);
-
-						p3 = v3;
-						p3 = XMVector3Transform(p3, mvpMatrix);
-
-						itBatch->position = v4_f32(p0);
-						itBatch->texCoord = { texCoord.x, texCoord.y };
-						itBatch->stroke = stroke;
-						itBatch->color = color;
-						++itBatch;
-
-						itBatch->position = v4_f32(p1);
-						itBatch->texCoord = { texCoord.z, texCoord.y };
-						itBatch->stroke = stroke;
-						itBatch->color = color;
-						++itBatch;
-
-						itBatch->position = v4_f32(p2);
-						itBatch->texCoord = { texCoord.x, texCoord.w };
-						itBatch->stroke = stroke;
-						itBatch->color = color;
-						++itBatch;
-
-						itBatch->position = v4_f32(p1);
-						itBatch->texCoord = { texCoord.z, texCoord.y };
-						itBatch->stroke = stroke;
-						itBatch->color = color;
-						++itBatch;
-
-						itBatch->position = v4_f32(p3);
-						itBatch->texCoord = { texCoord.z, texCoord.w };
-						itBatch->stroke = stroke;
-						itBatch->color = color;
-						++itBatch;
-
-						itBatch->position = v4_f32(p2);
-						itBatch->texCoord = { texCoord.x, texCoord.w };
-						itBatch->stroke = stroke;
-						itBatch->color = color;
-						++itBatch;
-
-						++currentIndex;
-					}
-				}
-				break;
-
-				case 1:
-				{
-					while (itBatch != itBatchEnd) {
-
-						DebugRendererLine& line = batch.lines[currentIndex];
-
-						p0 = XMVector4Transform(XMVectorSet(line.point0.x, line.point0.y, line.point0.z, 1.f), viewProjectionMatrix);
-						p1 = XMVector4Transform(XMVectorSet(line.point1.x, line.point1.y, line.point1.z, 1.f), viewProjectionMatrix);
-
-						itBatch->position = v4_f32(p0);
-						itBatch->color = line.color;
-						itBatch->stroke = 1.f;
-						++itBatch;
-
-						itBatch->position = v4_f32(p1);
-						itBatch->color = line.color;
-						itBatch->stroke = 1.f;
-						++itBatch;
-
-						++currentIndex;
-					}
-				}
-				break;
-
-				}
-
-				// Update & draw
-				if ((capacity - batchUsage) * vertexCount < 6u) { // 6 because is the max vertex count
-
-					debug_renderer_draw_batch(beginIt, beginIndex, it, currentIndex, u32(itBatch - batchData), batchData, offscreen, cmd);
-
-					itBatch = batchData;
-
-					if (draw.count) {
-						beginIt = it;
-						beginIndex = currentIndex;
-					}
-					else {
-						beginIndex = u32_max;
-					}
-				}
-
-			}
-
-			++it;
 		}
 
-		if (beginIndex != u32_max) {
-			--it;
-			debug_renderer_draw_batch(beginIt, beginIndex, it, it->index + it->count, u32(itBatch - batchData), batchData, offscreen, cmd);
+		// DRAW LINES
+		if (batch.lines.size()) {
+
+			for (const DebugLine& l : batch.lines) {
+				
+			}
 		}
+
+		GPUImage* att[2u];
+		att[0] = offscreen;
+		att[1] = depthstencil;
+		
+		graphics_renderpass_begin(gfx.renderpass_world, att, nullptr, 1.f, 0u, cmd);
+
+		graphics_renderpass_end(cmd);
 	}
 
 	void draw_debug_quad(const XMMATRIX& matrix, Color color, CommandList cmd)
 	{
-		DEF_BATCH();
-
-		if (batch.drawCalls.back().list == 0u && batch.drawCalls.back().stroke == batch.stroke) ++batch.drawCalls.back().count;
-		else {
-			batch.drawCalls.emplace_back(0u, u32(batch.quads.size()), batch.stroke);
-		}
-
+		SV_PARSE_BATCH();
 		batch.quads.emplace_back(matrix, color);
 	}
-
+	
 	void draw_debug_line(const v3_f32& p0, const v3_f32& p1, Color color, CommandList cmd)
 	{
-		DEF_BATCH();
-
-		if (batch.drawCalls.back().list == 1u && batch.drawCalls.back().lineWidth == batch.lineWidth) ++batch.drawCalls.back().count;
-		else {
-			batch.drawCalls.emplace_back(1u, u32(batch.lines.size()), batch.lineWidth);
-		}
-
-		batch.lines.emplace_back(p0, p1, color);
+		SV_PARSE_BATCH();
+		batch.lines.emplace_back(p0, p1, color, cmd);
 	}
 
-	void draw_debug_ellipse(const XMMATRIX& matrix, Color color, CommandList cmd)
-	{
-		DEF_BATCH();
-
-		if (batch.drawCalls.back().list == 2u && batch.drawCalls.back().stroke == batch.stroke) ++batch.drawCalls.back().count;
-		else {
-			batch.drawCalls.emplace_back(2u, u32(batch.ellipses.size()), batch.stroke);
-		}
-
-		batch.ellipses.emplace_back(matrix, color);
-	}
-
-	void draw_debug_sprite(const XMMATRIX& matrix, Color color, GPUImage* image, CommandList cmd)
-	{
-		DEF_BATCH();
-
-		if (batch.sameSprite && batch.drawCalls.back().list == 3u && batch.drawCalls.back().pImage == image) ++batch.drawCalls.back().count;
-		else {
-			batch.drawCalls.emplace_back(3u, u32(batch.sprites.size()), image, batch.pSampler, batch.texCoord);
-			batch.sameSprite = true;
-		}
-
-		batch.sprites.emplace_back(matrix, color);
-	}
-
+	// HELPER
+	
 	void draw_debug_quad(const v3_f32& position, const v2_f32& size, Color color, CommandList cmd)
 	{
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixTranslation(position.x, position.y, position.z);
@@ -480,93 +100,7 @@ namespace sv {
 		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixRotationQuaternion(rotationQuat.get_dx()) * XMMatrixTranslation(position.x, position.y, position.z);
 		draw_debug_quad(tm, color, cmd);
 	}
-
-	void draw_debug_ellipse(const v3_f32& position, const v2_f32& size, Color color, CommandList cmd)
-	{
-		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixTranslation(position.x, position.y, position.z);
-		draw_debug_ellipse(tm, color, cmd);
-	}
-
-	void draw_debug_ellipse(const v3_f32& position, const v2_f32& size, const v3_f32& rotation, Color color, CommandList cmd)
-	{
-		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixRotationRollPitchYaw(rotation.x, rotation.y, rotation.z) * XMMatrixTranslation(position.x, position.y, position.z);
-		draw_debug_ellipse(tm, color, cmd);
-	}
-
-	void draw_debug_ellipse(const v3_f32& position, const v2_f32& size, const v4_f32& rotationQuat, Color color, CommandList cmd)
-	{
-		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixRotationQuaternion(rotationQuat.get_dx()) * XMMatrixTranslation(position.x, position.y, position.z);
-		draw_debug_ellipse(tm, color, cmd);
-	}
-
-	void draw_debug_sprite(const v3_f32& position, const v2_f32& size, Color color, GPUImage* image, CommandList cmd)
-	{
-		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixTranslation(position.x, position.y, position.z);
-		draw_debug_sprite(tm, color, image, cmd);
-	}
-
-	void draw_debug_sprite(const v3_f32& position, const v2_f32& size, const v3_f32& rotation, Color color, GPUImage* image, CommandList cmd)
-	{
-		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixRotationRollPitchYaw(rotation.x, rotation.y, rotation.z) * XMMatrixTranslation(position.x, position.y, position.z);
-		draw_debug_sprite(tm, color, image, cmd);
-	}
-
-	void draw_debug_sprite(const v3_f32& position, const v2_f32& size, const v4_f32& rotationQuat, Color color, GPUImage* image, CommandList cmd)
-	{
-		XMMATRIX tm = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixRotationQuaternion(rotationQuat.get_dx()) * XMMatrixTranslation(position.x, position.y, position.z);
-		draw_debug_sprite(tm, color, image, cmd);
-	}
-
-	void set_debug_linewidth(f32 lineWidth, CommandList cmd)
-	{
-		DEF_BATCH();
-		batch.lineWidth = lineWidth;
-	}
-
-	f32	 get_debug_linewidth(CommandList cmd)
-	{
-		DEF_BATCH();
-		return batch.lineWidth;
-	}
-
-	void set_debug_stroke(f32 stroke, CommandList cmd)
-	{
-		DEF_BATCH();
-		batch.stroke = stroke;
-	}
-
-	f32	get_debug_stroke(CommandList cmd)
-	{
-		DEF_BATCH();
-		return batch.stroke;
-	}
-
-	void set_debug_texcoord(const v4_f32& texCoord, CommandList cmd)
-	{
-		DEF_BATCH();
-
-		batch.texCoord = texCoord;
-		batch.sameSprite = false;
-	}
-
-	v4_f32 get_debug_texcoord(CommandList cmd)
-	{
-		DEF_BATCH();
-		return batch.texCoord;
-	}
-
-	void set_debug_sampler_default(CommandList cmd)
-	{
-		DEF_BATCH();
-		batch.pSampler = nullptr;
-	}
-
-	void set_debug_sampler(Sampler* sampler, CommandList cmd)
-	{
-		DEF_BATCH();
-		batch.pSampler = sampler;
-	}
-
+	
 	void draw_debug_orthographic_grip(const v2_f32& position, const v2_f32& offset, const v2_f32& size, const v2_f32& gridSize, Color color, CommandList cmd)
 	{
 		DEF_BATCH();

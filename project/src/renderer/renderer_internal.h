@@ -4,6 +4,10 @@
 
 namespace sv {
 
+	/* TODO LIST:
+	       - Minimize renderpasses and use dynamic buffers to send data to GPU into a renderpass
+	 */
+
 	constexpr u32 LIGHT_COUNT = 1u;
 
 	struct LightData {
@@ -43,7 +47,6 @@ namespace sv {
 	};
 
 	constexpr u32 TEXT_BATCH_COUNT = 1000u; // Num of letters
-	constexpr u32 DEBUG_VERTEX_COUNT = 1000u;
 	constexpr u32 SPRITE_BATCH_COUNT = 1000u;
 
 	struct TextVertex {
@@ -56,17 +59,6 @@ namespace sv {
 		TextVertex vertices[TEXT_BATCH_COUNT * 4u];
 	};
 
-	struct DebugVertex {
-		v4_f32	position;
-		v2_f32	texCoord;
-		f32		stroke;
-		Color	color;
-	};
-
-	struct DebugData {
-		DebugVertex vertices[DEBUG_VERTEX_COUNT];
-	};
-
 	struct SpriteVertex {
 		v4_f32 position;
 		v2_f32 texCoord;
@@ -77,16 +69,6 @@ namespace sv {
 		SpriteVertex data[SPRITE_BATCH_COUNT * 4u];
 	};
 
-	constexpr u32 compute_max_batch_data()
-	{
-		size_t memory = 0u;
-		memory = std::max(memory, sizeof(TextData));
-		memory = std::max(memory, sizeof(DebugData));
-		memory = std::max(memory, sizeof(SpriteData));
-		return memory;
-	}
-	constexpr u32 MAX_BATCH_DATA = compute_max_batch_data();
-
 	struct GraphicsObjects {
 
 		GPUImage* image_white;
@@ -96,24 +78,20 @@ namespace sv {
 		DepthStencilState* dss_default_depth;
 		RasterizerState* rs_back_culling;
 		GPUBuffer* cbuffer_camera;
+		RenderPass* renderpass_off;
+		RenderPass* renderpass_world;
 
 		// DEBUG
 
-		Shader* vs_debug_quad;
-		Shader* ps_debug_quad;
-		Shader* vs_debug_ellipse;
-		Shader* ps_debug_ellipse;
-		Shader* vs_debug_sprite;
-		Shader* ps_debug_sprite;
-		RenderPass* renderpass_debug;
-		InputLayoutState* ils_debug;
+		Shader* vs_debug_solid_batch;
+		Shader* ps_debug_solid_batch;
+		InputLayoutState* ils_debug_solid_batch;
 		BlendState* bs_debug;
 
 		// TEXT
 
 		Shader* vs_text;
 		Shader* ps_text;
-		RenderPass* renderpass_text;
 		GPUBuffer* ibuffer_text;
 		InputLayoutState* ils_text;
 
@@ -121,7 +99,6 @@ namespace sv {
 
 		Shader* vs_sprite;
 		Shader* ps_sprite;
-		RenderPass* renderpass_sprite;
 		InputLayoutState* ils_sprite;
 		BlendState* bs_sprite;
 		GPUBuffer* ibuffer_sprite;
@@ -130,7 +107,6 @@ namespace sv {
 
 		Shader* vs_mesh;
 		Shader* ps_mesh;
-		RenderPass* renderpass_mesh;
 		InputLayoutState* ils_mesh;
 		BlendState* bs_mesh;
 		GPUBuffer* cbuffer_material;
@@ -141,7 +117,6 @@ namespace sv {
 
 		Shader* vs_sky;
 		Shader* ps_sky;
-		RenderPass* renderpass_sky;
 		GPUImage* image_sky;
 		GPUBuffer* vbuffer_skybox;
 		GPUBuffer* cbuffer_skybox;
@@ -149,12 +124,8 @@ namespace sv {
 
 	};
 
-	struct RenderingUtils {
-		u8* batch_data;
-	};
-
 	extern GraphicsObjects gfx;
-	extern RenderingUtils rend_utils[GraphicsLimit_CommandList];
+	extern u8* batch_data[GraphicsLimit_CommandList];
 
 	extern Font font_opensans;
 	extern Font font_console;
@@ -162,21 +133,32 @@ namespace sv {
 	Result	renderer_initialize();
 	Result	renderer_close();
 
-	SV_INLINE GPUBuffer* get_batch_buffer(CommandList cmd)
+	SV_INLINE GPUBuffer* get_batch_buffer(u32 size, CommandList cmd)
 	{
-		if (gfx.vbuffer_batch[cmd] == nullptr) {
+		// TODO: Dynamic update
+		GPUBuffer*& buffer = gfx.vbuffer_batch[cmd];
 
+		if (buffer == nullptr || graphics_buffer_info(buffer).size < size) {
+
+			if (buffer) {
+				graphics_destroy(buffer);
+				free(batch_data[cmd]);
+			}
+			
 			GPUBufferDesc desc;
 			desc.bufferType = GPUBufferType_Vertex;
 			desc.usage = ResourceUsage_Default;
 			desc.CPUAccess = CPUAccess_Write;
-			desc.size = MAX_BATCH_DATA;
+			desc.size = size;
 			desc.pData = nullptr;
 
 			graphics_buffer_create(&desc, &gfx.vbuffer_batch[cmd]);
-			graphics_name_set(gfx.vbuffer_batch[cmd], "BatchVertexBuffer");
+			graphics_name_set(gfx.vbuffer_batch[cmd], "BatchBuffer");
+
+			batch_data[cmd] = (u8*)malloc(size);
 		}
-		return gfx.vbuffer_batch[cmd];
+
+		return buffer;
 	}
 
 }

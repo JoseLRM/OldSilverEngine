@@ -92,45 +92,16 @@ namespace sv {
 	// DEBUG RENDERER
 
 	void begin_debug_batch(CommandList cmd);
-	void end_debug_batch(GPUImage* offscreen, const XMMATRIX& viewProjectionMatrix, CommandList cmd);
-
+	void end_debug_batch(GPUImage* offscreen, GPUImage* depthstencil, const XMMATRIX& viewProjectionMatrix, CommandList cmd);
 
 	void draw_debug_quad(const XMMATRIX& matrix, Color color, CommandList cmd);
 	void draw_debug_line(const v3_f32& p0, const v3_f32& p1, Color color, CommandList cmd);
-	void draw_debug_ellipse(const XMMATRIX& matrix, Color color, CommandList cmd);
-	void draw_debug_sprite(const XMMATRIX& matrix, Color color, GPUImage* image, CommandList cmd);
 
 	// Helper functions
 
 	void draw_debug_quad(const v3_f32& position, const v2_f32& size, Color color, CommandList cmd);
 	void draw_debug_quad(const v3_f32& position, const v2_f32& size, const v3_f32& rotation, Color color, CommandList cmd);
 	void draw_debug_quad(const v3_f32& position, const v2_f32& size, const v4_f32& rotationQuat, Color color, CommandList cmd);
-
-	void draw_debug_ellipse(const v3_f32& position, const v2_f32& size, Color color, CommandList cmd);
-	void draw_debug_ellipse(const v3_f32& position, const v2_f32& size, const v3_f32& rotation, Color color, CommandList cmd);
-	void draw_debug_ellipse(const v3_f32& position, const v2_f32& size, const v4_f32& rotationQuat, Color color, CommandList cmd);
-
-	void draw_debug_sprite(const v3_f32& position, const v2_f32& size, Color color, GPUImage* image, CommandList cmd);
-	void draw_debug_sprite(const v3_f32& position, const v2_f32& size, const v3_f32& rotation, Color color, GPUImage* image, CommandList cmd);
-	void draw_debug_sprite(const v3_f32& position, const v2_f32& size, const v4_f32& rotationQuat, Color color, GPUImage* image, CommandList cmd);
-
-	// Attributes
-
-	// Line rasterization width (pixels)
-	void set_debug_linewidth(f32 lineWidth, CommandList cmd);
-	f32	 get_debug_linewidth(CommandList cmd);
-
-	// Quad and ellipse stroke: 1.f renders normally, 0.01f renders thin stroke around
-	void set_debug_stroke(f32 stroke, CommandList cmd);
-	f32	 get_debug_stroke(CommandList cmd);
-
-	// Sprite texCoords
-	void	set_debug_texcoord(const v4_f32& texCoord, CommandList cmd);
-	v4_f32	get_debug_texcoord(CommandList cmd);
-
-	// Sprite sampler
-	void set_debug_sampler_default(CommandList cmd);
-	void set_debug_sampler(Sampler* sampler, CommandList cmd);
 
 	// High level draw calls
 

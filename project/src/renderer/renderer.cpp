@@ -8,7 +8,7 @@
 namespace sv {
 
 	GraphicsObjects		gfx = {};
-	RenderingUtils		rend_utils[GraphicsLimit_CommandList] = {};
+	u8* batch_data[GraphicsLimit_CommandList] = {};
 	Font				font_opensans;
 	Font				font_console;
 
@@ -23,12 +23,8 @@ namespace sv {
 
 	static Result compile_shaders()
 	{
-		COMPILE_VS(gfx.vs_debug_quad, "debug/quad.hlsl");
-		COMPILE_PS(gfx.ps_debug_quad, "debug/quad.hlsl");
-		COMPILE_VS(gfx.vs_debug_ellipse, "debug/ellipse.hlsl");
-		COMPILE_PS(gfx.ps_debug_ellipse, "debug/ellipse.hlsl");
-		COMPILE_VS(gfx.vs_debug_sprite, "debug/sprite.hlsl");
-		COMPILE_PS(gfx.ps_debug_sprite, "debug/sprite.hlsl");
+		COMPILE_VS_(gfx.vs_debug_solid_batch, "debug/solid_batch.hlsl");
+		COMPILE_PS_(gfx.ps_debug_solid_batch, "debug/solid_batch.hlsl");
 
 		COMPILE_VS(gfx.vs_text, "text.hlsl");
 		COMPILE_PS(gfx.ps_text, "text.hlsl");
@@ -36,8 +32,8 @@ namespace sv {
 		COMPILE_VS(gfx.vs_sprite, "sprite/default.hlsl");
 		COMPILE_PS(gfx.ps_sprite, "sprite/default.hlsl");
 
-		COMPILE_VS_(gfx.vs_mesh, "mesh/default.hlsl");
-		COMPILE_PS_(gfx.ps_mesh, "mesh/default.hlsl");
+		COMPILE_VS(gfx.vs_mesh, "mesh/default.hlsl");
+		COMPILE_PS(gfx.ps_mesh, "mesh/default.hlsl");
 
 		COMPILE_VS(gfx.vs_sky, "skymapping.hlsl");
 		COMPILE_PS(gfx.ps_sky, "skymapping.hlsl");
@@ -55,7 +51,7 @@ namespace sv {
 		AttachmentDesc att[GraphicsLimit_Attachment];
 		desc.pAttachments = att;
 
-		// Debug
+		// Offscreen pass
 		att[0].loadOp = AttachmentOperation_Load;
 		att[0].storeOp = AttachmentOperation_Store;
 		att[0].stencilLoadOp = AttachmentOperation_DontCare;
@@ -67,21 +63,9 @@ namespace sv {
 		att[0].type = AttachmentType_RenderTarget;
 
 		desc.attachmentCount = 1u;
-		CREATE_RENDERPASS("DebugRenderpass", gfx.renderpass_debug);
-
-		// Text
-		att[0].loadOp = AttachmentOperation_Load;
-		att[0].storeOp = AttachmentOperation_Store;
-		att[0].format = OFFSCREEN_FORMAT;
-		att[0].initialLayout = GPUImageLayout_RenderTarget;
-		att[0].layout = GPUImageLayout_RenderTarget;
-		att[0].finalLayout = GPUImageLayout_RenderTarget;
-		att[0].type = AttachmentType_RenderTarget;
-
-		desc.attachmentCount = 1u;
-		CREATE_RENDERPASS("TextRenderpass", gfx.renderpass_text);
-
-		// Sprite
+		CREATE_RENDERPASS("OffscreenRenderpass", gfx.renderpass_off);
+		
+		// World
 		att[0].loadOp = AttachmentOperation_Load;
 		att[0].storeOp = AttachmentOperation_Store;
 		att[0].stencilLoadOp = AttachmentOperation_DontCare;
@@ -103,45 +87,7 @@ namespace sv {
 		att[1].type = AttachmentType_DepthStencil;
 
 		desc.attachmentCount = 2u;
-		CREATE_RENDERPASS("SpriteRenderPass", gfx.renderpass_sprite);
-
-		// Mesh
-		att[0].loadOp = AttachmentOperation_Load;
-		att[0].storeOp = AttachmentOperation_Store;
-		att[0].stencilLoadOp = AttachmentOperation_DontCare;
-		att[0].stencilStoreOp = AttachmentOperation_DontCare;
-		att[0].format = OFFSCREEN_FORMAT;
-		att[0].initialLayout = GPUImageLayout_RenderTarget;
-		att[0].layout = GPUImageLayout_RenderTarget;
-		att[0].finalLayout = GPUImageLayout_RenderTarget;
-		att[0].type = AttachmentType_RenderTarget;
-
-		att[1].loadOp = AttachmentOperation_Load;
-		att[1].storeOp = AttachmentOperation_Store;
-		att[1].stencilLoadOp = AttachmentOperation_Load;
-		att[1].stencilStoreOp = AttachmentOperation_Store;
-		att[1].format = ZBUFFER_FORMAT;
-		att[1].initialLayout = GPUImageLayout_DepthStencil;
-		att[1].layout = GPUImageLayout_DepthStencil;
-		att[1].finalLayout = GPUImageLayout_DepthStencil;
-		att[1].type = AttachmentType_DepthStencil;
-
-		desc.attachmentCount = 2u;
-		CREATE_RENDERPASS("MeshRenderPass", gfx.renderpass_mesh);
-
-		// Skymap
-		att[0].loadOp = AttachmentOperation_Load;
-		att[0].storeOp = AttachmentOperation_Store;
-		att[0].stencilLoadOp = AttachmentOperation_DontCare;
-		att[0].stencilStoreOp = AttachmentOperation_DontCare;
-		att[0].format = OFFSCREEN_FORMAT;
-		att[0].initialLayout = GPUImageLayout_RenderTarget;
-		att[0].layout = GPUImageLayout_RenderTarget;
-		att[0].finalLayout = GPUImageLayout_RenderTarget;
-		att[0].type = AttachmentType_RenderTarget;
-
-		desc.attachmentCount = 1u;
-		CREATE_RENDERPASS("SkymapRenderPass", gfx.renderpass_sky);
+		CREATE_RENDERPASS("WorldRenderPass", gfx.renderpass_world);
 
 		return Result_Success;
 	}
@@ -444,13 +390,11 @@ namespace sv {
 			slots[0].stride = sizeof(DebugVertex);
 
 			elements[0] = { "Position", 0u, 0u, 0u, Format_R32G32B32A32_FLOAT };
-			elements[1] = { "TexCoord", 0u, 0u, 4u * sizeof(float), Format_R32G32_FLOAT };
-			elements[2] = { "Stroke", 0u, 0u, 6u * sizeof(float), Format_R32_FLOAT };
-			elements[3] = { "Color", 0u, 0u, 7u * sizeof(float), Format_R8G8B8A8_UNORM };
+			elements[3] = { "Color", 0u, 0u, 4u * sizeof(float), Format_R8G8B8A8_UNORM };
 
 			desc.elementCount = 4u;
 			desc.slotCount = 1u;
-			svCheck(graphics_inputlayoutstate_create(&desc, &gfx.ils_debug));
+			svCheck(graphics_inputlayoutstate_create(&desc, &gfx.ils_debug_solid_batch));
 
 			// TEXT
 			slots[0] = { 0u, sizeof(TextVertex), false };
@@ -603,27 +547,22 @@ namespace sv {
 		svCheck(font_create(font_opensans, "$system/fonts/OpenSans-Regular.ttf", 228.f, 0u));
 		font_create(font_console, "C:/Windows/Fonts/consola.ttf", 228.f, 0u);
 
-		// Allocate batch memory
-		{
-			for (u32 i = 0u; i < GraphicsLimit_CommandList; ++i) {
-				rend_utils[i].batch_data = new u8[MAX_BATCH_DATA];
-			}
-		}
-
 		return Result_Success;
 	}
 
 	Result renderer_close()
 	{
 		// Free graphics objects
-		// TODO
 		svCheck(graphics_destroy_struct(&gfx, sizeof(gfx)));
 
 		// Deallocte batch memory
 		{
 			for (u32 i = 0u; i < GraphicsLimit_CommandList; ++i) {
-				delete[] rend_utils[i].batch_data;
-				rend_utils[i].batch_data = nullptr;
+
+				if (batch_data[i]) {
+					free(batch_data[i]);
+					batch_data[i] = nullptr;
+				}
 			}
 		}
 
@@ -843,7 +782,7 @@ namespace sv {
 
 							graphics_buffer_update(batch_buffer, data.data, instanceCount * 4u * sizeof(SpriteVertex), 0u, cmd);
 
-							graphics_renderpass_begin(gfx.renderpass_sprite, att, nullptr, 1.f, 0u, cmd);
+							graphics_renderpass_begin(gfx.renderpass_world, att, nullptr, 1.f, 0u, cmd);
 
 							end = it;
 							it -= instanceCount;
@@ -1019,7 +958,7 @@ namespace sv {
 
 							// Begin renderpass
 							GPUImage* att[] = { scene->offscreen, scene->depthstencil };
-							graphics_renderpass_begin(gfx.renderpass_mesh, att, cmd);
+							graphics_renderpass_begin(gfx.renderpass_world, att, cmd);
 
 							// Draw
 							graphics_draw_indexed(u32(inst.mesh->indices.size()), 1u, 0u, 0u, 0u, cmd);
@@ -1062,7 +1001,7 @@ namespace sv {
 		graphics_shader_bind(gfx.ps_sky, cmd);
 
 		GPUImage* att[] = { offscreen };
-		graphics_renderpass_begin(gfx.renderpass_sky, att, 0, 1.f, 0u, cmd);
+		graphics_renderpass_begin(gfx.renderpass_off, att, 0, 1.f, 0u, cmd);
 		graphics_draw(36u, 1u, 0u, 0u, cmd);
 		graphics_renderpass_end(cmd);
 	}
@@ -1118,7 +1057,7 @@ namespace sv {
 		GPUImage* att[1];
 		att[0] = offscreen;
 
-		graphics_renderpass_begin(gfx.renderpass_text, att, nullptr, 1.f, 0u, cmd);
+		graphics_renderpass_begin(gfx.renderpass_off, att, nullptr, 1.f, 0u, cmd);
 		graphics_draw_indexed(vertex_count / 4u * 6u, 1u, 0u, 0u, 0u, cmd);
 		graphics_renderpass_end(cmd);
 	}
