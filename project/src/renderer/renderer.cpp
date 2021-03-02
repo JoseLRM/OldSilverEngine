@@ -92,7 +92,17 @@ namespace sv {
 		att[0].finalLayout = GPUImageLayout_RenderTarget;
 		att[0].type = AttachmentType_RenderTarget;
 
-		desc.attachmentCount = 1u;
+		att[1].loadOp = AttachmentOperation_Load;
+		att[1].storeOp = AttachmentOperation_Store;
+		att[1].stencilLoadOp = AttachmentOperation_Load;
+		att[1].stencilStoreOp = AttachmentOperation_Store;
+		att[1].format = ZBUFFER_FORMAT;
+		att[1].initialLayout = GPUImageLayout_DepthStencil;
+		att[1].layout = GPUImageLayout_DepthStencil;
+		att[1].finalLayout = GPUImageLayout_DepthStencil;
+		att[1].type = AttachmentType_DepthStencil;
+
+		desc.attachmentCount = 2u;
 		CREATE_RENDERPASS("SpriteRenderPass", gfx.renderpass_sprite);
 
 		// Mesh
@@ -771,9 +781,11 @@ namespace sv {
 						graphics_shader_bind(gfx.vs_sprite, cmd);
 						graphics_shader_bind(gfx.ps_sprite, cmd);
 						graphics_blendstate_bind(gfx.bs_sprite, cmd);
+						graphics_depthstencil_bind(gfx.dss_default_depth, cmd);
 
-						GPUImage* att[1];
+						GPUImage* att[2];
 						att[0] = scene->offscreen;
+						att[1] = scene->depthstencil;
 
 						XMMATRIX matrix;
 						XMVECTOR pos0, pos1, pos2, pos3;

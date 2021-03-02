@@ -40,9 +40,9 @@ namespace sv {
 	SV_DEFINE_COMPONENT(SpriteComponent) {
 
 		TextureAsset	texture;
-		v4_f32			texcoord = { 0.f, 0.f, 1.f, 1.f };
-		Color			color = Color::White();
-		u32				layer = 0u;
+		v4_f32		texcoord = { 0.f, 0.f, 1.f, 1.f };
+		Color		color = Color::White();
+		u32		layer = 0u;
 
 		void serialize(ArchiveO & archive);
 		void deserialize(ArchiveI & archive);

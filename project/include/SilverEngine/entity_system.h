@@ -8,9 +8,12 @@
 
 namespace sv {
 
-	typedef u16 CompID;
-	typedef u32 Entity;
 	SV_DEFINE_HANDLE(ECS);
+
+	enum EntityFlag : u32 {
+		EntityFlag_None = 0u,
+		EntityFlag_NoSerialize = SV_BIT(0u)
+	};
 
 	struct BaseComponent {
 		Entity entity = SV_ENTITY_NULL;
