@@ -192,6 +192,7 @@ namespace sv {
 		VkBuffer				buffer;
 		VmaAllocation			allocation;
 		VkDescriptorBufferInfo	buffer_info;
+		DynamicAllocation		dynamic_allocation[GraphicsLimit_CommandList];
 	};
 	// Image
 	struct Image_vk : public GPUImage_internal {

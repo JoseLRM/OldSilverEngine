@@ -13,6 +13,7 @@ namespace sv {
 	static f32 text_offset = 0.f;
 	static u32 line_count = 0u;
 	static bool scroll_selected = false;
+	static f32 show_fade = 0.f;
 	
 	static constexpr u32 CONSOLE_SIZE = 10000u;
 	static constexpr f32 CONSOLE_HEIGHT = 1.7f;
@@ -21,6 +22,7 @@ namespace sv {
 	static constexpr f32 COMMAND_TEXT_SIZE = 0.06f;
 	static constexpr f32 SCROLL_WIDTH = 0.03f;
 	static constexpr f32 SCROLL_HEIGHT = 0.12f;
+	static constexpr f32 ANIMATION_TIME = 0.25f;
 
 	struct ConsoleBuffer {
 		char* buff;
@@ -259,7 +261,14 @@ namespace sv {
 
 	void update_console()
 	{
-		if (!engine.console_active || !input.unused) return;
+		f32 animation_advance = engine.deltatime * (1.f / ANIMATION_TIME);
+
+		if (!engine.console_active || !input.unused) {
+			show_fade = std::max(0.f, show_fade - animation_advance);
+			return;
+		}
+
+		show_fade = std::min(1.f, show_fade + animation_advance);
 
 		input.unused = false;
 		
@@ -331,7 +340,7 @@ namespace sv {
 
 	void draw_console(GPUImage* offscreen,  CommandList cmd)
 	{
-		if (!engine.console_active) return;
+		if (!engine.console_active && show_fade == 0.f) return;
 
 		// TEMP
 		GPUImage* depthstencil = engine.scene->depthstencil;
@@ -349,6 +358,8 @@ namespace sv {
 			console_buffer.pos = CONSOLE_SIZE;
 			console_buffer.flipped = false;
 		}
+
+		f32 animation = (1.f - show_fade) * (CONSOLE_HEIGHT + COMMAND_TEXT_SIZE);
 
 		f32 window_width = (f32)window_width_get(engine.window);
 		f32 window_height = (f32)window_height_get(engine.window);
@@ -368,23 +379,23 @@ namespace sv {
 			console_x -= SCROLL_WIDTH * 0.5f;
 
 			// Draw scroll
-			draw_debug_quad({ 1.f - SCROLL_WIDTH * 0.5f, 1.f - CONSOLE_HEIGHT * 0.5f, 0.f }, { SCROLL_WIDTH, CONSOLE_HEIGHT }, Color::Gray(20u), cmd);
+			draw_debug_quad({ 1.f - SCROLL_WIDTH * 0.5f, 1.f - CONSOLE_HEIGHT * 0.5f + animation, 0.f }, { SCROLL_WIDTH, CONSOLE_HEIGHT }, Color::Gray(20u), cmd);
 
 			f32 value = text_offset / f32(line_count - std::min(line_count, LINE_COUNT));
 
-			draw_debug_quad({ 1.f - SCROLL_WIDTH * 0.5f, (1.f - CONSOLE_HEIGHT + SCROLL_HEIGHT * 0.5f) + (CONSOLE_HEIGHT - SCROLL_HEIGHT) * value, 0.f }, { SCROLL_WIDTH, SCROLL_HEIGHT }, Color::White(), cmd);
+			draw_debug_quad({ 1.f - SCROLL_WIDTH * 0.5f, animation + (1.f - CONSOLE_HEIGHT + SCROLL_HEIGHT * 0.5f) + (CONSOLE_HEIGHT - SCROLL_HEIGHT) * value, 0.f }, { SCROLL_WIDTH, SCROLL_HEIGHT }, Color::White(), cmd);
 		}
 
-		draw_debug_quad({ console_x, 1.f - CONSOLE_HEIGHT * 0.5f, 0.f }, { console_width, CONSOLE_HEIGHT }, Color::Black(180u), cmd);
-		draw_debug_quad({ 0.f, 1.f - CONSOLE_HEIGHT - COMMAND_TEXT_SIZE * 0.5f, 0.f }, { 2.f, COMMAND_TEXT_SIZE }, Color::Black(), cmd);
+		draw_debug_quad({ console_x, animation + 1.f - CONSOLE_HEIGHT * 0.5f, 0.f }, { console_width, CONSOLE_HEIGHT }, Color::Black(180u), cmd);
+		draw_debug_quad({ 0.f, animation + 1.f - CONSOLE_HEIGHT - COMMAND_TEXT_SIZE * 0.5f, 0.f }, { 2.f, COMMAND_TEXT_SIZE }, Color::Black(), cmd);
 
 		end_debug_batch(offscreen, depthstencil, XMMatrixIdentity(), cmd);
 
 		f32 text_x = -1.f;
-		f32 text_y = 1.f - CONSOLE_HEIGHT;
+		f32 text_y = 1.f - CONSOLE_HEIGHT + animation;
 
 		f32 buffer_x = -1.f;
-		f32 buffer_y = 1.f;
+		f32 buffer_y = 1.f + animation;
 
 		if (current_command.size()) {
 			

@@ -945,7 +945,6 @@ namespace sv {
 							GPUImage* att[] = { scene->offscreen, scene->depthstencil };
 							graphics_renderpass_begin(gfx.renderpass_world, att, cmd);
 
-							// Draw
 							graphics_draw_indexed(u32(inst.mesh->indices.size()), 1u, 0u, 0u, 0u, cmd);
 
 							graphics_renderpass_end(cmd);
@@ -1037,6 +1036,8 @@ namespace sv {
 
 	SV_INLINE static void text_draw_call(GPUImage* offscreen, GPUBuffer* buffer, TextData& data, u32 vertex_count, CommandList cmd)
 	{
+		if (vertex_count == 0u) return;
+
 		graphics_buffer_update(buffer, data.vertices, vertex_count * sizeof(TextVertex), 0u, cmd);
 
 		GPUImage* att[1];

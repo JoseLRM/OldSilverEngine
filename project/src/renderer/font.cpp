@@ -321,7 +321,7 @@ namespace sv {
 
 				if (real_line_width > max_line_width) {
 
-					if (begin_word != begin_line && (char_is_letter(*it) || char_is_number(*it))) {
+					if (begin_word != nullptr && begin_word != begin_line && (char_is_letter(*it) || char_is_number(*it))) {
 
 						it = begin_word;
 					}

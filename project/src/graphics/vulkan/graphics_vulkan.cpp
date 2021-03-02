@@ -1307,17 +1307,10 @@ namespace sv {
 		
 		if (buffer.info.bufferType == GPUBufferType_Constant && buffer.info.usage == ResourceUsage_Dynamic) {
 
-			SV_LOG_ERROR("TODO-> Update buffer in renderpass");
-			//void* mapData;
-			//VkBuffer mapBuffer;
-			//u32 mapOffset;
-			//buffer.memory.GetMappingData(size, mapBuffer, &mapData, mapOffset);
-			//memcpy(mapData, pData, u64(size));
-			//
-			//void* dst;
-			//vmaMapMemory(g_API->allocator, buffer.allocation, (void**)& dst);
-			//memcpy((u8*)dst + u64(offset), mapData, u64(size));
-			//vmaUnmapMemory(g_API->allocator, buffer.allocation);
+			DynamicAllocation allocation = allocate_gpu(size, cmd_);
+			memcpy(allocation.data, pData, size_t(size));
+			buffer.dynamic_allocation[cmd_] = allocation;
+			graphics_state_get().graphics[cmd_].flags |= GraphicsPipelineState_ConstantBuffer;
 		}
 		else {
 
@@ -1967,8 +1960,16 @@ namespace sv {
 				Buffer_vk* buffer = reinterpret_cast<Buffer_vk*>(state.constantBuffers[shaderType][binding.userBinding]);
 				if (buffer == nullptr) continue;
 				writeDesc[writeCount].pImageInfo = nullptr;
-				writeDesc[writeCount].pBufferInfo = &buffer->buffer_info;
 				writeDesc[writeCount].pTexelBufferView = nullptr;
+
+				if (buffer->info.usage == ResourceUsage_Dynamic) {
+
+					buffer->buffer_info.buffer = buffer->dynamic_allocation[cmd_].buffer;
+					buffer->buffer_info.offset = buffer->dynamic_allocation[cmd_].offset;
+					buffer->buffer_info.range = buffer->info.size;
+				}
+				
+				writeDesc[writeCount].pBufferInfo = &buffer->buffer_info;
 
 				writeCount++;
 			}
@@ -2190,7 +2191,7 @@ namespace sv {
 		VkBufferUsageFlags bufferUsage = 0u;
 
 		// Special case: It uses dynamic memory from an allocator
-		if (desc.usage == ResourceUsage_Dynamic && desc.bufferType == GPUBufferType_Constant)
+		if (desc.usage == ResourceUsage_Dynamic && buffer.info.bufferType == GPUBufferType_Constant)
 		{
 			return Result_Success;
 		}

@@ -4,10 +4,6 @@
 
 namespace sv {
 
-	/* TODO LIST:
-	       - Minimize renderpasses and use dynamic buffers to send data to GPU into a renderpass
-	 */
-
 	constexpr u32 LIGHT_COUNT = 1u;
 
 	struct LightData {
