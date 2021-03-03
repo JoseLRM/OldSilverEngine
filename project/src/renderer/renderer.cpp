@@ -953,8 +953,6 @@ namespace sv {
 				}
 			}
 		}
-
-		gui_render(scene->gui, scene->offscreen, cmd);
 	}
 
 	void draw_sky(GPUImage* offscreen, XMMATRIX view_matrix, const XMMATRIX& projection_matrix, CommandList cmd)

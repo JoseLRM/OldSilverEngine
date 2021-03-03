@@ -110,6 +110,9 @@ namespace sv {
 
 		void reset()
 		{
+			foreach(i, m_Size)
+				m_Data[i].~T();
+
 			m_Size = 0u;
 		}
 		void clear()

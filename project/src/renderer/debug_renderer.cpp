@@ -50,6 +50,7 @@ namespace sv {
 		att[1] = depthstencil;
 		
 		graphics_blendstate_bind(gfx.bs_transparent, cmd);
+		graphics_depthstencilstate_unbind(cmd);
 			
 		// DRAW QUADS
 		if (batch.quads.size()) {

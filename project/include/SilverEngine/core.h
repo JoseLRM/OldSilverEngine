@@ -731,7 +731,7 @@ namespace sv {
 
 	struct Scene;
 	struct BaseComponent;
-	struct IGUI;
+	struct GUI;
 
 	typedef u16 CompID;
 	typedef u32 Entity;
@@ -742,7 +742,7 @@ namespace sv {
 		void(*render)();
 		Result(*close)();
 		Result(*initialize_scene)(Scene* scene);
-		void(*show_component)(IGUI* igui, CompID comp_id, BaseComponent* comp);
+		void(*show_component)(GUI* gui, CompID comp_id, BaseComponent* comp);
 		Result(*close_scene)(Scene* scene);
 	};
 

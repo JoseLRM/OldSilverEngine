@@ -18,7 +18,6 @@ namespace sv {
 		Scene_internal& scene = *new Scene_internal();
 
 		ecs_create(&scene.ecs);
-		scene.gui = gui_create();
 		svCheck(offscreen_create(1920u, 1080u, &scene.offscreen));
 		svCheck(depthstencil_create(1920u, 1080u, &scene.depthstencil));
 
@@ -38,7 +37,6 @@ namespace sv {
 		svCheck(engine.app_callbacks.close_scene(scene_));
 
 		ecs_destroy(scene.ecs);
-		gui_destroy(scene.gui);
 		graphics_destroy(scene.offscreen);
 		graphics_destroy(scene.depthstencil);
 
@@ -60,8 +58,6 @@ namespace sv {
 		}
 
 		engine.app_callbacks.update();
-
-		gui_update(scene->gui, window_width_get(engine.window), window_height_get(engine.window));
 	}
 
 	CameraComponent* get_main_camera(Scene* scene)

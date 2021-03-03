@@ -12,7 +12,6 @@ namespace sv {
 	struct Scene {
 
 		ECS* ecs;
-		GUI* gui;
 
 		Entity main_camera = SV_ENTITY_NULL;
 
