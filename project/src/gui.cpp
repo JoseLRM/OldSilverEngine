@@ -16,8 +16,259 @@ namespace sv {
 	  - Popups
 	  - Combobox
 	  - Not use depthstencil
+	  - In FrameList call destructors in reset function
 	*/
 
+	enum GuiWidgetType : u32 {
+		GuiWidgetType_Container,
+		GuiWidgetType_Button,
+	};
+	
+	struct GuiWidget {
+
+		const GuiWidgetType type;
+		v4_f32 bounds;
+
+		GuiWidget(GuiWidgetType type) : type(type) {}
+	};
+	
+	struct GuiContainer : public GuiWidget {
+
+		v4_f32 bounds;
+		GuiContainerStyle style;
+
+		FrameList<GuiWidget> widgets;
+		
+	};
+
+	struct GuiButton : public GuiWidget {
+		
+		GuiButtonStyle style;
+
+		GuiButton() : GuiWidget(GuiWidgetType_Button) {}
+	};
+	
+	struct GUI_internal {
+		
+		FrameList<GuiContainer> containers;
+		FrameList<GuiButton> buttons;
+
+		v2_f32 resolution;
+		
+	};
+
+	void gui_begin(GUI* gui_, f32 width, f32 height)
+	{
+		PARSE_GUI();
+
+		gui.containers.reset();
+		gui.buttons.reset();
+
+		resolution = { width, height };
+	}
+	
+	void gui_end(GUI* gui_)
+	{
+		PARSE_GUI();
+	}
+
+	Result gui_create(GUI** pgui)
+	{
+		GUI_internal& gui = *new GUI_internal();
+
+		*pgui = reinterpret_cast<GUI*>(&gui);
+		return Result_Success;
+	}
+	
+	Result gui_destroy(GUI* gui_)
+	{
+		PARSE_GUI();
+
+		
+		delete &gui;
+		return Result_Success;
+	}
+
+	// BOUNDS
+
+		SV_INLINE static f32 compute_coord(const GUI_internal& gui, const GuiCoord& coord, f32 aspect_coord, f32 dimension, f32 resolution, bool vertical, f32 parent_coord, f32 parent_dimension)
+	{
+		f32 res = 0.5f;
+
+		// Centred coord
+		switch (coord.constraint)
+		{
+		case GuiConstraint_Relative:
+			res = coord.value * parent_dimension;
+			break;
+
+		case GuiConstraint_Center:
+			res = 0.5f * parent_dimension;
+			break;
+
+		case GuiConstraint_Pixel:
+			res = coord.value / resolution;
+			break;
+
+		case GuiConstraint_Aspect:
+			res = aspect_coord * coord.value * (vertical ? (gui.resolution.x / gui.resolution.y) : (gui.resolution.y / gui.resolution.x));
+			break;
+
+		}
+
+		// Inverse coord
+		if (coord.alignment >= 3u) {
+			res = parent_dimension - res;
+		}
+
+		// Parent offset
+		res += (parent_coord - parent_dimension * 0.5f);
+
+		// Alignment
+		switch (coord.alignment)
+		{
+		case GuiCoordAlignment_Left:
+		case GuiCoordAlignment_InverseLeft:
+			res = res + dimension * 0.5f;
+			break;
+
+		case GuiCoordAlignment_Right:
+		case GuiCoordAlignment_InverseRight:
+			res = res - dimension * 0.5f;
+			break;
+		}
+
+		return res;
+	}
+
+	SV_INLINE static f32 compute_dimension(const GUI_internal& gui, const GuiWidget::Dimension& dimension, f32 inv_dimension, f32 resolution, bool vertical, f32 parent_dimension)
+	{
+		f32 res = 0.5f;
+
+		// Centred coord
+		switch (dimension.constraint)
+		{
+		case GuiConstraint_Relative:
+			res = dimension.value * parent_dimension;
+			break;
+
+		case GuiConstraint_Center:
+			res = 0.5f * parent_dimension;
+			break;
+
+		case GuiConstraint_Pixel:
+			res = dimension.value / resolution;
+			break;
+
+		case GuiConstraint_Aspect:
+			res = inv_dimension * (vertical ? (gui.resolution.x / gui.resolution.y) : (gui.resolution.y / gui.resolution.x));
+			break;
+		}
+
+		return res;
+	}
+
+	SV_INLINE bool mouse_in_bounds(const GUI_internal& gui, const v4_f32& bounds)
+	{
+		return abs(bounds.x - gui.mouse_position.x) <= bounds.z * 0.5f && abs(bounds.y - gui.mouse_position.y) <= bounds.w * 0.5f;
+	}
+
+	SV_INLINE static f32 get_scroll_width(const GUI_internal& gui, f32 container_width)
+	{
+		return std::min(10.f / gui.resolution.x, container_width);
+	}
+
+	SV_INLINE static bool container_has_vertical_scroll(const GuiContainer& container)
+	{
+		return container.vertical_scroll && (container.up_extension != 0.f || container.down_extension != 0.f);
+	}
+
+	SV_INLINE static f32 get_button_scroll_height(const GuiContainer& container, f32 container_height)
+	{
+		return container_height * 0.1f;
+	}
+
+	static v4_f32 compute_widget_bounds(const GUI_internal& gui, GuiWidget& widget, v4_f32 parent_bounds)
+	{
+#ifndef SV_DIST
+		if (widget.x.constraint == GuiConstraint_Aspect && widget.x.constraint == widget.y.constraint) {
+			SV_LOG_WARNING("Gui coords has both aspect constraint, that's not possible...");
+		}
+		if (widget.w.constraint == GuiConstraint_Aspect && widget.w.constraint == widget.h.constraint) {
+			SV_LOG_WARNING("Gui dimensions has both aspect constraint, that's not possible...");
+		}
+#endif
+
+		// Scroll adjust
+		if (widget.parent && container_has_vertical_scroll(*widget.parent)) {
+
+			parent_bounds.y -= widget.parent->vertical_offset;
+
+			f32 scroll_width = get_scroll_width(gui, parent_bounds.z);
+
+			parent_bounds.x -= scroll_width * 0.5f;
+			parent_bounds.z -= scroll_width;
+		}
+
+		// Compute local bounds
+		f32 w;
+		f32 h;
+		f32 x;
+		f32 y;
+
+		if (widget.w.constraint == GuiConstraint_Aspect) {
+			h = compute_dimension(gui, widget.h, 0.5f, gui.resolution.y, true, parent_bounds.w);
+			w = compute_dimension(gui, widget.w, h, gui.resolution.x, false, parent_bounds.z);
+		}
+		else {
+			w = compute_dimension(gui, widget.w, 0.5f, gui.resolution.x, false, parent_bounds.z);
+			h = compute_dimension(gui, widget.h, w, gui.resolution.y, true, parent_bounds.w);
+		}
+
+		if (widget.x.constraint == GuiConstraint_Aspect) {
+			y = compute_coord(gui, widget.y, 0.5f, h, gui.resolution.y, true, parent_bounds.y, parent_bounds.w);
+			x = compute_coord(gui, widget.x, y, w, gui.resolution.x, false, parent_bounds.x, parent_bounds.z);
+		}
+		else {
+			x = compute_coord(gui, widget.x, 0.5f, w, gui.resolution.x, false, parent_bounds.x, parent_bounds.z);
+			y = compute_coord(gui, widget.y, x, h, gui.resolution.y, true, parent_bounds.y, parent_bounds.w);
+		}
+
+		return { x, y, w, h };
+	}
+
+	static v4_f32 compute_widget_bounds(const GUI_internal& gui, GuiWidget& widget)
+	{
+		v4_f32 parent_bounds = { 0.5f, 0.5f, 1.f, 1.f };
+
+		if (widget.parent != nullptr) {
+			parent_bounds = compute_widget_bounds(gui, *widget.parent);
+		}
+
+		return compute_widget_bounds(gui, widget, parent_bounds);
+	}
+
+	
+	bool gui_begin_container(GUI* gui_, u64 id, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiContainerStyle& style)
+	{
+		
+	}
+	
+	void gui_end_container(GUI* gui_)
+	{
+		
+	}
+	
+	bool gui_button(GUI* gui_, u64 id, const char* text, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiButtonStyle& style)
+	{
+		PARSE_GUI();
+	}
+	
+
+///////////////////////////////////// OLD /////////////////////////////////////////////
+/*
+	
+	
 	struct GUI_internal {
 
 		InstanceAllocator<GuiContainer, 10u> containers;
@@ -1713,5 +1964,5 @@ namespace sv {
 		igui.current_window->yoff += DRAG_HEIGHT + 3.f;
 	}
 
-
+	*/
 }

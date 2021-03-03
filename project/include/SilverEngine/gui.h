@@ -4,6 +4,79 @@
 
 namespace sv {
 
+	enum GuiConstraint : u32 {
+		GuiConstraint_Relative,
+		GuiConstraint_Center,
+		GuiConstraint_Pixel,
+		GuiConstraint_Aspect,
+	};
+
+	enum GuiAlignment : u32 {
+		GuiAlignment_Left = 0u,
+		GuiAlignment_Bottom = 0u,
+		GuiAlignment_Center = 1u,
+		GuiAlignment_Right = 2u,
+		GuiAlignment_Top = 2u,
+
+		GuiAlignment_InverseLeft = 3u,
+		GuiAlignment_InverseBottom = 3u,
+		GuiAlignment_InverseCenter = 4u,
+		GuiAlignment_InverseRight = 5u,
+		GuiAlignment_InverseTop = 5u,
+	};
+
+	struct GuiCoord {
+
+		f32 value;
+		GuiConstraint constraint;
+		GuiAlignment alignment;
+		
+	};
+
+	struct GuiDim {
+
+		f32 value;
+		GuiConstraint constraint;
+		
+	};
+
+	SV_DEFINE_HANDLE(GUI);
+
+	struct GuiContainerStyle {
+
+	};
+
+	struct GuiButtonStyle {
+
+	};
+
+	Result gui_create(GUI** pgui);
+	Result gui_destroy(GUI* gui);
+
+	void gui_begin(GUI* gui, f32 width, f32 height);
+	void gui_end(GUI* gui);
+	
+	bool gui_begin_container(GUI* gui, u64 id, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiContainerStyle& style);
+	void gui_end_container(GUI* gui);
+	
+	bool gui_button(GUI* gui, u64 id, const char* text, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiButtonStyle& style);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	//////////OLD////////////
+	/*
 	// ENUMS
 
 	enum GuiConstraint : u32 {
@@ -278,5 +351,5 @@ namespace sv {
 	bool igui_button(IGUI* igui, u64 id, const char* text);
 	bool igui_drag(IGUI* igui, u64 id, const char* text, f32* n, f32 adv = 0.1f);
 	void igui_text(IGUI* igui, u64 id, const char* text);
-
+	*/
 }
