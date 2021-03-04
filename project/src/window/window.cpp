@@ -417,6 +417,7 @@ namespace sv {
 		if (desc->iconFilePath != nullptr) {
 			svCheck(window_icon_set(*pWindow, desc->iconFilePath));
 		}
+		else svCheck(window_icon_set(*pWindow, SV_SYS("system/icon.ico")));
 
 		window_flags_set(*pWindow, desc->flags);
 		window_state_set(*pWindow, desc->state);
