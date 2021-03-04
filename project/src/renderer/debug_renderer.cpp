@@ -19,10 +19,18 @@ namespace sv {
 		DebugLine(const v3_f32& p0, const v3_f32& p1, Color color) : p0(p0), p1(p1), color(color) {}
 	};
 
+	struct DebugTriangle {
+		v3_f32 p0, p1, p2;
+		Color color;
+
+		DebugTriangle(const v3_f32& p0, const v3_f32& p1, const v3_f32& p2, Color color) : p0(p0), p1(p1), p2(p2), color(color) {}
+	};
+
 	struct DebugRendererBatch {
 
 		FrameList<DebugQuad> quads;
 		FrameList<DebugLine> lines;
+		FrameList<DebugTriangle> triangles;
 		
 	};
 
@@ -36,10 +44,12 @@ namespace sv {
 
 		batch.quads.reset();
 		batch.lines.reset();
+		batch.triangles.reset();
 	}
 
 	constexpr u32 QUAD_COUNT = 100u;
 	constexpr u32 LINE_COUNT = 100u;
+	constexpr u32 TRIANGLE_COUNT = 100u;
 	
 	void end_debug_batch(GPUImage* offscreen, GPUImage* depthstencil, const XMMATRIX& view_projection_matrix, CommandList cmd)
 	{
@@ -163,6 +173,56 @@ namespace sv {
 				graphics_renderpass_end(cmd);
 			}
 		}
+
+		// DRAW TRIANGLES
+		if (batch.triangles.size()) {
+
+			GPUBuffer* buffer = get_batch_buffer(TRIANGLE_COUNT * sizeof(DebugVertex_Solid) * 3u, cmd);
+
+			graphics_inputlayoutstate_bind(gfx.ils_debug_solid_batch, cmd);
+			graphics_shader_bind(gfx.vs_debug_solid_batch, cmd);
+			graphics_shader_bind(gfx.ps_debug_solid_batch, cmd);
+			graphics_topology_set(GraphicsTopology_Triangles, cmd);
+			graphics_vertexbuffer_bind(buffer, 0u, 0u, cmd);
+
+			DebugVertex_Solid* data = (DebugVertex_Solid*)batch_data[cmd];
+			DebugVertex_Solid* it = data;
+			DebugVertex_Solid* end = data + TRIANGLE_COUNT * 3u;
+
+			XMVECTOR v0;
+			XMVECTOR v1;
+			XMVECTOR v2;
+
+			for (const DebugTriangle& t : batch.triangles) {
+
+				v0 = XMVector4Transform(t.p0.getDX(), view_projection_matrix);
+				v1 = XMVector4Transform(t.p1.getDX(), view_projection_matrix);
+				v2 = XMVector4Transform(t.p2.getDX(), view_projection_matrix);
+
+				*it = { v4_f32(v0), t.color }; ++it;
+				*it = { v4_f32(v1), t.color }; ++it;
+				*it = { v4_f32(v2), t.color }; ++it;
+
+				if (it == end) {
+
+					graphics_buffer_update(buffer, data, TRIANGLE_COUNT * sizeof(DebugVertex_Solid) * 3u, 0u, cmd);
+
+					graphics_renderpass_begin(gfx.renderpass_world, att, nullptr, 1.f, 0u, cmd);
+					graphics_draw(TRIANGLE_COUNT * 3u, 1u, 0u, 0u, cmd);
+					graphics_renderpass_end(cmd);
+
+					it = data;
+				}
+			}
+
+			if (it != data) {
+				graphics_buffer_update(buffer, data, (it - data) * sizeof(DebugVertex_Solid), 0u, cmd);
+
+				graphics_renderpass_begin(gfx.renderpass_world, att, nullptr, 1.f, 0u, cmd);
+				graphics_draw(it - data, 1u, 0u, 0u, cmd);
+				graphics_renderpass_end(cmd);
+			}
+		}
 	}
 
 	void draw_debug_quad(const XMMATRIX& matrix, Color color, CommandList cmd)
@@ -175,6 +235,10 @@ namespace sv {
 	{
 		SV_PARSE_BATCH();
 		batch.lines.emplace_back(p0, p1, color);
+	}
+
+	void draw_debug_triangle(const v3_f32& p0, const v3_f32& p1, const v3_f32& p2, Color color, CommandList cmd)
+	{
 	}
 
 	// HELPER
