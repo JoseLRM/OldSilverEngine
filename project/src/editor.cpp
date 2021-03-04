@@ -84,9 +84,16 @@ namespace sv {
 		trans.setPosition(position);
 	}
 
+	struct EditorStyle {
+		GuiWindowStyle window_style;
+		GuiButtonStyle button_style;
+		GuiSliderStyle slider_style;
+	};
+	
 	struct Editor {
 
 		GUI* gui;
+		EditorStyle style;
 
 		Entity selected_entity = SV_ENTITY_NULL;
 		bool camera_controller = false;
@@ -185,7 +192,147 @@ namespace sv {
 		}
 	}
 
+	void display_entity_hierarchy()
+	{
+		GUI* g = editor.gui;
+		ECS* ecs = engine.scene.ecs;
 
+		f32 y = 5.f;
+
+		if (gui_begin_window(g, "Entity Hierarchy", editor.style.window_style)) {
+
+			u32 entity_count = ecs_entity_count(ecs);
+
+			foreach(entity_index, entity_count) {
+
+				Entity entity = ecs_entity_get(ecs, entity_index);
+
+				const char* name = get_entity_name(ecs, entity);
+
+				constexpr f32 BUTTON_HEIGHT = 25.f;
+				
+				if (gui_button(g, name, { 5.f, GuiConstraint_Pixel, GuiAlignment_Left },
+					       GuiCoord::flow(y), GuiDim::relative(0.9f), GuiDim::pixel(BUTTON_HEIGHT), editor.style.button_style)) {
+
+					editor.selected_entity = entity;
+				}
+
+				y += BUTTON_HEIGHT + 2.f;
+			}
+			
+			gui_end_window(g);
+		}
+	}
+
+	void display_entity_inspector()
+	{
+		GUI* g = editor.gui;
+		ECS* ecs = engine.scene.ecs;
+		Entity selected = editor.selected_entity;
+
+		constexpr f32 NAME_HEIGHT = 20.f;
+		constexpr f32 TRANSFORM_HEIGHT = 20.f;
+		constexpr f32 PADDING = 5.f;
+		
+		f32 y = 5.f;
+
+		if (selected != SV_ENTITY_NULL) {
+
+			if (gui_begin_window(g, "Entity Inspector", editor.style.window_style)) {
+
+				// Entity name
+				{
+					const char* entity_name = get_entity_name(ecs, selected);
+
+					gui_text(g, entity_name, GuiCoord::center(), GuiCoord::flow(y), GuiDim::relative(0.9f), GuiDim::pixel(NAME_HEIGHT));
+					y += NAME_HEIGHT + PADDING;
+				}
+
+				// Entity transform
+				{
+					// TODO: euler rotation
+					Transform trans = ecs_entity_transform_get(ecs, selected);
+					v3_f32 position = trans.getWorldPosition();
+					v3_f32 scale = trans.getWorldScale();
+
+					foreach(i, 2u) {
+
+						v3_f32* values;
+
+						switch(i) {
+						case 0:
+							values = &position;
+							break;
+						case 1:
+							values = &scale;
+							break;
+						}
+
+						// TODO: Hot color
+						GuiButtonStyle x_style;
+						x_style.color = { 229u, 25u, 25u, 255u };
+						
+						GuiButtonStyle y_style;
+						y_style.color = { 51u, 204u, 51u, 255u };
+						
+						GuiButtonStyle z_style;
+						z_style.color = { 13u, 25u, 229u, 255u };
+
+						constexpr f32 EXTERN_PADDING = 0.03f;
+						constexpr f32 INTERN_PADDING = 0.07f;
+
+						constexpr f32 ELEMENT_WIDTH = (1.f - EXTERN_PADDING * 2.f - INTERN_PADDING * 2.f) / 3.f;
+						
+						// X
+						if (gui_button(g, "X", { 0.5f - ELEMENT_WIDTH - INTERN_PADDING, GuiConstraint_Relative, GuiAlignment_Center
+										}, GuiCoord:flow(y), GuiDim::relative(ELEMENT_WIDTH),
+								GuiDim::pixel(TRANSFORM_HEIGHT), x_style)) {
+
+							// TEMP
+							position.x = math_random_f32(u32(timer_now() * 100.f), -10.f, 10.f);
+						}
+						
+						// Y
+						if (gui_button(g, "Y", GuiCoord::center(), GuiCoord:flow(y),
+							       GuiDim::relative(ELEMENT_WIDTH), GuiDim::pixel(TRANSFORM_HEIGHT), y_style)) {
+
+							// TEMP
+							position.y = math_random_f32(u32(timer_now() * 100.f), -10.f, 10.f);
+						}
+
+						// Z
+						if (gui_button(g, "Z", { 0.5f + ELEMENT_WIDTH + INTERN_PADDING, GuiConstraint_Relative, GuiAlignment_Center
+										}, GuiCoord:flow(y), GuiDim::relative(ELEMENT_WIDTH),
+								GuiDim::pixel(TRANSFORM_HEIGHT), z_style)) {
+
+							// TEMP
+							position.z = math_random_f32(u32(timer_now() * 100.f), -10.f, 10.f);
+						}
+
+						y += TRANSFORM_HEIGHT + PADDING;
+					}
+
+					trans.setPosition(position);
+					trans.setScale(scale);
+				}
+
+				// Entity components
+				{
+					u32 comp_count = ecs_entity_component_count(ecs, selected);
+
+					foreach(comp_index, comp_count) {
+
+						auto [comp_id, comp] = ecs_component_get_by_index(ecs, selected, comp_index);
+
+						show_component_info(comp_id, comp);
+					}
+				}
+				
+				gui_end_window(g);
+			}
+		}
+	}
+	
 	void update_editor()
 	{
 		GUI* g = editor.gui;
@@ -218,23 +365,8 @@ namespace sv {
 
 		if (!editor.camera_controller) {
 
-			gui_begin_container(g, GuiCoord::center(), GuiCoord::flow(5.f), GuiDim::relative(0.1f), GuiDim::aspect(1.f), {});
-
-			static f32 value = 0.f;
-			if (gui_slider(g, &value, -1.f, 1.f, 0x453F, GuiCoord::center(), GuiCoord::center(), GuiDim::relative(0.9f), GuiDim::relative(0.1f), {})) {
-				SV_LOG("All right %f\n", value);
-			}
-
-			if (gui_begin_window(g, "Test")) {
-
-				if (gui_button(g, "Boton pro", GuiCoord::center(), GuiCoord::flow(5.f), GuiDim::relative(0.8f), GuiDim::pixel(60.f))) {
-					SV_LOG("ALLLLL RIIIGHT\n");
-				}
-
-				gui_end_window(g);
-			}
-
-			gui_end_container(g);
+			display_entity_hierarchy();
+			display_entity_inspector();
 		}
 
 		gui_end(g);
