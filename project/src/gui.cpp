@@ -48,6 +48,7 @@ namespace sv {
 	struct GuiWindowState {
 
 		v4_f32 bounds;
+		bool show;
 
 	};
 
@@ -441,10 +442,20 @@ namespace sv {
 		end_parent(gui);
 	}
 
+	SV_INLINE static GuiWindowState* get_window_state(GUI_internal& gui, const char* title)
+	{				
+		auto it = gui.window_state.find(title);
+		
+		if (it == gui.window_state.end()) return nullptr;
+		return &it->second;
+	}
+
 	bool gui_begin_window(GUI* gui_, const char* title, const GuiWindowStyle& style)
 	{
 		PARSE_GUI();
-
+		SV_ASSERT(title);
+		SV_ASSERT(gui.parent_index.type == GuiWidgetType_None);
+		
 		GuiWindowState* state;
 
 		auto it = gui.window_state.find(title);
@@ -452,12 +463,15 @@ namespace sv {
 
 			GuiWindowState s;
 			s.bounds = { 0.5f, 0.5f, 0.3f, 0.5f };
-
+			s.show = true;
+			
 			gui.window_state[title] = s;
 			state = &gui.window_state[title];
 		}
 		else state = &it->second;
 
+		if (!state->show) return false;
+		
 		u32 index = u32(gui.windows.size());
 
 		GuiWindow& window = gui.windows.emplace_back();
@@ -525,6 +539,22 @@ namespace sv {
 	{
 		PARSE_GUI();
 		end_parent(gui);
+	}
+	
+	void gui_show_window(GUI* gui_, const char* title)
+	{
+		PARSE_GUI();
+
+		GuiWindowState* state = get_window_state(title);
+		state->show = true;
+	}
+	
+	void gui_hide_window(GUI* gui_, const char* title)
+	{
+		PARSE_GUI();
+
+		GuiWindowState* state = get_window_state(title);
+		state->show = false;
 	}
 
 	bool gui_button(GUI* gui_, const char* text, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiButtonStyle& style)
