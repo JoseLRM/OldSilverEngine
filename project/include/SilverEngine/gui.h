@@ -43,6 +43,7 @@ namespace sv {
 
 		SV_INLINE static GuiDim relative(f32 n) { return { n, GuiConstraint_Relative }; }
 		SV_INLINE static GuiDim aspect(f32 n) { return { n, GuiConstraint_Aspect }; }
+		SV_INLINE static GuiDim pixel(f32 n) { return { n, GuiConstraint_Pixel }; }
 		
 	};
 
@@ -50,6 +51,16 @@ namespace sv {
 
 	struct GuiContainerStyle {
 		Color color = Color::Gray(100u);
+	};
+
+	struct GuiWindowStyle {
+		Color color = Color::Gray(100u);
+		Color decoration_color = Color::Black();
+		Color outline_color = Color::White();
+		f32 decoration_height = 0.04f;
+		f32 outline_size = 0.001f;
+		f32 min_width = 0.1f;
+		f32 min_height = 0.f;
 	};
 
 	struct GuiButtonStyle {
@@ -68,11 +79,14 @@ namespace sv {
 	void gui_begin(GUI* gui, f32 width, f32 height);
 	void gui_end(GUI* gui);
 	
-	void gui_begin_container(GUI* gui, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiContainerStyle& style);
+	void gui_begin_container(GUI* gui, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiContainerStyle& style = {});
 	void gui_end_container(GUI* gui);
 	
-	bool gui_button(GUI* gui, const char* text, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiButtonStyle& style);
-	bool gui_slider(GUI* gui, f32* value, f32 min, f32 max, u64 id, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiSliderStyle& style);
+	bool gui_begin_window(GUI* gui, const char* title, const GuiWindowStyle& style = {});
+	void gui_end_window(GUI* gui);
+
+	bool gui_button(GUI* gui, const char* text, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiButtonStyle& style = {});
+	bool gui_slider(GUI* gui, f32* value, f32 min, f32 max, u64 id, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiSliderStyle& style = {});
 
 	void gui_draw(GUI* gui, GPUImage* offscreen, CommandList cmd);
 

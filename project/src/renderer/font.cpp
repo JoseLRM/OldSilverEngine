@@ -342,6 +342,9 @@ namespace sv {
 			++it;
 		}
 
+		if (it == begin_line) 
+			++it;
+
 		return it;
 	}
 

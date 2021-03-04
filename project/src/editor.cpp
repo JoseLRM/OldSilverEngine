@@ -225,6 +225,15 @@ namespace sv {
 				SV_LOG("All right %f\n", value);
 			}
 
+			if (gui_begin_window(g, "Test")) {
+
+				if (gui_button(g, "Boton pro", GuiCoord::center(), GuiCoord::flow(5.f), GuiDim::relative(0.8f), GuiDim::pixel(60.f))) {
+					SV_LOG("ALLLLL RIIIGHT\n");
+				}
+
+				gui_end_window(g);
+			}
+
 			gui_end_container(g);
 		}
 

@@ -16,11 +16,13 @@ namespace sv {
 	  - Popups
 	  - Combobox
 	  - Not use depthstencil
+	  - Handle text dynamic memory
 	*/
 
 	enum GuiWidgetType : u32 {
 		GuiWidgetType_None,
 		GuiWidgetType_Container,
+		GuiWidgetType_Window,
 		GuiWidgetType_Button,
 		GuiWidgetType_Slider,
 	};
@@ -32,17 +34,26 @@ namespace sv {
 
 	};
 
-	struct GuiFocus {
-		u64 id = 0u;
-		GuiWidgetType type = GuiWidgetType_None;
-		bool updated = false;
-	};
-
 	struct GuiContainer {
 
+		GuiWidgetIndex parent_index;
 		v4_f32 bounds;
 		GuiContainerStyle style;
+
+	};
+
+	struct GuiWindowState {
+
+		v4_f32 bounds;
+
+	};
+
+	struct GuiWindow {
+
 		GuiWidgetIndex parent_index;
+		GuiWindowState* state;
+		GuiWindowStyle style;
+		std::string title;
 
 	};
 
@@ -52,6 +63,7 @@ namespace sv {
 		GuiButtonStyle style;
 		bool hot;
 		bool pressed;
+		std::string text;
 
 	};
 
@@ -66,16 +78,27 @@ namespace sv {
 	struct GUI_internal {
 
 		FrameList<GuiContainer> containers;
+		FrameList<GuiWindow> windows;
 		FrameList<GuiButton> buttons;
 		FrameList<GuiSlider> sliders;
 
 		FrameList<GuiWidgetIndex> widgets;
 
+		std::unordered_map<const char*, GuiWindowState> window_state;
+
 		GuiWidgetIndex parent_index;
-		GuiFocus focus;
+		struct {
+			u64 id = 0u;
+			u32 last_index = u32_max;
+			GuiWidgetType type = GuiWidgetType_None;
+			u32 action = 0u;
+		} focus;
 
 		v2_f32 resolution;
+		f32 aspect;
 		v2_f32 mouse_position;
+
+		v2_f32 begin_position;
 
 	};
 
@@ -91,16 +114,109 @@ namespace sv {
 
 		gui.parent_index.type = GuiWidgetType_None;
 		gui.resolution = { width, height };
+		gui.aspect = width / height;
 		gui.mouse_position = input.mouse_position + 0.5f;
-		gui.focus.updated = false;
+		gui.focus.last_index = u32_max;
+	}
+
+	SV_INLINE void set_focus(GUI_internal& gui, GuiWidgetType type, u32 index, u64 id, u32 action = 0u)
+	{
+		gui.focus.type = type;
+		gui.focus.last_index = index;
+		gui.focus.id = id;
+		gui.focus.action = action;
 	}
 
 	void gui_end(GUI* gui_)
 	{
 		PARSE_GUI();
 
-		if (!gui.focus.updated) 
+		if (gui.focus.last_index == u32_max)
 			gui.focus.type = GuiWidgetType_None;
+
+		switch (gui.focus.type)
+		{
+
+		case GuiWidgetType_Window:
+		{
+			GuiWindow& window = gui.windows[gui.focus.last_index];
+			
+			if (input.mouse_buttons[MouseButton_Left] == InputState_None) {
+
+				gui.focus.type = GuiWidgetType_None;
+			}
+			else {
+
+				switch (gui.focus.action)
+				{
+				
+				case 0u:
+				{
+					v2_f32 new_position = gui.mouse_position + gui.begin_position;
+					window.state->bounds.x = new_position.x;
+					window.state->bounds.y = new_position.y;
+				}
+				break;
+
+				case 1u: // RIGHT
+				{
+					f32 width = std::max(gui.mouse_position.x - (window.state->bounds.x - window.state->bounds.z * 0.5f), window.style.min_width);
+					window.state->bounds.x -= (window.state->bounds.z - width) * 0.5f;
+					window.state->bounds.z = width;
+				}
+				break;
+
+				case 2u: // LEFT
+				{
+					f32 width = std::max((window.state->bounds.x + window.state->bounds.z * 0.5f) - gui.mouse_position.x, window.style.min_width);
+					window.state->bounds.x += (window.state->bounds.z - width) * 0.5f;
+					window.state->bounds.z = width;
+				}
+				break;
+
+				case 3u: // BOTTOM
+				{
+					f32 height = std::max((window.state->bounds.y + window.state->bounds.w * 0.5f) - gui.mouse_position.y, window.style.min_height);
+					window.state->bounds.y += (window.state->bounds.w - height) * 0.5f;
+					window.state->bounds.w = height;
+				}
+				break;
+
+				case 4u: // RIGHT - BOTTOM
+				{
+					f32 width = std::max(gui.mouse_position.x - (window.state->bounds.x - window.state->bounds.z * 0.5f), window.style.min_width);
+					window.state->bounds.x -= (window.state->bounds.z - width) * 0.5f;
+					window.state->bounds.z = width;
+					f32 height = std::max((window.state->bounds.y + window.state->bounds.w * 0.5f) - gui.mouse_position.y, window.style.min_height);
+					window.state->bounds.y += (window.state->bounds.w - height) * 0.5f;
+					window.state->bounds.w = height;
+				}
+				break;
+
+				case 5u: // LEFT - BOTTOM
+				{
+					f32 width = std::max((window.state->bounds.x + window.state->bounds.z * 0.5f) - gui.mouse_position.x, window.style.min_width);
+					window.state->bounds.x += (window.state->bounds.z - width) * 0.5f;
+					window.state->bounds.z = width;
+					f32 height = std::max((window.state->bounds.y + window.state->bounds.w * 0.5f) - gui.mouse_position.y, window.style.min_height);
+					window.state->bounds.y += (window.state->bounds.w - height) * 0.5f;
+					window.state->bounds.w = height;
+				}
+				break;
+
+				}
+			}
+		}
+		break;
+
+
+		case GuiWidgetType_None:
+			break;
+
+		default:
+			break;
+		}
+		
 	}
 
 	Result gui_create(GUI** pgui)
@@ -130,6 +246,10 @@ namespace sv {
 			return gui.containers[gui.parent_index.index].bounds;
 			break;
 
+		case GuiWidgetType_Window:
+			return gui.windows[gui.parent_index.index].state->bounds;
+			break;
+
 		default:
 			return v4_f32{ 0.f, 0.f, 0.f, 0.f };
 		}
@@ -155,7 +275,7 @@ namespace sv {
 			break;
 
 		case GuiConstraint_Aspect:
-			res = aspect_coord * coord.value * (vertical ? (gui.resolution.x / gui.resolution.y) : (gui.resolution.y / gui.resolution.x));
+			res = aspect_coord * coord.value * (vertical ? gui.aspect : (1.f / gui.aspect));
 			break;
 
 		}
@@ -205,7 +325,7 @@ namespace sv {
 			break;
 
 		case GuiConstraint_Aspect:
-			res = inv_dimension * (vertical ? (gui.resolution.x / gui.resolution.y) : (gui.resolution.y / gui.resolution.x));
+			res = inv_dimension * (vertical ? gui.aspect : (1.f / gui.aspect));
 			break;
 		}
 
@@ -257,16 +377,42 @@ namespace sv {
 		return { x, y, w, h };
 	}
 
+	SV_INLINE static v4_f32 compute_window_decoration_bounds(const GUI_internal& gui, const GuiWindow& window)
+	{
+		v4_f32 bounds;
+		bounds.x = window.state->bounds.x;
+		bounds.y = window.state->bounds.y + window.state->bounds.w * 0.5f + window.style.decoration_height * 0.5f + window.style.outline_size * gui.aspect;
+		bounds.z = window.state->bounds.z + window.style.outline_size * 2.f;
+		bounds.w = window.style.decoration_height;
+		return bounds;
+	}
+
 	SV_INLINE static void add_widget(GUI_internal& gui, u32 index, GuiWidgetType type)
 	{
 		GuiWidgetIndex& i = gui.widgets.emplace_back();
 		i.index = index;
 		i.type = type;
 
-		if (type == GuiWidgetType_Container) {
+		if (type == GuiWidgetType_Container || type == GuiWidgetType_Window) {
 
 			gui.parent_index.type = type;
 			gui.parent_index.index = index;
+		}
+	}
+
+	static void end_parent(GUI_internal& gui)
+	{
+		SV_ASSERT(gui.parent_index.type != GuiWidgetType_None);
+
+		switch (gui.parent_index.type)
+		{
+		case GuiWidgetType_Container:
+			gui.parent_index = gui.containers[gui.parent_index.index].parent_index;
+			break;
+
+		case GuiWidgetType_Window:
+			gui.parent_index = gui.windows[gui.parent_index.index].parent_index;
+			break;
 		}
 	}
 
@@ -287,14 +433,94 @@ namespace sv {
 	void gui_end_container(GUI* gui_)
 	{
 		PARSE_GUI();
-		SV_ASSERT(gui.parent_index.type != GuiWidgetType_None);
+		SV_ASSERT(gui.parent_index.type == GuiWidgetType_Container);
+		end_parent(gui);
+	}
 
-		switch (gui.parent_index.type)
-		{
-		case GuiWidgetType_Container:
-			gui.parent_index = gui.containers[gui.parent_index.index].parent_index;
-			break;
+	bool gui_begin_window(GUI* gui_, const char* title, const GuiWindowStyle& style)
+	{
+		PARSE_GUI();
+
+		GuiWindowState* state;
+
+		auto it = gui.window_state.find(title);
+		if (it == gui.window_state.end()) {
+
+			GuiWindowState s;
+			s.bounds = { 0.5f, 0.5f, 0.3f, 0.5f };
+
+			gui.window_state[title] = s;
+			state = &gui.window_state[title];
 		}
+		else state = &it->second;
+
+		u32 index = u32(gui.windows.size());
+
+		GuiWindow& window = gui.windows.emplace_back();
+		window.style = style;
+		window.parent_index = gui.parent_index;
+		window.state = state;
+		window.title = title;
+
+		add_widget(gui, index, GuiWidgetType_Window);
+
+		// Select window
+		if (input.unused) {
+			
+			if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
+
+				v4_f32 decoration = compute_window_decoration_bounds(gui, window);
+
+				if (mouse_in_bounds(gui, decoration)) {
+				
+					gui.begin_position = v2_f32(window.state->bounds.x, window.state->bounds.y) - gui.mouse_position;
+					set_focus(gui, GuiWidgetType_Window, index, (u64)title, 0u);
+				}
+				else {
+					const v4_f32& content = window.state->bounds;
+
+					constexpr f32 SELECTION_SIZE = 0.02f;
+
+					bool right = mouse_in_bounds(gui, { content.x + content.z * 0.5f, content.y, SELECTION_SIZE, content.w });
+					bool left = mouse_in_bounds(gui, { content.x - content.z * 0.5f, content.y, SELECTION_SIZE, content.w });
+					bool bottom = mouse_in_bounds(gui, { content.x, content.y - content.w * 0.5f, content.z, SELECTION_SIZE });
+
+					u32 action = u32_max;
+
+					if (right && bottom) {
+						action = 4u;
+					}
+					else if (left && bottom) {
+						action = 5u;
+					}
+					else if (right) {
+						action = 1u;
+					}
+					else if (left) {
+						action = 2u;
+					}
+					else if (bottom) {
+						action = 3u;
+					}
+
+					if (action != u32_max) set_focus(gui, GuiWidgetType_Window, index, (u64)title, action);
+				}
+			}
+			else {
+
+				if (gui.focus.type == GuiWidgetType_Window && gui.focus.id == (u64)title) {
+					gui.focus.last_index = index;
+				}
+			}
+		}
+
+		return true;
+	}
+
+	void gui_end_window(GUI* gui_)
+	{
+		PARSE_GUI();
+		end_parent(gui);
 	}
 
 	bool gui_button(GUI* gui_, const char* text, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiButtonStyle& style)
@@ -308,6 +534,7 @@ namespace sv {
 		button.style = style;
 		button.hot = false;
 		button.pressed = false;
+		button.text = text;
 		
 		add_widget(gui, index, GuiWidgetType_Button);
 
@@ -368,14 +595,12 @@ namespace sv {
 					*value = mouse_value * (max - min) + min;
 
 					focused = true;
-					gui.focus.updated = true;
+					gui.focus.last_index = index;
 				}
 			}
 			else if (input_state == InputState_Pressed && mouse_in_bounds(gui, slider.bounds)) {
 
-				gui.focus.id = id;
-				gui.focus.type = GuiWidgetType_Slider;
-				gui.focus.updated = true;
+				set_focus(gui, GuiWidgetType_Slider, index, id);
 			}
 		}
 
@@ -388,7 +613,8 @@ namespace sv {
 	{
 		PARSE_GUI();
 
-		begin_debug_batch(cmd);
+		// TODO: move on
+		GPUImage* depthstencil = engine.scene->depthstencil;
 
 		for (GuiWidgetIndex& w : gui.widgets) {
 
@@ -396,6 +622,8 @@ namespace sv {
 			{
 			case GuiWidgetType_Button:
 			{
+				begin_debug_batch(cmd);
+
 				v2_f32 pos;
 				v2_f32 size;
 				Color color;
@@ -406,11 +634,19 @@ namespace sv {
 				color = button.hot ? button.style.hot_color : button.style.color;
 
 				draw_debug_quad(pos.getVec3(0.f), size, color, cmd);
+
+				end_debug_batch(offscreen, depthstencil, XMMatrixIdentity(), cmd);
+
+				if (button.text.size())
+					draw_text(offscreen, button.text.c_str(), button.text.size()
+						, pos.x - size.x * 0.5f, pos.y + size.y * 0.5f, size.x, 1u, size.y, gui.aspect, TextAlignment_Center, &font_opensans, cmd);
 			}
 			break;
 
 			case GuiWidgetType_Container:
 			{
+				begin_debug_batch(cmd);
+
 				v2_f32 pos;
 				v2_f32 size;
 				Color color;
@@ -421,11 +657,55 @@ namespace sv {
 				color = container.style.color;
 
 				draw_debug_quad(pos.getVec3(0.f), size, color, cmd);
+
+				end_debug_batch(offscreen, depthstencil, XMMatrixIdentity(), cmd);
+			}
+			break;
+
+			case GuiWidgetType_Window:
+			{
+				begin_debug_batch(cmd);
+
+				GuiWindow& window = gui.windows[w.index];
+				GuiWindowState& state = *window.state;
+				GuiWindowStyle& style = window.style;
+
+				v4_f32 decoration = compute_window_decoration_bounds(gui, window);
+
+				v2_f32 outline_size;
+				v2_f32 content_position;
+				v2_f32 content_size;
+
+				content_position = v2_f32{ state.bounds.x, state.bounds.y };
+				content_size = v2_f32{ state.bounds.z, state.bounds.w };
+
+				outline_size = content_size + v2_f32{ style.outline_size, style.outline_size * gui.aspect } * 2.f;
+
+				// Normal to clip
+				content_position = content_position * 2.f - 1.f;
+				content_size = content_size * 2.f;
+				outline_size = outline_size * 2.f;
+				v2_f32 decoration_position = v2_f32(decoration.x, decoration.y) * 2.f - 1.f;
+				v2_f32 decoration_size = v2_f32(decoration.z, decoration.w) * 2.f;
+
+				draw_debug_quad(content_position.getVec3(0.f), outline_size, style.outline_color, cmd);
+				draw_debug_quad(content_position.getVec3(0.f), content_size, style.color, cmd);
+				draw_debug_quad(decoration_position.getVec3(0.f), decoration_size, style.decoration_color, cmd);
+
+				end_debug_batch(offscreen, depthstencil, XMMatrixIdentity(), cmd);
+
+				if (window.title.size())
+					draw_text(offscreen, window.title.c_str(), window.title.size()
+						, decoration_position.x - decoration_size.x * 0.5f + 0.01f, decoration_position.y +
+						decoration_size.y * 0.5f, decoration_size.x, 1u, decoration_size.y * 0.5f, 
+						gui.aspect, TextAlignment_Left, &font_opensans, cmd);
 			}
 			break;
 
 			case GuiWidgetType_Slider:
 			{
+				begin_debug_batch(cmd);
+
 				v2_f32 pos;
 				v2_f32 size;
 				Color color;
@@ -436,16 +716,13 @@ namespace sv {
 				color = slider.style.color;
 
 				draw_debug_quad(pos.getVec3(0.f), size, color, cmd);
+
+				end_debug_batch(offscreen, depthstencil, XMMatrixIdentity(), cmd);
 			}
 			break;
 
 			}
 		}
-
-		// TODO: move on
-		GPUImage* depthstencil = engine.scene->depthstencil;
-
-		end_debug_batch(offscreen, depthstencil, XMMatrixIdentity(), cmd);
 	}
 
 }
