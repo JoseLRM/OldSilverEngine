@@ -101,9 +101,46 @@ namespace sv {
 
 	Editor editor;
 
+	Result command_show_window(const char** args, u32 argc)
+	{
+		bool show = true;
+
+		if (argc == 0u) {
+			SV_LOG_ERROR("This command needs some argument");
+			return Result_InvalidUsage;
+		}
+
+		if (argc > 2u) {
+			SV_LOG_ERROR("Too much arguments");
+			return Result_InvalidUsage;
+		}
+
+		if (argc == 2u) {
+
+			if (strcmp(argc[1], "show" == 0)) show = true;
+			else if (strcmp(argc[1], "hide" == 0)) show = false;
+			else {
+				SV_LOG_ERROR("Invalid argument '%s': Available options (show - hide)");
+				return Result_InvalidUsage;
+			}
+		}
+
+		Result res = show ? gui_show_window(editor.gui, args[0]) : gui_hide_window(editor.gui, args[0]);
+
+		if (result_okay(res)) {
+			SV_LOG("%s '%s'", show ? "Showing" : "Hiding", args[0]);
+		}
+		else SV_LOG_ERROR("Window '%s' not found", args[0]);
+		
+		return res;
+	}
+
 	Result initialize_editor()
 	{
 		svCheck(gui_create(&editor.gui));
+
+		// Register commands
+		svCheck(regiser_command("wnd", fn));
 
 		return Result_Success;
 	}

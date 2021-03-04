@@ -90,8 +90,8 @@ namespace sv {
 	
 	bool gui_begin_window(GUI* gui, const char* title, const GuiWindowStyle& style = {});
 	void gui_end_window(GUI* gui);
-	void gui_show_window(GUI* gui, const char* title);
-	void gui_hide_window(GUI* gui, const char* title);
+	Result gui_show_window(GUI* gui, const char* title);
+	Result gui_hide_window(GUI* gui, const char* title);
 
 	bool gui_button(GUI* gui, const char* text, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiButtonStyle& style = {});
 	bool gui_slider(GUI* gui, f32* value, f32 min, f32 max, u64 id, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiSliderStyle& style = {});

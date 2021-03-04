@@ -19,6 +19,7 @@ namespace sv {
 	  - Handle text dynamic memory
 	  - Change GuiText to GuiLabel
 	  - Hot Label ????
+	  - Save states in bin file
 	*/
 
 	enum GuiWidgetType : u32 {
@@ -541,20 +542,26 @@ namespace sv {
 		end_parent(gui);
 	}
 	
-	void gui_show_window(GUI* gui_, const char* title)
+	Result gui_show_window(GUI* gui_, const char* title)
 	{
 		PARSE_GUI();
 
 		GuiWindowState* state = get_window_state(title);
+		if (state == nullptr) return Result_NotFound;
+		
 		state->show = true;
+		return Result_Success;
 	}
 	
-	void gui_hide_window(GUI* gui_, const char* title)
+	Result gui_hide_window(GUI* gui_, const char* title)
 	{
 		PARSE_GUI();
 
 		GuiWindowState* state = get_window_state(title);
+		if (state == nullptr) return Result_NotFound;
+				
 		state->show = false;
+		return Result_Success;
 	}
 
 	bool gui_button(GUI* gui_, const char* text, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiButtonStyle& style)
