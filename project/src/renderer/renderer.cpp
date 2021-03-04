@@ -529,7 +529,7 @@ namespace sv {
 		svCheck(create_states());
 
 		// Create default fonts
-		svCheck(font_create(font_opensans, "$system/fonts/OpenSans-Regular.ttf", 228.f, 0u));
+		svCheck(font_create(font_opensans, "$system/fonts/OpenSans/OpenSans-Regular.ttf", 228.f, 0u));
 		font_create(font_console, "C:/Windows/Fonts/consola.ttf", 228.f, 0u);
 
 		return Result_Success;
