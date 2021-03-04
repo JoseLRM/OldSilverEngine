@@ -71,6 +71,7 @@ namespace sv {
 	struct GuiSliderStyle {
 		Color color = Color::Gray(5u);
 		Color button_color = Color::White();
+		v2_f32 button_size = { 0.01f, 0.03 };
 	};
 
 	Result gui_create(GUI** pgui);

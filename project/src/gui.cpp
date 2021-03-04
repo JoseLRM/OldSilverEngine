@@ -208,13 +208,6 @@ namespace sv {
 			}
 		}
 		break;
-
-
-		case GuiWidgetType_None:
-			break;
-
-		default:
-			break;
 		}
 		
 	}
@@ -588,9 +581,10 @@ namespace sv {
 				}
 				else {
 
-					f32 slider_min_pos = slider.bounds.x - slider.bounds.z * 0.5f;
+					f32 slider_button_width = slider.button_size.x;
+					f32 slider_min_pos = slider.bounds.x - slider.bounds.z * 0.5f + slider_button_width * 0.5f;
 					
-					f32 mouse_value = (gui.mouse_position.x - slider_min_pos) / slider.bounds.z;
+					f32 mouse_value = std::min(std::max((gui.mouse_position.x - slider_min_pos) / (slider.bounds.z - slider_min_pos), 0.f), 1.f);
 					slider.slider_value = mouse_value;
 					*value = mouse_value * (max - min) + min;
 
@@ -716,6 +710,10 @@ namespace sv {
 				color = slider.style.color;
 
 				draw_debug_quad(pos.getVec3(0.f), size, color, cmd);
+
+				f32 slider_pos = slider.bounds.x + slider.style.button_size.x * 0.5f + slider.slider_value * (slider.bounds.z - slider.style.button_size.x);
+				
+				draw_debug_quad({ slider_pos, slider.bounds.y, 0.f }, slider.style.button_size, slider.style.button_color, cmd);
 
 				end_debug_batch(offscreen, depthstencil, XMMatrixIdentity(), cmd);
 			}
