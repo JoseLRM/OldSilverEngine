@@ -37,7 +37,7 @@ namespace sv {
 		WindowState state;
 		WindowFlags flags;
 		v4_u32 bounds;
-		const wchar* iconFilePath;
+		const char* iconFilePath;
 
 	};
 
@@ -46,7 +46,7 @@ namespace sv {
 
 	bool window_update(Window* window); // Return false if is closed
 
-	Result	window_icon_set(Window* window, const wchar* iconFilePath);
+	Result	window_icon_set(Window* window, const char* iconFilePath);
 	void	window_title_set(Window* window, const wchar* title);
 	void	window_state_set(Window* window, WindowState state);
 	void	window_flags_set(Window* window, WindowFlags flags);

@@ -8,6 +8,8 @@
 
 namespace sv {
 
+	typedef u16 CompID;
+	typedef u32 Entity;
 	SV_DEFINE_HANDLE(ECS);
 
 	enum EntityFlag : u32 {

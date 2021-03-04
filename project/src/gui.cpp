@@ -17,7 +17,6 @@ namespace sv {
 	  - Combobox
 	  - Not use depthstencil
 	  - Handle text dynamic memory
-	  - Change GuiText to GuiLabel
 	  - Hot Label ????
 	  - Save states in bin file
 	*/
@@ -28,7 +27,7 @@ namespace sv {
 		GuiWidgetType_Window,
 		GuiWidgetType_Button,
 		GuiWidgetType_Slider,
-		GuiWidgetType_Text,
+		GuiWidgetType_Label,
 	};
 
 	struct GuiWidgetIndex {
@@ -80,7 +79,7 @@ namespace sv {
 		
 	};
 
-	struct GuiText {
+	struct GuiLabel {
 
 		v4_f32 bounds;
 		GuiTextStyle style;
@@ -91,13 +90,14 @@ namespace sv {
 	struct GUI_internal {
 
 		FrameList<GuiContainer> containers;
-		FrameList<GuiWindow> windows;
-		FrameList<GuiButton> buttons;
-		FrameList<GuiSlider> sliders;
+		FrameList<GuiWindow>	windows;
+		FrameList<GuiButton>	buttons;
+		FrameList<GuiSlider>	sliders;
+		FrameList<GuiLabel>		labels;
 
 		FrameList<GuiWidgetIndex> widgets;
 
-		std::unordered_map<const char*, GuiWindowState> window_state;
+		std::unordered_map<std::string, GuiWindowState> window_state;
 
 		GuiWidgetIndex parent_index;
 		struct {
@@ -120,8 +120,10 @@ namespace sv {
 		PARSE_GUI();
 
 		gui.containers.reset();
+		gui.windows.reset();
 		gui.buttons.reset();
 		gui.sliders.reset();
+		gui.labels.reset();
 
 		gui.widgets.reset();
 
@@ -500,9 +502,9 @@ namespace sv {
 
 					constexpr f32 SELECTION_SIZE = 0.02f;
 
-					bool right = mouse_in_bounds(gui, { content.x + content.z * 0.5f, content.y, SELECTION_SIZE, content.w });
-					bool left = mouse_in_bounds(gui, { content.x - content.z * 0.5f, content.y, SELECTION_SIZE, content.w });
-					bool bottom = mouse_in_bounds(gui, { content.x, content.y - content.w * 0.5f, content.z, SELECTION_SIZE });
+					bool right = mouse_in_bounds(gui, { content.x + content.z * 0.5f, content.y, SELECTION_SIZE, content.w + SELECTION_SIZE * 2.f * gui.aspect });
+					bool left = mouse_in_bounds(gui, { content.x - content.z * 0.5f, content.y, SELECTION_SIZE, content.w + SELECTION_SIZE * 2.f * gui.aspect });
+					bool bottom = mouse_in_bounds(gui, { content.x, content.y - content.w * 0.5f, content.z + SELECTION_SIZE * 2.f, SELECTION_SIZE * gui.aspect });
 
 					u32 action = u32_max;
 
@@ -546,7 +548,7 @@ namespace sv {
 	{
 		PARSE_GUI();
 
-		GuiWindowState* state = get_window_state(title);
+		GuiWindowState* state = get_window_state(gui, title);
 		if (state == nullptr) return Result_NotFound;
 		
 		state->show = true;
@@ -557,7 +559,7 @@ namespace sv {
 	{
 		PARSE_GUI();
 
-		GuiWindowState* state = get_window_state(title);
+		GuiWindowState* state = get_window_state(gui, title);
 		if (state == nullptr) return Result_NotFound;
 				
 		state->show = false;
@@ -629,7 +631,7 @@ namespace sv {
 				}
 				else {
 
-					f32 slider_button_width = slider.button_size.x;
+					f32 slider_button_width = slider.style.button_size.x;
 					f32 slider_min_pos = slider.bounds.x - slider.bounds.z * 0.5f + slider_button_width * 0.5f;
 					
 					f32 mouse_value = std::min(std::max((gui.mouse_position.x - slider_min_pos) / (slider.bounds.z - slider_min_pos), 0.f), 1.f);
@@ -653,14 +655,14 @@ namespace sv {
 	{
 		PARSE_GUI();
 
-		u32 index = u32(gui.texts.size());
+		u32 index = u32(gui.labels.size());
 
-		GuiText& text = gui.texts.emplace_back();
-		text.bounds = compute_widget_bounds(gui, x, y, w, h);
-		text.style = style;
-		text.text = text;
+		GuiLabel& label = gui.labels.emplace_back();
+		label.bounds = compute_widget_bounds(gui, x, y, w, h);
+		label.style = style;
+		label.text = text;
 
-		add_widget(gui, index, GuiWidgetType_Text);
+		add_widget(gui, index, GuiWidgetType_Label);
 	}
 
 	///////////////////////////////////// RENDERING ///////////////////////////////////////
@@ -693,9 +695,13 @@ namespace sv {
 
 				end_debug_batch(offscreen, depthstencil, XMMatrixIdentity(), cmd);
 
-				if (button.text.size())
+				if (button.text.size()) {
+
+					f32 font_size = size.y;
+
 					draw_text(offscreen, button.text.c_str(), button.text.size()
-						, pos.x - size.x * 0.5f, pos.y + size.y * 0.5f, size.x, 1u, size.y, gui.aspect, TextAlignment_Center, &font_opensans, cmd);
+						, pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font_opensans.vertical_offset * font_size, size.x, 1u, font_size, gui.aspect, TextAlignment_Center, &font_opensans, cmd);
+				}					
 			}
 			break;
 
@@ -750,11 +756,15 @@ namespace sv {
 
 				end_debug_batch(offscreen, depthstencil, XMMatrixIdentity(), cmd);
 
-				if (window.title.size())
+				if (window.title.size()) {
+
+					f32 font_size = decoration_size.y * 0.5f;
+
 					draw_text(offscreen, window.title.c_str(), window.title.size()
 						, decoration_position.x - decoration_size.x * 0.5f + 0.01f, decoration_position.y +
-						decoration_size.y * 0.5f, decoration_size.x, 1u, decoration_size.y * 0.5f, 
+						decoration_size.y * 0.5f - font_opensans.vertical_offset * font_size, decoration_size.x, 1u, font_size,
 						gui.aspect, TextAlignment_Left, &font_opensans, cmd);
+				}
 			}
 			break;
 
@@ -781,25 +791,29 @@ namespace sv {
 			}
 			break;
 
-			case GuiWidgetType_Text:
+			case GuiWidgetType_Label:
 			{
 				begin_debug_batch(cmd);
 
 				v2_f32 pos;
 				v2_f32 size;
 
-				GuiText& text = gui.texts[w.index];
-				pos = v2_f32{ text.bounds.x, text.bounds.y } * 2.f - 1.f;
-				size = v2_f32{ text.bounds.z, text.bounds.w } * 2.f;
+				GuiLabel& label = gui.labels[w.index];
+				pos = v2_f32{ label.bounds.x, label.bounds.y } * 2.f - 1.f;
+				size = v2_f32{ label.bounds.z, label.bounds.w } * 2.f;
 
-				draw_debug_quad(pos.getVec3(0.f), size, text.style.background_color, cmd);
+				draw_debug_quad(pos.getVec3(0.f), size, label.style.background_color, cmd);
 
 				end_debug_batch(offscreen, depthstencil, XMMatrixIdentity(), cmd);
 
-				if (text.text.size())
-					draw_text(offscreen, text.text.c_str(), text.text.size()
-						, pos.x - size.x * 0.5f, pos.y + size.y * 0.5f, size.x, 1u, size.y, gui.aspect,
-						  TextAlignment_Left, &font_opensans, text.style.text_color, cmd);
+				if (label.text.size()) {
+				
+					f32 font_size = size.y;
+
+					draw_text(offscreen, label.text.c_str(), label.text.size(), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - 
+						font_opensans.vertical_offset * font_size, size.x, 1u, font_size, gui.aspect, label.style.text_alignment, 
+						&font_opensans, label.style.text_color, cmd);
+				}
 			}
 			break;
 

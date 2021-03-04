@@ -499,19 +499,17 @@ namespace sv {
 		return true;
 	}
 
-	Result window_icon_set(Window* window, const wchar* filePath)
+	Result window_icon_set(Window* window, const char* filepath)
 	{
-#ifdef SV_RES_PATH
-		std::wstring filePathStr = SV_RES_PATH_W;
-		filePathStr += filePath;
-		filePath = filePathStr.c_str();
-#endif
+		SV_PARSE_FILEPATH();
 
 		Window_internal& wnd = *reinterpret_cast<Window_internal*>(window);
 
 #ifdef SV_PLATFORM_WIN
 
-		auto icon = LoadImageW(0, filePath, IMAGE_ICON, 0, 0, LR_LOADFROMFILE | LR_DEFAULTSIZE | LR_SHARED | LR_LOADTRANSPARENT);
+		std::wstring wfilepath = parse_wstring(filepath);
+
+		auto icon = LoadImageW(0, wfilepath.c_str(), IMAGE_ICON, 0, 0, LR_LOADFROMFILE | LR_DEFAULTSIZE | LR_SHARED | LR_LOADTRANSPARENT);
 		if (icon == NULL) return Result_PlatformError;
 
 		HWND hwnd = (HWND)wnd.handle;

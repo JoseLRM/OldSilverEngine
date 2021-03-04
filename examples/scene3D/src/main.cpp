@@ -74,12 +74,14 @@ Result app_init_scene(Scene* scene)
 	camera->width = 0.5f;
 	camera->height = 0.5f;
 	camera->projection_type = ProjectionType_Perspective;
+	ecs_component_add<NameComponent>(ecs, cam)->name = "Camera";
 
 	LightComponent* light = ecs_component_add<LightComponent>(ecs, ecs_entity_create(ecs));
 	Transform t = ecs_entity_transform_get(ecs, light->entity);
 	light->light_type = LightType_Point;
 	t.setPosition({ 0.f, 0.f, -2.f });
 	t.setEulerRotation({ PI * 0.4f, 0.f, 0.f });
+	ecs_component_add<NameComponent>(ecs, light->entity)->name = "Light";
 
 	if (strcmp(scene->name.c_str(), "Sponza") == 0) {
 
@@ -142,7 +144,6 @@ int main()
 	desc.callbacks.close = close;
 	desc.callbacks.initialize_scene = app_init_scene;
 	desc.callbacks.close_scene = app_close_scene;
-	desc.callbacks.show_component = nullptr;
 	desc.windowDesc.bounds = { 0u, 0u, 1080u, 720u };
 	desc.windowDesc.flags = WindowFlag_Default;
 	desc.windowDesc.iconFilePath = nullptr;

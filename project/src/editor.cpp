@@ -85,9 +85,14 @@ namespace sv {
 	}
 
 	struct EditorStyle {
+
 		GuiWindowStyle window_style;
 		GuiButtonStyle button_style;
 		GuiSliderStyle slider_style;
+
+		f32 vertical_padding = 5.f;
+		f32 separator = 30.f;
+
 	};
 	
 	struct Editor {
@@ -117,10 +122,10 @@ namespace sv {
 
 		if (argc == 2u) {
 
-			if (strcmp(argc[1], "show" == 0)) show = true;
-			else if (strcmp(argc[1], "hide" == 0)) show = false;
+			if (strcmp(args[1], "show") == 0 || strcmp(args[1], "1") == 0) show = true;
+			else if (strcmp(args[1], "hide") == 0 || strcmp(args[1], "0") == 0) show = false;
 			else {
-				SV_LOG_ERROR("Invalid argument '%s': Available options (show - hide)");
+				SV_LOG_ERROR("Invalid argument '%s'", args[1]);
 				return Result_InvalidUsage;
 			}
 		}
@@ -140,7 +145,7 @@ namespace sv {
 		svCheck(gui_create(&editor.gui));
 
 		// Register commands
-		svCheck(regiser_command("wnd", fn));
+		svCheck(register_command("wnd", command_show_window));
 
 		return Result_Success;
 	}
@@ -151,16 +156,20 @@ namespace sv {
 		return Result_Success;
 	}
 
-	static void show_component_info(CompID comp_id, BaseComponent* comp)
+	static void show_component_info(f32& y, CompID comp_id, BaseComponent* comp)
 	{
 		GUI* gui = editor.gui;
 
+		GuiTextStyle style;
+		style.text_color = Color::Black();
+		style.text_alignment = TextAlignment_Left;
+		style.background_color = Color::Red(100u);
+
+		gui_text(gui, ecs_component_name(comp_id), GuiCoord::center(), GuiCoord::flow(y), GuiDim::relative(0.9f), GuiDim::pixel(30.f), style);
+		y += 30.f + editor.style.vertical_padding;
+
 		if (comp_id == SpriteComponent::ID) {
 
-		}
-
-		else if (engine.app_callbacks.show_component) {
-			engine.app_callbacks.show_component(gui, comp_id, comp);
 		}
 	}
 
@@ -232,11 +241,11 @@ namespace sv {
 	void display_entity_hierarchy()
 	{
 		GUI* g = editor.gui;
-		ECS* ecs = engine.scene.ecs;
+		ECS* ecs = engine.scene->ecs;
 
 		f32 y = 5.f;
 
-		if (gui_begin_window(g, "Entity Hierarchy", editor.style.window_style)) {
+		if (gui_begin_window(g, "Hierarchy", editor.style.window_style)) {
 
 			u32 entity_count = ecs_entity_count(ecs);
 
@@ -264,25 +273,24 @@ namespace sv {
 	void display_entity_inspector()
 	{
 		GUI* g = editor.gui;
-		ECS* ecs = engine.scene.ecs;
+		ECS* ecs = engine.scene->ecs;
 		Entity selected = editor.selected_entity;
 
-		constexpr f32 NAME_HEIGHT = 20.f;
+		constexpr f32 NAME_HEIGHT = 40.f;
 		constexpr f32 TRANSFORM_HEIGHT = 20.f;
-		constexpr f32 PADDING = 5.f;
 		
 		f32 y = 5.f;
 
-		if (selected != SV_ENTITY_NULL) {
+		if (gui_begin_window(g, "Inspector", editor.style.window_style)) {
 
-			if (gui_begin_window(g, "Entity Inspector", editor.style.window_style)) {
+			if (selected != SV_ENTITY_NULL) {
 
 				// Entity name
 				{
 					const char* entity_name = get_entity_name(ecs, selected);
 
 					gui_text(g, entity_name, GuiCoord::center(), GuiCoord::flow(y), GuiDim::relative(0.9f), GuiDim::pixel(NAME_HEIGHT));
-					y += NAME_HEIGHT + PADDING;
+					y += NAME_HEIGHT + editor.style.separator + editor.style.vertical_padding;
 				}
 
 				// Entity transform
@@ -296,7 +304,7 @@ namespace sv {
 
 						v3_f32* values;
 
-						switch(i) {
+						switch (i) {
 						case 0:
 							values = &position;
 							break;
@@ -308,10 +316,10 @@ namespace sv {
 						// TODO: Hot color
 						GuiButtonStyle x_style;
 						x_style.color = { 229u, 25u, 25u, 255u };
-						
+
 						GuiButtonStyle y_style;
 						y_style.color = { 51u, 204u, 51u, 255u };
-						
+
 						GuiButtonStyle z_style;
 						z_style.color = { 13u, 25u, 229u, 255u };
 
@@ -319,35 +327,37 @@ namespace sv {
 						constexpr f32 INTERN_PADDING = 0.07f;
 
 						constexpr f32 ELEMENT_WIDTH = (1.f - EXTERN_PADDING * 2.f - INTERN_PADDING * 2.f) / 3.f;
-						
+
 						// X
 						if (gui_button(g, "X", { 0.5f - ELEMENT_WIDTH - INTERN_PADDING, GuiConstraint_Relative, GuiAlignment_Center
-										}, GuiCoord:flow(y), GuiDim::relative(ELEMENT_WIDTH),
-								GuiDim::pixel(TRANSFORM_HEIGHT), x_style)) {
+							}, GuiCoord::flow(y), GuiDim::relative(ELEMENT_WIDTH),
+							GuiDim::pixel(TRANSFORM_HEIGHT), x_style)) {
 
 							// TEMP
-							position.x = math_random_f32(u32(timer_now() * 100.f), -10.f, 10.f);
+							values->x = math_random_f32(u32(timer_now() * 100.f), -10.f, 10.f);
 						}
-						
+
 						// Y
-						if (gui_button(g, "Y", GuiCoord::center(), GuiCoord:flow(y),
-							       GuiDim::relative(ELEMENT_WIDTH), GuiDim::pixel(TRANSFORM_HEIGHT), y_style)) {
+						if (gui_button(g, "Y", GuiCoord::center(), GuiCoord::flow(y),
+							GuiDim::relative(ELEMENT_WIDTH), GuiDim::pixel(TRANSFORM_HEIGHT), y_style)) {
 
 							// TEMP
-							position.y = math_random_f32(u32(timer_now() * 100.f), -10.f, 10.f);
+							values->y = math_random_f32(u32(timer_now() * 100.f), -10.f, 10.f);
 						}
 
 						// Z
 						if (gui_button(g, "Z", { 0.5f + ELEMENT_WIDTH + INTERN_PADDING, GuiConstraint_Relative, GuiAlignment_Center
-										}, GuiCoord:flow(y), GuiDim::relative(ELEMENT_WIDTH),
-								GuiDim::pixel(TRANSFORM_HEIGHT), z_style)) {
+							}, GuiCoord::flow(y), GuiDim::relative(ELEMENT_WIDTH),
+							GuiDim::pixel(TRANSFORM_HEIGHT), z_style)) {
 
 							// TEMP
-							position.z = math_random_f32(u32(timer_now() * 100.f), -10.f, 10.f);
+							values->z = math_random_f32(u32(timer_now() * 100.f), -10.f, 10.f);
 						}
 
-						y += TRANSFORM_HEIGHT + PADDING;
+						y += TRANSFORM_HEIGHT + editor.style.vertical_padding;
 					}
+
+					y += editor.style.separator;
 
 					trans.setPosition(position);
 					trans.setScale(scale);
@@ -361,12 +371,12 @@ namespace sv {
 
 						auto [comp_id, comp] = ecs_component_get_by_index(ecs, selected, comp_index);
 
-						show_component_info(comp_id, comp);
+						show_component_info(y, comp_id, comp);
 					}
 				}
-				
-				gui_end_window(g);
 			}
+
+			gui_end_window(g);
 		}
 	}
 	

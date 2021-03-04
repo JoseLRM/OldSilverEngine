@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SilverEngine/graphics.h"
+#include "SilverEngine/font.h"
 
 namespace sv {
 
@@ -71,11 +72,12 @@ namespace sv {
 	struct GuiSliderStyle {
 		Color color = Color::Gray(5u);
 		Color button_color = Color::White();
-		v2_f32 button_size = { 0.01f, 0.03 };
+		v2_f32 button_size = { 0.01f, 0.03f };
 	};
 
 	struct GuiTextStyle {
 		Color text_color = Color::White();
+		TextAlignment text_alignment = TextAlignment_Center;
 		Color background_color = Color::Gray(100u, 0u);
 	};
 

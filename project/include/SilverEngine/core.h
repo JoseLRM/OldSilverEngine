@@ -185,7 +185,7 @@ namespace sv {
 
 #define SV_LOG_CLEAR() sv::__internal__do_not_call_this_please_or_you_will_die__console_clear()
 #define SV_LOG_SEPARATOR() sv::console_print("----------------------------------------------------\n")
-#define SV_LOG(x, ...) sv::console_print(x, __VA_ARGS__)
+#define SV_LOG(x, ...) sv::console_print(x "\n", __VA_ARGS__)
 #define SV_LOG_INFO(x, ...) sv::console_notify("INFO", x, __VA_ARGS__)
 #define SV_LOG_WARNING(x, ...) sv::console_notify("WARNING", x, __VA_ARGS__)
 #define SV_LOG_ERROR(x, ...) sv::console_notify("ERROR", x, __VA_ARGS__)
@@ -731,10 +731,6 @@ namespace sv {
 
 	struct Scene;
 	struct BaseComponent;
-	struct GUI;
-
-	typedef u16 CompID;
-	typedef u32 Entity;
 
 	struct ApplicationCallbacks {
 		Result(*initialize)();
@@ -742,7 +738,6 @@ namespace sv {
 		void(*render)();
 		Result(*close)();
 		Result(*initialize_scene)(Scene* scene);
-		void(*show_component)(GUI* gui, CompID comp_id, BaseComponent* comp);
 		Result(*close_scene)(Scene* scene);
 	};
 

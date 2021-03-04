@@ -4,6 +4,7 @@
 
 #include "external/stb_truetype.h"
 
+#include "SilverEngine/font.h"
 #include "renderer/renderer_internal.h"
 
 namespace sv {
@@ -210,6 +211,8 @@ namespace sv {
 
 				// Top - bottom to bottom - top
 				g.yoff = (f32(-g0.yoff) - f32(g0.h)) / line_height;
+				font.vertical_offset = std::min(g.yoff, font.vertical_offset);
+
 				g.texCoord.x = g0.texCoord.x;
 				g.texCoord.y = g0.texCoord.w;
 				g.texCoord.z = g0.texCoord.z;

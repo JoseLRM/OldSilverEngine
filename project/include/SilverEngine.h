@@ -11,3 +11,4 @@
 #include "SilverEngine/sprite.h"
 #include "SilverEngine/mesh.h"
 #include "SilverEngine/gui.h"
+#include "SilverEngine/font.h"
