@@ -74,6 +74,11 @@ namespace sv {
 		v2_f32 button_size = { 0.01f, 0.03 };
 	};
 
+	struct GuiTextStyle {
+		Color text_color = Color::White();
+		Color background_color = Color::Gray(100u, 0u);
+	};
+
 	Result gui_create(GUI** pgui);
 	Result gui_destroy(GUI* gui);
 
@@ -88,7 +93,9 @@ namespace sv {
 
 	bool gui_button(GUI* gui, const char* text, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiButtonStyle& style = {});
 	bool gui_slider(GUI* gui, f32* value, f32 min, f32 max, u64 id, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiSliderStyle& style = {});
-
+	void gui_text(GUI* gui, const char* text, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiTextStyle& style = {});
+	// TODO drag
+	
 	void gui_draw(GUI* gui, GPUImage* offscreen, CommandList cmd);
 
 }

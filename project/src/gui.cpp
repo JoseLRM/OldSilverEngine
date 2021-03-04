@@ -17,6 +17,8 @@ namespace sv {
 	  - Combobox
 	  - Not use depthstencil
 	  - Handle text dynamic memory
+	  - Change GuiText to GuiLabel
+	  - Hot Label ????
 	*/
 
 	enum GuiWidgetType : u32 {
@@ -25,6 +27,7 @@ namespace sv {
 		GuiWidgetType_Window,
 		GuiWidgetType_Button,
 		GuiWidgetType_Slider,
+		GuiWidgetType_Text,
 	};
 
 	struct GuiWidgetIndex {
@@ -72,6 +75,14 @@ namespace sv {
 		v4_f32 bounds;
 		GuiSliderStyle style;
 		f32 slider_value;
+		
+	};
+
+	struct GuiText {
+
+		v4_f32 bounds;
+		GuiTextStyle style;
+		std::string text;
 		
 	};
 
@@ -601,6 +612,20 @@ namespace sv {
 		return focused;
 	}
 
+	void gui_text(GUI* gui_, const char* text, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiTextStyle& style)
+	{
+		PARSE_GUI();
+
+		u32 index = u32(gui.texts.size());
+
+		GuiText& text = gui.texts.emplace_back();
+		text.bounds = compute_widget_bounds(gui, x, y, w, h);
+		text.style = style;
+		text.text = text;
+
+		add_widget(gui, index, GuiWidgetType_Text);
+	}
+
 	///////////////////////////////////// RENDERING ///////////////////////////////////////
 
 	void gui_draw(GUI* gui_, GPUImage* offscreen, CommandList cmd)
@@ -716,6 +741,28 @@ namespace sv {
 				draw_debug_quad({ slider_pos, slider.bounds.y, 0.f }, slider.style.button_size, slider.style.button_color, cmd);
 
 				end_debug_batch(offscreen, depthstencil, XMMatrixIdentity(), cmd);
+			}
+			break;
+
+			case GuiWidgetType_Text:
+			{
+				begin_debug_batch(cmd);
+
+				v2_f32 pos;
+				v2_f32 size;
+
+				GuiText& text = gui.texts[w.index];
+				pos = v2_f32{ text.bounds.x, text.bounds.y } * 2.f - 1.f;
+				size = v2_f32{ text.bounds.z, text.bounds.w } * 2.f;
+
+				draw_debug_quad(pos.getVec3(0.f), size, text.style.background_color, cmd);
+
+				end_debug_batch(offscreen, depthstencil, XMMatrixIdentity(), cmd);
+
+				if (text.text.size())
+					draw_text(offscreen, text.text.c_str(), text.text.size()
+						, pos.x - size.x * 0.5f, pos.y + size.y * 0.5f, size.x, 1u, size.y, gui.aspect,
+						  TextAlignment_Left, &font_opensans, text.style.text_color, cmd);
 			}
 			break;
 
