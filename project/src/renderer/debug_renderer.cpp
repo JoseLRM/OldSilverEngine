@@ -61,6 +61,7 @@ namespace sv {
 		
 		graphics_blendstate_bind(gfx.bs_transparent, cmd);
 		graphics_depthstencilstate_unbind(cmd);
+		graphics_rasterizerstate_unbind(cmd);
 			
 		// DRAW QUADS
 		if (batch.quads.size()) {
@@ -147,8 +148,8 @@ namespace sv {
 
 			for (const DebugLine& l : batch.lines) {
 
-				v0 = XMVector4Transform(l.p0.getDX(), view_projection_matrix);
-				v1 = XMVector4Transform(l.p1.getDX(), view_projection_matrix);
+				v0 = XMVector4Transform(l.p0.getDX(1.f), view_projection_matrix);
+				v1 = XMVector4Transform(l.p1.getDX(1.f), view_projection_matrix);
 
 				*it = { v4_f32(v0), l.color }; ++it;
 				*it = { v4_f32(v1), l.color }; ++it;
@@ -195,9 +196,9 @@ namespace sv {
 
 			for (const DebugTriangle& t : batch.triangles) {
 
-				v0 = XMVector4Transform(t.p0.getDX(), view_projection_matrix);
-				v1 = XMVector4Transform(t.p1.getDX(), view_projection_matrix);
-				v2 = XMVector4Transform(t.p2.getDX(), view_projection_matrix);
+				v0 = XMVector4Transform(t.p0.getDX(1.f), view_projection_matrix);
+				v1 = XMVector4Transform(t.p1.getDX(1.f), view_projection_matrix);
+				v2 = XMVector4Transform(t.p2.getDX(1.f), view_projection_matrix);
 
 				*it = { v4_f32(v0), t.color }; ++it;
 				*it = { v4_f32(v1), t.color }; ++it;
@@ -239,6 +240,8 @@ namespace sv {
 
 	void draw_debug_triangle(const v3_f32& p0, const v3_f32& p1, const v3_f32& p2, Color color, CommandList cmd)
 	{
+		SV_PARSE_BATCH();
+		batch.triangles.emplace_back(p0, p1, p2, color);
 	}
 
 	// HELPER

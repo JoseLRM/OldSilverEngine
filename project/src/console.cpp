@@ -65,6 +65,25 @@ namespace sv {
 		return Result_Success;
 	}
 
+	static Result command_scene(const char** args, u32 argc) {
+
+		if (argc > 1u) {
+			SV_LOG_ERROR("Too much arguments");
+			return Result_InvalidUsage;
+		}
+
+		if (argc == 0u) {
+			SV_LOG_ERROR("Should specify the scene name");
+			return Result_InvalidUsage;
+		}
+
+		const char* name = args[0];
+
+		set_active_scene(name);
+
+		return Result_Success;
+	}
+
 	void initialize_console()
 	{
 		console_buffer.buff = (char*)malloc(CONSOLE_SIZE);
@@ -76,6 +95,7 @@ namespace sv {
 		register_command("close", command_close);
 		register_command("test", command_test);
 		register_command("clear", command_clear);
+		register_command("scene", command_scene);
 	}
 
 	void close_console()

@@ -89,7 +89,7 @@ Result app_init_scene(Scene* scene)
 	}
 	if (strcmp(scene->name.c_str(), "Goblin") == 0) {
 
-		//load_model(ecs, "assets/gobber/GoblinX.obj");
+		load_model(ecs, "assets/gobber/GoblinX.obj");
 	}
 	if (strcmp(scene->name.c_str(), "Dragon") == 0) {
 

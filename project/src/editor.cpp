@@ -160,17 +160,33 @@ namespace sv {
 	{
 		GUI* gui = editor.gui;
 
-		GuiTextStyle style;
-		style.text_color = Color::Black();
-		style.text_alignment = TextAlignment_Left;
-		style.background_color = Color::Red(100u);
+		GuiContainerStyle container_style;
+		container_style.color = Color::Red(100u);
 
-		gui_text(gui, ecs_component_name(comp_id), GuiCoord::center(), GuiCoord::flow(y), GuiDim::relative(0.9f), GuiDim::pixel(30.f), style);
-		y += 30.f + editor.style.vertical_padding;
+		GuiTextStyle text_style;
+		text_style.text_color = Color::Black();
+		text_style.text_alignment = TextAlignment_Left;
 
-		if (comp_id == SpriteComponent::ID) {
+		GuiCheckBoxStyle checkbox_style;
+		checkbox_style.active_box = GuiBox::Triangle(Color::Black(), true, 0.5f);
+		checkbox_style.inactive_box = GuiBox::Triangle(Color::Black(), false, 0.5f);
+		checkbox_style.color = Color::Black(0u);
 
+		gui_begin_container(gui, GuiCoord::Center(), GuiCoord::Flow(y), GuiDim::Relative(0.9f), GuiDim::Pixel(30.f), container_style);
+
+		gui_text(gui, ecs_component_name(comp_id), { 35.f, GuiConstraint_Pixel, GuiAlignment_Left }
+		, GuiCoord::Center(), GuiDim::Pixel(300.f), GuiDim::Relative(1.f), text_style);
+
+		bool show = gui_checkbox_id(gui, u64(comp_id << 32u + comp->entity), { 0.f, GuiConstraint_Relative, GuiAlignment_Left }
+		, GuiCoord::Center(), GuiDim::Aspect(1.f), GuiDim::Relative(1.f), checkbox_style);
+
+		gui_end_container(gui);
+
+		if (show) {
+			SV_LOG("All right");
 		}
+
+		y += 30.f + editor.style.vertical_padding;
 	}
 
 	SV_INLINE static void select_entity()
@@ -258,7 +274,7 @@ namespace sv {
 				constexpr f32 BUTTON_HEIGHT = 25.f;
 				
 				if (gui_button(g, name, { 5.f, GuiConstraint_Pixel, GuiAlignment_Left },
-					       GuiCoord::flow(y), GuiDim::relative(0.9f), GuiDim::pixel(BUTTON_HEIGHT), editor.style.button_style)) {
+					       GuiCoord::Flow(y), GuiDim::Relative(0.9f), GuiDim::Pixel(BUTTON_HEIGHT), editor.style.button_style)) {
 
 					editor.selected_entity = entity;
 				}
@@ -289,7 +305,7 @@ namespace sv {
 				{
 					const char* entity_name = get_entity_name(ecs, selected);
 
-					gui_text(g, entity_name, GuiCoord::center(), GuiCoord::flow(y), GuiDim::relative(0.9f), GuiDim::pixel(NAME_HEIGHT));
+					gui_text(g, entity_name, GuiCoord::Center(), GuiCoord::Flow(y), GuiDim::Relative(0.9f), GuiDim::Pixel(NAME_HEIGHT));
 					y += NAME_HEIGHT + editor.style.separator + editor.style.vertical_padding;
 				}
 
@@ -330,16 +346,16 @@ namespace sv {
 
 						// X
 						if (gui_button(g, "X", { 0.5f - ELEMENT_WIDTH - INTERN_PADDING, GuiConstraint_Relative, GuiAlignment_Center
-							}, GuiCoord::flow(y), GuiDim::relative(ELEMENT_WIDTH),
-							GuiDim::pixel(TRANSFORM_HEIGHT), x_style)) {
+							}, GuiCoord::Flow(y), GuiDim::Relative(ELEMENT_WIDTH),
+							GuiDim::Pixel(TRANSFORM_HEIGHT), x_style)) {
 
 							// TEMP
 							values->x = math_random_f32(u32(timer_now() * 100.f), -10.f, 10.f);
 						}
 
 						// Y
-						if (gui_button(g, "Y", GuiCoord::center(), GuiCoord::flow(y),
-							GuiDim::relative(ELEMENT_WIDTH), GuiDim::pixel(TRANSFORM_HEIGHT), y_style)) {
+						if (gui_button(g, "Y", GuiCoord::Center(), GuiCoord::Flow(y),
+							GuiDim::Relative(ELEMENT_WIDTH), GuiDim::Pixel(TRANSFORM_HEIGHT), y_style)) {
 
 							// TEMP
 							values->y = math_random_f32(u32(timer_now() * 100.f), -10.f, 10.f);
@@ -347,8 +363,8 @@ namespace sv {
 
 						// Z
 						if (gui_button(g, "Z", { 0.5f + ELEMENT_WIDTH + INTERN_PADDING, GuiConstraint_Relative, GuiAlignment_Center
-							}, GuiCoord::flow(y), GuiDim::relative(ELEMENT_WIDTH),
-							GuiDim::pixel(TRANSFORM_HEIGHT), z_style)) {
+							}, GuiCoord::Flow(y), GuiDim::Relative(ELEMENT_WIDTH),
+							GuiDim::Pixel(TRANSFORM_HEIGHT), z_style)) {
 
 							// TEMP
 							values->z = math_random_f32(u32(timer_now() * 100.f), -10.f, 10.f);
@@ -414,6 +430,11 @@ namespace sv {
 
 			display_entity_hierarchy();
 			display_entity_inspector();
+
+			GuiCheckBoxStyle style;
+			style.inactive_box = GuiBox::Triangle(Color::Black(), false);
+			style.active_box = GuiBox::Triangle(Color::Black(), true);
+
 		}
 
 		gui_end(g);

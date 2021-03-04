@@ -12,13 +12,14 @@ namespace sv {
 	/*
 	  TODO LIST:
 	  - GuiDraw structure that defines the rendering of a widget or some component (PD: Should not contain inherited alpha)
-	  - Align gui widgets
+	  - Align memory
 	  - Popups
 	  - Combobox
 	  - Not use depthstencil
 	  - Handle text dynamic memory
 	  - Hot Label ????
 	  - Save states in bin file
+	  - Draw first the container with the focus
 	*/
 
 	enum GuiWidgetType : u32 {
@@ -28,6 +29,7 @@ namespace sv {
 		GuiWidgetType_Button,
 		GuiWidgetType_Slider,
 		GuiWidgetType_Label,
+		GuiWidgetType_CheckBox,
 	};
 
 	struct GuiWidgetIndex {
@@ -87,6 +89,18 @@ namespace sv {
 		
 	};
 
+	struct GuiCheckBoxState {
+		bool active = false;
+	};
+
+	struct GuiCheckBox {
+		
+		v4_f32 bounds;
+		GuiCheckBoxStyle style;
+		bool active;
+
+	};
+
 	struct GUI_internal {
 
 		FrameList<GuiContainer> containers;
@@ -94,10 +108,12 @@ namespace sv {
 		FrameList<GuiButton>	buttons;
 		FrameList<GuiSlider>	sliders;
 		FrameList<GuiLabel>		labels;
+		FrameList<GuiCheckBox>	checkboxes;
 
 		FrameList<GuiWidgetIndex> widgets;
 
 		std::unordered_map<std::string, GuiWindowState> window_state;
+		std::unordered_map<u64, GuiCheckBoxState> checkbox_state;
 
 		GuiWidgetIndex parent_index;
 		struct {
@@ -124,6 +140,7 @@ namespace sv {
 		gui.buttons.reset();
 		gui.sliders.reset();
 		gui.labels.reset();
+		gui.checkboxes.reset();
 
 		gui.widgets.reset();
 
@@ -496,6 +513,7 @@ namespace sv {
 				
 					gui.begin_position = v2_f32(window.state->bounds.x, window.state->bounds.y) - gui.mouse_position;
 					set_focus(gui, GuiWidgetType_Window, index, (u64)title, 0u);
+					input.unused = false;
 				}
 				else {
 					const v4_f32& content = window.state->bounds;
@@ -524,13 +542,17 @@ namespace sv {
 						action = 3u;
 					}
 
-					if (action != u32_max) set_focus(gui, GuiWidgetType_Window, index, (u64)title, action);
+					if (action != u32_max) {
+						set_focus(gui, GuiWidgetType_Window, index, (u64)title, action);
+						input.unused = false;
+					}
 				}
 			}
 			else {
 
 				if (gui.focus.type == GuiWidgetType_Window && gui.focus.id == (u64)title) {
 					gui.focus.last_index = index;
+					input.unused = false;
 				}
 			}
 		}
@@ -640,11 +662,13 @@ namespace sv {
 
 					focused = true;
 					gui.focus.last_index = index;
+					input.unused = false;
 				}
 			}
 			else if (input_state == InputState_Pressed && mouse_in_bounds(gui, slider.bounds)) {
 
 				set_focus(gui, GuiWidgetType_Slider, index, id);
+				input.unused = false;
 			}
 		}
 
@@ -663,6 +687,58 @@ namespace sv {
 		label.text = text;
 
 		add_widget(gui, index, GuiWidgetType_Label);
+	}
+
+	bool gui_checkbox(GUI* gui_, bool* value, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiCheckBoxStyle& style)
+	{
+		PARSE_GUI();
+
+		u32 index = u32(gui.checkboxes.size());
+
+		GuiCheckBox& cb = gui.checkboxes.emplace_back();
+		cb.bounds = compute_widget_bounds(gui, x, y, w, h);
+		cb.style = style;
+		cb.active = *value;
+
+		add_widget(gui, index, GuiWidgetType_CheckBox);
+
+		bool pressed = false;
+
+		// Check state
+		if (input.unused) {
+
+			InputState input_state = input.mouse_buttons[MouseButton_Left];
+
+			// Check if is presssed
+			if (input_state == InputState_Released && mouse_in_bounds(gui, cb.bounds)) {
+
+				*value = !*value;
+				cb.active = *value;
+				input.unused = false;
+				pressed = true;
+			}
+		}
+
+		return pressed;
+	}
+
+	bool gui_checkbox_id(GUI* gui_, u64 id, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiCheckBoxStyle& style)
+	{
+		PARSE_GUI();
+
+		GuiCheckBoxState* state;
+
+		auto it = gui.checkbox_state.find(id);
+		if (it == gui.checkbox_state.end()) {
+
+			gui.checkbox_state[id] = {};
+			state = &gui.checkbox_state[id];
+		}
+		else state = &it->second;
+
+		gui_checkbox(gui_, &state->active, x, y, w, h, style);
+
+		return state->active;
 	}
 
 	///////////////////////////////////// RENDERING ///////////////////////////////////////
@@ -814,6 +890,53 @@ namespace sv {
 						font_opensans.vertical_offset * font_size, size.x, 1u, font_size, gui.aspect, label.style.text_alignment, 
 						&font_opensans, label.style.text_color, cmd);
 				}
+			}
+			break;
+
+			case GuiWidgetType_CheckBox:
+			{
+				begin_debug_batch(cmd);
+
+				v2_f32 pos;
+				v2_f32 size;
+
+				GuiCheckBox& cb = gui.checkboxes[w.index];
+				pos = v2_f32{ cb.bounds.x, cb.bounds.y } *2.f - 1.f;
+				size = v2_f32{ cb.bounds.z, cb.bounds.w } *2.f;
+
+				draw_debug_quad(pos.getVec3(0.f), size, cb.style.color, cmd);
+				
+				GuiBox* box;
+				if (cb.active) box = &cb.style.active_box;
+				else box = &cb.style.inactive_box;
+
+				size *= box->mult;
+
+				switch (box->type)
+				{
+				case GuiBoxType_Quad:
+					draw_debug_quad(pos.getVec3(0.f), size * 0.7f, box->quad.color, cmd);
+					break;
+
+				case GuiBoxType_Triangle:
+					if (box->triangle.down) {
+						draw_debug_triangle(
+							{ pos.x - size.x * 0.5f, pos.y + size.y * 0.5f, 0.f },
+							{ pos.x + size.x * 0.5f, pos.y + size.y * 0.5f, 0.f },
+							{ pos.x, pos.y - size.y * 0.5f, 0.f }
+						, box->triangle.color, cmd);
+					}
+					else {
+						draw_debug_triangle(
+							{ pos.x - size.x * 0.5f, pos.y + size.y * 0.5f, 0.f },
+							{ pos.x - size.x * 0.5f, pos.y - size.y * 0.5f, 0.f },
+							{ pos.x + size.x * 0.5f, pos.y, 0.f }
+						, box->triangle.color, cmd);
+					}
+					break;
+				}
+
+				end_debug_batch(offscreen, depthstencil, XMMatrixIdentity(), cmd);
 			}
 			break;
 
