@@ -20,7 +20,8 @@ namespace sv {
 	  - Hot Label ????
 	  - Save states in bin file
 	  - Draw first the container with the focus
-	  - GuiDrag
+	  - GuiDrag rendering
+	  - Remove GuiDim and use only coords
 	*/
 
 	enum GuiWidgetType : u32 {
@@ -31,6 +32,7 @@ namespace sv {
 		GuiWidgetType_Slider,
 		GuiWidgetType_Label,
 		GuiWidgetType_CheckBox,
+		GuiWidgetType_Drag
 	};
 
 	struct GuiWidgetIndex {
@@ -90,6 +92,14 @@ namespace sv {
 		
 	};
 
+	struct GuiDrag {
+
+		v4_f32 bounds;
+		GuiDragStyle style;
+		f32 value;
+		
+	};
+
 	struct GuiCheckBoxState {
 		bool active = false;
 	};
@@ -110,6 +120,7 @@ namespace sv {
 		FrameList<GuiSlider>	sliders;
 		FrameList<GuiLabel>		labels;
 		FrameList<GuiCheckBox>	checkboxes;
+		FrameList<GuiDrag>      drags;
 
 		FrameList<GuiWidgetIndex> widgets;
 
@@ -142,6 +153,7 @@ namespace sv {
 		gui.sliders.reset();
 		gui.labels.reset();
 		gui.checkboxes.reset();
+		gui.drags.reset();
 
 		gui.widgets.reset();
 
@@ -740,6 +752,54 @@ namespace sv {
 		gui_checkbox(gui_, &state->active, x, y, w, h, style);
 
 		return state->active;
+	}
+
+	bool gui_drag_f32(GUI* gui_, f32* value, f32 adv, u64 id, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiDragStyle& style)
+	{
+		PARSE_GUI();
+
+		u32 index = u32(gui.sliders.size());
+
+		GuiDrag& drag = gui.drags.emplace_back();
+		drag.bounds = compute_widget_bounds(gui, x, y, w, h);
+		drag.style = style;
+		drag.value = *value;
+
+		add_widget(gui, index, GuiWidgetType_Drag);
+
+		bool focused = false;
+
+		// Check state
+		if (input.unused) {
+
+			InputState input_state = input.mouse_buttons[MouseButton_Left];
+
+			if (gui.focus.type == GuiWidgetType_Drag && gui.focus.id == id) {
+
+				if (input_state == InputState_None || input_state == InputState_Released) {
+
+					gui.focus.type = GuiWidgetType_None;
+				}
+				else {
+
+					*value += input.mouse_dragged.x * gui.resolution.x * adv;
+					
+					focused = true;
+					gui.focus.last_index = index;
+					input.unused = false;
+				}
+			}
+			else if (input_state == InputState_Pressed && mouse_in_bounds(gui, slider.bounds)) {
+
+				set_focus(gui, GuiWidgetType_Drag, index, id);
+				input.unused = false;
+			}
+		}
+
+		// TODO: limit value
+		drag.value = *value;
+
+		return focused;
 	}
 
 	///////////////////////////////////// RENDERING ///////////////////////////////////////

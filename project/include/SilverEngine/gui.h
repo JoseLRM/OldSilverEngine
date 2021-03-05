@@ -131,6 +131,11 @@ namespace sv {
 		GuiBox inactive_box = GuiBox::Quad(Color::White(0u));
 	};
 
+	struct GuiDragStyle {
+		Color text_color = Color::Black();
+		Color background_color = Color::White();
+	};
+
 	Result gui_create(GUI** pgui);
 	Result gui_destroy(GUI* gui);
 
@@ -150,7 +155,7 @@ namespace sv {
 	void gui_text(GUI* gui, const char* text, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiTextStyle& style = {});
 	bool gui_checkbox(GUI* gui, bool* value, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiCheckBoxStyle& style = {});
 	bool gui_checkbox_id(GUI* gui, u64 id, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiCheckBoxStyle& style = {});
-	// TODO drag
+	bool gui_drag_f32(GUI* gui, f32* value, f32 adv, u64 id, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiDragStyle& style = {});
 	
 	void gui_draw(GUI* gui, GPUImage* offscreen, CommandList cmd);
 
