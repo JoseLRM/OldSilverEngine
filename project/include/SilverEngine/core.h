@@ -737,8 +737,11 @@ namespace sv {
 		void(*update)();
 		void(*render)();
 		Result(*close)();
+
+		Result(*validate_scene)(const char* name);
 		Result(*initialize_scene)(Scene* scene);
 		Result(*close_scene)(Scene* scene);
+		Result(*serialize_scene)(Scene* scene);
 	};
 
 	struct GlobalEngineData {

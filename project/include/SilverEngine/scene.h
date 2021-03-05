@@ -22,7 +22,7 @@ namespace sv {
 
 	};
 
-	void set_active_scene(const char* name);
+	Result set_active_scene(const char* name);
 
 	Result initialize_scene(Scene** pscene, const char* name);
 	Result close_scene(Scene* scene);

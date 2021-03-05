@@ -43,9 +43,16 @@ namespace sv {
 		return Result_Success;
 	}
 
-	void set_active_scene(const char* name)
+	Result set_active_scene(const char* name)
 	{
+		if (engine.app_callbacks.validate_scene) {
+			Result res = engine.app_callbacks.validate_scene(name);
+
+			if (result_fail(res)) return res;
+		}
+
 		engine.next_scene_name = name;
+		return Result_Success;
 	}
 
 	void update_scene(Scene* scene)

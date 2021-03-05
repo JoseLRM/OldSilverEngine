@@ -79,7 +79,40 @@ namespace sv {
 
 		const char* name = args[0];
 
-		set_active_scene(name);
+		Result res = set_active_scene(name);
+
+		if (result_okay(res)) SV_LOG("Loading scene '%s'", name);
+		else {
+
+			if (res == Result_NotFound) {
+				SV_LOG_ERROR("Scene '%s' not found", name);
+			}
+			else SV_LOG_ERROR("%s", result_str(res));
+		}
+
+		return res;
+	}
+
+	static Result command_fps(const char** args, u32 argc) {
+		
+		if (argc) {
+			SV_LOG_ERROR("This command doesn't need arguments");
+			return Result_InvalidUsage;
+		}
+
+		SV_LOG("%u", engine.FPS);
+
+		return Result_Success;
+	}
+
+	static Result command_timer(const char** args, u32 argc) {
+
+		if (argc) {
+			SV_LOG_ERROR("This command doesn't need arguments");
+			return Result_InvalidUsage;
+		}
+
+		SV_LOG("%lf", timer_now().toSeconds_f64());
 
 		return Result_Success;
 	}
@@ -96,6 +129,8 @@ namespace sv {
 		register_command("test", command_test);
 		register_command("clear", command_clear);
 		register_command("scene", command_scene);
+		register_command("fps", command_fps);
+		register_command("timer", command_timer);
 	}
 
 	void close_console()

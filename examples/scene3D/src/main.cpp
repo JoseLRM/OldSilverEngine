@@ -62,6 +62,23 @@ Result command_hello(const char** args, u32 argc)
 	return Result_Success;
 }
 
+Result app_validate_scene(const char* name)
+{
+	const char* valid_names[] = {
+			"Sponza", "Goblin", "Dragon", "Test"
+	};
+
+	foreach(i, sizeof(valid_names) / sizeof(const char*)) {
+
+		if (strcmp(name, valid_names[i]) == 0) {
+
+			return Result_Success;
+		}
+	}
+
+	return Result_NotFound;
+}
+
 Result app_init_scene(Scene* scene)
 {
 	ECS* ecs = engine.scene->ecs;
@@ -142,8 +159,12 @@ int main()
 	desc.callbacks.update = update;
 	desc.callbacks.render = render;
 	desc.callbacks.close = close;
+
+	desc.callbacks.validate_scene = app_validate_scene;
 	desc.callbacks.initialize_scene = app_init_scene;
 	desc.callbacks.close_scene = app_close_scene;
+	desc.callbacks.serialize_scene = nullptr;
+
 	desc.windowDesc.bounds = { 0u, 0u, 1080u, 720u };
 	desc.windowDesc.flags = WindowFlag_Default;
 	desc.windowDesc.iconFilePath = nullptr;

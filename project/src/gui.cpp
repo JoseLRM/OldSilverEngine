@@ -20,6 +20,7 @@ namespace sv {
 	  - Hot Label ????
 	  - Save states in bin file
 	  - Draw first the container with the focus
+	  - GuiDrag
 	*/
 
 	enum GuiWidgetType : u32 {
@@ -838,7 +839,7 @@ namespace sv {
 
 					draw_text(offscreen, window.title.c_str(), window.title.size()
 						, decoration_position.x - decoration_size.x * 0.5f + 0.01f, decoration_position.y +
-						decoration_size.y * 0.5f - font_opensans.vertical_offset * font_size, decoration_size.x, 1u, font_size,
+						decoration_size.y * 0.25f - font_opensans.vertical_offset * font_size, decoration_size.x, 1u, font_size,
 						gui.aspect, TextAlignment_Left, &font_opensans, cmd);
 				}
 			}
