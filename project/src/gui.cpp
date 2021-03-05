@@ -17,7 +17,6 @@ namespace sv {
 	  - Not use depthstencil (right now)
 	  - Handle text dynamic memory
 	  - Hot Label ????
-	  - Save states in bin file
 	  - Draw first the container with the focus
 	  - GuiDrag rendering
 	  - Remove GuiDim and use only coords
@@ -124,7 +123,7 @@ namespace sv {
 		FrameList<GuiWindow>	windows;
 		FrameList<GuiButton>	buttons;
 		FrameList<GuiSlider>	sliders;
-		FrameList<GuiLabel>	labels;
+		FrameList<GuiLabel>		labels;
 		FrameList<GuiCheckBox>	checkboxes;
 		FrameList<GuiDrag>      drags;
 
@@ -529,7 +528,7 @@ namespace sv {
 			gui.labels.emplace_back();
 			break;
 
-		case GuiWidgetType_Checkbox:
+		case GuiWidgetType_CheckBox:
 			index = u32(gui.checkboxes.size());
 			gui.checkboxes.emplace_back();
 			break;
@@ -809,7 +808,7 @@ namespace sv {
 	{
 		PARSE_GUI();
 
-		GuiCheckBox& cb = gui.checkboxes[create_widget(gui, GuiWidgetType_Checkbox)];
+		GuiCheckBox& cb = gui.checkboxes[create_widget(gui, GuiWidgetType_CheckBox)];
 		cb.bounds = compute_widget_bounds(gui, x, y, w, h);
 		cb.style = style;
 		cb.active = *value;
@@ -885,7 +884,7 @@ namespace sv {
 					input.unused = false;
 				}
 			}
-			else if (input_state == InputState_Pressed && mouse_in_bounds(gui, slider.bounds)) {
+			else if (input_state == InputState_Pressed && mouse_in_bounds(gui, drag.bounds)) {
 
 				set_focus(gui, GuiWidgetType_Drag, index, id);
 				input.unused = false;

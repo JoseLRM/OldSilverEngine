@@ -25,7 +25,7 @@ namespace sv {
 
 		*pscene = reinterpret_cast<Scene*>(&scene);
 
-		svCheck(engine.app_callbacks.initialize_scene(*pscene));
+		svCheck(engine.app_callbacks.initialize_scene(*pscene, 0));
 
 		return Result_Success;
 	}
@@ -58,14 +58,14 @@ namespace sv {
 	Result serialize_scene(Scene* scene, const char* filepath)
 	{
 		ArchiveO archive;
-
-		archive << engine.version;
-		archive << name;
-		
-		// ECS
-
-		archive << main_camera;
-		
+		//
+		//archive << engine.version;
+		//archive << name;
+		//
+		//// ECS
+		//
+		//archive << main_camera;
+		//
 		return archive.save_file(filepath);
 	}
 
@@ -113,7 +113,10 @@ namespace sv {
 		mouse_world = XMVector4Transform(mouse_world, ivm);
 		mouse_world = XMVector3Normalize(mouse_world);
 
-		return { camera_position, v3_f32(mouse_world) };
+		Ray ray;
+		ray.origin = camera_position;
+		ray.direction = v3_f32(mouse_world);
+		return ray;
 	}
 	
 	void SpriteComponent::serialize(ArchiveO& archive)

@@ -142,7 +142,7 @@ namespace sv {
 
 	Result initialize_editor()
 	{
-		svCheck(gui_create(&editor.gui));
+		svCheck(gui_create(hash_string("EDITOR GUI"), &editor.gui));
 
 		// Register commands
 		svCheck(register_command("wnd", command_show_window));
@@ -189,6 +189,13 @@ namespace sv {
 		y += 30.f + editor.style.vertical_padding;
 	}
 
+	// TEMP
+	struct TempLine {
+		v3_f32 p0;
+		v3_f32 p1;
+	};
+	static std::vector<TempLine> lines;
+
 	SV_INLINE static void select_entity()
 	{
 		v2_f32 mouse = input.mouse_position;
@@ -205,10 +212,12 @@ namespace sv {
 		Ray ray = screen_to_world_ray(mouse, camera_position, camera_rotation, camera);
 
 		XMVECTOR ray_origin = ray.origin.getDX(1.f);
-		XMVECTOR ray_direction = ray.direction.getDX(1.f);
+		XMVECTOR ray_direction = ray.direction.getDX(0.f);
 
 		Entity selected = SV_ENTITY_NULL;
 		f32 distance = f32_max;
+
+		lines.push_back({ ray.origin, ray.origin + ray.direction * 40.f });
 
 		EntityView<MeshComponent> meshes(ecs);
 
@@ -248,10 +257,7 @@ namespace sv {
 			}
 		}
 
-		if (selected != SV_ENTITY_NULL) {
-
-			editor.selected_entity = selected;
-		}
+		editor.selected_entity = selected;
 	}
 
 	void display_entity_hierarchy()
@@ -431,10 +437,6 @@ namespace sv {
 			display_entity_hierarchy();
 			display_entity_inspector();
 
-			GuiCheckBoxStyle style;
-			style.inactive_box = GuiBox::Triangle(Color::Black(), false);
-			style.active_box = GuiBox::Triangle(Color::Black(), true);
-
 		}
 
 		gui_end(g);
@@ -452,6 +454,17 @@ namespace sv {
 		CommandList cmd = graphics_commandlist_get();
 
 		gui_draw(editor.gui, engine.scene->offscreen, cmd);
+
+		begin_debug_batch(cmd);
+
+		for (auto& l : lines) {
+			draw_debug_line(l.p0, l.p1, Color::Red(), cmd);
+		}
+
+		CameraComponent* cam = get_main_camera(engine.scene);
+		Transform trans = ecs_entity_transform_get(engine.scene->ecs, cam->entity);
+
+		end_debug_batch(engine.scene->offscreen, engine.scene->depthstencil, camera_view_projection_matrix(trans.getWorldPosition(), trans.getWorldRotation(), *cam), cmd);
 	}
 
 }

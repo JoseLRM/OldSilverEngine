@@ -426,6 +426,8 @@ namespace sv {
 
 			free_unused_assets();
 
+			close_editor();
+
 			// Close Window
 			svCheck(window_destroy(engine.window));
 

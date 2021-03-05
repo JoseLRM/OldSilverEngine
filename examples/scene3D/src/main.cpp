@@ -79,7 +79,7 @@ Result app_validate_scene(const char* name)
 	return Result_NotFound;
 }
 
-Result app_init_scene(Scene* scene)
+Result app_init_scene(Scene* scene, ArchiveI* archive)
 {
 	ECS* ecs = engine.scene->ecs;
 

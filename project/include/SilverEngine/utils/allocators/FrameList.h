@@ -117,8 +117,11 @@ namespace sv {
 		}
 		void clear()
 		{
+			foreach(i, m_Size)
+				m_Data[i].~T();
+
 			if (m_Data != nullptr) {
-				delete[] m_Data;
+				free(m_Data);
 				m_Data = nullptr;
 			}
 			m_Size = 0u;
