@@ -731,17 +731,18 @@ namespace sv {
 
 	struct Scene;
 	struct BaseComponent;
-
+	
 	struct ApplicationCallbacks {
 		Result(*initialize)();
 		void(*update)();
 		void(*render)();
 		Result(*close)();
 
+		std::string(*get_scene_filepath)(const char* name);
 		Result(*validate_scene)(const char* name);
-		Result(*initialize_scene)(Scene* scene);
+		Result(*initialize_scene)(Scene* scene, ArchiveI* archive);
 		Result(*close_scene)(Scene* scene);
-		Result(*serialize_scene)(Scene* scene);
+		Result(*serialize_scene)(Scene* scene, ArchiveO archive);
 	};
 
 	struct GlobalEngineData {

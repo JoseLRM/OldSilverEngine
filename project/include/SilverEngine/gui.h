@@ -136,7 +136,7 @@ namespace sv {
 		Color background_color = Color::White();
 	};
 
-	Result gui_create(GUI** pgui);
+	Result gui_create(u64 hashcode, GUI** pgui);
 	Result gui_destroy(GUI* gui);
 
 	void gui_begin(GUI* gui, f32 width, f32 height);

@@ -11,17 +11,17 @@ namespace sv {
 
 	/*
 	  TODO LIST:
-	  - GuiDraw structure that defines the rendering of a widget or some component (PD: Should not contain inherited alpha)
-	  - Align memory
+	  - Align memory using only one allocator
 	  - Popups
 	  - Combobox
-	  - Not use depthstencil
+	  - Not use depthstencil (right now)
 	  - Handle text dynamic memory
 	  - Hot Label ????
 	  - Save states in bin file
 	  - Draw first the container with the focus
 	  - GuiDrag rendering
 	  - Remove GuiDim and use only coords
+	  - Reverse rendering
 	*/
 
 	enum GuiWidgetType : u32 {
@@ -44,9 +44,11 @@ namespace sv {
 
 	struct GuiContainer {
 
-		GuiWidgetIndex parent_index;
+		const GuiWidgetIndex parent_index;
 		v4_f32 bounds;
 		GuiContainerStyle style;
+
+		GuiContainer(const GuiWidgetIndex& index) : parent_index(index) {}
 
 	};
 
@@ -59,11 +61,13 @@ namespace sv {
 
 	struct GuiWindow {
 
-		GuiWidgetIndex parent_index;
+		const GuiWidgetIndex parent_index;
 		GuiWindowState* state;
 		GuiWindowStyle style;
 		std::string title;
 
+		GuiWindow(const GuiWidgetIndex& index) : parent_index(index) {}
+		
 	};
 
 	struct GuiButton {
@@ -114,11 +118,13 @@ namespace sv {
 
 	struct GUI_internal {
 
+		size_t hashcode = 0u;
+		
 		FrameList<GuiContainer> containers;
 		FrameList<GuiWindow>	windows;
 		FrameList<GuiButton>	buttons;
 		FrameList<GuiSlider>	sliders;
-		FrameList<GuiLabel>		labels;
+		FrameList<GuiLabel>	labels;
 		FrameList<GuiCheckBox>	checkboxes;
 		FrameList<GuiDrag>      drags;
 
@@ -164,6 +170,11 @@ namespace sv {
 		gui.focus.last_index = u32_max;
 	}
 
+	SV_INLINE void free_focus(GUI_internal& gui)
+	{
+		gui.focus.type = GuiWidgetType_None;
+	}
+
 	SV_INLINE void set_focus(GUI_internal& gui, GuiWidgetType type, u32 index, u64 id, u32 action = 0u)
 	{
 		gui.focus.type = type;
@@ -172,12 +183,17 @@ namespace sv {
 		gui.focus.action = action;
 	}
 
+	SV_INLINE void update_focus(GUI_internal& gui, u32 index)
+	{
+		gui.focus.last_index = index;
+	}
+
 	void gui_end(GUI* gui_)
 	{
 		PARSE_GUI();
 
 		if (gui.focus.last_index == u32_max)
-			gui.focus.type = GuiWidgetType_None;
+			free_focus(gui);
 
 		switch (gui.focus.type)
 		{
@@ -188,7 +204,7 @@ namespace sv {
 			
 			if (input.mouse_buttons[MouseButton_Left] == InputState_None) {
 
-				gui.focus.type = GuiWidgetType_None;
+				free_focus(gui);
 			}
 			else {
 
@@ -257,10 +273,46 @@ namespace sv {
 		
 	}
 
-	Result gui_create(GUI** pgui)
+	Result gui_create(u64 hashcode, GUI** pgui)
 	{
 		GUI_internal& gui = *new GUI_internal();
 
+		gui.hashcode = hashcode;
+
+		// Load state
+		{
+			u64 hashcode = hash_string("GUI SYSTEM") ^ gui.hashcode;
+
+			ArchiveI archive;
+
+			Result res = bin_read(hashcode, archive);
+			if (result_fail(res)) {
+				SV_LOG_ERROR("Can't deserialize gui states");
+			}
+			else {
+				
+				Version engine_version;
+				archive >> engine_version;
+
+				// Load window states
+
+				u32 count;
+				archive >> count;
+
+				foreach(i, count) {
+
+					GuiWindowState state;
+					std::string title;
+				
+					archive >> title;
+					archive >> state.bounds;
+					archive >> state.show;
+
+					gui.window_state[title] = state;
+				}
+			}
+		}
+		
 		*pgui = reinterpret_cast<GUI*>(&gui);
 		return Result_Success;
 	}
@@ -269,6 +321,27 @@ namespace sv {
 	{
 		PARSE_GUI();
 
+		// Save state
+		{
+			u64 hashcode = hash_string("GUI SYSTEM") ^ gui.hashcode;
+
+			ArchiveO archive;
+			archive << engine.version;
+
+			// Save window states
+			archive << u32(gui.window_state.size());
+
+			for (auto& it : gui.window_state) {
+				archive << it.first;
+				archive << it.second.bounds;
+				archive << it.second.show;
+			}
+
+			Result res = bin_write(hashcode, archive);
+			if (result_fail(res)) {
+				SV_LOG_ERROR("Can't serialize gui states");
+			}
+		}
 
 		delete& gui;
 		return Result_Success;
@@ -425,17 +498,67 @@ namespace sv {
 		return bounds;
 	}
 
-	SV_INLINE static void add_widget(GUI_internal& gui, u32 index, GuiWidgetType type)
+	SV_INLINE static u32 create_widget(GUI_internal& gui, GuiWidgetType type)
 	{
+		u32 index;
+		
+		switch (type) {
+
+		case GuiWidgetType_Container:
+			index = u32(gui.containers.size());
+			gui.containers.emplace_back(gui.parent_index);
+			break;
+			
+		case GuiWidgetType_Window:
+			index = u32(gui.windows.size());
+			gui.windows.emplace_back(gui.parent_index);
+			break;
+			
+		case GuiWidgetType_Button:
+			index = u32(gui.buttons.size());
+			gui.buttons.emplace_back();
+			break;
+
+		case GuiWidgetType_Slider:
+			index = u32(gui.sliders.size());
+			gui.sliders.emplace_back();
+			break;
+
+		case GuiWidgetType_Label:
+			index = u32(gui.labels.size());
+			gui.labels.emplace_back();
+			break;
+
+		case GuiWidgetType_Checkbox:
+			index = u32(gui.checkboxes.size());
+			gui.checkboxes.emplace_back();
+			break;
+
+		case GuiWidgetType_Drag:
+			index = u32(gui.drags.size());
+			gui.drags.emplace_back();
+			break;
+
+		default:
+			SV_ASSERT(!"Unknown widget type");
+			
+		}
+
+		// Add widget index
+		
 		GuiWidgetIndex& i = gui.widgets.emplace_back();
 		i.index = index;
 		i.type = type;
 
+		// New parent
+		
 		if (type == GuiWidgetType_Container || type == GuiWidgetType_Window) {
 
 			gui.parent_index.type = type;
 			gui.parent_index.index = index;
 		}
+		
+		return index;
 	}
 
 	static void end_parent(GUI_internal& gui)
@@ -458,14 +581,9 @@ namespace sv {
 	{
 		PARSE_GUI();
 
-		u32 index = u32(gui.containers.size());
-
-		GuiContainer& container = gui.containers.emplace_back();
+		GuiContainer& container = gui.containers[create_widget(gui, GuiWidgetType_Container)];
 		container.style = style;
 		container.bounds = compute_widget_bounds(gui, x, y, w, h);
-		container.parent_index = gui.parent_index;
-
-		add_widget(gui, index, GuiWidgetType_Container);
 	}
 
 	void gui_end_container(GUI* gui_)
@@ -504,16 +622,12 @@ namespace sv {
 		else state = &it->second;
 
 		if (!state->show) return false;
-		
-		u32 index = u32(gui.windows.size());
 
-		GuiWindow& window = gui.windows.emplace_back();
+		u32 index = create_widget(gui, GuiWidgetType_Window);
+		GuiWindow& window = gui.windows[index];
 		window.style = style;
-		window.parent_index = gui.parent_index;
 		window.state = state;
 		window.title = title;
-
-		add_widget(gui, index, GuiWidgetType_Window);
 
 		// Select window
 		if (input.unused) {
@@ -564,7 +678,7 @@ namespace sv {
 			else {
 
 				if (gui.focus.type == GuiWidgetType_Window && gui.focus.id == (u64)title) {
-					gui.focus.last_index = index;
+					update_focus(gui, index);
 					input.unused = false;
 				}
 			}
@@ -605,16 +719,12 @@ namespace sv {
 	{
 		PARSE_GUI();
 
-		u32 index = u32(gui.buttons.size());
-
-		GuiButton& button = gui.buttons.emplace_back();
+		GuiButton& button = gui.buttons[create_widget(gui, GuiWidgetType_Button)];
 		button.bounds = compute_widget_bounds(gui, x, y, w, h);
 		button.style = style;
 		button.hot = false;
 		button.pressed = false;
 		button.text = text;
-		
-		add_widget(gui, index, GuiWidgetType_Button);
 
 		// Check state
 		if (input.unused) {
@@ -642,14 +752,11 @@ namespace sv {
 	{
 		PARSE_GUI();
 
-		u32 index = u32(gui.sliders.size());
-
-		GuiSlider& slider = gui.sliders.emplace_back();
+		u32 index = create_widget(gui, GuiWidgetType_Slider);
+		GuiSlider& slider = gui.sliders[index];
 		slider.bounds = compute_widget_bounds(gui, x, y, w, h);
 		slider.style = style;
 		slider.slider_value = (*value - min) / (max - min);
-
-		add_widget(gui, index, GuiWidgetType_Slider);
 
 		bool focused = false;
 
@@ -662,7 +769,7 @@ namespace sv {
 
 				if (input_state == InputState_None || input_state == InputState_Released) {
 
-					gui.focus.type = GuiWidgetType_None;
+					free_focus(gui);
 				}
 				else {
 
@@ -674,7 +781,7 @@ namespace sv {
 					*value = mouse_value * (max - min) + min;
 
 					focused = true;
-					gui.focus.last_index = index;
+					update_focus(gui, index);
 					input.unused = false;
 				}
 			}
@@ -692,28 +799,20 @@ namespace sv {
 	{
 		PARSE_GUI();
 
-		u32 index = u32(gui.labels.size());
-
-		GuiLabel& label = gui.labels.emplace_back();
+		GuiLabel& label = gui.labels[create_widget(gui, GuiWidgetType_Label)];
 		label.bounds = compute_widget_bounds(gui, x, y, w, h);
 		label.style = style;
 		label.text = text;
-
-		add_widget(gui, index, GuiWidgetType_Label);
 	}
 
 	bool gui_checkbox(GUI* gui_, bool* value, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiCheckBoxStyle& style)
 	{
 		PARSE_GUI();
 
-		u32 index = u32(gui.checkboxes.size());
-
-		GuiCheckBox& cb = gui.checkboxes.emplace_back();
+		GuiCheckBox& cb = gui.checkboxes[create_widget(gui, GuiWidgetType_Checkbox)];
 		cb.bounds = compute_widget_bounds(gui, x, y, w, h);
 		cb.style = style;
 		cb.active = *value;
-
-		add_widget(gui, index, GuiWidgetType_CheckBox);
 
 		bool pressed = false;
 
@@ -758,14 +857,11 @@ namespace sv {
 	{
 		PARSE_GUI();
 
-		u32 index = u32(gui.sliders.size());
-
-		GuiDrag& drag = gui.drags.emplace_back();
+		u32 index = create_widget(gui, GuiWidgetType_Drag);
+		GuiDrag& drag = gui.drags[index];
 		drag.bounds = compute_widget_bounds(gui, x, y, w, h);
 		drag.style = style;
 		drag.value = *value;
-
-		add_widget(gui, index, GuiWidgetType_Drag);
 
 		bool focused = false;
 
@@ -778,14 +874,14 @@ namespace sv {
 
 				if (input_state == InputState_None || input_state == InputState_Released) {
 
-					gui.focus.type = GuiWidgetType_None;
+					free_focus(gui);
 				}
 				else {
 
 					*value += input.mouse_dragged.x * gui.resolution.x * adv;
 					
 					focused = true;
-					gui.focus.last_index = index;
+					update_focus(gui, index);
 					input.unused = false;
 				}
 			}

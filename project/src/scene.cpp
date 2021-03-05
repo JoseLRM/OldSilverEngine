@@ -55,6 +55,20 @@ namespace sv {
 		return Result_Success;
 	}
 
+	Result serialize_scene(Scene* scene, const char* filepath)
+	{
+		ArchiveO archive;
+
+		archive << engine.version;
+		archive << name;
+		
+		// ECS
+
+		archive << main_camera;
+		
+		return archive.save_file(filepath);
+	}
+
 	void update_scene(Scene* scene)
 	{
 		CameraComponent* camera = get_main_camera(scene);

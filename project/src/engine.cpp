@@ -26,6 +26,9 @@ namespace sv {
 	void close_console();
 	void update_console();
 	void draw_console(GPUImage* offscreen, CommandList cmd);
+	Result initialize_scene(Scene** pscene, const char* name);
+	Result close_scene(Scene* scene);
+	void update_scene(Scene* scene);
 
 	// Asset functions
 

@@ -7,6 +7,33 @@
 
 namespace sv {
 
+	/*
+	  TODO list:
+	  - public initialize function
+	  - public close function
+	  - loading scene callbacks
+	  
+
+	  // INIT PATH
+	  - (callback) validate
+	  - init
+	  - (callback) get filepath
+	  - deserialize
+	  - (callback) init
+
+	  // SERIALIZE PATH
+	  - (callback) get filepath
+	  - serialize
+	  - (callback) serialize
+	  - Write file
+
+	  // CALLBACKS
+	  Result validate_scene(const char* name);
+	  Result initialize_scene(Scene* scene, SceneInitInfo& info);
+	  
+
+	 */
+
 	struct CameraComponent;	
 
 	struct Scene {
@@ -23,11 +50,7 @@ namespace sv {
 	};
 
 	Result set_active_scene(const char* name);
-
-	Result initialize_scene(Scene** pscene, const char* name);
-	Result close_scene(Scene* scene);
-
-	void update_scene(Scene* scene);
+	Result serialize_scene(Scene* scene, const char* filepath);
 
 	CameraComponent* get_main_camera(Scene* scene);
 	const char* get_entity_name(ECS* ecs, Entity entity);	
