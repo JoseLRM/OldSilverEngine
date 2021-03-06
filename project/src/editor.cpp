@@ -172,13 +172,13 @@ namespace sv {
 		checkbox_style.inactive_box = GuiBox::Triangle(Color::Black(), false, 0.5f);
 		checkbox_style.color = Color::Black(0u);
 
-		gui_begin_container(gui, GuiCoord::Center(), GuiCoord::Flow(y), GuiDim::Relative(0.9f), GuiDim::Pixel(30.f), container_style);
+		u64 gui_id = u64(comp_id << 32u + comp->entity);
 
-		gui_text(gui, ecs_component_name(comp_id), { 35.f, GuiConstraint_Pixel, GuiAlignment_Left }
-		, GuiCoord::Center(), GuiDim::Pixel(300.f), GuiDim::Relative(1.f), text_style);
+		gui_begin_container(gui, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f), container_style);
 
-		bool show = gui_checkbox_id(gui, u64(comp_id << 32u + comp->entity), { 0.f, GuiConstraint_Relative, GuiAlignment_Left }
-		, GuiCoord::Center(), GuiDim::Aspect(1.f), GuiDim::Relative(1.f), checkbox_style);
+		gui_text(gui, ecs_component_name(comp_id), GuiCoord::Pixel(35.f), GuiCoord::IPixel(10.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), text_style);
+		
+		bool show = gui_checkbox_id(gui, gui_id, GuiCoord::Pixel(0.f), GuiCoord::Aspect(), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), checkbox_style);
 
 		gui_end_container(gui);
 
@@ -188,13 +188,6 @@ namespace sv {
 
 		y += 30.f + editor.style.vertical_padding;
 	}
-
-	// TEMP
-	struct TempLine {
-		v3_f32 p0;
-		v3_f32 p1;
-	};
-	static std::vector<TempLine> lines;
 
 	SV_INLINE static void select_entity()
 	{
@@ -216,8 +209,6 @@ namespace sv {
 
 		Entity selected = SV_ENTITY_NULL;
 		f32 distance = f32_max;
-
-		lines.push_back({ ray.origin, ray.origin + ray.direction * 40.f });
 
 		EntityView<MeshComponent> meshes(ecs);
 
@@ -279,8 +270,8 @@ namespace sv {
 
 				constexpr f32 BUTTON_HEIGHT = 25.f;
 				
-				if (gui_button(g, name, { 5.f, GuiConstraint_Pixel, GuiAlignment_Left },
-					       GuiCoord::Flow(y), GuiDim::Relative(0.9f), GuiDim::Pixel(BUTTON_HEIGHT), editor.style.button_style)) {
+				if (gui_button(g, name, GuiCoord::Relative(0.1f),
+					       GuiCoord::Aspect(2.f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + BUTTON_HEIGHT), editor.style.button_style)) {
 
 					editor.selected_entity = entity;
 				}
@@ -311,7 +302,7 @@ namespace sv {
 				{
 					const char* entity_name = get_entity_name(ecs, selected);
 
-					gui_text(g, entity_name, GuiCoord::Center(), GuiCoord::Flow(y), GuiDim::Relative(0.9f), GuiDim::Pixel(NAME_HEIGHT));
+					gui_text(g, entity_name, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + NAME_HEIGHT));
 					y += NAME_HEIGHT + editor.style.separator + editor.style.vertical_padding;
 				}
 
@@ -351,26 +342,26 @@ namespace sv {
 						constexpr f32 ELEMENT_WIDTH = (1.f - EXTERN_PADDING * 2.f - INTERN_PADDING * 2.f) / 3.f;
 
 						// X
-						if (gui_button(g, "X", { 0.5f - ELEMENT_WIDTH - INTERN_PADDING, GuiConstraint_Relative, GuiAlignment_Center
-							}, GuiCoord::Flow(y), GuiDim::Relative(ELEMENT_WIDTH),
-							GuiDim::Pixel(TRANSFORM_HEIGHT), x_style)) {
+						if (gui_button(g, "X", GuiCoord::Relative(0.5f - ELEMENT_WIDTH * 1.5f - INTERN_PADDING), 
+							GuiCoord::Relative(0.5f - ELEMENT_WIDTH * 0.5f - INTERN_PADDING), GuiCoord::IPixel(y),
+							GuiCoord::IPixel(y + TRANSFORM_HEIGHT), x_style)) {
 
 							// TEMP
 							values->x = math_random_f32(u32(timer_now() * 100.f), -10.f, 10.f);
 						}
 
 						// Y
-						if (gui_button(g, "Y", GuiCoord::Center(), GuiCoord::Flow(y),
-							GuiDim::Relative(ELEMENT_WIDTH), GuiDim::Pixel(TRANSFORM_HEIGHT), y_style)) {
+						if (gui_button(g, "Y", GuiCoord::Relative(0.5f - ELEMENT_WIDTH * 0.5f), GuiCoord::Relative(0.5f + ELEMENT_WIDTH * 0.5f),
+							GuiCoord::IPixel(y), GuiCoord::IPixel(y + TRANSFORM_HEIGHT), y_style)) {
 
 							// TEMP
 							values->y = math_random_f32(u32(timer_now() * 100.f), -10.f, 10.f);
 						}
 
 						// Z
-						if (gui_button(g, "Z", { 0.5f + ELEMENT_WIDTH + INTERN_PADDING, GuiConstraint_Relative, GuiAlignment_Center
-							}, GuiCoord::Flow(y), GuiDim::Relative(ELEMENT_WIDTH),
-							GuiDim::Pixel(TRANSFORM_HEIGHT), z_style)) {
+						if (gui_button(g, "Z", GuiCoord::Relative(0.5f + ELEMENT_WIDTH * 0.5f + INTERN_PADDING),
+							GuiCoord::Relative(0.5f + ELEMENT_WIDTH * 1.5f + INTERN_PADDING), GuiCoord::IPixel(y),
+							GuiCoord::IPixel(y + TRANSFORM_HEIGHT), z_style)) {
 
 							// TEMP
 							values->z = math_random_f32(u32(timer_now() * 100.f), -10.f, 10.f);
@@ -454,17 +445,6 @@ namespace sv {
 		CommandList cmd = graphics_commandlist_get();
 
 		gui_draw(editor.gui, engine.scene->offscreen, cmd);
-
-		begin_debug_batch(cmd);
-
-		for (auto& l : lines) {
-			draw_debug_line(l.p0, l.p1, Color::Red(), cmd);
-		}
-
-		CameraComponent* cam = get_main_camera(engine.scene);
-		Transform trans = ecs_entity_transform_get(engine.scene->ecs, cam->entity);
-
-		end_debug_batch(engine.scene->offscreen, engine.scene->depthstencil, camera_view_projection_matrix(trans.getWorldPosition(), trans.getWorldRotation(), *cam), cmd);
 	}
 
 }

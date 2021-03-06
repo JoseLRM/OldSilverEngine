@@ -365,7 +365,7 @@ namespace sv {
 		}
 	}
 
-	SV_INLINE static f32 compute_coord(const GUI_internal& gui, const GuiCoord& coord, f32 aspect_coord, f32 dimension, f32 resolution, bool vertical, f32 parent_coord, f32 parent_dimension)
+	SV_INLINE static f32 compute_coord(const GUI_internal& gui, const GuiCoord& coord, f32 resolution, f32 parent_coord, f32 parent_dimension)
 	{
 		f32 res = 0.5f;
 
@@ -381,63 +381,19 @@ namespace sv {
 			break;
 
 		case GuiConstraint_Pixel:
+		case GuiConstraint_InversePixel:
 			res = coord.value / resolution;
-			break;
-
-		case GuiConstraint_Aspect:
-			res = aspect_coord * coord.value * (vertical ? gui.aspect : (1.f / gui.aspect));
 			break;
 
 		}
 
 		// Inverse coord
-		if (coord.alignment >= 3u) {
+		if (coord.constraint == GuiConstraint_InversePixel) {
 			res = parent_dimension - res;
 		}
 
 		// Parent offset
 		res += (parent_coord - parent_dimension * 0.5f);
-
-		// Alignment
-		switch (coord.alignment)
-		{
-		case GuiAlignment_Left:
-		case GuiAlignment_InverseLeft:
-			res = res + dimension * 0.5f;
-			break;
-
-		case GuiAlignment_Right:
-		case GuiAlignment_InverseRight:
-			res = res - dimension * 0.5f;
-			break;
-		}
-
-		return res;
-	}
-
-	SV_INLINE static f32 compute_dimension(const GUI_internal& gui, const GuiDim& dimension, f32 inv_dimension, f32 resolution, bool vertical, f32 parent_dimension)
-	{
-		f32 res = 0.5f;
-
-		// Centred coord
-		switch (dimension.constraint)
-		{
-		case GuiConstraint_Relative:
-			res = dimension.value * parent_dimension;
-			break;
-
-		case GuiConstraint_Center:
-			res = 0.5f * parent_dimension;
-			break;
-
-		case GuiConstraint_Pixel:
-			res = dimension.value / resolution;
-			break;
-
-		case GuiConstraint_Aspect:
-			res = inv_dimension * (vertical ? gui.aspect : (1.f / gui.aspect));
-			break;
-		}
 
 		return res;
 	}
@@ -447,44 +403,82 @@ namespace sv {
 		return abs(bounds.x - gui.mouse_position.x) <= bounds.z * 0.5f && abs(bounds.y - gui.mouse_position.y) <= bounds.w * 0.5f;
 	}
 
-	static v4_f32 compute_widget_bounds(const GUI_internal& gui, GuiCoord& coord_x, GuiCoord& coord_y, GuiDim& dim_w, GuiDim& dim_h)
+	static v4_f32 compute_widget_bounds(const GUI_internal& gui, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1)
 	{
 #ifndef SV_DIST
-		if (coord_x.constraint == GuiConstraint_Aspect && coord_x.constraint == coord_y.constraint) {
-			SV_LOG_WARNING("Gui coords has both aspect constraint, that's not possible...");
-		}
-		if (dim_w.constraint == GuiConstraint_Aspect && dim_w.constraint == dim_h.constraint) {
-			SV_LOG_WARNING("Gui dimensions has both aspect constraint, that's not possible...");
+		{
+			u32 aspect_count = 0u;
+			if (x0.constraint == GuiConstraint_Aspect) ++aspect_count;
+			if (x1.constraint == GuiConstraint_Aspect) ++aspect_count;
+			if (y0.constraint == GuiConstraint_Aspect) ++aspect_count;
+			if (y1.constraint == GuiConstraint_Aspect) ++aspect_count;
+
+			SV_ASSERT(aspect_count <= 1u);
 		}
 #endif
 
-		// Compute local bounds
-		f32 w;
-		f32 h;
-		f32 x;
-		f32 y;
+		f32 _x0, _x1, _y0, _y1;
 
 		v4_f32 parent_bounds = get_parent_bounds(gui);
 
-		if (dim_w.constraint == GuiConstraint_Aspect) {
-			h = compute_dimension(gui, dim_h, 0.5f, gui.resolution.y, true, parent_bounds.w);
-			w = compute_dimension(gui, dim_w, h, gui.resolution.x, false, parent_bounds.z);
+		if (x0.constraint == GuiConstraint_Aspect) {
+
+			_x1 = compute_coord(gui, x1, gui.resolution.x, parent_bounds.x, parent_bounds.z);
+			_y0 = compute_coord(gui, y0, gui.resolution.y, parent_bounds.y, parent_bounds.w);
+			_y1 = compute_coord(gui, y1, gui.resolution.y, parent_bounds.y, parent_bounds.w);
+
+			if (_y0 > _y1) std::swap(_y0, _y1);
+
+			_x0 = _x1 - (_y1 - _y0) * x0.value * 1.f / gui.aspect;
+		}
+		else if (x1.constraint == GuiConstraint_Aspect) {
+
+			_x0 = compute_coord(gui, x0, gui.resolution.x, parent_bounds.x, parent_bounds.z);
+			_y0 = compute_coord(gui, y0, gui.resolution.y, parent_bounds.y, parent_bounds.w);
+			_y1 = compute_coord(gui, y1, gui.resolution.y, parent_bounds.y, parent_bounds.w);
+
+			if (_y0 > _y1) std::swap(_y0, _y1);
+
+			_x1 = _x0 + (_y1 - _y0) * x1.value * 1.f / gui.aspect;
+		}
+		else if (y0.constraint == GuiConstraint_Aspect) {
+
+			_x0 = compute_coord(gui, x0, gui.resolution.x, parent_bounds.x, parent_bounds.z);
+			_x1 = compute_coord(gui, x1, gui.resolution.x, parent_bounds.x, parent_bounds.z);
+			_y1 = compute_coord(gui, y1, gui.resolution.y, parent_bounds.y, parent_bounds.w);
+
+			if (_x0 > _x1) std::swap(_x0, _x1);
+
+			_y0 = _y1 - (_x1 - _x0) * y0.value * gui.aspect;
+		}
+		else if (y1.constraint == GuiConstraint_Aspect) {
+
+			_x0 = compute_coord(gui, x0, gui.resolution.x, parent_bounds.x, parent_bounds.z);
+			_x1 = compute_coord(gui, x1, gui.resolution.x, parent_bounds.x, parent_bounds.z);
+			_y0 = compute_coord(gui, y0, gui.resolution.y, parent_bounds.y, parent_bounds.w);
+
+			if (_x0 > _x1) std::swap(_x0, _x1);
+
+			_y1 = _y0 + (_x1 - _x0) * y1.value * gui.aspect;
 		}
 		else {
-			w = compute_dimension(gui, dim_w, 0.5f, gui.resolution.x, false, parent_bounds.z);
-			h = compute_dimension(gui, dim_h, w, gui.resolution.y, true, parent_bounds.w);
+			_x0 = compute_coord(gui, x0, gui.resolution.x, parent_bounds.x, parent_bounds.z);
+			_x1 = compute_coord(gui, x1, gui.resolution.x, parent_bounds.x, parent_bounds.z);
+			_y0 = compute_coord(gui, y0, gui.resolution.y, parent_bounds.y, parent_bounds.w);
+			_y1 = compute_coord(gui, y1, gui.resolution.y, parent_bounds.y, parent_bounds.w);
+
+			if (_x0 > _x1) std::swap(_x0, _x1);
+			if (_y0 > _y1) std::swap(_y0, _y1);
 		}
 
-		if (coord_x.constraint == GuiConstraint_Aspect) {
-			y = compute_coord(gui, coord_y, 0.5f, h, gui.resolution.y, true, parent_bounds.y, parent_bounds.w);
-			x = compute_coord(gui, coord_x, y, w, gui.resolution.x, false, parent_bounds.x, parent_bounds.z);
-		}
-		else {
-			x = compute_coord(gui, coord_x, 0.5f, w, gui.resolution.x, false, parent_bounds.x, parent_bounds.z);
-			y = compute_coord(gui, coord_y, x, h, gui.resolution.y, true, parent_bounds.y, parent_bounds.w);
-		}
+		
 
-		return { x, y, w, h };
+		f32 w = _x1 - _x0;
+		f32 h = _y1 - _y0;
+		f32 x = _x0 + w * 0.5f;
+		f32 y = _y0 + h * 0.5f;
+
+		return { x, y, abs(w), abs(h) };
 	}
 
 	SV_INLINE static v4_f32 compute_window_decoration_bounds(const GUI_internal& gui, const GuiWindow& window)
@@ -576,13 +570,14 @@ namespace sv {
 		}
 	}
 
-	void gui_begin_container(GUI* gui_, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiContainerStyle& style)
+	void gui_begin_container(GUI* gui_, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiContainerStyle& style)
 	{
 		PARSE_GUI();
 
+		v4_f32 bounds = compute_widget_bounds(gui, x0, x1, y0, y1);
 		GuiContainer& container = gui.containers[create_widget(gui, GuiWidgetType_Container)];
 		container.style = style;
-		container.bounds = compute_widget_bounds(gui, x, y, w, h);
+		container.bounds = bounds;
 	}
 
 	void gui_end_container(GUI* gui_)
@@ -714,12 +709,12 @@ namespace sv {
 		return Result_Success;
 	}
 
-	bool gui_button(GUI* gui_, const char* text, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiButtonStyle& style)
+	bool gui_button(GUI* gui_, const char* text, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiButtonStyle& style)
 	{
 		PARSE_GUI();
 
 		GuiButton& button = gui.buttons[create_widget(gui, GuiWidgetType_Button)];
-		button.bounds = compute_widget_bounds(gui, x, y, w, h);
+		button.bounds = compute_widget_bounds(gui, x0, x1, y0, y1);
 		button.style = style;
 		button.hot = false;
 		button.pressed = false;
@@ -747,13 +742,13 @@ namespace sv {
 		return button.pressed;
 	}
 
-	bool gui_slider(GUI* gui_, f32* value, f32 min, f32 max, u64 id, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiSliderStyle& style)
+	bool gui_slider(GUI* gui_, f32* value, f32 min, f32 max, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiSliderStyle& style)
 	{
 		PARSE_GUI();
 
 		u32 index = create_widget(gui, GuiWidgetType_Slider);
 		GuiSlider& slider = gui.sliders[index];
-		slider.bounds = compute_widget_bounds(gui, x, y, w, h);
+		slider.bounds = compute_widget_bounds(gui, x0, x1, y0, y1);
 		slider.style = style;
 		slider.slider_value = (*value - min) / (max - min);
 
@@ -794,22 +789,22 @@ namespace sv {
 		return focused;
 	}
 
-	void gui_text(GUI* gui_, const char* text, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiTextStyle& style)
+	void gui_text(GUI* gui_, const char* text, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiTextStyle& style)
 	{
 		PARSE_GUI();
 
 		GuiLabel& label = gui.labels[create_widget(gui, GuiWidgetType_Label)];
-		label.bounds = compute_widget_bounds(gui, x, y, w, h);
+		label.bounds = compute_widget_bounds(gui, x0, x1, y0, y1);
 		label.style = style;
 		label.text = text;
 	}
 
-	bool gui_checkbox(GUI* gui_, bool* value, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiCheckBoxStyle& style)
+	bool gui_checkbox(GUI* gui_, bool* value, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiCheckBoxStyle& style)
 	{
 		PARSE_GUI();
 
 		GuiCheckBox& cb = gui.checkboxes[create_widget(gui, GuiWidgetType_CheckBox)];
-		cb.bounds = compute_widget_bounds(gui, x, y, w, h);
+		cb.bounds = compute_widget_bounds(gui, x0, x1, y0, y1);
 		cb.style = style;
 		cb.active = *value;
 
@@ -833,7 +828,7 @@ namespace sv {
 		return pressed;
 	}
 
-	bool gui_checkbox_id(GUI* gui_, u64 id, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiCheckBoxStyle& style)
+	bool gui_checkbox_id(GUI* gui_, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiCheckBoxStyle& style)
 	{
 		PARSE_GUI();
 
@@ -847,18 +842,18 @@ namespace sv {
 		}
 		else state = &it->second;
 
-		gui_checkbox(gui_, &state->active, x, y, w, h, style);
+		gui_checkbox(gui_, &state->active, x0, x1, y0, y1, style);
 
 		return state->active;
 	}
 
-	bool gui_drag_f32(GUI* gui_, f32* value, f32 adv, u64 id, GuiCoord x, GuiCoord y, GuiDim w, GuiDim h, const GuiDragStyle& style)
+	bool gui_drag_f32(GUI* gui_, f32* value, f32 adv, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiDragStyle& style)
 	{
 		PARSE_GUI();
 
 		u32 index = create_widget(gui, GuiWidgetType_Drag);
 		GuiDrag& drag = gui.drags[index];
-		drag.bounds = compute_widget_bounds(gui, x, y, w, h);
+		drag.bounds = compute_widget_bounds(gui, x0, x1, y0, y1);
 		drag.style = style;
 		drag.value = *value;
 
