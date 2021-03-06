@@ -24,7 +24,8 @@ namespace sv {
 	static Result compile_shaders()
 	{
 		COMPILE_VS_(gfx.vs_debug_solid_batch, "debug/solid_batch.hlsl");
-		COMPILE_PS_(gfx.ps_debug_solid_batch, "debug/solid_batch.hlsl");
+		COMPILE_VS_(gfx.vs_debug_mesh_wireframe, "debug/mesh_wireframe.hlsl");
+		COMPILE_PS_(gfx.ps_debug_solid, "debug/solid_batch.hlsl");
 
 		COMPILE_VS(gfx.vs_text, "text.hlsl");
 		COMPILE_PS(gfx.ps_text, "text.hlsl");
@@ -97,6 +98,17 @@ namespace sv {
 	static Result create_buffers()
 	{
 		GPUBufferDesc desc;
+
+		// Debug mesh
+		{
+			desc.bufferType = GPUBufferType_Constant;
+			desc.usage = ResourceUsage_Default;
+			desc.CPUAccess = CPUAccess_Write;
+			desc.size = sizeof(XMMATRIX) + sizeof(Color4f);
+			desc.pData = nullptr;
+
+			svCheck(graphics_buffer_create(&desc, &gfx.cbuffer_debug_mesh));
+		}
 
 		// Camera buffer
 		{
@@ -489,6 +501,21 @@ namespace sv {
 			desc.clockwise = true;
 
 			graphics_rasterizerstate_create(&desc, &gfx.rs_back_culling);
+
+			desc.wireframe = true;
+			desc.cullMode = RasterizerCullMode_None;
+			desc.clockwise = true;
+			graphics_rasterizerstate_create(&desc, &gfx.rs_wireframe);
+
+			desc.wireframe = true;
+			desc.cullMode = RasterizerCullMode_Front;
+			desc.clockwise = true;
+			graphics_rasterizerstate_create(&desc, &gfx.rs_wireframe_front_culling);
+
+			desc.wireframe = true;
+			desc.cullMode = RasterizerCullMode_Back;
+			desc.clockwise = true;
+			graphics_rasterizerstate_create(&desc, &gfx.rs_wireframe_back_culling);
 		}
 
 		return Result_Success;

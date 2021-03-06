@@ -48,6 +48,7 @@ namespace sv {
 	void draw_debug_quad(const XMMATRIX& matrix, Color color, CommandList cmd);
 	void draw_debug_line(const v3_f32& p0, const v3_f32& p1, Color color, CommandList cmd);
 	void draw_debug_triangle(const v3_f32& p0, const v3_f32& p1, const v3_f32& p2, Color color, CommandList cmd);
+	void draw_debug_mesh_wireframe(Mesh* mesh, const XMMATRIX& transform, Color color, CommandList cmd);
 
 	// Helper functions
 

@@ -14,7 +14,6 @@ namespace sv {
 	  - Align memory using only one allocator
 	  - Popups
 	  - Combobox
-	  - Not use depthstencil (right now)
 	  - Handle text dynamic memory
 	  - Hot Label ????
 	  - Draw first the container with the focus
@@ -898,9 +897,6 @@ namespace sv {
 	{
 		PARSE_GUI();
 
-		// TODO: move on
-		GPUImage* depthstencil = engine.scene->depthstencil;
-
 		for (GuiWidgetIndex& w : gui.widgets) {
 
 			switch (w.type)
@@ -920,7 +916,7 @@ namespace sv {
 
 				draw_debug_quad(pos.getVec3(0.f), size, color, cmd);
 
-				end_debug_batch(offscreen, depthstencil, XMMatrixIdentity(), cmd);
+				end_debug_batch(offscreen, nullptr, XMMatrixIdentity(), cmd);
 
 				if (button.text.size()) {
 
@@ -947,7 +943,7 @@ namespace sv {
 
 				draw_debug_quad(pos.getVec3(0.f), size, color, cmd);
 
-				end_debug_batch(offscreen, depthstencil, XMMatrixIdentity(), cmd);
+				end_debug_batch(offscreen, nullptr, XMMatrixIdentity(), cmd);
 			}
 			break;
 
@@ -981,7 +977,7 @@ namespace sv {
 				draw_debug_quad(content_position.getVec3(0.f), content_size, style.color, cmd);
 				draw_debug_quad(decoration_position.getVec3(0.f), decoration_size, style.decoration_color, cmd);
 
-				end_debug_batch(offscreen, depthstencil, XMMatrixIdentity(), cmd);
+				end_debug_batch(offscreen, nullptr, XMMatrixIdentity(), cmd);
 
 				if (window.title.size()) {
 
@@ -1014,7 +1010,7 @@ namespace sv {
 				
 				draw_debug_quad({ slider_pos, slider.bounds.y, 0.f }, slider.style.button_size, slider.style.button_color, cmd);
 
-				end_debug_batch(offscreen, depthstencil, XMMatrixIdentity(), cmd);
+				end_debug_batch(offscreen, nullptr, XMMatrixIdentity(), cmd);
 			}
 			break;
 
@@ -1031,7 +1027,7 @@ namespace sv {
 
 				draw_debug_quad(pos.getVec3(0.f), size, label.style.background_color, cmd);
 
-				end_debug_batch(offscreen, depthstencil, XMMatrixIdentity(), cmd);
+				end_debug_batch(offscreen, nullptr, XMMatrixIdentity(), cmd);
 
 				if (label.text.size()) {
 				
@@ -1087,7 +1083,7 @@ namespace sv {
 					break;
 				}
 
-				end_debug_batch(offscreen, depthstencil, XMMatrixIdentity(), cmd);
+				end_debug_batch(offscreen, nullptr, XMMatrixIdentity(), cmd);
 			}
 			break;
 

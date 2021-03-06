@@ -404,9 +404,6 @@ namespace sv {
 	{
 		if (!engine.console_active && show_fade == 0.f) return;
 
-		// TEMP
-		GPUImage* depthstencil = engine.scene->depthstencil;
-
 		// Flip console
 		if (console_buffer.flipped && console_buffer.pos) {
 
@@ -453,7 +450,7 @@ namespace sv {
 		draw_debug_quad({ console_x, animation + 1.f - console_height * 0.5f, 0.f }, { console_width, console_height }, Color::Black(180u), cmd);
 		draw_debug_quad({ 0.f, animation + 1.f - console_height - command_height * 0.5f, 0.f }, { 2.f, command_height }, Color::Black(), cmd);
 
-		end_debug_batch(offscreen, depthstencil, XMMatrixIdentity(), cmd);
+		end_debug_batch(offscreen, nullptr, XMMatrixIdentity(), cmd);
 
 		f32 text_x = -1.f;
 		f32 text_y = 1.f - console_height + animation;
@@ -478,7 +475,7 @@ namespace sv {
 
 		draw_debug_quad({ text_x + width + char_width * 0.5f, text_y - command_height * 0.5f, 0.f }, { char_width, command_height }, Color::Red(100u), cmd);
 
-		end_debug_batch(offscreen, depthstencil, XMMatrixIdentity(), cmd);
+		end_debug_batch(offscreen, nullptr, XMMatrixIdentity(), cmd);
 	}
 
 }

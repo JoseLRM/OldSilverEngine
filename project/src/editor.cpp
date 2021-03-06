@@ -443,7 +443,30 @@ namespace sv {
 	void draw_editor()
 	{
 		CommandList cmd = graphics_commandlist_get();
+		ECS* ecs = engine.scene->ecs;
 
+		// Draw selected entity
+		{
+			begin_debug_batch(cmd);
+
+			if (editor.selected_entity != SV_ENTITY_NULL) {
+
+				Transform trans = ecs_entity_transform_get(ecs, editor.selected_entity);
+				MeshComponent* mesh_comp = ecs_component_get<MeshComponent>(ecs, editor.selected_entity);
+
+				if (mesh_comp && mesh_comp->mesh.get()) {
+
+					u8 alpha = 5u + u8(f32(sin(timer_now().toSeconds_f64() * 3.5f) + 1.0) * 50.f * 0.5f);
+					draw_debug_mesh_wireframe(mesh_comp->mesh.get(), trans.getWorldMatrix(), Color::Red(alpha), cmd);
+				}
+			}
+
+			CameraComponent* cam = get_main_camera(engine.scene);
+			Transform trans = ecs_entity_transform_get(ecs, cam->entity);
+			end_debug_batch(engine.scene->offscreen, 0u, camera_view_projection_matrix(trans.getWorldPosition(), trans.getWorldRotation(), *cam), cmd);
+		}
+
+		// Draw gui
 		gui_draw(editor.gui, engine.scene->offscreen, cmd);
 	}
 

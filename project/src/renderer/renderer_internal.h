@@ -78,6 +78,9 @@ namespace sv {
 		GPUBuffer* vbuffer_batch[GraphicsLimit_CommandList];
 		DepthStencilState* dss_default_depth;
 		RasterizerState* rs_back_culling;
+		RasterizerState* rs_wireframe;
+		RasterizerState* rs_wireframe_back_culling;
+		RasterizerState* rs_wireframe_front_culling;
 		GPUBuffer* cbuffer_camera;
 		RenderPass* renderpass_off;
 		RenderPass* renderpass_world;
@@ -86,8 +89,10 @@ namespace sv {
 		// DEBUG
 
 		Shader* vs_debug_solid_batch;
-		Shader* ps_debug_solid_batch;
+		Shader* vs_debug_mesh_wireframe;
+		Shader* ps_debug_solid;
 		InputLayoutState* ils_debug_solid_batch;
+		GPUBuffer* cbuffer_debug_mesh;
 
 		// TEXT
 
