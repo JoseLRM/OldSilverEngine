@@ -142,6 +142,7 @@ namespace sv {
 		v2_f32 resolution;
 		f32 aspect;
 		v2_f32 mouse_position;
+		bool input_unused;
 
 		v2_f32 begin_position;
 
@@ -166,6 +167,7 @@ namespace sv {
 		gui.aspect = width / height;
 		gui.mouse_position = input.mouse_position + 0.5f;
 		gui.focus.last_index = u32_max;
+		gui.input_unused = input.unused;
 	}
 
 	SV_INLINE void free_focus(GUI_internal& gui)
@@ -205,6 +207,8 @@ namespace sv {
 				free_focus(gui);
 			}
 			else {
+
+				input.unused = false;
 
 				switch (gui.focus.action)
 				{
@@ -577,6 +581,11 @@ namespace sv {
 		GuiContainer& container = gui.containers[create_widget(gui, GuiWidgetType_Container)];
 		container.style = style;
 		container.bounds = bounds;
+
+		if (input.unused && mouse_in_bounds(gui, bounds)) {
+			gui.input_unused = true;
+			input.unused = false;
+		}
 	}
 
 	void gui_end_container(GUI* gui_)
@@ -622,8 +631,13 @@ namespace sv {
 		window.state = state;
 		window.title = title;
 
+		if (input.unused && mouse_in_bounds(gui, state->bounds)) {
+			gui.input_unused = true;
+			input.unused = false;
+		}
+
 		// Select window
-		if (input.unused) {
+		if (gui.input_unused) {
 			
 			if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
 
@@ -633,7 +647,7 @@ namespace sv {
 				
 					gui.begin_position = v2_f32(window.state->bounds.x, window.state->bounds.y) - gui.mouse_position;
 					set_focus(gui, GuiWidgetType_Window, index, (u64)title, 0u);
-					input.unused = false;
+					gui.input_unused = false;
 				}
 				else {
 					const v4_f32& content = window.state->bounds;
@@ -664,7 +678,7 @@ namespace sv {
 
 					if (action != u32_max) {
 						set_focus(gui, GuiWidgetType_Window, index, (u64)title, action);
-						input.unused = false;
+						gui.input_unused = false;
 					}
 				}
 			}
@@ -672,7 +686,7 @@ namespace sv {
 
 				if (gui.focus.type == GuiWidgetType_Window && gui.focus.id == (u64)title) {
 					update_focus(gui, index);
-					input.unused = false;
+					gui.input_unused = false;
 				}
 			}
 		}
@@ -720,7 +734,7 @@ namespace sv {
 		button.text = text;
 
 		// Check state
-		if (input.unused) {
+		if (gui.input_unused) {
 
 			// Check if is hot
 			button.hot = mouse_in_bounds(gui, button.bounds);
@@ -733,7 +747,7 @@ namespace sv {
 				if (input_state == InputState_Released) {
 
 					button.pressed = true;
-					input.unused = false;
+					gui.input_unused = false;
 				}
 			}
 		}
@@ -754,7 +768,7 @@ namespace sv {
 		bool focused = false;
 
 		// Check state
-		if (input.unused) {
+		if (gui.input_unused) {
 
 			InputState input_state = input.mouse_buttons[MouseButton_Left];
 
@@ -775,13 +789,13 @@ namespace sv {
 
 					focused = true;
 					update_focus(gui, index);
-					input.unused = false;
+					gui.input_unused = false;
 				}
 			}
 			else if (input_state == InputState_Pressed && mouse_in_bounds(gui, slider.bounds)) {
 
 				set_focus(gui, GuiWidgetType_Slider, index, id);
-				input.unused = false;
+				gui.input_unused = false;
 			}
 		}
 
@@ -810,7 +824,7 @@ namespace sv {
 		bool pressed = false;
 
 		// Check state
-		if (input.unused) {
+		if (gui.input_unused) {
 
 			InputState input_state = input.mouse_buttons[MouseButton_Left];
 
@@ -819,7 +833,7 @@ namespace sv {
 
 				*value = !*value;
 				cb.active = *value;
-				input.unused = false;
+				gui.input_unused = false;
 				pressed = true;
 			}
 		}
@@ -854,12 +868,11 @@ namespace sv {
 		GuiDrag& drag = gui.drags[index];
 		drag.bounds = compute_widget_bounds(gui, x0, x1, y0, y1);
 		drag.style = style;
-		drag.value = *value;
 
 		bool focused = false;
 
 		// Check state
-		if (input.unused) {
+		if (gui.input_unused) {
 
 			InputState input_state = input.mouse_buttons[MouseButton_Left];
 
@@ -875,13 +888,13 @@ namespace sv {
 					
 					focused = true;
 					update_focus(gui, index);
-					input.unused = false;
+					gui.input_unused = false;
 				}
 			}
 			else if (input_state == InputState_Pressed && mouse_in_bounds(gui, drag.bounds)) {
 
 				set_focus(gui, GuiWidgetType_Drag, index, id);
-				input.unused = false;
+				gui.input_unused = false;
 			}
 		}
 
@@ -892,6 +905,115 @@ namespace sv {
 	}
 
 	///////////////////////////////////// RENDERING ///////////////////////////////////////
+
+	constexpr u32 MAX_FLOAT_CHARS = 20u;
+
+	static void float_to_string(f32 n, char* str, u32* size, const u32 buffer_size)
+	{
+		bool negative = n < 0.f;
+
+		constexpr f32 DECIMAL_MULT = 10000000.f;
+
+		n = abs(n);
+		u32 n0 = u32(n);
+		u32 n1 = u32((n - i32(n)) * DECIMAL_MULT + DECIMAL_MULT);
+
+		// Add integer values
+
+		char* it = str;
+		char* end = str + buffer_size;
+
+		if (negative) {
+			*it = '-';
+			++it;
+		}
+
+		char* valid_ptr = it;
+
+		if (n0 == 0u) {
+
+			*it = '0';
+			++it;
+		}
+		else {
+
+			while (it != end) {
+
+				if (n0 == 0u) {
+					break;
+				}
+
+				u32 number = n0 % 10u;
+				n0 /= 10u;
+
+				char c = number + '0';
+				*it = c;
+				++it;
+
+				if (n == 0u) {
+					if (it == end) break;
+
+					*it = '.';
+					++it;
+				}
+			}
+		}
+
+		// Swap values
+		char* it0 = it - 1U;
+
+		while (valid_ptr < it0) {
+
+			char aux = *it0;
+			*it0 = *valid_ptr;
+			*valid_ptr = aux;
+			++valid_ptr;
+			--it0;
+		}
+
+		// Add decimal values
+
+		if (n1 != u32(DECIMAL_MULT) && it != end) {
+
+			*it = '.';
+			++it;
+
+			valid_ptr = it;
+
+			while (it != end) {
+
+				if (n1 == 1u) {
+					break;
+				}
+
+				u32 number = n1 % 10u;
+				n1 /= 10u;
+
+				char c = number + '0';
+				*it = c;
+				++it;
+			}
+		}
+
+		// Swap values
+		it0 = it - 1U;
+
+		while (valid_ptr < it0) {
+
+			char aux = *it0;
+			*it0 = *valid_ptr;
+			*valid_ptr = aux;
+			++valid_ptr;
+			--it0;
+		}
+
+		// Remove unnecesary 0
+		--it;
+		while (*it == '0' && it > (str + 1u)) --it;
+		++it;
+
+		*size = it - str;
+	}
 
 	void gui_draw(GUI* gui_, GPUImage* offscreen, CommandList cmd)
 	{
@@ -1084,6 +1206,33 @@ namespace sv {
 				}
 
 				end_debug_batch(offscreen, nullptr, XMMatrixIdentity(), cmd);
+			}
+			break;
+
+			case GuiWidgetType_Drag:
+			{
+				begin_debug_batch(cmd);
+
+				v2_f32 pos;
+				v2_f32 size;
+
+				GuiDrag& drag = gui.drags[w.index];
+				pos = v2_f32{ drag.bounds.x, drag.bounds.y } *2.f - 1.f;
+				size = v2_f32{ drag.bounds.z, drag.bounds.w } *2.f;
+
+				draw_debug_quad(pos.getVec3(0.f), size, drag.style.background_color, cmd);
+
+				end_debug_batch(offscreen, nullptr, XMMatrixIdentity(), cmd);
+
+				f32 font_size = size.y;
+
+				char strbuff[MAX_FLOAT_CHARS + 1u];
+				u32 strsize;
+				float_to_string(drag.value, strbuff, &strsize, MAX_FLOAT_CHARS);
+
+				draw_text(offscreen, strbuff, strsize
+					, pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font_opensans.vertical_offset * font_size, 
+					size.x, 1u, font_size, gui.aspect, TextAlignment_Center, &font_opensans, drag.style.text_color, cmd);
 			}
 			break;
 

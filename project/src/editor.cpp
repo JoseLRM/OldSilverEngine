@@ -290,7 +290,7 @@ namespace sv {
 		Entity selected = editor.selected_entity;
 
 		constexpr f32 NAME_HEIGHT = 40.f;
-		constexpr f32 TRANSFORM_HEIGHT = 20.f;
+		constexpr f32 TRANSFORM_HEIGHT = 30.f;
 		
 		f32 y = 5.f;
 
@@ -310,8 +310,11 @@ namespace sv {
 				{
 					// TODO: euler rotation
 					Transform trans = ecs_entity_transform_get(ecs, selected);
-					v3_f32 position = trans.getWorldPosition();
-					v3_f32 scale = trans.getWorldScale();
+					v3_f32 position = trans.getLocalPosition();
+					v3_f32 scale = trans.getLocalScale();
+
+					GuiContainerStyle container_style;
+					container_style.color = Color::White(0u);
 
 					foreach(i, 2u) {
 
@@ -341,30 +344,75 @@ namespace sv {
 
 						constexpr f32 ELEMENT_WIDTH = (1.f - EXTERN_PADDING * 2.f - INTERN_PADDING * 2.f) / 3.f;
 
-						// X
-						if (gui_button(g, "X", GuiCoord::Relative(0.5f - ELEMENT_WIDTH * 1.5f - INTERN_PADDING), 
-							GuiCoord::Relative(0.5f - ELEMENT_WIDTH * 0.5f - INTERN_PADDING), GuiCoord::IPixel(y),
-							GuiCoord::IPixel(y + TRANSFORM_HEIGHT), x_style)) {
+						u64 gui_id = 0x3af34 + selected + i * 3u;
 
-							// TEMP
-							values->x = math_random_f32(u32(timer_now() * 100.f), -10.f, 10.f);
+						// X
+						{
+							gui_begin_container(g, 
+								GuiCoord::Relative(0.5f - ELEMENT_WIDTH * 1.5f - INTERN_PADDING), 
+								GuiCoord::Relative(0.5f - ELEMENT_WIDTH * 0.5f - INTERN_PADDING), 
+								GuiCoord::IPixel(y), 
+								GuiCoord::IPixel(y + TRANSFORM_HEIGHT), 
+								container_style
+							);
+
+							if (gui_button(g, "X", GuiCoord::Relative(0.f), GuiCoord::Relative(0.25f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), x_style)) {
+
+								if (i == 1u)
+									values->x = 1.f;
+								else
+									values->x = 0.f;
+							}
+
+							gui_drag_f32(g, &values->x, 0.1f, gui_id + 0u, GuiCoord::Relative(0.25f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
+
+							gui_end_container(g);
 						}
 
 						// Y
-						if (gui_button(g, "Y", GuiCoord::Relative(0.5f - ELEMENT_WIDTH * 0.5f), GuiCoord::Relative(0.5f + ELEMENT_WIDTH * 0.5f),
-							GuiCoord::IPixel(y), GuiCoord::IPixel(y + TRANSFORM_HEIGHT), y_style)) {
+						{
+							gui_begin_container(g,
+								GuiCoord::Relative(0.5f - ELEMENT_WIDTH * 0.5f),
+								GuiCoord::Relative(0.5f + ELEMENT_WIDTH * 0.5f),
+								GuiCoord::IPixel(y),
+								GuiCoord::IPixel(y + TRANSFORM_HEIGHT),
+								container_style
+							);
 
-							// TEMP
-							values->y = math_random_f32(u32(timer_now() * 100.f), -10.f, 10.f);
+							if (gui_button(g, "Y", GuiCoord::Relative(0.f), GuiCoord::Relative(0.25f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), y_style)) {
+
+								if (i == 1u)
+									values->y = 1.f;
+								else
+									values->y = 0.f;
+							}
+
+							gui_drag_f32(g, &values->y, 0.1f, gui_id + 1u, GuiCoord::Relative(0.25f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
+
+							gui_end_container(g);
 						}
 
 						// Z
-						if (gui_button(g, "Z", GuiCoord::Relative(0.5f + ELEMENT_WIDTH * 0.5f + INTERN_PADDING),
-							GuiCoord::Relative(0.5f + ELEMENT_WIDTH * 1.5f + INTERN_PADDING), GuiCoord::IPixel(y),
-							GuiCoord::IPixel(y + TRANSFORM_HEIGHT), z_style)) {
+						{
+							gui_begin_container(g,
+								GuiCoord::Relative(0.5f + ELEMENT_WIDTH * 0.5f + INTERN_PADDING),
+								GuiCoord::Relative(0.5f + ELEMENT_WIDTH * 1.5f + INTERN_PADDING),
+								GuiCoord::IPixel(y),
+								GuiCoord::IPixel(y + TRANSFORM_HEIGHT),
+								container_style
+							);
 
-							// TEMP
-							values->z = math_random_f32(u32(timer_now() * 100.f), -10.f, 10.f);
+							if (gui_button(g, "Z", GuiCoord::Relative(0.f), GuiCoord::Relative(0.25f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), z_style)) {
+
+								if (i == 1u)
+									values->z = 1.f;
+								else
+									values->z = 0.f;
+							}
+
+							gui_drag_f32(g, &values->z, 0.1f, gui_id + 2u, GuiCoord::Relative(0.25f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
+
+							gui_end_container(g);
 						}
 
 						y += TRANSFORM_HEIGHT + editor.style.vertical_padding;
