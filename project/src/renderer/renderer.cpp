@@ -755,7 +755,7 @@ namespace sv {
 							SpriteVertex* batchEnd;
 							{
 								size_t batchCount = batchIt - data.data + SPRITE_BATCH_COUNT * 4u;
-								instanceCount = std::min(batchCount / 4u, size_t(end - it));
+								instanceCount = u32(std::min(batchCount / 4U, size_t(end - it)));
 								batchEnd = batchIt + instanceCount * 4u;
 							}
 
@@ -1189,7 +1189,7 @@ namespace sv {
 			}
 		}
 
-		number_of_chars = it - text;
+		number_of_chars = u32(it - text);
 
 		text_draw_call(offscreen, buffer, data, vertex_count, cmd);
 

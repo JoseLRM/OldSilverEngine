@@ -426,7 +426,7 @@ namespace sv {
 		f32 window_height = (f32)window_height_get(engine.window);
 		f32 aspect = window_width / window_height;
 
-		line_count = compute_text_lines(console_buffer.buff, console_buffer.pos, TEXT_SIZE, 2.f, aspect, &font_console);
+		line_count = compute_text_lines(console_buffer.buff, u32(console_buffer.pos), TEXT_SIZE, 2.f, aspect, &font_console);
 		text_offset = std::min(text_offset, std::max(f32(line_count) - f32(LINE_COUNT), 0.f));
 
 		begin_debug_batch(cmd);

@@ -473,7 +473,7 @@ namespace sv {
 		size_t m_Size;
 		size_t m_Capacity;
 		u8* m_Data;
-
+		
 	public:
 		ArchiveO();
 		~ArchiveO();
@@ -483,14 +483,35 @@ namespace sv {
 		void erase(size_t size);
 		void clear();
 
-		Result save_file(const char* filePath, bool append = false);
+		Result saveFile(const char* filePath, bool append = false);
 
-		template<typename T>
-		inline ArchiveO& operator<<(const T& t)
-		{
-			write(&t, sizeof(T));
-			return *this;
-		}
+		SV_INLINE ArchiveO& operator<<(char n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveO& operator<<(bool n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveO& operator<<(u8 n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveO& operator<<(u16 n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveO& operator<<(u32 n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveO& operator<<(u64 n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveO& operator<<(i8 n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveO& operator<<(i16 n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveO& operator<<(i32 n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveO& operator<<(i64 n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveO& operator<<(f32 n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveO& operator<<(f64 n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveO& operator<<(const Version& n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveO& operator<<(const XMFLOAT2& n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveO& operator<<(const XMFLOAT3& n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveO& operator<<(const XMFLOAT4& n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveO& operator<<(const XMMATRIX& n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveO& operator<<(const Color& n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveO& operator<<(const Color3f& n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveO& operator<<(const Color4f& n) { write(&n, sizeof(n)); return *this; }
+
+		template<typename T, typename F>
+		SV_INLINE ArchiveO& operator<<(const Vector2D<T, F>& n) { write(&n, sizeof(n)); return *this; }
+		template<typename T, typename F>
+		SV_INLINE ArchiveO& operator<<(const Vector3D<T, F>& n) { write(&n, sizeof(n)); return *this; }
+		template<typename T, typename F>
+		SV_INLINE ArchiveO& operator<<(const Vector4D<T, F>& n) { write(&n, sizeof(n)); return *this; }
 
 		template<typename T>
 		inline ArchiveO& operator<<(const std::vector<T>& vec)
@@ -561,12 +582,33 @@ namespace sv {
 
 		void clear();
 
-		template<typename T>
-		ArchiveI& operator>>(T& t)
-		{
-			read(&t, sizeof(T));
-			return *this;
-		}
+		SV_INLINE ArchiveI& operator>>(bool& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveI& operator>>(char& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveI& operator>>(u8& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveI& operator>>(u16& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveI& operator>>(u32& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveI& operator>>(u64& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveI& operator>>(i8& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveI& operator>>(i16& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveI& operator>>(i32& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveI& operator>>(i64& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveI& operator>>(f32& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveI& operator>>(f64& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveI& operator>>(Version& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveI& operator>>(XMFLOAT2& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveI& operator>>(XMFLOAT3& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveI& operator>>(XMFLOAT4& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveI& operator>>(XMMATRIX& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveI& operator>>(Color& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveI& operator>>(Color3f& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE ArchiveI& operator>>(Color4f& n) { read(&n, sizeof(n)); return *this; }
+
+		template<typename T, typename F>
+		SV_INLINE ArchiveI& operator>>(Vector2D<T, F>& n) { read(&n, sizeof(n)); return *this; }
+		template<typename T, typename F>
+		SV_INLINE ArchiveI& operator>>(Vector3D<T, F>& n) { read(&n, sizeof(n)); return *this; }
+		template<typename T, typename F>
+		SV_INLINE ArchiveI& operator>>(Vector4D<T, F>& n) { read(&n, sizeof(n)); return *this; }
 
 		template<typename T>
 		ArchiveI& operator>>(std::vector<T>& vec)

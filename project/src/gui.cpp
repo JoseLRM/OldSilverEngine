@@ -1012,7 +1012,7 @@ namespace sv {
 		while (*it == '0' && it > (str + 1u)) --it;
 		++it;
 
-		*size = it - str;
+		*size = u32(it - str);
 	}
 
 	void gui_draw(GUI* gui_, GPUImage* offscreen, CommandList cmd)

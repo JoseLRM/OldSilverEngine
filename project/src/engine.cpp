@@ -233,7 +233,7 @@ namespace sv {
 				v2_u32 size = window_size_get(window);
 				v2_u32 pos = window_position_get(window);
 #ifdef SV_PLATFORM_WIN
-				SetCursorPos(pos.x + (f32(size.x) * next_mouse_position.x), pos.y + (f32(size.y) * (1.f - next_mouse_position.y)));
+				SetCursorPos(i32(pos.x + u32(f32(size.x) * next_mouse_position.x)), i32(pos.y + u32(f32(size.y) * (1.f - next_mouse_position.y))));
 
 				MSG msg;
 				PeekMessageW(&msg, 0, 0u, 0u, PM_REMOVE);

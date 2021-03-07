@@ -224,7 +224,7 @@ namespace sv {
 		checkbox_style.inactive_box = GuiBox::Triangle(Color::Black(), false, 0.5f);
 		checkbox_style.color = Color::Black(0u);
 
-		u64 gui_id = u64(comp_id << 32u + comp->entity);
+		u64 gui_id = u64((u64(comp_id) << 32u) + comp->entity);
 
 		gui_begin_container(gui, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f), container_style);
 

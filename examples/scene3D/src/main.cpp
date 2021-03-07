@@ -82,7 +82,7 @@ Result app_validate_scene(const char* name)
 Result app_init_scene(Scene* scene, ArchiveI* archive)
 {
 	Entity cam = create_entity(scene, SV_ENTITY_NULL, "Camera");
-	engine.scene->main_camera = cam;
+	scene->main_camera = cam;
 	CameraComponent* camera = add_component<CameraComponent>(scene, cam);
 	camera->far = 10000.f;
 	camera->near = 0.2f;
@@ -162,6 +162,7 @@ int main()
 	desc.callbacks.initialize_scene = app_init_scene;
 	desc.callbacks.close_scene = app_close_scene;
 	desc.callbacks.serialize_scene = nullptr;
+	desc.callbacks.get_scene_filepath = nullptr;
 
 	desc.windowDesc.bounds = { 0u, 0u, 1080u, 720u };
 	desc.windowDesc.flags = WindowFlag_Default;

@@ -920,16 +920,16 @@ namespace sv {
 						 const v3_f32& v2,
 						 v3_f32& outIntersectionPoint)
 	{
-		const float EPSILON = 0.0000001;
+		const f32 EPSILON = 0.0000001;
 		v3_f32 edge1, edge2, h, s, q;
-		float a, f, u, v;
+		f32 a, f, u, v;
 		edge1 = v1 - v0;
 		edge2 = v2 - v0;
 		h = ray.direction.cross(edge2);
 		a = edge1.dot(h);
 		if (a > -EPSILON && a < EPSILON)
 			return false;    // This ray is parallel to this triangle.
-		f = 1.0 / a;
+		f = 1.f / a;
 		s = ray.origin - v0;
 		u = f * s.dot(h);
 		if (u < 0.0 || u > 1.0)

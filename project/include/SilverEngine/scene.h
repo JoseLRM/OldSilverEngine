@@ -55,7 +55,7 @@ namespace sv {
 	};
 
 	Result set_active_scene(const char* name);
-	Result serialize_scene(Scene* scene, const char* filepath);
+	Result save_scene(Scene* scene, const char* filepath);
 
 	CameraComponent* get_main_camera(Scene* scene);
 

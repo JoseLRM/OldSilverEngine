@@ -556,7 +556,7 @@ namespace sv {
 		m_Size = 0u;
 	}
 
-	Result ArchiveO::save_file(const char* filePath, bool append)
+	Result ArchiveO::saveFile(const char* filePath, bool append)
 	{
 		return file_write_binary(filePath, m_Data, m_Size, append);
 	}
@@ -675,7 +675,7 @@ namespace sv {
 	Result bin_write(size_t hash, ArchiveO& archive)
 	{
 		std::string filepath = bin_filepath(hash);
-		svCheck(archive.save_file(filepath.c_str()));
+		svCheck(archive.saveFile(filepath.c_str()));
 		return Result_Success;
 	}
 
