@@ -4,9 +4,9 @@
 
 namespace sv {
 
-	void camera_controller2D(ECS* ecs, CameraComponent& camera, f32 max_projection_length)
+	void camera_controller2D(Scene* scene, CameraComponent& camera, f32 max_projection_length)
 	{
-		Transform trans = ecs_entity_transform_get(ecs, camera.entity);
+		Transform trans = get_entity_transform(scene, camera.entity);
 
 		v2_f32 position = trans.getWorldPosition().getVec2();
 
@@ -34,9 +34,9 @@ namespace sv {
 		trans.setPosition(position.getVec3());
 	}
 
-	void camera_controller3D(ECS* ecs, CameraComponent& camera, f32 velocity)
+	void camera_controller3D(Scene* scene, CameraComponent& camera, f32 velocity)
 	{
-		Transform trans = ecs_entity_transform_get(ecs, camera.entity);
+		Transform trans = get_entity_transform(scene, camera.entity);
 
 		v3_f32 position = trans.getLocalPosition();
 		XMVECTOR rotation = trans.getLocalRotation().get_dx();
@@ -133,10 +133,9 @@ namespace sv {
 	{
 		if (editor.selected_entity == SV_ENTITY_NULL) return;
 
-		ECS* ecs = engine.scene->ecs;
 		GizmosInfo& info = editor.gizmos;
 
-		Transform trans = ecs_entity_transform_get(ecs, editor.selected_entity);
+		Transform trans = get_entity_transform(engine.scene, editor.selected_entity);
 		v3_f32 position = trans.getLocalPosition();
 
 		constexpr f32 GIZMOS_SIZE = 1.f;
@@ -229,7 +228,7 @@ namespace sv {
 
 		gui_begin_container(gui, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f), container_style);
 
-		gui_text(gui, ecs_component_name(comp_id), GuiCoord::Pixel(35.f), GuiCoord::IPixel(10.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), text_style);
+		gui_text(gui, get_component_name(comp_id), GuiCoord::Pixel(35.f), GuiCoord::IPixel(10.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), text_style);
 		
 		bool show = gui_checkbox_id(gui, gui_id, GuiCoord::Pixel(0.f), GuiCoord::Aspect(), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), checkbox_style);
 
@@ -246,12 +245,11 @@ namespace sv {
 	{
 		v2_f32 mouse = input.mouse_position;
 
-		ECS* ecs = engine.scene->ecs;
 		CameraComponent* camera = get_main_camera(engine.scene);
 
 		if (camera == nullptr) return;
 
-		Transform camera_trans = ecs_entity_transform_get(ecs, camera->entity);
+		Transform camera_trans = get_entity_transform(engine.scene, camera->entity);
 		v3_f32 camera_position = camera_trans.getWorldPosition();
 		v4_f32 camera_rotation = camera_trans.getWorldRotation();
 
@@ -263,11 +261,11 @@ namespace sv {
 		Entity selected = SV_ENTITY_NULL;
 		f32 distance = f32_max;
 
-		EntityView<MeshComponent> meshes(ecs);
+		EntityView<MeshComponent> meshes(engine.scene);
 
 		for (MeshComponent& m : meshes) {
 
-			Transform trans = ecs_entity_transform_get(ecs, m.entity);
+			Transform trans = get_entity_transform(engine.scene, m.entity);
 
 			XMMATRIX itm = XMMatrixInverse(0, trans.getWorldMatrix());
 
@@ -307,15 +305,12 @@ namespace sv {
 	static void show_entity(Entity entity, f32& y, f32 xoff)
 	{
 		GUI* g = editor.gui;
-		ECS* ecs = engine.scene->ecs;
 
-		
-
-		const char* name = get_entity_name(ecs, entity);
+		const char* name = get_entity_name(engine.scene, entity);
 
 		constexpr f32 BUTTON_HEIGHT = 25.f;
 
-		u32 child_count = ecs_entity_childs_count(ecs, entity);
+		u32 child_count = get_entity_childs_count(engine.scene, entity);
 
 		if (child_count == 0u) {
 
@@ -358,7 +353,7 @@ namespace sv {
 			y += BUTTON_HEIGHT + 2.f;
 
 			const Entity* childs;
-			ecs_entity_childs_get(ecs, entity, &childs);
+			get_entity_childs(engine.scene, entity, &childs);
 
 			foreach(i, child_count) {
 
@@ -370,22 +365,21 @@ namespace sv {
 	void display_entity_hierarchy()
 	{
 		GUI* g = editor.gui;
-		ECS* ecs = engine.scene->ecs;
 
 		f32 y = 5.f;
 		
 
 		if (gui_begin_window(g, "Hierarchy", editor.style.window_style)) {
 
-			u32 entity_count = ecs_entity_count(ecs);
+			u32 entity_count = get_entity_count(engine.scene);
 
 			foreach(entity_index, entity_count) {
 
-				Entity entity = ecs_entity_get(ecs, entity_index);
+				Entity entity = get_entity_by_index(engine.scene, entity_index);
 
 				show_entity(entity, y, 0.f);
 
-				u32 childs = ecs_entity_childs_count(ecs, entity);
+				u32 childs = get_entity_childs_count(engine.scene, entity);
 				entity_index += childs;
 			}
 			
@@ -396,7 +390,6 @@ namespace sv {
 	void display_entity_inspector()
 	{
 		GUI* g = editor.gui;
-		ECS* ecs = engine.scene->ecs;
 		Entity selected = editor.selected_entity;
 
 		constexpr f32 NAME_HEIGHT = 40.f;
@@ -410,7 +403,7 @@ namespace sv {
 
 				// Entity name
 				{
-					const char* entity_name = get_entity_name(ecs, selected);
+					const char* entity_name = get_entity_name(engine.scene, selected);
 
 					gui_text(g, entity_name, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + NAME_HEIGHT));
 					y += NAME_HEIGHT + editor.style.separator + editor.style.vertical_padding;
@@ -419,7 +412,7 @@ namespace sv {
 				// Entity transform
 				{
 					// TODO: euler rotation
-					Transform trans = ecs_entity_transform_get(ecs, selected);
+					Transform trans = get_entity_transform(engine.scene, selected);
 					v3_f32 position = trans.getLocalPosition();
 					v3_f32 scale = trans.getLocalScale();
 
@@ -536,11 +529,11 @@ namespace sv {
 
 				// Entity components
 				{
-					u32 comp_count = ecs_entity_component_count(ecs, selected);
+					u32 comp_count = get_entity_component_count(engine.scene, selected);
 
 					foreach(comp_index, comp_count) {
 
-						auto [comp_id, comp] = ecs_component_get_by_index(ecs, selected, comp_index);
+						auto [comp_id, comp] = get_component_by_index(engine.scene, selected, comp_index);
 
 						show_component_info(y, comp_id, comp);
 					}
@@ -577,7 +570,7 @@ namespace sv {
 		}
 
 		if (editor.camera_controller)
-			camera_controller3D(engine.scene->ecs, *get_main_camera(engine.scene), 0.3f);
+			camera_controller3D(engine.scene, *get_main_camera(engine.scene), 0.3f);
 
 		gui_begin(g, f32(window_width_get(engine.window)), f32(window_height_get(engine.window)));
 
@@ -601,15 +594,14 @@ namespace sv {
 	void draw_editor()
 	{
 		CommandList cmd = graphics_commandlist_get();
-		ECS* ecs = engine.scene->ecs;
 
 		begin_debug_batch(cmd);
 
 		// Draw selected entity
 		if (editor.selected_entity != SV_ENTITY_NULL) {
 
-			Transform trans = ecs_entity_transform_get(ecs, editor.selected_entity);
-			MeshComponent* mesh_comp = ecs_component_get<MeshComponent>(ecs, editor.selected_entity);
+			Transform trans = get_entity_transform(engine.scene, editor.selected_entity);
+			MeshComponent* mesh_comp = get_component<MeshComponent>(engine.scene, editor.selected_entity);
 
 			if (mesh_comp && mesh_comp->mesh.get()) {
 
@@ -622,7 +614,7 @@ namespace sv {
 		draw_gizmos(engine.scene->offscreen, cmd);
 
 		CameraComponent* cam = get_main_camera(engine.scene);
-		Transform trans = ecs_entity_transform_get(ecs, cam->entity);
+		Transform trans = get_entity_transform(engine.scene, cam->entity);
 		end_debug_batch(engine.scene->offscreen, 0u, camera_view_projection_matrix(trans.getWorldPosition(), trans.getWorldRotation(), *cam), cmd);
 
 		// Draw gui

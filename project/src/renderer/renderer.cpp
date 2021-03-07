@@ -639,7 +639,6 @@ namespace sv {
 		light_instances.reset();
 		sprite_instances.reset();
 
-		ECS* ecs = scene->ecs;
 		CommandList cmd = graphics_commandlist_begin();
 
 		graphics_image_clear(scene->offscreen, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, Color4f::Black(), 1.f, 0u, cmd);
@@ -650,11 +649,11 @@ namespace sv {
 
 		// Get lights
 		{
-			EntityView<LightComponent> lights(ecs);
+			EntityView<LightComponent> lights(scene);
 
 			for (const LightComponent& l : lights) {
 
-				Transform trans = ecs_entity_transform_get(ecs, l.entity);
+				Transform trans = get_entity_transform(scene, l.entity);
 
 				switch (l.light_type)
 				{
@@ -679,11 +678,11 @@ namespace sv {
 
 		// Draw cameras
 		{
-			EntityView<CameraComponent> cameras(ecs);
+			EntityView<CameraComponent> cameras(scene);
 
 			for (CameraComponent& camera : cameras) {
 
-				Transform camera_trans = ecs_entity_transform_get(ecs, camera.entity);
+				Transform camera_trans = get_entity_transform(scene, camera.entity);
 
 				CameraBuffer_GPU camera_data;
 				{
@@ -701,11 +700,11 @@ namespace sv {
 				// DRAW SPRITES
 				{
 					{
-						EntityView<SpriteComponent> sprites(ecs);
+						EntityView<SpriteComponent> sprites(scene);
 
 						for (SpriteComponent& spr : sprites) {
 
-							Transform trans = ecs_entity_transform_get(ecs, spr.entity);
+							Transform trans = get_entity_transform(scene, spr.entity);
 							sprite_instances.emplace_back(trans.getWorldMatrix(), spr.texcoord, spr.texture.get(), spr.color, spr.layer);
 						}
 					}
@@ -842,11 +841,11 @@ namespace sv {
 				// DRAW MESHES
 				{
 					{
-						EntityView<MeshComponent> meshes(ecs);
+						EntityView<MeshComponent> meshes(scene);
 
 						for (MeshComponent& mesh : meshes) {
 
-							Transform trans = ecs_entity_transform_get(ecs, mesh.entity);
+							Transform trans = get_entity_transform(scene, mesh.entity);
 							mesh_instances.emplace_back(trans.getWorldMatrix(), mesh.mesh.get(), &mesh.material);
 						}
 					}

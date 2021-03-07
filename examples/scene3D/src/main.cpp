@@ -3,7 +3,7 @@
 
 using namespace sv;
 
-void load_model(ECS* ecs, const char* filepath, f32 scale = f32_max)
+void load_model(Scene* scene, const char* filepath, f32 scale = f32_max)
 {
 	ModelInfo info;
 	if (result_fail(model_load(filepath, info))) {
@@ -15,9 +15,9 @@ void load_model(ECS* ecs, const char* filepath, f32 scale = f32_max)
 
 			MeshInfo& m = info.meshes[i];
 
-			Entity e = ecs_entity_create(ecs);
+			Entity e = create_entity(scene);
 
-			MeshComponent& comp = *ecs_component_add<MeshComponent>(ecs, e);
+			MeshComponent& comp = *add_component<MeshComponent>(scene, e);
 
 			create_asset(comp.mesh, "Mesh");
 			Mesh& mesh = *comp.mesh.get();
@@ -35,7 +35,7 @@ void load_model(ECS* ecs, const char* filepath, f32 scale = f32_max)
 
 			if (m.name.size()) {
 
-				ecs_component_add<NameComponent>(ecs, e)->name = m.name;
+				set_entity_name(scene, e, m.name.c_str());
 			}
 
 			MaterialInfo& mat = info.materials[m.material_index];
@@ -50,7 +50,7 @@ void load_model(ECS* ecs, const char* filepath, f32 scale = f32_max)
 			comp.material.specular_map = mat.specular_map;
 			comp.material.emissive_map = mat.emissive_map;
 
-			Transform trans = ecs_entity_transform_get(ecs, e);
+			Transform trans = get_entity_transform(scene, e);
 			trans.setMatrix(m.transform_matrix);
 		}
 	}
@@ -81,38 +81,34 @@ Result app_validate_scene(const char* name)
 
 Result app_init_scene(Scene* scene, ArchiveI* archive)
 {
-	ECS* ecs = engine.scene->ecs;
-
-	Entity cam = ecs_entity_create(ecs);
+	Entity cam = create_entity(scene, SV_ENTITY_NULL, "Camera");
 	engine.scene->main_camera = cam;
-	CameraComponent* camera = ecs_component_add<CameraComponent>(ecs, cam);
+	CameraComponent* camera = add_component<CameraComponent>(scene, cam);
 	camera->far = 10000.f;
 	camera->near = 0.2f;
 	camera->width = 0.5f;
 	camera->height = 0.5f;
 	camera->projection_type = ProjectionType_Perspective;
-	ecs_component_add<NameComponent>(ecs, cam)->name = "Camera";
 
-	LightComponent* light = ecs_component_add<LightComponent>(ecs, ecs_entity_create(ecs));
-	Transform t = ecs_entity_transform_get(ecs, light->entity);
+	LightComponent* light = add_component<LightComponent>(scene, create_entity(scene, SV_ENTITY_NULL, "Light"));
+	Transform t = get_entity_transform(scene, light->entity);
 	light->light_type = LightType_Point;
 	t.setPosition({ 0.f, 0.f, -2.f });
 	t.setEulerRotation({ PI * 0.4f, 0.f, 0.f });
-	ecs_component_add<NameComponent>(ecs, light->entity)->name = "Light";
 
-	ecs_entity_create(ecs, light->entity);
+	create_entity(scene, light->entity);
 
 	if (strcmp(scene->name.c_str(), "Sponza") == 0) {
 
-		load_model(ecs, "assets/Sponza/sponza.obj");
+		load_model(scene, "assets/Sponza/sponza.obj");
 	}
 	if (strcmp(scene->name.c_str(), "Goblin") == 0) {
 
-		load_model(ecs, "assets/gobber/GoblinX.obj");
+		load_model(scene, "assets/gobber/GoblinX.obj");
 	}
 	if (strcmp(scene->name.c_str(), "Dragon") == 0) {
 
-		load_model(ecs, "assets/dragon.obj");
+		load_model(scene, "assets/dragon.obj");
 	}
 
 	return Result_Success;
@@ -135,8 +131,8 @@ Result init()
 
 void update()
 {
-	Transform t0 = ecs_entity_transform_get(engine.scene->ecs, 1u);
-	Transform t1 = ecs_entity_transform_get(engine.scene->ecs, 2u);
+	Transform t0 = get_entity_transform(engine.scene, 1u);
+	Transform t1 = get_entity_transform(engine.scene, 2u);
 	t1.setRotation(t0.getWorldRotation());
 }
 

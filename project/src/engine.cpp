@@ -127,11 +127,10 @@ namespace sv {
 
 		// Register components
 		{
-			ecs_component_register<SpriteComponent>("Sprite");
-			ecs_component_register<NameComponent>("Name");
-			ecs_component_register<CameraComponent>("Camera");
-			ecs_component_register<MeshComponent>("Mesh");
-			ecs_component_register<LightComponent>("Light");
+			register_component<SpriteComponent>("Sprite");
+			register_component<CameraComponent>("Camera");
+			register_component<MeshComponent>("Mesh");
+			register_component<LightComponent>("Light");
 		}
 
 		// Register assets
