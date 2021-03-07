@@ -94,7 +94,18 @@ namespace sv {
 		f32 separator = 30.f;
 
 	};
+
+	enum GizmosTransformMode : u32 {
+		GizmosTransformMode_None,
+		GizmosTransformMode_Position
+	};
 	
+	struct GizmosInfo {
+
+		GizmosTransformMode mode = GizmosTransformMode_Position;
+
+	};
+
 	struct Editor {
 
 		GUI* gui;
@@ -102,9 +113,49 @@ namespace sv {
 
 		Entity selected_entity = SV_ENTITY_NULL;
 		bool camera_controller = false;
+
+		GizmosInfo gizmos;
 	};
 
 	Editor editor;
+
+	/////////////////////////////////////////////// GIZMOS ///////////////////////////////////////////////////////
+
+	static void update_gizmos()
+	{
+		if (!input.unused) return;
+		if (editor.selected_entity == SV_ENTITY_NULL) return;
+
+
+	}
+
+	static void draw_gizmos(GPUImage* offscreen, CommandList cmd)
+	{
+		if (editor.selected_entity == SV_ENTITY_NULL) return;
+
+		ECS* ecs = engine.scene->ecs;
+		GizmosInfo& info = editor.gizmos;
+
+		Transform trans = ecs_entity_transform_get(ecs, editor.selected_entity);
+		v3_f32 position = trans.getLocalPosition();
+
+		constexpr f32 GIZMOS_SIZE = 1.f;
+
+		switch (info.mode)
+		{
+
+		case GizmosTransformMode_Position:
+		{
+			draw_debug_line(position, position + v3_f32::right() * GIZMOS_SIZE, Color::Red(), cmd);
+			draw_debug_line(position, position + v3_f32::up() * GIZMOS_SIZE, Color::Green(), cmd);
+			draw_debug_line(position, position + v3_f32::forward() * GIZMOS_SIZE, Color::Blue(), cmd);
+		}
+		break;
+
+		}
+	}
+
+	/////////////////////////////////////////////// COMMANDS ///////////////////////////////////////////////////////
 
 	Result command_show_window(const char** args, u32 argc)
 	{
@@ -139,6 +190,8 @@ namespace sv {
 		
 		return res;
 	}
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	Result initialize_editor()
 	{
@@ -251,12 +304,76 @@ namespace sv {
 		editor.selected_entity = selected;
 	}
 
+	static void show_entity(Entity entity, f32& y, f32 xoff)
+	{
+		GUI* g = editor.gui;
+		ECS* ecs = engine.scene->ecs;
+
+		
+
+		const char* name = get_entity_name(ecs, entity);
+
+		constexpr f32 BUTTON_HEIGHT = 25.f;
+
+		u32 child_count = ecs_entity_childs_count(ecs, entity);
+
+		if (child_count == 0u) {
+
+			GuiButtonStyle style = editor.style.button_style;
+
+			if (entity == editor.selected_entity) {
+				style.color = Color::Red();
+				style.hot_color = Color::Red();
+			}
+
+			if (gui_button(g, name, GuiCoord::Pixel(10.f + xoff), GuiCoord::IPixel(10.f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + BUTTON_HEIGHT), style)) {
+
+				editor.selected_entity = entity;
+			}
+
+			y += BUTTON_HEIGHT + 2.f;
+		}
+		else {
+
+			GuiContainerStyle style;
+			style.color = editor.style.button_style.color;
+
+			if (entity == editor.selected_entity) {
+				style.color = Color::Red();
+			}
+
+			gui_begin_container(g, GuiCoord::Pixel(10.f + xoff), GuiCoord::IPixel(10.f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + BUTTON_HEIGHT), style);
+
+			GuiButtonStyle button_style;
+			button_style.color = Color::White(0u);
+			button_style.hot_color = Color::White(0u);
+
+			if (gui_button(g, name, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f))) {
+
+				editor.selected_entity = entity;
+			}
+
+			gui_end_container(g);
+
+			y += BUTTON_HEIGHT + 2.f;
+
+			const Entity* childs;
+			ecs_entity_childs_get(ecs, entity, &childs);
+
+			foreach(i, child_count) {
+
+				show_entity(childs[i], y, xoff + 15.f);
+			}
+		}
+	}
+
 	void display_entity_hierarchy()
 	{
 		GUI* g = editor.gui;
 		ECS* ecs = engine.scene->ecs;
 
 		f32 y = 5.f;
+		
 
 		if (gui_begin_window(g, "Hierarchy", editor.style.window_style)) {
 
@@ -266,17 +383,10 @@ namespace sv {
 
 				Entity entity = ecs_entity_get(ecs, entity_index);
 
-				const char* name = get_entity_name(ecs, entity);
+				show_entity(entity, y, 0.f);
 
-				constexpr f32 BUTTON_HEIGHT = 25.f;
-				
-				if (gui_button(g, name, GuiCoord::Relative(0.1f),
-					       GuiCoord::Aspect(2.f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + BUTTON_HEIGHT), editor.style.button_style)) {
-
-					editor.selected_entity = entity;
-				}
-
-				y += BUTTON_HEIGHT + 2.f;
+				u32 childs = ecs_entity_childs_count(ecs, entity);
+				entity_index += childs;
 			}
 			
 			gui_end_window(g);
@@ -493,26 +603,27 @@ namespace sv {
 		CommandList cmd = graphics_commandlist_get();
 		ECS* ecs = engine.scene->ecs;
 
+		begin_debug_batch(cmd);
+
 		// Draw selected entity
-		{
-			begin_debug_batch(cmd);
+		if (editor.selected_entity != SV_ENTITY_NULL) {
 
-			if (editor.selected_entity != SV_ENTITY_NULL) {
+			Transform trans = ecs_entity_transform_get(ecs, editor.selected_entity);
+			MeshComponent* mesh_comp = ecs_component_get<MeshComponent>(ecs, editor.selected_entity);
 
-				Transform trans = ecs_entity_transform_get(ecs, editor.selected_entity);
-				MeshComponent* mesh_comp = ecs_component_get<MeshComponent>(ecs, editor.selected_entity);
+			if (mesh_comp && mesh_comp->mesh.get()) {
 
-				if (mesh_comp && mesh_comp->mesh.get()) {
-
-					u8 alpha = 5u + u8(f32(sin(timer_now().toSeconds_f64() * 3.5f) + 1.0) * 50.f * 0.5f);
-					draw_debug_mesh_wireframe(mesh_comp->mesh.get(), trans.getWorldMatrix(), Color::Red(alpha), cmd);
-				}
+				u8 alpha = 5u + u8(f32(sin(timer_now().toSeconds_f64() * 3.5f) + 1.0) * 50.f * 0.5f);
+				draw_debug_mesh_wireframe(mesh_comp->mesh.get(), trans.getWorldMatrix(), Color::Red(alpha), cmd);
 			}
-
-			CameraComponent* cam = get_main_camera(engine.scene);
-			Transform trans = ecs_entity_transform_get(ecs, cam->entity);
-			end_debug_batch(engine.scene->offscreen, 0u, camera_view_projection_matrix(trans.getWorldPosition(), trans.getWorldRotation(), *cam), cmd);
 		}
+
+		// Draw gizmos
+		draw_gizmos(engine.scene->offscreen, cmd);
+
+		CameraComponent* cam = get_main_camera(engine.scene);
+		Transform trans = ecs_entity_transform_get(ecs, cam->entity);
+		end_debug_batch(engine.scene->offscreen, 0u, camera_view_projection_matrix(trans.getWorldPosition(), trans.getWorldRotation(), *cam), cmd);
 
 		// Draw gui
 		gui_draw(editor.gui, engine.scene->offscreen, cmd);

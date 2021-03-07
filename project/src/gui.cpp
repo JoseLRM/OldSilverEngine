@@ -1045,7 +1045,8 @@ namespace sv {
 					f32 font_size = size.y;
 
 					draw_text(offscreen, button.text.c_str(), button.text.size()
-						, pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font_opensans.vertical_offset * font_size, size.x, 1u, font_size, gui.aspect, TextAlignment_Center, &font_opensans, cmd);
+						, pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font_opensans.vertical_offset * font_size, 
+						size.x, 1u, font_size, gui.aspect, TextAlignment_Center, &font_opensans, button.style.text_color, cmd);
 				}					
 			}
 			break;

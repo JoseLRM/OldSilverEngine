@@ -157,7 +157,7 @@ namespace sv {
 			GPUBuffer* buffer = get_batch_buffer(LINE_COUNT * sizeof(DebugVertex_Solid) * 2u, cmd);
 
 			graphics_inputlayoutstate_bind(gfx.ils_debug_solid_batch, cmd);
-			graphics_shader_bind(gfx.vs_debug_mesh_wireframe, cmd);
+			graphics_shader_bind(gfx.vs_debug_solid_batch, cmd);
 			graphics_shader_bind(gfx.ps_debug_solid, cmd);
 			graphics_topology_set(GraphicsTopology_Lines, cmd);
 			graphics_vertexbuffer_bind(buffer, 0u, 0u, cmd);

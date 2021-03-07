@@ -100,6 +100,8 @@ Result app_init_scene(Scene* scene, ArchiveI* archive)
 	t.setEulerRotation({ PI * 0.4f, 0.f, 0.f });
 	ecs_component_add<NameComponent>(ecs, light->entity)->name = "Light";
 
+	ecs_entity_create(ecs, light->entity);
+
 	if (strcmp(scene->name.c_str(), "Sponza") == 0) {
 
 		load_model(ecs, "assets/Sponza/sponza.obj");

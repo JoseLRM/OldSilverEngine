@@ -24,8 +24,8 @@ namespace sv {
 	static Result compile_shaders()
 	{
 		COMPILE_VS_(gfx.vs_debug_solid_batch, "debug/solid_batch.hlsl");
-		COMPILE_VS_(gfx.vs_debug_mesh_wireframe, "debug/mesh_wireframe.hlsl");
 		COMPILE_PS_(gfx.ps_debug_solid, "debug/solid_batch.hlsl");
+		COMPILE_VS_(gfx.vs_debug_mesh_wireframe, "debug/mesh_wireframe.hlsl");
 
 		COMPILE_VS(gfx.vs_text, "text.hlsl");
 		COMPILE_PS(gfx.ps_text, "text.hlsl");

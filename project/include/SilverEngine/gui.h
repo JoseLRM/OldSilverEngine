@@ -91,6 +91,7 @@ namespace sv {
 	struct GuiButtonStyle {
 		Color color = Color::Gray(200u);
 		Color hot_color = Color::White();
+		Color text_color = Color::Black();
 	};
 
 	struct GuiSliderStyle {
