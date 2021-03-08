@@ -302,6 +302,29 @@ namespace sv {
 		editor.selected_entity = selected;
 	}
 
+	static void show_entity_popup(Entity entity, bool& destroy) 
+	{
+		if (gui_begin_popup(editor.gui, GuiPopupTrigger_LastWidget, MouseButton_Right, 0x3254fa + u64(entity))) {
+
+			f32 y = editor.style.vertical_padding;
+			constexpr f32 H = 20.f;
+
+			destroy = gui_button(editor.gui, "Destroy", GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H));
+			y += H + editor.style.vertical_padding;
+			
+			if (gui_button(editor.gui, "Duplicate", GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H))) {
+				duplicate_entity(engine.scene, entity);
+			}
+			y += H + editor.style.vertical_padding;
+
+			if (gui_button(editor.gui, "Create Child", GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H))) {
+				create_entity(engine.scene, entity);
+			}
+
+			gui_end_popup(editor.gui);
+		}
+	}
+
 	static void show_entity(Entity entity, f32& y, f32 xoff)
 	{
 		GUI* g = editor.gui;
@@ -311,6 +334,8 @@ namespace sv {
 		constexpr f32 BUTTON_HEIGHT = 25.f;
 
 		u32 child_count = get_entity_childs_count(engine.scene, entity);
+
+		bool destroy = false;
 
 		if (child_count == 0u) {
 
@@ -325,6 +350,8 @@ namespace sv {
 
 				editor.selected_entity = entity;
 			}
+
+			show_entity_popup(entity, destroy);
 
 			y += BUTTON_HEIGHT + 2.f;
 		}
@@ -348,17 +375,32 @@ namespace sv {
 				editor.selected_entity = entity;
 			}
 
+			show_entity_popup(entity, destroy);
+
 			gui_end_container(g);
 
 			y += BUTTON_HEIGHT + 2.f;
 
 			const Entity* childs;
+			child_count = get_entity_childs_count(engine.scene, entity);
 			get_entity_childs(engine.scene, entity, &childs);
 
 			foreach(i, child_count) {
 
 				show_entity(childs[i], y, xoff + 15.f);
+
+				get_entity_childs(engine.scene, entity, &childs);
+				child_count = get_entity_childs_count(engine.scene, entity);
+
+				if (i < child_count)
+					i += get_entity_childs_count(engine.scene, childs[i]);
 			}
+		}
+
+		if (destroy) {
+			destroy_entity(engine.scene, entity);
+			if (editor.selected_entity == entity)
+				editor.selected_entity = SV_ENTITY_NULL;
 		}
 	}
 
@@ -378,9 +420,30 @@ namespace sv {
 				Entity entity = get_entity_by_index(engine.scene, entity_index);
 
 				show_entity(entity, y, 0.f);
+				entity_count = get_entity_count(engine.scene);
 
 				u32 childs = get_entity_childs_count(engine.scene, entity);
 				entity_index += childs;
+			}
+
+			if (gui_begin_popup(editor.gui, GuiPopupTrigger_Parent, MouseButton_Right, 0x5634c)) {
+
+				f32 y = editor.style.vertical_padding;
+				constexpr f32 H = 20.f;
+
+				if (gui_button(editor.gui, "Create Entity", GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H))) {
+					create_entity(engine.scene);
+				}
+				y += H + editor.style.vertical_padding;
+
+				if (gui_button(editor.gui, "Create Sprite", GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H))) {
+					
+					Entity e = create_entity(engine.scene, 0, "Sprite");
+					add_component<SpriteComponent>(engine.scene, e);
+				}
+				y += H + editor.style.vertical_padding;
+
+				gui_end_popup(editor.gui);
 			}
 			
 			gui_end_window(g);

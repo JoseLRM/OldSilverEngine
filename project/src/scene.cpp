@@ -1017,6 +1017,8 @@ namespace sv {
 		EntityData& duplicatedEd = scene.entityData[duplicated];
 		EntityData& copyEd = scene.entityData[copy];
 
+		copyEd.name = duplicatedEd.name;
+
 		scene.entityData.get_transform(copy) = scene.entityData.get_transform(duplicated);
 		copyEd.flags = duplicatedEd.flags;
 

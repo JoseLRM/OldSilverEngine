@@ -72,6 +72,12 @@ namespace sv {
 
 	};
 
+	enum GuiPopupTrigger : u32 {
+		GuiPopupTrigger_Custom,
+		GuiPopupTrigger_Parent,
+		GuiPopupTrigger_LastWidget,
+	};
+
 	SV_DEFINE_HANDLE(GUI);
 
 	struct GuiContainerStyle {
@@ -86,6 +92,10 @@ namespace sv {
 		f32 outline_size = 0.001f;
 		f32 min_width = 0.1f;
 		f32 min_height = 0.f;
+	};
+
+	struct GuiPopupStyle {
+		Color background_color = Color::White(80u);
 	};
 
 	struct GuiButtonStyle {
@@ -126,6 +136,9 @@ namespace sv {
 	void gui_begin_container(GUI* gui, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiContainerStyle& style = {});
 	void gui_end_container(GUI* gui);
 	
+	bool gui_begin_popup(GUI* gui, GuiPopupTrigger trigger, MouseButton mouse_button, u64 id, const GuiPopupStyle& style = {});
+	void gui_end_popup(GUI* gui);
+
 	bool gui_begin_window(GUI* gui, const char* title, const GuiWindowStyle& style = {});
 	void gui_end_window(GUI* gui);
 	Result gui_show_window(GUI* gui, const char* title);
