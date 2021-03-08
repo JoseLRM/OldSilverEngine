@@ -576,9 +576,10 @@ namespace sv {
 
 		void read(void* data, size_t size);
 
-		inline size_t pos_get() const noexcept { return m_Pos; }
-		inline void pos_set(size_t pos) noexcept { m_Pos = pos; }
-		inline size_t size() const noexcept { return m_Size; }
+		SV_INLINE size_t getPos() const noexcept { return m_Pos; }
+		SV_INLINE void setPos(size_t pos) noexcept { m_Pos = pos; }
+		SV_INLINE size_t size() const noexcept { return m_Size; }
+		SV_INLINE void reset() noexcept { m_Pos = 0u; }
 
 		void clear();
 

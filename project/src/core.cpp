@@ -160,7 +160,7 @@ namespace sv {
 		return res;
 	}
 
-	inline std::string file_dialog(u32 filterCount, const char** filters, const char* startPath, bool open)
+	SV_INLINE static std::string file_dialog(u32 filterCount, const char** filters, const char* filepath, bool open)
 	{
 		std::stringstream absFilterStream;
 
@@ -173,11 +173,7 @@ namespace sv {
 
 		std::string absFilter = std::move(absFilterStream.str());
 
-#ifdef SV_RES_PATH
-		std::string startPathStr = SV_RES_PATH;
-		startPathStr += startPath;
-		startPath = startPathStr.c_str();
-#endif
+		SV_PARSE_FILEPATH();
 
 		HWND hwnd = (HWND)window_handle(engine.window);
 
@@ -192,7 +188,7 @@ namespace sv {
 		file.lpstrFilter = absFilter.c_str();
 		file.nFilterIndex = 1u;
 		file.lpstrFile = lpstrFile;
-		file.lpstrInitialDir = startPath;
+		file.lpstrInitialDir = filepath;
 		file.nMaxFile = FILE_MAX_SIZE;
 		file.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
 

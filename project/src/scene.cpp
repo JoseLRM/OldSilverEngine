@@ -129,6 +129,9 @@ namespace sv {
 			scene.name = name;
 		}
 
+		bool deserialize = false;
+		ArchiveI archive;
+
 		// Deserialize
 		{
 			// Get filepath
@@ -139,194 +142,203 @@ namespace sv {
 
 			if (filepath.size()) {
 
-				ArchiveI archive;
-				svCheck(archive.open_file(filepath.c_str()));
+				Result res = archive.open_file(filepath.c_str());
 
-				Version version;
-				archive >> version;
-				archive >> scene.main_camera;
-				
-				// ECS
-				{
-					scene.entities.clear();
-					entityClear(scene.entityData);
+				if (result_fail(res)) {
 
-					struct Register {
-						std::string name;
-						u32 size;
-						CompID ID;
-					};
+					SV_LOG_ERROR("Can't deserialize the scene '%s' at '%s'", name, filepath.c_str());
+				}
+				else {
+					Version version;
+					archive >> version;
+					archive >> scene.main_camera;
 
-					// Registers
-					std::vector<Register> registers;
-
+					// ECS
 					{
-						u32 registersCount;
-						archive >> registersCount;
-						registers.resize(registersCount);
+						scene.entities.clear();
+						entityClear(scene.entityData);
 
-						for (auto it = registers.rbegin(); it != registers.rend(); ++it) {
+						struct Register {
+							std::string name;
+							u32 size;
+							CompID ID;
+						};
 
-							archive >> it->name;
-							archive >> it->size;
+						// Registers
+						std::vector<Register> registers;
 
-						}
-					}
+						{
+							u32 registersCount;
+							archive >> registersCount;
+							registers.resize(registersCount);
 
-					// Registers ID
-					CompID invalidCompID = CompID(g_Registers.size());
-					for (u32 i = 0; i < registers.size(); ++i) {
+							for (auto it = registers.rbegin(); it != registers.rend(); ++it) {
 
-						Register& reg = registers[i];
-						reg.ID = invalidCompID;
+								archive >> it->name;
+								archive >> it->size;
 
-						auto it = g_CompNames.find(reg.name.c_str());
-						if (it != g_CompNames.end()) {
-							reg.ID = it->second;
-						}
-
-						if (reg.ID == invalidCompID) {
-							SV_LOG_ERROR("Component '%s' doesn't exist", reg.name.c_str());
-							return Result_InvalidFormat;
+							}
 						}
 
-					}
+						// Registers ID
+						CompID invalidCompID = CompID(g_Registers.size());
+						for (u32 i = 0; i < registers.size(); ++i) {
 
-					// Entity data
-					u32 entityCount;
-					u32 entityDataCount;
+							Register& reg = registers[i];
+							reg.ID = invalidCompID;
 
-					archive >> entityCount;
-					archive >> entityDataCount;
-
-					scene.entities.resize(entityCount);
-					EntityData* entityData = new EntityData[entityDataCount];
-					EntityTransform* entityTransform = new EntityTransform[entityDataCount];
-
-					for (u32 i = 0; i < entityCount; ++i) {
-
-						Entity entity;
-						archive >> entity;
-
-						EntityData& ed = entityData[entity];
-						EntityTransform& et = entityTransform[entity];
-
-						archive >> ed.flags >> ed.childsCount >> ed.handleIndex >>
-							et.localPosition >> et.localRotation >> et.localScale;
-					}
-
-					// Create entity list and free list
-					for (u32 i = 0u; i < entityDataCount; ++i) {
-
-						EntityData& ed = entityData[i];
-
-						if (ed.handleIndex != u64_max) {
-							scene.entities[ed.handleIndex] = i + 1u;
-						}
-						else scene.entityData.freeList.push_back(i + 1u);
-					}
-
-					// Set entity parents
-					{
-						EntityData* it = entityData;
-						EntityData* end = it + entityDataCount;
-
-						while (it != end) {
-
-							if (it->handleIndex != u64_max && it->childsCount) {
-
-								Entity* eIt = scene.entities.data() + it->handleIndex;
-								Entity* eEnd = eIt + it->childsCount;
-								Entity parent = *eIt++;
-
-								while (eIt <= eEnd) {
-
-									EntityData& ed = entityData[*eIt - 1u];
-									ed.parent = parent;
-									if (ed.childsCount) {
-										eIt += ed.childsCount + 1u;
-									}
-									else ++eIt;
-								}
+							auto it = g_CompNames.find(reg.name.c_str());
+							if (it != g_CompNames.end()) {
+								reg.ID = it->second;
 							}
 
-							++it;
+							if (reg.ID == invalidCompID) {
+								SV_LOG_ERROR("Component '%s' doesn't exist", reg.name.c_str());
+								return Result_InvalidFormat;
+							}
+
 						}
-					}
 
-					// Set entity data
-					scene.entityData.data = entityData;
-					scene.entityData.transformData = entityTransform;
-					scene.entityData.accessData = entityData - 1u;
-					scene.entityData.accessTransformData = entityTransform - 1u;
-					scene.entityData.capacity = entityDataCount;
-					scene.entityData.size = entityDataCount;
+						// Entity data
+						u32 entityCount;
+						u32 entityDataCount;
 
-					// Components
-					{
-						for (auto it = registers.rbegin(); it != registers.rend(); ++it) {
+						archive >> entityCount;
+						archive >> entityDataCount;
 
-							CompID compID = it->ID;
-							auto& compList = scene.components[compID];
-							u32 compSize = get_component_size(compID);
-							u32 compCount;
-							archive >> compCount;
+						scene.entities.resize(entityCount);
+						EntityData* entityData = new EntityData[entityDataCount];
+						EntityTransform* entityTransform = new EntityTransform[entityDataCount];
 
-							if (compCount == 0u) continue;
+						for (u32 i = 0; i < entityCount; ++i) {
 
-							// Allocate component data
-							{
-								u32 poolCount = compCount / ECS_COMPONENT_POOL_SIZE + (compCount % ECS_COMPONENT_POOL_SIZE == 0u) ? 0u : 1u;
-								u32 lastPoolCount = u32(compList.pools.size());
+							Entity entity;
+							archive >> entity;
 
-								compList.pools.resize(poolCount);
+							EntityData& ed = entityData[entity];
+							EntityTransform& et = entityTransform[entity];
 
-								if (poolCount > lastPoolCount) {
-									for (u32 j = lastPoolCount; j < poolCount; ++j) {
-										componentPoolAlloc(compList.pools[j], compSize);
+							archive >> ed.name;
+
+							archive >> ed.flags >> ed.childsCount >> ed.handleIndex >>
+								et.localPosition >> et.localRotation >> et.localScale;
+						}
+
+						// Create entity list and free list
+						for (u32 i = 0u; i < entityDataCount; ++i) {
+
+							EntityData& ed = entityData[i];
+
+							if (ed.handleIndex != u64_max) {
+								scene.entities[ed.handleIndex] = i + 1u;
+							}
+							else scene.entityData.freeList.push_back(i + 1u);
+						}
+
+						// Set entity parents
+						{
+							EntityData* it = entityData;
+							EntityData* end = it + entityDataCount;
+
+							while (it != end) {
+
+								if (it->handleIndex != u64_max && it->childsCount) {
+
+									Entity* eIt = scene.entities.data() + it->handleIndex;
+									Entity* eEnd = eIt + it->childsCount;
+									Entity parent = *eIt++;
+
+									while (eIt <= eEnd) {
+
+										EntityData& ed = entityData[*eIt - 1u];
+										ed.parent = parent;
+										if (ed.childsCount) {
+											eIt += ed.childsCount + 1u;
+										}
+										else ++eIt;
 									}
 								}
 
-								for (u32 j = 0; j < lastPoolCount; ++j) {
+								++it;
+							}
+						}
 
-									ComponentPool& pool = compList.pools[j];
-									u8* it = pool.data;
-									u8* end = pool.data + pool.size;
-									while (it != end) {
+						// Set entity data
+						scene.entityData.data = entityData;
+						scene.entityData.transformData = entityTransform;
+						scene.entityData.accessData = entityData - 1u;
+						scene.entityData.accessTransformData = entityTransform - 1u;
+						scene.entityData.capacity = entityDataCount;
+						scene.entityData.size = entityDataCount;
 
-										BaseComponent* comp = reinterpret_cast<BaseComponent*>(it);
-										if (comp->entity != SV_ENTITY_NULL) {
-											destroy_component(compID, comp);
+						// Components
+						{
+							for (auto it = registers.rbegin(); it != registers.rend(); ++it) {
+
+								CompID compID = it->ID;
+								auto& compList = scene.components[compID];
+								u32 compSize = get_component_size(compID);
+								u32 compCount;
+								archive >> compCount;
+
+								if (compCount == 0u) continue;
+
+								// Allocate component data
+								{
+									u32 poolCount = compCount / ECS_COMPONENT_POOL_SIZE + (compCount % ECS_COMPONENT_POOL_SIZE == 0u) ? 0u : 1u;
+									u32 lastPoolCount = u32(compList.pools.size());
+
+									compList.pools.resize(poolCount);
+
+									if (poolCount > lastPoolCount) {
+										for (u32 j = lastPoolCount; j < poolCount; ++j) {
+											componentPoolAlloc(compList.pools[j], compSize);
+										}
+									}
+
+									for (u32 j = 0; j < lastPoolCount; ++j) {
+
+										ComponentPool& pool = compList.pools[j];
+										u8* it = pool.data;
+										u8* end = pool.data + pool.size;
+										while (it != end) {
+
+											BaseComponent* comp = reinterpret_cast<BaseComponent*>(it);
+											if (comp->entity != SV_ENTITY_NULL) {
+												destroy_component(compID, comp);
+											}
+
+											it += compSize;
 										}
 
-										it += compSize;
+										pool.size = 0u;
+										pool.freeCount = 0u;
 									}
-
-									pool.size = 0u;
-									pool.freeCount = 0u;
 								}
+
+								while (compCount-- != 0u) {
+
+									Entity entity;
+									archive >> entity;
+
+									BaseComponent* comp = componentAlloc(scene_, compID, entity, false);
+									deserialize_component(compID, comp, archive);
+									comp->entity = entity;
+
+									scene.entityData[entity].components.emplace_back(compID, comp);
+								}
+
 							}
-
-							while (compCount-- != 0u) {
-
-								Entity entity;
-								archive >> entity;
-
-								BaseComponent* comp = componentAlloc(scene_, compID, entity, false);
-								deserialize_component(compID, comp, archive);
-								comp->entity = entity;
-
-								scene.entityData[entity].components.emplace_back(compID, comp);
-							}
-
 						}
+
+						deserialize = true;
 					}
 				}
 			}
 		}
 
 		// User Init
-		svCheck(engine.app_callbacks.initialize_scene(scene_, 0));
+		svCheck(engine.app_callbacks.initialize_scene(scene_, deserialize ? &archive : nullptr));
 
 		*pscene = scene_;
 		return Result_Success;
@@ -411,7 +423,7 @@ namespace sv {
 
 						EntityTransform& transform = scene.entityData.get_transform(entity);
 
-						archive << i << ed.flags << ed.childsCount << ed.handleIndex << transform.localPosition;
+						archive << i << ed.name << ed.flags << ed.childsCount << ed.handleIndex << transform.localPosition;
 						archive << transform.localRotation << transform.localScale;
 					}
 				}
@@ -442,6 +454,27 @@ namespace sv {
 		}
 		
 		return archive.saveFile(filepath);
+	}
+
+	Result clear_scene(Scene* scene_)
+	{
+		PARSE_SCENE();
+
+		for (CompID i = 0; i < get_component_register_count(); ++i) {
+			if (component_exist(i))
+				componentAllocatorDestroy(scene_, i);
+		}
+		for (CompID id = 0u; id < g_Registers.size(); ++id) {
+
+			componentAllocatorCreate(reinterpret_cast<Scene*>(&scene), id);
+		}
+
+		scene.entities.clear();
+		entityClear(scene.entityData);
+
+		svCheck(engine.app_callbacks.initialize_scene(scene_, nullptr));
+
+		return Result_Success;
 	}
 
 	void update_scene(Scene* scene)
@@ -761,18 +794,6 @@ namespace sv {
 			if (componentPoolCount(pool, compSize) > 0u) return false;
 		}
 		return true;
-	}
-
-	void ecs_clear(Scene* scene_)
-	{
-		PARSE_SCENE();
-
-		for (CompID i = 0; i < get_component_register_count(); ++i) {
-			if (component_exist(i))
-				componentAllocatorDestroy(scene_, i);
-		}
-		scene.entities.clear();
-		entityClear(scene.entityData);
 	}
 
 	///////////////////////////////////// COMPONENTS REGISTER ////////////////////////////////////////
@@ -1719,14 +1740,12 @@ namespace sv {
 	
 	void SpriteComponent::serialize(ArchiveO& archive)
 	{
-		save_asset(archive, texture);
-		archive << texcoord << color << layer;
+		archive << texture << texcoord << color << layer;
 	}
 
 	void SpriteComponent::deserialize(ArchiveI& archive)
 	{
-		load_asset(archive, texture);
-		archive >> texcoord >> color >> layer;
+		archive >> texture >> texcoord >> color >> layer;
 	}
 
 	void CameraComponent::serialize(ArchiveO& archive)

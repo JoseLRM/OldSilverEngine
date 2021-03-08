@@ -324,7 +324,7 @@ namespace sv {
 		return load_asset_from_file(tex.asset_ptr, str.c_str());
 	}
 
-	Result model_load(const char* filepath, ModelInfo& model_info)
+	Result load_model(const char* filepath, ModelInfo& model_info)
 	{
 		std::string folderpath = filepath;
 
@@ -466,6 +466,60 @@ namespace sv {
 			// Compute transform matrix
 			m1.transform_matrix = XMMatrixTranslation(center.x, center.y, center.z);
 		}
+
+		return Result_Success;
+	}
+
+	Result import_model(const char* filepath_, const ModelInfo& model_info)
+	{
+		ArchiveO archive;
+
+		u32 unnamed_mesh_count = 0u;
+		std::stringstream ss;
+
+		std::string filepath = filepath_;
+		if (filepath.back() != '/')
+			filepath += '/';
+
+		// Save meshes
+		for (const MeshInfo& m : model_info.meshes) {
+
+			// Create filepath
+			{
+				ss.seekp(0);
+				ss << filepath;
+
+				if (m.name.size()) ss << m.name;
+				else ss << "Unnamed" << unnamed_mesh_count++;
+				
+				ss << ".mesh";
+			}
+
+			// Fill archive
+			{
+				archive.clear();
+
+				archive << engine.version;
+				archive << m.positions << m.indices << m.texcoords << m.normals << m.tangents << m.bitangents;
+				// TODO: material filepath
+			}
+
+			svCheck(archive.saveFile(ss.str().c_str()));
+		}
+
+		return Result_Success;
+	}
+
+	Result load_mesh(const char* filepath, Mesh& mesh)
+	{
+		ArchiveI archive;
+
+		svCheck(archive.open_file(filepath));
+
+		Version version;
+		archive >> version;
+
+		archive >> mesh.positions >> mesh.indices >> mesh.texcoords >> mesh.normals >> mesh.tangents >> mesh.bitangents;
 
 		return Result_Success;
 	}

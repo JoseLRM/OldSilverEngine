@@ -117,6 +117,84 @@ namespace sv {
 		return Result_Success;
 	}
 
+	static Result command_import_mesh(const char** args, u32 argc) 
+	{
+		if (argc < 2u) {
+			SV_LOG_ERROR("This command need more arguments");
+			return Result_InvalidUsage;
+		}
+
+		if (argc > 2u) {
+			SV_LOG_ERROR("Too much arguments");
+			return Result_InvalidUsage;
+		}
+
+		const char* srcpath = args[0u];
+		const char* dstpath = args[1u];
+
+		ModelInfo model_info;
+
+		Result res = load_model(srcpath, model_info);
+		if (result_fail(res)) {
+
+			SV_LOG_ERROR("Can't load '%s': %s", srcpath, result_str(res));
+			return res;
+		}
+
+		res = import_model(dstpath, model_info);
+		
+		if (result_fail(res)) {
+
+			SV_LOG_ERROR("Can't save '%s': %s", dstpath, result_str(res));
+			return res;
+		}
+
+		SV_LOG("Model imported successfully:\nSrc: '%s'\nDst: '%s'", srcpath, dstpath);
+
+		return Result_Success;
+	}
+
+	static Result command_save_scene(const char** args, u32 argc) {
+
+		if (argc) {
+			SV_LOG_ERROR("This command doesn't need arguments");
+			return Result_InvalidUsage;
+		}
+
+		std::string filepath = engine.app_callbacks.get_scene_filepath ? engine.app_callbacks.get_scene_filepath(engine.scene->name.c_str()) : "";
+
+		Result res;
+
+		if (filepath.size())
+			res = save_scene(engine.scene, filepath.c_str());
+		else
+			res = Result_NotFound;
+
+		if (result_fail(res)) {
+			SV_LOG_ERROR("Can't save the scene '%s': %s", engine.scene->name.c_str(), result_str(res));
+			return res;
+		}
+		else {
+			SV_LOG("Scene '%s' saved at '%s'", engine.scene->name.c_str(), filepath.c_str());
+		}
+		
+		return Result_Success;
+	}
+
+	static Result command_clear_scene(const char** args, u32 argc) {
+
+		if (argc) {
+			SV_LOG_ERROR("This command doesn't need arguments");
+			return Result_InvalidUsage;
+		}
+
+		Result res = clear_scene(engine.scene);
+
+		SV_LOG("Scene '%s' cleared", engine.scene->name.c_str());
+
+		return Result_Success;
+	}
+
 	void initialize_console()
 	{
 		console_buffer.buff = (char*)malloc(CONSOLE_SIZE);
@@ -131,6 +209,9 @@ namespace sv {
 		register_command("scene", command_scene);
 		register_command("fps", command_fps);
 		register_command("timer", command_timer);
+		register_command("import_model", command_import_mesh);
+		register_command("save_scene", command_save_scene);
+		register_command("clear_scene", command_clear_scene);
 	}
 
 	void close_console()

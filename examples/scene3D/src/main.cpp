@@ -6,7 +6,7 @@ using namespace sv;
 void load_model(Scene* scene, const char* filepath, f32 scale = f32_max)
 {
 	ModelInfo info;
-	if (result_fail(model_load(filepath, info))) {
+	if (result_fail(load_model(filepath, info))) {
 		SV_LOG_ERROR("Can't load the model");
 	}
 	else {
@@ -56,16 +56,10 @@ void load_model(Scene* scene, const char* filepath, f32 scale = f32_max)
 	}
 }
 
-Result command_hello(const char** args, u32 argc)
-{
-	console_notify("MIAU", "Hola que tal");
-	return Result_Success;
-}
-
 Result app_validate_scene(const char* name)
 {
 	const char* valid_names[] = {
-			"Sponza", "Goblin", "Dragon", "Test"
+			"Test"
 	};
 
 	foreach(i, sizeof(valid_names) / sizeof(const char*)) {
@@ -81,34 +75,16 @@ Result app_validate_scene(const char* name)
 
 Result app_init_scene(Scene* scene, ArchiveI* archive)
 {
-	Entity cam = create_entity(scene, SV_ENTITY_NULL, "Camera");
-	scene->main_camera = cam;
-	CameraComponent* camera = add_component<CameraComponent>(scene, cam);
-	camera->far = 10000.f;
-	camera->near = 0.2f;
-	camera->width = 0.5f;
-	camera->height = 0.5f;
-	camera->projection_type = ProjectionType_Perspective;
-
-	LightComponent* light = add_component<LightComponent>(scene, create_entity(scene, SV_ENTITY_NULL, "Light"));
-	Transform t = get_entity_transform(scene, light->entity);
-	light->light_type = LightType_Point;
-	t.setPosition({ 0.f, 0.f, -2.f });
-	t.setEulerRotation({ PI * 0.4f, 0.f, 0.f });
-
-	create_entity(scene, light->entity);
-
-	if (strcmp(scene->name.c_str(), "Sponza") == 0) {
-
-		load_model(scene, "assets/Sponza/sponza.obj");
-	}
-	if (strcmp(scene->name.c_str(), "Goblin") == 0) {
-
-		load_model(scene, "assets/gobber/GoblinX.obj");
-	}
-	if (strcmp(scene->name.c_str(), "Dragon") == 0) {
-
-		load_model(scene, "assets/dragon.obj");
+	if (archive == nullptr) {
+	
+		Entity cam = create_entity(scene, SV_ENTITY_NULL, "Camera");
+		scene->main_camera = cam;
+		CameraComponent* camera = add_component<CameraComponent>(scene, cam);
+		camera->far = 10000.f;
+		camera->near = 0.2f;
+		camera->width = 0.5f;
+		camera->height = 0.5f;
+		camera->projection_type = ProjectionType_Perspective;
 	}
 
 	return Result_Success;
@@ -122,18 +98,13 @@ Result app_close_scene(Scene* scene)
 
 Result init()
 {
-	set_active_scene("Goblin");
-
-	register_command("hola", command_hello);
+	set_active_scene("Test");
 
 	return Result_Success;
 }
 
 void update()
 {
-	Transform t0 = get_entity_transform(engine.scene, 1u);
-	Transform t1 = get_entity_transform(engine.scene, 2u);
-	t1.setRotation(t0.getWorldRotation());
 }
 
 void render()
@@ -149,6 +120,14 @@ Result close()
 	return Result_Success;
 }
 
+std::string get_scene_filepath(const char* name)
+{
+	std::stringstream ss;
+	ss << "scenes/";
+	ss << name << ".scene";
+	return ss.str();
+}
+
 int main()
 {
 	InitializationDesc desc;
@@ -162,7 +141,7 @@ int main()
 	desc.callbacks.initialize_scene = app_init_scene;
 	desc.callbacks.close_scene = app_close_scene;
 	desc.callbacks.serialize_scene = nullptr;
-	desc.callbacks.get_scene_filepath = nullptr;
+	desc.callbacks.get_scene_filepath = get_scene_filepath;
 
 	desc.windowDesc.bounds = { 0u, 0u, 1080u, 720u };
 	desc.windowDesc.flags = WindowFlag_Default;

@@ -88,6 +88,13 @@ namespace sv {
 		return Result_Success;
 	}
 
+	static Result load_mesh_asset(void* asset, const char* filepath)
+	{
+		Mesh& mesh = *new(asset) Mesh();
+		svCheck(load_mesh(filepath, mesh));
+		svCheck(mesh_create_buffers(mesh));
+	}
+
 	static Result free_mesh_asset(void* asset)
 	{
 		Mesh& mesh = *reinterpret_cast<Mesh*>(asset);
@@ -144,10 +151,12 @@ namespace sv {
 			extensions[0] = "png";
 			extensions[1] = "tga";
 			extensions[2] = "jpg";
+			extensions[3] = "jpeg";
+			extensions[4] = "JPG";
 
 			desc.name = "Texture";
 			desc.asset_size = sizeof(GPUImage*);
-			desc.extension_count = 3u;
+			desc.extension_count = 5u;
 			desc.create = create_image_asset;
 			desc.load_file = load_image_asset;
 			desc.free = destroy_image_asset;
@@ -157,11 +166,13 @@ namespace sv {
 			svCheck(register_asset_type(&desc));
 
 			// Mesh
+			extensions[0] = "mesh";
+
 			desc.name = "Mesh";
 			desc.asset_size = sizeof(Mesh);
-			desc.extension_count = 0u;
+			desc.extension_count = 1u;
 			desc.create = create_mesh_asset;
-			desc.load_file = nullptr;
+			desc.load_file = load_mesh_asset;
 			desc.free = free_mesh_asset;
 			desc.reload_file = nullptr;
 			desc.unused_time = 5.f;

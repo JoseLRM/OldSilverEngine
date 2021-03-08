@@ -90,6 +90,9 @@ namespace sv {
 		std::vector<MaterialInfo> materials;
 	};
 
-	Result model_load(const char* filepath, ModelInfo& model_info);
+	Result load_model(const char* filepath, ModelInfo& model_info);
+	Result import_model(const char* filepath, const ModelInfo& model_info);
+
+	Result load_mesh(const char* filepath, Mesh& mesh);
 
 }

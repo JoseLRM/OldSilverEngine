@@ -845,8 +845,11 @@ namespace sv {
 
 						for (MeshComponent& mesh : meshes) {
 
+							Mesh* m = mesh.mesh.get();
+							if (m == nullptr) continue;
+
 							Transform trans = get_entity_transform(scene, mesh.entity);
-							mesh_instances.emplace_back(trans.getWorldMatrix(), mesh.mesh.get(), &mesh.material);
+							mesh_instances.emplace_back(trans.getWorldMatrix(), m, &mesh.material);
 						}
 					}
 

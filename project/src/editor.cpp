@@ -225,17 +225,119 @@ namespace sv {
 		checkbox_style.color = Color::Black(0u);
 
 		u64 gui_id = u64((u64(comp_id) << 32u) + comp->entity);
+		bool remove = false;
 
-		gui_begin_container(gui, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f), container_style);
+		gui_begin_container(gui, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 40.f), container_style);
 
 		gui_text(gui, get_component_name(comp_id), GuiCoord::Pixel(35.f), GuiCoord::IPixel(10.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), text_style);
 		
+		if (gui_begin_popup(gui, GuiPopupTrigger_LastWidget, MouseButton_Right, gui_id)) {
+
+			remove = gui_button(gui, "Remove", GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(5.f), GuiCoord::IPixel(25.f));
+
+			gui_end_popup(gui);
+		}
+
 		bool show = gui_checkbox_id(gui, gui_id, GuiCoord::Pixel(0.f), GuiCoord::Aspect(), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), checkbox_style);
 
 		gui_end_container(gui);
 
+		y += 40.f + editor.style.vertical_padding;
+
 		if (show) {
-			SV_LOG("All right");
+			
+			GuiTextStyle text_style;
+			text_style.text_alignment = TextAlignment_Left;
+
+			if (SpriteComponent::ID == comp_id) {
+
+				SpriteComponent& spr = *reinterpret_cast<SpriteComponent*>(comp);
+
+				gui_text(gui, "Color", GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f), text_style);
+				gui_button(gui, "Something", GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f));
+				y += 30.f + editor.style.vertical_padding;
+
+				gui_text(gui, "Texture", GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f), text_style);
+				gui_button(gui, "Something", GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f));
+
+				if (gui_begin_popup(gui, GuiPopupTrigger_LastWidget, MouseButton_Left, 0x3fffa3 + gui_id)) {
+
+					if (gui_button(gui, "New", GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(5.f), GuiCoord::IPixel(25.f))) {
+
+						const char* filters[] = {
+						"all", "*",
+						"png", "*.png",
+						"jpg", "*.jpg",
+						"jpeg", "*.jpeg",
+						"gif", "*.gif",
+						};
+						
+						// TODO: Custom file dialog
+						std::string filepath = file_dialog_open(sizeof(filters) / sizeof(const char*) / 2u, filters, "");
+
+						if (filepath.size()) {
+
+							load_asset_from_file(spr.texture, filepath.c_str());
+						}
+					}
+
+					if (gui_button(gui, "Remove", GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(30.f), GuiCoord::IPixel(50.f))) {
+
+						unload_asset(spr.texture);
+					}
+
+					gui_end_popup(gui);
+				}
+
+				y += 30.f + editor.style.vertical_padding;
+
+			}
+
+			if (MeshComponent::ID == comp_id) {
+
+				MeshComponent& m = *reinterpret_cast<MeshComponent*>(comp);
+
+				gui_text(gui, "Mesh", GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f), text_style);
+				gui_button(gui, "Something", GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f));
+
+				if (gui_begin_popup(gui, GuiPopupTrigger_LastWidget, MouseButton_Left, 0x4634ba + gui_id)) {
+
+					if (gui_button(gui, "New", GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(5.f), GuiCoord::IPixel(25.f))) {
+
+						const char* filters[] = {
+						"all", "*",
+						"png", "*.png",
+						"jpg", "*.jpg",
+						"jpeg", "*.jpeg",
+						"gif", "*.gif",
+						};
+
+						// TODO: Custom file dialog
+						std::string filepath = file_dialog_open(sizeof(filters) / sizeof(const char*) / 2u, filters, "");
+
+						if (filepath.size()) {
+
+							load_asset_from_file(m.mesh, filepath.c_str());
+						}
+					}
+
+					if (gui_button(gui, "Remove", GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(30.f), GuiCoord::IPixel(50.f))) {
+
+						unload_asset(m.mesh);
+					}
+
+					gui_end_popup(gui);
+				}
+
+				y += 30.f + editor.style.vertical_padding;
+
+			}
+
+		}
+
+		if (remove) {
+
+			remove_component_by_id(engine.scene, comp->entity, comp_id);
 		}
 
 		y += 30.f + editor.style.vertical_padding;
@@ -264,6 +366,8 @@ namespace sv {
 		EntityView<MeshComponent> meshes(engine.scene);
 
 		for (MeshComponent& m : meshes) {
+
+			if (m.mesh.get() == nullptr) continue;
 
 			Transform trans = get_entity_transform(engine.scene, m.entity);
 
@@ -599,11 +703,47 @@ namespace sv {
 						auto [comp_id, comp] = get_component_by_index(engine.scene, selected, comp_index);
 
 						show_component_info(y, comp_id, comp);
+						comp_count = get_entity_component_count(engine.scene, selected);
 					}
 				}
 			}
 
+			if (gui_begin_popup(g, GuiPopupTrigger_Parent, MouseButton_Right, 0xabc2544 + editor.selected_entity)) {
+
+				f32 y = 5.f;
+
+				u32 count = get_component_register_count();
+				foreach(i, count) {
+
+					CompID comp_id = CompID(i);
+
+					if (get_component_by_id(engine.scene, selected, comp_id))
+						continue;
+
+					if (gui_button(g, get_component_name(comp_id), GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 20.f))) {
+
+						add_component_by_id(engine.scene, selected, comp_id);
+					}
+
+					y += 20.f + editor.style.vertical_padding;
+				}
+
+				gui_end_popup(g);
+			}
+
 			gui_end_window(g);
+		}
+	}
+
+	static void display_asset_browser()
+	{
+		GUI* gui = editor.gui;
+
+		if (gui_begin_window(gui, "Asset Browser", editor.style.window_style)) {
+
+
+
+			gui_end_window(gui);
 		}
 	}
 	
@@ -641,6 +781,7 @@ namespace sv {
 
 			display_entity_hierarchy();
 			display_entity_inspector();
+			display_asset_browser();
 
 		}
 

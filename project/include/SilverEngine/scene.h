@@ -14,33 +14,6 @@ namespace sv {
 	typedef u16 CompID;
 	typedef u32 Entity;
 
-	/*
-	  TODO list:
-	  - public initialize function
-	  - public close function
-	  - loading scene callbacks
-	  
-
-	  // INIT PATH
-	  - (callback) validate
-	  - init
-	  - (callback) get filepath
-	  - deserialize
-	  - (callback) init
-
-	  // SERIALIZE PATH
-	  - (callback) get filepath
-	  - serialize
-	  - (callback) serialize
-	  - Write file
-
-	  // CALLBACKS
-	  Result validate_scene(const char* name);
-	  Result initialize_scene(Scene* scene, SceneInitInfo& info);
-	  
-
-	 */
-
 	struct CameraComponent;	
 
 	struct Scene {
@@ -56,6 +29,7 @@ namespace sv {
 
 	Result set_active_scene(const char* name);
 	Result save_scene(Scene* scene, const char* filepath);
+	Result clear_scene(Scene* scene);
 
 	CameraComponent* get_main_camera(Scene* scene);
 
@@ -358,9 +332,9 @@ namespace sv {
 	SV_DEFINE_COMPONENT(SpriteComponent) {
 
 		TextureAsset	texture;
-		v4_f32		texcoord = { 0.f, 0.f, 1.f, 1.f };
-		Color		color = Color::White();
-		u32		layer = 0u;
+		v4_f32			texcoord = { 0.f, 0.f, 1.f, 1.f };
+		Color			color = Color::White();
+		u32				layer = 0u;
 
 		void serialize(ArchiveO & archive);
 		void deserialize(ArchiveI & archive);
