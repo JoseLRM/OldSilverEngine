@@ -639,13 +639,7 @@ namespace sv {
 		light_instances.reset();
 		sprite_instances.reset();
 
-		CommandList cmd = graphics_commandlist_begin();
-
-		graphics_image_clear(scene->offscreen, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, Color4f::Black(), 1.f, 0u, cmd);
-		graphics_image_clear(scene->depthstencil, GPUImageLayout_DepthStencil, GPUImageLayout_DepthStencil, Color4f::Black(), 1.f, 0u, cmd);
-
-		graphics_viewport_set(scene->offscreen, 0u, cmd);
-		graphics_scissor_set(scene->offscreen, 0u, cmd);
+		CommandList cmd = graphics_commandlist_get();
 
 		// Get lights
 		{
@@ -678,9 +672,11 @@ namespace sv {
 
 		// Draw cameras
 		{
-			EntityView<CameraComponent> cameras(scene);
+			CameraComponent* camera_ = get_main_camera(scene);
 
-			for (CameraComponent& camera : cameras) {
+			if (camera_) {
+
+				CameraComponent& camera = *camera_;
 
 				Transform camera_trans = get_entity_transform(scene, camera.entity);
 
@@ -693,7 +689,7 @@ namespace sv {
 					camera_data.view_projection_matrix = camera_data.view_matrix * camera_data.projection_matrix;
 				}
 
-				draw_sky(scene->offscreen, camera_data.view_matrix, camera_data.projection_matrix, cmd);
+				draw_sky(engine.offscreen, camera_data.view_matrix, camera_data.projection_matrix, cmd);
 
 				graphics_buffer_update(gfx.cbuffer_camera, &camera_data, sizeof(CameraBuffer_GPU), 0u, cmd);
 
@@ -734,8 +730,8 @@ namespace sv {
 						graphics_depthstencilstate_bind(gfx.dss_default_depth, cmd);
 
 						GPUImage* att[2];
-						att[0] = scene->offscreen;
-						att[1] = scene->depthstencil;
+						att[0] = engine.offscreen;
+						att[1] = engine.depthstencil;
 
 						XMMATRIX matrix;
 						XMVECTOR pos0, pos1, pos2, pos3;
@@ -971,7 +967,7 @@ namespace sv {
 							}
 
 							// Begin renderpass
-							GPUImage* att[] = { scene->offscreen, scene->depthstencil };
+							GPUImage* att[] = { engine.offscreen, engine.depthstencil };
 							graphics_renderpass_begin(gfx.renderpass_world, att, cmd);
 
 							graphics_draw_indexed(u32(inst.mesh->indices.size()), 1u, 0u, 0u, 0u, cmd);
@@ -980,6 +976,12 @@ namespace sv {
 						}
 					}
 				}
+			}
+			else {
+				
+				constexpr f32 SIZE = 0.4f;
+				constexpr const char* TEXT = "No Main Camera";
+				draw_text(engine.offscreen, TEXT, strlen(TEXT), -1.f, +SIZE * 0.5f, 2.f, 1u, SIZE, window_aspect_get(engine.window), TextAlignment_Center, &font_opensans, cmd);
 			}
 		}
 	}

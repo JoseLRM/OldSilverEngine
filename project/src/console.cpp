@@ -161,7 +161,7 @@ namespace sv {
 			return Result_InvalidUsage;
 		}
 
-		std::string filepath = engine.app_callbacks.get_scene_filepath ? engine.app_callbacks.get_scene_filepath(engine.scene->name.c_str()) : "";
+		std::string filepath = engine.callbacks.get_scene_filepath ? engine.callbacks.get_scene_filepath(engine.scene->name.c_str()) : "";
 
 		Result res;
 
@@ -481,7 +481,7 @@ namespace sv {
 		input.text.clear();
 	}
 
-	void draw_console(GPUImage* offscreen,  CommandList cmd)
+	void draw_console(CommandList cmd)
 	{
 		if (!engine.console_active && show_fade == 0.f) return;
 
@@ -531,7 +531,7 @@ namespace sv {
 		draw_debug_quad({ console_x, animation + 1.f - console_height * 0.5f, 0.f }, { console_width, console_height }, Color::Black(180u), cmd);
 		draw_debug_quad({ 0.f, animation + 1.f - console_height - command_height * 0.5f, 0.f }, { 2.f, command_height }, Color::Black(), cmd);
 
-		end_debug_batch(offscreen, nullptr, XMMatrixIdentity(), cmd);
+		end_debug_batch(engine.offscreen, nullptr, XMMatrixIdentity(), cmd);
 
 		f32 text_x = -1.f;
 		f32 text_y = 1.f - console_height + animation;
@@ -541,12 +541,12 @@ namespace sv {
 
 		if (current_command.size()) {
 			
-			draw_text(offscreen, current_command.c_str(), current_command.size(), text_x, text_y, 2.f, 1u, COMMAND_TEXT_SIZE, aspect, TextAlignment_Left, &font_console, Color::White(), cmd);
+			draw_text(engine.offscreen, current_command.c_str(), current_command.size(), text_x, text_y, 2.f, 1u, COMMAND_TEXT_SIZE, aspect, TextAlignment_Left, &font_console, Color::White(), cmd);
 		}
 
 		if (console_buffer.pos) {
 
-			draw_text_area(offscreen, console_buffer.buff, console_buffer.pos, buffer_x, buffer_y, console_width, LINE_COUNT, TEXT_SIZE, aspect, TextAlignment_Left, u32(text_offset), true, &font_console, Color::White(), cmd);
+			draw_text_area(engine.offscreen, console_buffer.buff, console_buffer.pos, buffer_x, buffer_y, console_width, LINE_COUNT, TEXT_SIZE, aspect, TextAlignment_Left, u32(text_offset), true, &font_console, Color::White(), cmd);
 		}
 
 		begin_debug_batch(cmd);
@@ -556,7 +556,7 @@ namespace sv {
 
 		draw_debug_quad({ text_x + width + char_width * 0.5f, text_y - command_height * 0.5f, 0.f }, { char_width, command_height }, Color::Red(100u), cmd);
 
-		end_debug_batch(offscreen, nullptr, XMMatrixIdentity(), cmd);
+		end_debug_batch(engine.offscreen, nullptr, XMMatrixIdentity(), cmd);
 	}
 
 }

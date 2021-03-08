@@ -21,11 +21,11 @@ namespace sv {
 	Result initialize_editor();
 	Result close_editor();
 	void update_editor();
-	void draw_editor();
+	void draw_editor(CommandList cmd);
 	void initialize_console();
 	void close_console();
 	void update_console();
-	void draw_console(GPUImage* offscreen, CommandList cmd);
+	void draw_console(CommandList cmd);
 	Result initialize_scene(Scene** pscene, const char* name);
 	Result close_scene(Scene* scene);
 	void update_scene(Scene* scene);
@@ -93,6 +93,7 @@ namespace sv {
 		Mesh& mesh = *new(asset) Mesh();
 		svCheck(load_mesh(filepath, mesh));
 		svCheck(mesh_create_buffers(mesh));
+		return Result_Success;
 	}
 
 	static Result free_mesh_asset(void* asset)
@@ -131,6 +132,9 @@ namespace sv {
 			SV_LOG_ERROR("Can't open the main window...");
 			return res;
 		}
+
+		svCheck(create_offscreen(1920u, 1080u, &engine.offscreen));
+		svCheck(create_depthstencil(1920u, 1080u, &engine.depthstencil));
 
 		// Register components
 		{
@@ -183,7 +187,7 @@ namespace sv {
 		svCheck(initialize_editor());
 
 		// APPLICATION
-		INIT_SYSTEM("Application", engine.app_callbacks.initialize());
+		INIT_SYSTEM("Application", engine.callbacks.initialize());
 
 		return res;
 	}
@@ -286,7 +290,7 @@ namespace sv {
 
 		// Initialization Parameters
 		const InitializationDesc& desc = *d;
-		engine.app_callbacks = desc.callbacks;
+		engine.callbacks = desc.callbacks;
 
 		Time initTimeBegin = timer_now();
 
@@ -365,7 +369,7 @@ namespace sv {
 			update_assets();
 			update_console();
 
-			// Update scene
+			// Scene management
 			{
 				if (engine.next_scene_name.size()) {
 
@@ -383,6 +387,11 @@ namespace sv {
 			}
 
 			update_editor();
+
+			// Update user
+			if (engine.callbacks.update)
+				engine.callbacks.update();
+
 			// Update scene
 			if (engine.scene) update_scene(engine.scene);
 
@@ -391,15 +400,24 @@ namespace sv {
 				// Begin Rendering
 				graphics_begin();
 
-				// User Rendering
-				engine.app_callbacks.render();
+				CommandList cmd = graphics_commandlist_begin();
+
+				graphics_image_clear(engine.offscreen, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, Color4f::Black(), 1.f, 0u, cmd);
+				graphics_image_clear(engine.depthstencil, GPUImageLayout_DepthStencil, GPUImageLayout_DepthStencil, Color4f::Black(), 1.f, 0u, cmd);
+
+				graphics_viewport_set(engine.offscreen, 0u, cmd);
+				graphics_scissor_set(engine.offscreen, 0u, cmd);
 
 				// Draw scene
 				if (engine.scene) draw_scene(engine.scene);
 
-				draw_editor();
+				// Draw editor and the console and present to screen
+				cmd = graphics_commandlist_get();
 
-				draw_console(engine.scene->offscreen, graphics_commandlist_get());
+				draw_editor(cmd);
+				draw_console(cmd);
+
+				graphics_present(engine.window, engine.offscreen, GPUImageLayout_RenderTarget, cmd);
 
 				// End frame
 				graphics_end();
@@ -432,11 +450,14 @@ namespace sv {
 		// APPLICATION
 		try {
 			if (engine.scene) svCheck(close_scene(engine.scene));
-			svCheck(engine.app_callbacks.close());
+			svCheck(engine.callbacks.close());
 
 			free_unused_assets();
 
 			close_editor();
+
+			graphics_destroy(engine.offscreen);
+			graphics_destroy(engine.depthstencil);
 
 			// Close Window
 			svCheck(window_destroy(engine.window));

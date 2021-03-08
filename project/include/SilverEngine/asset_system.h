@@ -121,7 +121,7 @@ namespace sv {
 	void update_asset_files();
 	void free_unused_assets();
 
-	SV_INLINE ArchiveI& operator>>(ArchiveI& archive, AssetPtr& asset_ptr)
+	SV_INLINE Archive& operator>>(Archive& archive, AssetPtr& asset_ptr)
 	{
 		u8 type;
 		archive >> type;
@@ -142,7 +142,7 @@ namespace sv {
 		return archive;
 	}
 
-	SV_INLINE ArchiveO& operator<<(ArchiveO& archive, const AssetPtr& asset_ptr)
+	SV_INLINE Archive& operator<<(Archive& archive, const AssetPtr& asset_ptr)
 	{
 		if (asset_ptr.ptr == nullptr) archive << u8(0u);
 		else {

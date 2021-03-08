@@ -22,9 +22,6 @@ namespace sv {
 
 		std::string name;
 
-		GPUImage* offscreen = nullptr;
-		GPUImage* depthstencil = nullptr;
-
 	};
 
 	Result set_active_scene(const char* name);
@@ -62,8 +59,8 @@ namespace sv {
 	typedef void(*DestroyComponentFunction)(BaseComponent*);
 	typedef void(*MoveComponentFunction)(BaseComponent* from, BaseComponent* to);
 	typedef void(*CopyComponentFunction)(BaseComponent* from, BaseComponent* to);
-	typedef void(*SerializeComponentFunction)(BaseComponent* comp, ArchiveO&);
-	typedef void(*DeserializeComponentFunction)(BaseComponent* comp, ArchiveI&);
+	typedef void(*SerializeComponentFunction)(BaseComponent* comp, Archive&);
+	typedef void(*DeserializeComponentFunction)(BaseComponent* comp, Archive&);
 
 	struct ComponentRegisterDesc {
 
@@ -91,8 +88,8 @@ namespace sv {
 	void		destroy_component(CompID ID, BaseComponent* ptr);
 	void		move_component(CompID ID, BaseComponent* from, BaseComponent* to);
 	void		copy_component(CompID ID, BaseComponent* from, BaseComponent* to);
-	void		serialize_component(CompID ID, BaseComponent* comp, ArchiveO& archive);
-	void		deserialize_component(CompID ID, BaseComponent* comp, ArchiveI& archive);
+	void		serialize_component(CompID ID, BaseComponent* comp, Archive& archive);
+	void		deserialize_component(CompID ID, BaseComponent* comp, Archive& archive);
 	bool		component_exist(CompID ID);
 
 	// Transform
@@ -244,13 +241,13 @@ namespace sv {
 			new(to) Component(*from);
 		};
 
-		desc.serializeFn = [](BaseComponent* comp_, ArchiveO& file)
+		desc.serializeFn = [](BaseComponent* comp_, Archive& file)
 		{
 			Component* comp = reinterpret_cast<Component*>(comp_);
 			comp->serialize(file);
 		};
 
-		desc.deserializeFn = [](BaseComponent* comp_, ArchiveI& file)
+		desc.deserializeFn = [](BaseComponent* comp_, Archive& file)
 		{
 			Component* comp = new(comp_) Component();
 			comp->deserialize(file);
@@ -336,8 +333,8 @@ namespace sv {
 		Color			color = Color::White();
 		u32				layer = 0u;
 
-		void serialize(ArchiveO & archive);
-		void deserialize(ArchiveI & archive);
+		void serialize(Archive& archive);
+		void deserialize(Archive& archive);
 
 	};
 
@@ -355,8 +352,8 @@ namespace sv {
 		f32 width = 10.f;
 		f32 height = 10.f;
 
-		void serialize(ArchiveO & archive);
-		void deserialize(ArchiveI & archive);
+		void serialize(Archive& archive);
+		void deserialize(Archive& archive);
 
 		SV_INLINE void adjust(f32 aspect)
 		{
@@ -391,8 +388,8 @@ namespace sv {
 		MeshAsset	mesh;
 		Material	material;
 
-		void serialize(ArchiveO & archive) {}
-		void deserialize(ArchiveI & archive) {}
+		void serialize(Archive& archive);
+		void deserialize(Archive& archive);
 
 	};
 
@@ -410,8 +407,8 @@ namespace sv {
 		f32 range = 5.f;
 		f32 smoothness = 0.5f;
 
-		void serialize(ArchiveO & archive) {}
-		void deserialize(ArchiveI & archive) {}
+		void serialize(Archive& archive);
+		void deserialize(Archive& archive);
 
 	};
 

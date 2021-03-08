@@ -122,35 +122,30 @@ namespace sv {
 
 				componentAllocatorCreate(reinterpret_cast<Scene*>(&scene), id);
 			}
-		
-			svCheck(offscreen_create(1920u, 1080u, &scene.offscreen));
-			svCheck(depthstencil_create(1920u, 1080u, &scene.depthstencil));
 
 			scene.name = name;
 		}
 
 		bool deserialize = false;
-		ArchiveI archive;
+		Archive archive;
 
 		// Deserialize
 		{
 			// Get filepath
 			std::string filepath;
-			if (engine.app_callbacks.get_scene_filepath) {
-				filepath = engine.app_callbacks.get_scene_filepath(name);
+			if (engine.callbacks.get_scene_filepath) {
+				filepath = engine.callbacks.get_scene_filepath(name);
 			}
 
 			if (filepath.size()) {
 
-				Result res = archive.open_file(filepath.c_str());
+				Result res = archive.openFile(filepath.c_str());
 
 				if (result_fail(res)) {
 
 					SV_LOG_ERROR("Can't deserialize the scene '%s' at '%s'", name, filepath.c_str());
 				}
 				else {
-					Version version;
-					archive >> version;
 					archive >> scene.main_camera;
 
 					// ECS
@@ -338,7 +333,7 @@ namespace sv {
 		}
 
 		// User Init
-		svCheck(engine.app_callbacks.initialize_scene(scene_, deserialize ? &archive : nullptr));
+		svCheck(engine.callbacks.initialize_scene(scene_, deserialize ? &archive : nullptr));
 
 		*pscene = scene_;
 		return Result_Success;
@@ -348,7 +343,7 @@ namespace sv {
 	{
 		PARSE_SCENE();
 
-		svCheck(engine.app_callbacks.close_scene(scene_));
+		svCheck(engine.callbacks.close_scene(scene_));
 
 		// Close ECS
 		{
@@ -361,16 +356,13 @@ namespace sv {
 			entityClear(scene.entityData);
 		}
 		
-		graphics_destroy(scene.offscreen);
-		graphics_destroy(scene.depthstencil);
-
 		return Result_Success;
 	}
 
 	Result set_active_scene(const char* name)
 	{
-		if (engine.app_callbacks.validate_scene) {
-			Result res = engine.app_callbacks.validate_scene(name);
+		if (engine.callbacks.validate_scene) {
+			Result res = engine.callbacks.validate_scene(name);
 
 			if (result_fail(res)) return res;
 		}
@@ -383,9 +375,8 @@ namespace sv {
 	{
 		PARSE_SCENE();
 
-		ArchiveO archive;
+		Archive archive;
 		
-		archive << engine.version;
 		archive << scene.main_camera;
 		
 		// ECS
@@ -472,21 +463,30 @@ namespace sv {
 		scene.entities.clear();
 		entityClear(scene.entityData);
 
-		svCheck(engine.app_callbacks.initialize_scene(scene_, nullptr));
+		svCheck(engine.callbacks.initialize_scene(scene_, nullptr));
 
 		return Result_Success;
 	}
 
-	void update_scene(Scene* scene)
+	void update_scene(Scene* scene_)
 	{
-		CameraComponent* camera = get_main_camera(scene);
+		PARSE_SCENE();
+
+		if (!entity_exist(scene_, scene.main_camera)) {
+			scene.main_camera = SV_ENTITY_NULL;
+		}
+
+		CameraComponent* camera = get_main_camera(scene_);
 
 		// Adjust camera
 		if (camera) {
 			camera->adjust(f32(window_width_get(engine.window)) / f32(window_height_get(engine.window)));
 		}
 
-		engine.app_callbacks.update();
+		// TODO: Update camera matrices
+
+		if (engine.callbacks.update_scene)
+			engine.callbacks.update_scene(scene_);
 	}
 
 	CameraComponent* get_main_camera(Scene* scene)
@@ -873,13 +873,13 @@ namespace sv {
 		g_Registers[ID].copyFn(from, to);
 	}
 
-	void serialize_component(CompID ID, BaseComponent* comp, ArchiveO& archive)
+	void serialize_component(CompID ID, BaseComponent* comp, Archive& archive)
 	{
 		SerializeComponentFunction fn = g_Registers[ID].serializeFn;
 		if (fn) fn(comp, archive);
 	}
 
-	void deserialize_component(CompID ID, BaseComponent* comp, ArchiveI& archive)
+	void deserialize_component(CompID ID, BaseComponent* comp, Archive& archive)
 	{
 		DeserializeComponentFunction fn = g_Registers[ID].deserializeFn;
 		if (fn) fn(comp, archive);
@@ -1738,24 +1738,44 @@ namespace sv {
 	//////////////////////////////////////////// COMPONENTS ////////////////////////////////////////////////////////
 
 	
-	void SpriteComponent::serialize(ArchiveO& archive)
+	void SpriteComponent::serialize(Archive& archive)
 	{
 		archive << texture << texcoord << color << layer;
 	}
 
-	void SpriteComponent::deserialize(ArchiveI& archive)
+	void SpriteComponent::deserialize(Archive& archive)
 	{
 		archive >> texture >> texcoord >> color >> layer;
 	}
 
-	void CameraComponent::serialize(ArchiveO& archive)
+	void CameraComponent::serialize(Archive& archive)
 	{
 		archive << projection_type << near << far << width << height;
 	}
 
-	void CameraComponent::deserialize(ArchiveI& archive)
+	void CameraComponent::deserialize(Archive& archive)
 	{
 		archive >> (u32&)projection_type >> near >> far >> width >> height;
+	}
+
+	void MeshComponent::serialize(Archive& archive)
+	{
+		archive << mesh;
+	}
+
+	void MeshComponent::deserialize(Archive& archive)
+	{
+		archive >> mesh;
+	}
+
+	void LightComponent::serialize(Archive& archive)
+	{
+		archive << light_type << color << intensity << range << smoothness;
+	}
+
+	void LightComponent::deserialize(Archive& archive)
+	{
+		archive >> (u32&)light_type >> color >> intensity >> range >> smoothness;
 	}
 
 }

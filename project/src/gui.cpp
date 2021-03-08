@@ -307,7 +307,7 @@ namespace sv {
 		{
 			u64 hashcode = hash_string("GUI SYSTEM") ^ gui.hashcode;
 
-			ArchiveI archive;
+			Archive archive;
 
 			Result res = bin_read(hashcode, archive);
 			if (result_fail(res)) {
@@ -349,7 +349,7 @@ namespace sv {
 		{
 			u64 hashcode = hash_string("GUI SYSTEM") ^ gui.hashcode;
 
-			ArchiveO archive;
+			Archive archive;
 			archive << engine.version;
 
 			// Save window states
@@ -814,8 +814,6 @@ namespace sv {
 
 					while (gui.widgets[begin_index].type != gui.parent_index.type && gui.widgets[begin_index].index != gui.parent_index.index)
 						--begin_index;
-
-					++begin_index;
 
 					for (u32 i = begin_index; i < gui.widgets.size(); ++i) {
 

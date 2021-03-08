@@ -73,7 +73,7 @@ Result app_validate_scene(const char* name)
 	return Result_NotFound;
 }
 
-Result app_init_scene(Scene* scene, ArchiveI* archive)
+Result app_init_scene(Scene* scene, Archive* archive)
 {
 	if (archive == nullptr) {
 	
@@ -98,7 +98,7 @@ Result app_close_scene(Scene* scene)
 
 Result init()
 {
-	set_active_scene("Test");
+	//set_active_scene("Test");
 
 	return Result_Success;
 }
@@ -107,11 +107,8 @@ void update()
 {
 }
 
-void render()
+void update_scene(Scene* scene)
 {
-	CommandList cmd = graphics_commandlist_begin();
-
-	graphics_present(engine.window, engine.scene->offscreen, GPUImageLayout_RenderTarget, cmd);
 }
 
 Result close()
@@ -134,11 +131,11 @@ int main()
 	desc.minThreadsCount = 2u;
 	desc.callbacks.initialize = init;
 	desc.callbacks.update = update;
-	desc.callbacks.render = render;
 	desc.callbacks.close = close;
 
 	desc.callbacks.validate_scene = app_validate_scene;
 	desc.callbacks.initialize_scene = app_init_scene;
+	desc.callbacks.update_scene = update_scene;
 	desc.callbacks.close_scene = app_close_scene;
 	desc.callbacks.serialize_scene = nullptr;
 	desc.callbacks.get_scene_filepath = get_scene_filepath;

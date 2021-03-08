@@ -515,104 +515,97 @@ namespace sv {
 		return (bool)std::getline(stream, str);
 	}
 
-	ArchiveO::ArchiveO() : m_Capacity(0u), m_Size(0u), m_Data(nullptr)
+	Archive::Archive() : _capacity(0u), _size(0u), _data(nullptr), _pos(0u)
 	{}
 
-	ArchiveO::~ArchiveO()
+	Archive::~Archive()
 	{
 		free();
 	}
 
-	void ArchiveO::reserve(size_t size)
+	void Archive::reserve(size_t size)
 	{
-		if (m_Size + size > m_Capacity) {
+		if (_size + size > _capacity) {
 
-			size_t newSize = size_t(double(m_Size + size) * 1.5);
+			size_t newSize = size_t(double(_size + size) * 1.5);
+
+			bool write_version = false;
+
+			if (_size == 0u) {
+				newSize += sizeof(Version);
+				write_version = true;
+			}
+
 			allocate(newSize);
 
+			if (write_version) {
+				memcpy(_data, &engine.version, sizeof(Version));
+				_size = sizeof(Version);
+			}
 		}
 	}
 
-	void ArchiveO::write(const void* data, size_t size)
+	void Archive::write(const void* data, size_t size)
 	{
 		reserve(size);
 
-		memcpy(m_Data + m_Size, data, size);
-		m_Size += size;
+		memcpy(_data + _size, data, size);
+		_size += size;
 	}
 
-	void ArchiveO::erase(size_t size)
+	void Archive::read(void* data, size_t size)
 	{
-		SV_ASSERT(size <= m_Size);
-		m_Size -= size;
-	}
-
-	void ArchiveO::clear()
-	{
-		m_Size = 0u;
-	}
-
-	Result ArchiveO::saveFile(const char* filePath, bool append)
-	{
-		return file_write_binary(filePath, m_Data, m_Size, append);
-	}
-
-	void ArchiveO::allocate(size_t size)
-	{
-		u8* newData = (u8*)operator new(size);
-		if (m_Data) {
-			memcpy(newData, m_Data, m_Size);
-			operator delete[](m_Data);
-		}
-		m_Capacity = size;
-		m_Data = newData;
-	}
-
-	void ArchiveO::free()
-	{
-		if (m_Data) {
-			operator delete[](m_Data);
-			m_Data = nullptr;
-			m_Size = 0u;
-			m_Capacity = 0u;
-		}
-	}
-
-	// INPUT
-
-	ArchiveI::ArchiveI() : m_Size(0u), m_Pos(0u), m_Data(nullptr)
-	{
-	}
-
-	ArchiveI::~ArchiveI()
-	{
-		clear();
-	}
-
-	Result ArchiveI::open_file(const char* filePath)
-	{
-		return file_read_binary(filePath, &m_Data, &m_Size);
-	}
-
-	void ArchiveI::read(void* data, size_t size)
-	{
-		if (m_Pos + size > m_Size) {
-			size_t invalidSize = (m_Pos + size) - m_Size;
+		if (_pos + size > _size) {
+			size_t invalidSize = (_pos + size) - _size;
 			SV_ZERO_MEMORY((u8*)data + size - invalidSize, invalidSize);
 			size -= invalidSize;
 			SV_LOG_WARNING("Archive reading, out of bounds");
 		}
-		memcpy(data, m_Data + m_Pos, size);
-		m_Pos += size;
+		memcpy(data, _data + _pos, size);
+		_pos += size;
 	}
 
-	void ArchiveI::clear()
+	void Archive::erase(size_t size)
 	{
-		if (m_Data) {
-			operator delete[](m_Data);
-			m_Data = nullptr;
-			m_Size = 0u;
-			m_Pos = 0u;
+		SV_ASSERT(size <= _size);
+		_size -= size;
+	}
+
+	Result Archive::openFile(const char* filePath)
+	{
+		_pos = 0u;
+		svCheck(file_read_binary(filePath, &_data, &_size));
+		if (_size < sizeof(Version)) return Result_InvalidFormat;
+		this->operator>>(version);
+		return Result_Success;
+	}
+
+	Result Archive::saveFile(const char* filePath, bool append)
+	{
+		return file_write_binary(filePath, _data, _size, append);
+	}
+
+	void Archive::allocate(size_t size)
+	{
+		u8* newData = (u8*)operator new(size);
+
+		if (_data) {
+			memcpy(newData, _data, _size);
+			operator delete[](_data);
+		}
+
+		_data = newData;
+		_capacity = size;
+	}
+
+	void Archive::free()
+	{
+		if (_data) {
+			operator delete[](_data);
+			_data = nullptr;
+			_size = 0u;
+			_capacity = 0u;
+			_pos = 0u;
 		}
 	}
 
@@ -655,10 +648,10 @@ namespace sv {
 		return file_read_binary(filepath.c_str(), data);
 	}
 
-	Result bin_read(size_t hash, ArchiveI& archive)
+	Result bin_read(size_t hash, Archive& archive)
 	{
 		std::string filepath = "bin/" + std::to_string(hash) + ".bin";
-		svCheck(archive.open_file(filepath.c_str()));
+		svCheck(archive.openFile(filepath.c_str()));
 		return Result_Success;
 	}
 
@@ -668,7 +661,7 @@ namespace sv {
 		return file_write_binary(filepath.c_str(), (u8*)data, size);
 	}
 
-	Result bin_write(size_t hash, ArchiveO& archive)
+	Result bin_write(size_t hash, Archive& archive)
 	{
 		std::string filepath = bin_filepath(hash);
 		svCheck(archive.saveFile(filepath.c_str()));

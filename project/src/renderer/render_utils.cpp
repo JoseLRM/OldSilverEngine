@@ -6,7 +6,7 @@ namespace sv {
 
 	// RESOURCES
 
-	Result offscreen_create(u32 width, u32 height, GPUImage** pImage)
+	Result create_offscreen(u32 width, u32 height, GPUImage** pImage)
 	{
 		GPUImageDesc desc;
 		desc.format = OFFSCREEN_FORMAT;
@@ -18,7 +18,7 @@ namespace sv {
 		return graphics_image_create(&desc, pImage);
 	}
 
-	Result depthstencil_create(u32 width, u32 height, GPUImage** pImage)
+	Result create_depthstencil(u32 width, u32 height, GPUImage** pImage)
 	{
 		GPUImageDesc desc;
 		desc.width = width;

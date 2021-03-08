@@ -12,8 +12,8 @@ namespace sv {
 
 	// Functions
 
-	Result offscreen_create(u32 width, u32 height, GPUImage** pImage);
-	Result depthstencil_create(u32 width, u32 height, GPUImage** pImage);
+	Result create_offscreen(u32 width, u32 height, GPUImage** pImage);
+	Result create_depthstencil(u32 width, u32 height, GPUImage** pImage);
 
 	// TEXT RENDERING
 

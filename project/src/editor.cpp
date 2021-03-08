@@ -333,6 +333,24 @@ namespace sv {
 
 			}
 
+			if (CameraComponent::ID == comp_id) {
+
+				CameraComponent& cam = *reinterpret_cast<CameraComponent*>(comp);
+
+				bool main = engine.scene->main_camera == cam.entity;
+
+				if (gui_checkbox(gui, &main, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f))) {
+					
+					if (main) engine.scene->main_camera = cam.entity;
+					else engine.scene->main_camera = SV_ENTITY_NULL;
+				}
+
+				gui_text(gui, "Main Camera", GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f), text_style);
+
+				y += 30.f + editor.style.vertical_padding;
+
+			}
+
 		}
 
 		if (remove) {
@@ -772,12 +790,17 @@ namespace sv {
 			}
 		}
 
-		if (editor.camera_controller)
-			camera_controller3D(engine.scene, *get_main_camera(engine.scene), 0.3f);
+		if (editor.camera_controller) {
+
+			if (engine.scene == nullptr)
+				editor.camera_controller = false;
+			else
+				camera_controller3D(engine.scene, *get_main_camera(engine.scene), 0.3f);
+		}
 
 		gui_begin(g, f32(window_width_get(engine.window)), f32(window_height_get(engine.window)));
 
-		if (!editor.camera_controller) {
+		if (!editor.camera_controller && engine.scene != nullptr) {
 
 			display_entity_hierarchy();
 			display_entity_inspector();
@@ -795,34 +818,38 @@ namespace sv {
 		}
 	}
 
-	void draw_editor()
+	void draw_editor(CommandList cmd)
 	{
-		CommandList cmd = graphics_commandlist_get();
+		if (engine.scene) {
 
-		begin_debug_batch(cmd);
+			CameraComponent* cam = get_main_camera(engine.scene);
 
-		// Draw selected entity
-		if (editor.selected_entity != SV_ENTITY_NULL) {
+			if (cam) {
+				begin_debug_batch(cmd);
 
-			Transform trans = get_entity_transform(engine.scene, editor.selected_entity);
-			MeshComponent* mesh_comp = get_component<MeshComponent>(engine.scene, editor.selected_entity);
+				// Draw selected entity
+				if (editor.selected_entity != SV_ENTITY_NULL) {
 
-			if (mesh_comp && mesh_comp->mesh.get()) {
+					Transform trans = get_entity_transform(engine.scene, editor.selected_entity);
+					MeshComponent* mesh_comp = get_component<MeshComponent>(engine.scene, editor.selected_entity);
 
-				u8 alpha = 5u + u8(f32(sin(timer_now().toSeconds_f64() * 3.5f) + 1.0) * 50.f * 0.5f);
-				draw_debug_mesh_wireframe(mesh_comp->mesh.get(), trans.getWorldMatrix(), Color::Red(alpha), cmd);
+					if (mesh_comp && mesh_comp->mesh.get()) {
+
+						u8 alpha = 5u + u8(f32(sin(timer_now().toSeconds_f64() * 3.5f) + 1.0) * 50.f * 0.5f);
+						draw_debug_mesh_wireframe(mesh_comp->mesh.get(), trans.getWorldMatrix(), Color::Red(alpha), cmd);
+					}
+				}
+
+				// Draw gizmos
+				draw_gizmos(engine.offscreen, cmd);
+
+				Transform trans = get_entity_transform(engine.scene, cam->entity);
+				end_debug_batch(engine.offscreen, 0u, camera_view_projection_matrix(trans.getWorldPosition(), trans.getWorldRotation(), *cam), cmd);
 			}
 		}
 
-		// Draw gizmos
-		draw_gizmos(engine.scene->offscreen, cmd);
-
-		CameraComponent* cam = get_main_camera(engine.scene);
-		Transform trans = get_entity_transform(engine.scene, cam->entity);
-		end_debug_batch(engine.scene->offscreen, 0u, camera_view_projection_matrix(trans.getWorldPosition(), trans.getWorldRotation(), *cam), cmd);
-
 		// Draw gui
-		gui_draw(editor.gui, engine.scene->offscreen, cmd);
+		gui_draw(editor.gui, engine.offscreen, cmd);
 	}
 
 }

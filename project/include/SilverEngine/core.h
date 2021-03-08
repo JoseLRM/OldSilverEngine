@@ -468,53 +468,53 @@ namespace sv {
 		std::ifstream stream;
 	};
 
-	class ArchiveO {
+	struct Archive {
 
-		size_t m_Size;
-		size_t m_Capacity;
-		u8* m_Data;
-		
-	public:
-		ArchiveO();
-		~ArchiveO();
+		Archive();
+		~Archive();
 
 		void reserve(size_t size);
 		void write(const void* data, size_t size);
+		void read(void* data, size_t size);
 		void erase(size_t size);
-		void clear();
+		
+		SV_INLINE size_t size() const noexcept { return _size; }
+		SV_INLINE void clear() noexcept { _size = 0u; }
+		SV_INLINE void startRead() noexcept { _pos = 0u; }
 
+		Result openFile(const char* filePath);
 		Result saveFile(const char* filePath, bool append = false);
 
-		SV_INLINE ArchiveO& operator<<(char n) { write(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveO& operator<<(bool n) { write(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveO& operator<<(u8 n) { write(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveO& operator<<(u16 n) { write(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveO& operator<<(u32 n) { write(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveO& operator<<(u64 n) { write(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveO& operator<<(i8 n) { write(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveO& operator<<(i16 n) { write(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveO& operator<<(i32 n) { write(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveO& operator<<(i64 n) { write(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveO& operator<<(f32 n) { write(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveO& operator<<(f64 n) { write(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveO& operator<<(const Version& n) { write(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveO& operator<<(const XMFLOAT2& n) { write(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveO& operator<<(const XMFLOAT3& n) { write(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveO& operator<<(const XMFLOAT4& n) { write(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveO& operator<<(const XMMATRIX& n) { write(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveO& operator<<(const Color& n) { write(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveO& operator<<(const Color3f& n) { write(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveO& operator<<(const Color4f& n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator<<(char n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator<<(bool n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator<<(u8 n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator<<(u16 n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator<<(u32 n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator<<(u64 n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator<<(i8 n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator<<(i16 n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator<<(i32 n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator<<(i64 n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator<<(f32 n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator<<(f64 n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator<<(const Version& n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator<<(const XMFLOAT2& n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator<<(const XMFLOAT3& n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator<<(const XMFLOAT4& n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator<<(const XMMATRIX& n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator<<(const Color& n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator<<(const Color3f& n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator<<(const Color4f& n) { write(&n, sizeof(n)); return *this; }
 
 		template<typename T, typename F>
-		SV_INLINE ArchiveO& operator<<(const Vector2D<T, F>& n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator<<(const Vector2D<T, F>& n) { write(&n, sizeof(n)); return *this; }
 		template<typename T, typename F>
-		SV_INLINE ArchiveO& operator<<(const Vector3D<T, F>& n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator<<(const Vector3D<T, F>& n) { write(&n, sizeof(n)); return *this; }
 		template<typename T, typename F>
-		SV_INLINE ArchiveO& operator<<(const Vector4D<T, F>& n) { write(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator<<(const Vector4D<T, F>& n) { write(&n, sizeof(n)); return *this; }
 
 		template<typename T>
-		inline ArchiveO& operator<<(const std::vector<T>& vec)
+		inline Archive& operator<<(const std::vector<T>& vec)
 		{
 			size_t size = vec.size();
 			write(&size, sizeof(size_t));
@@ -525,7 +525,7 @@ namespace sv {
 			return *this;
 		}
 
-		inline ArchiveO& operator<<(const char* txt)
+		inline Archive& operator<<(const char* txt)
 		{
 			size_t txtLength = strlen(txt);
 			write(&txtLength, sizeof(size_t));
@@ -533,7 +533,7 @@ namespace sv {
 			return *this;
 		}
 
-		inline ArchiveO& operator<<(const wchar* txt)
+		inline Archive& operator<<(const wchar* txt)
 		{
 			size_t txtLength = wcslen(txt);
 			write(&txtLength, sizeof(size_t));
@@ -541,7 +541,7 @@ namespace sv {
 			return *this;
 		}
 
-		inline ArchiveO& operator<<(const std::string& str)
+		inline Archive& operator<<(const std::string& str)
 		{
 			size_t txtLength = str.size();
 			write(&txtLength, sizeof(size_t));
@@ -549,7 +549,7 @@ namespace sv {
 			return *this;
 		}
 
-		inline ArchiveO& operator<<(const std::wstring& str)
+		inline Archive& operator<<(const std::wstring& str)
 		{
 			size_t txtLength = str.size();
 			write(&txtLength, sizeof(size_t));
@@ -557,62 +557,38 @@ namespace sv {
 			return *this;
 		}
 
-	private:
-		void allocate(size_t size);
-		void free();
+		// READ
 
-	};
-
-	class ArchiveI {
-		u8* m_Data;
-		size_t m_Size;
-		size_t m_Pos;
-
-	public:
-		ArchiveI();
-		~ArchiveI();
-
-		Result open_file(const char* filePath);
-
-		void read(void* data, size_t size);
-
-		SV_INLINE size_t getPos() const noexcept { return m_Pos; }
-		SV_INLINE void setPos(size_t pos) noexcept { m_Pos = pos; }
-		SV_INLINE size_t size() const noexcept { return m_Size; }
-		SV_INLINE void reset() noexcept { m_Pos = 0u; }
-
-		void clear();
-
-		SV_INLINE ArchiveI& operator>>(bool& n) { read(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveI& operator>>(char& n) { read(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveI& operator>>(u8& n) { read(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveI& operator>>(u16& n) { read(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveI& operator>>(u32& n) { read(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveI& operator>>(u64& n) { read(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveI& operator>>(i8& n) { read(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveI& operator>>(i16& n) { read(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveI& operator>>(i32& n) { read(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveI& operator>>(i64& n) { read(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveI& operator>>(f32& n) { read(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveI& operator>>(f64& n) { read(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveI& operator>>(Version& n) { read(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveI& operator>>(XMFLOAT2& n) { read(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveI& operator>>(XMFLOAT3& n) { read(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveI& operator>>(XMFLOAT4& n) { read(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveI& operator>>(XMMATRIX& n) { read(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveI& operator>>(Color& n) { read(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveI& operator>>(Color3f& n) { read(&n, sizeof(n)); return *this; }
-		SV_INLINE ArchiveI& operator>>(Color4f& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator>>(bool& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator>>(char& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator>>(u8& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator>>(u16& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator>>(u32& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator>>(u64& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator>>(i8& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator>>(i16& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator>>(i32& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator>>(i64& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator>>(f32& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator>>(f64& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator>>(Version& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator>>(XMFLOAT2& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator>>(XMFLOAT3& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator>>(XMFLOAT4& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator>>(XMMATRIX& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator>>(Color& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator>>(Color3f& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator>>(Color4f& n) { read(&n, sizeof(n)); return *this; }
 
 		template<typename T, typename F>
-		SV_INLINE ArchiveI& operator>>(Vector2D<T, F>& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator>>(Vector2D<T, F>& n) { read(&n, sizeof(n)); return *this; }
 		template<typename T, typename F>
-		SV_INLINE ArchiveI& operator>>(Vector3D<T, F>& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator>>(Vector3D<T, F>& n) { read(&n, sizeof(n)); return *this; }
 		template<typename T, typename F>
-		SV_INLINE ArchiveI& operator>>(Vector4D<T, F>& n) { read(&n, sizeof(n)); return *this; }
+		SV_INLINE Archive& operator>>(Vector4D<T, F>& n) { read(&n, sizeof(n)); return *this; }
 
 		template<typename T>
-		ArchiveI& operator>>(std::vector<T>& vec)
+		Archive& operator>>(std::vector<T>& vec)
 		{
 			size_t size;
 			read(&size, sizeof(size_t));
@@ -622,7 +598,7 @@ namespace sv {
 			return *this;
 		}
 
-		ArchiveI& operator>>(std::string& str)
+		Archive& operator>>(std::string& str)
 		{
 			size_t txtLength;
 			read(&txtLength, sizeof(size_t));
@@ -631,7 +607,7 @@ namespace sv {
 			return *this;
 		}
 
-		ArchiveI& operator>>(std::wstring& str)
+		Archive& operator>>(std::wstring& str)
 		{
 			size_t txtLength;
 			read(&txtLength, sizeof(size_t));
@@ -640,15 +616,25 @@ namespace sv {
 			return *this;
 		}
 
+		size_t _pos;
+		size_t _size;
+		size_t _capacity;
+		u8* _data;
+		Version version;
+
+	private:
+		void allocate(size_t size);
+		void free();
+
 	};
 
 	Result load_image(const char* filePath, void** pdata, u32* width, u32* height);
 
 	Result bin_read(size_t hash, std::vector<u8>& data);
-	Result bin_read(size_t hash, ArchiveI& archive);
+	Result bin_read(size_t hash, Archive& archive);
 
 	Result bin_write(size_t hash, const void* data, size_t size);
-	Result bin_write(size_t hash, ArchiveO& archive);
+	Result bin_write(size_t hash, Archive& archive);
 
 	// Character utils
 
@@ -774,18 +760,19 @@ namespace sv {
 
 	struct Scene;
 	struct BaseComponent;
+	struct GPUImage;
 	
 	struct ApplicationCallbacks {
 		Result(*initialize)();
 		void(*update)();
-		void(*render)();
 		Result(*close)();
 
 		std::string(*get_scene_filepath)(const char* name);
 		Result(*validate_scene)(const char* name);
-		Result(*initialize_scene)(Scene* scene, ArchiveI* archive);
+		void(*update_scene)(Scene* scene);
+		Result(*initialize_scene)(Scene* scene, Archive* archive);
 		Result(*close_scene)(Scene* scene);
-		Result(*serialize_scene)(Scene* scene, ArchiveO archive);
+		Result(*serialize_scene)(Scene* scene, Archive archive);
 	};
 
 	struct GlobalEngineData {
@@ -795,13 +782,15 @@ namespace sv {
 		f32						deltatime = 0.f;
 		u64						frame_count = 0U;
 		u32						FPS = 0u;
-		ApplicationCallbacks	app_callbacks;
+		ApplicationCallbacks	callbacks;
 		bool					close_request = false;
 		bool					able_to_run = false;
 		Window*					window = nullptr;
 		Scene*					scene = nullptr;
 		std::string				next_scene_name;
 		bool					console_active = false;
+		GPUImage*				offscreen = nullptr;
+		GPUImage*				depthstencil = nullptr;
 	};
 
 	struct GlobalInputData {

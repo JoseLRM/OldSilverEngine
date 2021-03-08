@@ -472,7 +472,7 @@ namespace sv {
 
 	Result import_model(const char* filepath_, const ModelInfo& model_info)
 	{
-		ArchiveO archive;
+		Archive archive;
 
 		u32 unnamed_mesh_count = 0u;
 		std::stringstream ss;
@@ -512,9 +512,9 @@ namespace sv {
 
 	Result load_mesh(const char* filepath, Mesh& mesh)
 	{
-		ArchiveI archive;
+		Archive archive;
 
-		svCheck(archive.open_file(filepath));
+		svCheck(archive.openFile(filepath));
 
 		Version version;
 		archive >> version;
