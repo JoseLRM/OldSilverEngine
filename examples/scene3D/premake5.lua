@@ -5,15 +5,6 @@ workspace 'Scene3D'
 
 	include (engineDir .. "SolutionConfig.lua")
 
-	-- BUILDING OPTIONS
-
-	filter 'configurations:not Distribution'
-
-	defines {
-		'SV_ENABLE_GFX_VALIDATION',
-		'SV_ENABLE_ASSERTION',
-	}
-
 	-- PATHS
 
 	sysPath = engineDir
@@ -23,8 +14,6 @@ workspace 'Scene3D'
 		'SV_RES_PATH=\"' .. resPath .. '\"',
 		'SV_SYS_PATH=\"' .. sysPath .. '\"',
 	}
-
-	filter {}
 
 	-- INCLUDE SILVER ENGINE PROJECT
 

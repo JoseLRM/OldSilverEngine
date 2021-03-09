@@ -215,12 +215,13 @@ namespace sv {
 #define SV_PROFILER_CHRONO_END(x) sv::__internal__do_not_call_this_please_or_you_will_die__profiler_chrono_end(x)
 #define SV_PROFILER_CHRONO_GET(x) sv::__internal__do_not_call_this_please_or_you_will_die__profiler_chrono_get(x)
 
-// TODO
+/* TODO
 #ifdef SV_ENABLE_LOGGING
 #define SV_PROFILER_CHRONO_LOG(x) sv::__internal__do_not_call_this_please_or_you_will_die__console_log(5u, "[PROFILER] %s: %fms", x, sv::__internal__do_not_call_this_please_or_you_will_die__profiler_chrono_get(x))
 #else
 #define SV_PROFILER_CHRONO_LOG(x)
 #endif
+*/
 
 #define SV_PROFILER_SCALAR_SET(x, value) sv::__internal__do_not_call_this_please_or_you_will_die__profiler_scalar_set(x, value)
 #define SV_PROFILER_SCALAR_ADD(x, value) sv::__internal__do_not_call_this_please_or_you_will_die__profiler_scalar_add(x, value)
