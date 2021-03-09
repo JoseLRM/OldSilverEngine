@@ -15,12 +15,9 @@ namespace sv {
 	Result create_offscreen(u32 width, u32 height, GPUImage** pImage);
 	Result create_depthstencil(u32 width, u32 height, GPUImage** pImage);
 
-	// TEXT RENDERING
+	// TEXT RENDERING (Clip space rendering)
 
-	/*
-		Clip space rendering
-		Return the number of character rendered
-	*/
+	// Return the number of character rendered
 	u32 draw_text(GPUImage* offscreen, const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, Font* pFont, Color color, CommandList cmd);
 
 	SV_INLINE u32 draw_text(GPUImage* offscreen, const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, Font* pFont, CommandList cmd)

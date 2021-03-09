@@ -468,6 +468,60 @@ namespace sv {
 		return Result_Success;
 	}
 
+	Result create_entity_model(Scene* scene_, Entity parent, const char* filepath)
+	{
+		SV_PARSE_FILEPATH();
+
+		// TODO: Optimize
+		PARSE_SCENE();
+		
+		if (!std::filesystem::exists(filepath))
+			return Result_NotFound;
+
+		for (const auto& entry : std::filesystem::directory_iterator(filepath)) {
+
+			if (entry.is_directory()) continue;
+
+			std::string extension = parse_string(entry.path().extension().c_str());
+
+			if (strcmp(extension.c_str(), ".mesh") == 0) {
+
+#ifdef SV_RES_PATH
+				std::string path = parse_string(entry.path().c_str() + strlen(SV_RES_PATH));
+#else
+				std::string path = parse_string(entry.path().c_str());
+#endif
+				path_clear(path.data());
+
+				MeshAsset mesh;
+
+				Result res = load_asset_from_file(mesh, path.c_str());
+
+				if (result_okay(res)) {
+					
+					Mesh* m = mesh.get();
+
+					Entity entity = create_entity(scene_, parent);
+					MeshComponent* comp = add_component<MeshComponent>(scene_, entity);
+					comp->mesh = mesh;
+
+					if (m->model_material_filepath.size()) {
+					
+						MaterialAsset mat;
+						res = load_asset_from_file(mat, m->model_material_filepath.c_str());
+
+						if (result_okay(res)) {
+							
+							comp->material = mat;
+						}
+					}
+				}
+			}
+		}
+		
+		return Result_Success;
+	}
+
 	void update_scene(Scene* scene_)
 	{
 		PARSE_SCENE();
@@ -1760,12 +1814,12 @@ namespace sv {
 
 	void MeshComponent::serialize(Archive& archive)
 	{
-		archive << mesh;
+		archive << mesh << material;
 	}
 
 	void MeshComponent::deserialize(Archive& archive)
 	{
-		archive >> mesh;
+		archive >> mesh >> material;
 	}
 
 	void LightComponent::serialize(Archive& archive)

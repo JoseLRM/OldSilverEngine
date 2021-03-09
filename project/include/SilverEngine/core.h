@@ -425,13 +425,14 @@ namespace sv {
 
 	bool path_is_absolute(const wchar* path);
 
-	Result file_read_binary(const char* filePath, u8** pData, size_t* pSize);
-	Result file_read_binary(const char* filePath, std::vector<u8>& data);
-	Result file_read_text(const char* filePath, std::string& str);
-	Result file_write_binary(const char* filePath, const u8* data, size_t size, bool append = false);
-	Result file_write_text(const char* filePath, const char* str, size_t size, bool append = false);
+	Result file_read_binary(const char* filepath, u8** pData, size_t* pSize);
+	Result file_read_binary(const char* filepath, std::vector<u8>& data);
+	Result file_read_text(const char* filepath, std::string& str);
+	Result file_write_binary(const char* filepath, const u8* data, size_t size, bool append = false);
+	Result file_write_text(const char* filepath, const char* str, size_t size, bool append = false);
 
-	Result file_remove(const char* filePath);
+	Result file_remove(const char* filepath);
+	Result file_copy(const char* srcpath, const char* dstpath);
 
 	struct FileO {
 
@@ -479,8 +480,8 @@ namespace sv {
 		void erase(size_t size);
 		
 		SV_INLINE size_t size() const noexcept { return _size; }
-		SV_INLINE void clear() noexcept { _size = 0u; }
-		SV_INLINE void startRead() noexcept { _pos = 0u; }
+		SV_INLINE void clear() noexcept { if (_size) _size = sizeof(Version); }
+		SV_INLINE void startRead() noexcept { _pos = sizeof(Version); }
 
 		Result openFile(const char* filePath);
 		Result saveFile(const char* filePath, bool append = false);

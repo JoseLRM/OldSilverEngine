@@ -598,7 +598,7 @@ namespace sv {
 
 	struct MeshInstance {
 
-		XMMATRIX	transform_matrix;
+		XMMATRIX transform_matrix;
 		Mesh* mesh;
 		Material* material;
 
@@ -845,7 +845,7 @@ namespace sv {
 							if (m == nullptr) continue;
 
 							Transform trans = get_entity_transform(scene, mesh.entity);
-							mesh_instances.emplace_back(trans.getWorldMatrix(), m, &mesh.material);
+							mesh_instances.emplace_back(trans.getWorldMatrix(), m, mesh.material.get());
 						}
 					}
 
@@ -931,28 +931,40 @@ namespace sv {
 								MaterialData material_data;
 								material_data.flags = 0u;
 
-								GPUImage* diffuse_map = inst.material->diffuse_map.get();
-								GPUImage* normal_map = inst.material->normal_map.get();
-								GPUImage* specular_map = inst.material->specular_map.get();
-								GPUImage* emissive_map = inst.material->emissive_map.get();
+								if (inst.material) {
 
-								graphics_image_bind(diffuse_map ? diffuse_map : gfx.image_white, 0u, ShaderType_Pixel, cmd);
-								if (normal_map) { graphics_image_bind(normal_map, 1u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_NORMAL_MAPPING; }
-								// TODO: I don't know why i need to do this. The shader shouldn't sample this texture without the flag...
-								else graphics_image_bind(gfx.image_white, 1u, ShaderType_Pixel, cmd);
+									GPUImage* diffuse_map = inst.material->diffuse_map.get();
+									GPUImage* normal_map = inst.material->normal_map.get();
+									GPUImage* specular_map = inst.material->specular_map.get();
+									GPUImage* emissive_map = inst.material->emissive_map.get();
 
-								if (specular_map) { graphics_image_bind(specular_map, 2u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_SPECULAR_MAPPING; }
-								// TODO: I don't know why i need to do this. The shader shouldn't sample this texture without the flag...
-								else graphics_image_bind(gfx.image_white, 2u, ShaderType_Pixel, cmd);
+									graphics_image_bind(diffuse_map ? diffuse_map : gfx.image_white, 0u, ShaderType_Pixel, cmd);
+									if (normal_map) { graphics_image_bind(normal_map, 1u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_NORMAL_MAPPING; }
+									else graphics_image_bind(gfx.image_white, 1u, ShaderType_Pixel, cmd);
 
-								if (emissive_map) { graphics_image_bind(emissive_map, 3u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_EMISSIVE_MAPPING; }
-								// TODO: I don't know why i need to do this. The shader shouldn't sample this texture without the flag...
-								else graphics_image_bind(gfx.image_white, 3u, ShaderType_Pixel, cmd);
+									if (specular_map) { graphics_image_bind(specular_map, 2u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_SPECULAR_MAPPING; }
+									else graphics_image_bind(gfx.image_white, 2u, ShaderType_Pixel, cmd);
 
-								material_data.diffuse_color = inst.material->diffuse_color;
-								material_data.specular_color = inst.material->specular_color;
-								material_data.emissive_color = inst.material->emissive_color;
-								material_data.shininess = inst.material->shininess;
+									if (emissive_map) { graphics_image_bind(emissive_map, 3u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_EMISSIVE_MAPPING; }
+									else graphics_image_bind(gfx.image_white, 3u, ShaderType_Pixel, cmd);
+
+									material_data.diffuse_color = inst.material->diffuse_color;
+									material_data.specular_color = inst.material->specular_color;
+									material_data.emissive_color = inst.material->emissive_color;
+									material_data.shininess = inst.material->shininess;
+								}
+								else {
+
+									graphics_image_bind(gfx.image_white, 0u, ShaderType_Pixel, cmd);
+									graphics_image_bind(gfx.image_white, 1u, ShaderType_Pixel, cmd);
+									graphics_image_bind(gfx.image_white, 2u, ShaderType_Pixel, cmd);
+									graphics_image_bind(gfx.image_white, 3u, ShaderType_Pixel, cmd);
+
+									material_data.diffuse_color = Color3f::Gray(0.45f);
+									material_data.specular_color = Color3f::Gray(0.5f);
+									material_data.emissive_color = Color3f::Black();
+									material_data.shininess = 0.5f;
+								}
 
 								graphics_buffer_update(material_buffer, &material_data, sizeof(MaterialData), 0u, cmd);
 							}
@@ -992,6 +1004,7 @@ namespace sv {
 		graphics_blendstate_unbind(cmd);
 		graphics_inputlayoutstate_bind(gfx.ils_sky, cmd);
 		graphics_rasterizerstate_unbind(cmd);
+		graphics_topology_set(GraphicsTopology_Triangles, cmd);
 
 		graphics_vertexbuffer_bind(gfx.vbuffer_skybox, 0u, 0u, cmd);
 		graphics_constantbuffer_bind(gfx.cbuffer_skybox, 0u, ShaderType_Vertex, cmd);

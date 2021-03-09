@@ -12,7 +12,6 @@ namespace sv {
 	/*
 	  TODO LIST:
 	  - Align memory using only one allocator
-	  - Popups
 	  - Combobox
 	  - Handle text dynamic memory
 	  - Hot Label ????

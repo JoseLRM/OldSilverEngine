@@ -4,9 +4,11 @@
 
 namespace sv {
 
-	void camera_controller2D(Scene* scene, CameraComponent& camera, f32 max_projection_length)
+	static void camera_controller2D(Scene* scene, CameraComponent* camera, f32 max_projection_length)
 	{
-		Transform trans = get_entity_transform(scene, camera.entity);
+		if (camera == nullptr) return;
+
+		Transform trans = get_entity_transform(scene, camera->entity);
 
 		v2_f32 position = trans.getWorldPosition().getVec2();
 
@@ -16,7 +18,7 @@ namespace sv {
 
 			v2_f32 drag = input.mouse_dragged;
 
-			position -= drag * v2_f32{ camera.width, camera.height };
+			position -= drag * v2_f32{ camera->width, camera->height };
 		}
 
 		if (input.mouse_wheel != 0.f) {
@@ -24,19 +26,21 @@ namespace sv {
 			f32 force = 0.05f;
 			if (input.keys[Key_Shift] == InputState_Hold) force *= 3.f;
 
-			f32 length = camera.getProjectionLength();
+			f32 length = camera->getProjectionLength();
 
 			f32 new_length = std::min(length - input.mouse_wheel * length * force, max_projection_length);
-			camera.setProjectionLength(new_length);
+			camera->setProjectionLength(new_length);
 		}
 
 		input.unused = false;
 		trans.setPosition(position.getVec3());
 	}
 
-	void camera_controller3D(Scene* scene, CameraComponent& camera, f32 velocity)
+	static void camera_controller3D(Scene* scene, CameraComponent* camera, f32 velocity)
 	{
-		Transform trans = get_entity_transform(scene, camera.entity);
+		if (camera == nullptr) return;
+
+		Transform trans = get_entity_transform(scene, camera->entity);
 
 		v3_f32 position = trans.getLocalPosition();
 		XMVECTOR rotation = trans.getLocalRotation().get_dx();
@@ -305,11 +309,8 @@ namespace sv {
 					if (gui_button(gui, "New", GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(5.f), GuiCoord::IPixel(25.f))) {
 
 						const char* filters[] = {
+						"mesh", "*.mesh",
 						"all", "*",
-						"png", "*.png",
-						"jpg", "*.jpg",
-						"jpeg", "*.jpeg",
-						"gif", "*.gif",
 						};
 
 						// TODO: Custom file dialog
@@ -324,6 +325,37 @@ namespace sv {
 					if (gui_button(gui, "Remove", GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(30.f), GuiCoord::IPixel(50.f))) {
 
 						unload_asset(m.mesh);
+					}
+
+					gui_end_popup(gui);
+				}
+
+				y += 30.f + editor.style.vertical_padding;
+
+				gui_text(gui, "Material", GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f), text_style);
+				gui_button(gui, "Something", GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f));
+
+				if (gui_begin_popup(gui, GuiPopupTrigger_LastWidget, MouseButton_Left, 0x3489ab324u + gui_id)) {
+
+					if (gui_button(gui, "New", GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(5.f), GuiCoord::IPixel(25.f))) {
+
+						const char* filters[] = {
+						"mat", "*.mat",
+						"all", "*",
+						};
+
+						// TODO: Custom file dialog
+						std::string filepath = file_dialog_open(sizeof(filters) / sizeof(const char*) / 2u, filters, "");
+
+						if (filepath.size()) {
+
+							load_asset_from_file(m.material, filepath.c_str());
+						}
+					}
+
+					if (gui_button(gui, "Remove", GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(30.f), GuiCoord::IPixel(50.f))) {
+
+						unload_asset(m.material);
 					}
 
 					gui_end_popup(gui);
@@ -795,22 +827,30 @@ namespace sv {
 			if (engine.scene == nullptr)
 				editor.camera_controller = false;
 			else
-				camera_controller3D(engine.scene, *get_main_camera(engine.scene), 0.3f);
+				camera_controller3D(engine.scene, get_main_camera(engine.scene), 0.3f);
+		}
+
+		if (!entity_exist(engine.scene, editor.selected_entity)) {
+			editor.selected_entity = SV_ENTITY_NULL;
 		}
 
 		gui_begin(g, f32(window_width_get(engine.window)), f32(window_height_get(engine.window)));
 
-		if (!editor.camera_controller && engine.scene != nullptr) {
+		if (!editor.camera_controller) {
 
-			display_entity_hierarchy();
-			display_entity_inspector();
-			display_asset_browser();
-
+			if (engine.scene != nullptr) {
+				display_entity_hierarchy();
+				display_entity_inspector();
+				display_asset_browser();
+			}
+			else {
+				// TODO
+			}
 		}
 
 		gui_end(g);
 
-		if (input.unused) {
+		if (input.unused && engine.scene) {
 
 			// Entity selection
 			if (input.mouse_buttons[MouseButton_Left] == InputState_Released)
@@ -832,11 +872,36 @@ namespace sv {
 
 					Transform trans = get_entity_transform(engine.scene, editor.selected_entity);
 					MeshComponent* mesh_comp = get_component<MeshComponent>(engine.scene, editor.selected_entity);
+					SpriteComponent* sprite_comp = get_component<SpriteComponent>(engine.scene, editor.selected_entity);
+
+					
 
 					if (mesh_comp && mesh_comp->mesh.get()) {
-
+						
 						u8 alpha = 5u + u8(f32(sin(timer_now().toSeconds_f64() * 3.5f) + 1.0) * 50.f * 0.5f);
 						draw_debug_mesh_wireframe(mesh_comp->mesh.get(), trans.getWorldMatrix(), Color::Red(alpha), cmd);
+					}
+					if (sprite_comp) {
+
+						XMVECTOR p0 = XMVectorSet(-0.5f, 0.5f, 0.f, 1.f);
+						XMVECTOR p1 = XMVectorSet(0.5f, 0.5f, 0.f, 1.f);
+						XMVECTOR p2 = XMVectorSet(-0.5f, -0.5f, 0.f, 1.f);
+						XMVECTOR p3 = XMVectorSet(0.5f, -0.5f, 0.f, 1.f);
+
+						XMMATRIX tm = trans.getWorldMatrix();
+
+						p0 = XMVector3Transform(p0, tm);
+						p1 = XMVector3Transform(p1, tm);
+						p2 = XMVector3Transform(p2, tm);
+						p3 = XMVector3Transform(p3, tm);
+
+						u8 alpha = 50u + u8(f32(sin(timer_now().toSeconds_f64() * 3.5f) + 1.0) * 200.f * 0.5f);
+						Color selection_color = Color::Red(alpha);
+
+						draw_debug_line(v3_f32(p0), v3_f32(p1), selection_color, cmd);
+						draw_debug_line(v3_f32(p1), v3_f32(p3), selection_color, cmd);
+						draw_debug_line(v3_f32(p3), v3_f32(p2), selection_color, cmd);
+						draw_debug_line(v3_f32(p2), v3_f32(p0), selection_color, cmd);
 					}
 				}
 

@@ -3,59 +3,6 @@
 
 using namespace sv;
 
-void load_model(Scene* scene, const char* filepath, f32 scale = f32_max)
-{
-	ModelInfo info;
-	if (result_fail(load_model(filepath, info))) {
-		SV_LOG_ERROR("Can't load the model");
-	}
-	else {
-
-		for (u32 i = 0u; i < info.meshes.size(); ++i) {
-
-			MeshInfo& m = info.meshes[i];
-
-			Entity e = create_entity(scene);
-
-			MeshComponent& comp = *add_component<MeshComponent>(scene, e);
-
-			create_asset(comp.mesh, "Mesh");
-			Mesh& mesh = *comp.mesh.get();
-
-			mesh.positions = std::move(m.positions);
-			mesh.normals = std::move(m.normals);
-			mesh.tangents = std::move(m.tangents);
-			mesh.bitangents = std::move(m.bitangents);
-			mesh.texcoords = std::move(m.texcoords);
-			mesh.indices = std::move(m.indices);
-
-			if (scale != f32_max)
-				mesh_set_scale(mesh, scale, true);
-			mesh_create_buffers(mesh);
-
-			if (m.name.size()) {
-
-				set_entity_name(scene, e, m.name.c_str());
-			}
-
-			MaterialInfo& mat = info.materials[m.material_index];
-
-			comp.material.diffuse_color = mat.diffuse_color;
-			comp.material.specular_color = mat.specular_color;
-			comp.material.emissive_color = mat.emissive_color;
-			comp.material.emissive_color = Color3f::Blue();
-			comp.material.shininess = std::max(mat.shininess, 0.1f);
-			comp.material.diffuse_map = mat.diffuse_map;
-			comp.material.normal_map = mat.normal_map;
-			comp.material.specular_map = mat.specular_map;
-			comp.material.emissive_map = mat.emissive_map;
-
-			Transform trans = get_entity_transform(scene, e);
-			trans.setMatrix(m.transform_matrix);
-		}
-	}
-}
-
 Result app_validate_scene(const char* name)
 {
 	const char* valid_names[] = {

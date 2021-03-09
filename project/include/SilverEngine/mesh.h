@@ -27,6 +27,11 @@ namespace sv {
 		GPUBuffer* vbuffer = nullptr;
 		GPUBuffer* ibuffer = nullptr;
 
+		// Info about the importation of the 3D Model
+
+		XMMATRIX model_transform_matrix = XMMatrixIdentity();
+		std::string model_material_filepath;
+
 	};
 
 	struct Material {
@@ -41,6 +46,7 @@ namespace sv {
 	}; 
 
 	SV_DEFINE_ASSET(MeshAsset, Mesh);
+	SV_DEFINE_ASSET(MaterialAsset, Material);
 
 	void mesh_apply_plane(Mesh& mesh, const XMMATRIX& transform = XMMatrixIdentity());
 	void mesh_apply_cube(Mesh& mesh, const XMMATRIX& transform = XMMatrixIdentity());
@@ -79,13 +85,14 @@ namespace sv {
 		Color3f specular_color;
 		Color3f emissive_color;
 		f32 shininess;
-		TextureAsset diffuse_map;
-		TextureAsset normal_map;
-		TextureAsset specular_map;
-		TextureAsset emissive_map;
+		std::string diffuse_map_path;
+		std::string normal_map_path;
+		std::string specular_map_path;
+		std::string emissive_map_path;
 	};
 
 	struct ModelInfo {
+		std::string folderpath;
 		std::vector<MeshInfo> meshes;
 		std::vector<MaterialInfo> materials;
 	};
@@ -94,5 +101,6 @@ namespace sv {
 	Result import_model(const char* filepath, const ModelInfo& model_info);
 
 	Result load_mesh(const char* filepath, Mesh& mesh);
+	Result load_material(const char* filepath, Material& material);
 
 }

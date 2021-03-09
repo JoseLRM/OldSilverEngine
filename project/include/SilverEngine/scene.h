@@ -28,6 +28,8 @@ namespace sv {
 	Result save_scene(Scene* scene, const char* filepath);
 	Result clear_scene(Scene* scene);
 
+	Result create_entity_model(Scene* scene, Entity parent, const char* filepath);
+
 	CameraComponent* get_main_camera(Scene* scene);
 
 	Ray screen_to_world_ray(v2_f32 position, const v3_f32& camera_position, const v4_f32& camera_rotation, CameraComponent* camera);
@@ -385,8 +387,8 @@ namespace sv {
 
 	SV_DEFINE_COMPONENT(MeshComponent) {
 
-		MeshAsset	mesh;
-		Material	material;
+		MeshAsset		mesh;
+		MaterialAsset	material;
 
 		void serialize(Archive& archive);
 		void deserialize(Archive& archive);

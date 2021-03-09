@@ -107,6 +107,26 @@ namespace sv {
 		return Result_Success;
 	}
 
+	static Result create_material_asset(void* asset)
+	{
+		Material& material = *new(asset) Material();
+		return Result_Success;
+	}
+
+	static Result load_material_asset(void* asset, const char* filepath)
+	{
+		Material& material = *new(asset) Material();
+		svCheck(load_material(filepath, material));
+		return Result_Success;
+	}
+
+	static Result free_material_asset(void* asset)
+	{
+		Material& mat = *reinterpret_cast<Material*>(asset);
+		mat.~Material();
+		return Result_Success;
+	}
+
 	// Initialization
 
 #define INIT_SYSTEM(name, fn) res = fn; if (result_okay(res)) SV_LOG_INFO(name ": %s", result_str(res)); else { SV_LOG_ERROR(name ": %s", result_str(res)); return res; }
@@ -180,6 +200,20 @@ namespace sv {
 			desc.free = free_mesh_asset;
 			desc.reload_file = nullptr;
 			desc.unused_time = 5.f;
+
+			svCheck(register_asset_type(&desc));
+
+			// Material
+			extensions[0] = "mat";
+
+			desc.name = "Material";
+			desc.asset_size = sizeof(Material);
+			desc.extension_count = 1u;
+			desc.create = create_material_asset;
+			desc.load_file = load_material_asset;
+			desc.free = free_material_asset;
+			desc.reload_file = nullptr;
+			desc.unused_time = 2.5f;
 
 			svCheck(register_asset_type(&desc));
 		}

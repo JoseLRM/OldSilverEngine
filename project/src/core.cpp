@@ -409,6 +409,30 @@ namespace sv {
 		return (remove(filepath) != 0) ? Result_NotFound : Result_Success;
 	}
 
+	Result file_copy(const char* srcpath_, const char* dstpath_)
+	{
+		// TODO: Optimize
+		std::string srcpath;
+		std::string dstpath;
+		
+		{
+			const char* filepath = srcpath_;
+			SV_PARSE_FILEPATH();
+			srcpath = filepath;
+		}
+		{
+			const char* filepath = dstpath_;
+			SV_PARSE_FILEPATH();
+			dstpath = filepath;
+		}
+
+		std::ifstream src(srcpath, std::ios::binary);
+		std::ofstream dest(dstpath, std::ios::binary);
+		dest << src.rdbuf();
+
+		return (src && dest) ? Result_Success : Result_NotFound;
+	}
+
 	Result FileO::open(const char* filepath, bool text, bool append)
 	{
 		close();

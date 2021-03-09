@@ -195,6 +195,21 @@ namespace sv {
 		return Result_Success;
 	}
 
+	static Result command_create_entity_model(const char** args, u32 argc) {
+
+		if (argc != 1u) {
+			SV_LOG_ERROR("This command need one argument");
+			return Result_InvalidUsage;
+		}
+
+		if (engine.scene == nullptr) {
+			SV_LOG_ERROR("Must initialize a scene");
+			return Result_InvalidUsage;
+		}
+
+		return create_entity_model(engine.scene, SV_ENTITY_NULL, args[0]);
+	}
+
 	void initialize_console()
 	{
 		console_buffer.buff = (char*)malloc(CONSOLE_SIZE);
@@ -212,6 +227,7 @@ namespace sv {
 		register_command("import_model", command_import_mesh);
 		register_command("save_scene", command_save_scene);
 		register_command("clear_scene", command_clear_scene);
+		register_command("create_entity_model", command_create_entity_model);
 	}
 
 	void close_console()
