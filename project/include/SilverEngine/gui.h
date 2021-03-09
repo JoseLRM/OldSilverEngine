@@ -138,6 +138,7 @@ namespace sv {
 	
 	bool gui_begin_popup(GUI* gui, GuiPopupTrigger trigger, MouseButton mouse_button, u64 id, const GuiPopupStyle& style = {});
 	void gui_end_popup(GUI* gui);
+	void gui_open_popup(GUI* gui, u64 id);
 
 	bool gui_begin_window(GUI* gui, const char* title, const GuiWindowStyle& style = {});
 	void gui_end_window(GUI* gui);

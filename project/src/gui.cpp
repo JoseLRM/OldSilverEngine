@@ -16,8 +16,6 @@ namespace sv {
 	  - Handle text dynamic memory
 	  - Hot Label ????
 	  - Draw first the container with the focus
-	  - GuiDrag rendering
-	  - Remove GuiDim and use only coords
 	  - Reverse rendering
 	*/
 
@@ -906,11 +904,23 @@ namespace sv {
 
 		return true;
 	}
-
+	
 	void gui_end_popup(GUI* gui_)
 	{
 		PARSE_GUI();
 		end_parent(gui);
+	}
+
+	void gui_open_popup(GUI* gui_, u64 id)
+	{
+		PARSE_GUI();
+
+		GuiPopupState* state;
+		
+		auto it = gui.popup_state.find(id);
+		if (it == gui.popup_state.end()) return;
+		
+		state->active = true;
 	}
 
 	bool gui_button(GUI* gui_, const char* text, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiButtonStyle& style)
