@@ -87,6 +87,14 @@ namespace sv {
 				key = Key_Right;
 				break;
 
+			case VK_UP:
+				key = Key_Up;
+				break;
+
+			case VK_DOWN:
+				key = Key_Down;
+				break;
+
 			case 13:
 				key = Key_Enter;
 				break;
@@ -482,7 +490,7 @@ namespace sv {
 
 		wnd.resized = false;
 
-#ifndef SV_DIST
+#ifdef SV_DEV
 		if (window == engine.window) {
 
 			static u32 last_fps = 0u;

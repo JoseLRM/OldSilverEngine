@@ -20,11 +20,7 @@ namespace sv {
 		u32 random = math_random_u32(seed);
 
 		seed += 100;
-#ifdef SV_SYS_PATH
-		std::string filePath = "$system/" + std::to_string(random);
-#else
-		std::string filePath = "system/" + std::to_string(random);
-#endif
+		std::string filePath = SV_SYS("system/") + std::to_string(random);
 
 		return filePath;
 	}
@@ -41,7 +37,7 @@ namespace sv {
 		tempFile.write((u8*)str, size);
 		tempFile.close();
 
-#ifdef SV_SYS_PATH
+#if defined(SV_SYS_PATH) && defined(SV_PATH)
 		Result res = graphics_shader_compile_file(desc, filePath.c_str() + 1u, data);
 #else
 		Result res = graphics_shader_compile_file(desc, filePath.c_str(), data);
@@ -60,7 +56,7 @@ namespace sv {
 
 		// .exe path
 		{
-#if defined(SV_SYS_PATH) || defined(SV_RES_PATH)
+#if defined(SV_PATH) && (defined(SV_SYS_PATH) || defined(SV_RES_PATH))
 #ifdef SV_SYS_PATH
 			std::string syspath = SV_SYS_PATH;
 #else
@@ -117,7 +113,7 @@ namespace sv {
 		{
 			const char* includepath = "system/shaders";
 
-#ifdef SV_SYS_PATH
+#if defined(SV_PATH) && defined(SV_SYS_PATH)
 			std::string includepath_str = SV_SYS_PATH;
 			includepath_str += includepath;
 			includepath = includepath_str.c_str();
@@ -175,11 +171,11 @@ namespace sv {
 		}
 
 		// Input - Output
-#ifdef SV_SYS_PATH
+#if defined(SV_SYS_PATH) && defined(SV_PATH)
 		bat << SV_SYS_PATH;
 #endif
 		bat << srcPath << " -Fo ";
-#ifdef SV_SYS_PATH
+#if defined(SV_SYS_PATH) && defined(SV_PATH)
 		bat << SV_SYS_PATH;
 		bat << filePath.c_str() + 1u;
 #else
@@ -210,7 +206,7 @@ namespace sv {
 		ShaderDesc desc;
 		desc.shaderType = shaderType;
 
-#ifdef SV_ENABLE_GFX_VALIDATION
+#ifdef SV_GRAPHICS
 		if (alwaisCompile || result_fail(bin_read(hash, data))) {
 #else
 		if (result_fail(bin_read(hash, data))) {
@@ -243,13 +239,17 @@ namespace sv {
 		ShaderDesc desc;
 		desc.shaderType = shaderType;
 
-#ifdef SV_ENABLE_GFX_VALIDATION
+#ifdef SV_GRAPHICS
 		if (alwaisCompile || result_fail(bin_read(hash, data))) {
 #else
 		if (result_fail(bin_read(hash, data))) {
 #endif
 			std::string str;
-			svCheck(file_read_text(filePath, str));
+			Result res = file_read_text(filePath, str);
+			if (result_fail(res)) {
+				SV_LOG_ERROR("Shader source not found: %s", filePath);
+				return res;
+			}
 
 			ShaderCompileDesc c;
 			c.api = graphics_api_get();
@@ -258,7 +258,12 @@ namespace sv {
 			c.minorVersion = 0u;
 			c.shaderType = shaderType;
 
-			svCheck(graphics_shader_compile_string(&c, str.data(), u32(strlen(str.data())), data));
+			res = graphics_shader_compile_string(&c, str.data(), u32(strlen(str.data())), data);
+			if (result_fail(res)) {
+				SV_LOG_ERROR("Can't compile the shader '%s'", filePath);
+				return res;
+			}
+
 			svCheck(bin_write(hash, data.data(), u32(data.size())));
 
 			SV_LOG_INFO("Shader Compiled: '%s'", name);

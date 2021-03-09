@@ -15,7 +15,7 @@ namespace sv {
 	static bool scroll_selected = false;
 	static f32 show_fade = 0.f;
 
-	static constexpr u32 HISTORY_COUNT = 300u;
+	static constexpr u32 HISTORY_COUNT = 100u;
 	static constexpr u32 CONSOLE_SIZE = 10000u;
 	static constexpr f32 CONSOLE_HEIGHT = 1.7f;
 	static constexpr u32 LINE_COUNT = 35u;
@@ -122,9 +122,9 @@ namespace sv {
 		return Result_Success;
 	}
 
-	static Result command_import_mesh(const char** args, u32 argc) 
+	static Result command_import_model(const char** args, u32 argc) 
 	{
-		if (argc < 2u) {
+		if (argc < 1u) {
 			SV_LOG_ERROR("This command need more arguments");
 			return Result_InvalidUsage;
 		}
@@ -134,8 +134,27 @@ namespace sv {
 			return Result_InvalidUsage;
 		}
 
-		const char* srcpath = args[0u];
-		const char* dstpath = args[1u];
+		const char* srcpath;
+		const char* dstpath;
+
+		std::string srcpath_str;
+
+		if (argc == 2u) {
+			srcpath = args[0u];
+			dstpath = args[1u];
+		}
+		else {
+			dstpath = args[0u];
+
+			const char* filters[] = {
+				"all", "*",
+				"obj", "*.obj",
+			};
+
+			srcpath_str = file_dialog_open(2u, filters, "");
+			if (srcpath_str.empty()) return Result_Success;
+			srcpath = srcpath_str.c_str();
+		}
 
 		ModelInfo model_info;
 
@@ -229,7 +248,7 @@ namespace sv {
 		register_command("scene", command_scene);
 		register_command("fps", command_fps);
 		register_command("timer", command_timer);
-		register_command("import_model", command_import_mesh);
+		register_command("import_model", command_import_model);
 		register_command("save_scene", command_save_scene);
 		register_command("clear_scene", command_clear_scene);
 		register_command("create_entity_model", command_create_entity_model);
@@ -238,15 +257,24 @@ namespace sv {
 		{
 			Archive archive;
 			
-			Result res = bin_read(archive, hash_string("CONSOLE HISTORY"));
+			Result res = bin_read(hash_string("CONSOLE HISTORY"), archive);
 
 			if (result_okay(res)) {
 
 				u32 history_count;
 				archive >> history_count;
-				for ( ;console_buffer.history_pos < history_count; ++console_buffer.history_pos) {
+
+				history_count = std::min(history_count, HISTORY_COUNT);
+
+				for (i32 i = history_count - 1u; i >= 0; --i) {
 					
-					archive >> console_buffer.history[console_buffer.history_pos];
+					archive >> console_buffer.history[size_t(i)];
+				}
+
+				console_buffer.history_pos = history_count;
+				if (console_buffer.history_pos == HISTORY_COUNT) {
+					console_buffer.history_pos = 0u;
+					console_buffer.history_flip = true;
 				}
 			}
 			else {
@@ -270,14 +298,17 @@ namespace sv {
 		{
 			Archive archive;
 
-			archive << HISTORY_COUNT;
-			foreach(i, HISTORY_COUNT) {
+			u32 history_count = console_buffer.history_flip ? HISTORY_COUNT : console_buffer.history_pos;
+			archive << history_count;
+			foreach(i, history_count) {
 
-				u32 j = (console_buffer.history_pos + i) % HISTORY_COUNT;
+				i32 pos = (i32(console_buffer.history_pos) - i32(i + 1u));
+				while (pos < 0) pos = HISTORY_COUNT + pos;
+				u32 j = pos;
 				archive << console_buffer.history[j];
 			}
 
-			if (result_fail(bin_write(archive, hash_string("CONSOLE HISTORY")))) {
+			if (result_fail(bin_write(hash_string("CONSOLE HISTORY"), archive))) {
 				SV_LOG_ERROR("Can't save the console history");
 			}
 		}
@@ -303,6 +334,7 @@ namespace sv {
 			u32 new_pos = (console_buffer.history_pos + 1u) % HISTORY_COUNT;
 			if (new_pos < console_buffer.history_pos) console_buffer.history_flip = true;
 			console_buffer.history_pos = new_pos;
+			console_buffer.history_offset = 0u;
 		}
 
 		const char* name = command;
@@ -487,7 +519,7 @@ namespace sv {
 			if (input.keys[Key_Up] == InputState_Pressed) {
 				
 				u32 limit = console_buffer.history_flip ? HISTORY_COUNT : console_buffer.history_pos;
-				console_buffer.history_offset = std::min(console_buffer.history_offset + 1u, limit - 1u);
+				console_buffer.history_offset = std::min(console_buffer.history_offset + 1u, limit);
 				change_command = true;
 			}
 			if (input.keys[Key_Down] == InputState_Pressed) {
@@ -507,13 +539,22 @@ namespace sv {
 					while (pos < 0) pos = HISTORY_COUNT + pos;
 					
 					current_command = console_buffer.history[size_t(pos)];
+					cursor_pos = current_command.size();
 				}
-				else current_command.clear();
+				else {
+					current_command.clear();
+					cursor_pos = 0u;
+				}
 			}
 		}
 		
-		current_command.insert(current_command.begin() + cursor_pos, input.text.begin(), input.text.end());
-		cursor_pos += u32(input.text.size());
+		if (input.text.size()) {
+
+			current_command.insert(current_command.begin() + cursor_pos, input.text.begin(), input.text.end());
+			cursor_pos += u32(input.text.size());
+
+			console_buffer.history_offset = 0u;
+		}
 
 		bool execute = false;
 

@@ -4,9 +4,6 @@
 -- SV_GRAPHICS (GRAPHICS VALIDATION)
 -- SV_PATH (CUSTOM PATHS)
 
--- TODO: refactor: SV_DIST SV_DEBUG SV_RELEASE SV_ENABLE_ASSERTION SV_ENABLE_PROFILER SV_ENABLE_LOGGING SV_ENABLE_GFX_VALIDATION
--- TODO Use SV_PATH in SV_PARSE_FILEPATH()
-
 _outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
 sysPath = ""
@@ -26,7 +23,7 @@ configurations {
 
     -- Configs without custom paths
     
-    "DistributionTest"	-- Developer mode without custom paths
+    "DistributionTest",	-- Developer mode without custom paths
     "Distribution"	-- All disabled with all the optimizations
 }
 

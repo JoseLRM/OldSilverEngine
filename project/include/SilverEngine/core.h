@@ -88,7 +88,7 @@ constexpr f64	f64_ninf = -1.0 * std::numeric_limits<f64>::infinity();
 #	define SV_INLINE inline
 #endif
 
-#ifdef SV_SYS_PATH
+#if defined(SV_SYS_PATH) && defined(SV_PATH)
 #define SV_SYS(filepath) "$" filepath
 #else
 #define SV_SYS(filepath) filepath
@@ -162,7 +162,7 @@ namespace sv {
 	void throw_assertion(const char* content, u32 line, const char* file);
 }
 
-#ifdef SV_ENABLE_ASSERTION
+#ifdef SV_DEV
 #define SV_ASSERT(x) do{ if (!(x)) { sv::throw_assertion(#x, __LINE__, __FILE__); } } while(0)
 #else
 #define SV_ASSERT(x)
@@ -192,7 +192,7 @@ namespace sv {
 
 // Debug profiler
 
-#ifdef SV_ENABLE_PROFILER
+#ifdef SV_DEV
 
 #define SV_PROFILER_SCALAR float
 
@@ -215,13 +215,7 @@ namespace sv {
 #define SV_PROFILER_CHRONO_END(x) sv::__internal__do_not_call_this_please_or_you_will_die__profiler_chrono_end(x)
 #define SV_PROFILER_CHRONO_GET(x) sv::__internal__do_not_call_this_please_or_you_will_die__profiler_chrono_get(x)
 
-/* TODO
-#ifdef SV_ENABLE_LOGGING
-#define SV_PROFILER_CHRONO_LOG(x) sv::__internal__do_not_call_this_please_or_you_will_die__console_log(5u, "[PROFILER] %s: %fms", x, sv::__internal__do_not_call_this_please_or_you_will_die__profiler_chrono_get(x))
-#else
-#define SV_PROFILER_CHRONO_LOG(x)
-#endif
-*/
+#define SV_PROFILER_CHRONO_LOG(x) sv::console_notify("PROFILER","%s: %fms", x"", sv::__internal__do_not_call_this_please_or_you_will_die__profiler_chrono_get(x))
 
 #define SV_PROFILER_SCALAR_SET(x, value) sv::__internal__do_not_call_this_please_or_you_will_die__profiler_scalar_set(x, value)
 #define SV_PROFILER_SCALAR_ADD(x, value) sv::__internal__do_not_call_this_please_or_you_will_die__profiler_scalar_add(x, value)
@@ -385,7 +379,7 @@ namespace sv {
 
 	// File Management
 
-#if defined(SV_RES_PATH) && defined(SV_SYS_PATH)
+#if defined(SV_PATH) && defined(SV_RES_PATH) && defined(SV_SYS_PATH)
 
 #define SV_PARSE_FILEPATH() std::string filepath_str; \
 	if (!sv::path_is_absolute(filepath)) { \
@@ -397,7 +391,7 @@ namespace sv {
 		filepath = filepath_str.c_str(); \
 	} 
 
-#elif defined(SV_SYS_PATH) 
+#elif defined(SV_PATH) && defined(SV_SYS_PATH) 
 
 #define SV_PARSE_FILEPATH() std::string filepath_str; \
 	if (!sv::path_is_absolute(filepath)) { \
@@ -407,7 +401,7 @@ namespace sv {
 		} \
 	} 
 
-#elif defined(SV_RES_PATH)
+#elif defined(SV_PATH) && defined(SV_RES_PATH)
 
 #define SV_PARSE_FILEPATH() std::string filepath_str; \
 	if (!sv::path_is_absolute(filepath)) { \

@@ -10,7 +10,7 @@ namespace sv {
 	struct Primitive_internal {
 		GraphicsPrimitiveType type;
 
-#ifdef SV_ENABLE_GFX_VALIDATION
+#ifdef SV_GRAPHICS
 		std::string name;
 #endif
 

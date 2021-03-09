@@ -731,7 +731,7 @@ namespace sv {
 
 	// DEBUG
 
-#ifdef SV_ENABLE_GFX_VALIDATION
+#ifdef SV_GRAPHICS
 
 	void graphics_event_begin(const char* name, CommandList cmd);
 	void graphics_event_mark(const char* name, CommandList cmd);

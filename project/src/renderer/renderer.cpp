@@ -1062,7 +1062,7 @@ namespace sv {
 
 	XMMATRIX camera_projection_matrix(CameraComponent& camera)
 	{
-#ifndef SV_DIST
+#ifdef SV_DEV
 		if (camera.near >= camera.far) {
 			SV_LOG_WARNING("Computing the projection matrix. The far must be grater than near");
 		}

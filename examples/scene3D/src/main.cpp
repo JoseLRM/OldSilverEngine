@@ -45,7 +45,7 @@ Result app_close_scene(Scene* scene)
 
 Result init()
 {
-	//set_active_scene("Test");
+	set_active_scene("Test");
 
 	return Result_Success;
 }

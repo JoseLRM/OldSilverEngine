@@ -806,8 +806,8 @@ namespace sv {
 		constexpr static Color DarkSalmon(u8 a = 255u) { return { 233u, 150u, 122u, a }; }
 		constexpr static Color LightSalmon(u8 a = 255u) { return { 255u, 160u, 122u, a }; }
 
-		SV_INLINE operator==(const Color& o) { return o.r == r && o.g == g && o.b == b; }
-		SV_INLINE operator!=(const Color& o) { return o.r != r || o.g != g || o.b != b; }
+		SV_INLINE bool operator==(const Color& o) { return o.r == r && o.g == g && o.b == b; }
+		SV_INLINE bool operator!=(const Color& o) { return o.r != r || o.g != g || o.b != b; }
 	};
 
 	struct Color4f {

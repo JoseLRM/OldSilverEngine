@@ -7,6 +7,8 @@ workspace 'Scene3D'
 
 	-- PATHS
 
+	filter {}
+
 	sysPath = engineDir
 	resPath = 'res/'
 

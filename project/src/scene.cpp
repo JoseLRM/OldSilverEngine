@@ -486,7 +486,7 @@ namespace sv {
 
 			if (strcmp(extension.c_str(), ".mesh") == 0) {
 
-#ifdef SV_RES_PATH
+#if defined(SV_RES_PATH) && defined(SV_PATH)
 				std::string path = parse_string(entry.path().c_str() + strlen(SV_RES_PATH));
 #else
 				std::string path = parse_string(entry.path().c_str());
@@ -499,11 +499,14 @@ namespace sv {
 
 				if (result_okay(res)) {
 					
-					Mesh* m = mesh.get();
-
 					Entity entity = create_entity(scene_, parent);
 					MeshComponent* comp = add_component<MeshComponent>(scene_, entity);
 					comp->mesh = mesh;
+
+					Transform trans = get_entity_transform(scene_, entity);
+					Mesh* m = mesh.get();
+
+					trans.setMatrix(m->model_transform_matrix);
 
 					if (m->model_material_filepath.size()) {
 					

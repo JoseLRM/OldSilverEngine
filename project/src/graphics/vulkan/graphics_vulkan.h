@@ -68,7 +68,7 @@ TODO list:
 
 #include "external/vk_mem_alloc.h"
 
-#ifdef SV_DEBUG
+#ifdef SV_DEV
 #define vkAssert(x) if((x) != VK_SUCCESS) SV_ASSERT(#x)
 #else
 #define vkAssert(x) x
@@ -302,7 +302,7 @@ namespace sv {
 		VkDevice							device = VK_NULL_HANDLE;
 		VmaAllocator						allocator;
 
-#ifdef SV_ENABLE_GFX_VALIDATION
+#ifdef SV_GRAPHICS
 		VkDebugUtilsMessengerEXT	debug = VK_NULL_HANDLE;
 #endif
 

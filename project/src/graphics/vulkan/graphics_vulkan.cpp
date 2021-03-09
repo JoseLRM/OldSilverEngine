@@ -336,7 +336,7 @@ namespace sv {
 		g_API = std::make_unique<Graphics_vk>();
 
 		// Instance extensions and validation layers
-#ifdef SV_ENABLE_GFX_VALIDATION
+#ifdef SV_GRAPHICS
 		g_API->validationLayers.push_back("VK_LAYER_KHRONOS_validation");
 		g_API->extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 #endif
@@ -344,7 +344,7 @@ namespace sv {
 		g_API->extensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
 
 		// Device extensions and validation layers
-#ifdef SV_ENABLE_GFX_VALIDATION
+#ifdef SV_GRAPHICS
 		g_API->deviceValidationLayers.push_back("VK_LAYER_KHRONOS_validation");
 #endif
 		g_API->deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
@@ -424,7 +424,7 @@ namespace sv {
 		}
 
 		// Initialize validation layers
-#ifdef SV_ENABLE_GFX_VALIDATION
+#ifdef SV_GRAPHICS
 		{
 			VkDebugUtilsMessengerCreateInfoEXT create_info{};
 			create_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
@@ -718,7 +718,7 @@ namespace sv {
 		// Destroy device and vulkan instance
 		vkDestroyDevice(g_API->device, nullptr);
 
-#ifdef SV_ENABLE_GFX_VALIDATION
+#ifdef SV_GRAPHICS
 		vkDestroyDebugUtilsMessengerEXT(g_API->instance, g_API->debug);
 #endif
 

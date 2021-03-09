@@ -307,7 +307,7 @@ namespace sv {
 		return Result_Success;
 	}
 
-	static std::string get_texture(const std::string& folderpath, const aiMaterial& mat, aiTextureType type)
+	static std::string get_texture(const aiMaterial& mat, aiTextureType type)
 	{
 		// I hate you
 		aiString aistr;
@@ -320,7 +320,7 @@ namespace sv {
 		}
 
 		std::string str;
-		str = folderpath + aistr.data;
+		str = aistr.data;
 		return str;
 	}
 
@@ -376,10 +376,10 @@ namespace sv {
 			m0.Get(AI_MATKEY_COLOR_EMISSIVE, color); m1.emissive_color = { color.r, color.g, color.b };
 			m0.Get(AI_MATKEY_SHININESS, m1.shininess);
 
-			m1.diffuse_map_path = get_texture(folderpath, m0, aiTextureType_DIFFUSE);
-			m1.normal_map_path = get_texture(folderpath, m0, aiTextureType_NORMALS);
-			m1.specular_map_path = get_texture(folderpath, m0, aiTextureType_SPECULAR);
-			m1.emissive_map_path = get_texture(folderpath, m0, aiTextureType_EMISSIVE);
+			m1.diffuse_map_path = get_texture(m0, aiTextureType_DIFFUSE);
+			m1.normal_map_path = get_texture(m0, aiTextureType_NORMALS);
+			m1.specular_map_path = get_texture(m0, aiTextureType_SPECULAR);
+			m1.emissive_map_path = get_texture(m0, aiTextureType_EMISSIVE);
 		}
 
 		foreach(i, scene->mNumMeshes) {
@@ -472,6 +472,43 @@ namespace sv {
 		return Result_Success;
 	}
 
+	static Result import_texture(const ModelInfo& model_info, u32 index, const std::string& srcpath, const std::string& dstpath, std::string* textures)
+	{
+		if (srcpath.empty()) return Result_Success;
+
+		// Compute src name
+		std::string srcname;
+		{
+			i32 i;
+
+			for (i = srcpath.size() - 1; i >= 0; --i) {
+
+				if (srcpath[i] == '/') {
+					++i;
+					break;
+				}
+			}
+
+			srcname = srcpath.substr(std::max(i, 0));
+		}
+
+		// src name to dst filepath
+		srcname = dstpath + srcname;
+
+		std::string src = model_info.folderpath + srcpath;
+		Result res = file_copy(src.c_str(), srcname.c_str());
+
+		if (result_okay(res)) {
+			textures[index] = std::move(srcname);
+		}
+		else {
+
+			SV_LOG_ERROR("Can't copy the image from '%s' to '%s'", src.c_str(), srcname.c_str());
+		}
+
+		return res;
+	}
+
 	Result import_model(const char* filepath_, const ModelInfo& model_info)
 	{
 		Archive archive;
@@ -483,6 +520,8 @@ namespace sv {
 		if (filepath.back() != '/')
 			filepath += '/';
 
+		std::string textures_filepath = filepath;
+
 		std::stringstream ss;
 
 		struct Mat {
@@ -490,6 +529,7 @@ namespace sv {
 			std::string filepath;
 		};
 		std::vector<Mat> mats;
+		std::string textures[4u];
 
 		// Save materials
 		for (const MaterialInfo& m : model_info.materials) {
@@ -510,10 +550,15 @@ namespace sv {
 
 			// Copy textures 
 			{
-				if (m.diffuse_map_path.size()) file_copy((model_info.folderpath + m.diffuse_map_path).c_str(), (filepath + m.diffuse_map_path).c_str());
-				if (m.normal_map_path.size()) file_copy((model_info.folderpath + m.normal_map_path).c_str(), (filepath + m.normal_map_path).c_str());
-				if (m.specular_map_path.size()) file_copy((model_info.folderpath + m.specular_map_path).c_str(), (filepath + m.specular_map_path).c_str());
-				if (m.emissive_map_path.size()) file_copy((model_info.folderpath + m.emissive_map_path).c_str(), (filepath + m.emissive_map_path).c_str());
+				textures[0].clear();
+				textures[1].clear();
+				textures[2].clear();
+				textures[3].clear();
+
+				import_texture(model_info, 0, m.diffuse_map_path, textures_filepath, textures);
+				import_texture(model_info, 1, m.normal_map_path, textures_filepath, textures);
+				import_texture(model_info, 2, m.specular_map_path, textures_filepath, textures);
+				import_texture(model_info, 3, m.emissive_map_path, textures_filepath, textures);
 			}
 
 			// Fill archive
@@ -524,10 +569,10 @@ namespace sv {
 				archive << m.specular_color;
 				archive << m.emissive_color;
 				archive << m.shininess;
-				archive << m.diffuse_map_path;
-				archive << m.normal_map_path;
-				archive << m.specular_map_path;
-				archive << m.emissive_map_path;
+				archive << textures[0];
+				archive << textures[1];
+				archive << textures[2];
+				archive << textures[3];
 			}
 
 			svCheck(archive.saveFile(ss.str().c_str()));
@@ -555,8 +600,8 @@ namespace sv {
 				archive.clear();
 
 				archive << m.positions << m.indices << m.texcoords << m.normals << m.tangents << m.bitangents;
-				archive << mat.filepath;
 				archive << m.transform_matrix;
+				archive << mat.filepath;
 			}
 
 			svCheck(archive.saveFile(ss.str().c_str()));
@@ -589,33 +634,23 @@ namespace sv {
 		archive >> mat.emissive_color;
 		archive >> mat.shininess;
 
-		std::string filepath = filepath_;
-
-		while (filepath.size() && filepath.back() != '/') {
-			filepath.pop_back();
-		}
-
 		std::string texpath;
 
 		archive >> texpath;
-		texpath = filepath + texpath;
-
-		load_asset_from_file(mat.diffuse_map, texpath.c_str());
-
-		archive >> texpath;
-		texpath = filepath + texpath;
-
-		load_asset_from_file(mat.normal_map, texpath.c_str());
+		if (texpath.size())
+			load_asset_from_file(mat.diffuse_map, texpath.c_str());
 
 		archive >> texpath;
-		texpath = filepath + texpath;
-
-		load_asset_from_file(mat.specular_map, texpath.c_str());
+		if (texpath.size())
+			load_asset_from_file(mat.normal_map, texpath.c_str());
 
 		archive >> texpath;
-		texpath = filepath + texpath;
+		if (texpath.size())
+			load_asset_from_file(mat.specular_map, texpath.c_str());
 
-		load_asset_from_file(mat.emissive_map, texpath.c_str());
+		archive >> texpath;
+		if (texpath.size())
+			load_asset_from_file(mat.emissive_map, texpath.c_str());
 		
 		return Result_Success;
 	}

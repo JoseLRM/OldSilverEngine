@@ -123,7 +123,7 @@ namespace sv {
 
 	static inline void destroyUnusedPrimitive(Primitive_internal& primitive)
 	{
-#ifdef SV_ENABLE_GFX_VALIDATION
+#ifdef SV_GRAPHICS
 		if (primitive.name.size())
 			SV_LOG_WARNING("Destroing '%s'", primitive.name.c_str());
 #endif
@@ -614,7 +614,8 @@ namespace sv {
 
 	Result graphics_buffer_create(const GPUBufferDesc* desc, GPUBuffer** buffer)
 	{
-#ifdef SV_DEBUG
+#ifdef SV_GRAPHICS
+
 		if (desc->usage == ResourceUsage_Static && desc->CPUAccess & CPUAccess_Write) {
 			SV_LOG_ERROR("Buffer with static usage can't have CPU access");
 			return Result_InvalidUsage;
@@ -643,7 +644,7 @@ namespace sv {
 
 	Result graphics_shader_create(const ShaderDesc* desc, Shader** shader)
 	{
-#ifdef SV_DEBUG
+#ifdef SV_GRAPHICS
 #endif
 
 		// Allocate memory
@@ -665,7 +666,7 @@ namespace sv {
 
 	Result graphics_image_create(const GPUImageDesc* desc, GPUImage** image)
 	{
-#ifdef SV_DEBUG
+#ifdef SV_GRAPHICS
 #endif
 
 		// Allocate memory
@@ -690,7 +691,7 @@ namespace sv {
 
 	Result graphics_sampler_create(const SamplerDesc* desc, Sampler** sampler)
 	{
-#ifdef SV_DEBUG
+#ifdef SV_GRAPHICS
 #endif
 
 		// Allocate memory
@@ -711,7 +712,7 @@ namespace sv {
 
 	Result graphics_renderpass_create(const RenderPassDesc* desc, RenderPass** renderPass)
 	{
-#ifdef SV_DEBUG
+#ifdef SV_GRAPHICS
 #endif
 
 		// Allocate memory
@@ -745,7 +746,7 @@ namespace sv {
 
 	Result graphics_inputlayoutstate_create(const InputLayoutStateDesc* desc, InputLayoutState** inputLayoutState)
 	{
-#ifdef SV_DEBUG
+#ifdef SV_GRAPHICS
 #endif
 
 		// Allocate memory
@@ -776,7 +777,7 @@ namespace sv {
 
 	Result graphics_blendstate_create(const BlendStateDesc* desc, BlendState** blendState)
 	{
-#ifdef SV_DEBUG
+#ifdef SV_GRAPHICS
 #endif
 
 		// Allocate memory
@@ -804,7 +805,7 @@ namespace sv {
 
 	Result graphics_depthstencilstate_create(const DepthStencilStateDesc* desc, DepthStencilState** depthStencilState)
 	{
-#ifdef SV_DEBUG
+#ifdef SV_GRAPHICS
 #endif
 
 		// Allocate memory
@@ -826,7 +827,7 @@ namespace sv {
 
 	Result graphics_rasterizerstate_create(const RasterizerStateDesc* desc, RasterizerState** rasterizerState)
 	{
-#ifdef SV_DEBUG
+#ifdef SV_GRAPHICS
 #endif
 
 		// Allocate memory
@@ -848,7 +849,7 @@ namespace sv {
 
 	Result graphics_swapchain_create(Window* window, SwapChain_internal** swapChain)
 	{
-#ifdef SV_DEBUG
+#ifdef SV_GRAPHICS
 #endif
 
 		// Allocate memory
@@ -1616,7 +1617,7 @@ namespace sv {
 		filePath += name;
 		filePath += ".hlsl";
 
-#ifndef SV_ENABLE_GFX_VALIDATION
+#ifndef SV_GRAPHICS
 		if (std::filesystem::exists(filePath)) return Result_Success;
 #endif
 
@@ -1675,7 +1676,7 @@ namespace sv {
 
 	// DEBUG
 
-#ifdef SV_ENABLE_GFX_VALIDATION
+#ifdef SV_GRAPHICS
 
 	void graphics_event_begin(const char* name, CommandList cmd)
 	{

@@ -465,7 +465,7 @@ namespace sv {
 
 	static v4_f32 compute_widget_bounds(const GUI_internal& gui, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1)
 	{
-#ifndef SV_DIST
+#ifndef SV_DEV
 		{
 			u32 aspect_count = 0u;
 			if (x0.constraint == GuiConstraint_Aspect) ++aspect_count;

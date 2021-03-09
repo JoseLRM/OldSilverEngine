@@ -103,7 +103,7 @@ namespace sv {
 		GizmosTransformMode_None,
 		GizmosTransformMode_Position
 	};
-	
+
 	struct GizmosInfo {
 
 		GizmosTransformMode mode = GizmosTransformMode_Position;
@@ -114,12 +114,12 @@ namespace sv {
 		AssetElementType_Unknown,
 		AssetElementType_Directory,
 	};
-	
+
 	struct AssetElement {
 		std::string name;
 		AssetElementType type;
 	};
-	
+
 	struct AssetBrowserInfo {
 		std::string filepath;
 		std::vector<AssetElement> elements;
@@ -207,7 +207,7 @@ namespace sv {
 			SV_LOG("%s '%s'", show ? "Showing" : "Hiding", args[0]);
 		}
 		else SV_LOG_ERROR("Window '%s' not found", args[0]);
-		
+
 		return res;
 	}
 
@@ -251,7 +251,7 @@ namespace sv {
 		gui_begin_container(gui, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 40.f), container_style);
 
 		gui_text(gui, get_component_name(comp_id), GuiCoord::Pixel(35.f), GuiCoord::IPixel(10.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), text_style);
-		
+
 		if (gui_begin_popup(gui, GuiPopupTrigger_LastWidget, MouseButton_Right, gui_id)) {
 
 			remove = gui_button(gui, "Remove", GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(5.f), GuiCoord::IPixel(25.f));
@@ -266,7 +266,7 @@ namespace sv {
 		y += 40.f + editor.style.vertical_padding;
 
 		if (show) {
-			
+
 			GuiTextStyle text_style;
 			text_style.text_alignment = TextAlignment_Left;
 
@@ -292,7 +292,7 @@ namespace sv {
 						"jpeg", "*.jpeg",
 						"gif", "*.gif",
 						};
-						
+
 						// TODO: Custom file dialog
 						std::string filepath = file_dialog_open(sizeof(filters) / sizeof(const char*) / 2u, filters, "");
 
@@ -389,7 +389,7 @@ namespace sv {
 				bool main = engine.scene->main_camera == cam.entity;
 
 				if (gui_checkbox(gui, &main, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f))) {
-					
+
 					if (main) engine.scene->main_camera = cam.entity;
 					else engine.scene->main_camera = SV_ENTITY_NULL;
 				}
@@ -444,7 +444,7 @@ namespace sv {
 
 				ray.origin = v3_f32(XMVector4Transform(ray_origin, itm));
 				ray.direction = v3_f32(XMVector4Transform(ray_direction, itm));
-			
+
 				Mesh& mesh = *m.mesh.get();
 
 				u32 triangles = u32(mesh.indices.size()) / 3u;
@@ -472,7 +472,7 @@ namespace sv {
 				}
 			}
 		}
-		
+
 		// Select sprites
 		{
 			EntityView<SpriteComponent> sprites(engine.scene);
@@ -489,7 +489,7 @@ namespace sv {
 			XMVECTOR v1;
 			XMVECTOR v2;
 			XMVECTOR v3;
-			
+
 			for (SpriteComponent& s : sprites) {
 
 				Transform trans = get_entity_transform(engine.scene, s.entity);
@@ -502,32 +502,32 @@ namespace sv {
 				v3 = XMVector3Transform(p3, tm);
 
 				f32 dis = f32_max;
-				
+
 				v3_f32 intersection;
 
 				// TODO: Ray vs Quad intersection
-				
+
 				if (intersect_ray_vs_traingle(ray, v3_f32(v0), v3_f32(v1), v3_f32(v2), intersection)) {
-					
+
 					dis = intersection.length();
 				}
 				else if (intersect_ray_vs_traingle(ray, v3_f32(v1), v3_f32(v3), v3_f32(v2), intersection)) {
-					
+
 					dis = std::min(intersection.length(), dis);
 				}
 
 				if (dis < distance) {
 					distance = dis;
-					selected = m.entity;
+					selected = s.entity;
 				}
 			}
 		}
 
-		
+
 		editor.selected_entity = selected;
 	}
 
-	static void show_entity_popup(Entity entity, bool& destroy) 
+	static void show_entity_popup(Entity entity, bool& destroy)
 	{
 		if (gui_begin_popup(editor.gui, GuiPopupTrigger_LastWidget, MouseButton_Right, 0x3254fa + u64(entity))) {
 
@@ -536,7 +536,7 @@ namespace sv {
 
 			destroy = gui_button(editor.gui, "Destroy", GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H));
 			y += H + editor.style.vertical_padding;
-			
+
 			if (gui_button(editor.gui, "Duplicate", GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H))) {
 				duplicate_entity(engine.scene, entity);
 			}
@@ -634,7 +634,7 @@ namespace sv {
 		GUI* g = editor.gui;
 
 		f32 y = 5.f;
-		
+
 
 		if (gui_begin_window(g, "Hierarchy", editor.style.window_style)) {
 
@@ -662,7 +662,7 @@ namespace sv {
 				y += H + editor.style.vertical_padding;
 
 				if (gui_button(editor.gui, "Create Sprite", GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H))) {
-					
+
 					Entity e = create_entity(engine.scene, 0, "Sprite");
 					add_component<SpriteComponent>(engine.scene, e);
 				}
@@ -670,7 +670,7 @@ namespace sv {
 
 				gui_end_popup(editor.gui);
 			}
-			
+
 			gui_end_window(g);
 		}
 	}
@@ -682,7 +682,7 @@ namespace sv {
 
 		constexpr f32 NAME_HEIGHT = 40.f;
 		constexpr f32 TRANSFORM_HEIGHT = 30.f;
-		
+
 		f32 y = 5.f;
 
 		if (gui_begin_window(g, "Inspector", editor.style.window_style)) {
@@ -739,11 +739,11 @@ namespace sv {
 
 						// X
 						{
-							gui_begin_container(g, 
-								GuiCoord::Relative(0.5f - ELEMENT_WIDTH * 1.5f - INTERN_PADDING), 
-								GuiCoord::Relative(0.5f - ELEMENT_WIDTH * 0.5f - INTERN_PADDING), 
-								GuiCoord::IPixel(y), 
-								GuiCoord::IPixel(y + TRANSFORM_HEIGHT), 
+							gui_begin_container(g,
+								GuiCoord::Relative(0.5f - ELEMENT_WIDTH * 1.5f - INTERN_PADDING),
+								GuiCoord::Relative(0.5f - ELEMENT_WIDTH * 0.5f - INTERN_PADDING),
+								GuiCoord::IPixel(y),
+								GuiCoord::IPixel(y + TRANSFORM_HEIGHT),
 								container_style
 							);
 
@@ -861,52 +861,68 @@ namespace sv {
 		GUI* gui = editor.gui;
 
 		f32 y = editor.style.vertical_padding;
-		constexpr f32 HEIGHT = 10.f;
+		constexpr f32 HEIGHT = 30.f;
 
 		bool update_browser = false;
 		std::string next_filepath;
-		
+
 		if (gui_begin_window(gui, "Asset Browser", editor.style.window_style)) {
 
 			AssetBrowserInfo& info = editor.asset_browser;
-			
+
 			for (const AssetElement& e : info.elements) {
 
-				if (gui_button(gui, e.name.c_str(), GuiCoord::Relative(0.1f), GuiCoord::Relative(0.1f),
-					       GuiCoord::IPixel(y), GuiCoord::IPixel(y + HEIGHT), editor.style.button_style)) {
+				if (e.name.size() && e.name.front() != '.') {
 
-					update_browser = true;
+					if (gui_button(gui, e.name.c_str(), GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f),
+						GuiCoord::IPixel(y), GuiCoord::IPixel(y + HEIGHT), editor.style.button_style)) {
 
-					if (e.type == AssetElementType_Directory) {
+						update_browser = true;
 
-						next_filepath = info.filepath + e.name + '/';
+						if (e.type == AssetElementType_Directory) {
+
+							next_filepath = info.filepath + e.name + '/';
+						}
 					}
+
+					y += editor.style.vertical_padding + HEIGHT;
 				}
 			}
 
 			// Update per time
-			{
+			if (!update_browser) {
 				Time now = timer_now();
 
 				if (now - info.last_update > 1.0) {
 					update_browser = true;
+					next_filepath = std::move(info.filepath);
 				}
 			}
 
 			// Update browser elements
 			if (update_browser) {
-				while (!std::filesystem::exists(info.filepath)) {
 
-					info.filepath.pop_back();
-					while (info.filepath.size() && info.filepath.back() != '/') {
-						info.filepath.pop_back();
+#if defined(SV_PATH) && defined(SV_RES_PATH)
+				while (!std::filesystem::exists(SV_RES_PATH + next_filepath) && next_filepath.size()) {
+#else
+				while (!std::filesystem::exists(next_filepath) && next_filepath.size()) {
+#endif
+
+					next_filepath.pop_back();
+					while (next_filepath.size() && next_filepath.back() != '/') {
+						next_filepath.pop_back();
 					}
 				}
 
 				// Clear browser data
 				info.elements.clear();
-				
-				for (const auto& entry : std::filesystem::directory_iterator(info.filepath)) {
+
+#if defined(SV_PATH) && defined(SV_RES_PATH)
+				std::string real_path = SV_RES_PATH + next_filepath;
+				for (const auto& entry : std::filesystem::directory_iterator(real_path)) {
+#else
+				for (const auto& entry : std::filesystem::directory_iterator(next_filepath)) {
+#endif
 
 					AssetElement element;
 
@@ -919,16 +935,21 @@ namespace sv {
 					}
 
 					// Set name
-					element.name = parse_string(entry.filename().c_str());
+					element.name = parse_string(entry.path().filename().c_str());
+					// TODO: Don't know why this string is created with two '\0'
+					element.name.pop_back();
 
 					info.elements.emplace_back(std::move(element));
 				}
+
+				info.filepath = std::move(next_filepath);
+				info.last_update = timer_now();
 			}
 
 			gui_end_window(gui);
 		}
 	}
-	
+
 	void update_editor()
 	{
 		GUI* g = editor.gui;
@@ -1006,10 +1027,10 @@ namespace sv {
 					MeshComponent* mesh_comp = get_component<MeshComponent>(engine.scene, editor.selected_entity);
 					SpriteComponent* sprite_comp = get_component<SpriteComponent>(engine.scene, editor.selected_entity);
 
-					
+
 
 					if (mesh_comp && mesh_comp->mesh.get()) {
-						
+
 						u8 alpha = 5u + u8(f32(sin(timer_now().toSeconds_f64() * 3.5f) + 1.0) * 50.f * 0.5f);
 						draw_debug_mesh_wireframe(mesh_comp->mesh.get(), trans.getWorldMatrix(), Color::Red(alpha), cmd);
 					}
