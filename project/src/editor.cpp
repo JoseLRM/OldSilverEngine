@@ -110,6 +110,22 @@ namespace sv {
 
 	};
 
+	enum AssetElementType : u32 {
+		AssetElementType_Unknown,
+		AssetElementType_Directory,
+	};
+	
+	struct AssetElement {
+		std::string name;
+		AssetElementType type;
+	};
+	
+	struct AssetBrowserInfo {
+		std::string filepath;
+		std::vector<AssetElement> elements;
+		Time last_update = 0.0;
+	};
+
 	struct Editor {
 
 		GUI* gui;
@@ -118,6 +134,7 @@ namespace sv {
 		Entity selected_entity = SV_ENTITY_NULL;
 		bool camera_controller = false;
 
+		AssetBrowserInfo asset_browser;
 		GizmosInfo gizmos;
 	};
 
@@ -789,9 +806,70 @@ namespace sv {
 	{
 		GUI* gui = editor.gui;
 
+		f32 y = editor.style.vertical_padding;
+		constexpr f32 HEIGHT = 10.f;
+
+		bool update_browser = false;
+		std::string next_filepath;
+		
 		if (gui_begin_window(gui, "Asset Browser", editor.style.window_style)) {
 
+			AssetBrowserInfo& info = editor.asset_browser;
+			
+			for (const AssetElement& e : info.elements) {
 
+				if (gui_button(gui, e.name.c_str(), GuiCoord::Relative(0.1f), GuiCoord::Relative(0.1f),
+					       GuiCoord::IPixel(y), GuiCoord::IPixel(y + HEIGHT), editor.style.button_style)) {
+
+					update_browser = true;
+
+					if (e.type == AssetElementType_Directory) {
+
+						next_filepath = info.filepath + e.name + '/';
+					}
+				}
+			}
+
+			// Update per time
+			{
+				Time now = timer_now();
+
+				if (now - info.last_update > 1.0) {
+					update_browser = true;
+				}
+			}
+
+			// Update browser elements
+			if (update_browser) {
+				while (!std::filesystem::exists(info.filepath)) {
+
+					info.filepath.pop_back();
+					while (info.filepath.size() && info.filepath.back() != '/') {
+						info.filepath.pop_back();
+					}
+				}
+
+				// Clear browser data
+				info.elements.clear();
+				
+				for (const auto& entry : std::filesystem::directory_iterator(info.filepath)) {
+
+					AssetElement element;
+
+					// Select element type
+					if (entry.is_directory()) {
+						element.type = AssetElementType_Directory;
+					}
+					else {
+						element.type = AssetElementType_Unknown;
+					}
+
+					// Set name
+					element.name = parse_string(entry.filename().c_str());
+
+					info.elements.emplace_back(std::move(element));
+				}
+			}
 
 			gui_end_window(gui);
 		}
