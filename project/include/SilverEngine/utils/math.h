@@ -783,14 +783,31 @@ namespace sv {
 	struct Color {
 		u8 r, g, b, a;
 
-		constexpr static Color Red(u8 a = 255u) { return { 255u	, 0u	, 0u	, a }; }
-		constexpr static Color Green(u8 a = 255u) { return { 0u	, 255u	, 0u	, a }; }
-		constexpr static Color Blue(u8 a = 255u) { return { 0u	, 0u	, 255u	, a }; }
-		constexpr static Color Orange(u8 a = 255u) { return { 255u	, 69u	, 0u	, a }; }
-		constexpr static Color Black(u8 a = 255u) { return { 0u	, 0u	, 0u	, a }; }
-		constexpr static Color Gray(u8 v, u8 a = 255u) { return { v	, v		, v		, a }; }
-		constexpr static Color White(u8 a = 255u) { return { 255u	, 255u	, 255u	, a }; }
+		constexpr static Color Red(u8 a = 255u) { return { 255u, 0u, 0u, a }; }
+		constexpr static Color Green(u8 a = 255u) { return { 0u	, 128u, 0u, a }; }
+		constexpr static Color Blue(u8 a = 255u) { return { 0u, 0u, 255u, a }; }
+		constexpr static Color Orange(u8 a = 255u) { return { 255u, 69u, 0u, a }; }
+		constexpr static Color Black(u8 a = 255u) { return { 0u, 0u, 0u, a }; }
+		constexpr static Color Gray(u8 v, u8 a = 255u) { return { v, v, v, a }; }
+		constexpr static Color White(u8 a = 255u) { return { 255u, 255u, 255u, a }; }
+		constexpr static Color Silver(u8 a = 255u) { return { 192u, 192u, 192u, a }; }
+		constexpr static Color Maroon(u8 a = 255u) { return { 128u, 0u, 0u, a }; }
+		constexpr static Color Yellow(u8 a = 255u) { return { 255u, 255u, 0u, a }; }
+		constexpr static Color Olive(u8 a = 255u) { return { 128u, 128u, 0u, a }; }
+		constexpr static Color Lime(u8 a = 255u) { return { 0u, 255u, 0u, a }; }
+		constexpr static Color Aqua(u8 a = 255u) { return { 0u, 255u, 255u, a }; }
+		constexpr static Color Teal(u8 a = 255u) { return { 0u, 128u, 128u, a }; }
+		constexpr static Color Navy(u8 a = 255u) { return { 0u, 0u, 128u, a }; }
+		constexpr static Color Fuchsia(u8 a = 255u) { return { 255u, 0u, 255u, a }; }
+		constexpr static Color Purple(u8 a = 255u) { return { 128u, 0u, 128u, a }; }
+		constexpr static Color IndianRed(u8 a = 255u) { return { 205u, 92u, 92u, a }; }
+		constexpr static Color LightCoral(u8 a = 255u) { return { 240u, 128u, 128u, a }; }
+		constexpr static Color Salmon(u8 a = 255u) { return { 250u, 128u, 114u, a }; }
+		constexpr static Color DarkSalmon(u8 a = 255u) { return { 233u, 150u, 122u, a }; }
+		constexpr static Color LightSalmon(u8 a = 255u) { return { 255u, 160u, 122u, a }; }
 
+		SV_INLINE operator==(const Color& o) { return o.r == r && o.g == g && o.b == b; }
+		SV_INLINE operator!=(const Color& o) { return o.r != r || o.g != g || o.b != b; }
 	};
 
 	struct Color4f {
