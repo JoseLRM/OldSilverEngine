@@ -430,46 +430,100 @@ namespace sv {
 		Entity selected = SV_ENTITY_NULL;
 		f32 distance = f32_max;
 
-		EntityView<MeshComponent> meshes(engine.scene);
+		// Select meshes
+		{
+			EntityView<MeshComponent> meshes(engine.scene);
 
-		for (MeshComponent& m : meshes) {
+			for (MeshComponent& m : meshes) {
 
-			if (m.mesh.get() == nullptr) continue;
+				if (m.mesh.get() == nullptr) continue;
 
-			Transform trans = get_entity_transform(engine.scene, m.entity);
+				Transform trans = get_entity_transform(engine.scene, m.entity);
 
-			XMMATRIX itm = XMMatrixInverse(0, trans.getWorldMatrix());
+				XMMATRIX itm = XMMatrixInverse(0, trans.getWorldMatrix());
 
-			ray.origin = v3_f32(XMVector4Transform(ray_origin, itm));
-			ray.direction = v3_f32(XMVector4Transform(ray_direction, itm));
+				ray.origin = v3_f32(XMVector4Transform(ray_origin, itm));
+				ray.direction = v3_f32(XMVector4Transform(ray_direction, itm));
 			
-			Mesh& mesh = *m.mesh.get();
+				Mesh& mesh = *m.mesh.get();
 
-			u32 triangles = u32(mesh.indices.size()) / 3u;
+				u32 triangles = u32(mesh.indices.size()) / 3u;
 
-			for (u32 i = 0u; i < triangles; ++i) {
+				for (u32 i = 0u; i < triangles; ++i) {
 
-				u32 i0 = mesh.indices[i * 3u + 0u];
-				u32 i1 = mesh.indices[i * 3u + 1u];
-				u32 i2 = mesh.indices[i * 3u + 2u];
+					u32 i0 = mesh.indices[i * 3u + 0u];
+					u32 i1 = mesh.indices[i * 3u + 1u];
+					u32 i2 = mesh.indices[i * 3u + 2u];
 
-				v3_f32 p0 = mesh.positions[i0];
-				v3_f32 p1 = mesh.positions[i1];
-				v3_f32 p2 = mesh.positions[i2];
+					v3_f32 p0 = mesh.positions[i0];
+					v3_f32 p1 = mesh.positions[i1];
+					v3_f32 p2 = mesh.positions[i2];
 
-				v3_f32 intersection;
+					v3_f32 intersection;
 
-				if (intersect_ray_vs_traingle(ray, p0, p1, p2, intersection)) {
+					if (intersect_ray_vs_traingle(ray, p0, p1, p2, intersection)) {
 
-					f32 dis = intersection.length();
-					if (dis < distance) {
-						distance = dis;
-						selected = m.entity;
+						f32 dis = intersection.length();
+						if (dis < distance) {
+							distance = dis;
+							selected = m.entity;
+						}
 					}
 				}
 			}
 		}
+		
+		// Select sprites
+		{
+			EntityView<SpriteComponent> sprites(engine.scene);
 
+			ray.origin = v3_f32(ray_origin);
+			ray.direction = v3_f32(ray_direction);
+
+			XMVECTOR p0 = XMVectorSet(-0.5f, 0.5f, 0.f, 1.f);
+			XMVECTOR p1 = XMVectorSet(0.5f, 0.5f, 0.f, 1.f);
+			XMVECTOR p2 = XMVectorSet(-0.5f, -0.5f, 0.f, 1.f);
+			XMVECTOR p3 = XMVectorSet(0.5f, -0.5f, 0.f, 1.f);
+
+			XMVECTOR v0;
+			XMVECTOR v1;
+			XMVECTOR v2;
+			XMVECTOR v3;
+			
+			for (SpriteComponent& s : sprites) {
+
+				Transform trans = get_entity_transform(engine.scene, s.entity);
+
+				XMMATRIX tm = trans.getWorldMatrix();
+
+				v0 = XMVector3Transform(p0, tm);
+				v1 = XMVector3Transform(p1, tm);
+				v2 = XMVector3Transform(p2, tm);
+				v3 = XMVector3Transform(p3, tm);
+
+				f32 dis = f32_max;
+				
+				v3_f32 intersection;
+
+				// TODO: Ray vs Quad intersection
+				
+				if (intersect_ray_vs_traingle(ray, v3_f32(v0), v3_f32(v1), v3_f32(v2), intersection)) {
+					
+					dis = intersection.length();
+				}
+				else if (intersect_ray_vs_traingle(ray, v3_f32(v1), v3_f32(v3), v3_f32(v2), intersection)) {
+					
+					dis = std::min(intersection.length(), dis);
+				}
+
+				if (dis < distance) {
+					distance = dis;
+					selected = m.entity;
+				}
+			}
+		}
+
+		
 		editor.selected_entity = selected;
 	}
 
