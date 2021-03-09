@@ -14,7 +14,8 @@ namespace sv {
 	static u32 line_count = 0u;
 	static bool scroll_selected = false;
 	static f32 show_fade = 0.f;
-	
+
+	static constexpr u32 HISTORY_COUNT = 300u;
 	static constexpr u32 CONSOLE_SIZE = 10000u;
 	static constexpr f32 CONSOLE_HEIGHT = 1.7f;
 	static constexpr u32 LINE_COUNT = 35u;
@@ -28,6 +29,10 @@ namespace sv {
 		char* buff;
 		size_t pos;
 		bool flipped;
+		std::string history[HISTORY_COUNT] = {};
+		bool history_flip = false;
+		u32 history_pos = 0u;
+		u32 history_offset = 0u;
 	};
 
 	static ConsoleBuffer console_buffer;
@@ -228,6 +233,26 @@ namespace sv {
 		register_command("save_scene", command_save_scene);
 		register_command("clear_scene", command_clear_scene);
 		register_command("create_entity_model", command_create_entity_model);
+
+		// Recive command history from last execution
+		{
+			Archive archive;
+			
+			Result res = bin_read(archive, hash_string("CONSOLE HISTORY"));
+
+			if (result_okay(res)) {
+
+				u32 history_count;
+				archive >> history_count;
+				for ( ;console_buffer.history_pos < history_count; ++console_buffer.history_pos) {
+					
+					archive >> console_buffer.history[console_buffer.history_pos];
+				}
+			}
+			else {
+				SV_LOG_ERROR("Command history not found");
+			}
+		}
 	}
 
 	void close_console()
@@ -240,6 +265,22 @@ namespace sv {
 
 		console_buffer.pos = 0U;
 		console_buffer.flipped = false;
+
+		// Save command history
+		{
+			Archive archive;
+
+			archive << HISTORY_COUNT;
+			foreach(i, HISTORY_COUNT) {
+
+				u32 j = (console_buffer.history_pos + i) % HISTORY_COUNT;
+				archive << console_buffer.history[j];
+			}
+
+			if (result_fail(bin_write(archive, hash_string("CONSOLE HISTORY")))) {
+				SV_LOG_ERROR("Can't save the console history");
+			}
+		}
 	}
 
 	Result execute_command(const char* command)
@@ -254,6 +295,14 @@ namespace sv {
 		if (*command == '\0') {
 			SV_LOG_ERROR("This is an empty command string");
 			return Result_InvalidUsage;
+		}
+
+		// Save to history
+		{
+			console_buffer.history[console_buffer.history_pos] = command;
+			u32 new_pos = (console_buffer.history_pos + 1u) % HISTORY_COUNT;
+			if (new_pos < console_buffer.history_pos) console_buffer.history_flip = true;
+			console_buffer.history_pos = new_pos;
 		}
 
 		const char* name = command;
@@ -430,6 +479,38 @@ namespace sv {
 		show_fade = std::min(1.f, show_fade + animation_advance);
 
 		input.unused = false;
+
+		// Command History
+		{
+			bool change_command = false;
+		
+			if (input.keys[Key_Up] == InputState_Pressed) {
+				
+				u32 limit = console_buffer.history_flip ? HISTORY_COUNT : console_buffer.history_pos;
+				console_buffer.history_offset = std::min(console_buffer.history_offset + 1u, limit - 1u);
+				change_command = true;
+			}
+			if (input.keys[Key_Down] == InputState_Pressed) {
+				
+				if (console_buffer.history_offset != 0u) {
+					
+					--console_buffer.history_offset;
+					change_command = true;
+				}
+			}
+			
+			if (change_command) {
+				
+				if (console_buffer.history_offset != 0u) {
+					
+					i32 pos = i32(console_buffer.history_pos) - i32(console_buffer.history_offset);
+					while (pos < 0) pos = HISTORY_COUNT + pos;
+					
+					current_command = console_buffer.history[size_t(pos)];
+				}
+				else current_command.clear();
+			}
+		}
 		
 		current_command.insert(current_command.begin() + cursor_pos, input.text.begin(), input.text.end());
 		cursor_pos += u32(input.text.size());
