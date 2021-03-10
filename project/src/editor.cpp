@@ -1064,7 +1064,7 @@ namespace sv {
 				draw_gizmos(engine.offscreen, cmd);
 
 				Transform trans = get_entity_transform(engine.scene, cam->entity);
-				end_debug_batch(engine.offscreen, 0u, camera_view_projection_matrix(trans.getWorldPosition(), trans.getWorldRotation(), *cam), cmd);
+				end_debug_batch(true, false, camera_view_projection_matrix(trans.getWorldPosition(), trans.getWorldRotation(), *cam), cmd);
 			}
 		}
 

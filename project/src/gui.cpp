@@ -1239,13 +1239,13 @@ namespace sv {
 
 				draw_debug_quad(pos.getVec3(0.f), size, color, cmd);
 
-				end_debug_batch(offscreen, nullptr, XMMatrixIdentity(), cmd);
+				end_debug_batch(true, false, XMMatrixIdentity(), cmd);
 
 				if (button.text.size()) {
 
 					f32 font_size = size.y;
 
-					draw_text(offscreen, button.text.c_str(), button.text.size()
+					draw_text(button.text.c_str(), button.text.size()
 						, pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font_opensans.vertical_offset * font_size, 
 						size.x, 1u, font_size, gui.aspect, TextAlignment_Center, &font_opensans, button.style.text_color, cmd);
 				}					
@@ -1265,7 +1265,7 @@ namespace sv {
 
 				draw_debug_quad(pos.getVec3(0.f), size, container.style.color, cmd);
 
-				end_debug_batch(offscreen, nullptr, XMMatrixIdentity(), cmd);
+				end_debug_batch(true, false, XMMatrixIdentity(), cmd);
 			}
 			break;
 
@@ -1284,7 +1284,7 @@ namespace sv {
 
 				draw_debug_quad(pos.getVec3(0.f), size, popup.style.background_color, cmd);
 
-				end_debug_batch(offscreen, nullptr, XMMatrixIdentity(), cmd);
+				end_debug_batch(true, false, XMMatrixIdentity(), cmd);
 			}
 			break;
 
@@ -1318,13 +1318,13 @@ namespace sv {
 				draw_debug_quad(content_position.getVec3(0.f), content_size, style.color, cmd);
 				draw_debug_quad(decoration_position.getVec3(0.f), decoration_size, style.decoration_color, cmd);
 
-				end_debug_batch(offscreen, nullptr, XMMatrixIdentity(), cmd);
+				end_debug_batch(true, false, XMMatrixIdentity(), cmd);
 
 				if (window.title.size()) {
 
 					f32 font_size = decoration_size.y * 0.5f;
 
-					draw_text(offscreen, window.title.c_str(), window.title.size()
+					draw_text(window.title.c_str(), window.title.size()
 						, decoration_position.x - decoration_size.x * 0.5f + 0.01f, decoration_position.y +
 						decoration_size.y * 0.25f - font_opensans.vertical_offset * font_size, decoration_size.x, 1u, font_size,
 						gui.aspect, TextAlignment_Left, &font_opensans, cmd);
@@ -1351,7 +1351,7 @@ namespace sv {
 				
 				draw_debug_quad({ slider_pos, slider.bounds.y, 0.f }, slider.style.button_size, slider.style.button_color, cmd);
 
-				end_debug_batch(offscreen, nullptr, XMMatrixIdentity(), cmd);
+				end_debug_batch(true, false, XMMatrixIdentity(), cmd);
 			}
 			break;
 
@@ -1368,13 +1368,13 @@ namespace sv {
 
 				draw_debug_quad(pos.getVec3(0.f), size, label.style.background_color, cmd);
 
-				end_debug_batch(offscreen, nullptr, XMMatrixIdentity(), cmd);
+				end_debug_batch(true, false, XMMatrixIdentity(), cmd);
 
 				if (label.text.size()) {
 				
 					f32 font_size = size.y;
 
-					draw_text(offscreen, label.text.c_str(), label.text.size(), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - 
+					draw_text(label.text.c_str(), label.text.size(), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - 
 						font_opensans.vertical_offset * font_size, size.x, 1u, font_size, gui.aspect, label.style.text_alignment, 
 						&font_opensans, label.style.text_color, cmd);
 				}
@@ -1424,7 +1424,7 @@ namespace sv {
 					break;
 				}
 
-				end_debug_batch(offscreen, nullptr, XMMatrixIdentity(), cmd);
+				end_debug_batch(true, false, XMMatrixIdentity(), cmd);
 			}
 			break;
 
@@ -1441,7 +1441,7 @@ namespace sv {
 
 				draw_debug_quad(pos.getVec3(0.f), size, drag.style.background_color, cmd);
 
-				end_debug_batch(offscreen, nullptr, XMMatrixIdentity(), cmd);
+				end_debug_batch(true, false, XMMatrixIdentity(), cmd);
 
 				f32 font_size = size.y;
 
@@ -1449,7 +1449,7 @@ namespace sv {
 				u32 strsize;
 				float_to_string(drag.value, strbuff, &strsize, MAX_FLOAT_CHARS);
 
-				draw_text(offscreen, strbuff, strsize
+				draw_text(strbuff, strsize
 					, pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font_opensans.vertical_offset * font_size, 
 					size.x, 1u, font_size, gui.aspect, TextAlignment_Center, &font_opensans, drag.style.text_color, cmd);
 			}

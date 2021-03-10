@@ -672,7 +672,7 @@ namespace sv {
 		draw_debug_quad({ console_x, animation + 1.f - console_height * 0.5f, 0.f }, { console_width, console_height }, Color::Black(180u), cmd);
 		draw_debug_quad({ 0.f, animation + 1.f - console_height - command_height * 0.5f, 0.f }, { 2.f, command_height }, Color::Black(), cmd);
 
-		end_debug_batch(engine.offscreen, nullptr, XMMatrixIdentity(), cmd);
+		end_debug_batch(true, false, XMMatrixIdentity(), cmd);
 
 		f32 text_x = -1.f;
 		f32 text_y = 1.f - console_height + animation;
@@ -682,12 +682,12 @@ namespace sv {
 
 		if (console.current_command.size()) {
 			
-			draw_text(engine.offscreen, console.current_command.c_str(), console.current_command.size(), text_x, text_y, 2.f, 1u, COMMAND_TEXT_SIZE, aspect, TextAlignment_Left, &font_console, Color::White(), cmd);
+			draw_text(console.current_command.c_str(), console.current_command.size(), text_x, text_y, 2.f, 1u, COMMAND_TEXT_SIZE, aspect, TextAlignment_Left, &font_console, Color::White(), cmd);
 		}
 
 		if (console.buff_pos) {
 
-			draw_text_area(engine.offscreen, console.buff, console.buff_pos, buffer_x, buffer_y, console_width, LINE_COUNT, TEXT_SIZE, aspect, TextAlignment_Left, u32(console.text_offset), true, &font_console, Color::White(), cmd);
+			draw_text_area(console.buff, console.buff_pos, buffer_x, buffer_y, console_width, LINE_COUNT, TEXT_SIZE, aspect, TextAlignment_Left, u32(console.text_offset), true, &font_console, Color::White(), cmd);
 		}
 
 		begin_debug_batch(cmd);
@@ -697,7 +697,7 @@ namespace sv {
 
 		draw_debug_quad({ text_x + width + char_width * 0.5f, text_y - command_height * 0.5f, 0.f }, { char_width, command_height }, Color::Red(100u), cmd);
 
-		end_debug_batch(engine.offscreen, nullptr, XMMatrixIdentity(), cmd);
+		end_debug_batch(true, false, XMMatrixIdentity(), cmd);
 	}
 
 }

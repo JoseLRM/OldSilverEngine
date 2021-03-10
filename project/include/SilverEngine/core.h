@@ -192,7 +192,7 @@ namespace sv {
 #define SV_LOG_WARNING(x, ...) sv::console_notify("WARNING", x, __VA_ARGS__)
 #define SV_LOG_ERROR(x, ...) sv::console_notify("ERROR", x, __VA_ARGS__)
 
-#endif
+#else
 
 #define SV_LOG_CLEAR() do{}while(0)
 #define SV_LOG_SEPARATOR() do{}while(0)
@@ -200,6 +200,8 @@ namespace sv {
 #define SV_LOG_INFO(x, ...) do{}while(0)
 #define SV_LOG_WARNING(x, ...) printf("[WARNING] " x "\n", __VA_ARGS__)
 #define SV_LOG_ERROR(x, ...) printf("[ERROR] " x "\n", __VA_ARGS__)
+
+#endif
 
 // Debug profiler
 

@@ -61,26 +61,31 @@ namespace sv {
 	constexpr u32 LINE_COUNT = 100u;
 	constexpr u32 TRIANGLE_COUNT = 100u;
 	
-	void end_debug_batch(GPUImage* offscreen, GPUImage* depthstencil, const XMMATRIX& view_projection_matrix, CommandList cmd)
+	void end_debug_batch(bool transparent_blend, bool depth_test, const XMMATRIX& view_projection_matrix, CommandList cmd)
 	{
 		SV_PARSE_BATCH();
 
 		GPUImage* att[2u];
-		att[0] = offscreen;
-		att[1] = depthstencil;
+		att[0] = engine.offscreen;
+		att[1] = engine.depthstencil;
 
 		RenderPass* renderpass;
 		
-		if (depthstencil == nullptr) {
-
-			renderpass = gfx.renderpass_off;
-			graphics_depthstencilstate_unbind(cmd);
-			graphics_blendstate_bind(gfx.bs_transparent, cmd);
-		}
-		else {
+		if (depth_test) {
 
 			renderpass = gfx.renderpass_world;
 			graphics_depthstencilstate_bind(gfx.dss_default_depth, cmd);
+		}
+		else {
+
+			renderpass = gfx.renderpass_off;
+			graphics_depthstencilstate_unbind(cmd);
+		}
+		
+		if (transparent_blend) {
+			graphics_blendstate_bind(gfx.bs_transparent, cmd);
+		}
+		else {
 			graphics_blendstate_unbind(cmd);
 		}
 

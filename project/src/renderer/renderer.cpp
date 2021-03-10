@@ -741,7 +741,7 @@ namespace sv {
 					camera_data.view_projection_matrix = camera_data.view_matrix * camera_data.projection_matrix;
 				}
 
-				draw_sky(engine.offscreen, camera_data.view_matrix, camera_data.projection_matrix, cmd);
+				draw_sky(camera_data.view_matrix, camera_data.projection_matrix, cmd);
 
 				graphics_buffer_update(gfx.cbuffer_camera, &camera_data, sizeof(CameraBuffer_GPU), 0u, cmd);
 
@@ -1045,7 +1045,7 @@ namespace sv {
 				
 				constexpr f32 SIZE = 0.4f;
 				constexpr const char* TEXT = "No Main Camera";
-				draw_text(engine.offscreen, TEXT, strlen(TEXT), -1.f, +SIZE * 0.5f, 2.f, 1u, SIZE, window_aspect_get(engine.window), TextAlignment_Center, &font_opensans, cmd);
+				draw_text(TEXT, strlen(TEXT), -1.f, +SIZE * 0.5f, 2.f, 1u, SIZE, window_aspect_get(engine.window), TextAlignment_Center, &font_opensans, cmd);
 			}
 		}
 
@@ -1056,7 +1056,7 @@ namespace sv {
 			gfx.image_aux, GPUImageLayout_ShaderResource, GPUImageLayout_ShaderResource, intensity, window_aspect_get(engine.window), cmd);
 	}
 
-	void draw_sky(GPUImage* offscreen, XMMATRIX view_matrix, const XMMATRIX& projection_matrix, CommandList cmd)
+	void draw_sky(XMMATRIX view_matrix, const XMMATRIX& projection_matrix, CommandList cmd)
 	{
 		graphics_depthstencilstate_unbind(cmd);
 		graphics_blendstate_unbind(cmd);
@@ -1084,7 +1084,7 @@ namespace sv {
 		graphics_shader_bind(gfx.vs_sky, cmd);
 		graphics_shader_bind(gfx.ps_sky, cmd);
 
-		GPUImage* att[] = { offscreen };
+		GPUImage* att[] = { engine.offscreen };
 		graphics_renderpass_begin(gfx.renderpass_off, att, 0, 1.f, 0u, cmd);
 		graphics_draw(36u, 1u, 0u, 0u, cmd);
 		graphics_renderpass_end(cmd);
@@ -1148,7 +1148,7 @@ namespace sv {
 		graphics_renderpass_end(cmd);
 	}
 
-	u32 draw_text(GPUImage* offscreen, const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, Font* pFont, Color color, CommandList cmd)
+	u32 draw_text(const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, Font* pFont, Color color, CommandList cmd)
 	{
 		if (text == nullptr) return 0u;
 		if (text_size == 0u) return 0u;
@@ -1202,7 +1202,7 @@ namespace sv {
 
 			if (vertex_count + (line_end - it) > TEXT_BATCH_COUNT) {
 
-				text_draw_call(offscreen, buffer, data, vertex_count, cmd);
+				text_draw_call(engine.offscreen, buffer, data, vertex_count, cmd);
 				vertex_count = 0u;
 			}
 
@@ -1267,12 +1267,12 @@ namespace sv {
 
 		number_of_chars = u32(it - text);
 
-		text_draw_call(offscreen, buffer, data, vertex_count, cmd);
+		text_draw_call(engine.offscreen, buffer, data, vertex_count, cmd);
 
 		return number_of_chars;
 	}
 
-	void draw_text_area(GPUImage* offscreen, const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, u32 line_offset, bool bottom_top, Font* pFont, Color color, CommandList cmd)
+	void draw_text_area(const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, u32 line_offset, bool bottom_top, Font* pFont, Color color, CommandList cmd)
 	{
 		if (text == nullptr) return;
 		if (text_size == 0u) return;
@@ -1327,7 +1327,7 @@ namespace sv {
 			text = it;
 		}
 
-		draw_text(offscreen, text, text_size, x, y, max_line_width, max_lines, font_size, aspect, alignment, &font, cmd);
+		draw_text(text, text_size, x, y, max_line_width, max_lines, font_size, aspect, alignment, &font, cmd);
 	}
 
 	XMMATRIX camera_view_projection_matrix(const v3_f32& position, const v4_f32 rotation, CameraComponent& camera)

@@ -18,20 +18,20 @@ namespace sv {
 	// TEXT RENDERING (Clip space rendering)
 
 	// Return the number of character rendered
-	u32 draw_text(GPUImage* offscreen, const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, Font* pFont, Color color, CommandList cmd);
+	u32 draw_text(const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, Font* pFont, Color color, CommandList cmd);
 
-	SV_INLINE u32 draw_text(GPUImage* offscreen, const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, Font* pFont, CommandList cmd)
+	SV_INLINE u32 draw_text(const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, Font* pFont, CommandList cmd)
 	{
-		return draw_text(offscreen, text, text_size, x, y, max_line_width, max_lines, font_size, aspect, alignment, pFont, Color::White(), cmd);
+		return draw_text(text, text_size, x, y, max_line_width, max_lines, font_size, aspect, alignment, pFont, Color::White(), cmd);
 	}
 
-	void draw_text_area(GPUImage* offscreen, const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, u32 line_offset, bool bottom_top, Font* pFont, Color color, CommandList cmd);
+	void draw_text_area(const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, u32 line_offset, bool bottom_top, Font* pFont, Color color, CommandList cmd);
 
 	// SCENE
 
 	void draw_scene(Scene* scene);
 
-	void draw_sky(GPUImage* offscreen, XMMATRIX view_matrix, const XMMATRIX& projection_matrix, CommandList cmd);
+	void draw_sky(XMMATRIX view_matrix, const XMMATRIX& projection_matrix, CommandList cmd);
 
 	XMMATRIX camera_view_matrix(const v3_f32& position, const v4_f32 rotation, CameraComponent& camera);
 	XMMATRIX camera_projection_matrix(CameraComponent& camera);
@@ -54,7 +54,7 @@ namespace sv {
 	// DEBUG RENDERER
 
 	void begin_debug_batch(CommandList cmd);
-	void end_debug_batch(GPUImage* offscreen, GPUImage* depthstencil, const XMMATRIX& viewProjectionMatrix, CommandList cmd);
+	void end_debug_batch(bool transparent_blend, bool depth_test, const XMMATRIX& viewProjectionMatrix, CommandList cmd);
 
 	void draw_debug_quad(const XMMATRIX& matrix, Color color, CommandList cmd);
 	void draw_debug_line(const v3_f32& p0, const v3_f32& p1, Color color, CommandList cmd);
