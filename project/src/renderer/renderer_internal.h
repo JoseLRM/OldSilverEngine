@@ -70,9 +70,16 @@ namespace sv {
 		Color color;
 	};
 
+	struct GaussianBlurData {
+		f32 intensity;
+		u32 horizontal;
+		v2_f32 padding;
+	};
+
 	struct GraphicsObjects {
 
 		GPUImage* image_white;
+		GPUImage* image_aux;
 		Sampler* sampler_def_linear;
 		Sampler* sampler_def_nearest;
 		GPUBuffer* vbuffer_batch[GraphicsLimit_CommandList];
@@ -117,6 +124,12 @@ namespace sv {
 		GPUBuffer* cbuffer_material;
 		GPUBuffer* cbuffer_mesh_instance;
 		GPUBuffer* cbuffer_light_instances;
+
+		// PP
+
+		Shader* vs_default_postprocess;
+		Shader* ps_gaussian_blur;
+		GPUBuffer* cbuffer_gaussian_blur;
 
 		// SKY
 

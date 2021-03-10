@@ -37,6 +37,20 @@ namespace sv {
 	XMMATRIX camera_projection_matrix(CameraComponent& camera);
 	XMMATRIX camera_view_projection_matrix(const v3_f32& position, const v4_f32 rotation, CameraComponent& camera);
 
+	// POSTPROCESSING
+
+	void postprocess_gaussian_blur(
+		GPUImage* src, 
+		GPUImageLayout src_layout0, 
+		GPUImageLayout src_layout1, 
+		GPUImage* aux, 
+		GPUImageLayout aux_layout0, 
+		GPUImageLayout aux_layout1,
+		f32 intensity,
+		f32 aspect,
+		CommandList cmd
+	);
+
 	// DEBUG RENDERER
 
 	void begin_debug_batch(CommandList cmd);

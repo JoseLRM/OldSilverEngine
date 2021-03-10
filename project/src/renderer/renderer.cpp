@@ -8,7 +8,7 @@
 namespace sv {
 
 	GraphicsObjects		gfx = {};
-	u8* batch_data[GraphicsLimit_CommandList] = {};
+	u8*					batch_data[GraphicsLimit_CommandList] = {};
 	Font				font_opensans;
 	Font				font_console;
 
@@ -23,9 +23,9 @@ namespace sv {
 
 	static Result compile_shaders()
 	{
-		COMPILE_VS_(gfx.vs_debug_solid_batch, "debug/solid_batch.hlsl");
-		COMPILE_PS_(gfx.ps_debug_solid, "debug/solid_batch.hlsl");
-		COMPILE_VS_(gfx.vs_debug_mesh_wireframe, "debug/mesh_wireframe.hlsl");
+		COMPILE_VS(gfx.vs_debug_solid_batch, "debug/solid_batch.hlsl");
+		COMPILE_PS(gfx.ps_debug_solid, "debug/solid_batch.hlsl");
+		COMPILE_VS(gfx.vs_debug_mesh_wireframe, "debug/mesh_wireframe.hlsl");
 
 		COMPILE_VS(gfx.vs_text, "text.hlsl");
 		COMPILE_PS(gfx.ps_text, "text.hlsl");
@@ -38,6 +38,9 @@ namespace sv {
 
 		COMPILE_VS(gfx.vs_sky, "skymapping.hlsl");
 		COMPILE_PS(gfx.ps_sky, "skymapping.hlsl");
+
+		COMPILE_VS_(gfx.vs_default_postprocess, "postprocessing/default.hlsl");
+		COMPILE_PS_(gfx.ps_gaussian_blur, "postprocessing/gaussian_blur.hlsl");
 
 		return Result_Success;
 	}
@@ -108,6 +111,17 @@ namespace sv {
 			desc.pData = nullptr;
 
 			svCheck(graphics_buffer_create(&desc, &gfx.cbuffer_debug_mesh));
+		}
+
+		// Gaussian blur
+		{
+			desc.bufferType = GPUBufferType_Constant;
+			desc.usage = ResourceUsage_Default;
+			desc.CPUAccess = CPUAccess_Write;
+			desc.size = sizeof(GaussianBlurData);
+			desc.pData = nullptr;
+
+			svCheck(graphics_buffer_create(&desc, &gfx.cbuffer_gaussian_blur));
 		}
 
 		// Camera buffer
@@ -284,6 +298,21 @@ namespace sv {
 	static Result create_images()
 	{
 		GPUImageDesc desc;
+
+		// Aux Image
+		{
+			desc.pData = nullptr;
+			desc.size = 0u;
+			desc.format = OFFSCREEN_FORMAT;
+			desc.layout = GPUImageLayout_ShaderResource;
+			desc.type = GPUImageType_RenderTarget | GPUImageType_ShaderResource;
+			desc.usage = ResourceUsage_Static;
+			desc.CPUAccess = CPUAccess_None;
+			desc.width = 1920u / 2u;
+			desc.height = 1080u / 2u;
+
+			svCheck(graphics_image_create(&desc, &gfx.image_aux));
+		}
 
 		// White Image
 		{
@@ -1019,6 +1048,12 @@ namespace sv {
 				draw_text(engine.offscreen, TEXT, strlen(TEXT), -1.f, +SIZE * 0.5f, 2.f, 1u, SIZE, window_aspect_get(engine.window), TextAlignment_Center, &font_opensans, cmd);
 			}
 		}
+
+		// TEMP
+		f32 intensity = std::max((1.f + f32(sin(timer_now())) / 2.f) * 0.05f - 0.01f, 0.f);
+
+		postprocess_gaussian_blur(engine.offscreen, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget,
+			gfx.image_aux, GPUImageLayout_ShaderResource, GPUImageLayout_ShaderResource, intensity, window_aspect_get(engine.window), cmd);
 	}
 
 	void draw_sky(GPUImage* offscreen, XMMATRIX view_matrix, const XMMATRIX& projection_matrix, CommandList cmd)
@@ -1298,6 +1333,124 @@ namespace sv {
 	XMMATRIX camera_view_projection_matrix(const v3_f32& position, const v4_f32 rotation, CameraComponent& camera)
 	{
 		return camera_view_matrix(position, rotation, camera) * camera_projection_matrix(camera);
+	}
+
+	// POSTPROCESSING
+
+	void postprocess_gaussian_blur(
+		GPUImage* src,
+		GPUImageLayout src_layout0,
+		GPUImageLayout src_layout1,
+		GPUImage* aux,
+		GPUImageLayout aux_layout0,
+		GPUImageLayout aux_layout1,
+		f32 intensity,
+		f32 aspect,
+		CommandList cmd
+	)
+	{
+		GPUBarrier barriers[2u];
+		u32 barrier_count = 0u;
+		GPUImage* att[1u];
+		GaussianBlurData data;
+
+		GPUImageInfo src_info = graphics_image_info(src);
+		GPUImageInfo aux_info = graphics_image_info(aux);
+		
+		// Prepare image layouts
+		{
+			if (src_layout0 != GPUImageLayout_ShaderResource) {
+
+				barriers[0u] = GPUBarrier::Image(src, src_layout0, GPUImageLayout_ShaderResource);
+				++barrier_count;
+			}
+			if (aux_layout0 != GPUImageLayout_RenderTarget) {
+
+				barriers[barrier_count++] = GPUBarrier::Image(aux, aux_layout0, GPUImageLayout_RenderTarget);
+			}
+			if (barrier_count) {
+				graphics_barrier(barriers, barrier_count, cmd);
+			}
+		}
+
+		// Prepare graphics state
+		{
+			graphics_topology_set(GraphicsTopology_Triangles, cmd);
+			graphics_rasterizerstate_unbind(cmd);
+			graphics_blendstate_unbind(cmd);
+			graphics_depthstencilstate_unbind(cmd);
+			graphics_inputlayoutstate_unbind(cmd);
+
+			graphics_shader_bind(gfx.vs_default_postprocess, cmd);
+			graphics_shader_bind(gfx.ps_gaussian_blur, cmd);
+
+			graphics_constantbuffer_bind(gfx.cbuffer_gaussian_blur, 0u, ShaderType_Pixel, cmd);
+			graphics_sampler_bind(gfx.sampler_def_linear, 0u, ShaderType_Pixel, cmd);
+		}
+	
+		// Horizontal blur
+		{
+			graphics_image_bind(src, 0u, ShaderType_Pixel, cmd);
+			graphics_viewport_set(aux, 0u, cmd);
+			graphics_scissor_set(aux, 0u, cmd);
+
+			att[0u] = aux;
+
+			data.intensity = intensity * (f32(aux_info.width) / f32(src_info.width));
+			if (aspect < 1.f) {
+				data.intensity /= aspect;
+			}
+
+			data.horizontal = 1u;
+			graphics_buffer_update(gfx.cbuffer_gaussian_blur, &data, sizeof(GaussianBlurData), 0u, cmd);
+
+			graphics_renderpass_begin(gfx.renderpass_off, att, cmd);
+			graphics_draw(3u, 1u, 0u, 0u, cmd);
+			graphics_renderpass_end(cmd);
+		}
+
+		// Vertical blur
+		{
+			barriers[0u] = GPUBarrier::Image(src, GPUImageLayout_ShaderResource, GPUImageLayout_RenderTarget);
+			barriers[1u] = GPUBarrier::Image(aux, GPUImageLayout_RenderTarget, GPUImageLayout_ShaderResource);
+			graphics_barrier(barriers, 2u, cmd);
+
+			graphics_image_bind(aux, 0u, ShaderType_Pixel, cmd);
+			graphics_viewport_set(src, 0u, cmd);
+			graphics_scissor_set(src, 0u, cmd);
+
+			att[0u] = src;
+
+			data.intensity = intensity * (f32(aux_info.height) / f32(src_info.height));
+			if (aspect > 1.f) {
+				data.intensity *= aspect;
+			}
+
+			data.horizontal = 0u;
+			graphics_buffer_update(gfx.cbuffer_gaussian_blur, &data, sizeof(GaussianBlurData), 0u, cmd);
+			
+			graphics_renderpass_begin(gfx.renderpass_off, att, cmd);
+			graphics_draw(3u, 1u, 0u, 0u, cmd);
+			graphics_renderpass_end(cmd);
+		}
+
+		// Change images layout
+		{
+			barrier_count = 0u;
+
+			if (src_layout1 != GPUImageLayout_RenderTarget) {
+
+				barriers[0u] = GPUBarrier::Image(src, GPUImageLayout_RenderTarget, src_layout1);
+				++barrier_count;
+			}
+			if (aux_layout1 != GPUImageLayout_ShaderResource) {
+
+				barriers[barrier_count++] = GPUBarrier::Image(aux, GPUImageLayout_ShaderResource, aux_layout1);
+			}
+			if (barrier_count) {
+				graphics_barrier(barriers, barrier_count, cmd);
+			}
+		}
 	}
 
 }
