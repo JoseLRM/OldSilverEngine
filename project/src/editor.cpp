@@ -1,5 +1,7 @@
 #include "SilverEngine/core.h"
 
+#ifdef SV_DEV
+
 #include "SilverEngine/renderer.h"
 
 namespace sv {
@@ -126,7 +128,7 @@ namespace sv {
 		Time last_update = 0.0;
 	};
 
-	struct Editor {
+	struct GlobalEditorData {
 
 		GUI* gui;
 		EditorStyle style;
@@ -138,7 +140,7 @@ namespace sv {
 		GizmosInfo gizmos;
 	};
 
-	Editor editor;
+	GlobalEditorData editor;
 
 	/////////////////////////////////////////////// GIZMOS ///////////////////////////////////////////////////////
 
@@ -967,11 +969,11 @@ namespace sv {
 			}
 			if (input.keys[Key_F3] == InputState_Pressed) {
 				editor.camera_controller = false;
-				engine.console_active = !engine.console_active;
+				dev.console_active = !dev.console_active;
 			}
 			if (input.keys[Key_F2] == InputState_Pressed) {
 				editor.camera_controller = !editor.camera_controller;
-				engine.console_active = false;
+				dev.console_active = false;
 			}
 		}
 
@@ -1071,3 +1073,5 @@ namespace sv {
 	}
 
 }
+
+#endif

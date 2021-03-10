@@ -170,6 +170,8 @@ namespace sv {
 
 // Console
 
+#ifdef SV_DEV
+
 namespace sv {
 	
 	typedef Result(*CommandFn)(const char** args, u32 argc);
@@ -183,12 +185,21 @@ namespace sv {
 
 }
 
-#define SV_LOG_CLEAR() sv::__internal__do_not_call_this_please_or_you_will_die__console_clear()
+#define SV_LOG_CLEAR() sv::console_clear()
 #define SV_LOG_SEPARATOR() sv::console_print("----------------------------------------------------\n")
 #define SV_LOG(x, ...) sv::console_print(x "\n", __VA_ARGS__)
 #define SV_LOG_INFO(x, ...) sv::console_notify("INFO", x, __VA_ARGS__)
 #define SV_LOG_WARNING(x, ...) sv::console_notify("WARNING", x, __VA_ARGS__)
 #define SV_LOG_ERROR(x, ...) sv::console_notify("ERROR", x, __VA_ARGS__)
+
+#endif
+
+#define SV_LOG_CLEAR() do{}while(0)
+#define SV_LOG_SEPARATOR() do{}while(0)
+#define SV_LOG(x, ...) do{}while(0)
+#define SV_LOG_INFO(x, ...) do{}while(0)
+#define SV_LOG_WARNING(x, ...) printf("[WARNING] " x "\n", __VA_ARGS__)
+#define SV_LOG_ERROR(x, ...) printf("[ERROR] " x "\n", __VA_ARGS__)
 
 // Debug profiler
 
@@ -784,7 +795,6 @@ namespace sv {
 		Window*					window = nullptr;
 		Scene*					scene = nullptr;
 		std::string				next_scene_name;
-		bool					console_active = false;
 		GPUImage*				offscreen = nullptr;
 		GPUImage*				depthstencil = nullptr;
 	};
@@ -810,5 +820,15 @@ namespace sv {
 
 	extern GlobalInputData	input;
 	extern GlobalEngineData engine;
+
+#ifdef SV_DEV
+
+	struct GlobalDevData {
+		bool console_active = false;
+	};
+
+	extern GlobalDevData dev;
+
+#endif
 
 }

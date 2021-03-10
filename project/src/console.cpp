@@ -1,19 +1,13 @@
 #include "SilverEngine/core.h"
 
+#ifdef SV_DEV
+
 #include "SilverEngine/scene.h"
 #include "renderer/renderer_internal.h"
 
 #include <stdarg.h>
 
 namespace sv {
-
-	static std::unordered_map<std::string, CommandFn> commands;
-	static std::string current_command;
-	static u32 cursor_pos = 0u;
-	static f32 text_offset = 0.f;
-	static u32 line_count = 0u;
-	static bool scroll_selected = false;
-	static f32 show_fade = 0.f;
 
 	static constexpr u32 HISTORY_COUNT = 100u;
 	static constexpr u32 CONSOLE_SIZE = 10000u;
@@ -25,21 +19,30 @@ namespace sv {
 	static constexpr f32 SCROLL_HEIGHT = 0.12f;
 	static constexpr f32 ANIMATION_TIME = 0.25f;
 
-	struct ConsoleBuffer {
+	struct GlobalConsoleData {
 		char* buff;
-		size_t pos;
-		bool flipped;
+		size_t buff_pos;
+		bool buff_flip;
+		
 		std::string history[HISTORY_COUNT] = {};
 		bool history_flip = false;
 		u32 history_pos = 0u;
 		u32 history_offset = 0u;
+
+		std::unordered_map<std::string, CommandFn> commands;
+		std::string current_command;
+		u32 cursor_pos = 0u;
+		f32 text_offset = 0.f;
+		u32 line_count = 0u;
+		bool scroll_selected = false;
+		f32 show_fade = 0.f;
 	};
 
-	static ConsoleBuffer console_buffer;
+	static GlobalConsoleData console;
 
 	static Result command_exit(const char** args, u32 argc)
 	{
-		engine.console_active = false;
+		dev.console_active = false;
 		return Result_Success;
 	}
 
@@ -236,9 +239,9 @@ namespace sv {
 
 	void initialize_console()
 	{
-		console_buffer.buff = (char*)malloc(CONSOLE_SIZE);
-		console_buffer.pos = 0U;
-		console_buffer.flipped = false;
+		console.buff = (char*)malloc(CONSOLE_SIZE);
+		console.buff_pos = 0U;
+		console.buff_flip = false;
 
 		// Register default commands
 		register_command("exit", command_exit);
@@ -268,13 +271,13 @@ namespace sv {
 
 				for (i32 i = history_count - 1u; i >= 0; --i) {
 					
-					archive >> console_buffer.history[size_t(i)];
+					archive >> console.history[size_t(i)];
 				}
 
-				console_buffer.history_pos = history_count;
-				if (console_buffer.history_pos == HISTORY_COUNT) {
-					console_buffer.history_pos = 0u;
-					console_buffer.history_flip = true;
+				console.history_pos = history_count;
+				if (console.history_pos == HISTORY_COUNT) {
+					console.history_pos = 0u;
+					console.history_flip = true;
 				}
 			}
 			else {
@@ -285,27 +288,27 @@ namespace sv {
 
 	void close_console()
 	{
-		if (console_buffer.buff) {
+		if (console.buff) {
 
-			free(console_buffer.buff);
-			console_buffer.buff = nullptr;
+			free(console.buff);
+			console.buff = nullptr;
 		}
 
-		console_buffer.pos = 0U;
-		console_buffer.flipped = false;
+		console.buff_pos = 0U;
+		console.buff_flip = false;
 
 		// Save command history
 		{
 			Archive archive;
 
-			u32 history_count = console_buffer.history_flip ? HISTORY_COUNT : console_buffer.history_pos;
+			u32 history_count = console.history_flip ? HISTORY_COUNT : console.history_pos;
 			archive << history_count;
 			foreach(i, history_count) {
 
-				i32 pos = (i32(console_buffer.history_pos) - i32(i + 1u));
+				i32 pos = (i32(console.history_pos) - i32(i + 1u));
 				while (pos < 0) pos = HISTORY_COUNT + pos;
 				u32 j = pos;
-				archive << console_buffer.history[j];
+				archive << console.history[j];
 			}
 
 			if (result_fail(bin_write(hash_string("CONSOLE HISTORY"), archive))) {
@@ -330,11 +333,11 @@ namespace sv {
 
 		// Save to history
 		{
-			console_buffer.history[console_buffer.history_pos] = command;
-			u32 new_pos = (console_buffer.history_pos + 1u) % HISTORY_COUNT;
-			if (new_pos < console_buffer.history_pos) console_buffer.history_flip = true;
-			console_buffer.history_pos = new_pos;
-			console_buffer.history_offset = 0u;
+			console.history[console.history_pos] = command;
+			u32 new_pos = (console.history_pos + 1u) % HISTORY_COUNT;
+			if (new_pos < console.history_pos) console.history_flip = true;
+			console.history_pos = new_pos;
+			console.history_offset = 0u;
 		}
 
 		const char* name = command;
@@ -347,8 +350,8 @@ namespace sv {
 		command_name.resize(command_size);
 		memcpy(command_name.data(), name, command_size);
 
-		auto it = commands.find(command_name);
-		if (it == commands.end()) {
+		auto it = console.commands.find(command_name);
+		if (it == console.commands.end()) {
 			SV_LOG_ERROR("Command '%s' not found", command_name.c_str());
 			return Result_NotFound;
 		}
@@ -395,10 +398,10 @@ namespace sv {
 	{
 		if (command_fn == nullptr || name == nullptr || *name == '\0') return Result_InvalidUsage;
 
-		auto it = commands.find(name);
-		if (it != commands.end()) return Result_Duplicated;
+		auto it = console.commands.find(name);
+		if (it != console.commands.end()) return Result_Duplicated;
 		
-		commands[name] = command_fn;
+		console.commands[name] = command_fn;
 		return Result_Success;
 	}
 
@@ -420,7 +423,7 @@ namespace sv {
 	{
 		if (size == 0u) return;
 
-		size_t capacity = CONSOLE_SIZE - console_buffer.pos;
+		size_t capacity = CONSOLE_SIZE - console.buff_pos;
 
 		size_t rest;
 		size_t write;
@@ -435,20 +438,20 @@ namespace sv {
 			write = size;
 		}
 
-		memcpy(console_buffer.buff + console_buffer.pos, str, write);
+		memcpy(console.buff + console.buff_pos, str, write);
 
 		if (rest) {
 
-			console_buffer.flipped = true;
-			console_buffer.pos = 0u;
+			console.buff_flip = true;
+			console.buff_pos = 0u;
 			_write(str + write, rest);
 		}
-		else console_buffer.pos += write;
+		else console.buff_pos += write;
 	}
 
 	void console_print(const char* str, ...)
 	{
-		text_offset = 0.f;
+		console.text_offset = 0.f;
 
 		va_list args;
 		va_start(args, str);
@@ -465,7 +468,7 @@ namespace sv {
 
 	void console_notify(const char* title, const char* str, ...)
 	{
-		text_offset = 0.f;
+		console.text_offset = 0.f;
 
 		va_list args;
 		va_start(args, str);
@@ -495,20 +498,20 @@ namespace sv {
 
 	void console_clear()
 	{
-		console_buffer.pos = 0u;
-		console_buffer.flipped = false;
+		console.buff_pos = 0u;
+		console.buff_flip = false;
 	}
 
 	void update_console()
 	{
 		f32 animation_advance = engine.deltatime * (1.f / ANIMATION_TIME);
 
-		if (!engine.console_active || !input.unused) {
-			show_fade = std::max(0.f, show_fade - animation_advance);
+		if (!dev.console_active || !input.unused) {
+			console.show_fade = std::max(0.f, console.show_fade - animation_advance);
 			return;
 		}
 
-		show_fade = std::min(1.f, show_fade + animation_advance);
+		console.show_fade = std::min(1.f, console.show_fade + animation_advance);
 
 		input.unused = false;
 
@@ -518,42 +521,42 @@ namespace sv {
 		
 			if (input.keys[Key_Up] == InputState_Pressed) {
 				
-				u32 limit = console_buffer.history_flip ? HISTORY_COUNT : console_buffer.history_pos;
-				console_buffer.history_offset = std::min(console_buffer.history_offset + 1u, limit);
+				u32 limit = console.history_flip ? HISTORY_COUNT : console.history_pos;
+				console.history_offset = std::min(console.history_offset + 1u, limit);
 				change_command = true;
 			}
 			if (input.keys[Key_Down] == InputState_Pressed) {
 				
-				if (console_buffer.history_offset != 0u) {
+				if (console.history_offset != 0u) {
 					
-					--console_buffer.history_offset;
+					--console.history_offset;
 					change_command = true;
 				}
 			}
 			
 			if (change_command) {
 				
-				if (console_buffer.history_offset != 0u) {
+				if (console.history_offset != 0u) {
 					
-					i32 pos = i32(console_buffer.history_pos) - i32(console_buffer.history_offset);
+					i32 pos = i32(console.history_pos) - i32(console.history_offset);
 					while (pos < 0) pos = HISTORY_COUNT + pos;
 					
-					current_command = console_buffer.history[size_t(pos)];
-					cursor_pos = current_command.size();
+					console.current_command = console.history[size_t(pos)];
+					console.cursor_pos = console.current_command.size();
 				}
 				else {
-					current_command.clear();
-					cursor_pos = 0u;
+					console.current_command.clear();
+					console.cursor_pos = 0u;
 				}
 			}
 		}
 		
 		if (input.text.size()) {
 
-			current_command.insert(current_command.begin() + cursor_pos, input.text.begin(), input.text.end());
-			cursor_pos += u32(input.text.size());
+			console.current_command.insert(console.current_command.begin() + console.cursor_pos, input.text.begin(), input.text.end());
+			console.cursor_pos += u32(input.text.size());
 
-			console_buffer.history_offset = 0u;
+			console.history_offset = 0u;
 		}
 
 		bool execute = false;
@@ -565,14 +568,14 @@ namespace sv {
 			switch (txtcmd)
 			{
 			case TextCommand_DeleteLeft:
-				if (cursor_pos) {
+				if (console.cursor_pos) {
 
-					--cursor_pos;
-					current_command.erase(current_command.begin() + cursor_pos);
+					--console.cursor_pos;
+					console.current_command.erase(console.current_command.begin() + console.cursor_pos);
 				}
 				break;
 			case TextCommand_DeleteRight:
-				if (cursor_pos < current_command.size()) current_command.erase(current_command.begin() + cursor_pos);
+				if (console.cursor_pos < console.current_command.size()) console.current_command.erase(console.current_command.begin() + console.cursor_pos);
 				break;
 
 			case TextCommand_Enter:
@@ -586,32 +589,32 @@ namespace sv {
 			}
 		}
 
-		if (input.keys[Key_Left] == InputState_Pressed) cursor_pos = (cursor_pos == 0u) ? cursor_pos : (cursor_pos - 1u);
-		if (input.keys[Key_Right] == InputState_Pressed) cursor_pos = (cursor_pos == current_command.size()) ? cursor_pos : (cursor_pos + 1u);
+		if (input.keys[Key_Left] == InputState_Pressed) console.cursor_pos = (console.cursor_pos == 0u) ? console.cursor_pos : (console.cursor_pos - 1u);
+		if (input.keys[Key_Right] == InputState_Pressed) console.cursor_pos = (console.cursor_pos == console.current_command.size()) ? console.cursor_pos : (console.cursor_pos + 1u);
 
-		if (execute && current_command.size()) {
-			execute_command(current_command.c_str());
-			current_command.clear();
-			cursor_pos = 0u;
+		if (execute && console.current_command.size()) {
+			execute_command(console.current_command.c_str());
+			console.current_command.clear();
+			console.cursor_pos = 0u;
 		}
 
-		text_offset = std::max(text_offset + input.mouse_wheel, 0.f);
+		console.text_offset = std::max(console.text_offset + input.mouse_wheel, 0.f);
 
-		if (!scroll_selected && line_count > LINE_COUNT && input.mouse_buttons[MouseButton_Left] == InputState_Pressed && input.mouse_position.x > 0.5f - SCROLL_WIDTH * 0.5f && input.mouse_position.y > 0.5f - CONSOLE_HEIGHT * 0.5f) {
+		if (!console.scroll_selected && console.line_count > LINE_COUNT && input.mouse_buttons[MouseButton_Left] == InputState_Pressed && input.mouse_position.x > 0.5f - SCROLL_WIDTH * 0.5f && input.mouse_position.y > 0.5f - CONSOLE_HEIGHT * 0.5f) {
 
-			scroll_selected = true;
+			console.scroll_selected = true;
 		}
-		else if (scroll_selected) {
+		else if (console.scroll_selected) {
 
 			if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed || input.mouse_buttons[MouseButton_Left] == InputState_None)
-				scroll_selected = false;
+				console.scroll_selected = false;
 			else {
 
 				f32 min = 0.5f - (CONSOLE_HEIGHT - font_console.vertical_offset * COMMAND_TEXT_SIZE) * 0.5f + SCROLL_HEIGHT * 0.25f;
 				f32 max = 0.5f - SCROLL_HEIGHT * 0.25f;
 				f32 value = (input.mouse_position.y - min) / (max - min);
 
-				text_offset = std::max(0.f, value * f32(line_count - std::min(line_count, LINE_COUNT)));
+				console.text_offset = std::max(0.f, value * f32(console.line_count - std::min(console.line_count, LINE_COUNT)));
 			}
 		}
 
@@ -621,39 +624,39 @@ namespace sv {
 
 	void draw_console(CommandList cmd)
 	{
-		if (!engine.console_active && show_fade == 0.f) return;
+		if (!dev.console_active && console.show_fade == 0.f) return;
 
 		// Flip console
-		if (console_buffer.flipped && console_buffer.pos) {
+		if (console.buff_flip && console.buff_pos) {
 
-			char* aux = (char*)malloc(console_buffer.pos);
-			memcpy(aux, console_buffer.buff, console_buffer.pos);
+			char* aux = (char*)malloc(console.buff_pos);
+			memcpy(aux, console.buff, console.buff_pos);
 
-			memcpy(console_buffer.buff, console_buffer.buff + console_buffer.pos, CONSOLE_SIZE - console_buffer.pos);
-			memcpy(console_buffer.buff + CONSOLE_SIZE - console_buffer.pos, aux, console_buffer.pos);
+			memcpy(console.buff, console.buff + console.buff_pos, CONSOLE_SIZE - console.buff_pos);
+			memcpy(console.buff + CONSOLE_SIZE - console.buff_pos, aux, console.buff_pos);
 
 			free(aux);
-			console_buffer.pos = CONSOLE_SIZE;
-			console_buffer.flipped = false;
+			console.buff_pos = CONSOLE_SIZE;
+			console.buff_flip = false;
 		}
 
 		f32 console_height = CONSOLE_HEIGHT - font_console.vertical_offset * COMMAND_TEXT_SIZE;
 		f32 command_height = COMMAND_TEXT_SIZE - font_console.vertical_offset * COMMAND_TEXT_SIZE;
-		f32 animation = (1.f - show_fade) * (console_height + COMMAND_TEXT_SIZE);
+		f32 animation = (1.f - console.show_fade) * (console_height + COMMAND_TEXT_SIZE);
 
 		f32 window_width = (f32)window_width_get(engine.window);
 		f32 window_height = (f32)window_height_get(engine.window);
 		f32 aspect = window_width / window_height;
 
-		line_count = compute_text_lines(console_buffer.buff, u32(console_buffer.pos), TEXT_SIZE, 2.f, aspect, &font_console);
-		text_offset = std::min(text_offset, std::max(f32(line_count) - f32(LINE_COUNT), 0.f));
+		console.line_count = compute_text_lines(console.buff, u32(console.buff_pos), TEXT_SIZE, 2.f, aspect, &font_console);
+		console.text_offset = std::min(console.text_offset, std::max(f32(console.line_count) - f32(LINE_COUNT), 0.f));
 
 		begin_debug_batch(cmd);
 
 		f32 console_width = 2.f;
 		f32 console_x = 0.f;
 
-		if (line_count > LINE_COUNT) {
+		if (console.line_count > LINE_COUNT) {
 
 			console_width -= SCROLL_WIDTH;
 			console_x -= SCROLL_WIDTH * 0.5f;
@@ -661,7 +664,7 @@ namespace sv {
 			// Draw scroll
 			draw_debug_quad({ 1.f - SCROLL_WIDTH * 0.5f, 1.f - console_height * 0.5f + animation, 0.f }, { SCROLL_WIDTH, console_height }, Color::Gray(20u), cmd);
 
-			f32 value = text_offset / f32(line_count - std::min(line_count, LINE_COUNT));
+			f32 value = console.text_offset / f32(console.line_count - std::min(console.line_count, LINE_COUNT));
 
 			draw_debug_quad({ 1.f - SCROLL_WIDTH * 0.5f, animation + (1.f - console_height + SCROLL_HEIGHT * 0.5f) + (console_height - SCROLL_HEIGHT) * value, 0.f }, { SCROLL_WIDTH, SCROLL_HEIGHT }, Color::White(), cmd);
 		}
@@ -677,19 +680,19 @@ namespace sv {
 		f32 buffer_x = -1.f;
 		f32 buffer_y = 1.f + animation;
 
-		if (current_command.size()) {
+		if (console.current_command.size()) {
 			
-			draw_text(engine.offscreen, current_command.c_str(), current_command.size(), text_x, text_y, 2.f, 1u, COMMAND_TEXT_SIZE, aspect, TextAlignment_Left, &font_console, Color::White(), cmd);
+			draw_text(engine.offscreen, console.current_command.c_str(), console.current_command.size(), text_x, text_y, 2.f, 1u, COMMAND_TEXT_SIZE, aspect, TextAlignment_Left, &font_console, Color::White(), cmd);
 		}
 
-		if (console_buffer.pos) {
+		if (console.buff_pos) {
 
-			draw_text_area(engine.offscreen, console_buffer.buff, console_buffer.pos, buffer_x, buffer_y, console_width, LINE_COUNT, TEXT_SIZE, aspect, TextAlignment_Left, u32(text_offset), true, &font_console, Color::White(), cmd);
+			draw_text_area(engine.offscreen, console.buff, console.buff_pos, buffer_x, buffer_y, console_width, LINE_COUNT, TEXT_SIZE, aspect, TextAlignment_Left, u32(console.text_offset), true, &font_console, Color::White(), cmd);
 		}
 
 		begin_debug_batch(cmd);
 
-		f32 width = compute_text_width(current_command.c_str(), cursor_pos, COMMAND_TEXT_SIZE, aspect, &font_console);
+		f32 width = compute_text_width(console.current_command.c_str(), console.cursor_pos, COMMAND_TEXT_SIZE, aspect, &font_console);
 		f32 char_width = font_console.glyphs['i'].w * COMMAND_TEXT_SIZE;
 
 		draw_debug_quad({ text_x + width + char_width * 0.5f, text_y - command_height * 0.5f, 0.f }, { char_width, command_height }, Color::Red(100u), cmd);
@@ -698,3 +701,5 @@ namespace sv {
 	}
 
 }
+
+#endif

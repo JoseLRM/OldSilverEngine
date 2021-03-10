@@ -16,8 +16,17 @@ namespace sv {
 	GlobalEngineData	engine;
 	GlobalInputData		input;
 
+#ifdef SV_DEV
+	GlobalDevData dev;
+#endif
+
 	void update_assets();
 	void close_assets();
+	Result initialize_scene(Scene** pscene, const char* name);
+	Result close_scene(Scene* scene);
+	void update_scene(Scene* scene);
+
+#ifdef SV_DEV
 	Result initialize_editor();
 	Result close_editor();
 	void update_editor();
@@ -26,9 +35,7 @@ namespace sv {
 	void close_console();
 	void update_console();
 	void draw_console(CommandList cmd);
-	Result initialize_scene(Scene** pscene, const char* name);
-	Result close_scene(Scene* scene);
-	void update_scene(Scene* scene);
+#endif
 
 	// Asset functions
 
@@ -135,7 +142,13 @@ namespace sv {
 	{
 		Result res;
 
+#ifdef SV_DEV
 		initialize_console();
+#else
+#ifdef SV_PLATFORM_WIN
+		ShowWindow(GetConsoleWindow(), SW_HIDE);
+#endif
+#endif
 
 		SV_LOG_INFO("Initializing %s", engine.name.c_str());
 
@@ -218,7 +231,9 @@ namespace sv {
 			svCheck(register_asset_type(&desc));
 		}
 
+#ifdef SV_DEV
 		svCheck(initialize_editor());
+#endif
 
 		// APPLICATION
 		INIT_SYSTEM("Application", engine.callbacks.initialize());
@@ -401,7 +416,10 @@ namespace sv {
 			}
 
 			update_assets();
+
+#ifdef SV_DEV
 			update_console();
+#endif
 
 			// Scene management
 			{
@@ -420,7 +438,9 @@ namespace sv {
 				}
 			}
 
+#ifdef SV_DEV
 			update_editor();
+#endif
 
 			// Update user
 			if (engine.callbacks.update)
@@ -448,8 +468,10 @@ namespace sv {
 				// Draw editor and the console and present to screen
 				cmd = graphics_commandlist_get();
 
+#ifdef SV_DEV
 				draw_editor(cmd);
 				draw_console(cmd);
+#endif
 
 				graphics_present(engine.window, engine.offscreen, GPUImageLayout_RenderTarget, cmd);
 
@@ -488,7 +510,9 @@ namespace sv {
 
 			free_unused_assets();
 
+#ifdef SV_DEV
 			close_editor();
+#endif
 
 			graphics_destroy(engine.offscreen);
 			graphics_destroy(engine.depthstencil);
@@ -503,7 +527,10 @@ namespace sv {
 			close_assets();
 			if (result_fail(event_close())) { SV_LOG_ERROR("Can't close the event system"); }
 			if (result_fail(task_close())) { SV_LOG_ERROR("Can't close the task system"); }
+
+#ifdef SV_DEV
 			close_console();
+#endif
 		}
 		CATCH;
 
