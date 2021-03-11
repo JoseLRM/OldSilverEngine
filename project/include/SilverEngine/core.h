@@ -781,7 +781,7 @@ namespace sv {
 		void(*update_scene)(Scene* scene);
 		Result(*initialize_scene)(Scene* scene, Archive* archive);
 		Result(*close_scene)(Scene* scene);
-		Result(*serialize_scene)(Scene* scene, Archive archive);
+		Result(*serialize_scene)(Scene* scene, Archive& archive);
 	};
 
 	struct GlobalEngineData {

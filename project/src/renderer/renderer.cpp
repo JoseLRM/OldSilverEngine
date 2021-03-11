@@ -1048,12 +1048,6 @@ namespace sv {
 				draw_text(TEXT, strlen(TEXT), -1.f, +SIZE * 0.5f, 2.f, 1u, SIZE, window_aspect_get(engine.window), TextAlignment_Center, &font_opensans, cmd);
 			}
 		}
-
-		// TEMP
-		f32 intensity = std::max((1.f + f32(sin(timer_now())) / 2.f) * 0.05f - 0.01f, 0.f);
-
-		postprocess_gaussian_blur(engine.offscreen, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget,
-			gfx.image_aux, GPUImageLayout_ShaderResource, GPUImageLayout_ShaderResource, intensity, window_aspect_get(engine.window), cmd);
 	}
 
 	void draw_sky(XMMATRIX view_matrix, const XMMATRIX& projection_matrix, CommandList cmd)
