@@ -732,27 +732,68 @@ namespace sv {
 
 		// Draw cameras
 		{
-			CameraComponent* camera_ = get_main_camera(scene);
 
+#ifdef SV_DEV
+			CameraComponent* camera_ = nullptr;
+
+			{
+				v3_f32 cam_pos;
+				v4_f32 cam_rot;
+				
+				if (dev.debug_draw) {
+
+					camera_ = &dev.debug_camera;
+					cam_pos = dev.debug_camera_position;
+					cam_rot = dev.debug_camera_rotation;
+				}
+				else {
+					
+					camera_ = get_main_camera(scene);
+					if (camera_) {
+
+						Transform trans = get_entity_transform(scene, camera_->entity);
+						cam_pos = trans.getWorldPosition();
+						cam_rot = trans.getWorldRotation();
+					}
+				}
+
+				if (camera_) {
+						
+					
+					CameraBuffer_GPU camera_data;
+					camera_data.projection_matrix = camera_projection_matrix(camera);
+					camera_data.position = cam_pos.getVec4(0.f);
+					camera_data.rotation = cam_rot;
+					camera_data.view_matrix = camera_view_matrix(camera_data.position.get_vec3(), camera_data.rotation, camera);
+					camera_data.view_projection_matrix = camera_data.view_matrix * camera_data.projection_matrix;
+					
+					graphics_buffer_update(gfx.cbuffer_camera, &camera_data, sizeof(CameraBuffer_GPU), 0u, cmd);
+				}
+			}
+#else
+			
+			CameraComponent* camera_ = get_main_camera(scene);
+			if (camera_) {
+				
+				Transform camera_trans = get_entity_transform(scene, camera_->entity);
+				CameraBuffer_GPU camera_data;
+				camera_data.projection_matrix = camera_projection_matrix(camera);
+				camera_data.position = camera_trans.getWorldPosition().getVec4(0.f);
+				camera_data.rotation = camera_trans.getWorldRotation();
+				camera_data.view_matrix = camera_view_matrix(camera_data.position.get_vec3(), camera_data.rotation, camera);
+				camera_data.view_projection_matrix = camera_data.view_matrix * camera_data.projection_matrix;
+				
+				graphics_buffer_update(gfx.cbuffer_camera, &camera_data, sizeof(CameraBuffer_GPU), 0u, cmd);
+			}
+
+#endif
+		
 			if (camera_) {
 
 				CameraComponent& camera = *camera_;
 
-				Transform camera_trans = get_entity_transform(scene, camera.entity);
-
-				CameraBuffer_GPU camera_data;
-				{
-					camera_data.projection_matrix = camera_projection_matrix(camera);
-					camera_data.position = camera_trans.getWorldPosition().getVec4(0.f);
-					camera_data.rotation = camera_trans.getWorldRotation();
-					camera_data.view_matrix = camera_view_matrix(camera_data.position.get_vec3(), camera_data.rotation, camera);
-					camera_data.view_projection_matrix = camera_data.view_matrix * camera_data.projection_matrix;
-				}
-
 				if (scene.skybox)
 					draw_sky(scene.skybox, camera_data.view_matrix, camera_data.projection_matrix, cmd);
-
-				graphics_buffer_update(gfx.cbuffer_camera, &camera_data, sizeof(CameraBuffer_GPU), 0u, cmd);
 
 				// DRAW SPRITES
 				{

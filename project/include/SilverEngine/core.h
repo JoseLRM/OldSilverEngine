@@ -823,14 +823,4 @@ namespace sv {
 	extern GlobalInputData	input;
 	extern GlobalEngineData engine;
 
-#ifdef SV_DEV
-
-	struct GlobalDevData {
-		bool console_active = false;
-	};
-
-	extern GlobalDevData dev;
-
-#endif
-
 }
