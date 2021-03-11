@@ -332,84 +332,9 @@ namespace sv {
 			svCheck(graphics_image_create(&desc, &gfx.image_white));
 		}
 
-		Color* data;
-		u32 w, h;
-		svCheck(load_image(SV_SYS("system/skymap.jpg"), (void**)& data, &w, &h));
 
-
-		u32 image_width = w / 4u;
-		u32 image_height = h / 3u;
-
-		Color* images[6u] = {};
-		Color* mem = (Color*)malloc(image_width * image_height * 4u * 6u);
-
-		foreach(i, 6u) {
-
-			images[i] = mem + image_width * image_height * i;
-
-			u32 xoff;
-			u32 yoff;
-
-			switch (i)
-			{
-			case 0:
-				xoff = image_width;
-				yoff = image_height;
-				break;
-			case 1:
-				xoff = image_width * 3u;
-				yoff = image_height;
-				break;
-			case 2:
-				xoff = image_width;
-				yoff = 0u;
-				break;
-			case 3:
-				xoff = image_width;
-				yoff = image_height * 2u;
-				break;
-			case 4:
-				xoff = image_width * 2u;
-				yoff = image_height;
-				break;
-			default:
-				xoff = 0u;
-				yoff = image_height;
-				break;
-			}
-
-			for (u32 y = yoff; y < yoff + image_height; ++y) {
-
-				Color* src = data + xoff + y * w;
-
-				Color* dst = images[i] + (y - yoff) * image_width;
-				Color* dst_end = dst + image_width;
-
-				while (dst != dst_end) {
-
-					*dst = *src;
-
-					++src;
-					++dst;
-				}
-			}
-		}
-
-		desc.pData = images;
-		desc.size = image_width * image_height * 4u;
-		desc.format = Format_R8G8B8A8_UNORM;
-		desc.layout = GPUImageLayout_ShaderResource;
-		desc.type = GPUImageType_ShaderResource | GPUImageType_CubeMap;
-		desc.usage = ResourceUsage_Static;
-		desc.CPUAccess = CPUAccess_None;
-		desc.width = image_width;
-		desc.height = image_height;
-
-		svCheck(graphics_image_create(&desc, &gfx.image_sky));
-
-		free(mem);
-		delete[] data;
-
+		svCheck(load_skymap_image(SV_SYS("system/skymap.jpg"), &gfx.image_sky));
+		
 		return Result_Success;
 	}
 
@@ -634,6 +559,89 @@ namespace sv {
 		desc.layout = GPUImageLayout_DepthStencil;
 		desc.type = GPUImageType_DepthStencil;
 		return graphics_image_create(&desc, pImage);
+	}
+
+	Result load_skymap_image(const char* filepath, GPUImage** pimage)
+	{
+		Color* data;
+		u32 w, h;
+		svCheck(load_image(filepath, (void**)& data, &w, &h));
+
+
+		u32 image_width = w / 4u;
+		u32 image_height = h / 3u;
+
+		Color* images[6u] = {};
+		Color* mem = (Color*)malloc(image_width * image_height * 4u * 6u);
+
+		foreach(i, 6u) {
+
+			images[i] = mem + image_width * image_height * i;
+
+			u32 xoff;
+			u32 yoff;
+
+			switch (i)
+			{
+			case 0:
+				xoff = image_width;
+				yoff = image_height;
+				break;
+			case 1:
+				xoff = image_width * 3u;
+				yoff = image_height;
+				break;
+			case 2:
+				xoff = image_width;
+				yoff = 0u;
+				break;
+			case 3:
+				xoff = image_width;
+				yoff = image_height * 2u;
+				break;
+			case 4:
+				xoff = image_width * 2u;
+				yoff = image_height;
+				break;
+			default:
+				xoff = 0u;
+				yoff = image_height;
+				break;
+			}
+
+			for (u32 y = yoff; y < yoff + image_height; ++y) {
+
+				Color* src = data + xoff + y * w;
+
+				Color* dst = images[i] + (y - yoff) * image_width;
+				Color* dst_end = dst + image_width;
+
+				while (dst != dst_end) {
+
+					*dst = *src;
+
+					++src;
+					++dst;
+				}
+			}
+		}
+
+		desc.pData = images;
+		desc.size = image_width * image_height * 4u;
+		desc.format = Format_R8G8B8A8_UNORM;
+		desc.layout = GPUImageLayout_ShaderResource;
+		desc.type = GPUImageType_ShaderResource | GPUImageType_CubeMap;
+		desc.usage = ResourceUsage_Static;
+		desc.CPUAccess = CPUAccess_None;
+		desc.width = image_width;
+		desc.height = image_height;
+
+		Result res = graphics_image_create(&desc, pimage);
+
+		free(mem);
+		delete[] data;
+
+		return res;
 	}
 
 	struct SpriteInstance {

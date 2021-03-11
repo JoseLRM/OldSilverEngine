@@ -15,6 +15,8 @@ namespace sv {
 	Result create_offscreen(u32 width, u32 height, GPUImage** pImage);
 	Result create_depthstencil(u32 width, u32 height, GPUImage** pImage);
 
+	Result load_skymap_image(const char* filepath, GPUImage** pimage);
+
 	// TEXT RENDERING (Clip space rendering)
 
 	// Return the number of character rendered
