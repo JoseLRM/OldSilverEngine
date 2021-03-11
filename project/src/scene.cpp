@@ -61,6 +61,8 @@ namespace sv {
 
 	struct Scene_internal : public Scene {
 
+		GPUImage* skybox = nullptr;
+		
 		std::vector<Entity>				entities;
 		EntityDataAllocator				entityData;
 		std::vector<ComponentAllocator>	components;

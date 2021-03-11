@@ -749,7 +749,8 @@ namespace sv {
 					camera_data.view_projection_matrix = camera_data.view_matrix * camera_data.projection_matrix;
 				}
 
-				draw_sky(camera_data.view_matrix, camera_data.projection_matrix, cmd);
+				if (scene.skybox)
+					draw_sky(scene.skybox, camera_data.view_matrix, camera_data.projection_matrix, cmd);
 
 				graphics_buffer_update(gfx.cbuffer_camera, &camera_data, sizeof(CameraBuffer_GPU), 0u, cmd);
 
@@ -1058,7 +1059,7 @@ namespace sv {
 		}
 	}
 
-	void draw_sky(XMMATRIX view_matrix, const XMMATRIX& projection_matrix, CommandList cmd)
+	void draw_sky(GPUImage* skymap, XMMATRIX view_matrix, const XMMATRIX& projection_matrix, CommandList cmd)
 	{
 		graphics_depthstencilstate_unbind(cmd);
 		graphics_blendstate_unbind(cmd);
@@ -1068,7 +1069,7 @@ namespace sv {
 
 		graphics_vertexbuffer_bind(gfx.vbuffer_skybox, 0u, 0u, cmd);
 		graphics_constantbuffer_bind(gfx.cbuffer_skybox, 0u, ShaderType_Vertex, cmd);
-		graphics_image_bind(gfx.image_sky, 0u, ShaderType_Pixel, cmd);
+		graphics_image_bind(skymap, 0u, ShaderType_Pixel, cmd);
 		graphics_sampler_bind(gfx.sampler_def_linear, 0u, ShaderType_Pixel, cmd);
 
 		XMFLOAT4X4 vm;

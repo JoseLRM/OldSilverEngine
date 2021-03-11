@@ -135,7 +135,6 @@ namespace sv {
 
 		Shader* vs_sky;
 		Shader* ps_sky;
-		GPUImage* image_sky;
 		GPUBuffer* vbuffer_skybox;
 		GPUBuffer* cbuffer_skybox;
 		InputLayoutState* ils_sky;
