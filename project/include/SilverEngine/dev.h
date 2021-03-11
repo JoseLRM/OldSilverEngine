@@ -1,3 +1,5 @@
+#pragma once
+
 #ifdef SV_DEV
 
 #include "SilverEngine/scene.h"
