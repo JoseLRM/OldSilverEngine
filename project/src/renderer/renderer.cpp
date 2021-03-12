@@ -505,6 +505,13 @@ namespace sv {
 		desc.magFilter = SamplerFilter_Nearest;
 		svCheck(graphics_sampler_create(&desc, &gfx.sampler_def_nearest));
 
+		desc.addressModeU = SamplerAddressMode_Mirror;
+		desc.addressModeV = SamplerAddressMode_Mirror;
+		desc.addressModeW = SamplerAddressMode_Mirror;
+		desc.minFilter = SamplerFilter_Linear;
+		desc.magFilter = SamplerFilter_Linear;
+		svCheck(graphics_sampler_create(&desc, &gfx.sampler_blur));
+
 		return Result_Success;
 	}
 
@@ -1449,7 +1456,7 @@ namespace sv {
 			graphics_shader_bind(gfx.ps_gaussian_blur, cmd);
 
 			graphics_constantbuffer_bind(gfx.cbuffer_gaussian_blur, 0u, ShaderType_Pixel, cmd);
-			graphics_sampler_bind(gfx.sampler_def_linear, 0u, ShaderType_Pixel, cmd);
+			graphics_sampler_bind(gfx.sampler_blur, 0u, ShaderType_Pixel, cmd);
 		}
 	
 		// Horizontal blur

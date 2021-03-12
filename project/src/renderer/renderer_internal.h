@@ -135,6 +135,7 @@ namespace sv {
 		Shader* vs_default_postprocess;
 		Shader* ps_gaussian_blur;
 		GPUBuffer* cbuffer_gaussian_blur;
+		Sampler* sampler_blur;
 
 		// SKY
 
