@@ -10,27 +10,27 @@ struct Output {
 Output main(u32 id : SV_VertexID)
 {
 	Output output;
-	output.texcoord = float2((id << 1) & 2, id & 2);
-	output.position = float4(output.texcoord * float2(2, -2) + float2(-1, 1), 0, 1);
-	/*
+	//output.texcoord = float2((id << 1) & 2, id & 2);
+	//output.position = float4(output.texcoord * float2(2, -2) + float2(-1, 1), 0, 1);
+	
 	switch (id)
 	{
 	case 0:
-		output.position = float4(-1.f, -1.f, 0.f, 1.f);
-		break;
-	case 1:
-		output.position = float4(1.f, -1.f, 0.f, 1.f);
-		break;
-	case 2:
 		output.position = float4(-1.f, 1.f, 0.f, 1.f);
 		break;
-	case 3:
+	case 1:
 		output.position = float4(1.f, 1.f, 0.f, 1.f);
+		break;
+	case 2:
+		output.position = float4(-1.f, -1.f, 0.f, 1.f);
+		break;
+	case 3:
+		output.position = float4(1.f, -1.f, 0.f, 1.f);
 		break;
 	}
 
-	output.texcoord = (output.position.xy + 1.f) / 2.f;
-	*/
+	output.texcoord = (output.position.xy + 1.f) * 0.5f;
+	
 	return output;
 }
 

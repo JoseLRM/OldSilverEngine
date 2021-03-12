@@ -83,7 +83,8 @@ namespace sv {
 	struct GraphicsObjects {
 
 		GPUImage* image_white;
-		GPUImage* image_aux;
+		GPUImage* image_aux0;
+		GPUImage* image_aux1;
 		Sampler* sampler_def_linear;
 		Sampler* sampler_def_nearest;
 		GPUBuffer* vbuffer_batch[GraphicsLimit_CommandList];

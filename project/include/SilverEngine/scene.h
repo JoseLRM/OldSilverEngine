@@ -59,13 +59,13 @@ namespace sv {
 	};
 
 	template<typename T, u32 V>
-	CompID Component<T>::ID(SV_COMPONENT_ID_INVALID);
+	CompID Component<T, V>::ID(SV_COMPONENT_ID_INVALID);
 
 	template<typename T, u32 V>
-	u32 Component<T>::SIZE;
+	u32 Component<T, V>::SIZE;
 
 	template<typename T, u32 V>
-	const u32 Component<T>::VERSION(V);
+	const u32 Component<T, V>::VERSION(V);
 
 	typedef void(*CreateComponentFunction)(BaseComponent*);
 	typedef void(*DestroyComponentFunction)(BaseComponent*);

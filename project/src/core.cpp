@@ -400,7 +400,7 @@ namespace sv {
 	{
 		SV_PARSE_FILEPATH();
 
-		std::ofstream stream = open_ofscream(filepath, std::ios::binary | (append ? std::ios::app : 0u), true);
+		std::ofstream stream = open_ofstream(filepath, std::ios::binary | (append ? std::ios::app : 0u), true);
 		if (!stream.is_open())
 			return Result_NotFound;
 

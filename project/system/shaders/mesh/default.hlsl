@@ -28,10 +28,6 @@ SV_CONSTANT_BUFFER(camera_buffer, b1) {
 	Camera camera;
 };
 
-SV_CONSTANT_BUFFER(environment_buffer, b2) {
-        Environment environment;	
-};
-
 Output main(Input input)
 {
 	Output output;
@@ -96,6 +92,10 @@ SV_CONSTANT_BUFFER(material_buffer, b0) {
 
 SV_CONSTANT_BUFFER(light_instances_buffer, b1) {
 	Light lights[LIGHT_COUNT];
+};
+
+SV_CONSTANT_BUFFER(environment_buffer, b2) {
+	Environment environment;
 };
 
 SV_TEXTURE(diffuse_map, t0);

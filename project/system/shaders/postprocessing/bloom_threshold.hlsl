@@ -21,7 +21,7 @@ float4 main(float2 texcoord : FragTexcoord) : SV_Target0
 		return float4(tex_color, 1.f);
 	}
 
-	return = float4(0.f, 0.f, 0.f, 1.f); 
+	return float4(0.f, 0.f, 0.f, 1.f); 
 }
 
 #endif

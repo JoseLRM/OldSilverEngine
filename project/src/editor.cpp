@@ -1098,7 +1098,7 @@ namespace sv {
 				
 				for (LightComponent& l : lights) {
 
-					matrix = XMMatrixQuaternion(XMQuaternionInverse(dev.camera.rotation.get_dx()));
+					matrix = XMMatrixRotationQuaternion(XMQuaternionInverse(dev.camera.rotation.get_dx()));
 					
 					// Move to entity position
 					v3_f32 position = get_entity_transform(engine.scene, l.entity).getWorldPosition();

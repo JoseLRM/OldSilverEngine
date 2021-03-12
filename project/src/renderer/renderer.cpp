@@ -337,7 +337,8 @@ namespace sv {
 			desc.width = 1920u / 2u;
 			desc.height = 1080u / 2u;
 
-			svCheck(graphics_image_create(&desc, &gfx.image_aux));
+			svCheck(graphics_image_create(&desc, &gfx.image_aux0));
+			svCheck(graphics_image_create(&desc, &gfx.image_aux1));
 		}
 
 		// White Image
@@ -1151,6 +1152,20 @@ namespace sv {
 				constexpr const char* TEXT = "No Main Camera";
 				draw_text(TEXT, strlen(TEXT), -1.f, +SIZE * 0.5f, 2.f, 1u, SIZE, window_aspect_get(engine.window), TextAlignment_Center, &font_opensans, cmd);
 			}
+
+			// TEMP bloom
+
+			postprocess_bloom(
+				engine.offscreen,
+				GPUImageLayout_RenderTarget,
+				GPUImageLayout_RenderTarget,
+				gfx.image_aux0,
+				GPUImageLayout_ShaderResource,
+				GPUImageLayout_ShaderResource,
+				gfx.image_aux1,
+				GPUImageLayout_ShaderResource,
+				GPUImageLayout_ShaderResource,
+				0.8f, 0.03f, window_aspect_get(engine.window), cmd);
 		}
 	}
 
@@ -1435,6 +1450,11 @@ namespace sv {
 
 	// POSTPROCESSING
 
+	SV_INLINE static void postprocessing_draw_call(CommandList cmd)
+	{
+		graphics_draw(4u, 1u, 0u, 0u, cmd);
+	}
+
 	void postprocess_gaussian_blur(
 		GPUImage* src,
 		GPUImageLayout src_layout0,
@@ -1473,7 +1493,7 @@ namespace sv {
 
 		// Prepare graphics state
 		{
-			graphics_topology_set(GraphicsTopology_Triangles, cmd);
+			graphics_topology_set(GraphicsTopology_TriangleStrip, cmd);
 			graphics_rasterizerstate_unbind(cmd);
 			graphics_blendstate_unbind(cmd);
 			graphics_depthstencilstate_unbind(cmd);
@@ -1503,7 +1523,7 @@ namespace sv {
 			graphics_buffer_update(gfx.cbuffer_gaussian_blur, &data, sizeof(GaussianBlurData), 0u, cmd);
 
 			graphics_renderpass_begin(gfx.renderpass_off, att, cmd);
-			graphics_draw(3u, 1u, 0u, 0u, cmd);
+			postprocessing_draw_call(cmd);
 			graphics_renderpass_end(cmd);
 		}
 
@@ -1528,7 +1548,7 @@ namespace sv {
 			graphics_buffer_update(gfx.cbuffer_gaussian_blur, &data, sizeof(GaussianBlurData), 0u, cmd);
 			
 			graphics_renderpass_begin(gfx.renderpass_off, att, cmd);
-			graphics_draw(3u, 1u, 0u, 0u, cmd);
+			postprocessing_draw_call(cmd);
 			graphics_renderpass_end(cmd);
 		}
 
@@ -1558,22 +1578,24 @@ namespace sv {
 	)
 	{
 		// Prepare graphics state
-		graphics_topology_set(GraphicsTopology_Triangles, cmd);
+		graphics_topology_set(GraphicsTopology_TriangleStrip, cmd);
 		graphics_rasterizerstate_unbind(cmd);
 		graphics_depthstencilstate_unbind(cmd);
 		graphics_inputlayoutstate_unbind(cmd);
 		graphics_shader_bind(gfx.vs_default_postprocess, cmd);
 		graphics_shader_bind(gfx.ps_default_postprocess, cmd);
-		graphics_blendstate_bind(bs_addition, cmd);
+		graphics_blendstate_bind(gfx.bs_addition, cmd);
+		graphics_viewport_set(dst, 0u, cmd);
+		graphics_scissor_set(dst, 0u, cmd);
 		
 		GPUImage* att[1u];
 		att[0u] = dst;
 
 		graphics_image_bind(src, 0u, ShaderType_Pixel, cmd);
-		graphics_image_bind(gfx.sampler_def_linear, 0u, ShaderType_Pixel, cmd);
+		graphics_sampler_bind(gfx.sampler_def_linear, 0u, ShaderType_Pixel, cmd);
 		
 		graphics_renderpass_begin(gfx.renderpass_off, att, cmd);
-		graphics_draw(3u, 1u, 0u, 0u, cmd);
+		postprocessing_draw_call(cmd);
 		graphics_renderpass_end(cmd);
 	}
 
@@ -1595,11 +1617,11 @@ namespace sv {
 	{
 		GPUBarrier barriers[2];
 		u32 barrier_count = 0u;
-		GPUImage att[1u];
+		GPUImage* att[1u];
 
 		// Prepare graphics state
 		{
-			graphics_topology_set(GraphicsTopology_Triangles, cmd);
+			graphics_topology_set(GraphicsTopology_TriangleStrip, cmd);
 			graphics_rasterizerstate_unbind(cmd);
 			graphics_blendstate_unbind(cmd);
 			graphics_depthstencilstate_unbind(cmd);
@@ -1623,17 +1645,18 @@ namespace sv {
 			}
 			
 			graphics_image_bind(src, 0u, ShaderType_Pixel, cmd);
-			graphics_sampler(gfx.sampler_blur, 0u, ShaderType_Pixel, cmd);
-			graphics_constant_buffer_bind(gfx.cbuffer_bloom_threshold, 0u, ShaderType_Pixel, cmd);
+			graphics_sampler_bind(gfx.sampler_blur, 0u, ShaderType_Pixel, cmd);
+			graphics_constantbuffer_bind(gfx.cbuffer_bloom_threshold, 0u, ShaderType_Pixel, cmd);
+			graphics_shader_bind(gfx.ps_bloom_threshold, cmd);
+			graphics_viewport_set(aux0, 0u, cmd);
+			graphics_scissor_set(aux0, 0u, cmd);
 
 			graphics_buffer_update(gfx.cbuffer_bloom_threshold, &threshold, sizeof(f32), 0u, cmd);
-			
-			graphics_shader_bind(gfx.ps_bloom_threshold, cmd);
 			
 			att[0u] = aux0;
 			
 			graphics_renderpass_begin(gfx.renderpass_off, att, cmd);
-			graphics_draw(3u, 1u, 0u, 0u, cmd);
+			postprocessing_draw_call(cmd);
 			graphics_renderpass_end(cmd);
 		}
 
@@ -1641,10 +1664,10 @@ namespace sv {
 		postprocess_gaussian_blur(
 				aux0,
 				GPUImageLayout_RenderTarget,
-				aux0_layout1,
+				GPUImageLayout_ShaderResource,
 				aux1,
 				aux1_layout0,
-				GPUImageLayout_ShaderResource,
+				aux1_layout1,
 				intensity,
 				aspect,
 				cmd);
@@ -1654,14 +1677,22 @@ namespace sv {
 			barriers[0u] = GPUBarrier::Image(src, GPUImageLayout_ShaderResource, GPUImageLayout_RenderTarget);
 			graphics_barrier(barriers, 1u, cmd);
 			
-			postprocess_addition(aux1, src, cmd);
+			postprocess_addition(aux0, src, cmd);
 		}
 
 		// Last memory barriers
+		barrier_count = 0u;
+
 		if (src_layout1 != GPUImageLayout_RenderTarget) {
 
 			barriers[0u] = GPUBarrier::Image(src, GPUImageLayout_RenderTarget, src_layout1);
-			graphics_barrier(barriers, 1u, cmd);
+			++barrier_count;
+		}
+		if (aux0_layout1 != GPUImageLayout_ShaderResource) {
+			barriers[barrier_count++] = GPUBarrier::Image(aux0, GPUImageLayout_ShaderResource, aux0_layout1);
+		}
+		if (barrier_count) {
+			graphics_barrier(barriers, barrier_count, cmd);
 		}
 	}
 
