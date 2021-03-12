@@ -38,13 +38,19 @@ namespace sv {
 
 	};
 
-	struct GuiContainer {
+	struct GuiParent {
 
 		const GuiWidgetIndex parent_index;
+
+		GuiParent(const GuiWidgetIndex& index) : parent_index(index) {}
+	};
+
+	struct GuiContainer : public GuiParent {
+
 		v4_f32 bounds;
 		GuiContainerStyle style;
 
-		GuiContainer(const GuiWidgetIndex& index) : parent_index(index) {}
+		GuiContainer(const GuiWidgetIndex& index) : GuiParent(index) {}
 
 	};
 
@@ -55,15 +61,14 @@ namespace sv {
 
 	};
 
-	struct GuiWindow {
+	struct GuiWindow : public GuiParent {
 
-		const GuiWidgetIndex parent_index;
 		GuiWindowState* state;
 		GuiWindowStyle style;
 		std::string title;
 
-		GuiWindow(const GuiWidgetIndex& index) : parent_index(index) {}
-		
+		GuiWindow(const GuiWidgetIndex& index) : GuiParent(index) {}
+
 	};
 
 	struct GuiPopupState {
@@ -74,13 +79,12 @@ namespace sv {
 
 	};
 
-	struct GuiPopup {
+	struct GuiPopup : public GuiParent {
 
-		const GuiWidgetIndex parent_index;
 		GuiPopupState* state;
 		GuiPopupStyle style;
 
-		GuiPopup(const GuiWidgetIndex& index) : parent_index(index) {}
+		GuiPopup(const GuiWidgetIndex& index) : GuiParent(index) {}
 
 	};
 
@@ -99,7 +103,7 @@ namespace sv {
 		v4_f32 bounds;
 		GuiSliderStyle style;
 		f32 slider_value;
-		
+
 	};
 
 	struct GuiLabel {
@@ -107,7 +111,7 @@ namespace sv {
 		v4_f32 bounds;
 		GuiTextStyle style;
 		std::string text;
-		
+
 	};
 
 	struct GuiDrag {
@@ -115,7 +119,7 @@ namespace sv {
 		v4_f32 bounds;
 		GuiDragStyle style;
 		f32 value;
-		
+
 	};
 
 	struct GuiCheckBoxState {
@@ -123,7 +127,7 @@ namespace sv {
 	};
 
 	struct GuiCheckBox {
-		
+
 		v4_f32 bounds;
 		GuiCheckBoxStyle style;
 		bool active;
@@ -133,7 +137,7 @@ namespace sv {
 	struct GUI_internal {
 
 		size_t hashcode = 0u;
-		
+
 		FrameList<GuiContainer> containers;
 		FrameList<GuiWindow>	windows;
 		FrameList<GuiPopup>		popups;
@@ -147,7 +151,7 @@ namespace sv {
 
 		std::unordered_map<std::string, GuiWindowState> window_state;
 		std::unordered_map<u64, GuiCheckBoxState> checkbox_state;
-		std::unordered_map<u64, GuiPopupState> popup_state;
+
 		GuiPopupState current_popup;
 
 		GuiWidgetIndex parent_index;
@@ -220,7 +224,7 @@ namespace sv {
 		case GuiWidgetType_Window:
 		{
 			GuiWindow& window = gui.windows[gui.focus.last_index];
-			
+
 			if (input.mouse_buttons[MouseButton_Left] == InputState_None) {
 
 				free_focus(gui);
@@ -231,7 +235,7 @@ namespace sv {
 
 				switch (gui.focus.action)
 				{
-				
+
 				case 0u:
 				{
 					v2_f32 new_position = gui.mouse_position + gui.begin_position;
@@ -291,7 +295,7 @@ namespace sv {
 		}
 		break;
 		}
-		
+
 	}
 
 	Result gui_create(u64 hashcode, GUI** pgui)
@@ -311,7 +315,7 @@ namespace sv {
 				SV_LOG_ERROR("Can't deserialize gui states");
 			}
 			else {
-				
+
 				Version engine_version;
 				archive >> engine_version;
 
@@ -324,7 +328,7 @@ namespace sv {
 
 					GuiWindowState state;
 					std::string title;
-				
+
 					archive >> title;
 					archive >> state.bounds;
 					archive >> state.show;
@@ -333,7 +337,7 @@ namespace sv {
 				}
 			}
 		}
-		
+
 		*pgui = reinterpret_cast<GUI*>(&gui);
 		return Result_Success;
 	}
@@ -368,6 +372,114 @@ namespace sv {
 		return Result_Success;
 	}
 
+	///////////////////////////// WIDGET UTILS //////////////////////////////////
+
+	SV_INLINE static u32 create_widget(GUI_internal& gui, GuiWidgetType type)
+	{
+		u32 index;
+
+		switch (type) {
+
+		case GuiWidgetType_Container:
+			index = u32(gui.containers.size());
+			gui.containers.emplace_back(gui.parent_index);
+			break;
+
+		case GuiWidgetType_Window:
+			index = u32(gui.windows.size());
+			gui.windows.emplace_back(gui.parent_index);
+			break;
+
+		case GuiWidgetType_Popup:
+			index = u32(gui.popups.size());
+			gui.popups.emplace_back(gui.parent_index);
+			break;
+
+		case GuiWidgetType_Button:
+			index = u32(gui.buttons.size());
+			gui.buttons.emplace_back();
+			break;
+
+		case GuiWidgetType_Slider:
+			index = u32(gui.sliders.size());
+			gui.sliders.emplace_back();
+			break;
+
+		case GuiWidgetType_Label:
+			index = u32(gui.labels.size());
+			gui.labels.emplace_back();
+			break;
+
+		case GuiWidgetType_CheckBox:
+			index = u32(gui.checkboxes.size());
+			gui.checkboxes.emplace_back();
+			break;
+
+		case GuiWidgetType_Drag:
+			index = u32(gui.drags.size());
+			gui.drags.emplace_back();
+			break;
+
+		default:
+			SV_ASSERT(!"Unknown widget type");
+
+		}
+
+		// Add widget index
+
+		GuiWidgetIndex& i = gui.widgets.emplace_back();
+		i.index = index;
+		i.type = type;
+
+		// New parent
+
+		if (type == GuiWidgetType_Container || type == GuiWidgetType_Window || type == GuiWidgetType_Popup) {
+
+			gui.parent_index.type = type;
+			gui.parent_index.index = index;
+		}
+
+		return index;
+	}
+
+	SV_INLINE static void* get_widget(GUI_internal& gui, GuiWidgetIndex index)
+	{
+		switch (index.type) {
+
+		case GuiWidgetType_Container:
+			return &gui.containers[index.index];
+
+		case GuiWidgetType_Window:
+			return &gui.windows[index.index];
+
+		case GuiWidgetType_Popup:
+			return &gui.popups[index.index];
+
+		case GuiWidgetType_Button:
+			return &gui.buttons[index.index];
+
+		case GuiWidgetType_Slider:
+			return &gui.sliders[index.index];
+
+		case GuiWidgetType_Label:
+			return &gui.labels[index.index];
+
+		case GuiWidgetType_CheckBox:
+			return &gui.checkboxes[index.index];
+
+		case GuiWidgetType_Drag:
+			return &gui.drags[index.index];
+
+		default:
+			SV_ASSERT(!"Unknown widget type");
+
+		}
+
+		return nullptr;
+	}
+
+	/////////////////////////////////////// BOUNDS ///////////////////////////////////////////////////////////
+
 	SV_INLINE static v4_f32 get_widget_bounds(const GUI_internal& gui, GuiWidgetIndex w)
 	{
 		switch (w.type)
@@ -399,29 +511,6 @@ namespace sv {
 
 		default:
 			return {};
-		}
-	}
-
-	SV_INLINE static v4_f32 get_parent_bounds(const GUI_internal& gui)
-	{
-		if (gui.parent_index.type == GuiWidgetType_None) return v4_f32{ 0.5f, 0.5f, 1.f, 1.f };
-
-		switch (gui.parent_index.type)
-		{
-		case GuiWidgetType_Container:
-			return gui.containers[gui.parent_index.index].bounds;
-			break;
-
-		case GuiWidgetType_Window:
-			return gui.windows[gui.parent_index.index].state->bounds;
-			break;
-
-		case GuiWidgetType_Popup:
-			return gui.popups[gui.parent_index.index].state->bounds;
-			break;
-
-		default:
-			return v4_f32{ 0.f, 0.f, 0.f, 0.f };
 		}
 	}
 
@@ -463,9 +552,11 @@ namespace sv {
 		return abs(bounds.x - gui.mouse_position.x) <= bounds.z * 0.5f && abs(bounds.y - gui.mouse_position.y) <= bounds.w * 0.5f;
 	}
 
+	SV_INLINE static v4_f32 get_parent_bounds(const GUI_internal& gui);
+
 	static v4_f32 compute_widget_bounds(const GUI_internal& gui, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1)
 	{
-#ifndef SV_DEV
+#ifdef SV_DEV
 		{
 			u32 aspect_count = 0u;
 			if (x0.constraint == GuiConstraint_Aspect) ++aspect_count;
@@ -531,7 +622,7 @@ namespace sv {
 			if (_y0 > _y1) std::swap(_y0, _y1);
 		}
 
-		
+
 
 		f32 w = _x1 - _x0;
 		f32 h = _y1 - _y0;
@@ -541,87 +632,60 @@ namespace sv {
 		return { x, y, abs(w), abs(h) };
 	}
 
-	SV_INLINE static v4_f32 compute_window_decoration_bounds(const GUI_internal& gui, const GuiWindow& window)
+	////////////////////////////////////////// PARENT STUFF ////////////////////////////////////////
+
+	SV_INLINE bool is_parent(GuiWidgetType type)
 	{
-		v4_f32 bounds;
-		bounds.x = window.state->bounds.x;
-		bounds.y = window.state->bounds.y + window.state->bounds.w * 0.5f + window.style.decoration_height * 0.5f + window.style.outline_size * gui.aspect;
-		bounds.z = window.state->bounds.z + window.style.outline_size * 2.f;
-		bounds.w = window.style.decoration_height;
-		return bounds;
+		switch (type)
+		{
+		case GuiWidgetType_Container:
+		case GuiWidgetType_Window:
+		case GuiWidgetType_Popup:
+			return true;
+		}
+
+		return false;
 	}
 
-	SV_INLINE static u32 create_widget(GUI_internal& gui, GuiWidgetType type)
+	SV_INLINE bool allow_popup(GuiParent& parent, GuiWidgetType type)
 	{
-		u32 index;
-		
-		switch (type) {
-
-		case GuiWidgetType_Container:
-			index = u32(gui.containers.size());
-			gui.containers.emplace_back(gui.parent_index);
-			break;
-			
+		switch (type)
+		{
 		case GuiWidgetType_Window:
-			index = u32(gui.windows.size());
-			gui.windows.emplace_back(gui.parent_index);
+			return true;
+		}
+
+		return false;
+	}
+
+	SV_INLINE static v4_f32 get_parent_bounds(const GUI_internal& gui)
+	{
+		if (gui.parent_index.type == GuiWidgetType_None) return v4_f32{ 0.5f, 0.5f, 1.f, 1.f };
+
+		switch (gui.parent_index.type)
+		{
+		case GuiWidgetType_Container:
+			return gui.containers[gui.parent_index.index].bounds;
+			break;
+
+		case GuiWidgetType_Window:
+			return gui.windows[gui.parent_index.index].state->bounds;
 			break;
 
 		case GuiWidgetType_Popup:
-			index = u32(gui.popups.size());
-			gui.popups.emplace_back(gui.parent_index);
-			break;
-			
-		case GuiWidgetType_Button:
-			index = u32(gui.buttons.size());
-			gui.buttons.emplace_back();
-			break;
-
-		case GuiWidgetType_Slider:
-			index = u32(gui.sliders.size());
-			gui.sliders.emplace_back();
-			break;
-
-		case GuiWidgetType_Label:
-			index = u32(gui.labels.size());
-			gui.labels.emplace_back();
-			break;
-
-		case GuiWidgetType_CheckBox:
-			index = u32(gui.checkboxes.size());
-			gui.checkboxes.emplace_back();
-			break;
-
-		case GuiWidgetType_Drag:
-			index = u32(gui.drags.size());
-			gui.drags.emplace_back();
+			return gui.popups[gui.parent_index.index].state->bounds;
 			break;
 
 		default:
-			SV_ASSERT(!"Unknown widget type");
-			
+			return v4_f32{ 0.f, 0.f, 0.f, 0.f };
 		}
-
-		// Add widget index
-		
-		GuiWidgetIndex& i = gui.widgets.emplace_back();
-		i.index = index;
-		i.type = type;
-
-		// New parent
-		
-		if (type == GuiWidgetType_Container || type == GuiWidgetType_Window || type == GuiWidgetType_Popup) {
-
-			gui.parent_index.type = type;
-			gui.parent_index.index = index;
-		}
-		
-		return index;
 	}
 
-	static void end_parent(GUI_internal& gui)
+	SV_INLINE static void end_parent(GUI_internal& gui)
 	{
-		SV_ASSERT(gui.parent_index.type != GuiWidgetType_None);
+		SV_ASSERT(is_parent(gui.parent_index.type));
+
+		GuiParent* parent = (GuiParent*)get_widget(gui, gui.parent_index);
 
 		switch (gui.parent_index.type)
 		{
@@ -638,6 +702,8 @@ namespace sv {
 			break;
 		}
 	}
+
+	///////////////////////////////////////// CONTAINER ///////////////////////////////////////////////////
 
 	void gui_begin_container(GUI* gui_, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiContainerStyle& style)
 	{
@@ -661,10 +727,22 @@ namespace sv {
 		end_parent(gui);
 	}
 
+	/////////////////////////////////////// WINDOW ///////////////////////////////////////////////////////////
+
+	SV_INLINE static v4_f32 compute_window_decoration_bounds(const GUI_internal& gui, const GuiWindow& window)
+	{
+		v4_f32 bounds;
+		bounds.x = window.state->bounds.x;
+		bounds.y = window.state->bounds.y + window.state->bounds.w * 0.5f + window.style.decoration_height * 0.5f + window.style.outline_size * gui.aspect;
+		bounds.z = window.state->bounds.z + window.style.outline_size * 2.f;
+		bounds.w = window.style.decoration_height;
+		return bounds;
+	}
+
 	SV_INLINE static GuiWindowState* get_window_state(GUI_internal& gui, const char* title)
-	{				
+	{
 		auto it = gui.window_state.find(title);
-		
+
 		if (it == gui.window_state.end()) return nullptr;
 		return &it->second;
 	}
@@ -674,7 +752,7 @@ namespace sv {
 		PARSE_GUI();
 		SV_ASSERT(title);
 		SV_ASSERT(gui.parent_index.type == GuiWidgetType_None);
-		
+
 		GuiWindowState* state;
 
 		auto it = gui.window_state.find(title);
@@ -683,7 +761,7 @@ namespace sv {
 			GuiWindowState s;
 			s.bounds = { 0.5f, 0.5f, 0.3f, 0.5f };
 			s.show = true;
-			
+
 			gui.window_state[title] = s;
 			state = &gui.window_state[title];
 		}
@@ -704,13 +782,13 @@ namespace sv {
 
 		// Select window
 		if (gui.input_unused) {
-			
+
 			if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
 
 				v4_f32 decoration = compute_window_decoration_bounds(gui, window);
 
 				if (mouse_in_bounds(gui, decoration)) {
-				
+
 					gui.begin_position = v2_f32(window.state->bounds.x, window.state->bounds.y) - gui.mouse_position;
 					set_focus(gui, GuiWidgetType_Window, index, (u64)title, 0u);
 					gui.input_unused = false;
@@ -765,116 +843,36 @@ namespace sv {
 		PARSE_GUI();
 		end_parent(gui);
 	}
-	
+
 	Result gui_show_window(GUI* gui_, const char* title)
 	{
 		PARSE_GUI();
 
 		GuiWindowState* state = get_window_state(gui, title);
 		if (state == nullptr) return Result_NotFound;
-		
+
 		state->show = true;
 		return Result_Success;
 	}
-	
+
 	Result gui_hide_window(GUI* gui_, const char* title)
 	{
 		PARSE_GUI();
 
 		GuiWindowState* state = get_window_state(gui, title);
 		if (state == nullptr) return Result_NotFound;
-				
+
 		state->show = false;
 		return Result_Success;
 	}
+
+	/////////////////////////////////////// POPUP ///////////////////////////////////////////////////
 
 	bool gui_begin_popup(GUI* gui_, GuiPopupTrigger trigger, MouseButton mouse_button, u64 id, const GuiPopupStyle& style)
 	{
 		PARSE_GUI();
 
-		bool open = false;
-
-		if (input.mouse_buttons[mouse_button] == InputState_Released) {
-
-			switch (trigger)
-			{
-			case GuiPopupTrigger_Parent:
-			
-			if (gui.parent_index.type != GuiWidgetType_None) {
-
-				v4_f32 parent_bounds = get_parent_bounds(gui);
-
-				if (mouse_in_bounds(gui, parent_bounds)) {
-
-					open = true;
-					u32 begin_index = gui.widgets.size() - 1u;
-
-					while (gui.widgets[begin_index].type != gui.parent_index.type && gui.widgets[begin_index].index != gui.parent_index.index)
-						--begin_index;
-
-					for (u32 i = begin_index; i < gui.widgets.size(); ++i) {
-
-						v4_f32 bounds = get_widget_bounds(gui, gui.widgets[i]);
-
-						if (mouse_in_bounds(gui, bounds)) {
-							open = false;
-							break;
-						}
-					}
-				}
-			}
-			break;
-
-			case GuiPopupTrigger_LastWidget:
-				if (gui.widgets.size()) {
-
-					GuiWidgetIndex last = gui.widgets.back();
-					v4_f32 bounds = get_widget_bounds(gui, last);
-
-					if (mouse_in_bounds(gui, bounds)) {
-						open = true;
-					}
-				}
-				break;
-			}
-		}
-
-		// Get state
-		GuiPopupState* state;
-
-		if (trigger == GuiPopupTrigger_Custom) {
-
-			auto it = gui.popup_state.find(id);
-			if (it == gui.popup_state.end()) {
-
-				GuiPopupState s;
-				s.active = false;
-				s.bounds = { 0.5f, 0.5f, 0.1f, 0.1f };
-				s.id = id;
-
-				gui.popup_state[id] = s;
-				state = &gui.popup_state[id];
-			}
-			else state = &it->second;
-		}
-		else {
-
-			state = &gui.current_popup;
-
-			if (open && state->id != id) {
-
-				state->id = id;
-			}
-		}
-
-		if (open) {
-			state->active = true;
-			state->bounds.z = 0.1f;
-			state->bounds.w = 0.2f;
-			state->bounds.x = gui.mouse_position.x + state->bounds.z * 0.5f;
-			state->bounds.y = gui.mouse_position.y - state->bounds.w * 0.5f;
-		}
-		else {
+		if (gui.current_popup.active) {
 
 			bool any_mouse_button = false;
 
@@ -885,43 +883,112 @@ namespace sv {
 				}
 			}
 
-			if (any_mouse_button && !mouse_in_bounds(gui, state->bounds)) {
-				state->active = false;
+			if (any_mouse_button && !mouse_in_bounds(gui, gui.current_popup.bounds)) {
+				gui.current_popup.active = false;
+			}
+			else if (gui.current_popup.id != id) return false;
+		}
+
+
+		if (!gui.current_popup.active) {
+
+			bool open = false;
+
+			if (input.mouse_buttons[mouse_button] == InputState_Released) {
+
+				switch (trigger)
+				{
+
+				case GuiPopupTrigger_Parent:
+				{
+					GuiParent* parent = (GuiParent*)get_widget(gui, gui.parent_index);
+
+					if (parent) {
+
+						if (!allow_popup(*parent, gui.parent_index.type))
+							return false;
+
+						v4_f32 parent_bounds = get_parent_bounds(gui);
+
+						if (mouse_in_bounds(gui, parent_bounds)) {
+
+							u32 begin_index = gui.widgets.size() - 1u;
+
+							while (gui.widgets[begin_index].type != gui.parent_index.type && gui.widgets[begin_index].index != gui.parent_index.index)
+								--begin_index;
+
+							++begin_index;
+
+							open = true;
+
+							for (u32 i = begin_index; i < gui.widgets.size(); ++i) {
+
+								v4_f32 bounds = get_widget_bounds(gui, gui.widgets[i]);
+
+								if (mouse_in_bounds(gui, bounds)) {
+									open = false;
+									break;
+								}
+							}
+						}
+					}
+				}
+				break;
+
+				case GuiPopupTrigger_LastWidget:
+					if (gui.widgets.size()) {
+
+						GuiWidgetIndex last = gui.widgets.back();
+						v4_f32 bounds = get_widget_bounds(gui, last);
+
+						if (mouse_in_bounds(gui, bounds)) {
+							open = true;
+						}
+					}
+					break;
+				}
+			}
+
+			if (trigger == GuiPopupTrigger_Custom) {
+
+				SV_LOG_ERROR("TODO-> Custom popup");
+			}
+			else {
+
+				if (open) {
+
+					gui.current_popup.bounds.z = 0.1f;
+					gui.current_popup.bounds.w = 0.2f;
+					gui.current_popup.bounds.x = gui.mouse_position.x + gui.current_popup.bounds.z * 0.5f;
+					gui.current_popup.bounds.y = gui.mouse_position.y - gui.current_popup.bounds.w * 0.5f;
+					gui.current_popup.active = true;
+					gui.current_popup.id = id;
+				}
 			}
 		}
 
-		if (!state->active || state->id != id) return false;
+		if (!gui.current_popup.active) return false;
 
 		u32 index = create_widget(gui, GuiWidgetType_Popup);
 		GuiPopup& popup = gui.popups[index];
 		popup.style = style;
-		popup.state = state;
+		popup.state = &gui.current_popup;
 
-		if (input.unused && mouse_in_bounds(gui, state->bounds)) {
+		if (input.unused && mouse_in_bounds(gui, gui.current_popup.bounds)) {
 			gui.input_unused = true;
 			input.unused = false;
 		}
 
 		return true;
 	}
-	
+
 	void gui_end_popup(GUI* gui_)
 	{
 		PARSE_GUI();
 		end_parent(gui);
 	}
 
-	void gui_open_popup(GUI* gui_, u64 id)
-	{
-		PARSE_GUI();
-
-		GuiPopupState* state;
-		
-		auto it = gui.popup_state.find(id);
-		if (it == gui.popup_state.end()) return;
-		
-		state->active = true;
-	}
+	/////////////////////////////////////// COMMON WIDGETS ///////////////////////////////////////////////////
 
 	bool gui_button(GUI* gui_, const char* text, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiButtonStyle& style)
 	{
@@ -983,7 +1050,7 @@ namespace sv {
 
 					f32 slider_button_width = slider.style.button_size.x;
 					f32 slider_min_pos = slider.bounds.x - slider.bounds.z * 0.5f + slider_button_width * 0.5f;
-					
+
 					f32 mouse_value = std::min(std::max((gui.mouse_position.x - slider_min_pos) / (slider.bounds.z - slider_min_pos), 0.f), 1.f);
 					slider.slider_value = mouse_value;
 					*value = mouse_value * (max - min) + min;
@@ -1086,7 +1153,7 @@ namespace sv {
 				else {
 
 					*value += input.mouse_dragged.x * gui.resolution.x * adv;
-					
+
 					focused = true;
 					update_focus(gui, index);
 					gui.input_unused = false;
@@ -1216,7 +1283,7 @@ namespace sv {
 		*size = u32(it - str);
 	}
 
-	void gui_draw(GUI* gui_, GPUImage* offscreen, CommandList cmd)
+	void gui_draw(GUI* gui_, CommandList cmd)
 	{
 		PARSE_GUI();
 
@@ -1233,8 +1300,8 @@ namespace sv {
 				Color color;
 
 				GuiButton& button = gui.buttons[w.index];
-				pos = v2_f32{ button.bounds.x, button.bounds.y } * 2.f - 1.f;
-				size = v2_f32{ button.bounds.z, button.bounds.w } * 2.f;
+				pos = v2_f32{ button.bounds.x, button.bounds.y } *2.f - 1.f;
+				size = v2_f32{ button.bounds.z, button.bounds.w } *2.f;
 				color = button.hot ? button.style.hot_color : button.style.color;
 
 				draw_debug_quad(pos.getVec3(0.f), size, color, cmd);
@@ -1246,9 +1313,9 @@ namespace sv {
 					f32 font_size = size.y;
 
 					draw_text(button.text.c_str(), button.text.size()
-						, pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font_opensans.vertical_offset * font_size, 
+						, pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font_opensans.vertical_offset * font_size,
 						size.x, 1u, font_size, gui.aspect, TextAlignment_Center, &font_opensans, button.style.text_color, cmd);
-				}					
+				}
 			}
 			break;
 
@@ -1305,7 +1372,7 @@ namespace sv {
 				content_position = v2_f32{ state.bounds.x, state.bounds.y };
 				content_size = v2_f32{ state.bounds.z, state.bounds.w };
 
-				outline_size = content_size + v2_f32{ style.outline_size, style.outline_size * gui.aspect } * 2.f;
+				outline_size = content_size + v2_f32{ style.outline_size, style.outline_size * gui.aspect } *2.f;
 
 				// Normal to clip
 				content_position = content_position * 2.f - 1.f;
@@ -1348,7 +1415,7 @@ namespace sv {
 				draw_debug_quad(pos.getVec3(0.f), size, color, cmd);
 
 				f32 slider_pos = slider.bounds.x + slider.style.button_size.x * 0.5f + slider.slider_value * (slider.bounds.z - slider.style.button_size.x);
-				
+
 				draw_debug_quad({ slider_pos, slider.bounds.y, 0.f }, slider.style.button_size, slider.style.button_color, cmd);
 
 				end_debug_batch(true, false, XMMatrixIdentity(), cmd);
@@ -1363,19 +1430,19 @@ namespace sv {
 				v2_f32 size;
 
 				GuiLabel& label = gui.labels[w.index];
-				pos = v2_f32{ label.bounds.x, label.bounds.y } * 2.f - 1.f;
-				size = v2_f32{ label.bounds.z, label.bounds.w } * 2.f;
+				pos = v2_f32{ label.bounds.x, label.bounds.y } *2.f - 1.f;
+				size = v2_f32{ label.bounds.z, label.bounds.w } *2.f;
 
 				draw_debug_quad(pos.getVec3(0.f), size, label.style.background_color, cmd);
 
 				end_debug_batch(true, false, XMMatrixIdentity(), cmd);
 
 				if (label.text.size()) {
-				
+
 					f32 font_size = size.y;
 
-					draw_text(label.text.c_str(), label.text.size(), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - 
-						font_opensans.vertical_offset * font_size, size.x, 1u, font_size, gui.aspect, label.style.text_alignment, 
+					draw_text(label.text.c_str(), label.text.size(), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f -
+						font_opensans.vertical_offset * font_size, size.x, 1u, font_size, gui.aspect, label.style.text_alignment,
 						&font_opensans, label.style.text_color, cmd);
 				}
 			}
@@ -1393,7 +1460,7 @@ namespace sv {
 				size = v2_f32{ cb.bounds.z, cb.bounds.w } *2.f;
 
 				draw_debug_quad(pos.getVec3(0.f), size, cb.style.color, cmd);
-				
+
 				GuiBox* box;
 				if (cb.active) box = &cb.style.active_box;
 				else box = &cb.style.inactive_box;
@@ -1450,7 +1517,7 @@ namespace sv {
 				float_to_string(drag.value, strbuff, &strsize, MAX_FLOAT_CHARS);
 
 				draw_text(strbuff, strsize
-					, pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font_opensans.vertical_offset * font_size, 
+					, pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font_opensans.vertical_offset * font_size,
 					size.x, 1u, font_size, gui.aspect, TextAlignment_Center, &font_opensans, drag.style.text_color, cmd);
 			}
 			break;

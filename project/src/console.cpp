@@ -3,6 +3,7 @@
 #ifdef SV_DEV
 
 #include "SilverEngine/scene.h"
+#include "SilverEngine/dev.h"
 #include "renderer/renderer_internal.h"
 
 #include <stdarg.h>

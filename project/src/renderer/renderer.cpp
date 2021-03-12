@@ -5,6 +5,8 @@
 #include "SilverEngine/mesh.h"
 #include "SilverEngine/utils/allocators/FrameList.h"
 
+#include "SilverEngine/dev.h"
+
 namespace sv {
 
 	GraphicsObjects		gfx = {};
@@ -331,9 +333,6 @@ namespace sv {
 
 			svCheck(graphics_image_create(&desc, &gfx.image_white));
 		}
-
-
-		svCheck(load_skymap_image(SV_SYS("system/skymap.jpg"), &gfx.image_sky));
 		
 		return Result_Success;
 	}
@@ -626,6 +625,7 @@ namespace sv {
 			}
 		}
 
+		GPUImageDesc desc;
 		desc.pData = images;
 		desc.size = image_width * image_height * 4u;
 		desc.format = Format_R8G8B8A8_UNORM;
@@ -735,6 +735,7 @@ namespace sv {
 
 #ifdef SV_DEV
 			CameraComponent* camera_ = nullptr;
+			CameraBuffer_GPU camera_data;
 
 			{
 				v3_f32 cam_pos;
@@ -742,9 +743,9 @@ namespace sv {
 				
 				if (dev.debug_draw) {
 
-					camera_ = &dev.debug_camera;
-					cam_pos = dev.debug_camera_position;
-					cam_rot = dev.debug_camera_rotation;
+					camera_ = &dev.camera;
+					cam_pos = dev.camera.position;
+					cam_rot = dev.camera.rotation;
 				}
 				else {
 					
@@ -759,12 +760,10 @@ namespace sv {
 
 				if (camera_) {
 						
-					
-					CameraBuffer_GPU camera_data;
-					camera_data.projection_matrix = camera_projection_matrix(camera);
+					camera_data.projection_matrix = camera_projection_matrix(*camera_);
 					camera_data.position = cam_pos.getVec4(0.f);
 					camera_data.rotation = cam_rot;
-					camera_data.view_matrix = camera_view_matrix(camera_data.position.get_vec3(), camera_data.rotation, camera);
+					camera_data.view_matrix = camera_view_matrix(camera_data.position.get_vec3(), camera_data.rotation, *camera_);
 					camera_data.view_projection_matrix = camera_data.view_matrix * camera_data.projection_matrix;
 					
 					graphics_buffer_update(gfx.cbuffer_camera, &camera_data, sizeof(CameraBuffer_GPU), 0u, cmd);
@@ -773,11 +772,12 @@ namespace sv {
 #else
 			
 			CameraComponent* camera_ = get_main_camera(scene);
+			CameraBuffer_GPU camera_data;
+
 			if (camera_) {
 				
 				Transform camera_trans = get_entity_transform(scene, camera_->entity);
-				CameraBuffer_GPU camera_data;
-				camera_data.projection_matrix = camera_projection_matrix(camera);
+				camera_data.projection_matrix = camera_projection_matrix(*camera_);
 				camera_data.position = camera_trans.getWorldPosition().getVec4(0.f);
 				camera_data.rotation = camera_trans.getWorldRotation();
 				camera_data.view_matrix = camera_view_matrix(camera_data.position.get_vec3(), camera_data.rotation, camera);
@@ -792,8 +792,8 @@ namespace sv {
 
 				CameraComponent& camera = *camera_;
 
-				if (scene.skybox)
-					draw_sky(scene.skybox, camera_data.view_matrix, camera_data.projection_matrix, cmd);
+				if (scene->skybox && camera.projection_type == ProjectionType_Perspective)
+					draw_sky(scene->skybox, camera_data.view_matrix, camera_data.projection_matrix, cmd);
 
 				// DRAW SPRITES
 				{

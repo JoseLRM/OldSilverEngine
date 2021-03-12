@@ -22,6 +22,8 @@ namespace sv {
 		u32 user_id = 0u;
 		Entity main_camera = SV_ENTITY_NULL;
 
+		GPUImage* skybox = nullptr;
+
 		std::string name;
 
 	};

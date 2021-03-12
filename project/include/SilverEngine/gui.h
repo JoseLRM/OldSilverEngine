@@ -138,7 +138,6 @@ namespace sv {
 	
 	bool gui_begin_popup(GUI* gui, GuiPopupTrigger trigger, MouseButton mouse_button, u64 id, const GuiPopupStyle& style = {});
 	void gui_end_popup(GUI* gui);
-	void gui_open_popup(GUI* gui, u64 id);
 
 	bool gui_begin_window(GUI* gui, const char* title, const GuiWindowStyle& style = {});
 	void gui_end_window(GUI* gui);
@@ -152,6 +151,6 @@ namespace sv {
 	bool gui_checkbox_id(GUI* gui, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiCheckBoxStyle& style = {});
 	bool gui_drag_f32(GUI* gui, f32* value, f32 adv, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiDragStyle& style = {});
 	
-	void gui_draw(GUI* gui, GPUImage* offscreen, CommandList cmd);
+	void gui_draw(GUI* gui, CommandList cmd);
 
 }

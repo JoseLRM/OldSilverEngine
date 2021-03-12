@@ -1,6 +1,7 @@
 #include "SilverEngine/core.h"
 
 #include "SilverEngine/engine.h"
+#include "SilverEngine/dev.h"
 #include "SilverEngine/asset_system.h"
 #include "SilverEngine/platform/impl.h"
 

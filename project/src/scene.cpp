@@ -60,8 +60,6 @@ namespace sv {
 	};
 
 	struct Scene_internal : public Scene {
-
-		GPUImage* skybox = nullptr;
 		
 		std::vector<Entity>				entities;
 		EntityDataAllocator				entityData;
@@ -556,21 +554,32 @@ namespace sv {
 
 	Ray screen_to_world_ray(v2_f32 position, const v3_f32& camera_position, const v4_f32& camera_rotation, CameraComponent* camera)
 	{
-		// Screen to clip space
-		position *= 2.f;
-
-		XMMATRIX ivm = XMMatrixInverse(0, camera_view_matrix(camera_position, camera_rotation, *camera));
-		XMMATRIX ipm = XMMatrixInverse(0, camera_projection_matrix(*camera));
-
-		XMVECTOR mouse_world = XMVectorSet(position.x, position.y, 1.f, 1.f);
-		mouse_world = XMVector4Transform(mouse_world, ipm);
-		mouse_world = XMVectorSetZ(mouse_world, 1.f);
-		mouse_world = XMVector4Transform(mouse_world, ivm);
-		mouse_world = XMVector3Normalize(mouse_world);
-
 		Ray ray;
-		ray.origin = camera_position;
-		ray.direction = v3_f32(mouse_world);
+
+		if (camera->projection_type == ProjectionType_Perspective) {
+			
+			// Screen to clip space
+			position *= 2.f;
+
+			XMMATRIX ivm = XMMatrixInverse(0, camera_view_matrix(camera_position, camera_rotation, *camera));
+			XMMATRIX ipm = XMMatrixInverse(0, camera_projection_matrix(*camera));
+
+			XMVECTOR mouse_world = XMVectorSet(position.x, position.y, 1.f, 1.f);
+			mouse_world = XMVector4Transform(mouse_world, ipm);
+			mouse_world = XMVectorSetZ(mouse_world, 1.f);
+			mouse_world = XMVector4Transform(mouse_world, ivm);
+			mouse_world = XMVector3Normalize(mouse_world);
+			
+			ray.origin = camera_position;
+			ray.direction = v3_f32(mouse_world);
+		}
+		else {
+
+			position = position * v2_f32(camera->width, camera->height) + camera_position.getVec2();
+			ray.origin = position.getVec3(camera->near);
+			ray.direction = { 0.f, 0.f, 1.f };
+		}
+
 		return ray;
 	}
 

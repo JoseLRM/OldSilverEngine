@@ -3,91 +3,81 @@
 #ifdef SV_DEV
 
 #include "SilverEngine/renderer.h"
+#include "SilverEngine/dev.h"
 
 namespace sv {
 
-	static void camera_controller2D(Scene* scene, CameraComponent* camera, f32 max_projection_length)
+	static void control_camera()
 	{
-		if (camera == nullptr) return;
+		if (dev.camera.projection_type == ProjectionType_Perspective) {
 
-		Transform trans = get_entity_transform(scene, camera->entity);
+			XMVECTOR rotation = dev.camera.rotation.get_dx();
 
-		v2_f32 position = trans.getWorldPosition().getVec2();
+			XMVECTOR direction;
+			XMMATRIX rotation_matrix;
 
-		InputState button_state = input.mouse_buttons[MouseButton_Center];
+			// Rotation matrix
+			rotation_matrix = XMMatrixRotationQuaternion(rotation);
 
-		if (button_state != InputState_None) {
+			// Camera direction
+			direction = XMVectorSet(0.f, 0.f, 1.f, 0.f);
+			direction = XMVector3Transform(direction, rotation_matrix);
 
-			v2_f32 drag = input.mouse_dragged;
+			f32 norm = XMVectorGetX(XMVector3Length(direction));
 
-			position -= drag * v2_f32{ camera->width, camera->height };
+			// Zoom
+			if (input.mouse_wheel != 0.f) {
+
+				f32 force = dev.camera.velocity;
+				if (input.keys[Key_Shift] == InputState_Hold)
+					force *= 3.f;
+
+				dev.camera.position += v3_f32(direction) * input.mouse_wheel * force;
+			}
+
+			// Camera rotation
+			if ((input.mouse_dragged.x != 0.f || input.mouse_dragged.y != 0.f)) {
+
+				set_cursor_position(engine.window, 0.f, 0.f);
+
+				v2_f32 drag = input.mouse_dragged * 2.f;
+
+				// TODO: pitch limit
+				XMVECTOR pitch = XMQuaternionRotationAxis(XMVectorSet(1.f, 0.f, 0.f, 0.f), -drag.y);
+				XMVECTOR yaw = XMQuaternionRotationAxis(XMVectorSet(0.f, 1.f, 0.f, 0.f), drag.x);
+
+				rotation = XMQuaternionMultiply(pitch, rotation);
+				rotation = XMQuaternionMultiply(rotation, yaw);
+				rotation = XMQuaternionNormalize(rotation);
+			}
+
+			input.unused = false;
+			dev.camera.rotation = v4_f32(rotation);
 		}
+		else {
 
-		if (input.mouse_wheel != 0.f) {
+			InputState button_state = input.mouse_buttons[MouseButton_Center];
 
-			f32 force = 0.05f;
-			if (input.keys[Key_Shift] == InputState_Hold) force *= 3.f;
+			if (button_state != InputState_None) {
 
-			f32 length = camera->getProjectionLength();
+				v2_f32 drag = input.mouse_dragged;
 
-			f32 new_length = std::min(length - input.mouse_wheel * length * force, max_projection_length);
-			camera->setProjectionLength(new_length);
+				dev.camera.position -= (drag * v2_f32{ dev.camera.width, dev.camera.height }).getVec3();
+			}
+
+			if (input.mouse_wheel != 0.f) {
+
+				f32 force = 0.05f;
+				if (input.keys[Key_Shift] == InputState_Hold) force *= 3.f;
+
+				f32 length = dev.camera.getProjectionLength();
+
+				f32 new_length = length - input.mouse_wheel * length * force;
+				dev.camera.setProjectionLength(new_length);
+			}
 		}
 
 		input.unused = false;
-		trans.setPosition(position.getVec3());
-	}
-
-	static void camera_controller3D(Scene* scene, CameraComponent* camera, f32 velocity)
-	{
-		if (camera == nullptr) return;
-
-		Transform trans = get_entity_transform(scene, camera->entity);
-
-		v3_f32 position = trans.getLocalPosition();
-		XMVECTOR rotation = trans.getLocalRotation().get_dx();
-
-		XMVECTOR direction;
-		XMMATRIX rotation_matrix;
-
-		// Rotation matrix
-		rotation_matrix = XMMatrixRotationQuaternion(rotation);
-
-		// Camera direction
-		direction = XMVectorSet(0.f, 0.f, 1.f, 0.f);
-		direction = XMVector3Transform(direction, rotation_matrix);
-
-		f32 norm = XMVectorGetX(XMVector3Length(direction));
-
-		// Zoom
-		if (input.mouse_wheel != 0.f) {
-
-			f32 force = velocity;
-			if (input.keys[Key_Shift] == InputState_Hold)
-				force *= 3.f;
-
-			position += v3_f32(direction) * input.mouse_wheel * force;
-		}
-
-		// Camera rotation
-		if ((input.mouse_dragged.x != 0.f || input.mouse_dragged.y != 0.f)) {
-
-			set_cursor_position(engine.window, 0.f, 0.f);
-
-			v2_f32 drag = input.mouse_dragged * 2.f;
-
-			// TODO: pitch limit
-			XMVECTOR pitch = XMQuaternionRotationAxis(XMVectorSet(1.f, 0.f, 0.f, 0.f), -drag.y);
-			XMVECTOR yaw = XMQuaternionRotationAxis(XMVectorSet(0.f, 1.f, 0.f, 0.f), drag.x);
-
-			rotation = XMQuaternionMultiply(pitch, rotation);
-			rotation = XMQuaternionMultiply(rotation, yaw);
-			rotation = XMQuaternionNormalize(rotation);
-		}
-
-		input.unused = false;
-		trans.setRotation(v4_f32(rotation));
-		trans.setPosition(position);
 	}
 
 	struct EditorStyle {
@@ -416,15 +406,7 @@ namespace sv {
 	{
 		v2_f32 mouse = input.mouse_position;
 
-		CameraComponent* camera = get_main_camera(engine.scene);
-
-		if (camera == nullptr) return;
-
-		Transform camera_trans = get_entity_transform(engine.scene, camera->entity);
-		v3_f32 camera_position = camera_trans.getWorldPosition();
-		v4_f32 camera_rotation = camera_trans.getWorldRotation();
-
-		Ray ray = screen_to_world_ray(mouse, camera_position, camera_rotation, camera);
+		Ray ray = screen_to_world_ray(mouse, dev.camera.position, dev.camera.rotation, &dev.camera);
 
 		XMVECTOR ray_origin = ray.origin.getDX(1.f);
 		XMVECTOR ray_direction = ray.direction.getDX(0.f);
@@ -958,6 +940,7 @@ namespace sv {
 
 		// KEY SHORTCUTS
 		{
+
 			if (input.keys[Key_F11] == InputState_Pressed) {
 				engine.close_request = true;
 			}
@@ -967,6 +950,26 @@ namespace sv {
 				}
 				else window_state_set(engine.window, WindowState_Fullscreen);
 			}
+			if (input.keys[Key_F4] == InputState_Pressed) {
+
+				dev.camera.projection_type = (dev.camera.projection_type == ProjectionType_Orthographic) ? ProjectionType_Perspective : ProjectionType_Orthographic;
+
+				if (dev.camera.projection_type == ProjectionType_Orthographic) {
+
+					dev.camera.width = 30.f;
+					dev.camera.height = 30.f;
+					dev.camera.near = -1000.f;
+					dev.camera.far = 1000.f;
+					dev.camera.rotation = { 0.f, 0.f, 0.f, 1.f };
+				}
+				else {
+
+					dev.camera.width = 0.1f;
+					dev.camera.height = 0.1f;
+					dev.camera.near = 0.03f;
+					dev.camera.far = 100000.f;
+				}
+			}
 			if (input.keys[Key_F3] == InputState_Pressed) {
 				editor.camera_controller = false;
 				dev.console_active = !dev.console_active;
@@ -974,15 +977,30 @@ namespace sv {
 			if (input.keys[Key_F2] == InputState_Pressed) {
 				editor.camera_controller = !editor.camera_controller;
 				dev.console_active = false;
+				dev.debug_draw = true;
+			}
+			if (input.keys[Key_F1] == InputState_Pressed) {
+
+				editor.camera_controller = false;
+				dev.debug_draw = !dev.debug_draw;
+			}
+
+			if (input.unused && input.keys[Key_Control]) {
+
+				
 			}
 		}
+
+		// Adjust camera
+		dev.camera.adjust(window_aspect_get(engine.window));
 
 		if (editor.camera_controller) {
 
 			if (engine.scene == nullptr)
 				editor.camera_controller = false;
-			else
-				camera_controller3D(engine.scene, get_main_camera(engine.scene), 0.3f);
+			else {
+				control_camera();
+			}
 		}
 
 		if (!entity_exist(engine.scene, editor.selected_entity)) {
@@ -1015,61 +1033,71 @@ namespace sv {
 
 	void draw_editor(CommandList cmd)
 	{
-		if (engine.scene) {
+		if (engine.scene && dev.debug_draw) {
 
-			CameraComponent* cam = get_main_camera(engine.scene);
+			begin_debug_batch(cmd);
 
-			if (cam) {
-				begin_debug_batch(cmd);
+			// Draw selected entity
+			if (editor.selected_entity != SV_ENTITY_NULL) {
 
-				// Draw selected entity
-				if (editor.selected_entity != SV_ENTITY_NULL) {
+				Transform trans = get_entity_transform(engine.scene, editor.selected_entity);
+				MeshComponent* mesh_comp = get_component<MeshComponent>(engine.scene, editor.selected_entity);
+				SpriteComponent* sprite_comp = get_component<SpriteComponent>(engine.scene, editor.selected_entity);
 
-					Transform trans = get_entity_transform(engine.scene, editor.selected_entity);
-					MeshComponent* mesh_comp = get_component<MeshComponent>(engine.scene, editor.selected_entity);
-					SpriteComponent* sprite_comp = get_component<SpriteComponent>(engine.scene, editor.selected_entity);
+				if (mesh_comp && mesh_comp->mesh.get()) {
 
-
-
-					if (mesh_comp && mesh_comp->mesh.get()) {
-
-						u8 alpha = 5u + u8(f32(sin(timer_now().toSeconds_f64() * 3.5f) + 1.0) * 50.f * 0.5f);
-						draw_debug_mesh_wireframe(mesh_comp->mesh.get(), trans.getWorldMatrix(), Color::Red(alpha), cmd);
-					}
-					if (sprite_comp) {
-
-						XMVECTOR p0 = XMVectorSet(-0.5f, 0.5f, 0.f, 1.f);
-						XMVECTOR p1 = XMVectorSet(0.5f, 0.5f, 0.f, 1.f);
-						XMVECTOR p2 = XMVectorSet(-0.5f, -0.5f, 0.f, 1.f);
-						XMVECTOR p3 = XMVectorSet(0.5f, -0.5f, 0.f, 1.f);
-
-						XMMATRIX tm = trans.getWorldMatrix();
-
-						p0 = XMVector3Transform(p0, tm);
-						p1 = XMVector3Transform(p1, tm);
-						p2 = XMVector3Transform(p2, tm);
-						p3 = XMVector3Transform(p3, tm);
-
-						u8 alpha = 50u + u8(f32(sin(timer_now().toSeconds_f64() * 3.5f) + 1.0) * 200.f * 0.5f);
-						Color selection_color = Color::Red(alpha);
-
-						draw_debug_line(v3_f32(p0), v3_f32(p1), selection_color, cmd);
-						draw_debug_line(v3_f32(p1), v3_f32(p3), selection_color, cmd);
-						draw_debug_line(v3_f32(p3), v3_f32(p2), selection_color, cmd);
-						draw_debug_line(v3_f32(p2), v3_f32(p0), selection_color, cmd);
-					}
+					u8 alpha = 5u + u8(f32(sin(timer_now().toSeconds_f64() * 3.5f) + 1.0) * 50.f * 0.5f);
+					draw_debug_mesh_wireframe(mesh_comp->mesh.get(), trans.getWorldMatrix(), Color::Red(alpha), cmd);
 				}
+				if (sprite_comp) {
 
-				// Draw gizmos
-				draw_gizmos(engine.offscreen, cmd);
+					XMVECTOR p0 = XMVectorSet(-0.5f, 0.5f, 0.f, 1.f);
+					XMVECTOR p1 = XMVectorSet(0.5f, 0.5f, 0.f, 1.f);
+					XMVECTOR p2 = XMVectorSet(-0.5f, -0.5f, 0.f, 1.f);
+					XMVECTOR p3 = XMVectorSet(0.5f, -0.5f, 0.f, 1.f);
 
-				Transform trans = get_entity_transform(engine.scene, cam->entity);
-				end_debug_batch(true, false, camera_view_projection_matrix(trans.getWorldPosition(), trans.getWorldRotation(), *cam), cmd);
+					XMMATRIX tm = trans.getWorldMatrix();
+
+					p0 = XMVector3Transform(p0, tm);
+					p1 = XMVector3Transform(p1, tm);
+					p2 = XMVector3Transform(p2, tm);
+					p3 = XMVector3Transform(p3, tm);
+
+					u8 alpha = 50u + u8(f32(sin(timer_now().toSeconds_f64() * 3.5f) + 1.0) * 200.f * 0.5f);
+					Color selection_color = Color::Red(alpha);
+
+					draw_debug_line(v3_f32(p0), v3_f32(p1), selection_color, cmd);
+					draw_debug_line(v3_f32(p1), v3_f32(p3), selection_color, cmd);
+					draw_debug_line(v3_f32(p3), v3_f32(p2), selection_color, cmd);
+					draw_debug_line(v3_f32(p2), v3_f32(p0), selection_color, cmd);
+				}
 			}
+
+			// Draw 2D grid
+			if (dev.camera.projection_type == ProjectionType_Orthographic) {
+				draw_debug_orthographic_grip(dev.camera.position.getVec2(), {}, { dev.camera.width, dev.camera.height }, 1.f, Color::White(), cmd);
+			}
+
+			// Draw cameras
+			{
+				EntityView<CameraComponent> cameras(engine.scene);
+
+				for (CameraComponent& cam : cameras) {
+
+					Transform trans = get_entity_transform(engine.scene, cam.entity);
+
+					draw_debug_quad(trans.getWorldMatrix(), Color::Red(), cmd);
+				}
+			}
+
+			// Draw gizmos
+			draw_gizmos(engine.offscreen, cmd);
+
+			end_debug_batch(true, false, camera_view_projection_matrix(dev.camera.position, dev.camera.rotation, dev.camera), cmd);
 		}
 
 		// Draw gui
-		gui_draw(editor.gui, engine.offscreen, cmd);
+		gui_draw(editor.gui, cmd);
 	}
 
 }

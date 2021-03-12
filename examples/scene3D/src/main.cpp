@@ -34,11 +34,15 @@ Result app_init_scene(Scene* scene, Archive* archive)
 		camera->projection_type = ProjectionType_Perspective;
 	}
 
+	svCheck(load_skymap_image(SV_SYS("system/skymap.jpg"), &scene->skybox));
+
 	return Result_Success;
 }
 
 Result app_close_scene(Scene* scene)
 {
+
+	graphics_destroy(scene->skybox);
 
 	return Result_Success;
 }
