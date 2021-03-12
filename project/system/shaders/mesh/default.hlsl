@@ -28,6 +28,10 @@ SV_CONSTANT_BUFFER(camera_buffer, b1) {
 	Camera camera;
 };
 
+SV_CONSTANT_BUFFER(environment_buffer, b2) {
+        Environment environment;	
+};
+
 Output main(Input input)
 {
 	Output output;
@@ -168,6 +172,9 @@ Output main(Input input)
 
 		}
 	}
+
+	// Ambient lighting
+	light_accumulation = max(environment.ambient_light, light_accumulation);
 
 	float4 diffuse = diffuse_map.Sample(sam, input.texcoord);
 

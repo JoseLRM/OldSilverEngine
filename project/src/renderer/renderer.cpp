@@ -104,6 +104,17 @@ namespace sv {
 	{
 		GPUBufferDesc desc;
 
+		// Environment
+		{
+			desc.bufferType = GPUBufferType_Constant;
+			desc.usage = ResourceUsage_Default;
+			desc.CPUAccess = CPUAccess_Write;
+			desc.size = sizeof(EnvironmentData);
+			desc.pData = nullptr;
+
+			svCheck(graphics_buffer_create(&desc, &gfx.cbuffer_environment));
+		}
+		
 		// Debug mesh
 		{
 			desc.bufferType = GPUBufferType_Constant;
@@ -701,6 +712,13 @@ namespace sv {
 
 		CommandList cmd = graphics_commandlist_get();
 
+		// Create environment buffer
+		{
+			EnvironmentData data;
+			data.ambient_light = Color3f::Gray(0.1f);
+			graphics_buffer_update(gfx.cbuffer_environment, &data, sizeof(EnvironmentData), 0u, cmd);
+		}
+
 		// Get lights
 		{
 			EntityView<LightComponent> lights(scene);
@@ -973,8 +991,10 @@ namespace sv {
 
 						graphics_constantbuffer_bind(instance_buffer, 0u, ShaderType_Vertex, cmd);
 						graphics_constantbuffer_bind(gfx.cbuffer_camera, 1u, ShaderType_Vertex, cmd);
+						
 						graphics_constantbuffer_bind(material_buffer, 0u, ShaderType_Pixel, cmd);
 						graphics_constantbuffer_bind(light_instances_buffer, 1u, ShaderType_Pixel, cmd);
+						graphics_constantbuffer_bind(gfx.cbuffer_environment, 2u, ShaderType_Pixel, cmd);
 
 						u32 light_count = std::min(LIGHT_COUNT, u32(light_instances.size()));
 

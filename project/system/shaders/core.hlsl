@@ -34,7 +34,7 @@ typedef double          f64;
 #define foreach(_it, _end) for (u32 _it = 0u; _it < _end; ++_it)
 #define SV_BIT(x) (1ULL << x) 
 
-// Camera
+// Structs
 
 struct Camera {
     matrix vm;
@@ -43,3 +43,7 @@ struct Camera {
     float3 position;
     float4 direction;
 };
+
+struct Environment {
+       float3 ambient_light;
+};     

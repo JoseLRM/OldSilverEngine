@@ -76,6 +76,10 @@ namespace sv {
 		v2_f32 padding;
 	};
 
+	struct EnvironmentData {
+		Color3f ambient_light;
+	};
+
 	struct GraphicsObjects {
 
 		GPUImage* image_white;
@@ -89,6 +93,7 @@ namespace sv {
 		RasterizerState* rs_wireframe_back_culling;
 		RasterizerState* rs_wireframe_front_culling;
 		GPUBuffer* cbuffer_camera;
+		GPUBuffer* cbuffer_environment;
 		RenderPass* renderpass_off;
 		RenderPass* renderpass_world;
 		BlendState* bs_transparent;
