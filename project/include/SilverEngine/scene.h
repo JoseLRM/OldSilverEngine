@@ -7,7 +7,7 @@
 
 #define SV_ENTITY_NULL 0u
 #define SV_COMPONENT_ID_INVALID std::numeric_limits<sv::CompID>::max()
-#define SV_DEFINE_COMPONENT(name) struct name : public sv::Component<name>
+#define SV_DEFINE_COMPONENT(name, version) struct name : public sv::Component<name, version>
 
 namespace sv {
 
@@ -18,6 +18,8 @@ namespace sv {
 
 	struct Scene {
 
+		static constexpr u32 VERSION = 0u;
+		
 		void* user_ptr = nullptr;
 		u32 user_id = 0u;
 		Entity main_camera = SV_ENTITY_NULL;
@@ -49,29 +51,34 @@ namespace sv {
 		Entity entity = SV_ENTITY_NULL;
 	};
 
-	template<typename T>
+	template<typename T, u32 V>
 	struct Component : public BaseComponent {
 		static CompID ID;
 		static u32 SIZE;
+		const static u32 VERSION;
 	};
 
-	template<typename T>
+	template<typename T, u32 V>
 	CompID Component<T>::ID(SV_COMPONENT_ID_INVALID);
 
-	template<typename T>
+	template<typename T, u32 V>
 	u32 Component<T>::SIZE;
+
+	template<typename T, u32 V>
+	const u32 Component<T>::VERSION(V);
 
 	typedef void(*CreateComponentFunction)(BaseComponent*);
 	typedef void(*DestroyComponentFunction)(BaseComponent*);
 	typedef void(*MoveComponentFunction)(BaseComponent* from, BaseComponent* to);
 	typedef void(*CopyComponentFunction)(BaseComponent* from, BaseComponent* to);
 	typedef void(*SerializeComponentFunction)(BaseComponent* comp, Archive&);
-	typedef void(*DeserializeComponentFunction)(BaseComponent* comp, Archive&);
+	typedef void(*DeserializeComponentFunction)(BaseComponent* comp, u32 version, Archive&);
 
 	struct ComponentRegisterDesc {
 
 		const char* name;
 		u32								componentSize;
+		u32 version;
 		CreateComponentFunction			createFn;
 		DestroyComponentFunction		destroyFn;
 		MoveComponentFunction			moveFn;
@@ -87,6 +94,7 @@ namespace sv {
 
 	const char* get_component_name(CompID ID);
 	u32			get_component_size(CompID ID);
+	u32			get_component_version(CompID ID);
 	CompID		get_component_id(const char* name);
 	u32			get_component_register_count();
 
@@ -95,7 +103,7 @@ namespace sv {
 	void		move_component(CompID ID, BaseComponent* from, BaseComponent* to);
 	void		copy_component(CompID ID, BaseComponent* from, BaseComponent* to);
 	void		serialize_component(CompID ID, BaseComponent* comp, Archive& archive);
-	void		deserialize_component(CompID ID, BaseComponent* comp, Archive& archive);
+	void		deserialize_component(CompID ID, BaseComponent* comp, u32 version, Archive& archive);
 	bool		component_exist(CompID ID);
 
 	// Transform
@@ -221,6 +229,7 @@ namespace sv {
 		ComponentRegisterDesc desc;
 		desc.componentSize = sizeof(Component);
 		desc.name = name;
+		desc.version = Component::VERSION;
 
 		desc.createFn = [](BaseComponent* compPtr)
 		{
@@ -253,10 +262,10 @@ namespace sv {
 			comp->serialize(file);
 		};
 
-		desc.deserializeFn = [](BaseComponent* comp_, Archive& file)
+		desc.deserializeFn = [](BaseComponent* comp_, u32 version, Archive& file)
 		{
 			Component* comp = new(comp_) Component();
-			comp->deserialize(file);
+			comp->deserialize(version, file);
 		};
 
 		Component::ID = register_component(&desc);
@@ -332,7 +341,7 @@ namespace sv {
 
 	///////////////////////////////////////////////////////// COMPONENTS /////////////////////////////////////////////////////////
 
-	SV_DEFINE_COMPONENT(SpriteComponent) {
+	SV_DEFINE_COMPONENT(SpriteComponent, 0u) {
 
 		TextureAsset	texture;
 		v4_f32			texcoord = { 0.f, 0.f, 1.f, 1.f };
@@ -340,7 +349,7 @@ namespace sv {
 		u32				layer = 0u;
 
 		void serialize(Archive& archive);
-		void deserialize(Archive& archive);
+		void deserialize(u32 version, Archive& archive);
 
 	};
 
@@ -350,7 +359,7 @@ namespace sv {
 		ProjectionType_Perspective,
 	};
 
-	SV_DEFINE_COMPONENT(CameraComponent) {
+	SV_DEFINE_COMPONENT(CameraComponent, 0u) {
 
 		ProjectionType projection_type = ProjectionType_Orthographic;
 		f32 near = -1000.f;
@@ -359,7 +368,7 @@ namespace sv {
 		f32 height = 10.f;
 
 		void serialize(Archive& archive);
-		void deserialize(Archive& archive);
+		void deserialize(u32 version, Archive& archive);
 
 		SV_INLINE void adjust(f32 aspect)
 		{
@@ -389,13 +398,13 @@ namespace sv {
 
 	};
 
-	SV_DEFINE_COMPONENT(MeshComponent) {
+	SV_DEFINE_COMPONENT(MeshComponent, 0u) {
 
 		MeshAsset		mesh;
 		MaterialAsset	material;
 
 		void serialize(Archive& archive);
-		void deserialize(Archive& archive);
+		void deserialize(u32 version, Archive& archive);
 
 	};
 
@@ -405,7 +414,7 @@ namespace sv {
 		LightType_Spot,
 	};
 
-	SV_DEFINE_COMPONENT(LightComponent) {
+	SV_DEFINE_COMPONENT(LightComponent, 0u) {
 
 		LightType light_type = LightType_Point;
 		Color3f color = Color3f::White();
@@ -414,7 +423,7 @@ namespace sv {
 		f32 smoothness = 0.5f;
 
 		void serialize(Archive& archive);
-		void deserialize(Archive& archive);
+		void deserialize(u32 version, Archive& archive);
 
 	};
 

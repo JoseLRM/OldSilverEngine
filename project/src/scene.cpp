@@ -74,6 +74,7 @@ namespace sv {
 
 		std::string						name;
 		u32								size;
+		u32 version;
 		CreateComponentFunction			createFn = nullptr;
 		DestroyComponentFunction		destroyFn = nullptr;
 		MoveComponentFunction			moveFn = nullptr;
@@ -146,6 +147,8 @@ namespace sv {
 					SV_LOG_ERROR("Can't deserialize the scene '%s' at '%s'", name, filepath.c_str());
 				}
 				else {
+					u32 version;
+					archive >> version;
 					archive >> scene.main_camera;
 
 					// ECS
@@ -156,6 +159,7 @@ namespace sv {
 						struct Register {
 							std::string name;
 							u32 size;
+							u32 version;
 							CompID ID;
 						};
 
@@ -171,6 +175,7 @@ namespace sv {
 
 								archive >> it->name;
 								archive >> it->size;
+								archive >> it->version;
 
 							}
 						}
@@ -271,6 +276,7 @@ namespace sv {
 							for (auto it = registers.rbegin(); it != registers.rend(); ++it) {
 
 								CompID compID = it->ID;
+								u32 version = it->version;
 								auto& compList = scene.components[compID];
 								u32 compSize = get_component_size(compID);
 								u32 compCount;
@@ -317,7 +323,7 @@ namespace sv {
 									archive >> entity;
 
 									BaseComponent* comp = componentAlloc(scene_, compID, entity, false);
-									deserialize_component(compID, comp, archive);
+									deserialize_component(compID, comp, version , archive);
 									comp->entity = entity;
 
 									scene.entityData[entity].components.emplace_back(compID, comp);
@@ -376,7 +382,8 @@ namespace sv {
 		PARSE_SCENE();
 
 		Archive archive;
-		
+
+		archive << Scene::VERSION;
 		archive << scene.main_camera;
 		
 		// ECS
@@ -392,8 +399,9 @@ namespace sv {
 
 				for (CompID id = 0u; id < g_Registers.size(); ++id) {
 
-					if (component_exist(id))
-						archive << get_component_name(id) << get_component_size(id);
+					if (component_exist(id)) {
+						archive << get_component_name(id) << get_component_size(id) << get_component_version(id);
+					}
 
 				}
 			}
@@ -888,6 +896,7 @@ namespace sv {
 		ComponentRegister& reg = g_Registers.emplace_back();
 		reg.name = desc->name;
 		reg.size = desc->componentSize;
+		reg.version = desc->version;
 		reg.createFn = desc->createFn;
 		reg.destroyFn = desc->destroyFn;
 		reg.moveFn = desc->moveFn;
@@ -907,6 +916,10 @@ namespace sv {
 	u32 get_component_size(CompID ID)
 	{
 		return g_Registers[ID].size;
+	}
+	u32 get_component_version(CompID ID)
+	{
+		return g_Registers[ID].version;
 	}
 	CompID get_component_id(const char* name)
 	{
@@ -947,10 +960,10 @@ namespace sv {
 		if (fn) fn(comp, archive);
 	}
 
-	void deserialize_component(CompID ID, BaseComponent* comp, Archive& archive)
+	void deserialize_component(CompID ID, BaseComponent* comp, u32 version, Archive& archive)
 	{
 		DeserializeComponentFunction fn = g_Registers[ID].deserializeFn;
-		if (fn) fn(comp, archive);
+		if (fn) fn(comp, version, archive);
 	}
 
 	bool component_exist(CompID ID)
@@ -1811,7 +1824,7 @@ namespace sv {
 		archive << texture << texcoord << color << layer;
 	}
 
-	void SpriteComponent::deserialize(Archive& archive)
+	void SpriteComponent::deserialize(u32 version, Archive& archive)
 	{
 		archive >> texture >> texcoord >> color >> layer;
 	}
@@ -1821,7 +1834,7 @@ namespace sv {
 		archive << projection_type << near << far << width << height;
 	}
 
-	void CameraComponent::deserialize(Archive& archive)
+	void CameraComponent::deserialize(u32 version, Archive& archive)
 	{
 		archive >> (u32&)projection_type >> near >> far >> width >> height;
 	}
@@ -1831,7 +1844,7 @@ namespace sv {
 		archive << mesh << material;
 	}
 
-	void MeshComponent::deserialize(Archive& archive)
+	void MeshComponent::deserialize(u32 version, Archive& archive)
 	{
 		archive >> mesh >> material;
 	}
@@ -1841,7 +1854,7 @@ namespace sv {
 		archive << light_type << color << intensity << range << smoothness;
 	}
 
-	void LightComponent::deserialize(Archive& archive)
+	void LightComponent::deserialize(u32 version, Archive& archive)
 	{
 		archive >> (u32&)light_type >> color >> intensity >> range >> smoothness;
 	}
