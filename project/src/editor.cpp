@@ -1090,6 +1090,24 @@ namespace sv {
 				}
 			}
 
+			// Draw lights
+			{
+				EntityView<LightComponent> lights(engine.scene);
+
+				XMMATRIX matrix;
+				
+				for (LightComponent& l : lights) {
+
+					matrix = XMMatrixQuaternion(XMQuaternionInverse(dev.camera.rotation.get_dx()));
+					
+					// Move to entity position
+					v3_f32 position = get_entity_transform(engine.scene, l.entity).getWorldPosition();
+					matrix *= XMMatrixTranslation(position.x, position.y, position.z);
+										
+					draw_debug_quad(matrix, Color::White(40u), cmd);
+				}
+			}
+
 			// Draw gizmos
 			draw_gizmos(engine.offscreen, cmd);
 
