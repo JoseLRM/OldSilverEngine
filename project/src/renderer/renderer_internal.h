@@ -133,9 +133,13 @@ namespace sv {
 		// PP
 
 		Shader* vs_default_postprocess;
+		Shader* ps_default_postprocess;
 		Shader* ps_gaussian_blur;
 		GPUBuffer* cbuffer_gaussian_blur;
+		GPUBuffer* cbuffer_bloom_threshold;
 		Sampler* sampler_blur;
+		Shader* ps_bloom_threshold;
+		BlendState* bs_addition;
 
 		// SKY
 

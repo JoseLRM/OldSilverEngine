@@ -42,7 +42,9 @@ namespace sv {
 		COMPILE_PS(gfx.ps_sky, "skymapping.hlsl");
 
 		COMPILE_VS_(gfx.vs_default_postprocess, "postprocessing/default.hlsl");
+		COMPILE_PS_(gfx.ps_default_postprocess, "postprocessing/default.hlsl");
 		COMPILE_PS_(gfx.ps_gaussian_blur, "postprocessing/gaussian_blur.hlsl");
+		COMPILE_PS_(gfx.ps_bloom_threshold, "postprocessing/bloom_threshold.hlsl");
 
 		return Result_Success;
 	}
@@ -135,6 +137,17 @@ namespace sv {
 			desc.pData = nullptr;
 
 			svCheck(graphics_buffer_create(&desc, &gfx.cbuffer_gaussian_blur));
+		}
+
+		// Bloom threshold
+		{
+			desc.bufferType = GPUBufferType_Constant;
+			desc.usage = ResourceUsage_Default;
+			desc.CPUAccess = CPUAccess_Write;
+			desc.size = sizeof(v4_f32);
+			desc.pData = nullptr;
+
+			svCheck(graphics_buffer_create(&desc, &gfx.cbuffer_bloom_threshold));
 		}
 
 		// Camera buffer
@@ -444,6 +457,20 @@ namespace sv {
 			desc.attachmentCount = 1u;
 
 			svCheck(graphics_blendstate_create(&desc, &gfx.bs_mesh));
+
+			// ADDITION
+			att[0].blendEnabled = true;
+			att[0].srcColorBlendFactor = BlendFactor_One;
+			att[0].dstColorBlendFactor = BlendFactor_One;
+			att[0].colorBlendOp = BlendOperation_Add;
+			att[0].srcAlphaBlendFactor = BlendFactor_One;
+			att[0].dstAlphaBlendFactor = BlendFactor_One;
+			att[0].alphaBlendOp = BlendOperation_Add;
+			att[0].colorWriteMask = ColorComponent_All;
+
+			desc.attachmentCount = 1u;
+			desc.blendConstants = { 0.f, 0.f, 0.f, 0.f };
+			svCheck(graphics_blendstate_create(&desc, &gfx.bs_addition));
 		}
 
 		// Create DepthStencilStates
@@ -1521,6 +1548,120 @@ namespace sv {
 			if (barrier_count) {
 				graphics_barrier(barriers, barrier_count, cmd);
 			}
+		}
+	}
+
+	void postprocess_addition(
+		GPUImage* src,
+		GPUImage* dst,
+		CommandList cmd
+	)
+	{
+		// Prepare graphics state
+		graphics_topology_set(GraphicsTopology_Triangles, cmd);
+		graphics_rasterizerstate_unbind(cmd);
+		graphics_depthstencilstate_unbind(cmd);
+		graphics_inputlayoutstate_unbind(cmd);
+		graphics_shader_bind(gfx.vs_default_postprocess, cmd);
+		graphics_shader_bind(gfx.ps_default_postprocess, cmd);
+		graphics_blendstate_bind(bs_addition, cmd);
+		
+		GPUImage* att[1u];
+		att[0u] = dst;
+
+		graphics_image_bind(src, 0u, ShaderType_Pixel, cmd);
+		graphics_image_bind(gfx.sampler_def_linear, 0u, ShaderType_Pixel, cmd);
+		
+		graphics_renderpass_begin(gfx.renderpass_off, att, cmd);
+		graphics_draw(3u, 1u, 0u, 0u, cmd);
+		graphics_renderpass_end(cmd);
+	}
+
+	void postprocess_bloom(
+		GPUImage* src, 
+		GPUImageLayout src_layout0, 
+		GPUImageLayout src_layout1, 
+		GPUImage* aux0, // Used in threshold pass
+		GPUImageLayout aux0_layout0, 
+		GPUImageLayout aux0_layout1,
+		GPUImage* aux1, // Used to blur the image
+		GPUImageLayout aux1_layout0, 
+		GPUImageLayout aux1_layout1,
+		f32 threshold,
+		f32 intensity,
+		f32 aspect,
+		CommandList cmd
+	)
+	{
+		GPUBarrier barriers[2];
+		u32 barrier_count = 0u;
+		GPUImage att[1u];
+
+		// Prepare graphics state
+		{
+			graphics_topology_set(GraphicsTopology_Triangles, cmd);
+			graphics_rasterizerstate_unbind(cmd);
+			graphics_blendstate_unbind(cmd);
+			graphics_depthstencilstate_unbind(cmd);
+			graphics_inputlayoutstate_unbind(cmd);
+			graphics_shader_bind(gfx.vs_default_postprocess, cmd);
+		}
+
+		// Threshold pass
+		{
+			// Prepare image layouts
+			if (src_layout0 != GPUImageLayout_ShaderResource) {
+				barriers[0u] = GPUBarrier::Image(src, src_layout0, GPUImageLayout_ShaderResource);
+				++barrier_count;
+			}
+			if (aux0_layout0 != GPUImageLayout_RenderTarget) {
+				barriers[barrier_count++] = GPUBarrier::Image(aux0, aux0_layout0, GPUImageLayout_RenderTarget);
+			}
+			
+			if (barrier_count) {
+				graphics_barrier(barriers, barrier_count, cmd);
+			}
+			
+			graphics_image_bind(src, 0u, ShaderType_Pixel, cmd);
+			graphics_sampler(gfx.sampler_blur, 0u, ShaderType_Pixel, cmd);
+			graphics_constant_buffer_bind(gfx.cbuffer_bloom_threshold, 0u, ShaderType_Pixel, cmd);
+
+			graphics_buffer_update(gfx.cbuffer_bloom_threshold, &threshold, sizeof(f32), 0u, cmd);
+			
+			graphics_shader_bind(gfx.ps_bloom_threshold, cmd);
+			
+			att[0u] = aux0;
+			
+			graphics_renderpass_begin(gfx.renderpass_off, att, cmd);
+			graphics_draw(3u, 1u, 0u, 0u, cmd);
+			graphics_renderpass_end(cmd);
+		}
+
+		// Blur image
+		postprocess_gaussian_blur(
+				aux0,
+				GPUImageLayout_RenderTarget,
+				aux0_layout1,
+				aux1,
+				aux1_layout0,
+				GPUImageLayout_ShaderResource,
+				intensity,
+				aspect,
+				cmd);
+
+		// Color addition
+		{
+			barriers[0u] = GPUBarrier::Image(src, GPUImageLayout_ShaderResource, GPUImageLayout_RenderTarget);
+			graphics_barrier(barriers, 1u, cmd);
+			
+			postprocess_addition(aux1, src, cmd);
+		}
+
+		// Last memory barriers
+		if (src_layout1 != GPUImageLayout_RenderTarget) {
+
+			barriers[0u] = GPUBarrier::Image(src, GPUImageLayout_RenderTarget, src_layout1);
+			graphics_barrier(barriers, 1u, cmd);
 		}
 	}
 

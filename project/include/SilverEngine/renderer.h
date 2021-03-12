@@ -53,6 +53,28 @@ namespace sv {
 		CommandList cmd
 	);
 
+	void postprocess_addition(
+		GPUImage* src,
+		GPUImage* dst,
+		CommandList cmd
+	);
+
+	void postprocess_bloom(
+		GPUImage* src, 
+		GPUImageLayout src_layout0, 
+		GPUImageLayout src_layout1, 
+		GPUImage* aux0, // Used in threshold pass
+		GPUImageLayout aux0_layout0, 
+		GPUImageLayout aux0_layout1,
+		GPUImage* aux1, // Used to blur the image
+		GPUImageLayout aux1_layout0, 
+		GPUImageLayout aux1_layout1,
+		f32 threshold,
+		f32 intensity,
+		f32 aspect,
+		CommandList cmd
+	);
+
 	// DEBUG RENDERER
 
 	void begin_debug_batch(CommandList cmd);

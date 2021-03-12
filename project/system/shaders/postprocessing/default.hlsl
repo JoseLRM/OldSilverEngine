@@ -35,3 +35,15 @@ Output main(u32 id : SV_VertexID)
 }
 
 #endif
+
+#ifdef SV_PIXEL_SHADER
+
+SV_TEXTURE(tex, t0);
+SV_SAMPLER(sam, s0);
+
+float4 main(float2 texcoord : FragTexcoord) : SV_Target0
+{
+	return tex.Sample(sam, texcoord);
+}
+
+#endif
