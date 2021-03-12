@@ -372,12 +372,35 @@ namespace sv {
 		return Result_Success;
 	}
 
+	SV_INLINE static std::ofstream open_ofstream(const char* filepath, u32 flags, bool create_dirs)
+	{
+		std::ofstream stream;
+		stream.open(filepath, flags);
+
+		if (create_dirs && !stream.is_open()) {
+
+			std::string dirpath = filepath;
+
+			while (dirpath.size() && dirpath.back() != '/')
+				dirpath.pop_back();
+			
+			if (dirpath.size()) {
+
+				dirpath.pop_back(); // erase the '/'
+			
+				std::filesystem::create_directories(dirpath);
+				stream.open(filepath, flags);
+			}
+		}
+		
+		return stream;
+	}
+
 	Result file_write_binary(const char* filepath, const u8* data, size_t size, bool append)
 	{
 		SV_PARSE_FILEPATH();
 
-		std::ofstream stream;
-		stream.open(filepath, std::ios::binary | (append ? std::ios::app : 0u));
+		std::ofstream stream = open_ofscream(filepath, std::ios::binary | (append ? std::ios::app : 0u), true);
 		if (!stream.is_open())
 			return Result_NotFound;
 
@@ -392,8 +415,7 @@ namespace sv {
 	{
 		SV_PARSE_FILEPATH();
 
-		std::ofstream stream;
-		stream.open(filepath, (append ? std::ios::app : 0u));
+		std::ofstream stream = open_ofstream(filepath, (append ? std::ios::app : 0u), true);
 		if (!stream.is_open())
 			return Result_NotFound;
 
