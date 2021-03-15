@@ -11,12 +11,23 @@ namespace sv {
 
 	/*
 	  TODO LIST:
-	  - Align memory using only one allocator
 	  - Combobox
-	  - Handle text dynamic memory
 	  - Hot Label ????
-	  - Draw first the container with the focus
-	  - Reverse rendering
+
+	  RUNTIME:
+	  - Begin
+	     * update settings
+
+	  - Write State
+	     * Write raw data
+	     * Get state
+
+	  - End
+	     * Update state
+	     * Update focus
+	     * Update widgets
+
+
 	*/
 
 	enum GuiWidgetType : u32 {
@@ -56,6 +67,10 @@ namespace sv {
 		GuiContainerStyle style;
 	};
 
+	struct Raw_Window {
+		GuiWindowStyle style;
+	};
+	
 	struct GuiWidget {
 		GuiWidgetType type;
 		u32 index;
@@ -82,10 +97,25 @@ namespace sv {
 
 	};
 
+	struct GuiWindowState {
+
+		v4_f32 bounds;
+		bool show;
+		std::string title;
+		u64 id;
+		
+	};
+
+	struct GuiWindow : public GuiParent {
+
+		GuiWindowStyle style;
+		GuiWindowState* state;
+
+	};
+
 	struct GuiButton {
 
 		const char* text;
-		size_t text_size;
 		GuiButtonStyle style;
 		bool hot;
 		bool pressed;
@@ -111,6 +141,7 @@ namespace sv {
 		GuiParent* current_parent;
 
 		FrameList<GuiContainer> containers;
+		FrameList<GuiWindow> windows;
 		FrameList<GuiButton> buttons;
 		FrameList<GuiDrag> drags;
 
@@ -123,12 +154,19 @@ namespace sv {
 		} focus;
 
 		GuiWidget current_focus;
+
+		struct {
+			
+			std::unordered_map<u64, GuiWindowState> window;
+			
+		} static_state;
 		
 		v2_f32 resolution;
 		f32 aspect;
 		v2_f32 mouse_position;
 		FrameList<u64> ids;
 		u64 current_id;
+		v2_f32 begin_position;
 
 	};
 
@@ -184,18 +222,15 @@ namespace sv {
 
 	SV_INLINE static void write_text(GUI_internal& gui, const char* text)
 	{
-		size_t text_size;
 
-		if (text == nullptr)
-			text_size = 0u;
-		else
-			text_size = strlen(text);
+		if (text == nullptr) {
 
-		write_buffer(gui, &text_size, sizeof(size_t));
-
-		if (text_size) {
-
-			write_buffer(gui, text, text_size);
+			char null = '\0';
+			write_buffer(gui, &null, 1u); 
+		}
+		else {
+			size_t text_size = strlen(text);
+			write_buffer(gui, text, text_size + 1u);
 		}
 	}
 
@@ -248,13 +283,16 @@ namespace sv {
 		case GuiWidgetType_Container:
 		{
 			Raw_Container* raw = (Raw_Container*)data;
-
 			write_buffer(gui, *raw);
 		}
 		break;
 		
 		case GuiWidgetType_Window:
-			break;
+		{
+			Raw_Window* raw = (Raw_Window*)data;
+			write_buffer(gui, *raw);
+		}
+		break;
 
 		case GuiWidgetType_Popup:
 			break;
@@ -465,6 +503,150 @@ namespace sv {
 		}
 		break;
 
+		case GuiWidgetType_Window:
+		{
+			GuiWindow& window = gui.windows[w.index];
+			GuiWindowState& state = *window.state;
+			
+			if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
+
+				v4_f32 decoration = compute_window_decoration_bounds(gui, window);
+
+				if (mouse_in_bounds(gui, decoration)) {
+
+					gui.begin_position = v2_f32(window.state->bounds.x, window.state->bounds.y) - gui.mouse_position;
+					set_focus(gui, GuiWidgetType_Window, window.id, 0u);
+				}
+				else {
+					const v4_f32& content = window.state->bounds;
+
+					constexpr f32 SELECTION_SIZE = 0.02f;
+
+					bool right = mouse_in_bounds(gui, { content.x + content.z * 0.5f, content.y, SELECTION_SIZE, content.w + SELECTION_SIZE * 2.f * gui.aspect });
+					bool left = mouse_in_bounds(gui, { content.x - content.z * 0.5f, content.y, SELECTION_SIZE, content.w + SELECTION_SIZE * 2.f * gui.aspect });
+					bool bottom = mouse_in_bounds(gui, { content.x, content.y - content.w * 0.5f, content.z + SELECTION_SIZE * 2.f, SELECTION_SIZE * gui.aspect });
+
+					u32 action = u32_max;
+
+					if (right && bottom) {
+						action = 4u;
+					}
+					else if (left && bottom) {
+						action = 5u;
+					}
+					else if (right) {
+						action = 1u;
+					}
+					else if (left) {
+						action = 2u;
+					}
+					else if (bottom) {
+						action = 3u;
+					}
+
+					if (action != u32_max) {
+						set_focus(gui, GuiWidgetType_Window, window.id, action);
+					}
+				}
+			}
+		}
+		break;
+
+		}
+	}
+
+	static void update_focus(GUI_internal& gui, const GuiWidget& w)
+	{
+		switch (w.type)
+		{
+			
+		case GuiWidgetType_Drag:
+		{
+			GuiDrag& drag = gui.drags[w.index];
+
+			if (input.mouse_buttons[MouseButton_Left] == InputState_None) {
+				free_focus(gui);
+			}
+			else {
+
+				drag.value += input.mouse_dragged.x * gui.resolution.x * drag.adv;
+				drag.value += input.mouse_dragged.x * gui.resolution.x * drag.adv;
+			}
+		}
+		break;
+
+		case GuiWidgetType_Window:
+		{
+			GuiWindow& window = gui.windows[w.index];
+
+			if (input.mouse_buttons[MouseButton_Left] == InputState_None) {
+
+				free_focus(gui);
+			}
+			else {
+
+				switch (gui.focus.action)
+				{
+
+				case 0u:
+				{
+					v2_f32 new_position = gui.mouse_position + gui.begin_position;
+					window.state->bounds.x = new_position.x;
+					window.state->bounds.y = new_position.y;
+				}
+				break;
+
+				case 1u: // RIGHT
+				{
+					f32 width = std::max(gui.mouse_position.x - (window.state->bounds.x - window.state->bounds.z * 0.5f), window.style.min_width);
+					window.state->bounds.x -= (window.state->bounds.z - width) * 0.5f;
+					window.state->bounds.z = width;
+				}
+				break;
+
+				case 2u: // LEFT
+				{
+					f32 width = std::max((window.state->bounds.x + window.state->bounds.z * 0.5f) - gui.mouse_position.x, window.style.min_width);
+					window.state->bounds.x += (window.state->bounds.z - width) * 0.5f;
+					window.state->bounds.z = width;
+				}
+				break;
+
+				case 3u: // BOTTOM
+				{
+					f32 height = std::max((window.state->bounds.y + window.state->bounds.w * 0.5f) - gui.mouse_position.y, window.style.min_height);
+					window.state->bounds.y += (window.state->bounds.w - height) * 0.5f;
+					window.state->bounds.w = height;
+				}
+				break;
+
+				case 4u: // RIGHT - BOTTOM
+				{
+					f32 width = std::max(gui.mouse_position.x - (window.state->bounds.x - window.state->bounds.z * 0.5f), window.style.min_width);
+					window.state->bounds.x -= (window.state->bounds.z - width) * 0.5f;
+					window.state->bounds.z = width;
+					f32 height = std::max((window.state->bounds.y + window.state->bounds.w * 0.5f) - gui.mouse_position.y, window.style.min_height);
+					window.state->bounds.y += (window.state->bounds.w - height) * 0.5f;
+					window.state->bounds.w = height;
+				}
+				break;
+
+				case 5u: // LEFT - BOTTOM
+				{
+					f32 width = std::max((window.state->bounds.x + window.state->bounds.z * 0.5f) - gui.mouse_position.x, window.style.min_width);
+					window.state->bounds.x += (window.state->bounds.z - width) * 0.5f;
+					window.state->bounds.z = width;
+					f32 height = std::max((window.state->bounds.y + window.state->bounds.w * 0.5f) - gui.mouse_position.y, window.style.min_height);
+					window.state->bounds.y += (window.state->bounds.w - height) * 0.5f;
+					window.state->bounds.w = height;
+				}
+				break;
+
+				}
+			}
+		}
+		break;
+
 		}
 	}
 
@@ -528,6 +710,7 @@ namespace sv {
 
 		// Reset last data
 		gui.containers.reset();
+		gui.windows.reset();
 		gui.buttons.reset();
 		gui.drags.reset();
 		gui.widgets.reset();
@@ -543,7 +726,6 @@ namespace sv {
 
 		GuiWidget current_parent;
 		current_parent.type = GuiWidgetType_None;
-		//gui.root_count = 0u;
 
 		while (it != end) {
 
@@ -580,7 +762,19 @@ namespace sv {
 			break;
 
 			case GuiWidgetType_Window:
-				break;
+			{
+				GuiWindow& window = gui.windows.emplace_back();
+
+				Raw_Window raw = _read<Raw_Window>(it);
+				window.style = raw.style;
+
+				GuiWindowState& state = gui.static_state.window[id];
+				window.bounds = state.bounds;
+				window.state = &state;
+
+				add_widget_parent(gui, &window, current_parent, GuiWidgetType_Window, gui.windows.size() - 1u, id);
+			}
+			break;
 
 			case GuiWidgetType_Popup:
 				break;
@@ -589,13 +783,8 @@ namespace sv {
 			{
 				GuiButton& button = gui.buttons.emplace_back();
 
-				button.text_size = _read<size_t>(it);
-
-				if (button.text_size) {
-					button.text = (const char*)it;
-					it += button.text_size;
-				}
-				else button.text = nullptr;
+				button.text = (const char*)it;
+				it += strlen(button.text) + 1u;
 
 				Raw_Coords coords = _read<Raw_Coords>(it);
 				button.style = _read<GuiButtonStyle>(it);
@@ -635,25 +824,7 @@ namespace sv {
 		// Update focus
 		if (gui.current_focus.type != GuiWidgetType_None) {
 
-			switch (gui.current_focus.type)
-			{
-			
-			case GuiWidgetType_Drag:
-			{
-				GuiDrag& drag = gui.drags[gui.current_focus.index];
-
-				if (input.mouse_buttons[MouseButton_Left] == InputState_None) {
-					free_focus(gui);
-				}
-				else {
-
-					drag.value += input.mouse_dragged.x * gui.resolution.x * drag.adv;
-					drag.value += input.mouse_dragged.x * gui.resolution.x * drag.adv;
-				}
-			}
-			break;
-
-			}
+			update_focus(gui, gui.current_focus);
 		}
 
 		// Update widgets
@@ -753,6 +924,9 @@ namespace sv {
 		case GuiWidgetType_Container:
 			return &gui.containers[res.index];
 
+		case GuiWidgetType_Window:
+			return &gui.windows[res.index];
+
 		case GuiWidgetType_Button:
 			return &gui.buttons[res.index];
 
@@ -766,11 +940,9 @@ namespace sv {
 
 	SV_INLINE void begin_parent(GUI_internal& gui, GuiParent* parent, u64 id)
 	{
-		if (parent) {
-
-			gui.current_parent = parent;
-			gui_push_id((GUI*)& gui, id);
-		}
+		SV_ASSERT(parent);
+		gui.current_parent = parent;
+		gui_push_id((GUI*)& gui, id);
 	}
 
 	SV_INLINE void end_parent(GUI_internal& gui)
@@ -797,8 +969,8 @@ namespace sv {
 			write_widget(gui, GuiWidgetType_Container, id, &raw);
 		}
 
-		GuiContainer* state = (GuiContainer*)find_widget(gui, GuiWidgetType_Container, id);
-		begin_parent(gui, state, id);
+		GuiContainer* c = (GuiContainer*)find_widget(gui, GuiWidgetType_Container, id);
+		if (c) begin_parent(gui, c, id);
 	}
 
 	void gui_end_container(GUI* gui_)
@@ -820,12 +992,51 @@ namespace sv {
 	{
 	}
 
+	/////////////////////////////////////// WINDOW ////////////////////////////////////////////////
+	
+	SV_INLINE static v4_f32 compute_window_decoration_bounds(const GUI_internal& gui, const GuiWindow& window)
+	{
+		v4_f32 bounds;
+		bounds.x = window.state->bounds.x;
+		bounds.y = window.state->bounds.y + window.state->bounds.w * 0.5f + window.style.decoration_height * 0.5f + window.style.outline_size * gui.aspect;
+		bounds.z = window.state->bounds.z + window.style.outline_size * 2.f;
+		bounds.w = window.style.decoration_height;
+		return bounds;
+	}
+
 	bool gui_begin_window(GUI* gui_, const char* title, const GuiWindowStyle& style)
 	{
 		PARSE_GUI();
 		u64 id = hash_string(title);
-		hash_combine(id, gui.current_id);
-		return false;
+
+		{
+			Raw_Window raw;
+			raw.style = style;
+
+			write_widget(gui, GuiWidgetType_Window, id, &raw);
+		}
+
+		GuiWindowState* state = nullptr;
+
+		auto it = gui.static_state.window.find(id);
+		if (it == gui.static_state.window.end()) {
+
+			GuiWindowState s;
+			s.bounds = { 0.5f, 0.5f, 0.1f, 0.3f };
+			s.show = true;
+			s.title = title;
+			s.id = id;
+			
+			gui.static_state.window[id] = std::move(s);
+			state = &gui.static_state.window[id];
+		}
+		else state = &it->second;
+
+		GuiWindow* wnd = (GuiWindow*)find_widget(gui, GuiWidgetType_Window, id);
+		if (wnd) {
+			begin_parent(gui, wnd, id);
+		}
+		return state->show;
 	}
 
 	void gui_end_window(GUI* gui_)
@@ -962,6 +1173,48 @@ namespace sv {
 			begin_debug_batch(cmd);
 			draw_debug_quad(pos.getVec3(), size, container.style.color, cmd);
 			end_debug_batch(true, false, XMMatrixIdentity(), cmd);
+		}
+		break;
+
+		case GuiWidgetType_Window:
+		{
+			const GuiWindow& window = gui.windows[w.index];
+			const GuiWindowState& state = *window.state;
+			const GuiWindowStyle& style = window.style;
+
+			v4_f32 decoration = compute_window_decoration_bounds(gui, window);
+
+			v2_f32 outline_size;
+			v2_f32 content_position;
+			v2_f32 content_size;
+
+			content_position = v2_f32{ state.bounds.x, state.bounds.y };
+			content_size = v2_f32{ state.bounds.z, state.bounds.w };
+
+			outline_size = content_size + v2_f32{ style.outline_size, style.outline_size * gui.aspect } *2.f;
+
+			// Normal to clip
+			content_position = content_position * 2.f - 1.f;
+			content_size = content_size * 2.f;
+			outline_size = outline_size * 2.f;
+			v2_f32 decoration_position = v2_f32(decoration.x, decoration.y) * 2.f - 1.f;
+			v2_f32 decoration_size = v2_f32(decoration.z, decoration.w) * 2.f;
+
+			draw_debug_quad(content_position.getVec3(0.f), outline_size, style.outline_color, cmd);
+			draw_debug_quad(content_position.getVec3(0.f), content_size, style.color, cmd);
+			draw_debug_quad(decoration_position.getVec3(0.f), decoration_size, style.decoration_color, cmd);
+
+			end_debug_batch(true, false, XMMatrixIdentity(), cmd);
+
+			if (state.title.size()) {
+
+				f32 font_size = decoration_size.y * 0.5f;
+
+				draw_text(state.title.c_str(), state.title.size()
+					  , decoration_position.x - decoration_size.x * 0.5f + 0.01f, decoration_position.y +
+					  decoration_size.y * 0.25f - font_opensans.vertical_offset * font_size, decoration_size.x, 1u, font_size,
+					  gui.aspect, TextAlignment_Left, &font_opensans, cmd);
+			}
 		}
 		break;
 
