@@ -132,24 +132,28 @@ namespace sv {
 
 	void gui_begin(GUI* gui, f32 width, f32 height);
 	void gui_end(GUI* gui);
-	
-	void gui_begin_container(GUI* gui, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiContainerStyle& style = {});
+
+	void gui_push_id(GUI* gui, u64 id);
+	void gui_push_id(GUI* gui, const char* id);
+	void gui_pop_id(GUI* gui);
+
+	void gui_begin_container(GUI* gui, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiContainerStyle& style = {});
 	void gui_end_container(GUI* gui);
 	
 	bool gui_begin_popup(GUI* gui, GuiPopupTrigger trigger, MouseButton mouse_button, u64 id, const GuiPopupStyle& style = {});
 	void gui_end_popup(GUI* gui);
-
+	
 	bool gui_begin_window(GUI* gui, const char* title, const GuiWindowStyle& style = {});
 	void gui_end_window(GUI* gui);
 	Result gui_show_window(GUI* gui, const char* title);
 	Result gui_hide_window(GUI* gui, const char* title);
 
-	bool gui_button(GUI* gui, const char* text, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiButtonStyle& style = {});
-	bool gui_slider(GUI* gui, f32* value, f32 min, f32 max, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiSliderStyle& style = {});
-	void gui_text(GUI* gui, const char* text, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiTextStyle& style = {});
-	bool gui_checkbox(GUI* gui, bool* value, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiCheckBoxStyle& style = {});
-	bool gui_checkbox_id(GUI* gui, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiCheckBoxStyle& style = {});
+	bool gui_button(GUI* gui, const char* text, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiButtonStyle& style = {});
 	bool gui_drag_f32(GUI* gui, f32* value, f32 adv, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiDragStyle& style = {});
+	bool gui_slider(GUI* gui, f32* value, f32 min, f32 max, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiSliderStyle& style = {});
+	void gui_text(GUI* gui, const char* text, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiTextStyle& style = {});
+	bool gui_checkbox(GUI* gui, bool* value, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiCheckBoxStyle& style = {});
+	bool gui_checkbox(GUI* gui, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiCheckBoxStyle& style = {});
 	
 	void gui_draw(GUI* gui, CommandList cmd);
 

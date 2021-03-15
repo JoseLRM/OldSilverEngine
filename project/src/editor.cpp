@@ -193,7 +193,8 @@ namespace sv {
 			}
 		}
 
-		Result res = show ? gui_show_window(editor.gui, args[0]) : gui_hide_window(editor.gui, args[0]);
+		//Result res = show ? gui_show_window(editor.gui, args[0]) : gui_hide_window(editor.gui, args[0]);
+		Result res = Result_TODO;
 
 		if (result_okay(res)) {
 			SV_LOG("%s '%s'", show ? "Showing" : "Hiding", args[0]);
@@ -220,7 +221,7 @@ namespace sv {
 		svCheck(gui_destroy(editor.gui));
 		return Result_Success;
 	}
-
+	
 	static void show_component_info(f32& y, CompID comp_id, BaseComponent* comp)
 	{
 		GUI* gui = editor.gui;
@@ -237,21 +238,22 @@ namespace sv {
 		checkbox_style.inactive_box = GuiBox::Triangle(Color::Black(), false, 0.5f);
 		checkbox_style.color = Color::Black(0u);
 
-		u64 gui_id = u64((u64(comp_id) << 32u) + comp->entity);
+		gui_push_id(gui, u64("ShowComponent") ^ u64((u64(comp_id) << 32u) + comp->entity));
+
 		bool remove = false;
 
-		gui_begin_container(gui, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 40.f), container_style);
+		gui_begin_container(gui, 0u, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 40.f), container_style);
 
-		gui_text(gui, get_component_name(comp_id), GuiCoord::Pixel(35.f), GuiCoord::IPixel(10.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), text_style);
+		gui_text(gui, get_component_name(comp_id), 1u, GuiCoord::Pixel(35.f), GuiCoord::IPixel(10.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), text_style);
 
-		if (gui_begin_popup(gui, GuiPopupTrigger_LastWidget, MouseButton_Right, gui_id)) {
+		if (gui_begin_popup(gui, GuiPopupTrigger_LastWidget, MouseButton_Right, 2u)) {
 
-			remove = gui_button(gui, "Remove", GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(5.f), GuiCoord::IPixel(25.f));
+			remove = gui_button(gui, "Remove", 0u, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(5.f), GuiCoord::IPixel(25.f));
 
 			gui_end_popup(gui);
 		}
 
-		bool show = gui_checkbox_id(gui, gui_id, GuiCoord::Pixel(0.f), GuiCoord::Aspect(), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), checkbox_style);
+		bool show = gui_checkbox(gui, 3u, GuiCoord::Pixel(0.f), GuiCoord::Aspect(), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), checkbox_style);
 
 		gui_end_container(gui);
 
@@ -262,20 +264,22 @@ namespace sv {
 			GuiTextStyle text_style;
 			text_style.text_alignment = TextAlignment_Left;
 
+			gui_push_id(gui, SpriteComponent::ID);
+
 			if (SpriteComponent::ID == comp_id) {
 
 				SpriteComponent& spr = *reinterpret_cast<SpriteComponent*>(comp);
 
-				gui_text(gui, "Color", GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f), text_style);
-				gui_button(gui, "Something", GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f));
+				gui_text(gui, "Color", 0u, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f), text_style);
+				gui_button(gui, "Something", 1u, GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f));
 				y += 30.f + editor.style.vertical_padding;
 
-				gui_text(gui, "Texture", GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f), text_style);
-				gui_button(gui, "Something", GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f));
+				gui_text(gui, "Texture", 2, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f), text_style);
+				gui_button(gui, "Something", 3, GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f));
 
-				if (gui_begin_popup(gui, GuiPopupTrigger_LastWidget, MouseButton_Left, 0x3fffa3 + gui_id)) {
+				if (gui_begin_popup(gui, GuiPopupTrigger_LastWidget, MouseButton_Left, 4)) {
 
-					if (gui_button(gui, "New", GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(5.f), GuiCoord::IPixel(25.f))) {
+					if (gui_button(gui, "New", 0, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(5.f), GuiCoord::IPixel(25.f))) {
 
 						const char* filters[] = {
 						"all", "*",
@@ -294,7 +298,7 @@ namespace sv {
 						}
 					}
 
-					if (gui_button(gui, "Remove", GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(30.f), GuiCoord::IPixel(50.f))) {
+					if (gui_button(gui, "Remove", 1, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(30.f), GuiCoord::IPixel(50.f))) {
 
 						unload_asset(spr.texture);
 					}
@@ -310,12 +314,12 @@ namespace sv {
 
 				MeshComponent& m = *reinterpret_cast<MeshComponent*>(comp);
 
-				gui_text(gui, "Mesh", GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f), text_style);
-				gui_button(gui, "Something", GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f));
+				gui_text(gui, "Mesh", 0u, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f), text_style);
+				gui_button(gui, "Something", 1u, GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f));
 
-				if (gui_begin_popup(gui, GuiPopupTrigger_LastWidget, MouseButton_Left, 0x4634ba + gui_id)) {
+				if (gui_begin_popup(gui, GuiPopupTrigger_LastWidget, MouseButton_Left, 2u)) {
 
-					if (gui_button(gui, "New", GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(5.f), GuiCoord::IPixel(25.f))) {
+					if (gui_button(gui, "New", 0u, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(5.f), GuiCoord::IPixel(25.f))) {
 
 						const char* filters[] = {
 						"mesh", "*.mesh",
@@ -331,7 +335,7 @@ namespace sv {
 						}
 					}
 
-					if (gui_button(gui, "Remove", GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(30.f), GuiCoord::IPixel(50.f))) {
+					if (gui_button(gui, "Remove", 1u, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(30.f), GuiCoord::IPixel(50.f))) {
 
 						unload_asset(m.mesh);
 					}
@@ -341,12 +345,12 @@ namespace sv {
 
 				y += 30.f + editor.style.vertical_padding;
 
-				gui_text(gui, "Material", GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f), text_style);
-				gui_button(gui, "Something", GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f));
+				gui_text(gui, "Material", 3, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f), text_style);
+				gui_button(gui, "Something", 4, GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f));
 
-				if (gui_begin_popup(gui, GuiPopupTrigger_LastWidget, MouseButton_Left, 0x3489ab324u + gui_id)) {
+				if (gui_begin_popup(gui, GuiPopupTrigger_LastWidget, MouseButton_Left, 5)) {
 
-					if (gui_button(gui, "New", GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(5.f), GuiCoord::IPixel(25.f))) {
+					if (gui_button(gui, "New", 0, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(5.f), GuiCoord::IPixel(25.f))) {
 
 						const char* filters[] = {
 						"mat", "*.mat",
@@ -362,7 +366,7 @@ namespace sv {
 						}
 					}
 
-					if (gui_button(gui, "Remove", GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(30.f), GuiCoord::IPixel(50.f))) {
+					if (gui_button(gui, "Remove", 1, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(30.f), GuiCoord::IPixel(50.f))) {
 
 						unload_asset(m.material);
 					}
@@ -380,18 +384,19 @@ namespace sv {
 
 				bool main = engine.scene->main_camera == cam.entity;
 
-				if (gui_checkbox(gui, &main, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f))) {
+				if (gui_checkbox(gui, &main, 0u, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f))) {
 
 					if (main) engine.scene->main_camera = cam.entity;
 					else engine.scene->main_camera = SV_ENTITY_NULL;
 				}
 
-				gui_text(gui, "Main Camera", GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f), text_style);
-
+				gui_text(gui, "Main Camera", 1u, GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f), text_style);
+				
 				y += 30.f + editor.style.vertical_padding;
 
 			}
 
+			gui_pop_id(gui);
 		}
 
 		if (remove) {
@@ -399,9 +404,11 @@ namespace sv {
 			remove_component_by_id(engine.scene, comp->entity, comp_id);
 		}
 
+		gui_pop_id(gui);
+
 		y += 30.f + editor.style.vertical_padding;
 	}
-
+	
 	SV_INLINE static void select_entity()
 	{
 		v2_f32 mouse = input.mouse_position;
@@ -510,7 +517,7 @@ namespace sv {
 
 		editor.selected_entity = selected;
 	}
-
+	
 	static void show_entity_popup(Entity entity, bool& destroy)
 	{
 		if (gui_begin_popup(editor.gui, GuiPopupTrigger_LastWidget, MouseButton_Right, 0x3254fa + u64(entity))) {
@@ -518,15 +525,15 @@ namespace sv {
 			f32 y = editor.style.vertical_padding;
 			constexpr f32 H = 20.f;
 
-			destroy = gui_button(editor.gui, "Destroy", GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H));
+			destroy = gui_button(editor.gui, "Destroy", 0u, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H));
 			y += H + editor.style.vertical_padding;
 
-			if (gui_button(editor.gui, "Duplicate", GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H))) {
+			if (gui_button(editor.gui, "Duplicate", 1u, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H))) {
 				duplicate_entity(engine.scene, entity);
 			}
 			y += H + editor.style.vertical_padding;
 
-			if (gui_button(editor.gui, "Create Child", GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H))) {
+			if (gui_button(editor.gui, "Create Child", 2u, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H))) {
 				create_entity(engine.scene, entity);
 			}
 
@@ -537,6 +544,8 @@ namespace sv {
 	static void show_entity(Entity entity, f32& y, f32 xoff)
 	{
 		GUI* g = editor.gui;
+
+		gui_push_id(g, entity);
 
 		const char* name = get_entity_name(engine.scene, entity);
 
@@ -555,7 +564,7 @@ namespace sv {
 				style.hot_color = Color::Red();
 			}
 
-			if (gui_button(g, name, GuiCoord::Pixel(10.f + xoff), GuiCoord::IPixel(10.f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + BUTTON_HEIGHT), style)) {
+			if (gui_button(g, name, 0u, GuiCoord::Pixel(10.f + xoff), GuiCoord::IPixel(10.f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + BUTTON_HEIGHT), style)) {
 
 				editor.selected_entity = entity;
 			}
@@ -573,13 +582,13 @@ namespace sv {
 				style.color = Color::Red();
 			}
 
-			gui_begin_container(g, GuiCoord::Pixel(10.f + xoff), GuiCoord::IPixel(10.f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + BUTTON_HEIGHT), style);
+			gui_begin_container(g, 1u, GuiCoord::Pixel(10.f + xoff), GuiCoord::IPixel(10.f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + BUTTON_HEIGHT), style);
 
 			GuiButtonStyle button_style;
 			button_style.color = Color::White(0u);
 			button_style.hot_color = Color::White(0u);
 
-			if (gui_button(g, name, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f))) {
+			if (gui_button(g, name, 0u, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f))) {
 
 				editor.selected_entity = entity;
 			}
@@ -611,6 +620,8 @@ namespace sv {
 			if (editor.selected_entity == entity)
 				editor.selected_entity = SV_ENTITY_NULL;
 		}
+
+		gui_pop_id(g);
 	}
 
 	void display_entity_hierarchy()
@@ -640,12 +651,12 @@ namespace sv {
 				f32 y = editor.style.vertical_padding;
 				constexpr f32 H = 20.f;
 
-				if (gui_button(editor.gui, "Create Entity", GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H))) {
+				if (gui_button(editor.gui, "Create Entity", 0u, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H))) {
 					create_entity(engine.scene);
 				}
 				y += H + editor.style.vertical_padding;
 
-				if (gui_button(editor.gui, "Create Sprite", GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H))) {
+				if (gui_button(editor.gui, "Create Sprite", 1u, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H))) {
 
 					Entity e = create_entity(engine.scene, 0, "Sprite");
 					add_component<SpriteComponent>(engine.scene, e);
@@ -677,7 +688,7 @@ namespace sv {
 				{
 					const char* entity_name = get_entity_name(engine.scene, selected);
 
-					gui_text(g, entity_name, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + NAME_HEIGHT));
+					gui_text(g, entity_name, 0u, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + NAME_HEIGHT));
 					y += NAME_HEIGHT + editor.style.separator + editor.style.vertical_padding;
 				}
 
@@ -719,11 +730,9 @@ namespace sv {
 
 						constexpr f32 ELEMENT_WIDTH = (1.f - EXTERN_PADDING * 2.f - INTERN_PADDING * 2.f) / 3.f;
 
-						u64 gui_id = 0x3af34 + selected + i * 3u;
-
 						// X
 						{
-							gui_begin_container(g,
+							gui_begin_container(g, 1u,
 								GuiCoord::Relative(0.5f - ELEMENT_WIDTH * 1.5f - INTERN_PADDING),
 								GuiCoord::Relative(0.5f - ELEMENT_WIDTH * 0.5f - INTERN_PADDING),
 								GuiCoord::IPixel(y),
@@ -731,7 +740,7 @@ namespace sv {
 								container_style
 							);
 
-							if (gui_button(g, "X", GuiCoord::Relative(0.f), GuiCoord::Relative(0.25f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), x_style)) {
+							if (gui_button(g, "X", 0u, GuiCoord::Relative(0.f), GuiCoord::Relative(0.25f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), x_style)) {
 
 								if (i == 1u)
 									values->x = 1.f;
@@ -739,14 +748,14 @@ namespace sv {
 									values->x = 0.f;
 							}
 
-							gui_drag_f32(g, &values->x, 0.1f, gui_id + 0u, GuiCoord::Relative(0.25f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
+							gui_drag_f32(g, &values->x, 0.1f, 1u, GuiCoord::Relative(0.25f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
 
 							gui_end_container(g);
 						}
 
 						// Y
 						{
-							gui_begin_container(g,
+							gui_begin_container(g, 2u,
 								GuiCoord::Relative(0.5f - ELEMENT_WIDTH * 0.5f),
 								GuiCoord::Relative(0.5f + ELEMENT_WIDTH * 0.5f),
 								GuiCoord::IPixel(y),
@@ -754,7 +763,7 @@ namespace sv {
 								container_style
 							);
 
-							if (gui_button(g, "Y", GuiCoord::Relative(0.f), GuiCoord::Relative(0.25f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), y_style)) {
+							if (gui_button(g, "Y", 0u, GuiCoord::Relative(0.f), GuiCoord::Relative(0.25f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), y_style)) {
 
 								if (i == 1u)
 									values->y = 1.f;
@@ -762,14 +771,14 @@ namespace sv {
 									values->y = 0.f;
 							}
 
-							gui_drag_f32(g, &values->y, 0.1f, gui_id + 1u, GuiCoord::Relative(0.25f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
+							gui_drag_f32(g, &values->y, 0.1f, 1u, GuiCoord::Relative(0.25f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
 
 							gui_end_container(g);
 						}
 
 						// Z
 						{
-							gui_begin_container(g,
+							gui_begin_container(g, 3u,
 								GuiCoord::Relative(0.5f + ELEMENT_WIDTH * 0.5f + INTERN_PADDING),
 								GuiCoord::Relative(0.5f + ELEMENT_WIDTH * 1.5f + INTERN_PADDING),
 								GuiCoord::IPixel(y),
@@ -777,7 +786,7 @@ namespace sv {
 								container_style
 							);
 
-							if (gui_button(g, "Z", GuiCoord::Relative(0.f), GuiCoord::Relative(0.25f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), z_style)) {
+							if (gui_button(g, "Z", 0u, GuiCoord::Relative(0.f), GuiCoord::Relative(0.25f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), z_style)) {
 
 								if (i == 1u)
 									values->z = 1.f;
@@ -785,7 +794,7 @@ namespace sv {
 									values->z = 0.f;
 							}
 
-							gui_drag_f32(g, &values->z, 0.1f, gui_id + 2u, GuiCoord::Relative(0.25f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
+							gui_drag_f32(g, &values->z, 0.1f, 1u, GuiCoord::Relative(0.25f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
 
 							gui_end_container(g);
 						}
@@ -803,6 +812,8 @@ namespace sv {
 				{
 					u32 comp_count = get_entity_component_count(engine.scene, selected);
 
+					gui_push_id(g, "Entity Components");
+
 					foreach(comp_index, comp_count) {
 
 						auto [comp_id, comp] = get_component_by_index(engine.scene, selected, comp_index);
@@ -810,10 +821,12 @@ namespace sv {
 						show_component_info(y, comp_id, comp);
 						comp_count = get_entity_component_count(engine.scene, selected);
 					}
+
+					gui_pop_id(g);
 				}
 			}
 
-			if (gui_begin_popup(g, GuiPopupTrigger_Parent, MouseButton_Right, 0xabc2544 + editor.selected_entity)) {
+			if (gui_begin_popup(g, GuiPopupTrigger_Parent, MouseButton_Right, 0xabc2544)) {
 
 				f32 y = 5.f;
 
@@ -825,7 +838,7 @@ namespace sv {
 					if (get_component_by_id(engine.scene, selected, comp_id))
 						continue;
 
-					if (gui_button(g, get_component_name(comp_id), GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 20.f))) {
+					if (gui_button(g, get_component_name(comp_id), 0u, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 20.f))) {
 
 						add_component_by_id(engine.scene, selected, comp_id);
 					}
@@ -858,7 +871,7 @@ namespace sv {
 
 				if (e.name.size() && e.name.front() != '.') {
 
-					if (gui_button(gui, e.name.c_str(), GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f),
+					if (gui_button(gui, e.name.c_str(), 0u, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f),
 						GuiCoord::IPixel(y), GuiCoord::IPixel(y + HEIGHT), editor.style.button_style)) {
 
 						update_browser = true;
@@ -933,7 +946,7 @@ namespace sv {
 			gui_end_window(gui);
 		}
 	}
-
+	
 	void update_editor()
 	{
 		GUI* g = editor.gui;
