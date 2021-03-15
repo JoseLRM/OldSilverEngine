@@ -491,27 +491,27 @@ namespace sv {
 
 	static void update_widget(GUI_internal& gui, const GuiWidget& w) 
 	{
+		GuiParent* parent = get_parent(gui, w);
+				
 		// If it is a parent, update childs
-		{
-			GuiParent* parent = get_parent(gui, w);
-			if (parent) {
+		if (parent) {
 
-				GuiWidget* it = gui.widgets.data() + parent->widget_offset;
-				GuiWidget* end = it + parent->widget_count;
+			GuiWidget* it = gui.widgets.data() + parent->widget_offset;
+			GuiWidget* end = it + parent->widget_count;
 
-				while (it != end) {
+			while (it != end) {
 
-					update_widget(gui, *it);
+				update_widget(gui, *it);
 
-					GuiParent* p = get_parent(gui, *it);
-					if (p) {
+				GuiParent* p = get_parent(gui, *it);
+				if (p) {
 
-						it += p->widget_count;
-					}
-
-					++it;
+					it += p->widget_count;
 				}
+
+				++it;
 			}
+			
 		}
 
 		switch (w.type)
@@ -524,8 +524,9 @@ namespace sv {
 
 				button.hot = true;
 
-				if (input.mouse_buttons[MouseButton_Left] == InputState_Released) {
+				if (input.unused && input.mouse_buttons[MouseButton_Left] == InputState_Released) {
 					button.pressed = true;
+					input.unused = false;
 				}
 			}
 		}
@@ -533,12 +534,15 @@ namespace sv {
 
 		case GuiWidgetType_Drag:
 		{
-			GuiDrag& drag = gui.drags[w.index];
-			if (mouse_in_bounds(gui, drag.bounds)) {
+			if (input.unused) {
+				GuiDrag& drag = gui.drags[w.index];
+				if (mouse_in_bounds(gui, drag.bounds)) {
 
-				if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
+					if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
 					
-					set_focus(gui, GuiWidgetType_Drag, w.id);
+						set_focus(gui, GuiWidgetType_Drag, w.id);
+						input.unused = false;
+					}
 				}
 			}
 		}
@@ -549,14 +553,20 @@ namespace sv {
 			GuiWindow& window = gui.windows[w.index];
 			GuiWindowState& state = *window.state;
 			
-			if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
+			if (input.unused) {
 
+				InputState button = input.mouse_buttons[MouseButton_Left];
+				
 				v4_f32 decoration = compute_window_decoration_bounds(gui, window);
-
+				
 				if (mouse_in_bounds(gui, decoration)) {
 
-					gui.begin_position = v2_f32(window.state->bounds.x, window.state->bounds.y) - gui.mouse_position;
-					set_focus(gui, GuiWidgetType_Window, window.id, 0u);
+					input.unused = false;
+
+					if (button == InputState_Pressed) {
+						gui.begin_position = v2_f32(window.state->bounds.x, window.state->bounds.y) - gui.mouse_position;
+						set_focus(gui, GuiWidgetType_Window, window.id, 0u);
+					}
 				}
 				else {
 					const v4_f32& content = window.state->bounds;
@@ -586,6 +596,7 @@ namespace sv {
 					}
 
 					if (action != u32_max) {
+						input.unused = false;
 						set_focus(gui, GuiWidgetType_Window, window.id, action);
 					}
 				}
@@ -593,6 +604,13 @@ namespace sv {
 		}
 		break;
 
+		}
+
+
+		// Catch the input if the mouse is inside the parent
+		if (gui.unused && parent) {
+
+			gui.unused = !mouse_in_bounds(gui, parent->bounds);
 		}
 	}
 
@@ -866,6 +884,7 @@ namespace sv {
 		if (gui.current_focus.type != GuiWidgetType_None) {
 
 			update_focus(gui, gui.current_focus);
+			input.unused = false;
 		}
 
 		// Update widgets
