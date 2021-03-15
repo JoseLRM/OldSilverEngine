@@ -85,9 +85,9 @@ namespace sv {
 	};
 
 	struct GuiWindowStyle {
-		Color color = Color::Gray(100u);
-		Color decoration_color = Color::Black();
-		Color outline_color = Color::White();
+		Color color = Color::Gray(170u, 20u);
+		Color decoration_color = Color::Gray(100u, 200u);
+		Color outline_color = Color::Gray(50u, 200u);
 		f32 decoration_height = 0.04f;
 		f32 outline_size = 0.001f;
 		f32 min_width = 0.1f;
@@ -95,12 +95,12 @@ namespace sv {
 	};
 
 	struct GuiPopupStyle {
-		Color background_color = Color::White(80u);
+		Color background_color = Color::Gray(140u);
 	};
 
 	struct GuiButtonStyle {
-		Color color = Color::Gray(200u);
-		Color hot_color = Color::White();
+		Color color = Color::Gray(200u, 150u);
+		Color hot_color = Color::White(230u);
 		Color text_color = Color::Black();
 	};
 

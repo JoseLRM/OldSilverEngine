@@ -220,7 +220,7 @@ namespace sv {
 		svCheck(gui_destroy(editor.gui));
 		return Result_Success;
 	}
-	
+
 	static void show_component_info(f32& y, CompID comp_id, BaseComponent* comp)
 	{
 		GUI* gui = editor.gui;
@@ -390,7 +390,7 @@ namespace sv {
 				}
 
 				gui_text(gui, "Main Camera", 1u, GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f), text_style);
-				
+
 				y += 30.f + editor.style.vertical_padding;
 
 			}
@@ -407,7 +407,7 @@ namespace sv {
 
 		y += 30.f + editor.style.vertical_padding;
 	}
-	
+
 	SV_INLINE static void select_entity()
 	{
 		v2_f32 mouse = input.mouse_position;
@@ -516,7 +516,7 @@ namespace sv {
 
 		editor.selected_entity = selected;
 	}
-	
+
 	static void show_entity_popup(Entity entity, bool& destroy)
 	{
 		if (gui_begin_popup(editor.gui, GuiPopupTrigger_LastWidget, MouseButton_Right, 0x3254fa + u64(entity))) {
@@ -827,29 +827,29 @@ namespace sv {
 
 					gui_pop_id(g);
 				}
-			}
 
-			if (gui_begin_popup(g, GuiPopupTrigger_Parent, MouseButton_Right, 0xabc2544)) {
+				if (gui_begin_popup(g, GuiPopupTrigger_Parent, MouseButton_Right, 0xabc2544)) {
 
-				f32 y = 5.f;
+					f32 y = 5.f;
 
-				u32 count = get_component_register_count();
-				foreach(i, count) {
+					u32 count = get_component_register_count();
+					foreach(i, count) {
 
-					CompID comp_id = CompID(i);
+						CompID comp_id = CompID(i);
 
-					if (get_component_by_id(engine.scene, selected, comp_id))
-						continue;
+						if (get_component_by_id(engine.scene, selected, comp_id))
+							continue;
 
-					if (gui_button(g, get_component_name(comp_id), 0u, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 20.f))) {
+						if (gui_button(g, get_component_name(comp_id), 0u, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 20.f))) {
 
-						add_component_by_id(engine.scene, selected, comp_id);
+							add_component_by_id(engine.scene, selected, comp_id);
+						}
+
+						y += 20.f + editor.style.vertical_padding;
 					}
 
-					y += 20.f + editor.style.vertical_padding;
+					gui_end_popup(g);
 				}
-
-				gui_end_popup(g);
 			}
 
 			gui_end_window(g);
@@ -949,7 +949,7 @@ namespace sv {
 			gui_end_window(gui);
 		}
 	}
-	
+
 	void update_editor()
 	{
 		GUI* g = editor.gui;
@@ -1003,7 +1003,7 @@ namespace sv {
 
 			if (input.unused && input.keys[Key_Control]) {
 
-				
+
 			}
 		}
 
@@ -1111,15 +1111,15 @@ namespace sv {
 				EntityView<LightComponent> lights(engine.scene);
 
 				XMMATRIX matrix;
-				
+
 				for (LightComponent& l : lights) {
 
 					matrix = XMMatrixRotationQuaternion(XMQuaternionInverse(dev.camera.rotation.get_dx()));
-					
+
 					// Move to entity position
 					v3_f32 position = get_entity_transform(engine.scene, l.entity).getWorldPosition();
 					matrix *= XMMatrixTranslation(position.x, position.y, position.z);
-										
+
 					draw_debug_quad(matrix, Color::White(40u), cmd);
 				}
 			}
