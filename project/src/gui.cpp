@@ -177,6 +177,28 @@ namespace sv {
 		gui.buffer = (u8*)malloc(100u);
 		gui.buffer_capacity = 100u;
 
+		// Get last static state
+		{
+			Archive archive;
+			Result res = bin_read(hash_string("GUI STATE"), archive);
+			if (result_okay(res)) {
+
+				u32 window_count;
+				archive >> window_count;
+
+				foreach(i, window_count) {
+
+					GuiWindowState s;
+					archive >> s.title >> s.show >> s.bounds;
+					s.id = hash_string(s.title.c_str());
+					gui.static_state.window[s.id] = s;
+				}
+			}
+			else {
+				SV_LOG_WARNING("Can't load the last gui static state: %s", result_str(res));
+			}
+		}
+		
 		*pgui = (GUI*)&gui;
 
 		return Result_Success;
@@ -187,6 +209,25 @@ namespace sv {
 		PARSE_GUI();
 
 		free(gui.buffer);
+
+		// Save static state
+		{
+			Archive archive;
+
+			archive << u32(gui.static_state.window.size());
+
+			for (const GuiWindowState& s : gui.static_state.window) {
+				
+				archive << s.title << s.show << s.bounds;
+			}
+			
+			Result res = bin_write(hash_string("GUI STATE"), archive);
+			
+			if (result_fail(res)) {
+
+				SV_LOG_ERROR("Can't save the gui static state: %s", result_str(res));
+			}
+		}
 
 		delete& gui;
 		return Result_Success;
