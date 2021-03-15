@@ -1009,13 +1009,6 @@ namespace sv {
 		PARSE_GUI();
 		u64 id = hash_string(title);
 
-		{
-			Raw_Window raw;
-			raw.style = style;
-
-			write_widget(gui, GuiWidgetType_Window, id, &raw);
-		}
-
 		GuiWindowState* state = nullptr;
 
 		auto it = gui.static_state.window.find(id);
@@ -1032,25 +1025,64 @@ namespace sv {
 		}
 		else state = &it->second;
 
-		GuiWindow* wnd = (GuiWindow*)find_widget(gui, GuiWidgetType_Window, id);
-		if (wnd) {
-			begin_parent(gui, wnd, id);
+		if (state->show) {
+			Raw_Window raw;
+			raw.style = style;
+
+			write_widget(gui, GuiWidgetType_Window, id, &raw);
+
+			GuiWindow* wnd = (GuiWindow*)find_widget(gui, GuiWidgetType_Window, id);
+			if (wnd) {
+				begin_parent(gui, wnd, id);
+			}
 		}
+		
 		return state->show;
 	}
 
 	void gui_end_window(GUI* gui_)
 	{
+		PARSE_GUI();
+		write_buffer(gui, GuiWidgetType_None);
+
+		end_parent(gui);
+	}
+
+	SV_INLINE static GuiWindowState* get_window_state(GUI_internal& gui, u64 id)
+	{
+		auto it = gui.static_state.window.find(id);
+		if (it == gui.static_state.window.end()) return nullptr;
+		return &it->second;
 	}
 
 	Result gui_show_window(GUI* gui_, const char* title)
 	{
-		return Result();
+		PARSE_GUI();
+		u64 id = hash_string(title);
+		GuiWindowState* state = get_window_state(gui, id);
+
+		if (state) {
+
+			state->show = true;
+			return Result_Success;
+		}
+		
+		return Result_NotFound;
 	}
 
 	Result gui_hide_window(GUI* gui_, const char* title)
 	{
-		return Result();
+		PARSE_GUI();
+		u64 id = hash_string(title);
+		GuiWindowState* state = get_window_state(gui, id);
+
+		if (state) {
+
+			state->show = false;
+			return Result_Success;
+		}
+		
+		return Result_NotFound;
 	}
 
 	bool gui_button(GUI* gui_, const char* text, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiButtonStyle& style)

@@ -193,8 +193,7 @@ namespace sv {
 			}
 		}
 
-		//Result res = show ? gui_show_window(editor.gui, args[0]) : gui_hide_window(editor.gui, args[0]);
-		Result res = Result_TODO;
+		Result res = show ? gui_show_window(editor.gui, args[0]) : gui_hide_window(editor.gui, args[0]);
 
 		if (result_okay(res)) {
 			SV_LOG("%s '%s'", show ? "Showing" : "Hiding", args[0]);
