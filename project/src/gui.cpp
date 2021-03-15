@@ -1132,6 +1132,116 @@ namespace sv {
 
 	///////////////////////////////////////////// RENDERING ///////////////////////////////////////////
 
+	constexpr u32 MAX_FLOAT_CHARS = 20u;
+
+	static void float_to_string(f32 n, char* str, u32* size, const u32 buffer_size)
+	{
+		bool negative = n < 0.f;
+
+		constexpr f32 DECIMAL_MULT = 10000000.f;
+
+		n = abs(n);
+		u32 n0 = u32(n);
+		u32 n1 = u32((n - i32(n)) * DECIMAL_MULT + DECIMAL_MULT);
+
+		// Add integer values
+
+		char* it = str;
+		char* end = str + buffer_size;
+
+		if (negative) {
+			*it = '-';
+			++it;
+		}
+
+		char* valid_ptr = it;
+
+		if (n0 == 0u) {
+
+			*it = '0';
+			++it;
+		}
+		else {
+
+			while (it != end) {
+
+				if (n0 == 0u) {
+					break;
+				}
+
+				u32 number = n0 % 10u;
+				n0 /= 10u;
+
+				char c = number + '0';
+				*it = c;
+				++it;
+
+				if (n == 0u) {
+					if (it == end) break;
+
+					*it = '.';
+					++it;
+				}
+			}
+		}
+
+		// Swap values
+		char* it0 = it - 1U;
+
+		while (valid_ptr < it0) {
+
+			char aux = *it0;
+			*it0 = *valid_ptr;
+			*valid_ptr = aux;
+			++valid_ptr;
+			--it0;
+		}
+
+		// Add decimal values
+
+		if (n1 != u32(DECIMAL_MULT) && it != end) {
+
+			*it = '.';
+			++it;
+
+			valid_ptr = it;
+
+			while (it != end) {
+
+				if (n1 == 1u) {
+					break;
+				}
+
+				u32 number = n1 % 10u;
+				n1 /= 10u;
+
+				char c = number + '0';
+				*it = c;
+				++it;
+			}
+		}
+
+		// Swap values
+		it0 = it - 1U;
+
+		while (valid_ptr < it0) {
+
+			char aux = *it0;
+			*it0 = *valid_ptr;
+			*valid_ptr = aux;
+			++valid_ptr;
+			--it0;
+		}
+
+		// Remove unnecesary 0
+		--it;
+		while (*it == '0' && it > (str + 1u)) --it;
+		++it;
+
+		*size = u32(it - str);
+	}
+	
+
 	static void draw_widget(GUI_internal& gui, const GuiWidget& w, CommandList cmd)
 	{
 		switch (w.type)
@@ -1152,14 +1262,28 @@ namespace sv {
 
 		case GuiWidgetType_Drag:
 		{
-			const GuiDrag& drag = gui.drags[w.index];
-
-			v2_f32 pos = v2_f32(drag.bounds.x, drag.bounds.y) * 2.f - 1.f;
-			v2_f32 size = v2_f32(drag.bounds.z, drag.bounds.w) * 2.f;
-
 			begin_debug_batch(cmd);
-			draw_debug_quad(pos.getVec3(), size, drag.style.background_color, cmd);
+
+			v2_f32 pos;
+			v2_f32 size;
+
+			GuiDrag& drag = gui.drags[w.index];
+			pos = v2_f32{ drag.bounds.x, drag.bounds.y } *2.f - 1.f;
+			size = v2_f32{ drag.bounds.z, drag.bounds.w } *2.f;
+
+			draw_debug_quad(pos.getVec3(0.f), size, drag.style.background_color, cmd);
+
 			end_debug_batch(true, false, XMMatrixIdentity(), cmd);
+
+			f32 font_size = size.y;
+
+			char strbuff[MAX_FLOAT_CHARS + 1u];
+			u32 strsize;
+			float_to_string(drag.value, strbuff, &strsize, MAX_FLOAT_CHARS);
+
+			draw_text(strbuff, strsize
+				  , pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font_opensans.vertical_offset * font_size,
+				  size.x, 1u, font_size, gui.aspect, TextAlignment_Center, &font_opensans, drag.style.text_color, cmd);
 		}
 		break;
 
