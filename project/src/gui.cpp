@@ -220,8 +220,9 @@ namespace sv {
 
 			archive << u32(gui.static_state.window.size());
 
-			for (const GuiWindowState& s : gui.static_state.window) {
+			for (const auto& it : gui.static_state.window) {
 				
+				const GuiWindowState& s = it.second;
 				archive << s.title << s.show << s.bounds;
 			}
 			
@@ -307,11 +308,13 @@ namespace sv {
 
 	SV_INLINE static GuiParent* get_parent(GUI_internal& gui, const GuiWidget& w) 
 	{
-
 		switch (w.type)
 		{
 		case GuiWidgetType_Container:
 			return &gui.containers[w.index];
+
+		case GuiWidgetType_Window:
+			return &gui.windows[w.index];
 
 		default:
 			return nullptr;
@@ -493,6 +496,16 @@ namespace sv {
 		return { x, y, abs(w), abs(h) };
 	}
 
+	SV_INLINE static v4_f32 compute_window_decoration_bounds(const GUI_internal& gui, const GuiWindow& window)
+	{
+		v4_f32 bounds;
+		bounds.x = window.state->bounds.x;
+		bounds.y = window.state->bounds.y + window.state->bounds.w * 0.5f + window.style.decoration_height * 0.5f + window.style.outline_size * gui.aspect;
+		bounds.z = window.state->bounds.z + window.style.outline_size * 2.f;
+		bounds.w = window.style.decoration_height;
+		return bounds;
+	}
+
 	static void update_widget(GUI_internal& gui, const GuiWidget& w) 
 	{
 		GuiParent* parent = get_parent(gui, w);
@@ -527,6 +540,8 @@ namespace sv {
 			if (mouse_in_bounds(gui, button.bounds)) {
 
 				button.hot = true;
+
+				// TODO: Set focus and press when is released
 
 				if (input.unused && input.mouse_buttons[MouseButton_Left] == InputState_Released) {
 					button.pressed = true;
@@ -569,7 +584,7 @@ namespace sv {
 
 					if (button == InputState_Pressed) {
 						gui.begin_position = v2_f32(window.state->bounds.x, window.state->bounds.y) - gui.mouse_position;
-						set_focus(gui, GuiWidgetType_Window, window.id, 0u);
+						set_focus(gui, GuiWidgetType_Window, state.id, 0u);
 					}
 				}
 				else {
@@ -601,7 +616,7 @@ namespace sv {
 
 					if (action != u32_max) {
 						input.unused = false;
-						set_focus(gui, GuiWidgetType_Window, window.id, action);
+						set_focus(gui, GuiWidgetType_Window, state.id, action);
 					}
 				}
 			}
@@ -612,9 +627,9 @@ namespace sv {
 
 
 		// Catch the input if the mouse is inside the parent
-		if (gui.unused && parent) {
+		if (input.unused && parent) {
 
-			gui.unused = !mouse_in_bounds(gui, parent->bounds);
+			input.unused = !mouse_in_bounds(gui, parent->bounds);
 		}
 	}
 
@@ -806,6 +821,7 @@ namespace sv {
 				SV_ASSERT(current_parent.type != GuiWidgetType_None);
 
 				GuiParent* parent = get_parent(gui, current_parent);
+				SV_ASSERT(parent);
 				parent->widget_count = u32(gui.widgets.size()) - parent->widget_offset;
 				current_parent = parent->parent;
 			}
@@ -848,6 +864,8 @@ namespace sv {
 
 				button.text = (const char*)it;
 				it += strlen(button.text) + 1u;
+				if (*button.text == '\0')
+					button.text = nullptr;
 
 				Raw_Coords coords = _read<Raw_Coords>(it);
 				button.style = _read<GuiButtonStyle>(it);
@@ -1004,8 +1022,8 @@ namespace sv {
 
 	SV_INLINE void begin_parent(GUI_internal& gui, GuiParent* parent, u64 id)
 	{
-		SV_ASSERT(parent);
-		gui.current_parent = parent;
+		if (parent)
+			gui.current_parent = parent;
 		gui_push_id((GUI*)& gui, id);
 	}
 
@@ -1034,7 +1052,7 @@ namespace sv {
 		}
 
 		GuiContainer* c = (GuiContainer*)find_widget(gui, GuiWidgetType_Container, id);
-		if (c) begin_parent(gui, c, id);
+		begin_parent(gui, c, id);
 	}
 
 	void gui_end_container(GUI* gui_)
@@ -1057,16 +1075,6 @@ namespace sv {
 	}
 
 	/////////////////////////////////////// WINDOW ////////////////////////////////////////////////
-	
-	SV_INLINE static v4_f32 compute_window_decoration_bounds(const GUI_internal& gui, const GuiWindow& window)
-	{
-		v4_f32 bounds;
-		bounds.x = window.state->bounds.x;
-		bounds.y = window.state->bounds.y + window.state->bounds.w * 0.5f + window.style.decoration_height * 0.5f + window.style.outline_size * gui.aspect;
-		bounds.z = window.state->bounds.z + window.style.outline_size * 2.f;
-		bounds.w = window.style.decoration_height;
-		return bounds;
-	}
 
 	bool gui_begin_window(GUI* gui_, const char* title, const GuiWindowStyle& style)
 	{
@@ -1096,9 +1104,7 @@ namespace sv {
 			write_widget(gui, GuiWidgetType_Window, id, &raw);
 
 			GuiWindow* wnd = (GuiWindow*)find_widget(gui, GuiWidgetType_Window, id);
-			if (wnd) {
-				begin_parent(gui, wnd, id);
-			}
+			begin_parent(gui, wnd, id);
 		}
 		
 		return state->show;
@@ -1353,6 +1359,15 @@ namespace sv {
 			begin_debug_batch(cmd);
 			draw_debug_quad(pos.getVec3(), size, button.hot ? button.style.hot_color : button.style.color, cmd);
 			end_debug_batch(true, false, XMMatrixIdentity(), cmd);
+
+			if (button.text) {
+
+				f32 font_size = size.y;
+
+				draw_text(button.text, strlen(button.text)
+					, pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font_opensans.vertical_offset * font_size,
+					size.x, 1u, font_size, gui.aspect, TextAlignment_Center, &font_opensans, button.style.text_color, cmd);
+			}
 		}
 		break;
 
@@ -1419,6 +1434,8 @@ namespace sv {
 			outline_size = outline_size * 2.f;
 			v2_f32 decoration_position = v2_f32(decoration.x, decoration.y) * 2.f - 1.f;
 			v2_f32 decoration_size = v2_f32(decoration.z, decoration.w) * 2.f;
+			
+			begin_debug_batch(cmd);
 
 			draw_debug_quad(content_position.getVec3(0.f), outline_size, style.outline_color, cmd);
 			draw_debug_quad(content_position.getVec3(0.f), content_size, style.color, cmd);

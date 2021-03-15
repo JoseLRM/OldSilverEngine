@@ -1165,6 +1165,7 @@ namespace sv {
 				gfx.image_aux1,
 				GPUImageLayout_ShaderResource,
 				GPUImageLayout_ShaderResource,
+				nullptr,
 				0.8f, 0.03f, window_aspect_get(engine.window), cmd);
 		}
 	}

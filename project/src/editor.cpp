@@ -703,6 +703,8 @@ namespace sv {
 
 					foreach(i, 2u) {
 
+						gui_push_id(g, i + 0x23549abf);
+
 						v3_f32* values;
 
 						switch (i) {
@@ -797,6 +799,8 @@ namespace sv {
 
 							gui_end_container(g);
 						}
+
+						gui_pop_id(g);
 
 						y += TRANSFORM_HEIGHT + editor.style.vertical_padding;
 					}
