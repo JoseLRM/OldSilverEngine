@@ -1609,6 +1609,7 @@ namespace sv {
 		GPUImage* aux1, // Used to blur the image
 		GPUImageLayout aux1_layout0, 
 		GPUImageLayout aux1_layout1,
+		GPUImage* emissive,
 		f32 threshold,
 		f32 intensity,
 		f32 aspect,
@@ -1658,6 +1659,12 @@ namespace sv {
 			graphics_renderpass_begin(gfx.renderpass_off, att, cmd);
 			postprocessing_draw_call(cmd);
 			graphics_renderpass_end(cmd);
+		}
+
+		// Add emissive map
+		if (emissive) {
+
+			postprocess_addition(aux0, emissive, cmd);
 		}
 
 		// Blur image

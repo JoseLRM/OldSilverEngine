@@ -42,6 +42,8 @@ namespace sv {
 		GuiWidgetType_Drag
 	};
 
+	///////////////////////////////// RAW STRUCTS ///////////////////////////////////////
+
 	struct Raw_Coords {
 		GuiCoord x0;
 		GuiCoord x1;
@@ -70,6 +72,8 @@ namespace sv {
 	struct Raw_Window {
 		GuiWindowStyle style;
 	};
+	
+	///////////////////////////////// WIDGET STRUCTS ///////////////////////////////////
 	
 	struct GuiWidget {
 		GuiWidgetType type;

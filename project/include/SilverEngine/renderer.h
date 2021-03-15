@@ -69,6 +69,7 @@ namespace sv {
 		GPUImage* aux1, // Used to blur the image
 		GPUImageLayout aux1_layout0, 
 		GPUImageLayout aux1_layout1,
+		GPUImage* emissive, // The layout should be ShaderResource
 		f32 threshold,
 		f32 intensity,
 		f32 aspect,
