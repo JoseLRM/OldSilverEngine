@@ -76,7 +76,7 @@ namespace sv {
 		VkBufferCreateInfo buffer_info{};
 		buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 		buffer_info.size = size;
-		buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 
 		buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		buffer_info.queueFamilyIndexCount = 0u;
@@ -88,7 +88,7 @@ namespace sv {
 
 		vkExt(vmaCreateBuffer(g_API->allocator, &buffer_info, &alloc_info, &buffer.buffer, &buffer.allocation, nullptr));
 
-		buffer.mapData = buffer.allocation->GetMappedData();
+		buffer.data = buffer.allocation->GetMappedData();
 
 		return VK_SUCCESS;
 	}
@@ -105,15 +105,35 @@ namespace sv {
 	{
 		VulkanGPUAllocator::Buffer buffer;
 
-		buffer.offset = 0u;
 		create_stagingbuffer(buffer.staging_buffer, size);
+		buffer.current = (u8*)buffer.staging_buffer.data;
 		// TODO: handle error
 
 		return buffer;
 	}
 
-	SV_INLINE static DynamicAllocation allocate_gpu(u32 size, CommandList cmd)
+	SV_INLINE static bool _alloc_buffer(DynamicAllocation& a, VulkanGPUAllocator::Buffer& b, size_t size, size_t alignment)
 	{
+		u8* data = (u8*)((reinterpret_cast<size_t>(b.current) + (alignment - 1)) & ~(alignment - 1));
+
+		u8* end = data + size;
+
+		if (end <= b.end) {
+
+			a.buffer = b.staging_buffer.buffer;
+			a.data = data;
+			a.offset = data - (u8*)b.staging_buffer.data;
+
+			b.current = end;
+			return true;
+		}
+		return false;
+	}
+
+	SV_INLINE static DynamicAllocation allocate_gpu(u32 size, size_t alignment, CommandList cmd)
+	{
+		SV_ASSERT((0 != alignment) && (alignment | (alignment - 1)));
+
 		VulkanGPUAllocator& allocator = g_API->GetFrame().allocator[cmd];
 		DynamicAllocation a;
 
@@ -122,12 +142,13 @@ namespace sv {
 			VulkanGPUAllocator::Buffer& buffer = allocator.buffers.emplace_back();
 			buffer = create_allocator_buffer(size);
 
+			// TODO: Should align this??
 			a.buffer = buffer.staging_buffer.buffer;
-			a.data = (u8*)buffer.staging_buffer.mapData;
+			a.data = (u8*)buffer.staging_buffer.data;
 			a.offset = 0u;
 
-			buffer.offset = size;
-			buffer.size = size;
+			buffer.current = (u8*)a.data + size;
+			buffer.end = buffer.current;
 		}
 		else {
 
@@ -135,30 +156,18 @@ namespace sv {
 
 			for (VulkanGPUAllocator::Buffer& b : allocator.buffers) {
 
-				if (b.size - b.offset >= size) {
-
-					a.buffer = b.staging_buffer.buffer;
-					a.data = (u8*)b.staging_buffer.mapData + b.offset;
-					a.offset = b.offset;
-
-					b.offset += size;
-					break;
-				}
+				if (_alloc_buffer(a, b, size, alignment)) break;
 			}
 
 			if (!a.isValid()) {
 
 				// Create new buffer
-
 				VulkanGPUAllocator::Buffer& buffer = allocator.buffers.emplace_back();
-				buffer = create_allocator_buffer(ALLOCATOR_BLOCK_SIZE);
+				buffer = create_allocator_buffer(ALLOCATOR_BLOCK_SIZE + alignment);
+				buffer.current = (u8*)buffer.staging_buffer.data;
+				buffer.end = buffer.current + ALLOCATOR_BLOCK_SIZE + alignment;
 
-				a.buffer = buffer.staging_buffer.buffer;
-				a.data = (u8*)buffer.staging_buffer.mapData;
-				a.offset = 0u;
-				
-				buffer.offset = size;
-				buffer.size = ALLOCATOR_BLOCK_SIZE;
+				_alloc_buffer(a, buffer, size, alignment);
 			}
 		}
 
@@ -1076,7 +1085,7 @@ namespace sv {
 				VulkanGPUAllocator& allocator = frame.allocator[i];
 
 				for (VulkanGPUAllocator::Buffer& buffer : allocator.buffers) {
-					buffer.offset = 0u;
+					buffer.current = (u8*)buffer.staging_buffer.data;
 				}
 			}
 		}
@@ -1307,10 +1316,15 @@ namespace sv {
 		
 		if (buffer.info.bufferType == GPUBufferType_Constant && buffer.info.usage == ResourceUsage_Dynamic) {
 
-			DynamicAllocation allocation = allocate_gpu(size, cmd_);
+			DynamicAllocation allocation = allocate_gpu(size, 256u, cmd_);
 			memcpy(allocation.data, pData, size_t(size));
 			buffer.dynamic_allocation[cmd_] = allocation;
-			graphics_state_get().graphics[cmd_].flags |= GraphicsPipelineState_ConstantBuffer;
+
+			// TODO: More shaders
+			graphics_state_get().graphics[cmd_].flags |=
+				GraphicsPipelineState_ConstantBuffer |
+				GraphicsPipelineState_ConstantBuffer_VS |
+				GraphicsPipelineState_ConstantBuffer_PS;
 		}
 		else {
 
@@ -1347,7 +1361,7 @@ namespace sv {
 			vkCmdPipelineBarrier(cmd, stages, VK_PIPELINE_STAGE_TRANSFER_BIT, 0u, 0u, nullptr, 1u, &bufferBarrier, 0u, nullptr);
 
 			// copy
-			DynamicAllocation allocation = allocate_gpu(size, cmd_);
+			DynamicAllocation allocation = allocate_gpu(size, 1u, cmd_);
 			
 			memcpy(allocation.data, pData, u64(size));
 			graphics_vulkan_buffer_copy(cmd, allocation.buffer, buffer.buffer, VkDeviceSize(allocation.offset), VkDeviceSize(offset), VkDeviceSize(size));
@@ -1838,6 +1852,7 @@ namespace sv {
 				pipelineHash = graphics_vulkan_pipeline_compute_hash(state);
 			}
 
+			// TODO: This is safe??
 			VulkanPipeline& pipeline = g_API->pipelines[pipelineHash];
 
 			if (state.flags & (GraphicsPipelineState_ConstantBuffer_VS | GraphicsPipelineState_Sampler_VS | GraphicsPipelineState_Image_VS)) {
@@ -1891,7 +1906,7 @@ namespace sv {
 		u32 writeCount = 0u;
 		const ShaderDescriptorSetLayout& layout = pipeline.setLayout.layouts[shaderType];
 
-		VkDescriptorSet descSet = graphics_vulkan_descriptors_allocate_sets(g_API->frames[g_API->currentFrame].descPool[cmd_], layout);
+		VkDescriptorSet descSet = graphics_vulkan_descriptors_allocate_sets(g_API->GetFrame().descPool[cmd_], layout);
 
 		// Write samplers
 		if (samplers) {
@@ -2239,7 +2254,7 @@ namespace sv {
 			StagingBuffer staging_buffer;
 
 			vkCheck(create_stagingbuffer(staging_buffer, desc.size));
-			memcpy(staging_buffer.mapData, desc.pData, desc.size);
+			memcpy(staging_buffer.data, desc.pData, desc.size);
 
 			VkBufferMemoryBarrier bufferBarrier{};
 
@@ -2412,7 +2427,7 @@ namespace sv {
 					else if (k == 4u) k = 0u;
 					else if (k == 5u) k = 1u;
 
-					memcpy((u8*)staging_buffer.mapData + desc.size * k, images[i], desc.size);
+					memcpy((u8*)staging_buffer.data + desc.size * k, images[i], desc.size);
 				}
 
 				foreach(i, 6u) {
@@ -2435,7 +2450,7 @@ namespace sv {
 			else {
 
 				create_stagingbuffer(staging_buffer, desc.size);
-				memcpy(staging_buffer.mapData, desc.pData, desc.size);
+				memcpy(staging_buffer.data, desc.pData, desc.size);
 
 				// Copy buffer to image
 				VkBufferImageCopy copy_info{};

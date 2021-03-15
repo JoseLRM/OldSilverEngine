@@ -100,15 +100,15 @@ namespace sv {
 	struct StagingBuffer {
 		VkBuffer buffer = VK_NULL_HANDLE;
 		VmaAllocation allocation = VK_NULL_HANDLE;
-		void* mapData = nullptr;
+		void* data = nullptr;
 	};
 
 	struct VulkanGPUAllocator {
 		
 		struct Buffer {
 			StagingBuffer staging_buffer;
-			u32 offset = 0u;
-			u32 size = 0u;
+			u8* current = nullptr;
+			u8* end = nullptr;
 		};
 
 		FrameList<Buffer> buffers;

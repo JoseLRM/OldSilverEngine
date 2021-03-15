@@ -229,26 +229,18 @@ namespace sv {
 		// Mesh
 		{
 			desc.pData = nullptr;
-
 			desc.bufferType = GPUBufferType_Constant;
-			desc.size = sizeof(MeshData);
-			desc.usage = ResourceUsage_Default;
+			desc.usage = ResourceUsage_Dynamic;
 			desc.CPUAccess = CPUAccess_Write;
 
+			desc.size = sizeof(MeshData);
 			svCheck(graphics_buffer_create(&desc, &gfx.cbuffer_mesh_instance));
 
-			desc.bufferType = GPUBufferType_Constant;
 			desc.size = sizeof(Material);
-			desc.usage = ResourceUsage_Default;
-			desc.CPUAccess = CPUAccess_Write;
-
 			svCheck(graphics_buffer_create(&desc, &gfx.cbuffer_material));
 
-			desc.bufferType = GPUBufferType_Constant;
-			desc.size = sizeof(LightData) * LIGHT_COUNT;
 			desc.usage = ResourceUsage_Default;
-			desc.CPUAccess = CPUAccess_Write;
-
+			desc.size = sizeof(LightData) * LIGHT_COUNT;
 			svCheck(graphics_buffer_create(&desc, &gfx.cbuffer_light_instances));
 		}
 
@@ -1006,8 +998,6 @@ namespace sv {
 
 					/* TODO LIST:
 					- Undefined lights
-					- Begin render pass once
-					- Dinamic material and instance buffer
 					*/
 					if (mesh_instances.size()) {
 						// Prepare state
@@ -1076,6 +1066,10 @@ namespace sv {
 
 						}
 
+						// Begin renderpass
+						GPUImage* att[] = { engine.offscreen, engine.depthstencil };
+						graphics_renderpass_begin(gfx.renderpass_world, att, cmd);
+
 						foreach(i, mesh_instances.size()) {
 
 							const MeshInstance& inst = mesh_instances[i];
@@ -1135,14 +1129,10 @@ namespace sv {
 								graphics_buffer_update(instance_buffer, &mesh_data, sizeof(MeshData), 0u, cmd);
 							}
 
-							// Begin renderpass
-							GPUImage* att[] = { engine.offscreen, engine.depthstencil };
-							graphics_renderpass_begin(gfx.renderpass_world, att, cmd);
-
 							graphics_draw_indexed(u32(inst.mesh->indices.size()), 1u, 0u, 0u, 0u, cmd);
-
-							graphics_renderpass_end(cmd);
 						}
+
+						graphics_renderpass_end(cmd);
 					}
 				}
 			}
