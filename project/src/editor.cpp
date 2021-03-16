@@ -7,79 +7,6 @@
 
 namespace sv {
 
-	static void control_camera()
-	{
-		if (dev.camera.projection_type == ProjectionType_Perspective) {
-
-			XMVECTOR rotation = dev.camera.rotation.get_dx();
-
-			XMVECTOR direction;
-			XMMATRIX rotation_matrix;
-
-			// Rotation matrix
-			rotation_matrix = XMMatrixRotationQuaternion(rotation);
-
-			// Camera direction
-			direction = XMVectorSet(0.f, 0.f, 1.f, 0.f);
-			direction = XMVector3Transform(direction, rotation_matrix);
-
-			f32 norm = XMVectorGetX(XMVector3Length(direction));
-
-			// Zoom
-			if (input.mouse_wheel != 0.f) {
-
-				f32 force = dev.camera.velocity;
-				if (input.keys[Key_Shift] == InputState_Hold)
-					force *= 3.f;
-
-				dev.camera.position += v3_f32(direction) * input.mouse_wheel * force;
-			}
-
-			// Camera rotation
-			if ((input.mouse_dragged.x != 0.f || input.mouse_dragged.y != 0.f)) {
-
-				set_cursor_position(engine.window, 0.f, 0.f);
-
-				v2_f32 drag = input.mouse_dragged * 2.f;
-
-				// TODO: pitch limit
-				XMVECTOR pitch = XMQuaternionRotationAxis(XMVectorSet(1.f, 0.f, 0.f, 0.f), -drag.y);
-				XMVECTOR yaw = XMQuaternionRotationAxis(XMVectorSet(0.f, 1.f, 0.f, 0.f), drag.x);
-
-				rotation = XMQuaternionMultiply(pitch, rotation);
-				rotation = XMQuaternionMultiply(rotation, yaw);
-				rotation = XMQuaternionNormalize(rotation);
-			}
-
-			input.unused = false;
-			dev.camera.rotation = v4_f32(rotation);
-		}
-		else {
-
-			InputState button_state = input.mouse_buttons[MouseButton_Center];
-
-			if (button_state != InputState_None) {
-
-				v2_f32 drag = input.mouse_dragged;
-
-				dev.camera.position -= (drag * v2_f32{ dev.camera.width, dev.camera.height }).getVec3();
-			}
-
-			if (input.mouse_wheel != 0.f) {
-
-				f32 force = 0.05f;
-				if (input.keys[Key_Shift] == InputState_Hold) force *= 3.f;
-
-				f32 length = dev.camera.getProjectionLength();
-
-				f32 new_length = length - input.mouse_wheel * length * force;
-				dev.camera.setProjectionLength(new_length);
-			}
-		}
-
-		input.unused = false;
-	}
-
 	struct EditorStyle {
 
 		GuiWindowStyle window_style;
@@ -124,13 +51,107 @@ namespace sv {
 		EditorStyle style;
 
 		Entity selected_entity = SV_ENTITY_NULL;
-		bool camera_controller = false;
+		bool camera_focus = false;
 
 		AssetBrowserInfo asset_browser;
 		GizmosInfo gizmos;
 	};
 
 	GlobalEditorData editor;
+
+	/////////////////////////////////////////////// CAMERA ///////////////////////////////////////
+
+	static void control_camera()
+	{
+		if (!input.unused)
+			return;
+
+		if (dev.camera.projection_type == ProjectionType_Perspective) {
+
+			XMVECTOR rotation = dev.camera.rotation.get_dx();
+
+			XMVECTOR direction;
+			XMMATRIX rotation_matrix;
+
+			// Rotation matrix
+			rotation_matrix = XMMatrixRotationQuaternion(rotation);
+
+			// Camera direction
+			direction = XMVectorSet(0.f, 0.f, 1.f, 0.f);
+			direction = XMVector3Transform(direction, rotation_matrix);
+
+			f32 norm = XMVectorGetX(XMVector3Length(direction));
+
+			// Zoom
+			if (input.mouse_wheel != 0.f) {
+
+				f32 force = dev.camera.velocity;
+				if (input.keys[Key_Shift] == InputState_Hold)
+					force *= 3.f;
+
+				dev.camera.position += v3_f32(direction) * input.mouse_wheel * force;
+				input.unused = false;
+			}
+
+			// Camera rotation
+			if (input.mouse_buttons[MouseButton_Center] == InputState_Pressed) {
+
+				editor.camera_focus = true;
+			}
+			else if (input.mouse_buttons[MouseButton_Center] == InputState_Released) {
+				editor.camera_focus = false;
+			}
+
+			if (editor.camera_focus && (input.mouse_dragged.x != 0.f || input.mouse_dragged.y != 0.f)) {
+
+				v2_f32 drag = input.mouse_dragged * 3.f;
+
+				// TODO: pitch limit
+				XMVECTOR pitch = XMQuaternionRotationAxis(XMVectorSet(1.f, 0.f, 0.f, 0.f), -drag.y);
+				XMVECTOR yaw = XMQuaternionRotationAxis(XMVectorSet(0.f, 1.f, 0.f, 0.f), drag.x);
+
+				rotation = XMQuaternionMultiply(pitch, rotation);
+				rotation = XMQuaternionMultiply(rotation, yaw);
+				rotation = XMQuaternionNormalize(rotation);
+				input.unused = false;
+			}
+
+			dev.camera.rotation = v4_f32(rotation);
+		}
+		else {
+
+			InputState button_state = input.mouse_buttons[MouseButton_Center];
+
+			if (button_state == InputState_Pressed) {
+				editor.camera_focus = true;
+			}
+			else if (button_state == InputState_Released) {
+				editor.camera_focus = false;
+			}
+
+			if (editor.camera_focus) {
+
+				v2_f32 drag = input.mouse_dragged;
+
+				dev.camera.position -= (drag * v2_f32{ dev.camera.width, dev.camera.height }).getVec3();
+				input.unused = false;
+			}
+			else editor.camera_focus = false;
+
+			if (input.mouse_wheel != 0.f) {
+
+				f32 force = 0.05f;
+				if (input.keys[Key_Shift] == InputState_Hold) force *= 3.f;
+
+				f32 length = dev.camera.getProjectionLength();
+
+				f32 new_length = length - input.mouse_wheel * length * force;
+				dev.camera.setProjectionLength(new_length);
+
+				input.unused = false;
+			}
+		}
+	}
 
 	/////////////////////////////////////////////// GIZMOS ///////////////////////////////////////////////////////
 
@@ -987,17 +1008,9 @@ namespace sv {
 				}
 			}
 			if (input.keys[Key_F3] == InputState_Pressed) {
-				editor.camera_controller = false;
 				dev.console_active = !dev.console_active;
 			}
-			if (input.keys[Key_F2] == InputState_Pressed) {
-				editor.camera_controller = !editor.camera_controller;
-				dev.console_active = false;
-				dev.debug_draw = true;
-			}
 			if (input.keys[Key_F1] == InputState_Pressed) {
-
-				editor.camera_controller = false;
 				dev.debug_draw = !dev.debug_draw;
 			}
 
@@ -1010,34 +1023,27 @@ namespace sv {
 		// Adjust camera
 		dev.camera.adjust(window_aspect_get(engine.window));
 
-		if (editor.camera_controller) {
-
-			if (engine.scene == nullptr)
-				editor.camera_controller = false;
-			else {
-				control_camera();
-			}
-		}
-
 		if (!entity_exist(engine.scene, editor.selected_entity)) {
 			editor.selected_entity = SV_ENTITY_NULL;
 		}
 
 		gui_begin(g, f32(window_width_get(engine.window)), f32(window_height_get(engine.window)));
 
-		if (!editor.camera_controller) {
-
-			if (engine.scene != nullptr) {
-				display_entity_hierarchy();
-				display_entity_inspector();
-				display_asset_browser();
-			}
-			else {
-				// TODO
-			}
+		if (!editor.camera_focus && engine.scene != nullptr) {
+			display_entity_hierarchy();
+			display_entity_inspector();
+			display_asset_browser();
+		}
+		else {
+			// TODO
 		}
 
 		gui_end(g);
+
+		if (dev.debug_draw && engine.scene) {
+
+			control_camera();
+		}
 
 		if (input.unused && engine.scene) {
 
