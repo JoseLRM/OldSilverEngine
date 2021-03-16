@@ -64,6 +64,12 @@ namespace sv {
 		f32 adv;
 	};
 
+	struct Raw_Checkbox {
+		GuiCheckboxStyle style;
+		Raw_Coords coords;
+		bool value;
+	};
+
 	struct Raw_Container {
 		Raw_Coords coords;
 		GuiContainerStyle style;
@@ -149,6 +155,14 @@ namespace sv {
 
 	};
 
+	struct GuiCheckbox {
+
+		bool value;
+		v4_f32 bounds;
+		GuiCheckboxStyle style;
+		
+	};
+
 	struct GUI_internal {
 
 		u8* buffer = nullptr;
@@ -162,6 +176,7 @@ namespace sv {
 		FrameList<GuiWindow> windows;
 		FrameList<GuiButton> buttons;
 		FrameList<GuiDrag> drags;
+		FrameList<GuiCheckbox> checkboxes;
 
 		FrameList<GuiWidget> widgets;
 
@@ -181,6 +196,7 @@ namespace sv {
 		struct {
 
 			std::unordered_map<u64, GuiWindowState> window;
+			std::unordered_map<u64, bool> checkbox;
 
 		} static_state;
 
@@ -647,6 +663,22 @@ namespace sv {
 		}
 		break;
 
+		case GuiWidgetType_Checkbox:
+		{
+			if (input.unused) {
+				GuiCheckbox& cb = gui.checkboxes[w.index];
+				if (mouse_in_bounds(gui, cb.bounds)) {
+
+					if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
+
+						set_focus(gui, GuiWidgetType_Checkbox, w.id);
+						input.unused = false;
+					}
+				}
+			}
+		}
+		break;
+
 		case GuiWidgetType_Popup:
 		{
 			GuiPopup& popup = gui.popups[w.index];
@@ -749,6 +781,18 @@ namespace sv {
 
 				drag.value += input.mouse_dragged.x * gui.resolution.x * drag.adv;
 				drag.value += input.mouse_dragged.x * gui.resolution.x * drag.adv;
+			}
+		}
+		break;
+
+		case GuiWidgetType_Checkbox:
+		{
+			GuiCheckbox& cb = gui.checkboxes[w.index];
+
+			if (input.mouse_buttons[MouseButton_Left] == InputState_None) {
+
+				free_focus(gui);
+				cb.value = !cb.value;
 			}
 		}
 		break;
@@ -895,6 +939,7 @@ namespace sv {
 		gui.windows.reset();
 		gui.buttons.reset();
 		gui.drags.reset();
+		gui.checkboxes.reset();
 		gui.widgets.reset();
 
 		gui.current_focus.type = GuiWidgetType_None;
@@ -998,7 +1043,17 @@ namespace sv {
 				break;
 
 			case GuiWidgetType_CheckBox:
-				break;
+			{
+				Raw_Checkbox raw = _read<Raw_Checkbox>(it);
+
+				GuiCheckbox& cb = gui.checkboxes.emplace_back();
+				cb.value = raw.value;
+				cb.style = raw.style;
+				cb.bounds = compute_widget_bounds(gui, raw.coords.x0, raw.coords.x1, raw.coords.y0, raw.coords.y1, get_parent(gui, current_parent));
+
+				add_widget(gui, GuiWidgetType_Checkbox, u32(gui.checkboxes.size()) - 1u, id);
+			}
+			break;
 
 			case GuiWidgetType_Drag:
 			{
@@ -1441,14 +1496,53 @@ namespace sv {
 	{
 	}
 
-	bool gui_checkbox(GUI* gui, bool* value, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiCheckBoxStyle& style)
+	bool gui_checkbox(GUI* gui_, bool* value, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiCheckBoxStyle& style)
 	{
-		return false;
+		PARSE_GUI();
+		hash_combine(id, gui.current_id);
+
+		bool modified;
+
+		if (gui.current_focus.type == GuiWidgetType_Checkbox && gui.current_focus.id == id) {
+
+			GuiCheckbox& cb = gui.checkboxes[gui.current_focus.index];
+			*value = cb.value;
+			modified = true;
+		}
+		else modified = false;
+
+		{
+			Raw_Checkbox raw;
+			raw.coords.x0 = x0;
+			raw.coords.x1 = x1;
+			raw.coords.y0 = y0;
+			raw.coords.y1 = y1;
+			raw.style = style;
+			raw.value = *value;
+
+			write_widget(gui, GuiWidgetType_Checkbox, id, &raw);
+		}
+
+		return modified;
 	}
 
-	bool gui_checkbox(GUI* gui, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiCheckBoxStyle& style)
+	bool gui_checkbox(GUI* gui_, u64 user_id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiCheckBoxStyle& style)
 	{
-		return false;
+		PARSE_GUI();
+		u64 id = user_id;
+		hash_combine(id, gui.current_id);
+
+		bool* value = nullptr;
+
+		auto it = gui.static_state.checkbox.find(id);
+		if (it == gui.static_state.checkbox.end()) {
+
+			gui.static_state.checkbox[id] = false;
+			value = &gui.static_state.checkbox[id];
+		}
+		else value = &it->second;
+		
+		return gui_checkbox(gui_, value, user_id, x0, x1, y0, y1, style);
 	}
 
 	///////////////////////////////////////////// RENDERING ///////////////////////////////////////////
@@ -1614,6 +1708,53 @@ namespace sv {
 			draw_text(strbuff, strsize
 				, pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font_opensans.vertical_offset * font_size,
 				size.x, 1u, font_size, gui.aspect, TextAlignment_Center, &font_opensans, drag.style.text_color, cmd);
+		}
+		break;
+
+		case GuiWidgetType_Checkbox:
+		{
+			begin_debug_batch(cmd);
+
+			v2_f32 pos;
+			v2_f32 size;
+
+			GuiCheckbox& cb = gui.checkboxes[w.index];
+			pos = v2_f32{ cb.bounds.x, cb.bounds.y } *2.f - 1.f;
+			size = v2_f32{ cb.bounds.z, cb.bounds.w } *2.f;
+
+			draw_debug_quad(pos.getVec3(0.f), size, cb.style.color, cmd);
+
+			GuiBox* box;
+			if (cb.active) box = &cb.style.active_box;
+			else box = &cb.style.inactive_box;
+
+			size *= box->mult;
+
+			switch (box->type)
+			{
+			case GuiBoxType_Quad:
+				draw_debug_quad(pos.getVec3(0.f), size * 0.7f, box->quad.color, cmd);
+				break;
+
+			case GuiBoxType_Triangle:
+				if (box->triangle.down) {
+					draw_debug_triangle(
+						{ pos.x - size.x * 0.5f, pos.y + size.y * 0.5f, 0.f },
+						{ pos.x + size.x * 0.5f, pos.y + size.y * 0.5f, 0.f },
+						{ pos.x, pos.y - size.y * 0.5f, 0.f }
+						, box->triangle.color, cmd);
+				}
+				else {
+					draw_debug_triangle(
+						{ pos.x - size.x * 0.5f, pos.y + size.y * 0.5f, 0.f },
+						{ pos.x - size.x * 0.5f, pos.y - size.y * 0.5f, 0.f },
+						{ pos.x + size.x * 0.5f, pos.y, 0.f }
+						, box->triangle.color, cmd);
+				}
+				break;
+			}
+
+			end_debug_batch(true, false, XMMatrixIdentity(), cmd);
 		}
 		break;
 
