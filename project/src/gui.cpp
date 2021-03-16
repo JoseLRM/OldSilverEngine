@@ -18,7 +18,8 @@ namespace sv {
 		GuiWidgetType_Slider,
 		GuiWidgetType_Label,
 		GuiWidgetType_Checkbox,
-		GuiWidgetType_Drag
+		GuiWidgetType_Drag,
+		GuiWidgetType_MaxEnum,
 	};
 
 	///////////////////////////////// RAW STRUCTS ///////////////////////////////////////
@@ -71,29 +72,20 @@ namespace sv {
 
 	///////////////////////////////// WIDGET STRUCTS ///////////////////////////////////
 
-	struct GuiWidget {
-		GuiWidgetType type;
+	struct GuiIndex {
 		u32 index;
 		u64 id;
 
-		GuiWidget() = default;
-		GuiWidget(GuiWidgetType type, u32 index, u64 id) : type(type), index(index), id(id) {}
+		GuiIndex() = default;
+		GuiIndex(u32 index, u64 id) : index(index), id(id) {}
 	};
 
-	struct GuiParent {
+	struct GuiParentInfo {
 
 		u32 widget_offset;
 		u32 widget_count;
 
-		GuiWidget parent;
-
-		v4_f32 bounds;
-
-	};
-
-	struct GuiContainer : public GuiParent {
-
-		GuiContainerStyle style;
+		u32 parent_index;
 
 	};
 
@@ -106,54 +98,62 @@ namespace sv {
 
 	};
 
-	struct GuiWindow : public GuiParent {
+	struct GuiWidget {
 
-		GuiWindowStyle style;
-		GuiWindowState* state;
-
-	};
-
-	struct GuiPopup : public GuiParent {
-
-		GuiPopupStyle style;
+		v4_f32 bounds;
+		u32 index;
 		u64 id;
-		bool close_request;
+		GuiWidgetType type;
 
-	};
+		union Widget {
 
-	struct GuiButton {
+			// I hate u
+			Widget() : window({}) {}
+			
+			struct {
+				const char* text;
+				bool hot;
+				bool pressed;
+				GuiButtonStyle style;
+			} button;
 
-		const char* text;
-		GuiButtonStyle style;
-		bool hot;
-		bool pressed;
-		v4_f32 bounds;
+			struct {
+				f32 value;
+				f32 adv;
+				GuiDragStyle style;
+			} drag;
 
-	};
+			struct {
+				bool value;
+				GuiCheckboxStyle style;
+			} checkbox;
 
-	struct GuiDrag {
+			struct {
+				const char* text;
+				GuiLabelStyle style;
+			} label;
 
-		f32 value;
-		v4_f32 bounds;
-		f32 adv;
-		GuiDragStyle style;
+			struct {
+				GuiParentInfo parent_info;
+				GuiContainerStyle style;
+			} container;
 
-	};
+			struct {
+				GuiParentInfo parent_info;
+				GuiWindowState* state;
+				GuiWindowStyle style;
+			} window;
 
-	struct GuiCheckbox {
+			struct {
+				GuiParentInfo parent_info;
+				bool close_request;
+				GuiPopupStyle style;
+			} popup;
 
-		bool value;
-		v4_f32 bounds;
-		GuiCheckboxStyle style;
-		
-	};
+		} widget;
 
-	struct GuiLabel {
+		GuiWidget() = default;
 
-		const char* text;
-		GuiLabelStyle style;
-		v4_f32 bounds;
-		
 	};
 
 	struct GUI_internal {
@@ -162,17 +162,10 @@ namespace sv {
 		size_t buffer_size = 0u;
 		size_t buffer_capacity = 0u;
 
-		GuiParent* current_parent;
-
-		FrameList<GuiContainer> containers;
-		FrameList<GuiPopup> popups;
-		FrameList<GuiWindow> windows;
-		FrameList<GuiButton> buttons;
-		FrameList<GuiDrag> drags;
-		FrameList<GuiLabel> labels;
-		FrameList<GuiCheckbox> checkboxes;
+		GuiWidget* current_parent;
 
 		FrameList<GuiWidget> widgets;
+		FrameList<GuiIndex> indices;
 
 		struct {
 			GuiWidgetType type;
@@ -183,9 +176,9 @@ namespace sv {
 		struct {
 			u64 id;
 			GuiWidgetType type;
-		} last;
+		}last;
 
-		GuiWidget current_focus;
+		GuiIndex current_focus;
 
 		struct {
 
@@ -335,56 +328,37 @@ namespace sv {
 		}
 	}
 
-	SV_INLINE static GuiParent* get_parent(GUI_internal& gui, const GuiWidget& w)
+	SV_INLINE static bool is_parent(const GuiWidget& w)
 	{
-		switch (w.type)
-		{
-		case GuiWidgetType_Container:
-			return &gui.containers[w.index];
-
-		case GuiWidgetType_Popup:
-			return &gui.popups[w.index];
-
-		case GuiWidgetType_Window:
-			return &gui.windows[w.index];
-
-		default:
-			return nullptr;
-		}
+		return is_parent(w.type);
 	}
 
-	SV_INLINE static v4_f32 get_widget_bounds(GUI_internal& gui, const GuiWidget& w)
+	SV_INLINE static GuiParentInfo* get_parent_info(GUI_internal& gui, GuiWidget& parent)
 	{
-		switch (w.type)
-		{
+		if (is_parent(parent)) {
 
-		case GuiWidgetType_Container:
-			return gui.containers[w.index].bounds;
-
-		case GuiWidgetType_Window:
-			return gui.windows[w.index].bounds;
-
-		case GuiWidgetType_Popup:
-			return gui.popups[w.index].bounds;
-
-		case GuiWidgetType_Button:
-			return gui.buttons[w.index].bounds;
-
-			//case GuiWidgetType_Slider:
-			//	return gui.sli[w.index].bounds;
-
-		case GuiWidgetType_Label:
-			return gui.labels[w.index].bounds;
-		
-		case GuiWidgetType_Checkbox:
-			return gui.checkboxes[w.index].bounds;
-
-		case GuiWidgetType_Drag:
-			return gui.drags[w.index].bounds;
-
-		default:
-			return { 0.f, 0.f, 0.f, 0.f };
+			return reinterpret_cast<GuiParentInfo*>(&parent.widget);
 		}
+		else return nullptr;
+	}
+	SV_INLINE static const GuiParentInfo* get_parent_info(GUI_internal& gui, const GuiWidget& parent)
+	{
+		if (is_parent(parent)) {
+
+			return reinterpret_cast<const GuiParentInfo*>(&parent.widget);
+		}
+		else return nullptr;
+	}
+
+	SV_INLINE static GuiParentInfo* get_parent_info(GUI_internal& gui, const GuiIndex& index)
+	{
+		GuiWidget& w = gui.widgets[index.index];
+		return get_parent_info(gui, w);
+	}
+	SV_INLINE static GuiParentInfo* get_parent_info(GUI_internal& gui, u32 index)
+	{
+		GuiWidget& w = gui.widgets[index];
+		return get_parent_info(gui, w);
 	}
 
 	SV_INLINE static void write_widget(GUI_internal& gui, GuiWidgetType type, u64 id, void* data)
@@ -503,7 +477,7 @@ namespace sv {
 		return abs(bounds.x - gui.mouse_position.x) <= bounds.z * 0.5f && abs(bounds.y - gui.mouse_position.y) <= bounds.w * 0.5f;
 	}
 
-	static v4_f32 compute_widget_bounds(const GUI_internal& gui, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, GuiParent* parent)
+	static v4_f32 compute_widget_bounds(const GUI_internal& gui, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, GuiWidget* parent)
 	{
 #ifdef SV_DEV
 		{
@@ -585,8 +559,10 @@ namespace sv {
 		return { x, y, abs(w), abs(h) };
 	}
 
-	SV_INLINE static v4_f32 compute_window_decoration_bounds(const GUI_internal& gui, const GuiWindow& window)
+	SV_INLINE static v4_f32 compute_window_decoration_bounds(const GUI_internal& gui, const GuiWidget& w)
 	{
+		auto& window = w.widget.window;
+
 		v4_f32 bounds;
 		bounds.x = window.state->bounds.x;
 		bounds.y = window.state->bounds.y + window.state->bounds.w * 0.5f + window.style.decoration_height * 0.5f + window.style.outline_size * gui.aspect;
@@ -595,20 +571,20 @@ namespace sv {
 		return bounds;
 	}
 
-	static void update_widget(GUI_internal& gui, const GuiWidget& w)
+	static void update_widget(GUI_internal& gui, const GuiIndex& index)
 	{
-		GuiParent* parent = get_parent(gui, w);
+		GuiParentInfo* parent_info = get_parent_info(gui, index);
 
 		// If it is a parent, update childs
-		if (parent) {
+		if (parent_info) {
 
-			GuiWidget* it = gui.widgets.data() + parent->widget_offset;
-			GuiWidget* end = it + parent->widget_count;
+			GuiIndex* it = gui.indices.data() + parent_info->widget_offset;
+			GuiIndex* end = it + parent_info->widget_count;
 
 			// Update childs parents
 			while (it != end) {
 
-				GuiParent* p = get_parent(gui, *it);
+				GuiParentInfo* p = get_parent_info(gui, *it);
 				if (p) {
 
 					update_widget(gui, *it);
@@ -619,11 +595,11 @@ namespace sv {
 			}
 
 			// Update normal widgets
-			it = gui.widgets.data() + parent->widget_offset;
+			it = gui.indices.data() + parent_info->widget_offset;
 
 			while (it != end) {
 
-				GuiParent* p = get_parent(gui, *it);
+				GuiParentInfo* p = get_parent_info(gui, *it);
 				if (p) {
 
 					it += p->widget_count;
@@ -637,13 +613,16 @@ namespace sv {
 			}
 		}
 
+		GuiWidget& w = gui.widgets[index.index];
+
 		switch (w.type)
 		{
 
 		case GuiWidgetType_Button:
 		{
-			GuiButton& button = gui.buttons[w.index];
-			if (input.unused && mouse_in_bounds(gui, button.bounds)) {
+			auto& button = w.widget.button;
+
+			if (input.unused && mouse_in_bounds(gui, w.bounds)) {
 
 				button.hot = true;
 
@@ -660,12 +639,12 @@ namespace sv {
 		case GuiWidgetType_Drag:
 		{
 			if (input.unused) {
-				GuiDrag& drag = gui.drags[w.index];
-				if (mouse_in_bounds(gui, drag.bounds)) {
+				
+				if (mouse_in_bounds(gui, w.bounds)) {
 
 					if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
 
-						set_focus(gui, GuiWidgetType_Drag, w.id);
+						set_focus(gui, GuiWidgetType_Drag, index.id);
 						input.unused = false;
 					}
 				}
@@ -676,12 +655,12 @@ namespace sv {
 		case GuiWidgetType_Checkbox:
 		{
 			if (input.unused) {
-				GuiCheckbox& cb = gui.checkboxes[w.index];
-				if (mouse_in_bounds(gui, cb.bounds)) {
+				
+				if (mouse_in_bounds(gui, w.bounds)) {
 
 					if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
 
-						set_focus(gui, GuiWidgetType_Checkbox, w.id);
+						set_focus(gui, GuiWidgetType_Checkbox, index.id);
 						input.unused = false;
 					}
 				}
@@ -691,7 +670,7 @@ namespace sv {
 
 		case GuiWidgetType_Popup:
 		{
-			GuiPopup& popup = gui.popups[w.index];
+			auto& popup = w.widget.popup;
 
 			bool any = false;
 
@@ -702,7 +681,7 @@ namespace sv {
 				}
 			}
 
-			if (any && !mouse_in_bounds(gui, popup.bounds)) {
+			if (any && !mouse_in_bounds(gui, w.bounds)) {
 
 				popup.close_request = true;
 			}
@@ -711,14 +690,14 @@ namespace sv {
 
 		case GuiWidgetType_Window:
 		{
-			GuiWindow& window = gui.windows[w.index];
+			auto& window = w.widget.window;
 			GuiWindowState& state = *window.state;
 
 			if (input.unused) {
 
 				InputState button = input.mouse_buttons[MouseButton_Left];
 
-				v4_f32 decoration = compute_window_decoration_bounds(gui, window);
+				v4_f32 decoration = compute_window_decoration_bounds(gui, w);
 
 				if (mouse_in_bounds(gui, decoration)) {
 
@@ -769,20 +748,22 @@ namespace sv {
 
 
 		// Catch the input if the mouse is inside the parent
-		if (input.unused && parent) {
+		if (input.unused && parent_info) {
 
-			input.unused = !mouse_in_bounds(gui, parent->bounds);
+			input.unused = !mouse_in_bounds(gui, w.bounds);
 		}
 	}
 
-	static void update_focus(GUI_internal& gui, const GuiWidget& w)
+	static void update_focus(GUI_internal& gui, const GuiIndex& index)
 	{
+		GuiWidget& w = gui.widgets[index.index];
+
 		switch (w.type)
 		{
 
 		case GuiWidgetType_Drag:
 		{
-			GuiDrag& drag = gui.drags[w.index];
+			auto& drag = w.widget.drag;
 
 			if (input.mouse_buttons[MouseButton_Left] == InputState_None) {
 				free_focus(gui);
@@ -797,7 +778,7 @@ namespace sv {
 
 		case GuiWidgetType_Checkbox:
 		{
-			GuiCheckbox& cb = gui.checkboxes[w.index];
+			auto& cb = w.widget.checkbox;
 
 			if (input.mouse_buttons[MouseButton_Left] == InputState_None) {
 
@@ -809,7 +790,7 @@ namespace sv {
 
 		case GuiWidgetType_Window:
 		{
-			GuiWindow& window = gui.windows[w.index];
+			auto& window = w.widget.window;
 
 			if (input.mouse_buttons[MouseButton_Left] == InputState_None) {
 
@@ -921,22 +902,123 @@ namespace sv {
 		return t;
 	}
 
-	SV_INLINE static void add_widget(GUI_internal& gui, GuiWidgetType type, u32 index, u64 id)
+	SV_INLINE static void read_widget(GUI_internal& gui, GuiWidgetType type, u64 id, u32& current_parent, u8*& it)
 	{
-		gui.widgets.emplace_back(type, index, id);
+		// Add widget
+		GuiWidget& w = gui.widgets.emplace_back();
+		w.type = type;
+		w.id = id;
+		w.index = gui.widgets.size() - 1u;
+		gui.indices.emplace_back(w.index, id);
 
-		if (gui.focus.type == type && gui.focus.id == id) {
-			gui.current_focus = { type, index, id };
+		// Set focus
+		if (gui.focus.type == w.type && gui.focus.id == id) {
+			gui.current_focus = { w.index, id };
 		}
-	}
 
-	SV_INLINE static void add_widget_parent(GUI_internal& gui, GuiParent* parent, GuiWidget& current_parent, GuiWidgetType type, u32 index, u64 id)
-	{
-		add_widget(gui, type, index, id);
+		// Get parent
+		GuiWidget* parent = (current_parent == u32_max) ? nullptr : &gui.widgets[current_parent];
 
-		parent->parent = current_parent;
-		current_parent = { type, index, id };
-		parent->widget_offset = u32(gui.widgets.size());
+		// Read raw data
+		switch (type)
+		{
+		case GuiWidgetType_Container:
+		{
+			Raw_Container raw = _read<Raw_Container>(it);
+			w.widget.container.style = raw.style;
+			w.bounds = compute_widget_bounds(gui, raw.coords.x0, raw.coords.x1, raw.coords.y0, raw.coords.y1, parent);
+		}
+		break;
+
+		case GuiWidgetType_Popup:
+		{
+			Raw_Popup raw = _read<Raw_Popup>(it);
+			w.widget.popup.style = raw.style;
+			w.widget.popup.close_request = false;
+			w.bounds = raw.bounds;
+		}
+		break;
+
+		case GuiWidgetType_Window:
+		{
+			Raw_Window raw = _read<Raw_Window>(it);
+			w.widget.window.style = raw.style;
+
+			GuiWindowState& state = gui.static_state.window[id];
+			w.bounds = state.bounds;
+			w.widget.window.state = &state;
+		}
+		break;
+
+		case GuiWidgetType_Button:
+		{
+			auto& button = w.widget.button;
+
+			button.text = (const char*)it;
+			it += strlen(button.text) + 1u;
+			if (*button.text == '\0')
+				button.text = nullptr;
+
+			Raw_Coords coords = _read<Raw_Coords>(it);
+			button.style = _read<GuiButtonStyle>(it);
+
+			w.bounds = compute_widget_bounds(gui, coords.x0, coords.x1, coords.y0, coords.y1, parent);
+		}
+		break;
+
+		case GuiWidgetType_Label:
+		{
+			auto& label = w.widget.label;
+
+			label.text = (const char*)it;
+			it += strlen(label.text) + 1u;
+			if (*label.text == '\0')
+				label.text = nullptr;
+
+			Raw_Coords coords = _read<Raw_Coords>(it);
+			label.style = _read<GuiLabelStyle>(it);
+
+			w.bounds = compute_widget_bounds(gui, coords.x0, coords.x1, coords.y0, coords.y1, parent);
+		}
+		break;
+
+		case GuiWidgetType_Slider:
+			break;
+
+		case GuiWidgetType_Checkbox:
+		{
+			auto& cb = w.widget.checkbox;
+			
+			Raw_Checkbox raw = _read<Raw_Checkbox>(it);
+			cb.value = raw.value;
+			cb.style = raw.style;
+			w.bounds = compute_widget_bounds(gui, raw.coords.x0, raw.coords.x1, raw.coords.y0, raw.coords.y1, parent);
+		}
+		break;
+
+		case GuiWidgetType_Drag:
+		{
+			auto& drag = w.widget.drag;
+
+			Raw_Drag raw = _read<Raw_Drag>(it);
+			drag.value = raw.value;
+			drag.adv = raw.adv;
+			drag.style = raw.style;
+			w.bounds = compute_widget_bounds(gui, raw.coords.x0, raw.coords.x1, raw.coords.y0, raw.coords.y1, parent);
+		}
+		break;
+
+		default:
+			SV_ASSERT(0);
+		}
+
+		if (is_parent(w)) {
+
+			GuiParentInfo* parent_info = get_parent_info(gui, w);
+			parent_info->parent_index = current_parent;
+			current_parent = w.index;
+			parent_info->widget_offset = u32(gui.indices.size());
+		}
 	}
 
 	void gui_end(GUI* gui_)
@@ -944,16 +1026,10 @@ namespace sv {
 		PARSE_GUI();
 
 		// Reset last data
-		gui.containers.reset();
-		gui.popups.reset();
-		gui.windows.reset();
-		gui.buttons.reset();
-		gui.drags.reset();
-		gui.labels.reset();
-		gui.checkboxes.reset();
 		gui.widgets.reset();
+		gui.indices.reset();
 
-		gui.current_focus.type = GuiWidgetType_None;
+		gui.current_focus.index = u32_max;
 
 		SV_ASSERT(gui.ids.empty());
 
@@ -962,8 +1038,7 @@ namespace sv {
 		u8* it = gui.buffer;
 		u8* end = gui.buffer + gui.buffer_size;
 
-		GuiWidget current_parent;
-		current_parent.type = GuiWidgetType_None;
+		u32 current_parent = u32_max;
 
 		while (it != end) {
 
@@ -973,149 +1048,39 @@ namespace sv {
 			if (type != GuiWidgetType_None)
 				id = _read<u64>(it);
 
-			switch (type)
-			{
+			if (type == GuiWidgetType_None) {
 
-			case GuiWidgetType_None:
-			{
-				SV_ASSERT(current_parent.type != GuiWidgetType_None);
+				SV_ASSERT(current_parent != u32_max);
 
-				GuiParent* parent = get_parent(gui, current_parent);
-				SV_ASSERT(parent);
-				parent->widget_count = u32(gui.widgets.size()) - parent->widget_offset;
-				current_parent = parent->parent;
+				GuiParentInfo* parent_info = get_parent_info(gui, current_parent);
+				SV_ASSERT(parent_info);
+				parent_info->widget_count = u32(gui.indices.size()) - parent_info->widget_offset;
+				current_parent = parent_info->parent_index;
 			}
-			break;
+			else if (type < GuiWidgetType_MaxEnum) {
 
-			case GuiWidgetType_Container:
-			{
-				GuiContainer& container = gui.containers.emplace_back();
-
-				Raw_Container raw = _read<Raw_Container>(it);
-				container.style = raw.style;
-
-				container.bounds = compute_widget_bounds(gui, raw.coords.x0, raw.coords.x1, raw.coords.y0, raw.coords.y1, get_parent(gui, current_parent));
-
-				add_widget_parent(gui, &container, current_parent, GuiWidgetType_Container, gui.containers.size() - 1u, id);
-			}
-			break;
-
-			case GuiWidgetType_Popup:
-			{
-				GuiPopup& popup = gui.popups.emplace_back();
-
-				Raw_Popup raw = _read<Raw_Popup>(it);
-				popup.style = raw.style;
-				popup.bounds = raw.bounds;
-				popup.id = id;
-				popup.close_request = false;
-
-				add_widget_parent(gui, &popup, current_parent, GuiWidgetType_Popup, gui.popups.size() - 1u, id);
-			}
-			break;
-
-			case GuiWidgetType_Window:
-			{
-				GuiWindow& window = gui.windows.emplace_back();
-
-				Raw_Window raw = _read<Raw_Window>(it);
-				window.style = raw.style;
-
-				GuiWindowState& state = gui.static_state.window[id];
-				window.bounds = state.bounds;
-				window.state = &state;
-
-				add_widget_parent(gui, &window, current_parent, GuiWidgetType_Window, gui.windows.size() - 1u, id);
-			}
-			break;
-
-			case GuiWidgetType_Button:
-			{
-				GuiButton& button = gui.buttons.emplace_back();
-
-				button.text = (const char*)it;
-				it += strlen(button.text) + 1u;
-				if (*button.text == '\0')
-					button.text = nullptr;
-
-				Raw_Coords coords = _read<Raw_Coords>(it);
-				button.style = _read<GuiButtonStyle>(it);
-
-				button.bounds = compute_widget_bounds(gui, coords.x0, coords.x1, coords.y0, coords.y1, get_parent(gui, current_parent));
-
-				add_widget(gui, GuiWidgetType_Button, u32(gui.buttons.size()) - 1u, id);
-			}
-			break;
-
-			case GuiWidgetType_Label:
-			{
-				GuiLabel& label = gui.labels.emplace_back();
-
-				label.text = (const char*)it;
-				it += strlen(label.text) + 1u;
-				if (*label.text == '\0')
-					label.text = nullptr;
-
-				Raw_Coords coords = _read<Raw_Coords>(it);
-				label.style = _read<GuiLabelStyle>(it);
-
-				label.bounds = compute_widget_bounds(gui, coords.x0, coords.x1, coords.y0, coords.y1, get_parent(gui, current_parent));
-
-				add_widget(gui, GuiWidgetType_Label, u32(gui.labels.size()) - 1u, id);
-			}
-			break;
-
-			case GuiWidgetType_Slider:
-				break;
-
-			case GuiWidgetType_Checkbox:
-			{
-				Raw_Checkbox raw = _read<Raw_Checkbox>(it);
-
-				GuiCheckbox& cb = gui.checkboxes.emplace_back();
-				cb.value = raw.value;
-				cb.style = raw.style;
-				cb.bounds = compute_widget_bounds(gui, raw.coords.x0, raw.coords.x1, raw.coords.y0, raw.coords.y1, get_parent(gui, current_parent));
-
-				add_widget(gui, GuiWidgetType_Checkbox, u32(gui.checkboxes.size()) - 1u, id);
-			}
-			break;
-
-			case GuiWidgetType_Drag:
-			{
-				Raw_Drag raw = _read<Raw_Drag>(it);
-
-				GuiDrag& drag = gui.drags.emplace_back();
-				drag.value = raw.value;
-				drag.adv = raw.adv;
-				drag.style = raw.style;
-				drag.bounds = compute_widget_bounds(gui, raw.coords.x0, raw.coords.x1, raw.coords.y0, raw.coords.y1, get_parent(gui, current_parent));
-
-				add_widget(gui, GuiWidgetType_Drag, u32(gui.drags.size()) - 1u, id);
-			}
-			break;
-
+				read_widget(gui, type, id, current_parent, it);
 			}
 		}
 
 		// Update focus
-		if (gui.current_focus.type != GuiWidgetType_None) {
+		if (gui.current_focus.index != u32_max) {
 
 			update_focus(gui, gui.current_focus);
 			input.unused = false;
 		}
 
 		// Update widgets
-		foreach(i, gui.widgets.size()) {
+		foreach(i, gui.indices.size()) {
 
-			const GuiWidget& w = gui.widgets[i];
+			const GuiIndex& w = gui.indices[i];
 
 			update_widget(gui, w);
 
-			GuiParent* parent = get_parent(gui, w);
-			if (parent) {
+			GuiParentInfo* parent_info = get_parent_info(gui, w);
+			if (parent_info) {
 
-				i += parent->widget_count;
+				i += parent_info->widget_count;
 			}
 		}
 	}
@@ -1151,85 +1116,70 @@ namespace sv {
 
 	///////////////////////////////////////////// WIDGETS ///////////////////////////////////////////
 
-	SV_INLINE static GuiWidget find_widget(GUI_internal& gui, GuiWidgetType type, u64 id)
+	SV_INLINE static GuiWidget* find_widget(GUI_internal& gui, u64 id, GuiWidgetType type)
 	{
-		GuiWidget res;
-		res.type = GuiWidgetType_None;
+		GuiIndex res;
+		res.index = u32_max;
 
 		if (gui.current_parent == nullptr) {
 
-			foreach(i, gui.widgets.size()) {
+			foreach(i, gui.indices.size()) {
 
-				const GuiWidget& w = gui.widgets[i];
+				const GuiIndex& w = gui.indices[i];
 
-				if (w.type == type && w.id == id) {
+				if (w.id == id) {
 
 					res = w;
 					break;
 				}
 				else {
 
-					GuiParent* parent = get_parent(gui, w);
-					if (parent) i += parent->widget_count;
+					GuiParentInfo* parent_info = get_parent_info(gui, w);
+					if (parent_info) i += parent_info->widget_count;
 				}
 			}
 		}
 		else {
 
-			GuiWidget* it = gui.widgets.data() + gui.current_parent->widget_offset;
-			GuiWidget* end = it + gui.current_parent->widget_count;
+			GuiParentInfo* parent_info = get_parent_info(gui, *gui.current_parent);
+			GuiIndex* it = gui.indices.data() + parent_info->widget_offset;
+			GuiIndex* end = it + parent_info->widget_count;
 
 			while (it != end) {
 
-				if (it->type == type && it->id == id) {
+				if (it->id == id) {
 
 					res = *it;
 					break;
 				}
 				else {
 
-					GuiParent* parent = get_parent(gui, *it);
-					if (parent) it += parent->widget_count;
+					parent_info = get_parent_info(gui, *it);
+					if (parent_info) it += parent_info->widget_count;
 				}
 
 				++it;
 			}
 		}
 
-		return res;
-	}
+		if (res.index == u32_max) return nullptr;
 
-	SV_INLINE static void* find_widget_ptr(GUI_internal& gui, GuiWidgetType type, u64 id)
-	{
-		GuiWidget res = find_widget(gui, type, id);
+		GuiWidget* widget = &gui.widgets[res.index];
 
-		switch (res.type)
-		{
-
-		case GuiWidgetType_Container:
-			return &gui.containers[res.index];
-
-		case GuiWidgetType_Popup:
-			return &gui.popups[res.index];
-
-		case GuiWidgetType_Window:
-			return &gui.windows[res.index];
-
-		case GuiWidgetType_Button:
-			return &gui.buttons[res.index];
-
-		case GuiWidgetType_Drag:
-			return &gui.drags[res.index];
-
-		default:
+		if (widget->type != type) {
+			SV_ASSERT(!"Widget ID repeated with different widget type");
 			return nullptr;
 		}
+
+		return widget;
 	}
 
-	SV_INLINE void begin_parent(GUI_internal& gui, GuiParent* parent, u64 id)
+	SV_INLINE void begin_parent(GUI_internal& gui, GuiWidget* parent, u64 id)
 	{
-		if (parent)
+		if (parent) {
+			SV_ASSERT(is_parent(parent->type));
 			gui.current_parent = parent;
+		}
 		gui_push_id((GUI*)& gui, id);
 	}
 
@@ -1237,8 +1187,11 @@ namespace sv {
 	{
 		gui_pop_id((GUI*)& gui);
 
-		if (gui.current_parent)
-			gui.current_parent = get_parent(gui, gui.current_parent->parent);
+		if (gui.current_parent) {
+
+			u32 index = get_parent_info(gui, *gui.current_parent)->parent_index;
+			gui.current_parent = (index == u32_max) ? nullptr : &gui.widgets[index];
+		}
 	}
 
 	void gui_begin_container(GUI* gui_, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiContainerStyle& style)
@@ -1257,8 +1210,8 @@ namespace sv {
 			write_widget(gui, GuiWidgetType_Container, id, &raw);
 		}
 
-		GuiContainer* c = (GuiContainer*)find_widget_ptr(gui, GuiWidgetType_Container, id);
-		begin_parent(gui, c, id);
+		GuiWidget* w = find_widget(gui, id, GuiWidgetType_Container);
+		begin_parent(gui, w, id);
 	}
 
 	void gui_end_container(GUI* gui_)
@@ -1274,26 +1227,21 @@ namespace sv {
 		PARSE_GUI();
 		hash_combine(id, gui.current_id);
 
-		GuiPopup* popup = nullptr;
+		GuiWidget* w = find_widget(gui, id, GuiWidgetType_Popup);
 
-		for (GuiPopup& p : gui.popups) {
-			if (p.id == id) {
-				popup = &p;
-				break;
-			}
-		}
+		if (w) {
 
-		if (popup) {
+			auto& popup = w->widget.popup;
 
-			if (popup->close_request)
+			if (popup.close_request)
 				return false;
 
 			Raw_Popup raw;
 			raw.style = style;
-			raw.bounds = popup->bounds;
+			raw.bounds = w->bounds;
 
 			write_widget(gui, GuiWidgetType_Popup, id, &raw);
-			begin_parent(gui, popup, id);
+			begin_parent(gui, w, id);
 			return true;
 		}
 		else {
@@ -1309,17 +1257,20 @@ namespace sv {
 				{
 					if (gui.current_parent != nullptr) {
 
-						const GuiParent& parent = *gui.current_parent;
+						GuiWidget& parent = *gui.current_parent;
 
 						if (mouse_in_bounds(gui, parent.bounds)) {
 
 							open = true;
+							
+							GuiParentInfo* parent_info = get_parent_info(gui, parent);
+							SV_ASSERT(parent_info);
 
-							foreach(i, parent.widget_count) {
+							foreach(i, parent_info->widget_count) {
 
-								const GuiWidget& w = gui.widgets[parent.widget_offset + i];
+								const GuiIndex& w = gui.indices[parent_info->widget_offset + i];
 
-								v4_f32 bounds = get_widget_bounds(gui, w);
+								const v4_f32& bounds = gui.widgets[w.index].bounds;
 
 								if (mouse_in_bounds(gui, bounds)) {
 									open = false;
@@ -1335,10 +1286,9 @@ namespace sv {
 				{
 					if (gui.last.type != GuiWidgetType_None) {
 
-						GuiWidget w = find_widget(gui, gui.last.type, gui.last.id);
-						v4_f32 bounds = get_widget_bounds(gui, w);
+						GuiWidget* w = find_widget(gui, gui.last.id, gui.last.type);
 
-						if (mouse_in_bounds(gui, bounds)) {
+						if (mouse_in_bounds(gui, w->bounds)) {
 							open = true;
 						}
 					}
@@ -1358,7 +1308,7 @@ namespace sv {
 				raw.bounds.y = gui.mouse_position.y - raw.bounds.w * 0.5f;
 
 				write_widget(gui, GuiWidgetType_Popup, id, &raw);
-				begin_parent(gui, popup, id);
+				begin_parent(gui, w, id);
 				return true;
 			}
 		}
@@ -1403,8 +1353,8 @@ namespace sv {
 
 			write_widget(gui, GuiWidgetType_Window, id, &raw);
 
-			GuiWindow* wnd = (GuiWindow*)find_widget_ptr(gui, GuiWidgetType_Window, id);
-			begin_parent(gui, wnd, id);
+			GuiWidget* w = find_widget(gui, id, GuiWidgetType_Window);
+			begin_parent(gui, w, id);
 		}
 
 		return state->show;
@@ -1472,10 +1422,10 @@ namespace sv {
 			write_widget(gui, GuiWidgetType_Button, id, &raw);
 		}
 
-		GuiButton* state = (GuiButton*)find_widget_ptr(gui, GuiWidgetType_Button, id);
+		GuiWidget* w = find_widget(gui, id, GuiWidgetType_Button);
 
-		if (state) {
-			return state->pressed;
+		if (w) {
+			return w->widget.button.pressed;
 		}
 		else {
 			return false;
@@ -1489,10 +1439,12 @@ namespace sv {
 
 		bool modified;
 
-		if (gui.current_focus.type == GuiWidgetType_Drag && gui.current_focus.id == id) {
+		if (gui.current_focus.index != u32_max && gui.current_focus.id == id) {
 
-			GuiDrag& drag = gui.drags[gui.current_focus.index];
-			*value = drag.value;
+			GuiWidget& w = gui.widgets[gui.current_focus.index];
+			SV_ASSERT(w.type == GuiWidgetType_Drag);
+
+			*value = w.widget.drag.value;
 			modified = true;
 		}
 		else modified = false;
@@ -1541,10 +1493,11 @@ namespace sv {
 
 		bool modified;
 
-		if (gui.current_focus.type == GuiWidgetType_Checkbox && gui.current_focus.id == id) {
+		if (gui.current_focus.index != u32_max && gui.current_focus.id == id) {
 
-			GuiCheckbox& cb = gui.checkboxes[gui.current_focus.index];
-			*value = cb.value;
+			GuiWidget& w = gui.widgets[gui.current_focus.index];
+			SV_ASSERT(w.type == GuiWidgetType_Checkbox);
+			*value = w.widget.checkbox.value;
 			modified = true;
 		}
 		else modified = false;
@@ -1703,10 +1656,10 @@ namespace sv {
 
 		case GuiWidgetType_Button:
 		{
-			const GuiButton& button = gui.buttons[w.index];
+			auto& button = w.widget.button;
 
-			v2_f32 pos = v2_f32(button.bounds.x, button.bounds.y) * 2.f - 1.f;
-			v2_f32 size = v2_f32(button.bounds.z, button.bounds.w) * 2.f;
+			v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y) * 2.f - 1.f;
+			v2_f32 size = v2_f32(w.bounds.z, w.bounds.w) * 2.f;
 
 			begin_debug_batch(cmd);
 			draw_debug_quad(pos.getVec3(), size, button.hot ? button.style.hot_color : button.style.color, cmd);
@@ -1730,9 +1683,9 @@ namespace sv {
 			v2_f32 pos;
 			v2_f32 size;
 
-			GuiDrag& drag = gui.drags[w.index];
-			pos = v2_f32{ drag.bounds.x, drag.bounds.y } *2.f - 1.f;
-			size = v2_f32{ drag.bounds.z, drag.bounds.w } *2.f;
+			auto& drag = w.widget.drag;
+			pos = v2_f32{ w.bounds.x, w.bounds.y } *2.f - 1.f;
+			size = v2_f32{ w.bounds.z, w.bounds.w } *2.f;
 
 			draw_debug_quad(pos.getVec3(0.f), size, drag.style.background_color, cmd);
 
@@ -1757,9 +1710,9 @@ namespace sv {
 			v2_f32 pos;
 			v2_f32 size;
 
-			GuiLabel& label = gui.labels[w.index];
-			pos = v2_f32{ label.bounds.x, label.bounds.y } *2.f - 1.f;
-			size = v2_f32{ label.bounds.z, label.bounds.w } *2.f;
+			auto& label = w.widget.label;
+			pos = v2_f32{ w.bounds.x, w.bounds.y } *2.f - 1.f;
+			size = v2_f32{ w.bounds.z, w.bounds.w } *2.f;
 
 			draw_debug_quad(pos.getVec3(0.f), size, label.style.background_color, cmd);
 
@@ -1783,13 +1736,13 @@ namespace sv {
 			v2_f32 pos;
 			v2_f32 size;
 
-			GuiCheckbox& cb = gui.checkboxes[w.index];
-			pos = v2_f32{ cb.bounds.x, cb.bounds.y } *2.f - 1.f;
-			size = v2_f32{ cb.bounds.z, cb.bounds.w } *2.f;
+			auto& cb = w.widget.checkbox;
+			pos = v2_f32{ w.bounds.x, w.bounds.y } *2.f - 1.f;
+			size = v2_f32{ w.bounds.z, w.bounds.w } *2.f;
 
 			draw_debug_quad(pos.getVec3(0.f), size, cb.style.color, cmd);
 
-			GuiBox* box;
+			const GuiBox* box;
 			if (cb.value) box = &cb.style.active_box;
 			else box = &cb.style.inactive_box;
 
@@ -1825,10 +1778,10 @@ namespace sv {
 
 		case GuiWidgetType_Container:
 		{
-			const GuiContainer& container = gui.containers[w.index];
+			auto& container = w.widget.container;
 
-			v2_f32 pos = v2_f32(container.bounds.x, container.bounds.y) * 2.f - 1.f;
-			v2_f32 size = v2_f32(container.bounds.z, container.bounds.w) * 2.f;
+			v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y) * 2.f - 1.f;
+			v2_f32 size = v2_f32(w.bounds.z, w.bounds.w) * 2.f;
 
 			begin_debug_batch(cmd);
 			draw_debug_quad(pos.getVec3(), size, container.style.color, cmd);
@@ -1838,10 +1791,10 @@ namespace sv {
 
 		case GuiWidgetType_Popup:
 		{
-			const GuiPopup& popup = gui.popups[w.index];
+			auto& popup = w.widget.popup;
 
-			v2_f32 pos = v2_f32(popup.bounds.x, popup.bounds.y) * 2.f - 1.f;
-			v2_f32 size = v2_f32(popup.bounds.z, popup.bounds.w) * 2.f;
+			v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y) * 2.f - 1.f;
+			v2_f32 size = v2_f32(w.bounds.z, w.bounds.w) * 2.f;
 
 			begin_debug_batch(cmd);
 			draw_debug_quad(pos.getVec3(), size, popup.style.background_color, cmd);
@@ -1851,11 +1804,11 @@ namespace sv {
 
 		case GuiWidgetType_Window:
 		{
-			const GuiWindow& window = gui.windows[w.index];
+			auto& window = w.widget.window;
 			const GuiWindowState& state = *window.state;
 			const GuiWindowStyle& style = window.style;
 
-			v4_f32 decoration = compute_window_decoration_bounds(gui, window);
+			v4_f32 decoration = compute_window_decoration_bounds(gui, w);
 
 			v2_f32 outline_size;
 			v2_f32 content_position;
@@ -1897,34 +1850,34 @@ namespace sv {
 
 		// If it is a parent, draw childs
 		{
-			GuiParent* parent = get_parent(gui, w);
-			if (parent) {
+			const GuiParentInfo* parent_info = get_parent_info(gui, w);
+			if (parent_info) {
 
-				GuiWidget* it = gui.widgets.data() + parent->widget_offset;
-				GuiWidget* end = it + parent->widget_count;
+				GuiIndex* it = gui.indices.data() + parent_info->widget_offset;
+				GuiIndex* end = it + parent_info->widget_count;
 
 				// Draw normal widgets
 				while (it != end) {
 
-					GuiParent* p = get_parent(gui, *it);
+					GuiParentInfo* p = get_parent_info(gui, *it);
 					if (p) {
 
 						it += p->widget_count;
 					}
-					else draw_widget(gui, *it, cmd);
+					else draw_widget(gui, gui.widgets[it->index], cmd);
 
 					++it;
 				}
 
 				// Draw parents
-				it = gui.widgets.data() + parent->widget_offset;
+				it = gui.indices.data() + parent_info->widget_offset;
 
 				while (it != end) {
 
-					GuiParent* p = get_parent(gui, *it);
+					GuiParentInfo* p = get_parent_info(gui, *it);
 					if (p) {
 
-						draw_widget(gui, *it, cmd);
+						draw_widget(gui, gui.widgets[it->index], cmd);
 						it += p->widget_count;
 					}
 
@@ -1938,16 +1891,16 @@ namespace sv {
 	{
 		PARSE_GUI();
 
-		foreach(i, gui.widgets.size()) {
+		foreach(i, gui.indices.size()) {
 
-			const GuiWidget& w = gui.widgets[i];
+			const GuiIndex& w = gui.indices[i];
 
-			draw_widget(gui, w, cmd);
+			draw_widget(gui, gui.widgets[w.index], cmd);
 
-			GuiParent* parent = get_parent(gui, w);
-			if (parent) {
+			GuiParentInfo* parent_index = get_parent_info(gui, w);
+			if (parent_index) {
 
-				i += parent->widget_count;
+				i += parent_index->widget_count;
 			}
 		}
 	}
