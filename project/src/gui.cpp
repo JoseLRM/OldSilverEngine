@@ -9,27 +9,6 @@
 
 namespace sv {
 
-	/*
-	  TODO LIST:
-	  - Combobox
-	  - Hot Label ????
-
-	  RUNTIME:
-	  - Begin
-		 * update settings
-
-	  - Write State
-		 * Write raw data
-		 * Get state
-
-	  - End
-		 * Update state
-		 * Update focus
-		 * Update widgets
-
-
-	*/
-
 	enum GuiWidgetType : u32 {
 		GuiWidgetType_None,
 		GuiWidgetType_Container,
@@ -38,7 +17,7 @@ namespace sv {
 		GuiWidgetType_Button,
 		GuiWidgetType_Slider,
 		GuiWidgetType_Label,
-		GuiWidgetType_CheckBox,
+		GuiWidgetType_Checkbox,
 		GuiWidgetType_Drag
 	};
 
@@ -68,6 +47,12 @@ namespace sv {
 		GuiCheckboxStyle style;
 		Raw_Coords coords;
 		bool value;
+	};
+
+	struct Raw_Label {
+		GuiLabelStyle style;
+		Raw_Coords coords;
+		const char* text;
 	};
 
 	struct Raw_Container {
@@ -163,6 +148,14 @@ namespace sv {
 		
 	};
 
+	struct GuiLabel {
+
+		const char* text;
+		GuiLabelStyle style;
+		v4_f32 bounds;
+		
+	};
+
 	struct GUI_internal {
 
 		u8* buffer = nullptr;
@@ -176,6 +169,7 @@ namespace sv {
 		FrameList<GuiWindow> windows;
 		FrameList<GuiButton> buttons;
 		FrameList<GuiDrag> drags;
+		FrameList<GuiLabel> labels;
 		FrameList<GuiCheckbox> checkboxes;
 
 		FrameList<GuiWidget> widgets;
@@ -379,11 +373,11 @@ namespace sv {
 			//case GuiWidgetType_Slider:
 			//	return gui.sli[w.index].bounds;
 
-			//case GuiWidgetType_Label:
-			//	break;
-			//
-			//case GuiWidgetType_CheckBox:
-			//	break;
+		case GuiWidgetType_Label:
+			return gui.labels[w.index].bounds;
+		
+		case GuiWidgetType_CheckBox:
+			return gui.checkboxes[w.index].bounds;
 
 		case GuiWidgetType_Drag:
 			return gui.drags[w.index].bounds;
@@ -435,10 +429,21 @@ namespace sv {
 			break;
 
 		case GuiWidgetType_Label:
-			break;
+		{
+			Raw_Label* raw = (Raw_Label*)data;
+
+			write_text(gui, raw->text);
+			write_buffer(gui, raw->coords);
+			write_buffer(gui, raw->style);
+		}
+	        break;
 
 		case GuiWidgetType_CheckBox:
-			break;
+		{
+			Raw_Checkbox* raw = (Raw_Checkbox*)data;
+			write_buffer(gui, *raw);
+		}
+		break;
 
 		case GuiWidgetType_Drag:
 		{
@@ -939,6 +944,7 @@ namespace sv {
 		gui.windows.reset();
 		gui.buttons.reset();
 		gui.drags.reset();
+		gui.labels.reset();
 		gui.checkboxes.reset();
 		gui.widgets.reset();
 
@@ -1033,6 +1039,24 @@ namespace sv {
 				button.bounds = compute_widget_bounds(gui, coords.x0, coords.x1, coords.y0, coords.y1, get_parent(gui, current_parent));
 
 				add_widget(gui, GuiWidgetType_Button, u32(gui.buttons.size()) - 1u, id);
+			}
+			break;
+
+			case GuiWidgetType_Label:
+			{
+				GuiLabel& label = gui.labels.emplace_back();
+
+				label.text = (const char*)it;
+				it += strlen(label.text) + 1u;
+				if (*label.text == '\0')
+					label.text = nullptr;
+
+				Raw_Coords coords = _read<Raw_Coords>(it);
+				label.style = _read<GuiLabelStyle>(it);
+
+				label.bounds = compute_widget_bounds(gui, coords.x0, coords.x1, coords.y0, coords.y1, get_parent(gui, current_parent));
+
+				add_widget(gui, GuiWidgetType_Label, u32(gui.labels.size()) - 1u, id);
 			}
 			break;
 
@@ -1492,8 +1516,20 @@ namespace sv {
 		return false;
 	}
 
-	void gui_text(GUI* gui, const char* text, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiTextStyle& style)
+	void gui_text(GUI* gui_, const char* text, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiTextStyle& style)
 	{
+		PARSE_GUI();
+		hash_combine(id, gui.current_id);
+		
+		Raw_Label raw;
+		raw.text = text;
+		raw.coords.x0 = x0;
+		raw.coords.x1 = x1;
+		raw.coords.y0 = y0;
+		raw.coords.y1 = y1;
+		raw.style = style;
+
+		write_widget(gui, GuiWidgetType_Label, id, &raw);		
 	}
 
 	bool gui_checkbox(GUI* gui_, bool* value, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiCheckBoxStyle& style)
@@ -1708,6 +1744,32 @@ namespace sv {
 			draw_text(strbuff, strsize
 				, pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font_opensans.vertical_offset * font_size,
 				size.x, 1u, font_size, gui.aspect, TextAlignment_Center, &font_opensans, drag.style.text_color, cmd);
+		}
+		break;
+
+		case GuiWidgetType_Label:
+		{
+			begin_debug_batch(cmd);
+
+			v2_f32 pos;
+			v2_f32 size;
+
+			GuiLabel& label = gui.labels[w.index];
+			pos = v2_f32{ label.bounds.x, label.bounds.y } *2.f - 1.f;
+			size = v2_f32{ label.bounds.z, label.bounds.w } *2.f;
+
+			draw_debug_quad(pos.getVec3(0.f), size, label.style.background_color, cmd);
+
+			end_debug_batch(true, false, XMMatrixIdentity(), cmd);
+
+			if (label.text) {
+
+				f32 font_size = size.y;
+
+				draw_text(label.text, strlen(label.text), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f -
+					  font_opensans.vertical_offset * font_size, size.x, 1u, font_size, gui.aspect, label.style.text_alignment,
+					  &font_opensans, label.style.text_color, cmd);
+			}
 		}
 		break;
 
