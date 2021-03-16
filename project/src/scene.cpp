@@ -533,6 +533,56 @@ namespace sv {
 		return Result_Success;
 	}
 
+	static void update_camera_matrices(CameraComponent& camera, const v3_f32& position, const v4_f32& rotation)
+	{
+		// Compute view matrix
+		cam.view_matrix = math_matrix_view(position, rotation);
+
+		// Compute projection matrix
+		{
+#ifdef SV_DEV
+			if (camera.near >= camera.far) {
+				SV_LOG_WARNING("Computing the projection matrix. The far must be grater than near");
+			}
+
+			switch (camera.projection_type)
+			{
+			case ProjectionType_Orthographic:
+				break;
+
+			case ProjectionType_Perspective:
+				if (camera.near <= 0.f) {
+					SV_LOG_WARNING("In perspective projection, near must be greater to 0");
+				}
+				break;
+			}
+#endif
+
+			switch (camera.projection_type)
+			{
+			case ProjectionType_Orthographic:
+				camera.projection_matrix = XMMatrixOrthographicLH(camera.width, camera.height, camera.near, camera.far);
+				break;
+
+			case ProjectionType_Perspective:
+				camera.projection_matrix = XMMatrixPerspectiveLH(camera.width, camera.height, camera.near, camera.far);
+				break;
+
+			default:
+				camera.projection_matrix = XMMatrixIdentity();
+				break;
+			}
+		}
+
+		// Compute view projection matrix
+		camera.view_projection_matrix = camera.view_matrix * camera.projection_matrix;
+
+		// Compute inverse matrices
+		camera.inverse_view_matrix = XMMatrixInverse(nullptr, camera.view_matrix);
+		camera.inverse_projection_matrix = XMMatrixInverse(nullptr, camera.projection_matrix);
+		camera.inverse_view_projection_matrix = camera.inverse_view_matrix * camera.inverse_projection_matrix;
+	}
+
 	void update_scene(Scene* scene_)
 	{
 		PARSE_SCENE();
@@ -548,7 +598,23 @@ namespace sv {
 			camera->adjust(f32(window_width_get(engine.window)) / f32(window_height_get(engine.window)));
 		}
 
-		// TODO: Update camera matrices
+		// Update cameras matrices
+		{
+			EntityView<CameraComponent> cameras(scene_);
+
+			for (CameraComponent& camera : cameras) {
+
+				Transform trans = get_entity_transform(scene_, camera.entity);
+				v3_f32 position = trans.getWorldPosition();
+				v4_f32 rotation = trans.getWorldRotation();
+
+				update_camera_matrices(camera, position, rotation);
+			}
+
+#ifdef SV_DEV
+			update_camera_matrices(dev.camera, dev.camera.position, dev.camera.rotation);
+#endif
+		}
 
 		if (engine.callbacks.update_scene)
 			engine.callbacks.update_scene(scene_);
@@ -569,13 +635,10 @@ namespace sv {
 			// Screen to clip space
 			position *= 2.f;
 
-			XMMATRIX ivm = XMMatrixInverse(0, camera_view_matrix(camera_position, camera_rotation, *camera));
-			XMMATRIX ipm = XMMatrixInverse(0, camera_projection_matrix(*camera));
-
 			XMVECTOR mouse_world = XMVectorSet(position.x, position.y, 1.f, 1.f);
-			mouse_world = XMVector4Transform(mouse_world, ipm);
+			mouse_world = XMVector4Transform(mouse_world, camera->inverse_projection_matrix);
 			mouse_world = XMVectorSetZ(mouse_world, 1.f);
-			mouse_world = XMVector4Transform(mouse_world, ivm);
+			mouse_world = XMVector4Transform(mouse_world, camera->inverse_view_matrix);
 			mouse_world = XMVector3Normalize(mouse_world);
 			
 			ray.origin = camera_position;

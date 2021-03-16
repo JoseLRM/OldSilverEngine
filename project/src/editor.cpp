@@ -1133,7 +1133,7 @@ namespace sv {
 			// Draw gizmos
 			draw_gizmos(engine.offscreen, cmd);
 
-			end_debug_batch(true, false, camera_view_projection_matrix(dev.camera.position, dev.camera.rotation, dev.camera), cmd);
+			end_debug_batch(true, false, dev.camera.view_projection_matrix, dev.camera), cmd);
 		}
 
 		// Draw gui

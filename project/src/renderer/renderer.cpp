@@ -41,10 +41,10 @@ namespace sv {
 		COMPILE_VS(gfx.vs_sky, "skymapping.hlsl");
 		COMPILE_PS(gfx.ps_sky, "skymapping.hlsl");
 
-		COMPILE_VS_(gfx.vs_default_postprocess, "postprocessing/default.hlsl");
-		COMPILE_PS_(gfx.ps_default_postprocess, "postprocessing/default.hlsl");
-		COMPILE_PS_(gfx.ps_gaussian_blur, "postprocessing/gaussian_blur.hlsl");
-		COMPILE_PS_(gfx.ps_bloom_threshold, "postprocessing/bloom_threshold.hlsl");
+		COMPILE_VS(gfx.vs_default_postprocess, "postprocessing/default.hlsl");
+		COMPILE_PS(gfx.ps_default_postprocess, "postprocessing/default.hlsl");
+		COMPILE_PS(gfx.ps_gaussian_blur, "postprocessing/gaussian_blur.hlsl");
+		COMPILE_PS(gfx.ps_bloom_threshold, "postprocessing/bloom_threshold.hlsl");
 
 		return Result_Success;
 	}
@@ -805,11 +805,11 @@ namespace sv {
 
 				if (camera_) {
 						
-					camera_data.projection_matrix = camera_projection_matrix(*camera_);
+					camera_data.projection_matrix = camera_->projection_matrix;
 					camera_data.position = cam_pos.getVec4(0.f);
 					camera_data.rotation = cam_rot;
-					camera_data.view_matrix = camera_view_matrix(camera_data.position.get_vec3(), camera_data.rotation, *camera_);
-					camera_data.view_projection_matrix = camera_data.view_matrix * camera_data.projection_matrix;
+					camera_data.view_matrix = camera_->view_matrix;
+					camera_data.view_projection_matrix = camera_->view_projection_matrix;
 					
 					graphics_buffer_update(gfx.cbuffer_camera, &camera_data, sizeof(CameraBuffer_GPU), 0u, cmd);
 				}
@@ -822,11 +822,11 @@ namespace sv {
 			if (camera_) {
 				
 				Transform camera_trans = get_entity_transform(scene, camera_->entity);
-				camera_data.projection_matrix = camera_projection_matrix(*camera_);
+				camera_data.projection_matrix = camera_->projection_matrix;
 				camera_data.position = camera_trans.getWorldPosition().getVec4(0.f);
 				camera_data.rotation = camera_trans.getWorldRotation();
-				camera_data.view_matrix = camera_view_matrix(camera_data.position.get_vec3(), camera_data.rotation, camera);
-				camera_data.view_projection_matrix = camera_data.view_matrix * camera_data.projection_matrix;
+				camera_data.view_matrix = camera_->view_matrix;
+				camera_data.view_projection_matrix = camera_->view_projection_matrix;
 				
 				graphics_buffer_update(gfx.cbuffer_camera, &camera_data, sizeof(CameraBuffer_GPU), 0u, cmd);
 			}
@@ -1194,50 +1194,6 @@ namespace sv {
 		graphics_renderpass_end(cmd);
 	}
 
-	XMMATRIX camera_view_matrix(const v3_f32& position, const v4_f32 rotation, CameraComponent& camera)
-	{
-		return math_matrix_view(position, rotation);
-	}
-
-	XMMATRIX camera_projection_matrix(CameraComponent& camera)
-	{
-#ifdef SV_DEV
-		if (camera.near >= camera.far) {
-			SV_LOG_WARNING("Computing the projection matrix. The far must be grater than near");
-		}
-
-		switch (camera.projection_type)
-		{
-		case ProjectionType_Orthographic:
-			break;
-
-		case ProjectionType_Perspective:
-			if (camera.near <= 0.f) {
-				SV_LOG_WARNING("In perspective projection, near must be greater to 0");
-			}
-			break;
-		}
-#endif
-		XMMATRIX projection_matrix;
-
-		switch (camera.projection_type)
-		{
-		case ProjectionType_Orthographic:
-			projection_matrix = XMMatrixOrthographicLH(camera.width, camera.height, camera.near, camera.far);
-			break;
-
-		case ProjectionType_Perspective:
-			projection_matrix = XMMatrixPerspectiveLH(camera.width, camera.height, camera.near, camera.far);
-			break;
-
-		default:
-			projection_matrix = XMMatrixIdentity();
-			break;
-		}
-
-		return projection_matrix;
-	}
-
 	SV_INLINE static void text_draw_call(GPUImage* offscreen, GPUBuffer* buffer, TextData& data, u32 vertex_count, CommandList cmd)
 	{
 		if (vertex_count == 0u) return;
@@ -1432,11 +1388,6 @@ namespace sv {
 		}
 
 		draw_text(text, text_size, x, y, max_line_width, max_lines, font_size, aspect, alignment, &font, cmd);
-	}
-
-	XMMATRIX camera_view_projection_matrix(const v3_f32& position, const v4_f32 rotation, CameraComponent& camera)
-	{
-		return camera_view_matrix(position, rotation, camera) * camera_projection_matrix(camera);
 	}
 
 	// POSTPROCESSING

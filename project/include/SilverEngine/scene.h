@@ -367,6 +367,13 @@ namespace sv {
 		f32 width = 10.f;
 		f32 height = 10.f;
 
+		XMMATRIX view_matrix;
+		XMMATRIX projection_matrix;
+		XMMATRIX view_projection_matrix;
+		XMMATRIX inverse_view_matrix;
+		XMMATRIX inverse_projection_matrix;
+		XMMATRIX inverse_view_projection_matrix;
+
 		void serialize(Archive& archive);
 		void deserialize(u32 version, Archive& archive);
 
