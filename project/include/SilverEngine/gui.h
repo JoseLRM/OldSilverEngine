@@ -7,6 +7,8 @@ namespace sv {
 
 	enum GuiConstraint : u32 {
 		GuiConstraint_Relative,
+		GuiConstraint_Absolute,
+		GuiConstraint_InverseAbsolute,
 		GuiConstraint_Center,
 		GuiConstraint_Pixel,
 		GuiConstraint_InversePixel,
@@ -20,7 +22,9 @@ namespace sv {
 
 		SV_INLINE static GuiCoord Center() { return { 0.f, GuiConstraint_Center }; }
 		SV_INLINE static GuiCoord Relative(f32 n) { return { n, GuiConstraint_Relative }; }
+		SV_INLINE static GuiCoord Absolute(f32 n) { return { n, GuiConstraint_Absolute }; }
 		SV_INLINE static GuiCoord IRelative(f32 n) { return { 1.f - n, GuiConstraint_Relative }; }
+		SV_INLINE static GuiCoord IAbsolute(f32 n) { return { n, GuiConstraint_InverseAbsolute }; }
 		SV_INLINE static GuiCoord Pixel(f32 n) { return { n, GuiConstraint_Pixel }; }
 		SV_INLINE static GuiCoord IPixel(f32 n) { return { n, GuiConstraint_InversePixel }; }
 		SV_INLINE static GuiCoord Aspect(f32 n = 1.f) { return { n, GuiConstraint_Aspect }; }

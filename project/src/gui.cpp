@@ -471,6 +471,11 @@ namespace sv {
 			res = coord.value * parent_dimension;
 			break;
 
+		case GuiConstraint_Absolute:
+		case GuiConstraint_InverseAbsolute:
+			res = coord.value;
+			break;
+
 		case GuiConstraint_Center:
 			res = 0.5f * parent_dimension;
 			break;
@@ -483,7 +488,7 @@ namespace sv {
 		}
 
 		// Inverse coord
-		if (coord.constraint == GuiConstraint_InversePixel) {
+		if (coord.constraint == GuiConstraint_InverseAbsolute || coord.constraint == GuiConstraint_InversePixel) {
 			res = parent_dimension - res;
 		}
 
