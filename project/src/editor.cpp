@@ -891,23 +891,43 @@ namespace sv {
 
 			AssetBrowserInfo& info = editor.asset_browser;
 
-			for (const AssetElement& e : info.elements) {
+			foreach (i, info.elements.size()) {
+
+				const AssetElement& e = info.elements[i];
 
 				if (e.name.size() && e.name.front() != '.') {
 
-					if (gui_button(gui, e.name.c_str(), 0u, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f),
+					if (gui_button(gui, e.name.c_str(), i, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f),
 						GuiCoord::IPixel(y), GuiCoord::IPixel(y + HEIGHT), editor.style.button_style)) {
-
-						update_browser = true;
 
 						if (e.type == AssetElementType_Directory) {
 
+							update_browser = true;
 							next_filepath = info.filepath + e.name + '/';
 						}
 					}
 
 					y += editor.style.vertical_padding + HEIGHT;
 				}
+			}
+
+			// TEMP
+			if (input.unused && input.keys[Key_B] == InputState_Pressed) {
+
+				if (info.filepath.size()) {
+
+					info.filepath.pop_back();
+
+					while (info.filepath.size() && info.filepath.back() != '/') {
+
+						info.filepath.pop_back();
+					}
+					
+					next_filepath = std::move(info.filepath);
+					update_browser = true;
+				}
+				
+				input.unused = false;
 			}
 
 			// Update per time
@@ -1101,34 +1121,34 @@ namespace sv {
 			}
 
 			// Draw cameras
-			{
-				EntityView<CameraComponent> cameras(engine.scene);
-
-				for (CameraComponent& cam : cameras) {
-
-					Transform trans = get_entity_transform(engine.scene, cam.entity);
-
-					draw_debug_quad(trans.getWorldMatrix(), Color::Red(), cmd);
-				}
-			}
+			//{
+			//	EntityView<CameraComponent> cameras(engine.scene);
+			//
+			//	for (CameraComponent& cam : cameras) {
+			//
+			//		Transform trans = get_entity_transform(engine.scene, cam.entity);
+			//
+			//		draw_debug_quad(trans.getWorldMatrix(), Color::Red(), cmd);
+			//	}
+			//}
 
 			// Draw lights
-			{
-				EntityView<LightComponent> lights(engine.scene);
-
-				XMMATRIX matrix;
-
-				for (LightComponent& l : lights) {
-
-					matrix = XMMatrixRotationQuaternion(XMQuaternionInverse(dev.camera.rotation.get_dx()));
-
-					// Move to entity position
-					v3_f32 position = get_entity_transform(engine.scene, l.entity).getWorldPosition();
-					matrix *= XMMatrixTranslation(position.x, position.y, position.z);
-
-					draw_debug_quad(matrix, Color::White(40u), cmd);
-				}
-			}
+			//{
+			//	EntityView<LightComponent> lights(engine.scene);
+			//
+			//	XMMATRIX matrix;
+			//
+			//	for (LightComponent& l : lights) {
+			//
+			//		matrix = XMMatrixRotationQuaternion(XMQuaternionInverse(dev.camera.rotation.get_dx()));
+			//
+			//		// Move to entity position
+			//		v3_f32 position = get_entity_transform(engine.scene, l.entity).getWorldPosition();
+			//		matrix *= XMMatrixTranslation(position.x, position.y, position.z);
+			//
+			//		draw_debug_quad(matrix, Color::White(40u), cmd);
+			//	}
+			//}
 
 			// Draw gizmos
 			draw_gizmos(engine.offscreen, cmd);

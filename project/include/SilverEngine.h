@@ -4,8 +4,6 @@
 
 #include "SilverEngine/engine.h"
 #include "SilverEngine/graphics.h"
-#include "SilverEngine/entity_system.h"
-#include "SilverEngine/event_system.h"
 #include "SilverEngine/task_system.h"
 #include "SilverEngine/renderer.h"
 #include "SilverEngine/sprite.h"

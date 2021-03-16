@@ -1135,6 +1135,23 @@ namespace sv {
 						graphics_renderpass_end(cmd);
 					}
 				}
+
+				// TEMP bloom
+
+				postprocess_bloom(
+					engine.offscreen,
+					GPUImageLayout_RenderTarget,
+					GPUImageLayout_RenderTarget,
+					gfx.image_aux0,
+					GPUImageLayout_ShaderResource,
+					GPUImageLayout_ShaderResource,
+					gfx.image_aux1,
+					GPUImageLayout_ShaderResource,
+					GPUImageLayout_ShaderResource,
+					nullptr,
+					0.8f, 0.03f, window_aspect_get(engine.window), cmd);
+
+				gui_draw(scene->gui, cmd);
 			}
 			else {
 				
@@ -1142,21 +1159,6 @@ namespace sv {
 				constexpr const char* TEXT = "No Main Camera";
 				draw_text(TEXT, strlen(TEXT), -1.f, +SIZE * 0.5f, 2.f, 1u, SIZE, window_aspect_get(engine.window), TextAlignment_Center, &font_opensans, cmd);
 			}
-
-			// TEMP bloom
-
-			postprocess_bloom(
-				engine.offscreen,
-				GPUImageLayout_RenderTarget,
-				GPUImageLayout_RenderTarget,
-				gfx.image_aux0,
-				GPUImageLayout_ShaderResource,
-				GPUImageLayout_ShaderResource,
-				gfx.image_aux1,
-				GPUImageLayout_ShaderResource,
-				GPUImageLayout_ShaderResource,
-				nullptr,
-				0.8f, 0.03f, window_aspect_get(engine.window), cmd);
 		}
 	}
 

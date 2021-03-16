@@ -128,6 +128,8 @@ namespace sv {
 			scene.name = name;
 		}
 
+		svCheck(gui_create(hash_string(name), &scene.gui));
+
 		bool deserialize = false;
 		Archive archive;
 
@@ -351,6 +353,8 @@ namespace sv {
 		PARSE_SCENE();
 
 		svCheck(engine.callbacks.close_scene(scene_));
+
+		gui_destroy(scene.gui);
 
 		// Close ECS
 		{

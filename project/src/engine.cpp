@@ -6,7 +6,6 @@
 #include "SilverEngine/platform/impl.h"
 
 #include "task_system/task_system_internal.h"
-#include "event_system/event_system_internal.h"
 #include "window/window_internal.h"
 #include "graphics/graphics_internal.h"
 
@@ -155,7 +154,6 @@ namespace sv {
 
 		// CORE
 		INIT_SYSTEM("TaskSystem",		task_initialize(desc.minThreadsCount));
-		INIT_SYSTEM("EventSystem",		event_initialize());
 		INIT_SYSTEM("Window",			window_initialize());
 		INIT_SYSTEM("GraphicsAPI",		graphics_initialize());
 		INIT_SYSTEM("Renderer",			renderer_initialize());
@@ -526,7 +524,6 @@ namespace sv {
 			if (result_fail(graphics_close())) { SV_LOG_ERROR("Can't close graphicsAPI"); }
 			if (result_fail(window_close())) { SV_LOG_ERROR("Can't close window"); }
 			close_assets();
-			if (result_fail(event_close())) { SV_LOG_ERROR("Can't close the event system"); }
 			if (result_fail(task_close())) { SV_LOG_ERROR("Can't close the task system"); }
 
 #ifdef SV_DEV
