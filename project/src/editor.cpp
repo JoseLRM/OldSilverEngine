@@ -249,11 +249,11 @@ namespace sv {
 		GuiContainerStyle container_style;
 		container_style.color = Color::Red(100u);
 
-		GuiTextStyle text_style;
+		GuiLabelStyle text_style;
 		text_style.text_color = Color::Black();
 		text_style.text_alignment = TextAlignment_Left;
 
-		GuiCheckBoxStyle checkbox_style;
+		GuiCheckboxStyle checkbox_style;
 		checkbox_style.active_box = GuiBox::Triangle(Color::Black(), true, 0.5f);
 		checkbox_style.inactive_box = GuiBox::Triangle(Color::Black(), false, 0.5f);
 		checkbox_style.color = Color::Black(0u);
@@ -281,7 +281,7 @@ namespace sv {
 
 		if (show) {
 
-			GuiTextStyle text_style;
+			GuiLabelStyle text_style;
 			text_style.text_alignment = TextAlignment_Left;
 
 			gui_push_id(gui, SpriteComponent::ID);
@@ -849,7 +849,7 @@ namespace sv {
 					gui_pop_id(g);
 				}
 
-				if (gui_begin_popup(g, GuiPopupTrigger_Parent, MouseButton_Right, 0xabc2544)) {
+				if (gui_begin_popup(g, GuiPopupTrigger_Parent, MouseButton_Right, 0xabc2544 + selected)) {
 
 					f32 y = 5.f;
 
@@ -861,7 +861,7 @@ namespace sv {
 						if (get_component_by_id(engine.scene, selected, comp_id))
 							continue;
 
-						if (gui_button(g, get_component_name(comp_id), 0u, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 20.f))) {
+						if (gui_button(g, get_component_name(comp_id), comp_id, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 20.f))) {
 
 							add_component_by_id(engine.scene, selected, comp_id);
 						}
@@ -1133,7 +1133,7 @@ namespace sv {
 			// Draw gizmos
 			draw_gizmos(engine.offscreen, cmd);
 
-			end_debug_batch(true, false, dev.camera.view_projection_matrix, dev.camera), cmd);
+			end_debug_batch(true, false, dev.camera.view_projection_matrix, cmd);
 		}
 
 		// Draw gui

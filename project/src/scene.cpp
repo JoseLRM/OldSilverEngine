@@ -2,6 +2,7 @@
 
 #include "SilverEngine/scene.h"
 #include "SilverEngine/renderer.h"
+#include "SilverEngine/dev.h"
 
 namespace sv {
 
@@ -536,7 +537,7 @@ namespace sv {
 	static void update_camera_matrices(CameraComponent& camera, const v3_f32& position, const v4_f32& rotation)
 	{
 		// Compute view matrix
-		cam.view_matrix = math_matrix_view(position, rotation);
+		camera.view_matrix = math_matrix_view(position, rotation);
 
 		// Compute projection matrix
 		{

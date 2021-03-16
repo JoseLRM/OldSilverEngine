@@ -114,13 +114,13 @@ namespace sv {
 		v2_f32 button_size = { 0.01f, 0.03f };
 	};
 
-	struct GuiTextStyle {
+	struct GuiLabelStyle {
 		Color text_color = Color::White();
 		TextAlignment text_alignment = TextAlignment_Center;
 		Color background_color = Color::Gray(100u, 0u);
 	};
 
-	struct GuiCheckBoxStyle {
+	struct GuiCheckboxStyle {
 		Color color = Color::White();
 		GuiBox active_box = GuiBox::Quad(Color::Black());
 		GuiBox inactive_box = GuiBox::Quad(Color::White(0u));
@@ -155,9 +155,9 @@ namespace sv {
 	bool gui_button(GUI* gui, const char* text, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiButtonStyle& style = {});
 	bool gui_drag_f32(GUI* gui, f32* value, f32 adv, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiDragStyle& style = {});
 	bool gui_slider(GUI* gui, f32* value, f32 min, f32 max, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiSliderStyle& style = {});
-	void gui_text(GUI* gui, const char* text, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiTextStyle& style = {});
-	bool gui_checkbox(GUI* gui, bool* value, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiCheckBoxStyle& style = {});
-	bool gui_checkbox(GUI* gui, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiCheckBoxStyle& style = {});
+	void gui_text(GUI* gui, const char* text, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiLabelStyle& style = {});
+	bool gui_checkbox(GUI* gui, bool* value, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiCheckboxStyle& style = {});
+	bool gui_checkbox(GUI* gui, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiCheckboxStyle& style = {});
 	
 	void gui_draw(GUI* gui, CommandList cmd);
 

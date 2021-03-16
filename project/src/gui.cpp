@@ -376,7 +376,7 @@ namespace sv {
 		case GuiWidgetType_Label:
 			return gui.labels[w.index].bounds;
 		
-		case GuiWidgetType_CheckBox:
+		case GuiWidgetType_Checkbox:
 			return gui.checkboxes[w.index].bounds;
 
 		case GuiWidgetType_Drag:
@@ -438,7 +438,7 @@ namespace sv {
 		}
 	        break;
 
-		case GuiWidgetType_CheckBox:
+		case GuiWidgetType_Checkbox:
 		{
 			Raw_Checkbox* raw = (Raw_Checkbox*)data;
 			write_buffer(gui, *raw);
@@ -1068,10 +1068,7 @@ namespace sv {
 			case GuiWidgetType_Slider:
 				break;
 
-			case GuiWidgetType_Label:
-				break;
-
-			case GuiWidgetType_CheckBox:
+			case GuiWidgetType_Checkbox:
 			{
 				Raw_Checkbox raw = _read<Raw_Checkbox>(it);
 
@@ -1521,7 +1518,7 @@ namespace sv {
 		return false;
 	}
 
-	void gui_text(GUI* gui_, const char* text, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiTextStyle& style)
+	void gui_text(GUI* gui_, const char* text, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiLabelStyle& style)
 	{
 		PARSE_GUI();
 		hash_combine(id, gui.current_id);
@@ -1537,7 +1534,7 @@ namespace sv {
 		write_widget(gui, GuiWidgetType_Label, id, &raw);		
 	}
 
-	bool gui_checkbox(GUI* gui_, bool* value, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiCheckBoxStyle& style)
+	bool gui_checkbox(GUI* gui_, bool* value, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiCheckboxStyle& style)
 	{
 		PARSE_GUI();
 		hash_combine(id, gui.current_id);
@@ -1567,7 +1564,7 @@ namespace sv {
 		return modified;
 	}
 
-	bool gui_checkbox(GUI* gui_, u64 user_id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiCheckBoxStyle& style)
+	bool gui_checkbox(GUI* gui_, u64 user_id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiCheckboxStyle& style)
 	{
 		PARSE_GUI();
 		u64 id = user_id;
@@ -1583,7 +1580,8 @@ namespace sv {
 		}
 		else value = &it->second;
 		
-		return gui_checkbox(gui_, value, user_id, x0, x1, y0, y1, style);
+		gui_checkbox(gui_, value, user_id, x0, x1, y0, y1, style);
+		return *value;
 	}
 
 	///////////////////////////////////////////// RENDERING ///////////////////////////////////////////
@@ -1792,7 +1790,7 @@ namespace sv {
 			draw_debug_quad(pos.getVec3(0.f), size, cb.style.color, cmd);
 
 			GuiBox* box;
-			if (cb.active) box = &cb.style.active_box;
+			if (cb.value) box = &cb.style.active_box;
 			else box = &cb.style.inactive_box;
 
 			size *= box->mult;

@@ -1024,7 +1024,7 @@ namespace sv {
 						u32 light_count = std::min(LIGHT_COUNT, u32(light_instances.size()));
 
 						// Send light data
-						if (light_count) {
+						{
 							LightData light_data[LIGHT_COUNT];
 
 							XMMATRIX rotation_view_matrix;
@@ -1062,7 +1062,7 @@ namespace sv {
 								}
 							}
 
-							graphics_buffer_update(light_instances_buffer, light_data, sizeof(LightData) * light_count, 0u, cmd);
+							graphics_buffer_update(light_instances_buffer, light_data, sizeof(LightData) * LIGHT_COUNT, 0u, cmd);
 
 						}
 
