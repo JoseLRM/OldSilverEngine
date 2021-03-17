@@ -159,6 +159,15 @@ namespace sv {
 	bool gui_checkbox(GUI* gui, bool* value, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiCheckboxStyle& style = {});
 	bool gui_checkbox(GUI* gui, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiCheckboxStyle& style = {});
 	
+	v4_f32 gui_parent_bounds(GUI* gui);
+
 	void gui_draw(GUI* gui, CommandList cmd);
+
+	// High level
+
+	void gui_begin_grid(GUI* gui, u32 element_count, f32 element_size, f32 padding, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1);
+	void gui_begin_grid_element(GUI* gui, u64 id);
+	void gui_end_grid_element(GUI* gui);
+	void gui_end_grid(GUI* gui);
 
 }

@@ -194,6 +194,17 @@ namespace sv {
 		u64 current_id;
 		v2_f32 begin_position;
 
+		// HIGH LEVEL
+
+		struct {
+			u32 element_count;
+			u32 columns;
+			f32 element_size;
+			u32 element_index;
+			f32 xoff;
+			f32 padding;
+		} grid;
+
 	};
 
 	Result gui_create(u64 hashcode, GUI** pgui)
@@ -564,9 +575,9 @@ namespace sv {
 		auto& window = w.widget.window;
 
 		v4_f32 bounds;
-		bounds.x = window.state->bounds.x;
-		bounds.y = window.state->bounds.y + window.state->bounds.w * 0.5f + window.style.decoration_height * 0.5f + window.style.outline_size * gui.aspect;
-		bounds.z = window.state->bounds.z + window.style.outline_size * 2.f;
+		bounds.x = w.bounds.x;
+		bounds.y = w.bounds.y + w.bounds.w * 0.5f + window.style.decoration_height * 0.5f + window.style.outline_size * gui.aspect;
+		bounds.z = w.bounds.z + window.style.outline_size * 2.f;
 		bounds.w = window.style.decoration_height;
 		return bounds;
 	}
@@ -1537,6 +1548,14 @@ namespace sv {
 		return *value;
 	}
 
+	///////////////////////////////////////////// GETTERS ///////////////////////////////////////////
+
+	v4_f32 gui_parent_bounds(GUI* gui_)
+	{
+		PARSE_GUI();
+		return gui.current_parent ? gui.current_parent->bounds : v4_f32{};
+	}
+
 	///////////////////////////////////////////// RENDERING ///////////////////////////////////////////
 
 	constexpr u32 MAX_FLOAT_CHARS = 20u;
@@ -1814,8 +1833,8 @@ namespace sv {
 			v2_f32 content_position;
 			v2_f32 content_size;
 
-			content_position = v2_f32{ state.bounds.x, state.bounds.y };
-			content_size = v2_f32{ state.bounds.z, state.bounds.w };
+			content_position = v2_f32{ w.bounds.x, w.bounds.y };
+			content_size = v2_f32{ w.bounds.z, w.bounds.w };
 
 			outline_size = content_size + v2_f32{ style.outline_size, style.outline_size * gui.aspect } *2.f;
 
@@ -1905,5 +1924,56 @@ namespace sv {
 		}
 	}
 
+	/////////////////////////////////// HIGH LEVEL //////////////////////////////////////////
+
+	void gui_begin_grid(GUI* gui_, u32 element_count, f32 element_size, f32 padding, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1)
+	{
+		PARSE_GUI();
+		auto& grid = gui.grid;
+
+		v4_f32 parent_bounds = gui_parent_bounds(gui_);
+
+		f32 width = parent_bounds.z * gui.resolution.x;
+
+		grid.element_count = element_count;
+		grid.element_index = 0u;
+		grid.columns = std::max(u32((width + padding) / (element_size + padding)), 1u);
+		grid.element_size = element_size;
+		grid.xoff = std::max(width - grid.element_size * f32(grid.columns) - padding * f32(grid.columns - 1u), 0.f) * 0.5f;
+		grid.padding = padding;
+	}
+
+	void gui_begin_grid_element(GUI* gui_, u64 id)
+	{
+		PARSE_GUI();
+		auto& grid = gui.grid;
+		SV_ASSERT(grid.element_index != grid.element_count);
+
+		f32 x = f32(grid.element_index % grid.columns);
+		f32 y = f32(grid.element_index / grid.columns);
+
+		f32 x0 = grid.xoff + x * (grid.element_size + grid.padding);
+		f32 y0 = y * (grid.element_size + grid.padding);
+		f32 x1 = x0 + grid.element_size;
+		f32 y1 = y0 + grid.element_size;
+
+		++grid.element_index;
+
+		gui_begin_container(gui_, id, GuiCoord::Pixel(x0), GuiCoord::Pixel(x1), GuiCoord::IPixel(y0), GuiCoord::IPixel(y1));
+	}
+
+	void gui_end_grid_element(GUI* gui_)
+	{
+		PARSE_GUI();
+		auto& grid = gui.grid;
+
+		gui_end_container(gui_);
+	}
+
+	void gui_end_grid(GUI* gui_)
+	{
+		PARSE_GUI();
+		auto& grid = gui.grid;
+	}
 
 }

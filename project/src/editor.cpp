@@ -881,9 +881,6 @@ namespace sv {
 	{
 		GUI* gui = editor.gui;
 
-		f32 y = editor.style.vertical_padding;
-		constexpr f32 HEIGHT = 30.f;
-
 		bool update_browser = false;
 		std::string next_filepath;
 
@@ -891,14 +888,18 @@ namespace sv {
 
 			AssetBrowserInfo& info = editor.asset_browser;
 
+			gui_begin_grid(gui, info.elements.size(), 150.f, 5.f, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
+
 			foreach (i, info.elements.size()) {
 
 				const AssetElement& e = info.elements[i];
 
 				if (e.name.size() && e.name.front() != '.') {
 
-					if (gui_button(gui, e.name.c_str(), i, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f),
-						GuiCoord::IPixel(y), GuiCoord::IPixel(y + HEIGHT), editor.style.button_style)) {
+					gui_begin_grid_element(gui, 69u + i);
+
+					if (gui_button(gui, nullptr, 0u, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f),
+						GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), editor.style.button_style)) {
 
 						if (e.type == AssetElementType_Directory) {
 
@@ -907,9 +908,14 @@ namespace sv {
 						}
 					}
 
-					y += editor.style.vertical_padding + HEIGHT;
+					gui_text(gui, e.name.c_str(), 1u, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f),
+						GuiCoord::Relative(0.f), GuiCoord::Relative(0.2f));
+
+					gui_end_grid_element(gui);
 				}
 			}
+
+			gui_end_grid(gui);
 
 			// TEMP
 			if (input.unused && input.keys[Key_B] == InputState_Pressed) {
