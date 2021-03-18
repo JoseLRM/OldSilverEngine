@@ -1251,7 +1251,7 @@ namespace sv {
 			raw.style = style;
 			raw.bounds = w->bounds;
 
-			write_widget(gui, GuiWidgetType_Popup, id, &raw);
+			write_widget(gui, GuiWidgetType_Popup, w->id, &raw);
 			begin_parent(gui, w, id);
 			return true;
 		}
@@ -1299,7 +1299,7 @@ namespace sv {
 
 						GuiWidget* w = find_widget(gui, gui.last.id, gui.last.type);
 
-						if (mouse_in_bounds(gui, w->bounds)) {
+						if (w && mouse_in_bounds(gui, w->bounds)) {
 							open = true;
 						}
 					}
@@ -1974,6 +1974,17 @@ namespace sv {
 	{
 		PARSE_GUI();
 		auto& grid = gui.grid;
+	}
+
+	bool gui_begin_menu_item(GUI* gui_)
+	{
+		PARSE_GUI();
+		return false;
+	}
+
+	void gui_end_menu_item(GUI* gui_)
+	{
+		PARSE_GUI();
 	}
 
 }

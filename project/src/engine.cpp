@@ -20,6 +20,8 @@ namespace sv {
 	GlobalDevData dev;
 #endif
 
+	Result initialize_audio();
+	Result close_audio();
 	void update_assets();
 	void close_assets();
 	Result initialize_scene(Scene** pscene, const char* name);
@@ -153,6 +155,7 @@ namespace sv {
 		SV_LOG_INFO("Initializing %s", engine.name.c_str());
 
 		// CORE
+		INIT_SYSTEM("Audio",			initialize_audio());
 		INIT_SYSTEM("TaskSystem",		task_initialize(desc.minThreadsCount));
 		INIT_SYSTEM("Window",			window_initialize());
 		INIT_SYSTEM("GraphicsAPI",		graphics_initialize());

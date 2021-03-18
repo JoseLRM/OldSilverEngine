@@ -47,15 +47,38 @@ Result app_close_scene(Scene* scene)
 	return Result_Success;
 }
 
+AudioSource* source;
+Sound* s;
+
 Result init()
 {
 	set_active_scene("Test");
+
+	create_sound("On the nature of daylight.WAV", &s);
 
 	return Result_Success;
 }
 
 void update()
 {
+	if (input.keys[Key_P] == InputState_Pressed) {
+
+		create_audio_source(engine.scene->audio_device, s, &source);
+		play_sound(source);
+	}
+
+	if (input.keys[Key_Up]) {
+
+		f32 volume = get_audio_volume(source);
+		set_audio_volume(source, std::min(volume + 0.1f * engine.deltatime, 1.f));
+
+	}
+	if (input.keys[Key_Down]) {
+
+		f32 volume = get_audio_volume(source);
+		set_audio_volume(source, std::max(volume - 0.1f * engine.deltatime, 0.f));
+
+	}
 }
 
 void update_scene(Scene* scene)

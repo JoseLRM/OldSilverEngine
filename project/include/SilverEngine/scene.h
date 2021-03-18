@@ -3,6 +3,7 @@
 #include "SilverEngine/graphics.h"
 #include "SilverEngine/mesh.h"
 #include "SilverEngine/gui.h"
+#include "SilverEngine/audio.h"
 
 #define SV_ENTITY_NULL 0u
 #define SV_COMPONENT_ID_INVALID std::numeric_limits<sv::CompID>::max()
@@ -25,6 +26,8 @@ namespace sv {
 		Entity main_camera = SV_ENTITY_NULL;
 
 		GPUImage* skybox = nullptr;
+
+		AudioDevice* audio_device;
 
 		std::string name;
 

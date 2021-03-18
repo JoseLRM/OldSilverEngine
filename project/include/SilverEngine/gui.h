@@ -170,4 +170,7 @@ namespace sv {
 	void gui_end_grid_element(GUI* gui);
 	void gui_end_grid(GUI* gui);
 
+	bool gui_begin_menu_item(GUI* gui);
+	void gui_end_menu_item(GUI* gui);
+
 }

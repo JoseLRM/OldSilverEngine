@@ -129,6 +129,7 @@ namespace sv {
 		}
 
 		svCheck(gui_create(hash_string(name), &scene.gui));
+		svCheck(create_audio_device(&scene.audio_device));
 
 		bool deserialize = false;
 		Archive archive;
@@ -355,6 +356,7 @@ namespace sv {
 		svCheck(engine.callbacks.close_scene(scene_));
 
 		gui_destroy(scene.gui);
+		destroy_audio_device(scene.audio_device);
 
 		// Close ECS
 		{

@@ -908,8 +908,7 @@ namespace sv {
 						}
 					}
 
-					gui_text(gui, e.name.c_str(), 1u, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f),
-						GuiCoord::Relative(0.f), GuiCoord::Relative(0.2f));
+					gui_text(gui, e.name.c_str(), 1u, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(0.2f));
 
 					gui_end_grid_element(gui);
 				}
