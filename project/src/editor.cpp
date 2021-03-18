@@ -445,11 +445,17 @@ namespace sv {
 		{
 			EntityView<MeshComponent> meshes(engine.scene);
 
-			for (MeshComponent& m : meshes) {
+			for (ComponentView<MeshComponent>& v : meshes) {
+
+				MeshComponent& m = *v.comp;
+				Entity entity = v.entity;
+
+				if (editor.selected_entity == entity)
+					continue;
 
 				if (m.mesh.get() == nullptr) continue;
 
-				Transform trans = get_entity_transform(engine.scene, m.entity);
+				Transform trans = get_entity_transform(engine.scene, entity);
 
 				XMMATRIX itm = XMMatrixInverse(0, trans.getWorldMatrix());
 
@@ -477,7 +483,7 @@ namespace sv {
 						f32 dis = intersection.length();
 						if (dis < distance) {
 							distance = dis;
-							selected = m.entity;
+							selected = entity;
 						}
 					}
 				}
@@ -501,9 +507,14 @@ namespace sv {
 			XMVECTOR v2;
 			XMVECTOR v3;
 
-			for (SpriteComponent& s : sprites) {
+			for (ComponentView<SpriteComponent>& v : sprites) {
 
-				Transform trans = get_entity_transform(engine.scene, s.entity);
+				Entity entity = v.entity;
+
+				if (editor.selected_entity == entity)
+					continue;
+
+				Transform trans = get_entity_transform(engine.scene, entity);
 
 				XMMATRIX tm = trans.getWorldMatrix();
 
@@ -529,7 +540,7 @@ namespace sv {
 
 				if (dis < distance) {
 					distance = dis;
-					selected = s.entity;
+					selected = entity;
 				}
 			}
 		}

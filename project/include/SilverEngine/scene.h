@@ -203,26 +203,24 @@ namespace sv {
 
 	// Iterators
 
-	class ComponentIterator {
-		Scene* scene_;
-		CompID compID;
+	struct ComponentIterator {
+		
+		Scene* _scene;
+		BaseComponent* _it;
+		u32 _pool;
 
-		BaseComponent* it;
-		u32 pool;
+		CompID comp_id;
 
-	public:
-		ComponentIterator(Scene* scene, CompID compID, bool end);
-
-		BaseComponent* get_ptr();
-
-		void start_begin();
-		void start_end();
+		void get(Entity* entity, BaseComponent** comp);
 
 		bool equal(const ComponentIterator& other) const noexcept;
 		void next();
 		void last();
 
 	};
+
+	ComponentIterator begin_component_iterator(Scene* scene, CompID comp_id);
+	ComponentIterator end_component_iterator(Scene* scene, CompID comp_id);
 
 	// TEMPLATES
 
@@ -347,46 +345,58 @@ namespace sv {
 	}
 
 	template<typename Component>
-	class EntityView {
+	struct ComponentView {
+		Entity entity;
+		Component* comp;
+	};
 
-		Scene* m_Scene;
+	template<typename Component>
+	struct EntityView {
 
-	public:
+		Scene* _scene;
 
-		class TemplatedComponentIterator {
+		struct TemplatedComponentIterator {
 			ComponentIterator it;
 
-		public:
 			TemplatedComponentIterator(Scene* scene, CompID compID, bool end)
-				: it(scene, compID, end) {}
-			inline Component* operator->() { return reinterpret_cast<Component*>(it.get_ptr()); }
-			inline Component& operator*() { return *reinterpret_cast<Component*>(it.get_ptr()); }
+			{
+				if (end)
+					it = end_component_iterator(scene, compID);
+				else 
+					it = begin_component_iterator(scene, compID);
+			}
 
-			inline bool operator==(const TemplatedComponentIterator& other) const noexcept { return it.equal(other.it); }
-			inline bool operator!=(const TemplatedComponentIterator& other) const noexcept { return !it.equal(other.it); }
-			inline void operator+=(u32 count) { while (count-- > 0) it.next(); }
-			inline void operator-=(u32 count) { while (count-- > 0) it.last(); }
-			inline void operator++() { it.next(); }
-			inline void operator--() { it.last(); }
+			SV_INLINE ComponentView<Component>& operator*() 
+			{ 
+				ComponentView<Component> view;
+				it.get(&view.entity, reinterpret_cast<BaseComponent**>(&view.comp));
+				return view;
+			}
+
+			SV_INLINE bool operator==(const TemplatedComponentIterator& other) const noexcept { return it.equal(other.it); }
+			SV_INLINE bool operator!=(const TemplatedComponentIterator& other) const noexcept { return !it.equal(other.it); }
+			SV_INLINE void operator+=(u32 count) { while (count-- > 0) it.next(); }
+			SV_INLINE void operator-=(u32 count) { while (count-- > 0) it.last(); }
+			SV_INLINE void operator++() { it.next(); }
+			SV_INLINE void operator--() { it.last(); }
 		};
 
-	public:
-		EntityView(Scene* scene) : m_Scene(scene) {}
+		EntityView(Scene* scene) : _scene(scene) {}
 
-		u32 size()
+		SV_INLINE u32 size()
 		{
-			return get_component_count(m_Scene, Component::ID);
+			return get_component_count(_scene, Component::ID);
 		}
 
-		TemplatedComponentIterator begin()
+		SV_INLINE TemplatedComponentIterator begin()
 		{
-			TemplatedComponentIterator iterator(m_Scene, Component::ID, false);
+			TemplatedComponentIterator iterator(_scene, Component::ID, false);
 			return iterator;
 		}
 
-		TemplatedComponentIterator end()
+		SV_INLINE TemplatedComponentIterator end()
 		{
-			TemplatedComponentIterator iterator(m_Scene, Component::ID, true);
+			TemplatedComponentIterator iterator(_scene, Component::ID, true);
 			return iterator;
 		}
 

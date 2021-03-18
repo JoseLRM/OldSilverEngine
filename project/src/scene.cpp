@@ -446,12 +446,16 @@ namespace sv {
 
 					archive << componentAllocatorCount(scene_, compID);
 
-					ComponentIterator it(scene_, compID, false);
-					ComponentIterator end(scene_, compID, true);
+					ComponentIterator it = begin_component_iterator(scene_, compID);
+					ComponentIterator end = end_component_iterator(scene_, compID);
 
 					while (!it.equal(end)) {
-						BaseComponent* component = it.get_ptr();
-						archive << component->entity;
+
+						BaseComponent* component;
+						Entity entity;
+						it.get(&entity, &component);
+
+						archive << entity;
 						serialize_component(scene_, compID, component, archive);
 
 						it.next();
@@ -610,9 +614,12 @@ namespace sv {
 		{
 			EntityView<CameraComponent> cameras(scene_);
 
-			for (CameraComponent& camera : cameras) {
+			for (ComponentView<CameraComponent>& view : cameras) {
 
-				Transform trans = get_entity_transform(scene_, camera.entity);
+				CameraComponent& camera = *view.comp;
+				Entity entity = view.entity;
+
+				Transform trans = get_entity_transform(scene_, entity);
 				v3_f32 position = trans.getWorldPosition();
 				v4_f32 rotation = trans.getWorldRotation();
 
@@ -1358,133 +1365,136 @@ namespace sv {
 
 	// Iterators
 
-	ComponentIterator::ComponentIterator(Scene* scene_, CompID compID, bool end) : scene_(scene_), compID(compID), pool(0u)
+	ComponentIterator begin_component_iterator(Scene* scene_, CompID comp_id)
 	{
 		PARSE_SCENE();
 
-		if (end) start_end();
-		else start_begin();
-	}
+		ComponentIterator iterator;
+		iterator._scene = scene_;
+		iterator.comp_id = comp_id;
 
-	BaseComponent* ComponentIterator::get_ptr()
-	{
-		return it;
-	}
-
-	bool ComponentIterator::equal(const ComponentIterator& other) const noexcept
-	{
-		return it == other.it;
-	}
-
-	void ComponentIterator::next()
-	{
-		PARSE_SCENE();
-
-		auto& list = scene.components[compID];
-
-		size_t compSize = size_t(get_component_size(compID));
-		u8* ptr = reinterpret_cast<u8*>(it);
-		u8* endPtr = list.pools[pool].data + list.pools[pool].size;
-
-		do {
-			ptr += compSize;
-			if (ptr == endPtr) {
-				auto& list = scene.components[compID];
-
-				do {
-
-					if (++pool == list.pools.size()) break;
-
-				} while (componentPoolCount(list.pools[pool], compSize) == 0u);
-
-				if (pool == list.pools.size()) break;
-
-				ComponentPool& compPool = list.pools[pool];
-
-				ptr = compPool.data;
-				endPtr = ptr + compPool.size;
-			}
-		} while (reinterpret_cast<BaseComponent*>(ptr)->entity == SV_ENTITY_NULL);
-
-		it = reinterpret_cast<BaseComponent*>(ptr);
-	}
-
-	void ComponentIterator::last()
-	{
-		// TODO:
-		SV_LOG_ERROR("TODO-> This may fail");
-		PARSE_SCENE();
-
-		auto& list = scene.components[compID];
-
-		size_t compSize = size_t(get_component_size(compID));
-		u8* ptr = reinterpret_cast<u8*>(it);
-		u8* beginPtr = list.pools[pool].data;
-
-		do {
-			ptr -= compSize;
-			if (ptr == beginPtr) {
-
-				while (list.pools[--pool].size == 0u);
-
-				ComponentPool& compPool = list.pools[pool];
-
-				beginPtr = compPool.data;
-				ptr = beginPtr + compPool.size;
-			}
-		} while (reinterpret_cast<BaseComponent*>(ptr)->entity == SV_ENTITY_NULL);
-
-		it = reinterpret_cast<BaseComponent*>(ptr);
-	}
-
-	void ComponentIterator::start_begin()
-	{
-		PARSE_SCENE();
-
-		pool = 0u;
+		iterator._pool = 0u;
 		u8* ptr = nullptr;
 
-		if (!componentAllocatorIsEmpty(scene_, compID)) {
+		if (!componentAllocatorIsEmpty(scene_, iterator.comp_id)) {
 
-			const ComponentAllocator& list = scene.components[compID];
-			size_t compSize = size_t(get_component_size(compID));
+			const ComponentAllocator& list = scene.components[iterator.comp_id];
+			size_t comp_size = size_t(get_component_size(iterator.comp_id));
 
-			while (componentPoolCount(list.pools[pool], compSize) == 0u) pool++;
+			while (componentPoolCount(list.pools[iterator._pool], comp_size) == 0u) iterator._pool++;
 
-			ptr = list.pools[pool].data;
+			ptr = list.pools[iterator._pool].data;
 
 			while (true) {
 				BaseComponent* comp = reinterpret_cast<BaseComponent*>(ptr);
 				if (comp->entity != SV_ENTITY_NULL) {
 					break;
 				}
-				ptr += compSize;
+				ptr += comp_size;
 			}
 
 		}
 
-		it = reinterpret_cast<BaseComponent*>(ptr);
+		iterator._it = reinterpret_cast<BaseComponent*>(ptr);
+		return iterator;
 	}
 
-	void ComponentIterator::start_end()
+	ComponentIterator end_component_iterator(Scene* scene_, CompID comp_id)
 	{
 		PARSE_SCENE();
 
-		const ComponentAllocator& list = scene.components[compID];
+		ComponentIterator iterator;
+		iterator._scene = scene_;
+		iterator.comp_id = comp_id;
 
-		pool = u32(list.pools.size()) - 1u;
+		const ComponentAllocator& list = scene.components[iterator.comp_id];
+
+		iterator._pool = u32(list.pools.size()) - 1u;
 		u8* ptr = nullptr;
 
-		if (!componentAllocatorIsEmpty(scene_, compID)) {
+		if (!componentAllocatorIsEmpty(scene_, iterator.comp_id)) {
 
-			size_t compSize = size_t(get_component_size(compID));
+			size_t compSize = size_t(get_component_size(iterator.comp_id));
 
-			while (componentPoolCount(list.pools[pool], compSize) == 0u) pool--;
+			while (componentPoolCount(list.pools[iterator._pool], compSize) == 0u) iterator._pool--;
 
-			ptr = list.pools[pool].data + list.pools[pool].size;
+			ptr = list.pools[iterator._pool].data + list.pools[iterator._pool].size;
 		}
 
-		it = reinterpret_cast<BaseComponent*>(ptr);
+		iterator._it = reinterpret_cast<BaseComponent*>(ptr);
+		return iterator;
+	}
+
+	void ComponentIterator::get(Entity* entity, BaseComponent** comp)
+	{
+		*comp = _it;
+		*entity = _it->entity;
+	}
+
+	bool ComponentIterator::equal(const ComponentIterator& other) const noexcept
+	{
+		return _it == other._it;
+	}
+
+	void ComponentIterator::next()
+	{
+		Scene_internal& scene = *reinterpret_cast<Scene_internal*>(_scene);
+
+		auto& list = scene.components[comp_id];
+
+		size_t comp_size = size_t(get_component_size(comp_id));
+		u8* ptr = reinterpret_cast<u8*>(_it);
+		u8* endPtr = list.pools[_pool].data + list.pools[_pool].size;
+
+		do {
+			ptr += comp_size;
+			if (ptr == endPtr) {
+				auto& list = scene.components[comp_id];
+
+				do {
+
+					if (++_pool == list.pools.size()) break;
+
+				} while (componentPoolCount(list.pools[_pool], comp_size) == 0u);
+
+				if (_pool == list.pools.size()) break;
+
+				ComponentPool& compPool = list.pools[_pool];
+
+				ptr = compPool.data;
+				endPtr = ptr + compPool.size;
+			}
+		} while (reinterpret_cast<BaseComponent*>(ptr)->entity == SV_ENTITY_NULL);
+
+		_it = reinterpret_cast<BaseComponent*>(ptr);
+	}
+
+	void ComponentIterator::last()
+	{
+		// TODO:
+		SV_LOG_ERROR("TODO-> This may fail");
+		Scene_internal& scene = *reinterpret_cast<Scene_internal*>(_scene);
+
+		auto& list = scene.components[comp_id];
+
+		size_t compSize = size_t(get_component_size(comp_id));
+		u8* ptr = reinterpret_cast<u8*>(_it);
+		u8* beginPtr = list.pools[_pool].data;
+
+		do {
+			ptr -= compSize;
+			if (ptr == beginPtr) {
+
+				while (list.pools[--_pool].size == 0u);
+
+				ComponentPool& compPool = list.pools[_pool];
+
+				beginPtr = compPool.data;
+				ptr = beginPtr + compPool.size;
+			}
+		} while (reinterpret_cast<BaseComponent*>(ptr)->entity == SV_ENTITY_NULL);
+
+		_it = reinterpret_cast<BaseComponent*>(ptr);
 	}
 
 	//////////////////////////////////////////// TRANSFORM ///////////////////////////////////////////////////////////

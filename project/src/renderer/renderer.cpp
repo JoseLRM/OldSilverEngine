@@ -749,9 +749,12 @@ namespace sv {
 		{
 			EntityView<LightComponent> lights(scene);
 
-			for (const LightComponent& l : lights) {
+			for (const ComponentView<LightComponent>& v : lights) {
 
-				Transform trans = get_entity_transform(scene, l.entity);
+				Entity entity = v.entity;
+				LightComponent& l = *v.comp;
+
+				Transform trans = get_entity_transform(scene, entity);
 
 				switch (l.light_type)
 				{
@@ -844,9 +847,12 @@ namespace sv {
 					{
 						EntityView<SpriteComponent> sprites(scene);
 
-						for (SpriteComponent& spr : sprites) {
+						for (ComponentView<SpriteComponent>& view : sprites) {
 
-							Transform trans = get_entity_transform(scene, spr.entity);
+							SpriteComponent& spr = *view.comp;
+							Entity entity = view.entity;
+
+							Transform trans = get_entity_transform(scene, entity);
 							sprite_instances.emplace_back(trans.getWorldMatrix(), spr.texcoord, spr.texture.get(), spr.color, spr.layer);
 						}
 					}
@@ -985,12 +991,15 @@ namespace sv {
 					{
 						EntityView<MeshComponent> meshes(scene);
 
-						for (MeshComponent& mesh : meshes) {
+						for (ComponentView<MeshComponent>& view : meshes) {
+
+							MeshComponent& mesh = *view.comp;
+							Entity entity = view.entity;
 
 							Mesh* m = mesh.mesh.get();
 							if (m == nullptr) continue;
 
-							Transform trans = get_entity_transform(scene, mesh.entity);
+							Transform trans = get_entity_transform(scene, entity);
 							mesh_instances.emplace_back(trans.getWorldMatrix(), m, mesh.material.get());
 						}
 					}
