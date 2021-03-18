@@ -311,7 +311,7 @@ namespace sv {
 
 											BaseComponent* comp = reinterpret_cast<BaseComponent*>(it);
 											if (comp->entity != SV_ENTITY_NULL) {
-												destroy_component(compID, comp);
+												destroy_component(scene_, compID, comp);
 											}
 
 											it += compSize;
@@ -328,8 +328,8 @@ namespace sv {
 									archive >> entity;
 
 									BaseComponent* comp = componentAlloc(scene_, compID, entity, false);
-									deserialize_component(compID, comp, version , archive);
-									comp->entity = entity;
+									create_component(scene_, compID, comp, entity);
+									deserialize_component(scene_, compID, comp, version , archive);
 
 									scene.entityData[entity].components.emplace_back(compID, comp);
 								}
@@ -452,7 +452,7 @@ namespace sv {
 					while (!it.equal(end)) {
 						BaseComponent* component = it.get_ptr();
 						archive << component->entity;
-						serialize_component(compID, component, archive);
+						serialize_component(scene_, compID, component, archive);
 
 						it.next();
 					}
@@ -854,7 +854,7 @@ namespace sv {
 
 				BaseComponent* comp = reinterpret_cast<BaseComponent*>(ptr);
 				if (comp->entity != SV_ENTITY_NULL) {
-					destroy_component(compID, comp);
+					destroy_component(scene_, compID, comp);
 				}
 
 				ptr += compSize;
@@ -876,7 +876,7 @@ namespace sv {
 		ComponentPool& pool = componentAllocatorPreparePool(a, compSize);
 		BaseComponent* comp = reinterpret_cast<BaseComponent*>(componentPoolGetPtr(pool, compSize));
 
-		if (create) create_component(compID, comp, entity);
+		if (create) create_component(scene_, compID, comp, entity);
 
 		return comp;
 	}
@@ -891,7 +891,7 @@ namespace sv {
 		ComponentPool& pool = componentAllocatorPreparePool(a, compSize);
 		BaseComponent* comp = reinterpret_cast<BaseComponent*>(componentPoolGetPtr(pool, compSize));
 
-		copy_component(compID, srcComp, comp);
+		copy_component(scene_, compID, srcComp, comp);
 
 		return comp;
 	}
@@ -908,7 +908,7 @@ namespace sv {
 
 			if (componentPoolPtrExist(*it, comp)) {
 
-				destroy_component(compID, comp);
+				destroy_component(scene_, compID, comp);
 				componentPoolRmvPtr(*it, compSize, comp);
 
 				break;
@@ -1003,38 +1003,38 @@ namespace sv {
 		return u32(g_Registers.size());
 	}
 
-	void create_component(CompID ID, BaseComponent* ptr, Entity entity)
+	void create_component(Scene* scene, CompID ID, BaseComponent* ptr, Entity entity)
 	{
-		g_Registers[ID].createFn(ptr);
+		g_Registers[ID].createFn(scene, ptr);
 		ptr->entity = entity;
 	}
 
-	void destroy_component(CompID ID, BaseComponent* ptr)
+	void destroy_component(Scene* scene, CompID ID, BaseComponent* ptr)
 	{
-		g_Registers[ID].destroyFn(ptr);
+		g_Registers[ID].destroyFn(scene, ptr);
 		ptr->entity = SV_ENTITY_NULL;
 	}
 
-	void move_component(CompID ID, BaseComponent* from, BaseComponent* to)
+	void move_component(Scene* scene, CompID ID, BaseComponent* from, BaseComponent* to)
 	{
-		g_Registers[ID].moveFn(from, to);
+		g_Registers[ID].moveFn(scene, from, to);
 	}
 
-	void copy_component(CompID ID, BaseComponent* from, BaseComponent* to)
+	void copy_component(Scene* scene, CompID ID, const BaseComponent* from, BaseComponent* to)
 	{
-		g_Registers[ID].copyFn(from, to);
+		g_Registers[ID].copyFn(scene, from, to);
 	}
 
-	void serialize_component(CompID ID, BaseComponent* comp, Archive& archive)
+	void serialize_component(Scene* scene, CompID ID, BaseComponent* comp, Archive& archive)
 	{
 		SerializeComponentFunction fn = g_Registers[ID].serializeFn;
-		if (fn) fn(comp, archive);
+		if (fn) fn(scene, comp, archive);
 	}
 
-	void deserialize_component(CompID ID, BaseComponent* comp, u32 version, Archive& archive)
+	void deserialize_component(Scene* scene, CompID ID, BaseComponent* comp, u32 version, Archive& archive)
 	{
 		DeserializeComponentFunction fn = g_Registers[ID].deserializeFn;
-		if (fn) fn(comp, version, archive);
+		if (fn) fn(scene, comp, version, archive);
 	}
 
 	bool component_exist(CompID ID)
@@ -1889,7 +1889,6 @@ namespace sv {
 
 	//////////////////////////////////////////// COMPONENTS ////////////////////////////////////////////////////////
 
-	
 	void SpriteComponent::serialize(Archive& archive)
 	{
 		archive << texture << texcoord << color << layer;

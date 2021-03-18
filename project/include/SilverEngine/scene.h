@@ -70,12 +70,12 @@ namespace sv {
 	template<typename T, u32 V>
 	const u32 Component<T, V>::VERSION(V);
 
-	typedef void(*CreateComponentFunction)(BaseComponent*);
-	typedef void(*DestroyComponentFunction)(BaseComponent*);
-	typedef void(*MoveComponentFunction)(BaseComponent* from, BaseComponent* to);
-	typedef void(*CopyComponentFunction)(BaseComponent* from, BaseComponent* to);
-	typedef void(*SerializeComponentFunction)(BaseComponent* comp, Archive&);
-	typedef void(*DeserializeComponentFunction)(BaseComponent* comp, u32 version, Archive&);
+	typedef void(*CreateComponentFunction)(Scene* scene, BaseComponent*);
+	typedef void(*DestroyComponentFunction)(Scene* scene, BaseComponent*);
+	typedef void(*MoveComponentFunction)(Scene* scene, BaseComponent* from, BaseComponent* to);
+	typedef void(*CopyComponentFunction)(Scene* scene, const BaseComponent* from, BaseComponent* to);
+	typedef void(*SerializeComponentFunction)(Scene* scene, BaseComponent* comp, Archive&);
+	typedef void(*DeserializeComponentFunction)(Scene* scene, BaseComponent* comp, u32 version, Archive&);
 
 	struct ComponentRegisterDesc {
 
@@ -101,12 +101,12 @@ namespace sv {
 	CompID		get_component_id(const char* name);
 	u32			get_component_register_count();
 
-	void		create_component(CompID ID, BaseComponent* ptr, Entity entity);
-	void		destroy_component(CompID ID, BaseComponent* ptr);
-	void		move_component(CompID ID, BaseComponent* from, BaseComponent* to);
-	void		copy_component(CompID ID, BaseComponent* from, BaseComponent* to);
-	void		serialize_component(CompID ID, BaseComponent* comp, Archive& archive);
-	void		deserialize_component(CompID ID, BaseComponent* comp, u32 version, Archive& archive);
+	void		create_component(Scene* scene, CompID ID, BaseComponent* ptr, Entity entity);
+	void		destroy_component(Scene* scene, CompID ID, BaseComponent* ptr);
+	void		move_component(Scene* scene, CompID ID, BaseComponent* from, BaseComponent* to);
+	void		copy_component(Scene* scene, CompID ID, const BaseComponent* from, BaseComponent* to);
+	void		serialize_component(Scene* scene, CompID ID, BaseComponent* comp, Archive& archive);
+	void		deserialize_component(Scene* scene, CompID ID, BaseComponent* comp, u32 version, Archive& archive);
 	bool		component_exist(CompID ID);
 
 	// Transform
@@ -227,6 +227,56 @@ namespace sv {
 	// TEMPLATES
 
 	template<typename Component>
+	void register_component_ex(const char* name)
+	{
+		ComponentRegisterDesc desc;
+		desc.componentSize = sizeof(Component);
+		desc.name = name;
+		desc.version = Component::VERSION;
+
+		desc.createFn = [](Scene* scene, BaseComponent* comp_ptr)
+		{
+			Component* comp = new(comp_ptr) Component();
+			comp->create(scene);
+		};
+
+		desc.destroyFn = [](Scene* scene, BaseComponent* comp_ptr)
+		{
+			Component* comp = reinterpret_cast<Component*>(comp_ptr);
+			comp->destroy(scene);
+			comp->~Component();
+		};
+
+		desc.moveFn = [](Scene* scene, BaseComponent* from_ptr, BaseComponent* to_ptr)
+		{
+			Component* from = reinterpret_cast<Component*>(from_ptr);
+			Component* to = reinterpret_cast<Component*>(to_ptr);
+			to->move(scene, from);
+		};
+
+		desc.copyFn = [](Scene* scene, const BaseComponent* from_ptr, BaseComponent* to_ptr)
+		{
+			const Component* from = reinterpret_cast<const Component*>(from_ptr);
+			Component* to = reinterpret_cast<Component*>(to_ptr);
+			to->copy(scene, from);
+		};
+
+		desc.serializeFn = [](Scene* scene, BaseComponent* comp_, Archive& file)
+		{
+			Component* comp = reinterpret_cast<Component*>(comp_);
+			comp->serialize(scene, file);
+		};
+
+		desc.deserializeFn = [](Scene* scene, BaseComponent* comp_, u32 version, Archive& file)
+		{
+			Component* comp = reinterpret_cast<Component*>(comp_);
+			comp->deserialize(scene, version, file);
+		};
+
+		Component::ID = register_component(&desc);
+	}
+
+	template<typename Component>
 	void register_component(const char* name)
 	{
 		ComponentRegisterDesc desc;
@@ -234,40 +284,40 @@ namespace sv {
 		desc.name = name;
 		desc.version = Component::VERSION;
 
-		desc.createFn = [](BaseComponent* compPtr)
+		desc.createFn = [](Scene* scene, BaseComponent* compPtr)
 		{
 			new(compPtr) Component();
 		};
 
-		desc.destroyFn = [](BaseComponent* compPtr)
+		desc.destroyFn = [](Scene* scene, BaseComponent* compPtr)
 		{
 			Component* comp = reinterpret_cast<Component*>(compPtr);
 			comp->~Component();
 		};
 
-		desc.moveFn = [](BaseComponent* fromB, BaseComponent* toB)
+		desc.moveFn = [](Scene* scene, BaseComponent* fromB, BaseComponent* toB)
 		{
 			Component* from = reinterpret_cast<Component*>(fromB);
 			Component* to = reinterpret_cast<Component*>(toB);
-			new(to) Component(std::move(*from));
+			*to = std::move(*from);
 		};
 
-		desc.copyFn = [](BaseComponent* fromB, BaseComponent* toB)
+		desc.copyFn = [](Scene* scene, const BaseComponent* fromB, BaseComponent* toB)
 		{
-			Component* from = reinterpret_cast<Component*>(fromB);
+			const Component* from = reinterpret_cast<const Component*>(fromB);
 			Component* to = reinterpret_cast<Component*>(toB);
-			new(to) Component(*from);
+			*to = *from;
 		};
 
-		desc.serializeFn = [](BaseComponent* comp_, Archive& file)
+		desc.serializeFn = [](Scene* scene, BaseComponent* comp_, Archive& file)
 		{
 			Component* comp = reinterpret_cast<Component*>(comp_);
 			comp->serialize(file);
 		};
 
-		desc.deserializeFn = [](BaseComponent* comp_, u32 version, Archive& file)
+		desc.deserializeFn = [](Scene* scene, BaseComponent* comp_, u32 version, Archive& file)
 		{
-			Component* comp = new(comp_) Component();
+			Component* comp = reinterpret_cast<Component*>(comp_);
 			comp->deserialize(version, file);
 		};
 
@@ -351,8 +401,8 @@ namespace sv {
 		Color			color = Color::White();
 		u32				layer = 0u;
 
-		void serialize(Archive& archive);
-		void deserialize(u32 version, Archive& archive);
+		void serialize(Archive & archive);
+		void deserialize(u32 version, Archive & archive);
 
 	};
 
@@ -377,8 +427,8 @@ namespace sv {
 		XMMATRIX inverse_projection_matrix;
 		XMMATRIX inverse_view_projection_matrix;
 
-		void serialize(Archive& archive);
-		void deserialize(u32 version, Archive& archive);
+		void serialize(Archive & archive);
+		void deserialize(u32 version, Archive & archive);
 
 		SV_INLINE void adjust(f32 aspect)
 		{
@@ -413,8 +463,8 @@ namespace sv {
 		MeshAsset		mesh;
 		MaterialAsset	material;
 
-		void serialize(Archive& archive);
-		void deserialize(u32 version, Archive& archive);
+		void serialize(Archive & archive);
+		void deserialize(u32 version, Archive & archive);
 
 	};
 
@@ -432,8 +482,8 @@ namespace sv {
 		f32 range = 5.f;
 		f32 smoothness = 0.5f;
 
-		void serialize(Archive& archive);
-		void deserialize(u32 version, Archive& archive);
+		void serialize(Archive & archive);
+		void deserialize(u32 version, Archive & archive);
 
 	};
 
