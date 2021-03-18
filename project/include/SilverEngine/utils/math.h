@@ -937,7 +937,7 @@ namespace sv {
 						 const v3_f32& v2,
 						 v3_f32& outIntersectionPoint)
 	{
-		const f32 EPSILON = 0.0000001;
+		const f32 EPSILON = 0.0000001f;
 		v3_f32 edge1, edge2, h, s, q;
 		f32 a, f, u, v;
 		edge1 = v1 - v0;

@@ -2,7 +2,6 @@
 
 #include "SilverEngine/asset_system.h"
 #include "SilverEngine/utils/allocators/InstanceAllocator.h"
-#include "SilverEngine/utils/allocators/FrameList.h"
 
 namespace sv {
 
@@ -41,7 +40,7 @@ namespace sv {
 
 	static u32 check_type_index = 0u;
 	static f32 check_time = 0.f;
-	static FrameList<Asset_internal*> free_assets_list;
+	static List<Asset_internal*> free_assets_list;
 
 	SV_INLINE static Result destroy_asset(Asset_internal* asset, AssetType_internal* type)
 	{

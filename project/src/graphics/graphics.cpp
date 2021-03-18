@@ -5,7 +5,6 @@
 
 #include "vulkan/graphics_vulkan.h"
 #include "SilverEngine\graphics.h"
-#include "SilverEngine/utils/allocators/FrameList.h"
 
 namespace sv {
 
@@ -22,7 +21,7 @@ namespace sv {
 	static DepthStencilState*	g_DefDepthStencilState;
 	static RasterizerState*		g_DefRasterizerState;
 
-	static FrameList<Primitive*> primitives_to_destroy;
+	static List<Primitive*> primitives_to_destroy;
 	static std::mutex primitives_to_destroy_mutex;
 
 	Result graphics_initialize()

@@ -3,6 +3,7 @@
 #include "SilverEngine/scene.h"
 #include "SilverEngine/renderer.h"
 #include "SilverEngine/dev.h"
+#include "SilverEngine/audio.h"
 
 namespace sv {
 

@@ -1,12 +1,12 @@
 #pragma once
 
-#include "SilverEngine/asset_system.h"	
+#include "SilverEngine/scene.h"	
 
 namespace sv {
 
-	SV_DEFINE_HANDLE(Sound);
 	SV_DEFINE_HANDLE(AudioDevice);
 	SV_DEFINE_HANDLE(AudioSource);
+	SV_DEFINE_HANDLE(Sound);
 
 	Result create_audio_device(AudioDevice** pdevice);
 	Result destroy_audio_device(AudioDevice* device);

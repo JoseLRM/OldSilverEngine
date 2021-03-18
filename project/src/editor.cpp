@@ -888,7 +888,7 @@ namespace sv {
 
 			AssetBrowserInfo& info = editor.asset_browser;
 
-			gui_begin_grid(gui, info.elements.size(), 150.f, 5.f, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
+			gui_begin_grid(gui, u32(info.elements.size()), 150.f, 5.f, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
 
 			foreach (i, info.elements.size()) {
 

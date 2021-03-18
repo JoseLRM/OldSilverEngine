@@ -3,7 +3,6 @@
 #include "SilverEngine/graphics.h"
 #include "SilverEngine/mesh.h"
 #include "SilverEngine/gui.h"
-#include "SilverEngine/audio.h"
 
 #define SV_ENTITY_NULL 0u
 #define SV_COMPONENT_ID_INVALID std::numeric_limits<sv::CompID>::max()
@@ -15,6 +14,7 @@ namespace sv {
 	typedef u32 Entity;
 
 	struct CameraComponent;	
+	struct AudioDevice;	
 
 	struct Scene {
 

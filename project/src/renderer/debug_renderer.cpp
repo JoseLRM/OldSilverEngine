@@ -1,6 +1,5 @@
 #include "SilverEngine/core.h"
 
-#include "SilverEngine/utils/allocators/FrameList.h"
 #include "renderer/renderer_internal.h"
 
 namespace sv {
@@ -36,10 +35,10 @@ namespace sv {
 
 	struct DebugRendererBatch {
 
-		FrameList<DebugQuad> quads;
-		FrameList<DebugLine> lines;
-		FrameList<DebugTriangle> triangles;
-		FrameList<DebugMeshWireframe> mesh_wireframes;
+		List<DebugQuad> quads;
+		List<DebugLine> lines;
+		List<DebugTriangle> triangles;
+		List<DebugMeshWireframe> mesh_wireframes;
 		
 	};
 

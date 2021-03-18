@@ -1,7 +1,6 @@
 #include "SilverEngine/core.h"
 
 #include "SilverEngine/gui.h"
-#include "SilverEngine/utils/allocators/FrameList.h"
 
 #include "renderer/renderer_internal.h"
 
@@ -164,8 +163,8 @@ namespace sv {
 
 		GuiWidget* current_parent;
 
-		FrameList<GuiWidget> widgets;
-		FrameList<GuiIndex> indices;
+		List<GuiWidget> widgets;
+		List<GuiIndex> indices;
 
 		struct {
 			GuiWidgetType type;
@@ -190,7 +189,7 @@ namespace sv {
 		v2_f32 resolution;
 		f32 aspect;
 		v2_f32 mouse_position;
-		FrameList<u64> ids;
+		List<u64> ids;
 		u64 current_id;
 		v2_f32 begin_position;
 

@@ -163,7 +163,7 @@ namespace sv {
 
 				// Create new buffer
 				VulkanGPUAllocator::Buffer& buffer = allocator.buffers.emplace_back();
-				buffer = create_allocator_buffer(ALLOCATOR_BLOCK_SIZE + alignment);
+				buffer = create_allocator_buffer(ALLOCATOR_BLOCK_SIZE + u32(alignment));
 				buffer.current = (u8*)buffer.staging_buffer.data;
 				buffer.end = buffer.current + ALLOCATOR_BLOCK_SIZE + alignment;
 

@@ -56,7 +56,6 @@ TODO list:
 */
 
 #include "SilverEngine/platform/impl.h"
-#include "SilverEngine/utils/allocators/FrameList.h"
 
 #ifdef SV_PLATFORM_WIN
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -111,7 +110,7 @@ namespace sv {
 			u8* end = nullptr;
 		};
 
-		FrameList<Buffer> buffers;
+		List<Buffer> buffers;
 	};
 
 	struct DynamicAllocation {

@@ -3,7 +3,6 @@
 #include "renderer/renderer_internal.h"
 
 #include "SilverEngine/mesh.h"
-#include "SilverEngine/utils/allocators/FrameList.h"
 
 #include "SilverEngine/dev.h"
 
@@ -727,9 +726,9 @@ namespace sv {
 	};
 
 	// Temp data
-	static FrameList<SpriteInstance> sprite_instances;
-	static FrameList<MeshInstance> mesh_instances;
-	static FrameList<LightInstance> light_instances;
+	static List<SpriteInstance> sprite_instances;
+	static List<MeshInstance> mesh_instances;
+	static List<LightInstance> light_instances;
 
 	void draw_scene(Scene* scene)
 	{
