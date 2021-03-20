@@ -242,7 +242,7 @@ namespace sv {
 		return Result_Success;
 	}
 
-	static void show_component_info(f32& y, CompID comp_id, BaseComponent* comp)
+	static void show_component_info(f32& y, Entity entity, CompID comp_id, BaseComponent* comp)
 	{
 		GUI* gui = editor.gui;
 
@@ -258,7 +258,7 @@ namespace sv {
 		checkbox_style.inactive_box = GuiBox::Triangle(Color::Black(), false, 0.5f);
 		checkbox_style.color = Color::Black(0u);
 
-		gui_push_id(gui, u64("ShowComponent") ^ u64((u64(comp_id) << 32u) + comp->entity));
+		gui_push_id(gui, u64("ShowComponent") ^ u64((u64(comp_id) << 32u) + entity));
 
 		bool remove = false;
 
@@ -402,11 +402,11 @@ namespace sv {
 
 				CameraComponent& cam = *reinterpret_cast<CameraComponent*>(comp);
 
-				bool main = engine.scene->main_camera == cam.entity;
+				bool main = engine.scene->main_camera == entity;
 
 				if (gui_checkbox(gui, &main, 0u, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 30.f))) {
 
-					if (main) engine.scene->main_camera = cam.entity;
+					if (main) engine.scene->main_camera = entity;
 					else engine.scene->main_camera = SV_ENTITY_NULL;
 				}
 
@@ -421,7 +421,7 @@ namespace sv {
 
 		if (remove) {
 
-			remove_component_by_id(engine.scene, comp->entity, comp_id);
+			remove_component_by_id(engine.scene, entity, comp_id);
 		}
 
 		gui_pop_id(gui);
@@ -853,7 +853,7 @@ namespace sv {
 
 						auto [comp_id, comp] = get_component_by_index(engine.scene, selected, comp_index);
 
-						show_component_info(y, comp_id, comp);
+						show_component_info(y, selected, comp_id, comp);
 						comp_count = get_entity_component_count(engine.scene, selected);
 					}
 

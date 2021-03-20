@@ -5,6 +5,8 @@
 #include "SilverEngine/dev.h"
 #include "SilverEngine/audio.h"
 
+#define PREFAB_COMPONENT_FLAG SV_BIT(31ULL)
+
 namespace sv {
 
 	struct EntityTransform {
@@ -25,7 +27,7 @@ namespace sv {
 		Entity parent = SV_ENTITY_NULL;
 		u32 childsCount = 0u;
 		u32 flags = 0u;
-		std::vector<std::pair<CompID, BaseComponent*>> components;
+		List<std::pair<CompID, BaseComponent*>> components;
 		std::string name;
 
 	};
@@ -40,10 +42,17 @@ namespace sv {
 
 		u32 size = 0u;
 		u32 capacity = 0u;
-		std::vector<Entity> freeList;
+		List<Entity> freeList;
 
 		inline EntityData& operator[](Entity entity) { SV_ASSERT(entity != SV_ENTITY_NULL); return accessData[entity]; }
 		inline EntityTransform& get_transform(Entity entity) { SV_ASSERT(entity != SV_ENTITY_NULL); return accessTransformData[entity]; }
+
+	};
+
+	struct Prefab_internal {
+
+		List<Entity> entities;
+		List<std::pair<CompID, BaseComponent*>> components;
 
 	};
 
@@ -106,7 +115,7 @@ namespace sv {
 	void			componentAllocatorCreate(Scene* scene, CompID ID);									// Create the allocator
 	void			componentAllocatorDestroy(Scene* scene, CompID ID);									// Destroy the allocator
 	BaseComponent*	componentAlloc(Scene* scene, CompID compID, Entity entity, bool create = true);		// Allocate and create new component
-	BaseComponent*	componentAlloc(Scene* scene, CompID compID, BaseComponent* srcComp);				// Allocate and copy new component
+	BaseComponent*	componentAlloc(Scene* scene, CompID compID, BaseComponent* srcComp, Entity entity);	// Allocate and copy new component
 	void			componentFree(Scene* scene, CompID compID, BaseComponent* comp);					// Free and destroy component
 	u32				componentAllocatorCount(Scene* scene, CompID compId);								// Return the number of valid components in all the pools
 	bool			componentAllocatorIsEmpty(Scene* scene, CompID compID);								// Return if the allocator is empty
@@ -310,7 +319,7 @@ namespace sv {
 										while (it != end) {
 
 											BaseComponent* comp = reinterpret_cast<BaseComponent*>(it);
-											if (comp->entity != SV_ENTITY_NULL) {
+											if (comp->_id != 0u) {
 												destroy_component(scene_, compID, comp);
 											}
 
@@ -779,7 +788,7 @@ namespace sv {
 
 			while (it != end) {
 
-				if (reinterpret_cast<BaseComponent*>(it)->entity == SV_ENTITY_NULL) {
+				if (reinterpret_cast<BaseComponent*>(it)->_id == 0u) {
 					ptr = it;
 					break;
 				}
@@ -860,7 +869,7 @@ namespace sv {
 			while (ptr != endPtr) {
 
 				BaseComponent* comp = reinterpret_cast<BaseComponent*>(ptr);
-				if (comp->entity != SV_ENTITY_NULL) {
+				if (comp->_id != 0u) {
 					destroy_component(scene_, compID, comp);
 				}
 
@@ -888,7 +897,7 @@ namespace sv {
 		return comp;
 	}
 
-	static BaseComponent* componentAlloc(Scene* scene_, CompID compID, BaseComponent* srcComp)
+	static BaseComponent* componentAlloc(Scene* scene_, CompID compID, BaseComponent* srcComp, Entity entity)
 	{
 		PARSE_SCENE();
 
@@ -898,6 +907,7 @@ namespace sv {
 		ComponentPool& pool = componentAllocatorPreparePool(a, compSize);
 		BaseComponent* comp = reinterpret_cast<BaseComponent*>(componentPoolGetPtr(pool, compSize));
 
+		create_component(scene_, compID, comp, entity);
 		copy_component(scene_, compID, srcComp, comp);
 
 		return comp;
@@ -1013,13 +1023,13 @@ namespace sv {
 	void create_component(Scene* scene, CompID ID, BaseComponent* ptr, Entity entity)
 	{
 		g_Registers[ID].createFn(scene, ptr);
-		ptr->entity = entity;
+		ptr->_id = Entity(entity);
 	}
 
 	void destroy_component(Scene* scene, CompID ID, BaseComponent* ptr)
 	{
 		g_Registers[ID].destroyFn(scene, ptr);
-		ptr->entity = SV_ENTITY_NULL;
+		ptr->_id = 0u;
 	}
 
 	void move_component(Scene* scene, CompID ID, BaseComponent* from, BaseComponent* to)
@@ -1191,8 +1201,7 @@ namespace sv {
 		Scene* scene_ = reinterpret_cast<Scene*>(&scene);
 		Entity copy;
 
-		if (parent == SV_ENTITY_NULL) copy = create_entity(scene_);
-		else copy = create_entity(scene_, parent);
+		copy = create_entity(scene_, parent);
 
 		EntityData& duplicatedEd = scene.entityData[duplicated];
 		EntityData& copyEd = scene.entityData[copy];
@@ -1207,9 +1216,8 @@ namespace sv {
 			size_t SIZE = get_component_size(ID);
 
 			BaseComponent* comp = ecs_entitydata_index_get(duplicatedEd, ID);
-			BaseComponent* newComp = componentAlloc(scene_, ID, comp);
+			BaseComponent* newComp = componentAlloc(scene_, ID, comp, copy);
 
-			newComp->entity = copy;
 			ecs_entitydata_index_add(copyEd, ID, newComp);
 		}
 
@@ -1316,8 +1324,7 @@ namespace sv {
 	{
 		PARSE_SCENE();
 
-		comp = componentAlloc(scene_, componentID, comp);
-		comp->entity = entity;
+		comp = componentAlloc(scene_, componentID, comp, Entity(entity));
 		ecs_entitydata_index_add(scene.entityData[entity], componentID, comp);
 
 		return comp;
@@ -1387,7 +1394,7 @@ namespace sv {
 
 			while (true) {
 				BaseComponent* comp = reinterpret_cast<BaseComponent*>(ptr);
-				if (comp->entity != SV_ENTITY_NULL) {
+				if (comp->_id != 0u) {
 					break;
 				}
 				ptr += comp_size;
@@ -1428,7 +1435,7 @@ namespace sv {
 	void ComponentIterator::get(Entity* entity, BaseComponent** comp)
 	{
 		*comp = _it;
-		*entity = _it->entity;
+		*entity = Entity(_it->_id);
 	}
 
 	bool ComponentIterator::equal(const ComponentIterator& other) const noexcept
@@ -1464,7 +1471,7 @@ namespace sv {
 				ptr = compPool.data;
 				endPtr = ptr + compPool.size;
 			}
-		} while (reinterpret_cast<BaseComponent*>(ptr)->entity == SV_ENTITY_NULL);
+		} while (reinterpret_cast<BaseComponent*>(ptr)->_id == 0u);
 
 		_it = reinterpret_cast<BaseComponent*>(ptr);
 	}
@@ -1492,7 +1499,7 @@ namespace sv {
 				beginPtr = compPool.data;
 				ptr = beginPtr + compPool.size;
 			}
-		} while (reinterpret_cast<BaseComponent*>(ptr)->entity == SV_ENTITY_NULL);
+		} while (reinterpret_cast<BaseComponent*>(ptr)->_id == 0u);
 
 		_it = reinterpret_cast<BaseComponent*>(ptr);
 	}

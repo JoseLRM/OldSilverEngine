@@ -51,7 +51,7 @@ namespace sv {
 	};
 
 	struct BaseComponent {
-		Entity entity = SV_ENTITY_NULL;
+		u32 _id = 0u;
 	};
 
 	template<typename T, u32 V>
@@ -297,14 +297,18 @@ namespace sv {
 		{
 			Component* from = reinterpret_cast<Component*>(fromB);
 			Component* to = reinterpret_cast<Component*>(toB);
+			u64 id = to->_id;
 			*to = std::move(*from);
+			to->_id = id;
 		};
 
 		desc.copyFn = [](Scene* scene, const BaseComponent* fromB, BaseComponent* toB)
 		{
 			const Component* from = reinterpret_cast<const Component*>(fromB);
 			Component* to = reinterpret_cast<Component*>(toB);
+			u64 id = to->_id;
 			*to = *from;
+			to->_id = id;
 		};
 
 		desc.serializeFn = [](Scene* scene, BaseComponent* comp_, Archive& file)
@@ -366,7 +370,7 @@ namespace sv {
 					it = begin_component_iterator(scene, compID);
 			}
 
-			SV_INLINE ComponentView<Component>& operator*() 
+			SV_INLINE ComponentView<Component> operator*() 
 			{ 
 				ComponentView<Component> view;
 				it.get(&view.entity, reinterpret_cast<BaseComponent**>(&view.comp));

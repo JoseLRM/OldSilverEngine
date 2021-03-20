@@ -799,7 +799,7 @@ namespace sv {
 					camera_ = get_main_camera(scene);
 					if (camera_) {
 
-						Transform trans = get_entity_transform(scene, camera_->entity);
+						Transform trans = get_entity_transform(scene, scene->main_camera);
 						cam_pos = trans.getWorldPosition();
 						cam_rot = trans.getWorldRotation();
 					}

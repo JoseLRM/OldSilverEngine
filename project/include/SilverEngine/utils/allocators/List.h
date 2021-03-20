@@ -63,6 +63,72 @@ namespace sv {
 			clear();
 		}
 
+		List(const List& other)
+		{
+			if (other._data) {
+
+				_data = (T*)malloc(sizeof(T) * other._size);
+				
+				foreach(i, other._size) {
+					_data[i] = other._data[i];
+				}
+				_size = other._size;
+				_capacity = other._capacity;
+			}
+			else {
+				_size = 0u;
+				_capacity = 0u;
+				_data = nullptr;
+			}
+		}
+
+		List(List&& other)
+		{
+			_data = other._data;
+			_size = other._size;
+			_capacity = other._capacity;
+			other._data = nullptr;
+			other._size = 0u;
+			other._capacity = 0u;
+		}
+
+		List& operator=(const List& other) 
+		{
+			clear();
+
+			if (other._data) {
+
+				_data = (T*)malloc(sizeof(T) * other.size);
+
+				foreach(i, other._size) {
+					_data[i] = other._data[i];
+				}
+				_size = other._size;
+				_capacity = other._capacity;
+			}
+			else {
+				_size = 0u;
+				_capacity = 0u;
+				_data = nullptr;
+			}
+
+			return *this;
+		}
+
+		List& operator=(List&& other) 
+		{
+			clear();
+
+			_data = other._data;
+			_size = other._size;
+			_capacity = other._capacity;
+			other._data = nullptr;
+			other._size = 0u;
+			other._capacity = 0u;
+
+			return *this;
+		}
+
 		template<typename... Args>
 		T& emplace_back(Args&& ...args)
 		{
@@ -97,7 +163,28 @@ namespace sv {
 		void resize(size_t size)
 		{
 			reserve(size);
+			if (size > _size) {
+				for (size_t i = _size; i < size; ++i) {
+					new(_data + i) T();
+				}
+			}
 			_size = size;
+		}
+
+		ListIterator<T> erase(const ListIterator<T>& it_)
+		{
+			T* it = it_.ptr;
+			T* end = _data + _size;
+			it->~T();
+
+			while (it != end - 1u) {
+
+				*it = std::move(*(it + 1u));
+				++it;
+			}
+
+			--_size;
+			return ListIterator(it);
 		}
 
 		T& operator[](size_t index)
