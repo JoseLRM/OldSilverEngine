@@ -46,7 +46,7 @@ Result app_close_scene(Scene* scene)
 	return Result_Success;
 }
 
-AudioSource* source;
+AudioSource* source = nullptr;
 Sound* s;
 
 Result init()
@@ -60,7 +60,7 @@ Result init()
 
 void update()
 {
-	if (input.keys[Key_P] == InputState_Pressed) {
+	if (source == nullptr) {
 
 		create_audio_source(engine.scene->audio_device, s, &source);
 		play_sound(source);

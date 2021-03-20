@@ -697,8 +697,51 @@ namespace sv {
 				gui_end_popup(editor.gui);
 			}
 
+			// MENU
+
+			gui_push_id(g, "MENU");
+
+			if (gui_begin_menu_item(g, "Test", 0u)) {
+
+				if (gui_button(g, "ExitXD", 0u, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f))) {
+					engine.close_request = true;
+				}
+
+				gui_end_menu_item(g);
+			}
+
+			if (gui_begin_menu_item(g, "Holaa", 1u)) {
+
+
+
+				gui_end_menu_item(g);
+			}
+
+			gui_pop_id(g);
+
 			gui_end_window(g);
 		}
+
+
+		gui_push_id(g, "MENU");
+
+		if (gui_begin_menu_item(g, "Test", 0u)) {
+
+			if (gui_button(g, "Exit", 0u, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f))) {
+				engine.close_request = true;
+			}
+
+			gui_end_menu_item(g);
+		}
+
+		if (gui_begin_menu_item(g, "Holaa", 1u)) {
+
+
+
+			gui_end_menu_item(g);
+		}
+
+		gui_pop_id(g);
 	}
 
 	void display_entity_inspector()

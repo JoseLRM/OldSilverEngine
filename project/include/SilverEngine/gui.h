@@ -5,7 +5,7 @@
 
 namespace sv {
 
-	enum GuiConstraint : u32 {
+	enum GuiConstraint : u8 {
 		GuiConstraint_Relative,
 		GuiConstraint_Absolute,
 		GuiConstraint_InverseAbsolute,
@@ -131,6 +131,12 @@ namespace sv {
 		Color background_color = Color::White();
 	};
 
+	struct GuiMenuItemStyle {
+		Color color = Color::White();
+		Color hot_color = Color::Gray(200u);
+		Color text_color = Color::Black();
+	};
+
 	Result gui_create(u64 hashcode, GUI** pgui);
 	Result gui_destroy(GUI* gui);
 
@@ -152,6 +158,9 @@ namespace sv {
 	Result gui_show_window(GUI* gui, const char* title);
 	Result gui_hide_window(GUI* gui, const char* title);
 
+	bool gui_begin_menu_item(GUI* gui, const char* text, u64 id, const GuiMenuItemStyle& style = {});
+	void gui_end_menu_item(GUI* gui);
+
 	bool gui_button(GUI* gui, const char* text, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiButtonStyle& style = {});
 	bool gui_drag_f32(GUI* gui, f32* value, f32 adv, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiDragStyle& style = {});
 	bool gui_slider(GUI* gui, f32* value, f32 min, f32 max, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiSliderStyle& style = {});
@@ -169,8 +178,5 @@ namespace sv {
 	void gui_begin_grid_element(GUI* gui, u64 id);
 	void gui_end_grid_element(GUI* gui);
 	void gui_end_grid(GUI* gui);
-
-	bool gui_begin_menu_item(GUI* gui);
-	void gui_end_menu_item(GUI* gui);
 
 }
