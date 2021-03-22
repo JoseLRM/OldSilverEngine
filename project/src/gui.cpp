@@ -42,6 +42,8 @@ namespace sv {
 		Raw_Coords coords;
 		GuiDragStyle style;
 		f32 value;
+		f32 min;
+		f32 max;
 		f32 adv;
 	};
 
@@ -129,6 +131,8 @@ namespace sv {
 
 			struct {
 				f32 value;
+				f32 min;
+				f32 max;
 				f32 adv;
 				GuiDragStyle style;
 			} drag;
@@ -838,7 +842,7 @@ namespace sv {
 			else {
 
 				drag.value += input.mouse_dragged.x * gui.resolution.x * drag.adv;
-				drag.value += input.mouse_dragged.x * gui.resolution.x * drag.adv;
+				drag.value = std::max(std::min(drag.value, drag.max), drag.min);
 			}
 		}
 		break;
@@ -1083,6 +1087,8 @@ namespace sv {
 
 			Raw_Drag raw = _read<Raw_Drag>(it);
 			drag.value = raw.value;
+			drag.min = raw.min;
+			drag.max = raw.max;
 			drag.adv = raw.adv;
 			drag.style = raw.style;
 			w.raw_coords = raw.coords;
@@ -1695,7 +1701,7 @@ namespace sv {
 		}
 	}
 
-	bool gui_drag_f32(GUI* gui_, f32* value, f32 adv, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiDragStyle& style)
+	bool gui_drag_f32(GUI* gui_, f32* value, f32 adv, f32 min, f32 max, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiDragStyle& style)
 	{
 		PARSE_GUI();
 		hash_combine(id, gui.current_id);
@@ -1720,6 +1726,8 @@ namespace sv {
 			raw.coords.y1 = y1;
 			raw.style = style;
 			raw.value = *value;
+			raw.min = min;
+			raw.max = max;
 			raw.adv = adv;
 
 			write_widget(gui, GuiWidgetType_Drag, id, &raw);
