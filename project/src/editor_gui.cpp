@@ -271,6 +271,16 @@ namespace sv {
 		gui_button(dev.gui, "TODO", 1u, GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
 		info.yoff += COMP_ITEM_HEIGHT + VPADDING;
 
+		AssetPackage package;
+		if (gui_recive_package(dev.gui, &package, nullptr, ASSET_BROWSER_PACKAGE)) {
+
+			Result res = load_asset_from_file(*texture, package.filepath);
+			if (result_fail(res)) {
+
+				SV_LOG_ERROR("Can't load the texture '%s': %s", package.filepath, result_str(res));
+			}
+		}
+
 		gui_pop_id(dev.gui);
 	}
 

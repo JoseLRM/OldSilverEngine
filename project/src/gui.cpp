@@ -84,6 +84,11 @@ namespace sv {
 	struct Raw_Package {
 		const void* package;
 		u32 package_size;
+		u64 package_id;
+	};
+
+	struct Raw_Reciver {
+		u64 package_id;
 	};
 
 	///////////////////////////////// WIDGET STRUCTS ///////////////////////////////////
@@ -185,11 +190,12 @@ namespace sv {
 			struct {
 				void* data;
 				u32 size;
-				bool dropped;
+				u64 package_id;
 			} package;
 
 			struct {
 				u64 package_id;
+				bool recived;
 			} reciver;
 
 		} widget;
@@ -245,8 +251,9 @@ namespace sv {
 		List<u64> ids;
 		u64 current_id;
 		v2_f32 begin_position;
+		
 		RawList package_data;
-		u64 reciver_id;
+		u64 package_id;
 		
 		// HIGH LEVEL
 
@@ -510,6 +517,15 @@ namespace sv {
 			if (raw->package_size) {
 				write_buffer(gui, raw->package, raw->package_size);
 			}
+
+			write_buffer(gui, raw->package_id);
+		}
+		break;
+
+		case GuiWidgetType_Reciver:
+		{
+			Raw_Reciver* raw = (Raw_Reciver*)data;
+			write_buffer(gui, *raw);
 		}
 		break;
 
@@ -751,6 +767,16 @@ namespace sv {
 		}
 		break;
 
+		case GuiWidgetType_Reciver:
+		{
+			if (input.unused && mouse_in_bounds(gui, w.bounds)) {
+
+				w.widget.reciver.recived = true;
+				input.unused = false;
+			}
+		}
+		break;
+
 		case GuiWidgetType_MenuContainer:
 		{
 			bool any = false;
@@ -766,16 +792,6 @@ namespace sv {
 
 				GuiWidget* menu = &gui.widgets[w.index - 1u];
 				menu->widget.menu_item.active = false;
-			}
-		}
-		break;
-
-		case GuiWidgetType_Reciver:
-		{
-			if (input.unused && mouse_in_bounds(gui, w.bounds)) {
-
-				gui.reciver_id = w.id;
-				input.unused = false;
 			}
 		}
 		break;
@@ -923,8 +939,12 @@ namespace sv {
 			if (mouse == InputState_Released) {
 
 				free_focus(gui);
-				p.dropped = true;
+				gui.package_id = p.package_id;
+				gui.package_data.reset();
 				gui.package_data.write_back(p.data, p.size);
+			}
+			else if (mouse == InputState_None) {
+				free_focus(gui);
 			}
 		}
 		break;
@@ -1018,9 +1038,6 @@ namespace sv {
 		gui.mouse_position = input.mouse_position + 0.5f;
 		gui.parent_stack.reset();
 
-		if (gui.reciver_id == 0u)
-			gui.package_data.reset();
-
 		gui.last.id = 0u;
 		gui.last.type = GuiWidgetType_None;
 
@@ -1067,7 +1084,6 @@ namespace sv {
 		switch (type)
 		{
 		case GuiWidgetType_MenuContainer:
-		case GuiWidgetType_Reciver:
 			break;
 
 		case GuiWidgetType_Container:
@@ -1180,7 +1196,6 @@ namespace sv {
 		case GuiWidgetType_Package:
 		{
 			auto& p = w.widget.package;
-			p.dropped = false;
 			
 			p.size = _read<u32>(it);
 			if (p.size) {
@@ -1188,6 +1203,17 @@ namespace sv {
 				it += p.size;
 			}
 			else p.data = nullptr;
+
+			p.package_id = _read<u64>(it);
+		}
+		break;
+
+		case GuiWidgetType_Reciver:
+		{
+			auto& reciver = w.widget.reciver;
+
+			Raw_Reciver raw = _read<Raw_Reciver>(it);
+			reciver.package_id = raw.package_id;
 		}
 		break;
 
@@ -1759,10 +1785,11 @@ namespace sv {
 
 	/////////////////////////////////////// PACKAGE ///////////////////////////////////////
 
-	void gui_send_package(GUI* gui_, const void* package, u32 package_size, u64 id)
+	void gui_send_package(GUI* gui_, const void* package, u32 package_size, u64 package_id, u64 id)
 	{
 		PARSE_GUI();
-		hash_combine(id, 0xa89d4fb319);
+		hash_combine(id, gui.current_id);
+		hash_combine(package_id, 0xa89d4fb319);
 
 		Raw_Package raw;
 		
@@ -1770,33 +1797,36 @@ namespace sv {
 			
 			raw.package = package;
 			raw.package_size = package_size;
+			raw.package_id = package_id;
 		}
 		else raw.package_size = 0u;
 		
-		write_widget(gui, GuiWidgetType_Package, &raw);
+		write_widget(gui, GuiWidgetType_Package, id, &raw);
 	}
 	
-	bool gui_recive_package(GUI* gui_, void** package, u32* package_size, u64 sender_id, u64 id)
+	bool gui_recive_package(GUI* gui_, void** package, u32* package_size, u64 package_id, u64 id)
 	{
 		PARSE_GUI();
-		hash_combine(sender_id, 0xa89d4fb319);
+		hash_combine(package_id, 0xa89d4fb319);
 		
-		if (gui.current_focus.index != u32_max && gui.current_focus.id == sender_id) {
+		if (gui.package_id == package_id) {
 
 			hash_combine(id, gui.current_id);
 			
-			GuiWidget* w = find_widget(gui, GuiWidgetType_Package, sender_id);
-			if (w && w->widget.package.dropped) {
+			GuiWidget* w = find_widget(gui, id, GuiWidgetType_Reciver);
 
-				write_widget(gui, GuiWidgetType_Reciver, nullptr);
+			if (w && w->recive) {
+				gui.package_id = 0u;
+				*package = gui.reciver_data.data();
+				if (package_size) *package_size = u32(gui.reciver_data.size());
+				return true;
 			}
-		}
-
-		if (gui.reciver_id == id) {
-			gui.reciver_id = 0u;
-			*package = gui.reciver_data.data();
-			*package_size = u32(gui.reciver_data.size());
-			return true;
+			else {
+				Raw_Reciver raw;
+				raw.package_id = package_id;
+				
+				write_widget(gui, GuiWidgetType_Reciver, &raw);
+			}
 		}
 		
 		return false;
@@ -2220,6 +2250,17 @@ namespace sv {
 		}
 		break;
 
+		case GuiWidgetType_Reciver:
+		{
+			v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y) * 2.f - 1.f;
+			v2_f32 size = v2_f32(w.bounds.z, w.bounds.w) * 2.f;
+
+			begin_debug_batch(cmd);
+			draw_debug_quad(pos.getVec3(), size, Color::White(180u), cmd);
+			end_debug_batch(true, false, XMMatrixIdentity(), cmd);
+		}
+		break;
+
 		case GuiWidgetType_MenuContainer:
 		{
 			auto& container = w.widget.menu_container;
@@ -2346,6 +2387,14 @@ namespace sv {
 
 				i += parent_index->widget_count;
 			}
+		}
+
+		if (gui.package_id != 0u) {
+
+			begin_debug_batch(cmd);
+			draw_debug_quad(gui.mouse_position.getVec3(0.f), { 0.01f, 0.01f * gui.aspect }, Color::Green(), cmd);
+			end_debug_batch(true, false, XMMatrixIdentity(), cmd);
+
 		}
 	}
 

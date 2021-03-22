@@ -6,7 +6,7 @@
 #include "SilverEngine/dev.h"
 
 namespace sv {
-
+	
 	struct EditorStyle {
 
 		GuiWindowStyle window_style;
@@ -719,10 +719,13 @@ namespace sv {
 
 				if (e.name.size() && e.name.front() != '.') {
 
+					// TODO: ignore unused elements
 					gui_begin_grid_element(gui, 69u + i);
 
+					gui_text(gui, e.name.c_str(), 1u, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(0.2f));
+
 					if (gui_button(gui, nullptr, 0u, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f),
-						GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), editor.style.button_style)) {
+						       GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), editor.style.button_style)) {
 
 						if (e.type == AssetElementType_Directory) {
 
@@ -731,7 +734,21 @@ namespace sv {
 						}
 					}
 
-					gui_text(gui, e.name.c_str(), 1u, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(0.2f));
+					if (e.type != AssetElementType_Directory) {
+
+						AssetPackage pack;
+						size_t size = std::min(info.filepath.size(), size_t(AssetPackage::MAX_SIZE));
+						memcpy(pack.filepath, info.filepath.data(), size);
+						pack.filepath[size] = '\0';
+
+						// TODO
+						SV_ASSERT(size != AssetPackage::MAX_SIZE);
+						
+						gui_send_package(gui, &pack, sizeof(AssetPackage), ASSET_BROWSER_PACKAGE, 1u);
+
+					}
+
+					gui_text(gui, e.name.c_str(), 2u, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(0.2f));
 
 					gui_end_grid_element(gui);
 				}

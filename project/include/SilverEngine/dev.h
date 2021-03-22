@@ -26,6 +26,13 @@ namespace sv {
 
 	// EDITOR GUI
 
+	constexpr u32 ASSET_BROWSER_PACKAGE = 69u;
+	
+	struct AssetPackage {
+		static constexpr MAX_SIZE = 500u;
+		char filepath[MAX_SIZE + 1u];
+	};
+
 	bool egui_begin();
 	void egui_end();
 
