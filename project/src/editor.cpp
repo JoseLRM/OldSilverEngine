@@ -304,8 +304,8 @@ namespace sv {
 				}
 					
 				egui_comp_drag_f32("Near", 1u, &cam.near, near_adv, near_min, near_max);
-				egui_comp_drag_f32("Far", 1u, &cam.far, far_adv, far_min, far_max);
-				if (egui_comp_drag_f32("Dimension", 1u, &dimension)) {
+				egui_comp_drag_f32("Far", 2u, &cam.far, far_adv, far_min, far_max);
+				if (egui_comp_drag_f32("Dimension", 3u, &dimension, 0.01f, 0.01f)) {
 					cam.width = dimension;
 					cam.height = dimension;
 				}
@@ -720,12 +720,10 @@ namespace sv {
 				if (e.name.size() && e.name.front() != '.') {
 
 					// TODO: ignore unused elements
-					gui_begin_grid_element(gui, 69u + i);
-
-					gui_text(gui, e.name.c_str(), 1u, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(0.2f));
+					gui_begin_grid_element(gui, 69u + i);					
 
 					if (gui_button(gui, nullptr, 0u, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f),
-						       GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), editor.style.button_style)) {
+						GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), editor.style.button_style)) {
 
 						if (e.type == AssetElementType_Directory) {
 
@@ -737,13 +735,13 @@ namespace sv {
 					if (e.type != AssetElementType_Directory) {
 
 						AssetPackage pack;
-						size_t size = std::min(info.filepath.size(), size_t(AssetPackage::MAX_SIZE));
-						memcpy(pack.filepath, info.filepath.data(), size);
+						size_t size = info.filepath.size() + e.name.size();
+						SV_ASSERT(size < AssetPackage::MAX_SIZE);
+
+						memcpy(pack.filepath, info.filepath.data(), info.filepath.size());
+						memcpy(pack.filepath + info.filepath.size(), e.name.data(), e.name.size());
 						pack.filepath[size] = '\0';
 
-						// TODO
-						SV_ASSERT(size != AssetPackage::MAX_SIZE);
-						
 						gui_send_package(gui, &pack, sizeof(AssetPackage), ASSET_BROWSER_PACKAGE, 1u);
 
 					}

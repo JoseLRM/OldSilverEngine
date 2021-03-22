@@ -29,7 +29,7 @@ namespace sv {
 	constexpr u32 ASSET_BROWSER_PACKAGE = 69u;
 	
 	struct AssetPackage {
-		static constexpr MAX_SIZE = 500u;
+		static constexpr u32 MAX_SIZE = 500u;
 		char filepath[MAX_SIZE + 1u];
 	};
 

@@ -251,9 +251,9 @@ namespace sv {
 		List<u64> ids;
 		u64 current_id;
 		v2_f32 begin_position;
+		u64 package_id;
 		
 		RawList package_data;
-		u64 package_id;
 		
 		// HIGH LEVEL
 
@@ -274,6 +274,8 @@ namespace sv {
 
 		gui.buffer = (u8*)malloc(100u);
 		gui.buffer_capacity = 100u;
+
+		gui.package_id = 0u;
 
 		// Get last static state
 		{
@@ -767,16 +769,6 @@ namespace sv {
 		}
 		break;
 
-		case GuiWidgetType_Reciver:
-		{
-			if (input.unused && mouse_in_bounds(gui, w.bounds)) {
-
-				w.widget.reciver.recived = true;
-				input.unused = false;
-			}
-		}
-		break;
-
 		case GuiWidgetType_MenuContainer:
 		{
 			bool any = false;
@@ -936,15 +928,21 @@ namespace sv {
 			auto& p = w.widget.package;
 
 			InputState mouse = input.mouse_buttons[MouseButton_Left];
-			if (mouse == InputState_Released) {
+			if (mouse == InputState_Released || mouse == InputState_None) {
 
 				free_focus(gui);
 				gui.package_id = p.package_id;
 				gui.package_data.reset();
 				gui.package_data.write_back(p.data, p.size);
-			}
-			else if (mouse == InputState_None) {
-				free_focus(gui);
+
+				foreach(i, gui.indices.size()) {
+
+					GuiWidget* w = &gui.widgets[gui.indices[i].index];
+					if (w->type == GuiWidgetType_Reciver && w->widget.reciver.package_id == p.package_id && mouse_in_bounds(gui, w->bounds)) {
+						w->widget.reciver.recived = true;
+						break;
+					}
+				}
 			}
 		}
 		break;
@@ -1343,6 +1341,12 @@ namespace sv {
 		gui.root_menu_count = 0u;
 
 		gui.current_focus.index = u32_max;
+
+		if (gui.package_id != 0u) {
+
+			gui.package_id = 0u;
+			gui.package_data.reset();
+		}
 
 		SV_ASSERT(gui.ids.empty());
 		SV_ASSERT(gui.parent_stack.empty());
@@ -1791,6 +1795,8 @@ namespace sv {
 		hash_combine(id, gui.current_id);
 		hash_combine(package_id, 0xa89d4fb319);
 
+		// TODO: Get ID from last widget
+
 		Raw_Package raw;
 		
 		if (gui.current_focus.index != u32_max && gui.current_focus.id == id) {
@@ -1808,24 +1814,32 @@ namespace sv {
 	{
 		PARSE_GUI();
 		hash_combine(package_id, 0xa89d4fb319);
-		
-		if (gui.package_id == package_id) {
+		// TODO: get id from last widget
+		hash_combine(id, gui.current_id);
 
-			hash_combine(id, gui.current_id);
-			
-			GuiWidget* w = find_widget(gui, id, GuiWidgetType_Reciver);
+		if (gui.current_focus.index != u32_max && gui.focus.type == GuiWidgetType_Package) {
 
-			if (w && w->recive) {
-				gui.package_id = 0u;
-				*package = gui.reciver_data.data();
-				if (package_size) *package_size = u32(gui.reciver_data.size());
-				return true;
-			}
-			else {
+			GuiWidget* package_widget = &gui.widgets[gui.current_focus.index];
+
+			if (package_widget->widget.package.package_id == package_id) {
+
 				Raw_Reciver raw;
 				raw.package_id = package_id;
-				
-				write_widget(gui, GuiWidgetType_Reciver, &raw);
+
+				write_widget(gui, GuiWidgetType_Reciver, id, &raw);
+			}
+		}
+		
+		if (package_id == gui.package_id) {
+
+			GuiWidget* w = find_widget(gui, id, GuiWidgetType_Reciver);
+
+			if (w && w->widget.reciver.recived) {
+
+				gui.package_id = 0u;
+				*package = gui.package_data.data();
+				if (package_size)* package_size = u32(gui.package_data.size());
+				return true;
 			}
 		}
 		
@@ -2389,10 +2403,10 @@ namespace sv {
 			}
 		}
 
-		if (gui.package_id != 0u) {
+		if (gui.focus.type == GuiWidgetType_Package) {
 
 			begin_debug_batch(cmd);
-			draw_debug_quad(gui.mouse_position.getVec3(0.f), { 0.01f, 0.01f * gui.aspect }, Color::Green(), cmd);
+			draw_debug_quad((gui.mouse_position * 2.f - 1.f).getVec3(0.f), v2_f32{ 0.01f, 0.01f * gui.aspect } * 2.f, Color::Green(), cmd);
 			end_debug_batch(true, false, XMMatrixIdentity(), cmd);
 
 		}
