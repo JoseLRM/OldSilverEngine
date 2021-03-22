@@ -155,6 +155,22 @@ namespace sv {
 			--_size;
 		}
 
+		void pop_back(u32 count)
+		{
+			SV_ASSERT(_size >= count);
+
+			T* end = _data + _size;
+			T* it = _data + _size - count;
+
+			while (it != end) {
+
+				it->~T();
+				++it;
+			}
+			
+			_size -= count;
+		}
+
 		void reserve(size_t size)
 		{
 			if (_size + size > _capacity) realloc(_size + size);

@@ -177,13 +177,23 @@ namespace sv {
 
 	};
 
+	struct WritingParentInfo {
+		GuiWidget* parent;
+	};
+
 	struct GUI_internal {
+
+		// WRITING DATA
 
 		u8* buffer = nullptr;
 		size_t buffer_size = 0u;
 		size_t buffer_capacity = 0u;
 
-		GuiWidget* current_parent;
+		List<WritingParentInfo> parent_stack;
+
+		GuiIndex current_focus;
+
+		// STATE DATA
 
 		List<GuiWidget> widgets;
 		List<GuiIndex> indices;
@@ -200,8 +210,6 @@ namespace sv {
 			u64 id;
 			GuiWidgetType type;
 		}last;
-
-		GuiIndex current_focus;
 
 		struct {
 
@@ -949,7 +957,7 @@ namespace sv {
 		gui.ids.reset();
 
 		gui.mouse_position = input.mouse_position + 0.5f;
-		gui.current_parent = nullptr;
+		gui.parent_stack.reset();
 
 		gui.last.id = 0u;
 		gui.last.type = GuiWidgetType_None;
@@ -1220,6 +1228,7 @@ namespace sv {
 		gui.current_focus.index = u32_max;
 
 		SV_ASSERT(gui.ids.empty());
+		SV_ASSERT(gui.parent_stack.empty());
 
 		// Read widgets from raw data
 		{
@@ -1317,11 +1326,11 @@ namespace sv {
 		update_id(gui);
 	}
 
-	void gui_pop_id(GUI* gui_)
+	void gui_pop_id(GUI* gui_, u32 count)
 	{
 		PARSE_GUI();
-		SV_ASSERT(gui.ids.size());
-		gui.ids.pop_back();
+		SV_ASSERT(gui.ids.size() >= count);
+		gui.ids.pop_back(count);
 		update_id(gui);
 	}
 
@@ -1332,7 +1341,7 @@ namespace sv {
 		GuiIndex res;
 		res.index = u32_max;
 
-		if (gui.current_parent == nullptr) {
+		if (gui.parent_stack.empty() || gui.parent_stack.back().parent == nullptr) {
 
 			foreach(i, gui.indices.size()) {
 
@@ -1352,7 +1361,9 @@ namespace sv {
 		}
 		else {
 
-			GuiParentInfo* parent_info = get_parent_info(gui, *gui.current_parent);
+			WritingParentInfo& info = gui.parent_stack.back();
+
+			GuiParentInfo* parent_info = get_parent_info(gui, *info.parent);
 			GuiIndex* it = gui.indices.data() + parent_info->widget_offset;
 			GuiIndex* end = it + parent_info->widget_count;
 
@@ -1387,9 +1398,11 @@ namespace sv {
 
 	SV_INLINE void begin_parent(GUI_internal& gui, GuiWidget* parent, u64 id)
 	{
+		WritingParentInfo& info = gui.parent_stack.emplace_back();
+
 		if (parent) {
 			SV_ASSERT(is_parent(parent->type));
-			gui.current_parent = parent;
+			info.parent = parent;
 		}
 		gui_push_id((GUI*)& gui, id);
 	}
@@ -1397,12 +1410,7 @@ namespace sv {
 	SV_INLINE void end_parent(GUI_internal& gui)
 	{
 		gui_pop_id((GUI*)& gui);
-
-		if (gui.current_parent) {
-
-			u32 index = get_parent_info(gui, *gui.current_parent)->parent_index;
-			gui.current_parent = (index == u32_max) ? nullptr : &gui.widgets[index];
-		}
+		gui.parent_stack.pop_back();
 	}
 
 	void gui_begin_container(GUI* gui_, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiContainerStyle& style)
@@ -1466,9 +1474,9 @@ namespace sv {
 
 				case GuiPopupTrigger_Parent:
 				{
-					if (gui.current_parent != nullptr) {
+					if (gui.parent_stack.size() && gui.parent_stack.back().parent != nullptr) {
 
-						GuiWidget& parent = *gui.current_parent;
+						GuiWidget& parent = *gui.parent_stack.back().parent;
 
 						if (mouse_in_bounds(gui, parent.bounds)) {
 
@@ -1797,7 +1805,7 @@ namespace sv {
 	v4_f32 gui_parent_bounds(GUI* gui_)
 	{
 		PARSE_GUI();
-		return gui.current_parent ? gui.current_parent->bounds : v4_f32{};
+		return (gui.parent_stack.size() && gui.parent_stack.back().parent) ? gui.parent_stack.back().parent->bounds : v4_f32{};
 	}
 
 	///////////////////////////////////////////// RENDERING ///////////////////////////////////////////

@@ -145,7 +145,7 @@ namespace sv {
 
 	void gui_push_id(GUI* gui, u64 id);
 	void gui_push_id(GUI* gui, const char* id);
-	void gui_pop_id(GUI* gui);
+	void gui_pop_id(GUI* gui, u32 count = 1u);
 
 	void gui_begin_container(GUI* gui, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiContainerStyle& style = {});
 	void gui_end_container(GUI* gui);
