@@ -20,6 +20,8 @@ namespace sv {
 		GuiWidgetType_Drag,
 		GuiWidgetType_MenuItem,
 		GuiWidgetType_MenuContainer,
+		GuiWidgetType_Package,
+		GuiWidgetType_Reciver,
 		GuiWidgetType_MaxEnum,
 	};
 
@@ -77,6 +79,11 @@ namespace sv {
 		GuiMenuItemStyle style;
 		const char* text;
 		bool active;
+	};
+
+	struct Raw_Package {
+		const void* package;
+		u32 package_size;
 	};
 
 	///////////////////////////////// WIDGET STRUCTS ///////////////////////////////////
@@ -175,6 +182,16 @@ namespace sv {
 				GuiPopupStyle style;
 			} popup;
 
+			struct {
+				void* data;
+				u32 size;
+				bool dropped;
+			} package;
+
+			struct {
+				u64 package_id;
+			} reciver;
+
 		} widget;
 
 		GuiWidget() = default;
@@ -228,7 +245,9 @@ namespace sv {
 		List<u64> ids;
 		u64 current_id;
 		v2_f32 begin_position;
-
+		RawList package_data;
+		u64 reciver_id;
+		
 		// HIGH LEVEL
 
 		struct {
@@ -483,6 +502,17 @@ namespace sv {
 		}
 		break;
 
+		case GuiWidgetType_Package:
+		{
+			Raw_Package* raw = (Raw_Package*)data;
+
+			write_buffer(gui, raw->package_size);
+			if (raw->package_size) {
+				write_buffer(gui, raw->package, raw->package_size);
+			}
+		}
+		break;
+
 		default:
 			break;
 		}
@@ -698,6 +728,7 @@ namespace sv {
 		case GuiWidgetType_Drag:
 		case GuiWidgetType_Checkbox:
 		case GuiWidgetType_MenuItem:
+		case GuiWidgetType_Package:
 		{
 			if (input.unused) {
 				
@@ -735,6 +766,16 @@ namespace sv {
 
 				GuiWidget* menu = &gui.widgets[w.index - 1u];
 				menu->widget.menu_item.active = false;
+			}
+		}
+		break;
+
+		case GuiWidgetType_Reciver:
+		{
+			if (input.unused && mouse_in_bounds(gui, w.bounds)) {
+
+				gui.reciver_id = w.id;
+				input.unused = false;
 			}
 		}
 		break;
@@ -874,6 +915,20 @@ namespace sv {
 		}
 		break;
 
+		case GuiWidgetType_Package:
+		{
+			auto& p = w.widget.package;
+
+			InputState mouse = input.mouse_buttons[MouseButton_Left];
+			if (mouse == InputState_Released) {
+
+				free_focus(gui);
+				p.dropped = true;
+				gui.package_data.write_back(p.data, p.size);
+			}
+		}
+		break;
+		
 		case GuiWidgetType_Window:
 		{
 			auto& window = w.widget.window;
@@ -963,6 +1018,9 @@ namespace sv {
 		gui.mouse_position = input.mouse_position + 0.5f;
 		gui.parent_stack.reset();
 
+		if (gui.reciver_id == 0u)
+			gui.package_data.reset();
+
 		gui.last.id = 0u;
 		gui.last.type = GuiWidgetType_None;
 
@@ -1009,6 +1067,7 @@ namespace sv {
 		switch (type)
 		{
 		case GuiWidgetType_MenuContainer:
+		case GuiWidgetType_Reciver:
 			break;
 
 		case GuiWidgetType_Container:
@@ -1118,6 +1177,20 @@ namespace sv {
 		}
 		break;
 
+		case GuiWidgetType_Package:
+		{
+			auto& p = w.widget.package;
+			p.dropped = false;
+			
+			p.size = _read<u32>(it);
+			if (p.size) {
+				p.data = it;
+				it += p.size;
+			}
+			else p.data = nullptr;
+		}
+		break;
+
 		default:
 			SV_ASSERT(0);
 		}
@@ -1184,6 +1257,18 @@ namespace sv {
 			w->bounds.w = MENU_CONTAINER_HEIGHT;
 			w->bounds.x += w->bounds.z * 0.5f;
 			w->bounds.y -= w->bounds.w * 0.5f;
+		}
+		break;
+
+		case GuiWidgetType_Package:
+		case GuiWidgetType_Reciver:
+		{
+			SV_ASSERT(w->index != 0u);
+			GuiWidget* last = &gui.widgets[w->index - 1u];
+
+			GuiParentInfo* parent_info = get_parent_info(gui, *last);
+			if (parent_info) w->bounds = parent_info->child_bounds;
+			else w->bounds = last->bounds;
 		}
 		break;
 
@@ -1670,6 +1755,51 @@ namespace sv {
 		write_buffer(gui, GuiWidgetType_None);
 
 		end_parent(gui);
+	}
+
+	/////////////////////////////////////// PACKAGE ///////////////////////////////////////
+
+	void gui_send_package(GUI* gui_, const void* package, u32 package_size, u64 id)
+	{
+		PARSE_GUI();
+		hash_combine(id, 0xa89d4fb319);
+
+		Raw_Package raw;
+		
+		if (gui.current_focus.index != u32_max && gui.current_focus.id == id) {
+			
+			raw.package = package;
+			raw.package_size = package_size;
+		}
+		else raw.package_size = 0u;
+		
+		write_widget(gui, GuiWidgetType_Package, &raw);
+	}
+	
+	bool gui_recive_package(GUI* gui_, void** package, u32* package_size, u64 sender_id, u64 id)
+	{
+		PARSE_GUI();
+		hash_combine(sender_id, 0xa89d4fb319);
+		
+		if (gui.current_focus.index != u32_max && gui.current_focus.id == sender_id) {
+
+			hash_combine(id, gui.current_id);
+			
+			GuiWidget* w = find_widget(gui, GuiWidgetType_Package, sender_id);
+			if (w && w->widget.package.dropped) {
+
+				write_widget(gui, GuiWidgetType_Reciver, nullptr);
+			}
+		}
+
+		if (gui.reciver_id == id) {
+			gui.reciver_id = 0u;
+			*package = gui.reciver_data.data();
+			*package_size = u32(gui.reciver_data.size());
+			return true;
+		}
+		
+		return false;
 	}
 
 	/////////////////////////////////////// COMMON WIDGETS ///////////////////////////////////////

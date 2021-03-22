@@ -161,6 +161,9 @@ namespace sv {
 	bool gui_begin_menu_item(GUI* gui, const char* text, u64 id, const GuiMenuItemStyle& style = {});
 	void gui_end_menu_item(GUI* gui);
 
+	void gui_send_package(GUI* gui, const void* package, u32 package_size, u64 id);
+	bool gui_recive_package(GUI* gui, void** package, u32* package_size, u64 sender_id, u64 id);
+
 	bool gui_button(GUI* gui, const char* text, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiButtonStyle& style = {});
 	
 	bool gui_drag_f32(GUI* gui, f32* value, f32 adv, f32 min, f32 max, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiDragStyle& style = {});
