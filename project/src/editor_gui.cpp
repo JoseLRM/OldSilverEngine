@@ -290,4 +290,20 @@ namespace sv {
 		return res;
 	}
 
+	bool egui_comp_drag_f32(const char* text, u64 id, f32* value, f32 adv, f32 min, f32 max)
+	{
+		EditorWindowInfo& info = window_info.back();
+
+		gui_push_id(dev.gui, id);
+
+		gui_text(dev.gui, text, 0u, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
+
+		bool res = gui_drag_f32(dev.gui, value, adv, min, max, 1u, GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
+
+		gui_pop_id(dev.gui);
+		info.yoff += COMP_ITEM_HEIGHT + VPADDING;
+
+		return res;
+	}
+
 }

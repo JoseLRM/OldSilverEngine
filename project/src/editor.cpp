@@ -256,6 +256,7 @@ namespace sv {
 
 				egui_comp_color("Color", 0u, &spr.color);
 				egui_comp_texture("Texture", 1u, &spr.texture);
+				//TODO: egui_comp_drag_v4f32("Coords", 1u, &spr.texcoord, 0.01f);
 
 			}
 
@@ -274,6 +275,39 @@ namespace sv {
 
 					if (main) engine.scene->main_camera = entity;
 					else engine.scene->main_camera = SV_ENTITY_NULL;
+				}
+
+				f32 dimension = std::min(cam.width, cam.height);
+
+				f32 near_min;
+				f32 near_max;
+				f32 near_adv;
+				f32 far_min;
+				f32 far_max;
+				f32 far_adv;
+
+				if (cam.projection_type == ProjectionType_Perspective) {
+					near_min = 0.001f;
+					near_max = f32_max;
+					near_adv = 0.01f;
+					far_min = cam.near;
+					far_max = f32_max;
+					far_adv = 0.3f;
+				}
+				else {
+					near_min = f32_min;
+					near_max = cam.far;
+					near_adv = 0.3f;
+					far_min = cam.near;
+					far_max = f32_max;
+					far_adv = 0.3f;
+				}
+					
+				egui_comp_drag_f32("Near", 1u, &cam.near, near_adv, near_min, near_max);
+				egui_comp_drag_f32("Far", 1u, &cam.far, far_adv, far_min, far_max);
+				if (egui_comp_drag_f32("Dimension", 1u, &dimension)) {
+					cam.width = dimension;
+					cam.height = dimension;
 				}
 			}
 

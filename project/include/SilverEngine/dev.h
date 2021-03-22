@@ -42,7 +42,7 @@ namespace sv {
 	void egui_comp_color(const char* text, u64 id, Color* pcolor);
 	void egui_comp_texture(const char* text, u64 id, TextureAsset* texture);
 	bool egui_comp_bool(const char* text, u64 id, bool* value);
-
+	bool egui_comp_drag_f32(const char* text, u64 id, f32* value, f32 adv = 0.1f, f32 min = f32_min, f32 max = f32_max);
 }
 
 #endif
