@@ -711,66 +711,107 @@ namespace sv {
 
 			AssetBrowserInfo& info = editor.asset_browser;
 
-			gui_begin_grid(gui, u32(info.elements.size()), 150.f, 5.f, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
-
-			foreach (i, info.elements.size()) {
-
-				const AssetElement& e = info.elements[i];
-
-				if (e.name.size() && e.name.front() != '.') {
-
-					// TODO: ignore unused elements
-					gui_begin_grid_element(gui, 69u + i);					
-
-					if (gui_button(gui, nullptr, 0u, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f),
-						GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), editor.style.button_style)) {
-
-						if (e.type == AssetElementType_Directory) {
-
-							update_browser = true;
-							next_filepath = info.filepath + e.name + '/';
-						}
-					}
-
-					if (e.type != AssetElementType_Directory) {
-
-						AssetPackage pack;
-						size_t size = info.filepath.size() + e.name.size();
-						SV_ASSERT(size < AssetPackage::MAX_SIZE);
-
-						memcpy(pack.filepath, info.filepath.data(), info.filepath.size());
-						memcpy(pack.filepath + info.filepath.size(), e.name.data(), e.name.size());
-						pack.filepath[size] = '\0';
-
-						gui_send_package(gui, &pack, sizeof(AssetPackage), ASSET_BROWSER_PACKAGE);
-
-					}
-
-					gui_text(gui, e.name.c_str(), 1u, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(0.2f));
-
-					gui_end_grid_element(gui);
-				}
-			}
-
-			gui_end_grid(gui);
-
-			// TEMP
-			if (input.unused && input.keys[Key_B] == InputState_Pressed) {
+			{
+				constexpr f32 WIDTH = 40.f;
+				
+				gui_begin_container(gui, 0u, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::IPixel(0.f), GuiCoord::IPixel(20.f));
 
 				if (info.filepath.size()) {
 
-					info.filepath.pop_back();
+					// TODO: Adjust using name size
+					f32 width = gui_parent_bounds(gui).z * f32(window_width_get(engine.window));
 
-					while (info.filepath.size() && info.filepath.back() != '/') {
-
-						info.filepath.pop_back();
-					}
+					u32 folder_count = 1u;
+					for (char c : info.filepath)
+						if (c == '/') ++folder_count;
 					
-					next_filepath = std::move(info.filepath);
-					update_browser = true;
+					u32 count = std::min(std::max(u32(width / WIDTH), 1u), folder_count);					
+
+					const char* folder_offset = info.filepath.c_str();
+					char folder_name[300];
+
+					folder_name[0] = 'r';
+					folder_name[1] = 'o';
+					folder_name[2] = 'o';
+					folder_name[3] = 't';
+					folder_name[4] = '\0';
+					
+					foreach(i, count) {
+						
+						f32 x = i * WIDTH;
+						if (gui_button(gui, folder_name, i, GuiCoord::Pixel(x), GuiCoord::IPixel(x + WIDTH), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f)))
+						{
+
+							if (!update_browser) {
+
+								next_filepath = info.filepath.substr(folder_offset - info.filepath.c_str());
+								break;
+							}
+						}
+
+						const char* end = folder_offset;
+						while (*end != '/') {
+							++end;
+						}
+
+						size_t name_size = end - folder_offset;
+						memcpy(folder_name, folder_offset, name_size);
+						folder_name[name_size] = '\0';
+
+						folder_offset = end;
+						++folder_offset;
+					}
 				}
 				
-				input.unused = false;
+				gui_end_container(gui);
+			}
+
+			{
+				gui_begin_container(gui, 1u, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::IPixel(20.f), GuiCoord::Relative(0.f));
+				
+				gui_begin_grid(gui, u32(info.elements.size()), 150.f, 5.f, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
+
+				foreach (i, info.elements.size()) {
+
+					const AssetElement& e = info.elements[i];
+
+					if (e.name.size() && e.name.front() != '.') {
+
+						// TODO: ignore unused elements
+						gui_begin_grid_element(gui, 69u + i);					
+
+						if (gui_button(gui, nullptr, 0u, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f),
+							       GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), editor.style.button_style)) {
+
+							if (e.type == AssetElementType_Directory && !update_browser) {
+
+								update_browser = true;
+								next_filepath = info.filepath + e.name + '/';
+							}
+						}
+
+						if (e.type != AssetElementType_Directory) {
+
+							AssetPackage pack;
+							size_t size = info.filepath.size() + e.name.size();
+							SV_ASSERT(size < AssetPackage::MAX_SIZE);
+
+							memcpy(pack.filepath, info.filepath.data(), info.filepath.size());
+							memcpy(pack.filepath + info.filepath.size(), e.name.data(), e.name.size());
+							pack.filepath[size] = '\0';
+
+							gui_send_package(gui, &pack, sizeof(AssetPackage), ASSET_BROWSER_PACKAGE);
+
+						}
+
+						gui_text(gui, e.name.c_str(), 1u, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(0.2f));
+
+						gui_end_grid_element(gui);
+					}
+				}
+
+				gui_end_grid(gui);
+				gui_end_container(gui);
 			}
 
 			// Update per time
