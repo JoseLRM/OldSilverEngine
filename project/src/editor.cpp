@@ -742,11 +742,11 @@ namespace sv {
 						memcpy(pack.filepath + info.filepath.size(), e.name.data(), e.name.size());
 						pack.filepath[size] = '\0';
 
-						gui_send_package(gui, &pack, sizeof(AssetPackage), ASSET_BROWSER_PACKAGE, 1u);
+						gui_send_package(gui, &pack, sizeof(AssetPackage), ASSET_BROWSER_PACKAGE);
 
 					}
 
-					gui_text(gui, e.name.c_str(), 2u, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(0.2f));
+					gui_text(gui, e.name.c_str(), 1u, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(0.2f));
 
 					gui_end_grid_element(gui);
 				}

@@ -1795,10 +1795,14 @@ namespace sv {
 
 	/////////////////////////////////////// PACKAGE ///////////////////////////////////////
 
-	void gui_send_package(GUI* gui_, const void* package, u32 package_size, u64 package_id, u64 id)
+	void gui_send_package(GUI* gui_, const void* package, u32 package_size, u64 package_id)
 	{
 		PARSE_GUI();
-		hash_combine(id, gui.current_id);
+
+		SV_ASSERT(gui.last.type != GuiWidgetType_None);
+		
+		u64 id = gui.last.id;
+		hash_combine(id, 0x89562f8a732db);
 		hash_combine(package_id, 0xa89d4fb319);
 
 		// TODO: Get ID from last widget
@@ -1816,12 +1820,15 @@ namespace sv {
 		write_widget(gui, GuiWidgetType_Package, id, &raw);
 	}
 	
-	bool gui_recive_package(GUI* gui_, void** package, u32* package_size, u64 package_id, u64 id)
+	bool gui_recive_package(GUI* gui_, void** package, u32* package_size, u64 package_id)
 	{
 		PARSE_GUI();
+
+		SV_ASSERT(gui.last.type != GuiWidgetType_None);
+		
+		u64 id = gui.last.id;
+		hash_combine(id, 0x89562f8a732db);
 		hash_combine(package_id, 0xa89d4fb319);
-		// TODO: get id from last widget
-		hash_combine(id, gui.current_id);
 
 		if (gui.current_focus.index != u32_max && gui.focus.type == GuiWidgetType_Package) {
 

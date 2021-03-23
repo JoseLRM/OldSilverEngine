@@ -265,7 +265,7 @@ namespace sv {
 		info.yoff += COMP_ITEM_HEIGHT + VPADDING;
 
 		AssetPackage* package;
-		if (gui_recive_package(dev.gui, (void**)&package, nullptr, ASSET_BROWSER_PACKAGE, 2u)) {
+		if (gui_recive_package(dev.gui, (void**)&package, nullptr, ASSET_BROWSER_PACKAGE)) {
 
 			Result res = load_asset_from_file(*texture, package->filepath);
 			if (result_fail(res)) {
