@@ -137,6 +137,11 @@ namespace sv {
 		Color text_color = Color::Black();
 	};
 
+	struct GuiParentUserData {
+		f32 yoff;
+		f32 xoff;
+	};
+
 	Result gui_create(u64 hashcode, GUI** pgui);
 	Result gui_destroy(GUI* gui);
 
@@ -178,6 +183,7 @@ namespace sv {
 	bool gui_checkbox(GUI* gui, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiCheckboxStyle& style = {});
 	
 	v4_f32 gui_parent_bounds(GUI* gui);
+	GuiParentUserData& gui_parent_userdata(GUI* gui);
 
 	void gui_draw(GUI* gui, CommandList cmd);
 

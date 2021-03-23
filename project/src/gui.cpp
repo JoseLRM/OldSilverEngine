@@ -206,6 +206,7 @@ namespace sv {
 
 	struct WritingParentInfo {
 		GuiWidget* parent;
+		GuiParentUserData userdata;
 	};
 
 	struct GUI_internal {
@@ -1034,7 +1035,10 @@ namespace sv {
 		gui.ids.reset();
 
 		gui.mouse_position = input.mouse_position + 0.5f;
-		gui.parent_stack.reset();
+
+		gui.parent_stack.size(1u);
+		gui.parent_stack.back().xoff = 0.f;
+		gui.parent_stack.back().yoff = 0.f;
 
 		gui.last.id = 0u;
 		gui.last.type = GuiWidgetType_None;
@@ -1349,7 +1353,7 @@ namespace sv {
 		}
 
 		SV_ASSERT(gui.ids.empty());
-		SV_ASSERT(gui.parent_stack.empty());
+		SV_ASSERT(gui.parent_stack.size() == 1u);
 
 		// Read widgets from raw data
 		{
@@ -1520,6 +1524,8 @@ namespace sv {
 	SV_INLINE void begin_parent(GUI_internal& gui, GuiWidget* parent, u64 id)
 	{
 		WritingParentInfo& info = gui.parent_stack.emplace_back();
+		info.userdata.xoff = 0.f;
+		info.userdata.yoff = 0.f;
 
 		if (parent) {
 			SV_ASSERT(is_parent(parent->type));
@@ -1988,6 +1994,12 @@ namespace sv {
 	{
 		PARSE_GUI();
 		return (gui.parent_stack.size() && gui.parent_stack.back().parent) ? gui.parent_stack.back().parent->bounds : v4_f32{};
+	}
+
+	GuiParentUserData& gui_parent_userdata(GUI* gui_)
+	{
+		PARSE_GUI();
+		return gui.parent_stack.back().userdata;
 	}
 
 	///////////////////////////////////////////// RENDERING ///////////////////////////////////////////

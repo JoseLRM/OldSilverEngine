@@ -8,12 +8,6 @@ namespace sv {
 	constexpr f32 SEPARATOR = 30.f;
 	constexpr f32 COMP_ITEM_HEIGHT = 30.f;
 
-	struct EditorWindowInfo {
-		f32 yoff;
-	};
-
-	static List<EditorWindowInfo> window_info;
-
 	bool egui_begin()
 	{
 		gui_begin(dev.gui, f32(window_width_get(engine.window)), f32(window_height_get(engine.window)));
@@ -33,7 +27,7 @@ namespace sv {
 	{
 		if (gui_begin_window(dev.gui, title)) {
 			
-			EditorWindowInfo& info = window_info.emplace_back();
+			GuiParentUserData& info = gui_parent_userdata(dev.gui);
 			info.yoff = 0.f;
 
 			return true;
@@ -44,7 +38,6 @@ namespace sv {
 
 	void egui_end_window()
 	{
-		window_info.pop_back();
 		gui_end_window(dev.gui);
 	}
 
@@ -52,7 +45,7 @@ namespace sv {
 	{
 		constexpr f32 HEIGHT = 10.f;
 
-		EditorWindowInfo& info = window_info.back();
+		GuiParentUserData& info = gui_parent_userdata(dev.gui);
 
 		gui_text(dev.gui, text, id, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + 40.f));
 		info.yoff += 40.f + SEPARATOR + VPADDING;
@@ -62,7 +55,7 @@ namespace sv {
 	{
 		constexpr f32 TRANSFORM_HEIGHT = 30.f;
 
-		EditorWindowInfo& info = window_info.back();
+		GuiParentUserData& info = gui_parent_userdata(dev.gui);
 
 		// TODO: euler rotation
 		Transform trans = get_entity_transform(engine.scene, entity);
@@ -186,7 +179,7 @@ namespace sv {
 	{
 		constexpr f32 HEIGHT = 10.f;
 
-		EditorWindowInfo& info = window_info.back();
+		GuiParentUserData& info = gui_parent_userdata(dev.gui);
 
 		bool res = gui_button(dev.gui, text, id, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + HEIGHT));
 		info.yoff += HEIGHT + VPADDING;
@@ -207,7 +200,7 @@ namespace sv {
 		checkbox_style.inactive_box = GuiBox::Triangle(Color::Black(), false, 0.5f);
 		checkbox_style.color = Color::Black(0u);
 
-		EditorWindowInfo& info = window_info.back();
+		GuiParentUserData& info = gui_parent_userdata(dev.gui);
 
 		u64 id = u64("SHOW COMPONENT") ^ u64((u64(comp_id) << 32u) + entity);
 		gui_push_id(dev.gui, id);
@@ -250,7 +243,7 @@ namespace sv {
 	
 	void egui_comp_color(const char* text, u64 id, Color* pcolor)
 	{
-		EditorWindowInfo& info = window_info.back();
+		GuiParentUserData& info = gui_parent_userdata(dev.gui);
 
 		gui_push_id(dev.gui, id);
 
@@ -263,7 +256,7 @@ namespace sv {
 
 	void egui_comp_texture(const char* text, u64 id, TextureAsset* texture)
 	{
-		EditorWindowInfo& info = window_info.back();
+		GuiParentUserData& info = gui_parent_userdata(dev.gui);
 
 		gui_push_id(dev.gui, id);
 
@@ -286,7 +279,7 @@ namespace sv {
 
 	bool egui_comp_bool(const char* text, u64 id, bool* value)
 	{
-		EditorWindowInfo& info = window_info.back();
+		GuiParentUserData& info = gui_parent_userdata(dev.gui);
 
 		gui_push_id(dev.gui, id);
 
@@ -302,7 +295,7 @@ namespace sv {
 
 	bool egui_comp_drag_f32(const char* text, u64 id, f32* value, f32 adv, f32 min, f32 max)
 	{
-		EditorWindowInfo& info = window_info.back();
+		GuiParentUserData& info = gui_parent_userdata(dev.gui);
 
 		gui_push_id(dev.gui, id);
 
