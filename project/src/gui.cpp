@@ -679,6 +679,17 @@ namespace sv {
 		return bounds;
 	}
 
+	SV_INLINE static v4_f32 compute_window_closebutton_bounds(const GUI_internal& gui, const GuiWidget& w, const v4_f32 decoration_bounds)
+	{
+		v4_f32 bounds;
+		bounds.x = decoration_bounds.x + decoration_bounds.z * 0.5f - decoration_bounds.w * 0.5f / gui.aspect;
+		bounds.y = decoration_bounds.y;
+		bounds.z = 0.006f;
+		bounds.w = 0.006f * gui.aspect;
+		
+		return bounds;
+	}
+
 	static void update_widget(GUI_internal& gui, const GuiIndex& index)
 	{
 		GuiParentInfo* parent_info = get_parent_info(gui, index);
@@ -824,12 +835,21 @@ namespace sv {
 
 					input.unused = false;
 
+					
 					if (button == InputState_Pressed) {
-						gui.begin_position = v2_f32(window.state->bounds.x, window.state->bounds.y) - gui.mouse_position;
-						set_focus(gui, GuiWidgetType_Window, state.id, 0u);
+
+						v4_f32 closebutton_bounds = compute_window_closebutton_bounds(gui, w, decoration);
+
+						if (mouse_in_bounds(gui, closebutton_bounds)) 
+							set_focus(gui, GuiWidgetType_Window, state.id, 6u);
+						else {
+							gui.begin_position = v2_f32(window.state->bounds.x, window.state->bounds.y) - gui.mouse_position;
+							set_focus(gui, GuiWidgetType_Window, state.id, 0u);
+						}
 					}
 				}
-				else {
+				else if (button == InputState_Pressed) {
+
 					const v4_f32& content = window.state->bounds;
 
 					constexpr f32 SELECTION_SIZE = 0.02f;
@@ -954,6 +974,16 @@ namespace sv {
 
 			if (input.mouse_buttons[MouseButton_Left] == InputState_None) {
 
+				if (gui.focus.action == 6u) {
+
+					v4_f32 decoration_bounds = compute_window_decoration_bounds(gui, w);
+					v4_f32 closebutton_bounds = compute_window_closebutton_bounds(gui, w, decoration_bounds);
+
+					if (mouse_in_bounds(gui, closebutton_bounds)) {
+						window.state->show = false;
+					}
+				}
+
 				free_focus(gui);
 			}
 			else {
@@ -1036,9 +1066,9 @@ namespace sv {
 
 		gui.mouse_position = input.mouse_position + 0.5f;
 
-		gui.parent_stack.size(1u);
-		gui.parent_stack.back().xoff = 0.f;
-		gui.parent_stack.back().yoff = 0.f;
+		gui.parent_stack.resize(1u);
+		gui.parent_stack.back().userdata.xoff = 0.f;
+		gui.parent_stack.back().userdata.yoff = 0.f;
 
 		gui.last.id = 0u;
 		gui.last.type = GuiWidgetType_None;
@@ -2327,6 +2357,7 @@ namespace sv {
 			const GuiWindowStyle& style = window.style;
 
 			v4_f32 decoration = compute_window_decoration_bounds(gui, w);
+			v4_f32 closebutton = compute_window_closebutton_bounds(gui, w, decoration);
 
 			v2_f32 outline_size;
 			v2_f32 content_position;
@@ -2343,12 +2374,15 @@ namespace sv {
 			outline_size = outline_size * 2.f;
 			v2_f32 decoration_position = v2_f32(decoration.x, decoration.y) * 2.f - 1.f;
 			v2_f32 decoration_size = v2_f32(decoration.z, decoration.w) * 2.f;
+			v2_f32 closebutton_position = v2_f32(closebutton.x, closebutton.y) * 2.f - 1.f;
+			v2_f32 closebutton_size = v2_f32(closebutton.z, closebutton.w) * 2.f;
 
 			begin_debug_batch(cmd);
 
 			draw_debug_quad(content_position.getVec3(0.f), outline_size, style.outline_color, cmd);
 			draw_debug_quad(content_position.getVec3(0.f), content_size, style.color, cmd);
 			draw_debug_quad(decoration_position.getVec3(0.f), decoration_size, style.decoration_color, cmd);
+			draw_debug_quad(closebutton_position.getVec3(0.f), closebutton_size, Color::Red(), cmd);
 
 			end_debug_batch(true, false, XMMatrixIdentity(), cmd);
 

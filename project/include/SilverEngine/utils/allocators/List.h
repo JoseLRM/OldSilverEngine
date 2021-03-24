@@ -173,7 +173,7 @@ namespace sv {
 
 		void reserve(size_t size)
 		{
-			if (_size + size > _capacity) realloc(_size + size);
+			if (_size + size > _capacity) _reallocate(_size + size);
 		}
 
 		void resize(size_t size)

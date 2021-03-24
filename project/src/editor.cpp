@@ -616,18 +616,17 @@ namespace sv {
 
 		gui_push_id(g, "MENU");
 
-		if (gui_begin_menu_item(g, "Test", 0u)) {
+		if (gui_begin_menu_item(g, "View", 0u)) {
 
-			if (gui_button(g, "Exit", 0u, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f))) {
-				engine.close_request = true;
+			if (egui_button("Hierarchy", 0u)) {
+				gui_show_window(g, "Hierarchy");
 			}
-
-			gui_end_menu_item(g);
-		}
-
-		if (gui_begin_menu_item(g, "Holaa", 1u)) {
-
-
+			if (egui_button("Inspector", 1u)) {
+				gui_show_window(g, "Inspector");
+			}
+			if (egui_button("Asset Browser", 2u)) {
+				gui_show_window(g, "Asset Browser");
+			}
 
 			gui_end_menu_item(g);
 		}
@@ -712,9 +711,9 @@ namespace sv {
 			AssetBrowserInfo& info = editor.asset_browser;
 
 			{
-				constexpr f32 WIDTH = 40.f;
+				constexpr f32 WIDTH = 80.f;
 				
-				gui_begin_container(gui, 0u, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::IPixel(0.f), GuiCoord::IPixel(20.f));
+				gui_begin_container(gui, 0u, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(0.f), GuiCoord::IPixel(33.f));
 
 				if (info.filepath.size()) {
 
@@ -725,7 +724,11 @@ namespace sv {
 					for (char c : info.filepath)
 						if (c == '/') ++folder_count;
 					
-					u32 count = std::min(std::max(u32(width / WIDTH), 1u), folder_count);					
+					u32 count = std::min(std::max(u32(width / WIDTH), 1u), folder_count);	
+					SV_ASSERT(count != 0u);
+					--count;
+					
+					f32 offset = width - f32(count) * WIDTH;
 
 					const char* folder_offset = info.filepath.c_str();
 					char folder_name[300];
@@ -738,28 +741,44 @@ namespace sv {
 					
 					foreach(i, count) {
 						
-						f32 x = i * WIDTH;
-						if (gui_button(gui, folder_name, i, GuiCoord::Pixel(x), GuiCoord::IPixel(x + WIDTH), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f)))
+						if (i != 0u) {
+
+							const char* end = folder_offset;
+							while (*end != '/') {
+								++end;
+							}
+
+							size_t name_size = end - folder_offset;
+							memcpy(folder_name, folder_offset, name_size);
+							folder_name[name_size] = '\0';
+
+							folder_offset = end;
+							++folder_offset;
+						}
+
+						f32 x = offset + (count - i) * WIDTH;
+						if (gui_button(gui, folder_name, i, GuiCoord::IPixel(x), GuiCoord::IPixel(x - WIDTH), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f)))
 						{
 
 							if (!update_browser) {
 
-								next_filepath = info.filepath.substr(folder_offset - info.filepath.c_str());
+								const char* end = info.filepath.c_str();
+								
+								i = count - i;
+								while (i) {
+
+									if (*end == '/') {
+										--i;
+									}
+
+									++end;
+								}
+
+								next_filepath = info.filepath.substr(end - info.filepath.c_str());
+								update_browser = true;
 								break;
 							}
 						}
-
-						const char* end = folder_offset;
-						while (*end != '/') {
-							++end;
-						}
-
-						size_t name_size = end - folder_offset;
-						memcpy(folder_name, folder_offset, name_size);
-						folder_name[name_size] = '\0';
-
-						folder_offset = end;
-						++folder_offset;
 					}
 				}
 				
@@ -767,7 +786,7 @@ namespace sv {
 			}
 
 			{
-				gui_begin_container(gui, 1u, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::IPixel(20.f), GuiCoord::Relative(0.f));
+				gui_begin_container(gui, 1u, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(40.f), GuiCoord::Relative(0.f));
 				
 				gui_begin_grid(gui, u32(info.elements.size()), 150.f, 5.f, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
 
@@ -1002,7 +1021,42 @@ namespace sv {
 
 			// Draw 2D grid
 			if (dev.camera.projection_type == ProjectionType_Orthographic) {
-				draw_debug_orthographic_grip(dev.camera.position.getVec2(), {}, { dev.camera.width, dev.camera.height }, 1.f, Color::White(), cmd);
+
+				f32 width = dev.camera.width;
+				f32 height = dev.camera.height;
+				f32 mag = dev.camera.getProjectionLength();
+
+				u32 count = 0u;
+				for (f32 i = 0.01f; count < 3u; i *= 10.f) {
+
+					if (mag / i <= 50.f) {
+
+						Color color;
+
+						switch (count++)
+						{
+						case 0:
+							color = Color::Gray(50);
+							break;
+
+						case 1:
+							color = Color::Gray(100);
+							break;
+
+						case 2:
+							color = Color::Gray(150);
+							break;
+
+						case 3:
+							color = Color::Gray(200);
+							break;
+						}
+
+						color.a = 10u;
+
+						draw_debug_orthographic_grip(dev.camera.position.getVec2(), {}, { width, height }, i, color, cmd);
+					}
+				}
 			}
 
 			// Draw cameras

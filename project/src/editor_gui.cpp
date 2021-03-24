@@ -19,7 +19,6 @@ namespace sv {
 
 	void egui_end()
 	{
-		SV_ASSERT(window_info.empty());
 		gui_end(dev.gui);
 	}
 
@@ -177,7 +176,7 @@ namespace sv {
 
 	bool egui_button(const char* text, u64 id)
 	{
-		constexpr f32 HEIGHT = 10.f;
+		constexpr f32 HEIGHT = 25.f;
 
 		GuiParentUserData& info = gui_parent_userdata(dev.gui);
 
