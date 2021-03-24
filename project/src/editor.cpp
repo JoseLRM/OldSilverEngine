@@ -159,6 +159,45 @@ namespace sv {
 		if (!input.unused) return;
 		if (editor.selected_entity == SV_ENTITY_NULL) return;
 
+		if (input.mouse_buttons[MouseButton_Left] != InputState_Pressed) return;
+
+		GizmosInfo& info = editor.gizmos;
+
+		Transform trans = get_entity_transform(engine.scene, editor.selected_entity);
+		v3_f32 position = trans.getLocalPosition();
+
+		const XMMATRIX& vpm = dev.camera.view_projection_matrix;
+		v2_f32 mouse_position = input.mouse_position * 2.f;
+
+		constexpr f32 GIZMOS_SIZE = 1.f;
+
+		switch (info.mode)
+		{
+
+		case GizmosTransformMode_Position:
+		{
+			XMVECTOR center = position.getDX(1.f);
+			XMVECTOR y_axis = (position + v3_f32::up()).getDX(1.f);
+			
+			center = XMVector4Transform(vpm, center);
+			y_axis = XMVector4Transform(vpm, y_axis);
+			
+			center = XMVector3Divide(center, XMVectorGetW(center));
+			y_axis = XMVector3Divide(y_axis, XMVectorGetW(y_axis));
+
+			v2_f32 c = v3_f32(center);
+			v2_f32 y = v3_f32(y_axis);
+			
+			// y axis
+			{
+				f32 dist = (mouse_position - y).length();
+				
+				if (dist < 0.01f) {
+					SV_LOG("All right");
+				}
+			}
+		}
+		break;
 
 	}
 
