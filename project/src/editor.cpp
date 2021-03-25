@@ -6,7 +6,7 @@
 #include "SilverEngine/dev.h"
 
 namespace sv {
-	
+
 	struct EditorStyle {
 
 		GuiWindowStyle window_style;
@@ -23,10 +23,20 @@ namespace sv {
 		GizmosTransformMode_Position
 	};
 
+	enum GizmosObject : u32 {
+		GizmosObject_None,
+		GizmosObject_AxisX,
+		GizmosObject_AxisY,
+		GizmosObject_AxisZ,
+	};
+
 	struct GizmosInfo {
 
 		GizmosTransformMode mode = GizmosTransformMode_Position;
 
+		GizmosObject object = GizmosObject_None;
+		bool focus = false;
+		v2_f32 start_offset;
 	};
 
 	enum AssetElementType : u32 {
@@ -154,51 +164,116 @@ namespace sv {
 
 	/////////////////////////////////////////////// GIZMOS ///////////////////////////////////////////////////////
 
+	SV_INLINE static void world_to_screen_line(const XMMATRIX& vpm, v3_f32 _p0, v3_f32 _p1, v2_f32& res0, v2_f32& res1)
+	{
+		XMVECTOR p0 = _p0.getDX(1.f);
+		XMVECTOR p1 = _p1.getDX(1.f);
+
+		p0 = XMVector4Transform(p0, vpm);
+		p1 = XMVector4Transform(p1, vpm);
+
+		f32 d = XMVectorGetW(p0);
+		p0 = XMVectorDivide(p0, XMVectorSet(d, d, d, 1.f));
+		d = XMVectorGetW(p1);
+		p1 = XMVectorDivide(p1, XMVectorSet(d, d, d, 1.f));
+
+		res0 = v2_f32(p0);
+		res1 = v2_f32(p1);
+	}
+
 	static void update_gizmos()
 	{
-		if (!input.unused) return;
-		if (editor.selected_entity == SV_ENTITY_NULL) return;
-
-		if (input.mouse_buttons[MouseButton_Left] != InputState_Pressed) return;
-
 		GizmosInfo& info = editor.gizmos;
 
-		Transform trans = get_entity_transform(engine.scene, editor.selected_entity);
-		v3_f32 position = trans.getLocalPosition();
+		if (!input.unused || editor.selected_entity == SV_ENTITY_NULL) {
+			info.focus = false;
+			return;
+		}
 
-		const XMMATRIX& vpm = dev.camera.view_projection_matrix;
-		v2_f32 mouse_position = input.mouse_position * 2.f;
+		if (!info.focus) {
 
-		constexpr f32 GIZMOS_SIZE = 1.f;
+			info.object = GizmosObject_None;
 
-		switch (info.mode)
-		{
+			Transform trans = get_entity_transform(engine.scene, editor.selected_entity);
+			v3_f32 position = trans.getLocalPosition();
 
-		case GizmosTransformMode_Position:
-		{
-			XMVECTOR center = position.getDX(1.f);
-			XMVECTOR y_axis = (position + v3_f32::up()).getDX(1.f);
-			
-			center = XMVector4Transform(vpm, center);
-			y_axis = XMVector4Transform(vpm, y_axis);
-			
-			center = XMVector3Divide(center, XMVectorGetW(center));
-			y_axis = XMVector3Divide(y_axis, XMVectorGetW(y_axis));
+			const XMMATRIX& vpm = dev.camera.view_projection_matrix;
+			v2_f32 mouse_position = input.mouse_position * 2.f;
 
-			v2_f32 c = v3_f32(center);
-			v2_f32 y = v3_f32(y_axis);
-			
-			// y axis
+			constexpr f32 GIZMOS_SIZE = 1.f;
+
+			switch (info.mode)
 			{
-				f32 dist = (mouse_position - y).length();
-				
-				if (dist < 0.01f) {
-					SV_LOG("All right");
+
+			case GizmosTransformMode_Position:
+			{
+				v2_f32 c, y;
+				world_to_screen_line(vpm, position, position + v3_f32::up(), c, y);
+
+				// y axis
+				{
+					v2_f32 dir0 = y - c;
+					v2_f32 dir1 = mouse_position - c;
+
+					f32 max_len = dir0.length();
+					dir0.normalize();
+
+					f32 dot = dir1.dot(dir0);
+
+					if (dot > 0.f && dot <= max_len) {
+
+						v2_f32 projection = c + dir0 * dot;
+
+						f32 dist = (projection - mouse_position).length();
+
+						if (dist < 0.01f) {
+							info.object = GizmosObject_AxisY;
+							info.start_offset.y = position.y + 1.f;
+						}
+					}
 				}
 			}
-		}
-		break;
+			break;
 
+			}
+
+			if (info.object != GizmosObject_None && input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
+				
+				info.focus = true;
+
+			}
+		}
+
+		else {
+
+			if (input.mouse_buttons[MouseButton_Left] == InputState_None) {
+
+				info.focus = false;
+			}
+			else {
+
+				Transform trans = get_entity_transform(engine.scene, editor.selected_entity);
+				v3_f32 position = trans.getLocalPosition();
+				v2_f32 mouse_position = input.mouse_position * 2.f;
+
+				v2_f32 p0, p1;
+				world_to_screen_line(dev.camera.view_projection_matrix, position, position + v3_f32::up(), p0, p1);
+
+				v2_f32 dir0 = p1 - p0;
+				v2_f32 dir1 = mouse_position - p0;
+
+				dir0.normalize();
+				f32 dot = dir1.dot(dir0);
+
+				v2_f32 projection = p0 + dot * dir0;
+				XMVECTOR pos = projection.getDX();
+				pos = XMVector3Transform(pos, dev.camera.inverse_view_projection_matrix);
+
+				position.y = XMVectorGetY(pos);
+
+				trans.setPosition(position);
+			}
+		}
 	}
 
 	static void draw_gizmos(GPUImage* offscreen, CommandList cmd)
@@ -212,13 +287,17 @@ namespace sv {
 
 		constexpr f32 GIZMOS_SIZE = 1.f;
 
+
 		switch (info.mode)
 		{
 
 		case GizmosTransformMode_Position:
 		{
 			draw_debug_line(position, position + v3_f32::right() * GIZMOS_SIZE, Color::Red(), cmd);
-			draw_debug_line(position, position + v3_f32::up() * GIZMOS_SIZE, Color::Green(), cmd);
+
+			Color color = ((info.object == GizmosObject_AxisY) ? (info.focus ? Color::Silver() : Color::Lime()) : Color::Green());
+			draw_debug_line(position, position + v3_f32::up() * GIZMOS_SIZE, color, cmd);
+
 			draw_debug_line(position, position + v3_f32::forward() * GIZMOS_SIZE, Color::Blue(), cmd);
 		}
 		break;
@@ -341,7 +420,7 @@ namespace sv {
 					far_max = f32_max;
 					far_adv = 0.3f;
 				}
-					
+
 				egui_comp_drag_f32("Near", 1u, &cam.near, near_adv, near_min, near_max);
 				egui_comp_drag_f32("Far", 2u, &cam.far, far_adv, far_min, far_max);
 				if (egui_comp_drag_f32("Dimension", 3u, &dimension, 0.01f, 0.01f)) {
@@ -751,7 +830,7 @@ namespace sv {
 
 			{
 				constexpr f32 WIDTH = 80.f;
-				
+
 				gui_begin_container(gui, 0u, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(0.f), GuiCoord::IPixel(33.f));
 
 				if (info.filepath.size()) {
@@ -762,11 +841,11 @@ namespace sv {
 					u32 folder_count = 1u;
 					for (char c : info.filepath)
 						if (c == '/') ++folder_count;
-					
-					u32 count = std::min(std::max(u32(width / WIDTH), 1u), folder_count);	
+
+					u32 count = std::min(std::max(u32(width / WIDTH), 1u), folder_count);
 					SV_ASSERT(count != 0u);
 					--count;
-					
+
 					f32 offset = width - f32(count) * WIDTH;
 
 					const char* folder_offset = info.filepath.c_str();
@@ -777,9 +856,9 @@ namespace sv {
 					folder_name[2] = 'o';
 					folder_name[3] = 't';
 					folder_name[4] = '\0';
-					
+
 					foreach(i, count) {
-						
+
 						if (i != 0u) {
 
 							const char* end = folder_offset;
@@ -802,7 +881,7 @@ namespace sv {
 							if (!update_browser) {
 
 								const char* end = info.filepath.c_str();
-								
+
 								i = count - i;
 								while (i) {
 
@@ -820,26 +899,26 @@ namespace sv {
 						}
 					}
 				}
-				
+
 				gui_end_container(gui);
 			}
 
 			{
 				gui_begin_container(gui, 1u, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(40.f), GuiCoord::Relative(0.f));
-				
+
 				gui_begin_grid(gui, u32(info.elements.size()), 150.f, 5.f, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
 
-				foreach (i, info.elements.size()) {
+				foreach(i, info.elements.size()) {
 
 					const AssetElement& e = info.elements[i];
 
 					if (e.name.size() && e.name.front() != '.') {
 
 						// TODO: ignore unused elements
-						gui_begin_grid_element(gui, 69u + i);					
+						gui_begin_grid_element(gui, 69u + i);
 
 						if (gui_button(gui, nullptr, 0u, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f),
-							       GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), editor.style.button_style)) {
+							GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), editor.style.button_style)) {
 
 							if (e.type == AssetElementType_Directory && !update_browser) {
 
@@ -1013,6 +1092,8 @@ namespace sv {
 			// Entity selection
 			if (input.mouse_buttons[MouseButton_Left] == InputState_Released)
 				select_entity();
+
+			update_gizmos();
 		}
 	}
 
