@@ -906,28 +906,31 @@ namespace sv {
 
 
 		// Catch the input if the mouse is inside the parent and update scroll wheel
-		if (input.unused && parent_info) {
+		if (parent_info) {
 
-			input.unused = !mouse_in_bounds(gui, w.bounds);
+			if (input.unused) {
 
-			if (!input.unused) {
+				input.unused = !mouse_in_bounds(gui, w.bounds);
 
-				v4_f32 scrollable_bounds = parent_info->child_bounds;
-				parent_info->child_bounds.y -= parent_info->vertical_offset;
+				if (!input.unused) {
 
-				if (input.mouse_wheel != 0.f && mouse_in_bounds(gui, scrollable_bounds)) {
-						
-					parent_info->vertical_offset += input.mouse_wheel;
+					v4_f32 scrollable_bounds = parent_info->child_bounds;
+					parent_info->child_bounds.y -= parent_info->vertical_offset;
+
+					if (input.mouse_wheel != 0.f && mouse_in_bounds(gui, scrollable_bounds)) {
+
+						parent_info->vertical_offset += input.mouse_wheel;
+					}
 				}
 			}
-		}
 
-		// Limit scroll offsets
-		if (parent_info->has_vertical_scroll) {
-			parent_info->vertical_offset = 0.f;
-		}
-		else {
-			parent_info->vertical_offset = std::max(std::min(parent_info->vertical_offset, parent_info->y_max), parent_info->y_min);
+			// Limit scroll offsets
+			if (parent_info->has_vertical_scroll) {
+				parent_info->vertical_offset = 0.f;
+			}
+			else {
+				parent_info->vertical_offset = std::max(std::min(parent_info->vertical_offset, parent_info->max_y), parent_info->min_y);
+			}
 		}
 	}
 
@@ -1296,8 +1299,8 @@ namespace sv {
 			current_parent = w.index;
 			parent_info->widget_offset = u32(gui.indices.size());
 			parent_info->menu_item_count = 0u;
-			parent_info->y_min = 0.f;
-			parent_info->y_max = 0.f;
+			parent_info->min_y = 0.f;
+			parent_info->max_y = 0.f;
 			
 			parent_info->vertical_offset = _read<f32>(it);
 			parent_info->has_vertical_scroll = _read<bool>(it);
@@ -1405,8 +1408,8 @@ namespace sv {
 				GuiWidget* widget = &gui.widgets[it->index];
 				update_bounds(gui, widget, w, _menu_index);
 
-				parent_info->y_min = std::min(widget->bounds.y - parent_info->vertical_offset - widget->bounds.w * 0.5f, parent_info->y_min);
-				parent_info->y_max = std::max(widget->bounds.y - parent_info->vertical_offset + widget->bounds.w * 0.5f, parent_info->y_max);
+				parent_info->min_y = std::min(widget->bounds.y - parent_info->vertical_offset - widget->bounds.w * 0.5f, parent_info->min_y);
+				parent_info->max_y = std::max(widget->bounds.y - parent_info->vertical_offset + widget->bounds.w * 0.5f, parent_info->max_y);
 
 				GuiParentInfo* p = get_parent_info(gui, *widget);
 				if (p) {
@@ -1418,7 +1421,7 @@ namespace sv {
 			}
 
 			// Enable - Disable scroll bars (this bool is saved in raw data and used in the next frame
-			f32 height = parent_info->y_max - parent_info->y_min;
+			f32 height = parent_info->max_y - parent_info->min_y;
 			parent_info->has_vertical_scroll = height > parent_info->child_bounds.w;
 		}
 	}
@@ -1633,6 +1636,9 @@ namespace sv {
 		PARSE_GUI();
 		hash_combine(id, gui.current_id);
 
+		GuiWidget* w = find_widget(gui, id, GuiWidgetType_Container);
+		begin_parent(gui, w, id);
+
 		{
 			Raw_Container raw;
 			raw.coords.x0 = x0;
@@ -1641,11 +1647,12 @@ namespace sv {
 			raw.coords.y1 = y1;
 			raw.style = style;
 
-			write_widget(gui, GuiWidgetType_Container, id, &raw);
-		}
+			GuiParentInfo* parent_info;
+			if (w) parent_info = get_parent_info(gui, *w);
+			else parent_info = nullptr;
 
-		GuiWidget* w = find_widget(gui, id, GuiWidgetType_Container);
-		begin_parent(gui, w, id);
+			write_widget(gui, GuiWidgetType_Container, id, &raw, parent_info);
+		}		
 	}
 
 	void gui_end_container(GUI* gui_)
@@ -1674,7 +1681,9 @@ namespace sv {
 			raw.style = style;
 			raw.bounds = w->bounds;
 
-			write_widget(gui, GuiWidgetType_Popup, w->id, &raw);
+			GuiParentInfo* parent_info = get_parent_info(gui, *w);
+
+			write_widget(gui, GuiWidgetType_Popup, w->id, &raw, parent_info);
 			begin_parent(gui, w, id);
 			return true;
 		}
@@ -1741,7 +1750,7 @@ namespace sv {
 				raw.bounds.x = gui.mouse_position.x + raw.bounds.z * 0.5f;
 				raw.bounds.y = gui.mouse_position.y - raw.bounds.w * 0.5f;
 
-				write_widget(gui, GuiWidgetType_Popup, id, &raw);
+				write_widget(gui, GuiWidgetType_Popup, id, &raw, nullptr);
 				begin_parent(gui, w, id);
 				return true;
 			}
@@ -1785,10 +1794,14 @@ namespace sv {
 			Raw_Window raw;
 			raw.style = style;
 
-			write_widget(gui, GuiWidgetType_Window, id, &raw);
-
 			GuiWidget* w = find_widget(gui, id, GuiWidgetType_Window);
 			begin_parent(gui, w, id);
+
+			GuiParentInfo* parent_info;
+			if (w) parent_info = get_parent_info(gui, *w);
+			else parent_info = nullptr;
+
+			write_widget(gui, GuiWidgetType_Window, id, &raw, parent_info);
 		}
 
 		return state->show;
@@ -1854,7 +1867,11 @@ namespace sv {
 			raw.text = text;
 			raw.active = w ? w->widget.menu_item.active : false;
 
-			write_widget(gui, GuiWidgetType_MenuItem, id, &raw);
+			GuiParentInfo* parent_info;
+			if (w) parent_info = get_parent_info(gui, *w);
+			else parent_info = nullptr;
+
+			write_widget(gui, GuiWidgetType_MenuItem, id, &raw, parent_info);
 		}
 
 		if (w && w->widget.menu_item.active) {
@@ -1862,7 +1879,7 @@ namespace sv {
 			u64 container_id = id;
 			hash_combine(container_id, 0x32d9f32ac);
 
-			write_widget(gui, GuiWidgetType_MenuContainer, container_id, nullptr);
+			write_widget(gui, GuiWidgetType_MenuContainer, container_id, nullptr, get_parent_info(gui, *w));
 
 			GuiWidget* c = find_widget(gui, container_id, GuiWidgetType_MenuContainer);
 			begin_parent(gui, c, container_id);
@@ -1903,7 +1920,7 @@ namespace sv {
 		}
 		else raw.package_size = 0u;
 		
-		write_widget(gui, GuiWidgetType_Package, id, &raw);
+		write_widget(gui, GuiWidgetType_Package, id, &raw, nullptr);
 	}
 	
 	bool gui_recive_package(GUI* gui_, void** package, u32* package_size, u64 package_id)
@@ -1925,7 +1942,7 @@ namespace sv {
 				Raw_Reciver raw;
 				raw.package_id = package_id;
 
-				write_widget(gui, GuiWidgetType_Reciver, id, &raw);
+				write_widget(gui, GuiWidgetType_Reciver, id, &raw, nullptr);
 			}
 		}
 		
@@ -1961,7 +1978,7 @@ namespace sv {
 			raw.coords.y1 = y1;
 			raw.style = style;
 
-			write_widget(gui, GuiWidgetType_Button, id, &raw);
+			write_widget(gui, GuiWidgetType_Button, id, &raw, nullptr);
 		}
 
 		GuiWidget* w = find_widget(gui, id, GuiWidgetType_Button);
@@ -2003,7 +2020,7 @@ namespace sv {
 			raw.max = max;
 			raw.adv = adv;
 
-			write_widget(gui, GuiWidgetType_Drag, id, &raw);
+			write_widget(gui, GuiWidgetType_Drag, id, &raw, nullptr);
 		}
 
 		return modified;
@@ -2027,7 +2044,7 @@ namespace sv {
 		raw.coords.y1 = y1;
 		raw.style = style;
 
-		write_widget(gui, GuiWidgetType_Label, id, &raw);		
+		write_widget(gui, GuiWidgetType_Label, id, &raw, nullptr);		
 	}
 
 	bool gui_checkbox(GUI* gui_, bool* value, u64 id, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, const GuiCheckboxStyle& style)
@@ -2055,7 +2072,7 @@ namespace sv {
 			raw.style = style;
 			raw.value = *value;
 
-			write_widget(gui, GuiWidgetType_Checkbox, id, &raw);
+			write_widget(gui, GuiWidgetType_Checkbox, id, &raw, nullptr);
 		}
 
 		return modified;
@@ -2464,7 +2481,7 @@ namespace sv {
 				// Draw vertical scroll
 				if (parent_info->has_vertical_scroll) {
 
-					f32 norm = (parent_info->vertical_offset - parent_info->y_min) / (parent_info->y_max - parent_info->y_min);
+					f32 norm = (parent_info->vertical_offset - parent_info->min_y) / (parent_info->max_y - parent_info->min_y);
 
 					v4_f32 scroll_bounds = parent_info->child_bounds;
 					scroll_bounds.y -= parent_info->vertical_offset;
