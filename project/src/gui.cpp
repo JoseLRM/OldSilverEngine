@@ -108,7 +108,12 @@ namespace sv {
 
 		u32 parent_index;
 		u32 menu_item_count;
+		bool has_vertical_scroll;
 		v4_f32 child_bounds;
+
+		f32 vertical_offset;
+		f32 min_y;
+		f32 max_y;
 
 	};
 
@@ -437,7 +442,7 @@ namespace sv {
 		return get_parent_info(gui, w);
 	}
 
-	SV_INLINE static void write_widget(GUI_internal& gui, GuiWidgetType type, u64 id, void* data)
+	SV_INLINE static void write_widget(GUI_internal& gui, GuiWidgetType type, u64 id, void* data, GuiParentInfo* parent_info)
 	{
 		write_buffer(gui, type);
 		write_buffer(gui, id);
@@ -534,6 +539,19 @@ namespace sv {
 
 		default:
 			break;
+		}
+
+		// Write parent raw data
+		if (is_parent(type)) {
+			if (parent_info) {
+
+				write_buffer(gui, parent_info->vertical_offset);
+				write_buffer(gui, parent_info->has_vertical_scroll);
+			}
+			else {
+				write_buffer(gui, 0.f);
+				write_buffer(gui, false);			
+			}
 		}
 
 		gui.last.id = id;
@@ -834,7 +852,6 @@ namespace sv {
 				if (mouse_in_bounds(gui, decoration)) {
 
 					input.unused = false;
-
 					
 					if (button == InputState_Pressed) {
 
@@ -849,7 +866,7 @@ namespace sv {
 					}
 				}
 				else if (button == InputState_Pressed) {
-
+					
 					const v4_f32& content = window.state->bounds;
 
 					constexpr f32 SELECTION_SIZE = 0.02f;
@@ -888,10 +905,29 @@ namespace sv {
 		}
 
 
-		// Catch the input if the mouse is inside the parent
+		// Catch the input if the mouse is inside the parent and update scroll wheel
 		if (input.unused && parent_info) {
 
 			input.unused = !mouse_in_bounds(gui, w.bounds);
+
+			if (!input.unused) {
+
+				v4_f32 scrollable_bounds = parent_info->child_bounds;
+				parent_info->child_bounds.y -= parent_info->vertical_offset;
+
+				if (input.mouse_wheel != 0.f && mouse_in_bounds(gui, scrollable_bounds)) {
+						
+					parent_info->vertical_offset += input.mouse_wheel;
+				}
+			}
+		}
+
+		// Limit scroll offsets
+		if (parent_info->has_vertical_scroll) {
+			parent_info->vertical_offset = 0.f;
+		}
+		else {
+			parent_info->vertical_offset = std::max(std::min(parent_info->vertical_offset, parent_info->y_max), parent_info->y_min);
 		}
 	}
 
@@ -1260,18 +1296,26 @@ namespace sv {
 			current_parent = w.index;
 			parent_info->widget_offset = u32(gui.indices.size());
 			parent_info->menu_item_count = 0u;
+			parent_info->y_min = 0.f;
+			parent_info->y_max = 0.f;
+			
+			parent_info->vertical_offset = _read<f32>(it);
+			parent_info->has_vertical_scroll = _read<bool>(it);
 		}
 	}
 
+	// TEMP
+	constexpr f32 MENU_HEIGHT = 0.02f;
+	constexpr f32 MENU_WIDTH = 0.04f;
+
+	constexpr f32 MENU_CONTAINER_HEIGHT = 0.1f;
+	constexpr f32 MENU_CONTAINER_WIDTH = 0.1f;
+
+	constexpr f32 SCROLL_SIZE = 0.02f;
+	constexpr f32 SCROLL_BUTTON_SIZE_MULT = 0.2f;
+	
 	static void update_bounds(GUI_internal& gui, GuiWidget* w, GuiWidget* parent, u32& menu_index)
 	{
-		// TEMP
-		constexpr f32 MENU_HEIGHT = 0.02f;
-		constexpr f32 MENU_WIDTH = 0.04f;
-
-		constexpr f32 MENU_CONTAINER_HEIGHT = 0.1f;
-		constexpr f32 MENU_CONTAINER_WIDTH = 0.1f;
-
 		// Update bounds
 		switch (w->type)
 		{
@@ -1343,6 +1387,13 @@ namespace sv {
 				parent_info->child_bounds.y -= MENU_HEIGHT * 0.5f;
 			}
 
+			if (parent_info->has_vertical_scroll) {
+
+				parent_info->child_bounds.z -= SCROLL_SIZE;
+				parent_info->child_bounds.x -= SCROLL_SIZE * 0.5f;
+				parent_info->child_bounds.y += parent_info->vertical_offset;
+			}
+
 			// Update childs
 			GuiIndex* it = gui.indices.data() + parent_info->widget_offset;
 			GuiIndex* end = it + parent_info->widget_count;
@@ -1354,6 +1405,9 @@ namespace sv {
 				GuiWidget* widget = &gui.widgets[it->index];
 				update_bounds(gui, widget, w, _menu_index);
 
+				parent_info->y_min = std::min(widget->bounds.y - parent_info->vertical_offset - widget->bounds.w * 0.5f, parent_info->y_min);
+				parent_info->y_max = std::max(widget->bounds.y - parent_info->vertical_offset + widget->bounds.w * 0.5f, parent_info->y_max);
+
 				GuiParentInfo* p = get_parent_info(gui, *widget);
 				if (p) {
 
@@ -1362,6 +1416,10 @@ namespace sv {
 
 				++it;
 			}
+
+			// Enable - Disable scroll bars (this bool is saved in raw data and used in the next frame
+			f32 height = parent_info->y_max - parent_info->y_min;
+			parent_info->has_vertical_scroll = height > parent_info->child_bounds.w;
 		}
 	}
 
@@ -1834,8 +1892,6 @@ namespace sv {
 		u64 id = gui.last.id;
 		hash_combine(id, 0x89562f8a732db);
 		hash_combine(package_id, 0xa89d4fb319);
-
-		// TODO: Get ID from last widget
 
 		Raw_Package raw;
 		
@@ -2400,11 +2456,38 @@ namespace sv {
 
 		}
 
-		// If it is a parent, draw childs
+		// If it is a parent, draw childs and some parent stuff
 		{
 			const GuiParentInfo* parent_info = get_parent_info(gui, w);
 			if (parent_info) {
 
+				// Draw vertical scroll
+				if (parent_info->has_vertical_scroll) {
+
+					f32 norm = (parent_info->vertical_offset - parent_info->y_min) / (parent_info->y_max - parent_info->y_min);
+
+					v4_f32 scroll_bounds = parent_info->child_bounds;
+					scroll_bounds.y -= parent_info->vertical_offset;
+
+					scroll_bounds.x += scroll_bounds.z * 0.5f - SCROLL_SIZE * 0.5f;
+					scroll_bounds.z = SCROLL_SIZE;
+
+					f32 button_height = scroll_bounds.w * SCROLL_BUTTON_SIZE_MULT;
+					f32 button_space = scroll_bounds.w - button_height;
+					f32 button_y = (scroll_bounds.y + scroll_bounds.w * 0.5f) + (button_height * 0.5f) + (norm * button_space);
+					
+					begin_debug_batch(cmd);
+					
+					draw_debug_quad((v2_f32(scroll_bounds.x, scroll_bounds.y) * 2.f - 1.f).getVec3(0.f), v2_f32(scroll_bounds.z, scroll_bounds.w) * 2.f, Color::Red(), cmd);
+					draw_debug_quad((v2_f32(scroll_bounds.x, button_y) * 2.f - 1.f).getVec3(0.f), v2_f32(scroll_bounds.z, button_height) * 2.f, Color::Green(), cmd);
+					
+					
+					end_debug_batch(true, false, XMMatrixIdentity(), cmd);
+
+				}
+				
+				// Draw childs
+				
 				GuiIndex* it = gui.indices.data() + parent_info->widget_offset;
 				GuiIndex* end = it + parent_info->widget_count;
 
