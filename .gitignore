@@ -1,9 +1,5 @@
 # SilverEngine files
-*.log
-
-# Binaries
-bin/
-*.cso
+build
 
 # VisualStudio files
 .vs/
@@ -18,6 +14,3 @@ bin/
 # GMake files
 *.make
 **/Makefile
-
-# Ignore the resource folder
-examples/scene3D/res
