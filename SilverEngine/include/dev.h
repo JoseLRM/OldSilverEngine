@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef SV_DEV
+#if SV_DEV
 
 #include "scene.h"
 

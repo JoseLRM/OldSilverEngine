@@ -65,9 +65,9 @@ namespace sv {
 #define VK_USE_PLATFORM_XCB_KHR
 #endif
 
-#pragma warning(push)
-#pragma warning(disable : 4127)
-#pragma warning(disable : 4324)
+#pragma warning(push, 0)
+#pragma warning(disable : 4701)
+#pragma warning(disable : 4703)
 #include "external/vk_mem_alloc.h"
 #pragma warning(pop)
 

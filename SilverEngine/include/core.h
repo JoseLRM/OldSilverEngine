@@ -169,7 +169,7 @@ namespace sv {
 
 // Console
 
-#if SV_SLOW
+#if SV_DEV
 
 namespace sv {
 	
@@ -197,8 +197,8 @@ namespace sv {
 #define SV_LOG_SEPARATOR() do{}while(0)
 #define SV_LOG(x, ...) do{}while(0)
 #define SV_LOG_INFO(x, ...) do{}while(0)
-#define SV_LOG_WARNING(x, ...) printf("[WARNING] " x "\n", __VA_ARGS__)
-#define SV_LOG_ERROR(x, ...) printf("[ERROR] " x "\n", __VA_ARGS__)
+#define SV_LOG_WARNING(x, ...) sv::printf("[WARNING] " x "\n", __VA_ARGS__)
+#define SV_LOG_ERROR(x, ...) sv::printf("[ERROR] " x "\n", __VA_ARGS__)
 
 #endif
 

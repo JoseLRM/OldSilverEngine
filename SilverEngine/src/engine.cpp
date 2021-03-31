@@ -12,14 +12,21 @@ namespace sv {
 #if SV_DEV
     GlobalDevData dev;
     static Date last_user_lib_write = {};
+
+    void initialize_console();
+    void close_console();
+    void update_console();
+    void update_editor();
+    Result initialize_editor();
+    Result close_editor();
+    void draw_editor();
+    void draw_console();
 #endif
     
     Result os_create_window();
     void os_recive_input();
     Result os_destroy_window();
-    void initialize_console();
-    void close_console();
-
+    
     Result graphics_initialize();
     Result graphics_close();
 
@@ -34,13 +41,8 @@ namespace sv {
     Result close_scene(Scene* scene);
     void close_assets();
     void update_assets();
-    void update_console();
+    
     Result initialize_scene(Scene** pscene, const char* name);
-    void update_editor();
-    Result initialize_editor();
-    Result close_editor();
-    void draw_editor(CommandList cmd);
-    void draw_console(CommandList cmd);
     void update_scene(Scene* scene);
     void draw_scene(Scene* scene);
 
@@ -48,8 +50,6 @@ namespace sv {
     void os_free_user_callbacks();
 
     ////////////////////////////////////////////////////////////////// UPDATE DLL ////////////////////////////////////////////////////////////
-
-#if SV_DEV
 
     SV_AUX void recive_user_callbacks()
     {
@@ -72,6 +72,8 @@ namespace sv {
 	os_update_user_callbacks("Game.dll");
 #endif
     }
+    
+#if SV_DEV
     
     internal void update_user_callbacks()
     {
@@ -296,7 +298,9 @@ namespace sv {
     {
 	Result res;
 
+#if SV_DEV
 	initialize_console();
+#endif
 
 	SV_LOG_INFO("Initializing %s", engine.name);
 	
@@ -433,12 +437,10 @@ namespace sv {
             // Draw scene
 	    if (engine.scene) draw_scene(engine.scene);
 	    
-	    // Draw editor and the console and present to screen
-	    CommandList cmd = graphics_commandlist_get();
-	    
+	    // Draw editor and the console	    
 #if SV_DEV
-	    draw_editor(cmd);
-	    draw_console(cmd);
+	    draw_editor();
+	    draw_console();
 #endif
 
 	    renderer_end();

@@ -185,7 +185,7 @@ namespace sv {
 	}
 
 	if (type->create == nullptr) {
-	    SV_LOG_ERROR("The asset type '%u' can't create assets by default", asset_type_name);
+	    SV_LOG_ERROR("The asset type '%s' can't create assets by default", asset_type_name);
 	    return Result_InvalidUsage;
 	}
 

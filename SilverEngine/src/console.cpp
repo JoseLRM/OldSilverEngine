@@ -61,6 +61,7 @@ namespace sv {
 	    }
 
 	else
+
 	    foreach(i, argc) {
 		console_notify("ARG", args[i]);
 	    }
@@ -619,9 +620,11 @@ namespace sv {
 	input.text.clear();
     }
 
-    void draw_console(CommandList cmd)
+    void draw_console()
     {
 	if (!dev.console_active && console.show_fade == 0.f) return;
+
+	CommandList cmd = graphics_commandlist_get();
 
 	// Flip console
 	if (console.buff_flip && console.buff_pos) {

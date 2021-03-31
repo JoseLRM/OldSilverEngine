@@ -5,6 +5,7 @@
 namespace sv {
 
     SV_API void print(const char* str);
+    SV_API void printf(const char* str, ...);
     SV_API void show_message(const char* title, const char* content, bool error);
 
     /* TODO

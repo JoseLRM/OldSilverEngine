@@ -1094,8 +1094,10 @@ namespace sv {
 		}
 	    }
 
-	    void draw_editor(CommandList cmd)
+	    void draw_editor()
 	    {
+		CommandList cmd = graphics_commandlist_get();
+		    
 		if (engine.scene && dev.debug_draw) {
 
 		    begin_debug_batch(cmd);

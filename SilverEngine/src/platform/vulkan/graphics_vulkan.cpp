@@ -1737,8 +1737,8 @@ namespace sv {
 		    Shader_vk* vertexShader = reinterpret_cast<Shader_vk*>(state.vertexShader);
 		    Shader_vk* pixelShader = reinterpret_cast<Shader_vk*>(state.pixelShader);
 		    Shader_vk* geometryShader = reinterpret_cast<Shader_vk*>(state.geometryShader);
-		    bool res = graphics_vulkan_pipeline_create(p, vertexShader, pixelShader, geometryShader);
-		    SV_ASSERT(res);
+		    graphics_vulkan_pipeline_create(p, vertexShader, pixelShader, geometryShader);
+		    // TODO handle error
 		    pipelinePtr = &p;
 
 		}

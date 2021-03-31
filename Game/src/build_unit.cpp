@@ -51,14 +51,14 @@ SV_USER void user_update()
 
 	SpriteComponent* spr = get_component<SpriteComponent>(scene, m.entity);
 	if (spr) {
-	    spr->color = Color::Blue(u8((sin(timer_now()) + 1.f) * 0.5f * 255.f));
+	    spr->color = Color::Red(u8((sin(timer_now()) + 1.f) * 0.5f * 255.f));
 	}
 
 	Transform trans = get_entity_transform(scene, m.entity);
 	v2_f32 pos = trans.getLocalPosition().getVec2();
 
-	pos.x = cos((f32)timer_now()) * 10.f;
-	pos.y = sin((f32)timer_now()) * 10.f;
+	pos.x = cos((f32)timer_now() * 3.f) * 10.f;
+	pos.y = sin((f32)timer_now() * 30.f) * 1.f;
 
 	trans.setPosition(pos.getVec3());
 	trans.setScale({ 1.f, 1.f, 69.f });

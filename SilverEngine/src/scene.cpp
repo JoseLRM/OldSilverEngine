@@ -567,7 +567,7 @@ namespace sv {
 
 	// Compute projection matrix
 	{
-#ifdef SV_DEV
+#if SV_DEV
 	    if (camera.near >= camera.far) {
 		SV_LOG_WARNING("Computing the projection matrix. The far must be grater than near");
 	    }
@@ -642,7 +642,7 @@ namespace sv {
 		update_camera_matrices(camera, position, rotation);
 	    }
 
-#ifdef SV_DEV
+#if SV_DEV
 	    update_camera_matrices(dev.camera, dev.camera.position, dev.camera.rotation);
 #endif
 	}

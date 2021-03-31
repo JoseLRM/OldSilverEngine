@@ -791,7 +791,7 @@ namespace sv {
 	// Draw cameras
 	{
 
-#ifdef SV_DEV
+#if SV_DEV
 	    CameraComponent* camera_ = nullptr;
 	    CameraBuffer_GPU camera_data;
 
@@ -834,7 +834,7 @@ namespace sv {
 
 	    if (camera_) {
 				
-		Transform camera_trans = get_entity_transform(scene, camera_->entity);
+		Transform camera_trans = get_entity_transform(scene, scene->main_camera);
 		camera_data.projection_matrix = camera_->projection_matrix;
 		camera_data.position = camera_trans.getWorldPosition().getVec4(0.f);
 		camera_data.rotation = camera_trans.getWorldRotation();

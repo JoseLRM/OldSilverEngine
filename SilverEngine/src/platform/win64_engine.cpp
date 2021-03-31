@@ -346,6 +346,19 @@ namespace sv {
 	printf(str);
 	OutputDebugString(str);
     }
+
+    void printf(const char* str, ...)
+    {
+	va_list args;
+	va_start(args, str);
+
+	char log_buffer[1000];
+
+	vsnprintf(log_buffer, 1000, str, args);
+	sv::print(log_buffer);
+	
+	va_end(args);
+    }
     
     void show_message(const char* title, const char* content, bool error)
     {

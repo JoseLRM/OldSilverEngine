@@ -2,15 +2,68 @@
 
 pushd %~p0\..\
 
+SET common_compiler_flags= -MT -nologo -EHa- -GR- -Oi -WX -W4 -wd4127 -wd4211 -wd4238 -wd4459 -wd4996 -wd4456 -wd4281 -wd4100 -wd4530 -FC /std:c++14
+SET common_defines= -DSV_SLOW=0 -DSV_DEV=0 -DSV_GFX=0 -DSV_PLATFORM_WIN=0
+
+SET compile_entry=false
+SET compile_engine=false
+SET compile_game=false
+
+SET option_slow=false
+SET option_dev=false
+SET option_gfx=false
+
+:arg_loop
+IF "%1"=="" GOTO end_arg_loop
+
+IF "%1"=="win64" SET common_defines=%common_defines% -DSV_PLATFORM_WIN=1
+
+IF "%1"=="game" SET compile_game=true
+IF "%1"=="engine" SET compile_engine=true
+IF "%1"=="entry" SET compile_entry=true
+
+IF "%1"=="slow" SET option_slow=true
+IF "%1"=="dev" SET option_dev=true
+IF "%1"=="gfx" SET option_gfx=true
+IF "%1"=="all" (
+   SET option_slow=true
+   SET option_dev=true
+   SET option_gfx=true
+)
+
+SHIFT
+GOTO arg_loop
+:end_arg_loop
+
+IF "%compile_entry%"=="false" (
+   IF "%compile_engine%"=="false" (
+      IF "%compile_game%"=="false" (
+      	 SET compile_entry=true
+   	 SET compile_engine=true
+   	 SET compile_game=true
+	)
+      )
+)
+
+IF "%option_slow%"=="true" (
+   SET common_defines=%common_defines% -DSV_SLOW=1
+   SET common_compiler_flags= %common_compiler_flags% -Z7
+) ELSE (
+   SET common_compiler_flags= %common_compiler_flags% -GL
+)
+IF "%option_dev%"=="true" (
+   SET common_defines=%common_defines% -DSV_DEV=1
+)
+IF "%option_gfx%"=="true" (
+   SET common_defines=%common_defines% -DSV_GFX=1
+)
+
 IF NOT EXIST build\int mkdir build\int
 
 cls
 
-REM optimization ->/GL
 
-SET common_compiler_flags= -MT -nologo -EHa- -GR- -Oi -WX -W4 -wd4127 -wd4211 -wd4238 -wd4459 -wd4996 -wd4456 -wd4281 -wd4100 -wd4530 -FC -Z7 /std:c++14
 SET common_linker_flags= /incremental:no
-SET common_defines= -DSV_SLOW=1 -DSV_DEV=1 -DSV_GFX=1 -DSV_PLATFORM_WIN=1
 
 REM Silver Engine path
 SET SVP= ..\..\SilverEngine\
@@ -30,14 +83,32 @@ SET g_include_paths= /I %GP%src /I %GP%..\SilverEngine\include\
 
 pushd build\int
 
-ECHO -- Compiling entry point!
-CALL cl %common_compiler_flags% %SVP%src\entrypoint\win64_entrypoint.cpp /link %common_linker_flags% user32.lib /out:..\EntryPoint.exe /PDB:EntryPoint.pdb
+IF "%compile_entry%"=="true" (
+   ECHO.
+   ECHO.
+   ECHO.
+   ECHO -- Compiling entry point! --
+   CALL cl %common_compiler_flags% %SVP%src\entrypoint\win64_entrypoint.cpp /link %common_linker_flags% user32.lib /out:..\EntryPoint.exe /PDB:EntryPoint.pdb
+)
 
-ECHO -- Compiling SilverEngine!
-CALL cl %sv_compiler_flags% %sv_defines% %sv_include_paths% %SVP%src\build_unit.cpp /link %sv_link_flags% %sv_link_libs% 
+IF "%compile_engine%"=="true" (
+   ECHO.
+   ECHO.
+   ECHO.
+   ECHO -- Compiling SilverEngine! --
+   CALL cl %sv_compiler_flags% %sv_defines% %sv_include_paths% %SVP%src\build_unit.cpp /link %sv_link_flags% %sv_link_libs% 
+)
 
-ECHO -- Compiling Game!
-CALL cl %common_compiler_flags% %common_defines% %g_include_paths% %GP%src\build_unit.cpp /link %common_linker_flags% /DLL ..\SilverEngine.lib /out:..\Game.dll /PDB:Game.pdb
+IF "%compile_game%"=="true" (
+   ECHO.
+   ECHO.
+   ECHO.
+   ECHO -- Compiling Game! --
+   CALL cl %common_compiler_flags% %common_defines% %g_include_paths% %GP%src\build_unit.cpp /link %common_linker_flags% /DLL ..\SilverEngine.lib /out:..\Game.dll /PDB:Game.pdb
+)
+
+ECHO.
+ECHO.
 
 popd
 
@@ -45,7 +116,7 @@ pushd build
 
 SET SVP= ..\SilverEngine\
 SET GP= ..\Game\
-
+ 
 IF EXIST EntryPoint.exe (
 
    IF EXIST SilverEngine.exe DEL SilverEngine.exe -Q
