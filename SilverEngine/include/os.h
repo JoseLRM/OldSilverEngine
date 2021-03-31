@@ -5,7 +5,7 @@
 namespace sv {
 
     SV_API void print(const char* str);
-    void show_message(const char* title, const char* content, bool error);
+    SV_API void show_message(const char* title, const char* content, bool error);
 
     /* TODO
        std::string file_dialog_open(u32 filterCount, const char** filters, const char* startPath);
@@ -18,8 +18,8 @@ namespace sv {
 
     // Memory
 
-    void* allocate_memory(size_t size);
-    void free_memory(void* ptr);
+    SV_API void* allocate_memory(size_t size);
+    SV_API void free_memory(void* ptr);
 
     // Window
 
@@ -30,34 +30,36 @@ namespace sv {
 	WindowState_Fullscreen,
     };
     
-    u64 os_window_handle();
-    v2_u32 os_window_size();
-    f32 os_window_aspect();
-    void os_window_set_fullscreen(bool fullscreen);
-    WindowState os_window_state();
-    v2_u32 os_desktop_size();
+    SV_API u64 os_window_handle();
+    SV_API v2_u32 os_window_size();
+    SV_API f32 os_window_aspect();
+    SV_API void os_window_set_fullscreen(bool fullscreen);
+    SV_API WindowState os_window_state();
+    SV_API v2_u32 os_desktop_size();
     
     // File Management
 
-    bool path_is_absolute(const char* path);
-    void path_clear(char* path);
+    SV_API bool path_is_absolute(const char* path);
+    SV_API void path_clear(char* path);
 
-    Result file_read_binary(const char* filepath, u8** pData, size_t* pSize);
-    Result file_read_binary(const char* filepath, List<u8>& data);
-    Result file_read_text(const char* filepath, std::string& str);
-    Result file_write_binary(const char* filepath, const u8* data, size_t size, bool append = false);
-    Result file_write_text(const char* filepath, const char* str, size_t size, bool append = false);
+    SV_API Result file_read_binary(const char* filepath, u8** pData, size_t* pSize);
+    SV_API Result file_read_binary(const char* filepath, List<u8>& data);
+    SV_API Result file_read_text(const char* filepath, std::string& str);
+    SV_API Result file_write_binary(const char* filepath, const u8* data, size_t size, bool append = false);
+    SV_API Result file_write_text(const char* filepath, const char* str, size_t size, bool append = false);
 
-    Result file_remove(const char* filepath);
-    Result file_copy(const char* srcpath, const char* dstpath);
+    SV_API Result file_remove(const char* filepath);
+    SV_API Result file_copy(const char* srcpath, const char* dstpath);
 
-    Result load_image(const char* filePath, void** pdata, u32* width, u32* height);
+    SV_API Result file_date(const char* filepath, Date* create, Date* last_write, Date* last_access);
+    
+    SV_API Result load_image(const char* filePath, void** pdata, u32* width, u32* height);
 
-    Result bin_read(size_t hash, List<u8>& data);
-    Result bin_read(size_t hash, Archive& archive);
+    SV_API Result bin_read(size_t hash, List<u8>& data);
+    SV_API Result bin_read(size_t hash, Archive& archive);
 
-    Result bin_write(size_t hash, const void* data, size_t size);
-    Result bin_write(size_t hash, Archive& archive);
+    SV_API Result bin_write(size_t hash, const void* data, size_t size);
+    SV_API Result bin_write(size_t hash, Archive& archive);
     
     enum MouseButton : u32 {
 	MouseButton_Left,
@@ -179,6 +181,6 @@ namespace sv {
 
     };
 
-    extern GlobalInputData input;
+    extern GlobalInputData SV_API_VAR input;
     
 }

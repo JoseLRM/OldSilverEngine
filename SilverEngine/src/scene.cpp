@@ -152,11 +152,11 @@ namespace sv {
 
 	    if (exist) {
 
-		Result res = archive.openFile(filepath.c_str());
+		Result res = archive.openFile(filepath);
 
 		if (result_fail(res)) {
 
-		    SV_LOG_ERROR("Can't deserialize the scene '%s' at '%s'", name, filepath.c_str());
+		    SV_LOG_ERROR("Can't deserialize the scene '%s' at '%s'", name, filepath);
 		}
 		else {
 		    u32 version;
@@ -366,7 +366,7 @@ namespace sv {
 	PARSE_SCENE();
 
 	// User close TODO: Handle error
-	Result res = user_close_scene(scene_);
+	user_close_scene(scene_);
 
 	gui_destroy(scene.gui);
 	//destroy_audio_device(scene.audio_device);
@@ -396,7 +396,7 @@ namespace sv {
 	
 	// validate scene
 	if (user_validate_scene(name)) {
-	    memcpy(engine.next_scene_name, name, name_size);
+	    memcpy(engine.next_scene_name, name, name_size + 1u);
 	    return Result_Success;
 	}
 	return Result_NotFound;
@@ -648,8 +648,8 @@ namespace sv {
 	}
 
 	// User update
-	if (engine.user.update_scene)
-	    engine.user.update_scene(scene_);
+	if (engine.user.update)
+	    engine.user.update();
     }
 
     CameraComponent* get_main_camera(Scene* scene)

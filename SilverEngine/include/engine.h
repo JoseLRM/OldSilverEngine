@@ -9,19 +9,21 @@ namespace sv {
     typedef Result(*UserInitializeFn)();
     typedef void(*UserUpdateFn)();
     typedef Result(*UserCloseFn)();
-    typedef bool(*UserValidateScene)(const char* name);
-    typedef bool(*UserGetSceneFilepath)(const char* name, char* filepath);
-    typedef Result(*UserInitializeScene)(Scene* scene, Archive* parchive);
-    typedef Result(*UserSerializeScene)(Scene* scene, Archive* parchive);
+    typedef bool(*UserValidateSceneFn)(const char* name);
+    typedef bool(*UserGetSceneFilepathFn)(const char* name, char* filepath);
+    typedef Result(*UserInitializeSceneFn)(Scene* scene, Archive* parchive);
+    typedef Result(*UserCloseSceneFn)(Scene* scene);
+    typedef Result(*UserSerializeSceneFn)(Scene* scene, Archive* parchive);
     
     struct UserCallbacks {
 	UserInitializeFn initialize;
 	UserUpdateFn update;
 	UserCloseFn close;
-	UserValidateScene validate_scene;
-	UserGetSceneFilepath get_scene_filepath;
-	UserInitializeScene initialize_scene;
-	UserSerializeScene serialize_scene;
+	UserValidateSceneFn validate_scene;
+	UserGetSceneFilepathFn get_scene_filepath;
+	UserInitializeSceneFn initialize_scene;
+	UserCloseSceneFn close_scene;
+	UserSerializeSceneFn serialize_scene;
     };
 
     constexpr u32 SCENE_NAME_SIZE = 50u;
@@ -38,13 +40,14 @@ namespace sv {
 	bool             running = false;
 	Scene*	         scene = nullptr;
 	char	         next_scene_name[SCENE_NAME_SIZE];
+	void*            game_memory = nullptr;
     };
-
-    extern GlobalEngineData engine;
+    
+    extern GlobalEngineData SV_API_VAR engine;
 
     SV_INLINE bool user_validate_scene(const char* name)
     {
-	return engine.user.validate_scene ? engine.user.validate_scene(name) : false;
+	return engine.user.validate_scene ? engine.user.validate_scene(name) : true;
     }
 
     SV_INLINE bool user_get_scene_filepath(const char* name, char* filepath)
@@ -54,7 +57,7 @@ namespace sv {
 
     SV_INLINE Result user_initialize_scene(Scene* scene, Archive* parchive)
     {
-	return engine.user.initialize_scene ? engine.user.initialize_scene(scene_, parchive) : Result_Success;
+	return engine.user.initialize_scene ? engine.user.initialize_scene(scene, parchive) : Result_Success;
     }
 
     SV_INLINE Result user_close_scene(Scene* scene)

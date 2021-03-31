@@ -84,8 +84,10 @@ constexpr f64	f64_ninf = -1.0 * std::numeric_limits<f64>::infinity();
 
 #if SV_SILVER_ENGINE
 #define SV_API __declspec(dllexport)
+#define SV_API_VAR SV_API
 #else
 #define SV_API
+#define SV_API_VAR __declspec(dllimport)
 #endif
 
 #if SV_PLATFORM_WIN
@@ -251,6 +253,18 @@ namespace sv {
 	u32 hour;
 	u32 minute;
 	u32 second;
+	u32 milliseconds;
+
+	SV_INLINE bool operator<=(const Date& other)
+	    {
+		if (year != other.year) return year <= other.year;
+		else if (month != other.month) return month <= other.month;
+		else if (day != other.day) return day <= other.day;
+		else if (hour != other.hour) return hour <= other.hour;
+		else if (minute != other.minute) return minute <= other.minute;
+		else if (second != other.second) return second <= other.second;
+		return milliseconds <= other.milliseconds;
+	    }
     };
 
     SV_API Time timer_now();

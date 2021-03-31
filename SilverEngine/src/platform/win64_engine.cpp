@@ -536,6 +536,49 @@ namespace sv {
 	return Result_Success;
     }
 
+    SV_AUX Date filetime_to_date(const FILETIME& file)
+    {
+	SYSTEMTIME sys;
+	FileTimeToSystemTime(&file, &sys);
+
+	Date date;
+	date.year = (u32)sys.wYear;
+	date.month = (u32)sys.wMonth;
+	date.day = (u32)sys.wDay;
+	date.hour = (u32)sys.wHour;
+	date.minute = (u32)sys.wMinute;
+	date.second = (u32)sys.wSecond;
+	date.milliseconds = (u32)sys.wMilliseconds;
+
+	return date;
+    }
+
+    Result file_date(const char* filepath, Date* create, Date* last_write, Date* last_access)
+    {
+	HANDLE file = CreateFile(filepath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+
+	if (file == INVALID_HANDLE_VALUE)
+	    return Result_NotFound;
+
+	FILETIME creation_time;
+	FILETIME last_access_time;
+	FILETIME last_write_time;
+	
+	if (GetFileTime(file, &creation_time, &last_access_time, &last_write_time)) {
+
+	    if (create) *create = filetime_to_date(creation_time);
+	    if (last_access) *last_access = filetime_to_date(last_access_time);
+	    if (last_write) *last_write = filetime_to_date(last_write_time);
+	}
+	else {
+	    CloseHandle(file);
+	    return Result_PlatformError;
+	}
+
+	CloseHandle(file);
+	return Result_Success;
+    }
+
     Result file_remove(const char* filepath)
     {
 	return DeleteFile(filepath) ? Result_Success : Result_NotFound;
@@ -543,7 +586,7 @@ namespace sv {
     
     Result file_copy(const char* srcpath, const char* dstpath)
     {
-	return Result_TODO;
+	return CopyFileA(srcpath, dstpath, FALSE) ? Result_Success : Result_PlatformError;
     }
 
     Result load_image(const char* filePath, void** pdata, u32* width, u32* height)
@@ -592,71 +635,25 @@ namespace sv {
 
     ////////////////////////////////////////////////////////////////// USER CALLBACKS /////////////////////////////////////////////////////////////
 
-    void os_update_user_callbacks()
+    void os_free_user_callbacks()
     {
-#if SV_DEV
+	engine.user = {};
 
-	static Time last_update = 0.0;
-	Time now = timer_now();
-	
 	if (platform.user_lib) {
-
-	    if (now - last_update > 1.0) {
-
-		// Check if the file is modified
-
-		FILETIME creation_time;
-		FILETIME last_access_time;
-		FILETIME last_write_time;
-
-		HANDLE file = CreateFile("Game.dll", GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-
-		if (file != INVALID_HANDLE_VALUE) {
-
-		    if (GetFileTime(file, &creation_time, &last_access_time, &last_write_time)) {
-
-			SYSTEMTIME time;
-			FileTimeToSystemTime(&last_write_time, &time);
-
-			// TODO: check if it is modified and write a cross platform function
-			bool modified = true;
-			
-			if (!modified) {
-			    CloseHandle(file);
-			    return;
-			}
-		    }
-		    else {
-			CloseHandle(file);
-			SV_LOG_ERROR("Can't get the Game.dll file times");
-			return;
-		    }
-
-		    CloseHandle(file);
-		}
-		else {
-		    SV_LOG_ERROR("Game.dll not found");
-		    return;
-		}
-	    }
-	    else return;
-
+	    FreeLibrary(platform.user_lib);
+	    platform.user_lib = 0;
+	}
+    }
+    
+    void os_update_user_callbacks(const char* dll)
+    {
+	if (platform.user_lib) {
 	    FreeLibrary(platform.user_lib);
 	    platform.user_lib = 0;
 	}
 
-	last_update = now;
+	platform.user_lib = LoadLibrary(dll);
 	
-	Result res = file_copy("Game.dll", "system/GameTemp.dll");
-	if (result_fail) {
-	    SV_LOG_ERROR("Can't create temporal game dll: %s", result_str(res));
-	}
-	
-	platform.user_lib = LoadLibrary("system/GameTemp.dll");
-#else
-	platform.user_lib = LoadLibrary("Game.dll");
-#endif
-
 	if (platform.user_lib) {
 
 	    engine.user.initialize = (UserInitializeFn)GetProcAddress(platform.user_lib, "user_initialize");
@@ -665,7 +662,10 @@ namespace sv {
 	    engine.user.validate_scene = (UserValidateSceneFn)GetProcAddress(platform.user_lib, "user_validate_scene");
 	    engine.user.get_scene_filepath = (UserGetSceneFilepathFn)GetProcAddress(platform.user_lib, "user_get_scene_filepath");
 	    engine.user.initialize_scene = (UserInitializeSceneFn)GetProcAddress(platform.user_lib, "user_initialize_scene");
+	    engine.user.close_scene = (UserCloseSceneFn)GetProcAddress(platform.user_lib, "user_close_scene");
 	    engine.user.serialize_scene = (UserSerializeSceneFn)GetProcAddress(platform.user_lib, "user_serialize_scene");
+
+	    SV_LOG_INFO("User callbacks loaded");
 	}
 	else SV_LOG_ERROR("Can't find game code");
     }

@@ -11,6 +11,7 @@ namespace sv {
 
 #if SV_DEV
     GlobalDevData dev;
+    static Date last_user_lib_write = {};
 #endif
     
     Result os_create_window();
@@ -43,7 +44,59 @@ namespace sv {
     void update_scene(Scene* scene);
     void draw_scene(Scene* scene);
 
-    void os_update_user_callbacks();
+    void os_update_user_callbacks(const char* dll);
+    void os_free_user_callbacks();
+
+    ////////////////////////////////////////////////////////////////// UPDATE DLL ////////////////////////////////////////////////////////////
+
+#if SV_DEV
+
+    SV_AUX void recive_user_callbacks()
+    {
+#if SV_DEV
+	
+	os_free_user_callbacks();
+	
+	Result res = file_copy("Game.dll", "system/GameTemp.dll");
+	if (result_fail(res)) {
+	    SV_LOG_ERROR("Can't create temporal game dll: %s", result_str(res));
+	}
+	
+	os_update_user_callbacks("system/GameTemp.dll");
+
+	Date date;
+	if (result_okay(file_date("Game.dll", nullptr, &date, nullptr))) {
+	    last_user_lib_write = date;
+	}
+#else
+	os_update_user_callbacks("Game.dll");
+#endif
+    }
+    
+    internal void update_user_callbacks()
+    {
+	static Time last_update = 0.0;
+	Time now = timer_now();
+	
+	if (now - last_update > 1.0) {
+	    
+	    // Check if the file is modified
+	    Date date;
+	    if (result_okay(file_date("Game.dll", nullptr, &date, nullptr))) {
+
+		if (date <= last_user_lib_write)
+		    return;
+	    }
+	    else return;
+	}
+	else return;
+
+	last_update = now;
+
+	recive_user_callbacks();
+    }
+
+#endif
 
     /////////////////////////////////////////////////////////////////// PROCESS INPUT /////////////////////////////////////////////////////////////
 
@@ -301,7 +354,7 @@ namespace sv {
 
 	static Time lastTime = 0.f;
 
-	os_update_user_callbacks();
+	recive_user_callbacks();
 
 	// User init
 	if (engine.user.initialize) {
@@ -333,6 +386,10 @@ namespace sv {
 		    fpsCount = 0u;
 		}
 	    }
+
+#if SV_DEV
+	    update_user_callbacks();
+#endif
 	    
 	    process_input();
 
@@ -347,7 +404,7 @@ namespace sv {
 
 	    // Scene management
 	    {
-		if (engine.next_scene_name.size()) {
+		if (engine.next_scene_name[0] != '\0') {
 
 		    // Close last scene
 		    if (engine.scene) {
@@ -355,8 +412,8 @@ namespace sv {
 			// TODO: handle error
 		    }
 
-		    initialize_scene(&engine.scene, engine.next_scene_name.c_str());
-		    engine.next_scene_name.clear();
+		    initialize_scene(&engine.scene, engine.next_scene_name);
+		    engine.next_scene_name[0] = '\0';
 		    // TODO Handle error
 
 		}
