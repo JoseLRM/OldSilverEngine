@@ -1,4 +1,10 @@
+
+#if SV_PLATFORM_WIN
 #include "platform/win64_engine.cpp"
+#elif SV_PLATFORM_LINUX
+
+#endif
+
 #include "engine.cpp"
 #include "core.cpp"
 #include "utils.cpp"

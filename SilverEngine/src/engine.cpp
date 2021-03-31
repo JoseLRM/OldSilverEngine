@@ -297,14 +297,7 @@ namespace sv {
 	initialize_editor();
 #endif
 	
-	// TODO init app
-	//INIT_SYSTEM("Application", engine.callbacks.initialize());
-	
 	engine.running = true;
-
-
-	// TEMP
-	set_active_scene("Test");
 
 	static Time lastTime = 0.f;
 
@@ -397,6 +390,14 @@ namespace sv {
 
 	SV_LOG_INFO("Closing %s", engine.name);
 
+	// User close
+	if (engine.user.close) {
+		res = engine.user.close();
+		if (result_fail(res)) {
+			SV_LOG_ERROR("User can't close successfully: %s", result_str(res));
+		}
+	}
+	
 	if (engine.scene) close_scene(engine.scene);
 	//TODO svCheck(engine.callbacks.close());
 

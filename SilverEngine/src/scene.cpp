@@ -146,13 +146,11 @@ namespace sv {
 	// Deserialize
 	{
 	    // Get filepath
-	    std::string filepath;
-	    // TODO
-	    //if (engine.callbacks.get_scene_filepath) {
-	    //	filepath = engine.callbacks.get_scene_filepath(name);
-	    //}
+	    char filepath[300];
 
-	    if (filepath.size()) {
+	    bool exist = user_get_scene_filepath(name, filepath);
+
+	    if (exist) {
 
 		Result res = archive.openFile(filepath.c_str());
 
@@ -352,9 +350,13 @@ namespace sv {
 	    }
 	}
 
-	// TODO: User Init
-	//svCheck(engine.callbacks.initialize_scene(scene_, deserialize ? &archive : nullptr));
-
+	// User Init
+	Result res = user_initialize_scene(scene_, deserialize ? &archive : nullptr);
+	if (result_fail(res)) {
+	    // TODO: handle error
+	    return res;
+	}
+	
 	*pscene = scene_;
 	return Result_Success;
     }
@@ -363,8 +365,8 @@ namespace sv {
     {
 	PARSE_SCENE();
 
-	// TODO: User close
-	//svCheck(engine.callbacks.close_scene(scene_));
+	// User close TODO: Handle error
+	Result res = user_close_scene(scene_);
 
 	gui_destroy(scene.gui);
 	//destroy_audio_device(scene.audio_device);
@@ -385,15 +387,19 @@ namespace sv {
 
     Result set_active_scene(const char* name)
     {
-	// TODO validate scene
-	//if (engine.callbacks.validate_scene) {
-	//    Result res = engine.callbacks.validate_scene(name);
+	size_t name_size = strlen(name);
 
-	//  if (result_fail(res)) return res;
-	//}
-
-	engine.next_scene_name = name;
-	return Result_Success;
+	if (name_size > SCENE_NAME_SIZE) {
+	    SV_LOG_ERROR("The scene name '%s' is to long, max chars = %u", name, SCENE_NAME_SIZE);
+	    return Result_InvalidUsage;
+	}
+	
+	// validate scene
+	if (user_validate_scene(name)) {
+	    memcpy(engine.next_scene_name, name, name_size);
+	    return Result_Success;
+	}
+	return Result_NotFound;
     }
 
     Result save_scene(Scene* scene_, const char* filepath)
@@ -492,8 +498,8 @@ namespace sv {
 	scene.entities.clear();
 	entityClear(scene.entityData);
 
-	// TODO: user initialize scene
-	//svCheck(engine.callbacks.initialize_scene(scene_, nullptr));
+	// user initialize scene
+	svCheck(user_initialize_scene(scene_, nullptr));
 
 	return Result_Success;
     }
@@ -551,7 +557,7 @@ namespace sv {
 	  }
 	  }
 	*/	
-	return Result_Success;
+	return Result_TODO;
     }
 
     static void update_camera_matrices(CameraComponent& camera, const v3_f32& position, const v4_f32& rotation)
@@ -641,9 +647,9 @@ namespace sv {
 #endif
 	}
 
-	// TODO: User update
-	//if (engine.callbacks.update_scene)
-	//engine.callbacks.update_scene(scene_);
+	// User update
+	if (engine.user.update_scene)
+	    engine.user.update_scene(scene_);
     }
 
     CameraComponent* get_main_camera(Scene* scene)

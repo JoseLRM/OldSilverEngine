@@ -594,13 +594,78 @@ namespace sv {
 
     void os_update_user_callbacks()
     {
+#if SV_DEV
+
+	static Time last_update = 0.0;
+	Time now = timer_now();
+	
+	if (platform.user_lib) {
+
+	    if (now - last_update > 1.0) {
+
+		// Check if the file is modified
+
+		FILETIME creation_time;
+		FILETIME last_access_time;
+		FILETIME last_write_time;
+
+		HANDLE file = CreateFile("Game.dll", GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+
+		if (file != INVALID_HANDLE_VALUE) {
+
+		    if (GetFileTime(file, &creation_time, &last_access_time, &last_write_time)) {
+
+			SYSTEMTIME time;
+			FileTimeToSystemTime(&last_write_time, &time);
+
+			// TODO: check if it is modified and write a cross platform function
+			bool modified = true;
+			
+			if (!modified) {
+			    CloseHandle(file);
+			    return;
+			}
+		    }
+		    else {
+			CloseHandle(file);
+			SV_LOG_ERROR("Can't get the Game.dll file times");
+			return;
+		    }
+
+		    CloseHandle(file);
+		}
+		else {
+		    SV_LOG_ERROR("Game.dll not found");
+		    return;
+		}
+	    }
+	    else return;
+
+	    FreeLibrary(platform.user_lib);
+	    platform.user_lib = 0;
+	}
+
+	last_update = now;
+	
+	Result res = file_copy("Game.dll", "system/GameTemp.dll");
+	if (result_fail) {
+	    SV_LOG_ERROR("Can't create temporal game dll: %s", result_str(res));
+	}
+	
+	platform.user_lib = LoadLibrary("system/GameTemp.dll");
+#else
 	platform.user_lib = LoadLibrary("Game.dll");
+#endif
 
 	if (platform.user_lib) {
 
 	    engine.user.initialize = (UserInitializeFn)GetProcAddress(platform.user_lib, "user_initialize");
 	    engine.user.update = (UserUpdateFn)GetProcAddress(platform.user_lib, "user_update");
 	    engine.user.close = (UserCloseFn)GetProcAddress(platform.user_lib, "user_close");
+	    engine.user.validate_scene = (UserValidateSceneFn)GetProcAddress(platform.user_lib, "user_validate_scene");
+	    engine.user.get_scene_filepath = (UserGetSceneFilepathFn)GetProcAddress(platform.user_lib, "user_get_scene_filepath");
+	    engine.user.initialize_scene = (UserInitializeSceneFn)GetProcAddress(platform.user_lib, "user_initialize_scene");
+	    engine.user.serialize_scene = (UserSerializeSceneFn)GetProcAddress(platform.user_lib, "user_serialize_scene");
 	}
 	else SV_LOG_ERROR("Can't find game code");
     }
