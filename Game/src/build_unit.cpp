@@ -1,5 +1,7 @@
 #include "SilverEngine.h"
 
+#include "dev.h"
+
 using namespace sv;
 
 struct GameMemory {
@@ -33,12 +35,27 @@ SV_USER Result user_close()
     return Result_Success;
 }
 
-SV_USER Result user_initialize_scene(Scene* scene, Archive* archive)
+SV_USER Result user_initialize_scene(Scene* scene, Archive* parchive)
 {
     GameMemory& m = get_game_memory();
+    
+    if (parchive) {
+	Archive& archive = *parchive;
+	archive >> m.entity;
+	return Result_Success;
+    }
+    
     m.entity = create_entity(scene);
     add_component<SpriteComponent>(scene, m.entity);
     
+    return Result_Success;
+}
+
+SV_USER Result user_serialize_scene(Scene* scene, Archive* parchive)
+{
+    GameMemory& m = get_game_memory();
+    Archive& archive = *parchive;
+    archive << m.entity;
     return Result_Success;
 }
 
@@ -49,20 +66,44 @@ SV_USER void user_update()
 
     if (scene) {
 
-	SpriteComponent* spr = get_component<SpriteComponent>(scene, m.entity);
-	if (spr) {
-	    spr->color = Color::Red(u8((sin(timer_now()) + 1.f) * 0.5f * 255.f));
-	}
-
 	Transform trans = get_entity_transform(scene, m.entity);
 	v2_f32 pos = trans.getLocalPosition().getVec2();
 
-	pos.x = cos((f32)timer_now() * 3.f) * 10.f;
-	pos.y = sin((f32)timer_now() * 30.f) * 1.f;
+	f32 vel = 5.f * engine.deltatime;
+	
+	if (input.keys[Key_W]) {
+	    pos.y += vel;
+	}
+	if (input.keys[Key_S]) {
+	    pos.y -= vel;
+	}
+	if (input.keys[Key_A]) {
+	    pos.x -= vel;
+	}
+	if (input.keys[Key_D]) {
+	    pos.x += vel;
+	}
 
 	trans.setPosition(pos.getVec3());
-	trans.setScale({ 1.f, 1.f, 69.f });
-	
+
+	if (input.mouse_buttons[MouseButton_Right]) {
+
+	    Entity e = create_entity(scene);
+	    add_component<SpriteComponent>(scene, e);
+
+	    Transform t = get_entity_transform(scene, e);
+
+	    CameraComponent* cam = get_main_camera(scene);
+
+	    if (cam)
+		t.setPosition((input.mouse_position * v2_f32(cam->width, cam->height)).getVec3());
+	}
     }
 }
 
+SV_USER bool user_get_scene_filepath(const char* name, char* filepath)
+{
+    sprintf(filepath, "scenes/%s.scene", name);
+    
+    return true;
+}

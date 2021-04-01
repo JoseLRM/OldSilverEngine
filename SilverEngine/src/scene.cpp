@@ -478,6 +478,8 @@ namespace sv {
 		}
 	    }
 	}
+
+	user_serialize_scene(scene_, &archive);
 		
 	return archive.saveFile(filepath);
     }
@@ -610,8 +612,13 @@ namespace sv {
 	camera.inverse_view_projection_matrix = camera.inverse_view_matrix * camera.inverse_projection_matrix;
     }
 
-    void update_scene(Scene* scene_)
+    void update_scene()
     {
+	Scene* scene_ = engine.scene;
+
+	if (scene_ == nullptr)
+	    return;
+	
 	PARSE_SCENE();
 
 	if (!entity_exist(scene_, scene.main_camera)) {
@@ -646,6 +653,11 @@ namespace sv {
 	    update_camera_matrices(dev.camera, dev.camera.position, dev.camera.rotation);
 #endif
 	}
+
+#if SV_DEV
+	if (dev.game_state != GameState_Play)
+	    return;
+#endif
 
 	// User update
 	if (engine.user.update)

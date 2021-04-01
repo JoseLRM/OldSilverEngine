@@ -13,17 +13,25 @@ namespace sv {
 	f32 velocity = 0.45f;
     };
 
+    enum GameState : u32 {
+	GameState_Edit,
+	GameState_Play,
+	GameState_Pause,
+    };
+    
     struct GlobalDevData {
 		
 	bool console_active = false;
-
+	GameState next_game_state = GameState_Edit;
+	GameState game_state = GameState_Edit;
+	
 	bool debug_draw = true;
 	DebugCamera camera;
 
 	GUI* gui;
     };
 
-    extern GlobalDevData dev;
+    extern GlobalDevData SV_API_VAR dev;
 
     // EDITOR GUI
 
@@ -37,20 +45,20 @@ namespace sv {
     bool egui_begin();
     void egui_end();
 
-    bool egui_begin_window(const char* title);
-    void egui_end_window();
+    SV_API bool egui_begin_window(const char* title);
+    SV_API void egui_end_window();
 
-    void egui_header(const char* text, u64 id);
-    bool egui_button(const char* text, u64 id);
-    void egui_transform(Entity entity);
+    SV_API void egui_header(const char* text, u64 id);
+    SV_API bool egui_button(const char* text, u64 id);
+    SV_API void egui_transform(Entity entity);
 
-    bool egui_begin_component(Entity entity, CompID comp_id, bool* remove);
-    void egui_end_component();
+    SV_API bool egui_begin_component(Entity entity, CompID comp_id, bool* remove);
+    SV_API void egui_end_component();
 
-    void egui_comp_color(const char* text, u64 id, Color* pcolor);
-    void egui_comp_texture(const char* text, u64 id, TextureAsset* texture);
-    bool egui_comp_bool(const char* text, u64 id, bool* value);
-    bool egui_comp_drag_f32(const char* text, u64 id, f32* value, f32 adv = 0.1f, f32 min = f32_min, f32 max = f32_max);
+    SV_API void egui_comp_color(const char* text, u64 id, Color* pcolor);
+    SV_API void egui_comp_texture(const char* text, u64 id, TextureAsset* texture);
+    SV_API bool egui_comp_bool(const char* text, u64 id, bool* value);
+    SV_API bool egui_comp_drag_f32(const char* text, u64 id, f32* value, f32 adv = 0.1f, f32 min = f32_min, f32 max = f32_max);
 
 }
 

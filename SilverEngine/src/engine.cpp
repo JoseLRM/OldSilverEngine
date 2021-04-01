@@ -43,8 +43,8 @@ namespace sv {
     void update_assets();
     
     Result initialize_scene(Scene** pscene, const char* name);
-    void update_scene(Scene* scene);
-    void draw_scene(Scene* scene);
+    void update_scene();
+    void draw_scene();
 
     void os_update_user_callbacks(const char* dll);
     void os_free_user_callbacks();
@@ -397,14 +397,14 @@ namespace sv {
 	    
 	    process_input();
 
+	    if (engine.close_request) {
+		break;
+	    }
+
 	    update_assets();
 	    
 	    graphics_begin();
 	    renderer_begin();
-
-#if SV_DEV
-	    update_console();
-#endif
 
 	    // Scene management
 	    {
@@ -422,20 +422,19 @@ namespace sv {
 
 		}
 	    }
-
+	    
 #if SV_DEV
+	    update_console();
 	    update_editor();
+	    
+	    update_scene();
+#else
+	    update_scene();
 #endif
-
-	    // Update scene
-	    if (engine.scene) update_scene(engine.scene);
     
-	    if (engine.close_request) {
-		break;
-	    }            
 	    
             // Draw scene
-	    if (engine.scene) draw_scene(engine.scene);
+	    draw_scene();
 	    
 	    // Draw editor and the console	    
 #if SV_DEV

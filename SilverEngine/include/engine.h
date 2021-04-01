@@ -60,6 +60,11 @@ namespace sv {
 	return engine.user.initialize_scene ? engine.user.initialize_scene(scene, parchive) : Result_Success;
     }
 
+    SV_INLINE Result user_serialize_scene(Scene* scene, Archive* parchive)
+    {
+	return engine.user.serialize_scene ? engine.user.serialize_scene(scene, parchive) : Result_Success;
+    }
+
     SV_INLINE Result user_close_scene(Scene* scene)
     {
 	return engine.user.close_scene ? engine.user.close_scene(scene) : Result_Success;

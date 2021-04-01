@@ -343,7 +343,7 @@ namespace sv {
 
     void print(const char* str)
     {
-	printf(str);
+	std::cout << str;
 	OutputDebugString(str);
     }
 

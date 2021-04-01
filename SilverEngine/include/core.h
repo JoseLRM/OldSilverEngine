@@ -272,7 +272,7 @@ namespace sv {
 
 // Version
 
-    struct Version {
+    struct SV_API Version {
 	u32 major = 0u;
 	u32 minor = 0u;
 	u32 revision = 0u;
@@ -1301,7 +1301,7 @@ namespace sv {
 	return c >= '0' && c <= '9';
     }
 
-    struct Archive {
+    struct SV_API Archive {
 
 	Archive();
 	~Archive();

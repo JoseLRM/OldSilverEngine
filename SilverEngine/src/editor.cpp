@@ -662,10 +662,7 @@ namespace sv {
 
     void display_entity_hierarchy()
     {
-	GUI* g = dev.gui;
-
 	f32 y = 5.f;
-
 
 	if (egui_begin_window("Hierarchy")) {
 
@@ -701,51 +698,9 @@ namespace sv {
 
 		gui_end_popup(dev.gui);
 	    }
-
-	    // MENU
-
-	    gui_push_id(g, "MENU");
-
-	    if (gui_begin_menu_item(g, "Test", 0u)) {
-
-		if (gui_button(g, "ExitXD", 0u, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f))) {
-		    engine.close_request = true;
-		}
-
-		gui_end_menu_item(g);
-	    }
-
-	    if (gui_begin_menu_item(g, "Holaa", 1u)) {
-
-
-
-		gui_end_menu_item(g);
-	    }
-
-	    gui_pop_id(g);
-
+	    
 	    egui_end_window();
 	}
-
-
-	gui_push_id(g, "MENU");
-
-	if (gui_begin_menu_item(g, "View", 0u)) {
-
-	    if (egui_button("Hierarchy", 0u)) {
-		gui_show_window(g, "Hierarchy");
-	    }
-	    if (egui_button("Inspector", 1u)) {
-		gui_show_window(g, "Inspector");
-	    }
-	    if (egui_button("Asset Browser", 2u)) {
-		gui_show_window(g, "Asset Browser");
-	    }
-
-	    gui_end_menu_item(g);
-	}
-
-	gui_pop_id(g);
     }
 
     void display_entity_inspector()
@@ -1013,13 +968,66 @@ namespace sv {
 
 	    void update_editor()
 	    {
-		//GUI* g = dev.gui;
+		// CHANGE EDITOR MODE
+		if (dev.game_state != dev.next_game_state) {
 
+		    switch (dev.next_game_state) {
+
+		    case GameState_Edit:
+		    {
+			SV_LOG_INFO("Starting edit state");
+			// TODO: Handle error
+			std::string name = engine.scene->name;
+			Result res = close_scene(engine.scene);
+			res = initialize_scene(&engine.scene, name.c_str());
+
+			if (result_fail(res)) {
+			    SV_LOG_ERROR("Can't init the scene '%s': %s", name.c_str(), result_str(res));
+			}
+			
+			dev.debug_draw = true;
+		    } break;
+
+		    case GameState_Play:
+		    {
+			SV_LOG_INFO("Starting play state");
+			
+			if (dev.game_state == GameState_Edit) {
+
+			    char filepath[300];
+
+			    if (user_get_scene_filepath(engine.scene->name.c_str(), filepath)) {
+
+				Result res = save_scene(engine.scene, filepath);
+				if (result_fail(res))
+				    SV_LOG_ERROR("Can't save the scene '%s': %s", engine.scene->name.c_str(), result_str(res));
+			    }
+			    else
+				SV_LOG_INFO("The scene '%s' is not serializable (Specified by the user)", engine.scene->name.c_str());
+
+			    dev.debug_draw = false;
+			}
+		    } break;
+
+		    case GameState_Pause:
+		    {
+			SV_LOG_INFO("Game paused");
+		    } break;
+			
+		    }
+		    
+		    dev.game_state = dev.next_game_state;
+		}
+		
 		// KEY SHORTCUTS
-		{
+		if (dev.game_state != GameState_Play) {
 
 		    if (input.keys[Key_F11] == InputState_Pressed) {
-			engine.close_request = true;
+
+			if (input.keys[Key_Control] && input.keys[Key_Alt])
+			    engine.close_request = true;
+			else
+			    dev.next_game_state = GameState_Play;
 		    }
 		    if (input.keys[Key_F10] == InputState_Pressed) {
 			
@@ -1054,7 +1062,13 @@ namespace sv {
 
 		    if (input.unused && input.keys[Key_Control]) {
 
+			
+		    }
+		}
+		else {
 
+		    if (input.keys[Key_F11] == InputState_Pressed) {
+			dev.next_game_state = GameState_Edit;
 		    }
 		}
 
@@ -1067,13 +1081,48 @@ namespace sv {
 
 		if (egui_begin()) {
 
-		    if (!editor.camera_focus && engine.scene != nullptr) {
+		    if (!editor.camera_focus && engine.scene != nullptr && dev.game_state != GameState_Play) {
 			display_entity_hierarchy();
 			display_entity_inspector();
 			display_asset_browser();
 		    }
 		    else {
 			// TODO
+		    }
+
+		    if (dev.game_state != GameState_Play) {
+			
+			gui_push_id(dev.gui, "MENU");
+		    
+			if (gui_begin_menu_item(dev.gui, "Game", 0u)) {
+
+			    if (egui_button("Play", 0u)) {
+				dev.next_game_state = GameState_Play;
+			    }
+
+			    if (egui_button("Clear Scene", 1u)) {
+				clear_scene(engine.scene);
+			    }
+
+			    gui_end_menu_item(dev.gui);
+			}
+
+			if (gui_begin_menu_item(dev.gui, "View", 1u)) {
+
+			    if (egui_button("Hierarchy", 0u)) {
+				gui_show_window(dev.gui, "Hierarchy");
+			    }
+			    if (egui_button("Inspector", 1u)) {
+				gui_show_window(dev.gui, "Inspector");
+			    }
+			    if (egui_button("Asset Browser", 2u)) {
+				gui_show_window(dev.gui, "Asset Browser");
+			    }
+
+			    gui_end_menu_item(dev.gui);
+			}
+
+			gui_pop_id(dev.gui);
 		    }
 
 		    egui_end();

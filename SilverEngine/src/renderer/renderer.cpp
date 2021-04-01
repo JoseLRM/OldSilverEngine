@@ -741,8 +741,13 @@ namespace sv {
     static List<MeshInstance> mesh_instances;
     static List<LightInstance> light_instances;
 
-    void draw_scene(Scene* scene)
+    void draw_scene()
     {
+	Scene* scene = engine.scene;
+
+	if (scene == nullptr)
+	    return;
+	    
 	mesh_instances.reset();
 	light_instances.reset();
 	sprite_instances.reset();
