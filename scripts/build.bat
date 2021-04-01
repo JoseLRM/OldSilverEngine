@@ -1,9 +1,12 @@
 @echo off
 
-pushd %~p0\..\
+pushd %~dp0\..
+set origin_path=%cd%
+popd
 
-SET common_compiler_flags= -MT -nologo -EHa- -GR- -Oi -WX -W4 -wd4127 -wd4211 -wd4238 -wd4459 -wd4996 -wd4456 -wd4281 -wd4100 -wd4530 -FC /std:c++14
-SET common_defines= -DSV_SLOW=0 -DSV_DEV=0 -DSV_GFX=0 -DSV_PLATFORM_WIN=0
+pushd %origin_path%
+
+SET platform=win64
 
 SET compile_entry=false
 SET compile_engine=false
@@ -16,7 +19,7 @@ SET option_gfx=false
 :arg_loop
 IF "%1"=="" GOTO end_arg_loop
 
-IF "%1"=="win64" SET common_defines=%common_defines% -DSV_PLATFORM_WIN=1
+IF "%1"=="win64" SET platform=win64
 
 IF "%1"=="game" SET compile_game=true
 IF "%1"=="engine" SET compile_engine=true
@@ -45,20 +48,48 @@ IF "%compile_entry%"=="false" (
       )
 )
 
+SET common_compiler_flags= -MT -nologo -EHa- -GR- -Oi -WX -W4 -wd4127 -wd4211 -wd4238 -wd4459 -wd4996 -wd4456 -wd4281 -wd4100 -wd4530 -FC /std:c++14
+
+SET common_defines=
+
+SET output_dir=%origin_path%build\
+
+IF "%platform%"=="win64" (
+   SET common_defines=%common_defines% -DSV_PLATFORM_WIN=1
+   SET output_dir=%output_dir%win64
+) ELSE (
+  SET common_defines=%common_defines% -DSV_PLATFORM_WIN=0
+)
+
 IF "%option_slow%"=="true" (
    SET common_defines=%common_defines% -DSV_SLOW=1
    SET common_compiler_flags= %common_compiler_flags% -Z7
+   SET output_dir=%output_dir%_debug
 ) ELSE (
+   SET common_defines=%common_defines% -DSV_SLOW=0
    SET common_compiler_flags= %common_compiler_flags% -GL
 )
+
 IF "%option_dev%"=="true" (
    SET common_defines=%common_defines% -DSV_DEV=1
-)
-IF "%option_gfx%"=="true" (
-   SET common_defines=%common_defines% -DSV_GFX=1
+) ELSE (
+   SET common_defines=%common_defines% -DSV_DEV=0
 )
 
-IF NOT EXIST build\int mkdir build\int
+IF "%option_gfx%"=="true" (
+   SET common_defines=%common_defines% -DSV_GFX=1
+) ELSE (
+   SET common_defines=%common_defines% -DSV_GFX=0
+)
+
+
+SET output_dir=%output_dir%\
+
+ECHO.
+
+ECHO Output directory: %output_dir%
+
+IF NOT EXIST %output_dir%\int mkdir %output_dir%\int
 
 cls
 
@@ -66,22 +97,22 @@ cls
 SET common_linker_flags= /incremental:no
 
 REM Silver Engine path
-SET SVP= ..\..\SilverEngine\
+SET SVP= %origin_path%\SilverEngine\
 
 REM Game path
-SET GP= ..\..\Game\
+SET GP= %origin_path%\Game\
 
 REM Silver Engine args
 SET sv_defines= -DSV_SILVER_ENGINE=1 %common_defines%
 SET sv_compiler_flags= %common_compiler_flags%
 SET sv_include_paths= /I %SVP%include /I %SVP%src\ /I %SVP%src\external\ /I %VULKAN_SDK%\Include\
 SET sv_link_libs= user32.lib %VULKAN_SDK%\Lib\vulkan-1.lib assimp.lib sprv.lib
-SET sv_link_flags= /DLL %common_linker_flags% /LIBPATH:"..\..\SilverEngine\lib\" /out:..\SilverEngine.dll /PDB:SilverEngine.pdb /LTCG
+SET sv_link_flags= /DLL %common_linker_flags% /LIBPATH:"%origin_path%\SilverEngine\lib\" /out:..\SilverEngine.dll /PDB:SilverEngine.pdb /LTCG
 
 REM Game args
 SET g_include_paths= /I %GP%src /I %GP%..\SilverEngine\include\
 
-pushd build\int
+pushd %output_dir%int
 
 IF "%compile_entry%"=="true" (
    ECHO.
@@ -112,10 +143,10 @@ ECHO.
 
 popd
 
-pushd build
+pushd %output_dir%
 
-SET SVP= ..\SilverEngine\
-SET GP= ..\Game\
+SET SVP= %origin_path%SilverEngine\
+SET GP= %origin_path%Game\
  
 IF EXIST EntryPoint.exe (
 
