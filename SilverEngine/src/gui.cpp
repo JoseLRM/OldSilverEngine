@@ -2,7 +2,7 @@
 
 #include "renderer/renderer_internal.h"
 
-#define PARSE_GUI() sv::GUI_internal& gui = *reinterpret_cast<sv::GUI_internal*>(gui_)
+#define PARSE_GUI() sv::GUI& gui = *gui_
 
 namespace sv {
 
@@ -212,7 +212,7 @@ namespace sv {
 	GuiParentUserData userdata;
     };
 
-    struct GUI_internal {
+    struct GUI {
 
 	// WRITING DATA
 
@@ -256,6 +256,7 @@ namespace sv {
 	u64 current_id;
 	v2_f32 begin_position;
 	u64 package_id;
+	bool catch_input;
 		
 	RawList package_data;
 		
@@ -274,7 +275,7 @@ namespace sv {
 
     Result gui_create(u64 hashcode, GUI** pgui)
     {
-	GUI_internal& gui = *new GUI_internal();
+	GUI& gui = *new GUI();
 
 	gui.buffer = (u8*)malloc(100u);
 	gui.buffer_capacity = 100u;
@@ -311,7 +312,6 @@ namespace sv {
     Result gui_destroy(GUI* gui_)
     {
 	PARSE_GUI();
-
 	free(gui.buffer);
 
 	// Save static state
@@ -340,7 +340,7 @@ namespace sv {
 
     ////////////////////////////////////////// UTILS ////////////////////////////////////////////////
 
-    SV_INLINE static void write_buffer(GUI_internal& gui, const void* data, size_t size)
+    SV_INLINE static void write_buffer(GUI& gui, const void* data, size_t size)
     {
 	if (gui.buffer_size + size > gui.buffer_capacity) {
 
@@ -361,12 +361,12 @@ namespace sv {
     }
 
     template<typename T>
-    SV_INLINE static void write_buffer(GUI_internal& gui, const T& t)
+    SV_INLINE static void write_buffer(GUI& gui, const T& t)
     {
 	write_buffer(gui, &t, sizeof(T));
     }
 
-    SV_INLINE static void write_text(GUI_internal& gui, const char* text)
+    SV_INLINE static void write_text(GUI& gui, const char* text)
     {
 
 	if (text == nullptr) {
@@ -380,18 +380,33 @@ namespace sv {
 	}
     }
 
-    SV_INLINE static void set_focus(GUI_internal& gui, GuiWidgetType type, u64 id, u32 action = 0u)
+    SV_INLINE static void set_focus(GUI& gui, GuiWidgetType type, u64 id, u32 action = 0u)
     {
 	gui.focus.type = type;
 	gui.focus.id = id;
 	gui.focus.action = action;
     }
 
-    SV_INLINE static void free_focus(GUI_internal& gui)
+    SV_INLINE static void free_focus(GUI& gui)
     {
 	gui.focus.type = GuiWidgetType_None;
     }
 
+    SV_AUX bool ignore_scroll(GuiWidgetType type)
+    {
+	switch (type)
+	{
+	case GuiWidgetType_MenuItem:
+	case GuiWidgetType_MenuContainer:
+	case GuiWidgetType_Window:
+	case GuiWidgetType_Popup:
+	    return true;
+
+	default:
+	    return false;
+	}
+    }
+    
     SV_INLINE static bool is_parent(GuiWidgetType type)
     {
 	switch (type)
@@ -412,7 +427,7 @@ namespace sv {
 	return is_parent(w.type);
     }
 
-    SV_INLINE static GuiParentInfo* get_parent_info(GUI_internal& gui, GuiWidget& parent)
+    SV_INLINE static GuiParentInfo* get_parent_info(GUI& gui, GuiWidget& parent)
     {
 	if (is_parent(parent)) {
 
@@ -420,7 +435,7 @@ namespace sv {
 	}
 	else return nullptr;
     }
-    SV_INLINE static const GuiParentInfo* get_parent_info(const GUI_internal& gui, const GuiWidget& parent)
+    SV_INLINE static const GuiParentInfo* get_parent_info(const GUI& gui, const GuiWidget& parent)
     {
 	if (is_parent(parent)) {
 
@@ -429,18 +444,18 @@ namespace sv {
 	else return nullptr;
     }
 
-    SV_INLINE static GuiParentInfo* get_parent_info(GUI_internal& gui, const GuiIndex& index)
+    SV_INLINE static GuiParentInfo* get_parent_info(GUI& gui, const GuiIndex& index)
     {
 	GuiWidget& w = gui.widgets[index.index];
 	return get_parent_info(gui, w);
     }
-    SV_INLINE static GuiParentInfo* get_parent_info(GUI_internal& gui, u32 index)
+    SV_INLINE static GuiParentInfo* get_parent_info(GUI& gui, u32 index)
     {
 	GuiWidget& w = gui.widgets[index];
 	return get_parent_info(gui, w);
     }
 
-    SV_INLINE static void write_widget(GUI_internal& gui, GuiWidgetType type, u64 id, void* data, GuiParentInfo* parent_info)
+    SV_INLINE static void write_widget(GUI& gui, GuiWidgetType type, u64 id, void* data, GuiParentInfo* parent_info)
     {
 	write_buffer(gui, type);
 	write_buffer(gui, id);
@@ -548,7 +563,7 @@ namespace sv {
 	    }
 	    else {
 		write_buffer(gui, 0.f);
-		write_buffer(gui, false);			
+		write_buffer(gui, false);
 	    }
 	}
 
@@ -556,7 +571,7 @@ namespace sv {
 	gui.last.type = type;
     }
 
-    SV_INLINE static f32 compute_coord(const GUI_internal& gui, const GuiCoord& coord, f32 resolution, f32 parent_coord, f32 parent_dimension)
+    SV_INLINE static f32 compute_coord(const GUI& gui, const GuiCoord& coord, f32 resolution, f32 parent_coord, f32 parent_dimension)
     {
 	f32 res = 0.5f;
 
@@ -594,12 +609,12 @@ namespace sv {
 	return res;
     }
 
-    SV_INLINE bool mouse_in_bounds(const GUI_internal& gui, const v4_f32& bounds)
+    SV_INLINE bool mouse_in_bounds(const GUI& gui, const v4_f32& bounds)
     {
 	return abs(bounds.x - gui.mouse_position.x) <= bounds.z * 0.5f && abs(bounds.y - gui.mouse_position.y) <= bounds.w * 0.5f;
     }
 
-    static v4_f32 compute_widget_bounds(const GUI_internal& gui, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, GuiWidget* parent)
+    static v4_f32 compute_widget_bounds(const GUI& gui, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1, GuiWidget* parent)
     {
 #ifdef SV_DEV
 	{
@@ -683,7 +698,7 @@ namespace sv {
 	return { x, y, abs(w), abs(h) };
     }
 
-    SV_INLINE static v4_f32 compute_window_decoration_bounds(const GUI_internal& gui, const GuiWidget& w)
+    SV_INLINE static v4_f32 compute_window_decoration_bounds(const GUI& gui, const GuiWidget& w)
     {
 	auto& window = w.widget.window;
 
@@ -695,7 +710,7 @@ namespace sv {
 	return bounds;
     }
 
-    SV_INLINE static v4_f32 compute_window_closebutton_bounds(const GUI_internal& gui, const GuiWidget& w, const v4_f32 decoration_bounds)
+    SV_INLINE static v4_f32 compute_window_closebutton_bounds(const GUI& gui, const GuiWidget& w, const v4_f32 decoration_bounds)
     {
 	v4_f32 bounds;
 	bounds.x = decoration_bounds.x + decoration_bounds.z * 0.5f - decoration_bounds.w * 0.5f / gui.aspect;
@@ -706,7 +721,7 @@ namespace sv {
 	return bounds;
     }
 
-    static void update_widget(GUI_internal& gui, const GuiIndex& index)
+    static void update_widget(GUI& gui, const GuiIndex& index)
     {
 	GuiParentInfo* parent_info = get_parent_info(gui, index);
 
@@ -906,33 +921,27 @@ namespace sv {
 	// Catch the input if the mouse is inside the parent and update scroll wheel
 	if (parent_info) {
 
-	    if (input.unused) {
+	    if (!gui.catch_input) {
 
-		input.unused = !mouse_in_bounds(gui, w.bounds);
+		gui.catch_input = mouse_in_bounds(gui, w.bounds);
+	    }
 
-		if (!input.unused) {
+	    if (input.unused && parent_info->has_vertical_scroll) {
 
-		    v4_f32 scrollable_bounds = parent_info->child_bounds;
-		    parent_info->child_bounds.y -= parent_info->vertical_offset;
+		const v4_f32& scrollable_bounds = parent_info->child_bounds;
 
-		    if (input.mouse_wheel != 0.f && mouse_in_bounds(gui, scrollable_bounds)) {
+		if (input.mouse_wheel != 0.f && mouse_in_bounds(gui, scrollable_bounds)) {
 
-			parent_info->vertical_offset += input.mouse_wheel;
-		    }
+		    parent_info->vertical_offset += input.mouse_wheel * 0.01f;
+		    input.unused = false;
 		}
-	    }
 
-	    // Limit scroll offsets
-	    if (parent_info->has_vertical_scroll) {
-		parent_info->vertical_offset = 0.f;
-	    }
-	    else {
-		parent_info->vertical_offset = std::max(SV_MIN(parent_info->vertical_offset, parent_info->max_y), parent_info->min_y);
+		parent_info->vertical_offset = SV_MAX(SV_MIN(parent_info->vertical_offset, parent_info->max_y), parent_info->min_y);
 	    }
 	}
     }
 
-    static void update_focus(GUI_internal& gui, const GuiIndex& index)
+    static void update_focus(GUI& gui, const GuiIndex& index)
     {
 	GuiWidget& w = gui.widgets[index.index];
 
@@ -1110,6 +1119,8 @@ namespace sv {
 	gui.last.id = 0u;
 	gui.last.type = GuiWidgetType_None;
 
+	gui.catch_input = false;
+
 	// Reset buffer
 	gui.buffer_size = 0u;
 	// TODO: free memory if there is no using
@@ -1132,7 +1143,7 @@ namespace sv {
 	return t;
     }
 
-    SV_INLINE static void read_widget(GUI_internal& gui, GuiWidgetType type, u64 id, u32& current_parent, u8*& it)
+    SV_INLINE static void read_widget(GUI& gui, GuiWidgetType type, u64 id, u32& current_parent, u8*& it)
     {
 	// Add widget
 	GuiWidget& w = gui.widgets.emplace_back();
@@ -1297,11 +1308,11 @@ namespace sv {
 	    current_parent = w.index;
 	    parent_info->widget_offset = u32(gui.indices.size());
 	    parent_info->menu_item_count = 0u;
-	    parent_info->min_y = 0.f;
-	    parent_info->max_y = 0.f;
+	    parent_info->min_y = f32_max;
+	    parent_info->max_y = f32_min;
 			
 	    parent_info->vertical_offset = _read<f32>(it);
-	    parent_info->has_vertical_scroll = _read<bool>(it);
+	    parent_info->has_vertical_scroll = _read<bool>(it);;
 	}
     }
 
@@ -1312,10 +1323,10 @@ namespace sv {
     constexpr f32 MENU_CONTAINER_HEIGHT = 0.1f;
     constexpr f32 MENU_CONTAINER_WIDTH = 0.1f;
 
-    constexpr f32 SCROLL_SIZE = 0.02f;
+    constexpr f32 SCROLL_SIZE = 0.005f;
     constexpr f32 SCROLL_BUTTON_SIZE_MULT = 0.2f;
 	
-    static void update_bounds(GUI_internal& gui, GuiWidget* w, GuiWidget* parent, u32& menu_index)
+    static void update_bounds(GUI& gui, GuiWidget* w, GuiWidget* parent, u32& menu_index)
     {
 	// Update bounds
 	switch (w->type)
@@ -1379,7 +1390,7 @@ namespace sv {
 
 	GuiParentInfo* parent_info = get_parent_info(gui, *w);
 	if (parent_info) {
-
+	    
 	    // Update child bounds
 	    parent_info->child_bounds = w->bounds;
 	    if (parent_info->menu_item_count) {
@@ -1389,10 +1400,9 @@ namespace sv {
 	    }
 
 	    if (parent_info->has_vertical_scroll) {
-
+		
 		parent_info->child_bounds.z -= SCROLL_SIZE;
 		parent_info->child_bounds.x -= SCROLL_SIZE * 0.5f;
-		parent_info->child_bounds.y += parent_info->vertical_offset;
 	    }
 
 	    // Update childs
@@ -1406,8 +1416,11 @@ namespace sv {
 		GuiWidget* widget = &gui.widgets[it->index];
 		update_bounds(gui, widget, w, _menu_index);
 
-		parent_info->min_y = SV_MIN(widget->bounds.y - parent_info->vertical_offset - widget->bounds.w * 0.5f, parent_info->min_y);
-		parent_info->max_y = SV_MAX(widget->bounds.y - parent_info->vertical_offset + widget->bounds.w * 0.5f, parent_info->max_y);
+		if (!ignore_scroll(widget->type)) {
+
+		    parent_info->min_y = SV_MIN(widget->bounds.y - widget->bounds.w * 0.5f, parent_info->min_y);
+		    parent_info->max_y = SV_MAX(widget->bounds.y + widget->bounds.w * 0.5f, parent_info->max_y);
+		}
 
 		GuiParentInfo* p = get_parent_info(gui, *widget);
 		if (p) {
@@ -1418,9 +1431,53 @@ namespace sv {
 		++it;
 	    }
 
-	    // Enable - Disable scroll bars (this bool is saved in raw data and used in the next frame
-	    f32 height = parent_info->max_y - parent_info->min_y;
-	    parent_info->has_vertical_scroll = height > parent_info->child_bounds.w;
+	    // Compute child up and down offsets
+	    f32 parent_min = parent_info->child_bounds.y - parent_info->child_bounds.w * 0.5f;
+	    f32 parent_max = parent_info->child_bounds.y + parent_info->child_bounds.w * 0.5f;
+
+	    // Enable - Disable scroll bars (this bool is saved in raw data and used in the next frame)
+	    parent_info->has_vertical_scroll = parent_info->min_y < parent_min || parent_info->max_y > parent_max;
+
+	    if (parent_info->has_vertical_scroll) {
+
+		parent_info->min_y = SV_MIN(parent_info->min_y - parent_min, 0.f);
+		parent_info->max_y = SV_MAX(parent_info->max_y - parent_max, 0.f);
+
+		if (-parent_info->min_y + parent_info->max_y < 0.01f) {
+		    parent_info->has_vertical_scroll = false;
+		}
+		else {
+		    
+		    // Update childs
+		    it = gui.indices.data() + parent_info->widget_offset;
+
+		    while (it != end) {
+
+			GuiWidget* widget = &gui.widgets[it->index];
+
+			if (!ignore_scroll(widget->type)) {
+
+			    widget->bounds.y -= parent_info->vertical_offset;
+			}
+			else {
+
+			    GuiParentInfo* p = get_parent_info(gui, *widget);
+			    if (p) {
+				it += p->widget_count;
+			    }
+			}
+
+			++it;
+		    }
+		}
+	    }
+	    
+	    if (!parent_info->has_vertical_scroll) {
+
+		parent_info->vertical_offset = 0.f;
+		parent_info->min_y = 0.f;
+		parent_info->max_y = 0.f;
+	    }
 	}
     }
 
@@ -1512,9 +1569,13 @@ namespace sv {
 		i += parent_info->widget_count;
 	    }
 	}
+
+	// Catch input
+	if (gui.catch_input)
+	    input.unused = false;
     }
 
-    SV_INLINE static void update_id(GUI_internal& gui)
+    SV_INLINE static void update_id(GUI& gui)
     {
 	gui.current_id = 0U;
 	for (u64 id : gui.ids)
@@ -1545,7 +1606,7 @@ namespace sv {
 
     ///////////////////////////////////////////// WIDGETS ///////////////////////////////////////////
 
-    SV_INLINE static GuiWidget* find_widget(GUI_internal& gui, u64 id, GuiWidgetType type)
+    SV_INLINE static GuiWidget* find_widget(GUI& gui, u64 id, GuiWidgetType type)
     {
 	GuiIndex res;
 	res.index = u32_max;
@@ -1605,7 +1666,7 @@ namespace sv {
 	return widget;
     }
 
-    SV_INLINE void begin_parent(GUI_internal& gui, GuiWidget* parent, u64 id)
+    SV_INLINE void begin_parent(GUI& gui, GuiWidget* parent, u64 id)
     {
 	WritingParentInfo& info = gui.parent_stack.emplace_back();
 	info.userdata.xoff = 0.f;
@@ -1618,7 +1679,7 @@ namespace sv {
 	gui_push_id((GUI*)& gui, id);
     }
 
-    SV_INLINE void end_parent(GUI_internal& gui)
+    SV_INLINE void end_parent(GUI& gui)
     {
 	gui_pop_id((GUI*)& gui);
 	gui.parent_stack.pop_back();
@@ -1808,7 +1869,7 @@ namespace sv {
 	end_parent(gui);
     }
 
-    SV_INLINE static GuiWindowState* get_window_state(GUI_internal& gui, u64 id)
+    SV_INLINE static GuiWindowState* get_window_state(GUI& gui, u64 id)
     {
 	auto it = gui.static_state.window.find(id);
 	if (it == gui.static_state.window.end()) return nullptr;
@@ -2217,7 +2278,7 @@ namespace sv {
     }
 
 
-    static void draw_widget(GUI_internal& gui, const GuiWidget& w, CommandList cmd)
+    static void draw_widget(GUI& gui, const GuiWidget& w, CommandList cmd)
     {
 	switch (w.type)
 	{
@@ -2470,19 +2531,19 @@ namespace sv {
 	    if (parent_info) {
 
 		// Draw vertical scroll
-		if (false && parent_info->has_vertical_scroll) {
+		if (parent_info->has_vertical_scroll) {
 
-		    f32 norm = (parent_info->vertical_offset - parent_info->min_y) / (parent_info->max_y - parent_info->min_y);
+		    f32 norm = 1.f - ((parent_info->vertical_offset - parent_info->min_y) / (parent_info->max_y - parent_info->min_y));
 
 		    v4_f32 scroll_bounds = parent_info->child_bounds;
-		    scroll_bounds.y -= parent_info->vertical_offset;
+		    //scroll_bounds.y += parent_info->vertical_offset;
 
-		    scroll_bounds.x += scroll_bounds.z * 0.5f - SCROLL_SIZE * 0.5f;
+		    scroll_bounds.x += scroll_bounds.z * 0.5f + SCROLL_SIZE * 0.5f;
 		    scroll_bounds.z = SCROLL_SIZE;
-
+		    
 		    f32 button_height = scroll_bounds.w * SCROLL_BUTTON_SIZE_MULT;
 		    f32 button_space = scroll_bounds.w - button_height;
-		    f32 button_y = (scroll_bounds.y + scroll_bounds.w * 0.5f) + (button_height * 0.5f) + (norm * button_space);
+		    f32 button_y = (scroll_bounds.y + scroll_bounds.w * 0.5f) - (button_height * 0.5f) - (norm * button_space);
 					
 		    begin_debug_batch(cmd);
 					
@@ -2590,7 +2651,7 @@ namespace sv {
 	f32 y1 = y0 + grid.element_size;
 
 	++grid.element_index;
-
+	
 	gui_begin_container(gui_, id, GuiCoord::Pixel(x0), GuiCoord::Pixel(x1), GuiCoord::IPixel(y0), GuiCoord::IPixel(y1));
     }
 

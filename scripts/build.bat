@@ -44,7 +44,7 @@ IF "%compile_entry%"=="false" (
       	 SET compile_entry=true
    	 SET compile_engine=true
    	 SET compile_game=true
-	)
+	 )
       )
 )
 
@@ -66,7 +66,7 @@ IF "%option_slow%"=="true" (
    SET common_compiler_flags= %common_compiler_flags% -Z7
    SET output_dir=%output_dir%_debug
 ) ELSE (
-   SET common_defines=%common_defines% -DSV_SLOW=0
+   SET common_defines=%common_defines% -DSV_SLOW=0 -DNDEBUG
    SET common_compiler_flags= %common_compiler_flags% -GL
 )
 
