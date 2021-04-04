@@ -16,6 +16,8 @@ SET option_slow=false
 SET option_dev=false
 SET option_gfx=false
 
+SET run=false
+
 :arg_loop
 IF "%1"=="" GOTO end_arg_loop
 
@@ -33,6 +35,8 @@ IF "%1"=="all" (
    SET option_dev=true
    SET option_gfx=true
 )
+
+IF "%1"=="run" SET run=true
 
 SHIFT
 GOTO arg_loop
@@ -180,6 +184,8 @@ IF EXIST  Game.lib DEL Game.lib -Q
 ECHO Creating assets
 
 XCOPY %GP%res\* . /E /I /Q /Y > NUL
+
+IF "%run%"=="true" SilverEngine.exe
 
 popd
 
