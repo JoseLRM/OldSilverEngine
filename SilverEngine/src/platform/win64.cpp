@@ -602,9 +602,100 @@ namespace sv {
 	return CopyFileA(srcpath, dstpath, FALSE) ? Result_Success : Result_PlatformError;
     }
 
-    Result load_image(const char* filePath, void** pdata, u32* width, u32* height)
+    bool file_exists(const char* filepath)
     {
-	return Result_TODO;
+	DWORD att = GetFileAttributes(filepath);
+	if(INVALID_FILE_ATTRIBUTES == att && GetLastError() == ERROR_FILE_NOT_FOUND)
+	{
+	    return false;
+	}
+	return true;
+    }
+
+    SV_AUX FolderElement finddata_to_folderelement(const WIN32_FIND_DATAA& d)
+    {
+	FolderElement e;
+	e.is_file = !(d.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY);
+	e.create_date = filetime_to_date(d.ftCreationTime);
+	e.last_write_date = filetime_to_date(d.ftLastWriteTime);
+	e.last_access_date = filetime_to_date(d.ftLastAccessTime);
+	sprintf(e.name, "%s", (const char*)d.cFileName);
+	size_t size = strlen(e.name);
+	if (size == 0u) e.extension = nullptr;
+	else {
+	    const char* begin = e.name;
+	    const char* it = begin + size;
+
+	    while (it != begin && *it != '.') {
+		--it;
+	    }
+
+	    if (it == begin) {
+		e.extension = nullptr;
+	    }
+	    else {
+		SV_ASSERT(*it == '.');
+		e.extension = it + 1u;
+	    }
+	}
+	return e;
+    }
+
+    Result folder_iterator_begin(const char* folderpath_, FolderIterator* iterator, FolderElement* element)
+    {
+	WIN32_FIND_DATAA data;
+
+	// Clear path
+	char folderpath[MAX_PATH];
+	
+	const char* it = folderpath_;
+	char* it0 = folderpath;
+
+	*it0++ = '.';
+	*it0++ = '\\';
+	
+	while (*it != '\0') {
+	    if (*it == '/') *it0 = '\\';
+	    else *it0 = *it;
+	    
+	    ++it;
+	    ++it0;
+	}
+
+	if (*(it0 - 1u) != '\\')
+	    *it0++ = '\\';
+	*it0++ = '*';
+	*it0++ = '\0';
+	
+
+	HANDLE find = FindFirstFileA(folderpath, &data);
+	
+	if (find == INVALID_HANDLE_VALUE) return Result_NotFound;
+
+	*element = finddata_to_folderelement(data);
+	iterator->_handle = (u64)find;
+
+	return Result_Success;
+    }
+    
+    bool folder_iterator_next(FolderIterator* iterator, FolderElement* element)
+    {
+	HANDLE find = (HANDLE)iterator->_handle;
+	
+	WIN32_FIND_DATAA data;
+	if (FindNextFileA(find, &data)) {
+
+	    *element = finddata_to_folderelement(data);
+	    return true;
+	}
+
+	return false;
+    }
+
+    void folder_iterator_close(FolderIterator* iterator)
+    {
+	HANDLE find = (HANDLE)iterator->_handle;
+	FindClose(find);
     }
 
     constexpr u32 BIN_PATH_SIZE = 100u;

@@ -191,26 +191,28 @@ namespace sv {
 	    return Result_InvalidUsage;
 	}
 
-	// TODO Save scene
-	//std::string filepath = engine.callbacks.get_scene_filepath ? engine.callbacks.get_scene_filepath(engine.scene->name.c_str()) : "";
-	return Result_TODO;
-/*
-	Result res;
+	// Save scene
+	char filepath[300];
+	const char* name = engine.scene->name.c_str();
+	
+	if (user_get_scene_filepath(name, filepath)) {
 
-	if (filepath.size())
-	    res = save_scene(engine.scene, filepath.c_str());
-	else
-	    res = Result_NotFound;
+	    Result res = save_scene(engine.scene, filepath);
 
-	if (result_fail(res)) {
-	    SV_LOG_ERROR("Can't save the scene '%s': %s", engine.scene->name.c_str(), result_str(res));
-	    return res;
+	    if (result_fail(res)) {
+		SV_LOG_ERROR("Can't save the scene '%s': %s", name, result_str(res));
+		return res;
+	    }
+	    else {
+		SV_LOG("Scene '%s' saved at '%s'", name, filepath);
+	    }
+		
+	    return Result_Success;
 	}
 	else {
-	    SV_LOG("Scene '%s' saved at '%s'", engine.scene->name.c_str(), filepath.c_str());
-	}
-		
-	return Result_Success;*/
+	    SV_LOG_INFO("The scene '%s' can't be saved (Specified by the user)", name);
+	    return Result_Success;
+	}  
     }
 
     static Result command_clear_scene(const char** args, u32 argc) {

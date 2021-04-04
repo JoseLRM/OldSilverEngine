@@ -43,13 +43,13 @@ namespace sv {
     };
 
     struct AssetElement {
-	std::string name;
+	char name[FILENAME_SIZE];
 	AssetElementType type;
     };
 
     struct AssetBrowserInfo {
 	std::string filepath;
-	std::vector<AssetElement> elements;
+	List<AssetElement> elements;
 	Time last_update = 0.0;
     };
 
@@ -772,19 +772,19 @@ namespace sv {
 
     static void display_asset_browser()
     {
-	//GUI* gui = dev.gui;
+	GUI* gui = dev.gui;
 
-	//bool update_browser = false;
-	//std::string next_filepath;
+	bool update_browser = false;
+	std::string next_filepath;
 
 	if (egui_begin_window("Asset Browser")) {
 
-	    /*
+	    
 	    AssetBrowserInfo& info = editor.asset_browser;
 
 	    {
 		constexpr f32 WIDTH = 80.f;
-
+		
 		gui_begin_container(gui, 0u, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(0.f), GuiCoord::IPixel(33.f));
 
 		if (info.filepath.size()) {
@@ -796,14 +796,14 @@ namespace sv {
 		    for (char c : info.filepath)
 			if (c == '/') ++folder_count;
 
-		    u32 count = std::min(std::max(u32(width / WIDTH), 1u), folder_count);
+		    u32 count = SV_MIN(SV_MAX(u32(width / WIDTH), 1u), folder_count);
 		    SV_ASSERT(count != 0u);
 		    --count;
 
 		    f32 offset = width - f32(count) * WIDTH;
 
 		    const char* folder_offset = info.filepath.c_str();
-		    char folder_name[300];
+		    char folder_name[FILEPATH_SIZE];
 
 		    folder_name[0] = 'r';
 		    folder_name[1] = 'o';
@@ -866,39 +866,36 @@ namespace sv {
 
 		    const AssetElement& e = info.elements[i];
 
-		    if (e.name.size() && e.name.front() != '.') {
+		    // TODO: ignore unused elements
+		    gui_begin_grid_element(gui, 69u + i);
 
-			// TODO: ignore unused elements
-			gui_begin_grid_element(gui, 69u + i);
+		    if (gui_button(gui, nullptr, 0u, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f),
+				   GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), editor.style.button_style)) {
 
-			if (gui_button(gui, nullptr, 0u, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f),
-				       GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), editor.style.button_style)) {
+			if (e.type == AssetElementType_Directory && !update_browser) {
 
-			    if (e.type == AssetElementType_Directory && !update_browser) {
-
-				update_browser = true;
-				next_filepath = info.filepath + e.name + '/';
-			    }
+			    update_browser = true;
+			    next_filepath = info.filepath + e.name + '/';
 			}
-
-			if (e.type != AssetElementType_Directory) {
-
-			    AssetPackage pack;
-			    size_t size = info.filepath.size() + e.name.size();
-			    SV_ASSERT(size < AssetPackage::MAX_SIZE);
-
-			    memcpy(pack.filepath, info.filepath.data(), info.filepath.size());
-			    memcpy(pack.filepath + info.filepath.size(), e.name.data(), e.name.size());
-			    pack.filepath[size] = '\0';
-
-			    gui_send_package(gui, &pack, sizeof(AssetPackage), ASSET_BROWSER_PACKAGE);
-
-			}
-
-			gui_text(gui, e.name.c_str(), 1u, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(0.2f));
-
-			gui_end_grid_element(gui);
 		    }
+
+		    if (e.type != AssetElementType_Directory) {
+
+			AssetPackage pack;
+			size_t size = info.filepath.size() + strlen(e.name);
+			SV_ASSERT(size < AssetPackage::MAX_SIZE);
+
+			memcpy(pack.filepath, info.filepath.data(), info.filepath.size());
+			memcpy(pack.filepath + info.filepath.size(), e.name, strlen(e.name));
+			pack.filepath[size] = '\0';
+
+			gui_send_package(gui, &pack, sizeof(AssetPackage), ASSET_BROWSER_PACKAGE);
+
+		    }
+
+		    gui_text(gui, e.name, 1u, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(0.2f));
+
+		    gui_end_grid_element(gui);
 		}
 
 		gui_end_grid(gui);
@@ -917,53 +914,58 @@ namespace sv {
 
 	    // Update browser elements
 	    if (update_browser) {
-
-#if defined(SV_PATH) && defined(SV_RES_PATH)
-		while (!std::filesystem::exists(SV_RES_PATH + next_filepath) && next_filepath.size()) {
-#else
-		    while (!std::filesystem::exists(next_filepath) && next_filepath.size()) {
-#endif
-
+		
+		while (!file_exists(next_filepath.c_str()) && next_filepath.size()) {
+		    
+		    next_filepath.pop_back();
+		    while (next_filepath.size() && next_filepath.back() != '/') {
 			next_filepath.pop_back();
-			while (next_filepath.size() && next_filepath.back() != '/') {
-			    next_filepath.pop_back();
-			}
 		    }
-
-		    // Clear browser data
-		    info.elements.clear();
-
-#if defined(SV_PATH) && defined(SV_RES_PATH)
-		    std::string real_path = SV_RES_PATH + next_filepath;
-		    for (const auto& entry : std::filesystem::directory_iterator(real_path)) {
-#else
-			for (const auto& entry : std::filesystem::directory_iterator(next_filepath)) {
-#endif
-
-			    AssetElement element;
-
-			    // Select element type
-			    if (entry.is_directory()) {
-				element.type = AssetElementType_Directory;
-			    }
-			    else {
-				element.type = AssetElementType_Unknown;
-			    }
-
-			    // Set name
-			    element.name = parse_string(entry.path().filename().c_str());
-			    // TODO: Don't know why this string is created with two '\0'
-			    element.name.pop_back();
-
-			    info.elements.emplace_back(std::move(element));
-			}
-
-			info.filepath = std::move(next_filepath);
-			info.last_update = timer_now();
-		    }
-	    */
-		    egui_end_window();
 		}
+		
+		// Clear browser data
+		info.elements.clear();
+
+		FolderIterator it;
+		FolderElement e;
+
+		Result res = folder_iterator_begin(next_filepath.c_str(), &it, &e);
+
+		if (result_okay(res)) {
+
+		    do {
+		    
+			AssetElement element;
+
+			// Select element type
+			if (e.is_file) {
+			    element.type = AssetElementType_Unknown;
+			}
+			else {
+			    element.type = AssetElementType_Directory;
+			}
+
+			// Set name
+			size_t name_size = strlen(e.name);
+			memcpy(element.name, e.name, name_size);
+			element.name[name_size] = '\0';
+
+			info.elements.emplace_back(element);
+		    }
+		    while (folder_iterator_next(&it, &e));
+		}
+		else {
+
+		    SV_LOG_ERROR("Can't create asset browser content at '%s': %s", next_filepath.c_str(), result_str(res));
+		}
+		
+
+		info.filepath = std::move(next_filepath);
+		info.last_update = timer_now();
+	    }
+	    
+	    egui_end_window();
+	}
 	    }
 
 	    void update_editor()
@@ -994,7 +996,7 @@ namespace sv {
 			
 			if (dev.game_state == GameState_Edit) {
 
-			    char filepath[300];
+			    char filepath[FILEPATH_SIZE];
 
 			    if (user_get_scene_filepath(engine.scene->name.c_str(), filepath)) {
 

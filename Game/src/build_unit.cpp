@@ -104,6 +104,5 @@ SV_USER void user_update()
 SV_USER bool user_get_scene_filepath(const char* name, char* filepath)
 {
     sprintf(filepath, "scenes/%s.scene", name);
-    
     return true;
 }

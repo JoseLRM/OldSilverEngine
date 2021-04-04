@@ -51,8 +51,26 @@ namespace sv {
 
     SV_API Result file_remove(const char* filepath);
     SV_API Result file_copy(const char* srcpath, const char* dstpath);
+    SV_API bool   file_exists(const char* filepath);
 
     SV_API Result file_date(const char* filepath, Date* create, Date* last_write, Date* last_access);
+
+    struct FolderIterator {
+	u64 _handle;
+    };
+
+    struct FolderElement {
+	bool is_file;
+	Date create_date;
+	Date last_write_date;
+	Date last_access_date;
+	char name[50];
+	const char* extension;
+    };
+
+    SV_API Result folder_iterator_begin(const char* folderpath, FolderIterator* iterator, FolderElement* element);
+    SV_API bool folder_iterator_next(FolderIterator* iterator, FolderElement* element);
+    SV_API void folder_iterator_close(FolderIterator* iterator);
     
     SV_API Result load_image(const char* filePath, void** pdata, u32* width, u32* height);
 

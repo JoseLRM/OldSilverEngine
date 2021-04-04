@@ -146,7 +146,7 @@ namespace sv {
 	// Deserialize
 	{
 	    // Get filepath
-	    char filepath[300];
+	    char filepath[FILEPATH_SIZE];
 
 	    bool exist = user_get_scene_filepath(name, filepath);
 
@@ -389,8 +389,8 @@ namespace sv {
     {
 	size_t name_size = strlen(name);
 
-	if (name_size > SCENE_NAME_SIZE) {
-	    SV_LOG_ERROR("The scene name '%s' is to long, max chars = %u", name, SCENE_NAME_SIZE);
+	if (name_size > SCENENAME_SIZE) {
+	    SV_LOG_ERROR("The scene name '%s' is to long, max chars = %u", name, SCENENAME_SIZE);
 	    return Result_InvalidUsage;
 	}
 	
@@ -506,60 +506,64 @@ namespace sv {
 	return Result_Success;
     }
 
-    Result create_entity_model(Scene* scene_, Entity parent, const char* filepath)
+    Result create_entity_model(Scene* scene_, Entity parent, const char* folderpath)
     {
-	// TODO
-	/*
-	  PARSE_SCENE();
+	//PARSE_SCENE();
 		
-	  if (!std::filesystem::exists(filepath))
-	  return Result_NotFound;
+	FolderIterator it;
+	FolderElement element;
 
-	  for (const auto& entry : std::filesystem::directory_iterator(filepath)) {
+	Result res = folder_iterator_begin(folderpath, &it, &element);
 
-	  if (entry.is_directory()) continue;
+	if (result_okay(res)) {
 
-	  std::string extension = parse_string(entry.path().extension().c_str());
+	    do {
 
-	  if (strcmp(extension.c_str(), ".mesh") == 0) {
+		if (!element.is_file)
+		    continue;
 
-	  #if defined(SV_RES_PATH) && defined(SV_PATH)
-	  std::string path = parse_string(entry.path().c_str() + strlen(SV_RES_PATH));
-	  #else
-	  std::string path = parse_string(entry.path().c_str());
-	  #endif
-	  path_clear(path.data());
+		if (element.extension && strcmp(element.extension, "mesh") == 0) {
 
-	  MeshAsset mesh;
+		    char filepath[FILEPATH_SIZE];
+		    sprintf(filepath, "%s/%s", folderpath, element.name);
+		    SV_LOG("%s", filepath);
 
-	  Result res = load_asset_from_file(mesh, path.c_str());
+		    MeshAsset mesh;
 
-	  if (result_okay(res)) {
+		    Result res = load_asset_from_file(mesh, filepath);
+
+		    if (result_okay(res)) {
 					
-	  Entity entity = create_entity(scene_, parent);
-	  MeshComponent* comp = add_component<MeshComponent>(scene_, entity);
-	  comp->mesh = mesh;
+			Entity entity = create_entity(scene_, parent);
+			MeshComponent* comp = add_component<MeshComponent>(scene_, entity);
+			comp->mesh = mesh;
 
-	  Transform trans = get_entity_transform(scene_, entity);
-	  Mesh* m = mesh.get();
+			Transform trans = get_entity_transform(scene_, entity);
+			Mesh* m = mesh.get();
 
-	  trans.setMatrix(m->model_transform_matrix);
+			trans.setMatrix(m->model_transform_matrix);
 
-	  if (m->model_material_filepath.size()) {
+			if (m->model_material_filepath.size()) {
 					
-	  MaterialAsset mat;
-	  res = load_asset_from_file(mat, m->model_material_filepath.c_str());
+			    MaterialAsset mat;
+			    res = load_asset_from_file(mat, m->model_material_filepath.c_str());
 
-	  if (result_okay(res)) {
+			    if (result_okay(res)) {
 							
-	  comp->material = mat;
-	  }
-	  }
-	  }
-	  }
-	  }
-	*/	
-	return Result_TODO;
+				comp->material = mat;
+			    }
+			}
+		    }
+		}
+		
+	    } while(folder_iterator_next(&it, &element));
+
+	    folder_iterator_close(&it);
+	    
+	}
+	else return res;
+	
+	return Result_Success;
     }
 
     static void update_camera_matrices(CameraComponent& camera, const v3_f32& position, const v4_f32& rotation)

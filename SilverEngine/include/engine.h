@@ -25,8 +25,6 @@ namespace sv {
 	UserCloseSceneFn close_scene;
 	UserSerializeSceneFn serialize_scene;
     };
-
-    constexpr u32 SCENE_NAME_SIZE = 50u;
     
     struct GlobalEngineData {
 
@@ -39,7 +37,7 @@ namespace sv {
 	bool		 close_request = false;
 	bool             running = false;
 	Scene*	         scene = nullptr;
-	char	         next_scene_name[SCENE_NAME_SIZE];
+	char	         next_scene_name[SCENENAME_SIZE];
 	void*            game_memory = nullptr;
     };
     

@@ -71,6 +71,10 @@ constexpr f64	f64_ninf = -1.0 * std::numeric_limits<f64>::infinity();
 
 // Misc
 
+constexpr u32 FILEPATH_SIZE = 300u;
+constexpr u32 FILENAME_SIZE = 50u;
+constexpr u32 SCENENAME_SIZE = 50u;
+
 #define svCheck(x) do{ sv::Result __res__ = (x); if(sv::result_fail(__res__)) return __res__; }while(0)
 #define SV_ZERO_MEMORY(dest, size) memset(dest, 0, size)
 #define SV_BIT(x) (1ULL << x) 
