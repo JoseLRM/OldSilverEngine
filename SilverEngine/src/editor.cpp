@@ -39,6 +39,9 @@ namespace sv {
 
     enum AssetElementType : u32 {
 	AssetElementType_Unknown,
+	AssetElementType_Texture,
+	AssetElementType_Mesh,
+	AssetElementType_Material,
 	AssetElementType_Directory,
     };
 
@@ -373,10 +376,13 @@ namespace sv {
 		//TODO: egui_comp_drag_v4f32("Coords", 1u, &spr.texcoord, 0.01f);
 
 	    }
-
+	    
 	    if (MeshComponent::ID == comp_id) {
 
-		//MeshComponent& m = *reinterpret_cast<MeshComponent*>(comp);
+		MeshComponent& m = *reinterpret_cast<MeshComponent*>(comp);
+
+		egui_comp_mesh("Mesh", 0u, &m.mesh);
+		egui_comp_material("Material", 1u, &m.material);
 	    }
 
 	    if (CameraComponent::ID == comp_id) {
@@ -423,6 +429,16 @@ namespace sv {
 		    cam.width = dimension;
 		    cam.height = dimension;
 		}
+	    }
+
+	    if (LightComponent::ID == comp_id) {
+
+		LightComponent& l = *reinterpret_cast<LightComponent*>(comp);
+
+		egui_comp_color("Color", 0u, &l.color);
+		egui_comp_drag_f32("Intensity", 1u, &l.intensity, 0.05f, 0.0f, f32_max);
+		egui_comp_drag_f32("Range", 2u, &l.range, 0.1f, 0.0f, f32_max);
+		egui_comp_drag_f32("Smoothness", 3u, &l.smoothness, 0.005f, 0.0f, 1.f);
 	    }
 
 	    egui_end_component();
@@ -881,16 +897,39 @@ namespace sv {
 
 		    if (e.type != AssetElementType_Directory) {
 
-			AssetPackage pack;
-			size_t size = info.filepath.size() + strlen(e.name);
-			SV_ASSERT(size < AssetPackage::MAX_SIZE);
+			u32 id;
 
-			memcpy(pack.filepath, info.filepath.data(), info.filepath.size());
-			memcpy(pack.filepath + info.filepath.size(), e.name, strlen(e.name));
-			pack.filepath[size] = '\0';
+			switch (e.type) {
 
-			gui_send_package(gui, &pack, sizeof(AssetPackage), ASSET_BROWSER_PACKAGE);
+			case AssetElementType_Texture:
+			    id = ASSET_BROWSER_PACKAGE_TEXTURE;
+			    break;
 
+			case AssetElementType_Mesh:
+			    id = ASSET_BROWSER_PACKAGE_MESH;
+			    break;
+
+			case AssetElementType_Material:
+			    id = ASSET_BROWSER_PACKAGE_MATERIAL;
+			    break;
+
+			default:
+			    id = u32_max;
+			    break;
+			}
+
+			if (id != u32_max) {
+			
+			    AssetPackage pack;
+			    size_t size = info.filepath.size() + strlen(e.name);
+			    SV_ASSERT(size < AssetPackage::MAX_SIZE);
+
+			    memcpy(pack.filepath, info.filepath.data(), info.filepath.size());
+			    memcpy(pack.filepath + info.filepath.size(), e.name, strlen(e.name));
+			    pack.filepath[size] = '\0';
+			
+			    gui_send_package(gui, &pack, sizeof(AssetPackage), id);
+			}
 		    }
 
 		    gui_text(gui, e.name, 1u, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(0.2f));
@@ -934,12 +973,19 @@ namespace sv {
 		if (result_okay(res)) {
 
 		    do {
-		    
-			AssetElement element;
 
+			if (strcmp(e.name, ".") == 0 || strcmp(e.name, "..") == 0)
+			    continue;
+			
+			AssetElement element;
+			
 			// Select element type
 			if (e.is_file) {
-			    element.type = AssetElementType_Unknown;
+
+			    if (strcmp(e.extension, "mesh") == 0) element.type = AssetElementType_Mesh;
+			    else if (strcmp(e.extension, "mat") == 0) element.type = AssetElementType_Material;
+			    else if (strcmp(e.extension, "png") == 0 || strcmp(e.extension, "jpg") == 0 || strcmp(e.extension, "gif") == 0 || strcmp(e.extension, "jpeg") == 0) element.type = AssetElementType_Texture;
+			    else element.type = AssetElementType_Unknown;
 			}
 			else {
 			    element.type = AssetElementType_Directory;

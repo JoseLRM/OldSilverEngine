@@ -35,7 +35,9 @@ namespace sv {
 
     // EDITOR GUI
 
-    constexpr u32 ASSET_BROWSER_PACKAGE = 69u;
+    constexpr u32 ASSET_BROWSER_PACKAGE_TEXTURE = 69u;
+    constexpr u32 ASSET_BROWSER_PACKAGE_MESH = 70u;
+    constexpr u32 ASSET_BROWSER_PACKAGE_MATERIAL = 71u;
 	
     struct AssetPackage {
 	static constexpr u32 MAX_SIZE = 500u;
@@ -57,6 +59,8 @@ namespace sv {
 
     SV_API void egui_comp_color(const char* text, u64 id, Color* pcolor);
     SV_API void egui_comp_texture(const char* text, u64 id, TextureAsset* texture);
+    SV_API void egui_comp_mesh(const char* text, u64 id, MeshAsset* mesh);
+    SV_API void egui_comp_material(const char* text, u64 id, MaterialAsset* material);
     SV_API bool egui_comp_bool(const char* text, u64 id, bool* value);
     SV_API bool egui_comp_drag_f32(const char* text, u64 id, f32* value, f32 adv = 0.1f, f32 min = f32_min, f32 max = f32_max);
 

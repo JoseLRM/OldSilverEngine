@@ -266,12 +266,58 @@ namespace sv {
 	info.yoff += COMP_ITEM_HEIGHT + VPADDING;
 
 	AssetPackage* package;
-	if (gui_recive_package(dev.gui, (void**)&package, nullptr, ASSET_BROWSER_PACKAGE)) {
+	if (gui_recive_package(dev.gui, (void**)&package, nullptr, ASSET_BROWSER_PACKAGE_TEXTURE)) {
 
 	    Result res = load_asset_from_file(*texture, package->filepath);
 	    if (result_fail(res)) {
 
 		SV_LOG_ERROR("Can't load the texture '%s': %s", package->filepath, result_str(res));
+	    }
+	}
+
+	gui_pop_id(dev.gui);
+    }
+
+    void egui_comp_mesh(const char* text, u64 id, MeshAsset* mesh)
+    {
+	GuiParentUserData& info = gui_parent_userdata(dev.gui);
+
+	gui_push_id(dev.gui, id);
+
+	gui_text(dev.gui, text, 0u, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
+	gui_button(dev.gui, "TODO", 1u, GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
+	info.yoff += COMP_ITEM_HEIGHT + VPADDING;
+
+	AssetPackage* package;
+	if (gui_recive_package(dev.gui, (void**)&package, nullptr, ASSET_BROWSER_PACKAGE_MESH)) {
+
+	    Result res = load_asset_from_file(*mesh, package->filepath);
+	    if (result_fail(res)) {
+
+		SV_LOG_ERROR("Can't load the mesh '%s': %s", package->filepath, result_str(res));
+	    }
+	}
+
+	gui_pop_id(dev.gui);
+    }
+
+    void egui_comp_material(const char* text, u64 id, MaterialAsset* material)
+    {
+	GuiParentUserData& info = gui_parent_userdata(dev.gui);
+
+	gui_push_id(dev.gui, id);
+
+	gui_text(dev.gui, text, 0u, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
+	gui_button(dev.gui, "TODO", 1u, GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
+	info.yoff += COMP_ITEM_HEIGHT + VPADDING;
+
+	AssetPackage* package;
+	if (gui_recive_package(dev.gui, (void**)&package, nullptr, ASSET_BROWSER_PACKAGE_MATERIAL)) {
+
+	    Result res = load_asset_from_file(*material, package->filepath);
+	    if (result_fail(res)) {
+
+		SV_LOG_ERROR("Can't load the material '%s': %s", package->filepath, result_str(res));
 	    }
 	}
 
