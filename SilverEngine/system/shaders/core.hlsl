@@ -40,9 +40,14 @@ struct Camera {
     matrix vm;
     matrix pm;
     matrix vpm;
+    matrix ivm;
+    matrix ipm;
+    matrix ivpm;
     float3 position;
     float4 direction;
 };
+
+#define SV_CAMERA_BUFFER(slot) SV_CONSTANT_BUFFER(camera_buffer, slot) { Camera camera; };
 
 struct Environment {
        float3 ambient_light;

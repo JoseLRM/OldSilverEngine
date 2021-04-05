@@ -1485,7 +1485,7 @@ namespace sv {
 	return g_PipelineState.graphics[cmd].lineWidth;
     }
 
-    void graphics_renderpass_begin(RenderPass* renderPass, GPUImage** attachments, const Color4f* colors, float depth, u32 stencil, CommandList cmd)
+    void graphics_renderpass_begin(RenderPass* renderPass, GPUImage** attachments, const Color* colors, float depth, u32 stencil, CommandList cmd)
     {
 	auto& state = g_PipelineState.graphics[cmd];
 
@@ -1496,8 +1496,10 @@ namespace sv {
 	memcpy(state.attachments, attachments, sizeof(GPUImage*) * attCount);
 	g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_RenderPass;
 
-	if (colors != nullptr)
-	    memcpy(g_PipelineState.graphics[cmd].clearColors, colors, rp->info.attachments.size() * sizeof(v4_f32));
+	if (colors != nullptr) {
+	    foreach(i, rp->info.attachments.size())
+		g_PipelineState.graphics[cmd].clearColors[i] = colors[i].toVec4();
+	}
 	g_PipelineState.graphics[cmd].clearDepthStencil = std::make_pair(depth, stencil);
 
 	g_Device.renderpass_begin(cmd);
@@ -1550,7 +1552,7 @@ namespace sv {
 	g_Device.image_blit(src, dst, srcLayout, dstLayout, count, imageBlit, filter, cmd);
     }
 
-    void graphics_image_clear(GPUImage* image, GPUImageLayout oldLayout, GPUImageLayout newLayout, const Color4f& clearColor, float depth, u32 stencil, CommandList cmd)
+    void graphics_image_clear(GPUImage* image, GPUImageLayout oldLayout, GPUImageLayout newLayout, Color clearColor, float depth, u32 stencil, CommandList cmd)
     {
 	g_Device.image_clear(image, oldLayout, newLayout, clearColor, depth, stencil, cmd);
     }

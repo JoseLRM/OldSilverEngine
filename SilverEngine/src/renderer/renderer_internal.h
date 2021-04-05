@@ -9,7 +9,7 @@ namespace sv {
     struct LightData {
 	v3_f32		position;
 	LightType	type;
-	Color3f		color;
+	v3_f32		color;
 	f32			range;
 	f32			intensity;
 	f32			smoothness;
@@ -23,11 +23,11 @@ namespace sv {
     };
 
     struct MaterialData {
-	Color3f diffuse_color;
+	v3_f32 diffuse_color;
 	u32 flags;
-	Color3f specular_color;
+	v3_f32 specular_color;
 	f32 shininess;
-	Color3f emissive_color;
+	v3_f32 emissive_color;
     };
 
 #define MAT_FLAG_NORMAL_MAPPING SV_BIT(0u)
@@ -38,6 +38,9 @@ namespace sv {
 	XMMATRIX	view_matrix;
 	XMMATRIX	projection_matrix;
 	XMMATRIX	view_projection_matrix;
+	XMMATRIX	inverse_view_matrix;
+	XMMATRIX	inverse_projection_matrix;
+	XMMATRIX	inverse_view_projection_matrix;
 	v4_f32		position;
 	v4_f32		rotation;
     };
@@ -77,7 +80,7 @@ namespace sv {
     };
 
     struct EnvironmentData {
-	Color3f ambient_light;
+	v3_f32 ambient_light;
     };
 
     struct GraphicsObjects {
@@ -97,12 +100,15 @@ namespace sv {
 	GPUBuffer* cbuffer_environment;
 	RenderPass* renderpass_off;
 	RenderPass* renderpass_world;
+	RenderPass* renderpass_gbuffer;
 	BlendState* bs_transparent;
 
 	// GBUFFER
 
 	GPUImage* offscreen;
-	GPUImage* depthstencil;
+	GPUImage* gbuffer_diffuse;
+	GPUImage* gbuffer_normal;
+	GPUImage* gbuffer_depthstencil;
 
 	// DEBUG
 
@@ -128,8 +134,9 @@ namespace sv {
 
 	// MESH
 
-	Shader* vs_mesh;
-	Shader* ps_mesh;
+	Shader* vs_mesh_geometry;
+	Shader* ps_mesh_geometry;
+	Shader* ps_mesh_lighting;
 	InputLayoutState* ils_mesh;
 	BlendState* bs_mesh;
 	GPUBuffer* cbuffer_material;

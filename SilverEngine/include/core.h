@@ -1104,8 +1104,10 @@ namespace sv {
     // Color
 
     struct Color {
+	
 	u8 r, g, b, a;
 
+	constexpr static Color Transparent() { return { 0u, 0u, 0u, 0u }; }
 	constexpr static Color Red(u8 a = 255u) { return { 255u, 0u, 0u, a }; }
 	constexpr static Color Green(u8 a = 255u) { return { 0u	, 128u, 0u, a }; }
 	constexpr static Color Blue(u8 a = 255u) { return { 0u, 0u, 255u, a }; }
@@ -1131,30 +1133,18 @@ namespace sv {
 
 	SV_INLINE bool operator==(const Color& o) { return o.r == r && o.g == g && o.b == b; }
 	SV_INLINE bool operator!=(const Color& o) { return o.r != r || o.g != g || o.b != b; }
-    };
 
-    struct Color4f {
-	float r, g, b, a;
+	SV_INLINE v4_f32 toVec4() const { return { f32(r) * (1.f / 255.f), f32(g) * (1.f / 255.f), f32(b) * (1.f / 255.f), f32(a) * (1.f / 255.f) }; }
+	SV_INLINE v3_f32 toVec3() const { return { f32(r) * (1.f / 255.f), f32(g) * (1.f / 255.f), f32(b) * (1.f / 255.f) }; }
 
-	constexpr static Color4f Red() { return { 1.f	, 0.f	, 0.f	, 1.f }; }
-	constexpr static Color4f Green() { return { 0.f	, 1.f	, 0.f	, 1.f }; }
-	constexpr static Color4f Blue() { return { 0.f	, 0.f	, 1.f	, 1.f }; }
-	constexpr static Color4f Black() { return { 0.f	, 0.f	, 0.f	, 1.f }; }
-	constexpr static Color4f Gray(float v) { return { v	, v		, v		, 1.f }; }
-	constexpr static Color4f White() { return { 1.f	, 1.f	, 1.f	, 1.f }; }
-
-    };
-
-    struct Color3f {
-	float r, g, b;
-
-	constexpr static Color3f Red() { return { 1.f	, 0.f	, 0.f }; }
-	constexpr static Color3f Green() { return { 0.f	, 1.f	, 0.f }; }
-	constexpr static Color3f Blue() { return { 0.f	, 0.f	, 1.f }; }
-	constexpr static Color3f Black() { return { 0.f	, 0.f	, 0.f }; }
-	constexpr static Color3f Gray(float v) { return { v	, v		, v }; }
-	constexpr static Color3f White() { return { 1.f	, 1.f	, 1.f }; }
-
+	SV_INLINE void setFloat(f32 _r, f32 _g, f32 _b, f32 _a = 1.f)
+	    {
+		r = u8(_r * 255.f);
+		g = u8(_g * 255.f);
+		b = u8(_b * 255.f);
+		a = u8(_a * 255.f);
+	    }
+	
     };
 
     // Random
@@ -1340,8 +1330,6 @@ namespace sv {
 	SV_INLINE Archive& operator<<(const XMFLOAT4& n) { write(&n, sizeof(n)); return *this; }
 	SV_INLINE Archive& operator<<(const XMMATRIX& n) { write(&n, sizeof(n)); return *this; }
 	SV_INLINE Archive& operator<<(const Color& n) { write(&n, sizeof(n)); return *this; }
-	SV_INLINE Archive& operator<<(const Color3f& n) { write(&n, sizeof(n)); return *this; }
-	SV_INLINE Archive& operator<<(const Color4f& n) { write(&n, sizeof(n)); return *this; }
 
 	template<typename T, typename F>
 	SV_INLINE Archive& operator<<(const Vector2D<T, F>& n) { write(&n, sizeof(n)); return *this; }
@@ -1414,8 +1402,6 @@ namespace sv {
 	SV_INLINE Archive& operator>>(XMFLOAT4& n) { read(&n, sizeof(n)); return *this; }
 	SV_INLINE Archive& operator>>(XMMATRIX& n) { read(&n, sizeof(n)); return *this; }
 	SV_INLINE Archive& operator>>(Color& n) { read(&n, sizeof(n)); return *this; }
-	SV_INLINE Archive& operator>>(Color3f& n) { read(&n, sizeof(n)); return *this; }
-	SV_INLINE Archive& operator>>(Color4f& n) { read(&n, sizeof(n)); return *this; }
 
 	template<typename T, typename F>
 	SV_INLINE Archive& operator>>(Vector2D<T, F>& n) { read(&n, sizeof(n)); return *this; }

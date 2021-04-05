@@ -369,9 +369,9 @@ namespace sv {
 			aiColor3D color;
 
 			m0.Get(AI_MATKEY_NAME, m1.name);
-			m0.Get(AI_MATKEY_COLOR_DIFFUSE, color); m1.diffuse_color = { color.r, color.g, color.b };
-			m0.Get(AI_MATKEY_COLOR_SPECULAR, color); m1.specular_color = { color.r, color.g, color.b };
-			m0.Get(AI_MATKEY_COLOR_EMISSIVE, color); m1.emissive_color = { color.r, color.g, color.b };
+			m0.Get(AI_MATKEY_COLOR_DIFFUSE, color); m1.diffuse_color.setFloat(color.r, color.g, color.b);
+			m0.Get(AI_MATKEY_COLOR_SPECULAR, color); m1.specular_color.setFloat(color.r, color.g, color.b);
+			m0.Get(AI_MATKEY_COLOR_EMISSIVE, color); m1.emissive_color.setFloat(color.r, color.g, color.b);
 			m0.Get(AI_MATKEY_SHININESS, m1.shininess);
 
 			m1.diffuse_map_path = get_texture(m0, aiTextureType_DIFFUSE);

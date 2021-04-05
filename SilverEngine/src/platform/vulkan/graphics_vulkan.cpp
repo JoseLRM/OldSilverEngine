@@ -1121,7 +1121,7 @@ namespace sv {
 	vkCmdDrawIndexed(g_API->frames[g_API->currentFrame].commandBuffers[cmd], indexCount, instanceCount, startIndex, startVertex, startInstance);
     }
 
-    void graphics_vulkan_image_clear(GPUImage* image_, GPUImageLayout oldLayout, GPUImageLayout newLayout, const Color4f& clearColor, float depth, u32 stencil, CommandList cmd_)
+    void graphics_vulkan_image_clear(GPUImage* image_, GPUImageLayout oldLayout, GPUImageLayout newLayout, Color clearColor, float depth, u32 stencil, CommandList cmd_)
     {
 	Image_vk& image = *reinterpret_cast<Image_vk*>(image_);
 	VkCommandBuffer cmd = g_API->frames[g_API->currentFrame].commandBuffers[cmd_];
@@ -1159,7 +1159,8 @@ namespace sv {
 	}
 	else {
 
-	    VkClearColorValue clear = { clearColor.r, clearColor.g, clearColor.b, clearColor.a };
+	    v4_f32 col = clearColor.toVec4();
+	    VkClearColorValue clear = { col.x, col.y, col.z, col.w };
 	    vkCmdClearColorImage(cmd, image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear, 1u, &range);
 
 	}

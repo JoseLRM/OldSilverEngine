@@ -33,7 +33,7 @@ namespace sv {
     void graphics_vulkan_draw(u32, u32, u32, u32, CommandList);
     void graphics_vulkan_draw_indexed(u32, u32, u32, u32, u32, CommandList);
 
-    void graphics_vulkan_image_clear(GPUImage*, GPUImageLayout, GPUImageLayout, const Color4f&, float, u32, CommandList);
+    void graphics_vulkan_image_clear(GPUImage*, GPUImageLayout, GPUImageLayout, Color, float, u32, CommandList);
     void graphics_vulkan_image_blit(GPUImage*, GPUImage*, GPUImageLayout, GPUImageLayout, u32, const GPUImageBlit*, SamplerFilter, CommandList);
     void graphics_vulkan_buffer_update(GPUBuffer*, const void*, u32, u32, CommandList);
     void graphics_vulkan_barrier(const GPUBarrier*, u32, CommandList);

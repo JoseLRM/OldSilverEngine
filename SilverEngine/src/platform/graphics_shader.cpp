@@ -163,6 +163,8 @@ namespace sv {
 	bat << srcPath << " -Fo ";
 	bat << filePath.c_str();
 
+	bat << " 2> system\\shader_log.txt ";
+	
 	// Execute
 	system(bat.str().c_str());
 

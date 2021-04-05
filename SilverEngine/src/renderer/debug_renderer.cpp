@@ -66,7 +66,7 @@ namespace sv {
 
 	GPUImage* att[2u];
 	att[0] = gfx.offscreen;
-	att[1] = gfx.depthstencil;
+	att[1] = gfx.gbuffer_depthstencil;
 
 	RenderPass* renderpass;
 		
@@ -269,7 +269,7 @@ namespace sv {
 
 		struct {
 		    XMMATRIX matrix;
-		    Color4f color;
+		    v4_f32 color;
 		} data;
 				
 		data.matrix = t.transform * view_projection_matrix;

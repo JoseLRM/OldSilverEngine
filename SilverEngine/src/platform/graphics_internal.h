@@ -137,9 +137,9 @@ namespace sv {
 	DepthStencilState_internal*		depthStencilState;
 	RasterizerState_internal*		rasterizerState;
 
-	sv::Viewport					viewports[GraphicsLimit_Viewport];
+	Viewport					viewports[GraphicsLimit_Viewport];
 	u32								viewportsCount;
-	sv::Scissor						scissors[GraphicsLimit_Scissor];
+	Scissor						scissors[GraphicsLimit_Scissor];
 	u32								scissorsCount;
 	GraphicsTopology				topology;
 	u32								stencilReference;
@@ -147,7 +147,7 @@ namespace sv {
 
 	RenderPass_internal*			renderPass;
 	GPUImage_internal*				attachments[GraphicsLimit_Attachment];
-	sv::v4_f32						clearColors[GraphicsLimit_Attachment];
+	v4_f32						clearColors[GraphicsLimit_Attachment];
 	std::pair<float, u32>			clearDepthStencil;
 
 	GraphicsPipelineStateFlags		flags;
@@ -192,7 +192,7 @@ namespace sv {
     typedef void(*FNP_graphics_api_draw)(u32, u32, u32, u32, CommandList);
     typedef void(*FNP_graphics_api_draw_indexed)(u32, u32, u32, u32, u32, CommandList);
 
-    typedef void(*FNP_graphics_api_image_clear)(GPUImage*, GPUImageLayout, GPUImageLayout, const Color4f&, float, u32, CommandList);
+    typedef void(*FNP_graphics_api_image_clear)(GPUImage*, GPUImageLayout, GPUImageLayout, Color, float, u32, CommandList);
     typedef void(*FNP_graphics_api_image_blit)(GPUImage*, GPUImage*, GPUImageLayout, GPUImageLayout, u32, const GPUImageBlit*, SamplerFilter, CommandList);
     typedef void(*FNP_graphics_api_buffer_update)(GPUBuffer*, const void*, u32, u32, CommandList);
     typedef void(*FNP_graphics_api_barrier)(const GPUBarrier*, u32, CommandList);

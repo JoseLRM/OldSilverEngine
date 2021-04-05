@@ -35,10 +35,10 @@ namespace sv {
 	};
 
 	struct Material {
-		Color3f diffuse_color;
-		Color3f specular_color;
-		Color3f emissive_color;
-		f32		shininess;
+		Color diffuse_color;
+		Color specular_color;
+		Color emissive_color;
+		f32   shininess;
 		TextureAsset diffuse_map;
 		TextureAsset normal_map;
 		TextureAsset specular_map;
@@ -81,9 +81,9 @@ namespace sv {
 
 	struct MaterialInfo {
 		std::string name;
-		Color3f diffuse_color;
-		Color3f specular_color;
-		Color3f emissive_color;
+		Color diffuse_color;
+		Color specular_color;
+		Color emissive_color;
 		f32 shininess;
 		std::string diffuse_map_path;
 		std::string normal_map_path;

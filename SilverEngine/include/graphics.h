@@ -681,7 +681,7 @@ namespace sv {
 
     // RenderPass functions
 
-    void graphics_renderpass_begin(RenderPass* renderPass, GPUImage** attachments, const Color4f* colors, float depth, u32 stencil, CommandList cmd);
+    void graphics_renderpass_begin(RenderPass* renderPass, GPUImage** attachments, const Color* colors, float depth, u32 stencil, CommandList cmd);
     void graphics_renderpass_begin(RenderPass* renderPass, GPUImage** attachments, CommandList cmd);
     void graphics_renderpass_end(CommandList cmd);
 
@@ -695,7 +695,7 @@ namespace sv {
     void graphics_buffer_update(GPUBuffer* buffer, const void* pData, u32 size, u32 offset, CommandList cmd);
     void graphics_barrier(const GPUBarrier* barriers, u32 count, CommandList cmd);
     void graphics_image_blit(GPUImage* src, GPUImage* dst, GPUImageLayout srcLayout, GPUImageLayout dstLayout, u32 count, const GPUImageBlit* imageBlit, SamplerFilter filter, CommandList cmd);
-    void graphics_image_clear(GPUImage* image, GPUImageLayout oldLayout, GPUImageLayout newLayout, const Color4f& clearColor, float depth, u32 stencil, CommandList cmd); // Not use if necessary, renderpasses have best performance!!
+    void graphics_image_clear(GPUImage* image, GPUImageLayout oldLayout, GPUImageLayout newLayout, Color clearColor, float depth, u32 stencil, CommandList cmd); // Not use if necessary, renderpasses have best performance!!
 
     // Shader utils
 

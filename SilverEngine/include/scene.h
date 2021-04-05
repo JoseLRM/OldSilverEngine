@@ -493,7 +493,7 @@ namespace sv {
     SV_DEFINE_COMPONENT(LightComponent, 0u) {
 
 	LightType light_type = LightType_Point;
-	Color3f color = Color3f::White();
+	Color color = Color::White();
 	f32 intensity = 1.f;
 	f32 range = 5.f;
 	f32 smoothness = 0.5f;
