@@ -10,7 +10,7 @@ namespace sv {
 
     bool egui_begin()
     {
-	gui_begin(dev.gui, f32(os_window_size().x), f32(os_window_size().y));
+	gui_begin(dev.gui, 0.1f, f32(os_window_size().x), f32(os_window_size().y));
 		
 		
 
@@ -46,7 +46,8 @@ namespace sv {
 
 	GuiParentUserData& info = gui_parent_userdata(dev.gui);
 
-	gui_text(dev.gui, text, id, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + 40.f));
+	gui_bounds(dev.gui, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + 40.f));
+	gui_text(dev.gui, text, id);
 	info.yoff += 40.f + SEPARATOR + VPADDING;
     }
 
@@ -98,15 +99,16 @@ namespace sv {
 
 	    // X
 	    {
-		gui_begin_container(dev.gui, 1u,
-				    GuiCoord::Relative(0.5f - ELEMENT_WIDTH * 1.5f - INTERN_PADDING),
-				    GuiCoord::Relative(0.5f - ELEMENT_WIDTH * 0.5f - INTERN_PADDING),
-				    GuiCoord::IPixel(info.yoff),
-				    GuiCoord::IPixel(info.yoff + TRANSFORM_HEIGHT),
-				    container_style
-		    );
-
-		if (gui_button(dev.gui, "X", 0u, GuiCoord::Relative(0.f), GuiCoord::Relative(0.25f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), x_style)) {
+		gui_bounds(dev.gui,
+			   GuiCoord::Relative(0.5f - ELEMENT_WIDTH * 1.5f - INTERN_PADDING),
+			   GuiCoord::Relative(0.5f - ELEMENT_WIDTH * 0.5f - INTERN_PADDING),
+			   GuiCoord::IPixel(info.yoff),
+			   GuiCoord::IPixel(info.yoff + TRANSFORM_HEIGHT));
+		
+		gui_begin_container(dev.gui, 1u, container_style);
+		
+		gui_bounds(dev.gui, GuiCoord::Relative(0.f), GuiCoord::Relative(0.25f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
+		if (gui_button(dev.gui, "X", 0u, x_style)) {
 
 		    if (i == 1u)
 			values->x = 1.f;
@@ -114,22 +116,24 @@ namespace sv {
 			values->x = 0.f;
 		}
 
-		gui_drag_f32(dev.gui, &values->x, 0.1f, 1u, GuiCoord::Relative(0.25f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
+		gui_bounds(dev.gui, GuiCoord::Relative(0.25f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
+		gui_drag_f32(dev.gui, &values->x, 0.1f, 1u);
 
 		gui_end_container(dev.gui);
 	    }
 
 	    // Y
 	    {
-		gui_begin_container(dev.gui, 2u,
-				    GuiCoord::Relative(0.5f - ELEMENT_WIDTH * 0.5f),
-				    GuiCoord::Relative(0.5f + ELEMENT_WIDTH * 0.5f),
-				    GuiCoord::IPixel(info.yoff),
-				    GuiCoord::IPixel(info.yoff + TRANSFORM_HEIGHT),
-				    container_style
-		    );
+		gui_bounds(dev.gui,
+			   GuiCoord::Relative(0.5f - ELEMENT_WIDTH * 0.5f),
+			   GuiCoord::Relative(0.5f + ELEMENT_WIDTH * 0.5f),
+			   GuiCoord::IPixel(info.yoff),
+			   GuiCoord::IPixel(info.yoff + TRANSFORM_HEIGHT));
+		
+		gui_begin_container(dev.gui, 2u, container_style);
 
-		if (gui_button(dev.gui, "Y", 0u, GuiCoord::Relative(0.f), GuiCoord::Relative(0.25f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), y_style)) {
+		gui_bounds(dev.gui, GuiCoord::Relative(0.f), GuiCoord::Relative(0.25f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
+		if (gui_button(dev.gui, "Y", 0u,  y_style)) {
 
 		    if (i == 1u)
 			values->y = 1.f;
@@ -137,22 +141,24 @@ namespace sv {
 			values->y = 0.f;
 		}
 
-		gui_drag_f32(dev.gui, &values->y, 0.1f, 1u, GuiCoord::Relative(0.25f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
+		gui_bounds(dev.gui, GuiCoord::Relative(0.25f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
+		gui_drag_f32(dev.gui, &values->y, 0.1f, 1u);
 
 		gui_end_container(dev.gui);
 	    }
 
 	    // Z
 	    {
-		gui_begin_container(dev.gui, 3u,
-				    GuiCoord::Relative(0.5f + ELEMENT_WIDTH * 0.5f + INTERN_PADDING),
-				    GuiCoord::Relative(0.5f + ELEMENT_WIDTH * 1.5f + INTERN_PADDING),
-				    GuiCoord::IPixel(info.yoff),
-				    GuiCoord::IPixel(info.yoff + TRANSFORM_HEIGHT),
-				    container_style
-		    );
+		gui_bounds(dev.gui,
+			   GuiCoord::Relative(0.5f + ELEMENT_WIDTH * 0.5f + INTERN_PADDING),
+			   GuiCoord::Relative(0.5f + ELEMENT_WIDTH * 1.5f + INTERN_PADDING),
+			   GuiCoord::IPixel(info.yoff),
+			   GuiCoord::IPixel(info.yoff + TRANSFORM_HEIGHT));
+		
+		gui_begin_container(dev.gui, 3u, container_style);
 
-		if (gui_button(dev.gui, "Z", 0u, GuiCoord::Relative(0.f), GuiCoord::Relative(0.25f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), z_style)) {
+		gui_bounds(dev.gui, GuiCoord::Relative(0.f), GuiCoord::Relative(0.25f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
+		if (gui_button(dev.gui, "Z", 0u, z_style)) {
 
 		    if (i == 1u)
 			values->z = 1.f;
@@ -160,7 +166,8 @@ namespace sv {
 			values->z = 0.f;
 		}
 
-		gui_drag_f32(dev.gui, &values->z, 0.1f, 1u, GuiCoord::Relative(0.25f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
+		gui_bounds(dev.gui, GuiCoord::Relative(0.25f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
+		gui_drag_f32(dev.gui, &values->z, 0.1f, 1u);
 
 		gui_end_container(dev.gui);
 	    }
@@ -182,7 +189,8 @@ namespace sv {
 
 	GuiParentUserData& info = gui_parent_userdata(dev.gui);
 
-	bool res = gui_button(dev.gui, text, id, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + HEIGHT));
+	gui_bounds(dev.gui, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + HEIGHT));
+	bool res = gui_button(dev.gui, text, id);
 	info.yoff += HEIGHT + VPADDING;
 	return res;
     }
@@ -208,18 +216,23 @@ namespace sv {
 
 	*remove = false;
 
-	gui_begin_container(dev.gui, 0u, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + 40.f), container_style);
+	gui_bounds(dev.gui, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + 40.f));
+	gui_begin_container(dev.gui, 0u, container_style);
 
-	gui_text(dev.gui, get_component_name(comp_id), 1u, GuiCoord::Pixel(35.f), GuiCoord::IPixel(10.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), text_style);
+	gui_bounds(dev.gui, GuiCoord::Pixel(35.f), GuiCoord::IPixel(10.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
+	gui_text(dev.gui, get_component_name(comp_id), 1u, text_style);
 
 	if (gui_begin_popup(dev.gui, GuiPopupTrigger_LastWidget, MouseButton_Right, 2u)) {
 
-	    *remove = gui_button(dev.gui, "Remove", 0u, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(5.f), GuiCoord::IPixel(25.f));
+	    gui_bounds(dev.gui, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(5.f), GuiCoord::IPixel(25.f));
+	    *remove = gui_button(dev.gui, "Remove", 0u);
 
 	    gui_end_popup(dev.gui);
 	}
 
-	bool show = gui_checkbox(dev.gui, 3u, GuiCoord::Pixel(0.f), GuiCoord::Aspect(), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), checkbox_style);
+	gui_xbounds(dev.gui, GuiCoord::Pixel(0.f), GuiAlign_Left, GuiDim::Aspect());
+	gui_ybounds(dev.gui, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
+	bool show = gui_checkbox(dev.gui, 3u, checkbox_style);
 
 	gui_end_container(dev.gui);
 
@@ -248,8 +261,10 @@ namespace sv {
 
 	gui_push_id(dev.gui, id);
 
-	gui_text(dev.gui, text, 0u, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
-	gui_button(dev.gui, "TODO", 1u, GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
+	gui_bounds(dev.gui, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
+	gui_text(dev.gui, text, 0u);
+	gui_bounds(dev.gui, GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
+	gui_button(dev.gui, "TODO", 1u);
 	info.yoff += COMP_ITEM_HEIGHT + VPADDING;
 
 	gui_pop_id(dev.gui);
@@ -261,8 +276,11 @@ namespace sv {
 
 	gui_push_id(dev.gui, id);
 
-	gui_text(dev.gui, text, 0u, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
-	gui_button(dev.gui, "TODO", 1u, GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
+	gui_bounds(dev.gui, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
+	gui_text(dev.gui, text, 0u);
+
+	gui_bounds(dev.gui, GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
+	gui_button(dev.gui, "TODO", 1u);
 	info.yoff += COMP_ITEM_HEIGHT + VPADDING;
 
 	AssetPackage* package;
@@ -284,8 +302,10 @@ namespace sv {
 
 	gui_push_id(dev.gui, id);
 
-	gui_text(dev.gui, text, 0u, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
-	gui_button(dev.gui, "TODO", 1u, GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
+	gui_bounds(dev.gui, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
+	gui_text(dev.gui, text, 0u);
+	gui_bounds(dev.gui, GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
+	gui_button(dev.gui, "TODO", 1u);
 	info.yoff += COMP_ITEM_HEIGHT + VPADDING;
 
 	AssetPackage* package;
@@ -307,8 +327,10 @@ namespace sv {
 
 	gui_push_id(dev.gui, id);
 
-	gui_text(dev.gui, text, 0u, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
-	gui_button(dev.gui, "TODO", 1u, GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
+	gui_bounds(dev.gui, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
+	gui_text(dev.gui, text, 0u);
+	gui_bounds(dev.gui, GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
+	gui_button(dev.gui, "TODO", 1u);
 	info.yoff += COMP_ITEM_HEIGHT + VPADDING;
 
 	AssetPackage* package;
@@ -330,9 +352,12 @@ namespace sv {
 
 	gui_push_id(dev.gui, id);
 
-	gui_text(dev.gui, text, 0u, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
+	gui_bounds(dev.gui, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
+	gui_text(dev.gui, text, 0u);
 
-	bool res = gui_checkbox(dev.gui, value, 1u, GuiCoord::Relative(0.55f), GuiCoord::Aspect(), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
+	gui_xbounds(dev.gui, GuiCoord::Relative(0.55f), GuiAlign_Left, GuiDim::Aspect());
+	gui_ybounds(dev.gui, GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
+	bool res = gui_checkbox(dev.gui, value, 1u);
 
 	gui_pop_id(dev.gui);
 	info.yoff += COMP_ITEM_HEIGHT + VPADDING;
@@ -346,9 +371,11 @@ namespace sv {
 
 	gui_push_id(dev.gui, id);
 
-	gui_text(dev.gui, text, 0u, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
+	gui_bounds(dev.gui, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
+	gui_text(dev.gui, text, 0u);
 
-	bool res = gui_drag_f32(dev.gui, value, adv, min, max, 1u, GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
+	gui_bounds(dev.gui, GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
+	bool res = gui_drag_f32(dev.gui, value, adv, min, max, 1u);
 
 	gui_pop_id(dev.gui);
 	info.yoff += COMP_ITEM_HEIGHT + VPADDING;

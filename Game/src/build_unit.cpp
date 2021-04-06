@@ -44,8 +44,10 @@ SV_USER Result user_initialize_scene(Scene* scene, Archive* parchive)
 	archive >> m.entity;
 	return Result_Success;
     }
-    
-    m.entity = create_entity(scene);
+
+    scene->main_camera = create_entity(scene, SV_ENTITY_NULL, "Camera");
+    add_component<CameraComponent>(scene, scene->main_camera);
+    m.entity = create_entity(scene, SV_ENTITY_NULL, "Player");
     add_component<SpriteComponent>(scene, m.entity);
     
     return Result_Success;

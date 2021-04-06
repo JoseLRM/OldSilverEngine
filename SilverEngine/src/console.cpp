@@ -192,8 +192,8 @@ namespace sv {
 	}
 
 	// Save scene
-	char filepath[300];
-	const char* name = engine.scene->name.c_str();
+	char filepath[FILEPATH_SIZE];
+	const char* name = engine.scene->name;
 	
 	if (user_get_scene_filepath(name, filepath)) {
 
@@ -225,7 +225,7 @@ namespace sv {
 	Result res = clear_scene(engine.scene);
 
 	if (result_okay(res)) {
-	    SV_LOG("Scene '%s' cleared", engine.scene->name.c_str());
+	    SV_LOG("Scene '%s' cleared", engine.scene->name);
 	    return Result_Success;
 	}
 	else {

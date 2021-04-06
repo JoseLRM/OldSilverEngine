@@ -134,7 +134,7 @@ namespace sv {
 		componentAllocatorCreate(reinterpret_cast<Scene*>(&scene), id);
 	    }
 
-	    scene.name = name;
+	    sprintf(scene.name, "%s", name);
 	}
 
 	svCheck(gui_create(hash_string(name), &scene.gui));

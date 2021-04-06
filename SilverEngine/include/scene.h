@@ -26,10 +26,11 @@ namespace sv {
 	Entity main_camera = SV_ENTITY_NULL;
 
 	GPUImage* skybox = nullptr;
+	Color ambient_light = Color::Gray(20u);
 
 	AudioDevice* audio_device;
 
-	std::string name;
+	char name[SCENENAME_SIZE];
 
     };
 

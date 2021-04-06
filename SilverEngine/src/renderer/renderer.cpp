@@ -811,7 +811,7 @@ namespace sv {
 	// Create environment buffer
 	{
 	    EnvironmentData data;
-	    data.ambient_light = Color::Gray(40u).toVec3();
+	    data.ambient_light = scene->ambient_light.toVec3();
 	    graphics_buffer_update(gfx.cbuffer_environment, &data, sizeof(EnvironmentData), 0u, cmd);
 	}
 

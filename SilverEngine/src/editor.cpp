@@ -577,15 +577,21 @@ namespace sv {
 	    f32 y = editor.style.vertical_padding;
 	    constexpr f32 H = 20.f;
 
-	    destroy = gui_button(dev.gui, "Destroy", 0u, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H));
+	    gui_bounds(dev.gui, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H));
+	    
+	    destroy = gui_button(dev.gui, "Destroy", 0u);
 	    y += H + editor.style.vertical_padding;
 
-	    if (gui_button(dev.gui, "Duplicate", 1u, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H))) {
+	    gui_bounds(dev.gui, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H));
+	    
+	    if (gui_button(dev.gui, "Duplicate", 1u)) {
 		duplicate_entity(engine.scene, entity);
 	    }
 	    y += H + editor.style.vertical_padding;
 
-	    if (gui_button(dev.gui, "Create Child", 2u, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H))) {
+	    gui_bounds(dev.gui, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H));
+	    
+	    if (gui_button(dev.gui, "Create Child", 2u)) {
 		create_entity(engine.scene, entity);
 	    }
 
@@ -616,7 +622,9 @@ namespace sv {
 		style.hot_color = Color::Red();
 	    }
 
-	    if (gui_button(g, name, 0u, GuiCoord::Pixel(10.f + xoff), GuiCoord::IPixel(10.f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + BUTTON_HEIGHT), style)) {
+	    gui_bounds(g, GuiCoord::Pixel(10.f + xoff), GuiCoord::IPixel(10.f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + BUTTON_HEIGHT));
+	    
+	    if (gui_button(g, name, 0u, style)) {
 
 		editor.selected_entity = entity;
 	    }
@@ -634,13 +642,17 @@ namespace sv {
 		style.color = Color::Red();
 	    }
 
-	    gui_begin_container(g, 1u, GuiCoord::Pixel(10.f + xoff), GuiCoord::IPixel(10.f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + BUTTON_HEIGHT), style);
+	    gui_bounds(g, GuiCoord::Pixel(10.f + xoff), GuiCoord::IPixel(10.f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + BUTTON_HEIGHT));
+	    
+	    gui_begin_container(g, 1u, style);
 
 	    GuiButtonStyle button_style;
 	    button_style.color = Color::White(0u);
 	    button_style.hot_color = Color::White(0u);
 
-	    if (gui_button(g, name, 0u, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f))) {
+	    gui_bounds(g, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
+	    
+	    if (gui_button(g, name, 0u)) {
 
 		editor.selected_entity = entity;
 	    }
@@ -700,12 +712,16 @@ namespace sv {
 		f32 y = editor.style.vertical_padding;
 		constexpr f32 H = 20.f;
 
-		if (gui_button(dev.gui, "Create Entity", 0u, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H))) {
+		gui_bounds(dev.gui, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H));
+		
+		if (gui_button(dev.gui, "Create Entity", 0u)) {
 		    create_entity(engine.scene);
 		}
 		y += H + editor.style.vertical_padding;
 
-		if (gui_button(dev.gui, "Create Sprite", 1u, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H))) {
+		gui_bounds(dev.gui, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H));
+		
+		if (gui_button(dev.gui, "Create Sprite", 1u)) {
 
 		    Entity e = create_entity(engine.scene, 0, "Sprite");
 		    add_component<SpriteComponent>(engine.scene, e);
@@ -770,8 +786,10 @@ namespace sv {
 			if (get_component_by_id(engine.scene, selected, comp_id))
 			    continue;
 
-			if (gui_button(g, get_component_name(comp_id), comp_id, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 20.f))) {
-
+			gui_bounds(g, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 20.f));
+			
+			if (gui_button(g, get_component_name(comp_id), comp_id)) {
+			    
 			    add_component_by_id(engine.scene, selected, comp_id);
 			}
 
@@ -800,8 +818,10 @@ namespace sv {
 
 	    {
 		constexpr f32 WIDTH = 80.f;
+
+		gui_bounds(gui, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(0.f), GuiCoord::IPixel(33.f));
 		
-		gui_begin_container(gui, 0u, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(0.f), GuiCoord::IPixel(33.f));
+		gui_begin_container(gui, 0u);
 
 		if (info.filepath.size()) {
 
@@ -845,7 +865,8 @@ namespace sv {
 			}
 
 			f32 x = offset + (count - i) * WIDTH;
-			if (gui_button(gui, folder_name, i, GuiCoord::IPixel(x), GuiCoord::IPixel(x - WIDTH), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f)))
+			gui_bounds(gui, GuiCoord::IPixel(x), GuiCoord::IPixel(x - WIDTH), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));			
+			if (gui_button(gui, folder_name, i))
 			{
 
 			    if (!update_browser) {
@@ -874,9 +895,11 @@ namespace sv {
 	    }
 
 	    {
-		gui_begin_container(gui, 1u, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(40.f), GuiCoord::Relative(0.f));
+		gui_bounds(gui, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(40.f), GuiCoord::Relative(0.f));
+		gui_begin_container(gui, 1u);
 
-		gui_begin_grid(gui, u32(info.elements.size()), 150.f, 5.f, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
+		gui_bounds(gui, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
+		gui_begin_grid(gui, u32(info.elements.size()), 150.f, 5.f);
 
 		foreach(i, info.elements.size()) {
 
@@ -884,9 +907,9 @@ namespace sv {
 
 		    // TODO: ignore unused elements
 		    gui_begin_grid_element(gui, 69u + i);
-
-		    if (gui_button(gui, nullptr, 0u, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f),
-				   GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), editor.style.button_style)) {
+		    
+		    gui_bounds(gui, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
+		    if (gui_button(gui, nullptr, 0u, editor.style.button_style)) {
 
 			if (e.type == AssetElementType_Directory && !update_browser) {
 
@@ -932,7 +955,8 @@ namespace sv {
 			}
 		    }
 
-		    gui_text(gui, e.name, 1u, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(0.2f));
+		    gui_bounds(gui, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(0.2f));
+		    gui_text(gui, e.name, 1u);
 
 		    gui_end_grid_element(gui);
 		}
@@ -1012,309 +1036,325 @@ namespace sv {
 	    
 	    egui_end_window();
 	}
-	    }
+    }
 
-	    void update_editor()
+    void display_scene_settings()
+    {
+	if (egui_begin_window("Scene Settings")) {
+
+	    egui_comp_color("Ambient Light", 0u, &engine.scene->ambient_light);
+	    
+	    egui_end_window();
+	}
+    }
+
+    void update_editor()
+    {
+	// CHANGE EDITOR MODE
+	if (dev.game_state != dev.next_game_state) {
+
+	    switch (dev.next_game_state) {
+
+	    case GameState_Edit:
 	    {
-		// CHANGE EDITOR MODE
-		if (dev.game_state != dev.next_game_state) {
+		SV_LOG_INFO("Starting edit state");
+		// TODO: Handle error
+		std::string name = engine.scene->name;
+		Result res = close_scene(engine.scene);
+		res = initialize_scene(&engine.scene, name.c_str());
 
-		    switch (dev.next_game_state) {
-
-		    case GameState_Edit:
-		    {
-			SV_LOG_INFO("Starting edit state");
-			// TODO: Handle error
-			std::string name = engine.scene->name;
-			Result res = close_scene(engine.scene);
-			res = initialize_scene(&engine.scene, name.c_str());
-
-			if (result_fail(res)) {
-			    SV_LOG_ERROR("Can't init the scene '%s': %s", name.c_str(), result_str(res));
-			}
-			
-			dev.debug_draw = true;
-		    } break;
-
-		    case GameState_Play:
-		    {
-			SV_LOG_INFO("Starting play state");
-			
-			if (dev.game_state == GameState_Edit) {
-
-			    char filepath[FILEPATH_SIZE];
-
-			    if (user_get_scene_filepath(engine.scene->name.c_str(), filepath)) {
-
-				Result res = save_scene(engine.scene, filepath);
-				if (result_fail(res))
-				    SV_LOG_ERROR("Can't save the scene '%s': %s", engine.scene->name.c_str(), result_str(res));
-			    }
-			    else
-				SV_LOG_INFO("The scene '%s' is not serializable (Specified by the user)", engine.scene->name.c_str());
-
-			    dev.debug_draw = false;
-			}
-		    } break;
-
-		    case GameState_Pause:
-		    {
-			SV_LOG_INFO("Game paused");
-		    } break;
-			
-		    }
-		    
-		    dev.game_state = dev.next_game_state;
+		if (result_fail(res)) {
+		    SV_LOG_ERROR("Can't init the scene '%s': %s", name.c_str(), result_str(res));
 		}
+			
+		dev.debug_draw = true;
+	    } break;
+
+	    case GameState_Play:
+	    {
+		SV_LOG_INFO("Starting play state");
+			
+		if (dev.game_state == GameState_Edit) {
+
+		    char filepath[FILEPATH_SIZE];
+
+		    if (user_get_scene_filepath(engine.scene->name, filepath)) {
+
+			Result res = save_scene(engine.scene, filepath);
+			if (result_fail(res))
+			    SV_LOG_ERROR("Can't save the scene '%s': %s", engine.scene->name, result_str(res));
+		    }
+		    else
+			SV_LOG_INFO("The scene '%s' is not serializable (Specified by the user)", engine.scene->name);
+
+		    dev.debug_draw = false;
+		}
+	    } break;
+
+	    case GameState_Pause:
+	    {
+		SV_LOG_INFO("Game paused");
+	    } break;
+			
+	    }
+		    
+	    dev.game_state = dev.next_game_state;
+	}
 		
-		// KEY SHORTCUTS
-		if (dev.game_state != GameState_Play) {
+	// KEY SHORTCUTS
+	if (dev.game_state != GameState_Play) {
 
-		    if (input.keys[Key_F11] == InputState_Pressed) {
+	    if (input.keys[Key_F11] == InputState_Pressed) {
 
-			if (input.keys[Key_Control] && input.keys[Key_Alt])
-			    engine.close_request = true;
-			else
-			    dev.next_game_state = GameState_Play;
-		    }
-		    if (input.keys[Key_F10] == InputState_Pressed) {
+		if (input.keys[Key_Control] && input.keys[Key_Alt])
+		    engine.close_request = true;
+		else
+		    dev.next_game_state = GameState_Play;
+	    }
+	    if (input.keys[Key_F10] == InputState_Pressed) {
 			
-			os_window_set_fullscreen(os_window_state() != WindowState_Fullscreen);
-		    }
-		    if (input.keys[Key_F4] == InputState_Pressed) {
+		os_window_set_fullscreen(os_window_state() != WindowState_Fullscreen);
+	    }
+	    if (input.keys[Key_F4] == InputState_Pressed) {
 
-			dev.camera.projection_type = (dev.camera.projection_type == ProjectionType_Orthographic) ? ProjectionType_Perspective : ProjectionType_Orthographic;
+		dev.camera.projection_type = (dev.camera.projection_type == ProjectionType_Orthographic) ? ProjectionType_Perspective : ProjectionType_Orthographic;
 
-			if (dev.camera.projection_type == ProjectionType_Orthographic) {
+		if (dev.camera.projection_type == ProjectionType_Orthographic) {
 
-			    dev.camera.width = 30.f;
-			    dev.camera.height = 30.f;
-			    dev.camera.near = -1000.f;
-			    dev.camera.far = 1000.f;
-			    dev.camera.rotation = { 0.f, 0.f, 0.f, 1.f };
-			}
-			else {
-
-			    dev.camera.width = 0.1f;
-			    dev.camera.height = 0.1f;
-			    dev.camera.near = 0.03f;
-			    dev.camera.far = 100000.f;
-			}
-		    }
-		    if (input.keys[Key_F3] == InputState_Pressed) {
-			dev.console_active = !dev.console_active;
-		    }
-		    if (input.keys[Key_F1] == InputState_Pressed) {
-			dev.debug_draw = !dev.debug_draw;
-		    }
-
-		    if (input.unused && input.keys[Key_Control]) {
-
-			
-		    }
+		    dev.camera.width = 30.f;
+		    dev.camera.height = 30.f;
+		    dev.camera.near = -1000.f;
+		    dev.camera.far = 1000.f;
+		    dev.camera.rotation = { 0.f, 0.f, 0.f, 1.f };
 		}
 		else {
 
-		    if (input.keys[Key_F11] == InputState_Pressed) {
-			dev.next_game_state = GameState_Edit;
-		    }
+		    dev.camera.width = 0.1f;
+		    dev.camera.height = 0.1f;
+		    dev.camera.near = 0.03f;
+		    dev.camera.far = 100000.f;
 		}
+	    }
+	    if (input.keys[Key_F3] == InputState_Pressed) {
+		dev.console_active = !dev.console_active;
+	    }
+	    if (input.keys[Key_F1] == InputState_Pressed) {
+		dev.debug_draw = !dev.debug_draw;
+	    }
 
-		// Adjust camera
-		dev.camera.adjust(os_window_aspect());
-
-		if (!entity_exist(engine.scene, editor.selected_entity)) {
-		    editor.selected_entity = SV_ENTITY_NULL;
-		}
-
-		if (egui_begin()) {
-
-		    if (!editor.camera_focus && engine.scene != nullptr && dev.game_state != GameState_Play) {
-			display_entity_hierarchy();
-			display_entity_inspector();
-			display_asset_browser();
-		    }
-		    else {
-			// TODO
-		    }
-
-		    if (dev.game_state != GameState_Play) {
+	    if (input.unused && input.keys[Key_Control]) {
+		
 			
-			gui_push_id(dev.gui, "MENU");
-		    
-			if (gui_begin_menu_item(dev.gui, "Game", 0u)) {
-
-			    if (egui_button("Play", 0u)) {
-				dev.next_game_state = GameState_Play;
-			    }
-
-			    if (egui_button("Clear Scene", 1u)) {
-				clear_scene(engine.scene);
-			    }
-
-			    gui_end_menu_item(dev.gui);
-			}
-
-			if (gui_begin_menu_item(dev.gui, "View", 1u)) {
-
-			    if (egui_button("Hierarchy", 0u)) {
-				gui_show_window(dev.gui, "Hierarchy");
-			    }
-			    if (egui_button("Inspector", 1u)) {
-				gui_show_window(dev.gui, "Inspector");
-			    }
-			    if (egui_button("Asset Browser", 2u)) {
-				gui_show_window(dev.gui, "Asset Browser");
-			    }
-
-			    gui_end_menu_item(dev.gui);
-			}
-
-			gui_pop_id(dev.gui);
-		    }
-
-		    egui_end();
-		}
-
-		if (dev.debug_draw && engine.scene) {
-
-		    control_camera();
-		}
-
-		if (input.unused && engine.scene) {
-
-		    // Entity selection
-		    if (input.mouse_buttons[MouseButton_Left] == InputState_Released)
-			select_entity();
-
-		    update_gizmos();
-		}
 	    }
-
-	    void draw_editor()
-	    {
-		CommandList cmd = graphics_commandlist_get();
-		    
-		if (engine.scene && dev.debug_draw) {
-
-		    begin_debug_batch(cmd);
-
-		    // Draw selected entity
-		    if (editor.selected_entity != SV_ENTITY_NULL) {
-
-			Transform trans = get_entity_transform(engine.scene, editor.selected_entity);
-			MeshComponent* mesh_comp = get_component<MeshComponent>(engine.scene, editor.selected_entity);
-			SpriteComponent* sprite_comp = get_component<SpriteComponent>(engine.scene, editor.selected_entity);
-
-			if (mesh_comp && mesh_comp->mesh.get()) {
-
-			    u8 alpha = 5u + u8(f32(sin(timer_now().toSeconds_f64() * 3.5f) + 1.0) * 50.f * 0.5f);
-			    draw_debug_mesh_wireframe(mesh_comp->mesh.get(), trans.getWorldMatrix(), Color::Red(alpha), cmd);
-			}
-			if (sprite_comp) {
-
-			    XMVECTOR p0 = XMVectorSet(-0.5f, 0.5f, 0.f, 1.f);
-			    XMVECTOR p1 = XMVectorSet(0.5f, 0.5f, 0.f, 1.f);
-			    XMVECTOR p2 = XMVectorSet(-0.5f, -0.5f, 0.f, 1.f);
-			    XMVECTOR p3 = XMVectorSet(0.5f, -0.5f, 0.f, 1.f);
-
-			    XMMATRIX tm = trans.getWorldMatrix();
-
-			    p0 = XMVector3Transform(p0, tm);
-			    p1 = XMVector3Transform(p1, tm);
-			    p2 = XMVector3Transform(p2, tm);
-			    p3 = XMVector3Transform(p3, tm);
-
-			    u8 alpha = 50u + u8(f32(sin(timer_now().toSeconds_f64() * 3.5f) + 1.0) * 200.f * 0.5f);
-			    Color selection_color = Color::Red(alpha);
-
-			    draw_debug_line(v3_f32(p0), v3_f32(p1), selection_color, cmd);
-			    draw_debug_line(v3_f32(p1), v3_f32(p3), selection_color, cmd);
-			    draw_debug_line(v3_f32(p3), v3_f32(p2), selection_color, cmd);
-			    draw_debug_line(v3_f32(p2), v3_f32(p0), selection_color, cmd);
-			}
-		    }
-
-		    // Draw 2D grid
-		    if (dev.camera.projection_type == ProjectionType_Orthographic) {
-
-			f32 width = dev.camera.width;
-			f32 height = dev.camera.height;
-			f32 mag = dev.camera.getProjectionLength();
-
-			u32 count = 0u;
-			for (f32 i = 0.01f; count < 3u; i *= 10.f) {
-
-			    if (mag / i <= 50.f) {
-
-				Color color;
-
-				switch (count++)
-				{
-				case 0:
-				    color = Color::Gray(50);
-				    break;
-
-				case 1:
-				    color = Color::Gray(100);
-				    break;
-
-				case 2:
-				    color = Color::Gray(150);
-				    break;
-
-				case 3:
-				    color = Color::Gray(200);
-				    break;
-				}
-
-				color.a = 10u;
-
-				draw_debug_orthographic_grip(dev.camera.position.getVec2(), {}, { width, height }, i, color, cmd);
-			    }
-			}
-		    }
-
-		    // Draw cameras
-		    //{
-		    //	EntityView<CameraComponent> cameras(engine.scene);
-		    //
-		    //	for (CameraComponent& cam : cameras) {
-		    //
-		    //		Transform trans = get_entity_transform(engine.scene, cam.entity);
-		    //
-		    //		draw_debug_quad(trans.getWorldMatrix(), Color::Red(), cmd);
-		    //	}
-		    //}
-
-		    // Draw lights
-		    //{
-		    //	EntityView<LightComponent> lights(engine.scene);
-		    //
-		    //	XMMATRIX matrix;
-		    //
-		    //	for (LightComponent& l : lights) {
-		    //
-		    //		matrix = XMMatrixRotationQuaternion(XMQuaternionInverse(dev.camera.rotation.get_dx()));
-		    //
-		    //		// Move to entity position
-		    //		v3_f32 position = get_entity_transform(engine.scene, l.entity).getWorldPosition();
-		    //		matrix *= XMMatrixTranslation(position.x, position.y, position.z);
-		    //
-		    //		draw_debug_quad(matrix, Color::White(40u), cmd);
-		    //	}
-		    //}
-
-		    // Draw gizmos
-		    draw_gizmos(gfx.offscreen, cmd);
-
-		    end_debug_batch(true, false, dev.camera.view_projection_matrix, cmd);
-		}
-
-		// Draw gui
-		gui_draw(dev.gui, cmd);
-	    }
-
 	}
+	else {
+
+	    if (input.keys[Key_F11] == InputState_Pressed) {
+		dev.next_game_state = GameState_Edit;
+	    }
+	}
+
+	// Adjust camera
+	dev.camera.adjust(os_window_aspect());
+
+	if (!entity_exist(engine.scene, editor.selected_entity)) {
+	    editor.selected_entity = SV_ENTITY_NULL;
+	}
+
+	if (egui_begin()) {
+
+	    if (!editor.camera_focus && engine.scene != nullptr && dev.game_state != GameState_Play) {
+		display_entity_hierarchy();
+		display_entity_inspector();
+
+		display_asset_browser();
+		display_scene_settings();
+	    }
+	    else {
+		// TODO
+	    }
+
+	    if (dev.game_state != GameState_Play) {
+			
+		gui_push_id(dev.gui, "MENU");
+		    
+		if (gui_begin_menu_item(dev.gui, "Game", 0u)) {
+
+		    if (egui_button("Play", 0u)) {
+			dev.next_game_state = GameState_Play;
+		    }
+
+		    if (egui_button("Clear Scene", 1u)) {
+			clear_scene(engine.scene);
+		    }
+
+		    gui_end_menu_item(dev.gui);
+		}
+
+		if (gui_begin_menu_item(dev.gui, "View", 1u)) {
+
+		    if (egui_button("Hierarchy", 0u)) {
+			gui_show_window(dev.gui, "Hierarchy");
+		    }
+		    if (egui_button("Inspector", 1u)) {
+			gui_show_window(dev.gui, "Inspector");
+		    }
+		    if (egui_button("Asset Browser", 2u)) {
+			gui_show_window(dev.gui, "Asset Browser");
+		    }
+
+		    if (egui_button("Scene Settings", 3u)) {
+			gui_show_window(dev.gui, "Scene Settings");
+		    }
+
+		    gui_end_menu_item(dev.gui);
+		}
+
+		gui_pop_id(dev.gui);
+	    }
+
+	    egui_end();
+	}
+
+	if (dev.debug_draw && engine.scene) {
+
+	    control_camera();
+	}
+
+	if (input.unused && engine.scene) {
+
+	    // Entity selection
+	    if (input.mouse_buttons[MouseButton_Left] == InputState_Released)
+		select_entity();
+
+	    update_gizmos();
+	}
+    }
+
+    void draw_editor()
+    {
+	CommandList cmd = graphics_commandlist_get();
+		    
+	if (engine.scene && dev.debug_draw) {
+
+	    begin_debug_batch(cmd);
+
+	    // Draw selected entity
+	    if (editor.selected_entity != SV_ENTITY_NULL) {
+
+		Transform trans = get_entity_transform(engine.scene, editor.selected_entity);
+		MeshComponent* mesh_comp = get_component<MeshComponent>(engine.scene, editor.selected_entity);
+		SpriteComponent* sprite_comp = get_component<SpriteComponent>(engine.scene, editor.selected_entity);
+
+		if (mesh_comp && mesh_comp->mesh.get()) {
+
+		    u8 alpha = 5u + u8(f32(sin(timer_now().toSeconds_f64() * 3.5f) + 1.0) * 50.f * 0.5f);
+		    draw_debug_mesh_wireframe(mesh_comp->mesh.get(), trans.getWorldMatrix(), Color::Red(alpha), cmd);
+		}
+		if (sprite_comp) {
+
+		    XMVECTOR p0 = XMVectorSet(-0.5f, 0.5f, 0.f, 1.f);
+		    XMVECTOR p1 = XMVectorSet(0.5f, 0.5f, 0.f, 1.f);
+		    XMVECTOR p2 = XMVectorSet(-0.5f, -0.5f, 0.f, 1.f);
+		    XMVECTOR p3 = XMVectorSet(0.5f, -0.5f, 0.f, 1.f);
+
+		    XMMATRIX tm = trans.getWorldMatrix();
+
+		    p0 = XMVector3Transform(p0, tm);
+		    p1 = XMVector3Transform(p1, tm);
+		    p2 = XMVector3Transform(p2, tm);
+		    p3 = XMVector3Transform(p3, tm);
+
+		    u8 alpha = 50u + u8(f32(sin(timer_now().toSeconds_f64() * 3.5f) + 1.0) * 200.f * 0.5f);
+		    Color selection_color = Color::Red(alpha);
+
+		    draw_debug_line(v3_f32(p0), v3_f32(p1), selection_color, cmd);
+		    draw_debug_line(v3_f32(p1), v3_f32(p3), selection_color, cmd);
+		    draw_debug_line(v3_f32(p3), v3_f32(p2), selection_color, cmd);
+		    draw_debug_line(v3_f32(p2), v3_f32(p0), selection_color, cmd);
+		}
+	    }
+
+	    // Draw 2D grid
+	    if (dev.camera.projection_type == ProjectionType_Orthographic) {
+
+		f32 width = dev.camera.width;
+		f32 height = dev.camera.height;
+		f32 mag = dev.camera.getProjectionLength();
+
+		u32 count = 0u;
+		for (f32 i = 0.01f; count < 3u; i *= 10.f) {
+
+		    if (mag / i <= 50.f) {
+
+			Color color;
+
+			switch (count++)
+			{
+			case 0:
+			    color = Color::Gray(50);
+			    break;
+
+			case 1:
+			    color = Color::Gray(100);
+			    break;
+
+			case 2:
+			    color = Color::Gray(150);
+			    break;
+
+			case 3:
+			    color = Color::Gray(200);
+			    break;
+			}
+
+			color.a = 10u;
+
+			draw_debug_orthographic_grip(dev.camera.position.getVec2(), {}, { width, height }, i, color, cmd);
+		    }
+		}
+	    }
+
+	    // Draw cameras
+	    //{
+	    //	EntityView<CameraComponent> cameras(engine.scene);
+	    //
+	    //	for (CameraComponent& cam : cameras) {
+	    //
+	    //		Transform trans = get_entity_transform(engine.scene, cam.entity);
+	    //
+	    //		draw_debug_quad(trans.getWorldMatrix(), Color::Red(), cmd);
+	    //	}
+	    //}
+
+	    // Draw lights
+	    //{
+	    //	EntityView<LightComponent> lights(engine.scene);
+	    //
+	    //	XMMATRIX matrix;
+	    //
+	    //	for (LightComponent& l : lights) {
+	    //
+	    //		matrix = XMMatrixRotationQuaternion(XMQuaternionInverse(dev.camera.rotation.get_dx()));
+	    //
+	    //		// Move to entity position
+	    //		v3_f32 position = get_entity_transform(engine.scene, l.entity).getWorldPosition();
+	    //		matrix *= XMMatrixTranslation(position.x, position.y, position.z);
+	    //
+	    //		draw_debug_quad(matrix, Color::White(40u), cmd);
+	    //	}
+	    //}
+
+	    // Draw gizmos
+	    draw_gizmos(gfx.offscreen, cmd);
+
+	    end_debug_batch(true, false, dev.camera.view_projection_matrix, cmd);
+	}
+
+	// Draw gui
+	gui_draw(dev.gui, cmd);
+    }
+
+}
 
 #endif
