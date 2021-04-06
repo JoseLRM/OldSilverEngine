@@ -35,6 +35,7 @@ namespace sv {
     };
 
     SV_API Result set_active_scene(const char* name);
+    SV_API Result save_scene(Scene* scene);
     SV_API Result save_scene(Scene* scene, const char* filepath);
     SV_API Result clear_scene(Scene* scene);
 
@@ -46,13 +47,18 @@ namespace sv {
 	
     ////////////////////////////////////////// ECS ////////////////////////////////////////////////////////
 
-    enum EntityFlag : u32 {
-	EntityFlag_None = 0u,
-	EntityFlag_NoSerialize = SV_BIT(0u)
+    enum EntitySystemFlag : u64 {
+	EntitySystemFlag_None = 0u,
+	EntitySystemFlag_NoSerialize = SV_BIT(32)
     };
 
     struct BaseComponent {
 	u32 _id = 0u;
+    };
+
+    struct CompRef {
+	CompID id;
+	BaseComponent* ptr;
     };
 
     template<typename T, u32 V>
@@ -190,19 +196,19 @@ namespace sv {
     SV_API void		get_entity_childs(Scene* scene, Entity parent, Entity const** childsArray);
     SV_API Entity	get_entity_parent(Scene* scene, Entity entity);
     SV_API Transform	get_entity_transform(Scene* scene, Entity entity);
-    SV_API u32*		get_entity_flags(Scene* scene, Entity entity);
+    SV_API u64*		get_entity_flags(Scene* scene, Entity entity);
     SV_API u32		get_entity_component_count(Scene* scene, Entity entity);
     SV_API u32		get_entity_count(Scene* scene);
     SV_API Entity	get_entity_by_index(Scene* scene, u32 index);
 
     // Components
 
-    SV_API BaseComponent*						add_component(Scene* scene, Entity entity, BaseComponent* comp, CompID componentID, size_t componentSize);
-    SV_API BaseComponent*						add_component_by_id(Scene* scene, Entity entity, CompID componentID);
-    SV_API BaseComponent*						get_component_by_id(Scene* scene, Entity entity, CompID componentID);
-    SV_API std::pair<CompID, BaseComponent*>	get_component_by_index(Scene* scene, Entity entity, u32 index);
-    SV_API void								remove_component_by_id(Scene* scene, Entity entity, CompID componentID);
-    SV_API u32									get_component_count(Scene* scene, CompID ID);
+    SV_API BaseComponent* add_component(Scene* scene, Entity entity, BaseComponent* comp, CompID componentID, size_t componentSize);
+    SV_API BaseComponent* add_component_by_id(Scene* scene, Entity entity, CompID componentID);
+    SV_API BaseComponent* get_component_by_id(Scene* scene, Entity entity, CompID componentID);
+    SV_API CompRef        get_component_by_index(Scene* scene, Entity entity, u32 index);
+    SV_API void		  remove_component_by_id(Scene* scene, Entity entity, CompID componentID);
+    SV_API u32		  get_component_count(Scene* scene, CompID ID);
 
     // Iterators
 

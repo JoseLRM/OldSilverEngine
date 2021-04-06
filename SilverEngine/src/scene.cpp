@@ -6,6 +6,16 @@
 #define PREFAB_COMPONENT_FLAG SV_BIT(31ULL)
 
 namespace sv {
+    
+    struct EntityInternal {
+
+	size_t handleIndex = u64_max;
+	Entity parent = SV_ENTITY_NULL;
+	u32 childsCount = 0u;
+	List<CompRef> components;
+	std::string name;
+
+    };
 
     struct EntityTransform {
 
@@ -19,32 +29,24 @@ namespace sv {
 
     };
 
-    struct EntityData {
-
-	size_t handleIndex = u64_max;
-	Entity parent = SV_ENTITY_NULL;
-	u32 childsCount = 0u;
-	u32 flags = 0u;
-	List<std::pair<CompID, BaseComponent*>> components;
-	std::string name;
-
+    struct EntityFlags {
+	u32 system_flags = 0u;
+	u32 user_flags = 0u;
     };
 
     struct EntityDataAllocator {
 
-	EntityData* data = nullptr;
-	EntityTransform* transformData = nullptr;
-
-	EntityData* accessData = nullptr;
-	EntityTransform* accessTransformData = nullptr;
+	EntityInternal* internal = nullptr;
+	EntityTransform* transforms = nullptr;
+	EntityFlags* flags;
 
 	u32 size = 0u;
 	u32 capacity = 0u;
-	List<Entity> freeList;
+	List<Entity> freelist;
 
-	inline EntityData& operator[](Entity entity) { SV_ASSERT(entity != SV_ENTITY_NULL); return accessData[entity]; }
-	inline EntityTransform& get_transform(Entity entity) { SV_ASSERT(entity != SV_ENTITY_NULL); return accessTransformData[entity]; }
-
+	EntityInternal& getInternal(Entity entity) { SV_ASSERT(entity != SV_ENTITY_NULL && entity <= size); return internal[entity - 1u]; }
+	EntityTransform& getTransform(Entity entity) { SV_ASSERT(entity != SV_ENTITY_NULL && entity <= size); return transforms[entity - 1u]; }
+	EntityFlags& getFlags(Entity entity) { SV_ASSERT(entity != SV_ENTITY_NULL && entity <= size); return flags[entity - 1u]; }
     };
 
     struct Prefab_internal {
@@ -219,38 +221,39 @@ namespace sv {
 			archive >> entityDataCount;
 
 			scene.entities.resize(entityCount);
-			EntityData* entityData = new EntityData[entityDataCount];
-			EntityTransform* entityTransform = new EntityTransform[entityDataCount];
+			EntityInternal* entity_internal = new EntityInternal[entityDataCount];
+			EntityTransform* entity_transform = new EntityTransform[entityDataCount];
+			EntityFlags* entity_flags = new EntityFlags[entityDataCount];
 
 			for (u32 i = 0; i < entityCount; ++i) {
 
 			    Entity entity;
 			    archive >> entity;
 
-			    EntityData& ed = entityData[entity];
-			    EntityTransform& et = entityTransform[entity];
+			    EntityInternal& ed = entity_internal[entity];
+			    EntityTransform& et = entity_transform[entity];
+			    EntityFlags& ef = entity_flags[entity];
 
 			    archive >> ed.name;
 
-			    archive >> ed.flags >> ed.childsCount >> ed.handleIndex >>
-				et.localPosition >> et.localRotation >> et.localScale;
+			    archive >> ed.childsCount >> ed.handleIndex >> et.localPosition >> et.localRotation >> et.localScale >> ef.system_flags >> ef.user_flags;
 			}
 
 			// Create entity list and free list
 			for (u32 i = 0u; i < entityDataCount; ++i) {
 
-			    EntityData& ed = entityData[i];
+			    EntityInternal& ed = entity_internal[i];
 
 			    if (ed.handleIndex != u64_max) {
 				scene.entities[ed.handleIndex] = i + 1u;
 			    }
-			    else scene.entityData.freeList.push_back(i + 1u);
+			    else scene.entityData.freelist.push_back(i + 1u);
 			}
 
 			// Set entity parents
 			{
-			    EntityData* it = entityData;
-			    EntityData* end = it + entityDataCount;
+			    EntityInternal* it = entity_internal;
+			    EntityInternal* end = it + entityDataCount;
 
 			    while (it != end) {
 
@@ -262,7 +265,7 @@ namespace sv {
 
 				    while (eIt <= eEnd) {
 
-					EntityData& ed = entityData[*eIt - 1u];
+					EntityInternal& ed = entity_internal[*eIt - 1u];
 					ed.parent = parent;
 					if (ed.childsCount) {
 					    eIt += ed.childsCount + 1u;
@@ -276,10 +279,9 @@ namespace sv {
 			}
 
 			// Set entity data
-			scene.entityData.data = entityData;
-			scene.entityData.transformData = entityTransform;
-			scene.entityData.accessData = entityData - 1u;
-			scene.entityData.accessTransformData = entityTransform - 1u;
+			scene.entityData.internal = entity_internal;
+			scene.entityData.transforms = entity_transform;
+			scene.entityData.flags = entity_flags;
 			scene.entityData.capacity = entityDataCount;
 			scene.entityData.size = entityDataCount;
 
@@ -338,7 +340,7 @@ namespace sv {
 				    create_component(scene_, compID, comp, entity);
 				    deserialize_component(scene_, compID, comp, version , archive);
 
-				    scene.entityData[entity].components.emplace_back(compID, comp);
+				    scene.entityData.getInternal(entity).components.push_back({compID, comp});
 				}
 
 			    }
@@ -402,6 +404,16 @@ namespace sv {
 	return Result_NotFound;
     }
 
+    SV_API Result save_scene(Scene* scene)
+    {
+	char filepath[FILEPATH_SIZE];
+	if (user_get_scene_filepath(scene->name, filepath)) {
+
+	    return save_scene(scene, filepath);
+	}
+	else return Result_NotFound;
+    }
+
     Result save_scene(Scene* scene_, const char* filepath)
     {
 	PARSE_SCENE();
@@ -441,14 +453,14 @@ namespace sv {
 		for (u32 i = 0; i < entityDataCount; ++i) {
 
 		    Entity entity = i + 1u;
-		    EntityData& ed = scene.entityData[entity];
+		    EntityInternal& ed = scene.entityData.getInternal(entity);
 
 		    if (ed.handleIndex != u64_max) {
 
-			EntityTransform& transform = scene.entityData.get_transform(entity);
-
-			archive << i << ed.name << ed.flags << ed.childsCount << ed.handleIndex << transform.localPosition;
-			archive << transform.localRotation << transform.localScale;
+			EntityTransform& transform = scene.entityData.getTransform(entity);
+			EntityFlags& flags = scene.entityData.getFlags(entity);
+			
+			archive << i << ed.name << ed.childsCount << ed.handleIndex << transform.localPosition << transform.localRotation << transform.localScale << flags.system_flags << flags.user_flags;
 		    }
 		}
 	    }
@@ -708,47 +720,49 @@ namespace sv {
 
     static Entity entityAlloc(EntityDataAllocator& a)
     {
-	if (a.freeList.empty()) {
+	if (a.freelist.empty()) {
 
 	    if (a.size == a.capacity) {
-		EntityData* newData = new EntityData[a.capacity + ECS_ENTITY_ALLOC_SIZE];
-		EntityTransform* newTransformData = new EntityTransform[a.capacity + ECS_ENTITY_ALLOC_SIZE];
+		EntityInternal* new_internal = new EntityInternal[a.capacity + ECS_ENTITY_ALLOC_SIZE];
+		EntityTransform* new_transforms = new EntityTransform[a.capacity + ECS_ENTITY_ALLOC_SIZE];
+		EntityFlags* new_flags = new EntityFlags[a.capacity + ECS_ENTITY_ALLOC_SIZE];
 
-		if (a.data) {
+		if (a.internal) {
 
 		    {
-			EntityData* end = a.data + a.capacity;
-			while (a.data != end) {
+			EntityInternal* end = a.internal + a.capacity;
+			while (a.internal != end) {
 
-			    *newData = std::move(*a.data);
+			    *new_internal = std::move(*a.internal);
 
-			    ++newData;
-			    ++a.data;
+			    ++new_internal;
+			    ++a.internal;
 			}
 		    }
 		    {
-			memcpy(newTransformData, a.transformData, a.capacity * sizeof(EntityTransform));
+			memcpy(new_transforms, a.transforms, a.capacity * sizeof(EntityTransform));
+			memcpy(new_flags, a.flags, a.capacity * sizeof(EntityFlags));
 		    }
 
-		    a.data -= a.capacity;
-		    newData -= a.capacity;
-		    delete[] a.data;
-		    delete[] a.transformData;
+		    a.internal -= a.capacity;
+		    new_internal -= a.capacity;
+		    delete[] a.internal;
+		    delete[] a.transforms;
+		    delete[] a.flags;
 		}
 
 		a.capacity += ECS_ENTITY_ALLOC_SIZE;
-		a.data = newData;
-		a.transformData = newTransformData;
-		a.accessData = a.data - 1u;
-		a.accessTransformData = a.transformData - 1u;
+		a.internal = new_internal;
+		a.transforms = new_transforms;
+		a.flags = new_flags;
 	    }
 
 	    return ++a.size;
 
 	}
 	else {
-	    Entity result = a.freeList.back();
-	    a.freeList.pop_back();
+	    Entity result = a.freelist.back();
+	    a.freelist.pop_back();
 	    return result;
 	}
     }
@@ -756,31 +770,32 @@ namespace sv {
     static void entityFree(EntityDataAllocator& a, Entity entity)
     {
 	SV_ASSERT(a.size >= entity);
-	a.accessData[entity] = EntityData();
-	a.accessTransformData[entity] = EntityTransform();
+	a.getInternal(entity) = EntityInternal();
+	a.getTransform(entity) = EntityTransform();
+	a.getFlags(entity) = EntityFlags();
 
 	if (entity == a.size) {
 	    a.size--;
 	}
 	else {
-	    a.freeList.push_back(entity);
+	    a.freelist.push_back(entity);
 	}
     }
 
     static void entityClear(EntityDataAllocator& a)
     {
-	if (a.data) {
+	if (a.internal) {
 	    a.capacity = 0u;
-	    delete[] a.data;
-	    a.data = nullptr;
-	    delete[] a.transformData;
-	    a.transformData = nullptr;
+	    delete[] a.internal;
+	    a.internal = nullptr;
+	    delete[] a.transforms;
+	    a.transforms = nullptr;
+	    delete[] a.flags;
+	    a.flags = nullptr;
 	}
 
-	a.accessData = nullptr;
-	a.accessTransformData = nullptr;
 	a.size = 0u;
-	a.freeList.clear();
+	a.freelist.clear();
     }
 
     // ComponentPool
@@ -871,14 +886,14 @@ namespace sv {
 	return a.pools.back();
     }
 
-    internal void componentAllocatorCreate(Scene* scene_, CompID compID)
+    SV_INTERNAL void componentAllocatorCreate(Scene* scene_, CompID compID)
     {
 	PARSE_SCENE();
 	componentAllocatorDestroy(scene_, compID);
 	componentAllocatorCreatePool(scene.components[compID], size_t(get_component_size(compID)));
     }
 
-    internal void componentAllocatorDestroy(Scene* scene_, CompID compID)
+    SV_INTERNAL void componentAllocatorDestroy(Scene* scene_, CompID compID)
     {
 	PARSE_SCENE();
 
@@ -906,7 +921,7 @@ namespace sv {
 	a.pools.clear();
     }
 
-    internal BaseComponent* componentAlloc(Scene* scene_, CompID compID, Entity entity, bool create)
+    SV_INTERNAL BaseComponent* componentAlloc(Scene* scene_, CompID compID, Entity entity, bool create)
     {
 	PARSE_SCENE();
 
@@ -921,7 +936,7 @@ namespace sv {
 	return comp;
     }
 
-    internal BaseComponent* componentAlloc(Scene* scene_, CompID compID, BaseComponent* srcComp, Entity entity)
+    SV_INTERNAL BaseComponent* componentAlloc(Scene* scene_, CompID compID, BaseComponent* srcComp, Entity entity)
     {
 	PARSE_SCENE();
 
@@ -937,7 +952,7 @@ namespace sv {
 	return comp;
     }
 
-    internal void componentFree(Scene* scene_, CompID compID, BaseComponent* comp)
+    SV_INTERNAL void componentFree(Scene* scene_, CompID compID, BaseComponent* comp)
     {
 	PARSE_SCENE();
 	SV_ASSERT(comp != nullptr);
@@ -957,7 +972,7 @@ namespace sv {
 	}
     }
 
-    internal u32 componentAllocatorCount(Scene* scene_, CompID compID)
+    SV_INTERNAL u32 componentAllocatorCount(Scene* scene_, CompID compID)
     {
 	PARSE_SCENE();
 
@@ -971,7 +986,7 @@ namespace sv {
 	return res;
     }
 
-    internal bool componentAllocatorIsEmpty(Scene* scene_, CompID compID)
+    SV_INTERNAL bool componentAllocatorIsEmpty(Scene* scene_, CompID compID)
     {
 	PARSE_SCENE();
 
@@ -1085,35 +1100,35 @@ namespace sv {
 
     ///////////////////////////////////// HELPER FUNCTIONS ////////////////////////////////////////
 
-    void ecs_entitydata_index_add(EntityData& ed, CompID ID, BaseComponent* compPtr)
+    void ecs_entitydata_index_add(EntityInternal& ed, CompID ID, BaseComponent* compPtr)
     {
-	ed.components.push_back(std::make_pair(ID, compPtr));
+	ed.components.push_back(CompRef{ ID, compPtr });
     }
 
-    void ecs_entitydata_index_set(EntityData& ed, CompID ID, BaseComponent* compPtr)
+    void ecs_entitydata_index_set(EntityInternal& ed, CompID ID, BaseComponent* compPtr)
     {
 	for (auto it = ed.components.begin(); it != ed.components.end(); ++it) {
-	    if (it->first == ID) {
-		it->second = compPtr;
+	    if (it->id == ID) {
+		it->ptr = compPtr;
 		return;
 	    }
 	}
     }
 
-    BaseComponent* ecs_entitydata_index_get(EntityData& ed, CompID ID)
+    BaseComponent* ecs_entitydata_index_get(EntityInternal& ed, CompID ID)
     {
 	for (auto it = ed.components.begin(); it != ed.components.end(); ++it) {
-	    if (it->first == ID) {
-		return it->second;
+	    if (it->id == ID) {
+		return it->ptr;
 	    }
 	}
 	return nullptr;
     }
 
-    void ecs_entitydata_index_remove(EntityData& ed, CompID ID)
+    void ecs_entitydata_index_remove(EntityInternal& ed, CompID ID)
     {
 	for (auto it = ed.components.begin(); it != ed.components.end(); ++it) {
-	    if (it->first == ID) {
+	    if (it->id == ID) {
 		ed.components.erase(it);
 		return;
 	    }
@@ -1125,7 +1140,7 @@ namespace sv {
 	Entity parent = entity;
 
 	while (parent != SV_ENTITY_NULL) {
-	    EntityData& parentToUpdate = scene.entityData[parent];
+	    EntityInternal& parentToUpdate = scene.entityData.getInternal(parent);
 	    parentToUpdate.childsCount += count;
 	    parent = parentToUpdate.parent;
 	}
@@ -1140,17 +1155,17 @@ namespace sv {
 	Entity entity = entityAlloc(scene.entityData);
 
 	if (parent == SV_ENTITY_NULL) {
-	    scene.entityData[entity].handleIndex = scene.entities.size();
+	    scene.entityData.getInternal(entity).handleIndex = scene.entities.size();
 	    scene.entities.emplace_back(entity);
 	}
 	else {
 	    update_childs(scene, parent, 1u);
 
 	    // Set parent and handleIndex
-	    EntityData& parentData = scene.entityData[parent];
+	    EntityInternal& parentData = scene.entityData.getInternal(parent);
 	    size_t index = parentData.handleIndex + size_t(parentData.childsCount);
 
-	    EntityData& entityData = scene.entityData[entity];
+	    EntityInternal& entityData = scene.entityData.getInternal(entity);
 	    entityData.handleIndex = index;
 	    entityData.parent = parent;
 
@@ -1162,13 +1177,13 @@ namespace sv {
 		scene.entities.insert(scene.entities.begin() + index, entity);
 
 		for (size_t i = index + 1; i < scene.entities.size(); ++i) {
-		    scene.entityData[scene.entities[i]].handleIndex++;
+		    scene.entityData.getInternal(scene.entities[i]).handleIndex++;
 		}
 	    }
 	}
 
 	if (name)
-	    scene.entityData[entity].name = name;
+	    scene.entityData.getInternal(entity).name = name;
 
 	return entity;
     }
@@ -1177,7 +1192,7 @@ namespace sv {
     {
 	PARSE_SCENE();
 
-	EntityData& entityData = scene.entityData[entity];
+	EntityInternal& entityData = scene.entityData.getInternal(entity);
 
 	u32 count = entityData.childsCount + 1;
 
@@ -1202,7 +1217,7 @@ namespace sv {
 	if (cpyCant != 0) memcpy(&scene.entities[indexBeginDest], &scene.entities[indexBeginSrc], cpyCant * sizeof(Entity));
 	scene.entities.resize(scene.entities.size() - count);
 	for (size_t i = indexBeginDest; i < scene.entities.size(); ++i) {
-	    scene.entityData[scene.entities[i]].handleIndex = i;
+	    scene.entityData.getInternal(scene.entities[i]).handleIndex = i;
 	}
     }
 
@@ -1210,14 +1225,13 @@ namespace sv {
     {
 	PARSE_SCENE();
 
-	EntityData& ed = scene.entityData[entity];
+	EntityInternal& ed = scene.entityData.getInternal(entity);
 	while (!ed.components.empty()) {
 
-	    CompID compID = ed.components.back().first;
-	    BaseComponent* comp = ed.components.back().second;
+	    CompRef ref = ed.components.back();
 	    ed.components.pop_back();
 
-	    componentFree(scene_, compID, comp);
+	    componentFree(scene_, ref.id, ref.ptr);
 	}
     }
 
@@ -1228,16 +1242,16 @@ namespace sv {
 
 	copy = create_entity(scene_, parent);
 
-	EntityData& duplicatedEd = scene.entityData[duplicated];
-	EntityData& copyEd = scene.entityData[copy];
+	EntityInternal& duplicatedEd = scene.entityData.getInternal(duplicated);
+	EntityInternal& copyEd = scene.entityData.getInternal(copy);
 
 	copyEd.name = duplicatedEd.name;
 
-	scene.entityData.get_transform(copy) = scene.entityData.get_transform(duplicated);
-	copyEd.flags = duplicatedEd.flags;
+	scene.entityData.getTransform(copy) = scene.entityData.getTransform(duplicated);
+	scene.entityData.getFlags(copy) = scene.entityData.getFlags(duplicated);
 
 	for (u32 i = 0; i < duplicatedEd.components.size(); ++i) {
-	    CompID ID = duplicatedEd.components[i].first;
+	    CompID ID = duplicatedEd.components[i].id;
 
 	    BaseComponent* comp = ecs_entitydata_index_get(duplicatedEd, ID);
 	    BaseComponent* newComp = componentAlloc(scene_, ID, comp, copy);
@@ -1245,10 +1259,10 @@ namespace sv {
 	    ecs_entitydata_index_add(copyEd, ID, newComp);
 	}
 
-	for (u32 i = 0; i < scene.entityData[duplicated].childsCount; ++i) {
-	    Entity toCopy = scene.entities[scene.entityData[duplicated].handleIndex + i + 1];
+	for (u32 i = 0; i < scene.entityData.getInternal(duplicated).childsCount; ++i) {
+	    Entity toCopy = scene.entities[scene.entityData.getInternal(duplicated).handleIndex + i + 1];
 	    entity_duplicate_recursive(scene, toCopy, copy);
-	    i += scene.entityData[toCopy].childsCount;
+	    i += scene.entityData.getInternal(toCopy).childsCount;
 	}
 
 	return copy;
@@ -1258,14 +1272,14 @@ namespace sv {
     {
 	PARSE_SCENE();
 
-	Entity res = entity_duplicate_recursive(scene, entity, scene.entityData[entity].parent);
+	Entity res = entity_duplicate_recursive(scene, entity, scene.entityData.getInternal(entity).parent);
 	return res;
     }
 
     bool entity_is_empty(Scene* scene_, Entity entity)
     {
 	PARSE_SCENE();
-	return scene.entityData[entity].components.empty();
+	return scene.entityData.getInternal(entity).components.empty();
     }
 
     bool entity_exist(Scene* scene_, Entity entity)
@@ -1273,7 +1287,7 @@ namespace sv {
 	PARSE_SCENE();
 	if (entity == SV_ENTITY_NULL || entity > scene.entityData.size) return false;
 
-	EntityData& ed = scene.entityData[entity];
+	EntityInternal& ed = scene.entityData.getInternal(entity);
 	return ed.handleIndex != u64_max;
     }
 
@@ -1281,7 +1295,7 @@ namespace sv {
     {
 	PARSE_SCENE();
 	SV_ASSERT(entity_exist(scene_, entity));
-	const std::string& name = scene.entityData[entity].name;
+	const std::string& name = scene.entityData.getInternal(entity).name;
 	return name.empty() ? "Unnamed" : name.c_str();
     }
 
@@ -1289,45 +1303,45 @@ namespace sv {
     {
 	PARSE_SCENE();
 	SV_ASSERT(entity_exist(scene_, entity));
-	scene.entityData[entity].name = name;
+	scene.entityData.getInternal(entity).name = name;
     }
 
     u32 get_entity_childs_count(Scene* scene_, Entity parent)
     {
 	PARSE_SCENE();
-	return scene.entityData[parent].childsCount;
+	return scene.entityData.getInternal(parent).childsCount;
     }
 
     void get_entity_childs(Scene* scene_, Entity parent, Entity const** childsArray)
     {
 	PARSE_SCENE();
 
-	const EntityData& ed = scene.entityData[parent];
+	const EntityInternal& ed = scene.entityData.getInternal(parent);
 	if (childsArray && ed.childsCount != 0)* childsArray = &scene.entities[ed.handleIndex + 1];
     }
 
     Entity get_entity_parent(Scene* scene_, Entity entity)
     {
 	PARSE_SCENE();
-	return scene.entityData[entity].parent;
+	return scene.entityData.getInternal(entity).parent;
     }
 
     Transform get_entity_transform(Scene* scene_, Entity entity)
     {
 	PARSE_SCENE();
-	return Transform(entity, &scene.entityData.get_transform(entity), scene_);
+	return Transform(entity, &scene.entityData.getTransform(entity), scene_);
     }
 
-    u32* get_entity_flags(Scene* scene_, Entity entity)
+    u64* get_entity_flags(Scene* scene_, Entity entity)
     {
 	PARSE_SCENE();
-	return &scene.entityData[entity].flags;
+	return (u64*)&scene.entityData.getFlags(entity);
     }
 
     u32 get_entity_component_count(Scene* scene_, Entity entity)
     {
 	PARSE_SCENE();
-	return u32(scene.entityData[entity].components.size());
+	return u32(scene.entityData.getInternal(entity).components.size());
     }
 
     u32 get_entity_count(Scene* scene_)
@@ -1349,7 +1363,7 @@ namespace sv {
 	PARSE_SCENE();
 
 	comp = componentAlloc(scene_, componentID, comp, Entity(entity));
-	ecs_entitydata_index_add(scene.entityData[entity], componentID, comp);
+	ecs_entitydata_index_add(scene.entityData.getInternal(entity), componentID, comp);
 
 	return comp;
     }
@@ -1359,7 +1373,7 @@ namespace sv {
 	PARSE_SCENE();
 
 	BaseComponent* comp = componentAlloc(scene_, componentID, entity);
-	ecs_entitydata_index_add(scene.entityData[entity], componentID, comp);
+	ecs_entitydata_index_add(scene.entityData.getInternal(entity), componentID, comp);
 
 	return comp;
     }
@@ -1368,20 +1382,20 @@ namespace sv {
     {
 	PARSE_SCENE();
 
-	return ecs_entitydata_index_get(scene.entityData[entity], componentID);
+	return ecs_entitydata_index_get(scene.entityData.getInternal(entity), componentID);
     }
 
-    std::pair<CompID, BaseComponent*> get_component_by_index(Scene* scene_, Entity entity, u32 index)
+    CompRef get_component_by_index(Scene* scene_, Entity entity, u32 index)
     {
 	PARSE_SCENE();
-	return scene.entityData[entity].components[index];
+	return scene.entityData.getInternal(entity).components[index];
     }
 
     void remove_component_by_id(Scene* scene_, Entity entity, CompID componentID)
     {
 	PARSE_SCENE();
 
-	EntityData& ed = scene.entityData[entity];
+	EntityInternal& ed = scene.entityData.getInternal(entity);
 	BaseComponent* comp = ecs_entitydata_index_get(ed, componentID);
 
 	componentFree(scene_, componentID, comp);
@@ -1717,11 +1731,11 @@ namespace sv {
     XMMATRIX Transform::getParentMatrix() const noexcept
     {
 	Scene_internal& s = *reinterpret_cast<Scene_internal*>(scene);
-	EntityData& entityData = s.entityData[entity];
+	EntityInternal& entityData = s.entityData.getInternal(entity);
 	Entity parent = entityData.parent;
 
 	if (parent) {
-	    Transform parentTransform(parent, &s.entityData.get_transform(parent), scene);
+	    Transform parentTransform(parent, &s.entityData.getTransform(parent), scene);
 	    return parentTransform.getWorldMatrix();
 	}
 	else return XMMatrixIdentity();
@@ -1890,11 +1904,11 @@ namespace sv {
 
 	XMMATRIX m = getLocalMatrix();
 
-	EntityData& entityData = s.entityData[entity];
+	EntityInternal& entityData = s.entityData.getInternal(entity);
 	Entity parent = entityData.parent;
 
 	if (parent != SV_ENTITY_NULL) {
-	    Transform parentTransform(parent, &s.entityData.get_transform(parent), scene);
+	    Transform parentTransform(parent, &s.entityData.getTransform(parent), scene);
 	    XMMATRIX mp = parentTransform.getWorldMatrix();
 	    m = m * mp;
 	}
@@ -1911,13 +1925,13 @@ namespace sv {
 
 	    Scene_internal& s = *reinterpret_cast<Scene_internal*>(scene);
 	    auto& list = s.entityData;
-	    EntityData& entityData = list[entity];
+	    EntityInternal& entityData = list.getInternal(entity);
 
 	    if (entityData.childsCount == 0) return;
 
 	    auto& entities = s.entities;
 	    for (u32 i = 0; i < entityData.childsCount; ++i) {
-		EntityTransform& et = list.get_transform(entities[entityData.handleIndex + 1 + i]);
+		EntityTransform& et = list.getTransform(entities[entityData.handleIndex + 1 + i]);
 		et.modified = true;
 	    }
 

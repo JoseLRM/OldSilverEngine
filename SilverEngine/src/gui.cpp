@@ -720,7 +720,7 @@ namespace sv {
 	return { _0, _1, };
     }
     
-    internal v4_f32 compute_widget_bounds(const GUI& gui, const Raw_Coords& raw, GuiWidget* parent)
+    SV_INTERNAL v4_f32 compute_widget_bounds(const GUI& gui, const Raw_Coords& raw, GuiWidget* parent)
     {
 	// TODO: Debug assertions
 

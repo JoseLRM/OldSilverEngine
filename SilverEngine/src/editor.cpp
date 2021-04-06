@@ -763,11 +763,9 @@ namespace sv {
 
 		    foreach(comp_index, comp_count) {
 
-			auto pair = get_component_by_index(engine.scene, selected, comp_index);
-			CompID comp_id = pair.first;
-			BaseComponent* comp = pair.second;
+			CompRef ref = get_component_by_index(engine.scene, selected, comp_index);
 
-			show_component_info(y, selected, comp_id, comp);
+			show_component_info(y, selected, ref.id, ref.ptr);
 			comp_count = get_entity_component_count(engine.scene, selected);
 		    }
 

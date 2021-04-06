@@ -82,7 +82,7 @@ constexpr u32 SCENENAME_SIZE = 50u;
 #define SV_MIN(a, b) ((a < b) ? a : b)
 #define SV_MAX(a, b) ((a > b) ? a : b)
 #define SV_AUX SV_INLINE static
-#define internal static
+#define SV_INTERNAL static
 
 #define SV_USER extern "C" __declspec(dllexport)
 

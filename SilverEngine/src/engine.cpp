@@ -75,7 +75,7 @@ namespace sv {
     
 #if SV_DEV
     
-    internal void update_user_callbacks()
+    SV_INTERNAL void update_user_callbacks()
     {
 	static Time last_update = 0.0;
 	Time now = timer_now();
@@ -141,14 +141,14 @@ namespace sv {
     
     //////////////////////////////////////////////////////////////////// ASSET FUNCTIONS //////////////////////////////////////////////////////////
 
-    internal Result create_image_asset(void* asset)
+    SV_INTERNAL Result create_image_asset(void* asset)
     {
 	GPUImage*& image = *reinterpret_cast<GPUImage**>(asset);
 	image = nullptr;
 	return Result_Success;
     }
 
-    internal Result load_image_asset(void* asset, const char* filepath)
+    SV_INTERNAL Result load_image_asset(void* asset, const char* filepath)
     {
 	GPUImage*& image = *reinterpret_cast<GPUImage**>(asset);
 
@@ -177,7 +177,7 @@ namespace sv {
 	return res;
     }
 
-    internal Result destroy_image_asset(void* asset)
+    SV_INTERNAL Result destroy_image_asset(void* asset)
     {
 	GPUImage*& image = *reinterpret_cast<GPUImage**>(asset);
 	graphics_destroy(image);
@@ -185,19 +185,19 @@ namespace sv {
 	return Result_Success;
     }
 
-    internal Result reload_image_asset(void* asset, const char* filepath)
+    SV_INTERNAL Result reload_image_asset(void* asset, const char* filepath)
     {
 	svCheck(destroy_image_asset(asset));
 	return load_image_asset(asset, filepath);
     }
 
-    internal Result create_mesh_asset(void* asset)
+    SV_INTERNAL Result create_mesh_asset(void* asset)
     {
 	new(asset) Mesh();
 	return Result_Success;
     }
 
-    internal Result load_mesh_asset(void* asset, const char* filepath)
+    SV_INTERNAL Result load_mesh_asset(void* asset, const char* filepath)
     {
 	Mesh& mesh = *new(asset) Mesh();
 	svCheck(load_mesh(filepath, mesh));
@@ -205,7 +205,7 @@ namespace sv {
 	return Result_Success;
     }
 
-    internal Result free_mesh_asset(void* asset)
+    SV_INTERNAL Result free_mesh_asset(void* asset)
     {
 	Mesh& mesh = *reinterpret_cast<Mesh*>(asset);
 
@@ -216,20 +216,20 @@ namespace sv {
 	return Result_Success;
     }
 
-    internal Result create_material_asset(void* asset)
+    SV_INTERNAL Result create_material_asset(void* asset)
     {
 	new(asset) Material();
 	return Result_Success;
     }
 
-    internal Result load_material_asset(void* asset, const char* filepath)
+    SV_INTERNAL Result load_material_asset(void* asset, const char* filepath)
     {
 	Material& material = *new(asset) Material();
 	svCheck(load_material(filepath, material));
 	return Result_Success;
     }
 
-    internal Result free_material_asset(void* asset)
+    SV_INTERNAL Result free_material_asset(void* asset)
     {
 	Material& mat = *reinterpret_cast<Material*>(asset);
 	mat.~Material();
