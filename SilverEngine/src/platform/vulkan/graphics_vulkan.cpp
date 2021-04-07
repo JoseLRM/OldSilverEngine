@@ -191,7 +191,7 @@ namespace sv {
 
     VkDescriptorSet graphics_vulkan_descriptors_allocate_sets(DescriptorPool& descPool, const ShaderDescriptorSetLayout& layout)
     {
-	// Try to use allocated set
+// Try to use allocated set
 	auto it = descPool.sets.find(layout.setLayout);
 	if (it != descPool.sets.end()) {
 	    VulkanDescriptorSet& sets = it->second;
@@ -211,12 +211,12 @@ namespace sv {
 
 	// Try to find existing pool
 	if (!descPool.pools.empty()) {
-	    for (auto it0 = descPool.pools.begin(); it0 != descPool.pools.end(); ++it0) {
-		if (it0->sets + VULKAN_DESCRIPTOR_ALLOC_COUNT >= VULKAN_MAX_DESCRIPTOR_SETS &&
-		    it0->count[samplerIndex] >= layout.count[samplerIndex] * VULKAN_DESCRIPTOR_ALLOC_COUNT &&
-		    it0->count[imageIndex] >= layout.count[imageIndex] * VULKAN_DESCRIPTOR_ALLOC_COUNT &&
-		    it0->count[uniformIndex] >= layout.count[uniformIndex] * VULKAN_DESCRIPTOR_ALLOC_COUNT) {
-		    pool = it0._Ptr;
+	    for (auto it = descPool.pools.begin(); it != descPool.pools.end(); ++it) {
+		if (it->sets &&
+		    it->count[samplerIndex] >= layout.count[samplerIndex] * VULKAN_DESCRIPTOR_ALLOC_COUNT &&
+		    it->count[imageIndex] >= layout.count[imageIndex] * VULKAN_DESCRIPTOR_ALLOC_COUNT &&
+		    it->count[uniformIndex] >= layout.count[uniformIndex] * VULKAN_DESCRIPTOR_ALLOC_COUNT) {
+		    pool = it._Ptr;
 		    break;
 		}
 	    }
@@ -251,13 +251,14 @@ namespace sv {
 	    for (u32 i = 0; i < 3; ++i)
 		pool->count[i] = VULKAN_MAX_DESCRIPTOR_TYPES;
 	}
-
+	
 	// Allocate sets
 	{
 	    pool->count[samplerIndex] -= layout.count[samplerIndex] * VULKAN_DESCRIPTOR_ALLOC_COUNT;
 	    pool->count[imageIndex] -= layout.count[imageIndex] * VULKAN_DESCRIPTOR_ALLOC_COUNT;
 	    pool->count[uniformIndex] -= layout.count[uniformIndex] * VULKAN_DESCRIPTOR_ALLOC_COUNT;
-
+	    pool->sets -= VULKAN_DESCRIPTOR_ALLOC_COUNT;
+	    
 	    size_t index = sets.sets.size();
 	    sets.sets.resize(index + VULKAN_DESCRIPTOR_ALLOC_COUNT);
 

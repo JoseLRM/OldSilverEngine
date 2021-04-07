@@ -365,20 +365,6 @@ namespace sv {
 	MessageBox(0, content, title, MB_OK | (error ? MB_ICONERROR : MB_ICONINFORMATION));
     }
 
-    // Memory
-    
-    void* allocate_memory(size_t size)
-    {
-	void* ptr = nullptr;
-	while (ptr == nullptr) ptr = malloc(size);
-	return ptr;
-    }
-    
-    void free_memory(void* ptr)
-    {
-	free(ptr);
-    }
-
     // Window
 
     u64 os_window_handle()
@@ -772,6 +758,20 @@ namespace sv {
 	    SV_LOG_INFO("User callbacks loaded");
 	}
 	else SV_LOG_ERROR("Can't find game code");
+    }
+
+    // Memory
+    
+    void* os_allocate_memory(size_t size)
+    {
+	void* ptr = nullptr;
+	while (ptr == nullptr) ptr = malloc(size);
+	return ptr;
+    }
+    
+    void os_free_memory(void* ptr)
+    {
+	free(ptr);
     }
     
     Result os_create_window()

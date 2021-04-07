@@ -206,9 +206,14 @@ namespace sv {
 
 #endif
 
-// Hash functions
-
 namespace sv {
+
+// Memory
+
+    SV_API void* allocate_memory(size_t size);
+    SV_API void free_memory(void* ptr);
+
+// Hash functions
 
     template<typename T>
     constexpr void hash_combine(size_t& seed, const T& v)
@@ -320,8 +325,6 @@ namespace sv {
     };
 
 }
-
-#include "utils/List.h"
 
 // Math
 
@@ -1453,3 +1456,4 @@ namespace sv {
     
 }
 
+#include "utils/List.h"

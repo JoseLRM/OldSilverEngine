@@ -297,10 +297,10 @@ namespace sv {
 				archive >> compCount;
 
 				if (compCount == 0u) continue;
-
+				
 				// Allocate component data
 				{
-				    u32 poolCount = compCount / ECS_COMPONENT_POOL_SIZE + (compCount % ECS_COMPONENT_POOL_SIZE == 0u) ? 0u : 1u;
+				    u32 poolCount = compCount / ECS_COMPONENT_POOL_SIZE + ((compCount % ECS_COMPONENT_POOL_SIZE == 0u) ? 0u : 1u);
 				    u32 lastPoolCount = u32(compList.pools.size());
 
 				    compList.pools.resize(poolCount);

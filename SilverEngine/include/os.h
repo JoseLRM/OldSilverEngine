@@ -17,11 +17,6 @@ namespace sv {
        void system_pause();
     */
 
-    // Memory
-
-    SV_API void* allocate_memory(size_t size);
-    SV_API void free_memory(void* ptr);
-
     // Window
 
     enum WindowState : u32 {

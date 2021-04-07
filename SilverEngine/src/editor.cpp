@@ -51,7 +51,7 @@ namespace sv {
     };
 
     struct AssetBrowserInfo {
-	std::string filepath;
+	char filepath[FILEPATH_SIZE] = {};
 	List<AssetElement> elements;
 	Time last_update = 0.0;
     };
@@ -700,10 +700,13 @@ namespace sv {
 
 		Entity entity = get_entity_by_index(engine.scene, entity_index);
 
-		show_entity(entity, y, 0.f);
-		entity_count = get_entity_count(engine.scene);
-
 		u32 childs = get_entity_childs_count(engine.scene, entity);
+		show_entity(entity, y, 0.f);
+
+		if (entity_exist(engine.scene, entity))
+		    childs = get_entity_childs_count(engine.scene, entity);
+
+		entity_count = get_entity_count(engine.scene);
 		entity_index += childs;
 	    }
 
@@ -807,7 +810,7 @@ namespace sv {
 	GUI* gui = dev.gui;
 
 	bool update_browser = false;
-	std::string next_filepath;
+	char next_filepath[FILEPATH_SIZE];
 
 	if (egui_begin_window("Asset Browser")) {
 
@@ -820,8 +823,8 @@ namespace sv {
 		gui_bounds(gui, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(0.f), GuiCoord::IPixel(33.f));
 		
 		gui_begin_container(gui, 0u);
-
-		if (info.filepath.size()) {
+		
+		if (info.filepath[0]) {
 
 		    // TODO: Adjust using name size
 		    f32 width = gui_parent_bounds(gui).z * f32(os_window_size().x);
@@ -836,7 +839,7 @@ namespace sv {
 
 		    f32 offset = width - f32(count) * WIDTH;
 
-		    const char* folder_offset = info.filepath.c_str();
+		    const char* folder_offset = info.filepath;
 		    char folder_name[FILEPATH_SIZE];
 
 		    folder_name[0] = 'r';
@@ -869,7 +872,7 @@ namespace sv {
 
 			    if (!update_browser) {
 
-				const char* end = info.filepath.c_str();
+				const char* end = info.filepath;
 
 				i = count - i;
 				while (i) {
@@ -881,7 +884,7 @@ namespace sv {
 				    ++end;
 				}
 
-				next_filepath = info.filepath.substr(end - info.filepath.c_str());
+				sprintf(next_filepath, "%s", end);
 				update_browser = true;
 				break;
 			    }
@@ -912,7 +915,12 @@ namespace sv {
 			if (e.type == AssetElementType_Directory && !update_browser) {
 
 			    update_browser = true;
-			    next_filepath = info.filepath + e.name + '/';
+
+			    size_t new_size = strlen(info.filepath) + strlen(e.name) + 1u;
+			    if (new_size < FILEPATH_SIZE)
+				sprintf(next_filepath, "%s%s/", info.filepath, e.name);
+			    else
+				SV_LOG_ERROR("This filepath exceeds the max filepath size");
 			}
 		    }
 
@@ -942,13 +950,14 @@ namespace sv {
 			if (id != u32_max) {
 			
 			    AssetPackage pack;
-			    size_t size = info.filepath.size() + strlen(e.name);
+			    size_t filepath_size = strlen(info.filepath);
+			    size_t size = filepath_size + strlen(e.name);
 			    SV_ASSERT(size < AssetPackage::MAX_SIZE);
 
-			    memcpy(pack.filepath, info.filepath.data(), info.filepath.size());
-			    memcpy(pack.filepath + info.filepath.size(), e.name, strlen(e.name));
+			    memcpy(pack.filepath, info.filepath, filepath_size);
+			    memcpy(pack.filepath + filepath_size, e.name, strlen(e.name));
 			    pack.filepath[size] = '\0';
-			
+			    
 			    gui_send_package(gui, &pack, sizeof(AssetPackage), id);
 			}
 		    }
@@ -969,18 +978,22 @@ namespace sv {
 
 		if (now - info.last_update > 1.0) {
 		    update_browser = true;
-		    next_filepath = std::move(info.filepath);
+		    sprintf(next_filepath, "%s", info.filepath);
 		}
 	    }
 
 	    // Update browser elements
 	    if (update_browser) {
 		
-		while (!file_exists(next_filepath.c_str()) && next_filepath.size()) {
+		while (!file_exists(next_filepath) && next_filepath[0]) {
+
+		    size_t size = strlen(next_filepath) - 1u;
 		    
-		    next_filepath.pop_back();
-		    while (next_filepath.size() && next_filepath.back() != '/') {
-			next_filepath.pop_back();
+		    next_filepath[size] = '\0';
+		    
+		    while (size && next_filepath[size] != '/') {
+			--size;
+			next_filepath[size] = '\0';
 		    }
 		}
 		
@@ -990,7 +1003,7 @@ namespace sv {
 		FolderIterator it;
 		FolderElement e;
 
-		Result res = folder_iterator_begin(next_filepath.c_str(), &it, &e);
+		Result res = folder_iterator_begin(next_filepath, &it, &e);
 
 		if (result_okay(res)) {
 
@@ -1024,11 +1037,11 @@ namespace sv {
 		}
 		else {
 
-		    SV_LOG_ERROR("Can't create asset browser content at '%s': %s", next_filepath.c_str(), result_str(res));
+		    SV_LOG_ERROR("Can't create asset browser content at '%s': %s", next_filepath, result_str(res));
 		}
 		
 
-		info.filepath = std::move(next_filepath);
+		sprintf(info.filepath, "%s", next_filepath);
 		info.last_update = timer_now();
 	    }
 	    

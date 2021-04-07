@@ -17,6 +17,21 @@ namespace sv {
 	sv::show_message("ASSERTION!!", text, true);
     }
 
+    ///////////////////////////////////////////////// MEMORY /////////////////////////////////////////////////
+
+    void* os_allocate_memory(size_t size);
+    void os_free_memory(void* ptr);
+    
+    void* allocate_memory(size_t size)
+    {
+	return os_allocate_memory(size);
+    }
+    
+    void free_memory(void* ptr)
+    {
+	return os_free_memory(ptr);
+    }
+    
     ///////////////////////////////////////////////// TIMER /////////////////////////////////////////////////
 
     static std::chrono::steady_clock::time_point g_InitialTime = std::chrono::steady_clock::now();

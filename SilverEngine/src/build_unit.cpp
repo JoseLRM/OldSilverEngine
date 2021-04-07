@@ -1,3 +1,5 @@
+#include "core.h"
+
 #if SV_PLATFORM_WIN
 #include "platform/win64.cpp"
 #elif SV_PLATFORM_LINUX
