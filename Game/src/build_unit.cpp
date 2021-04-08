@@ -17,8 +17,6 @@ GameMemory& get_game_memory()
 
 SV_USER Result user_initialize()
 {
-    SV_LOG_INFO("Init from Game\n");
-
     engine.game_memory = allocate_memory(sizeof(GameMemory));
 
     set_active_scene("Test");
@@ -28,8 +26,6 @@ SV_USER Result user_initialize()
 
 SV_USER Result user_close()
 {
-    SV_LOG_INFO("Close from Game\n");
-
     free_memory(engine.game_memory);
     
     return Result_Success;
@@ -49,6 +45,8 @@ SV_USER Result user_initialize_scene(Scene* scene, Archive* parchive)
     add_component<CameraComponent>(scene, scene->main_camera);
     m.entity = create_entity(scene, SV_ENTITY_NULL, "Player");
     add_component<SpriteComponent>(scene, m.entity);
+    BodyComponent* body = add_component<BodyComponent>(scene, m.entity);
+    body->body_type = BodyType_Dynamic;
     
     return Result_Success;
 }
@@ -61,6 +59,43 @@ SV_USER Result user_serialize_scene(Scene* scene, Archive* parchive)
     return Result_Success;
 }
 
+void explosion(Scene* scene, v2_f32 pos, f32 range, f32 intensity, Entity* ignore_list, u32 ignore_count)
+{
+    EntityView<BodyComponent> bodies(scene);
+
+    for (ComponentView<BodyComponent> v : bodies) {
+
+	BodyComponent& b = *v.comp;
+
+	if (b.body_type == BodyType_Static)
+	    continue;
+
+	bool ignore = false;
+	foreach(i, ignore_count)
+	    if (ignore_list[i] == v.entity) {
+		ignore = true;
+		break;
+	    }
+	if (ignore) continue;
+		
+	
+	Transform trans = get_entity_transform(scene, v.entity);
+
+	v2_f32 p = trans.getLocalPosition().getVec2();
+
+	v2_f32 to = p - pos;
+	f32 distance = to.length();
+
+	if (distance < range) {
+
+	    to.normalize();
+	    to *= intensity * pow(distance / range, 0.1f);
+
+	    b.vel += to;
+	}
+    }
+}
+
 SV_USER void user_update()
 {
     GameMemory& m = get_game_memory();
@@ -68,37 +103,76 @@ SV_USER void user_update()
 
     if (scene) {
 
+	scene->gravity = { 0.f, -36.f };
+	
 	Transform trans = get_entity_transform(scene, m.entity);
+	BodyComponent* body = get_component<BodyComponent>(scene, m.entity);
 	v2_f32 pos = trans.getLocalPosition().getVec2();
 
-	f32 vel = 5.f * engine.deltatime;
-	
-	if (input.keys[Key_W]) {
-	    pos.y += vel;
+	{
+	    Transform cam = get_entity_transform(scene, scene->main_camera);
+	    //cam.setPosition(pos.getVec3());
 	}
-	if (input.keys[Key_S]) {
-	    pos.y -= vel;
+
+	f32 vel = 30.f * engine.deltatime;
+
+	if (body->in_ground) {
+
+	    if (input.keys[Key_Tab]) {
+		body->vel.y = 40.f;
+	    }
+	    
+	    if (input.keys[Key_Space]) {
+		body->vel.y = 27.f * 0.5f;
+		
+	    }
+	    
 	}
+
 	if (input.keys[Key_A]) {
-	    pos.x -= vel;
+	    body->vel.x -= vel;
 	}
 	if (input.keys[Key_D]) {
-	    pos.x += vel;
+	    body->vel.x += vel;
 	}
 
 	trans.setPosition(pos.getVec3());
 
 	if (input.mouse_buttons[MouseButton_Right]) {
 
-	    Entity e = create_entity(scene);
-	    add_component<SpriteComponent>(scene, e);
+	    static Time last = 0.0;
+	    static u32 seed = 0x3453F23;
+	    Time now = timer_now();
+	    if (now - last > 0.05f) {
 
-	    Transform t = get_entity_transform(scene, e);
+		last = now;
+		
+		Entity e = create_entity(scene);
+		add_component<SpriteComponent>(scene, e)->color = { (u8)math_random_u32(seed++, 256u), (u8)math_random_u32(seed++, 256u), (u8)math_random_u32(seed++, 256u), 255u };
+		BodyComponent* b = add_component<BodyComponent>(scene, e);
+		b->body_type = BodyType_Dynamic;
+		b->bounciness = 0.09f;
+		b->mass = 0.05f;
 
-	    CameraComponent* cam = get_main_camera(scene);
+		Transform t = get_entity_transform(scene, e);
 
-	    if (cam)
-		t.setPosition((input.mouse_position * v2_f32(cam->width, cam->height)).getVec3());
+		CameraComponent* cam = get_main_camera(scene);
+
+		v2_f32 cam_pos;
+
+		if (cam)
+		    cam_pos = input.mouse_position * v2_f32(cam->width, cam->height);
+
+		b->vel = cam_pos - pos;
+		b->vel.normalize();
+		b->vel *= 0.f;
+		t.setPosition(pos.getVec3());
+		t.setScale({ 0.07f, 0.07f, 1.f });
+	    }
+	}
+
+	if (input.keys[Key_E] == InputState_Pressed) {
+	    explosion(engine.scene, pos, 100.f, 40.f, &m.entity, 1u);
 	}
     }
 }

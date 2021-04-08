@@ -1273,7 +1273,7 @@ namespace sv {
 		    }
 		}
 
-		postprocess_bloom(
+		/*postprocess_bloom(
 			gfx.offscreen,
 			GPUImageLayout_RenderTarget,
 			GPUImageLayout_RenderTarget,
@@ -1284,7 +1284,7 @@ namespace sv {
 			GPUImageLayout_ShaderResource,
 			GPUImageLayout_ShaderResource,
 			nullptr,
-			0.8f, 0.03f, os_window_aspect(), cmd);
+			0.8f, 0.03f, os_window_aspect(), cmd);*/
 
 		gui_draw(scene->gui, cmd);
 	    }

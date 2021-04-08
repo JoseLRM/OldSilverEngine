@@ -30,6 +30,9 @@ namespace sv {
 
 	AudioDevice* audio_device;
 
+	v2_f32 gravity = { 0.f, -1.f };
+	f32 air_friction = 0.02f;
+
 	char name[SCENENAME_SIZE];
 
     };
@@ -212,7 +215,7 @@ namespace sv {
 
     // Iterators
 
-    struct ComponentIterator {
+    struct SV_API ComponentIterator {
 		
 	Scene* _scene;
 	BaseComponent* _it;
@@ -508,6 +511,25 @@ namespace sv {
 	void serialize(Archive & archive);
 	void deserialize(u32 version, Archive & archive);
 
+    };
+
+    enum BodyType : u32 {
+	BodyType_Static,
+	BodyType_Dynamic,
+    };
+
+    SV_DEFINE_COMPONENT(BodyComponent, 0u) {
+
+	BodyType body_type = BodyType_Static;
+	v2_f32 vel;
+	bool in_ground = false;
+	f32 mass = 1.f;
+	f32 friction = 0.99f;
+	f32 bounciness = 0.f;
+
+	void serialize(Archive & archive);
+	void deserialize(u32 version, Archive & archive);
+	
     };
 
 }

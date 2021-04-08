@@ -342,6 +342,8 @@ namespace sv {
 	    register_component<CameraComponent>("Camera");
 	    register_component<MeshComponent>("Mesh");
 	    register_component<LightComponent>("Light");
+
+	    register_component<BodyComponent>("Body");
 	}
 
 	res = register_assets();

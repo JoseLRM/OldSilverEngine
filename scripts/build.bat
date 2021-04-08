@@ -160,26 +160,30 @@ IF EXIST EntryPoint.exe (
 )
 IF EXIST  SilverEngine.exp DEL SilverEngine.exp -Q
 
-ECHO Creating system data
+IF "%compile_engine%"=="true" (
 
-IF EXIST system (
-   RMDIR system /Q /S
+   ECHO Creating system data
+
+   IF EXIST system (
+      RMDIR system /Q /S
+   )
+   XCOPY %SVP%system\ system /E /I /Q /Y > NUL
+
+   IF NOT EXIST bin MKDIR bin
+
+   ECHO Moving DLLs
+
+   IF EXIST SilverEngine.dll RENAME SilverEngine.dll SilverEngineTemp
+   IF EXIST Game.dll RENAME Game.dll GameTemp
+   DEL *.dll > NUL 2> NUL
+   IF EXIST SilverEngineTemp RENAME SilverEngineTemp SilverEngine.dll
+   IF EXIST GameTemp RENAME GameTemp Game.dll
+   XCOPY %SVP%lib\*.dll /I /Q /Y > NUL
+
+   IF EXIST  Game.exp DEL Game.exp -Q
+   IF EXIST  Game.lib DEL Game.lib -Q
+
 )
-XCOPY %SVP%system\ system /E /I /Q /Y > NUL
-
-IF NOT EXIST bin MKDIR bin
-
-ECHO Moving DLLs
-
-IF EXIST SilverEngine.dll RENAME SilverEngine.dll SilverEngineTemp
-IF EXIST Game.dll RENAME Game.dll GameTemp
-DEL *.dll > NUL 2> NUL
-IF EXIST SilverEngineTemp RENAME SilverEngineTemp SilverEngine.dll
-IF EXIST GameTemp RENAME GameTemp Game.dll
-XCOPY %SVP%lib\*.dll /I /Q /Y > NUL
-
-IF EXIST  Game.exp DEL Game.exp -Q
-IF EXIST  Game.lib DEL Game.lib -Q
 
 ECHO Creating assets
 

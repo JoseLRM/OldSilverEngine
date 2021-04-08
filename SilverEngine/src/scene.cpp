@@ -165,6 +165,9 @@ namespace sv {
 		    archive >> version;
 		    archive >> scene.main_camera;
 
+		    archive >> scene.gravity;
+		    archive >> scene.air_friction;
+
 		    // ECS
 		    {
 			scene.entities.clear();
@@ -422,6 +425,9 @@ namespace sv {
 
 	archive << Scene::VERSION;
 	archive << scene.main_camera;
+
+	archive << scene.gravity;
+	archive << scene.air_friction;
 		
 	// ECS
 	{
@@ -628,6 +634,148 @@ namespace sv {
 	camera.inverse_view_projection_matrix = camera.inverse_view_matrix * camera.inverse_projection_matrix;
     }
 
+    void update_physics()
+    {
+	f32 dt = engine.deltatime;
+
+	Scene* scene_ = engine.scene;
+	Scene& scene = *engine.scene;
+    
+	EntityView<BodyComponent> bodies(scene_);
+	    
+	for (ComponentView<BodyComponent> view : bodies) {
+
+	    BodyComponent& body = *view.comp;
+		
+	    if (body.body_type == BodyType_Static)
+		continue;
+		
+	    Transform trans = get_entity_transform(scene_, view.entity);
+
+	    v3_f32 position3D = trans.getLocalPosition();
+	    v2_f32 position = position3D.getVec2();
+	    v2_f32 scale = trans.getLocalScale().getVec2();
+
+	    // Reset values
+	    body.in_ground = false;
+	
+	    // Gravity
+	    body.vel += scene.gravity * dt;
+	
+	    BodyComponent* vertical_collision = nullptr;
+	    f32 vertical_depth = f32_max;
+	
+	    BodyComponent* horizontal_collision = nullptr;
+	    f32 horizontal_depth = f32_max;
+	    f32 vertical_offset = 0.f; // Used to avoid the small bumps
+
+	    v2_f32 next_pos = position;
+	    v2_f32 next_vel = body.vel;
+	
+	    // Simulate collisions
+	    {
+		// Detection
+
+		v2_f32 final_pos = position + body.vel * dt;
+
+		v2_f32 step = final_pos - next_pos;
+		f32 adv = SV_MIN(scale.x, scale.y);
+		u32 step_count = u32(step.length() / adv) + 1u;
+
+		step /= f32(step_count);
+
+		foreach(i, step_count) {
+
+		    next_pos += step;
+	    
+		    EntityView<BodyComponent> bodies0(scene_);
+		    for (ComponentView<BodyComponent> v : bodies0) {
+
+			BodyComponent& b = *v.comp;
+			Transform t = get_entity_transform(scene_, v.entity);
+
+			if (b.body_type == BodyType_Static) {
+
+			    v2_f32 p = t.getLocalPosition().getVec2();
+			    v2_f32 s = t.getLocalScale().getVec2();
+
+			    v2_f32 to = p - next_pos;
+			    to.x = abs(to.x);
+			    to.y = abs(to.y);
+			
+			    v2_f32 min_distance = (s + scale) * 0.5f;
+			    min_distance.x = abs(min_distance.x);
+			    min_distance.y = abs(min_distance.y);
+			
+			    if (to.x < min_distance.x && to.y < min_distance.y) {
+
+				v2_f32 depth = min_distance - to;
+
+				// Vertical collision
+				if (depth.x > depth.y) {
+
+				    if (depth.y < abs(vertical_depth)) {
+			    
+					vertical_collision = &b;
+					vertical_depth = depth.y * ((next_pos.y < p.y) ? -1.f : 1.f);
+				    }
+				}
+
+				// Horizontal collision
+				else {
+
+				    if (depth.x < abs(horizontal_depth)) {
+				    
+					horizontal_collision = &b;
+					horizontal_depth = depth.x * ((next_pos.x < p.x) ? -1.f : 1.f);
+
+					if (depth.y < scale.y * 0.05f && next_pos.y > p.y) {
+					    vertical_offset = depth.y;
+					}
+				    }
+				}
+			    }
+			}
+		    }
+
+		    if (vertical_collision || horizontal_collision)
+			break;
+		}
+
+		// Solve collisions
+		if (vertical_collision) {
+
+		    if (vertical_depth > 0.f) {
+
+			body.in_ground = true;
+			// Ground friction
+			next_vel.x *= pow(1.f - vertical_collision->friction, dt);
+		    }
+
+		    next_pos.y += vertical_depth;
+		    next_vel.y = next_vel.y * -body.bounciness;
+		}
+
+		if (horizontal_collision) {
+		
+		    next_pos.x += horizontal_depth;
+		    if (vertical_offset != 0.f)
+			next_pos.y += vertical_offset;
+		    else
+			next_vel.x = next_vel.x * -body.bounciness;
+		}
+
+		// Air friction
+		next_vel *= pow(1.f - scene.air_friction, dt);
+	    }
+	
+	    position = next_pos;
+	    body.vel = next_vel;
+
+	    trans.setPosition(position.getVec3(position3D.z));
+	}
+    }
+
     void update_scene()
     {
 	Scene* scene_ = engine.scene;
@@ -678,6 +826,8 @@ namespace sv {
 	// User update
 	if (engine.user.update)
 	    engine.user.update();
+
+	update_physics();
     }
 
     CameraComponent* get_main_camera(Scene* scene)
@@ -1974,10 +2124,19 @@ namespace sv {
     {
 	archive << light_type << color << intensity << range << smoothness;
     }
-
+    
     void LightComponent::deserialize(u32 version, Archive& archive)
     {
 	archive >> (u32&)light_type >> color >> intensity >> range >> smoothness;
     }
 
+    void BodyComponent::serialize(Archive& archive)
+    {
+	archive << body_type << mass << friction << bounciness;
+    }
+
+    void BodyComponent::deserialize(u32 version, Archive& archive)
+    {
+	archive >> (u32&)body_type >> mass >> friction >> bounciness;
+    }
 }

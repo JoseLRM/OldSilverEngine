@@ -441,6 +441,15 @@ namespace sv {
 		egui_comp_drag_f32("Smoothness", 3u, &l.smoothness, 0.005f, 0.0f, 1.f);
 	    }
 
+	    if (BodyComponent::ID == comp_id) {
+
+		BodyComponent& b = *reinterpret_cast<BodyComponent*>(comp);
+
+		egui_comp_drag_f32("Mass", 0u, &b.mass, 0.1f, 0.0f, f32_max);
+		egui_comp_drag_f32("Friction", 1u, &b.friction, 0.001f, 0.0f, 1.f);
+		egui_comp_drag_f32("Bounciness", 2u, &b.bounciness, 0.005f, 0.0f, 1.f);
+	    }
+
 	    egui_end_component();
 	}
 
