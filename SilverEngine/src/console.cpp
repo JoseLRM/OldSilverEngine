@@ -246,7 +246,9 @@ namespace sv {
 	    return Result_InvalidUsage;
 	}
 
-	return create_entity_model(engine.scene, SV_ENTITY_NULL, args[0]);
+	Entity parent = create_entity(engine.scene, SV_ENTITY_NULL, args[0]);
+	
+	return create_entity_model(engine.scene, parent, args[0]);
     }
 
     void initialize_console()

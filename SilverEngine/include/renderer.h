@@ -11,6 +11,7 @@ namespace sv {
     constexpr Format GBUFFER_DEPTH_FORMAT = Format_D24_UNORM_S8_UINT;
     constexpr Format GBUFFER_DIFFUSE_FORMAT = Format_R16G16B16A16_FLOAT;
     constexpr Format GBUFFER_NORMAL_FORMAT = Format_R16G16B16A16_FLOAT;
+    constexpr Format GBUFFER_SSAO_FORMAT = Format_R32_FLOAT;
 
     // Functions
 
@@ -48,7 +49,8 @@ namespace sv {
 	    GPUImageLayout aux_layout1,
 	    f32 intensity,
 	    f32 aspect,
-	    CommandList cmd
+	    CommandList cmd,
+	    RenderPass* renderpass = nullptr // Is only used while the rendertarget is the src image
 	);
 
     void postprocess_addition(

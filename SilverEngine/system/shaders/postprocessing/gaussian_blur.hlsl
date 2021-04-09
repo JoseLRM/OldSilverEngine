@@ -10,9 +10,9 @@ struct Output {
 	float4 color : SV_Target0;
 };
 
-static const u32 GAUSS_KERNEL = 33u;
+SV_GLOBAL u32 GAUSS_KERNEL = 33u;
 
-static const f32 WEIGHTS[GAUSS_KERNEL] = {
+SV_GLOBAL f32 WEIGHTS[GAUSS_KERNEL] = {
 	0.004013,
 	0.005554,
 	0.007527,

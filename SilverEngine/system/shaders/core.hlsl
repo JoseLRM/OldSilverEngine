@@ -33,6 +33,9 @@ typedef double          f64;
 
 #define foreach(_it, _end) for (u32 _it = 0u; _it < _end; ++_it)
 #define SV_BIT(x) (1ULL << x) 
+#define SV_GLOBAL static const
+
+SV_GLOBAL u32 u32_max = 0xFFFFFFFF;
 
 // Structs
 
@@ -43,7 +46,11 @@ struct Camera {
     matrix ivm;
     matrix ipm;
     matrix ivpm;
+    float2 screen_size;
+    float  near;
+    float  far;
     float3 position;
+    float _padding0;
     float4 direction;
 };
 
@@ -51,4 +58,13 @@ struct Camera {
 
 struct Environment {
        float3 ambient_light;
-};     
+};
+
+// Helper functions
+
+float3 compute_fragment_position(f32 depth, float2 texcoord, matrix ipm)
+{
+	float4 pos = float4(texcoord.x * 2.f - 1.f, texcoord.y * 2.f - 1.f, depth, 1.f);
+	pos = mul(pos, ipm);
+	return pos.xyz / pos.w;
+}

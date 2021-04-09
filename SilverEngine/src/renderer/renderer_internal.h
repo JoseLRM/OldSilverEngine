@@ -35,14 +35,18 @@ namespace sv {
 #define MAT_FLAG_EMISSIVE_MAPPING SV_BIT(2u)
 
     struct CameraBuffer_GPU {
-	XMMATRIX	view_matrix;
-	XMMATRIX	projection_matrix;
-	XMMATRIX	view_projection_matrix;
-	XMMATRIX	inverse_view_matrix;
-	XMMATRIX	inverse_projection_matrix;
-	XMMATRIX	inverse_view_projection_matrix;
-	v4_f32		position;
-	v4_f32		rotation;
+	XMMATRIX view_matrix;
+	XMMATRIX projection_matrix;
+	XMMATRIX view_projection_matrix;
+	XMMATRIX inverse_view_matrix;
+	XMMATRIX inverse_projection_matrix;
+	XMMATRIX inverse_view_projection_matrix;
+	f32      screen_width;
+	f32      screen_height;
+	f32      near;
+	f32      far;
+	v4_f32	 position;
+	v4_f32	 rotation;
     };
 
     constexpr u32 TEXT_BATCH_COUNT = 1000u; // Num of letters
@@ -101,6 +105,7 @@ namespace sv {
 	RenderPass* renderpass_off;
 	RenderPass* renderpass_world;
 	RenderPass* renderpass_gbuffer;
+	RenderPass* renderpass_ssao;
 	BlendState* bs_transparent;
 
 	// GBUFFER
@@ -109,6 +114,7 @@ namespace sv {
 	GPUImage* gbuffer_diffuse;
 	GPUImage* gbuffer_normal;
 	GPUImage* gbuffer_depthstencil;
+	GPUImage* gbuffer_ssao;
 
 	// DEBUG
 
@@ -153,6 +159,7 @@ namespace sv {
 	Sampler* sampler_blur;
 	Shader* ps_bloom_threshold;
 	BlendState* bs_addition;
+	Shader* ps_ssao;
 
 	// SKY
 

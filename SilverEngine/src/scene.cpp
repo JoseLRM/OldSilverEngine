@@ -534,7 +534,7 @@ namespace sv {
 	Result res = folder_iterator_begin(folderpath, &it, &element);
 
 	if (result_okay(res)) {
-
+	    
 	    do {
 
 		if (!element.is_file)

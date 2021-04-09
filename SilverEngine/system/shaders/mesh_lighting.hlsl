@@ -33,33 +33,33 @@ SV_CAMERA_BUFFER(b2);
 SV_TEXTURE(diffuse_map, t0);
 SV_TEXTURE(normal_map, t1);
 SV_TEXTURE(depth_map, t2);
+SV_TEXTURE(ssao_map, t3);
 //SV_TEXTURE(specular_map, t2);
 //SV_TEXTURE(emissive_map, t3);
-
-SV_SAMPLER(sam, s0);
 
 Output main(float2 texcoord : FragTexcoord)
 {
 	Output output;
 
-	float depth = depth_map.Sample(sam, texcoord).r;
+	int2 screen_pos = int2(texcoord * camera.screen_size);
+	float depth = depth_map.Load(int3(screen_pos, 0)).r;
 
 	if (depth > 0.999999f)
 	   discard;
 
-	float3 diffuse_color = diffuse_map.Sample(sam, texcoord).rgb;
-	float3 normal = normal_map.Sample(sam, texcoord).rgb;
-	// TODO float4 specular_sample = specular_map.Sample(sam, texcoord);
+	float3 diffuse_color = diffuse_map.Load(int3(screen_pos, 0)).rgb;
+	float3 normal = normal_map.Load(int3(screen_pos, 0)).rgb;
+	// TODO float4 specular_sample = specular_map.Load(int3(screen_pos, 0));
 	//float3 specular_color = specular_sample.rgb;
 	//f32 shininess = specular_sample.a;
+
+	f32 ssao = ssao_map.Load(int3(screen_pos, 0)).r;
 
 	float3 specular_color = float3(0.1f, 0.1f, 0.1f);
 	f32 shininess = 0.5f;
 	f32 specular_mul = 0.1f;
 
-	float4 pos = float4(texcoord.x * 2.f - 1.f, texcoord.y * 2.f - 1.f, depth, 1.f);
-	pos = mul(pos, camera.ipm);
-	float3 position = pos.xyz / pos.w;
+	float3 position = compute_fragment_position(depth, texcoord, camera.ipm);
 	
 	// Compute lighting
 	float3 light_accumulation = float3(0.f, 0.f, 0.f);
@@ -109,7 +109,7 @@ Output main(float2 texcoord : FragTexcoord)
 	// Ambient lighting
 	light_accumulation = max(environment.ambient_light, light_accumulation);
 
-	output.color = float4(diffuse_color * light_accumulation, 1.f);
+	output.color = float4(diffuse_color * light_accumulation * ssao, 1.f);
 
 	return output;
 }
