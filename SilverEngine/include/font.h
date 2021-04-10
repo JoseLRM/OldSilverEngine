@@ -41,7 +41,7 @@ namespace sv {
 		TextAlignment_Justified,
 	};
 
-	Result font_create(Font& font, const char* filepath, f32 pixelHeight, FontFlags flags);
+	bool font_create(Font& font, const char* filepath, f32 pixelHeight, FontFlags flags);
 	void font_destroy(Font& font);
 
 	// In Clip space

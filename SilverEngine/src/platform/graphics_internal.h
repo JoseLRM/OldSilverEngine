@@ -168,12 +168,12 @@ namespace sv {
 
     // GraphicsAPI Device
 
-    typedef Result(*FNP_graphics_api_initialize)();
-    typedef Result(*FNP_graphics_api_close)();
+    typedef bool(*FNP_graphics_api_initialize)();
+    typedef bool(*FNP_graphics_api_close)();
     typedef void*(*FNP_graphics_api_get)();
 
-    typedef Result(*FNP_graphics_create)(GraphicsPrimitiveType, const void*, Primitive_internal*);
-    typedef Result(*FNP_graphics_destroy)(Primitive_internal*);
+    typedef bool(*FNP_graphics_create)(GraphicsPrimitiveType, const void*, Primitive_internal*);
+    typedef bool(*FNP_graphics_destroy)(Primitive_internal*);
 
     typedef CommandList(*FNP_graphics_api_commandlist_begin)();
     typedef CommandList(*FNP_graphics_api_commandlist_last)();
@@ -275,7 +275,7 @@ namespace sv {
 
     // Shader utils
 
-    Result graphics_shader_initialize();
-    Result graphics_shader_close();
+    bool graphics_shader_initialize();
+    bool graphics_shader_close();
 
 }

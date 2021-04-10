@@ -164,8 +164,8 @@ namespace sv {
 	f32 xoff;
     };
 
-    SV_API Result gui_create(u64 hashcode, GUI** pgui);
-    SV_API Result gui_destroy(GUI* gui);
+    SV_API bool gui_create(u64 hashcode, GUI** pgui);
+    SV_API bool gui_destroy(GUI* gui);
 
     SV_API void gui_begin(GUI* gui, f32 scale, f32 width, f32 height);
     SV_API void gui_end(GUI* gui);
@@ -189,8 +189,8 @@ namespace sv {
 	
     SV_API bool gui_begin_window(GUI* gui, const char* title, const GuiWindowStyle& style = {});
     SV_API void gui_end_window(GUI* gui);
-    SV_API Result gui_show_window(GUI* gui, const char* title);
-    SV_API Result gui_hide_window(GUI* gui, const char* title);
+    SV_API bool gui_show_window(GUI* gui, const char* title);
+    SV_API bool gui_hide_window(GUI* gui, const char* title);
 
     SV_API bool gui_begin_menu_item(GUI* gui, const char* text, u64 id, const GuiMenuItemStyle& style = {});
     SV_API void gui_end_menu_item(GUI* gui);

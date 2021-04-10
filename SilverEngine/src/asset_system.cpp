@@ -40,11 +40,11 @@ namespace sv {
     static f32 check_time = 0.f;
     static List<Asset_internal*> free_assets_list;
 
-    SV_INLINE static Result destroy_asset(Asset_internal* asset, AssetType_internal* type)
+    SV_INLINE static bool destroy_asset(Asset_internal* asset, AssetType_internal* type)
     {
 	const char* filepath = asset->filepath;
 
-	Result res = type->free(asset + 1u);
+	bool res = type->free(asset + 1u);
 	type->allocator.free(asset);
 
 	if (filepath) {
@@ -176,40 +176,38 @@ namespace sv {
 	return nullptr;
     }
 
-    Result create_asset(AssetPtr& asset_ptr, const char* asset_type_name)
+    bool create_asset(AssetPtr& asset_ptr, const char* asset_type_name)
     {
 	AssetType_internal* type = get_type_from_typename(asset_type_name);
 	if (type == nullptr) {
 	    SV_LOG_ERROR("Asset type '%s' not found", asset_type_name);
-	    return Result_NotFound;
+	    return false;
 	}
 
 	if (type->create == nullptr) {
 	    SV_LOG_ERROR("The asset type '%s' can't create assets by default", asset_type_name);
-	    return Result_InvalidUsage;
+	    return false;
 	}
 
 	Asset_internal* asset = new(type->allocator.alloc()) Asset_internal();
 	asset->type = type;
 
-	Result res = type->create(asset + 1u);
-
-	if (result_fail(res)) {
+	if (!type->create(asset + 1u)) {
 
 	    type->allocator.free(asset);
-	    return res;
+	    return false;
 	}
 
 	asset_ptr = AssetPtr(asset);
 
 	SV_LOG_INFO("%s created", type->name.c_str());
 
-	return Result_Success;
+	return true;
     }
 
-    Result load_asset_from_file(AssetPtr& asset_ptr, const char* filepath)
+    bool load_asset_from_file(AssetPtr& asset_ptr, const char* filepath)
     {
-	if (filepath == nullptr) return Result_InvalidUsage;
+	if (filepath == nullptr) return false;
 
 	auto it = filepath_map.find(filepath);
 
@@ -217,17 +215,15 @@ namespace sv {
 
 	    size_t size = strlen(filepath);
 	    AssetType_internal* type = get_type_from_filepath(size, filepath);
-	    if (type == nullptr) return Result_NotFound;
+	    if (type == nullptr) return false;
 
 	    Asset_internal* asset = new(type->allocator.alloc()) Asset_internal();
 	    asset->type = type;
 
-	    Result res = type->load_file(asset + 1u, filepath);
-
-	    if (result_fail(res)) {
+	    if (!type->load_file(asset + 1u, filepath)) {
 
 		type->allocator.free(asset);
-		return res;
+		return false;
 	    }
 
 	    filepath_map[filepath] = asset;
@@ -240,7 +236,7 @@ namespace sv {
 	    asset_ptr = AssetPtr(it->second);
 	}
 
-	return Result_Success;
+	return true;
     }
 
     void unload_asset(AssetPtr& asset_ptr)
@@ -260,7 +256,7 @@ namespace sv {
 	return nullptr;
     }
 
-    Result register_asset_type(const AssetTypeDesc* desc)
+    bool register_asset_type(const AssetTypeDesc* desc)
     {
 	// TODO: Check if the extensions or the name is repeated
 
@@ -279,7 +275,7 @@ namespace sv {
 	    type->extensions[i] = extension_map.find(desc->extensions[i])->first.c_str();
 	}
 
-	return Result_Success;
+	return true;
     }
 
     void update_asset_files()

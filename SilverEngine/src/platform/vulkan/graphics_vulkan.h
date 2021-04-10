@@ -9,12 +9,12 @@ namespace sv {
 
     void graphics_vulkan_device_prepare(GraphicsDevice& device);
 
-    Result	graphics_vulkan_initialize();
-    Result	graphics_vulkan_close();
+    bool	graphics_vulkan_initialize();
+    bool	graphics_vulkan_close();
     void* graphics_vulkan_get();
 
-    Result graphics_vulkan_create(GraphicsPrimitiveType type, const void* desc, Primitive_internal* res);
-    Result graphics_vulkan_destroy(Primitive_internal* primitive);
+    bool graphics_vulkan_create(GraphicsPrimitiveType type, const void* desc, Primitive_internal* res);
+    bool graphics_vulkan_destroy(Primitive_internal* primitive);
 
     CommandList graphics_vulkan_commandlist_begin();
     CommandList graphics_vulkan_commandlist_last();
@@ -77,7 +77,7 @@ namespace sv {
 #define vkAssert(x) x
 #endif
 
-#define vkCheck(x) if((x) != VK_SUCCESS) return sv::Result_UnknownError
+#define vkCheck(x) if((x) != VK_SUCCESS) return false
 #define vkExt(x) do{ VkResult res = (x); if(res != VK_SUCCESS) return res; }while(0)
 
 #undef CreateSemaphore
@@ -359,23 +359,23 @@ namespace sv {
     void graphics_vulkan_submit_commandbuffers();
     void graphics_vulkan_present();
 
-    Result graphics_vulkan_buffer_create(Buffer_vk& buffer, const GPUBufferDesc& desc);
-    Result graphics_vulkan_image_create(Image_vk& image, const GPUImageDesc& desc);
-    Result graphics_vulkan_sampler_create(Sampler_vk& sampler, const SamplerDesc& desc);
-    Result graphics_vulkan_shader_create(Shader_vk& shader, const ShaderDesc& desc);
-    Result graphics_vulkan_renderpass_create(RenderPass_vk& renderPass, const RenderPassDesc& desc);
-    Result graphics_vulkan_inputlayoutstate_create(InputLayoutState_vk& inputLayoutState, const InputLayoutStateDesc& desc);
-    Result graphics_vulkan_blendstate_create(BlendState_vk& blendState, const BlendStateDesc& desc);
-    Result graphics_vulkan_depthstencilstate_create(DepthStencilState_vk& depthStencilState, const DepthStencilStateDesc& desc);
-    Result graphics_vulkan_rasterizerstate_create(RasterizerState_vk& rasterizerState, const RasterizerStateDesc& desc);
-    Result graphics_vulkan_swapchain_create();
+    bool graphics_vulkan_buffer_create(Buffer_vk& buffer, const GPUBufferDesc& desc);
+    bool graphics_vulkan_image_create(Image_vk& image, const GPUImageDesc& desc);
+    bool graphics_vulkan_sampler_create(Sampler_vk& sampler, const SamplerDesc& desc);
+    bool graphics_vulkan_shader_create(Shader_vk& shader, const ShaderDesc& desc);
+    bool graphics_vulkan_renderpass_create(RenderPass_vk& renderPass, const RenderPassDesc& desc);
+    bool graphics_vulkan_inputlayoutstate_create(InputLayoutState_vk& inputLayoutState, const InputLayoutStateDesc& desc);
+    bool graphics_vulkan_blendstate_create(BlendState_vk& blendState, const BlendStateDesc& desc);
+    bool graphics_vulkan_depthstencilstate_create(DepthStencilState_vk& depthStencilState, const DepthStencilStateDesc& desc);
+    bool graphics_vulkan_rasterizerstate_create(RasterizerState_vk& rasterizerState, const RasterizerStateDesc& desc);
+    bool graphics_vulkan_swapchain_create();
 
-    Result graphics_vulkan_buffer_destroy(Buffer_vk& buffer);
-    Result graphics_vulkan_image_destroy(Image_vk& image);
-    Result graphics_vulkan_sampler_destroy(Sampler_vk& sampler);
-    Result graphics_vulkan_shader_destroy(Shader_vk& shader);
-    Result graphics_vulkan_renderpass_destroy(RenderPass_vk& renderPass);
-    Result graphics_vulkan_swapchain_destroy( bool resizing);
+    bool graphics_vulkan_buffer_destroy(Buffer_vk& buffer);
+    bool graphics_vulkan_image_destroy(Image_vk& image);
+    bool graphics_vulkan_sampler_destroy(Sampler_vk& sampler);
+    bool graphics_vulkan_shader_destroy(Shader_vk& shader);
+    bool graphics_vulkan_renderpass_destroy(RenderPass_vk& renderPass);
+    bool graphics_vulkan_swapchain_destroy( bool resizing);
 
 }
 

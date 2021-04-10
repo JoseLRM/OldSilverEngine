@@ -306,18 +306,18 @@ namespace sv {
 
     /////////////////////////////////////////////// COMMANDS ///////////////////////////////////////////////////////
 
-    Result command_show_window(const char** args, u32 argc)
+    bool command_show_window(const char** args, u32 argc)
     {
 	bool show = true;
 
 	if (argc == 0u) {
 	    SV_LOG_ERROR("This command needs some argument");
-	    return Result_InvalidUsage;
+	    return false;
 	}
 
 	if (argc > 2u) {
 	    SV_LOG_ERROR("Too much arguments");
-	    return Result_InvalidUsage;
+	    return false;
 	}
 
 	if (argc == 2u) {
@@ -326,13 +326,13 @@ namespace sv {
 	    else if (strcmp(args[1], "hide") == 0 || strcmp(args[1], "0") == 0) show = false;
 	    else {
 		SV_LOG_ERROR("Invalid argument '%s'", args[1]);
-		return Result_InvalidUsage;
+		return false;
 	    }
 	}
 
-	Result res = show ? gui_show_window(dev.gui, args[0]) : gui_hide_window(dev.gui, args[0]);
+	bool res = show ? gui_show_window(dev.gui, args[0]) : gui_hide_window(dev.gui, args[0]);
 
-	if (result_okay(res)) {
+	if (res) {
 	    SV_LOG("%s '%s'", show ? "Showing" : "Hiding", args[0]);
 	}
 	else SV_LOG_ERROR("Window '%s' not found", args[0]);
@@ -342,20 +342,20 @@ namespace sv {
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    Result initialize_editor()
+    bool initialize_editor()
     {
-	svCheck(gui_create(hash_string("EDITOR GUI"), &dev.gui));
+	SV_CHECK(gui_create(hash_string("EDITOR GUI"), &dev.gui));
 
 	// Register commands
-	svCheck(register_command("wnd", command_show_window));
+	SV_CHECK(register_command("wnd", command_show_window));
 
-	return Result_Success;
+	return true;
     }
 
-    Result close_editor()
+    bool close_editor()
     {
-	svCheck(gui_destroy(dev.gui));
-	return Result_Success;
+	SV_CHECK(gui_destroy(dev.gui));
+	return true;
     }
 
     static void show_component_info(f32& y, Entity entity, CompID comp_id, BaseComponent* comp)
@@ -1012,9 +1012,9 @@ namespace sv {
 		FolderIterator it;
 		FolderElement e;
 
-		Result res = folder_iterator_begin(next_filepath, &it, &e);
+		bool res = folder_iterator_begin(next_filepath, &it, &e);
 
-		if (result_okay(res)) {
+		if (res) {
 
 		    do {
 
@@ -1046,7 +1046,7 @@ namespace sv {
 		}
 		else {
 
-		    SV_LOG_ERROR("Can't create asset browser content at '%s': %s", next_filepath, result_str(res));
+		    SV_LOG_ERROR("Can't create asset browser content at '%s'", next_filepath);
 		}
 		
 
@@ -1080,11 +1080,11 @@ namespace sv {
 		SV_LOG_INFO("Starting edit state");
 		// TODO: Handle error
 		std::string name = engine.scene->name;
-		Result res = close_scene(engine.scene);
+		bool res = close_scene(engine.scene);
 		res = initialize_scene(&engine.scene, name.c_str());
 
-		if (result_fail(res)) {
-		    SV_LOG_ERROR("Can't init the scene '%s': %s", name.c_str(), result_str(res));
+		if (!res) {
+		    SV_LOG_ERROR("Can't init the scene '%s'", name.c_str());
 		}
 			
 		dev.debug_draw = true;
@@ -1100,9 +1100,8 @@ namespace sv {
 
 		    if (user_get_scene_filepath(engine.scene->name, filepath)) {
 
-			Result res = save_scene(engine.scene, filepath);
-			if (result_fail(res))
-			    SV_LOG_ERROR("Can't save the scene '%s': %s", engine.scene->name, result_str(res));
+			if (!save_scene(engine.scene, filepath))
+			    SV_LOG_ERROR("Can't save the scene '%s'", engine.scene->name);
 		    }
 		    else
 			SV_LOG_INFO("The scene '%s' is not serializable (Specified by the user)", engine.scene->name);

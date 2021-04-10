@@ -443,96 +443,97 @@ namespace sv {
 	}
     }
 
-    Result file_read_binary(const char* filepath, u8** pdata, size_t* psize)
+    bool file_read_binary(const char* filepath, u8** pdata, size_t* psize)
     {
 	HANDLE file = CreateFile(filepath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
 	if (file == INVALID_HANDLE_VALUE) {
-	    return Result_NotFound;
+	    return false;
 	}
 
 	DWORD size;
 	size = GetFileSize(file, NULL);
 	*psize = (size_t)size;
 
-	if (*psize == 0u) return Result_UnknownError;
+	if (*psize == 0u) return false;
 	
 	*pdata = (u8*)allocate_memory(*psize);
 	SetFilePointer(file, NULL, NULL, FILE_BEGIN);
 	ReadFile(file, (void*)*pdata, size, NULL, NULL);
 	
 	CloseHandle(file);
-	return Result_Success;
+	return true;
     }
 
-    Result file_read_binary(const char* filepath, List<u8>& data)
+    bool file_read_binary(const char* filepath, List<u8>& data)
     {
 	HANDLE file = CreateFile(filepath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
 	if (file == INVALID_HANDLE_VALUE) {
-	    return Result_NotFound;
+	    return false;
 	}
 
 	DWORD size;
 	size = GetFileSize(file, NULL);
 
-	if (size == 0u) return Result_UnknownError;
+	if (size == 0u) return false;
 	data.resize(size_t(size));
 	
 	SetFilePointer(file, NULL, NULL, FILE_BEGIN);
 	ReadFile(file, data.data(), size, NULL, NULL);
 	
 	CloseHandle(file);
-	return Result_Success;
+	return true;
     }
     
-    Result file_read_text(const char* filepath, std::string& str)
+    bool file_read_text(const char* filepath, char** pstr, size_t* psize)
     {
 	HANDLE file = CreateFile(filepath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
 	if (file == INVALID_HANDLE_VALUE) {
-	    return Result_NotFound;
+	    return false;
 	}
 
 	DWORD size;
 	size = GetFileSize(file, NULL);
 
-	if (size == 0u) return Result_UnknownError;
+	if (size == 0u) return false;
 	
-	str.resize(size);
+	*psize = (size_t)size;
+	*pstr = (char*)allocate_memory(size);
 	SetFilePointer(file, NULL, NULL, FILE_BEGIN);
-	ReadFile(file, &str.front(), size, NULL, NULL);
+	ReadFile(file, *pstr, size, NULL, NULL);
 	
 	CloseHandle(file);
-	return Result_Success;
+	return true;
     }
     
-    Result file_write_binary(const char* filepath, const u8* data, size_t size, bool append)
+    bool file_write_binary(const char* filepath, const u8* data, size_t size, bool append)
     {
 	HANDLE file = CreateFile(filepath, GENERIC_WRITE, FILE_SHARE_READ, NULL, append ? CREATE_NEW : CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	
 	if (file == INVALID_HANDLE_VALUE) {
-	    return Result_NotFound;
+	    return false;
 	}
 
 	WriteFile(file, data, (DWORD)size, NULL, NULL);
 	
 	CloseHandle(file);
-	return Result_Success;
+	return true;
     }
     
-    Result file_write_text(const char* filepath, const char* str, size_t size, bool append)
+    bool file_write_text(const char* filepath, const char* str, size_t size, bool append)
     {
 	HANDLE file = CreateFile(filepath, GENERIC_WRITE, FILE_SHARE_READ, NULL, append ? CREATE_NEW : CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	
 	if (file == INVALID_HANDLE_VALUE) {
-	    return Result_NotFound;
+	    return false;
 	}
 
 	WriteFile(file, str, (DWORD)size, NULL, NULL);
 	
 	CloseHandle(file);
-	return Result_Success;
+	return true;
     }
 
     SV_AUX Date filetime_to_date(const FILETIME& file)
@@ -552,12 +553,12 @@ namespace sv {
 	return date;
     }
 
-    Result file_date(const char* filepath, Date* create, Date* last_write, Date* last_access)
+    bool file_date(const char* filepath, Date* create, Date* last_write, Date* last_access)
     {
 	HANDLE file = CreateFile(filepath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
 	if (file == INVALID_HANDLE_VALUE)
-	    return Result_NotFound;
+	    return false;
 
 	FILETIME creation_time;
 	FILETIME last_access_time;
@@ -571,21 +572,21 @@ namespace sv {
 	}
 	else {
 	    CloseHandle(file);
-	    return Result_PlatformError;
+	    return false;
 	}
 
 	CloseHandle(file);
-	return Result_Success;
+	return true;
     }
 
-    Result file_remove(const char* filepath)
+    bool file_remove(const char* filepath)
     {
-	return DeleteFile(filepath) ? Result_Success : Result_NotFound;
+	return DeleteFile(filepath);
     }
     
-    Result file_copy(const char* srcpath, const char* dstpath)
+    bool file_copy(const char* srcpath, const char* dstpath)
     {
-	return CopyFileA(srcpath, dstpath, FALSE) ? Result_Success : Result_PlatformError;
+	return CopyFileA(srcpath, dstpath, FALSE);
     }
 
     bool file_exists(const char* filepath)
@@ -627,7 +628,7 @@ namespace sv {
 	return e;
     }
 
-    Result folder_iterator_begin(const char* folderpath_, FolderIterator* iterator, FolderElement* element)
+    bool folder_iterator_begin(const char* folderpath_, FolderIterator* iterator, FolderElement* element)
     {
 	WIN32_FIND_DATAA data;
 
@@ -656,12 +657,12 @@ namespace sv {
 
 	HANDLE find = FindFirstFileA(folderpath, &data);
 	
-	if (find == INVALID_HANDLE_VALUE) return Result_NotFound;
+	if (find == INVALID_HANDLE_VALUE) return false;
 
 	*element = finddata_to_folderelement(data);
 	iterator->_handle = (u64)find;
 
-	return Result_Success;
+	return true;
     }
     
     bool folder_iterator_next(FolderIterator* iterator, FolderElement* element)
@@ -691,28 +692,28 @@ namespace sv {
 	sprintf(buf, "bin/%zu.bin", hash);
     }
 
-    Result bin_read(size_t hash, List<u8>& data)
+    bool bin_read(size_t hash, List<u8>& data)
     {
 	char filepath[BIN_PATH_SIZE];
 	bin_filepath(filepath, hash);
 	return file_read_binary(filepath, data);
     }
     
-    Result bin_read(size_t hash, Archive& archive)
+    bool bin_read(size_t hash, Archive& archive)
     {
 	char filepath[BIN_PATH_SIZE];
 	bin_filepath(filepath, hash);
 	return archive.openFile(filepath);
     }
 
-    Result bin_write(size_t hash, const void* data, size_t size)
+    bool bin_write(size_t hash, const void* data, size_t size)
     {
 	char filepath[BIN_PATH_SIZE];
 	bin_filepath(filepath, hash);
 	return file_write_binary(filepath, (u8*)data, size);
     }
     
-    Result bin_write(size_t hash, Archive& archive)
+    bool bin_write(size_t hash, Archive& archive)
     {
 	char filepath[BIN_PATH_SIZE];
 	bin_filepath(filepath, hash);
@@ -774,7 +775,7 @@ namespace sv {
 	free(ptr);
     }
     
-    Result os_create_window()
+    bool os_startup()
     {
 	platform.handle = CreateWindowExA(0u,
 				   "SilverWindow",
@@ -785,10 +786,10 @@ namespace sv {
 	    );
 
 	if (platform.handle == 0) {
-	    return Result_PlatformError;
+	    return false;
 	}
 	
-	return Result_Success;
+	return true;
     }
     
     void os_recive_input()
@@ -807,11 +808,11 @@ namespace sv {
 	}
     }
     
-    Result os_destroy_window()
+    bool os_shutdown()
     {
 	if (platform.handle)
-	    return DestroyWindow(platform.handle) ? Result_Success : Result_PlatformError;
-	return Result_Success;
+	    return DestroyWindow(platform.handle);
+	return true;
     }
     
 }

@@ -13,14 +13,14 @@ namespace sv {
 
     // SHADER COMPILATION
 
-#define COMPILE_SHADER(type, shader, path, alwais_compile) svCheck(graphics_shader_compile_fastbin_from_file(path, type, &shader, "system/shaders/" path, alwais_compile));
+#define COMPILE_SHADER(type, shader, path, alwais_compile) SV_CHECK(graphics_shader_compile_fastbin_from_file(path, type, &shader, "system/shaders/" path, alwais_compile));
 #define COMPILE_VS(shader, path) COMPILE_SHADER(ShaderType_Vertex, shader, path, false)
 #define COMPILE_PS(shader, path) COMPILE_SHADER(ShaderType_Pixel, shader, path, false)
 
 #define COMPILE_VS_(shader, path) COMPILE_SHADER(ShaderType_Vertex, shader, path, true)
 #define COMPILE_PS_(shader, path) COMPILE_SHADER(ShaderType_Pixel, shader, path, true)
 
-    static Result compile_shaders()
+    static bool compile_shaders()
     {
 	COMPILE_VS(gfx.vs_debug_solid_batch, "debug/solid_batch.hlsl");
 	COMPILE_PS(gfx.ps_debug_solid, "debug/solid_batch.hlsl");
@@ -45,14 +45,14 @@ namespace sv {
 	COMPILE_PS(gfx.ps_bloom_threshold, "postprocessing/bloom_threshold.hlsl");
 	COMPILE_PS_(gfx.ps_ssao, "postprocessing/ssao.hlsl");
 
-	return Result_Success;
+	return true;
     }
 
     // RENDERPASSES CREATION
 
-#define CREATE_RENDERPASS(name, renderpass) svCheck(graphics_renderpass_create(&desc, &renderpass));
+#define CREATE_RENDERPASS(name, renderpass) SV_CHECK(graphics_renderpass_create(&desc, &renderpass));
 
-    static Result create_renderpasses()
+    static bool create_renderpasses()
     {
 	RenderPassDesc desc;
 	AttachmentDesc att[GraphicsLimit_Attachment];
@@ -144,12 +144,12 @@ namespace sv {
 	desc.attachmentCount = 1u;
 	CREATE_RENDERPASS("SSAORenderpass", gfx.renderpass_ssao);
 
-	return Result_Success;
+	return true;
     }
 
     // BUFFER CREATION
 
-    static Result create_buffers()
+    static bool create_buffers()
     {
 	GPUBufferDesc desc;
 
@@ -161,7 +161,7 @@ namespace sv {
 	    desc.size = sizeof(EnvironmentData);
 	    desc.pData = nullptr;
 
-	    svCheck(graphics_buffer_create(&desc, &gfx.cbuffer_environment));
+	    SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_environment));
 	}
 		
 	// Debug mesh
@@ -172,7 +172,7 @@ namespace sv {
 	    desc.size = sizeof(XMMATRIX) + sizeof(v4_f32);
 	    desc.pData = nullptr;
 
-	    svCheck(graphics_buffer_create(&desc, &gfx.cbuffer_debug_mesh));
+	    SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_debug_mesh));
 	}
 
 	// Gaussian blur
@@ -183,7 +183,7 @@ namespace sv {
 	    desc.size = sizeof(GaussianBlurData);
 	    desc.pData = nullptr;
 
-	    svCheck(graphics_buffer_create(&desc, &gfx.cbuffer_gaussian_blur));
+	    SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_gaussian_blur));
 	}
 
 	// Bloom threshold
@@ -194,7 +194,7 @@ namespace sv {
 	    desc.size = sizeof(v4_f32);
 	    desc.pData = nullptr;
 
-	    svCheck(graphics_buffer_create(&desc, &gfx.cbuffer_bloom_threshold));
+	    SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_bloom_threshold));
 	}
 
 	// Camera buffer
@@ -205,7 +205,7 @@ namespace sv {
 	    desc.size = sizeof(CameraBuffer_GPU);
 	    desc.pData = nullptr;
 
-	    svCheck(graphics_buffer_create(&desc, &gfx.cbuffer_camera));
+	    SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_camera));
 	}
 
 	// set text index data
@@ -235,7 +235,7 @@ namespace sv {
 	    desc.size = sizeof(u16) * index_count;
 	    desc.pData = index_data;
 
-	    svCheck(graphics_buffer_create(&desc, &gfx.ibuffer_text));
+	    SV_CHECK(graphics_buffer_create(&desc, &gfx.ibuffer_text));
 	    graphics_name_set(gfx.ibuffer_text, "Text_IndexBuffer");
 
 	    delete[] index_data;
@@ -267,7 +267,7 @@ namespace sv {
 	    desc.size = SPRITE_BATCH_COUNT * 6u * sizeof(u32);
 	    desc.indexType = IndexType_32;
 
-	    svCheck(graphics_buffer_create(&desc, &gfx.ibuffer_sprite));
+	    SV_CHECK(graphics_buffer_create(&desc, &gfx.ibuffer_sprite));
 	    delete[] index_data;
 
 	    graphics_name_set(gfx.ibuffer_sprite, "Sprite_IndexBuffer");
@@ -281,13 +281,13 @@ namespace sv {
 	    desc.CPUAccess = CPUAccess_Write;
 
 	    desc.size = sizeof(MeshData);
-	    svCheck(graphics_buffer_create(&desc, &gfx.cbuffer_mesh_instance));
+	    SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_mesh_instance));
 
 	    desc.size = sizeof(Material);
-	    svCheck(graphics_buffer_create(&desc, &gfx.cbuffer_material));
+	    SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_material));
 
 	    desc.size = sizeof(LightData) * LIGHT_COUNT;
-	    svCheck(graphics_buffer_create(&desc, &gfx.cbuffer_light_instances));
+	    SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_light_instances));
 	}
 
 	// Sky box
@@ -343,7 +343,7 @@ namespace sv {
 	    desc.usage = ResourceUsage_Static;
 	    desc.CPUAccess = CPUAccess_None;
 
-	    svCheck(graphics_buffer_create(&desc, &gfx.vbuffer_skybox));
+	    SV_CHECK(graphics_buffer_create(&desc, &gfx.vbuffer_skybox));
 
 	    desc.pData = nullptr;
 	    desc.bufferType = GPUBufferType_Constant;
@@ -351,15 +351,15 @@ namespace sv {
 	    desc.usage = ResourceUsage_Default;
 	    desc.CPUAccess = CPUAccess_Write;
 
-	    svCheck(graphics_buffer_create(&desc, &gfx.cbuffer_skybox));
+	    SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_skybox));
 	}
 
-	return Result_Success;
+	return true;
     }
 
     // IMAGE CREATION
 
-    static Result create_images()
+    static bool create_images()
     {
 	GPUImageDesc desc;
 
@@ -375,27 +375,27 @@ namespace sv {
 	    desc.format = OFFSCREEN_FORMAT;
 	    desc.layout = GPUImageLayout_RenderTarget;
 	    desc.type = GPUImageType_RenderTarget | GPUImageType_ShaderResource;
-	    svCheck(graphics_image_create(&desc, &gfx.offscreen));
+	    SV_CHECK(graphics_image_create(&desc, &gfx.offscreen));
 
 	    desc.format = GBUFFER_DEPTH_FORMAT;
 	    desc.layout = GPUImageLayout_DepthStencil;
 	    desc.type = GPUImageType_DepthStencil | GPUImageType_ShaderResource;
-	    svCheck(graphics_image_create(&desc, &gfx.gbuffer_depthstencil));
+	    SV_CHECK(graphics_image_create(&desc, &gfx.gbuffer_depthstencil));
 
 	    desc.format = GBUFFER_DIFFUSE_FORMAT;
 	    desc.layout = GPUImageLayout_RenderTarget;
 	    desc.type = GPUImageType_RenderTarget | GPUImageType_ShaderResource;
-	    svCheck(graphics_image_create(&desc, &gfx.gbuffer_diffuse));
+	    SV_CHECK(graphics_image_create(&desc, &gfx.gbuffer_diffuse));
 
 	    desc.format = GBUFFER_NORMAL_FORMAT;
 	    desc.layout = GPUImageLayout_RenderTarget;
 	    desc.type = GPUImageType_RenderTarget | GPUImageType_ShaderResource;
-	    svCheck(graphics_image_create(&desc, &gfx.gbuffer_normal));
+	    SV_CHECK(graphics_image_create(&desc, &gfx.gbuffer_normal));
 
 	    desc.format = GBUFFER_SSAO_FORMAT;
 	    desc.layout = GPUImageLayout_RenderTarget;
 	    desc.type = GPUImageType_RenderTarget | GPUImageType_ShaderResource;
-	    svCheck(graphics_image_create(&desc, &gfx.gbuffer_ssao));
+	    SV_CHECK(graphics_image_create(&desc, &gfx.gbuffer_ssao));
 	}
 	
 	// Aux Image
@@ -410,8 +410,8 @@ namespace sv {
 	    desc.width = 1920u / 2u;
 	    desc.height = 1080u / 2u;
 
-	    svCheck(graphics_image_create(&desc, &gfx.image_aux0));
-	    svCheck(graphics_image_create(&desc, &gfx.image_aux1));
+	    SV_CHECK(graphics_image_create(&desc, &gfx.image_aux0));
+	    SV_CHECK(graphics_image_create(&desc, &gfx.image_aux1));
 	}
 
 	// White Image
@@ -429,15 +429,15 @@ namespace sv {
 	    desc.width = 1u;
 	    desc.height = 1u;
 
-	    svCheck(graphics_image_create(&desc, &gfx.image_white));
+	    SV_CHECK(graphics_image_create(&desc, &gfx.image_white));
 	}
 		
-	return Result_Success;
+	return true;
     }
 
     // STATE CREATION
 
-    static Result create_states()
+    static bool create_states()
     {
 	// Create InputlayoutStates
 	{
@@ -457,7 +457,7 @@ namespace sv {
 
 	    desc.elementCount = 2u;
 	    desc.slotCount = 1u;
-	    svCheck(graphics_inputlayoutstate_create(&desc, &gfx.ils_debug_solid_batch));
+	    SV_CHECK(graphics_inputlayoutstate_create(&desc, &gfx.ils_debug_solid_batch));
 
 	    // TEXT
 	    slots[0] = { 0u, sizeof(TextVertex), false };
@@ -468,7 +468,7 @@ namespace sv {
 
 	    desc.elementCount = 3u;
 	    desc.slotCount = 1u;
-	    svCheck(graphics_inputlayoutstate_create(&desc, &gfx.ils_text));
+	    SV_CHECK(graphics_inputlayoutstate_create(&desc, &gfx.ils_text));
 
 	    // SPRITE
 	    slots[0] = { 0u, sizeof(SpriteVertex), false };
@@ -479,7 +479,7 @@ namespace sv {
 
 	    desc.elementCount = 3u;
 	    desc.slotCount = 1u;
-	    svCheck(graphics_inputlayoutstate_create(&desc, &gfx.ils_sprite));
+	    SV_CHECK(graphics_inputlayoutstate_create(&desc, &gfx.ils_sprite));
 
 	    // MESH
 	    slots[0] = { 0u, sizeof(MeshVertex), false };
@@ -492,7 +492,7 @@ namespace sv {
 
 	    desc.elementCount = 5u;
 	    desc.slotCount = 1u;
-	    svCheck(graphics_inputlayoutstate_create(&desc, &gfx.ils_mesh));
+	    SV_CHECK(graphics_inputlayoutstate_create(&desc, &gfx.ils_mesh));
 
 	    // SKY BOX
 	    slots[0] = { 0u, sizeof(v3_f32), false };
@@ -501,7 +501,7 @@ namespace sv {
 
 	    desc.elementCount = 1u;
 	    desc.slotCount = 1u;
-	    svCheck(graphics_inputlayoutstate_create(&desc, &gfx.ils_sky));
+	    SV_CHECK(graphics_inputlayoutstate_create(&desc, &gfx.ils_sky));
 	}
 
 	// Create BlendStates
@@ -522,7 +522,7 @@ namespace sv {
 
 	    desc.attachmentCount = 1u;
 	    desc.blendConstants = { 0.f, 0.f, 0.f, 0.f };
-	    svCheck(graphics_blendstate_create(&desc, &gfx.bs_transparent));
+	    SV_CHECK(graphics_blendstate_create(&desc, &gfx.bs_transparent));
 
 	    // MESH
 	    foreach(i, GraphicsLimit_AttachmentRT) {
@@ -532,7 +532,7 @@ namespace sv {
 
 	    desc.attachmentCount = GraphicsLimit_AttachmentRT;
 
-	    svCheck(graphics_blendstate_create(&desc, &gfx.bs_mesh));
+	    SV_CHECK(graphics_blendstate_create(&desc, &gfx.bs_mesh));
 
 	    // ADDITION
 	    att[0].blendEnabled = true;
@@ -546,7 +546,7 @@ namespace sv {
 
 	    desc.attachmentCount = 1u;
 	    desc.blendConstants = { 0.f, 0.f, 0.f, 0.f };
-	    svCheck(graphics_blendstate_create(&desc, &gfx.bs_addition));
+	    SV_CHECK(graphics_blendstate_create(&desc, &gfx.bs_addition));
 	}
 
 	// Create DepthStencilStates
@@ -585,12 +585,12 @@ namespace sv {
 	    graphics_rasterizerstate_create(&desc, &gfx.rs_wireframe_back_culling);
 	}
 
-	return Result_Success;
+	return true;
     }
 
     // SAMPLER CREATION
 
-    static Result create_samplers()
+    static bool create_samplers()
     {
 	SamplerDesc desc;
 
@@ -599,44 +599,44 @@ namespace sv {
 	desc.addressModeW = SamplerAddressMode_Wrap;
 	desc.minFilter = SamplerFilter_Linear;
 	desc.magFilter = SamplerFilter_Linear;
-	svCheck(graphics_sampler_create(&desc, &gfx.sampler_def_linear));
+	SV_CHECK(graphics_sampler_create(&desc, &gfx.sampler_def_linear));
 
 	desc.addressModeU = SamplerAddressMode_Wrap;
 	desc.addressModeV = SamplerAddressMode_Wrap;
 	desc.addressModeW = SamplerAddressMode_Wrap;
 	desc.minFilter = SamplerFilter_Nearest;
 	desc.magFilter = SamplerFilter_Nearest;
-	svCheck(graphics_sampler_create(&desc, &gfx.sampler_def_nearest));
+	SV_CHECK(graphics_sampler_create(&desc, &gfx.sampler_def_nearest));
 
 	desc.addressModeU = SamplerAddressMode_Mirror;
 	desc.addressModeV = SamplerAddressMode_Mirror;
 	desc.addressModeW = SamplerAddressMode_Mirror;
 	desc.minFilter = SamplerFilter_Linear;
 	desc.magFilter = SamplerFilter_Linear;
-	svCheck(graphics_sampler_create(&desc, &gfx.sampler_blur));
+	SV_CHECK(graphics_sampler_create(&desc, &gfx.sampler_blur));
 
-	return Result_Success;
+	return true;
     }
 
     // RENDERER RUNTIME
 
-    Result renderer_initialize()
+    bool renderer_initialize()
     {
-	svCheck(compile_shaders());
-	svCheck(create_renderpasses());
-	svCheck(create_samplers());
-	svCheck(create_buffers());
-	svCheck(create_images());
-	svCheck(create_states());
+	SV_CHECK(compile_shaders());
+	SV_CHECK(create_renderpasses());
+	SV_CHECK(create_samplers());
+	SV_CHECK(create_buffers());
+	SV_CHECK(create_images());
+	SV_CHECK(create_states());
 
 	// Create default fonts
-	svCheck(font_create(font_opensans, "system/fonts/OpenSans/OpenSans-Regular.ttf", 128.f, 0u));
-	svCheck(font_create(font_console, "system/fonts/Cousine/Cousine-Regular.ttf", 128.f, 0u));
+	SV_CHECK(font_create(font_opensans, "system/fonts/OpenSans/OpenSans-Regular.ttf", 128.f, 0u));
+	SV_CHECK(font_create(font_console, "system/fonts/Cousine/Cousine-Regular.ttf", 128.f, 0u));
 
-	return Result_Success;
+	return true;
     }
 
-    Result renderer_close()
+    bool renderer_close()
     {
 	// Free graphics objects
 	graphics_destroy_struct(&gfx, sizeof(gfx));
@@ -655,7 +655,7 @@ namespace sv {
 	font_destroy(font_opensans);
 	font_destroy(font_console);
 
-	return Result_Success;
+	return true;
     }
 
     void renderer_begin()
@@ -677,11 +677,11 @@ namespace sv {
 	graphics_present_image(gfx.offscreen, GPUImageLayout_RenderTarget);
     }
 
-    Result load_skymap_image(const char* filepath, GPUImage** pimage)
+    bool load_skymap_image(const char* filepath, GPUImage** pimage)
     {
 	Color* data;
 	u32 w, h;
-	svCheck(load_image(filepath, (void**)& data, &w, &h));
+	SV_CHECK(load_image(filepath, (void**)& data, &w, &h));
 
 
 	u32 image_width = w / 4u;
@@ -753,7 +753,7 @@ namespace sv {
 	desc.width = image_width;
 	desc.height = image_height;
 
-	Result res = graphics_image_create(&desc, pimage);
+	bool res = graphics_image_create(&desc, pimage);
 
 	free(mem);
 	delete[] data;

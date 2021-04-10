@@ -4,14 +4,14 @@
 
 namespace sv {
 
-    Result graphics_shader_initialize()
+    bool graphics_shader_initialize()
     {
-	return Result_Success;
+	return true;
     }
 
-    Result graphics_shader_close()
+    bool graphics_shader_close()
     {
-	return Result_Success;
+	return true;
     }
 
     inline std::string graphics_shader_random_path()
@@ -25,16 +25,16 @@ namespace sv {
 	return filePath;
     }
 
-    Result graphics_shader_compile_string(const ShaderCompileDesc* desc, const char* str, u32 size, List<u8>& data)
+    bool graphics_shader_compile_string(const ShaderCompileDesc* desc, const char* str, u32 size, List<u8>& data)
     {
 	std::string filepath = graphics_shader_random_path();
 
-	Result res = file_write_text(filepath.c_str(), str, size, false);
-	if (result_fail(res)) return res;
+	bool res = file_write_text(filepath.c_str(), str, size, false);
+	if (!res) return false;
 
-	svCheck(graphics_shader_compile_file(desc, filepath.c_str(), data));
+	SV_CHECK(graphics_shader_compile_file(desc, filepath.c_str(), data));
 		
-	svCheck(file_remove(filepath.c_str()));
+	SV_CHECK(file_remove(filepath.c_str()));
 
 	return res;
     }
@@ -54,7 +54,7 @@ namespace sv {
 	offset += size;
     }
     
-    Result graphics_shader_compile_file(const ShaderCompileDesc* desc, const char* srcPath, List<u8>& data)
+    bool graphics_shader_compile_file(const ShaderCompileDesc* desc, const char* srcPath, List<u8>& data)
     {
 	std::string filePath = graphics_shader_random_path();
 
@@ -170,17 +170,20 @@ namespace sv {
 
 	// Read from file
 	{
-	    if (result_fail(file_read_binary(filePath.c_str(), data))) 
-		return Result_CompileError;
+	    if (!file_read_binary(filePath.c_str(), data)) 
+		return false;
 	}
 
 	// Remove tem file
-	svCheck(file_remove(filePath.c_str()));
+	if (!file_remove(filePath.c_str()))
+	{
+	    SV_LOG_ERROR("Can't remove the shader temporal file at '%s'", filePath.c_str());
+	}
 
-	return Result_Success;
+	return true;
     }
 
-    Result graphics_shader_compile_fastbin_from_string(const char* name, ShaderType shaderType, Shader** pShader, const char* src, bool alwaisCompile)
+    bool graphics_shader_compile_fastbin_from_string(const char* name, ShaderType shaderType, Shader** pShader, const char* src, bool alwaisCompile)
     {
 	List<u8> data;
 	size_t hash = hash_string(name);
@@ -190,7 +193,7 @@ namespace sv {
 	desc.shaderType = shaderType;
 
 #if SV_GFX
-	if (alwaisCompile || result_fail(bin_read(hash, data))) {
+	if (alwaisCompile || !bin_read(hash, data)) {
 #else
 	    if (result_fail(bin_read(hash, data))) {
 #endif
@@ -202,8 +205,8 @@ namespace sv {
 		c.minorVersion = 0u;
 		c.shaderType = shaderType;
 
-		svCheck(graphics_shader_compile_string(&c, src, u32(strlen(src)), data));
-		svCheck(bin_write(hash, data.data(), u32(data.size())));
+		SV_CHECK(graphics_shader_compile_string(&c, src, u32(strlen(src)), data));
+		SV_CHECK(bin_write(hash, data.data(), u32(data.size())));
 
 		SV_LOG_INFO("Shader Compiled: '%s'", name);
 	    }
@@ -213,7 +216,7 @@ namespace sv {
 	    return graphics_shader_create(&desc, pShader);
 	}
 
-	Result graphics_shader_compile_fastbin_from_file(const char* name, ShaderType shaderType, Shader** pShader, const char* filePath, bool alwaisCompile)
+	bool graphics_shader_compile_fastbin_from_file(const char* name, ShaderType shaderType, Shader** pShader, const char* filePath, bool alwaisCompile)
 	{
 	    List<u8> data;
 	    size_t hash = hash_string(name);
@@ -223,15 +226,15 @@ namespace sv {
 	    desc.shaderType = shaderType;
 
 #if SV_GFX
-	    if (alwaisCompile || result_fail(bin_read(hash, data))) {
+	    if (alwaisCompile || !bin_read(hash, data)) {
 #else
 		if (result_fail(bin_read(hash, data))) {
 #endif
-		    std::string str;
-		    Result res = file_read_text(filePath, str);
-		    if (result_fail(res)) {
+		    char* str;
+		    size_t str_size;
+		    if (!file_read_text(filePath, &str, &str_size)) {
 			SV_LOG_ERROR("Shader source not found: %s", filePath);
-			return res;
+			return false;
 		    }
 
 		    ShaderCompileDesc c;
@@ -241,13 +244,14 @@ namespace sv {
 		    c.minorVersion = 0u;
 		    c.shaderType = shaderType;
 
-		    res = graphics_shader_compile_string(&c, str.data(), u32(strlen(str.data())), data);
-		    if (result_fail(res)) {
+		    if (!graphics_shader_compile_string(&c, str, u32(strlen(str)), data)) {
 			SV_LOG_ERROR("Can't compile the shader '%s'", filePath);
-			return res;
+			return false;
 		    }
 
-		    svCheck(bin_write(hash, data.data(), u32(data.size())));
+		    free_memory(str);
+
+		    SV_CHECK(bin_write(hash, data.data(), u32(data.size())));
 
 		    SV_LOG_INFO("Shader Compiled: '%s'", name);
 		}

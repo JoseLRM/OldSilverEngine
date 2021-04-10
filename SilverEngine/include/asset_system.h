@@ -90,17 +90,17 @@ namespace sv {
 		AssetPtr asset_ptr; \
 	}
 
-	Result	create_asset(AssetPtr& asset_ptr, const char* asset_type_name);
-	Result	load_asset_from_file(AssetPtr& asset_ptr, const char* filepath);
-	void	unload_asset(AssetPtr& asset_ptr);
+	bool create_asset(AssetPtr& asset_ptr, const char* asset_type_name);
+	bool load_asset_from_file(AssetPtr& asset_ptr, const char* filepath);
+	void unload_asset(AssetPtr& asset_ptr);
 
 	void*		get_asset_content(const AssetPtr& asset_ptr);
 	const char* get_asset_filepath(const AssetPtr& asset_ptr);
 
-	typedef Result(*AssetCreateFn)(void* asset);
-	typedef Result(*AssetLoadFileFn)(void* asset, const char* filepath);
-	typedef Result(*AssetReloadFileFn)(void* asset, const char* filepath);
-	typedef Result(*AssetFreeFn)(void* asset);
+	typedef bool(*AssetCreateFn)(void* asset);
+	typedef bool(*AssetLoadFileFn)(void* asset, const char* filepath);
+	typedef bool(*AssetReloadFileFn)(void* asset, const char* filepath);
+	typedef bool(*AssetFreeFn)(void* asset);
 
 	struct AssetTypeDesc {
 	
@@ -116,7 +116,7 @@ namespace sv {
 
 	};
 
-	Result register_asset_type(const AssetTypeDesc* desc);
+	bool register_asset_type(const AssetTypeDesc* desc);
 
 	void update_asset_files();
 	void free_unused_assets();
@@ -133,7 +133,7 @@ namespace sv {
 			std::string filepath;
 			archive >> filepath;
 
-			if (result_fail(load_asset_from_file(asset_ptr, filepath.c_str()))) {
+			if (!load_asset_from_file(asset_ptr, filepath.c_str())) {
 				SV_LOG_ERROR("Can't load the asset '%s'", filepath.c_str());
 			}
 		}break;

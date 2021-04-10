@@ -15,10 +15,10 @@ namespace sv {
 
     // Functions
 
-    Result create_offscreen(u32 width, u32 height, GPUImage** pImage);
-    Result create_depthstencil(u32 width, u32 height, GPUImage** pImage);
+    bool create_offscreen(u32 width, u32 height, GPUImage** pImage);
+    bool create_depthstencil(u32 width, u32 height, GPUImage** pImage);
 
-    Result load_skymap_image(const char* filepath, GPUImage** pimage);
+    bool load_skymap_image(const char* filepath, GPUImage** pimage);
 
     // TEXT RENDERING (Clip space rendering)
 

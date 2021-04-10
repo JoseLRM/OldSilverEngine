@@ -299,7 +299,7 @@ namespace sv {
 
     };
 
-    Result gui_create(u64 hashcode, GUI** pgui)
+    bool gui_create(u64 hashcode, GUI** pgui)
     {
 	GUI& gui = *new GUI();
 
@@ -311,8 +311,8 @@ namespace sv {
 	// Get last static state
 	{
 	    Archive archive;
-	    Result res = bin_read(hash_string("GUI STATE"), archive);
-	    if (result_okay(res)) {
+	    bool res = bin_read(hash_string("GUI STATE"), archive);
+	    if (res) {
 
 		u32 window_count;
 		archive >> window_count;
@@ -326,16 +326,16 @@ namespace sv {
 		}
 	    }
 	    else {
-		SV_LOG_WARNING("Can't load the last gui static state: %s", result_str(res));
+		SV_LOG_WARNING("Can't load the last gui static state");
 	    }
 	}
 
 	*pgui = (GUI*)& gui;
 
-	return Result_Success;
+	return true;
     }
 
-    Result gui_destroy(GUI* gui_)
+    bool gui_destroy(GUI* gui_)
     {
 	PARSE_GUI();
 	free(gui.buffer);
@@ -352,16 +352,16 @@ namespace sv {
 		archive << s.title << s.show << s.bounds;
 	    }
 
-	    Result res = bin_write(hash_string("GUI STATE"), archive);
+	    bool res = bin_write(hash_string("GUI STATE"), archive);
 
-	    if (result_fail(res)) {
+	    if (!res) {
 
-		SV_LOG_ERROR("Can't save the gui static state: %s", result_str(res));
+		SV_LOG_ERROR("Can't save the gui static state");
 	    }
 	}
 
 	delete& gui;
-	return Result_Success;
+	return true;
     }
 
     ////////////////////////////////////////// UTILS ////////////////////////////////////////////////
@@ -2000,7 +2000,7 @@ namespace sv {
 	return &it->second;
     }
 
-    Result gui_show_window(GUI* gui_, const char* title)
+    bool gui_show_window(GUI* gui_, const char* title)
     {
 	PARSE_GUI();
 	u64 id = hash_string(title);
@@ -2009,13 +2009,13 @@ namespace sv {
 	if (state) {
 
 	    state->show = true;
-	    return Result_Success;
+	    return true;
 	}
 
-	return Result_NotFound;
+	return false;
     }
 
-    Result gui_hide_window(GUI* gui_, const char* title)
+    bool gui_hide_window(GUI* gui_, const char* title)
     {
 	PARSE_GUI();
 	u64 id = hash_string(title);
@@ -2024,10 +2024,10 @@ namespace sv {
 	if (state) {
 
 	    state->show = false;
-	    return Result_Success;
+	    return true;
 	}
 
-	return Result_NotFound;
+	return false;
     }
 
     /////////////////////////////////////// MENU ITEM /////////////////////////////////////////

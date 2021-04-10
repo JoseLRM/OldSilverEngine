@@ -23,24 +23,24 @@ namespace sv {
     static List<Primitive*> primitives_to_destroy;
     static std::mutex primitives_to_destroy_mutex;
 
-    Result graphics_initialize()
+    bool graphics_initialize()
     {
-	Result res;
+	bool res;
 
 	// Initialize API
 	SV_LOG_INFO("Trying to initialize vulkan device");
 	graphics_vulkan_device_prepare(g_Device);
 	res = g_Device.initialize();
 		
-	if (res != Result_Success) {
-	    SV_LOG_ERROR("Can't initialize vulkan device (Error code: %u)", res);
+	if (!res) {
+	    SV_LOG_ERROR("Can't initialize vulkan device");
 	}
 	else SV_LOG_INFO("Vulkan device initialized successfuly");
 
 	// Create default states
 	{
 	    InputLayoutStateDesc desc;
-	    svCheck(graphics_inputlayoutstate_create(&desc, &g_DefInputLayoutState));
+	    SV_CHECK(graphics_inputlayoutstate_create(&desc, &g_DefInputLayoutState));
 	}
 	{
 	    BlendAttachmentDesc att;
@@ -58,7 +58,7 @@ namespace sv {
 	    desc.pAttachments = &att;
 	    desc.blendConstants = { 0.f, 0.f, 0.f, 0.f };
 
-	    svCheck(graphics_blendstate_create(&desc, &g_DefBlendState));
+	    SV_CHECK(graphics_blendstate_create(&desc, &g_DefBlendState));
 	}
 	{
 	    DepthStencilStateDesc desc;
@@ -68,14 +68,14 @@ namespace sv {
 	    desc.stencilTestEnabled = false;
 	    desc.readMask = 0xFF;
 	    desc.writeMask = 0xFF;
-	    svCheck(graphics_depthstencilstate_create(&desc, &g_DefDepthStencilState));
+	    SV_CHECK(graphics_depthstencilstate_create(&desc, &g_DefDepthStencilState));
 	}
 	{
 	    RasterizerStateDesc desc;
 	    desc.wireframe = false;
 	    desc.cullMode = RasterizerCullMode_None;
 	    desc.clockwise = true;
-	    svCheck(graphics_rasterizerstate_create(&desc, &g_DefRasterizerState));
+	    SV_CHECK(graphics_rasterizerstate_create(&desc, &g_DefRasterizerState));
 	}
 
 	// Graphic State
@@ -113,10 +113,10 @@ namespace sv {
 	    GraphicsPipelineState_RenderPass
 	    ;
 
-	svCheck(graphics_shader_initialize());
+	SV_CHECK(graphics_shader_initialize());
 
 
-	return Result_Success;
+	return true;
     }
 
     static inline void destroyUnusedPrimitive(Primitive_internal& primitive)
@@ -131,7 +131,7 @@ namespace sv {
 
     static void destroy_primitives();
 
-    Result graphics_close()
+    bool graphics_close()
     {
 	graphics_destroy(g_DefBlendState);
 	graphics_destroy(g_DefDepthStencilState);
@@ -265,19 +265,19 @@ namespace sv {
 	}
 
 	g_Device.api = GraphicsAPI_Invalid;
-	svCheck(g_Device.close());
+	SV_CHECK(g_Device.close());
 
-	svCheck(graphics_shader_close());
+	SV_CHECK(graphics_shader_close());
 
-	return Result_Success;
+	return true;
     }
 
-    SV_INLINE static Result destroy_graphics_primitive(Primitive* primitive)
+    SV_INLINE static bool destroy_graphics_primitive(Primitive* primitive)
     {
 	if (g_Device.api == GraphicsAPI_Invalid)
 	{
 	    SV_LOG_ERROR("Trying to destroy a graphics primitive after the system is closed");
-	    return Result_InvalidUsage;
+	    return false;
 	}
 
 	Primitive_internal* p = reinterpret_cast<Primitive_internal*>(primitive);
@@ -341,7 +341,7 @@ namespace sv {
 	}
 	}
 
-	return Result_Success;
+	return true;
     }
 
     static void destroy_primitives()
@@ -579,13 +579,13 @@ namespace sv {
 
     ////////////////////////////////////////// PRIMITIVES /////////////////////////////////////////
 
-    Result graphics_buffer_create(const GPUBufferDesc* desc, GPUBuffer** buffer)
+    bool graphics_buffer_create(const GPUBufferDesc* desc, GPUBuffer** buffer)
     {
 #if SV_GFX
 
 	if (desc->usage == ResourceUsage_Static && desc->CPUAccess & CPUAccess_Write) {
 	    SV_LOG_ERROR("Buffer with static usage can't have CPU access");
-	    return Result_InvalidUsage;
+	    return false;
 	}
 #endif
 		
@@ -595,7 +595,7 @@ namespace sv {
 	    *buffer = (GPUBuffer*)g_Device.bufferAllocator->alloc();
 	}
 	// Create API primitive
-	svCheck(g_Device.create(GraphicsPrimitiveType_Buffer, desc, (Primitive_internal*)*buffer));
+	SV_CHECK(g_Device.create(GraphicsPrimitiveType_Buffer, desc, (Primitive_internal*)*buffer));
 
 	// Set parameters
 	GPUBuffer_internal* p = reinterpret_cast<GPUBuffer_internal*>(*buffer);
@@ -606,10 +606,10 @@ namespace sv {
 	p->info.indexType = desc->indexType;
 	p->info.CPUAccess = desc->CPUAccess;
 
-	return Result_Success;
+	return true;
     }
 
-    Result graphics_shader_create(const ShaderDesc* desc, Shader** shader)
+    bool graphics_shader_create(const ShaderDesc* desc, Shader** shader)
     {
 #if SV_GFX
 #endif
@@ -621,17 +621,17 @@ namespace sv {
 	}
 
 	// Create API primitive
-	svCheck(g_Device.create(GraphicsPrimitiveType_Shader, desc, (Primitive_internal*)* shader));
+	SV_CHECK(g_Device.create(GraphicsPrimitiveType_Shader, desc, (Primitive_internal*)* shader));
 
 	// Set parameters
 	Shader_internal* p = reinterpret_cast<Shader_internal*>(*shader);
 	p->type = GraphicsPrimitiveType_Shader;
 	p->info.shader_type = desc->shaderType;
 
-	return Result_Success;
+	return true;
     }
 
-    Result graphics_image_create(const GPUImageDesc* desc, GPUImage** image)
+    bool graphics_image_create(const GPUImageDesc* desc, GPUImage** image)
     {
 #if SV_GFX
 #endif
@@ -643,7 +643,7 @@ namespace sv {
 	}
 
 	// Create API primitive
-	svCheck(g_Device.create(GraphicsPrimitiveType_Image, desc, (Primitive_internal*)* image));
+	SV_CHECK(g_Device.create(GraphicsPrimitiveType_Image, desc, (Primitive_internal*)* image));
 
 	// Set parameters
 	GPUImage_internal* p = reinterpret_cast<GPUImage_internal*>(*image);
@@ -653,10 +653,10 @@ namespace sv {
 	p->info.height = desc->height;
 	p->info.type = desc->type;
 
-	return Result_Success;
+	return true;
     }
 
-    Result graphics_sampler_create(const SamplerDesc* desc, Sampler** sampler)
+    bool graphics_sampler_create(const SamplerDesc* desc, Sampler** sampler)
     {
 #if SV_GFX
 #endif
@@ -668,16 +668,16 @@ namespace sv {
 	}
 
 	// Create API primitive
-	svCheck(g_Device.create(GraphicsPrimitiveType_Sampler, desc, (Primitive_internal*)* sampler));
+	SV_CHECK(g_Device.create(GraphicsPrimitiveType_Sampler, desc, (Primitive_internal*)* sampler));
 
 	// Set parameters
 	Sampler_internal* p = reinterpret_cast<Sampler_internal*>(*sampler);
 	p->type = GraphicsPrimitiveType_Sampler;
 
-	return Result_Success;
+	return true;
     }
 
-    Result graphics_renderpass_create(const RenderPassDesc* desc, RenderPass** renderPass)
+    bool graphics_renderpass_create(const RenderPassDesc* desc, RenderPass** renderPass)
     {
 #if SV_GFX
 #endif
@@ -689,7 +689,7 @@ namespace sv {
 	}
 
 	// Create API primitive
-	svCheck(g_Device.create(GraphicsPrimitiveType_RenderPass, desc, (Primitive_internal*)* renderPass));
+	SV_CHECK(g_Device.create(GraphicsPrimitiveType_RenderPass, desc, (Primitive_internal*)* renderPass));
 
 	// Set parameters
 	RenderPass_internal* p = reinterpret_cast<RenderPass_internal*>(*renderPass);
@@ -708,10 +708,10 @@ namespace sv {
 	    p->info.attachments[i] = desc->pAttachments[i];
 	}
 
-	return Result_Success;
+	return true;
     }
 
-    Result graphics_inputlayoutstate_create(const InputLayoutStateDesc* desc, InputLayoutState** inputLayoutState)
+    bool graphics_inputlayoutstate_create(const InputLayoutStateDesc* desc, InputLayoutState** inputLayoutState)
     {
 #if SV_GFX
 #endif
@@ -723,7 +723,7 @@ namespace sv {
 	}
 
 	// Create API primitive
-	svCheck(g_Device.create(GraphicsPrimitiveType_InputLayoutState, desc, (Primitive_internal*)* inputLayoutState));
+	SV_CHECK(g_Device.create(GraphicsPrimitiveType_InputLayoutState, desc, (Primitive_internal*)* inputLayoutState));
 
 	// Set parameters
 	InputLayoutState_internal* p = reinterpret_cast<InputLayoutState_internal*>(*inputLayoutState);
@@ -739,10 +739,10 @@ namespace sv {
 	    p->info.elements[i] = desc->pElements[i];
 	}
 
-	return Result_Success;
+	return true;
     }
 
-    Result graphics_blendstate_create(const BlendStateDesc* desc, BlendState** blendState)
+    bool graphics_blendstate_create(const BlendStateDesc* desc, BlendState** blendState)
     {
 #if SV_GFX
 #endif
@@ -754,7 +754,7 @@ namespace sv {
 	}
 
 	// Create API primitive
-	svCheck(g_Device.create(GraphicsPrimitiveType_BlendState, desc, (Primitive_internal*)* blendState));
+	SV_CHECK(g_Device.create(GraphicsPrimitiveType_BlendState, desc, (Primitive_internal*)* blendState));
 
 	// Set parameters
 	BlendState_internal* p = reinterpret_cast<BlendState_internal*>(*blendState);
@@ -767,10 +767,10 @@ namespace sv {
 	    p->info.attachments[i] = desc->pAttachments[i];
 	}
 
-	return Result_Success;
+	return true;
     }
 
-    Result graphics_depthstencilstate_create(const DepthStencilStateDesc* desc, DepthStencilState** depthStencilState)
+    bool graphics_depthstencilstate_create(const DepthStencilStateDesc* desc, DepthStencilState** depthStencilState)
     {
 #if SV_GFX
 #endif
@@ -782,17 +782,17 @@ namespace sv {
 	}
 
 	// Create API primitive
-	svCheck(g_Device.create(GraphicsPrimitiveType_DepthStencilState, desc, (Primitive_internal*)* depthStencilState));
+	SV_CHECK(g_Device.create(GraphicsPrimitiveType_DepthStencilState, desc, (Primitive_internal*)* depthStencilState));
 
 	// Set parameters
 	DepthStencilState_internal* p = reinterpret_cast<DepthStencilState_internal*>(*depthStencilState);
 	p->type = GraphicsPrimitiveType_DepthStencilState;
 	memcpy(&p->info, desc, sizeof(DepthStencilStateInfo));
 
-	return Result_Success;
+	return true;
     }
 
-    Result graphics_rasterizerstate_create(const RasterizerStateDesc* desc, RasterizerState** rasterizerState)
+    bool graphics_rasterizerstate_create(const RasterizerStateDesc* desc, RasterizerState** rasterizerState)
     {
 #if SV_GFX
 #endif
@@ -804,14 +804,14 @@ namespace sv {
 	}
 
 	// Create API primitive
-	svCheck(g_Device.create(GraphicsPrimitiveType_DepthStencilState, desc, (Primitive_internal*)* rasterizerState));
+	SV_CHECK(g_Device.create(GraphicsPrimitiveType_DepthStencilState, desc, (Primitive_internal*)* rasterizerState));
 
 	// Set parameters
 	RasterizerState_internal* p = reinterpret_cast<RasterizerState_internal*>(*rasterizerState);
 	p->type = GraphicsPrimitiveType_RasterizerState;
 	memcpy(&p->info, desc, sizeof(RasterizerStateInfo));
 
-	return Result_Success;
+	return true;
     }
 
     void graphics_destroy(Primitive* primitive)
@@ -1557,14 +1557,14 @@ namespace sv {
 	g_Device.image_clear(image, oldLayout, newLayout, clearColor, depth, stencil, cmd);
     }
 
-    Result graphics_shader_include_write(const char* name, const char* str)
+    bool graphics_shader_include_write(const char* name, const char* str)
     {
 	std::string filePath = "library/shader_utils/";
 	filePath += name;
 	filePath += ".hlsl";
 
 #if SV_GFX
-	//TODO: if (std::filesystem::exists(filePath)) return Result_Success;
+	//TODO: if (std::filesystem::exists(filePath)) return true;
 #endif
 
 	return file_write_text(filePath.c_str(), str, strlen(str));

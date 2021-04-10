@@ -37,12 +37,12 @@ namespace sv {
 
     };
 
-    SV_API Result set_active_scene(const char* name);
-    SV_API Result save_scene(Scene* scene);
-    SV_API Result save_scene(Scene* scene, const char* filepath);
-    SV_API Result clear_scene(Scene* scene);
+    SV_API bool set_active_scene(const char* name);
+    SV_API bool save_scene(Scene* scene);
+    SV_API bool save_scene(Scene* scene, const char* filepath);
+    SV_API bool clear_scene(Scene* scene);
 
-    SV_API Result create_entity_model(Scene* scene, Entity parent, const char* filepath);
+    SV_API bool create_entity_model(Scene* scene, Entity parent, const char* filepath);
 
     SV_API CameraComponent* get_main_camera(Scene* scene);
 

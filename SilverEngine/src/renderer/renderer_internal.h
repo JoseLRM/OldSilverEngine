@@ -177,8 +177,8 @@ namespace sv {
     extern Font font_opensans;
     extern Font font_console;
 
-    Result	renderer_initialize();
-    Result	renderer_close();
+    bool renderer_initialize();
+    bool renderer_close();
 
     SV_INLINE GPUBuffer* get_batch_buffer(u32 size, CommandList cmd)
     {

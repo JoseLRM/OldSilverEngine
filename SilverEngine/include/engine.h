@@ -6,14 +6,14 @@ namespace sv {
 
     struct Scene;
 
-    typedef Result(*UserInitializeFn)();
+    typedef bool(*UserInitializeFn)();
     typedef void(*UserUpdateFn)();
-    typedef Result(*UserCloseFn)();
+    typedef bool(*UserCloseFn)();
     typedef bool(*UserValidateSceneFn)(const char* name);
     typedef bool(*UserGetSceneFilepathFn)(const char* name, char* filepath);
-    typedef Result(*UserInitializeSceneFn)(Scene* scene, Archive* parchive);
-    typedef Result(*UserCloseSceneFn)(Scene* scene);
-    typedef Result(*UserSerializeSceneFn)(Scene* scene, Archive* parchive);
+    typedef bool(*UserInitializeSceneFn)(Scene* scene, Archive* parchive);
+    typedef bool(*UserCloseSceneFn)(Scene* scene);
+    typedef bool(*UserSerializeSceneFn)(Scene* scene, Archive* parchive);
     
     struct UserCallbacks {
 	UserInitializeFn initialize;
@@ -53,19 +53,19 @@ namespace sv {
 	return engine.user.get_scene_filepath ? engine.user.get_scene_filepath(name, filepath) : false;
     }
 
-    SV_INLINE Result user_initialize_scene(Scene* scene, Archive* parchive)
+    SV_INLINE bool user_initialize_scene(Scene* scene, Archive* parchive)
     {
-	return engine.user.initialize_scene ? engine.user.initialize_scene(scene, parchive) : Result_Success;
+	return engine.user.initialize_scene ? engine.user.initialize_scene(scene, parchive) : true;
     }
 
-    SV_INLINE Result user_serialize_scene(Scene* scene, Archive* parchive)
+    SV_INLINE bool user_serialize_scene(Scene* scene, Archive* parchive)
     {
-	return engine.user.serialize_scene ? engine.user.serialize_scene(scene, parchive) : Result_Success;
+	return engine.user.serialize_scene ? engine.user.serialize_scene(scene, parchive) : true;
     }
 
-    SV_INLINE Result user_close_scene(Scene* scene)
+    SV_INLINE bool user_close_scene(Scene* scene)
     {
-	return engine.user.close_scene ? engine.user.close_scene(scene) : Result_Success;
+	return engine.user.close_scene ? engine.user.close_scene(scene) : true;
     }
     
 }

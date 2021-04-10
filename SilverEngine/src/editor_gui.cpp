@@ -286,10 +286,10 @@ namespace sv {
 	AssetPackage* package;
 	if (gui_recive_package(dev.gui, (void**)&package, nullptr, ASSET_BROWSER_PACKAGE_TEXTURE)) {
 
-	    Result res = load_asset_from_file(*texture, package->filepath);
-	    if (result_fail(res)) {
+	    bool res = load_asset_from_file(*texture, package->filepath);
+	    if (!res) {
 
-		SV_LOG_ERROR("Can't load the texture '%s': %s", package->filepath, result_str(res));
+		SV_LOG_ERROR("Can't load the texture '%s'", package->filepath);
 	    }
 	}
 
@@ -311,10 +311,10 @@ namespace sv {
 	AssetPackage* package;
 	if (gui_recive_package(dev.gui, (void**)&package, nullptr, ASSET_BROWSER_PACKAGE_MESH)) {
 
-	    Result res = load_asset_from_file(*mesh, package->filepath);
-	    if (result_fail(res)) {
+	    bool res = load_asset_from_file(*mesh, package->filepath);
+	    if (!res) {
 
-		SV_LOG_ERROR("Can't load the mesh '%s': %s", package->filepath, result_str(res));
+		SV_LOG_ERROR("Can't load the mesh '%s'", package->filepath);
 	    }
 	}
 
@@ -336,10 +336,10 @@ namespace sv {
 	AssetPackage* package;
 	if (gui_recive_package(dev.gui, (void**)&package, nullptr, ASSET_BROWSER_PACKAGE_MATERIAL)) {
 
-	    Result res = load_asset_from_file(*material, package->filepath);
-	    if (result_fail(res)) {
+	    bool res = load_asset_from_file(*material, package->filepath);
+	    if (!res) {
 
-		SV_LOG_ERROR("Can't load the material '%s': %s", package->filepath, result_str(res));
+		SV_LOG_ERROR("Can't load the material '%s'", package->filepath);
 	    }
 	}
 

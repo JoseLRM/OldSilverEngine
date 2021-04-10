@@ -121,7 +121,7 @@ namespace sv {
     u32				componentAllocatorCount(Scene* scene, CompID compId);								// Return the number of valid components in all the pools
     bool			componentAllocatorIsEmpty(Scene* scene, CompID compID);								// Return if the allocator is empty
 
-    Result initialize_scene(Scene** pscene, const char* name)
+    bool initialize_scene(Scene** pscene, const char* name)
     {
 	Scene_internal& scene = *new Scene_internal();
 	Scene* scene_ = reinterpret_cast<Scene*>(&scene);
@@ -139,8 +139,8 @@ namespace sv {
 	    sprintf(scene.name, "%s", name);
 	}
 
-	svCheck(gui_create(hash_string(name), &scene.gui));
-	//svCheck(create_audio_device(&scene.audio_device));
+	SV_CHECK(gui_create(hash_string(name), &scene.gui));
+	//SV_CHECK(create_audio_device(&scene.audio_device));
 
 	bool deserialize = false;
 	Archive archive;
@@ -154,9 +154,9 @@ namespace sv {
 
 	    if (exist) {
 
-		Result res = archive.openFile(filepath);
+		bool res = archive.openFile(filepath);
 
-		if (result_fail(res)) {
+		if (!res) {
 
 		    SV_LOG_ERROR("Can't deserialize the scene '%s' at '%s'", name, filepath);
 		}
@@ -211,7 +211,7 @@ namespace sv {
 
 			    if (reg.ID == invalidCompID) {
 				SV_LOG_ERROR("Component '%s' doesn't exist", reg.name.c_str());
-				return Result_InvalidFormat;
+				return false;
 			    }
 
 			}
@@ -356,17 +356,16 @@ namespace sv {
 	}
 
 	// User Init
-	Result res = user_initialize_scene(scene_, deserialize ? &archive : nullptr);
-	if (result_fail(res)) {
+	if (!user_initialize_scene(scene_, deserialize ? &archive : nullptr)) {
 	    // TODO: handle error
-	    return res;
+	    return false;
 	}
 	
 	*pscene = scene_;
-	return Result_Success;
+	return true;
     }
 
-    Result close_scene(Scene* scene_)
+    bool close_scene(Scene* scene_)
     {
 	PARSE_SCENE();
 
@@ -387,37 +386,37 @@ namespace sv {
 	    entityClear(scene.entityData);
 	}
 		
-	return Result_Success;
+	return true;
     }
 
-    Result set_active_scene(const char* name)
+    bool set_active_scene(const char* name)
     {
 	size_t name_size = strlen(name);
 
 	if (name_size > SCENENAME_SIZE) {
 	    SV_LOG_ERROR("The scene name '%s' is to long, max chars = %u", name, SCENENAME_SIZE);
-	    return Result_InvalidUsage;
+	    return false;
 	}
 	
 	// validate scene
 	if (user_validate_scene(name)) {
 	    memcpy(engine.next_scene_name, name, name_size + 1u);
-	    return Result_Success;
+	    return true;
 	}
-	return Result_NotFound;
+	return false;
     }
 
-    SV_API Result save_scene(Scene* scene)
+    SV_API bool save_scene(Scene* scene)
     {
 	char filepath[FILEPATH_SIZE];
 	if (user_get_scene_filepath(scene->name, filepath)) {
 
 	    return save_scene(scene, filepath);
 	}
-	else return Result_NotFound;
+	else return false;
     }
 
-    Result save_scene(Scene* scene_, const char* filepath)
+    bool save_scene(Scene* scene_, const char* filepath)
     {
 	PARSE_SCENE();
 
@@ -502,7 +501,7 @@ namespace sv {
 	return archive.saveFile(filepath);
     }
 
-    Result clear_scene(Scene* scene_)
+    bool clear_scene(Scene* scene_)
     {
 	PARSE_SCENE();
 
@@ -519,21 +518,21 @@ namespace sv {
 	entityClear(scene.entityData);
 
 	// user initialize scene
-	svCheck(user_initialize_scene(scene_, nullptr));
+	SV_CHECK(user_initialize_scene(scene_, nullptr));
 
-	return Result_Success;
+	return true;
     }
 
-    Result create_entity_model(Scene* scene_, Entity parent, const char* folderpath)
+    bool create_entity_model(Scene* scene_, Entity parent, const char* folderpath)
     {
 	//PARSE_SCENE();
 		
 	FolderIterator it;
 	FolderElement element;
 
-	Result res = folder_iterator_begin(folderpath, &it, &element);
+	bool res = folder_iterator_begin(folderpath, &it, &element);
 
-	if (result_okay(res)) {
+	if (res) {
 	    
 	    do {
 
@@ -548,9 +547,9 @@ namespace sv {
 
 		    MeshAsset mesh;
 
-		    Result res = load_asset_from_file(mesh, filepath);
+		    bool res = load_asset_from_file(mesh, filepath);
 
-		    if (result_okay(res)) {
+		    if (res) {
 					
 			Entity entity = create_entity(scene_, parent);
 			MeshComponent* comp = add_component<MeshComponent>(scene_, entity);
@@ -566,7 +565,7 @@ namespace sv {
 			    MaterialAsset mat;
 			    res = load_asset_from_file(mat, m->model_material_filepath.c_str());
 
-			    if (result_okay(res)) {
+			    if (res) {
 							
 				comp->material = mat;
 			    }
@@ -581,7 +580,7 @@ namespace sv {
 	}
 	else return res;
 	
-	return Result_Success;
+	return true;
     }
 
     static void update_camera_matrices(CameraComponent& camera, const v3_f32& position, const v4_f32& rotation)

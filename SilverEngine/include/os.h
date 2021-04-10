@@ -38,17 +38,17 @@ namespace sv {
     SV_API bool path_is_absolute(const char* path);
     SV_API void path_clear(char* path);
 
-    SV_API Result file_read_binary(const char* filepath, u8** pData, size_t* pSize);
-    SV_API Result file_read_binary(const char* filepath, List<u8>& data);
-    SV_API Result file_read_text(const char* filepath, std::string& str);
-    SV_API Result file_write_binary(const char* filepath, const u8* data, size_t size, bool append = false);
-    SV_API Result file_write_text(const char* filepath, const char* str, size_t size, bool append = false);
+    SV_API bool file_read_binary(const char* filepath, u8** pData, size_t* pSize);
+    SV_API bool file_read_binary(const char* filepath, List<u8>& data);
+    SV_API bool file_read_text(const char* filepath, char** pstr, size_t* psize);
+    SV_API bool file_write_binary(const char* filepath, const u8* data, size_t size, bool append = false);
+    SV_API bool file_write_text(const char* filepath, const char* str, size_t size, bool append = false);
 
-    SV_API Result file_remove(const char* filepath);
-    SV_API Result file_copy(const char* srcpath, const char* dstpath);
-    SV_API bool   file_exists(const char* filepath);
+    SV_API bool file_remove(const char* filepath);
+    SV_API bool file_copy(const char* srcpath, const char* dstpath);
+    SV_API bool file_exists(const char* filepath);
 
-    SV_API Result file_date(const char* filepath, Date* create, Date* last_write, Date* last_access);
+    SV_API bool file_date(const char* filepath, Date* create, Date* last_write, Date* last_access);
 
     struct FolderIterator {
 	u64 _handle;
@@ -63,17 +63,17 @@ namespace sv {
 	const char* extension;
     };
 
-    SV_API Result folder_iterator_begin(const char* folderpath, FolderIterator* iterator, FolderElement* element);
+    SV_API bool folder_iterator_begin(const char* folderpath, FolderIterator* iterator, FolderElement* element);
     SV_API bool folder_iterator_next(FolderIterator* iterator, FolderElement* element);
     SV_API void folder_iterator_close(FolderIterator* iterator);
     
-    SV_API Result load_image(const char* filePath, void** pdata, u32* width, u32* height);
+    SV_API bool load_image(const char* filePath, void** pdata, u32* width, u32* height);
 
-    SV_API Result bin_read(size_t hash, List<u8>& data);
-    SV_API Result bin_read(size_t hash, Archive& archive);
+    SV_API bool bin_read(size_t hash, List<u8>& data);
+    SV_API bool bin_read(size_t hash, Archive& archive);
 
-    SV_API Result bin_write(size_t hash, const void* data, size_t size);
-    SV_API Result bin_write(size_t hash, Archive& archive);
+    SV_API bool bin_write(size_t hash, const void* data, size_t size);
+    SV_API bool bin_write(size_t hash, Archive& archive);
     
     enum MouseButton : u32 {
 	MouseButton_Left,

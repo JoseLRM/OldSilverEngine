@@ -122,16 +122,16 @@ namespace sv {
 	_size -= size;
     }
 
-    Result Archive::openFile(const char* filePath)
+    bool Archive::openFile(const char* filePath)
     {
 	_pos = 0u;
-	svCheck(file_read_binary(filePath, &_data, &_size));
-	if (_size < sizeof(Version)) return Result_InvalidFormat;
+	SV_CHECK(file_read_binary(filePath, &_data, &_size));
+	if (_size < sizeof(Version)) return false;
 	this->operator>>(version);
-	return Result_Success;
+	return true;
     }
 
-    Result Archive::saveFile(const char* filePath, bool append)
+    bool Archive::saveFile(const char* filePath, bool append)
     {
 	return file_write_binary(filePath, _data, _size, append);
     }
@@ -160,6 +160,59 @@ namespace sv {
 	}
     }
 
+    bool read_var_file(const char* filepath, List<Var>& vars)
+    {
+	char* text;
+	size_t size;
+	
+	if (file_read_text(filepath, &text, &size)) {
+
+	    const char* it = text;
+	    u32 line_count = 0u;
+
+	    while (true) {
+
+		const char* line = it;
+		Var var;
+
+		while (*it != ' ' || *it != '\n' || *it != '\0' || *it != '=') {
+		    ++it;
+		}
+
+		if (*it == '\n' || *it == '\0') {
+		    SV_LOG_ERROR("Value not found at line %u", line_count);
+		}		
+		else {
+		    size_t name_size = it - line >= VARNAME_SIZE;
+
+		    if (name_size >= VARNAME_SIZE) {
+			SV_LOG_ERROR("The value name at line %u is too large, the limit is %u chars", line_count, VARNAME_SIZE);
+		    }
+		    else if (name_size != 0u) {
+
+			memcpy(var.name, line, name_size);
+			var.name[name_size] = '\0';
+
+			//const char* value = it;
+			++it;
+			while (*it != '\n' || *it != '\0') {
+			    ++it;
+			}
+			
+		    }
+		}
+
+		if (*it == '\0')
+		    break;
+		else ++it;
+	    }
+	    
+	    free_memory(text);
+	    return true;
+	}
+	return false;
+    }
+    
     // TEMP
     XMMATRIX math_matrix_view(const v3_f32& position, const v4_f32& directionQuat)
     {

@@ -258,11 +258,11 @@ namespace sv {
 		SV_LOG_ERROR("TODO");
 	}
 
-	Result mesh_create_buffers(Mesh& mesh, ResourceUsage usage)
+	bool mesh_create_buffers(Mesh& mesh, ResourceUsage usage)
 	{
 		ASSERT_VERTICES();
 		SV_ASSERT(usage != ResourceUsage_Staging);
-		if (mesh.vbuffer || mesh.ibuffer) return Result_Duplicated;
+		if (mesh.vbuffer || mesh.ibuffer) return false;
 
 		std::vector<MeshVertex> vertexData;
 		constructVertexData(mesh, vertexData);
@@ -274,28 +274,28 @@ namespace sv {
 		desc.size = u32(vertexData.size() * sizeof(MeshVertex));
 		desc.pData = vertexData.data();
 
-		svCheck(graphics_buffer_create(&desc, &mesh.vbuffer));
+		SV_CHECK(graphics_buffer_create(&desc, &mesh.vbuffer));
 
 		desc.indexType = IndexType_32;
 		desc.bufferType = GPUBufferType_Index;
 		desc.size = u32(mesh.indices.size() * sizeof(u32));
 		desc.pData = mesh.indices.data();
 
-		svCheck(graphics_buffer_create(&desc, &mesh.ibuffer));
+		SV_CHECK(graphics_buffer_create(&desc, &mesh.ibuffer));
 
 		graphics_name_set(mesh.vbuffer, "MeshVertexBuffer");
 		graphics_name_set(mesh.ibuffer, "MeshIndexBuffer");
 
-		return Result_Success;
+		return true;
 	}
 
-	Result mesh_update_buffers(Mesh& mesh, CommandList cmd)
+	bool mesh_update_buffers(Mesh& mesh, CommandList cmd)
 	{
 		SV_LOG_ERROR("TODO");
-		return Result_TODO;
+		return false;
 	}
 
-	Result mesh_clear(Mesh& mesh)
+	bool mesh_clear(Mesh& mesh)
 	{
 		mesh.positions.clear();
 		mesh.normals.clear();
@@ -304,7 +304,7 @@ namespace sv {
 
 		graphics_destroy(mesh.vbuffer);
 		graphics_destroy(mesh.ibuffer);
-		return Result_Success;
+		return true;
 	}
 
 	static std::string get_texture(const aiMaterial& mat, aiTextureType type)
@@ -324,14 +324,14 @@ namespace sv {
 		return str;
 	}
 
-	Result load_model(const char* filepath, ModelInfo& model_info)
+	bool load_model(const char* filepath, ModelInfo& model_info)
 	{
 		std::string folderpath = filepath;
 
 		Assimp::Importer importer;
 
 		const aiScene* scene = importer.ReadFile(filepath, aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_CalcTangentSpace | aiProcess_OptimizeMeshes);
-		if (scene == nullptr || !scene->HasMeshes()) return Result_InvalidFormat;
+		if (scene == nullptr || !scene->HasMeshes()) return false;
 
 		// Compute folder path
 		{
@@ -467,12 +467,12 @@ namespace sv {
 
 		model_info.folderpath = folderpath;
 
-		return Result_Success;
+		return true;
 	}
 
-	static Result import_texture(const ModelInfo& model_info, u32 index, const std::string& srcpath, const std::string& dstpath, std::string* textures)
+	static bool import_texture(const ModelInfo& model_info, u32 index, const std::string& srcpath, const std::string& dstpath, std::string* textures)
 	{
-		if (srcpath.empty()) return Result_Success;
+		if (srcpath.empty()) return true;
 
 		// Compute src name
 		std::string srcname;
@@ -494,9 +494,9 @@ namespace sv {
 		srcname = dstpath + srcname;
 
 		std::string src = model_info.folderpath + srcpath;
-		Result res = file_copy(src.c_str(), srcname.c_str());
+		bool res = file_copy(src.c_str(), srcname.c_str());
 
-		if (result_okay(res)) {
+		if (res) {
 			textures[index] = std::move(srcname);
 		}
 		else {
@@ -507,7 +507,7 @@ namespace sv {
 		return res;
 	}
 
-	Result import_model(const char* filepath_, const ModelInfo& model_info)
+	bool import_model(const char* filepath_, const ModelInfo& model_info)
 	{
 		Archive archive;
 
@@ -573,7 +573,7 @@ namespace sv {
 				archive << textures[3];
 			}
 
-			svCheck(archive.saveFile(ss.str().c_str()));
+			SV_CHECK(archive.saveFile(ss.str().c_str()));
 		}
 
 		// Save meshes
@@ -602,30 +602,30 @@ namespace sv {
 				archive << mat.filepath;
 			}
 
-			svCheck(archive.saveFile(ss.str().c_str()));
+			SV_CHECK(archive.saveFile(ss.str().c_str()));
 		}
 
-		return Result_Success;
+		return true;
 	}
 
-	Result load_mesh(const char* filepath, Mesh& mesh)
+	bool load_mesh(const char* filepath, Mesh& mesh)
 	{
 		Archive archive;
 
-		svCheck(archive.openFile(filepath));
+		SV_CHECK(archive.openFile(filepath));
 
 		archive >> mesh.positions >> mesh.indices >> mesh.texcoords >> mesh.normals >> mesh.tangents >> mesh.bitangents;
 		archive >> mesh.model_transform_matrix;
 		archive >> mesh.model_material_filepath;
 
-		return Result_Success;
+		return true;
 	}
 
-	Result load_material(const char* filepath_, Material& mat)
+	bool load_material(const char* filepath_, Material& mat)
 	{
 		Archive archive;
 
-		svCheck(archive.openFile(filepath_));
+		SV_CHECK(archive.openFile(filepath_));
 
 		archive >> mat.diffuse_color;
 		archive >> mat.specular_color;
@@ -650,7 +650,7 @@ namespace sv {
 		if (texpath.size())
 			load_asset_from_file(mat.emissive_map, texpath.c_str());
 		
-		return Result_Success;
+		return true;
 	}
 
 }

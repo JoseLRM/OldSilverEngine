@@ -41,19 +41,19 @@ namespace sv {
 
     static GlobalConsoleData console;
 
-    static Result command_exit(const char** args, u32 argc)
+    static bool command_exit(const char** args, u32 argc)
     {
 	dev.console_active = false;
-	return Result_Success;
+	return true;
     }
 
-    static Result command_close(const char** args, u32 argc)
+    static bool command_close(const char** args, u32 argc)
     {
 	engine.close_request = true;
-	return Result_Success;
+	return true;
     }
 
-    static Result command_test(const char** args, u32 argc)
+    static bool command_test(const char** args, u32 argc)
     {
 	if (argc == 0u)
 	    foreach(i, 100) {
@@ -66,77 +66,73 @@ namespace sv {
 		console_notify("ARG", args[i]);
 	    }
 
-	return Result_Success;
+	return true;
     }
 
-    static Result command_clear(const char** args, u32 argc)
+    static bool command_clear(const char** args, u32 argc)
     {
 	console_clear();
-	return Result_Success;
+	return true;
     }
 
-    static Result command_scene(const char** args, u32 argc) {
+    static bool command_scene(const char** args, u32 argc) {
 
 	if (argc > 1u) {
 	    SV_LOG_ERROR("Too much arguments");
-	    return Result_InvalidUsage;
+	    return false;
 	}
 
 	if (argc == 0u) {
 	    SV_LOG_ERROR("Should specify the scene name");
-	    return Result_InvalidUsage;
+	    return false;
 	}
 
 	const char* name = args[0];
 
-	Result res = set_active_scene(name);
-
-	if (result_okay(res)) SV_LOG("Loading scene '%s'", name);
+	if (set_active_scene(name)) SV_LOG("Loading scene '%s'", name);
 	else {
 
-	    if (res == Result_NotFound) {
-		SV_LOG_ERROR("Scene '%s' not found", name);
-	    }
-	    else SV_LOG_ERROR("%s", result_str(res));
+	    SV_LOG_ERROR("Scene '%s' not found", name);
+	    return false;
 	}
 
-	return res;
+	return true;
     }
 
-    static Result command_fps(const char** args, u32 argc) {
+    static bool command_fps(const char** args, u32 argc) {
 		
 	if (argc) {
 	    SV_LOG_ERROR("This command doesn't need arguments");
-	    return Result_InvalidUsage;
+	    return false;
 	}
 
 	SV_LOG("%u", engine.FPS);
 
-	return Result_Success;
+	return true;
     }
 
-    static Result command_timer(const char** args, u32 argc) {
+    static bool command_timer(const char** args, u32 argc) {
 
 	if (argc) {
 	    SV_LOG_ERROR("This command doesn't need arguments");
-	    return Result_InvalidUsage;
+	    return false;
 	}
 
 	SV_LOG("%lf", timer_now().toSeconds_f64());
 
-	return Result_Success;
+	return true;
     }
 
-    static Result command_import_model(const char** args, u32 argc) 
+    static bool command_import_model(const char** args, u32 argc) 
     {
 	if (argc < 1u) {
 	    SV_LOG_ERROR("This command need more arguments");
-	    return Result_InvalidUsage;
+	    return false;
 	}
 
 	if (argc > 2u) {
 	    SV_LOG_ERROR("Too much arguments");
-	    return Result_InvalidUsage;
+	    return false;
 	}
 
 	const char* srcpath;
@@ -157,38 +153,35 @@ namespace sv {
 	    };
 
 	    //srcpath_str = file_dialog_open(2u, filters, "");
-	    return Result_TODO;
-	    //if (srcpath_str.empty()) return Result_Success;
+	    return false;
+	    //if (srcpath_str.empty()) return true;
 	    //srcpath = srcpath_str.c_str();
 	}
 
 	ModelInfo model_info;
 
-	Result res = load_model(srcpath, model_info);
-	if (result_fail(res)) {
+	if (!load_model(srcpath, model_info)) {
 
-	    SV_LOG_ERROR("Can't load '%s': %s", srcpath, result_str(res));
-	    return res;
+	    SV_LOG_ERROR("Can't load '%s'", srcpath);
+	    return false;
 	}
-
-	res = import_model(dstpath, model_info);
 		
-	if (result_fail(res)) {
+	if (!import_model(dstpath, model_info)) {
 
-	    SV_LOG_ERROR("Can't save '%s': %s", dstpath, result_str(res));
-	    return res;
+	    SV_LOG_ERROR("Can't save '%s'", dstpath);
+	    return false;
 	}
 
 	SV_LOG("Model imported successfully:\nSrc: '%s'\nDst: '%s'", srcpath, dstpath);
 
-	return Result_Success;
+	return true;
     }
 
-    static Result command_save_scene(const char** args, u32 argc) {
+    static bool command_save_scene(const char** args, u32 argc) {
 
 	if (argc) {
 	    SV_LOG_ERROR("This command doesn't need arguments");
-	    return Result_InvalidUsage;
+	    return false;
 	}
 
 	// Save scene
@@ -197,53 +190,49 @@ namespace sv {
 	
 	if (user_get_scene_filepath(name, filepath)) {
 
-	    Result res = save_scene(engine.scene, filepath);
-
-	    if (result_fail(res)) {
-		SV_LOG_ERROR("Can't save the scene '%s': %s", name, result_str(res));
-		return res;
+	    if (!save_scene(engine.scene, filepath)) {
+		SV_LOG_ERROR("Can't save the scene '%s', name");
+		return false;
 	    }
 	    else {
 		SV_LOG("Scene '%s' saved at '%s'", name, filepath);
 	    }
 		
-	    return Result_Success;
+	    return true;
 	}
 	else {
 	    SV_LOG_INFO("The scene '%s' can't be saved (Specified by the user)", name);
-	    return Result_Success;
+	    return true;
 	}  
     }
 
-    static Result command_clear_scene(const char** args, u32 argc) {
+    static bool command_clear_scene(const char** args, u32 argc) {
 
 	if (argc) {
 	    SV_LOG_ERROR("This command doesn't need arguments");
-	    return Result_InvalidUsage;
+	    return false;
 	}
 
-	Result res = clear_scene(engine.scene);
-
-	if (result_okay(res)) {
+	if (clear_scene(engine.scene)) {
 	    SV_LOG("Scene '%s' cleared", engine.scene->name);
-	    return Result_Success;
+	    return true;
 	}
 	else {
-	    SV_LOG_ERROR("Can't clear the scene: %s", res);
-	    return res;
+	    SV_LOG_ERROR("Can't clear the scene");
+	    return false;
 	}
     }
 
-    static Result command_create_entity_model(const char** args, u32 argc) {
+    static bool command_create_entity_model(const char** args, u32 argc) {
 
 	if (argc != 1u) {
 	    SV_LOG_ERROR("This command need one argument");
-	    return Result_InvalidUsage;
+	    return false;
 	}
 
 	if (engine.scene == nullptr) {
 	    SV_LOG_ERROR("Must initialize a scene");
-	    return Result_InvalidUsage;
+	    return false;
 	}
 
 	Entity parent = create_entity(engine.scene, SV_ENTITY_NULL, args[0]);
@@ -274,10 +263,8 @@ namespace sv {
 	//  Recive command history from last execution
 	{
 	    Archive archive;
-			
-	    Result res = bin_read(hash_string("CONSOLE HISTORY"), archive);
 
-	    if (result_okay(res)) {
+	    if (bin_read(hash_string("CONSOLE HISTORY"), archive)) {
 
 		u32 history_count;
 		archive >> history_count;
@@ -326,24 +313,24 @@ namespace sv {
 		archive << console.history[j];
 	    }
 
-	    if (result_fail(bin_write(hash_string("CONSOLE HISTORY"), archive))) {
+	    if (!bin_write(hash_string("CONSOLE HISTORY"), archive)) {
 		SV_LOG_ERROR("Can't save the console history");
 	    }
 	}
     }
 
-    Result execute_command(const char* command)
+    bool execute_command(const char* command)
     {
 	if (command == nullptr) {
 	    SV_LOG_ERROR("Null ptr command, what are you doing?");
-	    return Result_InvalidUsage;
+	    return false;
 	}
 
 	while (*command == ' ') ++command;
 
 	if (*command == '\0') {
 	    SV_LOG_ERROR("This is an empty command string");
-	    return Result_InvalidUsage;
+	    return false;
 	}
 
 	// Save to history
@@ -369,7 +356,7 @@ namespace sv {
 	auto it = console.commands.find(command_name);
 	if (it == console.commands.end()) {
 	    SV_LOG_ERROR("Command '%s' not found", command_name.c_str());
-	    return Result_NotFound;
+	    return false;
 	}
 
 	List<char*> args;
@@ -401,7 +388,7 @@ namespace sv {
 	    while (*command == ' ') ++command;
 	}
 
-	Result res = it->second((const char**)args.data(), u32(args.size()));
+	bool res = it->second((const char**)args.data(), u32(args.size()));
 
 	// Free
 	for (char* arg : args)
@@ -410,15 +397,15 @@ namespace sv {
 	return res;
     }
 
-    Result register_command(const char* name, CommandFn command_fn)
+    bool register_command(const char* name, CommandFn command_fn)
     {
-	if (command_fn == nullptr || name == nullptr || *name == '\0') return Result_InvalidUsage;
+	if (command_fn == nullptr || name == nullptr || *name == '\0') return false;
 
 	auto it = console.commands.find(name);
-	if (it != console.commands.end()) return Result_Duplicated;
+	if (it != console.commands.end()) return false;
 		
 	console.commands[name] = command_fn;
-	return Result_Success;
+	return true;
     }
 
     static void _write(const char* str, size_t size)

@@ -15,30 +15,30 @@ GameMemory& get_game_memory()
     return *reinterpret_cast<GameMemory*>(engine.game_memory);
 }
 
-SV_USER Result user_initialize()
+SV_USER bool user_initialize()
 {
     engine.game_memory = allocate_memory(sizeof(GameMemory));
 
     set_active_scene("Test");
     
-    return Result_Success;
+    return true;
 }
 
-SV_USER Result user_close()
+SV_USER bool user_close()
 {
     free_memory(engine.game_memory);
     
-    return Result_Success;
+    return true;
 }
 
-SV_USER Result user_initialize_scene(Scene* scene, Archive* parchive)
+SV_USER bool user_initialize_scene(Scene* scene, Archive* parchive)
 {
     GameMemory& m = get_game_memory();
     
     if (parchive) {
 	Archive& archive = *parchive;
 	archive >> m.entity;
-	return Result_Success;
+	return true;
     }
 
     scene->main_camera = create_entity(scene, SV_ENTITY_NULL, "Camera");
@@ -48,15 +48,15 @@ SV_USER Result user_initialize_scene(Scene* scene, Archive* parchive)
     BodyComponent* body = add_component<BodyComponent>(scene, m.entity);
     body->body_type = BodyType_Dynamic;
     
-    return Result_Success;
+    return true;
 }
 
-SV_USER Result user_serialize_scene(Scene* scene, Archive* parchive)
+SV_USER bool user_serialize_scene(Scene* scene, Archive* parchive)
 {
     GameMemory& m = get_game_memory();
     Archive& archive = *parchive;
     archive << m.entity;
-    return Result_Success;
+    return true;
 }
 
 void explosion(Scene* scene, v2_f32 pos, f32 range, f32 intensity, Entity* ignore_list, u32 ignore_count)

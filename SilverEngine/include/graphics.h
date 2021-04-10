@@ -570,15 +570,15 @@ namespace sv {
 
     // Primitives
     
-    Result graphics_buffer_create(const GPUBufferDesc* desc, GPUBuffer** buffer);
-    Result graphics_shader_create(const ShaderDesc* desc, Shader** shader);
-    Result graphics_image_create(const GPUImageDesc* desc, GPUImage** image);
-    Result graphics_sampler_create(const SamplerDesc* desc, Sampler** sampler);
-    Result graphics_renderpass_create(const RenderPassDesc* desc, RenderPass** renderPass);
-    Result graphics_inputlayoutstate_create(const InputLayoutStateDesc* desc, InputLayoutState** inputLayoutState);
-    Result graphics_blendstate_create(const BlendStateDesc* desc, BlendState** blendState);
-    Result graphics_depthstencilstate_create(const DepthStencilStateDesc* desc, DepthStencilState** depthStencilState);
-    Result graphics_rasterizerstate_create(const RasterizerStateDesc* desc, RasterizerState** rasterizerState);
+    bool graphics_buffer_create(const GPUBufferDesc* desc, GPUBuffer** buffer);
+    bool graphics_shader_create(const ShaderDesc* desc, Shader** shader);
+    bool graphics_image_create(const GPUImageDesc* desc, GPUImage** image);
+    bool graphics_sampler_create(const SamplerDesc* desc, Sampler** sampler);
+    bool graphics_renderpass_create(const RenderPassDesc* desc, RenderPass** renderPass);
+    bool graphics_inputlayoutstate_create(const InputLayoutStateDesc* desc, InputLayoutState** inputLayoutState);
+    bool graphics_blendstate_create(const BlendStateDesc* desc, BlendState** blendState);
+    bool graphics_depthstencilstate_create(const DepthStencilStateDesc* desc, DepthStencilState** depthStencilState);
+    bool graphics_rasterizerstate_create(const RasterizerStateDesc* desc, RasterizerState** rasterizerState);
 
     void graphics_destroy(Primitive* primitive);
 	
@@ -699,16 +699,16 @@ namespace sv {
 
     // Shader utils
 
-    Result graphics_shader_compile_string(const ShaderCompileDesc* desc, const char* str, u32 size, List<u8>& data);
-    Result graphics_shader_compile_file(const ShaderCompileDesc* desc, const char* srcPath, List<u8>& data);
+    bool graphics_shader_compile_string(const ShaderCompileDesc* desc, const char* str, u32 size, List<u8>& data);
+    bool graphics_shader_compile_file(const ShaderCompileDesc* desc, const char* srcPath, List<u8>& data);
 	
     /*
       Compiles the shader if doesn't exist in the bin file
     */
-    Result graphics_shader_compile_fastbin_from_string(const char* name, ShaderType shaderType, Shader** pShader, const char* src, bool alwaisCompile = false);
-    Result graphics_shader_compile_fastbin_from_file(const char* name, ShaderType shaderType, Shader** pShader, const char* filePath, bool alwaisCompile = false);
+    bool graphics_shader_compile_fastbin_from_string(const char* name, ShaderType shaderType, Shader** pShader, const char* src, bool alwaisCompile = false);
+    bool graphics_shader_compile_fastbin_from_file(const char* name, ShaderType shaderType, Shader** pShader, const char* filePath, bool alwaisCompile = false);
 
-    Result graphics_shader_include_write(const char* name, const char* str);
+    bool graphics_shader_include_write(const char* name, const char* str);
 
     u32 graphics_shader_attribute_size(ShaderAttributeType type);
 

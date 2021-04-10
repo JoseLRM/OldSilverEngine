@@ -338,7 +338,7 @@ namespace sv {
 	device.api = GraphicsAPI_Vulkan;
     }
 
-    Result graphics_vulkan_initialize()
+    bool graphics_vulkan_initialize()
     {
 	g_API = std::make_unique<Graphics_vk>();
 
@@ -377,7 +377,7 @@ namespace sv {
 
 		    if (!found) {
 			SV_LOG_ERROR("InstanceExtension '%s' not found", g_API->extensions[i]);
-			return Result_GraphicsAPIError;
+			return false;
 		    }
 		}
 	    }
@@ -401,7 +401,7 @@ namespace sv {
 
 		    if (!found) {
 			SV_LOG_ERROR("InstanceValidationLayer '%s' not found", g_API->validationLayers[i]);
-			return Result_GraphicsAPIError;
+			return false;
 		    }
 		}
 	    }
@@ -519,7 +519,7 @@ namespace sv {
 	    // Adapter not found
 	    if (deviceIndex == u32_max) {
 		SV_LOG_ERROR("Can't find valid graphics card for Vulkan");
-		return Result_GraphicsAPIError;
+		return false;
 	    }
 	}
 		
@@ -557,11 +557,11 @@ namespace sv {
 
 		if (available_extension_count == 0u) {
 		    SV_LOG_ERROR("There's no available device extensions");
-		    return Result_GraphicsAPIError;
+		    return false;
 		}
 		if (available_layer_count == 0u) {
 		    SV_LOG_ERROR("There's no available device validation layers");
-		    return Result_GraphicsAPIError;
+		    return false;
 		}
 
 		available_extensions.resize(available_extension_count);
@@ -678,17 +678,17 @@ namespace sv {
 	}
 
 	// Create swapchain
-	svCheck(graphics_vulkan_swapchain_create());
+	SV_CHECK(graphics_vulkan_swapchain_create());
 	
 	// Set properties
 	{
 	    graphics_properties.reverse_y = true;
 	}
 
-	return Result_Success;
+	return true;
     }
 
-    Result graphics_vulkan_close()
+    bool graphics_vulkan_close()
     {
 	vkDeviceWaitIdle(g_API->device);
 
@@ -736,7 +736,7 @@ namespace sv {
 #endif
 
 	vkDestroyInstance(g_API->instance, nullptr);
-	return Result_Success;
+	return true;
     }
 
     void* graphics_vulkan_get()
@@ -744,7 +744,7 @@ namespace sv {
 	return g_API.get();
     }
 
-    Result graphics_vulkan_create(GraphicsPrimitiveType type, const void* desc, Primitive_internal* ptr)
+    bool graphics_vulkan_create(GraphicsPrimitiveType type, const void* desc, Primitive_internal* ptr)
     {
 	switch (type)
 	{
@@ -814,14 +814,14 @@ namespace sv {
 
 	}
 
-	return Result_InvalidUsage;
+	return false;
     }
 
-    Result graphics_vulkan_destroy(Primitive_internal* primitive)
+    bool graphics_vulkan_destroy(Primitive_internal* primitive)
     {
 	vkDeviceWaitIdle(g_API->device);
 
-	Result result = Result_Success;
+	bool result = true;
 
 	switch (primitive->type)
 	{
@@ -870,7 +870,7 @@ namespace sv {
 	{
 	    InputLayoutState_vk& inputLayoutState = *reinterpret_cast<InputLayoutState_vk*>(primitive);
 	    inputLayoutState.~InputLayoutState_vk();
-	    result = Result_Success;
+	    result = true;
 	    break;
 	}
 
@@ -878,7 +878,7 @@ namespace sv {
 	{
 	    BlendState_vk& blendState = *reinterpret_cast<BlendState_vk*>(primitive);
 	    blendState.~BlendState_vk();
-	    result = Result_Success;
+	    result = true;
 	    break;
 	}
 
@@ -886,7 +886,7 @@ namespace sv {
 	{
 	    DepthStencilState_vk& depthStencilState = *reinterpret_cast<DepthStencilState_vk*>(primitive);
 	    depthStencilState.~DepthStencilState_vk();
-	    result = Result_Success;
+	    result = true;
 	    break;
 	}
 
@@ -894,12 +894,12 @@ namespace sv {
 	{
 	    RasterizerState_vk& rasterizerState = *reinterpret_cast<RasterizerState_vk*>(primitive);
 	    rasterizerState.~RasterizerState_vk();
-	    result = Result_Success;
+	    result = true;
 	    break;
 	}
 
 	default:
-	    return Result_Success;
+	    return true;
 
 	}
 
@@ -1425,7 +1425,7 @@ namespace sv {
 
     //////////////////////////////////////////// API /////////////////////////////////////////////////
 
-    Result graphics_vulkan_swapchain_create()
+    bool graphics_vulkan_swapchain_create()
     {
 	SwapChain_vk& swapChain = g_API->swapchain;
 	auto& card = g_API->card;
@@ -1456,7 +1456,7 @@ namespace sv {
 	    vkCheck(vkGetPhysicalDeviceSurfaceSupportKHR(card.physicalDevice, card.familyIndex.graphics, swapChain.surface, &supported));
 	    if (!supported) {
 		SV_LOG_ERROR("This adapter don't support vulkan swapChain");
-		return Result_GraphicsAPIError;
+		return false;
 	    }
 	}
 
@@ -1642,10 +1642,10 @@ namespace sv {
 	swapChain.imageFences.clear();
 	swapChain.imageFences.resize(swapChain.images.size(), VK_NULL_HANDLE);
 
-	return Result_Success;
+	return true;
     }
 
-    Result graphics_vulkan_swapchain_destroy(bool resizing)
+    bool graphics_vulkan_swapchain_destroy(bool resizing)
     {
 	SwapChain_vk& swapChain = g_API->swapchain;
 		
@@ -1661,7 +1661,7 @@ namespace sv {
 	    vkDestroySwapchainKHR(g_API->device, swapChain.swapChain, nullptr);
 	    vkDestroySurfaceKHR(g_API->instance, swapChain.surface, nullptr);
 	}
-	return Result_Success;
+	return true;
     }
 
     static void update_graphics_state(CommandList cmd_)
@@ -2167,14 +2167,14 @@ namespace sv {
 	if (g_API->currentFrame == g_API->frameCount) g_API->currentFrame = 0u;
     }
 
-    Result graphics_vulkan_buffer_create(Buffer_vk& buffer, const GPUBufferDesc& desc)
+    bool graphics_vulkan_buffer_create(Buffer_vk& buffer, const GPUBufferDesc& desc)
     {
 	VkBufferUsageFlags bufferUsage = 0u;
 
 	// Special case: It uses dynamic memory from an allocator
 	if (desc.usage == ResourceUsage_Dynamic && buffer.info.bufferType == GPUBufferType_Constant)
 	{
-	    return Result_Success;
+	    return true;
 	}
 
 	// Usage Flags
@@ -2283,10 +2283,10 @@ namespace sv {
 	buffer.buffer_info.offset = 0u;
 	buffer.buffer_info.range = desc.size;
 
-	return Result_Success;
+	return true;
     }
 
-    Result graphics_vulkan_image_create(Image_vk& image, const GPUImageDesc& desc)
+    bool graphics_vulkan_image_create(Image_vk& image, const GPUImageDesc& desc)
     {
 	VkImageType imageType = VK_IMAGE_TYPE_2D;
 	VkFormat format = graphics_vulkan_parse_format(desc.format);
@@ -2523,10 +2523,10 @@ namespace sv {
 	// Set ID
 	image.ID = g_API->GetID();
 
-	return Result_Success;
+	return true;
     }
 
-    Result graphics_vulkan_sampler_create(Sampler_vk& sampler, const SamplerDesc& desc)
+    bool graphics_vulkan_sampler_create(Sampler_vk& sampler, const SamplerDesc& desc)
     {
 	VkSamplerCreateInfo create_info{};
 	create_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -2559,10 +2559,10 @@ namespace sv {
 	sampler.image_info.imageView = VK_NULL_HANDLE;
 	sampler.image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-	return Result_Success;
+	return true;
     }
 
-    Result graphics_vulkan_shader_create(Shader_vk& shader, const ShaderDesc& desc)
+    bool graphics_vulkan_shader_create(Shader_vk& shader, const ShaderDesc& desc)
     {
 	// Create ShaderModule
 	{
@@ -2724,10 +2724,10 @@ namespace sv {
 	// ID
 	shader.ID = g_API->GetID();
 
-	return Result_Success;
+	return true;
     }
 
-    Result graphics_vulkan_renderpass_create(RenderPass_vk& renderPass, const RenderPassDesc& desc)
+    bool graphics_vulkan_renderpass_create(RenderPass_vk& renderPass, const RenderPassDesc& desc)
     {
 	VkAttachmentDescription attachments[GraphicsLimit_Attachment];
 
@@ -2753,7 +2753,7 @@ namespace sv {
 		colorIt++;
 		break;
 	    case AttachmentType_DepthStencil:
-		if (hasDepthStencil) return Result_InvalidUsage;
+		if (hasDepthStencil) return false;
 
 		depthStencilAttachment.attachment = i;
 		depthStencilAttachment.layout = graphics_vulkan_parse_image_layout(attDesc.layout, attDesc.format);
@@ -2803,68 +2803,68 @@ namespace sv {
 	renderPass.beginInfo.renderArea.offset.y = 0;
 	renderPass.beginInfo.clearValueCount = desc.attachmentCount;
 		
-	return Result_Success;
+	return true;
     }
 
-    Result graphics_vulkan_inputlayoutstate_create(InputLayoutState_vk& inputLayoutState, const InputLayoutStateDesc& desc)
+    bool graphics_vulkan_inputlayoutstate_create(InputLayoutState_vk& inputLayoutState, const InputLayoutStateDesc& desc)
     {
 	inputLayoutState.hash = graphics_compute_hash_inputlayoutstate(&desc);
-	return Result_Success;
+	return true;
     }
 
-    Result graphics_vulkan_blendstate_create(BlendState_vk& blendState, const BlendStateDesc& desc)
+    bool graphics_vulkan_blendstate_create(BlendState_vk& blendState, const BlendStateDesc& desc)
     {
 	blendState.hash = graphics_compute_hash_blendstate(&desc);
-	return Result_Success;
+	return true;
     }
 
-    Result graphics_vulkan_depthstencilstate_create(DepthStencilState_vk& depthStencilState, const DepthStencilStateDesc& desc)
+    bool graphics_vulkan_depthstencilstate_create(DepthStencilState_vk& depthStencilState, const DepthStencilStateDesc& desc)
     {
 	depthStencilState.hash = graphics_compute_hash_depthstencilstate(&desc);
-	return Result_Success;
+	return true;
     }
 
-    Result graphics_vulkan_rasterizerstate_create(RasterizerState_vk& rasterizerState, const RasterizerStateDesc& desc)
+    bool graphics_vulkan_rasterizerstate_create(RasterizerState_vk& rasterizerState, const RasterizerStateDesc& desc)
     {
 	rasterizerState.hash = graphics_compute_hash_rasterizerstate(&desc);
-	return Result_Success;
+	return true;
     }
 
-    Result graphics_vulkan_buffer_destroy(Buffer_vk& buffer)
+    bool graphics_vulkan_buffer_destroy(Buffer_vk& buffer)
     {
 	vmaDestroyBuffer(g_API->allocator, buffer.buffer, buffer.allocation);
-	return Result_Success;
+	return true;
     }
 
-    Result graphics_vulkan_image_destroy(Image_vk& image)
+    bool graphics_vulkan_image_destroy(Image_vk& image)
     {
 	vmaDestroyImage(g_API->allocator, image.image, image.allocation);
 	if (image.renderTargetView != VK_NULL_HANDLE)	vkDestroyImageView(g_API->device, image.renderTargetView, nullptr);
 	if (image.depthStencilView != VK_NULL_HANDLE)	vkDestroyImageView(g_API->device, image.depthStencilView, nullptr);
 	if (image.shaderResouceView != VK_NULL_HANDLE)	vkDestroyImageView(g_API->device, image.shaderResouceView, nullptr);
-	return Result_Success;
+	return true;
     }
 
-    Result graphics_vulkan_sampler_destroy(Sampler_vk& sampler)
+    bool graphics_vulkan_sampler_destroy(Sampler_vk& sampler)
     {
 	vkDestroySampler(g_API->device, sampler.sampler, nullptr);
-	return Result_Success;
+	return true;
     }
 
-    Result graphics_vulkan_shader_destroy(Shader_vk& shader)
+    bool graphics_vulkan_shader_destroy(Shader_vk& shader)
     {
 	vkDestroyShaderModule(g_API->device, shader.module, nullptr);
 	vkDestroyDescriptorSetLayout(g_API->device, shader.layout.setLayout, nullptr);
-	return Result_Success;
+	return true;
     }
 
-    Result graphics_vulkan_renderpass_destroy(RenderPass_vk& renderPass)
+    bool graphics_vulkan_renderpass_destroy(RenderPass_vk& renderPass)
     {
 	vkDestroyRenderPass(g_API->device, renderPass.renderPass, nullptr);
 	for (auto& it : renderPass.frameBuffers) {
 	    vkDestroyFramebuffer(g_API->device, it.second, nullptr);
 	}
-	return Result_Success;
+	return true;
     }
 
 }

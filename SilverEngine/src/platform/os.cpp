@@ -11,7 +11,7 @@
 
 namespace sv {
 
-    Result load_image(const char* filepath, void** pdata, u32* width, u32* height)
+    bool load_image(const char* filepath, void** pdata, u32* width, u32* height)
     {
 	int w = 0, h = 0, bits = 0;
 	void* data = stbi_load(filepath, &w, &h, &bits, 4);
@@ -20,9 +20,9 @@ namespace sv {
 	*width = w;
 	*height = h;
 
-	if (!data) return Result_NotFound;
+	if (!data) return false;
 	*pdata = data;
-	return Result_Success;
+	return true;
     }
     
 }

@@ -17,32 +17,32 @@ namespace sv {
     void close_console();
     void update_console();
     void update_editor();
-    Result initialize_editor();
-    Result close_editor();
+    bool initialize_editor();
+    bool close_editor();
     void draw_editor();
     void draw_console();
 #endif
     
-    Result os_create_window();
+    bool os_startup();
     void os_recive_input();
-    Result os_destroy_window();
+    bool os_shutdown();
     
-    Result graphics_initialize();
-    Result graphics_close();
+    bool graphics_initialize();
+    bool graphics_close();
 
-    Result renderer_initialize();
-    Result renderer_close();
+    bool renderer_initialize();
+    bool renderer_close();
 
     void graphics_begin();
     void graphics_end();
     void renderer_begin();
     void renderer_end();
 
-    Result close_scene(Scene* scene);
+    bool close_scene(Scene* scene);
     void close_assets();
     void update_assets();
     
-    Result initialize_scene(Scene** pscene, const char* name);
+    bool initialize_scene(Scene** pscene, const char* name);
     void update_scene();
     void draw_scene();
 
@@ -57,15 +57,14 @@ namespace sv {
 	
 	os_free_user_callbacks();
 	
-	Result res = file_copy("Game.dll", "system/GameTemp.dll");
-	if (result_fail(res)) {
-	    SV_LOG_ERROR("Can't create temporal game dll: %s", result_str(res));
+	if (!file_copy("Game.dll", "system/GameTemp.dll")) {
+	    SV_LOG_ERROR("Can't create temporal game dll");
 	}
 	
 	os_update_user_callbacks("system/GameTemp.dll");
 
 	Date date;
-	if (result_okay(file_date("Game.dll", nullptr, &date, nullptr))) {
+	if (file_date("Game.dll", nullptr, &date, nullptr)) {
 	    last_user_lib_write = date;
 	}
 #else
@@ -84,7 +83,7 @@ namespace sv {
 	    
 	    // Check if the file is modified
 	    Date date;
-	    if (result_okay(file_date("Game.dll", nullptr, &date, nullptr))) {
+	    if (file_date("Game.dll", nullptr, &date, nullptr)) {
 
 		if (date <= last_user_lib_write)
 		    return;
@@ -141,14 +140,14 @@ namespace sv {
     
     //////////////////////////////////////////////////////////////////// ASSET FUNCTIONS //////////////////////////////////////////////////////////
 
-    SV_INTERNAL Result create_image_asset(void* asset)
+    SV_INTERNAL bool create_image_asset(void* asset)
     {
 	GPUImage*& image = *reinterpret_cast<GPUImage**>(asset);
 	image = nullptr;
-	return Result_Success;
+	return true;
     }
 
-    SV_INTERNAL Result load_image_asset(void* asset, const char* filepath)
+    SV_INTERNAL bool load_image_asset(void* asset, const char* filepath)
     {
 	GPUImage*& image = *reinterpret_cast<GPUImage**>(asset);
 
@@ -156,7 +155,7 @@ namespace sv {
 	void* data;
 	u32 width;
 	u32 height;
-	svCheck(load_image(filepath, &data, &width, &height));
+	if (!load_image(filepath, &data, &width, &height)) return false;
 
 	// Create Image
 	GPUImageDesc desc;
@@ -171,41 +170,41 @@ namespace sv {
 	desc.width = width;
 	desc.height = height;
 
-	Result res = graphics_image_create(&desc, &image);
+	bool res = graphics_image_create(&desc, &image);
 
 	delete[] data;
 	return res;
     }
 
-    SV_INTERNAL Result destroy_image_asset(void* asset)
+    SV_INTERNAL bool destroy_image_asset(void* asset)
     {
 	GPUImage*& image = *reinterpret_cast<GPUImage**>(asset);
 	graphics_destroy(image);
 	image = nullptr;
-	return Result_Success;
+	return true;
     }
 
-    SV_INTERNAL Result reload_image_asset(void* asset, const char* filepath)
+    SV_INTERNAL bool reload_image_asset(void* asset, const char* filepath)
     {
-	svCheck(destroy_image_asset(asset));
+	SV_CHECK(destroy_image_asset(asset));
 	return load_image_asset(asset, filepath);
     }
 
-    SV_INTERNAL Result create_mesh_asset(void* asset)
+    SV_INTERNAL bool create_mesh_asset(void* asset)
     {
 	new(asset) Mesh();
-	return Result_Success;
+	return true;
     }
 
-    SV_INTERNAL Result load_mesh_asset(void* asset, const char* filepath)
+    SV_INTERNAL bool load_mesh_asset(void* asset, const char* filepath)
     {
 	Mesh& mesh = *new(asset) Mesh();
-	svCheck(load_mesh(filepath, mesh));
-	svCheck(mesh_create_buffers(mesh));
-	return Result_Success;
+	SV_CHECK(load_mesh(filepath, mesh));
+	SV_CHECK(mesh_create_buffers(mesh));
+	return true;
     }
 
-    SV_INTERNAL Result free_mesh_asset(void* asset)
+    SV_INTERNAL bool free_mesh_asset(void* asset)
     {
 	Mesh& mesh = *reinterpret_cast<Mesh*>(asset);
 
@@ -213,30 +212,30 @@ namespace sv {
 	graphics_destroy(mesh.ibuffer);
 
 	mesh.~Mesh();
-	return Result_Success;
+	return true;
     }
 
-    SV_INTERNAL Result create_material_asset(void* asset)
+    SV_INTERNAL bool create_material_asset(void* asset)
     {
 	new(asset) Material();
-	return Result_Success;
+	return true;
     }
 
-    SV_INTERNAL Result load_material_asset(void* asset, const char* filepath)
+    SV_INTERNAL bool load_material_asset(void* asset, const char* filepath)
     {
 	Material& material = *new(asset) Material();
-	svCheck(load_material(filepath, material));
-	return Result_Success;
+	SV_CHECK(load_material(filepath, material));
+	return true;
     }
 
-    SV_INTERNAL Result free_material_asset(void* asset)
+    SV_INTERNAL bool free_material_asset(void* asset)
     {
 	Material& mat = *reinterpret_cast<Material*>(asset);
 	mat.~Material();
-	return Result_Success;
+	return true;
     }
 
-    SV_AUX Result register_assets()
+    SV_AUX bool register_assets()
     {
 	// Register assets
 	
@@ -261,7 +260,7 @@ namespace sv {
 	desc.reload_file = reload_image_asset;
 	desc.unused_time = 3.f;
 
-	svCheck(register_asset_type(&desc));
+	SV_CHECK(register_asset_type(&desc));
 
 	// Mesh
 	extensions[0] = "mesh";
@@ -275,7 +274,7 @@ namespace sv {
 	desc.reload_file = nullptr;
 	desc.unused_time = 5.f;
 
-	svCheck(register_asset_type(&desc));
+	SV_CHECK(register_asset_type(&desc));
 
 	// Material
 	extensions[0] = "mat";
@@ -289,27 +288,24 @@ namespace sv {
 	desc.reload_file = nullptr;
 	desc.unused_time = 2.5f;
 
-	svCheck(register_asset_type(&desc));
+	SV_CHECK(register_asset_type(&desc));
 
-	return Result_Success;
+	return true;
     }
     
     void engine_main()
     {
-	Result res;
-
 #if SV_DEV
 	initialize_console();
 #endif
 
 	SV_LOG_INFO("Initializing %s", engine.name);
 	
-	res = os_create_window();
-	if (result_okay(res)) {
-	    SV_LOG_INFO("Window created");
+	if (os_startup()) {
+	    SV_LOG_INFO("OS layer initialized");
 	}
 	else {
-	    SV_LOG_ERROR("Can't create the window");
+	    SV_LOG_ERROR("Can't initialize OS layer");
 	    return;
 	}
 
@@ -317,8 +313,7 @@ namespace sv {
 	// TODO task_initialize();
 
 	// Initialize Graphics API
-	res = graphics_initialize();
-	if (result_okay(res)) {
+	if (graphics_initialize()) {
 	    SV_LOG_INFO("Graphics API initialized");
 	}
 	else {
@@ -327,8 +322,7 @@ namespace sv {
 	}
 
 	// Initialize Renderer
-	res = renderer_initialize();
-	if (result_okay(res)) {
+	if (renderer_initialize()) {
 	    SV_LOG_INFO("Renderer initialized");
 	}
 	else {
@@ -346,8 +340,7 @@ namespace sv {
 	    register_component<BodyComponent>("Body");
 	}
 
-	res = register_assets();
-	if (result_fail(res)) {
+	if (!register_assets()) {
 	    SV_LOG_ERROR("Can't register default assets");
 	    return;
 	}
@@ -364,8 +357,7 @@ namespace sv {
 
 	// User init
 	if (engine.user.initialize) {
-	    res = engine.user.initialize();
-	    if (result_fail(res)) {
+	    if (!engine.user.initialize()) {
 		engine.running = false;
 	    }
 	}
@@ -452,9 +444,8 @@ namespace sv {
 
 	// User close
 	if (engine.user.close) {
-		res = engine.user.close();
-		if (result_fail(res)) {
-			SV_LOG_ERROR("User can't close successfully: %s", result_str(res));
+		if (!engine.user.close()) {
+			SV_LOG_ERROR("User can't close successfully");
 		}
 	}
 	
@@ -467,9 +458,9 @@ namespace sv {
         close_editor();
 #endif
 
-	if (result_fail(renderer_close())) { SV_LOG_ERROR("Can't close render utils"); }
-	if (result_fail(graphics_close())) { SV_LOG_ERROR("Can't close graphicsAPI"); }
-	if (result_fail(os_destroy_window())) { SV_LOG_ERROR("Can't destroy the window properly"); }
+	if (!renderer_close()) { SV_LOG_ERROR("Can't close render utils"); }
+	if (!graphics_close()) { SV_LOG_ERROR("Can't close graphicsAPI"); }
+	if (!os_shutdown()) { SV_LOG_ERROR("Can't shutdown OS layer properly"); }
 	close_assets();
 	// if (result_fail(task_close())) { SV_LOG_ERROR("Can't close the task system"); }
 

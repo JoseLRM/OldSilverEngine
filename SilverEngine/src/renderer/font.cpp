@@ -37,10 +37,10 @@ namespace sv {
 	glyphs.push_back(glyph);
     }
 
-    Result font_create(Font& font, const char* filepath, f32 pixel_height, FontFlags flags)
+    bool font_create(Font& font, const char* filepath, f32 pixel_height, FontFlags flags)
     {
 	List<u8> data;
-	svCheck(file_read_binary(filepath, data));
+	SV_CHECK(file_read_binary(filepath, data));
 
 	stbtt_fontinfo info;
 	stbtt_InitFont(&info, data.data(), 0);
@@ -229,10 +229,10 @@ namespace sv {
 	desc.width = atlas_width;
 	desc.height = atlas_height;
 		
-	svCheck(graphics_image_create(&desc, &font.image));
+	SV_CHECK(graphics_image_create(&desc, &font.image));
 	delete[] atlas;
 
-	return Result_Success;
+	return true;
     }
 
     void font_destroy(Font& font)

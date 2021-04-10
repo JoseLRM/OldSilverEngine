@@ -75,7 +75,7 @@ constexpr u32 FILEPATH_SIZE = 300u;
 constexpr u32 FILENAME_SIZE = 50u;
 constexpr u32 SCENENAME_SIZE = 50u;
 
-#define svCheck(x) do{ sv::Result __res__ = (x); if(sv::result_fail(__res__)) return __res__; }while(0)
+#define SV_CHECK(exp) if ((exp) == false) return false;
 #define SV_ZERO_MEMORY(dest, size) memset(dest, 0, size)
 #define SV_BIT(x) (1ULL << x) 
 #define foreach(_it, _end) for (u32 _it = 0u; _it < u32(_end); ++_it)
@@ -100,65 +100,6 @@ constexpr u32 SCENENAME_SIZE = 50u;
 #	define SV_INLINE inline
 #endif
 
-// Result
-
-namespace sv {
-
-    enum Result : u32 {
-	Result_Success,
-	Result_CloseRequest,
-	Result_TODO,
-	Result_UnknownError,
-	Result_PlatformError,
-	Result_GraphicsAPIError,
-	Result_CompileError,
-	Result_NotFound = 404u,
-	Result_InvalidFormat,
-	Result_InvalidUsage,
-	Result_Unsupported,
-	Result_UnsupportedVersion,
-	Result_Duplicated,
-    };
-
-    SV_INLINE bool result_okay(Result res) { return res == Result_Success; }
-    SV_INLINE bool result_fail(Result res) { return res != Result_Success; }
-    SV_INLINE const char* result_str(Result res)
-    {
-	switch (res)
-	{
-	case sv::Result_Success:
-	    return "Success";
-	case sv::Result_CloseRequest:
-	    return "Close request";
-	case sv::Result_TODO:
-	    return "TODO";
-	case sv::Result_UnknownError:
-	    return "Unknown error";
-	case sv::Result_PlatformError:
-	    return "Platform error";
-	case sv::Result_GraphicsAPIError:
-	    return "Graphics API error";
-	case sv::Result_CompileError:
-	    return "Compile error";
-	case sv::Result_NotFound:
-	    return "Not found";
-	case sv::Result_InvalidFormat:
-	    return "Invalid format";
-	case sv::Result_InvalidUsage:
-	    return "Invalid usage";
-	case sv::Result_Unsupported:
-	    return "Unsupported";
-	case sv::Result_UnsupportedVersion:
-	    return "Unsupported version";
-	case sv::Result_Duplicated:
-	    return "Duplicated";
-	default:
-	    return "Unknown result...";
-	}
-    }
-
-}
-
 // Assertion
 
 namespace sv {
@@ -177,10 +118,10 @@ namespace sv {
 
 namespace sv {
 	
-    typedef Result(*CommandFn)(const char** args, u32 argc);
+    typedef bool(*CommandFn)(const char** args, u32 argc);
     
-    SV_API Result execute_command(const char* command);
-    SV_API Result register_command(const char* name, CommandFn command_fn);
+    SV_API bool execute_command(const char* command);
+    SV_API bool register_command(const char* name, CommandFn command_fn);
 
     SV_API void console_print(const char* str, ...);
     SV_API void console_notify(const char* title, const char* str, ...);
@@ -1282,6 +1223,11 @@ namespace sv {
 	    return false;
     }
 
+}
+
+#include "utils/List.h"
+
+namespace sv {
 
     // Character utils
     
@@ -1312,8 +1258,8 @@ namespace sv {
 	SV_INLINE void clear() noexcept { if (_size) _size = sizeof(Version); }
 	SV_INLINE void startRead() noexcept { _pos = sizeof(Version); }
 
-	Result openFile(const char* filePath);
-	Result saveFile(const char* filePath, bool append = false);
+	bool openFile(const char* filePath);
+	bool saveFile(const char* filePath, bool append = false);
 
 	SV_INLINE Archive& operator<<(char n) { write(&n, sizeof(n)); return *this; }
 	SV_INLINE Archive& operator<<(bool n) { write(&n, sizeof(n)); return *this; }
@@ -1453,7 +1399,28 @@ namespace sv {
 	void free();
 
     };
+
+    //TODO: move
+    constexpr u32 VARNAME_SIZE = 30u;
+    constexpr u32 VARVALUE_SIZE = 30u;
+
+    enum VarType : u32 {
+	VarType_None,
+	VarType_String,
+	VarType_Integer,
+	VarType_Real,
+    };
+    
+    struct Var {
+	char name[VARNAME_SIZE];
+	VarType type;
+	union {
+	    char string[VARVALUE_SIZE];
+	    i64 integer;
+	    f64 real;
+	} value;
+    };
+
+    bool read_var_file(const char* filepath, List<Var>& vars);
     
 }
-
-#include "utils/List.h"

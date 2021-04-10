@@ -56,9 +56,9 @@ namespace sv {
 	void mesh_optimize(Mesh& mesh);
 	void mesh_recalculate_normals(Mesh& mesh);
 
-	Result mesh_create_buffers(Mesh& mesh, ResourceUsage usage = ResourceUsage_Static);
-	Result mesh_update_buffers(Mesh& mesh, CommandList cmd);
-	Result mesh_clear(Mesh& mesh);
+	bool mesh_create_buffers(Mesh& mesh, ResourceUsage usage = ResourceUsage_Static);
+	bool mesh_update_buffers(Mesh& mesh, CommandList cmd);
+	bool mesh_clear(Mesh& mesh);
 
 	// Model loading
 
@@ -97,10 +97,10 @@ namespace sv {
 		std::vector<MaterialInfo> materials;
 	};
 
-	Result load_model(const char* filepath, ModelInfo& model_info);
-	Result import_model(const char* filepath, const ModelInfo& model_info);
+	bool load_model(const char* filepath, ModelInfo& model_info);
+	bool import_model(const char* filepath, const ModelInfo& model_info);
 
-	Result load_mesh(const char* filepath, Mesh& mesh);
-	Result load_material(const char* filepath, Material& material);
+	bool load_mesh(const char* filepath, Mesh& mesh);
+	bool load_material(const char* filepath, Material& material);
 
 }
