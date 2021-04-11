@@ -1225,7 +1225,7 @@ namespace sv {
 
 }
 
-#include "utils/List.h"
+#include "utils/allocators.h"
 
 namespace sv {
 
@@ -1369,13 +1369,22 @@ namespace sv {
 		read(vec.data() + lastSize, sizeof(T) * size);
 		return *this;
 	    }
-
+	
 	Archive& operator>>(std::string& str)
 	    {
 		size_t txtLength;
 		read(&txtLength, sizeof(size_t));
 		str.resize(txtLength);
 		read((void*)str.data(), txtLength);
+		return *this;
+	    }
+
+	Archive& operator>>(char* str)
+	    {
+		size_t txtLength;
+		read(&txtLength, sizeof(size_t));
+		read((void*)str, txtLength);
+		str[txtLength] = '\0';
 		return *this;
 	    }
 

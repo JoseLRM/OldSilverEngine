@@ -51,24 +51,48 @@ namespace sv {
 
     ////////////////////////////////////////////////////////////////// UPDATE DLL ////////////////////////////////////////////////////////////
 
+    void set_gamecode_filepath(const char* filepath)
+    {
+	Archive file;
+	file << filepath;
+	if (!bin_write(hash_string("GAME DLL PATH"), file)) {
+
+	    SV_LOG_ERROR("Can't save the gamecode filepath");
+	}
+    }
+
+    SV_AUX void get_usercode_filepath(char* filepath)
+    {
+	Archive file;
+	if (bin_read(hash_string("GAME DLL PATH"), file)) {
+
+	    file >> filepath;
+	}
+	else sprintf(filepath, "%s", "Game.dll");
+    }
+    
     SV_AUX void recive_user_callbacks()
     {
+	char filepath[FILEPATH_SIZE];
+	get_usercode_filepath(filepath);
+	
 #if SV_DEV
 	
 	os_free_user_callbacks();
 	
-	if (!file_copy("Game.dll", "system/GameTemp.dll")) {
+	if (!file_copy(filepath, "system/GameTemp.dll")) {
 	    SV_LOG_ERROR("Can't create temporal game dll");
+	    return;
 	}
 	
 	os_update_user_callbacks("system/GameTemp.dll");
 
 	Date date;
-	if (file_date("Game.dll", nullptr, &date, nullptr)) {
+	if (file_date(filepath, nullptr, &date, nullptr)) {
 	    last_user_lib_write = date;
 	}
 #else
-	os_update_user_callbacks("Game.dll");
+	os_update_user_callbacks(filepath);
 #endif
     }
     
@@ -80,10 +104,13 @@ namespace sv {
 	Time now = timer_now();
 	
 	if (now - last_update > 1.0) {
+
+	    char filepath[FILEPATH_SIZE];
+	    get_usercode_filepath(filepath);
 	    
 	    // Check if the file is modified
 	    Date date;
-	    if (file_date("Game.dll", nullptr, &date, nullptr)) {
+	    if (file_date(filepath, nullptr, &date, nullptr)) {
 
 		if (date <= last_user_lib_write)
 		    return;
@@ -357,7 +384,7 @@ namespace sv {
 
 	// User init
 	if (engine.user.initialize) {
-	    if (!engine.user.initialize()) {
+	    if (!engine.user.initialize(true)) {
 		engine.running = false;
 	    }
 	}

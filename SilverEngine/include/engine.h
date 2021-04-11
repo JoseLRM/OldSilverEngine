@@ -6,7 +6,7 @@ namespace sv {
 
     struct Scene;
 
-    typedef bool(*UserInitializeFn)();
+    typedef bool(*UserInitializeFn)(bool init);
     typedef void(*UserUpdateFn)();
     typedef bool(*UserCloseFn)();
     typedef bool(*UserValidateSceneFn)(const char* name);
@@ -37,11 +37,13 @@ namespace sv {
 	bool		 close_request = false;
 	bool             running = false;
 	Scene*	         scene = nullptr;
-	char	         next_scene_name[SCENENAME_SIZE];
+	char	         next_scene_name[SCENENAME_SIZE] = {};
 	void*            game_memory = nullptr;
     };
     
     extern GlobalEngineData SV_API_VAR engine;
+
+    SV_API void set_gamecode_filepath(const char* filepath);
 
     SV_INLINE bool user_validate_scene(const char* name)
     {

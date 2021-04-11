@@ -123,6 +123,8 @@ namespace sv {
 	Key_U,
 	Key_V,
 	Key_W,
+	Key_X,
+	Key_Y,
 	Key_Z,
 	Key_Num0,
 	Key_Num1,

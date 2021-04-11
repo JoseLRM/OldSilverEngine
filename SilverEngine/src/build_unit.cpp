@@ -10,7 +10,8 @@
 
 #include "engine.cpp"
 #include "core.cpp"
-#include "utils.cpp"
+#include "utils.cpp" // TODO:Remove this file
+#include "allocators.cpp"
 #include "console.cpp"
 #include "renderer/renderer.cpp"
 #include "renderer/debug_renderer.cpp"

@@ -69,6 +69,77 @@ namespace sv {
 
     GlobalEditorData editor;
 
+    /////////////////////////////////////////////// DO UNDO ACTIONS ////////////////////////////////////
+
+    typedef void(*ConstructEntityActionFn)(Entity entity);
+    
+    struct EntityCreate_Action {
+	Entity entity;
+	Entity parent;
+	ConstructEntityActionFn construct_entity;
+    };
+    
+    SV_INTERNAL void do_entity_create(void* pdata, void* preturn) {
+
+	EntityCreate_Action& data = *(EntityCreate_Action*)pdata;
+
+	Entity parent = data.parent;
+	if (!entity_exist(engine.scene, parent))
+	    parent = SV_ENTITY_NULL;
+
+	const char* name = (const char*)(pdata) + sizeof(data);
+	if (*name == '\0')
+	    name = nullptr;
+	
+	data.entity = create_entity(engine.scene, parent, name);
+
+	if (preturn) {
+	    memcpy(preturn, &data.entity, sizeof(Entity));
+	}
+
+	if (data.construct_entity) {
+	    data.construct_entity(data.entity);
+	}
+    }
+    SV_INTERNAL void undo_entity_create(void* pdata, void* preturn) {
+
+	EntityCreate_Action& data = *(EntityCreate_Action*)pdata;
+	if (entity_exist(engine.scene, data.entity))
+	    destroy_entity(engine.scene, data.entity);
+    }
+    SV_INTERNAL void construct_entity_sprite(Entity entity) {
+	add_component<SpriteComponent>(engine.scene, entity);
+    }
+    SV_INTERNAL Entity editor_create_entity(Entity parent = SV_ENTITY_NULL, const char* name = nullptr, ConstructEntityActionFn construct_entity = nullptr)
+    {
+	DoUndoStack& stack = dev.do_undo_stack;
+	stack.lock();
+
+	stack.push_action(do_entity_create, undo_entity_create);
+	
+	EntityCreate_Action data;
+	data.entity = SV_ENTITY_NULL;
+	data.parent = parent;
+	data.construct_entity = construct_entity;
+	
+	stack.push_data(&data, sizeof(data));
+
+	size_t name_size = name ? strlen(name) : 0u;
+	if (name_size)
+	    stack.push_data(name, name_size + 1u);
+	else {
+	    char c = '\0';
+	    stack.push_data(&c, 1u);
+	}
+
+	Entity res;
+	stack.do_action(&res);
+	
+	stack.unlock();
+
+	return res;
+    }
+
     /////////////////////////////////////////////// CAMERA ///////////////////////////////////////
 
     static void control_camera()
@@ -601,7 +672,7 @@ namespace sv {
 	    gui_bounds(dev.gui, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H));
 	    
 	    if (gui_button(dev.gui, "Create Child", 2u)) {
-		create_entity(engine.scene, entity);
+		editor_create_entity(entity);
 	    }
 
 	    gui_end_popup(dev.gui);
@@ -727,7 +798,7 @@ namespace sv {
 		gui_bounds(dev.gui, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H));
 		
 		if (gui_button(dev.gui, "Create Entity", 0u)) {
-		    create_entity(engine.scene);
+		    editor_create_entity();
 		}
 		y += H + editor.style.vertical_padding;
 
@@ -735,8 +806,7 @@ namespace sv {
 		
 		if (gui_button(dev.gui, "Create Sprite", 1u)) {
 
-		    Entity e = create_entity(engine.scene, 0, "Sprite");
-		    add_component<SpriteComponent>(engine.scene, e);
+		    editor_create_entity(SV_ENTITY_NULL, "Sprite", construct_entity_sprite);
 		}
 		y += H + editor.style.vertical_padding;
 
@@ -1163,7 +1233,21 @@ namespace sv {
 
 	    if (input.unused && input.keys[Key_Control]) {
 		
-			
+		if (input.keys[Key_Z] == InputState_Pressed) {
+
+		    DoUndoStack& stack = dev.do_undo_stack;
+		    stack.lock();
+		    stack.undo_action(nullptr);
+		    stack.unlock();
+		}
+
+		if (input.keys[Key_Y] == InputState_Pressed) {
+
+		    DoUndoStack& stack = dev.do_undo_stack;
+		    stack.lock();
+		    stack.do_action(nullptr);
+		    stack.unlock();
+		}
 	    }
 	}
 	else {

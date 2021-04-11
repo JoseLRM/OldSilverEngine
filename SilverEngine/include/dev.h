@@ -28,6 +28,8 @@ namespace sv {
 	bool debug_draw = true;
 	DebugCamera camera;
 
+	DoUndoStack do_undo_stack;
+
 	GUI* gui;
     };
 

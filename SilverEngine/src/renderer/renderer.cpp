@@ -34,7 +34,7 @@ namespace sv {
 
 	COMPILE_VS(gfx.vs_mesh_geometry, "mesh_geometry.hlsl");
 	COMPILE_PS(gfx.ps_mesh_geometry, "mesh_geometry.hlsl");
-	COMPILE_PS_(gfx.ps_mesh_lighting, "mesh_lighting.hlsl");
+	COMPILE_PS(gfx.ps_mesh_lighting, "mesh_lighting.hlsl");
 
 	COMPILE_VS(gfx.vs_sky, "skymapping.hlsl");
 	COMPILE_PS(gfx.ps_sky, "skymapping.hlsl");
@@ -43,7 +43,7 @@ namespace sv {
 	COMPILE_PS(gfx.ps_default_postprocess, "postprocessing/default.hlsl");
 	COMPILE_PS(gfx.ps_gaussian_blur, "postprocessing/gaussian_blur.hlsl");
 	COMPILE_PS(gfx.ps_bloom_threshold, "postprocessing/bloom_threshold.hlsl");
-	COMPILE_PS_(gfx.ps_ssao, "postprocessing/ssao.hlsl");
+	COMPILE_PS(gfx.ps_ssao, "postprocessing/ssao.hlsl");
 
 	return true;
     }
@@ -762,14 +762,14 @@ namespace sv {
     }
 
     struct SpriteInstance {
-	XMMATRIX	tm;
-	v4_f32		texcoord;
+	XMMATRIX  tm;
+	v4_f32	  texcoord;
 	GPUImage* image;
-	Color		color;
-	u32			layer;
+	Color	  color;
+	f32	  layer;
 
 	SpriteInstance() = default;
-	SpriteInstance(const XMMATRIX& m, const v4_f32& texcoord, GPUImage* image, Color color, u32 layer)
+	SpriteInstance(const XMMATRIX& m, const v4_f32& texcoord, GPUImage* image, Color color, f32 layer)
 	    : tm(m), texcoord(texcoord), image(image), color(color), layer(layer) {}
     };
 
@@ -847,11 +847,158 @@ namespace sv {
 
 	graphics_event_end(cmd);
     }
-    
+
     // Temp data
     static List<SpriteInstance> sprite_instances;
     static List<MeshInstance> mesh_instances;
     static List<LightInstance> light_instances;
+    
+    SV_INTERNAL void draw_sprites(Scene* scene, CameraBuffer_GPU& camera_data, CommandList cmd)
+    {
+	{
+	    EntityView<SpriteComponent> sprites(scene);
+
+	    for (ComponentView<SpriteComponent> view : sprites) {
+
+		SpriteComponent& spr = *view.comp;
+		Entity entity = view.entity;
+
+		Transform trans = get_entity_transform(scene, entity);
+		v3_f32 pos = trans.getWorldPosition();
+		sprite_instances.emplace_back(trans.getWorldMatrix(), spr.texcoord, spr.texture.get(), spr.color, pos.z);
+	    }
+	}
+
+	if (sprite_instances.size()) {
+
+	    // Sort sprites
+	    std::sort(sprite_instances.data(), sprite_instances.data() + sprite_instances.size(), [](const SpriteInstance& s0, const SpriteInstance& s1)
+		{
+		    return s0.layer < s1.layer;
+		});
+
+	    GPUBuffer* batch_buffer = get_batch_buffer(sizeof(SpriteData), cmd);
+	    SpriteData& data = *(SpriteData*)batch_data[cmd];
+
+	    // Prepare
+	    graphics_event_begin("Sprite_GeometryPass", cmd);
+
+	    graphics_topology_set(GraphicsTopology_Triangles, cmd);
+	    graphics_vertexbuffer_bind(batch_buffer, 0u, 0u, cmd);
+	    graphics_indexbuffer_bind(gfx.ibuffer_sprite, 0u, cmd);
+	    graphics_inputlayoutstate_bind(gfx.ils_sprite, cmd);
+	    graphics_sampler_bind(gfx.sampler_def_nearest, 0u, ShaderType_Pixel, cmd);
+	    graphics_shader_bind(gfx.vs_sprite, cmd);
+	    graphics_shader_bind(gfx.ps_sprite, cmd);
+	    graphics_blendstate_bind(gfx.bs_transparent, cmd);
+	    graphics_depthstencilstate_unbind(cmd);
+
+	    GPUImage* att[2];
+	    att[0] = gfx.offscreen;
+	    att[1] = gfx.gbuffer_depthstencil;
+
+	    XMMATRIX matrix;
+	    XMVECTOR pos0, pos1, pos2, pos3;
+
+	    // Batch data, used to update the vertex buffer
+	    SpriteVertex* batchIt = data.data;
+
+	    // Used to draw
+	    u32 instanceCount;
+
+	    const SpriteInstance* it = sprite_instances.data();
+	    const SpriteInstance* end = it + sprite_instances.size();
+
+	    while (it != end) {
+
+		// Compute the end ptr of the vertex data
+		SpriteVertex* batchEnd;
+		{
+		    size_t batchCount = batchIt - data.data + SPRITE_BATCH_COUNT * 4u;
+		    instanceCount = u32(SV_MIN(batchCount / 4U, size_t(end - it)));
+		    batchEnd = batchIt + instanceCount * 4u;
+		}
+
+		// Fill batch buffer
+		while (batchIt != batchEnd) {
+
+		    const SpriteInstance& spr = *it++;
+
+		    matrix = XMMatrixMultiply(spr.tm, camera_data.view_projection_matrix);
+
+		    pos0 = XMVectorSet(-0.5f, 0.5f, 0.f, 1.f);
+		    pos1 = XMVectorSet(0.5f, 0.5f, 0.f, 1.f);
+		    pos2 = XMVectorSet(-0.5f, -0.5f, 0.f, 1.f);
+		    pos3 = XMVectorSet(0.5f, -0.5f, 0.f, 1.f);
+
+		    pos0 = XMVector4Transform(pos0, matrix);
+		    pos1 = XMVector4Transform(pos1, matrix);
+		    pos2 = XMVector4Transform(pos2, matrix);
+		    pos3 = XMVector4Transform(pos3, matrix);
+
+		    *batchIt = { v4_f32(pos0), {spr.texcoord.x, spr.texcoord.y}, spr.color };
+		    ++batchIt;
+
+		    *batchIt = { v4_f32(pos1), {spr.texcoord.z, spr.texcoord.y}, spr.color };
+		    ++batchIt;
+
+		    *batchIt = { v4_f32(pos2), {spr.texcoord.x, spr.texcoord.w}, spr.color };
+		    ++batchIt;
+
+		    *batchIt = { v4_f32(pos3), {spr.texcoord.z, spr.texcoord.w}, spr.color };
+		    ++batchIt;
+		}
+
+		// Draw
+
+		graphics_buffer_update(batch_buffer, data.data, instanceCount * 4u * sizeof(SpriteVertex), 0u, cmd);
+
+		graphics_renderpass_begin(gfx.renderpass_world, att, nullptr, 1.f, 0u, cmd);
+
+		end = it;
+		it -= instanceCount;
+
+		const SpriteInstance* begin = it;
+		const SpriteInstance* last = it;
+
+		graphics_image_bind(it->image ? it->image : gfx.image_white, 0u, ShaderType_Pixel, cmd);
+
+		while (it != end) {
+
+		    if (it->image != last->image) {
+
+			u32 spriteCount = u32(it - last);
+			u32 startVertex = u32(last - begin) * 4u;
+
+			graphics_draw_indexed(spriteCount * 6u, 1u, 0u, startVertex, 0u, cmd);
+
+			if (it->image != last->image) {
+			    graphics_image_bind(it->image ? it->image : gfx.image_white, 0u, ShaderType_Pixel, cmd);
+			}
+
+			last = it;
+		    }
+
+		    ++it;
+		}
+
+		// Last draw call
+		{
+		    u32 spriteCount = u32(it - last);
+		    u32 startVertex = u32(last - begin) * 4u;
+
+		    graphics_draw_indexed(spriteCount * 6u, 1u, 0u, startVertex, 0u, cmd);
+		}
+
+		graphics_renderpass_end(cmd);
+
+		end = sprite_instances.data() + sprite_instances.size();
+		batchIt = data.data;
+
+		graphics_event_end(cmd);
+	    }
+	}
+    }
 
     void draw_scene()
     {
@@ -983,152 +1130,6 @@ namespace sv {
 
 		if (scene->skybox && camera.projection_type == ProjectionType_Perspective)
 		    draw_sky(scene->skybox, camera_data.view_matrix, camera_data.projection_matrix, cmd);
-
-		// DRAW SPRITES
-		{
-		    {
-			EntityView<SpriteComponent> sprites(scene);
-
-			for (ComponentView<SpriteComponent> view : sprites) {
-
-			    SpriteComponent& spr = *view.comp;
-			    Entity entity = view.entity;
-
-			    Transform trans = get_entity_transform(scene, entity);
-			    sprite_instances.emplace_back(trans.getWorldMatrix(), spr.texcoord, spr.texture.get(), spr.color, spr.layer);
-			}
-		    }
-
-		    if (sprite_instances.size()) {
-
-			// Sort sprites
-			std::sort(sprite_instances.data(), sprite_instances.data() + sprite_instances.size(), [](const SpriteInstance& s0, const SpriteInstance& s1)
-			    {
-				return s0.layer < s1.layer;
-			    });
-
-			GPUBuffer* batch_buffer = get_batch_buffer(sizeof(SpriteData), cmd);
-			SpriteData& data = *(SpriteData*)batch_data[cmd];
-
-			// Prepare
-			graphics_event_begin("Sprite_GeometryPass", cmd);
-
-			graphics_topology_set(GraphicsTopology_Triangles, cmd);
-			graphics_vertexbuffer_bind(batch_buffer, 0u, 0u, cmd);
-			graphics_indexbuffer_bind(gfx.ibuffer_sprite, 0u, cmd);
-			graphics_inputlayoutstate_bind(gfx.ils_sprite, cmd);
-			graphics_sampler_bind(gfx.sampler_def_nearest, 0u, ShaderType_Pixel, cmd);
-			graphics_shader_bind(gfx.vs_sprite, cmd);
-			graphics_shader_bind(gfx.ps_sprite, cmd);
-			graphics_blendstate_bind(gfx.bs_transparent, cmd);
-			graphics_depthstencilstate_bind(gfx.dss_default_depth, cmd);
-
-			GPUImage* att[2];
-			att[0] = gfx.offscreen;
-			att[1] = gfx.gbuffer_depthstencil;
-
-			XMMATRIX matrix;
-			XMVECTOR pos0, pos1, pos2, pos3;
-
-			// Batch data, used to update the vertex buffer
-			SpriteVertex* batchIt = data.data;
-
-			// Used to draw
-			u32 instanceCount;
-
-			const SpriteInstance* it = sprite_instances.data();
-			const SpriteInstance* end = it + sprite_instances.size();
-
-			while (it != end) {
-
-			    // Compute the end ptr of the vertex data
-			    SpriteVertex* batchEnd;
-			    {
-				size_t batchCount = batchIt - data.data + SPRITE_BATCH_COUNT * 4u;
-				instanceCount = u32(SV_MIN(batchCount / 4U, size_t(end - it)));
-				batchEnd = batchIt + instanceCount * 4u;
-			    }
-
-			    // Fill batch buffer
-			    while (batchIt != batchEnd) {
-
-				const SpriteInstance& spr = *it++;
-
-				matrix = XMMatrixMultiply(spr.tm, camera_data.view_projection_matrix);
-
-				pos0 = XMVectorSet(-0.5f, 0.5f, 0.f, 1.f);
-				pos1 = XMVectorSet(0.5f, 0.5f, 0.f, 1.f);
-				pos2 = XMVectorSet(-0.5f, -0.5f, 0.f, 1.f);
-				pos3 = XMVectorSet(0.5f, -0.5f, 0.f, 1.f);
-
-				pos0 = XMVector4Transform(pos0, matrix);
-				pos1 = XMVector4Transform(pos1, matrix);
-				pos2 = XMVector4Transform(pos2, matrix);
-				pos3 = XMVector4Transform(pos3, matrix);
-
-				*batchIt = { v4_f32(pos0), {spr.texcoord.x, spr.texcoord.y}, spr.color };
-				++batchIt;
-
-				*batchIt = { v4_f32(pos1), {spr.texcoord.z, spr.texcoord.y}, spr.color };
-				++batchIt;
-
-				*batchIt = { v4_f32(pos2), {spr.texcoord.x, spr.texcoord.w}, spr.color };
-				++batchIt;
-
-				*batchIt = { v4_f32(pos3), {spr.texcoord.z, spr.texcoord.w}, spr.color };
-				++batchIt;
-			    }
-
-			    // Draw
-
-			    graphics_buffer_update(batch_buffer, data.data, instanceCount * 4u * sizeof(SpriteVertex), 0u, cmd);
-
-			    graphics_renderpass_begin(gfx.renderpass_world, att, nullptr, 1.f, 0u, cmd);
-
-			    end = it;
-			    it -= instanceCount;
-
-			    const SpriteInstance* begin = it;
-			    const SpriteInstance* last = it;
-
-			    graphics_image_bind(it->image ? it->image : gfx.image_white, 0u, ShaderType_Pixel, cmd);
-
-			    while (it != end) {
-
-				if (it->image != last->image) {
-
-				    u32 spriteCount = u32(it - last);
-				    u32 startVertex = u32(last - begin) * 4u;
-
-				    graphics_draw_indexed(spriteCount * 6u, 1u, 0u, startVertex, 0u, cmd);
-
-				    if (it->image != last->image) {
-					graphics_image_bind(it->image ? it->image : gfx.image_white, 0u, ShaderType_Pixel, cmd);
-				    }
-
-				    last = it;
-				}
-
-				++it;
-			    }
-
-			    // Last draw call
-			    {
-				u32 spriteCount = u32(it - last);
-				u32 startVertex = u32(last - begin) * 4u;
-
-				graphics_draw_indexed(spriteCount * 6u, 1u, 0u, startVertex, 0u, cmd);
-			    }
-
-			    graphics_renderpass_end(cmd);
-
-			    end = sprite_instances.data() + sprite_instances.size();
-			    batchIt = data.data;
-
-			    graphics_event_end(cmd);
-			}
-		    }
-		}
 
 		// DRAW MESHES
 		{
@@ -1340,6 +1341,8 @@ namespace sv {
 
 			graphics_event_end(cmd);
 		    }
+
+		    draw_sprites(scene, camera_data, cmd);
 		}
 
 		/*postprocess_bloom(

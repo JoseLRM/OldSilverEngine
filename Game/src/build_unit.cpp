@@ -6,7 +6,7 @@ using namespace sv;
 
 struct GameMemory {
 
-    Entity entity;
+    Entity player;
     
 };
 
@@ -15,11 +15,13 @@ GameMemory& get_game_memory()
     return *reinterpret_cast<GameMemory*>(engine.game_memory);
 }
 
-SV_USER bool user_initialize()
+SV_USER bool user_initialize(bool init)
 {
-    engine.game_memory = allocate_memory(sizeof(GameMemory));
-
-    set_active_scene("Test");
+    if (init) {
+	engine.game_memory = allocate_memory(sizeof(GameMemory));
+    
+	set_active_scene("Test");
+    }
     
     return true;
 }
@@ -37,15 +39,15 @@ SV_USER bool user_initialize_scene(Scene* scene, Archive* parchive)
     
     if (parchive) {
 	Archive& archive = *parchive;
-	archive >> m.entity;
+	archive >> m.player;
 	return true;
     }
 
     scene->main_camera = create_entity(scene, SV_ENTITY_NULL, "Camera");
     add_component<CameraComponent>(scene, scene->main_camera);
-    m.entity = create_entity(scene, SV_ENTITY_NULL, "Player");
-    add_component<SpriteComponent>(scene, m.entity);
-    BodyComponent* body = add_component<BodyComponent>(scene, m.entity);
+    m.player = create_entity(scene, SV_ENTITY_NULL, "Player");
+    add_component<SpriteComponent>(scene, m.player);
+    BodyComponent* body = add_component<BodyComponent>(scene, m.player);
     body->body_type = BodyType_Dynamic;
     
     return true;
@@ -55,7 +57,7 @@ SV_USER bool user_serialize_scene(Scene* scene, Archive* parchive)
 {
     GameMemory& m = get_game_memory();
     Archive& archive = *parchive;
-    archive << m.entity;
+    archive << m.player;
     return true;
 }
 
@@ -105,8 +107,8 @@ SV_USER void user_update()
 
 	scene->gravity = { 0.f, -36.f };
 	
-	Transform trans = get_entity_transform(scene, m.entity);
-	BodyComponent* body = get_component<BodyComponent>(scene, m.entity);
+	Transform trans = get_entity_transform(scene, m.player);
+	BodyComponent* body = get_component<BodyComponent>(scene, m.player);
 	v2_f32 pos = trans.getLocalPosition().getVec2();
 
 	{
@@ -151,7 +153,7 @@ SV_USER void user_update()
 		add_component<SpriteComponent>(scene, e)->color = { (u8)math_random_u32(seed++, 256u), (u8)math_random_u32(seed++, 256u), (u8)math_random_u32(seed++, 256u), 255u };
 		BodyComponent* b = add_component<BodyComponent>(scene, e);
 		b->body_type = BodyType_Dynamic;
-		b->bounciness = 0.09f;
+		b->bounciness = 0.7f;
 		b->mass = 0.05f;
 
 		Transform t = get_entity_transform(scene, e);
@@ -165,20 +167,20 @@ SV_USER void user_update()
 
 		b->vel = cam_pos - pos;
 		b->vel.normalize();
-		b->vel *= 0.f;
+		b->vel *= 100.f;
 		t.setPosition(pos.getVec3());
 		t.setScale({ 0.07f, 0.07f, 1.f });
 	    }
 	}
 
 	if (input.keys[Key_E] == InputState_Pressed) {
-	    explosion(engine.scene, pos, 100.f, 40.f, &m.entity, 1u);
+	    explosion(engine.scene, pos, 100.f, 40.f, &m.player, 1u);
 	}
     }
 }
 
 SV_USER bool user_get_scene_filepath(const char* name, char* filepath)
 {
-    sprintf(filepath, "scenes/%s.scene", name);
+    sprintf(filepath, "worlds/%s.scene", name);
     return true;
 }
