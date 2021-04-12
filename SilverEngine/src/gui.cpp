@@ -6,6 +6,13 @@
 
 namespace sv {
 
+    enum GuiHeader : u32 {
+	GuiHeader_Widget,
+	GuiHeader_EndOfParent,
+	GuiHeader_StylePush,
+	GuiHeader_StylePop,
+    };
+    
     enum GuiWidgetType : u32 {
 	GuiWidgetType_None,
 	GuiWidgetType_Container,
@@ -20,7 +27,73 @@ namespace sv {
 	GuiWidgetType_MenuContainer,
 	GuiWidgetType_Package,
 	GuiWidgetType_Reciver,
-	GuiWidgetType_MaxEnum,
+    };
+
+    //////////////////////////////// STYLE STRUCTS /////////////////////////////////////
+
+    struct GuiContainerStyle {
+	Color color = Color::Gray(100u);
+    };
+
+    struct GuiWindowStyle {
+	Color color = Color::Gray(170u, 20u);
+	Color decoration_color = Color::Gray(100u, 200u);
+	Color outline_color = Color::Gray(50u, 200u);
+	f32 decoration_height = 0.04f;
+	f32 outline_size = 0.001f;
+	f32 min_width = 0.1f;
+	f32 min_height = 0.f;
+    };
+
+    struct GuiPopupStyle {
+	Color background_color = Color::Gray(140u);
+    };
+
+    struct GuiButtonStyle {
+	Color color = Color::Gray(200u, 150u);
+	Color hot_color = Color::White(230u);
+	Color text_color = Color::Black();
+    };
+
+    struct GuiSliderStyle {
+	Color color = Color::Gray(5u);
+	Color button_color = Color::White();
+	v2_f32 button_size = { 0.01f, 0.03f };
+    };
+
+    struct GuiLabelStyle {
+	Color text_color = Color::White();
+	TextAlignment text_alignment = TextAlignment_Center;
+	Color background_color = Color::Gray(100u, 0u);
+    };
+
+    struct GuiCheckboxStyle {
+	Color color = Color::White();
+	GuiBox active_box = GuiBox::Quad(Color::Black());
+	GuiBox inactive_box = GuiBox::Quad(Color::White(0u));
+    };
+
+    struct GuiDragStyle {
+	Color text_color = Color::Black();
+	Color background_color = Color::White();
+    };
+
+    struct GuiMenuItemStyle {
+	Color color = Color::White();
+	Color hot_color = Color::Gray(200u);
+	Color text_color = Color::Black();
+    };
+
+    struct GuiStyleData {
+	GuiContainerStyle container;
+	GuiWindowStyle window;
+	GuiPopupStyle popup;
+	GuiButtonStyle button;
+	GuiSliderStyle slider;
+	GuiLabelStyle label;
+	GuiCheckboxStyle checkbox;
+	GuiDragStyle drag;
+	GuiMenuItemStyle menuitem;
     };
 
     ///////////////////////////////// RAW STRUCTS ///////////////////////////////////////
@@ -54,12 +127,10 @@ namespace sv {
     struct Raw_Button {
 	const char* text;
 	Raw_Coords coords;
-	GuiButtonStyle style;
     };
 
     struct Raw_Drag {
 	Raw_Coords coords;
-	GuiDragStyle style;
 	f32 value;
 	f32 min;
 	f32 max;
@@ -67,33 +138,27 @@ namespace sv {
     };
 
     struct Raw_Checkbox {
-	GuiCheckboxStyle style;
 	Raw_Coords coords;
 	bool value;
     };
 
     struct Raw_Label {
-	GuiLabelStyle style;
 	Raw_Coords coords;
 	const char* text;
     };
 
     struct Raw_Container {
 	Raw_Coords coords;
-	GuiContainerStyle style;
     };
 
     struct Raw_Window {
-	GuiWindowStyle style;
     };
 
     struct Raw_Popup {
-	GuiPopupStyle style;
 	v4_f32 bounds;
     };
 
     struct Raw_MenuItem {
-	GuiMenuItemStyle style;
 	const char* text;
 	bool active;
     };
@@ -274,6 +339,7 @@ namespace sv {
 	f32 aspect;
 	v2_f32 mouse_position;
 	List<u64> ids;
+	u32 style_count;
 	u64 current_id;
 	v2_f32 begin_position;
 	u64 package_id;
@@ -283,6 +349,9 @@ namespace sv {
 	    u64 id;
 	    GuiWidgetType type;
 	}last;
+
+	GuiStyleData style;
+	GuiStyleData temp_style;
 		
 	RawList package_data;
 		
@@ -475,14 +544,15 @@ namespace sv {
 	GuiWidget& w = gui.widgets[index.index];
 	return get_parent_info(gui, w);
     }
-    SV_INLINE static GuiParentInfo* get_parent_info(GUI& gui, u32 index)
+    SV_AUX GuiParentInfo* get_parent_info(GUI& gui, u32 index)
     {
 	GuiWidget& w = gui.widgets[index];
 	return get_parent_info(gui, w);
     }
 
-    SV_INLINE static void write_widget(GUI& gui, GuiWidgetType type, u64 id, void* data, GuiParentInfo* parent_info)
+    SV_AUX void write_widget(GUI& gui, GuiWidgetType type, u64 id, void* data, GuiParentInfo* parent_info)
     {
+	write_buffer(gui, GuiHeader_Widget);
 	write_buffer(gui, type);
 	write_buffer(gui, id);
 
@@ -515,7 +585,6 @@ namespace sv {
 
 	    write_text(gui, raw->text);
 	    write_buffer(gui, raw->coords);
-	    write_buffer(gui, raw->style);
 	}
 	break;
 
@@ -528,7 +597,6 @@ namespace sv {
 
 	    write_text(gui, raw->text);
 	    write_buffer(gui, raw->coords);
-	    write_buffer(gui, raw->style);
 	}
 	break;
 
@@ -551,7 +619,6 @@ namespace sv {
 	    Raw_MenuItem* raw = (Raw_MenuItem*)data;
 
 	    write_text(gui, raw->text);
-	    write_buffer(gui, raw->style);
 	    write_buffer(gui, raw->active);
 	}
 	break;
@@ -1172,6 +1239,8 @@ namespace sv {
 	gui.resolution = { width, height };
 	gui.aspect = width / height;
 
+	gui.style_count = 0u;
+	
 	gui.ids.reset();
 
 	gui.mouse_position = input.mouse_position + 0.5f;
@@ -1233,7 +1302,7 @@ namespace sv {
 	case GuiWidgetType_Container:
 	{
 	    Raw_Container raw = _read<Raw_Container>(it);
-	    w.widget.container.style = raw.style;
+	    w.widget.container.style = gui.temp_style.container;
 	    w.raw_coords = raw.coords;
 	}
 	break;
@@ -1241,7 +1310,7 @@ namespace sv {
 	case GuiWidgetType_Popup:
 	{
 	    Raw_Popup raw = _read<Raw_Popup>(it);
-	    w.widget.popup.style = raw.style;
+	    w.widget.popup.style = gui.temp_style.popup;
 	    w.widget.popup.close_request = false;
 	    w.bounds = raw.bounds;
 	}
@@ -1250,7 +1319,7 @@ namespace sv {
 	case GuiWidgetType_Window:
 	{
 	    Raw_Window raw = _read<Raw_Window>(it);
-	    w.widget.window.style = raw.style;
+	    w.widget.window.style = gui.temp_style.window;
 
 	    GuiWindowState& state = gui.static_state.window[id];
 	    w.bounds = state.bounds;
@@ -1268,7 +1337,7 @@ namespace sv {
 		button.text = nullptr;
 
 	    w.raw_coords = _read<Raw_Coords>(it);
-	    button.style = _read<GuiButtonStyle>(it);
+	    button.style = gui.temp_style.button;
 	}
 	break;
 
@@ -1282,7 +1351,7 @@ namespace sv {
 		label.text = nullptr;
 
 	    w.raw_coords = _read<Raw_Coords>(it);
-	    label.style = _read<GuiLabelStyle>(it);
+	    label.style = gui.temp_style.label;
 	}
 	break;
 
@@ -1295,7 +1364,7 @@ namespace sv {
 			
 	    Raw_Checkbox raw = _read<Raw_Checkbox>(it);
 	    cb.value = raw.value;
-	    cb.style = raw.style;
+	    cb.style = gui.temp_style.checkbox;
 	    w.raw_coords = raw.coords;
 	}
 	break;
@@ -1309,7 +1378,7 @@ namespace sv {
 	    drag.min = raw.min;
 	    drag.max = raw.max;
 	    drag.adv = raw.adv;
-	    drag.style = raw.style;
+	    drag.style = gui.temp_style.drag;
 	    w.raw_coords = raw.coords;
 	}
 	break;
@@ -1323,7 +1392,7 @@ namespace sv {
 	    if (*menu.text == '\0')
 		menu.text = nullptr;
 
-	    menu.style = _read<GuiMenuItemStyle>(it);
+	    menu.style = gui.temp_style.menuitem;
 	    menu.active = _read<bool>(it);
 
 	    if (parent) {
@@ -1545,6 +1614,21 @@ namespace sv {
 	}
     }
 
+    SV_AUX void get_style_data(GUI& gui, GuiStyle style, size_t* psize, void** pdst)
+    {
+	*pdst = nullptr;
+	*psize = 0u;
+		    
+	switch (style) {
+
+	case GuiStyle_ButtonColor:
+	    *pdst = &gui.temp_style.button.color;
+	    *psize = sizeof(Color);
+	    break;
+			
+	}
+    }
+
     void gui_end(GUI* gui_)
     {
 	PARSE_GUI();
@@ -1564,6 +1648,9 @@ namespace sv {
 
 	SV_ASSERT(gui.ids.empty());
 	SV_ASSERT(gui.parent_stack.size() == 1u);
+	SV_ASSERT(gui.style_count == 0u);
+
+	gui.temp_style = gui.style;
 
 	// Read widgets from raw data
 	{
@@ -1574,10 +1661,20 @@ namespace sv {
 
 	    while (it != end) {
 
-		GuiWidgetType type = _read<GuiWidgetType>(it);
-		    
-		if (type == GuiWidgetType_None) {
+		GuiHeader header = _read<GuiHeader>(it);
 
+		switch(header) {
+
+		case GuiHeader_Widget:
+		{
+		    GuiWidgetType type = _read<GuiWidgetType>(it);
+		    u64 id = _read<u64>(it);
+		    read_widget(gui, type, id, current_parent, it);
+		}
+		break;
+
+		case GuiHeader_EndOfParent:
+		{
 		    SV_ASSERT(current_parent != u32_max);
 
 		    GuiParentInfo* parent_info = get_parent_info(gui, current_parent);
@@ -1585,10 +1682,30 @@ namespace sv {
 		    parent_info->widget_count = u32(gui.indices.size()) - parent_info->widget_offset;
 		    current_parent = parent_info->parent_index;
 		}
-		else if (type < GuiWidgetType_MaxEnum) {
+		break;
 
-		    u64 id = _read<u64>(it);
-		    read_widget(gui, type, id, current_parent, it);
+		case GuiHeader_StylePush:
+		{
+		    GuiStyle style = _read<GuiStyle>(it);
+		    u64 data = _read<u64>(it);
+
+		    void* dst;
+		    size_t size;
+
+		    get_style_data(gui, style, &dst, &size);
+
+		    if (dst && size) {
+			memcpy(dst, &data, size);
+		    }
+		}
+		break;
+
+		case GuiHeader_StylePop:
+		{
+		    
+		}
+		break;
+		    
 		}
 	    }
 	}
@@ -1644,6 +1761,32 @@ namespace sv {
 	gui.current_id = 0U;
 	for (u64 id : gui.ids)
 	    hash_combine(gui.current_id, id);
+    }
+
+    void gui_push_style(GUI* gui, GuiStyle style, void* value, size_t size)
+    {
+	SV_ASSERT(size <= sizeof(u64));
+	
+	++gui->style_count;
+	write_buffer(*gui, GuiHeader_StylePush);
+
+	write_buffer(*gui, style);
+	
+	u64 data;
+	memcpy(&data, value, size);
+	write_buffer(*gui, value, sizeof(u64));
+    }
+    
+    void gui_pop_style(GUI* gui, u32 count)
+    {
+	SV_ASSERT(gui->style_count >= count);
+	
+	foreach(i, count) {
+
+	    write_buffer(*gui, GuiHeader_StylePop);
+	}
+
+	gui->style_count -= count;
     }
 
     void gui_push_id(GUI* gui_, u64 id)
@@ -1808,11 +1951,12 @@ namespace sv {
 
     SV_INLINE void end_parent(GUI& gui)
     {
+	write_buffer(gui, GuiHeader_EndOfParent);
 	gui_pop_id((GUI*)& gui);
 	gui.parent_stack.pop_back();
     }
 
-    void gui_begin_container(GUI* gui_, u64 id, const GuiContainerStyle& style)
+    void gui_begin_container(GUI* gui_, u64 id)
     {
 	PARSE_GUI();
 	hash_combine(id, gui.current_id);
@@ -1823,7 +1967,6 @@ namespace sv {
 	{
 	    Raw_Container raw;
 	    raw.coords = get_raw_coords(gui);
-	    raw.style = style;
 
 	    GuiParentInfo* parent_info;
 	    if (w) parent_info = get_parent_info(gui, *w);
@@ -1836,12 +1979,10 @@ namespace sv {
     void gui_end_container(GUI* gui_)
     {
 	PARSE_GUI();
-	write_buffer(gui, GuiWidgetType_None);
-
 	end_parent(gui);
     }
 
-    bool gui_begin_popup(GUI* gui_, GuiPopupTrigger trigger, MouseButton mouse_button, u64 id, const GuiPopupStyle& style)
+    bool gui_begin_popup(GUI* gui_, GuiPopupTrigger trigger, MouseButton mouse_button, u64 id)
     {
 	PARSE_GUI();
 	hash_combine(id, gui.current_id);
@@ -1856,7 +1997,6 @@ namespace sv {
 		return false;
 
 	    Raw_Popup raw;
-	    raw.style = style;
 	    raw.bounds = w->bounds;
 
 	    GuiParentInfo* parent_info = get_parent_info(gui, *w);
@@ -1922,7 +2062,6 @@ namespace sv {
 	    if (open) {
 
 		Raw_Popup raw;
-		raw.style = style;
 		raw.bounds.z = 0.1f;
 		raw.bounds.w = 0.2f;
 		raw.bounds.x = gui.mouse_position.x + raw.bounds.z * 0.5f;
@@ -1940,14 +2079,12 @@ namespace sv {
     void gui_end_popup(GUI* gui_)
     {
 	PARSE_GUI();
-	write_buffer(gui, GuiWidgetType_None);
-
 	end_parent(gui);
     }
 
     /////////////////////////////////////// WINDOW ////////////////////////////////////////////////
 
-    bool gui_begin_window(GUI* gui_, const char* title, const GuiWindowStyle& style)
+    bool gui_begin_window(GUI* gui_, const char* title)
     {
 	PARSE_GUI();
 	u64 id = hash_string(title);
@@ -1970,7 +2107,6 @@ namespace sv {
 
 	if (state->show) {
 	    Raw_Window raw;
-	    raw.style = style;
 
 	    GuiWidget* w = find_widget(gui, id, GuiWidgetType_Window);
 	    begin_parent(gui, w, id);
@@ -1988,8 +2124,6 @@ namespace sv {
     void gui_end_window(GUI* gui_)
     {
 	PARSE_GUI();
-	write_buffer(gui, GuiWidgetType_None);
-
 	end_parent(gui);
     }
 
@@ -2032,7 +2166,7 @@ namespace sv {
 
     /////////////////////////////////////// MENU ITEM /////////////////////////////////////////
 
-    bool gui_begin_menu_item(GUI* gui_, const char* text, u64 id, const GuiMenuItemStyle& style)
+    bool gui_begin_menu_item(GUI* gui_, const char* text, u64 id)
     {
 	PARSE_GUI();
 	hash_combine(id, gui.current_id);
@@ -2041,7 +2175,6 @@ namespace sv {
 
 	{
 	    Raw_MenuItem raw;
-	    raw.style = style;
 	    raw.text = text;
 	    raw.active = w ? w->widget.menu_item.active : false;
 
@@ -2071,8 +2204,6 @@ namespace sv {
     void gui_end_menu_item(GUI* gui_)
     {
 	PARSE_GUI();
-	write_buffer(gui, GuiWidgetType_None);
-
 	end_parent(gui);
     }
 
@@ -2142,7 +2273,7 @@ namespace sv {
 
     /////////////////////////////////////// COMMON WIDGETS ///////////////////////////////////////
 
-    bool gui_button(GUI* gui_, const char* text, u64 id, const GuiButtonStyle& style)
+    bool gui_button(GUI* gui_, const char* text, u64 id)
     {
 	PARSE_GUI();
 	hash_combine(id, gui.current_id);
@@ -2151,7 +2282,6 @@ namespace sv {
 	    Raw_Button raw;
 	    raw.text = text;
 	    raw.coords = get_raw_coords(gui);
-	    raw.style = style;
 
 	    write_widget(gui, GuiWidgetType_Button, id, &raw, nullptr);
 	}
@@ -2166,7 +2296,7 @@ namespace sv {
 	}
     }
 
-    bool gui_drag_f32(GUI* gui_, f32* value, f32 adv, f32 min, f32 max, u64 id, const GuiDragStyle& style)
+    bool gui_drag_f32(GUI* gui_, f32* value, f32 adv, f32 min, f32 max, u64 id)
     {
 	PARSE_GUI();
 	hash_combine(id, gui.current_id);
@@ -2186,7 +2316,6 @@ namespace sv {
 	{
 	    Raw_Drag raw;
 	    raw.coords = get_raw_coords(gui);
-	    raw.style = style;
 	    raw.value = *value;
 	    raw.min = min;
 	    raw.max = max;
@@ -2198,12 +2327,12 @@ namespace sv {
 	return modified;
     }
 
-    bool gui_slider(GUI* gui, f32* value, f32 min, f32 max, u64 id, const GuiSliderStyle& style)
+    bool gui_slider(GUI* gui, f32* value, f32 min, f32 max, u64 id)
     {
 	return false;
     }
 
-    void gui_text(GUI* gui_, const char* text, u64 id, const GuiLabelStyle& style)
+    void gui_text(GUI* gui_, const char* text, u64 id)
     {
 	PARSE_GUI();
 	hash_combine(id, gui.current_id);
@@ -2211,12 +2340,11 @@ namespace sv {
 	Raw_Label raw;
 	raw.text = text;
 	raw.coords = get_raw_coords(gui);
-	raw.style = style;
 
 	write_widget(gui, GuiWidgetType_Label, id, &raw, nullptr);		
     }
 
-    bool gui_checkbox(GUI* gui_, bool* value, u64 id, const GuiCheckboxStyle& style)
+    bool gui_checkbox(GUI* gui_, bool* value, u64 id)
     {
 	PARSE_GUI();
 	hash_combine(id, gui.current_id);
@@ -2235,7 +2363,6 @@ namespace sv {
 	{
 	    Raw_Checkbox raw;
 	    raw.coords = get_raw_coords(gui);
-	    raw.style = style;
 	    raw.value = *value;
 
 	    write_widget(gui, GuiWidgetType_Checkbox, id, &raw, nullptr);
@@ -2244,7 +2371,7 @@ namespace sv {
 	return modified;
     }
 
-    bool gui_checkbox(GUI* gui_, u64 user_id, const GuiCheckboxStyle& style)
+    bool gui_checkbox(GUI* gui_, u64 user_id)
     {
 	PARSE_GUI();
 	u64 id = user_id;
@@ -2260,7 +2387,7 @@ namespace sv {
 	}
 	else value = &it->second;
 		
-	gui_checkbox(gui_, value, user_id, style);
+	gui_checkbox(gui_, value, user_id);
 	return *value;
     }
 

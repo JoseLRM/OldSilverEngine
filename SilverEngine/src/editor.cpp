@@ -5,17 +5,6 @@
 
 namespace sv {
 
-    struct EditorStyle {
-
-	GuiWindowStyle window_style;
-	GuiButtonStyle button_style;
-	GuiSliderStyle slider_style;
-
-	f32 vertical_padding = 5.f;
-	f32 separator = 30.f;
-
-    };
-
     enum GizmosTransformMode : u32 {
 	GizmosTransformMode_None,
 	GizmosTransformMode_Position
@@ -57,8 +46,6 @@ namespace sv {
     };
 
     struct GlobalEditorData {
-
-	EditorStyle style;
 
 	Entity selected_entity = SV_ENTITY_NULL;
 	bool camera_focus = false;
@@ -435,9 +422,6 @@ namespace sv {
 
 	if (egui_begin_component(entity, comp_id, &remove)) {
 
-	    GuiLabelStyle text_style;
-	    text_style.text_alignment = TextAlignment_Left;
-
 	    if (SpriteComponent::ID == comp_id) {
 
 		SpriteComponent& spr = *reinterpret_cast<SpriteComponent*>(comp);
@@ -654,20 +638,20 @@ namespace sv {
     {
 	if (gui_begin_popup(dev.gui, GuiPopupTrigger_LastWidget, MouseButton_Right, 0x3254fa + u64(entity))) {
 
-	    f32 y = editor.style.vertical_padding;
+	    f32 y = 0.f;
 	    constexpr f32 H = 20.f;
 
 	    gui_bounds(dev.gui, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H));
 	    
 	    destroy = gui_button(dev.gui, "Destroy", 0u);
-	    y += H + editor.style.vertical_padding;
+	    y += H;
 
 	    gui_bounds(dev.gui, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H));
 	    
 	    if (gui_button(dev.gui, "Duplicate", 1u)) {
 		duplicate_entity(engine.scene, entity);
 	    }
-	    y += H + editor.style.vertical_padding;
+	    y += H;
 
 	    gui_bounds(dev.gui, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H));
 	    
@@ -695,16 +679,9 @@ namespace sv {
 
 	if (child_count == 0u) {
 
-	    GuiButtonStyle style = editor.style.button_style;
-
-	    if (entity == editor.selected_entity) {
-		style.color = Color::Red();
-		style.hot_color = Color::Red();
-	    }
-
 	    gui_bounds(g, GuiCoord::Pixel(10.f + xoff), GuiCoord::IPixel(10.f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + BUTTON_HEIGHT));
 	    
-	    if (gui_button(g, name, 0u, style)) {
+	    if (gui_button(g, name, 0u)) {
 
 		editor.selected_entity = entity;
 	    }
@@ -715,20 +692,9 @@ namespace sv {
 	}
 	else {
 
-	    GuiContainerStyle style;
-	    style.color = editor.style.button_style.color;
-
-	    if (entity == editor.selected_entity) {
-		style.color = Color::Red();
-	    }
-
 	    gui_bounds(g, GuiCoord::Pixel(10.f + xoff), GuiCoord::IPixel(10.f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + BUTTON_HEIGHT));
 	    
-	    gui_begin_container(g, 1u, style);
-
-	    GuiButtonStyle button_style;
-	    button_style.color = Color::White(0u);
-	    button_style.hot_color = Color::White(0u);
+	    gui_begin_container(g, 1u);
 
 	    gui_bounds(g, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
 	    
@@ -792,7 +758,7 @@ namespace sv {
 
 	    if (gui_begin_popup(dev.gui, GuiPopupTrigger_Parent, MouseButton_Right, 0x5634c)) {
 
-		f32 y = editor.style.vertical_padding;
+		f32 y = 0.f;
 		constexpr f32 H = 20.f;
 
 		gui_bounds(dev.gui, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H));
@@ -800,7 +766,7 @@ namespace sv {
 		if (gui_button(dev.gui, "Create Entity", 0u)) {
 		    editor_create_entity();
 		}
-		y += H + editor.style.vertical_padding;
+		y += H;
 
 		gui_bounds(dev.gui, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H));
 		
@@ -808,7 +774,7 @@ namespace sv {
 
 		    editor_create_entity(SV_ENTITY_NULL, "Sprite", construct_entity_sprite);
 		}
-		y += H + editor.style.vertical_padding;
+		y += H;
 
 		gui_end_popup(dev.gui);
 	    }
@@ -873,7 +839,7 @@ namespace sv {
 			    add_component_by_id(engine.scene, selected, comp_id);
 			}
 
-			y += 20.f + editor.style.vertical_padding;
+			y += 20.f;
 		    }
 
 		    gui_end_popup(g);
@@ -989,7 +955,7 @@ namespace sv {
 		    gui_begin_grid_element(gui, 69u + i);
 		    
 		    gui_bounds(gui, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
-		    if (gui_button(gui, nullptr, 0u, editor.style.button_style)) {
+		    if (gui_button(gui, nullptr, 0u)) {
 
 			if (e.type == AssetElementType_Directory && !update_browser) {
 

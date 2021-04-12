@@ -62,9 +62,6 @@ namespace sv {
 	v3_f32 position = trans.getLocalPosition();
 	v3_f32 scale = trans.getLocalScale();
 
-	GuiContainerStyle container_style;
-	container_style.color = Color::White(0u);
-
 	foreach(i, 2u) {
 
 	    gui_push_id(dev.gui, i + 0x23549abf);
@@ -83,14 +80,9 @@ namespace sv {
 	    }
 
 	    // TODO: Hot color
-	    GuiButtonStyle x_style;
-	    x_style.color = { 229u, 25u, 25u, 255u };
-
-	    GuiButtonStyle y_style;
-	    y_style.color = { 51u, 204u, 51u, 255u };
-
-	    GuiButtonStyle z_style;
-	    z_style.color = { 13u, 25u, 229u, 255u };
+	    //x_style.color = ;
+	    //y_style.color = { 51u, 204u, 51u, 255u };
+	    //z_style.color = { 13u, 25u, 229u, 255u };
 
 	    constexpr f32 EXTERN_PADDING = 0.03f;
 	    constexpr f32 INTERN_PADDING = 0.07f;
@@ -99,16 +91,19 @@ namespace sv {
 
 	    // X
 	    {
+		Color c = { 229u, 25u, 25u, 255u };
+		gui_push_style(dev.gui, GuiStyle_ButtonColor, &c, sizeof(Color));
+		
 		gui_bounds(dev.gui,
 			   GuiCoord::Relative(0.5f - ELEMENT_WIDTH * 1.5f - INTERN_PADDING),
 			   GuiCoord::Relative(0.5f - ELEMENT_WIDTH * 0.5f - INTERN_PADDING),
 			   GuiCoord::IPixel(info.yoff),
 			   GuiCoord::IPixel(info.yoff + TRANSFORM_HEIGHT));
 		
-		gui_begin_container(dev.gui, 1u, container_style);
+		gui_begin_container(dev.gui, 1u);
 		
 		gui_bounds(dev.gui, GuiCoord::Relative(0.f), GuiCoord::Relative(0.25f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
-		if (gui_button(dev.gui, "X", 0u, x_style)) {
+		if (gui_button(dev.gui, "X", 0u)) {
 
 		    if (i == 1u)
 			values->x = 1.f;
@@ -120,6 +115,8 @@ namespace sv {
 		gui_drag_f32(dev.gui, &values->x, 0.1f, 1u);
 
 		gui_end_container(dev.gui);
+
+		gui_pop_style(dev.gui);
 	    }
 
 	    // Y
@@ -130,10 +127,10 @@ namespace sv {
 			   GuiCoord::IPixel(info.yoff),
 			   GuiCoord::IPixel(info.yoff + TRANSFORM_HEIGHT));
 		
-		gui_begin_container(dev.gui, 2u, container_style);
+		gui_begin_container(dev.gui, 2u);
 
 		gui_bounds(dev.gui, GuiCoord::Relative(0.f), GuiCoord::Relative(0.25f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
-		if (gui_button(dev.gui, "Y", 0u,  y_style)) {
+		if (gui_button(dev.gui, "Y", 0u)) {
 
 		    if (i == 1u)
 			values->y = 1.f;
@@ -155,10 +152,10 @@ namespace sv {
 			   GuiCoord::IPixel(info.yoff),
 			   GuiCoord::IPixel(info.yoff + TRANSFORM_HEIGHT));
 		
-		gui_begin_container(dev.gui, 3u, container_style);
+		gui_begin_container(dev.gui, 3u);
 
 		gui_bounds(dev.gui, GuiCoord::Relative(0.f), GuiCoord::Relative(0.25f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
-		if (gui_button(dev.gui, "Z", 0u, z_style)) {
+		if (gui_button(dev.gui, "Z", 0u)) {
 
 		    if (i == 1u)
 			values->z = 1.f;
@@ -197,18 +194,6 @@ namespace sv {
 
     bool egui_begin_component(Entity entity, CompID comp_id, bool* remove)
     {
-	GuiContainerStyle container_style;
-	container_style.color = Color::Red(100u);
-
-	GuiLabelStyle text_style;
-	text_style.text_color = Color::Black();
-	text_style.text_alignment = TextAlignment_Left;
-
-	GuiCheckboxStyle checkbox_style;
-	checkbox_style.active_box = GuiBox::Triangle(Color::Black(), true, 0.5f);
-	checkbox_style.inactive_box = GuiBox::Triangle(Color::Black(), false, 0.5f);
-	checkbox_style.color = Color::Black(0u);
-
 	GuiParentUserData& info = gui_parent_userdata(dev.gui);
 
 	u64 id = u64("SHOW COMPONENT") ^ u64((u64(comp_id) << 32u) + entity);
@@ -217,10 +202,10 @@ namespace sv {
 	*remove = false;
 
 	gui_bounds(dev.gui, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + 40.f));
-	gui_begin_container(dev.gui, 0u, container_style);
+	gui_begin_container(dev.gui, 0u);
 
 	gui_bounds(dev.gui, GuiCoord::Pixel(35.f), GuiCoord::IPixel(10.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
-	gui_text(dev.gui, get_component_name(comp_id), 1u, text_style);
+	gui_text(dev.gui, get_component_name(comp_id), 1u);
 
 	if (gui_begin_popup(dev.gui, GuiPopupTrigger_LastWidget, MouseButton_Right, 2u)) {
 
@@ -232,7 +217,7 @@ namespace sv {
 
 	gui_xbounds(dev.gui, GuiCoord::Pixel(0.f), GuiAlign_Left, GuiDim::Aspect());
 	gui_ybounds(dev.gui, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
-	bool show = gui_checkbox(dev.gui, 3u, checkbox_style);
+	bool show = gui_checkbox(dev.gui, 3u);
 
 	gui_end_container(dev.gui);
 
