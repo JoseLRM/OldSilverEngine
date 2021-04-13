@@ -416,7 +416,7 @@ namespace sv {
 	return true;
     }
 
-    static void show_component_info(f32& y, Entity entity, CompID comp_id, BaseComponent* comp)
+    static void show_component_info(Entity entity, CompID comp_id, BaseComponent* comp)
     {
 	bool remove;
 
@@ -636,7 +636,7 @@ namespace sv {
 
     static void show_entity_popup(Entity entity, bool& destroy)
     {
-	if (gui_begin_popup(dev.gui, GuiPopupTrigger_LastWidget, MouseButton_Right, 0x3254fa + u64(entity))) {
+	if (gui_begin_popup(dev.gui, GuiPopupTrigger_LastWidget, MouseButton_Right, 0x3254fa + u64(entity), GuiLayout_Flow)) {
 
 	    f32 y = 0.f;
 	    constexpr f32 H = 20.f;
@@ -663,7 +663,7 @@ namespace sv {
 	}
     }
 
-    static void show_entity(Entity entity, f32& y, f32 xoff)
+    SV_INTERNAL void show_entity(Entity entity)
     {
 	GUI* g = dev.gui;
 
@@ -671,15 +671,11 @@ namespace sv {
 
 	const char* name = get_entity_name(engine.scene, entity);
 
-	constexpr f32 BUTTON_HEIGHT = 25.f;
-
 	u32 child_count = get_entity_childs_count(engine.scene, entity);
 
 	bool destroy = false;
 
 	if (child_count == 0u) {
-
-	    gui_bounds(g, GuiCoord::Pixel(10.f + xoff), GuiCoord::IPixel(10.f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + BUTTON_HEIGHT));
 	    
 	    if (gui_button(g, name, 0u)) {
 
@@ -687,16 +683,10 @@ namespace sv {
 	    }
 
 	    show_entity_popup(entity, destroy);
-
-	    y += BUTTON_HEIGHT + 2.f;
 	}
 	else {
-
-	    gui_bounds(g, GuiCoord::Pixel(10.f + xoff), GuiCoord::IPixel(10.f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + BUTTON_HEIGHT));
 	    
-	    gui_begin_container(g, 1u);
-
-	    gui_bounds(g, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
+	    gui_begin_container(g, 1u, GuiLayout_Flow);
 	    
 	    if (gui_button(g, name, 0u)) {
 
@@ -707,15 +697,13 @@ namespace sv {
 
 	    gui_end_container(g);
 
-	    y += BUTTON_HEIGHT + 2.f;
-
 	    const Entity* childs;
 	    child_count = get_entity_childs_count(engine.scene, entity);
 	    get_entity_childs(engine.scene, entity, &childs);
 
 	    foreach(i, child_count) {
 
-		show_entity(childs[i], y, xoff + 15.f);
+		show_entity(childs[i]);
 
 		get_entity_childs(engine.scene, entity, &childs);
 		child_count = get_entity_childs_count(engine.scene, entity);
@@ -736,8 +724,6 @@ namespace sv {
 
     void display_entity_hierarchy()
     {
-	f32 y = 5.f;
-
 	if (egui_begin_window("Hierarchy")) {
 
 	    u32 entity_count = get_entity_count(engine.scene);
@@ -747,7 +733,7 @@ namespace sv {
 		Entity entity = get_entity_by_index(engine.scene, entity_index);
 
 		u32 childs = get_entity_childs_count(engine.scene, entity);
-		show_entity(entity, y, 0.f);
+		show_entity(entity);
 
 		if (entity_exist(engine.scene, entity))
 		    childs = get_entity_childs_count(engine.scene, entity);
@@ -756,25 +742,16 @@ namespace sv {
 		entity_index += childs;
 	    }
 
-	    if (gui_begin_popup(dev.gui, GuiPopupTrigger_Parent, MouseButton_Right, 0x5634c)) {
-
-		f32 y = 0.f;
-		constexpr f32 H = 20.f;
-
-		gui_bounds(dev.gui, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H));
+	    if (gui_begin_popup(dev.gui, GuiPopupTrigger_Parent, MouseButton_Right, 0x5634c, GuiLayout_Flow)) {
 		
 		if (gui_button(dev.gui, "Create Entity", 0u)) {
 		    editor_create_entity();
 		}
-		y += H;
-
-		gui_bounds(dev.gui, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H));
 		
 		if (gui_button(dev.gui, "Create Sprite", 1u)) {
 
 		    editor_create_entity(SV_ENTITY_NULL, "Sprite", construct_entity_sprite);
 		}
-		y += H;
 
 		gui_end_popup(dev.gui);
 	    }
@@ -787,8 +764,6 @@ namespace sv {
     {
 	GUI* g = dev.gui;
 	Entity selected = editor.selected_entity;
-
-	f32 y = 5.f;
 
 	if (egui_begin_window("Inspector")) {
 
@@ -813,17 +788,14 @@ namespace sv {
 
 			CompRef ref = get_component_by_index(engine.scene, selected, comp_index);
 
-			show_component_info(y, selected, ref.id, ref.ptr);
+			show_component_info(selected, ref.id, ref.ptr);
 			comp_count = get_entity_component_count(engine.scene, selected);
 		    }
 
 		    gui_pop_id(g);
 		}
 
-		if (gui_begin_popup(g, GuiPopupTrigger_Parent, MouseButton_Right, 0xabc2544 + selected)) {
-
-		    f32 y = 5.f;
-
+		if (gui_begin_popup(g, GuiPopupTrigger_Parent, MouseButton_Right, 0xabc2544 + selected, GuiLayout_Flow)) {
 		    u32 count = get_component_register_count();
 		    foreach(i, count) {
 
@@ -831,15 +803,11 @@ namespace sv {
 
 			if (get_component_by_id(engine.scene, selected, comp_id))
 			    continue;
-
-			gui_bounds(g, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + 20.f));
 			
 			if (gui_button(g, get_component_name(comp_id), comp_id)) {
 			    
 			    add_component_by_id(engine.scene, selected, comp_id);
 			}
-
-			y += 20.f;
 		    }
 
 		    gui_end_popup(g);
@@ -859,15 +827,11 @@ namespace sv {
 
 	if (egui_begin_window("Asset Browser")) {
 
-	    
+	    constexpr f32 WIDTH = 25.f;
 	    AssetBrowserInfo& info = editor.asset_browser;
 
-	    {
-		constexpr f32 WIDTH = 80.f;
-
-		gui_bounds(gui, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(0.f), GuiCoord::IPixel(33.f));
-		
-		gui_begin_container(gui, 0u);
+	    {		
+		gui_begin_container(gui, 0u, GuiLayout_Flow);
 		
 		if (info.filepath[0]) {
 
@@ -881,8 +845,6 @@ namespace sv {
 		    u32 count = SV_MIN(SV_MAX(u32(width / WIDTH), 1u), folder_count);
 		    SV_ASSERT(count != 0u);
 		    --count;
-
-		    f32 offset = width - f32(count) * WIDTH;
 
 		    const char* folder_offset = info.filepath;
 		    char folder_name[FILEPATH_SIZE];
@@ -909,9 +871,7 @@ namespace sv {
 			    folder_offset = end;
 			    ++folder_offset;
 			}
-
-			f32 x = offset + (count - i) * WIDTH;
-			gui_bounds(gui, GuiCoord::IPixel(x), GuiCoord::IPixel(x - WIDTH), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));			
+			
 			if (gui_button(gui, folder_name, i))
 			{
 
@@ -942,7 +902,7 @@ namespace sv {
 
 	    {
 		gui_bounds(gui, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(40.f), GuiCoord::Relative(0.f));
-		gui_begin_container(gui, 1u);
+		gui_begin_container(gui, 1u, GuiLayout_Flow);
 
 		gui_bounds(gui, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
 		gui_begin_grid(gui, u32(info.elements.size()), 150.f, 5.f);
@@ -1247,7 +1207,7 @@ namespace sv {
 			
 		gui_push_id(dev.gui, "MENU");
 		    
-		if (gui_begin_menu_item(dev.gui, "Game", 0u)) {
+		if (gui_begin_menu_item(dev.gui, "Game", 0u, GuiLayout_Flow)) {
 
 		    if (egui_button("Play", 0u)) {
 			dev.next_game_state = GameState_Play;
@@ -1260,7 +1220,7 @@ namespace sv {
 		    gui_end_menu_item(dev.gui);
 		}
 
-		if (gui_begin_menu_item(dev.gui, "View", 1u)) {
+		if (gui_begin_menu_item(dev.gui, "View", 1u, GuiLayout_Flow)) {
 
 		    if (egui_button("Hierarchy", 0u)) {
 			gui_show_window(dev.gui, "Hierarchy");

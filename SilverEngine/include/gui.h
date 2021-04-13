@@ -39,6 +39,7 @@ namespace sv {
 	GuiDimConstraint_Scale,
 	GuiDimConstraint_Pixel,
 	GuiDimConstraint_Aspect,
+	GuiDimConstraint_Adjust, // Used only for parents
     };
 
     struct GuiDim {
@@ -51,7 +52,8 @@ namespace sv {
 	SV_INLINE static GuiDim Pixel(f32 n) { return { n, GuiDimConstraint_Pixel }; }
         SV_INLINE static GuiDim Scale(f32 n) { return { n, GuiDimConstraint_Scale }; }
 	SV_INLINE static GuiDim Aspect(f32 n = 1.f) { return { n, GuiDimConstraint_Aspect }; }
-		
+	SV_INLINE static GuiDim Adjust(f32 n = 1.f) { return { n, GuiDimConstraint_Adjust }; }
+	
     };
 
     enum GuiBoxType : u32 {
@@ -120,12 +122,12 @@ namespace sv {
 	    
     };
 
-    struct GUI;
-
-    struct GuiParentUserData {
-	f32 yoff;
-	f32 xoff;
+    enum GuiLayout : u32 {
+	GuiLayout_Free,
+	GuiLayout_Flow
     };
+
+    struct GUI;
 
     SV_API bool gui_create(u64 hashcode, GUI** pgui);
     SV_API bool gui_destroy(GUI* gui);
@@ -137,8 +139,10 @@ namespace sv {
     SV_API void gui_push_id(GUI* gui, const char* id);
     SV_API void gui_pop_id(GUI* gui, u32 count = 1u);
 
-    SV_API void gui_push_style(GUI* gui, GuiStyle style, void* value, size_t size);
+    SV_API void gui_push_style(GUI* gui, GuiStyle style, const void* value, size_t size);
     SV_API void gui_pop_style(GUI* gui, u32 count = 1u);
+    SV_INLINE void gui_push_style(GUI* gui, GuiStyle style, const Color& color) { gui_push_style(gui, style, &color, sizeof(Color)); }
+    SV_INLINE void gui_push_style(GUI* gui, GuiStyle style, f32 value) { gui_push_style(gui, style, &value, sizeof(f32)); }
     
     SV_API void gui_xbounds(GUI* gui, GuiCoord x0, GuiCoord x1);
     SV_API void gui_xbounds(GUI* gui, GuiCoord x, GuiAlign align, GuiDim w);
@@ -147,18 +151,18 @@ namespace sv {
     SV_API void gui_bounds(GUI* gui, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1);
     SV_API void gui_bounds(GUI* gui, GuiCoord x, GuiAlign xalign, GuiDim w, GuiCoord y, GuiAlign yalign, GuiDim h);
 
-    SV_API void gui_begin_container(GUI* gui, u64 id);
+    SV_API void gui_begin_container(GUI* gui, u64 id, GuiLayout layout);
     SV_API void gui_end_container(GUI* gui);
     
-    SV_API bool gui_begin_popup(GUI* gui, GuiPopupTrigger trigger, MouseButton mouse_button, u64 id);
+    SV_API bool gui_begin_popup(GUI* gui, GuiPopupTrigger trigger, MouseButton mouse_button, u64 id, GuiLayout layout);
     SV_API void gui_end_popup(GUI* gui);
 	
-    SV_API bool gui_begin_window(GUI* gui, const char* title);
+    SV_API bool gui_begin_window(GUI* gui, const char* title, GuiLayout layout);
     SV_API void gui_end_window(GUI* gui);
     SV_API bool gui_show_window(GUI* gui, const char* title);
     SV_API bool gui_hide_window(GUI* gui, const char* title);
 
-    SV_API bool gui_begin_menu_item(GUI* gui, const char* text, u64 id);
+    SV_API bool gui_begin_menu_item(GUI* gui, const char* text, u64 id, GuiLayout layout);
     SV_API void gui_end_menu_item(GUI* gui);
 
     SV_API void gui_send_package(GUI* gui, const void* package, u32 package_size, u64 package_id);
@@ -178,7 +182,6 @@ namespace sv {
     SV_API bool gui_checkbox(GUI* gui, u64 id);
 	
     SV_API v4_f32 gui_parent_bounds(GUI* gui);
-    SV_API GuiParentUserData& gui_parent_userdata(GUI* gui);
 
     SV_API void gui_draw(GUI* gui, CommandList cmd);
 

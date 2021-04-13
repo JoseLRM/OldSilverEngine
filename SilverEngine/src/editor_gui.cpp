@@ -23,12 +23,8 @@ namespace sv {
     }
 
     bool egui_begin_window(const char* title)
-    {
-	if (gui_begin_window(dev.gui, title)) {
-			
-	    GuiParentUserData& info = gui_parent_userdata(dev.gui);
-	    info.yoff = 0.f;
-
+    {	
+	if (gui_begin_window(dev.gui, title, GuiLayout_Flow)) {
 	    return true;
 	}
 
@@ -42,25 +38,23 @@ namespace sv {
 
     void egui_header(const char* text, u64 id)
     {
-	constexpr f32 HEIGHT = 10.f;
-
-	GuiParentUserData& info = gui_parent_userdata(dev.gui);
-
-	gui_bounds(dev.gui, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + 40.f));
 	gui_text(dev.gui, text, id);
-	info.yoff += 40.f + SEPARATOR + VPADDING;
     }
 
     void egui_transform(Entity entity)
     {
 	constexpr f32 TRANSFORM_HEIGHT = 30.f;
 
-	GuiParentUserData& info = gui_parent_userdata(dev.gui);
+	gui_push_id(dev.gui, "ENTITY TRANSFORM");
+	
+	gui_begin_container(dev.gui, 0u, GuiLayout_Free);
 
 	// TODO: euler rotation
 	Transform trans = get_entity_transform(engine.scene, entity);
 	v3_f32 position = trans.getLocalPosition();
 	v3_f32 scale = trans.getLocalScale();
+
+	f32 yoff = 0.f;
 
 	foreach(i, 2u) {
 
@@ -80,27 +74,23 @@ namespace sv {
 	    }
 
 	    // TODO: Hot color
-	    //x_style.color = ;
-	    //y_style.color = { 51u, 204u, 51u, 255u };
-	    //z_style.color = { 13u, 25u, 229u, 255u };
 
 	    constexpr f32 EXTERN_PADDING = 0.03f;
 	    constexpr f32 INTERN_PADDING = 0.07f;
 
 	    constexpr f32 ELEMENT_WIDTH = (1.f - EXTERN_PADDING * 2.f - INTERN_PADDING * 2.f) / 3.f;
-
+	    
 	    // X
 	    {
-		Color c = { 229u, 25u, 25u, 255u };
-		gui_push_style(dev.gui, GuiStyle_ButtonColor, &c, sizeof(Color));
+		gui_push_style(dev.gui, GuiStyle_ButtonColor, Color{ 229u, 25u, 25u, 255u });
 		
 		gui_bounds(dev.gui,
 			   GuiCoord::Relative(0.5f - ELEMENT_WIDTH * 1.5f - INTERN_PADDING),
 			   GuiCoord::Relative(0.5f - ELEMENT_WIDTH * 0.5f - INTERN_PADDING),
-			   GuiCoord::IPixel(info.yoff),
-			   GuiCoord::IPixel(info.yoff + TRANSFORM_HEIGHT));
+			   GuiCoord::IPixel(yoff),
+			   GuiCoord::IPixel(yoff + TRANSFORM_HEIGHT));
 		
-		gui_begin_container(dev.gui, 1u);
+		gui_begin_container(dev.gui, 1u, GuiLayout_Free);
 		
 		gui_bounds(dev.gui, GuiCoord::Relative(0.f), GuiCoord::Relative(0.25f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
 		if (gui_button(dev.gui, "X", 0u)) {
@@ -121,13 +111,15 @@ namespace sv {
 
 	    // Y
 	    {
+		gui_push_style(dev.gui, GuiStyle_ButtonColor, Color{ 51u, 204u, 51u, 255u });
+		
 		gui_bounds(dev.gui,
 			   GuiCoord::Relative(0.5f - ELEMENT_WIDTH * 0.5f),
 			   GuiCoord::Relative(0.5f + ELEMENT_WIDTH * 0.5f),
-			   GuiCoord::IPixel(info.yoff),
-			   GuiCoord::IPixel(info.yoff + TRANSFORM_HEIGHT));
+			   GuiCoord::IPixel(yoff),
+			   GuiCoord::IPixel(yoff + TRANSFORM_HEIGHT));
 		
-		gui_begin_container(dev.gui, 2u);
+		gui_begin_container(dev.gui, 2u, GuiLayout_Free);
 
 		gui_bounds(dev.gui, GuiCoord::Relative(0.f), GuiCoord::Relative(0.25f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
 		if (gui_button(dev.gui, "Y", 0u)) {
@@ -142,17 +134,21 @@ namespace sv {
 		gui_drag_f32(dev.gui, &values->y, 0.1f, 1u);
 
 		gui_end_container(dev.gui);
+
+		gui_pop_style(dev.gui);
 	    }
 
 	    // Z
 	    {
+		gui_push_style(dev.gui, GuiStyle_ButtonColor, Color{ 13u, 25u, 229u, 255u });
+		
 		gui_bounds(dev.gui,
 			   GuiCoord::Relative(0.5f + ELEMENT_WIDTH * 0.5f + INTERN_PADDING),
 			   GuiCoord::Relative(0.5f + ELEMENT_WIDTH * 1.5f + INTERN_PADDING),
-			   GuiCoord::IPixel(info.yoff),
-			   GuiCoord::IPixel(info.yoff + TRANSFORM_HEIGHT));
+			   GuiCoord::IPixel(yoff),
+			   GuiCoord::IPixel(yoff + TRANSFORM_HEIGHT));
 		
-		gui_begin_container(dev.gui, 3u);
+		gui_begin_container(dev.gui, 3u, GuiLayout_Free);
 
 		gui_bounds(dev.gui, GuiCoord::Relative(0.f), GuiCoord::Relative(0.25f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
 		if (gui_button(dev.gui, "Z", 0u)) {
@@ -167,14 +163,18 @@ namespace sv {
 		gui_drag_f32(dev.gui, &values->z, 0.1f, 1u);
 
 		gui_end_container(dev.gui);
+
+		gui_pop_style(dev.gui);
 	    }
 
 	    gui_pop_id(dev.gui);
 
-	    info.yoff += TRANSFORM_HEIGHT + VPADDING;
+	    yoff += TRANSFORM_HEIGHT + VPADDING;
 	}
 
-	info.yoff += SEPARATOR;
+	gui_end_container(dev.gui);
+
+	gui_pop_id(dev.gui);
 
 	trans.setPosition(position);
 	trans.setScale(scale);
@@ -182,32 +182,23 @@ namespace sv {
 
     bool egui_button(const char* text, u64 id)
     {
-	constexpr f32 HEIGHT = 25.f;
-
-	GuiParentUserData& info = gui_parent_userdata(dev.gui);
-
-	gui_bounds(dev.gui, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + HEIGHT));
-	bool res = gui_button(dev.gui, text, id);
-	info.yoff += HEIGHT + VPADDING;
-	return res;
+	return gui_button(dev.gui, text, id);
     }
 
     bool egui_begin_component(Entity entity, CompID comp_id, bool* remove)
     {
-	GuiParentUserData& info = gui_parent_userdata(dev.gui);
-
 	u64 id = u64("SHOW COMPONENT") ^ u64((u64(comp_id) << 32u) + entity);
 	gui_push_id(dev.gui, id);
 
 	*remove = false;
+	
+	gui_begin_container(dev.gui, 0u, GuiLayout_Free);
 
-	gui_bounds(dev.gui, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + 40.f));
-	gui_begin_container(dev.gui, 0u);
-
-	gui_bounds(dev.gui, GuiCoord::Pixel(35.f), GuiCoord::IPixel(10.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
+	gui_xbounds(dev.gui, GuiCoord::Pixel(35.f), GuiCoord::IPixel(10.f));
+	gui_ybounds(dev.gui, GuiCoord::IPixel(0.f), GuiAlign_Top, GuiDim::Pixel(20.f));
 	gui_text(dev.gui, get_component_name(comp_id), 1u);
 
-	if (gui_begin_popup(dev.gui, GuiPopupTrigger_LastWidget, MouseButton_Right, 2u)) {
+	if (gui_begin_popup(dev.gui, GuiPopupTrigger_LastWidget, MouseButton_Right, 2u, GuiLayout_Flow)) {
 
 	    gui_bounds(dev.gui, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(5.f), GuiCoord::IPixel(25.f));
 	    *remove = gui_button(dev.gui, "Remove", 0u);
@@ -216,12 +207,10 @@ namespace sv {
 	}
 
 	gui_xbounds(dev.gui, GuiCoord::Pixel(0.f), GuiAlign_Left, GuiDim::Aspect());
-	gui_ybounds(dev.gui, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
+	gui_ybounds(dev.gui, GuiCoord::IPixel(0.f), GuiAlign_Top, GuiDim::Pixel(20.f));
 	bool show = gui_checkbox(dev.gui, 3u);
 
 	gui_end_container(dev.gui);
-
-	info.yoff += 40.f + VPADDING;
 
 	if (show) {
 
@@ -242,31 +231,20 @@ namespace sv {
 	
     void egui_comp_color(const char* text, u64 id, Color* pcolor)
     {
-	GuiParentUserData& info = gui_parent_userdata(dev.gui);
-
 	gui_push_id(dev.gui, id);
 
-	gui_bounds(dev.gui, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
 	gui_text(dev.gui, text, 0u);
-	gui_bounds(dev.gui, GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
 	gui_button(dev.gui, "TODO", 1u);
-	info.yoff += COMP_ITEM_HEIGHT + VPADDING;
 
 	gui_pop_id(dev.gui);
     }
 
     void egui_comp_texture(const char* text, u64 id, TextureAsset* texture)
     {
-	GuiParentUserData& info = gui_parent_userdata(dev.gui);
-
 	gui_push_id(dev.gui, id);
 
-	gui_bounds(dev.gui, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
 	gui_text(dev.gui, text, 0u);
-
-	gui_bounds(dev.gui, GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
 	gui_button(dev.gui, "TODO", 1u);
-	info.yoff += COMP_ITEM_HEIGHT + VPADDING;
 
 	AssetPackage* package;
 	if (gui_recive_package(dev.gui, (void**)&package, nullptr, ASSET_BROWSER_PACKAGE_TEXTURE)) {
@@ -283,15 +261,10 @@ namespace sv {
 
     void egui_comp_mesh(const char* text, u64 id, MeshAsset* mesh)
     {
-	GuiParentUserData& info = gui_parent_userdata(dev.gui);
-
 	gui_push_id(dev.gui, id);
 
-	gui_bounds(dev.gui, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
 	gui_text(dev.gui, text, 0u);
-	gui_bounds(dev.gui, GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
 	gui_button(dev.gui, "TODO", 1u);
-	info.yoff += COMP_ITEM_HEIGHT + VPADDING;
 
 	AssetPackage* package;
 	if (gui_recive_package(dev.gui, (void**)&package, nullptr, ASSET_BROWSER_PACKAGE_MESH)) {
@@ -308,15 +281,10 @@ namespace sv {
 
     void egui_comp_material(const char* text, u64 id, MaterialAsset* material)
     {
-	GuiParentUserData& info = gui_parent_userdata(dev.gui);
-
 	gui_push_id(dev.gui, id);
 
-	gui_bounds(dev.gui, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
 	gui_text(dev.gui, text, 0u);
-	gui_bounds(dev.gui, GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
 	gui_button(dev.gui, "TODO", 1u);
-	info.yoff += COMP_ITEM_HEIGHT + VPADDING;
 
 	AssetPackage* package;
 	if (gui_recive_package(dev.gui, (void**)&package, nullptr, ASSET_BROWSER_PACKAGE_MATERIAL)) {
@@ -333,37 +301,24 @@ namespace sv {
 
     bool egui_comp_bool(const char* text, u64 id, bool* value)
     {
-	GuiParentUserData& info = gui_parent_userdata(dev.gui);
-
 	gui_push_id(dev.gui, id);
 
-	gui_bounds(dev.gui, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
 	gui_text(dev.gui, text, 0u);
-
-	gui_xbounds(dev.gui, GuiCoord::Relative(0.55f), GuiAlign_Left, GuiDim::Aspect());
-	gui_ybounds(dev.gui, GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
 	bool res = gui_checkbox(dev.gui, value, 1u);
 
 	gui_pop_id(dev.gui);
-	info.yoff += COMP_ITEM_HEIGHT + VPADDING;
 
 	return res;
     }
 
     bool egui_comp_drag_f32(const char* text, u64 id, f32* value, f32 adv, f32 min, f32 max)
     {
-	GuiParentUserData& info = gui_parent_userdata(dev.gui);
-
 	gui_push_id(dev.gui, id);
 
-	gui_bounds(dev.gui, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.5f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
 	gui_text(dev.gui, text, 0u);
-
-	gui_bounds(dev.gui, GuiCoord::Relative(0.55f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(info.yoff), GuiCoord::IPixel(info.yoff + COMP_ITEM_HEIGHT));
 	bool res = gui_drag_f32(dev.gui, value, adv, min, max, 1u);
 
 	gui_pop_id(dev.gui);
-	info.yoff += COMP_ITEM_HEIGHT + VPADDING;
 
 	return res;
     }

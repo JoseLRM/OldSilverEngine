@@ -46,7 +46,7 @@ namespace sv {
     };
 
     struct GuiPopupStyle {
-	Color background_color = Color::Gray(140u);
+	Color color = Color::Gray(140u);
     };
 
     struct GuiButtonStyle {
@@ -126,11 +126,9 @@ namespace sv {
 
     struct Raw_Button {
 	const char* text;
-	Raw_Coords coords;
     };
 
     struct Raw_Drag {
-	Raw_Coords coords;
 	f32 value;
 	f32 min;
 	f32 max;
@@ -138,17 +136,14 @@ namespace sv {
     };
 
     struct Raw_Checkbox {
-	Raw_Coords coords;
 	bool value;
     };
 
     struct Raw_Label {
-	Raw_Coords coords;
 	const char* text;
     };
 
     struct Raw_Container {
-	Raw_Coords coords;
     };
 
     struct Raw_Window {
@@ -197,6 +192,16 @@ namespace sv {
 	f32 min_y;
 	f32 max_y;
 
+	f32 vertical_amplitude; // The total vertical size that ocupe the childs
+	f32 horizontal_amplitude; // The total horizontal size that ocupe the childs
+
+	GuiLayout layout;
+	union {
+	    struct {
+		f32 yoff;
+	    } flow;
+	};
+	
     };
 
     struct GuiWindowState {
@@ -293,71 +298,72 @@ namespace sv {
 
     struct WritingParentInfo {
 	GuiWidget* parent;
-	GuiParentUserData userdata;
+	GuiLayout layout;
+    };
+
+    struct GuiLayoutData {
+	GuiLayout type;
     };
 
     struct GUI {
 
-	// WRITING DATA
-
-	u8* buffer = nullptr;
-	size_t buffer_size = 0u;
-	size_t buffer_capacity = 0u;
-
+	// CONTEXT
+	    
+	RawList buffer;
 	List<WritingParentInfo> parent_stack;
-
+	
 	GuiIndex current_focus;
+	Raw_Coords free_bounds;
+	
+	List<u64> ids;
+	u32 style_count;
+	u64 current_id;
 
-	// STATE DATA
+	struct {
+	    u64 id;
+	    GuiWidgetType type;
+	}last;
+	
+	// STATE
 
 	List<GuiWidget> widgets;
 	List<GuiIndex> indices;
-
+	
 	RawList style_stack;
 	
 	u32 root_menu_count;
-
+	
 	struct {
 	    GuiWidgetType type;
 	    u64 id;
 	    u32 action;
 	} focus;
 
-	struct {
+	bool catch_input;
 
+	GuiStyleData style;
+	GuiStyleData temp_style;
+	
+	// STATIC STATE
+	struct {
 	    std::unordered_map<u64, GuiWindowState> window;
 	    std::unordered_map<u64, bool> checkbox;
-
 	} static_state;
 
-	// CONTEXT
-
-	struct {
-	    Raw_Coords free_bounds;
-	} layout;
+	// SETTINGS
 
 	f32 scale;
 	v2_f32 resolution;
 	f32 aspect;
 	v2_f32 mouse_position;
-	List<u64> ids;
-	u32 style_count;
-	u64 current_id;
+	
+	// AUX
+
 	v2_f32 begin_position;
-	u64 package_id;
-	bool catch_input;
-
-	struct {
-	    u64 id;
-	    GuiWidgetType type;
-	}last;
-
-	GuiStyleData style;
-	GuiStyleData temp_style;
-		
+	u64 package_id;		
 	RawList package_data;
-		
-	// HIGH LEVEL
+	
+	// TEMP
 
 	struct {
 	    u32 element_count;
@@ -370,12 +376,10 @@ namespace sv {
 
     };
 
+
     bool gui_create(u64 hashcode, GUI** pgui)
     {
 	GUI& gui = *new GUI();
-
-	gui.buffer = (u8*)malloc(100u);
-	gui.buffer_capacity = 100u;
 
 	gui.package_id = 0u;
 
@@ -409,7 +413,6 @@ namespace sv {
     bool gui_destroy(GUI* gui_)
     {
 	PARSE_GUI();
-	free(gui.buffer);
 
 	// Save static state
 	{
@@ -437,33 +440,18 @@ namespace sv {
 
     ////////////////////////////////////////// UTILS ////////////////////////////////////////////////
 
-    SV_INLINE static void write_buffer(GUI& gui, const void* data, size_t size)
+    SV_AUX void write_buffer(GUI& gui, const void* data, size_t size)
     {
-	if (gui.buffer_size + size > gui.buffer_capacity) {
-
-	    size_t new_capacity = size_t(f64(gui.buffer_size + size) * 1.5);
-	    u8* new_buffer = nullptr;
-
-	    while (new_buffer == nullptr)
-		new_buffer = (u8*)malloc(new_capacity);
-
-	    memcpy(new_buffer, gui.buffer, gui.buffer_size);
-	    free(gui.buffer);
-	    gui.buffer_capacity = new_capacity;
-	    gui.buffer = new_buffer;
-	}
-
-	memcpy(gui.buffer + gui.buffer_size, data, size);
-	gui.buffer_size += size;
+	gui.buffer.write_back(data, size);
     }
 
     template<typename T>
-    SV_INLINE static void write_buffer(GUI& gui, const T& t)
+    SV_AUX void write_buffer(GUI& gui, const T& t)
     {
 	write_buffer(gui, &t, sizeof(T));
     }
 
-    SV_INLINE static void write_text(GUI& gui, const char* text)
+    SV_AUX void write_text(GUI& gui, const char* text)
     {
 
 	if (text == nullptr) {
@@ -552,11 +540,45 @@ namespace sv {
 	return get_parent_info(gui, w);
     }
 
-    SV_AUX void write_widget(GUI& gui, GuiWidgetType type, u64 id, void* data, GuiParentInfo* parent_info)
+    SV_AUX void write_widget(GUI& gui, GuiWidgetType type, u64 id, void* data, GuiParentInfo* parent_info = nullptr, GuiLayout layout = GuiLayout_Flow)
     {
 	write_buffer(gui, GuiHeader_Widget);
 	write_buffer(gui, type);
 	write_buffer(gui, id);
+
+	// Write parent raw data
+	if (is_parent(type)) {
+
+	    write_buffer(gui, layout);
+	    
+	    if (parent_info) {
+
+		write_buffer(gui, parent_info->vertical_amplitude);
+		write_buffer(gui, parent_info->horizontal_amplitude);
+		write_buffer(gui, parent_info->vertical_offset);
+		write_buffer(gui, parent_info->has_vertical_scroll);
+	    }
+	    else {
+		write_buffer(gui, 0.f);
+		write_buffer(gui, 0.f);
+		write_buffer(gui, 0.f);
+		write_buffer(gui, false);
+	    }
+	}
+	
+	// Write layout info
+	{
+	    GuiLayout parent_layout;
+	    if (gui.parent_stack.empty())
+		parent_layout = GuiLayout_Free;
+	    else {
+
+		parent_layout = gui.parent_stack.back().layout;
+	    }
+
+	    if (parent_layout == GuiLayout_Free)
+		write_buffer(gui, gui.free_bounds);
+	}
 
 	switch (type)
 	{
@@ -586,7 +608,6 @@ namespace sv {
 	    Raw_Button* raw = (Raw_Button*)data;
 
 	    write_text(gui, raw->text);
-	    write_buffer(gui, raw->coords);
 	}
 	break;
 
@@ -598,7 +619,6 @@ namespace sv {
 	    Raw_Label* raw = (Raw_Label*)data;
 
 	    write_text(gui, raw->text);
-	    write_buffer(gui, raw->coords);
 	}
 	break;
 
@@ -649,23 +669,10 @@ namespace sv {
 	    break;
 	}
 
-	// Write parent raw data
-	if (is_parent(type)) {
-	    if (parent_info) {
-
-		write_buffer(gui, parent_info->vertical_offset);
-		write_buffer(gui, parent_info->has_vertical_scroll);
-	    }
-	    else {
-		write_buffer(gui, 0.f);
-		write_buffer(gui, false);
-	    }
-	}
-
 	gui.last.id = id;
 	gui.last.type = type;
     }
-
+    
     SV_AUX f32 compute_coord(const GUI& gui, const GuiCoord& coord, f32 resolution, f32 parent_coord, f32 parent_dimension)
     {
 	f32 res = 0.5f;
@@ -699,7 +706,7 @@ namespace sv {
 	return res;
     }
 
-    SV_AUX f32 compute_dimension(const GUI& gui, const GuiDim& dim, f32 resolution, f32 parent_dimension, f32 aspect_dimension, bool xaxis)
+    SV_AUX f32 compute_dimension(const GUI& gui, const GuiDim& dim, f32 resolution, f32 parent_dimension, f32 aspect_dimension, f32 adjust_value, bool xaxis)
     {
 	f32 res = 0.5f;
 
@@ -725,15 +732,21 @@ namespace sv {
 	case GuiDimConstraint_Scale:
 	    res = dim.value * gui.scale;
 	    break;
+
+	case GuiDimConstraint_Adjust:
+	    res = dim.value * adjust_value;
+	    break;
 	    
 	}
 	
 	return res;
     }
     
-    SV_AUX v2_f32 compute_axis_bounds(const GUI& gui, const Raw_Coords& raw, bool xaxis, const v4_f32 parent_bounds, f32 aspect_dimension)
+    SV_AUX v2_f32 compute_axis_bounds(const GUI& gui, GuiWidget* widget, bool xaxis, const v4_f32 parent_bounds, f32 aspect_dimension)
     {
 	f32 _0, _1;
+
+	const Raw_Coords& raw = widget->raw_coords;
 
 	if (xaxis) {
 	    if (raw.xtype == GuiCoordType_Coord) {
@@ -741,8 +754,16 @@ namespace sv {
 		_1 = compute_coord(gui, raw.xcoord._1, gui.resolution.x, parent_bounds.x, parent_bounds.z);
 	    }
 	    else {
+
+		f32 adjust_value = 0.f;
+
+		if (is_parent(*widget)) {
+
+		    adjust_value = get_parent_info(gui, *widget)->horizontal_amplitude;
+		}
+		
 		_0 = compute_coord(gui, raw.xdim.c, gui.resolution.x, parent_bounds.x, parent_bounds.z);
-		_1 = compute_dimension(gui, raw.xdim.d, gui.resolution.x, parent_bounds.z, aspect_dimension, true);
+		_1 = compute_dimension(gui, raw.xdim.d, gui.resolution.x, parent_bounds.z, aspect_dimension, adjust_value, true);
 
 		switch (raw.xdim.align) {
 		    
@@ -765,8 +786,16 @@ namespace sv {
 		_1 = compute_coord(gui, raw.ycoord._1, gui.resolution.y, parent_bounds.y, parent_bounds.w);
 	    }
 	    else {
+
+		f32 adjust_value = 0.f;
+
+		if (is_parent(*widget)) {
+
+		    adjust_value = get_parent_info(gui, *widget)->vertical_amplitude;
+		}
+		
 		_0 = compute_coord(gui, raw.ydim.c, gui.resolution.y, parent_bounds.y, parent_bounds.w);
-		_1 = compute_dimension(gui, raw.ydim.d, gui.resolution.y, parent_bounds.w, aspect_dimension, false);
+		_1 = compute_dimension(gui, raw.ydim.d, gui.resolution.y, parent_bounds.w, aspect_dimension, adjust_value, false);
 
 		switch (raw.ydim.align) {
 		    
@@ -789,7 +818,7 @@ namespace sv {
 	return { _0, _1, };
     }
     
-    SV_INTERNAL v4_f32 compute_widget_bounds(const GUI& gui, const Raw_Coords& raw, GuiWidget* parent)
+    SV_INTERNAL v4_f32 compute_widget_bounds(const GUI& gui, GuiWidget* widget, GuiWidget* parent)
     {
 	// TODO: Debug assertions
 
@@ -802,16 +831,18 @@ namespace sv {
 	else parent_bounds = { 0.5f, 0.5f, 1.f, 1.f };
 
 	v2_f32 xaxis, yaxis;
+
+	const Raw_Coords& raw = widget->raw_coords;
 	
 	if (raw.xtype == GuiCoordType_Dim && raw.xdim.d.constraint == GuiDimConstraint_Aspect) {
 	    
-	    yaxis = compute_axis_bounds(gui, raw, false, parent_bounds, 0.5f);
-	    xaxis = compute_axis_bounds(gui, raw, true, parent_bounds, yaxis.y - yaxis.x);
+	    yaxis = compute_axis_bounds(gui, widget, false, parent_bounds, 0.5f);
+	    xaxis = compute_axis_bounds(gui, widget, true, parent_bounds, yaxis.y - yaxis.x);
 	}
 	else {
 
-	    xaxis = compute_axis_bounds(gui, raw, true, parent_bounds, 0.5f);
-	    yaxis = compute_axis_bounds(gui, raw, false, parent_bounds, xaxis.y - xaxis.x);
+	    xaxis = compute_axis_bounds(gui, widget, true, parent_bounds, 0.5f);
+	    yaxis = compute_axis_bounds(gui, widget, false, parent_bounds, xaxis.y - xaxis.x);
 	}
 
 
@@ -1244,22 +1275,17 @@ namespace sv {
 	gui.style_count = 0u;
 	
 	gui.ids.reset();
-
+	gui.parent_stack.reset();
+	
 	gui.mouse_position = input.mouse_position + 0.5f;
-
-	gui.parent_stack.resize(1u);
-	gui.parent_stack.back().userdata.xoff = 0.f;
-	gui.parent_stack.back().userdata.yoff = 0.f;
-
+	
 	gui.last.id = 0u;
 	gui.last.type = GuiWidgetType_None;
 
 	gui.catch_input = false;
 
 	// Reset buffer
-	gui.buffer_size = 0u;
-	// TODO: free memory if there is no using
-
+	gui.buffer.reset();
     }
 
     //////////////////////////////////////////////// END ///////////////////////////////////////////////////
@@ -1276,6 +1302,54 @@ namespace sv {
 	T t;
 	_read(it, &t, sizeof(T));
 	return t;
+    }
+
+    SV_AUX void compute_layout(GUI& gui, GuiWidget& w, GuiParentInfo* parent_info, u8*& it)
+    {
+	GuiLayout layout = parent_info ? parent_info->layout : GuiLayout_Free;
+
+	switch (layout) {
+
+	case GuiLayout_Free:
+	    w.raw_coords = _read<Raw_Coords>(it);
+	    break;
+
+	case GuiLayout_Flow:
+	{
+	    if (!ignore_scroll(w.type)) {
+		
+		auto& data = parent_info->flow;
+		auto& coords = w.raw_coords;
+
+		coords.xtype = GuiCoordType_Coord;
+		coords.xcoord._0 = GuiCoord::Relative(0.1f);
+		coords.xcoord._1 = GuiCoord::Relative(0.9f);
+
+		coords.ytype = GuiCoordType_Dim;
+		coords.ydim.c = GuiCoord::IPixel(data.yoff);
+		coords.ydim.align = GuiAlign_Top;
+	    
+		switch (w.type) {
+
+		case GuiWidgetType_Container:
+		    coords.ydim.d = GuiDim::Adjust();
+		    data.yoff += get_parent_info(gui, w)->vertical_amplitude * gui.resolution.y;
+		    break;
+
+		default:
+		    coords.ydim.d = GuiDim::Pixel(20.f);
+		    data.yoff += 20.f;
+		    break;
+		
+		}	    
+	    
+		// Padding
+		data.yoff += 5.f;
+	    }
+	}
+	break;
+
+	}
     }
 
     SV_INLINE static void read_widget(GUI& gui, GuiWidgetType type, u64 id, u32& current_parent, u8*& it)
@@ -1295,6 +1369,29 @@ namespace sv {
 	// Get parent
 	GuiWidget* parent = (current_parent == u32_max) ? nullptr : &gui.widgets[current_parent];
 
+	if (is_parent(w)) {
+	    
+	    GuiParentInfo* parent_info = get_parent_info(gui, w);
+	    parent_info->parent_index = current_parent;
+	    current_parent = w.index;
+	    parent_info->widget_offset = u32(gui.indices.size());
+	    parent_info->menu_item_count = 0u;
+	    parent_info->min_y = f32_max;
+	    parent_info->max_y = f32_min;
+
+	    parent_info->layout = _read<GuiLayout>(it);
+	    parent_info->vertical_amplitude = _read<f32>(it);
+	    parent_info->horizontal_amplitude = _read<f32>(it);
+	    parent_info->vertical_offset = _read<f32>(it);
+	    parent_info->has_vertical_scroll = _read<bool>(it);
+
+	    if (parent_info->layout == GuiLayout_Flow)
+		parent_info->flow.yoff = 0.f;
+	}
+	
+	// Compute bounds
+	compute_layout(gui, w, parent ? get_parent_info(gui, *parent) : nullptr, it);
+
 	// Read raw data
 	switch (type)
 	{
@@ -1305,7 +1402,6 @@ namespace sv {
 	{
 	    Raw_Container raw = _read<Raw_Container>(it);
 	    w.widget.container.style = gui.temp_style.container;
-	    w.raw_coords = raw.coords;
 	}
 	break;
 
@@ -1338,7 +1434,6 @@ namespace sv {
 	    if (*button.text == '\0')
 		button.text = nullptr;
 
-	    w.raw_coords = _read<Raw_Coords>(it);
 	    button.style = gui.temp_style.button;
 	}
 	break;
@@ -1352,7 +1447,6 @@ namespace sv {
 	    if (*label.text == '\0')
 		label.text = nullptr;
 
-	    w.raw_coords = _read<Raw_Coords>(it);
 	    label.style = gui.temp_style.label;
 	}
 	break;
@@ -1367,7 +1461,6 @@ namespace sv {
 	    Raw_Checkbox raw = _read<Raw_Checkbox>(it);
 	    cb.value = raw.value;
 	    cb.style = gui.temp_style.checkbox;
-	    w.raw_coords = raw.coords;
 	}
 	break;
 
@@ -1381,7 +1474,6 @@ namespace sv {
 	    drag.max = raw.max;
 	    drag.adv = raw.adv;
 	    drag.style = gui.temp_style.drag;
-	    w.raw_coords = raw.coords;
 	}
 	break;
 
@@ -1435,20 +1527,6 @@ namespace sv {
 	default:
 	    SV_ASSERT(0);
 	}
-
-	if (is_parent(w)) {
-
-	    GuiParentInfo* parent_info = get_parent_info(gui, w);
-	    parent_info->parent_index = current_parent;
-	    current_parent = w.index;
-	    parent_info->widget_offset = u32(gui.indices.size());
-	    parent_info->menu_item_count = 0u;
-	    parent_info->min_y = f32_max;
-	    parent_info->max_y = f32_min;
-			
-	    parent_info->vertical_offset = _read<f32>(it);
-	    parent_info->has_vertical_scroll = _read<bool>(it);;
-	}
     }
 
     // TEMP
@@ -1472,7 +1550,7 @@ namespace sv {
 	case GuiWidgetType_Label:
 	case GuiWidgetType_Checkbox:
 	case GuiWidgetType_Drag:
-	    w->bounds = compute_widget_bounds(gui, w->raw_coords, parent);
+	    w->bounds = compute_widget_bounds(gui, w, parent);
 	    break;
 		
 	case GuiWidgetType_MenuItem:
@@ -1565,6 +1643,9 @@ namespace sv {
 
 		++it;
 	    }
+
+	    parent_info->vertical_amplitude = parent_info->max_y - parent_info->min_y;
+	    parent_info->horizontal_amplitude = 0.f; // TODO
 
 	    // Compute child up and down offsets
 	    f32 parent_min = parent_info->child_bounds.y - parent_info->child_bounds.w * 0.5f;
@@ -1704,7 +1785,7 @@ namespace sv {
 	}
 
 	SV_ASSERT(gui.ids.empty());
-	SV_ASSERT(gui.parent_stack.size() == 1u);
+	SV_ASSERT(gui.parent_stack.empty());
 	SV_ASSERT(gui.style_count == 0u);
 
 	gui.temp_style = gui.style;
@@ -1712,8 +1793,8 @@ namespace sv {
 
 	// Read widgets from raw data
 	{
-	    u8* it = gui.buffer;
-	    u8* end = gui.buffer + gui.buffer_size;
+	    u8* it = gui.buffer.data();
+	    u8* end = gui.buffer.data() + gui.buffer.size();
 
 	    u32 current_parent = u32_max;
 
@@ -1750,11 +1831,11 @@ namespace sv {
 		    void* dst;
 		    size_t size;
 
-		    get_style_data(gui, style, &dst, &size);
+		    get_style_data(gui, style, &size, &dst);
 
 		    if (dst && size) {
 			gui.style_stack.write_back(dst, size);
-			gui.style_stack.write_back(style, sizeof(GuiStyle));
+			gui.style_stack.write_back(&style, sizeof(GuiStyle));
 			memcpy(dst, &data, size);
 		    }
 		}
@@ -1768,7 +1849,7 @@ namespace sv {
 		    void* dst;
 		    size_t size;
 
-		    get_style_data(gui, style, &dst, &size);
+		    get_style_data(gui, style, &size, &dst);
 
 		    if (dst && size) {
 			gui.style_stack.read_and_pop_back(dst, size);
@@ -1833,7 +1914,7 @@ namespace sv {
 	    hash_combine(gui.current_id, id);
     }
 
-    void gui_push_style(GUI* gui, GuiStyle style, void* value, size_t size)
+    void gui_push_style(GUI* gui, GuiStyle style, const void* value, size_t size)
     {
 	SV_ASSERT(size <= sizeof(u64));
 	
@@ -1884,59 +1965,59 @@ namespace sv {
     void gui_xbounds(GUI* gui_, GuiCoord x0, GuiCoord x1)
     {
 	PARSE_GUI();
-	gui.layout.free_bounds.xtype = GuiCoordType_Coord;
-	gui.layout.free_bounds.xcoord._0 = x0;
-	gui.layout.free_bounds.xcoord._1 = x1;
+	gui.free_bounds.xtype = GuiCoordType_Coord;
+	gui.free_bounds.xcoord._0 = x0;
+	gui.free_bounds.xcoord._1 = x1;
     }
     
     void gui_xbounds(GUI* gui_, GuiCoord x, GuiAlign align, GuiDim w)
     {
 	PARSE_GUI();
-	gui.layout.free_bounds.xtype = GuiCoordType_Dim;
-	gui.layout.free_bounds.xdim.c = x;
-	gui.layout.free_bounds.xdim.align = align;
-	gui.layout.free_bounds.xdim.d = w;
+	gui.free_bounds.xtype = GuiCoordType_Dim;
+	gui.free_bounds.xdim.c = x;
+	gui.free_bounds.xdim.align = align;
+	gui.free_bounds.xdim.d = w;
     }
     
     void gui_ybounds(GUI* gui_, GuiCoord y0, GuiCoord y1)
     {
 	PARSE_GUI();
-	gui.layout.free_bounds.ytype = GuiCoordType_Coord;
-	gui.layout.free_bounds.ycoord._0 = y0;
-	gui.layout.free_bounds.ycoord._1 = y1;
+	gui.free_bounds.ytype = GuiCoordType_Coord;
+	gui.free_bounds.ycoord._0 = y0;
+	gui.free_bounds.ycoord._1 = y1;
     }
     
     void gui_ybounds(GUI* gui_, GuiCoord y, GuiAlign align, GuiDim h)
     {
 	PARSE_GUI();
-	gui.layout.free_bounds.ytype = GuiCoordType_Dim;
-	gui.layout.free_bounds.ydim.c = y;
-	gui.layout.free_bounds.ydim.align = align;
-	gui.layout.free_bounds.ydim.d = h;
+	gui.free_bounds.ytype = GuiCoordType_Dim;
+	gui.free_bounds.ydim.c = y;
+	gui.free_bounds.ydim.align = align;
+	gui.free_bounds.ydim.d = h;
     }
     
     void gui_bounds(GUI* gui_, GuiCoord x, GuiAlign xalign, GuiDim w, GuiCoord y, GuiAlign yalign, GuiDim h)
     {
 	PARSE_GUI();
-	gui.layout.free_bounds.xtype = GuiCoordType_Dim;
-	gui.layout.free_bounds.xdim.c = x;
-	gui.layout.free_bounds.xdim.align = xalign;
-	gui.layout.free_bounds.xdim.d = w;
-	gui.layout.free_bounds.ytype = GuiCoordType_Dim;
-	gui.layout.free_bounds.ydim.c = y;
-	gui.layout.free_bounds.ydim.align = yalign;
-	gui.layout.free_bounds.ydim.d = h;
+	gui.free_bounds.xtype = GuiCoordType_Dim;
+	gui.free_bounds.xdim.c = x;
+	gui.free_bounds.xdim.align = xalign;
+	gui.free_bounds.xdim.d = w;
+	gui.free_bounds.ytype = GuiCoordType_Dim;
+	gui.free_bounds.ydim.c = y;
+	gui.free_bounds.ydim.align = yalign;
+	gui.free_bounds.ydim.d = h;
     }
     
     void gui_bounds(GUI* gui_, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1)
     {
 	PARSE_GUI();
-	gui.layout.free_bounds.xtype = GuiCoordType_Coord;
-	gui.layout.free_bounds.xcoord._0 = x0;
-	gui.layout.free_bounds.xcoord._1 = x1;
-	gui.layout.free_bounds.ytype = GuiCoordType_Coord;
-	gui.layout.free_bounds.ycoord._0 = y0;
-	gui.layout.free_bounds.ycoord._1 = y1;
+	gui.free_bounds.xtype = GuiCoordType_Coord;
+	gui.free_bounds.xcoord._0 = x0;
+	gui.free_bounds.xcoord._1 = x1;
+	gui.free_bounds.ytype = GuiCoordType_Coord;
+	gui.free_bounds.ycoord._0 = y0;
+	gui.free_bounds.ycoord._1 = y1;
     }
 
     ///////////////////////////////////////////// WIDGETS ///////////////////////////////////////////
@@ -2001,17 +2082,11 @@ namespace sv {
 	return widget;
     }
 
-    SV_AUX Raw_Coords get_raw_coords(GUI& gui)
-    {
-	return gui.layout.free_bounds;
-    }
-
-    SV_INLINE void begin_parent(GUI& gui, GuiWidget* parent, u64 id)
+    SV_INLINE void begin_parent(GUI& gui, GuiWidget* parent, u64 id, GuiLayout layout)
     {
 	WritingParentInfo& info = gui.parent_stack.emplace_back();
-	info.userdata.xoff = 0.f;
-	info.userdata.yoff = 0.f;
-
+	info.layout = layout;
+	
 	if (parent) {
 	    SV_ASSERT(is_parent(parent->type));
 	    info.parent = parent;
@@ -2026,24 +2101,21 @@ namespace sv {
 	gui.parent_stack.pop_back();
     }
 
-    void gui_begin_container(GUI* gui_, u64 id)
+    void gui_begin_container(GUI* gui_, u64 id, GuiLayout layout)
     {
 	PARSE_GUI();
 	hash_combine(id, gui.current_id);
 
 	GuiWidget* w = find_widget(gui, id, GuiWidgetType_Container);
-	begin_parent(gui, w, id);
 
-	{
-	    Raw_Container raw;
-	    raw.coords = get_raw_coords(gui);
+	Raw_Container raw;
 
-	    GuiParentInfo* parent_info;
-	    if (w) parent_info = get_parent_info(gui, *w);
-	    else parent_info = nullptr;
+	GuiParentInfo* parent_info;
+	if (w) parent_info = get_parent_info(gui, *w);
+	else parent_info = nullptr;
 
-	    write_widget(gui, GuiWidgetType_Container, id, &raw, parent_info);
-	}		
+	write_widget(gui, GuiWidgetType_Container, id, &raw, parent_info, layout);
+	begin_parent(gui, w, id, layout);
     }
 
     void gui_end_container(GUI* gui_)
@@ -2052,7 +2124,7 @@ namespace sv {
 	end_parent(gui);
     }
 
-    bool gui_begin_popup(GUI* gui_, GuiPopupTrigger trigger, MouseButton mouse_button, u64 id)
+    bool gui_begin_popup(GUI* gui_, GuiPopupTrigger trigger, MouseButton mouse_button, u64 id, GuiLayout layout)
     {
 	PARSE_GUI();
 	hash_combine(id, gui.current_id);
@@ -2071,8 +2143,8 @@ namespace sv {
 
 	    GuiParentInfo* parent_info = get_parent_info(gui, *w);
 
-	    write_widget(gui, GuiWidgetType_Popup, w->id, &raw, parent_info);
-	    begin_parent(gui, w, id);
+	    write_widget(gui, GuiWidgetType_Popup, w->id, &raw, parent_info, layout);
+	    begin_parent(gui, w, id, layout);
 	    return true;
 	}
 	else {
@@ -2137,8 +2209,8 @@ namespace sv {
 		raw.bounds.x = gui.mouse_position.x + raw.bounds.z * 0.5f;
 		raw.bounds.y = gui.mouse_position.y - raw.bounds.w * 0.5f;
 
-		write_widget(gui, GuiWidgetType_Popup, id, &raw, nullptr);
-		begin_parent(gui, w, id);
+		write_widget(gui, GuiWidgetType_Popup, id, &raw, nullptr, layout);
+		begin_parent(gui, w, id, layout);
 		return true;
 	    }
 	}
@@ -2154,7 +2226,7 @@ namespace sv {
 
     /////////////////////////////////////// WINDOW ////////////////////////////////////////////////
 
-    bool gui_begin_window(GUI* gui_, const char* title)
+    bool gui_begin_window(GUI* gui_, const char* title, GuiLayout layout)
     {
 	PARSE_GUI();
 	u64 id = hash_string(title);
@@ -2179,13 +2251,13 @@ namespace sv {
 	    Raw_Window raw;
 
 	    GuiWidget* w = find_widget(gui, id, GuiWidgetType_Window);
-	    begin_parent(gui, w, id);
 
 	    GuiParentInfo* parent_info;
 	    if (w) parent_info = get_parent_info(gui, *w);
 	    else parent_info = nullptr;
 
-	    write_widget(gui, GuiWidgetType_Window, id, &raw, parent_info);
+	    write_widget(gui, GuiWidgetType_Window, id, &raw, parent_info, layout);
+	    begin_parent(gui, w, id, layout);
 	}
 
 	return state->show;
@@ -2236,7 +2308,7 @@ namespace sv {
 
     /////////////////////////////////////// MENU ITEM /////////////////////////////////////////
 
-    bool gui_begin_menu_item(GUI* gui_, const char* text, u64 id)
+    bool gui_begin_menu_item(GUI* gui_, const char* text, u64 id, GuiLayout layout)
     {
 	PARSE_GUI();
 	hash_combine(id, gui.current_id);
@@ -2260,10 +2332,10 @@ namespace sv {
 	    u64 container_id = id;
 	    hash_combine(container_id, 0x32d9f32ac);
 
-	    write_widget(gui, GuiWidgetType_MenuContainer, container_id, nullptr, get_parent_info(gui, *w));
+	    write_widget(gui, GuiWidgetType_MenuContainer, container_id, nullptr, get_parent_info(gui, *w), layout);
 
 	    GuiWidget* c = find_widget(gui, container_id, GuiWidgetType_MenuContainer);
-	    begin_parent(gui, c, container_id);
+	    begin_parent(gui, c, container_id, layout);
 
 	    return true;
 	}
@@ -2351,7 +2423,6 @@ namespace sv {
 	{
 	    Raw_Button raw;
 	    raw.text = text;
-	    raw.coords = get_raw_coords(gui);
 
 	    write_widget(gui, GuiWidgetType_Button, id, &raw, nullptr);
 	}
@@ -2385,7 +2456,6 @@ namespace sv {
 
 	{
 	    Raw_Drag raw;
-	    raw.coords = get_raw_coords(gui);
 	    raw.value = *value;
 	    raw.min = min;
 	    raw.max = max;
@@ -2409,7 +2479,6 @@ namespace sv {
 		
 	Raw_Label raw;
 	raw.text = text;
-	raw.coords = get_raw_coords(gui);
 
 	write_widget(gui, GuiWidgetType_Label, id, &raw, nullptr);		
     }
@@ -2432,7 +2501,6 @@ namespace sv {
 
 	{
 	    Raw_Checkbox raw;
-	    raw.coords = get_raw_coords(gui);
 	    raw.value = *value;
 
 	    write_widget(gui, GuiWidgetType_Checkbox, id, &raw, nullptr);
@@ -2467,12 +2535,6 @@ namespace sv {
     {
 	PARSE_GUI();
 	return (gui.parent_stack.size() && gui.parent_stack.back().parent) ? gui.parent_stack.back().parent->bounds : v4_f32{};
-    }
-
-    GuiParentUserData& gui_parent_userdata(GUI* gui_)
-    {
-	PARSE_GUI();
-	return gui.parent_stack.back().userdata;
     }
 
     ///////////////////////////////////////////// RENDERING ///////////////////////////////////////////
@@ -2779,7 +2841,7 @@ namespace sv {
 	    v2_f32 size = v2_f32(w.bounds.z, w.bounds.w) * 2.f;
 
 	    begin_debug_batch(cmd);
-	    draw_debug_quad(pos.getVec3(), size, popup.style.background_color, cmd);
+	    draw_debug_quad(pos.getVec3(), size, popup.style.color, cmd);
 	    end_debug_batch(true, false, XMMatrixIdentity(), cmd);
 	}
 	break;
@@ -2962,7 +3024,7 @@ namespace sv {
 	++grid.element_index;
 
 	gui_bounds(gui_, GuiCoord::Pixel(x0), GuiCoord::Pixel(x1), GuiCoord::IPixel(y0), GuiCoord::IPixel(y1));
-	gui_begin_container(gui_, id);
+	gui_begin_container(gui_, id, GuiLayout_Flow);
     }
 
     void gui_end_grid_element(GUI* gui_)
