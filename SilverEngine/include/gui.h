@@ -135,6 +135,8 @@ namespace sv {
     SV_API void gui_begin(GUI* gui, f32 scale, f32 width, f32 height);
     SV_API void gui_end(GUI* gui);
 
+    SV_API void gui_same_line(GUI* gui, u32 count);
+
     SV_API void gui_push_id(GUI* gui, u64 id);
     SV_API void gui_push_id(GUI* gui, const char* id);
     SV_API void gui_pop_id(GUI* gui, u32 count = 1u);

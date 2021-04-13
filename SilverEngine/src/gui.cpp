@@ -11,6 +11,7 @@ namespace sv {
 	GuiHeader_EndOfParent,
 	GuiHeader_StylePush,
 	GuiHeader_StylePop,
+	GuiHeader_SameLine
     };
     
     enum GuiWidgetType : u32 {
@@ -199,6 +200,8 @@ namespace sv {
 	union {
 	    struct {
 		f32 yoff;
+		u32 same_line_count;
+		u32 last_same_line;
 	    } flow;
 	};
 	
@@ -1316,35 +1319,76 @@ namespace sv {
 
 	case GuiLayout_Flow:
 	{
+	    auto& data = parent_info->flow;
+	    
 	    if (!ignore_scroll(w.type)) {
+
+		SV_ASSERT(data.same_line_count != 0u);
 		
-		auto& data = parent_info->flow;
-		auto& coords = w.raw_coords;
+		if (data.same_line_count == 1u) {
 
-		coords.xtype = GuiCoordType_Coord;
-		coords.xcoord._0 = GuiCoord::Relative(0.1f);
-		coords.xcoord._1 = GuiCoord::Relative(0.9f);
+		    f32 x0 = 0.1f;
+		    f32 x1 = 0.9f;
+		    
+		    f32 width = x1 - x0;
+		    f32 element_width = width / f32(data.last_same_line);
 
-		coords.ytype = GuiCoordType_Dim;
-		coords.ydim.c = GuiCoord::IPixel(data.yoff);
-		coords.ydim.align = GuiAlign_Top;
+		    u32 count = data.last_same_line - 1u;
+		    u32 end_index = w.index;
+		    u32 begin_index = w.index;
+
+		    while(count) {
+
+			SV_ASSERT(begin_index > 1u);
+			--begin_index;
+
+			GuiWidget& widget = gui.widgets[begin_index];
+			if (!ignore_scroll(widget.type)) {
+			    --count;
+			}
+		    }
+
+		    f32 max_height = 0.f;
+
+		    for (u32 i = begin_index; i <= end_index; ++i) {
+
+			GuiWidget& widget = gui.widgets[i];
+			
+			auto& coords = widget.raw_coords;
+
+			coords.xtype = GuiCoordType_Coord;
+			coords.xcoord._0.value = x0 + f32(i - begin_index) * element_width;
+			coords.xcoord._0.constraint = GuiCoordConstraint_Relative;
+			coords.xcoord._1.value = x0 + f32(i - begin_index + 1u) * element_width;
+			coords.xcoord._1.constraint = GuiCoordConstraint_Relative;
+
+			coords.ytype = GuiCoordType_Dim;
+			coords.ydim.c = GuiCoord::IPixel(data.yoff);
+			coords.ydim.align = GuiAlign_Top;
 	    
-		switch (w.type) {
+			switch (widget.type) {
 
-		case GuiWidgetType_Container:
-		    coords.ydim.d = GuiDim::Adjust();
-		    data.yoff += get_parent_info(gui, w)->vertical_amplitude * gui.resolution.y;
-		    break;
+			case GuiWidgetType_Container:
+			    coords.ydim.d = GuiDim::Adjust();
 
-		default:
-		    coords.ydim.d = GuiDim::Pixel(20.f);
-		    data.yoff += 20.f;
-		    break;
+			    max_height = SV_MAX(max_height, get_parent_info(gui, widget)->vertical_amplitude * gui.resolution.y);
+			    
+			    break;
+
+			default:
+			    coords.ydim.d = GuiDim::Pixel(20.f);
+			    max_height = SV_MAX(max_height, 20.f);
+			    break;
 		
-		}	    
-	    
-		// Padding
-		data.yoff += 5.f;
+			}	    
+		    }
+
+		    // Padding
+		    data.yoff += max_height + 5.f;
+		    data.last_same_line = 1u;
+		}
+		else
+		    --data.same_line_count;
 	    }
 	}
 	break;
@@ -1385,8 +1429,12 @@ namespace sv {
 	    parent_info->vertical_offset = _read<f32>(it);
 	    parent_info->has_vertical_scroll = _read<bool>(it);
 
-	    if (parent_info->layout == GuiLayout_Flow)
+	    if (parent_info->layout == GuiLayout_Flow) {
+
 		parent_info->flow.yoff = 0.f;
+		parent_info->flow.same_line_count = 1u;
+		parent_info->flow.last_same_line = 1u;
+	    }
 	}
 	
 	// Compute bounds
@@ -1856,6 +1904,16 @@ namespace sv {
 		    }
 		}
 		break;
+
+		case GuiHeader_SameLine:
+		{
+		    SV_ASSERT(current_parent != u32_max);
+		    GuiParentInfo* parent_info = get_parent_info(gui, current_parent);
+		    u32 count = _read<u32>(it);
+		    SV_ASSERT(parent_info->flow.same_line_count == 1u);
+		    parent_info->flow.same_line_count = count;
+		    parent_info->flow.last_same_line = count;
+		}
 		    
 		}
 	    }
@@ -1938,6 +1996,14 @@ namespace sv {
 	}
 
 	gui->style_count -= count;
+    }
+
+    void gui_same_line(GUI* gui, u32 count)
+    {
+	SV_ASSERT(count != 0u);
+	SV_ASSERT(gui->parent_stack.size() && gui->parent_stack.back().layout == GuiLayout_Flow);
+	write_buffer(*gui, GuiHeader_SameLine);
+	write_buffer(*gui, count);
     }
 
     void gui_push_id(GUI* gui_, u64 id)

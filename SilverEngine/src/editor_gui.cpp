@@ -233,6 +233,8 @@ namespace sv {
     {
 	gui_push_id(dev.gui, id);
 
+	gui_same_line(dev.gui, 2u);
+	
 	gui_text(dev.gui, text, 0u);
 	gui_button(dev.gui, "TODO", 1u);
 
@@ -243,6 +245,8 @@ namespace sv {
     {
 	gui_push_id(dev.gui, id);
 
+	gui_same_line(dev.gui, 2u);
+	
 	gui_text(dev.gui, text, 0u);
 	gui_button(dev.gui, "TODO", 1u);
 
@@ -263,6 +267,8 @@ namespace sv {
     {
 	gui_push_id(dev.gui, id);
 
+	gui_same_line(dev.gui, 2u);
+	
 	gui_text(dev.gui, text, 0u);
 	gui_button(dev.gui, "TODO", 1u);
 
@@ -283,6 +289,8 @@ namespace sv {
     {
 	gui_push_id(dev.gui, id);
 
+	gui_same_line(dev.gui, 2u);
+	
 	gui_text(dev.gui, text, 0u);
 	gui_button(dev.gui, "TODO", 1u);
 
@@ -303,6 +311,8 @@ namespace sv {
     {
 	gui_push_id(dev.gui, id);
 
+	gui_same_line(dev.gui, 2u);
+	
 	gui_text(dev.gui, text, 0u);
 	bool res = gui_checkbox(dev.gui, value, 1u);
 
@@ -314,6 +324,8 @@ namespace sv {
     bool egui_comp_drag_f32(const char* text, u64 id, f32* value, f32 adv, f32 min, f32 max)
     {
 	gui_push_id(dev.gui, id);
+
+	gui_same_line(dev.gui, 2u);
 
 	gui_text(dev.gui, text, 0u);
 	bool res = gui_drag_f32(dev.gui, value, adv, min, max, 1u);
