@@ -312,6 +312,8 @@ namespace sv {
 
 	List<GuiWidget> widgets;
 	List<GuiIndex> indices;
+
+	RawList style_stack;
 	
 	u32 root_menu_count;
 
@@ -1620,9 +1622,64 @@ namespace sv {
 	*psize = 0u;
 		    
 	switch (style) {
-
+	    
+	case GuiStyle_ContainerColor:
+	    *pdst = &gui.temp_style.container.color;
+	    *psize = sizeof(Color);
+	    break;
+	    
+	case GuiStyle_WindowBackgroundColor:
+	    *pdst = &gui.temp_style.window.color;
+	    *psize = sizeof(Color);
+	    break;
+	    
+	case GuiStyle_WindowDecorationColor:
+	    *pdst = &gui.temp_style.window.decoration_color;
+	    *psize = sizeof(Color);
+	    break;
+	    
+	case GuiStyle_WindowOutlineColor:
+	    *pdst = &gui.temp_style.window.outline_color;
+	    *psize = sizeof(Color);
+	    break;
+	    
+	case GuiStyle_WindowDecorationHeight:
+	    *pdst = &gui.temp_style.window.decoration_height;
+	    *psize = sizeof(f32);
+	    break;
+	    
+	case GuiStyle_WindowOutlineSize:
+	    *pdst = &gui.temp_style.window.outline_size;
+	    *psize = sizeof(f32);
+	    break;
+	    
+	case GuiStyle_WindowMinWidth:
+	    *pdst = &gui.temp_style.window.min_width;
+	    *psize = sizeof(f32);
+	    break;
+	    
+	case GuiStyle_WindowMinHeight:
+	    *pdst = &gui.temp_style.window.min_height;
+	    *psize = sizeof(f32);
+	    break;
+	    
+	case GuiStyle_PopupColor:
+	    *pdst = &gui.temp_style.popup.color;
+	    *psize = sizeof(Color);
+	    break;
+	    
 	case GuiStyle_ButtonColor:
 	    *pdst = &gui.temp_style.button.color;
+	    *psize = sizeof(Color);
+	    break;
+	    
+	case GuiStyle_ButtonHotColor:
+	    *pdst = &gui.temp_style.button.hot_color;
+	    *psize = sizeof(Color);
+	    break;
+	    
+	case GuiStyle_ButtonTextColor:
+	    *pdst = &gui.temp_style.button.text_color;
 	    *psize = sizeof(Color);
 	    break;
 			
@@ -1651,6 +1708,7 @@ namespace sv {
 	SV_ASSERT(gui.style_count == 0u);
 
 	gui.temp_style = gui.style;
+	gui.style_stack.reset();
 
 	// Read widgets from raw data
 	{
@@ -1695,6 +1753,8 @@ namespace sv {
 		    get_style_data(gui, style, &dst, &size);
 
 		    if (dst && size) {
+			gui.style_stack.write_back(dst, size);
+			gui.style_stack.write_back(style, sizeof(GuiStyle));
 			memcpy(dst, &data, size);
 		    }
 		}
@@ -1702,7 +1762,17 @@ namespace sv {
 
 		case GuiHeader_StylePop:
 		{
-		    
+		    GuiStyle style;
+		    gui.style_stack.read_and_pop_back(&style, sizeof(GuiStyle));
+
+		    void* dst;
+		    size_t size;
+
+		    get_style_data(gui, style, &dst, &size);
+
+		    if (dst && size) {
+			gui.style_stack.read_and_pop_back(dst, size);
+		    }
 		}
 		break;
 		    

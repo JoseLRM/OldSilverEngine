@@ -105,7 +105,19 @@ namespace sv {
     };
 
     enum GuiStyle : u32 {
+	GuiStyle_ContainerColor,
+	GuiStyle_WindowBackgroundColor,
+	GuiStyle_WindowDecorationColor,
+	GuiStyle_WindowOutlineColor,
+	GuiStyle_WindowDecorationHeight,
+	GuiStyle_WindowOutlineSize,
+	GuiStyle_WindowMinWidth,
+	GuiStyle_WindowMinHeight,
+	GuiStyle_PopupColor,
 	GuiStyle_ButtonColor,
+	GuiStyle_ButtonHotColor,
+	GuiStyle_ButtonTextColor,
+	    
     };
 
     struct GUI;
