@@ -69,9 +69,10 @@ namespace sv {
     };
 
     struct GuiCheckboxStyle {
-	Color color = Color::White();
-	GuiBox active_box = GuiBox::Quad(Color::Black());
-	GuiBox inactive_box = GuiBox::Quad(Color::White(0u));
+	Color button_color = Color::Gray(100u);
+	Color background_color = Color::White();
+	GuiCheckboxShape shape = GuiCheckboxShape_Quad;
+	f32 shape_size_mult = 0.7f;
     };
 
     struct GuiDragStyle {
@@ -1859,7 +1860,26 @@ namespace sv {
 	    *psize = sizeof(Color);
 	    break;
 
-	    // TODO checkbox
+	case GuiStyle_CheckboxButtonColor:
+	    *pdst = &s.checkbox.button_color;
+	    *psize = sizeof(Color);
+	    break;
+
+	case GuiStyle_CheckboxBackgroundColor:
+	    *pdst = &s.checkbox.background_color;
+	    *psize = sizeof(Color);
+	    break;
+
+	case GuiStyle_CheckboxShape:
+	    *pdst = &s.checkbox.shape;
+	    *psize = sizeof(GuiCheckboxShape);
+	    break;
+
+	case GuiStyle_CheckboxShapeSizeMult:
+	    *pdst = &s.checkbox.shape_size_mult;
+	    *psize = sizeof(f32);
+	    break;
+
 	case GuiStyle_DragTextColor:
 	    *pdst = &s.drag.text_color;
 	    *psize = sizeof(Color);
@@ -2921,34 +2941,30 @@ namespace sv {
 	    pos = v2_f32{ w.bounds.x, w.bounds.y } *2.f - 1.f;
 	    size = v2_f32{ w.bounds.z, w.bounds.w } *2.f;
 
-	    draw_debug_quad(pos.getVec3(0.f), size, cb.style.color, cmd);
+	    draw_debug_quad(pos.getVec3(0.f), size, cb.style.background_color, cmd);
 
-	    const GuiBox* box;
-	    if (cb.value) box = &cb.style.active_box;
-	    else box = &cb.style.inactive_box;
+	    size *= cb.style.shape_size_mult;
 
-	    size *= box->mult;
-
-	    switch (box->type)
+	    switch (cb.style.shape)
 	    {
 	    case GuiBoxType_Quad:
-		draw_debug_quad(pos.getVec3(0.f), size * 0.7f, box->quad.color, cmd);
+		draw_debug_quad(pos.getVec3(0.f), size, cb.style.button_color, cmd);
 		break;
 
 	    case GuiBoxType_Triangle:
-		if (box->triangle.down) {
+		if (cb.value) {
 		    draw_debug_triangle(
 			    { pos.x - size.x * 0.5f, pos.y + size.y * 0.5f, 0.f },
 			    { pos.x + size.x * 0.5f, pos.y + size.y * 0.5f, 0.f },
 			    { pos.x, pos.y - size.y * 0.5f, 0.f }
-			    , box->triangle.color, cmd);
+			    , cb.style.button_color, cmd);
 		}
 		else {
 		    draw_debug_triangle(
 			    { pos.x - size.x * 0.5f, pos.y + size.y * 0.5f, 0.f },
 			    { pos.x - size.x * 0.5f, pos.y - size.y * 0.5f, 0.f },
 			    { pos.x + size.x * 0.5f, pos.y, 0.f }
-			    , box->triangle.color, cmd);
+			    , cb.style.button_color, cmd);
 		}
 		break;
 	    }

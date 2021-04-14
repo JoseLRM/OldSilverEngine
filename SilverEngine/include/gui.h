@@ -56,48 +56,9 @@ namespace sv {
 	
     };
 
-    enum GuiBoxType : u32 {
-	GuiBoxType_Quad,
-	GuiBoxType_Triangle,
-    };
-
-    struct GuiBox {
-
-	GuiBoxType type;
-	f32 mult;
-
-	union {
-
-	    struct {
-		Color color;
-	    } quad;
-
-	    struct {
-		Color color;
-		bool down;
-	    } triangle;
-
-	};
-
-	SV_INLINE static GuiBox Quad(Color color, f32 mult = 0.7f) 
-	    { 
-		GuiBox box; 
-		box.type = GuiBoxType_Quad; 
-		box.mult = mult;
-		box.quad.color = color; 
-		return box; 
-	    }
-
-	SV_INLINE static GuiBox Triangle(Color color, bool down = false, f32 mult = 0.7f)
-	    {
-		GuiBox box;
-		box.type = GuiBoxType_Triangle;
-		box.mult = mult;
-		box.triangle.color = color;
-		box.triangle.down = down;
-		return box;
-	    }
-
+    enum GuiCheckboxShape : u32 {
+	GuiCheckboxShape_Quad,
+	GuiCheckboxShape_Triangle,
     };
 
     enum GuiPopupTrigger : u32 {
@@ -119,14 +80,16 @@ namespace sv {
 	GuiStyle_ButtonColor,
 	GuiStyle_ButtonHotColor,
 	GuiStyle_ButtonTextColor,
-
-	    GuiStyle_SliderColor,
+	GuiStyle_SliderColor,
 	    GuiStyle_SliderButtonColor,
 	    GuiStyle_SliderButtonSize,
 	    GuiStyle_TextColor,
 	    GuiStyle_TextAlignment,
 	    GuiStyle_TextBackgroundColor,
-	    // TODO checkbox
+	    GuiStyle_CheckboxButtonColor,
+	    GuiStyle_CheckboxBackgroundColor,
+	    GuiStyle_CheckboxShape,
+	    GuiStyle_CheckboxShapeSizeMult,
 	    GuiStyle_DragTextColor,
 	    GuiStyle_DragBackgroundColor,
 	    // TODO Menuitem
