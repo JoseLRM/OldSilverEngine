@@ -1745,70 +1745,72 @@ namespace sv {
 	}
     }
 
-    SV_AUX void get_style_data(GUI& gui, GuiStyle style, size_t* psize, void** pdst)
+    SV_AUX void get_style_data(GUI& gui, GuiStyle style, size_t* psize, void** pdst, bool temp = true)
     {
 	*pdst = nullptr;
 	*psize = 0u;
+
+	GuiStyleData& s = temp ? gui.temp_style : gui.style;
 		    
 	switch (style) {
 	    
 	case GuiStyle_ContainerColor:
-	    *pdst = &gui.temp_style.container.color;
+	    *pdst = &s.container.color;
 	    *psize = sizeof(Color);
 	    break;
 	    
 	case GuiStyle_WindowBackgroundColor:
-	    *pdst = &gui.temp_style.window.color;
+	    *pdst = &s.window.color;
 	    *psize = sizeof(Color);
 	    break;
 	    
 	case GuiStyle_WindowDecorationColor:
-	    *pdst = &gui.temp_style.window.decoration_color;
+	    *pdst = &s.window.decoration_color;
 	    *psize = sizeof(Color);
 	    break;
 	    
 	case GuiStyle_WindowOutlineColor:
-	    *pdst = &gui.temp_style.window.outline_color;
+	    *pdst = &s.window.outline_color;
 	    *psize = sizeof(Color);
 	    break;
 	    
 	case GuiStyle_WindowDecorationHeight:
-	    *pdst = &gui.temp_style.window.decoration_height;
+	    *pdst = &s.window.decoration_height;
 	    *psize = sizeof(f32);
 	    break;
 	    
 	case GuiStyle_WindowOutlineSize:
-	    *pdst = &gui.temp_style.window.outline_size;
+	    *pdst = &s.window.outline_size;
 	    *psize = sizeof(f32);
 	    break;
 	    
 	case GuiStyle_WindowMinWidth:
-	    *pdst = &gui.temp_style.window.min_width;
+	    *pdst = &s.window.min_width;
 	    *psize = sizeof(f32);
 	    break;
 	    
 	case GuiStyle_WindowMinHeight:
-	    *pdst = &gui.temp_style.window.min_height;
+	    *pdst = &s.window.min_height;
 	    *psize = sizeof(f32);
 	    break;
 	    
 	case GuiStyle_PopupColor:
-	    *pdst = &gui.temp_style.popup.color;
+	    *pdst = &s.popup.color;
 	    *psize = sizeof(Color);
 	    break;
 	    
 	case GuiStyle_ButtonColor:
-	    *pdst = &gui.temp_style.button.color;
+	    *pdst = &s.button.color;
 	    *psize = sizeof(Color);
 	    break;
 	    
 	case GuiStyle_ButtonHotColor:
-	    *pdst = &gui.temp_style.button.hot_color;
+	    *pdst = &s.button.hot_color;
 	    *psize = sizeof(Color);
 	    break;
 	    
 	case GuiStyle_ButtonTextColor:
-	    *pdst = &gui.temp_style.button.text_color;
+	    *pdst = &s.button.text_color;
 	    *psize = sizeof(Color);
 	    break;
 			
@@ -1970,6 +1972,19 @@ namespace sv {
 	gui.current_id = 0U;
 	for (u64 id : gui.ids)
 	    hash_combine(gui.current_id, id);
+    }
+
+    void gui_global_style(GUI* gui, GuiStyle style, const void* value, size_t size)
+    {
+	void* dst;
+	size_t write_size;
+	get_style_data(*gui, style, &write_size, &dst, false);
+
+	if (dst && write_size) {
+
+	    SV_ASSERT(write_size == size);
+	    memcpy(dst, value, write_size);
+	}
     }
 
     void gui_push_style(GUI* gui, GuiStyle style, const void* value, size_t size)

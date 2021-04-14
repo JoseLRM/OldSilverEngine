@@ -141,10 +141,14 @@ namespace sv {
     SV_API void gui_push_id(GUI* gui, const char* id);
     SV_API void gui_pop_id(GUI* gui, u32 count = 1u);
 
+    SV_API void gui_global_style(GUI* gui, GuiStyle style, const void* value, size_t size);
     SV_API void gui_push_style(GUI* gui, GuiStyle style, const void* value, size_t size);
     SV_API void gui_pop_style(GUI* gui, u32 count = 1u);
-    SV_INLINE void gui_push_style(GUI* gui, GuiStyle style, const Color& color) { gui_push_style(gui, style, &color, sizeof(Color)); }
-    SV_INLINE void gui_push_style(GUI* gui, GuiStyle style, f32 value) { gui_push_style(gui, style, &value, sizeof(f32)); }
+    
+    template<typename T>
+    SV_INLINE void gui_push_style(GUI* gui, GuiStyle style, const T& t) { gui_push_style(gui, style, &T, sizeof(T));
+    template<typename T>
+    SV_INLINE void gui_global_style(GUI* gui, GuiStyle style, const T& t) { gui_global_style(gui, style, &T, sizeof(T)); 
     
     SV_API void gui_xbounds(GUI* gui, GuiCoord x0, GuiCoord x1);
     SV_API void gui_xbounds(GUI* gui, GuiCoord x, GuiAlign align, GuiDim w);
