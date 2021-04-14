@@ -1738,6 +1738,11 @@ namespace sv {
 			if (!ignore_scroll(widget->type)) {
 
 			    widget->bounds.y -= parent_info->vertical_offset;
+
+			    GuiParentInfo* p = get_parent_info(gui, *widget);
+			    if (p) {
+				p->child_bounds.y -= parent_info->vertical_offset;
+			    }
 			}
 			else {
 
@@ -2842,7 +2847,7 @@ namespace sv {
 
 
     static void draw_widget(GUI& gui, const GuiWidget& w, CommandList cmd)
-    {
+    {	
 	switch (w.type)
 	{
 
@@ -3116,6 +3121,53 @@ namespace sv {
 		}
 				
 		// Draw childs
+
+		const GPUImageInfo& info = graphics_image_info(gfx.offscreen);
+
+		Scissor last_scissor = graphics_scissor_get(0u, cmd);
+
+		v4_f32 s_bounds;
+		s_bounds.z = parent_info->child_bounds.z * f32(info.width);
+		s_bounds.w = parent_info->child_bounds.w * f32(info.height);
+		s_bounds.x = parent_info->child_bounds.x * f32(info.width) - (s_bounds.z * 0.5f);
+		s_bounds.y = parent_info->child_bounds.y * f32(info.height) - (s_bounds.w * 0.5f);
+		
+		v4_f32 last_s_bounds;
+		last_s_bounds.x = f32(last_scissor.x);
+		last_s_bounds.y = f32(last_scissor.y);
+		last_s_bounds.z = f32(last_scissor.width);
+		last_s_bounds.w = f32(last_scissor.height);
+
+		if (s_bounds.x < last_s_bounds.x) {
+
+		    s_bounds.z -= last_s_bounds.x - s_bounds.x;
+		    s_bounds.x = last_s_bounds.x;
+		}
+		if (s_bounds.x + s_bounds.z > last_s_bounds.x + last_s_bounds.z) {
+
+		    s_bounds.z -= (s_bounds.x + s_bounds.z) - (last_s_bounds.x + last_s_bounds.z);
+		}
+
+		if (s_bounds.y < last_s_bounds.y) {
+
+		    s_bounds.w -= last_s_bounds.y - s_bounds.y;
+		    s_bounds.y = last_s_bounds.y;
+		}
+		if (s_bounds.y + s_bounds.w > last_s_bounds.y + last_s_bounds.w) {
+
+		    s_bounds.w -= (s_bounds.y + s_bounds.w) - (last_s_bounds.y + last_s_bounds.w);
+		}
+
+		s_bounds.z = SV_MAX(s_bounds.z, 0.f);
+		s_bounds.w = SV_MAX(s_bounds.w, 0.f);
+		
+		Scissor scissor;
+		scissor.x = u32(s_bounds.x);
+		scissor.y = u32(s_bounds.y);
+		scissor.width = u32(s_bounds.z);
+		scissor.height = u32(s_bounds.w);
+	    
+		graphics_scissor_set(scissor, 0u, cmd);
 				
 		GuiIndex* it = gui.indices.data() + parent_info->widget_offset;
 		GuiIndex* end = it + parent_info->widget_count;
@@ -3147,6 +3199,8 @@ namespace sv {
 
 		    ++it;
 		}
+
+		graphics_scissor_set(last_scissor, 0u, cmd);
 	    }
 	}
     }
