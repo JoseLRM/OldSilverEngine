@@ -119,7 +119,21 @@ namespace sv {
 	GuiStyle_ButtonColor,
 	GuiStyle_ButtonHotColor,
 	GuiStyle_ButtonTextColor,
-	    
+
+	    GuiStyle_SliderColor,
+	    GuiStyle_SliderButtonColor,
+	    GuiStyle_SliderButtonSize,
+	    GuiStyle_TextColor,
+	    GuiStyle_TextAlignment,
+	    GuiStyle_TextBackgroundColor,
+	    // TODO checkbox
+	    GuiStyle_DragTextColor,
+	    GuiStyle_DragBackgroundColor,
+	    // TODO Menuitem
+	    GuiStyle_FlowX0,
+	    GuiStyle_FlowX1,
+	    GuiStyle_FlowSubX0,
+	    GuiStyle_FlowSubX1
     };
 
     enum GuiLayout : u32 {

@@ -85,6 +85,13 @@ namespace sv {
 	Color text_color = Color::Black();
     };
 
+    struct GuiFlowLayoutStyle {
+	f32 x0 = 0.1f;
+	f32 x1 = 0.9f;
+	f32 sub_x0 = 0.f;
+	f32 sub_x1 = 1.f;
+    };
+
     struct GuiStyleData {
 	GuiContainerStyle container;
 	GuiWindowStyle window;
@@ -95,6 +102,7 @@ namespace sv {
 	GuiCheckboxStyle checkbox;
 	GuiDragStyle drag;
 	GuiMenuItemStyle menuitem;
+	GuiFlowLayoutStyle flow_layout;
     };
 
     ///////////////////////////////// RAW STRUCTS ///////////////////////////////////////
@@ -1320,6 +1328,7 @@ namespace sv {
 	case GuiLayout_Flow:
 	{
 	    auto& data = parent_info->flow;
+	    auto& style = gui.style.flow_layout;
 	    
 	    if (!ignore_scroll(w.type)) {
 
@@ -1327,8 +1336,9 @@ namespace sv {
 		
 		if (data.same_line_count == 1u) {
 
-		    f32 x0 = 0.1f;
-		    f32 x1 = 0.9f;
+		    f32 x0 = style.x0;
+		    f32 x1 = style.x1;
+		    if (x1 < x0) std::swap(x0, x1);
 		    
 		    f32 width = x1 - x0;
 		    f32 element_width = width / f32(data.last_same_line);
@@ -1356,11 +1366,16 @@ namespace sv {
 			
 			auto& coords = widget.raw_coords;
 
+			f32 sub_x0 = x0 + f32(i - begin_index) * element_width;
+			f32 sub_x1 = x0 + f32(i - begin_index + 1u) * element_width;
+			
+			f32 sub_width = sub_x1 - sub_x0;
+			sub_x0 = sub_x0 + style.sub_x0 * sub_width;
+			sub_x1 = sub_x1 + style.sub_x1 * sub_width;
+			
 			coords.xtype = GuiCoordType_Coord;
-			coords.xcoord._0.value = x0 + f32(i - begin_index) * element_width;
-			coords.xcoord._0.constraint = GuiCoordConstraint_Relative;
-			coords.xcoord._1.value = x0 + f32(i - begin_index + 1u) * element_width;
-			coords.xcoord._1.constraint = GuiCoordConstraint_Relative;
+			coords.xcoord._0 = GuiCoord::Relative(sub_x0); 
+			coords.xcoord._1 = GuiCoord::Relative(sub_x1); 
 
 			coords.ytype = GuiCoordType_Dim;
 			coords.ydim.c = GuiCoord::IPixel(data.yoff);
@@ -1813,6 +1828,69 @@ namespace sv {
 	    *pdst = &s.button.text_color;
 	    *psize = sizeof(Color);
 	    break;
+
+	case GuiStyle_SliderColor:
+	    *pdst = &s.slider.color;
+	    *psize = sizeof(Color);
+	    break;
+
+	case GuiStyle_SliderButtonColor:
+	    *pdst = &s.slider.button_color;
+	    *psize = sizeof(Color);
+	    break;
+
+	case GuiStyle_SliderButtonSize:
+	    *pdst = &s.slider.button_size;
+	    *psize = sizeof(f32);
+	    break;
+
+	case GuiStyle_TextColor:
+	    *pdst = &s.label.text_color;
+	    *psize = sizeof(Color);
+	    break;
+
+	case GuiStyle_TextAlignment:
+	    *pdst = &s.label.text_alignment;
+	    *psize = sizeof(TextAlignment);
+	    break;
+
+	case GuiStyle_TextBackgroundColor:
+	    *pdst = &s.label.background_color;
+	    *psize = sizeof(Color);
+	    break;
+
+	    // TODO checkbox
+	case GuiStyle_DragTextColor:
+	    *pdst = &s.drag.text_color;
+	    *psize = sizeof(Color);
+	    break;
+
+	case GuiStyle_DragBackgroundColor:
+	    *pdst = &s.drag.background_color;
+	    *psize = sizeof(Color);
+	    break;
+
+	    // TODO Menuitem
+	case GuiStyle_FlowX0:
+	    *pdst = &s.flow_layout.x0;
+	    *psize = sizeof(f32);
+	    break;
+
+	case GuiStyle_FlowX1:
+	    *pdst = &s.flow_layout.x1;
+	    *psize = sizeof(f32);
+	    break;
+
+	case GuiStyle_FlowSubX0:
+	    *pdst = &s.flow_layout.sub_x0;
+	    *psize = sizeof(f32);
+	    break;
+
+	case GuiStyle_FlowSubX1:
+	    *pdst = &s.flow_layout.sub_x1;
+	    *psize = sizeof(f32x);
+	    break;
+
 			
 	}
     }
