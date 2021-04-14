@@ -1406,7 +1406,7 @@ namespace sv {
     SV_INLINE static void text_draw_call(GPUImage* offscreen, GPUBuffer* buffer, TextData& data, u32 vertex_count, CommandList cmd)
     {
 	if (vertex_count == 0u) return;
-
+	
 	graphics_buffer_update(buffer, data.vertices, vertex_count * sizeof(TextVertex), 0u, cmd);
 
 	GPUImage* att[1];
@@ -1421,7 +1421,7 @@ namespace sv {
     {
 	if (text == nullptr) return 0u;
 	if (text_size == 0u) return 0u;
-
+	
 	// Select font
 	Font& font = pFont ? *pFont : font_opensans;
 		
@@ -1496,11 +1496,11 @@ namespace sv {
 			f32 ypos = yoff + g.yoff * ymult + y;
 			f32 width = g.w * xmult;
 			f32 height = g.h * ymult;
-
-			data.vertices[vertex_count++] = { v4_f32{ xpos			, ypos + height	, 0.f, 1.f }, v2_f32{ g.texCoord.x, g.texCoord.w }, color };
+			
+			data.vertices[vertex_count++] = { v4_f32{ xpos	        , ypos + height	, 0.f, 1.f }, v2_f32{ g.texCoord.x, g.texCoord.w }, color };
 			data.vertices[vertex_count++] = { v4_f32{ xpos + width	, ypos + height	, 0.f, 1.f }, v2_f32{ g.texCoord.z, g.texCoord.w }, color };
-			data.vertices[vertex_count++] = { v4_f32{ xpos			, ypos			, 0.f, 1.f }, v2_f32{ g.texCoord.x, g.texCoord.y }, color };
-			data.vertices[vertex_count++] = { v4_f32{ xpos + width	, ypos			, 0.f, 1.f }, v2_f32{ g.texCoord.z, g.texCoord.y }, color };
+			data.vertices[vertex_count++] = { v4_f32{ xpos		, ypos		, 0.f, 1.f }, v2_f32{ g.texCoord.x, g.texCoord.y }, color };
+			data.vertices[vertex_count++] = { v4_f32{ xpos + width	, ypos		, 0.f, 1.f }, v2_f32{ g.texCoord.z, g.texCoord.y }, color };
 		    }
 
 		    xoff += advance;

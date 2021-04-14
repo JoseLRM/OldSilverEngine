@@ -1,3 +1,4 @@
+
 #define STB_TRUETYPE_IMPLEMENTATION
 
 #include "external/stb_truetype.h"
@@ -231,6 +232,8 @@ namespace sv {
 		
 	SV_CHECK(graphics_image_create(&desc, &font.image));
 	delete[] atlas;
+
+	font.pixel_height = pixel_height;
 
 	return true;
     }

@@ -1372,7 +1372,7 @@ namespace sv {
 			
 			f32 sub_width = sub_x1 - sub_x0;
 			sub_x0 = sub_x0 + style.sub_x0 * sub_width;
-			sub_x1 = sub_x1 + style.sub_x1 * sub_width;
+			sub_x1 = sub_x0 + style.sub_x1 * sub_width;
 			
 			coords.xtype = GuiCoordType_Coord;
 			coords.xcoord._0 = GuiCoord::Relative(sub_x0); 
@@ -1908,7 +1908,7 @@ namespace sv {
 
 	case GuiStyle_FlowSubX1:
 	    *pdst = &s.flow_layout.sub_x1;
-	    *psize = sizeof(f32x);
+	    *psize = sizeof(f32);
 	    break;
 
 			
@@ -2072,7 +2072,20 @@ namespace sv {
 	    hash_combine(gui.current_id, id);
     }
 
-    void gui_global_style(GUI* gui, GuiStyle style, const void* value, size_t size)
+    void gui_global_style_get(GUI* gui, GuiStyle style, void* value, size_t size)
+    {
+	void* dst;
+	size_t write_size;
+	get_style_data(*gui, style, &write_size, &dst, false);
+
+	if (dst && write_size) {
+
+	    SV_ASSERT(write_size == size);
+	    memcpy(value, dst, write_size);
+	}
+    }
+    
+    void gui_global_style_set(GUI* gui, GuiStyle style, const void* value, size_t size)
     {
 	void* dst;
 	size_t write_size;
@@ -2947,11 +2960,12 @@ namespace sv {
 
 	    switch (cb.style.shape)
 	    {
-	    case GuiBoxType_Quad:
-		draw_debug_quad(pos.getVec3(0.f), size, cb.style.button_color, cmd);
+	    case GuiCheckboxShape_Quad:
+		if (cb.value)
+		    draw_debug_quad(pos.getVec3(0.f), size, cb.style.button_color, cmd);
 		break;
 
-	    case GuiBoxType_Triangle:
+	    case GuiCheckboxShape_Triangle:
 		if (cb.value) {
 		    draw_debug_triangle(
 			    { pos.x - size.x * 0.5f, pos.y + size.y * 0.5f, 0.f },

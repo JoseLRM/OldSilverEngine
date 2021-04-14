@@ -118,14 +118,18 @@ namespace sv {
     SV_API void gui_push_id(GUI* gui, const char* id);
     SV_API void gui_pop_id(GUI* gui, u32 count = 1u);
 
-    SV_API void gui_global_style(GUI* gui, GuiStyle style, const void* value, size_t size);
+    SV_API void gui_global_style_set(GUI* gui, GuiStyle style, const void* value, size_t size);
+    SV_API void gui_global_style_get(GUI* gui, GuiStyle style, void* value, size_t size);
     SV_API void gui_push_style(GUI* gui, GuiStyle style, const void* value, size_t size);
     SV_API void gui_pop_style(GUI* gui, u32 count = 1u);
     
     template<typename T>
-    SV_INLINE void gui_push_style(GUI* gui, GuiStyle style, const T& t) { gui_push_style(gui, style, &T, sizeof(T));
+    SV_INLINE void gui_push_style(GUI* gui, GuiStyle style, const T& t) { gui_push_style(gui, style, &t, sizeof(T)); }
     template<typename T>
-    SV_INLINE void gui_global_style(GUI* gui, GuiStyle style, const T& t) { gui_global_style(gui, style, &T, sizeof(T)); 
+    SV_INLINE void gui_global_style_set(GUI* gui, GuiStyle style, const T& t) { gui_global_style_set(gui, style, &t, sizeof(T)); }
+
+    template<typename T>
+    SV_INLINE void gui_global_style_get(GUI* gui, GuiStyle style, T& t) { gui_global_style_get(gui, style, &t, sizeof(T)); }
     
     SV_API void gui_xbounds(GUI* gui, GuiCoord x0, GuiCoord x1);
     SV_API void gui_xbounds(GUI* gui, GuiCoord x, GuiAlign align, GuiDim w);
