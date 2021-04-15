@@ -179,4 +179,8 @@ namespace sv {
     SV_API void gui_end_grid_element(GUI* gui);
     SV_API void gui_end_grid(GUI* gui);
 
+    // DEFAULT WINDOWS
+
+    SV_API void gui_display_style_settings(GUI* gui);
+
 }

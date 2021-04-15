@@ -1195,9 +1195,10 @@ namespace sv {
 	    if (!editor.camera_focus && engine.scene != nullptr && dev.game_state != GameState_Play) {
 		display_entity_hierarchy();
 		display_entity_inspector();
-
 		display_asset_browser();
 		display_scene_settings();
+
+		gui_display_style_settings(dev.gui);
 	    }
 	    else {
 		// TODO

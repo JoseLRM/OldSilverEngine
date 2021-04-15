@@ -3284,4 +3284,19 @@ namespace sv {
 	//auto& grid = gui.grid;
     }
 
+    void gui_display_style_settings(GUI* gui)
+    {
+	if (gui_begin_window(gui, "Style Settings", GuiLayout_Flow)) {
+
+	    gui_push_style(gui, GuiStyle_TextAlignment, TextAlignment_Left);
+	    
+	    gui_same_line(gui, 2u);
+	    gui_text(gui, "Window Decoration Height", 0u);
+	    gui_drag_f32(gui, &gui->style.window.decoration_height, 0.01f, 0.f, 1.f, 1u);
+
+	    gui_pop_style(gui, 1u);
+	    
+	    gui_end_window(gui);
+	}
+    }
 }
