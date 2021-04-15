@@ -81,22 +81,22 @@ namespace sv {
 	GuiStyle_ButtonHotColor,
 	GuiStyle_ButtonTextColor,
 	GuiStyle_SliderColor,
-	    GuiStyle_SliderButtonColor,
-	    GuiStyle_SliderButtonSize,
-	    GuiStyle_TextColor,
-	    GuiStyle_TextAlignment,
-	    GuiStyle_TextBackgroundColor,
-	    GuiStyle_CheckboxButtonColor,
-	    GuiStyle_CheckboxBackgroundColor,
-	    GuiStyle_CheckboxShape,
-	    GuiStyle_CheckboxShapeSizeMult,
-	    GuiStyle_DragTextColor,
-	    GuiStyle_DragBackgroundColor,
-	    // TODO Menuitem
-	    GuiStyle_FlowX0,
-	    GuiStyle_FlowX1,
-	    GuiStyle_FlowSubX0,
-	    GuiStyle_FlowSubX1
+	GuiStyle_SliderButtonColor,
+	GuiStyle_SliderButtonSize,
+	GuiStyle_TextColor,
+	GuiStyle_TextAlignment,
+	GuiStyle_TextBackgroundColor,
+	GuiStyle_CheckboxButtonColor,
+	GuiStyle_CheckboxBackgroundColor,
+	GuiStyle_CheckboxShape,
+	GuiStyle_CheckboxShapeSizeMult,
+	GuiStyle_DragTextColor,
+	GuiStyle_DragBackgroundColor,
+	// TODO Menuitem
+	GuiStyle_FlowX0,
+	GuiStyle_FlowX1,
+	GuiStyle_FlowSubX0,
+	GuiStyle_FlowSubX1
     };
 
     enum GuiLayout : u32 {
@@ -158,9 +158,15 @@ namespace sv {
     SV_API bool gui_button(GUI* gui, const char* text, u64 id);
 	
     SV_API bool gui_drag_f32(GUI* gui, f32* value, f32 adv, f32 min, f32 max, u64 id);
+    SV_API bool gui_drag_u8(GUI* gui, u8* value, u8 adv, u8 min, u8 max, u64 id);
+    
     SV_INLINE bool gui_drag_f32(GUI* gui, f32* value, f32 adv, u64 id)
     {
 	return gui_drag_f32(gui, value, adv, -f32_max, f32_max, id);
+    }
+    SV_INLINE bool gui_drag_u8(GUI* gui, u8* value, u8 adv, u64 id)
+    {
+	return gui_drag_u8(gui, value, adv, 0u, u8_max, id);
     }
 	
     SV_API bool gui_slider(GUI* gui, f32* value, f32 min, f32 max, u64 id);
@@ -174,12 +180,37 @@ namespace sv {
 
     // High level
 
+    SV_INLINE bool gui_drag_color4(GUI* gui, Color* color, u64 id)
+    {
+	gui_push_style(gui, GuiStyle_ContainerColor, Color::Transparent());
+	
+	gui_begin_container(gui, id, GuiLayout_Flow);
+
+	gui_push_style(gui, GuiStyle_DragBackgroundColor, *color);
+	gui_push_style(gui, GuiStyle_FlowX0, 0.f);
+	gui_push_style(gui, GuiStyle_FlowX1, 1.f);
+	gui_push_style(gui, GuiStyle_FlowSubX0, 0.03f);
+	gui_push_style(gui, GuiStyle_FlowSubX1, 0.97f);
+	
+	gui_same_line(gui, 4u);
+
+	bool res = false;
+	if (gui_drag_u8(gui, &color->r, 1u, 0u)) res = true;
+	if (gui_drag_u8(gui, &color->g, 1u, 1u)) res = true;
+	if (gui_drag_u8(gui, &color->b, 1u, 2u)) res = true;
+	if (gui_drag_u8(gui, &color->a, 1u, 3u)) res = true;
+
+	gui_pop_style(gui, 6u);
+	
+	gui_end_container(gui);
+
+	return res;
+    }
+    
     SV_API void gui_begin_grid(GUI* gui, u32 element_count, f32 element_size, f32 padding);
     SV_API void gui_begin_grid_element(GUI* gui, u64 id);
     SV_API void gui_end_grid_element(GUI* gui);
     SV_API void gui_end_grid(GUI* gui);
-
-    // DEFAULT WINDOWS
 
     SV_API void gui_display_style_settings(GUI* gui);
 

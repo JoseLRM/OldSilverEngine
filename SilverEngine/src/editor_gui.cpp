@@ -236,7 +236,7 @@ namespace sv {
 	gui_same_line(dev.gui, 2u);
 	
 	gui_text(dev.gui, text, 0u);
-	gui_button(dev.gui, "TODO", 1u);
+	gui_drag_color4(dev.gui, pcolor, 1u);
 
 	gui_pop_id(dev.gui);
     }

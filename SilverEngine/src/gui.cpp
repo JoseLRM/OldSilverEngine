@@ -30,6 +30,11 @@ namespace sv {
 	GuiWidgetType_Reciver,
     };
 
+    enum GuiPrimitive : u32 {
+	GuiPrimitive_f32,
+	GuiPrimitive_u8,
+    };
+
     //////////////////////////////// STYLE STRUCTS /////////////////////////////////////
 
     struct GuiContainerStyle {
@@ -139,10 +144,11 @@ namespace sv {
     };
 
     struct Raw_Drag {
-	f32 value;
-	f32 min;
-	f32 max;
-	f32 adv;
+	GuiPrimitive primitive;
+	u64 value;
+	u64 min;
+	u64 max;
+	u64 adv;
     };
 
     struct Raw_Checkbox {
@@ -246,10 +252,11 @@ namespace sv {
 	    } button;
 
 	    struct {
-		f32 value;
-		f32 min;
-		f32 max;
-		f32 adv;
+		GuiPrimitive primitive;
+		u64 value;
+		u64 min;
+		u64 max;
+		u64 adv;
 		GuiDragStyle style;
 	    } drag;
 
@@ -1132,8 +1139,36 @@ namespace sv {
 	    }
 	    else {
 
-		drag.value += input.mouse_dragged.x * gui.resolution.x * drag.adv;
-		drag.value = std::max(SV_MIN(drag.value, drag.max), drag.min);
+		switch (drag.primitive) {
+
+		case GuiPrimitive_f32:
+		{
+		    f32& value = *reinterpret_cast<f32*>(&drag.value);
+		    f32 adv = *reinterpret_cast<f32*>(&drag.adv);
+		    f32 min = *reinterpret_cast<f32*>(&drag.min);
+		    f32 max = *reinterpret_cast<f32*>(&drag.max);
+		    
+		    value += input.mouse_dragged.x * gui.resolution.x * adv;
+		    value = SV_MAX(SV_MIN(value, max), min);
+		}
+		break;
+		
+		case GuiPrimitive_u8:
+		{
+		    u8& value = *reinterpret_cast<u8*>(&drag.value);
+		    u8 adv = *reinterpret_cast<u8*>(&drag.adv);
+		    u8 min = *reinterpret_cast<u8*>(&drag.min);
+		    u8 max = *reinterpret_cast<u8*>(&drag.max);
+
+		    i32 add = (i32)round(input.mouse_dragged.x * gui.resolution.x * f32(adv)); 
+		    i32 new_value = (i32)value + add;
+		    new_value = SV_MAX(SV_MIN(new_value, i32(max)), i32(min));
+
+		    value = (u8)new_value;
+		}
+		break;
+		    
+		}
 	    }
 	}
 	break;
@@ -1329,7 +1364,7 @@ namespace sv {
 	case GuiLayout_Flow:
 	{
 	    auto& data = parent_info->flow;
-	    auto& style = gui.style.flow_layout;
+	    auto& style = gui.temp_style.flow_layout;
 	    
 	    if (!ignore_scroll(w.type)) {
 
@@ -1533,6 +1568,7 @@ namespace sv {
 	    auto& drag = w.widget.drag;
 
 	    Raw_Drag raw = _read<Raw_Drag>(it);
+	    drag.primitive = raw.primitive;
 	    drag.value = raw.value;
 	    drag.min = raw.min;
 	    drag.max = raw.max;
@@ -2634,9 +2670,8 @@ namespace sv {
 	}
     }
 
-    bool gui_drag_f32(GUI* gui_, f32* value, f32 adv, f32 min, f32 max, u64 id)
+    SV_AUX bool gui_drag(GUI& gui, u64* value, u64 adv, u64 min, u64 max, u64 id, GuiPrimitive primitive)
     {
-	PARSE_GUI();
 	hash_combine(id, gui.current_id);
 
 	bool modified;
@@ -2657,6 +2692,7 @@ namespace sv {
 	    raw.min = min;
 	    raw.max = max;
 	    raw.adv = adv;
+	    raw.primitive = primitive;
 
 	    write_widget(gui, GuiWidgetType_Drag, id, &raw, nullptr);
 	}
@@ -2664,6 +2700,48 @@ namespace sv {
 	return modified;
     }
 
+    bool gui_drag_f32(GUI* gui, f32* value, f32 adv, f32 min, f32 max, u64 id)
+    {
+	u64 _value;
+	u64 _adv;
+	u64 _min;
+	u64 _max;
+
+	memcpy(&_value, value, sizeof(f32));
+	memcpy(&_adv, &adv, sizeof(f32));
+	memcpy(&_min, &min, sizeof(f32));
+	memcpy(&_max, &max, sizeof(f32));
+
+	bool res = gui_drag(*gui, &_value, _adv, _min, _max, id, GuiPrimitive_f32);
+
+	if (res) {
+	    memcpy(value, &_value, sizeof(f32));
+	}
+
+	return res;
+    }
+
+    bool gui_drag_u8(GUI* gui, u8* value, u8 adv, u8 min, u8 max, u64 id)
+    {
+	u64 _value;
+	u64 _adv;
+	u64 _min;
+	u64 _max;
+
+	memcpy(&_value, value, sizeof(u8));
+	memcpy(&_adv, &adv, sizeof(u8));
+	memcpy(&_min, &min, sizeof(u8));
+	memcpy(&_max, &max, sizeof(u8));
+
+	bool res = gui_drag(*gui, &_value, _adv, _min, _max, id, GuiPrimitive_u8);
+
+	if (res) {
+	    memcpy(value, &_value, sizeof(u8));
+	}
+
+	return res;
+    }
+    
     bool gui_slider(GUI* gui, f32* value, f32 min, f32 max, u64 id)
     {
 	return false;
@@ -2736,117 +2814,7 @@ namespace sv {
 
     ///////////////////////////////////////////// RENDERING ///////////////////////////////////////////
 
-    constexpr u32 MAX_FLOAT_CHARS = 20u;
-
-    static void float_to_string(f32 n, char* str, u32* size, const u32 buffer_size)
-    {
-	bool negative = n < 0.f;
-
-	constexpr f32 DECIMAL_MULT = 10000000.f;
-
-	n = abs(n);
-	u32 n0 = u32(n);
-	u32 n1 = u32((n - i32(n)) * DECIMAL_MULT + DECIMAL_MULT);
-
-	// Add integer values
-
-	char* it = str;
-	char* end = str + buffer_size;
-
-	if (negative) {
-	    *it = '-';
-	    ++it;
-	}
-
-	char* valid_ptr = it;
-
-	if (n0 == 0u) {
-
-	    *it = '0';
-	    ++it;
-	}
-	else {
-
-	    while (it != end) {
-
-		if (n0 == 0u) {
-		    break;
-		}
-
-		u32 number = n0 % 10u;
-		n0 /= 10u;
-
-		char c = i8(number) + '0';
-		*it = c;
-		++it;
-
-		if (n == 0u) {
-		    if (it == end) break;
-
-		    *it = '.';
-		    ++it;
-		}
-	    }
-	}
-
-	// Swap values
-	char* it0 = it - 1U;
-
-	while (valid_ptr < it0) {
-
-	    char aux = *it0;
-	    *it0 = *valid_ptr;
-	    *valid_ptr = aux;
-	    ++valid_ptr;
-	    --it0;
-	}
-
-	// Add decimal values
-
-	if (n1 != u32(DECIMAL_MULT) && it != end) {
-
-	    *it = '.';
-	    ++it;
-
-	    valid_ptr = it;
-
-	    while (it != end) {
-
-		if (n1 == 1u) {
-		    break;
-		}
-
-		u32 number = n1 % 10u;
-		n1 /= 10u;
-
-		char c = i8(number) + '0';
-		*it = c;
-		++it;
-	    }
-	}
-
-	// Swap values
-	it0 = it - 1U;
-
-	while (valid_ptr < it0) {
-
-	    char aux = *it0;
-	    *it0 = *valid_ptr;
-	    *valid_ptr = aux;
-	    ++valid_ptr;
-	    --it0;
-	}
-
-	// Remove unnecesary 0
-	--it;
-	while (*it == '0' && it > (str + 1u)) --it;
-	++it;
-
-	*size = u32(it - str);
-    }
-
-
-    static void draw_widget(GUI& gui, const GuiWidget& w, CommandList cmd)
+    SV_INTERNAL void draw_widget(GUI& gui, const GuiWidget& w, CommandList cmd)
     {	
 	switch (w.type)
 	{
@@ -2890,11 +2858,27 @@ namespace sv {
 
 	    f32 font_size = size.y;
 
-	    char strbuff[MAX_FLOAT_CHARS + 1u];
-	    u32 strsize;
-	    float_to_string(drag.value, strbuff, &strsize, MAX_FLOAT_CHARS);
+	    char strbuff[100u] = "\0";
+	    
+	    switch (drag.primitive) {
 
-	    draw_text(strbuff, strsize
+	    case GuiPrimitive_f32:
+	    {
+		f32 value = *reinterpret_cast<const f32*>(&drag.value);
+		sprintf(strbuff, "%f", value);
+	    }
+	    break;
+
+	    case GuiPrimitive_u8:
+	    {
+		u8 value = *reinterpret_cast<const u8*>(&drag.value);
+		sprintf(strbuff, "%u", (u32)value);
+	    }
+	    break;
+		
+	    }
+
+	    draw_text(strbuff, strlen(strbuff)
 		      , pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font_opensans.vertical_offset * font_size,
 		      size.x, 1u, font_size, gui.aspect, TextAlignment_Center, &font_opensans, drag.style.text_color, cmd);
 	}
@@ -3288,11 +3272,98 @@ namespace sv {
     {
 	if (gui_begin_window(gui, "Style Settings", GuiLayout_Flow)) {
 
+	    u64 id = 0u;
+	    
 	    gui_push_style(gui, GuiStyle_TextAlignment, TextAlignment_Left);
 	    
 	    gui_same_line(gui, 2u);
-	    gui_text(gui, "Window Decoration Height", 0u);
-	    gui_drag_f32(gui, &gui->style.window.decoration_height, 0.01f, 0.f, 1.f, 1u);
+	    gui_text(gui, "Container Color", id++);
+	    gui_drag_color4(gui, &gui->style.container.color, id++);
+
+	    gui_same_line(gui, 2u);
+	    gui_text(gui, "Window Color", id++);
+	    gui_drag_color4(gui, &gui->style.window.color, id++);
+
+	    gui_same_line(gui, 2u);
+	    gui_text(gui, "Window Decoration Color", id++);
+	    gui_drag_color4(gui, &gui->style.window.decoration_color, id++);
+
+	    gui_same_line(gui, 2u);
+	    gui_text(gui, "Window Outline Color", id++);
+	    gui_drag_color4(gui, &gui->style.window.outline_color, id++);
+	    
+	    gui_same_line(gui, 2u);
+	    gui_text(gui, "Window Decoration Height", id++);
+	    gui_drag_f32(gui, &gui->style.window.decoration_height, 0.01f, 0.f, 1.f, id++);
+
+	    gui_same_line(gui, 2u);
+	    gui_text(gui, "Window Min Width", id++);
+	    gui_drag_f32(gui, &gui->style.window.min_width, 0.01f, 0.f, 1.f, id++);
+
+	    gui_same_line(gui, 2u);
+	    gui_text(gui, "Window Min Height", id++);
+	    gui_drag_f32(gui, &gui->style.window.min_height, 0.01f, 0.f, 1.f, id++);
+
+	    gui_same_line(gui, 2u);
+	    gui_text(gui, "Popup Color", id++);
+	    gui_drag_color4(gui, &gui->style.popup.color, id++);
+
+	    gui_same_line(gui, 2u);
+	    gui_text(gui, "Button Color", id++);
+	    gui_drag_color4(gui, &gui->style.button.color, id++);
+
+	    gui_same_line(gui, 2u);
+	    gui_text(gui, "Button Hot Color", id++);
+	    gui_drag_color4(gui, &gui->style.button.hot_color, id++);
+
+	    gui_same_line(gui, 2u);
+	    gui_text(gui, "Button Text Color", id++);
+	    gui_drag_color4(gui, &gui->style.button.text_color, id++);
+
+	    gui_same_line(gui, 2u);
+	    gui_text(gui, "Slider Color", id++);
+	    gui_drag_color4(gui, &gui->style.slider.color, id++);
+
+	    gui_same_line(gui, 2u);
+	    gui_text(gui, "Slider Button Color", id++);
+	    gui_drag_color4(gui, &gui->style.slider.button_color, id++);
+
+	    gui_same_line(gui, 2u);
+	    gui_text(gui, "Slider Button Size", id++);
+	    //gui_drag_f32(gui, &gui->style.slider.button_size, 0.01f, 0.f, 1.f, id++);
+	    gui_button(gui, "TODO", id++);
+
+	    gui_same_line(gui, 2u);
+	    gui_text(gui, "Text Color", id++);
+	    gui_drag_color4(gui, &gui->style.label.text_color, id++);
+
+	    gui_same_line(gui, 2u);
+	    gui_text(gui, "Text Background Color", id++);
+	    gui_drag_color4(gui, &gui->style.label.background_color, id++);
+
+	    gui_same_line(gui, 2u);
+	    gui_text(gui, "Checkbox Color", id++);
+	    gui_drag_color4(gui, &gui->style.checkbox.button_color, id++);
+
+	    gui_same_line(gui, 2u);
+	    gui_text(gui, "Checkbox Background Color", id++);
+	    gui_drag_color4(gui, &gui->style.checkbox.background_color, id++);
+
+	    gui_same_line(gui, 2u);
+	    gui_text(gui, "Drag Text Color", id++);
+	    gui_drag_color4(gui, &gui->style.drag.text_color, id++);
+
+	    gui_same_line(gui, 2u);
+	    gui_text(gui, "Drag Background Color", id++);
+	    gui_drag_color4(gui, &gui->style.drag.background_color, id++);
+
+	    gui_same_line(gui, 2u);
+	    gui_text(gui, "Flow x0", id++);
+	    gui_drag_f32(gui, &gui->style.flow_layout.x0, 0.01f, 0.f, 1.f, id++);
+
+	    gui_same_line(gui, 2u);
+	    gui_text(gui, "Flow x1", id++);
+	    gui_drag_f32(gui, &gui->style.flow_layout.x1, 0.01f, 0.f, 1.f, id++);
 
 	    gui_pop_style(gui, 1u);
 	    
