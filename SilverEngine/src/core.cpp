@@ -41,9 +41,9 @@ namespace sv {
 	return std::chrono::steady_clock::now();
     }
 
-    Time timer_now()
+    f64 timer_now()
     {
-	return Time(std::chrono::duration<float>(timer_now_chrono() - g_InitialTime).count());
+	return f64(std::chrono::duration<float>(timer_now_chrono() - g_InitialTime).count());
     }
 
     Date timer_date()

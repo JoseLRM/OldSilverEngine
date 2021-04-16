@@ -178,24 +178,6 @@ namespace sv {
 
 // Timer
 
-    class Time {
-	f64 m_Time;
-    public:
-	constexpr Time() : m_Time(0.0) {}
-	constexpr Time(f64 t) : m_Time(t) {}
-
-	SV_INLINE operator f64() const noexcept { return m_Time; }
-
-	SV_INLINE Time timeSince(Time time) const noexcept { return Time(time.m_Time - m_Time); }
-
-	SV_INLINE f64 toSeconds_f64() const noexcept { return m_Time; }
-	SV_INLINE u32 toSeconds_u32() const noexcept { return u32(m_Time); }
-	SV_INLINE u64 toSeconds_u64() const noexcept { return u64(m_Time); }
-	SV_INLINE f64 toMillis_f64() const noexcept { return m_Time * 1000.0; }
-	SV_INLINE u32 toMillis_u32() const noexcept { return u32(m_Time * 1000.0); }
-	SV_INLINE u64 toMillis_u64() const noexcept { return u64(m_Time * 1000.0); }
-    };
-
     struct Date {
 	u32 year;
 	u32 month;
@@ -217,7 +199,7 @@ namespace sv {
 	    }
     };
 
-    SV_API Time timer_now();
+    SV_API u64 timer_now();
     SV_API Date timer_date();
 
 // Version

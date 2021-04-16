@@ -55,6 +55,24 @@ SV_USER bool user_initialize_scene(Scene* scene, Archive* parchive)
     return true;
 }
 
+SV_USER void user_update()
+{
+    GameMemory& m = get_game_memory();
+
+    if (entity_exist(engine.scene, m.foo)) {
+
+	Transform trans = get_entity_transform(engine.scene, m.foo);
+	v2_f32 pos = trans.getLocalPosition().getVec2();
+
+	f64 t = timer_now();
+
+	pos.x = f32(cos(t)) * 4.f;
+	pos.y = f32(sin(t)) * 2.f;
+
+	trans.setPosition(pos.getVec2());
+    }
+}
+
 SV_USER bool user_serialize_scene(Scene* scene, Archive* parchive)
 {
     GameMemory& m = get_game_memory();
@@ -63,9 +81,6 @@ SV_USER bool user_serialize_scene(Scene* scene, Archive* parchive)
     return true;
 }
 
-SV_USER void user_update()
-{
-}
 
 SV_USER bool user_get_scene_filepath(const char* name, char* filepath)
 {
