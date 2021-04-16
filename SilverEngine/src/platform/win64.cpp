@@ -507,13 +507,49 @@ namespace sv {
 	CloseHandle(file);
 	return true;
     }
+
+    SV_AUX bool create_path(const char* filepath)
+    {
+	char folder[FILEPATH_SIZE] = "\0";
+
+	size_t file_size = strlen(filepath);
+		
+	while (true) {
+
+	    size_t folder_size = strlen(folder);
+
+	    const char* it = filepath + folder_size;
+	    while (*it && *it != '/') ++it;
+
+	    if (*it == '\0') break;
+	    else ++it;
+
+	    if (*it == '\0') break;
+
+	    folder_size = it - filepath;
+	    memcpy(folder, filepath, folder_size);
+	    folder[folder_size] = '\0';
+
+	    if (!CreateDirectory(folder, NULL) && ERROR_ALREADY_EXISTS != GetLastError()) {
+		return false;
+	    }
+	}
+    }
     
-    bool file_write_binary(const char* filepath, const u8* data, size_t size, bool append)
+    bool file_write_binary(const char* filepath, const u8* data, size_t size, bool append, bool recursive)
     {
 	HANDLE file = CreateFile(filepath, GENERIC_WRITE, FILE_SHARE_READ, NULL, append ? CREATE_NEW : CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	
 	if (file == INVALID_HANDLE_VALUE) {
-	    return false;
+	    
+	    if (recursive) {
+		
+		if (!create_path(filepath)) return false;
+
+		file = CreateFile(filepath, GENERIC_WRITE, FILE_SHARE_READ, NULL, append ? CREATE_NEW : CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+		if (file == INVALID_HANDLE_VALUE) return false;
+	    }
+	    else return false;
 	}
 
 	WriteFile(file, data, (DWORD)size, NULL, NULL);
@@ -522,12 +558,19 @@ namespace sv {
 	return true;
     }
     
-    bool file_write_text(const char* filepath, const char* str, size_t size, bool append)
+    bool file_write_text(const char* filepath, const char* str, size_t size, bool append, bool recursive)
     {
 	HANDLE file = CreateFile(filepath, GENERIC_WRITE, FILE_SHARE_READ, NULL, append ? CREATE_NEW : CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	
 	if (file == INVALID_HANDLE_VALUE) {
-	    return false;
+	    if (recursive) {
+		
+		if (!create_path(filepath)) return false;
+
+		file = CreateFile(filepath, GENERIC_WRITE, FILE_SHARE_READ, NULL, append ? CREATE_NEW : CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+		if (file == INVALID_HANDLE_VALUE) return false;
+	    }
+	    else return false;
 	}
 
 	WriteFile(file, str, (DWORD)size, NULL, NULL);

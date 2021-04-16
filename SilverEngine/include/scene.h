@@ -30,7 +30,7 @@ namespace sv {
 
 	AudioDevice* audio_device;
 
-	v2_f32 gravity = { 0.f, -1.f };
+	v2_f32 gravity = { 0.f, -36.f };
 	f32 air_friction = 0.02f;
 
 	char name[SCENENAME_SIZE];
