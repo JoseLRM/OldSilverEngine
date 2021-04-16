@@ -10,7 +10,6 @@ SET platform=win64
 
 SET compile_entry=false
 SET compile_engine=false
-SET compile_game=false
 
 SET option_slow=false
 SET option_dev=false
@@ -23,7 +22,6 @@ IF "%1"=="" GOTO end_arg_loop
 
 IF "%1"=="win64" SET platform=win64
 
-IF "%1"=="game" SET compile_game=true
 IF "%1"=="engine" SET compile_engine=true
 IF "%1"=="entry" SET compile_entry=true
 
@@ -44,11 +42,8 @@ GOTO arg_loop
 
 IF "%compile_entry%"=="false" (
    IF "%compile_engine%"=="false" (
-      IF "%compile_game%"=="false" (
       	 SET compile_entry=true
    	 SET compile_engine=true
-   	 SET compile_game=true
-	 )
       )
 )
 
@@ -103,18 +98,12 @@ SET common_linker_flags= /incremental:no
 REM Silver Engine path
 SET SVP= %origin_path%\SilverEngine\
 
-REM Game path
-SET GP= %origin_path%\Game\
-
 REM Silver Engine args
 SET sv_defines= -DSV_SILVER_ENGINE=1 %common_defines%
 SET sv_compiler_flags= %common_compiler_flags%
 SET sv_include_paths= /I %SVP%include /I %SVP%src\ /I %SVP%src\external\ /I %VULKAN_SDK%\Include\
 SET sv_link_libs= user32.lib %VULKAN_SDK%\Lib\vulkan-1.lib assimp.lib sprv.lib
 SET sv_link_flags= /DLL %common_linker_flags% /LIBPATH:"%origin_path%\SilverEngine\lib\" /out:..\SilverEngine.dll /PDB:SilverEngine.pdb /LTCG
-
-REM Game args
-SET g_include_paths= /I %GP%src /I %GP%..\SilverEngine\include\
 
 pushd %output_dir%int
 
@@ -132,14 +121,6 @@ IF "%compile_engine%"=="true" (
    ECHO.
    ECHO -- Compiling SilverEngine! --
    CALL cl %sv_compiler_flags% %sv_defines% %sv_include_paths% %SVP%src\build_unit.cpp /link %sv_link_flags% %sv_link_libs% 
-)
-
-IF "%compile_game%"=="true" (
-   ECHO.
-   ECHO.
-   ECHO.
-   ECHO -- Compiling Game! --
-   CALL cl %common_compiler_flags% %common_defines% %g_include_paths% %GP%src\build_unit.cpp /link %common_linker_flags% /DLL ..\SilverEngine.lib /out:..\Game.dll /PDB:Game.pdb
 )
 
 ECHO.
@@ -160,34 +141,49 @@ IF EXIST EntryPoint.exe (
 )
 IF EXIST  SilverEngine.exp DEL SilverEngine.exp -Q
 
-IF "%compile_engine%"=="true" (
 
-   ECHO Creating system data
+ECHO Creating system data
 
-   IF EXIST system (
-      RMDIR system /Q /S
-   )
-   XCOPY %SVP%system\ system /E /I /Q /Y > NUL
-
-   IF NOT EXIST bin MKDIR bin
-
-   ECHO Moving DLLs
-
-   IF EXIST SilverEngine.dll RENAME SilverEngine.dll SilverEngineTemp
-   IF EXIST Game.dll RENAME Game.dll GameTemp
-   DEL *.dll > NUL 2> NUL
-   IF EXIST SilverEngineTemp RENAME SilverEngineTemp SilverEngine.dll
-   IF EXIST GameTemp RENAME GameTemp Game.dll
-   XCOPY %SVP%lib\*.dll /I /Q /Y > NUL
-
-   IF EXIST  Game.exp DEL Game.exp -Q
-   IF EXIST  Game.lib DEL Game.lib -Q
-
+IF EXIST system (
+   RMDIR system /Q /S
 )
+XCOPY %SVP%system\ system /E /I /Q /Y > NUL
+
+IF NOT EXIST bin MKDIR bin
+
+ECHO Moving DLLs
+
+IF EXIST SilverEngine.dll RENAME SilverEngine.dll SilverEngineTemp
+IF EXIST Game.dll RENAME Game.dll GameTemp
+DEL *.dll > NUL 2> NUL
+IF EXIST SilverEngineTemp RENAME SilverEngineTemp SilverEngine.dll
+IF EXIST GameTemp RENAME GameTemp Game.dll
+XCOPY %SVP%lib\*.dll /I /Q /Y > NUL
+
+IF EXIST  Game.exp DEL Game.exp -Q
+IF EXIST  Game.lib DEL Game.lib -Q
 
 ECHO Creating assets
 
-XCOPY %GP%res\* . /E /I /Q /Y > NUL
+IF EXIST assets\ RMDIR assets\ /S /Q
+     
+XCOPY %GP%assets\ assets /E /I /Q /Y > NUL
+
+IF EXIST gamecode RMDIR gamecode /S /Q
+
+MKDIR gamecode\lib
+MKDIR gamecode\src
+MKDIR gamecode\SilverEngine
+
+XCOPY %SVP%\include gamecode\SilverEngine /E /I /Q /Y > NUL
+XCOPY %GP%\src gamecode\src /E /I /Q /Y > NUL
+
+IF EXIST SilverEngine.lib (
+   XCOPY SilverEngine.lib gamecode\lib /I /Q /Y > NUL
+   DEL SilverEngine.lib
+)
+
+CALL system/build_game.bat
 
 IF "%run%"=="true" SilverEngine.exe
 

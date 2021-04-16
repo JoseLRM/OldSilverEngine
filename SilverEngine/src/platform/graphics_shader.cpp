@@ -195,7 +195,7 @@ namespace sv {
 #if SV_GFX
 	if (alwaisCompile || !bin_read(hash, data)) {
 #else
-	    if (result_fail(bin_read(hash, data))) {
+	    if (!bin_read(hash, data)) {
 #endif
 			
 		ShaderCompileDesc c;
@@ -228,7 +228,7 @@ namespace sv {
 #if SV_GFX
 	    if (alwaisCompile || !bin_read(hash, data)) {
 #else
-		if (result_fail(bin_read(hash, data))) {
+		if (!bin_read(hash, data)) {
 #endif
 		    char* str;
 		    size_t str_size;

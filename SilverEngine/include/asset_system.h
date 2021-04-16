@@ -4,161 +4,161 @@
 
 namespace sv {
 
-	struct AssetPtr {
+    struct SV_API AssetPtr {
 
-		AssetPtr() = default;
+	AssetPtr() = default;
 
-		AssetPtr::AssetPtr(void* ptr) : ptr(ptr)
-		{
-			std::atomic<i32>* ref = reinterpret_cast<std::atomic<i32>*>(ptr);
-			ref->fetch_add(1);
+	AssetPtr::AssetPtr(void* ptr) : ptr(ptr)
+	    {
+		std::atomic<i32>* ref = reinterpret_cast<std::atomic<i32>*>(ptr);
+		ref->fetch_add(1);
+	    }
+
+	AssetPtr::~AssetPtr()
+	    {
+		if (ptr) {
+		    std::atomic<i32>* ref = reinterpret_cast<std::atomic<i32>*>(ptr);
+		    ref->fetch_add(-1);
+		    ptr = nullptr;
+		}
+	    }
+
+	AssetPtr::AssetPtr(const AssetPtr& other)
+	    {
+		if (other.ptr) {
+		    ptr = other.ptr;
+		    std::atomic<i32>* ref = reinterpret_cast<std::atomic<i32>*>(ptr);
+		    ref->fetch_add(1);
+		}
+	    }
+
+	AssetPtr& AssetPtr::operator=(const AssetPtr& other)
+	    {
+		if (ptr) {
+		    std::atomic<i32>* ref = reinterpret_cast<std::atomic<i32>*>(ptr);
+		    ref->fetch_add(-1);
 		}
 
-		AssetPtr::~AssetPtr()
-		{
-			if (ptr) {
-				std::atomic<i32>* ref = reinterpret_cast<std::atomic<i32>*>(ptr);
-				ref->fetch_add(-1);
-				ptr = nullptr;
-			}
+		ptr = other.ptr;
+
+		if (ptr) {
+		    std::atomic<i32>* ref = reinterpret_cast<std::atomic<i32>*>(ptr);
+		    ref->fetch_add(1);
 		}
 
-		AssetPtr::AssetPtr(const AssetPtr& other)
-		{
-			if (other.ptr) {
-				ptr = other.ptr;
-				std::atomic<i32>* ref = reinterpret_cast<std::atomic<i32>*>(ptr);
-				ref->fetch_add(1);
-			}
+		return *this;
+	    }
+
+	AssetPtr::AssetPtr(AssetPtr&& other) noexcept
+	    {
+		ptr = other.ptr;
+		other.ptr = nullptr;
+	    }
+
+	AssetPtr& AssetPtr::operator=(AssetPtr&& other) noexcept
+	    {
+		if (ptr) {
+		    std::atomic<i32>* ref = reinterpret_cast<std::atomic<i32>*>(ptr);
+		    ref->fetch_add(-1);
 		}
 
-		AssetPtr& AssetPtr::operator=(const AssetPtr& other)
-		{
-			if (ptr) {
-				std::atomic<i32>* ref = reinterpret_cast<std::atomic<i32>*>(ptr);
-				ref->fetch_add(-1);
-			}
+		ptr = other.ptr;
+		other.ptr = nullptr;
 
-			ptr = other.ptr;
+		return *this;
+	    }
 
-			if (ptr) {
-				std::atomic<i32>* ref = reinterpret_cast<std::atomic<i32>*>(ptr);
-				ref->fetch_add(1);
-			}
+	inline bool operator==(const AssetPtr& other) const noexcept { return ptr == other.ptr; }
+	inline bool operator!=(const AssetPtr& other) const noexcept { return ptr != other.ptr; }
 
-			return *this;
-		}
+	void* ptr = nullptr;
 
-		AssetPtr::AssetPtr(AssetPtr&& other) noexcept
-		{
-			ptr = other.ptr;
-			other.ptr = nullptr;
-		}
+    };
 
-		AssetPtr& AssetPtr::operator=(AssetPtr&& other) noexcept
-		{
-			if (ptr) {
-				std::atomic<i32>* ref = reinterpret_cast<std::atomic<i32>*>(ptr);
-				ref->fetch_add(-1);
-			}
+#define SV_DEFINE_ASSET_PTR(name, ptr_type) struct name {		\
+	SV_INLINE ptr_type get() const noexcept { ptr_type* ptr = reinterpret_cast<ptr_type*>(get_asset_content(asset_ptr)); return ptr ? *ptr : nullptr; } \
+	SV_INLINE operator AssetPtr& () { return asset_ptr; }		\
+	SV_INLINE operator const AssetPtr& () const { return asset_ptr; } \
+	AssetPtr asset_ptr;						\
+    }
 
-			ptr = other.ptr;
-			other.ptr = nullptr;
+#define SV_DEFINE_ASSET(name, type) struct name {			\
+	SV_INLINE type* get() const noexcept { return reinterpret_cast<type*>(get_asset_content(asset_ptr)); } \
+	SV_INLINE type* operator->() const noexcept { return get(); }	\
+	SV_INLINE operator AssetPtr& () { return asset_ptr; }		\
+	SV_INLINE operator const AssetPtr& () const { return asset_ptr; } \
+	AssetPtr asset_ptr;						\
+    }
 
-			return *this;
-		}
+    SV_API bool create_asset(AssetPtr& asset_ptr, const char* asset_type_name);
+    SV_API bool load_asset_from_file(AssetPtr& asset_ptr, const char* filepath);
+    SV_API void unload_asset(AssetPtr& asset_ptr);
 
-		inline bool operator==(const AssetPtr& other) const noexcept { return ptr == other.ptr; }
-		inline bool operator!=(const AssetPtr& other) const noexcept { return ptr != other.ptr; }
+    SV_API void* get_asset_content(const AssetPtr& asset_ptr);
+    SV_API const char* get_asset_filepath(const AssetPtr& asset_ptr);
 
-		void* ptr = nullptr;
+    typedef bool(*AssetCreateFn)(void* asset);
+    typedef bool(*AssetLoadFileFn)(void* asset, const char* filepath);
+    typedef bool(*AssetReloadFileFn)(void* asset, const char* filepath);
+    typedef bool(*AssetFreeFn)(void* asset);
 
-	};
-
-#define SV_DEFINE_ASSET_PTR(name, ptr_type) struct name { \
-		SV_INLINE ptr_type get() const noexcept { ptr_type* ptr = reinterpret_cast<ptr_type*>(get_asset_content(asset_ptr)); return ptr ? *ptr : nullptr; } \
-		SV_INLINE operator AssetPtr& () { return asset_ptr; } \
-		SV_INLINE operator const AssetPtr& () const { return asset_ptr; } \
-		AssetPtr asset_ptr; \
-	}
-
-#define SV_DEFINE_ASSET(name, type) struct name { \
-		SV_INLINE type* get() const noexcept { return reinterpret_cast<type*>(get_asset_content(asset_ptr)); } \
-		SV_INLINE type* operator->() const noexcept { return get(); } \
- 		SV_INLINE operator AssetPtr& () { return asset_ptr; } \
-		SV_INLINE operator const AssetPtr& () const { return asset_ptr; } \
-		AssetPtr asset_ptr; \
-	}
-
-	bool create_asset(AssetPtr& asset_ptr, const char* asset_type_name);
-	bool load_asset_from_file(AssetPtr& asset_ptr, const char* filepath);
-	void unload_asset(AssetPtr& asset_ptr);
-
-	void*		get_asset_content(const AssetPtr& asset_ptr);
-	const char* get_asset_filepath(const AssetPtr& asset_ptr);
-
-	typedef bool(*AssetCreateFn)(void* asset);
-	typedef bool(*AssetLoadFileFn)(void* asset, const char* filepath);
-	typedef bool(*AssetReloadFileFn)(void* asset, const char* filepath);
-	typedef bool(*AssetFreeFn)(void* asset);
-
-	struct AssetTypeDesc {
+    struct AssetTypeDesc {
 	
-		std::string			name;
-		u32					asset_size;
-		const char**		extensions;
-		u32					extension_count;
-		AssetCreateFn		create;
-		AssetLoadFileFn		load_file;
-		AssetReloadFileFn	reload_file;
-		AssetFreeFn			free;
-		f32					unused_time;
+	std::string			name;
+	u32					asset_size;
+	const char**		extensions;
+	u32					extension_count;
+	AssetCreateFn		create;
+	AssetLoadFileFn		load_file;
+	AssetReloadFileFn	reload_file;
+	AssetFreeFn			free;
+	f32					unused_time;
 
-	};
+    };
 
-	bool register_asset_type(const AssetTypeDesc* desc);
+    SV_API bool register_asset_type(const AssetTypeDesc* desc);
 
-	void update_asset_files();
-	void free_unused_assets();
+    SV_API void update_asset_files();
+    SV_API void free_unused_assets();
 
-	SV_INLINE Archive& operator>>(Archive& archive, AssetPtr& asset_ptr)
+    SV_INLINE Archive& operator>>(Archive& archive, AssetPtr& asset_ptr)
+    {
+	u8 type;
+	archive >> type;
+
+	switch (type)
 	{
-		u8 type;
-		archive >> type;
+	case 1u:
+	{
+	    std::string filepath;
+	    archive >> filepath;
 
-		switch (type)
-		{
-		case 1u:
-		{
-			std::string filepath;
-			archive >> filepath;
-
-			if (!load_asset_from_file(asset_ptr, filepath.c_str())) {
-				SV_LOG_ERROR("Can't load the asset '%s'", filepath.c_str());
-			}
-		}break;
-		}
-
-		return archive;
+	    if (!load_asset_from_file(asset_ptr, filepath.c_str())) {
+		SV_LOG_ERROR("Can't load the asset '%s'", filepath.c_str());
+	    }
+	}break;
 	}
 
-	SV_INLINE Archive& operator<<(Archive& archive, const AssetPtr& asset_ptr)
-	{
-		if (asset_ptr.ptr == nullptr) archive << u8(0u);
-		else {
-			const char* filepath = get_asset_filepath(asset_ptr);
+	return archive;
+    }
 
-			if (filepath == nullptr) {
-				archive << (u8)(0u);
-			}
-			else {
+    SV_INLINE Archive& operator<<(Archive& archive, const AssetPtr& asset_ptr)
+    {
+	if (asset_ptr.ptr == nullptr) archive << u8(0u);
+	else {
+	    const char* filepath = get_asset_filepath(asset_ptr);
 
-				archive << (u8)(1u);
-				archive << filepath;
-			}
-		}
+	    if (filepath == nullptr) {
+		archive << (u8)(0u);
+	    }
+	    else {
 
-		return archive;
+		archive << (u8)(1u);
+		archive << filepath;
+	    }
 	}
+
+	return archive;
+    }
 
 }

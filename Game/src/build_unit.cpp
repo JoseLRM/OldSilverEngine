@@ -4,9 +4,12 @@
 
 using namespace sv;
 
+constexpr u32 VERSION = 0u;
+
 struct GameMemory {
 
     Entity player;
+    Entity cat;
     
 };
 
@@ -20,7 +23,7 @@ SV_USER bool user_initialize(bool init)
     if (init) {
 	engine.game_memory = allocate_memory(sizeof(GameMemory));
     
-	set_active_scene("Test");
+	set_active_scene("level_0");
     }
     
     return true;
@@ -39,15 +42,34 @@ SV_USER bool user_initialize_scene(Scene* scene, Archive* parchive)
     
     if (parchive) {
 	Archive& archive = *parchive;
-	archive >> m.player;
-	return true;
+
+	u32 version;
+	archive >> version;
+
+	if (version == VERSION) {
+	
+	    archive >> m.player;
+	    archive >> m.cat;
+	    return true;
+	}
     }
 
+
+// Create camera
     scene->main_camera = create_entity(scene, SV_ENTITY_NULL, "Camera");
     add_component<CameraComponent>(scene, scene->main_camera);
+
+    // Create player
     m.player = create_entity(scene, SV_ENTITY_NULL, "Player");
-    add_component<SpriteComponent>(scene, m.player);
+    SpriteComponent* spr = add_component<SpriteComponent>(scene, m.player);
+    load_asset_from_file(spr->texture, "images/ghost.png");
     BodyComponent* body = add_component<BodyComponent>(scene, m.player);
+    body->body_type = BodyType_Dynamic;
+
+    // Create cat
+    m.cat = create_entity(scene, SV_ENTITY_NULL, "Cat");
+    add_component<SpriteComponent>(scene, m.cat);
+    body = add_component<BodyComponent>(scene, m.cat);
     body->body_type = BodyType_Dynamic;
     
     return true;
@@ -57,7 +79,9 @@ SV_USER bool user_serialize_scene(Scene* scene, Archive* parchive)
 {
     GameMemory& m = get_game_memory();
     Archive& archive = *parchive;
+    archive << VERSION;
     archive << m.player;
+    archive << m.cat;
     return true;
 }
 
@@ -116,14 +140,17 @@ SV_USER void user_update()
 	    //cam.setPosition(pos.getVec3());
 	}
 
-	f32 vel = 30.f * engine.deltatime;
+	f32 vel = 5.f * engine.deltatime;
+
+	if (input.keys[Key_A]) {
+	    pos.x -= vel;
+	}
+	if (input.keys[Key_D]) {
+	    pos.x += vel;
+	}
 
 	if (body->in_ground) {
 
-	    if (input.keys[Key_Tab]) {
-		body->vel.y = 40.f;
-	    }
-	    
 	    if (input.keys[Key_Space]) {
 		body->vel.y = 27.f * 0.5f;
 		
@@ -131,56 +158,21 @@ SV_USER void user_update()
 	    
 	}
 
-	if (input.keys[Key_A]) {
-	    body->vel.x -= vel;
-	}
-	if (input.keys[Key_D]) {
-	    body->vel.x += vel;
-	}
-
 	trans.setPosition(pos.getVec3());
-
-	if (input.mouse_buttons[MouseButton_Right]) {
-
-	    static Time last = 0.0;
-	    static u32 seed = 0x3453F23;
-	    Time now = timer_now();
-	    if (now - last > 0.05f) {
-
-		last = now;
-		
-		Entity e = create_entity(scene);
-		add_component<SpriteComponent>(scene, e)->color = { (u8)math_random_u32(seed++, 256u), (u8)math_random_u32(seed++, 256u), (u8)math_random_u32(seed++, 256u), 255u };
-		BodyComponent* b = add_component<BodyComponent>(scene, e);
-		b->body_type = BodyType_Dynamic;
-		b->bounciness = 0.7f;
-		b->mass = 0.05f;
-
-		Transform t = get_entity_transform(scene, e);
-
-		CameraComponent* cam = get_main_camera(scene);
-
-		v2_f32 cam_pos;
-
-		if (cam)
-		    cam_pos = input.mouse_position * v2_f32(cam->width, cam->height);
-
-		b->vel = cam_pos - pos;
-		b->vel.normalize();
-		b->vel *= 100.f;
-		t.setPosition(pos.getVec3());
-		t.setScale({ 0.07f, 0.07f, 1.f });
-	    }
-	}
-
-	if (input.keys[Key_E] == InputState_Pressed) {
-	    explosion(engine.scene, pos, 100.f, 40.f, &m.player, 1u);
-	}
     }
 }
 
 SV_USER bool user_get_scene_filepath(const char* name, char* filepath)
 {
     sprintf(filepath, "worlds/%s.scene", name);
+    return true;
+}
+
+SV_USER bool user_validate_scene(const char* name)
+{
+    size_t size = strlen(name);
+
+    if (size <= 6) return false;
+
     return true;
 }

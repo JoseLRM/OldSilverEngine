@@ -724,6 +724,11 @@ namespace sv {
 
     void graphics_swapchain_resize();
 
+    void os_compile_gamecode()
+    {
+	system("CALL system\\build_game.bat");
+    }
+
     ////////////////////////////////////////////////////////////////// USER CALLBACKS /////////////////////////////////////////////////////////////
 
     void os_free_user_callbacks()

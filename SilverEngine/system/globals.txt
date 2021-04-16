@@ -1,2 +1,0 @@
-game_code="Game.dll"
-test=0.3

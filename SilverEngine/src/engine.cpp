@@ -48,6 +48,7 @@ namespace sv {
 
     void os_update_user_callbacks(const char* dll);
     void os_free_user_callbacks();
+    void os_compile_gamecode();
 
     ////////////////////////////////////////////////////////////////// UPDATE DLL ////////////////////////////////////////////////////////////
 
@@ -68,7 +69,7 @@ namespace sv {
 
 	    file >> filepath;
 	}
-	else sprintf(filepath, "%s", "Game.dll");
+	else sprintf(filepath, "%s", "system/game_bin/Game.dll");
     }
     
     SV_AUX void recive_user_callbacks()
@@ -80,12 +81,12 @@ namespace sv {
 	
 	os_free_user_callbacks();
 	
-	if (!file_copy(filepath, "system/GameTemp.dll")) {
+	if (!file_copy(filepath, "system/game_bin/GameTemp.dll")) {
 	    SV_LOG_ERROR("Can't create temporal game dll");
 	    return;
 	}
 	
-	os_update_user_callbacks("system/GameTemp.dll");
+	os_update_user_callbacks("system/game_bin/GameTemp.dll");
 
 	Date date;
 	if (file_date(filepath, nullptr, &date, nullptr)) {
@@ -416,11 +417,15 @@ namespace sv {
 	    update_user_callbacks();
 #endif
 	    
-	    process_input();
+	    process_input(); 
 
 	    if (engine.close_request) {
 		break;
 	    }
+
+	    // TEMP
+	    if (input.keys[Key_F5] == InputState_Pressed)
+		os_compile_gamecode();
 
 	    update_assets();
 	    
