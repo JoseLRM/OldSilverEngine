@@ -48,7 +48,6 @@ namespace sv {
 
     void os_update_user_callbacks(const char* dll);
     void os_free_user_callbacks();
-    void os_compile_gamecode();
 
     ////////////////////////////////////////////////////////////////// UPDATE DLL ////////////////////////////////////////////////////////////
 
@@ -422,10 +421,6 @@ namespace sv {
 	    if (engine.close_request) {
 		break;
 	    }
-
-	    // TEMP
-	    if (input.keys[Key_F5] == InputState_Pressed)
-		os_compile_gamecode();
 
 	    update_assets();
 	    

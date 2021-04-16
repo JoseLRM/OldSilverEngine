@@ -56,6 +56,98 @@ namespace sv {
 
     GlobalEditorData editor;
 
+    /////////////////////////////////////////////// KEY SHORTCUTS //////////////////////////////////////
+
+    SV_AUX void update_key_shortcuts()
+    {
+	// Fullscreen
+	if (input.keys[Key_F10] == InputState_Pressed) {
+			
+	    os_window_set_fullscreen(os_window_state() != WindowState_Fullscreen);
+	}
+
+	// Debug rendering
+	if (input.keys[Key_F1] == InputState_Pressed) {
+	    dev.debug_draw = !dev.debug_draw;
+	}
+
+	// Display windows
+	if (input.keys[Key_F2] == InputState_Pressed) {
+	    dev.display_windows = !dev.display_windows;
+	}
+
+	// Console show - hide
+	if (input.keys[Key_F3] == InputState_Pressed) {
+	    dev.console_active = !dev.console_active;
+	}
+
+	// Change debug camera projection
+	if (input.keys[Key_F4] == InputState_Pressed) {
+
+	    dev.camera.projection_type = (dev.camera.projection_type == ProjectionType_Orthographic) ? ProjectionType_Perspective : ProjectionType_Orthographic;
+
+	    if (dev.camera.projection_type == ProjectionType_Orthographic) {
+
+		dev.camera.width = 30.f;
+		dev.camera.height = 30.f;
+		dev.camera.near = -1000.f;
+		dev.camera.far = 1000.f;
+		dev.camera.rotation = { 0.f, 0.f, 0.f, 1.f };
+	    }
+	    else {
+
+		dev.camera.width = 0.1f;
+		dev.camera.height = 0.1f;
+		dev.camera.near = 0.03f;
+		dev.camera.far = 100000.f;
+	    }
+	}
+	
+	// Compile game code
+	if (input.keys[Key_F5] == InputState_Pressed)
+	    os_compile_gamecode();
+	
+	if (dev.game_state != GameState_Play) {
+
+	    // Close engine or play game
+	    if (input.keys[Key_F11] == InputState_Pressed) {
+
+		if (input.keys[Key_Control] && input.keys[Key_Alt])
+		    engine.close_request = true;
+		else
+		    dev.next_game_state = GameState_Play;
+	    }
+	    
+	    if (input.unused && input.keys[Key_Control]) {
+
+		// Undo
+		if (input.keys[Key_Z] == InputState_Pressed) {
+
+		    DoUndoStack& stack = dev.do_undo_stack;
+		    stack.lock();
+		    stack.undo_action(nullptr);
+		    stack.unlock();
+		}
+
+		// Do
+		if (input.keys[Key_Y] == InputState_Pressed) {
+
+		    DoUndoStack& stack = dev.do_undo_stack;
+		    stack.lock();
+		    stack.do_action(nullptr);
+		    stack.unlock();
+		}
+	    }
+	}
+	else {
+
+	    // Editor mode
+	    if (input.keys[Key_F11] == InputState_Pressed) {
+		dev.next_game_state = GameState_Edit;
+	    }
+	}
+    }
+
     /////////////////////////////////////////////// DO UNDO ACTIONS ////////////////////////////////////
 
     typedef void(*ConstructEntityActionFn)(Entity entity);
@@ -1082,7 +1174,8 @@ namespace sv {
 		if (!res) {
 		    SV_LOG_ERROR("Can't init the scene '%s'", name.c_str());
 		}
-			
+
+		dev.display_windows = true;
 		dev.debug_draw = true;
 	    } break;
 
@@ -1102,6 +1195,7 @@ namespace sv {
 		    else
 			SV_LOG_INFO("The scene '%s' is not serializable (Specified by the user)", engine.scene->name);
 
+		    dev.display_windows = false;
 		    dev.debug_draw = false;
 		}
 	    } break;
@@ -1116,72 +1210,7 @@ namespace sv {
 	    dev.game_state = dev.next_game_state;
 	}
 		
-	// KEY SHORTCUTS
-	if (dev.game_state != GameState_Play) {
-
-	    if (input.keys[Key_F11] == InputState_Pressed) {
-
-		if (input.keys[Key_Control] && input.keys[Key_Alt])
-		    engine.close_request = true;
-		else
-		    dev.next_game_state = GameState_Play;
-	    }
-	    if (input.keys[Key_F10] == InputState_Pressed) {
-			
-		os_window_set_fullscreen(os_window_state() != WindowState_Fullscreen);
-	    }
-	    if (input.keys[Key_F4] == InputState_Pressed) {
-
-		dev.camera.projection_type = (dev.camera.projection_type == ProjectionType_Orthographic) ? ProjectionType_Perspective : ProjectionType_Orthographic;
-
-		if (dev.camera.projection_type == ProjectionType_Orthographic) {
-
-		    dev.camera.width = 30.f;
-		    dev.camera.height = 30.f;
-		    dev.camera.near = -1000.f;
-		    dev.camera.far = 1000.f;
-		    dev.camera.rotation = { 0.f, 0.f, 0.f, 1.f };
-		}
-		else {
-
-		    dev.camera.width = 0.1f;
-		    dev.camera.height = 0.1f;
-		    dev.camera.near = 0.03f;
-		    dev.camera.far = 100000.f;
-		}
-	    }
-	    if (input.keys[Key_F3] == InputState_Pressed) {
-		dev.console_active = !dev.console_active;
-	    }
-	    if (input.keys[Key_F1] == InputState_Pressed) {
-		dev.debug_draw = !dev.debug_draw;
-	    }
-
-	    if (input.unused && input.keys[Key_Control]) {
-		
-		if (input.keys[Key_Z] == InputState_Pressed) {
-
-		    DoUndoStack& stack = dev.do_undo_stack;
-		    stack.lock();
-		    stack.undo_action(nullptr);
-		    stack.unlock();
-		}
-
-		if (input.keys[Key_Y] == InputState_Pressed) {
-
-		    DoUndoStack& stack = dev.do_undo_stack;
-		    stack.lock();
-		    stack.do_action(nullptr);
-		    stack.unlock();
-		}
-	    }
-	}
-	else {
-
-	    if (input.keys[Key_F11] == InputState_Pressed) {
-		dev.next_game_state = GameState_Edit;
-	    }
-	}
+	update_key_shortcuts();
 
 	// Adjust camera
 	dev.camera.adjust(os_window_aspect());
@@ -1192,7 +1221,7 @@ namespace sv {
 
 	if (egui_begin()) {
 
-	    if (!editor.camera_focus && engine.scene != nullptr && dev.game_state != GameState_Play) {
+	    if (!editor.camera_focus && engine.scene != nullptr && dev.display_windows) {
 		display_entity_hierarchy();
 		display_entity_inspector();
 		display_asset_browser();

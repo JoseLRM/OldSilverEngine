@@ -24,6 +24,8 @@ namespace sv {
 	bool console_active = false;
 	GameState next_game_state = GameState_Edit;
 	GameState game_state = GameState_Edit;
+
+	bool display_windows = true;
 	
 	bool debug_draw = true;
 	DebugCamera camera;

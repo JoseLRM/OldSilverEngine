@@ -6,7 +6,7 @@ namespace sv {
 
     SV_API void print(const char* str);
     SV_API void printf(const char* str, ...);
-    SV_API void show_message(const char* title, const char* content, bool error);x
+    SV_API void show_message(const char* title, const char* content, bool error);    
 
     /* TODO
        std::string file_dialog_open(u32 filterCount, const char** filters, const char* startPath);
@@ -74,6 +74,9 @@ namespace sv {
 
     SV_API bool bin_write(size_t hash, const void* data, size_t size);
     SV_API bool bin_write(size_t hash, Archive& archive);
+
+    // This function can't be called by the user
+    void os_compile_gamecode();
     
     enum MouseButton : u32 {
 	MouseButton_Left,
