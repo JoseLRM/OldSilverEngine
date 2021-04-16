@@ -6,7 +6,7 @@ namespace sv {
 
     SV_API void print(const char* str);
     SV_API void printf(const char* str, ...);
-    SV_API void show_message(const char* title, const char* content, bool error);
+    SV_API void show_message(const char* title, const char* content, bool error);x
 
     /* TODO
        std::string file_dialog_open(u32 filterCount, const char** filters, const char* startPath);

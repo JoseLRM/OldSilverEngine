@@ -183,6 +183,8 @@ IF EXIST SilverEngine.lib (
    DEL SilverEngine.lib
 )
 
+XCOPY %origin_path%scripts\shell.bat system\ /I /Q /Y > NUL
+
 CALL system/build_game.bat
 
 IF "%run%"=="true" SilverEngine.exe

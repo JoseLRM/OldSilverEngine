@@ -726,7 +726,14 @@ namespace sv {
 
     void os_compile_gamecode()
     {
-	system("CALL system\\build_game.bat");
+	static bool shell = false;
+
+	if (!shell) {
+	    shell = true;
+	    ShellExecuteA(NULL, "open", "system\\shell.bat", NULL, NULL, SW_HIDE);
+	}
+	
+	ShellExecuteA(NULL, "open", "system\\build_game.bat", NULL, NULL, SW_HIDE);
     }
 
     ////////////////////////////////////////////////////////////////// USER CALLBACKS /////////////////////////////////////////////////////////////
