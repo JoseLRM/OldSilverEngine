@@ -511,8 +511,6 @@ namespace sv {
     SV_AUX bool create_path(const char* filepath)
     {
 	char folder[FILEPATH_SIZE] = "\0";
-
-	size_t file_size = strlen(filepath);
 		
 	while (true) {
 
@@ -534,6 +532,8 @@ namespace sv {
 		return false;
 	    }
 	}
+
+	return true;
     }
     
     bool file_write_binary(const char* filepath, const u8* data, size_t size, bool append, bool recursive)

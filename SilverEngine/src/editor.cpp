@@ -42,7 +42,7 @@ namespace sv {
     struct AssetBrowserInfo {
 	char filepath[FILEPATH_SIZE] = {};
 	List<AssetElement> elements;
-	Time last_update = 0.0;
+	f64 last_update = 0.0;
     };
 
     struct GlobalEditorData {
@@ -520,7 +520,7 @@ namespace sv {
 
 		egui_comp_color("Color", 0u, &spr.color);
 		egui_comp_texture("Texture", 1u, &spr.texture);
-		//TODO: egui_comp_drag_v4f32("Coords", 1u, &spr.texcoord, 0.01f);
+		egui_comp_drag_v4_f32("Coords", 2u, &spr.texcoord, 0.01f, 0.f, 1.f);
 
 	    }
 	    
@@ -1071,7 +1071,7 @@ namespace sv {
 
 	    // Update per time
 	    if (!update_browser) {
-		Time now = timer_now();
+		f64 now = timer_now();
 
 		if (now - info.last_update > 1.0) {
 		    update_browser = true;
@@ -1307,7 +1307,7 @@ namespace sv {
 
 		if (mesh_comp && mesh_comp->mesh.get()) {
 
-		    u8 alpha = 5u + u8(f32(sin(timer_now().toSeconds_f64() * 3.5f) + 1.0) * 50.f * 0.5f);
+		    u8 alpha = 5u + u8(f32(sin(timer_now() * 3.5) + 1.0) * 50.f * 0.5f);
 		    draw_debug_mesh_wireframe(mesh_comp->mesh.get(), trans.getWorldMatrix(), Color::Red(alpha), cmd);
 		}
 		if (sprite_comp) {
@@ -1324,7 +1324,7 @@ namespace sv {
 		    p2 = XMVector3Transform(p2, tm);
 		    p3 = XMVector3Transform(p3, tm);
 
-		    u8 alpha = 50u + u8(f32(sin(timer_now().toSeconds_f64() * 3.5f) + 1.0) * 200.f * 0.5f);
+		    u8 alpha = 50u + u8(f32(sin(timer_now() * 3.5) + 1.0) * 200.f * 0.5f);
 		    Color selection_color = Color::Red(alpha);
 
 		    draw_debug_line(v3_f32(p0), v3_f32(p1), selection_color, cmd);

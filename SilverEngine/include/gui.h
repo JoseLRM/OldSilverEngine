@@ -206,6 +206,32 @@ namespace sv {
 
 	return res;
     }
+
+    SV_INLINE bool gui_drag_v4_f32(GUI* gui, v4_f32* v, f32 adv, f32 min, f32 max, u64 id)
+    {
+	gui_push_style(gui, GuiStyle_ContainerColor, Color::Transparent());
+	
+	gui_begin_container(gui, id, GuiLayout_Flow);
+
+	gui_push_style(gui, GuiStyle_FlowX0, 0.f);
+	gui_push_style(gui, GuiStyle_FlowX1, 1.f);
+	gui_push_style(gui, GuiStyle_FlowSubX0, 0.03f);
+	gui_push_style(gui, GuiStyle_FlowSubX1, 0.97f);
+	
+	gui_same_line(gui, 4u);
+
+	bool res = false;
+	if (gui_drag_f32(gui, &v->x, adv, min, max, 0u)) res = true;
+	if (gui_drag_f32(gui, &v->y, adv, min, max, 1u)) res = true;
+	if (gui_drag_f32(gui, &v->z, adv, min, max, 2u)) res = true;
+	if (gui_drag_f32(gui, &v->w, adv, min, max, 3u)) res = true;
+
+	gui_pop_style(gui, 5u);
+	
+	gui_end_container(gui);
+
+	return res;
+    }
     
     SV_API void gui_begin_grid(GUI* gui, u32 element_count, f32 element_size, f32 padding);
     SV_API void gui_begin_grid_element(GUI* gui, u64 id);

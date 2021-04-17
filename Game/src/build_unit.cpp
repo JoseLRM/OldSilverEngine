@@ -62,15 +62,25 @@ SV_USER bool user_initialize_scene(Scene* scene, Archive* parchive)
     // Create player
     m.player = create_entity(scene, SV_ENTITY_NULL, "Player");
     SpriteComponent* spr = add_component<SpriteComponent>(scene, m.player);
-    load_asset_from_file(spr->texture, "images/ghost.png");
+    load_asset_from_file(spr->texture, "assets/images/temp.png");
+    spr->texcoord = { 0.f, 0.f, 0.1f, 0.1f  };
     BodyComponent* body = add_component<BodyComponent>(scene, m.player);
     body->body_type = BodyType_Dynamic;
 
     // Create cat
     m.cat = create_entity(scene, SV_ENTITY_NULL, "Cat");
-    add_component<SpriteComponent>(scene, m.cat);
+    spr = add_component<SpriteComponent>(scene, m.cat);
+    spr->texcoord = { 0.f, 0.1f, 0.1f, 0.2f  };
+    load_asset_from_file(spr->texture, "assets/images/temp.png");
     body = add_component<BodyComponent>(scene, m.cat);
     body->body_type = BodyType_Dynamic;
+
+    // Create block
+    Entity block = create_entity(scene, SV_ENTITY_NULL, "Block");
+    spr = add_component<SpriteComponent>(scene, block);
+    spr->texcoord = { 0.8f, 0.f, 1.f, 0.2f  };
+    load_asset_from_file(spr->texture, "assets/images/temp.png");
+    add_component<BodyComponent>(scene, block);    
     
     return true;
 }
@@ -128,8 +138,6 @@ SV_USER void user_update()
     Scene* scene = engine.scene;
 
     if (scene) {
-
-	scene->gravity = { 0.f, -36.f };
 	
 	Transform trans = get_entity_transform(scene, m.player);
 	BodyComponent* body = get_component<BodyComponent>(scene, m.player);
@@ -137,15 +145,29 @@ SV_USER void user_update()
 
 	{
 	    Transform cam = get_entity_transform(scene, scene->main_camera);
-	    //cam.setPosition(pos.getVec3());
+	    cam.setPosition(pos.getVec3());
 	}
 
 	f32 vel = 5.f * engine.deltatime;
 
 	if (input.keys[Key_A]) {
+
+	    SpriteComponent* spr = get_component<SpriteComponent>(engine.scene, m.player);
+	    if (spr) {
+		spr->texcoord.x = 0.1f;
+		spr->texcoord.z = 0.f;
+	    }
+	    
 	    pos.x -= vel;
 	}
 	if (input.keys[Key_D]) {
+
+	    SpriteComponent* spr = get_component<SpriteComponent>(engine.scene, m.player);
+	    if (spr) {
+		spr->texcoord.z = 0.1f;
+		spr->texcoord.x = 0.f;
+	    }
+	    
 	    pos.x += vel;
 	}
 
@@ -164,7 +186,7 @@ SV_USER void user_update()
 
 SV_USER bool user_get_scene_filepath(const char* name, char* filepath)
 {
-    sprintf(filepath, "worlds/%s.scene", name);
+    sprintf(filepath, "assets/scenes/%s.scene", name);
     return true;
 }
 

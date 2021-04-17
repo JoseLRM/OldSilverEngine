@@ -69,7 +69,7 @@ SV_USER void user_update()
 	pos.x = f32(cos(t)) * 4.f;
 	pos.y = f32(sin(t)) * 2.f;
 
-	trans.setPosition(pos.getVec2());
+	trans.setPosition(pos.getVec3());
     }
 }
 

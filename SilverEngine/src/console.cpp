@@ -118,7 +118,7 @@ namespace sv {
 	    return false;
 	}
 
-	SV_LOG("%lf", timer_now().toSeconds_f64());
+	SV_LOG("%lf", timer_now());
 
 	return true;
     }

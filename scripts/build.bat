@@ -63,7 +63,6 @@ IF "%platform%"=="win64" (
 IF "%option_slow%"=="true" (
    SET common_defines=%common_defines% -DSV_SLOW=1
    SET common_compiler_flags= %common_compiler_flags% -Z7
-   SET output_dir=%output_dir%_debug
 ) ELSE (
    SET common_defines=%common_defines% -DSV_SLOW=0 -DNDEBUG
    SET common_compiler_flags= %common_compiler_flags% -GL
@@ -102,7 +101,7 @@ REM Silver Engine args
 SET sv_defines= -DSV_SILVER_ENGINE=1 %common_defines%
 SET sv_compiler_flags= %common_compiler_flags%
 SET sv_include_paths= /I %SVP%include /I %SVP%src\ /I %SVP%src\external\ /I %VULKAN_SDK%\Include\
-SET sv_link_libs= user32.lib %VULKAN_SDK%\Lib\vulkan-1.lib assimp.lib sprv.lib
+SET sv_link_libs= user32.lib Shell32.lib %VULKAN_SDK%\Lib\vulkan-1.lib assimp.lib sprv.lib
 SET sv_link_flags= /DLL %common_linker_flags% /LIBPATH:"%origin_path%\SilverEngine\lib\" /out:..\SilverEngine.dll /PDB:SilverEngine.pdb /LTCG
 
 pushd %output_dir%int

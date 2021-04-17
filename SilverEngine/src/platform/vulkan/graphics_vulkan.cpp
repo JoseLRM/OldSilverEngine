@@ -1055,7 +1055,7 @@ namespace sv {
 
     void graphics_vulkan_frame_begin()
     {
-	Time now = timer_now();
+	f64 now = timer_now();
 
 	Frame& frame = g_API->frames[g_API->currentFrame];
 

@@ -199,7 +199,7 @@ namespace sv {
 	    }
     };
 
-    SV_API u64 timer_now();
+    SV_API f64 timer_now();
     SV_API Date timer_date();
 
 // Version

@@ -6,6 +6,12 @@
 #define PREFAB_COMPONENT_FLAG SV_BIT(31ULL)
 
 namespace sv {
+
+    SV_DEFINE_COMPONENT(SpriteComponent, 0u);
+    SV_DEFINE_COMPONENT(CameraComponent, 0u);
+    SV_DEFINE_COMPONENT(MeshComponent, 0u);
+    SV_DEFINE_COMPONENT(LightComponent, 0u);
+    SV_DEFINE_COMPONENT(BodyComponent, 0u);
     
     struct EntityInternal {
 
@@ -47,13 +53,6 @@ namespace sv {
 	EntityInternal& getInternal(Entity entity) { SV_ASSERT(entity != SV_ENTITY_NULL && entity <= size); return internal[entity - 1u]; }
 	EntityTransform& getTransform(Entity entity) { SV_ASSERT(entity != SV_ENTITY_NULL && entity <= size); return transforms[entity - 1u]; }
 	EntityFlags& getFlags(Entity entity) { SV_ASSERT(entity != SV_ENTITY_NULL && entity <= size); return flags[entity - 1u]; }
-    };
-
-    struct Prefab_internal {
-
-	List<Entity> entities;
-	List<std::pair<CompID, BaseComponent*>> components;
-
     };
 
     struct ComponentPool {

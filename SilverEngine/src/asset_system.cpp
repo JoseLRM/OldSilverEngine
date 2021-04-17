@@ -8,13 +8,13 @@ namespace sv {
 
     struct AssetType_internal {
 
-	std::string	name;
-	AssetCreateFn	create;
-	AssetLoadFileFn	load_file;
-	AssetFreeFn 	         free;
-	f32		         unused_time;
-	Time						last_update = 0.0;
-	std::vector<const char*>	extensions;
+	std::string	  name;
+	AssetCreateFn	  create;
+	AssetLoadFileFn	  load_file;
+	AssetFreeFn 	  free;
+	f32		  unused_time;
+	f64		  last_update = 0.0;
+	List<const char*> extensions;
 
 	SizedInstanceAllocator allocator;
 
@@ -67,7 +67,7 @@ namespace sv {
 	    AssetType_internal* type = asset_types[check_type_index];
 	    free_assets_list.reset();
 
-	    Time now = timer_now();
+	    f64 now = timer_now();
 	    f32 elapsed_time = f32(now - type->last_update);
 
 	    for (auto& pool : type->allocator) {
@@ -221,6 +221,8 @@ namespace sv {
 	    asset->type = type;
 
 	    if (!type->load_file(asset + 1u, filepath)) {
+
+		SV_LOG_ERROR("Can't load the asset '%s'", filepath);
 
 		type->allocator.free(asset);
 		return false;

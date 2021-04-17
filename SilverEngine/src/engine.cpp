@@ -100,8 +100,8 @@ namespace sv {
     
     SV_INTERNAL void update_user_callbacks()
     {
-	static Time last_update = 0.0;
-	Time now = timer_now();
+	static f64 last_update = 0.0;
+	f64 now = timer_now();
 	
 	if (now - last_update > 1.0) {
 
@@ -378,7 +378,7 @@ namespace sv {
 	
 	engine.running = true;
 
-	static Time lastTime = 0.f;
+	static f64 lastTime = 0.f;
 
 	recive_user_callbacks();
 
@@ -392,7 +392,7 @@ namespace sv {
 	while (engine.running) {
 
 	    // Calculate DeltaTime
-	    Time actualTime = timer_now();
+	    f64 actualTime = timer_now();
 	    engine.deltatime = f32(actualTime - lastTime);
 	    lastTime = actualTime;
 

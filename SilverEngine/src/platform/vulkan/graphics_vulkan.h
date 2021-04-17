@@ -92,11 +92,11 @@ namespace sv {
 
     Graphics_vk& graphics_vulkan_device_get();
 
-    constexpr u32	VULKAN_MAX_DESCRIPTOR_SETS = 100u;
-    constexpr u32	VULKAN_MAX_DESCRIPTOR_TYPES = 32u;
-    constexpr u32	VULKAN_DESCRIPTOR_ALLOC_COUNT = 10u;
-    constexpr Time	VULKAN_UNUSED_OBJECTS_TIMECHECK = 30.0;
-    constexpr Time	VULKAN_UNUSED_OBJECTS_LIFETIME = 10.0;
+    constexpr u32 VULKAN_MAX_DESCRIPTOR_SETS = 100u;
+    constexpr u32 VULKAN_MAX_DESCRIPTOR_TYPES = 32u;
+    constexpr u32 VULKAN_DESCRIPTOR_ALLOC_COUNT = 10u;
+    constexpr f64 VULKAN_UNUSED_OBJECTS_TIMECHECK = 30.0;
+    constexpr f64 VULKAN_UNUSED_OBJECTS_LIFETIME = 10.0;
 
     // MEMORY
 
@@ -169,16 +169,16 @@ namespace sv {
 		return *this;
 	    }
 
-	std::mutex						mutex;
-	std::mutex						creationMutex;
+	std::mutex mutex;
+	std::mutex creationMutex;
 
-	std::map<std::string, u32>		semanticNames;
+	std::map<std::string, u32>   semanticNames;
 
-	VkPipelineLayout				layout = VK_NULL_HANDLE;
-	std::map<size_t, VkPipeline>	pipelines;
-	PipelineDescriptorSetLayout		setLayout;
-	VkDescriptorSet					descriptorSets[ShaderType_GraphicsCount] = {};
-	Time							lastUsage;
+	VkPipelineLayout	     layout = VK_NULL_HANDLE;
+	std::map<size_t, VkPipeline> pipelines;
+	PipelineDescriptorSetLayout  setLayout;
+	VkDescriptorSet		     descriptorSets[ShaderType_GraphicsCount] = {};
+	f64			     lastUsage;
     };
 
     struct Shader_vk;
@@ -315,9 +315,9 @@ namespace sv {
 	List<const char*> deviceExtensions;
 	List<const char*> deviceValidationLayers;
 
-	VkQueue						queueGraphics = VK_NULL_HANDLE;
-
-	Time						lastTime = 0.f;
+	VkQueue queueGraphics = VK_NULL_HANDLE;
+	
+	f64 lastTime = 0.0;
 
 	// Frame Members
 

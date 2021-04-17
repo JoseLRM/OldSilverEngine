@@ -6,7 +6,12 @@
 
 #define SV_ENTITY_NULL 0u
 #define SV_COMPONENT_ID_INVALID std::numeric_limits<sv::CompID>::max()
-#define SV_DEFINE_COMPONENT(name, version) struct name : public sv::Component<name, version>
+
+#define SV_COMPONENT(name) struct name : public sv::Component<name>
+#define SV_DEFINE_COMPONENT(name, version) \
+CompID Component<name>::ID(SV_COMPONENT_ID_INVALID); \
+const u32 Component<name>::VERSION(version); \
+const u32 Component<name>::SIZE(sizeof(name));
 
 namespace sv {
 
@@ -64,24 +69,13 @@ namespace sv {
 	BaseComponent* ptr;
     };
 
-    template<typename T, u32 V>
+    template<typename T>
     struct Component : public BaseComponent {
 	static CompID SV_API_VAR ID;
-	static u32 SV_API_VAR SIZE;
+	const static SV_API_VAR u32 SIZE;
 	const static SV_API_VAR u32 VERSION;
     };
 
-#if SV_SILVER_ENGINE
-    template<typename T, u32 V>
-    CompID Component<T, V>::ID(SV_COMPONENT_ID_INVALID);
-
-    template<typename T, u32 V>
-    u32 Component<T, V>::SIZE;
-
-    template<typename T, u32 V>
-    const u32 Component<T, V>::VERSION(V);
-#endif
-    
     typedef void(*CreateComponentFunction)(Scene* scene, BaseComponent*);
     typedef void(*DestroyComponentFunction)(Scene* scene, BaseComponent*);
     typedef void(*MoveComponentFunction)(Scene* scene, BaseComponent* from, BaseComponent* to);
@@ -420,7 +414,7 @@ namespace sv {
 
     ///////////////////////////////////////////////////////// COMPONENTS /////////////////////////////////////////////////////////
 
-    SV_DEFINE_COMPONENT(SpriteComponent, 0u) {
+    SV_COMPONENT(SpriteComponent) {
 
 	TextureAsset	texture;
 	v4_f32			texcoord = { 0.f, 0.f, 1.f, 1.f };
@@ -438,7 +432,7 @@ namespace sv {
 	ProjectionType_Perspective,
     };
 
-    SV_DEFINE_COMPONENT(CameraComponent, 0u) {
+    SV_COMPONENT(CameraComponent) {
 
 	ProjectionType projection_type = ProjectionType_Orthographic;
 	f32 near = -1000.f;
@@ -484,7 +478,7 @@ namespace sv {
 
     };
 
-    SV_DEFINE_COMPONENT(MeshComponent, 0u) {
+    SV_COMPONENT(MeshComponent) {
 
 	MeshAsset		mesh;
 	MaterialAsset	material;
@@ -500,7 +494,7 @@ namespace sv {
 	LightType_Spot,
     };
 
-    SV_DEFINE_COMPONENT(LightComponent, 0u) {
+    SV_COMPONENT(LightComponent) {
 
 	LightType light_type = LightType_Point;
 	Color color = Color::White();
@@ -518,7 +512,7 @@ namespace sv {
 	BodyType_Dynamic,
     };
 
-    SV_DEFINE_COMPONENT(BodyComponent, 0u) {
+    SV_COMPONENT(BodyComponent) {
 
 	BodyType body_type = BodyType_Static;
 	v2_f32 vel;
