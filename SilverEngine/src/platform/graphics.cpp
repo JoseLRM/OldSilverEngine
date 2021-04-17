@@ -1,12 +1,12 @@
-#include "core.h"
+#include "defines.h"
 
 #include "graphics_internal.h"
 
 #include "vulkan/graphics_vulkan.h"
-#include "graphics.h"
+#include "platform/graphics.h"
 
 namespace sv {
-
+ 
     static PipelineState		g_PipelineState;
     static GraphicsDevice		g_Device;
     GraphicsProperties	graphics_properties;

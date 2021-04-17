@@ -1,4 +1,4 @@
-#include "core.h"
+#include "defines.h"
 
 #define SV_VULKAN_IMPLEMENTATION
 #include "graphics_vulkan.h"

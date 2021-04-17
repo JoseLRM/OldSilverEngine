@@ -1,7 +1,7 @@
 #pragma once
 
-#include "graphics.h"
-#include "utils/InstanceAllocator.h"
+#include "platform/graphics.h"
+#include "utils/allocators.h"
 
 namespace sv {
 

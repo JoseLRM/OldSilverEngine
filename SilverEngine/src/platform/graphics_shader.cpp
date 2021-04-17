@@ -1,6 +1,9 @@
-#include "core.h"
+#include "defines.h"
 
 #include "graphics_internal.h"
+
+// TEMP
+#include <sstream>
 
 namespace sv {
 

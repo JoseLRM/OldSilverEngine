@@ -1,7 +1,6 @@
-#include "os.h"
+#include "platform/os.h"
 
 #define NOMINMAX
-
 #include "Windows.h"
 
 #undef near
@@ -9,7 +8,7 @@
 
 #include <iostream>
 
-#include "engine.h"
+#include "core/engine.h"
 
 namespace sv {
 
@@ -767,18 +766,6 @@ namespace sv {
 
     void graphics_swapchain_resize();
 
-    void os_compile_gamecode()
-    {
-	static bool shell = false;
-
-	if (!shell) {
-	    shell = true;
-	    ShellExecuteA(NULL, "open", "system\\shell.bat", NULL, NULL, SW_HIDE);
-	}
-	
-	ShellExecuteA(NULL, "open", "system\\build_game.bat", NULL, NULL, SW_HIDE);
-    }
-
     ////////////////////////////////////////////////////////////////// USER CALLBACKS /////////////////////////////////////////////////////////////
 
     void os_free_user_callbacks()
@@ -818,19 +805,24 @@ namespace sv {
 
     // Memory
     
-    void* os_allocate_memory(size_t size)
+    void* allocate_memory(size_t size)
     {
 	void* ptr = nullptr;
 	while (ptr == nullptr) ptr = malloc(size);
 	return ptr;
     }
     
-    void os_free_memory(void* ptr)
+    void free_memory(void* ptr)
     {
 	free(ptr);
     }
+
+    void os_compile_gamecode()
+    {
+	system("system\\build_game.bat");
+    }
     
-    bool os_startup()
+    bool _os_startup()
     {
 	platform.handle = CreateWindowExA(0u,
 				   "SilverWindow",
@@ -847,7 +839,7 @@ namespace sv {
 	return true;
     }
     
-    void os_recive_input()
+    void _os_recive_input()
     {
 	MSG msg;
 	
@@ -863,7 +855,7 @@ namespace sv {
 	}
     }
     
-    bool os_shutdown()
+    bool _os_shutdown()
     {
 	if (platform.handle)
 	    return DestroyWindow(platform.handle);

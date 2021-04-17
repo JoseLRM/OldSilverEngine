@@ -1,8 +1,13 @@
 #pragma once
 
-#include "core.h"
-#include "os.h"
-#include "scene.h"
-#include "renderer.h"
-#include "engine.h"
-#include "dev.h"
+#include "defines.h"
+
+#include "platform/os.h"
+#include "platform/graphics.h"
+
+#include "core/scene.h"
+#include "core/renderer.h"
+#include "core/engine.h"
+
+#include "debug/console.h"
+#include "debug/editor.h"

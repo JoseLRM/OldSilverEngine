@@ -4003,7 +4003,7 @@ void* vma_aligned_alloc(size_t alignment, size_t size)
 //#include <malloc.h>
 
 // Normal assert to check for programmer's errors, especially in Debug configuration.
-#include "core.h"
+#include "debug/console.h"
 #ifndef VMA_ASSERT
 #ifdef NDEBUG
 #define VMA_ASSERT(expr)

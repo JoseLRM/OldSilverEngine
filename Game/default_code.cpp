@@ -22,9 +22,10 @@ SV_USER bool user_initialize(bool init)
     return true;
 }
 
-SV_USER bool user_close()
+SV_USER bool user_close(bool close)
 {
-    free_memory(engine.game_memory);
+    if (close)
+	free_memory(engine.game_memory);
     
     return true;
 }

@@ -1,4 +1,4 @@
-#include "core.h"
+// PLATFORM LAYER
 
 #if SV_PLATFORM_WIN
 #include "platform/win64.cpp"
@@ -7,22 +7,32 @@
 #endif
 
 #include "platform/os.cpp"
-
-#include "engine.cpp"
-#include "core.cpp"
-#include "utils.cpp" // TODO:Remove this file
-#include "allocators.cpp"
-#include "console.cpp"
-#include "renderer/renderer.cpp"
-#include "renderer/debug_renderer.cpp"
-#include "renderer/font.cpp"
-#include "scene.cpp"
-#include "editor.cpp"
-#include "editor_gui.cpp"
-#include "mesh.cpp"
-#include "gui.cpp"
-#include "asset_system.cpp"
 #include "platform/graphics.cpp"
 #include "platform/graphics_shader.cpp"
 #include "platform/vulkan/graphics_vulkan.cpp"
 #include "platform/vulkan/graphics_vulkan_pipeline.cpp"
+
+// UTILS
+
+#include "utils/allocators.cpp"
+#include "utils/math.cpp"
+#include "utils/serialize.cpp"
+
+// CORE
+
+#include "core/engine.cpp"
+#include "core/renderer/renderer.cpp"
+#include "core/renderer/debug_renderer.cpp"
+#include "core/renderer/font.cpp"
+#include "core/scene.cpp"
+#include "core/mesh.cpp"
+#include "core/gui.cpp"
+#include "core/asset_system.cpp"
+
+// DEBUG
+
+#include "debug/console.cpp"
+#include "debug/editor.cpp"
+#include "debug/editor_gui.cpp"
+
+

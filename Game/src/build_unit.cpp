@@ -1,7 +1,5 @@
 #include "SilverEngine.h"
 
-#include "dev.h"
-
 using namespace sv;
 
 struct TestComponent : public BaseComponent {

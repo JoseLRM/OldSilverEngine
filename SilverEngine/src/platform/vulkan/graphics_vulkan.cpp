@@ -1,4 +1,4 @@
-#include "core.h"
+#include "defines.h"
 
 #define VMA_IMPLEMENTATION
 #define SV_VULKAN_IMPLEMENTATION
