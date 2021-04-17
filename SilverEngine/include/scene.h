@@ -7,12 +7,6 @@
 #define SV_ENTITY_NULL 0u
 #define SV_COMPONENT_ID_INVALID std::numeric_limits<sv::CompID>::max()
 
-#define SV_COMPONENT(name) struct name : public sv::Component<name>
-#define SV_DEFINE_COMPONENT(name, version) \
-CompID Component<name>::ID(SV_COMPONENT_ID_INVALID); \
-const u32 Component<name>::VERSION(version); \
-const u32 Component<name>::SIZE(sizeof(name));
-
 namespace sv {
 
     typedef u16 CompID;
@@ -69,13 +63,6 @@ namespace sv {
 	BaseComponent* ptr;
     };
 
-    template<typename T>
-    struct Component : public BaseComponent {
-	static CompID SV_API_VAR ID;
-	const static SV_API_VAR u32 SIZE;
-	const static SV_API_VAR u32 VERSION;
-    };
-
     typedef void(*CreateComponentFunction)(Scene* scene, BaseComponent*);
     typedef void(*DestroyComponentFunction)(Scene* scene, BaseComponent*);
     typedef void(*MoveComponentFunction)(Scene* scene, BaseComponent* from, BaseComponent* to);
@@ -85,21 +72,22 @@ namespace sv {
 
     struct ComponentRegisterDesc {
 
-	const char* name;
-	u32								componentSize;
-	u32 version;
-	CreateComponentFunction			createFn;
-	DestroyComponentFunction		destroyFn;
-	MoveComponentFunction			moveFn;
-	CopyComponentFunction			copyFn;
-	SerializeComponentFunction		serializeFn;
-	DeserializeComponentFunction	deserializeFn;
+	const char*                   name;
+	u32			      componentSize;
+	u32                           version;
+	CreateComponentFunction	      createFn;
+	DestroyComponentFunction      destroyFn;
+	MoveComponentFunction	      moveFn;
+	CopyComponentFunction	      copyFn;
+	SerializeComponentFunction    serializeFn;
+	DeserializeComponentFunction  deserializeFn;
 
     };
 
     // Component Register
 
     SV_API CompID register_component(const ComponentRegisterDesc* desc);
+    SV_API void invalidate_component_callbacks(CompID id);
 
     SV_API const char* get_component_name(CompID ID);
     SV_API u32			get_component_size(CompID ID);
@@ -414,12 +402,15 @@ namespace sv {
 
     ///////////////////////////////////////////////////////// COMPONENTS /////////////////////////////////////////////////////////
 
-    SV_COMPONENT(SpriteComponent) {
+    struct SpriteComponent : public BaseComponent {
 
-	TextureAsset	texture;
-	v4_f32			texcoord = { 0.f, 0.f, 1.f, 1.f };
-	Color			color = Color::White();
-	u32				layer = 0u;
+	static CompID SV_API_VAR ID;
+	static constexpr u32 VERSION = 0u;
+	
+	TextureAsset texture;
+	v4_f32	     texcoord = { 0.f, 0.f, 1.f, 1.f };
+	Color	     color = Color::White();
+	u32	     layer = 0u;
 
 	void serialize(Archive & archive);
 	void deserialize(u32 version, Archive & archive);
@@ -432,7 +423,10 @@ namespace sv {
 	ProjectionType_Perspective,
     };
 
-    SV_COMPONENT(CameraComponent) {
+    struct CameraComponent : public BaseComponent {
+
+	static CompID SV_API_VAR ID;
+	static constexpr u32 VERSION = 0u;
 
 	ProjectionType projection_type = ProjectionType_Orthographic;
 	f32 near = -1000.f;
@@ -478,8 +472,11 @@ namespace sv {
 
     };
 
-    SV_COMPONENT(MeshComponent) {
+    struct MeshComponent : public BaseComponent {
 
+	static CompID SV_API_VAR ID;
+	static constexpr u32 VERSION = 0u;
+	
 	MeshAsset		mesh;
 	MaterialAsset	material;
 
@@ -494,8 +491,11 @@ namespace sv {
 	LightType_Spot,
     };
 
-    SV_COMPONENT(LightComponent) {
+    struct LightComponent : public BaseComponent {
 
+	static CompID SV_API_VAR ID;
+	static constexpr u32 VERSION = 0u;
+	
 	LightType light_type = LightType_Point;
 	Color color = Color::White();
 	f32 intensity = 1.f;
@@ -512,7 +512,10 @@ namespace sv {
 	BodyType_Dynamic,
     };
 
-    SV_COMPONENT(BodyComponent) {
+    struct BodyComponent : public BaseComponent {
+
+	static CompID SV_API_VAR ID;
+	static constexpr u32 VERSION = 0u;
 
 	BodyType body_type = BodyType_Static;
 	v2_f32 vel;

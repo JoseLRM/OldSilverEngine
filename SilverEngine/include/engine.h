@@ -8,7 +8,7 @@ namespace sv {
 
     typedef bool(*UserInitializeFn)(bool init);
     typedef void(*UserUpdateFn)();
-    typedef bool(*UserCloseFn)();
+    typedef bool(*UserCloseFn)(bool close);
     typedef bool(*UserValidateSceneFn)(const char* name);
     typedef bool(*UserGetSceneFilepathFn)(const char* name, char* filepath);
     typedef bool(*UserInitializeSceneFn)(Scene* scene, Archive* parchive);

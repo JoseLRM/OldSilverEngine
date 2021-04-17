@@ -68,15 +68,18 @@ namespace sv {
 
 	    file >> filepath;
 	}
-	else sprintf(filepath, "%s", "system/game_bin/Game.dll");
+	else strcpy(filepath, "system/game_bin/Game.dll");
     }
     
-    SV_AUX void recive_user_callbacks()
+    SV_AUX void recive_user_callbacks(bool init)
     {
 	char filepath[FILEPATH_SIZE];
 	get_usercode_filepath(filepath);
 	
 #if SV_DEV
+
+	if (engine.user.close)
+	    engine.user.close(false);
 	
 	os_free_user_callbacks();
 	
@@ -86,6 +89,9 @@ namespace sv {
 	}
 	
 	os_update_user_callbacks("system/game_bin/GameTemp.dll");
+
+	if (!init && engine.user.initialize)
+	    engine.user.initialize(false);
 
 	Date date;
 	if (file_date(filepath, nullptr, &date, nullptr)) {
@@ -121,7 +127,7 @@ namespace sv {
 
 	last_update = now;
 
-	recive_user_callbacks();
+	recive_user_callbacks(false);
     }
 
 #endif
@@ -380,7 +386,7 @@ namespace sv {
 
 	static f64 lastTime = 0.f;
 
-	recive_user_callbacks();
+	recive_user_callbacks(true);
 
 	// User init
 	if (engine.user.initialize) {
@@ -471,7 +477,7 @@ namespace sv {
 
 	// User close
 	if (engine.user.close) {
-		if (!engine.user.close()) {
+		if (!engine.user.close(true)) {
 			SV_LOG_ERROR("User can't close successfully");
 		}
 	}

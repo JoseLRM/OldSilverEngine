@@ -4,6 +4,19 @@
 
 using namespace sv;
 
+struct TestComponent : public BaseComponent {
+
+    static CompID ID;
+    static constexpr u32 VERSION = 0u;
+    
+    u32 data = 0u;
+
+    void serialize(Archive& archive) { archive << data; }
+    void deserialize(u32 version, Archive& archive) { archive >> data; }
+};
+
+CompID TestComponent::ID = SV_COMPONENT_ID_INVALID;
+
 constexpr u32 VERSION = 0u;
 
 struct GameMemory {
@@ -25,13 +38,18 @@ SV_USER bool user_initialize(bool init)
     
 	set_active_scene("level_0");
     }
+
+    register_component<TestComponent>("Test");
     
     return true;
 }
 
-SV_USER bool user_close()
+SV_USER bool user_close(bool close)
 {
-    free_memory(engine.game_memory);
+    if (close)
+	free_memory(engine.game_memory);
+
+    invalidate_component_callbacks(TestComponent::ID);
     
     return true;
 }

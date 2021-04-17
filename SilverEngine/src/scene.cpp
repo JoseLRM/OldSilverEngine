@@ -7,11 +7,11 @@
 
 namespace sv {
 
-    SV_DEFINE_COMPONENT(SpriteComponent, 0u);
-    SV_DEFINE_COMPONENT(CameraComponent, 0u);
-    SV_DEFINE_COMPONENT(MeshComponent, 0u);
-    SV_DEFINE_COMPONENT(LightComponent, 0u);
-    SV_DEFINE_COMPONENT(BodyComponent, 0u);
+    CompID SpriteComponent::ID = SV_COMPONENT_ID_INVALID;
+    CompID CameraComponent::ID = SV_COMPONENT_ID_INVALID;
+    CompID MeshComponent::ID = SV_COMPONENT_ID_INVALID;
+    CompID LightComponent::ID = SV_COMPONENT_ID_INVALID;
+    CompID BodyComponent::ID = SV_COMPONENT_ID_INVALID;
     
     struct EntityInternal {
 
@@ -99,26 +99,24 @@ namespace sv {
     static std::unordered_map<std::string, CompID> g_CompNames;
 
 #define PARSE_SCENE() sv::Scene_internal& scene = *reinterpret_cast<sv::Scene_internal*>(scene_)
+    
+    SV_INTERNAL void entity_clear(EntityDataAllocator& allocator);
 
-    Entity	entityAlloc(EntityDataAllocator& allocator);
-    void	entityFree(EntityDataAllocator& allocator, Entity entity);
-    void	entityClear(EntityDataAllocator& allocator);
+    void componentPoolAlloc(ComponentPool& pool, size_t compSize);             // Allocate components memory
+    void componentPoolFree(ComponentPool& pool);                               // Deallocate components memory
+    void* componentPoolGetPtr(ComponentPool& pool, size_t compSize);	       // Return new component
+    void componentPoolRmvPtr(ComponentPool& pool, size_t compSize, void* ptr); // Remove component
+    bool componentPoolFull(const ComponentPool& pool, size_t compSize);	       // Check if there are free space in the pool
+    bool componentPoolPtrExist(const ComponentPool& pool, void* ptr);	       // Check if the pool contains the ptr
+    u32	componentPoolCount(const ComponentPool& pool, size_t compSize);	       // Return the number of valid components allocated in this pool
 
-    void	componentPoolAlloc(ComponentPool& pool, size_t compSize);						// Allocate components memory
-    void	componentPoolFree(ComponentPool& pool);											// Deallocate components memory
-    void*	componentPoolGetPtr(ComponentPool& pool, size_t compSize);						// Return new component
-    void	componentPoolRmvPtr(ComponentPool& pool, size_t compSize, void* ptr);			// Remove component
-    bool	componentPoolFull(const ComponentPool& pool, size_t compSize);					// Check if there are free space in the pool
-    bool	componentPoolPtrExist(const ComponentPool& pool, void* ptr);					// Check if the pool contains the ptr
-    u32		componentPoolCount(const ComponentPool& pool, size_t compSize);					// Return the number of valid components allocated in this pool
-
-    void			componentAllocatorCreate(Scene* scene, CompID ID);									// Create the allocator
-    void			componentAllocatorDestroy(Scene* scene, CompID ID);									// Destroy the allocator
-    BaseComponent*	componentAlloc(Scene* scene, CompID compID, Entity entity, bool create = true);		// Allocate and create new component
-    BaseComponent*	componentAlloc(Scene* scene, CompID compID, BaseComponent* srcComp, Entity entity);	// Allocate and copy new component
-    void			componentFree(Scene* scene, CompID compID, BaseComponent* comp);					// Free and destroy component
-    u32				componentAllocatorCount(Scene* scene, CompID compId);								// Return the number of valid components in all the pools
-    bool			componentAllocatorIsEmpty(Scene* scene, CompID compID);								// Return if the allocator is empty
+    void componentAllocatorCreate(Scene* scene, CompID ID);						// Create the allocator
+    void componentAllocatorDestroy(Scene* scene, CompID ID);						// Destroy the allocator
+    BaseComponent* componentAlloc(Scene* scene, CompID compID, Entity entity, bool create = true);	// Allocate and create new component
+    BaseComponent* componentAlloc(Scene* scene, CompID compID, BaseComponent* srcComp, Entity entity);	// Allocate and copy new component
+    void componentFree(Scene* scene, CompID compID, BaseComponent* comp);				// Free and destroy component
+    u32	componentAllocatorCount(Scene* scene, CompID compId);						// Return the number of valid components in all the pools
+    bool componentAllocatorIsEmpty(Scene* scene, CompID compID);					// Return if the allocator is empty
 
     bool initialize_scene(Scene** pscene, const char* name)
     {
@@ -170,7 +168,7 @@ namespace sv {
 		    // ECS
 		    {
 			scene.entities.clear();
-			entityClear(scene.entityData);
+			entity_clear(scene.entityData);
 
 			struct Register {
 			    std::string name;
@@ -382,7 +380,7 @@ namespace sv {
 	    }
 	    scene.components.clear();
 	    scene.entities.clear();
-	    entityClear(scene.entityData);
+	    entity_clear(scene.entityData);
 	}
 		
 	return true;
@@ -514,7 +512,7 @@ namespace sv {
 	}
 
 	scene.entities.clear();
-	entityClear(scene.entityData);
+	entity_clear(scene.entityData);
 
 	// user initialize scene
 	SV_CHECK(user_initialize_scene(scene_, nullptr));
@@ -866,71 +864,7 @@ namespace sv {
 
     // MEMORY
 
-    static Entity entityAlloc(EntityDataAllocator& a)
-    {
-	if (a.freelist.empty()) {
-
-	    if (a.size == a.capacity) {
-		EntityInternal* new_internal = new EntityInternal[a.capacity + ECS_ENTITY_ALLOC_SIZE];
-		EntityTransform* new_transforms = new EntityTransform[a.capacity + ECS_ENTITY_ALLOC_SIZE];
-		EntityFlags* new_flags = new EntityFlags[a.capacity + ECS_ENTITY_ALLOC_SIZE];
-
-		if (a.internal) {
-
-		    {
-			EntityInternal* end = a.internal + a.capacity;
-			while (a.internal != end) {
-
-			    *new_internal = std::move(*a.internal);
-
-			    ++new_internal;
-			    ++a.internal;
-			}
-		    }
-		    {
-			memcpy(new_transforms, a.transforms, a.capacity * sizeof(EntityTransform));
-			memcpy(new_flags, a.flags, a.capacity * sizeof(EntityFlags));
-		    }
-
-		    a.internal -= a.capacity;
-		    new_internal -= a.capacity;
-		    delete[] a.internal;
-		    delete[] a.transforms;
-		    delete[] a.flags;
-		}
-
-		a.capacity += ECS_ENTITY_ALLOC_SIZE;
-		a.internal = new_internal;
-		a.transforms = new_transforms;
-		a.flags = new_flags;
-	    }
-
-	    return ++a.size;
-
-	}
-	else {
-	    Entity result = a.freelist.back();
-	    a.freelist.pop_back();
-	    return result;
-	}
-    }
-
-    static void entityFree(EntityDataAllocator& a, Entity entity)
-    {
-	SV_ASSERT(a.size >= entity);
-	a.getInternal(entity) = EntityInternal();
-	a.getTransform(entity) = EntityTransform();
-	a.getFlags(entity) = EntityFlags();
-
-	if (entity == a.size) {
-	    a.size--;
-	}
-	else {
-	    a.freelist.push_back(entity);
-	}
-    }
-
-    static void entityClear(EntityDataAllocator& a)
+    static void entity_clear(EntityDataAllocator& a)
     {
 	if (a.internal) {
 	    a.capacity = 0u;
@@ -1151,6 +1085,8 @@ namespace sv {
 
     CompID register_component(const ComponentRegisterDesc* desc)
     {
+	CompID id;
+	
 	// Check if is available
 	{
 	    if (desc->componentSize < sizeof(u32)) {
@@ -1161,14 +1097,13 @@ namespace sv {
 	    auto it = g_CompNames.find(desc->name);
 
 	    if (it != g_CompNames.end()) {
-
-		SV_LOG_ERROR("Can't register a component type with name '%s', it currently exists", desc->name);
-		return SV_COMPONENT_ID_INVALID;
+		
+		id = it->second;
 	    }
+	    else id = CompID(g_Registers.size());
 	}
 
-	CompID id = CompID(g_Registers.size());
-	ComponentRegister& reg = g_Registers.emplace_back();
+	ComponentRegister& reg = (id == CompID(g_Registers.size())) ? g_Registers.emplace_back() : g_Registers[id];
 	reg.name = desc->name;
 	reg.size = desc->componentSize;
 	reg.version = desc->version;
@@ -1182,6 +1117,18 @@ namespace sv {
 	g_CompNames[desc->name] = id;
 
 	return id;
+    }
+
+    void invalidate_component_callbacks(CompID id)
+    {
+	ComponentRegister& r = g_Registers[id];
+
+	r.createFn = nullptr;
+	r.destroyFn = nullptr;
+	r.moveFn = nullptr;
+	r.copyFn = nullptr;
+	r.serializeFn = nullptr;
+	r.deserializeFn = nullptr;
     }
 
     const char* get_component_name(CompID ID)
@@ -1300,7 +1247,57 @@ namespace sv {
     {
 	PARSE_SCENE();
 
-	Entity entity = entityAlloc(scene.entityData);
+	Entity entity;
+
+	{
+	    auto& a = scene.entityData;
+	
+	    if (a.freelist.empty()) {
+
+		if (a.size == a.capacity) {
+		    EntityInternal* new_internal = new EntityInternal[a.capacity + ECS_ENTITY_ALLOC_SIZE];
+		    EntityTransform* new_transforms = new EntityTransform[a.capacity + ECS_ENTITY_ALLOC_SIZE];
+		    EntityFlags* new_flags = new EntityFlags[a.capacity + ECS_ENTITY_ALLOC_SIZE];
+
+		    if (a.internal) {
+
+			{
+			    EntityInternal* end = a.internal + a.capacity;
+			    while (a.internal != end) {
+
+				*new_internal = std::move(*a.internal);
+
+				++new_internal;
+				++a.internal;
+			    }
+			}
+			{
+			    memcpy(new_transforms, a.transforms, a.capacity * sizeof(EntityTransform));
+			    memcpy(new_flags, a.flags, a.capacity * sizeof(EntityFlags));
+			}
+
+			a.internal -= a.capacity;
+			new_internal -= a.capacity;
+			delete[] a.internal;
+			delete[] a.transforms;
+			delete[] a.flags;
+		    }
+
+		    a.capacity += ECS_ENTITY_ALLOC_SIZE;
+		    a.internal = new_internal;
+		    a.transforms = new_transforms;
+		    a.flags = new_flags;
+		}
+
+		entity = ++a.size;
+
+	    }
+	    else {
+		Entity result = a.freelist.back();
+		a.freelist.pop_back();
+		entity = result;
+	    }
+	}
 
 	if (parent == SV_ENTITY_NULL) {
 	    scene.entityData.getInternal(entity).handleIndex = scene.entities.size();
@@ -1358,7 +1355,22 @@ namespace sv {
 	for (size_t i = 0; i < count; i++) {
 	    Entity e = scene.entities[indexBeginDest + i];
 	    clear_entity(scene_, e);
-	    entityFree(scene.entityData, e);
+
+	    { // Free the entity memory
+		auto& a = scene.entityData;
+		
+		SV_ASSERT(a.size >= entity);
+		a.getInternal(entity) = EntityInternal();
+		a.getTransform(entity) = EntityTransform();
+		a.getFlags(entity) = EntityFlags();
+
+		if (entity == a.size) {
+		    a.size--;
+		}
+		else {
+		    a.freelist.push_back(entity);
+		}
+	    }
 	}
 
 	// remove from entities & update indices
