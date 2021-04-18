@@ -623,8 +623,8 @@ namespace sv {
 	    if (body.body_type == BodyType_Static)
 		continue;
 
-	    v2_f32 position = get_entity_position2D(scene_, view.entity);
-	    v2_f32 scale = get_entity_scale2D(scene_, view.entity);
+	    v2_f32 position = get_entity_position2D(scene_, view.entity) + body.offset;
+	    v2_f32 scale = get_entity_scale2D(scene_, view.entity) * body.size;
 
 	    // Reset values
 	    body.in_ground = false;
@@ -650,7 +650,7 @@ namespace sv {
 
 		v2_f32 step = final_pos - next_pos;
 		f32 adv = SV_MIN(scale.x, scale.y);
-		u32 step_count = u32(step.length() / adv) + 1u;
+		u32 step_count = SV_MIN(u32(step.length() / adv) + 1u, 5u);
 
 		step /= f32(step_count);
 
@@ -665,8 +665,8 @@ namespace sv {
 
 			if (b.body_type == BodyType_Static) {
 
-			    v2_f32 p = get_entity_position2D(scene_, v.entity);
-			    v2_f32 s = get_entity_scale2D(scene_, v.entity);
+			    v2_f32 p = get_entity_position2D(scene_, v.entity) + b.offset;
+			    v2_f32 s = get_entity_scale2D(scene_, v.entity) * b.size;
 
 			    v2_f32 to = p - next_pos;
 			    to.x = abs(to.x);
@@ -741,7 +741,7 @@ namespace sv {
 	    position = next_pos;
 	    body.vel = next_vel;
 
-	    set_entity_position2D(scene_, view.entity, position);
+	    set_entity_position2D(scene_, view.entity, position - body.offset);
 	}
     }
 
@@ -1944,11 +1944,11 @@ namespace sv {
 
     void BodyComponent::serialize(Archive& archive)
     {
-	archive << body_type << mass << friction << bounciness;
+	archive << body_type << size << offset << mass << friction << bounciness;
     }
 
     void BodyComponent::deserialize(u32 version, Archive& archive)
     {
-	archive >> (u32&)body_type >> mass >> friction >> bounciness;
+	archive >> (u32&)body_type >> size >> offset >> mass >> friction >> bounciness;
     }
 }

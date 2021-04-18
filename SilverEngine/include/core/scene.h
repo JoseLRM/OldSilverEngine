@@ -504,6 +504,8 @@ namespace sv {
 
 	BodyType body_type = BodyType_Static;
 	v2_f32 vel;
+	v2_f32 size = { 1.f, 1.f };
+	v2_f32 offset = { 0.f, 0.f };
 	bool in_ground = false;
 	f32 mass = 1.f;
 	f32 friction = 0.99f;

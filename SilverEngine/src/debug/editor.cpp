@@ -587,9 +587,11 @@ namespace sv {
 
 		BodyComponent& b = *reinterpret_cast<BodyComponent*>(comp);
 
-		egui_comp_drag_f32("Mass", 0u, &b.mass, 0.1f, 0.0f, f32_max);
-		egui_comp_drag_f32("Friction", 1u, &b.friction, 0.001f, 0.0f, 1.f);
-		egui_comp_drag_f32("Bounciness", 2u, &b.bounciness, 0.005f, 0.0f, 1.f);
+		egui_comp_drag_v2_f32("Size", 0u, &b.size, 0.005f, 0.f, f32_max);
+		egui_comp_drag_v2_f32("Offset", 1u, &b.offset, 0.005f);
+		egui_comp_drag_f32("Mass", 2u, &b.mass, 0.1f, 0.0f, f32_max);
+		egui_comp_drag_f32("Friction", 3u, &b.friction, 0.001f, 0.0f, 1.f);
+		egui_comp_drag_f32("Bounciness", 4u, &b.bounciness, 0.005f, 0.0f, 1.f);
 	    }
 
 	    egui_end_component();
@@ -1190,6 +1192,7 @@ namespace sv {
 
 		    dev.display_windows = false;
 		    dev.debug_draw = false;
+		    dev.draw_collisions = false;
 		}
 	    } break;
 
@@ -1221,19 +1224,24 @@ namespace sv {
 		display_scene_settings();
 
 		gui_display_style_settings(dev.gui);
-	    }
-	    else {
-		// TODO
-	    }
 
-	    if (dev.game_state != GameState_Play) {
-			
+		// MENU
+		
 		gui_push_id(dev.gui, "MENU");
 		    
 		if (gui_begin_menu_item(dev.gui, "Game", 0u, GuiLayout_Flow)) {
 
-		    if (egui_button("Play", 0u)) {
-			dev.next_game_state = GameState_Play;
+		    if (dev.game_state == GameState_Edit) {
+
+			if (egui_button("Play", 0u)) {
+			    dev.next_game_state = GameState_Play;
+			}
+		    }
+		    else if (dev.game_state == GameState_Play) {
+
+			if (egui_button("Stop", 0u)) {
+			    dev.next_game_state = GameState_Edit;
+			}
 		    }
 
 		    if (egui_button("Clear Scene", 1u)) {
@@ -1244,6 +1252,14 @@ namespace sv {
 		}
 
 		if (gui_begin_menu_item(dev.gui, "View", 1u, GuiLayout_Flow)) {
+
+		    // TODO: create specific function
+		    egui_comp_bool("Colisions", 0u, &dev.draw_collisions);
+
+		    gui_end_menu_item(dev.gui);
+		}
+
+		if (gui_begin_menu_item(dev.gui, "Windows", 2u, GuiLayout_Flow)) {
 
 		    if (egui_button("Hierarchy", 0u)) {
 			gui_show_window(dev.gui, "Hierarchy");
@@ -1263,6 +1279,9 @@ namespace sv {
 		}
 
 		gui_pop_id(dev.gui);
+	    }
+	    else {
+		// TODO
 	    }
 
 	    egui_end();
@@ -1287,7 +1306,7 @@ namespace sv {
     {
 	CommandList cmd = graphics_commandlist_get();
 		    
-	if (engine.scene && dev.debug_draw) {
+	if (engine.scene) {
 
 	    begin_debug_batch(cmd);
 
@@ -1328,7 +1347,7 @@ namespace sv {
 	    }
 
 	    // Draw 2D grid
-	    if (dev.camera.projection_type == ProjectionType_Orthographic) {
+	    if (dev.camera.projection_type == ProjectionType_Orthographic && dev.debug_draw) {
 
 		f32 width = dev.camera.width;
 		f32 height = dev.camera.height;
@@ -1367,40 +1386,60 @@ namespace sv {
 		}
 	    }
 
-	    // Draw cameras
-	    //{
-	    //	EntityView<CameraComponent> cameras(engine.scene);
-	    //
-	    //	for (CameraComponent& cam : cameras) {
-	    //
-	    //		Transform trans = get_entity_transform(engine.scene, cam.entity);
-	    //
-	    //		draw_debug_quad(trans.getWorldMatrix(), Color::Red(), cmd);
-	    //	}
-	    //}
+	    // Draw collisions
+	    if (dev.draw_collisions) {
 
-	    // Draw lights
-	    //{
-	    //	EntityView<LightComponent> lights(engine.scene);
-	    //
-	    //	XMMATRIX matrix;
-	    //
-	    //	for (LightComponent& l : lights) {
-	    //
-	    //		matrix = XMMatrixRotationQuaternion(XMQuaternionInverse(dev.camera.rotation.get_dx()));
-	    //
-	    //		// Move to entity position
-	    //		v3_f32 position = get_entity_transform(engine.scene, l.entity).getWorldPosition();
-	    //		matrix *= XMMatrixTranslation(position.x, position.y, position.z);
-	    //
-	    //		draw_debug_quad(matrix, Color::White(40u), cmd);
-	    //	}
-	    //}
+		EntityView<BodyComponent> bodies(engine.scene);
+
+		XMVECTOR p0 = XMVectorSet(-0.5f, 0.5f, 0.f, 1.f);
+		XMVECTOR p1 = XMVectorSet(0.5f, 0.5f, 0.f, 1.f);
+		XMVECTOR p2 = XMVectorSet(-0.5f, -0.5f, 0.f, 1.f);
+		XMVECTOR p3 = XMVectorSet(0.5f, -0.5f, 0.f, 1.f);
+
+		XMVECTOR v0, v1, v2, v3;
+
+		XMMATRIX tm;
+		
+		for (ComponentView<BodyComponent> v : bodies) {
+
+		    BodyComponent& body = *v.comp;
+		    Entity entity = v.entity;
+
+		    v2_f32 pos = get_entity_position2D(engine.scene, entity) + body.offset;
+		    v2_f32 scale = get_entity_scale2D(engine.scene, entity) * body.size;
+		    
+		    tm = XMMatrixScalingFromVector(scale.getDX()) * XMMatrixTranslation(pos.x, pos.y, 0.f);
+		    
+		    v0 = XMVector3Transform(p0, tm);
+		    v1 = XMVector3Transform(p1, tm);
+		    v2 = XMVector3Transform(p2, tm);
+		    v3 = XMVector3Transform(p3, tm);
+
+		    draw_debug_line(v3_f32(v0), v3_f32(v1), Color::Green(), cmd);
+		    draw_debug_line(v3_f32(v1), v3_f32(v3), Color::Green(), cmd);
+		    draw_debug_line(v3_f32(v3), v3_f32(v2), Color::Green(), cmd);
+		    draw_debug_line(v3_f32(v0), v3_f32(v2), Color::Green(), cmd);
+		}
+	    }
 
 	    // Draw gizmos
 	    draw_gizmos(gfx.offscreen, cmd);
 
-	    end_debug_batch(true, false, dev.camera.view_projection_matrix, cmd);
+	    XMMATRIX vpm = XMMatrixIdentity();
+
+	    if (dev.debug_draw)
+		vpm = dev.camera.view_projection_matrix;
+	    else {
+
+		CameraComponent* cam = get_main_camera(engine.scene);
+		
+		if (cam) {
+
+		    vpm = cam->view_projection_matrix;
+		}
+	    }
+
+	    end_debug_batch(true, false, vpm, cmd);
 	}
 
 	// Draw gui
