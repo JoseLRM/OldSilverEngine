@@ -19,40 +19,22 @@ namespace sv {
 	Entity parent = SV_ENTITY_NULL;
 	u32 childsCount = 0u;
 	List<CompRef> components;
+	u64 flags = 0u;
 	std::string name;
 
-    };
-
-    struct EntityTransform {
-
-	XMFLOAT3 localPosition = { 0.f, 0.f, 0.f };
-	XMFLOAT4 localRotation = { 0.f, 0.f, 0.f, 1.f };
-	XMFLOAT3 localScale = { 1.f, 1.f, 1.f };
-
-	XMFLOAT4X4 worldMatrix;
-
-	bool modified = true;
-
-    };
-
-    struct EntityFlags {
-	u32 system_flags = 0u;
-	u32 user_flags = 0u;
     };
 
     struct EntityDataAllocator {
 
 	EntityInternal* internal = nullptr;
-	EntityTransform* transforms = nullptr;
-	EntityFlags* flags;
+	Transform* transforms = nullptr;
 
 	u32 size = 0u;
 	u32 capacity = 0u;
 	List<Entity> freelist;
 
 	EntityInternal& getInternal(Entity entity) { SV_ASSERT(entity != SV_ENTITY_NULL && entity <= size); return internal[entity - 1u]; }
-	EntityTransform& getTransform(Entity entity) { SV_ASSERT(entity != SV_ENTITY_NULL && entity <= size); return transforms[entity - 1u]; }
-	EntityFlags& getFlags(Entity entity) { SV_ASSERT(entity != SV_ENTITY_NULL && entity <= size); return flags[entity - 1u]; }
+	Transform& getTransform(Entity entity) { SV_ASSERT(entity != SV_ENTITY_NULL && entity <= size); return transforms[entity - 1u]; }
     };
 
     struct ComponentPool {
@@ -222,8 +204,7 @@ namespace sv {
 
 			scene.entities.resize(entityCount);
 			EntityInternal* entity_internal = new EntityInternal[entityDataCount];
-			EntityTransform* entity_transform = new EntityTransform[entityDataCount];
-			EntityFlags* entity_flags = new EntityFlags[entityDataCount];
+			Transform* entity_transform = new Transform[entityDataCount];
 
 			for (u32 i = 0; i < entityCount; ++i) {
 
@@ -231,12 +212,11 @@ namespace sv {
 			    archive >> entity;
 
 			    EntityInternal& ed = entity_internal[entity];
-			    EntityTransform& et = entity_transform[entity];
-			    EntityFlags& ef = entity_flags[entity];
+			    Transform& et = entity_transform[entity];
 
 			    archive >> ed.name;
 
-			    archive >> ed.childsCount >> ed.handleIndex >> et.localPosition >> et.localRotation >> et.localScale >> ef.system_flags >> ef.user_flags;
+			    archive >> ed.childsCount >> ed.handleIndex >> et.position >> et.rotation >> et.scale >> ed.flags;
 			}
 
 			// Create entity list and free list
@@ -281,7 +261,6 @@ namespace sv {
 			// Set entity data
 			scene.entityData.internal = entity_internal;
 			scene.entityData.transforms = entity_transform;
-			scene.entityData.flags = entity_flags;
 			scene.entityData.capacity = entityDataCount;
 			scene.entityData.size = entityDataCount;
 
@@ -459,10 +438,9 @@ namespace sv {
 
 		    if (ed.handleIndex != u64_max) {
 
-			EntityTransform& transform = scene.entityData.getTransform(entity);
-			EntityFlags& flags = scene.entityData.getFlags(entity);
+			Transform& transform = scene.entityData.getTransform(entity);
 			
-			archive << i << ed.name << ed.childsCount << ed.handleIndex << transform.localPosition << transform.localRotation << transform.localScale << flags.system_flags << flags.user_flags;
+			archive << i << ed.name << ed.childsCount << ed.handleIndex << transform.position << transform.rotation << transform.scale << ed.flags;
 		    }
 		}
 	    }
@@ -552,10 +530,9 @@ namespace sv {
 			MeshComponent* comp = add_component<MeshComponent>(scene_, entity);
 			comp->mesh = mesh;
 
-			Transform trans = get_entity_transform(scene_, entity);
 			Mesh* m = mesh.get();
 
-			trans.setMatrix(m->model_transform_matrix);
+			set_entity_matrix(scene_, entity, m->model_transform_matrix);
 
 			if (m->model_material_filepath.size()) {
 					
@@ -645,12 +622,9 @@ namespace sv {
 		
 	    if (body.body_type == BodyType_Static)
 		continue;
-		
-	    Transform trans = get_entity_transform(scene_, view.entity);
 
-	    v3_f32 position3D = trans.getLocalPosition();
-	    v2_f32 position = position3D.getVec2();
-	    v2_f32 scale = trans.getLocalScale().getVec2();
+	    v2_f32 position = get_entity_position2D(scene_, view.entity);
+	    v2_f32 scale = get_entity_scale2D(scene_, view.entity);
 
 	    // Reset values
 	    body.in_ground = false;
@@ -688,12 +662,11 @@ namespace sv {
 		    for (ComponentView<BodyComponent> v : bodies0) {
 
 			BodyComponent& b = *v.comp;
-			Transform t = get_entity_transform(scene_, v.entity);
 
 			if (b.body_type == BodyType_Static) {
 
-			    v2_f32 p = t.getLocalPosition().getVec2();
-			    v2_f32 s = t.getLocalScale().getVec2();
+			    v2_f32 p = get_entity_position2D(scene_, v.entity);
+			    v2_f32 s = get_entity_scale2D(scene_, v.entity);
 
 			    v2_f32 to = p - next_pos;
 			    to.x = abs(to.x);
@@ -768,7 +741,7 @@ namespace sv {
 	    position = next_pos;
 	    body.vel = next_vel;
 
-	    trans.setPosition(position.getVec3(position3D.z));
+	    set_entity_position2D(scene_, view.entity, position);
 	}
     }
 
@@ -802,9 +775,8 @@ namespace sv {
 		CameraComponent& camera = *view.comp;
 		Entity entity = view.entity;
 
-		Transform trans = get_entity_transform(scene_, entity);
-		v3_f32 position = trans.getWorldPosition();
-		v4_f32 rotation = trans.getWorldRotation();
+		v3_f32 position = get_entity_world_position(scene_, entity);
+		v4_f32 rotation = get_entity_world_rotation(scene_, entity);
 
 		update_camera_matrices(camera, position, rotation);
 	    }
@@ -872,8 +844,6 @@ namespace sv {
 	    a.internal = nullptr;
 	    delete[] a.transforms;
 	    a.transforms = nullptr;
-	    delete[] a.flags;
-	    a.flags = nullptr;
 	}
 
 	a.size = 0u;
@@ -1256,8 +1226,7 @@ namespace sv {
 
 		if (a.size == a.capacity) {
 		    EntityInternal* new_internal = new EntityInternal[a.capacity + ECS_ENTITY_ALLOC_SIZE];
-		    EntityTransform* new_transforms = new EntityTransform[a.capacity + ECS_ENTITY_ALLOC_SIZE];
-		    EntityFlags* new_flags = new EntityFlags[a.capacity + ECS_ENTITY_ALLOC_SIZE];
+		    Transform* new_transforms = new Transform[a.capacity + ECS_ENTITY_ALLOC_SIZE];
 
 		    if (a.internal) {
 
@@ -1271,22 +1240,18 @@ namespace sv {
 				++a.internal;
 			    }
 			}
-			{
-			    memcpy(new_transforms, a.transforms, a.capacity * sizeof(EntityTransform));
-			    memcpy(new_flags, a.flags, a.capacity * sizeof(EntityFlags));
-			}
-
+			
+			memcpy(new_transforms, a.transforms, a.capacity * sizeof(Transform));
+			
 			a.internal -= a.capacity;
 			new_internal -= a.capacity;
 			delete[] a.internal;
 			delete[] a.transforms;
-			delete[] a.flags;
 		    }
 
 		    a.capacity += ECS_ENTITY_ALLOC_SIZE;
 		    a.internal = new_internal;
 		    a.transforms = new_transforms;
-		    a.flags = new_flags;
 		}
 
 		entity = ++a.size;
@@ -1361,8 +1326,7 @@ namespace sv {
 		
 		SV_ASSERT(a.size >= entity);
 		a.getInternal(entity) = EntityInternal();
-		a.getTransform(entity) = EntityTransform();
-		a.getFlags(entity) = EntityFlags();
+		a.getTransform(entity) = Transform();
 
 		if (entity == a.size) {
 		    a.size--;
@@ -1408,7 +1372,7 @@ namespace sv {
 	copyEd.name = duplicatedEd.name;
 
 	scene.entityData.getTransform(copy) = scene.entityData.getTransform(duplicated);
-	scene.entityData.getFlags(copy) = scene.entityData.getFlags(duplicated);
+	copyEd.flags = duplicatedEd.flags;
 
 	for (u32 i = 0; i < duplicatedEd.components.size(); ++i) {
 	    CompID ID = duplicatedEd.components[i].id;
@@ -1486,16 +1450,10 @@ namespace sv {
 	return scene.entityData.getInternal(entity).parent;
     }
 
-    Transform get_entity_transform(Scene* scene_, Entity entity)
-    {
-	PARSE_SCENE();
-	return Transform(entity, &scene.entityData.getTransform(entity), scene_);
-    }
-
     u64* get_entity_flags(Scene* scene_, Entity entity)
     {
 	PARSE_SCENE();
-	return (u64*)&scene.entityData.getFlags(entity);
+	return &scene.entityData.getInternal(entity).flags;
     }
 
     u32 get_entity_component_count(Scene* scene_, Entity entity)
@@ -1703,387 +1661,30 @@ namespace sv {
 
     //////////////////////////////////////////// TRANSFORM ///////////////////////////////////////////////////////////
 
-#define parse() sv::EntityTransform* t = reinterpret_cast<sv::EntityTransform*>(trans)
-
-    Transform::Transform(Entity entity, void* transform, Scene* scene)
-	: entity(entity), trans(transform), scene(scene) {}
-
-    const v3_f32& Transform::getLocalPosition() const noexcept
+    SV_AUX void update_world_matrix(Scene_internal& s, Transform& t, Entity entity)
     {
-	parse();
-	return *(v3_f32*)& t->localPosition;
-    }
+	t._modified = false;
 
-    const v4_f32& Transform::getLocalRotation() const noexcept
-    {
-	parse();
-	return *(v4_f32*)& t->localRotation;
-    }
-
-    v3_f32 Transform::getLocalEulerRotation() const noexcept
-    {
-	parse();
-	v3_f32 euler;
-
-	// roll (x-axis rotation)
-
-	XMFLOAT4 q = t->localRotation;
-	float sinr_cosp = 2.f * (q.w * q.x + q.y * q.z);
-	float cosr_cosp = 1.f - 2.f * (q.x * q.x + q.y * q.y);
-	euler.x = std::atan2(sinr_cosp, cosr_cosp);
-
-	// pitch (y-axis rotation)
-	float sinp = 2.f * (q.w * q.y - q.z * q.x);
-	if (std::abs(sinp) >= 1.f)
-	    euler.y = std::copysign(PI / 2.f, sinp); // use 90 degrees if out of range
-	else
-	    euler.y = std::asin(sinp);
-
-	// yaw (z-axis rotation)
-	float siny_cosp = 2 * (q.w * q.z + q.x * q.y);
-	float cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z);
-	euler.z = std::atan2(siny_cosp, cosy_cosp);
-
-	if (euler.x < 0.f) {
-	    euler.x = 2.f * PI + euler.x;
-	}
-	if (euler.y < 0.f) {
-	    euler.y = 2.f * PI + euler.y;
-	}
-	if (euler.z < 0.f) {
-	    euler.z = 2.f * PI + euler.z;
-	}
-
-	return euler;
-    }
-
-    const v3_f32& Transform::getLocalScale() const noexcept
-    {
-	parse();
-	return *(v3_f32*)& t->localScale;
-    }
-
-    XMVECTOR Transform::getLocalPositionDXV() const noexcept
-    {
-	parse();
-	return XMLoadFloat3(&t->localPosition);
-    }
-
-    XMVECTOR Transform::getLocalRotationDXV() const noexcept
-    {
-	parse();
-	return XMLoadFloat4(&t->localRotation);
-    }
-
-    XMVECTOR Transform::getLocalScaleDXV() const noexcept
-    {
-	parse();
-	return XMLoadFloat3(&t->localScale);
-    }
-
-    XMMATRIX Transform::getLocalMatrix() const noexcept
-    {
-	parse();
-	return XMMatrixScalingFromVector(getLocalScaleDXV()) * XMMatrixRotationQuaternion(XMLoadFloat4(&t->localRotation))
-	    * XMMatrixTranslation(t->localPosition.x, t->localPosition.y, t->localPosition.z);
-    }
-
-    v3_f32 Transform::getWorldPosition() noexcept
-    {
-	parse();
-	if (t->modified) updateWorldMatrix();
-	return *(v3_f32*)& t->worldMatrix._41;
-    }
-
-    v4_f32 Transform::getWorldRotation() noexcept
-    {
-	parse();
-	if (t->modified) updateWorldMatrix();
-	return *(v4_f32*)& getWorldRotationDXV();
-    }
-
-    v3_f32 Transform::getWorldEulerRotation() noexcept
-    {
-	XMFLOAT4X4 rm;
-	XMStoreFloat4x4(&rm, XMMatrixTranspose(XMMatrixRotationQuaternion(getWorldRotationDXV())));
-
-	v3_f32 euler;
-
-	if (rm._13 < 1.f) {
-	    if (rm._13 > -1.f) {
-		euler.y = asin(rm._13);
-		euler.x = atan2(-rm._23, rm._33);
-		euler.z = atan2(-rm._12, rm._11);
-	    }
-	    else {
-		euler.y = -PI / 2.f;
-		euler.x = -atan2(rm._21, rm._22);
-		euler.z = 0.f;
-	    }
-	}
-	else {
-	    euler.y = PI / 2.f;
-	    euler.x = atan2(rm._21, rm._22);
-	    euler.z = 0.f;
-	}
-
-	if (euler.x < 0.f) {
-	    euler.x = 2 * PI + euler.x;
-	}
-	if (euler.z < 0.f) {
-	    euler.z = 2 * PI + euler.z;
-	}
-
-	return euler;
-    }
-
-    v3_f32 Transform::getWorldScale() noexcept
-    {
-	parse();
-	if (t->modified) updateWorldMatrix();
-	return { (*(v3_f32*)& t->worldMatrix._11).length(), (*(v3_f32*)& t->worldMatrix._21).length(), (*(v3_f32*)& t->worldMatrix._31).length() };
-    }
-
-    XMVECTOR Transform::getWorldPositionDXV() noexcept
-    {
-	parse();
-	if (t->modified) updateWorldMatrix();
-
-	v3_f32 position = getWorldPosition();
-	return XMVectorSet(position.x, position.y, position.z, 0.f);
-    }
-
-    XMVECTOR Transform::getWorldRotationDXV() noexcept
-    {
-	parse();
-	if (t->modified) updateWorldMatrix();
-	XMVECTOR scale;
-	XMVECTOR rotation;
-	XMVECTOR position;
-
-	XMMatrixDecompose(&scale, &rotation, &position, XMLoadFloat4x4(&t->worldMatrix));
-
-	return rotation;
-    }
-
-    XMVECTOR Transform::getWorldScaleDXV() noexcept
-    {
-	parse();
-
-	if (t->modified) updateWorldMatrix();
-	XMVECTOR scale;
-	XMVECTOR rotation;
-	XMVECTOR position;
-
-	XMMatrixDecompose(&scale, &rotation, &position, XMLoadFloat4x4(&t->worldMatrix));
-
-	return XMVectorAbs(scale);
-    }
-
-    XMMATRIX Transform::getWorldMatrix() noexcept
-    {
-	parse();
-
-	if (t->modified) updateWorldMatrix();
-	return XMLoadFloat4x4(&t->worldMatrix);
-    }
-
-    XMMATRIX Transform::getParentMatrix() const noexcept
-    {
-	Scene_internal& s = *reinterpret_cast<Scene_internal*>(scene);
-	EntityInternal& entityData = s.entityData.getInternal(entity);
-	Entity parent = entityData.parent;
-
-	if (parent) {
-	    Transform parentTransform(parent, &s.entityData.getTransform(parent), scene);
-	    return parentTransform.getWorldMatrix();
-	}
-	else return XMMatrixIdentity();
-    }
-
-    void Transform::setPosition(const v3_f32& position) noexcept
-    {
-	notify();
-
-	parse();
-	t->localPosition = *(XMFLOAT3*)& position;
-    }
-
-    void Transform::setPositionX(float x) noexcept
-    {
-	notify();
-
-	parse();
-	t->localPosition.x = x;
-    }
-
-    void Transform::setPositionY(float y) noexcept
-    {
-	notify();
-
-	parse();
-	t->localPosition.y = y;
-    }
-
-    void Transform::setPositionZ(float z) noexcept
-    {
-	notify();
-
-	parse();
-	t->localPosition.z = z;
-    }
-
-    void Transform::setRotation(const v4_f32& rotation) noexcept
-    {
-	notify();
-
-	parse();
-	t->localRotation = *(XMFLOAT4*)& rotation;
-    }
-
-    void Transform::setEulerRotation(const v3_f32& r) noexcept
-    {
-	notify();
-
-	float cy = cos(r.z * 0.5f);
-	float sy = sin(r.z * 0.5f);
-	float cp = cos(r.y * 0.5f);
-	float sp = sin(r.y * 0.5f);
-	float cr = cos(r.x * 0.5f);
-	float sr = sin(r.x * 0.5f);
-
-	v4_f32 q;
-	q.w = cr * cp * cy + sr * sp * sy;
-	q.x = sr * cp * cy - cr * sp * sy;
-	q.y = cr * sp * cy + sr * cp * sy;
-	q.z = cr * cp * sy - sr * sp * cy;
-
-	parse();
-	XMStoreFloat4(&t->localRotation, XMVectorSet(q.x, q.y, q.z, q.w));
-    }
-
-    void Transform::setRotationX(float x) noexcept
-    {
-	notify();
-
-	parse();
-	t->localRotation.x = x;
-    }
-
-    void Transform::setRotationY(float y) noexcept
-    {
-	notify();
-
-	parse();
-	t->localRotation.y = y;
-    }
-
-    void Transform::setRotationZ(float z) noexcept
-    {
-	notify();
-
-	parse();
-	t->localRotation.z = z;
-    }
-
-    void Transform::setRotationW(float w) noexcept
-    {
-	notify();
-
-	parse();
-	t->localRotation.w = w;
-    }
-
-    void Transform::rotateRollPitchYaw(f32 roll, f32 pitch, f32 yaw)
-    {
-	notify();
-	parse();
-
-	XMVECTOR quaternion = XMLoadFloat4(&t->localRotation);
-	XMVECTOR roll_quat = XMQuaternionRotationAxis(XMVectorSet(0.f, 0.f, 1.f, 0.f), roll);
-	XMVECTOR pitch_quat = XMQuaternionRotationAxis(XMVectorSet(1.f, 0.f, 0.f, 0.f), pitch);
-	XMVECTOR yaw_quat = XMQuaternionRotationAxis(XMVectorSet(0.f, 1.f, 0.f, 0.f), yaw);
-
-	// TODO
-    }
-
-    void Transform::setScale(const v3_f32& scale) noexcept
-    {
-	parse();
-
-	notify();
-	t->localScale = *(XMFLOAT3*)& scale;
-    }
-
-    void Transform::setScaleX(float x) noexcept
-    {
-	notify();
-
-	parse();
-	t->localScale.x = x;
-    }
-
-    void Transform::setScaleY(float y) noexcept
-    {
-	notify();
-
-	parse();
-	t->localScale.y = y;
-    }
-
-    void Transform::setScaleZ(float z) noexcept
-    {
-	notify();
-
-	parse();
-	t->localScale.z = z;
-    }
-
-    void Transform::setMatrix(const XMMATRIX& matrix) noexcept
-    {
-	notify();
-	parse();
-
-	XMVECTOR scale;
-	XMVECTOR rotation;
-	XMVECTOR position;
-
-	XMMatrixDecompose(&scale, &rotation, &position, matrix);
-
-	XMStoreFloat3(&t->localScale, scale);
-	XMStoreFloat4(&t->localRotation, rotation);
-	XMStoreFloat3(&t->localPosition, position);
-    }
-
-    void Transform::updateWorldMatrix()
-    {
-	parse();
-	Scene_internal& s = *reinterpret_cast<Scene_internal*>(scene);
-
-	t->modified = false;
-
-	XMMATRIX m = getLocalMatrix();
+	XMMATRIX m = get_entity_matrix((Scene*)&s, entity);
 
 	EntityInternal& entityData = s.entityData.getInternal(entity);
 	Entity parent = entityData.parent;
 
 	if (parent != SV_ENTITY_NULL) {
-	    Transform parentTransform(parent, &s.entityData.getTransform(parent), scene);
-	    XMMATRIX mp = parentTransform.getWorldMatrix();
+	    
+	    XMMATRIX mp = get_entity_world_matrix((Scene*)&s, entity);
 	    m = m * mp;
 	}
-	XMStoreFloat4x4(&t->worldMatrix, m);
+	
+	XMStoreFloat4x4(&t.world_matrix, m);
     }
 
-    void Transform::notify()
+    SV_AUX void notify_transform(Scene_internal& s, Transform& t, Entity entity)
     {
-	parse();
+	if (!t._modified) {
 
-	if (!t->modified) {
+	    t._modified = true;
 
-	    t->modified = true;
-
-	    Scene_internal& s = *reinterpret_cast<Scene_internal*>(scene);
 	    auto& list = s.entityData;
 	    EntityInternal& entityData = list.getInternal(entity);
 
@@ -2091,11 +1692,212 @@ namespace sv {
 
 	    auto& entities = s.entities;
 	    for (u32 i = 0; i < entityData.childsCount; ++i) {
-		EntityTransform& et = list.getTransform(entities[entityData.handleIndex + 1 + i]);
-		et.modified = true;
+		Transform& et = list.getTransform(entities[entityData.handleIndex + 1 + i]);
+		et._modified = true;
 	    }
-
 	}
+    }
+
+    void set_entity_transform(Scene* scene_, Entity entity, const Transform& transform)
+    {
+	PARSE_SCENE();
+	Transform& t = scene.entityData.getTransform(entity);
+	t = transform;
+	notify_transform(scene, t, entity);
+    }
+    
+    void set_entity_position(Scene* scene_, Entity entity, const v3_f32& position)
+    {
+	PARSE_SCENE();
+	Transform& t = scene.entityData.getTransform(entity);
+	t.position = position;
+	notify_transform(scene, t, entity);
+    }
+    
+    void set_entity_rotation(Scene* scene_, Entity entity, const v4_f32& rotation)
+    {
+	PARSE_SCENE();
+	Transform& t = scene.entityData.getTransform(entity);
+	t.rotation = rotation;
+	notify_transform(scene, t, entity);
+    }
+    
+    void set_entity_scale(Scene* scene_, Entity entity, const v3_f32& scale)
+    {
+	PARSE_SCENE();
+	Transform& t = scene.entityData.getTransform(entity);
+	t.scale = scale;
+	notify_transform(scene, t, entity);
+    }
+    
+    void set_entity_matrix(Scene* scene_, Entity entity, const XMMATRIX& matrix)
+    {
+	PARSE_SCENE();
+	Transform& t = scene.entityData.getTransform(entity);
+	
+	notify_transform(scene, t, entity);
+
+	XMVECTOR scale;
+	XMVECTOR rotation;
+	XMVECTOR position;
+
+	XMMatrixDecompose(&scale, &rotation, &position, matrix);
+
+	t.position.setDX(position);
+	t.scale.setDX(scale);
+	t.rotation.set_dx(rotation);
+    }
+
+    void set_entity_position2D(Scene* scene_, Entity entity, const v2_f32& position)
+    {
+	PARSE_SCENE();
+	Transform& t = scene.entityData.getTransform(entity);
+	t.position.x = position.x;
+	t.position.y = position.y;
+	notify_transform(scene, t, entity);
+    }
+    
+    Transform* get_entity_transform_ptr(Scene* scene_, Entity entity)
+    {
+	PARSE_SCENE();
+	Transform& t = scene.entityData.getTransform(entity);
+	notify_transform(scene, t, entity);
+
+	return &t;
+    }
+    
+    v3_f32* get_entity_position_ptr(Scene* scene_, Entity entity)
+    {
+	PARSE_SCENE();
+	Transform& t = scene.entityData.getTransform(entity);
+	notify_transform(scene, t, entity);
+
+	return &t.position;
+    }
+    
+    v4_f32* get_entity_rotation_ptr(Scene* scene_, Entity entity)
+    {
+	PARSE_SCENE();
+	Transform& t = scene.entityData.getTransform(entity);
+	notify_transform(scene, t, entity);
+
+	return &t.rotation;
+    }
+    
+    v3_f32* get_entity_scale_ptr(Scene* scene_, Entity entity)
+    {
+	PARSE_SCENE();
+	Transform& t = scene.entityData.getTransform(entity);
+	notify_transform(scene, t, entity);
+
+	return &t.scale;
+    }
+    
+    v2_f32* get_entity_position2D_ptr(Scene* scene_, Entity entity)
+    {
+	PARSE_SCENE();
+	Transform& t = scene.entityData.getTransform(entity);
+	notify_transform(scene, t, entity);
+
+	return reinterpret_cast<v2_f32*>(&t.position);
+    }
+    
+    v2_f32* get_entity_scale2D_ptr(Scene* scene_, Entity entity)
+    {
+	PARSE_SCENE();
+	Transform& t = scene.entityData.getTransform(entity);
+	notify_transform(scene, t, entity);
+
+	return reinterpret_cast<v2_f32*>(&t.scale);
+    }
+    
+    const Transform& get_entity_transform(Scene* scene_, Entity entity)
+    {
+	PARSE_SCENE();
+	Transform& t = scene.entityData.getTransform(entity);
+	return t;
+    }
+    
+    v3_f32 get_entity_position(Scene* scene_, Entity entity)
+    {
+	PARSE_SCENE();
+	Transform& t = scene.entityData.getTransform(entity);
+	return t.position;
+    }
+    
+    v4_f32 get_entity_rotation(Scene* scene_, Entity entity)
+    {
+	PARSE_SCENE();
+	Transform& t = scene.entityData.getTransform(entity);
+	return t.rotation;
+    }
+    
+    v3_f32 get_entity_scale(Scene* scene_, Entity entity)
+    {
+	PARSE_SCENE();
+	Transform& t = scene.entityData.getTransform(entity);
+	return t.scale;
+    }
+    
+    v2_f32 get_entity_position2D(Scene* scene_, Entity entity)
+    {
+	PARSE_SCENE();
+	Transform& t = scene.entityData.getTransform(entity);
+	return t.position.getVec2();
+    }
+    
+    v2_f32 get_entity_scale2D(Scene* scene_, Entity entity)
+    {
+	PARSE_SCENE();
+	Transform& t = scene.entityData.getTransform(entity);
+	return t.scale.getVec2();
+    }
+
+    XMMATRIX get_entity_matrix(Scene* scene_, Entity entity)
+    {
+	PARSE_SCENE();
+	Transform& t = scene.entityData.getTransform(entity);
+
+	return XMMatrixScalingFromVector(t.scale.getDX()) * XMMatrixRotationQuaternion(t.rotation.get_dx())
+	    * XMMatrixTranslation(t.position.x, t.position.y, t.position.z);
+    }
+    
+    v3_f32 get_entity_world_position(Scene* scene_, Entity entity)
+    {
+	PARSE_SCENE();
+	Transform& t = scene.entityData.getTransform(entity);
+	if (t._modified) update_world_matrix(scene, t, entity);
+	return *(v3_f32*) &t.world_matrix._41;
+    }
+    
+    v4_f32 get_entity_world_rotation(Scene* scene_, Entity entity)
+    {
+	PARSE_SCENE();
+	Transform& t = scene.entityData.getTransform(entity);
+	if (t._modified) update_world_matrix(scene, t, entity);
+	XMVECTOR scale;
+	XMVECTOR rotation;
+	XMVECTOR position;
+
+	XMMatrixDecompose(&scale, &rotation, &position, XMLoadFloat4x4(&t.world_matrix));
+
+	return v4_f32(rotation);
+    }
+    
+    v3_f32 get_entity_world_scale(Scene* scene_, Entity entity)
+    {
+	PARSE_SCENE();
+	Transform& t = scene.entityData.getTransform(entity);
+	if (t._modified) update_world_matrix(scene, t, entity);
+	return { (*(v3_f32*)& t.world_matrix._11).length(), (*(v3_f32*)& t.world_matrix._21).length(), (*(v3_f32*)& t.world_matrix._31).length() };
+    }
+    
+    XMMATRIX get_entity_world_matrix(Scene* scene_, Entity entity)
+    {
+	PARSE_SCENE();
+	Transform& t = scene.entityData.getTransform(entity);
+	if (t._modified) update_world_matrix(scene, t, entity);
+	return XMLoadFloat4x4(&t.world_matrix);
     }
 
     //////////////////////////////////////////// COMPONENTS ////////////////////////////////////////////////////////

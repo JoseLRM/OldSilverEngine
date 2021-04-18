@@ -50,9 +50,8 @@ namespace sv {
 	gui_begin_container(dev.gui, 0u, GuiLayout_Free);
 
 	// TODO: euler rotation
-	Transform trans = get_entity_transform(engine.scene, entity);
-	v3_f32 position = trans.getLocalPosition();
-	v3_f32 scale = trans.getLocalScale();
+	v3_f32& position = *get_entity_position_ptr(engine.scene, entity);
+	v3_f32& scale = *get_entity_scale_ptr(engine.scene, entity);
 
 	f32 yoff = 0.f;
 
@@ -175,9 +174,6 @@ namespace sv {
 	gui_end_container(dev.gui);
 
 	gui_pop_id(dev.gui);
-
-	trans.setPosition(position);
-	trans.setScale(scale);
     }
 
     bool egui_button(const char* text, u64 id)

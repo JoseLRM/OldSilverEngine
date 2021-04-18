@@ -111,43 +111,6 @@ SV_USER bool user_serialize_scene(Scene* scene, Archive* parchive)
     return true;
 }
 
-void explosion(Scene* scene, v2_f32 pos, f32 range, f32 intensity, Entity* ignore_list, u32 ignore_count)
-{
-    EntityView<BodyComponent> bodies(scene);
-
-    for (ComponentView<BodyComponent> v : bodies) {
-
-	BodyComponent& b = *v.comp;
-
-	if (b.body_type == BodyType_Static)
-	    continue;
-
-	bool ignore = false;
-	foreach(i, ignore_count)
-	    if (ignore_list[i] == v.entity) {
-		ignore = true;
-		break;
-	    }
-	if (ignore) continue;
-		
-	
-	Transform trans = get_entity_transform(scene, v.entity);
-
-	v2_f32 p = trans.getLocalPosition().getVec2();
-
-	v2_f32 to = p - pos;
-	f32 distance = to.length();
-
-	if (distance < range) {
-
-	    to.normalize();
-	    to *= intensity * pow(distance / range, 0.1f);
-
-	    b.vel += to;
-	}
-    }
-}
-
 SV_USER void user_update()
 {
     GameMemory& m = get_game_memory();
@@ -155,14 +118,10 @@ SV_USER void user_update()
 
     if (scene) {
 	
-	Transform trans = get_entity_transform(scene, m.player);
 	BodyComponent* body = get_component<BodyComponent>(scene, m.player);
-	v2_f32 pos = trans.getLocalPosition().getVec2();
+	v2_f32& pos = *get_entity_position2D_ptr(scene, m.player);
 
-	{
-	    Transform cam = get_entity_transform(scene, scene->main_camera);
-	    cam.setPosition(pos.getVec3());
-	}
+	set_entity_position(scene, scene->main_camera, pos.getVec3());
 
 	f32 vel = 5.f * engine.deltatime;
 
@@ -195,8 +154,6 @@ SV_USER void user_update()
 	    }
 	    
 	}
-
-	trans.setPosition(pos.getVec3());
     }
 }
 

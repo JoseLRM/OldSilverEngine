@@ -13,7 +13,6 @@ namespace sv {
     typedef u32 Entity;
 
     struct CameraComponent;	
-    struct AudioDevice;	
 
     struct Scene {
 
@@ -26,8 +25,6 @@ namespace sv {
 
 	GPUImage* skybox = nullptr;
 	Color ambient_light = Color::Gray(20u);
-
-	AudioDevice* audio_device;
 
 	v2_f32 gravity = { 0.f, -36.f };
 	f32 air_friction = 0.02f;
@@ -103,69 +100,58 @@ namespace sv {
     SV_API void		deserialize_component(Scene* scene, CompID ID, BaseComponent* comp, u32 version, Archive& archive);
     SV_API bool		component_exist(CompID ID);
 
-    // Transform
+    struct Transform {
 
-    class SV_API Transform {
-	void* trans;
-	Scene* scene;
+	// Local space
+	
+	v3_f32 position = { 0.f, 0.f, 0.f };
+	v4_f32 rotation = { 0.f, 0.f, 0.f, 1.f };
+	v3_f32 scale = { 1.f, 1.f, 1.f };
 
-    public:
-	Transform(Entity entity, void* transform, Scene* ecs);
-	~Transform() = default;
+	// World space
+	
+	XMFLOAT4X4 world_matrix;
 
-	Transform(const Transform& other) = default;
-	Transform(Transform&& other) = default;
-
-	const Entity entity = 0;
-
-	// getters
-	const v3_f32& getLocalPosition() const noexcept;
-	const v4_f32& getLocalRotation() const noexcept;
-	v3_f32			getLocalEulerRotation() const noexcept;
-	const v3_f32& getLocalScale() const noexcept;
-	XMVECTOR getLocalPositionDXV() const noexcept;
-	XMVECTOR getLocalRotationDXV() const noexcept;
-	XMVECTOR getLocalScaleDXV() const noexcept;
-	XMMATRIX getLocalMatrix() const noexcept;
-
-	v3_f32 getWorldPosition() noexcept;
-	v4_f32 getWorldRotation() noexcept;
-	v3_f32 getWorldEulerRotation() noexcept;
-	v3_f32 getWorldScale() noexcept;
-	XMVECTOR getWorldPositionDXV() noexcept;
-	XMVECTOR getWorldRotationDXV() noexcept;
-	XMVECTOR getWorldScaleDXV() noexcept;
-	XMMATRIX getWorldMatrix() noexcept;
-
-	XMMATRIX getParentMatrix() const noexcept;
-
-	// setters
-	void setPosition(const v3_f32& position) noexcept;
-	void setPositionX(float x) noexcept;
-	void setPositionY(float y) noexcept;
-	void setPositionZ(float z) noexcept;
-
-	void setRotation(const v4_f32& rotation) noexcept;
-	void setEulerRotation(const v3_f32& rotation) noexcept;
-	void setRotationX(float x) noexcept;
-	void setRotationY(float y) noexcept;
-	void setRotationZ(float z) noexcept;
-	void setRotationW(float w) noexcept;
-
-	void rotateRollPitchYaw(f32 roll, f32 pitch, f32 yaw);
-
-	void setScale(const v3_f32& scale) noexcept;
-	void setScaleX(float x) noexcept;
-	void setScaleY(float y) noexcept;
-	void setScaleZ(float z) noexcept;
-
-	void setMatrix(const XMMATRIX& matrix) noexcept;
-
-    private:
-	void updateWorldMatrix();
-	void notify();
+	bool _modified = true;
 
     };
+
+    // Local space setters
+
+    SV_API void set_entity_transform(Scene* scene, Entity entity, const Transform& transform);
+    SV_API void set_entity_position(Scene* scene, Entity entity, const v3_f32& position);
+    SV_API void set_entity_rotation(Scene* scene, Entity entity, const v4_f32& rotation);
+    SV_API void set_entity_scale(Scene* scene, Entity entity, const v3_f32& scale);
+    SV_API void set_entity_matrix(Scene* scene, Entity entity, const XMMATRIX& matrix);
+
+    SV_API void set_entity_position2D(Scene* scene, Entity entity, const v2_f32& position);
+    SV_API void set_entity_scale2D(Scene* scene, Entity entity, const v2_f32& scale);
+
+    // Local space getters
+    
+    SV_API Transform* get_entity_transform_ptr(Scene* scene, Entity entity);
+    SV_API v3_f32*    get_entity_position_ptr(Scene* scene, Entity entity);
+    SV_API v4_f32*    get_entity_rotation_ptr(Scene* scene, Entity entity);
+    SV_API v3_f32*    get_entity_scale_ptr(Scene* scene, Entity entity);
+    SV_API v2_f32*    get_entity_position2D_ptr(Scene* scene, Entity entity);
+    SV_API v2_f32*    get_entity_scale2D_ptr(Scene* scene, Entity entity);
+    SV_API XMMATRIX   get_entity_matrix(Scene* scene, Entity entity);
+
+    // Local space const getters
+    
+    SV_API const Transform& get_entity_transform(Scene* scene, Entity entity);
+    SV_API v3_f32 get_entity_position(Scene* scene, Entity entity);
+    SV_API v4_f32 get_entity_rotation(Scene* scene, Entity entity);
+    SV_API v3_f32 get_entity_scale(Scene* scene, Entity entity);
+    SV_API v2_f32 get_entity_position2D(Scene* scene, Entity entity);
+    SV_API v2_f32 get_entity_scale2D(Scene* scene, Entity entity);
+
+    // World space getters
+    
+    SV_API v3_f32 get_entity_world_position(Scene* scene, Entity entity);
+    SV_API v4_f32 get_entity_world_rotation(Scene* scene, Entity entity);
+    SV_API v3_f32 get_entity_world_scale(Scene*, Entity entity);
+    SV_API XMMATRIX get_entity_world_matrix(Scene*, Entity entity);
 
     // Entity
 
@@ -180,7 +166,6 @@ namespace sv {
     SV_API u32	        get_entity_childs_count(Scene* scene, Entity parent);
     SV_API void		get_entity_childs(Scene* scene, Entity parent, Entity const** childsArray);
     SV_API Entity	get_entity_parent(Scene* scene, Entity entity);
-    SV_API Transform	get_entity_transform(Scene* scene, Entity entity);
     SV_API u64*		get_entity_flags(Scene* scene, Entity entity);
     SV_API u32		get_entity_component_count(Scene* scene, Entity entity);
     SV_API u32		get_entity_count(Scene* scene);

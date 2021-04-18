@@ -343,8 +343,7 @@ namespace sv {
 
 	    info.object = GizmosObject_None;
 
-	    Transform trans = get_entity_transform(engine.scene, editor.selected_entity);
-	    v3_f32 position = trans.getLocalPosition();
+	    v3_f32 position = get_entity_position(engine.scene, editor.selected_entity);
 
 	    const XMMATRIX& vpm = dev.camera.view_projection_matrix;
 	    v2_f32 mouse_position = input.mouse_position * 2.f;
@@ -401,8 +400,7 @@ namespace sv {
 	    }
 	    else {
 
-		Transform trans = get_entity_transform(engine.scene, editor.selected_entity);
-		v3_f32 position = trans.getLocalPosition();
+		v3_f32& position = *get_entity_position_ptr(engine.scene, editor.selected_entity);
 		v2_f32 mouse_position = input.mouse_position * 2.f;
 
 		v2_f32 p0, p1;
@@ -419,8 +417,6 @@ namespace sv {
 		pos = XMVector3Transform(pos, dev.camera.inverse_view_projection_matrix);
 
 		position.y = XMVectorGetY(pos);
-
-		trans.setPosition(position);
 	    }
 	}
     }
@@ -431,8 +427,7 @@ namespace sv {
 
 	GizmosInfo& info = editor.gizmos;
 
-	Transform trans = get_entity_transform(engine.scene, editor.selected_entity);
-	v3_f32 position = trans.getLocalPosition();
+	v3_f32 position = get_entity_position(engine.scene, editor.selected_entity);
 
 	constexpr f32 GIZMOS_SIZE = 1.f;
 
@@ -632,9 +627,9 @@ namespace sv {
 
 		if (m.mesh.get() == nullptr) continue;
 
-		Transform trans = get_entity_transform(engine.scene, entity);
+		XMMATRIX wm = get_entity_world_matrix(engine.scene, entity);
 
-		XMMATRIX itm = XMMatrixInverse(0, trans.getWorldMatrix());
+		XMMATRIX itm = XMMatrixInverse(0, wm);
 
 		ray.origin = v3_f32(XMVector4Transform(ray_origin, itm));
 		ray.direction = v3_f32(XMVector4Transform(ray_direction, itm));
@@ -691,9 +686,7 @@ namespace sv {
 		if (editor.selected_entity == entity)
 		    continue;
 
-		Transform trans = get_entity_transform(engine.scene, entity);
-
-		XMMATRIX tm = trans.getWorldMatrix();
+		XMMATRIX tm = get_entity_world_matrix(engine.scene, entity);
 
 		v0 = XMVector3Transform(p0, tm);
 		v1 = XMVector3Transform(p1, tm);
@@ -1301,14 +1294,14 @@ namespace sv {
 	    // Draw selected entity
 	    if (editor.selected_entity != SV_ENTITY_NULL) {
 
-		Transform trans = get_entity_transform(engine.scene, editor.selected_entity);
 		MeshComponent* mesh_comp = get_component<MeshComponent>(engine.scene, editor.selected_entity);
 		SpriteComponent* sprite_comp = get_component<SpriteComponent>(engine.scene, editor.selected_entity);
 
 		if (mesh_comp && mesh_comp->mesh.get()) {
 
 		    u8 alpha = 5u + u8(f32(sin(timer_now() * 3.5) + 1.0) * 50.f * 0.5f);
-		    draw_debug_mesh_wireframe(mesh_comp->mesh.get(), trans.getWorldMatrix(), Color::Red(alpha), cmd);
+		    XMMATRIX wm = get_entity_world_matrix(engine.scene, editor.selected_entity);
+		    draw_debug_mesh_wireframe(mesh_comp->mesh.get(), wm, Color::Red(alpha), cmd);
 		}
 		if (sprite_comp) {
 
@@ -1317,7 +1310,7 @@ namespace sv {
 		    XMVECTOR p2 = XMVectorSet(-0.5f, -0.5f, 0.f, 1.f);
 		    XMVECTOR p3 = XMVectorSet(0.5f, -0.5f, 0.f, 1.f);
 
-		    XMMATRIX tm = trans.getWorldMatrix();
+		    XMMATRIX tm = get_entity_world_matrix(engine.scene, editor.selected_entity);
 
 		    p0 = XMVector3Transform(p0, tm);
 		    p1 = XMVector3Transform(p1, tm);

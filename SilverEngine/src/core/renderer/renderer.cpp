@@ -863,9 +863,8 @@ namespace sv {
 		SpriteComponent& spr = *view.comp;
 		Entity entity = view.entity;
 
-		Transform trans = get_entity_transform(scene, entity);
-		v3_f32 pos = trans.getWorldPosition();
-		sprite_instances.emplace_back(trans.getWorldMatrix(), spr.texcoord, spr.texture.get(), spr.color, pos.z);
+		v3_f32 pos = get_entity_world_position(scene, entity);
+		sprite_instances.emplace_back(get_entity_world_matrix(scene, entity), spr.texcoord, spr.texture.get(), spr.color, pos.z);
 	    }
 	}
 
@@ -1029,19 +1028,17 @@ namespace sv {
 		Entity entity = v.entity;
 		LightComponent& l = *v.comp;
 
-		Transform trans = get_entity_transform(scene, entity);
-
 		switch (l.light_type)
 		{
 		case LightType_Point:
-		    light_instances.emplace_back(l.color, trans.getWorldPosition(), l.range, l.intensity, l.smoothness);
+		    light_instances.emplace_back(l.color, get_entity_world_position(scene, entity), l.range, l.intensity, l.smoothness);
 		    break;
 
 		case LightType_Direction:
 		{
 		    XMVECTOR direction = XMVectorSet(0.f, 0.f, 1.f, 1.f);
 
-		    direction = XMVector3Transform(direction, XMMatrixRotationQuaternion(trans.getWorldRotation().get_dx()));
+		    direction = XMVector3Transform(direction, XMMatrixRotationQuaternion(get_entity_world_rotation(scene, entity).get_dx()));
 
 		    light_instances.emplace_back(l.color, v3_f32(direction), l.intensity);
 		}
@@ -1074,9 +1071,8 @@ namespace sv {
 		    camera_ = get_main_camera(scene);
 		    if (camera_) {
 
-			Transform trans = get_entity_transform(scene, scene->main_camera);
-			cam_pos = trans.getWorldPosition();
-			cam_rot = trans.getWorldRotation();
+			cam_pos = get_entity_world_position(scene, scene->main_camera);
+			cam_rot = get_entity_world_rotation(scene, scene->main_camera);
 		    }
 		}
 
@@ -1144,8 +1140,7 @@ namespace sv {
 			    Mesh* m = mesh.mesh.get();
 			    if (m == nullptr) continue;
 
-			    Transform trans = get_entity_transform(scene, entity);
-			    mesh_instances.emplace_back(trans.getWorldMatrix(), m, mesh.material.get());
+			    mesh_instances.emplace_back(get_entity_world_matrix(scene, entity), m, mesh.material.get());
 			}
 		    }
 		    
