@@ -8,7 +8,7 @@
 
 #include <iostream>
 
-#include "core/engine.h"
+#include "user.h"
 
 namespace sv {
 
@@ -770,7 +770,7 @@ namespace sv {
 
     void _os_free_user_callbacks()
     {
-	engine.user = {};
+	_user_callbacks_set({});
 
 	if (platform.user_lib) {
 	    FreeLibrary(platform.user_lib);
@@ -780,6 +780,8 @@ namespace sv {
     
     void _os_update_user_callbacks(const char* dll)
     {
+	_user_callbacks_set({});
+	
 	if (platform.user_lib) {
 	    FreeLibrary(platform.user_lib);
 	    platform.user_lib = 0;
@@ -789,14 +791,18 @@ namespace sv {
 	
 	if (platform.user_lib) {
 
-	    engine.user.initialize = (UserInitializeFn)GetProcAddress(platform.user_lib, "user_initialize");
-	    engine.user.update = (UserUpdateFn)GetProcAddress(platform.user_lib, "user_update");
-	    engine.user.close = (UserCloseFn)GetProcAddress(platform.user_lib, "user_close");
-	    engine.user.validate_scene = (UserValidateSceneFn)GetProcAddress(platform.user_lib, "user_validate_scene");
-	    engine.user.get_scene_filepath = (UserGetSceneFilepathFn)GetProcAddress(platform.user_lib, "user_get_scene_filepath");
-	    engine.user.initialize_scene = (UserInitializeSceneFn)GetProcAddress(platform.user_lib, "user_initialize_scene");
-	    engine.user.close_scene = (UserCloseSceneFn)GetProcAddress(platform.user_lib, "user_close_scene");
-	    engine.user.serialize_scene = (UserSerializeSceneFn)GetProcAddress(platform.user_lib, "user_serialize_scene");
+	    UserCallbacks c = {};
+
+	    c.initialize = (UserInitializeFn)GetProcAddress(platform.user_lib, "user_initialize");
+	    c.update = (UserUpdateFn)GetProcAddress(platform.user_lib, "user_update");
+	    c.close = (UserCloseFn)GetProcAddress(platform.user_lib, "user_close");
+	    c.validate_scene = (UserValidateSceneFn)GetProcAddress(platform.user_lib, "user_validate_scene");
+	    c.get_scene_filepath = (UserGetSceneFilepathFn)GetProcAddress(platform.user_lib, "user_get_scene_filepath");
+	    c.initialize_scene = (UserInitializeSceneFn)GetProcAddress(platform.user_lib, "user_initialize_scene");
+	    c.close_scene = (UserCloseSceneFn)GetProcAddress(platform.user_lib, "user_close_scene");
+	    c.serialize_scene = (UserSerializeSceneFn)GetProcAddress(platform.user_lib, "user_serialize_scene");
+
+	    _user_callbacks_set(c);
 
 	    SV_LOG_INFO("User callbacks loaded");
 	}
