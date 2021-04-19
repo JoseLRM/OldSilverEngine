@@ -620,7 +620,7 @@ namespace sv {
 
     // RENDERER RUNTIME
 
-    bool renderer_initialize()
+    bool _renderer_initialize()
     {
 	SV_CHECK(compile_shaders());
 	SV_CHECK(create_renderpasses());
@@ -636,7 +636,7 @@ namespace sv {
 	return true;
     }
 
-    bool renderer_close()
+    bool _renderer_close()
     {
 	// Free graphics objects
 	graphics_destroy_struct(&gfx, sizeof(gfx));
@@ -658,7 +658,7 @@ namespace sv {
 	return true;
     }
 
-    void renderer_begin()
+    void _renderer_begin()
     {
 	CommandList cmd = graphics_commandlist_begin();
 
@@ -672,7 +672,7 @@ namespace sv {
 	graphics_scissor_set(gfx.offscreen, 0u, cmd);
     }
 
-    void renderer_end()
+    void _renderer_end()
     {
 	graphics_present_image(gfx.offscreen, GPUImageLayout_RenderTarget);
     }
@@ -999,7 +999,7 @@ namespace sv {
 	}
     }
 
-    void draw_scene()
+    void _draw_scene()
     {
 	Scene* scene = engine.scene;
 

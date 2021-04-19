@@ -1,9 +1,12 @@
-#include "platform/os.h"
 #include "core/engine.h"
-#include "debug/editor.h"
-#include "debug/console.h"
 #include "core/scene.h"
 #include "core/asset_system.h"
+#include "core/renderer.h"
+
+#include "platform/os.h"
+
+#include "debug/editor.h"
+#include "debug/console.h"
 
 namespace sv {
 
@@ -15,30 +18,6 @@ namespace sv {
     static Date last_user_lib_write = {};
     
 #endif
-    
-    
-    
-    bool graphics_initialize();
-    bool graphics_close();
-
-    bool renderer_initialize();
-    bool renderer_close();
-
-    void graphics_begin();
-    void graphics_end();
-    void renderer_begin();
-    void renderer_end();
-
-    bool close_scene(Scene* scene);
-    void close_assets();
-    void update_assets();
-    
-    bool initialize_scene(Scene** pscene, const char* name);
-    void update_scene();
-    void draw_scene();
-
-    void os_update_user_callbacks(const char* dll);
-    void os_free_user_callbacks();
 
     ////////////////////////////////////////////////////////////////// UPDATE DLL ////////////////////////////////////////////////////////////
 
@@ -72,14 +51,14 @@ namespace sv {
 	if (engine.user.close)
 	    engine.user.close(false);
 	
-	os_free_user_callbacks();
+	_os_free_user_callbacks();
 	
 	if (!file_copy(filepath, "system/game_bin/GameTemp.dll")) {
 	    SV_LOG_ERROR("Can't create temporal game dll");
 	    return;
 	}
 	
-	os_update_user_callbacks("system/game_bin/GameTemp.dll");
+	_os_update_user_callbacks("system/game_bin/GameTemp.dll");
 
 	if (!init && engine.user.initialize)
 	    engine.user.initialize(false);
@@ -337,7 +316,7 @@ namespace sv {
 	// TODO task_initialize();
 
 	// Initialize Graphics API
-	if (graphics_initialize()) {
+	if (_graphics_initialize()) {
 	    SV_LOG_INFO("Graphics API initialized");
 	}
 	else {
@@ -346,7 +325,7 @@ namespace sv {
 	}
 
 	// Initialize Renderer
-	if (renderer_initialize()) {
+	if (_renderer_initialize()) {
 	    SV_LOG_INFO("Renderer initialized");
 	}
 	else {
@@ -419,10 +398,10 @@ namespace sv {
 		break;
 	    }
 
-	    update_assets();
+	    _update_assets();
 	    
-	    graphics_begin();
-	    renderer_begin();
+	    _graphics_begin();
+	    _renderer_begin();
 
 	    // Scene management
 	    {
@@ -445,14 +424,14 @@ namespace sv {
 	    _console_update();
 	    _editor_update();
 	    
-	    update_scene();
+	    _update_scene();
 #else
-	    update_scene();
+	    _update_scene();
 #endif
     
 	    
             // Draw scene
-	    draw_scene();
+	    _draw_scene();
 	    
 	    // Draw editor and the console	    
 #if SV_DEV
@@ -460,8 +439,8 @@ namespace sv {
 	    _console_draw();
 #endif
 
-	    renderer_end();
-	    graphics_end();
+	    _renderer_end();
+	    _graphics_end();
 	}
 
 	SV_LOG_INFO("Closing %s", engine.name);
@@ -482,10 +461,10 @@ namespace sv {
         _editor_close();
 #endif
 
-	if (!renderer_close()) { SV_LOG_ERROR("Can't close render utils"); }
-	if (!graphics_close()) { SV_LOG_ERROR("Can't close graphicsAPI"); }
+	if (!_renderer_close()) { SV_LOG_ERROR("Can't close render utils"); }
+	if (!_graphics_close()) { SV_LOG_ERROR("Can't close graphicsAPI"); }
 	if (!_os_shutdown()) { SV_LOG_ERROR("Can't shutdown OS layer properly"); }
-	close_assets();
+	_close_assets();
 	// if (result_fail(task_close())) { SV_LOG_ERROR("Can't close the task system"); }
 
 #if SV_DEV

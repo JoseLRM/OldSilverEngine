@@ -90,6 +90,9 @@ namespace sv {
 	AssetPtr asset_ptr;						\
     }
 
+    void _close_assets();
+    void _update_assets();
+
     SV_API bool create_asset(AssetPtr& asset_ptr, const char* asset_type_name);
     SV_API bool load_asset_from_file(AssetPtr& asset_ptr, const char* filepath);
     SV_API void unload_asset(AssetPtr& asset_ptr);

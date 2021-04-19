@@ -34,9 +34,14 @@ namespace sv {
     };
 
     SV_API bool set_active_scene(const char* name);
+    SV_API bool initialize_scene(Scene** pscene, const char* name);
     SV_API bool save_scene(Scene* scene);
     SV_API bool save_scene(Scene* scene, const char* filepath);
     SV_API bool clear_scene(Scene* scene);
+    SV_API bool close_scene(Scene* scene);
+
+    void _update_scene();
+    void _draw_scene();
 
     SV_API bool create_entity_model(Scene* scene, Entity parent, const char* filepath);
 

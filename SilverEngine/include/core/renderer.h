@@ -5,6 +5,11 @@
 
 namespace sv {
 
+    bool _renderer_initialize();
+    bool _renderer_close();
+    void _renderer_begin();
+    void _renderer_end();
+
     // UTILS
 
     constexpr Format OFFSCREEN_FORMAT = Format_R8G8B8A8_UNORM;

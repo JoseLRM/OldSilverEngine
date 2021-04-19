@@ -745,7 +745,7 @@ namespace sv {
 	}
     }
 
-    void update_scene()
+    void _update_scene()
     {
 	Scene* scene_ = engine.scene;
 

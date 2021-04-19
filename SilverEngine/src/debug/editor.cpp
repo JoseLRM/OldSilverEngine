@@ -105,7 +105,7 @@ namespace sv {
 	
 	// Compile game code
 	if (input.keys[Key_F5] == InputState_Pressed)
-	    os_compile_gamecode();
+	    _os_compile_gamecode();
 	
 	if (dev.game_state != GameState_Play) {
 

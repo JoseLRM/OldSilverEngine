@@ -768,7 +768,7 @@ namespace sv {
 
     ////////////////////////////////////////////////////////////////// USER CALLBACKS /////////////////////////////////////////////////////////////
 
-    void os_free_user_callbacks()
+    void _os_free_user_callbacks()
     {
 	engine.user = {};
 
@@ -778,7 +778,7 @@ namespace sv {
 	}
     }
     
-    void os_update_user_callbacks(const char* dll)
+    void _os_update_user_callbacks(const char* dll)
     {
 	if (platform.user_lib) {
 	    FreeLibrary(platform.user_lib);
@@ -817,7 +817,7 @@ namespace sv {
 	free(ptr);
     }
 
-    void os_compile_gamecode()
+    void _os_compile_gamecode()
     {
 	system("system\\build_game.bat");
     }

@@ -58,7 +58,7 @@ namespace sv {
 	return res;
     }
 
-    void update_assets()
+    void _update_assets()
     {
 	check_time += engine.deltatime;
 
@@ -110,7 +110,7 @@ namespace sv {
 	}
     }
 
-    void close_assets()
+    void _close_assets()
     {
 	free_unused_assets();
 

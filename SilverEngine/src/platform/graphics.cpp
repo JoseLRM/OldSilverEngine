@@ -23,7 +23,7 @@ namespace sv {
     static List<Primitive*> primitives_to_destroy;
     static std::mutex primitives_to_destroy_mutex;
 
-    bool graphics_initialize()
+    bool _graphics_initialize()
     {
 	bool res;
 
@@ -131,7 +131,7 @@ namespace sv {
 
     static void destroy_primitives();
 
-    bool graphics_close()
+    bool _graphics_close()
     {
 	graphics_destroy(g_DefBlendState);
 	graphics_destroy(g_DefDepthStencilState);
@@ -355,7 +355,7 @@ namespace sv {
 	primitives_to_destroy.clear();
     }
 
-    void graphics_begin()
+    void _graphics_begin()
     {
 	if (engine.frame_count % 20u == 0u) {
 	    destroy_primitives();
@@ -366,7 +366,7 @@ namespace sv {
 	g_Device.frame_begin();
     }
 
-    void graphics_end()
+    void _graphics_end()
     {
 	g_Device.frame_end();
     }

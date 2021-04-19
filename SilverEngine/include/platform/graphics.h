@@ -557,160 +557,165 @@ namespace sv {
 
     typedef u32 CommandList;
 
-    GraphicsAPI graphics_api_get();
+    bool _graphics_initialize();
+    bool _graphics_close();
+    void _graphics_begin();
+    void _graphics_end();
 
-    void graphics_present_image(GPUImage* image, GPUImageLayout layout);
+    SV_API GraphicsAPI graphics_api_get();
+
+    SV_API void graphics_present_image(GPUImage* image, GPUImageLayout layout);
 
     // Hash functions
 
-    size_t graphics_compute_hash_inputlayoutstate(const InputLayoutStateDesc* desc);
-    size_t graphics_compute_hash_blendstate(const BlendStateDesc* desc);
-    size_t graphics_compute_hash_rasterizerstate(const RasterizerStateDesc* desc);
-    size_t graphics_compute_hash_depthstencilstate(const DepthStencilStateDesc* desc);
+    SV_API size_t graphics_compute_hash_inputlayoutstate(const InputLayoutStateDesc* desc);
+    SV_API size_t graphics_compute_hash_blendstate(const BlendStateDesc* desc);
+    SV_API size_t graphics_compute_hash_rasterizerstate(const RasterizerStateDesc* desc);
+    SV_API size_t graphics_compute_hash_depthstencilstate(const DepthStencilStateDesc* desc);
 
     // Primitives
     
-    bool graphics_buffer_create(const GPUBufferDesc* desc, GPUBuffer** buffer);
-    bool graphics_shader_create(const ShaderDesc* desc, Shader** shader);
-    bool graphics_image_create(const GPUImageDesc* desc, GPUImage** image);
-    bool graphics_sampler_create(const SamplerDesc* desc, Sampler** sampler);
-    bool graphics_renderpass_create(const RenderPassDesc* desc, RenderPass** renderPass);
-    bool graphics_inputlayoutstate_create(const InputLayoutStateDesc* desc, InputLayoutState** inputLayoutState);
-    bool graphics_blendstate_create(const BlendStateDesc* desc, BlendState** blendState);
-    bool graphics_depthstencilstate_create(const DepthStencilStateDesc* desc, DepthStencilState** depthStencilState);
-    bool graphics_rasterizerstate_create(const RasterizerStateDesc* desc, RasterizerState** rasterizerState);
+    SV_API bool graphics_buffer_create(const GPUBufferDesc* desc, GPUBuffer** buffer);
+    SV_API bool graphics_shader_create(const ShaderDesc* desc, Shader** shader);
+    SV_API bool graphics_image_create(const GPUImageDesc* desc, GPUImage** image);
+    SV_API bool graphics_sampler_create(const SamplerDesc* desc, Sampler** sampler);
+    SV_API bool graphics_renderpass_create(const RenderPassDesc* desc, RenderPass** renderPass);
+    SV_API bool graphics_inputlayoutstate_create(const InputLayoutStateDesc* desc, InputLayoutState** inputLayoutState);
+    SV_API bool graphics_blendstate_create(const BlendStateDesc* desc, BlendState** blendState);
+    SV_API bool graphics_depthstencilstate_create(const DepthStencilStateDesc* desc, DepthStencilState** depthStencilState);
+    SV_API bool graphics_rasterizerstate_create(const RasterizerStateDesc* desc, RasterizerState** rasterizerState);
 
-    void graphics_destroy(Primitive* primitive);
+    SV_API void graphics_destroy(Primitive* primitive);
 	
-    void graphics_destroy_struct(void* data, size_t size);
+    SV_API void graphics_destroy_struct(void* data, size_t size);
 
     // CommandList functions
 
-    CommandList graphics_commandlist_begin();
-    CommandList graphics_commandlist_last();
-    CommandList graphics_commandlist_get();
-    u32			graphics_commandlist_count();
+    SV_API CommandList graphics_commandlist_begin();
+    SV_API CommandList graphics_commandlist_last();
+    SV_API CommandList graphics_commandlist_get();
+    SV_API u32	       graphics_commandlist_count();
 
-    void graphics_gpu_wait();
+    SV_API void graphics_gpu_wait();
 
     // Resource functions
 
-    void graphics_resources_unbind(CommandList cmd);
+    SV_API void graphics_resources_unbind(CommandList cmd);
 
-    void graphics_vertexbuffer_bind_array(GPUBuffer** buffers, u32* offsets, u32 count, u32 beginSlot, CommandList cmd);
-    void graphics_vertexbuffer_bind(GPUBuffer* buffer, u32 offset, u32 slot, CommandList cmd);
-    void graphics_vertexbuffer_unbind(u32 slot, CommandList cmd);
-    void graphics_vertexbuffer_unbind_commandlist(CommandList cmd);
+    SV_API void graphics_vertexbuffer_bind_array(GPUBuffer** buffers, u32* offsets, u32 count, u32 beginSlot, CommandList cmd);
+    SV_API void graphics_vertexbuffer_bind(GPUBuffer* buffer, u32 offset, u32 slot, CommandList cmd);
+    SV_API void graphics_vertexbuffer_unbind(u32 slot, CommandList cmd);
+    SV_API void graphics_vertexbuffer_unbind_commandlist(CommandList cmd);
 	
-    void graphics_indexbuffer_bind(GPUBuffer* buffer, u32 offset, CommandList cmd);
-    void graphics_indexbuffer_unbind(CommandList cmd);
+    SV_API void graphics_indexbuffer_bind(GPUBuffer* buffer, u32 offset, CommandList cmd);
+    SV_API void graphics_indexbuffer_unbind(CommandList cmd);
 
-    void graphics_constantbuffer_bind_array(GPUBuffer** buffers, u32 count, u32 beginSlot, ShaderType shaderType, CommandList cmd);
-    void graphics_constantbuffer_bind(GPUBuffer* buffer, u32 slot, ShaderType shaderType, CommandList cmd);
-    void graphics_constantbuffer_unbind(u32 slot, ShaderType shaderType, CommandList cmd);
-    void graphics_constantbuffer_unbind_shader(ShaderType shaderType, CommandList cmd);
-    void graphics_constantbuffer_unbind_commandlist(CommandList cmd);
+    SV_API void graphics_constantbuffer_bind_array(GPUBuffer** buffers, u32 count, u32 beginSlot, ShaderType shaderType, CommandList cmd);
+    SV_API void graphics_constantbuffer_bind(GPUBuffer* buffer, u32 slot, ShaderType shaderType, CommandList cmd);
+    SV_API void graphics_constantbuffer_unbind(u32 slot, ShaderType shaderType, CommandList cmd);
+    SV_API void graphics_constantbuffer_unbind_shader(ShaderType shaderType, CommandList cmd);
+    SV_API void graphics_constantbuffer_unbind_commandlist(CommandList cmd);
 
-    void graphics_image_bind_array(GPUImage** images, u32 count, u32 beginSlot, ShaderType shaderType, CommandList cmd);
-    void graphics_image_bind(GPUImage* image, u32 slot, ShaderType shaderType, CommandList cmd);
-    void graphics_image_unbind(u32 slot, ShaderType shaderType, CommandList cmd);
-    void graphics_image_unbind_shader(ShaderType shaderType, CommandList cmd);
-    void graphics_image_unbind_commandlist(CommandList cmd);
+    SV_API void graphics_image_bind_array(GPUImage** images, u32 count, u32 beginSlot, ShaderType shaderType, CommandList cmd);
+    SV_API void graphics_image_bind(GPUImage* image, u32 slot, ShaderType shaderType, CommandList cmd);
+    SV_API void graphics_image_unbind(u32 slot, ShaderType shaderType, CommandList cmd);
+    SV_API void graphics_image_unbind_shader(ShaderType shaderType, CommandList cmd);
+    SV_API void graphics_image_unbind_commandlist(CommandList cmd);
 
-    void graphics_sampler_bind_array(Sampler** samplers, u32 count, u32 beginSlot, ShaderType shaderType, CommandList cmd);
-    void graphics_sampler_bind(Sampler* sampler, u32 slot, ShaderType shaderType, CommandList cmd);
-    void graphics_sampler_unbind(u32 slot, ShaderType shaderType, CommandList cmd);
-    void graphics_sampler_unbind_shader(ShaderType shaderType, CommandList cmd);
-    void graphics_sampler_unbind_commandlist(CommandList cmd);
+    SV_API void graphics_sampler_bind_array(Sampler** samplers, u32 count, u32 beginSlot, ShaderType shaderType, CommandList cmd);
+    SV_API void graphics_sampler_bind(Sampler* sampler, u32 slot, ShaderType shaderType, CommandList cmd);
+    SV_API void graphics_sampler_unbind(u32 slot, ShaderType shaderType, CommandList cmd);
+    SV_API void graphics_sampler_unbind_shader(ShaderType shaderType, CommandList cmd);
+    SV_API void graphics_sampler_unbind_commandlist(CommandList cmd);
 
     // State functions
 
-    void graphics_state_unbind(CommandList cmd);
+    SV_API void graphics_state_unbind(CommandList cmd);
 
-    void graphics_shader_bind(Shader* shader, CommandList cmd);
-    void graphics_inputlayoutstate_bind(InputLayoutState* inputLayoutState, CommandList cmd);
-    void graphics_blendstate_bind(BlendState* blendState, CommandList cmd);
-    void graphics_depthstencilstate_bind(DepthStencilState* depthStencilState, CommandList cmd);
-    void graphics_rasterizerstate_bind(RasterizerState* rasterizerState, CommandList cmd);
+    SV_API void graphics_shader_bind(Shader* shader, CommandList cmd);
+    SV_API void graphics_inputlayoutstate_bind(InputLayoutState* inputLayoutState, CommandList cmd);
+    SV_API void graphics_blendstate_bind(BlendState* blendState, CommandList cmd);
+    SV_API void graphics_depthstencilstate_bind(DepthStencilState* depthStencilState, CommandList cmd);
+    SV_API void graphics_rasterizerstate_bind(RasterizerState* rasterizerState, CommandList cmd);
 
-    void graphics_shader_unbind(ShaderType shaderType, CommandList cmd);
-    void graphics_shader_unbind_commandlist(CommandList cmd);
-    void graphics_inputlayoutstate_unbind(CommandList cmd);
-    void graphics_blendstate_unbind(CommandList cmd);
-    void graphics_depthstencilstate_unbind(CommandList cmd);
-    void graphics_rasterizerstate_unbind(CommandList cmd);
+    SV_API void graphics_shader_unbind(ShaderType shaderType, CommandList cmd);
+    SV_API void graphics_shader_unbind_commandlist(CommandList cmd);
+    SV_API void graphics_inputlayoutstate_unbind(CommandList cmd);
+    SV_API void graphics_blendstate_unbind(CommandList cmd);
+    SV_API void graphics_depthstencilstate_unbind(CommandList cmd);
+    SV_API void graphics_rasterizerstate_unbind(CommandList cmd);
 
-    void graphics_mode_set(GraphicsPipelineMode mode, CommandList cmd);
-    void graphics_topology_set(GraphicsTopology topology, CommandList cmd);
-    void graphics_stencil_reference_set(u32 ref, CommandList cmd);
-    void graphics_line_width_set(float lineWidth, CommandList cmd);
+    SV_API void graphics_mode_set(GraphicsPipelineMode mode, CommandList cmd);
+    SV_API void graphics_topology_set(GraphicsTopology topology, CommandList cmd);
+    SV_API void graphics_stencil_reference_set(u32 ref, CommandList cmd);
+    SV_API void graphics_line_width_set(float lineWidth, CommandList cmd);
 
-    GraphicsPipelineMode	graphics_mode_get(CommandList cmd);
+    SV_API GraphicsPipelineMode graphics_mode_get(CommandList cmd);
     GraphicsTopology		graphics_topology_get(CommandList cmd);
-    u32						graphics_stencil_reference_get(CommandList cmd);
-    float					graphics_line_width_get(CommandList cmd);
+    u32				graphics_stencil_reference_get(CommandList cmd);
+    float			graphics_line_width_get(CommandList cmd);
 
-    void graphics_viewport_set(const Viewport* viewports, u32 count, CommandList cmd);
-    void graphics_viewport_set(const Viewport& viewport, u32 slot, CommandList cmd);
-    void graphics_viewport_set(GPUImage* image, u32 slot, CommandList cmd);
-    void graphics_scissor_set(const Scissor* scissors, u32 count, CommandList cmd);
-    void graphics_scissor_set(const Scissor& scissor, u32 slot, CommandList cmd);
-    void graphics_scissor_set(GPUImage* image, u32 slot, CommandList cmd);
+    SV_API void graphics_viewport_set(const Viewport* viewports, u32 count, CommandList cmd);
+    SV_API void graphics_viewport_set(const Viewport& viewport, u32 slot, CommandList cmd);
+    SV_API void graphics_viewport_set(GPUImage* image, u32 slot, CommandList cmd);
+    SV_API void graphics_scissor_set(const Scissor* scissors, u32 count, CommandList cmd);
+    SV_API void graphics_scissor_set(const Scissor& scissor, u32 slot, CommandList cmd);
+    SV_API void graphics_scissor_set(GPUImage* image, u32 slot, CommandList cmd);
 
-    Viewport graphics_viewport_get(u32 slot, CommandList cmd);
-    Scissor	 graphics_scissor_get(u32 slot, CommandList cmd);
+    SV_API Viewport graphics_viewport_get(u32 slot, CommandList cmd);
+    SV_API Scissor  graphics_scissor_get(u32 slot, CommandList cmd);
 
-    Viewport			graphics_image_viewport(const GPUImage* image);
-    Scissor				graphics_image_scissor(const GPUImage* image);
+    SV_API Viewport graphics_image_viewport(const GPUImage* image);
+    SV_API Scissor  graphics_image_scissor(const GPUImage* image);
 
     // Info
 
-    const GPUBufferInfo&			graphics_buffer_info(const GPUBuffer* buffer);
-    const GPUImageInfo&				graphics_image_info(const GPUImage* image);
-    const ShaderInfo&				graphics_shader_info(const Shader* shader);
-    const RenderPassInfo&			graphics_renderpass_info(const RenderPass* renderpass);
-    const SamplerInfo&				graphics_sampler_info(const Sampler* sampler);
-    const InputLayoutStateInfo&		graphics_inputlayoutstate_info(const InputLayoutState* ils);
-    const BlendStateInfo&			graphics_blendstate_info(const BlendState* blendstate);
-    const RasterizerStateInfo&		graphics_rasterizerstate_info(const RasterizerState* rasterizer);
-    const DepthStencilStateInfo&	graphics_depthstencilstate_info(const DepthStencilState* dss);
+    SV_API const GPUBufferInfo&		graphics_buffer_info(const GPUBuffer* buffer);
+    SV_API const GPUImageInfo&		graphics_image_info(const GPUImage* image);
+    SV_API const ShaderInfo&		graphics_shader_info(const Shader* shader);
+    SV_API const RenderPassInfo&	graphics_renderpass_info(const RenderPass* renderpass);
+    SV_API const SamplerInfo&		graphics_sampler_info(const Sampler* sampler);
+    SV_API const InputLayoutStateInfo&	graphics_inputlayoutstate_info(const InputLayoutState* ils);
+    SV_API const BlendStateInfo&	graphics_blendstate_info(const BlendState* blendstate);
+    SV_API const RasterizerStateInfo&	graphics_rasterizerstate_info(const RasterizerState* rasterizer);
+    SV_API const DepthStencilStateInfo&	graphics_depthstencilstate_info(const DepthStencilState* dss);
 
     // Resource getters
 
-    GPUImage* graphics_image_get(u32 slot, ShaderType shader_type, CommandList cmd);
+    SV_API GPUImage* graphics_image_get(u32 slot, ShaderType shader_type, CommandList cmd);
 
     // RenderPass functions
 
-    void graphics_renderpass_begin(RenderPass* renderPass, GPUImage** attachments, const Color* colors, float depth, u32 stencil, CommandList cmd);
-    void graphics_renderpass_begin(RenderPass* renderPass, GPUImage** attachments, CommandList cmd);
-    void graphics_renderpass_end(CommandList cmd);
+    SV_API void graphics_renderpass_begin(RenderPass* renderPass, GPUImage** attachments, const Color* colors, float depth, u32 stencil, CommandList cmd);
+    SV_API void graphics_renderpass_begin(RenderPass* renderPass, GPUImage** attachments, CommandList cmd);
+    SV_API void graphics_renderpass_end(CommandList cmd);
 
     // Draw Calls
 
-    void graphics_draw(u32 vertexCount, u32 instanceCount, u32 startVertex, u32 startInstance, CommandList cmd);
-    void graphics_draw_indexed(u32 indexCount, u32 instanceCount, u32 startIndex, u32 startVertex, u32 startInstance, CommandList cmd);
+    SV_API void graphics_draw(u32 vertexCount, u32 instanceCount, u32 startVertex, u32 startInstance, CommandList cmd);
+    SV_API void graphics_draw_indexed(u32 indexCount, u32 instanceCount, u32 startIndex, u32 startVertex, u32 startInstance, CommandList cmd);
 
     // Memory
 
-    void graphics_buffer_update(GPUBuffer* buffer, const void* pData, u32 size, u32 offset, CommandList cmd);
-    void graphics_barrier(const GPUBarrier* barriers, u32 count, CommandList cmd);
-    void graphics_image_blit(GPUImage* src, GPUImage* dst, GPUImageLayout srcLayout, GPUImageLayout dstLayout, u32 count, const GPUImageBlit* imageBlit, SamplerFilter filter, CommandList cmd);
-    void graphics_image_clear(GPUImage* image, GPUImageLayout oldLayout, GPUImageLayout newLayout, Color clearColor, float depth, u32 stencil, CommandList cmd); // Not use if necessary, renderpasses have best performance!!
+    SV_API void graphics_buffer_update(GPUBuffer* buffer, const void* pData, u32 size, u32 offset, CommandList cmd);
+    SV_API void graphics_barrier(const GPUBarrier* barriers, u32 count, CommandList cmd);
+    SV_API void graphics_image_blit(GPUImage* src, GPUImage* dst, GPUImageLayout srcLayout, GPUImageLayout dstLayout, u32 count, const GPUImageBlit* imageBlit, SamplerFilter filter, CommandList cmd);
+    SV_API void graphics_image_clear(GPUImage* image, GPUImageLayout oldLayout, GPUImageLayout newLayout, Color clearColor, float depth, u32 stencil, CommandList cmd); // Not use if necessary, renderpasses have best performance!!
 
     // Shader utils
 
-    bool graphics_shader_compile_string(const ShaderCompileDesc* desc, const char* str, u32 size, List<u8>& data);
-    bool graphics_shader_compile_file(const ShaderCompileDesc* desc, const char* srcPath, List<u8>& data);
+    SV_API bool graphics_shader_compile_string(const ShaderCompileDesc* desc, const char* str, u32 size, List<u8>& data);
+    SV_API bool graphics_shader_compile_file(const ShaderCompileDesc* desc, const char* srcPath, List<u8>& data);
 	
     /*
       Compiles the shader if doesn't exist in the bin file
     */
-    bool graphics_shader_compile_fastbin_from_string(const char* name, ShaderType shaderType, Shader** pShader, const char* src, bool alwaisCompile = false);
-    bool graphics_shader_compile_fastbin_from_file(const char* name, ShaderType shaderType, Shader** pShader, const char* filePath, bool alwaisCompile = false);
+    SV_API bool graphics_shader_compile_fastbin_from_string(const char* name, ShaderType shaderType, Shader** pShader, const char* src, bool alwaisCompile = false);
+    SV_API bool graphics_shader_compile_fastbin_from_file(const char* name, ShaderType shaderType, Shader** pShader, const char* filePath, bool alwaisCompile = false);
 
-    bool graphics_shader_include_write(const char* name, const char* str);
+    SV_API bool graphics_shader_include_write(const char* name, const char* str);
 
-    u32 graphics_shader_attribute_size(ShaderAttributeType type);
+    SV_API u32 graphics_shader_attribute_size(ShaderAttributeType type);
 
     // Assets
 
@@ -730,9 +735,9 @@ namespace sv {
 
 #if SV_GFX
 
-    void graphics_event_begin(const char* name, CommandList cmd);
-    void graphics_event_mark(const char* name, CommandList cmd);
-    void graphics_event_end(CommandList cmd);
+    SV_API void graphics_event_begin(const char* name, CommandList cmd);
+    SV_API void graphics_event_mark(const char* name, CommandList cmd);
+    SV_API void graphics_event_end(CommandList cmd);
 
     void graphics_name_set(Primitive* primitive, const char* name);
 

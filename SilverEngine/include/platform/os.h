@@ -111,6 +111,8 @@ namespace sv {
     bool _os_startup();
     void _os_recive_input();
     bool _os_shutdown();
+    void _os_update_user_callbacks(const char* dll);
+    void _os_free_user_callbacks();
     
     enum MouseButton : u32 {
 	MouseButton_Left,
