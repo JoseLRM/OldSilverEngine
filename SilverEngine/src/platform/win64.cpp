@@ -456,7 +456,7 @@ namespace sv {
 
 	if (*psize == 0u) return false;
 	
-	*pdata = (u8*)allocate_memory(*psize);
+	*pdata = (u8*)SV_ALLOCATE_MEMORY(*psize);
 	SetFilePointer(file, NULL, NULL, FILE_BEGIN);
 	ReadFile(file, (void*)*pdata, size, NULL, NULL);
 	
@@ -499,7 +499,7 @@ namespace sv {
 	if (size == 0u) return false;
 	
 	*psize = (size_t)size;
-	*pstr = (char*)allocate_memory(size);
+	*pstr = (char*)SV_ALLOCATE_MEMORY(size);
 	SetFilePointer(file, NULL, NULL, FILE_BEGIN);
 	ReadFile(file, *pstr, size, NULL, NULL);
 	
@@ -805,14 +805,14 @@ namespace sv {
 
     // Memory
     
-    void* allocate_memory(size_t size)
+    void* _allocate_memory(size_t size)
     {
 	void* ptr = nullptr;
 	while (ptr == nullptr) ptr = malloc(size);
 	return ptr;
     }
     
-    void free_memory(void* ptr)
+    void _free_memory(void* ptr)
     {
 	free(ptr);
     }

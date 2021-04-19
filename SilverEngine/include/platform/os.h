@@ -19,9 +19,17 @@ namespace sv {
 
        void system_pause();
     */
+    
+    SV_API void* _allocate_memory(size_t size);
+    SV_API void _free_memory(void* ptr);
 
-    SV_API void* allocate_memory(size_t size);
-    SV_API void free_memory(void* ptr);
+#define SV_ALLOCATE_MEMORY(size) sv::_allocate_memory(size)
+#define SV_FREE_MEMORY(ptr) sv::_free_memory(ptr)
+    
+#define SV_ALLOCATE_STRUCT(type) new(SV_ALLOCATE_MEMORY(sizeof(type))) type()
+#define SV_ALLOCATE_STRUCT_ARRAY(type, count) new(SV_ALLOCATE_MEMORY(sizeof(type) * size_t(count))) type[size_t(count)]
+#define SV_FREE_STRUCT(ptr) do { ptr->~T(); SV_FREE_MEMORY(ptr); } while(0)
+#define SV_FREE_STRUCT_ARRAY(ptr, count) do { foreach(i, count) ptr[i].~T(); SV_FREE_MEMORY(ptr); } while(0)
 
     // Timer
 

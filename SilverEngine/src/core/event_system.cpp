@@ -27,8 +27,7 @@ namespace sv {
 
     bool _event_initialize()
     {
-	void* ptr = allocate_memory(sizeof(EventSystemState));
-	event_system = new(ptr) EventSystemState();
+	event_system = SV_ALLOCATE_STRUCT(EventSystemState);
 	    
 	return true;
     }

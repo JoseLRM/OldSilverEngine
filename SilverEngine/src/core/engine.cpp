@@ -2,6 +2,7 @@
 #include "core/scene.h"
 #include "core/asset_system.h"
 #include "core/renderer.h"
+#include "core/event_system.h"
 
 #include "platform/os.h"
 
@@ -303,6 +304,11 @@ namespace sv {
 #endif
 
 	SV_LOG_INFO("Initializing %s", engine.name);
+
+	if (!_event_initialize()) {
+	    SV_LOG_ERROR("Can't initialize event system");
+	    return;
+	}
 	
 	if (_os_startup()) {
 	    SV_LOG_INFO("OS layer initialized");
@@ -453,7 +459,6 @@ namespace sv {
 	}
 	
 	if (engine.scene) close_scene(engine.scene);
-	//TODO svCheck(engine.callbacks.close());
 
 	free_unused_assets();
 
@@ -466,6 +471,8 @@ namespace sv {
 	if (!_os_shutdown()) { SV_LOG_ERROR("Can't shutdown OS layer properly"); }
 	_close_assets();
 	// if (result_fail(task_close())) { SV_LOG_ERROR("Can't close the task system"); }
+
+	_event_close();
 
 #if SV_DEV
 	_console_close();
