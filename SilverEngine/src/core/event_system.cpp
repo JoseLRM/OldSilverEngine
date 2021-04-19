@@ -37,8 +37,7 @@ namespace sv {
     {
 	if (event_system) {
 
-	    event_system->~EventSystemState();
-	    free_memory(event_system);
+	    SV_FREE_STRUCT(EventSystemState, event_system);
 	    event_system = nullptr;
 	}
 	
@@ -62,9 +61,9 @@ namespace sv {
 
 		    EventRegister& reg = type.registers[i];
 		    
-		    if (reg.flags & flags == flags) {
+		    if ((reg.flags & flags) == flags) {
 
-			reg.registers.erase(i);
+			type.registers.erase(i);
 		    }
 		    else ++i;
 		}
@@ -83,9 +82,10 @@ namespace sv {
 	    hash = (u64(*name) * 0xF39A3B382DE) >> 16;
 	    ++name;
 	}
+	return hash;
     }
 
-    SV_AUX EventType* find_type(const char* event_name)
+    SV_AUX EventType* find_type(const char* event_name, bool log_not_found)
     {
 	size_t event_name_size = strlen(event_name);
 
@@ -101,7 +101,10 @@ namespace sv {
 	auto it = event_system->event_map.find(hash);
 
 	if (it == event_system->event_map.end()) {
-	    SV_LOG_ERROR("Event '%s' not found", event_name);
+
+	    if (log_not_found)
+		SV_LOG_ERROR("Event '%s' not found", event_name);
+	    
 	    return nullptr;
 	}
 	
@@ -139,7 +142,7 @@ namespace sv {
 		}
 	    }
 
-	    EventRegister& reg = reg.registers.emplace_back();
+	    EventRegister& reg = type.registers.emplace_back();
 	    reg.function = event;
 	    reg.flags = flags;
 	    SV_ZERO_MEMORY(reg.data, REGISTER_DATA_SIZE);
@@ -154,9 +157,9 @@ namespace sv {
     
     bool _event_unregister(const char* event_name, EventFn event)
     {
-	EventType* type = find_type(event_name);
+	EventType* type = find_type(event_name, true);
 
-	if (type == nullptr) return;
+	if (type == nullptr) return false;
 
 	{
 	    std::lock_guard<std::mutex> lock(type->mutex);
@@ -177,7 +180,7 @@ namespace sv {
     
     void event_dispatch(const char* event_name, void* data)
     {
-	EventType* type = find_type(event_name);
+	EventType* type = find_type(event_name, false);
 
 	if (type == nullptr) return;
 

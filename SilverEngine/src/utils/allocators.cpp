@@ -67,7 +67,7 @@ namespace sv {
     void RawList::clear()
     {
 	if (_data != nullptr) {
-	    free_memory(_data);
+	    SV_FREE_MEMORY(_data);
 	    _data = nullptr;
 	}
 	_size = 0u;
@@ -76,12 +76,12 @@ namespace sv {
 
     void RawList::_reallocate(size_t size)
     {
-	u8* new_data = (u8*)allocate_memory(size);
+	u8* new_data = (u8*)SV_ALLOCATE_MEMORY(size);
 		
 	if (_data) {
 
 	    memcpy(new_data, _data, _size);
-	    free_memory(_data);
+	    SV_FREE_MEMORY(_data);
 	}
 
 	_data = new_data;

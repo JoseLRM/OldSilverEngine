@@ -3,6 +3,8 @@
 
 #include "debug/console.h"
 
+#include "user.h"
+
 #define PREFAB_COMPONENT_FLAG SV_BIT(31ULL)
 
 namespace sv {
@@ -129,7 +131,7 @@ namespace sv {
 	    // Get filepath
 	    char filepath[FILEPATH_SIZE];
 
-	    bool exist = user_get_scene_filepath(name, filepath);
+	    bool exist = _user_get_scene_filepath(name, filepath);
 
 	    if (exist) {
 
@@ -332,7 +334,7 @@ namespace sv {
 	}
 
 	// User Init
-	if (!user_initialize_scene(scene_, deserialize ? &archive : nullptr)) {
+	if (!_user_initialize_scene(scene_, deserialize ? &archive : nullptr)) {
 	    // TODO: handle error
 	    return false;
 	}
@@ -346,7 +348,7 @@ namespace sv {
 	PARSE_SCENE();
 
 	// User close TODO: Handle error
-	user_close_scene(scene_);
+	_user_close_scene(scene_);
 
 	gui_destroy(scene.gui);
 	//destroy_audio_device(scene.audio_device);
@@ -375,7 +377,7 @@ namespace sv {
 	}
 	
 	// validate scene
-	if (user_validate_scene(name)) {
+	if (_user_validate_scene(name)) {
 	    memcpy(engine.next_scene_name, name, name_size + 1u);
 	    return true;
 	}
@@ -385,7 +387,7 @@ namespace sv {
     SV_API bool save_scene(Scene* scene)
     {
 	char filepath[FILEPATH_SIZE];
-	if (user_get_scene_filepath(scene->name, filepath)) {
+	if (_user_get_scene_filepath(scene->name, filepath)) {
 
 	    return save_scene(scene, filepath);
 	}
@@ -471,7 +473,7 @@ namespace sv {
 	    }
 	}
 
-	user_serialize_scene(scene_, &archive);
+	_user_serialize_scene(scene_, &archive);
 		
 	return archive.saveFile(filepath);
     }
@@ -493,7 +495,7 @@ namespace sv {
 	entity_clear(scene.entityData);
 
 	// user initialize scene
-	SV_CHECK(user_initialize_scene(scene_, nullptr));
+	SV_CHECK(_user_initialize_scene(scene_, nullptr));
 
 	return true;
     }
@@ -632,10 +634,10 @@ namespace sv {
 	    // Gravity
 	    body.vel += scene.gravity * dt;
 	
-	    BodyComponent* vertical_collision = nullptr;
+	    ComponentView<BodyComponent> vertical_collision = {};
 	    f32 vertical_depth = f32_max;
 	
-	    BodyComponent* horizontal_collision = nullptr;
+	    ComponentView<BodyComponent> horizontal_collision = {};
 	    f32 horizontal_depth = f32_max;
 	    f32 vertical_offset = 0.f; // Used to avoid the small bumps
 
@@ -685,7 +687,8 @@ namespace sv {
 
 				    if (depth.y < abs(vertical_depth)) {
 			    
-					vertical_collision = &b;
+					vertical_collision.comp = &b;
+					vertical_collision.entity = v.entity;
 					vertical_depth = depth.y * ((next_pos.y < p.y) ? -1.f : 1.f);
 				    }
 				}
@@ -695,7 +698,8 @@ namespace sv {
 
 				    if (depth.x < abs(horizontal_depth)) {
 				    
-					horizontal_collision = &b;
+					horizontal_collision.comp = &b;
+					horizontal_collision.entity = v.entity;
 					horizontal_depth = depth.x * ((next_pos.x < p.x) ? -1.f : 1.f);
 
 					if (depth.y < scale.y * 0.05f && next_pos.y > p.y) {
@@ -707,31 +711,31 @@ namespace sv {
 			}
 		    }
 
-		    if (vertical_collision || horizontal_collision)
+		    if (vertical_collision.comp || horizontal_collision.comp)
 			break;
 		}
 
 		// Solve collisions
-		if (vertical_collision) {
+		if (vertical_collision.comp) {
 
 		    if (vertical_depth > 0.f) {
 
 			body.in_ground = true;
 			// Ground friction
-			next_vel.x *= pow(1.f - vertical_collision->friction, dt);
+			next_vel.x *= pow(1.f - vertical_collision.comp->friction, dt);
 		    }
 
 		    next_pos.y += vertical_depth;
 		    next_vel.y = next_vel.y * -body.bounciness;
-
+		    
 		    BodyCollisionEvent event;
-		    event.body0 = &body;
+		    event.body0 = view;
 		    event.body1 = vertical_collision;
 
-		    event_dispatch("on_body_collision", event);
+		    event_dispatch("on_body_collision", &event);
 		}
 
-		if (horizontal_collision) {
+		if (horizontal_collision.comp) {
 		
 		    next_pos.x += horizontal_depth;
 		    if (vertical_offset != 0.f)
@@ -740,10 +744,10 @@ namespace sv {
 			next_vel.x = next_vel.x * -body.bounciness;
 
 		    BodyCollisionEvent event;
-		    event.body0 = &body;
+		    event.body0 = view;
 		    event.body1 = horizontal_collision;
 
-		    event_dispatch("on_body_collision", event);
+		    event_dispatch("on_body_collision", &event);
 		}
 
 		// Air friction
@@ -802,11 +806,9 @@ namespace sv {
 	if (dev.game_state != GameState_Play)
 	    return;
 #endif
-
-	// User update
-	if (engine.user.update)
-	    engine.user.update();
-
+	
+	_user_update();
+	    
 	update_physics();
     }
 

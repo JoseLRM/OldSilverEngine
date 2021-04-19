@@ -145,7 +145,7 @@ namespace sv {
 		else ++it;
 	    }
 	    
-	    free_memory(text);
+	    SV_FREE_MEMORY(text);
 	    return true;
 	}
 	return false;

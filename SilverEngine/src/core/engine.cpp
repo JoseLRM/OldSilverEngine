@@ -6,6 +6,8 @@
 
 #include "platform/os.h"
 
+#include "user.h"
+
 #include "debug/editor.h"
 #include "debug/console.h"
 
@@ -48,9 +50,8 @@ namespace sv {
 	get_usercode_filepath(filepath);
 	
 #if SV_DEV
-
-	if (engine.user.close)
-	    engine.user.close(false);
+	
+	_user_close(false);
 
 	event_unregister_flags(EventFlag_User);
 	_os_free_user_callbacks();
@@ -62,8 +63,8 @@ namespace sv {
 	
 	_os_update_user_callbacks("system/game_bin/GameTemp.dll");
 
-	if (!init && engine.user.initialize)
-	    engine.user.initialize(false);
+	if (!init)
+	    _user_initialize(false);
 
 	Date date;
 	if (file_date(filepath, nullptr, &date, nullptr)) {
@@ -366,10 +367,8 @@ namespace sv {
 	recive_user_callbacks(true);
 
 	// User init
-	if (engine.user.initialize) {
-	    if (!engine.user.initialize(true)) {
-		engine.running = false;
-	    }
+	if (!_user_initialize(true)) {
+	    engine.running = false;
 	}
 	
 	while (engine.running) {
@@ -453,10 +452,9 @@ namespace sv {
 	SV_LOG_INFO("Closing %s", engine.name);
 
 	// User close
-	if (engine.user.close) {
-		if (!engine.user.close(true)) {
-			SV_LOG_ERROR("User can't close successfully");
-		}
+	if (!_user_close(true)) {
+	    
+	    SV_LOG_ERROR("User can't close successfully");
 	}
 	
 	if (engine.scene) close_scene(engine.scene);

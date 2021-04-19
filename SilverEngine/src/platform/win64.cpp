@@ -9,6 +9,7 @@
 #include <iostream>
 
 #include "user.h"
+#include "core/engine.h"
 
 namespace sv {
 

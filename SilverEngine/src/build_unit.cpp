@@ -28,6 +28,7 @@
 #include "core/mesh.cpp"
 #include "core/gui.cpp"
 #include "core/asset_system.cpp"
+#include "core/event_system.cpp"
 
 // DEBUG
 
@@ -35,4 +36,6 @@
 #include "debug/editor.cpp"
 #include "debug/editor_gui.cpp"
 
+// USER
 
+#include "user.cpp"

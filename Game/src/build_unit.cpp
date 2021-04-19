@@ -29,15 +29,22 @@ GameMemory& get_game_memory()
     return *reinterpret_cast<GameMemory*>(engine.game_memory);
 }
 
+void on_body_collision(void* _reg, BodyCollisionEvent* event)
+{
+    SV_LOG_INFO("All right");
+}
+
 SV_USER bool user_initialize(bool init)
 {
     if (init) {
-	engine.game_memory = allocate_memory(sizeof(GameMemory));
+	engine.game_memory = SV_ALLOCATE_MEMORY(sizeof(GameMemory));
     
 	set_active_scene("level_0");
     }
 
     register_component<TestComponent>("Test");
+
+    event_user_register("on_body_collision", on_body_collision);
     
     return true;
 }
@@ -45,7 +52,7 @@ SV_USER bool user_initialize(bool init)
 SV_USER bool user_close(bool close)
 {
     if (close)
-	free_memory(engine.game_memory);
+	SV_FREE_MEMORY(engine.game_memory);
 
     invalidate_component_callbacks(TestComponent::ID);
     

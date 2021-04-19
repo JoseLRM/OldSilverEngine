@@ -252,7 +252,7 @@ namespace sv {
 			return false;
 		    }
 
-		    free_memory(str);
+		    SV_FREE_MEMORY(str);
 
 		    SV_CHECK(bin_write(hash, data.data(), u32(data.size())));
 

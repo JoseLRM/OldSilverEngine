@@ -487,7 +487,7 @@ namespace sv {
 		{
 		    if (other._data) {
 
-			_data = (T*)allocate_memory(sizeof(T) * other._size);
+			_data = (T*)SV_ALLOCATE_MEMORY(sizeof(T) * other._size);
 				
 			foreach(i, other._size) {
 			    _data[i] = other._data[i];
@@ -518,7 +518,7 @@ namespace sv {
 
 		if (other._data) {
 
-		    _data = (T*)allocate_memory(sizeof(T) * other._size);
+		    _data = (T*)SV_ALLOCATE_MEMORY(sizeof(T) * other._size);
 
 		    foreach(i, other._size) {
 			_data[i] = other._data[i];
@@ -623,6 +623,22 @@ namespace sv {
 		    return ListIterator<T>(it);
 		}
 
+	    void erase(size_t index)
+		{
+		    SV_ASSERT(index < _size);
+		    T* it = _data + index;
+		    T* end = _data + _size;
+		    it->~T();
+
+		    while (it != end - 1u) {
+
+			*it = std::move(*(it + 1u));
+			++it;
+		    }
+
+		    --_size;
+		}
+
 	    T& operator[](size_t index)
 		{
 		    SV_ASSERT(index < _size);
@@ -690,7 +706,7 @@ namespace sv {
 			_data[i].~T();
 
 		    if (_data != nullptr) {
-			free_memory(_data);
+			SV_FREE_MEMORY(_data);
 			_data = nullptr;
 		    }
 		    _size = 0u;
@@ -699,7 +715,7 @@ namespace sv {
 
 	    SV_INLINE void _reallocate(size_t size)
 		{
-		    T* newData = reinterpret_cast<T*>(allocate_memory(size * sizeof(T)));
+		    T* newData = reinterpret_cast<T*>(SV_ALLOCATE_MEMORY(size * sizeof(T)));
 
 		    if (_data) {
 			if (size < _size) {
@@ -724,7 +740,7 @@ namespace sv {
 			    ++it1;
 			}
 
-			free_memory(_data);
+			SV_FREE_MEMORY(_data);
 		    }
 
 		    _data = newData;

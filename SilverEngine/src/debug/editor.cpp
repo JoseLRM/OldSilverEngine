@@ -1182,7 +1182,7 @@ namespace sv {
 
 		    char filepath[FILEPATH_SIZE];
 
-		    if (user_get_scene_filepath(engine.scene->name, filepath)) {
+		    if (_user_get_scene_filepath(engine.scene->name, filepath)) {
 
 			if (!save_scene(engine.scene, filepath))
 			    SV_LOG_ERROR("Can't save the scene '%s'", engine.scene->name);

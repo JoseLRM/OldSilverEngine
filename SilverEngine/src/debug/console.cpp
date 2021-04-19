@@ -187,7 +187,7 @@ namespace sv {
 	char filepath[FILEPATH_SIZE];
 	const char* name = engine.scene->name;
 	
-	if (user_get_scene_filepath(name, filepath)) {
+	if (_user_get_scene_filepath(name, filepath)) {
 
 	    if (!save_scene(engine.scene, filepath)) {
 		SV_LOG_ERROR("Can't save the scene '%s', name");
