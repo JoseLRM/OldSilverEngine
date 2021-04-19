@@ -94,6 +94,9 @@ namespace sv {
     SV_API void imrend_push_matrix(const XMMATRIX& matrix, CommandList cmd);
     SV_API void imrend_pop_matrix(CommandList cmd);
 
+    SV_API void imrend_push_scissor(f32 x, f32 y, f32 width, f32 height, CommandList cmd);
+    SV_API void imrend_pop_scissor(CommandList cmd);
+
     SV_API void imrend_camera(ImRendCamera camera, CommandList cmd);
 
     SV_API void imrend_draw_quad(const v3_f32& position, const v2_f32& size, Color color, CommandList cmd);

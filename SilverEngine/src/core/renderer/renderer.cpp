@@ -1894,6 +1894,8 @@ namespace sv {
     enum ImRendHeader : u32 {
 	ImRendHeader_PushMatrix,
 	ImRendHeader_PopMatrix,
+	ImRendHeader_PushScissor,
+	ImRendHeader_PopScissor,
 
 	ImRendHeader_Camera,
 
@@ -1907,6 +1909,7 @@ namespace sv {
 
     /* TODO 
        - While is updating matrices or cameras, not update every time
+       - With scissors to
      */
 
     template<typename T>
@@ -1948,6 +1951,58 @@ namespace sv {
 
 	state.current_matrix = matrix;
     }
+
+    SV_AUX void update_current_scissor(ImmediateModeState& state, CommandList cmd)
+    {
+	v4_f32 s0 = { 0.5f, 0.5f, 1.f, 1.f };
+	
+	for (const v4_f32& s1 : state.scissor_stack) {
+
+	    f32 min0 = s0.x - s0.z * 0.5f;
+	    f32 max0 = s0.x + s0.z * 0.5f;
+	    
+	    f32 min1 = s1.x - s1.z * 0.5f;
+	    f32 max1 = s1.x + s1.z * 0.5f;
+
+	    f32 min = SV_MAX(min0, min1);
+	    f32 max = SV_MIN(max0, max1);
+
+	    if (min >= max) {
+		s0 = {};
+		break;
+	    }
+
+	    s0.z = max - min;
+	    s0.x = min + s0.z * 0.5f;
+
+	    min0 = s0.y - s0.w * 0.5f;
+	    max0 = s0.y + s0.w * 0.5f;
+	    
+	    min1 = s1.y - s1.w * 0.5f;
+	    max1 = s1.y + s1.w * 0.5f;
+
+	    min = SV_MAX(min0, min1);
+	    max = SV_MIN(max0, max1);
+
+	    if (min >= max) {
+		s0 = {};
+		break;
+	    }
+
+	    s0.w = max - min;
+	    s0.y = min + s0.w * 0.5f;
+	}
+
+	const GPUImageInfo& info = graphics_image_info(renderer->gfx.offscreen);
+	
+	Scissor s;
+	s.width = u32(s0.z * f32(info.width));
+	s.height = u32(s0.w * f32(info.height));
+	s.x = u32(s0.x * f32(info.width) - s0.z * f32(info.width) * 0.5f);
+	s.y = u32(s0.y * f32(info.height) - s0.w * f32(info.height) * 0.5f);
+
+	graphics_scissor_set(s, 0u, cmd);
+    }
     
     void imrend_begin_batch(CommandList cmd)
     {
@@ -1962,6 +2017,7 @@ namespace sv {
 
 	state.current_matrix = XMMatrixIdentity();
 	state.matrix_stack.reset();
+	state.scissor_stack.reset();
 	state.current_camera = ImRendCamera_Clip;
 
 	u8* it = (u8*)state.buffer.data();
@@ -1985,6 +2041,21 @@ namespace sv {
 	    {
 		state.matrix_stack.pop_back();
 		update_current_matrix(state);
+	    }
+	    break;
+
+	    case ImRendHeader_PushScissor:
+	    {
+		v4_f32 scissor = imrend_read<v4_f32>(it);
+		state.scissor_stack.push_back(scissor);
+		update_current_scissor(state, cmd);
+	    }
+	    break;
+	    
+	    case ImRendHeader_PopScissor:
+	    {
+		state.scissor_stack.pop_back();
+		update_current_scissor(state, cmd);
 	    }
 	    break;
 
@@ -2055,6 +2126,7 @@ namespace sv {
 	}
 
 	SV_ASSERT(state.matrix_stack.empty());
+	SV_ASSERT(state.scissor_stack.empty());
     }
 
     void imrend_push_matrix(const XMMATRIX& matrix, CommandList cmd)
@@ -2070,6 +2142,21 @@ namespace sv {
 	SV_IMREND();
 	
 	imrend_write(state, ImRendHeader_PopMatrix);
+    }
+
+    void imrend_push_scissor(f32 x, f32 y, f32 width, f32 height, CommandList cmd)
+    {
+	SV_IMREND();
+	
+	imrend_write(state, ImRendHeader_PushScissor);
+	imrend_write(state, v4_f32(x, y, width, height));
+    }
+    
+    void imrend_pop_scissor(CommandList cmd)
+    {
+	SV_IMREND();
+	
+	imrend_write(state, ImRendHeader_PopScissor);
     }
 
     void imrend_camera(ImRendCamera camera, CommandList cmd)
