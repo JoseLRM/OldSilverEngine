@@ -4,6 +4,7 @@ namespace sv {
 
     struct EventRegister {
 	EventFn function;
+	u32 flags;
 	u8 data[REGISTER_DATA_SIZE];
     };
 
@@ -44,6 +45,37 @@ namespace sv {
 	return true;
     }
 
+    void event_unregister_flags(u32 flags)
+    {
+	if (event_system) {
+
+	    event_system->global_mutex.lock();
+
+	    for (auto& it : event_system->event_map) {
+
+		EventType& type = it.second;
+
+		type.mutex.lock();
+
+		u32 i = 0u;
+		while (i < type.registers.size()) {
+
+		    EventRegister& reg = type.registers[i];
+		    
+		    if (reg.flags & flags == flags) {
+
+			reg.registers.erase(i);
+		    }
+		    else ++i;
+		}
+
+		type.mutex.unlock();
+	    }
+	    
+	    event_system->global_mutex.unlock();
+	}
+    }
+
     SV_AUX u64 compute_hash(const char* name)
     {
 	u64 hash = (strlen(name) * 0x39F2B295B3) >> 16;
@@ -76,7 +108,7 @@ namespace sv {
 	return &it->second;
     }
     
-    bool event_register(const char* event_name, EventFn event, void* data, u32 data_size)
+    bool _event_register(const char* event_name, EventFn event, u32 flags, void* data, u32 data_size)
     {
 	size_t event_name_size = strlen(event_name);
 
@@ -109,6 +141,7 @@ namespace sv {
 
 	    EventRegister& reg = reg.registers.emplace_back();
 	    reg.function = event;
+	    reg.flags = flags;
 	    SV_ZERO_MEMORY(reg.data, REGISTER_DATA_SIZE);
 
 	    if (data) {
@@ -119,7 +152,7 @@ namespace sv {
 	return true;
     }
     
-    bool event_unregister(const char* event_name, EventFn event)
+    bool _event_unregister(const char* event_name, EventFn event)
     {
 	EventType* type = find_type(event_name);
 

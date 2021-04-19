@@ -51,7 +51,8 @@ namespace sv {
 
 	if (engine.user.close)
 	    engine.user.close(false);
-	
+
+	event_unregister_flags(EventFlag_User);
 	_os_free_user_callbacks();
 	
 	if (!file_copy(filepath, "system/game_bin/GameTemp.dll")) {
