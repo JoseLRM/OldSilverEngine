@@ -62,6 +62,8 @@ namespace sv {
     {
 	SV_PARSE_BATCH();
 
+	auto& gfx = renderer->gfx;
+
 	GPUImage* att[2u];
 	att[0] = gfx.offscreen;
 	att[1] = gfx.gbuffer_depthstencil;
@@ -99,7 +101,7 @@ namespace sv {
 	    graphics_topology_set(GraphicsTopology_Triangles, cmd);
 	    graphics_vertexbuffer_bind(buffer, 0u, 0u, cmd);
 
-	    DebugVertex_Solid* data = (DebugVertex_Solid*)batch_data[cmd];
+	    DebugVertex_Solid* data = (DebugVertex_Solid*)renderer->batch_data[cmd];
 	    DebugVertex_Solid* it = data;
 	    DebugVertex_Solid* end = data + DEBUG_QUAD_COUNT * 6u;
 
@@ -164,7 +166,7 @@ namespace sv {
 	    graphics_topology_set(GraphicsTopology_Lines, cmd);
 	    graphics_vertexbuffer_bind(buffer, 0u, 0u, cmd);
 
-	    DebugVertex_Solid* data = (DebugVertex_Solid*)batch_data[cmd];
+	    DebugVertex_Solid* data = (DebugVertex_Solid*)renderer->batch_data[cmd];
 	    DebugVertex_Solid* it = data;
 	    DebugVertex_Solid* end = data + DEBUG_LINE_COUNT * 2u;
 
@@ -211,7 +213,7 @@ namespace sv {
 	    graphics_topology_set(GraphicsTopology_Triangles, cmd);
 	    graphics_vertexbuffer_bind(buffer, 0u, 0u, cmd);
 
-	    DebugVertex_Solid* data = (DebugVertex_Solid*)batch_data[cmd];
+	    DebugVertex_Solid* data = (DebugVertex_Solid*)renderer->batch_data[cmd];
 	    DebugVertex_Solid* it = data;
 	    DebugVertex_Solid* end = data + DEBUG_TRIANGLE_COUNT * 3u;
 

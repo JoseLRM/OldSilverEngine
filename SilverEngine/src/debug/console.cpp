@@ -610,7 +610,7 @@ namespace sv {
 		console.scroll_selected = false;
 	    else {
 
-		f32 min = 0.5f - (CONSOLE_HEIGHT - font_console.vertical_offset * COMMAND_TEXT_SIZE) * 0.5f + SCROLL_HEIGHT * 0.25f;
+		f32 min = 0.5f - (CONSOLE_HEIGHT - renderer->font_console.vertical_offset * COMMAND_TEXT_SIZE) * 0.5f + SCROLL_HEIGHT * 0.25f;
 		f32 max = 0.5f - SCROLL_HEIGHT * 0.25f;
 		f32 value = (input.mouse_position.y - min) / (max - min);
 
@@ -642,15 +642,15 @@ namespace sv {
 	    console.buff_flip = false;
 	}
 
-	f32 console_height = CONSOLE_HEIGHT - font_console.vertical_offset * COMMAND_TEXT_SIZE;
-	f32 command_height = COMMAND_TEXT_SIZE - font_console.vertical_offset * COMMAND_TEXT_SIZE;
+	f32 console_height = CONSOLE_HEIGHT - renderer->font_console.vertical_offset * COMMAND_TEXT_SIZE;
+	f32 command_height = COMMAND_TEXT_SIZE - renderer->font_console.vertical_offset * COMMAND_TEXT_SIZE;
 	f32 animation = (1.f - console.show_fade) * (console_height + COMMAND_TEXT_SIZE);
 
 	f32 window_width = (f32)os_window_size().x;
 	f32 window_height = (f32)os_window_size().y;
 	f32 aspect = window_width / window_height;
 
-	console.line_count = compute_text_lines(console.buff, u32(console.buff_pos), TEXT_SIZE, 2.f, aspect, &font_console);
+	console.line_count = compute_text_lines(console.buff, u32(console.buff_pos), TEXT_SIZE, 2.f, aspect, &renderer->font_console);
 	console.text_offset = std::min(console.text_offset, std::max(f32(console.line_count) - f32(LINE_COUNT), 0.f));
 
 	begin_debug_batch(cmd);
@@ -684,18 +684,18 @@ namespace sv {
 
 	if (console.current_command.size()) {
 			
-	    draw_text(console.current_command.c_str(), console.current_command.size(), text_x, text_y, 2.f, 1u, COMMAND_TEXT_SIZE, aspect, TextAlignment_Left, &font_console, Color::White(), cmd);
+	    draw_text(console.current_command.c_str(), console.current_command.size(), text_x, text_y, 2.f, 1u, COMMAND_TEXT_SIZE, aspect, TextAlignment_Left, &renderer->font_console, Color::White(), cmd);
 	}
 
 	if (console.buff_pos) {
 
-	    draw_text_area(console.buff, console.buff_pos, buffer_x, buffer_y, console_width, LINE_COUNT, TEXT_SIZE, aspect, TextAlignment_Left, u32(console.text_offset), true, &font_console, Color::White(), cmd);
+	    draw_text_area(console.buff, console.buff_pos, buffer_x, buffer_y, console_width, LINE_COUNT, TEXT_SIZE, aspect, TextAlignment_Left, u32(console.text_offset), true, &renderer->font_console, Color::White(), cmd);
 	}
 
 	begin_debug_batch(cmd);
 
-	f32 width = compute_text_width(console.current_command.c_str(), console.cursor_pos, COMMAND_TEXT_SIZE, aspect, &font_console);
-	f32 char_width = font_console.glyphs['i'].w * COMMAND_TEXT_SIZE;
+	f32 width = compute_text_width(console.current_command.c_str(), console.cursor_pos, COMMAND_TEXT_SIZE, aspect, &renderer->font_console);
+	f32 char_width = renderer->font_console.glyphs['i'].w * COMMAND_TEXT_SIZE;
 
 	draw_debug_quad({ text_x + width + char_width * 0.5f, text_y - command_height * 0.5f, 0.f }, { char_width, command_height }, Color::Red(100u), cmd);
 

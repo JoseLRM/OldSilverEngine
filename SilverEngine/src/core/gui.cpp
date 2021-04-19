@@ -2823,38 +2823,32 @@ namespace sv {
 	{
 	    auto& button = w.widget.button;
 
-	    v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y) * 2.f - 1.f;
-	    v2_f32 size = v2_f32(w.bounds.z, w.bounds.w) * 2.f;
+	    v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y);
+	    v2_f32 size = v2_f32(w.bounds.z, w.bounds.w);
 
-	    begin_debug_batch(cmd);
-	    draw_debug_quad(pos.getVec3(), size, button.hot ? button.style.hot_color : button.style.color, cmd);
-	    end_debug_batch(true, false, XMMatrixIdentity(), cmd);
+	    imrend_draw_quad(pos.getVec3(), size, button.hot ? button.style.hot_color : button.style.color, cmd);
 
 	    if (button.text) {
 
 		f32 font_size = size.y;
 
-		draw_text(button.text, strlen(button.text)
-			  , pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font_opensans.vertical_offset * font_size,
-			  size.x, 1u, font_size, gui.aspect, TextAlignment_Center, &font_opensans, button.style.text_color, cmd);
+		imrend_draw_text(button.text, strlen(button.text)
+			  , pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - renderer->font_opensans.vertical_offset * font_size,
+			  size.x, 1u, font_size, gui.aspect, TextAlignment_Center, &renderer->font_opensans, button.style.text_color, cmd);
 	    }
 	}
 	break;
 
 	case GuiWidgetType_Drag:
 	{
-	    begin_debug_batch(cmd);
-
 	    v2_f32 pos;
 	    v2_f32 size;
 
 	    auto& drag = w.widget.drag;
-	    pos = v2_f32{ w.bounds.x, w.bounds.y } *2.f - 1.f;
-	    size = v2_f32{ w.bounds.z, w.bounds.w } *2.f;
+	    pos = v2_f32{ w.bounds.x, w.bounds.y };
+	    size = v2_f32{ w.bounds.z, w.bounds.w };
 
-	    draw_debug_quad(pos.getVec3(0.f), size, drag.style.background_color, cmd);
-
-	    end_debug_batch(true, false, XMMatrixIdentity(), cmd);
+	    imrend_draw_quad(pos.getVec3(0.f), size, drag.style.background_color, cmd);
 
 	    f32 font_size = size.y;
 
@@ -2878,9 +2872,9 @@ namespace sv {
 		
 	    }
 
-	    draw_text(strbuff, strlen(strbuff)
-		      , pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font_opensans.vertical_offset * font_size,
-		      size.x, 1u, font_size, gui.aspect, TextAlignment_Center, &font_opensans, drag.style.text_color, cmd);
+	    imrend_draw_text(strbuff, strlen(strbuff)
+		      , pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - renderer->font_opensans.vertical_offset * font_size,
+		      size.x, 1u, font_size, gui.aspect, TextAlignment_Center, &renderer->font_opensans, drag.style.text_color, cmd);
 	}
 	break;
 
@@ -2888,62 +2882,54 @@ namespace sv {
 	{
 	    auto& menu = w.widget.menu_item;
 
-	    v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y) * 2.f - 1.f;
-	    v2_f32 size = v2_f32(w.bounds.z, w.bounds.w) * 2.f;
+	    v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y);
+	    v2_f32 size = v2_f32(w.bounds.z, w.bounds.w);
 
-	    begin_debug_batch(cmd);
-	    draw_debug_quad(pos.getVec3(), size, menu.hot ? menu.style.hot_color : menu.style.color, cmd);
-	    end_debug_batch(true, false, XMMatrixIdentity(), cmd);
+	    imrend_draw_quad(pos.getVec3(), size, menu.hot ? menu.style.hot_color : menu.style.color, cmd);
 
 	    if (menu.text) {
 
 		f32 font_size = size.y;
 
-		draw_text(menu.text, strlen(menu.text)
-			  , pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font_opensans.vertical_offset * font_size,
-			  size.x, 1u, font_size, gui.aspect, TextAlignment_Center, &font_opensans, menu.style.text_color, cmd);
+		imrend_draw_text(menu.text, strlen(menu.text)
+			  , pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - renderer->font_opensans.vertical_offset * font_size,
+			  size.x, 1u, font_size, gui.aspect, TextAlignment_Center, &renderer->font_opensans, menu.style.text_color, cmd);
 	    }
 	}
 	break;
 
 	case GuiWidgetType_Label:
 	{
-	    begin_debug_batch(cmd);
-
 	    v2_f32 pos;
 	    v2_f32 size;
 
 	    auto& label = w.widget.label;
-	    pos = v2_f32{ w.bounds.x, w.bounds.y } *2.f - 1.f;
-	    size = v2_f32{ w.bounds.z, w.bounds.w } *2.f;
+	    pos = v2_f32{ w.bounds.x, w.bounds.y };
+	    size = v2_f32{ w.bounds.z, w.bounds.w };
 
-	    draw_debug_quad(pos.getVec3(0.f), size, label.style.background_color, cmd);
-
-	    end_debug_batch(true, false, XMMatrixIdentity(), cmd);
-
+	    imrend_draw_quad(pos.getVec3(0.f), size, label.style.background_color, cmd);
+	    
 	    if (label.text) {
 
 		f32 font_size = size.y;
 
-		draw_text(label.text, strlen(label.text), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f -
-			  font_opensans.vertical_offset * font_size, size.x, 1u, font_size, gui.aspect, label.style.text_alignment,
-			  &font_opensans, label.style.text_color, cmd);
+		imrend_draw_text(label.text, strlen(label.text), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f -
+			  renderer->font_opensans.vertical_offset * font_size, size.x, 1u, font_size, gui.aspect, label.style.text_alignment,
+			  &renderer->font_opensans, label.style.text_color, cmd);
 	    }
 	}
 	break;
 
 	case GuiWidgetType_Checkbox:
 	{
-	    begin_debug_batch(cmd);
-
 	    v2_f32 pos;
 	    v2_f32 size;
 
 	    auto& cb = w.widget.checkbox;
-	    pos = v2_f32{ w.bounds.x, w.bounds.y } *2.f - 1.f;
-	    size = v2_f32{ w.bounds.z, w.bounds.w } *2.f;
+	    pos = v2_f32{ w.bounds.x, w.bounds.y };
+	    size = v2_f32{ w.bounds.z, w.bounds.w };
 
-	    draw_debug_quad(pos.getVec3(0.f), size, cb.style.background_color, cmd);
+	    imrend_draw_quad(pos.getVec3(0.f), size, cb.style.background_color, cmd);
 
 	    size *= cb.style.shape_size_mult;
 
@@ -2951,9 +2937,11 @@ namespace sv {
 	    {
 	    case GuiCheckboxShape_Quad:
 		if (cb.value)
-		    draw_debug_quad(pos.getVec3(0.f), size, cb.style.button_color, cmd);
+		    imrend_draw_quad(pos.getVec3(0.f), size, cb.style.button_color, cmd);
 		break;
 
+		// TODO
+		/*
 	    case GuiCheckboxShape_Triangle:
 		if (cb.value) {
 		    draw_debug_triangle(
@@ -2969,10 +2957,9 @@ namespace sv {
 			    { pos.x + size.x * 0.5f, pos.y, 0.f }
 			    , cb.style.button_color, cmd);
 		}
-		break;
+		break;*/
+		    
 	    }
-
-	    end_debug_batch(true, false, XMMatrixIdentity(), cmd);
 	}
 	break;
 
@@ -2980,34 +2967,28 @@ namespace sv {
 	{
 	    auto& container = w.widget.container;
 
-	    v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y) * 2.f - 1.f;
-	    v2_f32 size = v2_f32(w.bounds.z, w.bounds.w) * 2.f;
+	    v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y);
+	    v2_f32 size = v2_f32(w.bounds.z, w.bounds.w);
 
-	    begin_debug_batch(cmd);
-	    draw_debug_quad(pos.getVec3(), size, container.style.color, cmd);
-	    end_debug_batch(true, false, XMMatrixIdentity(), cmd);
+	    imrend_draw_quad(pos.getVec3(), size, container.style.color, cmd);
 	}
 	break;
 
 	case GuiWidgetType_Reciver:
 	{
-	    v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y) * 2.f - 1.f;
-	    v2_f32 size = v2_f32(w.bounds.z, w.bounds.w) * 2.f;
+	    v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y);
+	    v2_f32 size = v2_f32(w.bounds.z, w.bounds.w);
 
-	    begin_debug_batch(cmd);
-	    draw_debug_quad(pos.getVec3(), size, Color::White(180u), cmd);
-	    end_debug_batch(true, false, XMMatrixIdentity(), cmd);
+	    imrend_draw_quad(pos.getVec3(), size, Color::White(180u), cmd);
 	}
 	break;
 
 	case GuiWidgetType_MenuContainer:
 	{
-	    v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y) * 2.f - 1.f;
-	    v2_f32 size = v2_f32(w.bounds.z, w.bounds.w) * 2.f;
+	    v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y);
+	    v2_f32 size = v2_f32(w.bounds.z, w.bounds.w);
 
-	    begin_debug_batch(cmd);
-	    draw_debug_quad(pos.getVec3(), size, Color::White(), cmd);
-	    end_debug_batch(true, false, XMMatrixIdentity(), cmd);
+	    imrend_draw_quad(pos.getVec3(), size, Color::White(), cmd);
 	}
 	break;
 
@@ -3015,12 +2996,10 @@ namespace sv {
 	{
 	    auto& popup = w.widget.popup;
 
-	    v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y) * 2.f - 1.f;
-	    v2_f32 size = v2_f32(w.bounds.z, w.bounds.w) * 2.f;
+	    v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y);
+	    v2_f32 size = v2_f32(w.bounds.z, w.bounds.w);
 
-	    begin_debug_batch(cmd);
-	    draw_debug_quad(pos.getVec3(), size, popup.style.color, cmd);
-	    end_debug_batch(true, false, XMMatrixIdentity(), cmd);
+	    imrend_draw_quad(pos.getVec3(), size, popup.style.color, cmd);
 	}
 	break;
 
@@ -3042,32 +3021,24 @@ namespace sv {
 
 	    outline_size = content_size + v2_f32{ style.outline_size, style.outline_size * gui.aspect } *2.f;
 
-	    // Normal to clip
-	    content_position = content_position * 2.f - 1.f;
-	    content_size = content_size * 2.f;
-	    outline_size = outline_size * 2.f;
-	    v2_f32 decoration_position = v2_f32(decoration.x, decoration.y) * 2.f - 1.f;
-	    v2_f32 decoration_size = v2_f32(decoration.z, decoration.w) * 2.f;
-	    v2_f32 closebutton_position = v2_f32(closebutton.x, closebutton.y) * 2.f - 1.f;
-	    v2_f32 closebutton_size = v2_f32(closebutton.z, closebutton.w) * 2.f;
+	    v2_f32 decoration_position = v2_f32(decoration.x, decoration.y);
+	    v2_f32 decoration_size = v2_f32(decoration.z, decoration.w);
+	    v2_f32 closebutton_position = v2_f32(closebutton.x, closebutton.y);
+	    v2_f32 closebutton_size = v2_f32(closebutton.z, closebutton.w);
 
-	    begin_debug_batch(cmd);
-
-	    draw_debug_quad(content_position.getVec3(0.f), outline_size, style.outline_color, cmd);
-	    draw_debug_quad(content_position.getVec3(0.f), content_size, style.color, cmd);
-	    draw_debug_quad(decoration_position.getVec3(0.f), decoration_size, style.decoration_color, cmd);
-	    draw_debug_quad(closebutton_position.getVec3(0.f), closebutton_size, Color::Red(), cmd);
-
-	    end_debug_batch(true, false, XMMatrixIdentity(), cmd);
+	    imrend_draw_quad(content_position.getVec3(0.f), outline_size, style.outline_color, cmd);
+	    imrend_draw_quad(content_position.getVec3(0.f), content_size, style.color, cmd);
+	    imrend_draw_quad(decoration_position.getVec3(0.f), decoration_size, style.decoration_color, cmd);
+	    imrend_draw_quad(closebutton_position.getVec3(0.f), closebutton_size, Color::Red(), cmd);
 
 	    if (state.title.size()) {
 
 		f32 font_size = decoration_size.y * 0.5f;
 
-		draw_text(state.title.c_str(), state.title.size()
+		imrend_draw_text(state.title.c_str(), state.title.size()
 			  , decoration_position.x - decoration_size.x * 0.5f + 0.01f, decoration_position.y +
-			  decoration_size.y * 0.25f - font_opensans.vertical_offset * font_size, decoration_size.x, 1u, font_size,
-			  gui.aspect, TextAlignment_Left, &font_opensans, cmd);
+			  decoration_size.y * 0.25f - renderer->font_opensans.vertical_offset * font_size, decoration_size.x, 1u, font_size,
+				 gui.aspect, TextAlignment_Left, &renderer->font_opensans, Color::White(), cmd);
 	    }
 	}
 	break;
@@ -3094,19 +3065,14 @@ namespace sv {
 		    f32 button_space = scroll_bounds.w - button_height;
 		    f32 button_y = (scroll_bounds.y + scroll_bounds.w * 0.5f) - (button_height * 0.5f) - (norm * button_space);
 					
-		    begin_debug_batch(cmd);
-					
-		    draw_debug_quad((v2_f32(scroll_bounds.x, scroll_bounds.y) * 2.f - 1.f).getVec3(0.f), v2_f32(scroll_bounds.z, scroll_bounds.w) * 2.f, Color::Red(), cmd);
-		    draw_debug_quad((v2_f32(scroll_bounds.x, button_y) * 2.f - 1.f).getVec3(0.f), v2_f32(scroll_bounds.z, button_height) * 2.f, Color::Green(), cmd);
-					
-					
-		    end_debug_batch(true, false, XMMatrixIdentity(), cmd);
+		    imrend_draw_quad(v2_f32(scroll_bounds.x, scroll_bounds.y).getVec3(0.f), v2_f32(scroll_bounds.z, scroll_bounds.w), Color::Red(), cmd);
+		    imrend_draw_quad(v2_f32(scroll_bounds.x, button_y).getVec3(0.f), v2_f32(scroll_bounds.z, button_height), Color::Green(), cmd);
 
 		}
 				
 		// Draw childs
 
-		const GPUImageInfo& info = graphics_image_info(gfx.offscreen);
+		const GPUImageInfo& info = graphics_image_info(renderer->gfx.offscreen);
 
 		Scissor last_scissor = graphics_scissor_get(0u, cmd);
 
@@ -3193,6 +3159,10 @@ namespace sv {
     {
 	PARSE_GUI();
 
+	imrend_begin_batch(cmd);
+
+	imrend_camera(ImRendCamera_Normal, cmd);
+
 	foreach(i, gui.indices.size()) {
 
 	    const GuiIndex& w = gui.indices[i];
@@ -3208,11 +3178,11 @@ namespace sv {
 
 	if (gui.focus.type == GuiWidgetType_Package) {
 
-	    begin_debug_batch(cmd);
-	    draw_debug_quad((gui.mouse_position * 2.f - 1.f).getVec3(0.f), v2_f32{ 0.01f, 0.01f * gui.aspect } * 2.f, Color::Green(), cmd);
-	    end_debug_batch(true, false, XMMatrixIdentity(), cmd);
+	    imrend_draw_quad((gui.mouse_position).getVec3(0.f), v2_f32{ 0.01f, 0.01f * gui.aspect }, Color::Green(), cmd);
 
 	}
+
+	imrend_flush(cmd);
     }
 
     /////////////////////////////////// HIGH LEVEL //////////////////////////////////////////

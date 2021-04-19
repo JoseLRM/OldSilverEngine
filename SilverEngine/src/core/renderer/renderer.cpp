@@ -6,10 +6,7 @@
 
 namespace sv {
 
-    GraphicsObjects		gfx = {};
-    u8*					batch_data[GraphicsLimit_CommandList] = {};
-    Font				font_opensans;
-    Font				font_console;
+    RendererState* renderer = nullptr;
 
     // SHADER COMPILATION
 
@@ -22,6 +19,8 @@ namespace sv {
 
     static bool compile_shaders()
     {
+	auto& gfx = renderer->gfx;
+	
 	COMPILE_VS(gfx.vs_debug_solid_batch, "debug/solid_batch.hlsl");
 	COMPILE_PS(gfx.ps_debug_solid, "debug/solid_batch.hlsl");
 	COMPILE_VS(gfx.vs_debug_mesh_wireframe, "debug/mesh_wireframe.hlsl");
@@ -54,6 +53,8 @@ namespace sv {
 
     static bool create_renderpasses()
     {
+	auto& gfx = renderer->gfx;
+	
 	RenderPassDesc desc;
 	AttachmentDesc att[GraphicsLimit_Attachment];
 	desc.pAttachments = att;
@@ -151,6 +152,8 @@ namespace sv {
 
     static bool create_buffers()
     {
+	auto& gfx = renderer->gfx;
+	
 	GPUBufferDesc desc;
 
 	// Environment
@@ -361,6 +364,8 @@ namespace sv {
 
     static bool create_images()
     {
+	auto& gfx = renderer->gfx;
+	
 	GPUImageDesc desc;
 
 	// TODO: resolution variable
@@ -439,6 +444,8 @@ namespace sv {
 
     static bool create_states()
     {
+	auto& gfx = renderer->gfx;
+	
 	// Create InputlayoutStates
 	{
 	    InputSlotDesc slots[GraphicsLimit_InputSlot];
@@ -592,6 +599,8 @@ namespace sv {
 
     static bool create_samplers()
     {
+	auto& gfx = renderer->gfx;
+	
 	SamplerDesc desc;
 
 	desc.addressModeU = SamplerAddressMode_Wrap;
@@ -622,6 +631,8 @@ namespace sv {
 
     bool _renderer_initialize()
     {
+	renderer = SV_ALLOCATE_STRUCT(RendererState);
+	
 	SV_CHECK(compile_shaders());
 	SV_CHECK(create_renderpasses());
 	SV_CHECK(create_samplers());
@@ -630,36 +641,44 @@ namespace sv {
 	SV_CHECK(create_states());
 
 	// Create default fonts
-	SV_CHECK(font_create(font_opensans, "system/fonts/OpenSans/OpenSans-Regular.ttf", 128.f, 0u));
-	SV_CHECK(font_create(font_console, "system/fonts/Cousine/Cousine-Regular.ttf", 128.f, 0u));
+	SV_CHECK(font_create(renderer->font_opensans, "system/fonts/OpenSans/OpenSans-Regular.ttf", 128.f, 0u));
+	SV_CHECK(font_create(renderer->font_console, "system/fonts/Cousine/Cousine-Regular.ttf", 128.f, 0u));
 
 	return true;
     }
 
     bool _renderer_close()
     {
-	// Free graphics objects
-	graphics_destroy_struct(&gfx, sizeof(gfx));
+	auto& gfx = renderer->gfx;
+	
+	if (renderer) {
+	    // Free graphics objects
+	    graphics_destroy_struct(&gfx, sizeof(gfx));
 
-	// Deallocte batch memory
-	{
-	    for (u32 i = 0u; i < GraphicsLimit_CommandList; ++i) {
+	    // Deallocte batch memory
+	    {
+		for (u32 i = 0u; i < GraphicsLimit_CommandList; ++i) {
 
-		if (batch_data[i]) {
-		    free(batch_data[i]);
-		    batch_data[i] = nullptr;
+		    if (renderer->batch_data[i]) {
+			SV_FREE_MEMORY(renderer->batch_data[i]);
+			renderer->batch_data[i] = nullptr;
+		    }
 		}
 	    }
-	}
 
-	font_destroy(font_opensans);
-	font_destroy(font_console);
+	    font_destroy(renderer->font_opensans);
+	    font_destroy(renderer->font_console);
+
+	    SV_FREE_STRUCT(RendererState, renderer);
+	}
 
 	return true;
     }
 
     void _renderer_begin()
     {
+	auto& gfx = renderer->gfx;
+	
 	CommandList cmd = graphics_commandlist_begin();
 
 	graphics_image_clear(gfx.offscreen, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, Color::Black(), 1.f, 0u, cmd);
@@ -674,6 +693,8 @@ namespace sv {
 
     void _renderer_end()
     {
+	auto& gfx = renderer->gfx;
+	
 	graphics_present_image(gfx.offscreen, GPUImageLayout_RenderTarget);
     }
 
@@ -812,6 +833,8 @@ namespace sv {
 
     SV_INTERNAL void screenspace_ambient_occlusion(CommandList cmd)
     {
+	auto& gfx = renderer->gfx;
+	
 	graphics_event_begin("SSAO", cmd);
 	
 	graphics_topology_set(GraphicsTopology_TriangleStrip, cmd);
@@ -855,6 +878,8 @@ namespace sv {
     
     SV_INTERNAL void draw_sprites(Scene* scene, CameraBuffer_GPU& camera_data, CommandList cmd)
     {
+	auto& gfx = renderer->gfx;
+	
 	{
 	    EntityView<SpriteComponent> sprites(scene);
 
@@ -877,7 +902,7 @@ namespace sv {
 		});
 
 	    GPUBuffer* batch_buffer = get_batch_buffer(sizeof(SpriteData), cmd);
-	    SpriteData& data = *(SpriteData*)batch_data[cmd];
+	    SpriteData& data = *(SpriteData*)renderer->batch_data[cmd];
 
 	    // Prepare
 	    graphics_event_begin("Sprite_GeometryPass", cmd);
@@ -1001,6 +1026,8 @@ namespace sv {
 
     void _draw_scene()
     {
+	auto& gfx = renderer->gfx;
+	
 	Scene* scene = engine.scene;
 
 	if (scene == nullptr)
@@ -1359,13 +1386,15 @@ namespace sv {
 				
 		constexpr f32 SIZE = 0.4f;
 		constexpr const char* TEXT = "No Main Camera";
-		draw_text(TEXT, strlen(TEXT), -1.f, +SIZE * 0.5f, 2.f, 1u, SIZE, os_window_aspect(), TextAlignment_Center, &font_opensans, cmd);
+		draw_text(TEXT, strlen(TEXT), -1.f, +SIZE * 0.5f, 2.f, 1u, SIZE, os_window_aspect(), TextAlignment_Center, nullptr, cmd);
 	    }
 	}
     }
 
     void draw_sky(GPUImage* skymap, XMMATRIX view_matrix, const XMMATRIX& projection_matrix, CommandList cmd)
     {
+	auto& gfx = renderer->gfx;
+	
 	graphics_depthstencilstate_unbind(cmd);
 	graphics_blendstate_unbind(cmd);
 	graphics_inputlayoutstate_bind(gfx.ils_sky, cmd);
@@ -1401,6 +1430,8 @@ namespace sv {
     SV_INLINE static void text_draw_call(GPUImage* offscreen, GPUBuffer* buffer, TextData& data, u32 vertex_count, CommandList cmd)
     {
 	if (vertex_count == 0u) return;
+
+	auto& gfx = renderer->gfx;
 	
 	graphics_buffer_update(buffer, data.vertices, vertex_count * sizeof(TextVertex), 0u, cmd);
 
@@ -1416,9 +1447,11 @@ namespace sv {
     {
 	if (text == nullptr) return 0u;
 	if (text_size == 0u) return 0u;
+
+	auto& gfx = renderer->gfx;
 	
 	// Select font
-	Font& font = pFont ? *pFont : font_opensans;
+	Font& font = pFont ? *pFont : renderer->font_opensans;
 		
 	// Prepare
 	graphics_rasterizerstate_unbind(cmd);
@@ -1437,7 +1470,7 @@ namespace sv {
 
 	graphics_inputlayoutstate_bind(gfx.ils_text, cmd);
 
-	TextData& data = *reinterpret_cast<TextData*>(batch_data[cmd]);
+	TextData& data = *reinterpret_cast<TextData*>(renderer->batch_data[cmd]);
 
 	// Text space transformation
 	f32 xmult = font_size / aspect;
@@ -1542,7 +1575,7 @@ namespace sv {
 	if (text_size == 0u) return;
 
 	// Select font
-	Font& font = pFont ? *pFont : font_opensans;
+	Font& font = pFont ? *pFont : renderer->font_opensans;
 
 	f32 transformed_max_width = max_line_width / (font_size / aspect);
 
@@ -1613,6 +1646,8 @@ namespace sv {
 	u32 barrier_count = 0u;
 	GPUImage* att[1u];
 	GaussianBlurData data;
+
+	auto& gfx = renderer->gfx;
 
 	if (renderpass == nullptr)
 	    renderpass = gfx.renderpass_off;
@@ -1722,6 +1757,8 @@ namespace sv {
 	    CommandList cmd
 	)
     {
+	auto& gfx = renderer->gfx;
+	
 	// Prepare graphics state
 	graphics_topology_set(GraphicsTopology_TriangleStrip, cmd);
 	graphics_rasterizerstate_unbind(cmd);
@@ -1764,6 +1801,8 @@ namespace sv {
 	GPUBarrier barriers[2];
 	u32 barrier_count = 0u;
 	GPUImage* att[1u];
+
+	auto& gfx = renderer->gfx;
 
 	// Prepare graphics state
 	{
@@ -1846,6 +1885,233 @@ namespace sv {
 	if (barrier_count) {
 	    graphics_barrier(barriers, barrier_count, cmd);
 	}
+    }
+
+    ///////////////////////////////////////////////// IMMEDIATE MODE RENDERER ///////////////////////////////////////////////////////////////////////
+
+#define SV_IMREND() auto& state = sv::renderer->immediate_mode_state[cmd]
+
+    enum ImRendHeader : u32 {
+	ImRendHeader_PushMatrix,
+	ImRendHeader_PopMatrix,
+
+	ImRendHeader_Camera,
+
+	ImRendHeader_DrawCall,
+    };
+
+    enum ImRendDrawCall : u32 {
+	ImRendDrawCall_Quad,
+	ImRendDrawCall_Text,
+    };
+
+    /* TODO 
+       - While is updating matrices or cameras, not update every time
+     */
+
+    template<typename T>
+    SV_AUX void imrend_write(ImmediateModeState& state, const T& t)
+    {
+	state.buffer.write_back(&t, sizeof(T));
+    }
+
+    template<typename T>
+    SV_AUX T imrend_read(u8*& it)
+    {
+	T t;
+	memcpy(&t, it, sizeof(T));
+	it += sizeof(T);
+	return t;
+    }
+
+    SV_AUX void update_current_matrix(ImmediateModeState& state)
+    {
+	XMMATRIX matrix;
+
+	switch (state.current_camera)
+	{
+	case ImRendCamera_Normal:
+	    matrix = XMMatrixScaling(2.f, 2.f, 1.f) * XMMatrixTranslation(-1.f, -1.f, 0.f);
+	    break;
+
+	case ImRendCamera_Clip:
+	default:
+	    matrix = XMMatrixIdentity();
+	    
+	}
+	
+
+	for (const XMMATRIX& m : state.matrix_stack) {
+
+	    matrix = XMMatrixMultiply(matrix, m);
+	}
+
+	state.current_matrix = matrix;
+    }
+    
+    void imrend_begin_batch(CommandList cmd)
+    {
+	SV_IMREND();
+
+	state.buffer.reset();
+    }
+    
+    void imrend_flush(CommandList cmd)
+    {
+	SV_IMREND();
+
+	state.current_matrix = XMMatrixIdentity();
+	state.matrix_stack.reset();
+	state.current_camera = ImRendCamera_Clip;
+
+	u8* it = (u8*)state.buffer.data();
+	u8* end = (u8*)state.buffer.data() + state.buffer.size();
+
+	while (it != end)
+	{
+	    ImRendHeader header = imrend_read<ImRendHeader>(it);
+	    
+	    switch (header) {
+
+	    case ImRendHeader_PushMatrix:
+	    {
+		XMMATRIX m = imrend_read<XMMATRIX>(it);
+		state.matrix_stack.push_back(m);
+		update_current_matrix(state);
+	    }
+	    break;
+		
+	    case ImRendHeader_PopMatrix:
+	    {
+		state.matrix_stack.pop_back();
+		update_current_matrix(state);
+	    }
+	    break;
+
+	    case ImRendHeader_Camera:
+	    {
+		state.current_camera = imrend_read<ImRendCamera>(it);
+		update_current_matrix(state);
+	    }
+	    break;
+		
+	    case ImRendHeader_DrawCall:
+	    {
+		ImRendDrawCall draw_call = imrend_read<ImRendDrawCall>(it);
+
+		switch (draw_call) {
+
+		case ImRendDrawCall_Quad:
+		{
+		    v3_f32 position = imrend_read<v3_f32>(it);
+		    v2_f32 size = imrend_read<v2_f32>(it);
+		    Color color = imrend_read<Color>(it);
+
+		    begin_debug_batch(cmd);
+		    draw_debug_quad(position, size, color, cmd);
+		    end_debug_batch(true, false, state.current_matrix, cmd);
+		    
+		}break;
+
+		case ImRendDrawCall_Text:
+		{
+		    const char* text = (const char*)it;
+		    it += strlen(text) + 1u;
+
+		    size_t text_size = imrend_read<size_t>(it);
+		    f32 x = imrend_read<f32>(it);
+		    f32 y = imrend_read<f32>(it);
+		    f32 max_line_width = imrend_read<f32>(it);
+		    u32 max_lines = imrend_read<u32>(it);
+		    f32 font_size = imrend_read<f32>(it);
+		    f32 aspect = imrend_read<f32>(it);
+		    TextAlignment alignment = imrend_read<TextAlignment>(it);
+		    Font* pfont = imrend_read<Font*>(it);
+		    Color color = imrend_read<Color>(it);
+		    
+		    XMVECTOR pos = v2_f32(x, y).getDX();
+		    pos = XMVector3Transform(pos, state.current_matrix);
+		    x = XMVectorGetX(pos);
+		    y = XMVectorGetY(pos);
+
+		    XMVECTOR rot, scale;
+		    
+		    XMMatrixDecompose(&scale, &rot, &pos, state.current_matrix);
+		    
+		    max_line_width *= XMVectorGetX(scale);
+		    font_size *= XMVectorGetY(scale);
+		    
+		    draw_text(text, text_size, x, y, max_line_width, max_lines, font_size, aspect, alignment, pfont, color, cmd);
+		    
+		}break;
+		    
+		}
+	    }
+	    break;
+		
+		
+		
+	    }
+	}
+
+	SV_ASSERT(state.matrix_stack.empty());
+    }
+
+    void imrend_push_matrix(const XMMATRIX& matrix, CommandList cmd)
+    {
+	SV_IMREND();
+
+	imrend_write(state, ImRendHeader_PushMatrix);
+	imrend_write(state, matrix);
+    }
+
+    void imrend_pop_matrix(CommandList cmd)
+    {
+	SV_IMREND();
+	
+	imrend_write(state, ImRendHeader_PopMatrix);
+    }
+
+    void imrend_camera(ImRendCamera camera, CommandList cmd)
+    {
+	SV_IMREND();
+	
+	imrend_write(state, ImRendHeader_Camera);
+	imrend_write(state, camera);
+    }
+
+    void imrend_draw_quad(const v3_f32& position, const v2_f32& size, Color color, CommandList cmd)
+    {
+	SV_IMREND();
+
+	imrend_write(state, ImRendHeader_DrawCall);
+	imrend_write(state, ImRendDrawCall_Quad);
+
+	imrend_write(state, position);
+	imrend_write(state, size);
+	imrend_write(state, color);
+    }
+
+    void imrend_draw_text(const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, Font* pfont, Color color, CommandList cmd)
+    {
+	SV_IMREND();
+
+	imrend_write(state, ImRendHeader_DrawCall);
+	imrend_write(state, ImRendDrawCall_Text);
+
+	state.buffer.write_back(text, text_size);
+	imrend_write(state, '\0');
+
+	imrend_write(state, text_size);
+	imrend_write(state, x);
+	imrend_write(state, y);
+	imrend_write(state, max_line_width);
+	imrend_write(state, max_lines);
+	imrend_write(state, font_size);
+	imrend_write(state, aspect);
+	imrend_write(state, alignment);
+	imrend_write(state, pfont);
+	imrend_write(state, color);
     }
 
 }

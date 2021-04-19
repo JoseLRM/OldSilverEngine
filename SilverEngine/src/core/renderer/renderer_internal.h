@@ -171,22 +171,36 @@ namespace sv {
 
     };
 
-    extern GraphicsObjects gfx;
-    extern u8* batch_data[GraphicsLimit_CommandList];
+    struct ImmediateModeState {
+	RawList buffer;
+	List<XMMATRIX> matrix_stack;
+	XMMATRIX current_matrix;
+	ImRendCamera current_camera;
+    };
+    
+    struct RendererState {
 
-    extern Font font_opensans;
-    extern Font font_console;
+	ImmediateModeState immediate_mode_state[GraphicsLimit_CommandList];
+	GraphicsObjects gfx = {};
+
+	u8* batch_data[GraphicsLimit_CommandList] = {};
+
+	Font font_opensans;
+	Font font_console;
+    };
+
+    extern RendererState* renderer;
 
     SV_INLINE GPUBuffer* get_batch_buffer(u32 size, CommandList cmd)
     {
 	// TODO: Dynamic update
-	GPUBuffer*& buffer = gfx.vbuffer_batch[cmd];
+	GPUBuffer*& buffer = renderer->gfx.vbuffer_batch[cmd];
 
 	if (buffer == nullptr || graphics_buffer_info(buffer).size < size) {
 
 	    if (buffer) {
 		graphics_destroy(buffer);
-		free(batch_data[cmd]);
+		SV_FREE_MEMORY(renderer->batch_data[cmd]);
 	    }
 			
 	    GPUBufferDesc desc;
@@ -199,7 +213,7 @@ namespace sv {
 	    graphics_buffer_create(&desc, &buffer);
 	    graphics_name_set(buffer, "BatchBuffer");
 
-	    batch_data[cmd] = (u8*)malloc(size);
+	    renderer->batch_data[cmd] = (u8*)SV_ALLOCATE_MEMORY(size);
 	}
 
 	return buffer;

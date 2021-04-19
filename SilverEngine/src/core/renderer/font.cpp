@@ -250,7 +250,7 @@ namespace sv {
 	const char* it = text;
 	const char* end = it + size_t(count);
 
-	Font& font = pFont ? *pFont : font_opensans;
+	Font& font = pFont ? *pFont : renderer->font_opensans;
 
 	f32 width = 0u;
 

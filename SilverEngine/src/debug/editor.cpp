@@ -1423,7 +1423,7 @@ namespace sv {
 	    }
 
 	    // Draw gizmos
-	    draw_gizmos(gfx.offscreen, cmd);
+	    draw_gizmos(renderer->gfx.offscreen, cmd);
 
 	    XMMATRIX vpm = XMMatrixIdentity();
 
