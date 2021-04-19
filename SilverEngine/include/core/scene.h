@@ -185,6 +185,14 @@ namespace sv {
     SV_API void		  remove_component_by_id(Scene* scene, Entity entity, CompID componentID);
     SV_API u32		  get_component_count(Scene* scene, CompID ID);
 
+    // Events
+
+    // on_body_collision
+    struct BodyCollisionEvent {
+	BodyComponent* body0;
+	BodyComponent* body1;
+    };
+
     // Iterators
 
     struct SV_API ComponentIterator {

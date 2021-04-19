@@ -723,6 +723,12 @@ namespace sv {
 
 		    next_pos.y += vertical_depth;
 		    next_vel.y = next_vel.y * -body.bounciness;
+
+		    BodyCollisionEvent event;
+		    event.body0 = &body;
+		    event.body1 = vertical_collision;
+
+		    event_dispatch("on_body_collision", event);
 		}
 
 		if (horizontal_collision) {
@@ -732,6 +738,12 @@ namespace sv {
 			next_pos.y += vertical_offset;
 		    else
 			next_vel.x = next_vel.x * -body.bounciness;
+
+		    BodyCollisionEvent event;
+		    event.body0 = &body;
+		    event.body1 = horizontal_collision;
+
+		    event_dispatch("on_body_collision", event);
 		}
 
 		// Air friction
