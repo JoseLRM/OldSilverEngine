@@ -29,6 +29,52 @@ GameMemory& get_game_memory()
     return *reinterpret_cast<GameMemory*>(engine.game_memory);
 }
 
+void update_scene(void*, void*)
+{
+    GameMemory& m = get_game_memory();
+    Scene* scene = engine.scene;
+
+    if (scene) {
+	
+	BodyComponent* body = get_component<BodyComponent>(scene, m.player);
+	v2_f32& pos = *get_entity_position2D_ptr(scene, m.player);
+
+	set_entity_position(scene, scene->main_camera, pos.getVec3());
+
+	f32 vel = 5.f * engine.deltatime;
+
+	if (input.keys[Key_A]) {
+
+	    SpriteComponent* spr = get_component<SpriteComponent>(engine.scene, m.player);
+	    if (spr) {
+		spr->texcoord.x = 0.1f;
+		spr->texcoord.z = 0.f;
+	    }
+	    
+	    pos.x -= vel;
+	}
+	if (input.keys[Key_D]) {
+
+	    SpriteComponent* spr = get_component<SpriteComponent>(engine.scene, m.player);
+	    if (spr) {
+		spr->texcoord.z = 0.1f;
+		spr->texcoord.x = 0.f;
+	    }
+	    
+	    pos.x += vel;
+	}
+
+	if (body->in_ground) {
+
+	    if (input.keys[Key_Space]) {
+		body->vel.y = 27.f * 0.5f;
+		
+	    }
+	    
+	}
+    }
+}
+
 void on_body_collision(void* _reg, BodyCollisionEvent* event)
 {
     SV_LOG_INFO("All right");
@@ -45,6 +91,7 @@ SV_USER bool user_initialize(bool init)
     register_component<TestComponent>("Test");
 
     event_user_register("on_body_collision", on_body_collision);
+    event_user_register("update_scene", update_scene);
     
     return true;
 }
@@ -116,52 +163,6 @@ SV_USER bool user_serialize_scene(Scene* scene, Archive* parchive)
     archive << m.player;
     archive << m.cat;
     return true;
-}
-
-SV_USER void user_update()
-{
-    GameMemory& m = get_game_memory();
-    Scene* scene = engine.scene;
-
-    if (scene) {
-	
-	BodyComponent* body = get_component<BodyComponent>(scene, m.player);
-	v2_f32& pos = *get_entity_position2D_ptr(scene, m.player);
-
-	set_entity_position(scene, scene->main_camera, pos.getVec3());
-
-	f32 vel = 5.f * engine.deltatime;
-
-	if (input.keys[Key_A]) {
-
-	    SpriteComponent* spr = get_component<SpriteComponent>(engine.scene, m.player);
-	    if (spr) {
-		spr->texcoord.x = 0.1f;
-		spr->texcoord.z = 0.f;
-	    }
-	    
-	    pos.x -= vel;
-	}
-	if (input.keys[Key_D]) {
-
-	    SpriteComponent* spr = get_component<SpriteComponent>(engine.scene, m.player);
-	    if (spr) {
-		spr->texcoord.z = 0.1f;
-		spr->texcoord.x = 0.f;
-	    }
-	    
-	    pos.x += vel;
-	}
-
-	if (body->in_ground) {
-
-	    if (input.keys[Key_Space]) {
-		body->vel.y = 27.f * 0.5f;
-		
-	    }
-	    
-	}
-    }
 }
 
 SV_USER bool user_get_scene_filepath(const char* name, char* filepath)

@@ -1388,6 +1388,8 @@ namespace sv {
 		constexpr const char* TEXT = "No Main Camera";
 		draw_text(TEXT, strlen(TEXT), -1.f, +SIZE * 0.5f, 2.f, 1u, SIZE, os_window_aspect(), TextAlignment_Center, nullptr, cmd);
 	    }
+
+	    event_dispatch("draw_scene", nullptr);
 	}
     }
 

@@ -16,12 +16,6 @@ namespace sv {
 	return true;
     }
     
-    void _user_update()
-    {
-	if (user_callbacks.update)
-	    user_callbacks.update();
-    }
-    
     bool _user_close(bool close_engine)
     {
 	if (user_callbacks.close)

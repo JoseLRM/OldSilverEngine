@@ -8,6 +8,8 @@ struct GameMemory {
 
 GameMemory* game = nullptr;
 
+void update_scene(void*, void*);
+
 SV_USER bool user_initialize(bool init)
 {
     if (init) {
@@ -17,6 +19,8 @@ SV_USER bool user_initialize(bool init)
     }
 
     game = reinterpret_cast<GameMemory*>(engine.game_memory);
+
+    event_user_register("update_scene", update_scene);
     
     return true;
 }
@@ -50,7 +54,7 @@ SV_USER bool user_initialize_scene(Scene* scene, Archive* parchive)
     return true;
 }
 
-SV_USER void user_update()
+void update_scene(void*, void*)
 {
     if (entity_exist(engine.scene, game->foo)) {
 

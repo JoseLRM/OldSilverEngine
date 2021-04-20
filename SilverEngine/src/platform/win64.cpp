@@ -795,7 +795,6 @@ namespace sv {
 	    UserCallbacks c = {};
 
 	    c.initialize = (UserInitializeFn)GetProcAddress(platform.user_lib, "user_initialize");
-	    c.update = (UserUpdateFn)GetProcAddress(platform.user_lib, "user_update");
 	    c.close = (UserCloseFn)GetProcAddress(platform.user_lib, "user_close");
 	    c.validate_scene = (UserValidateSceneFn)GetProcAddress(platform.user_lib, "user_validate_scene");
 	    c.get_scene_filepath = (UserGetSceneFilepathFn)GetProcAddress(platform.user_lib, "user_get_scene_filepath");
