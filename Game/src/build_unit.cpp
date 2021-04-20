@@ -29,7 +29,7 @@ GameMemory& get_game_memory()
     return *reinterpret_cast<GameMemory*>(engine.game_memory);
 }
 
-void update_scene(void*, void*)
+void update()
 {
     GameMemory& m = get_game_memory();
     Scene* scene = engine.scene;
@@ -91,7 +91,7 @@ SV_USER bool user_initialize(bool init)
     register_component<TestComponent>("Test");
 
     event_user_register("on_body_collision", on_body_collision);
-    event_user_register("update_scene", update_scene);
+    event_user_register("update", update);
     
     return true;
 }

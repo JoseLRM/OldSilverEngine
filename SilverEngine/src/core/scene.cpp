@@ -807,11 +807,11 @@ namespace sv {
 	    return;
 #endif
 	
-	event_dispatch("scene_update", nullptr);
+	event_dispatch("update", nullptr);
 	    
 	update_physics();
 
-	event_dispatch("scene_late_update", nullptr);
+	event_dispatch("late_update", nullptr);
     }
 
     CameraComponent* get_main_camera(Scene* scene)

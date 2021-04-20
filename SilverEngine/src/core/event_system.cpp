@@ -77,12 +77,7 @@ namespace sv {
 
     SV_AUX u64 compute_hash(const char* name)
     {
-	u64 hash = (strlen(name) * 0x39F2B295B3) >> 16;
-	while (*name) {
-	    hash = (u64(*name) * 0xF39A3B382DE) >> 16;
-	    ++name;
-	}
-	return hash;
+	return hash_string(name);
     }
 
     SV_AUX EventType* find_type(const char* event_name, bool log_not_found)
