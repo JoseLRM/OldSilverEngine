@@ -313,33 +313,41 @@ namespace sv {
 
     void engine_main();
 
-    extern "C" SV_API int entry_point(HINSTANCE hInstance)
-    {
-	{
-	    WNDCLASSA c{};
-	    c.hCursor = LoadCursorA(0, IDC_ARROW);
-	    c.lpfnWndProc = window_proc;
-	    c.lpszClassName = "SilverWindow";
-	    c.hInstance = hInstance;
-	    
-	    if (!RegisterClassA(&c)) {
-		sv::print("Can't register window class");
-		return 1;
-	    }
-	}
+}
+
+int main(int argc, char* argv[])
+{
+    using namespace sv;
+    
+    HINSTANCE hInstance = GetModuleHandle(NULL);
 	
-	platform.hinstance = hInstance;
-	platform.handle = 0;
-	platform.resize = false;
-	platform.state = WindowState_Windowed;
-
-	engine_main();
-
-	if (platform.user_lib)
-	    FreeLibrary(platform.user_lib);
-
-	return 0;
+    {
+	WNDCLASSA c{};
+	c.hCursor = LoadCursorA(0, IDC_ARROW);
+	c.lpfnWndProc = window_proc;
+	c.lpszClassName = "SilverWindow";
+	c.hInstance = hInstance;
+	    
+	if (!RegisterClassA(&c)) {
+	    sv::print("Can't register window class");
+	    return 1;
+	}
     }
+	
+    platform.hinstance = hInstance;
+    platform.handle = 0;
+    platform.resize = false;
+    platform.state = WindowState_Windowed;
+
+    engine_main();
+
+    if (platform.user_lib)
+	FreeLibrary(platform.user_lib);
+
+    return 0;
+}
+
+namespace sv {
 
     void print(const char* str)
     {

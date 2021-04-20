@@ -20,6 +20,6 @@ namespace sv {
 	void*            game_memory = nullptr;
     };
     
-    extern GlobalEngineData SV_API_VAR engine;
+    extern GlobalEngineData SV_API engine;
     
 }

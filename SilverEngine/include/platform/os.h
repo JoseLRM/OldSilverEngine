@@ -249,6 +249,6 @@ namespace sv {
 
     };
 
-    extern GlobalInputData SV_API_VAR input;
+    extern GlobalInputData SV_API input;
     
 }

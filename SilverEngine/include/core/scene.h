@@ -394,7 +394,7 @@ namespace sv {
 
     struct SpriteComponent : public BaseComponent {
 
-	static CompID SV_API_VAR ID;
+	static CompID SV_API ID;
 	static constexpr u32 VERSION = 0u;
 	
 	TextureAsset texture;
@@ -415,7 +415,7 @@ namespace sv {
 
     struct CameraComponent : public BaseComponent {
 
-	static CompID SV_API_VAR ID;
+	static CompID SV_API ID;
 	static constexpr u32 VERSION = 0u;
 
 	ProjectionType projection_type = ProjectionType_Orthographic;
@@ -464,7 +464,7 @@ namespace sv {
 
     struct MeshComponent : public BaseComponent {
 
-	static CompID SV_API_VAR ID;
+	static CompID SV_API ID;
 	static constexpr u32 VERSION = 0u;
 	
 	MeshAsset		mesh;
@@ -483,7 +483,7 @@ namespace sv {
 
     struct LightComponent : public BaseComponent {
 
-	static CompID SV_API_VAR ID;
+	static CompID SV_API ID;
 	static constexpr u32 VERSION = 0u;
 	
 	LightType light_type = LightType_Point;
@@ -504,7 +504,7 @@ namespace sv {
 
     struct BodyComponent : public BaseComponent {
 
-	static CompID SV_API_VAR ID;
+	static CompID SV_API ID;
 	static constexpr u32 VERSION = 0u;
 
 	BodyType body_type = BodyType_Static;

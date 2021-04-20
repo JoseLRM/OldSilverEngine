@@ -40,7 +40,7 @@ namespace sv {
 	GUI* gui;
     };
 
-    extern GlobalDevData SV_API_VAR dev;
+    extern GlobalDevData SV_API dev;
 
     // EDITOR GUI
 

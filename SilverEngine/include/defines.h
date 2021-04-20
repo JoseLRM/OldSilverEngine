@@ -80,10 +80,8 @@ constexpr u32 SCENENAME_SIZE = 50u;
 
 #if SV_SILVER_ENGINE
 #define SV_API __declspec(dllexport)
-#define SV_API_VAR SV_API
 #else
-#define SV_API
-#define SV_API_VAR __declspec(dllimport)
+#define SV_API __declspec(dllimport)
 #endif
 
 #if SV_PLATFORM_WIN
