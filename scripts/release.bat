@@ -24,7 +24,7 @@ IF NOT EXIST release (
 
 XCOPY %SVP% %RP% /E /I /Q /Y > NUL
 
-RMDIR %RP%int\ /Q /S > NULL
+RMDIR %RP%int\ /Q /S > NUL
 
 RMDIR %RP%assets\ /Q /S > NUL
 MKDIR %RP%assets\ > NUL
