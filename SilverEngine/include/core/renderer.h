@@ -34,7 +34,7 @@ namespace sv {
 
     // SCENE
 
-    void draw_scene(Scene* scene);
+    void draw_scene();
 
     void draw_sky(GPUImage* skymap, XMMATRIX view_matrix, const XMMATRIX& projection_matrix, CommandList cmd);
 

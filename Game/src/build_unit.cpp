@@ -32,20 +32,19 @@ GameMemory& get_game_memory()
 void update()
 {
     GameMemory& m = get_game_memory();
-    Scene* scene = engine.scene;
 
-    if (scene) {
+    if (there_is_scene()) {
 	
-	BodyComponent* body = get_component<BodyComponent>(scene, m.player);
-	v2_f32& pos = *get_entity_position2D_ptr(scene, m.player);
+	BodyComponent* body = get_component<BodyComponent>(m.player);
+	v2_f32& pos = *get_entity_position2D_ptr(m.player);
 
-	set_entity_position(scene, scene->main_camera, pos.getVec3());
+	set_entity_position(get_scene_data()->main_camera, pos.getVec3());
 
 	f32 vel = 5.f * engine.deltatime;
 
 	if (input.keys[Key_A]) {
 
-	    SpriteComponent* spr = get_component<SpriteComponent>(engine.scene, m.player);
+	    SpriteComponent* spr = get_component<SpriteComponent>(m.player);
 	    if (spr) {
 		spr->texcoord.x = 0.1f;
 		spr->texcoord.z = 0.f;
@@ -55,7 +54,7 @@ void update()
 	}
 	if (input.keys[Key_D]) {
 
-	    SpriteComponent* spr = get_component<SpriteComponent>(engine.scene, m.player);
+	    SpriteComponent* spr = get_component<SpriteComponent>(m.player);
 	    if (spr) {
 		spr->texcoord.z = 0.1f;
 		spr->texcoord.x = 0.f;
@@ -85,7 +84,7 @@ SV_USER bool user_initialize(bool init)
     if (init) {
 	engine.game_memory = SV_ALLOCATE_MEMORY(sizeof(GameMemory));
     
-	set_active_scene("level_0");
+	set_scene("level_0");
     }
 
     register_component<TestComponent>("Test");
@@ -106,7 +105,7 @@ SV_USER bool user_close(bool close)
     return true;
 }
 
-SV_USER bool user_initialize_scene(Scene* scene, Archive* parchive)
+SV_USER bool user_initialize_scene(Archive* parchive)
 {
     GameMemory& m = get_game_memory();
     
@@ -126,36 +125,37 @@ SV_USER bool user_initialize_scene(Scene* scene, Archive* parchive)
 
 
 // Create camera
-    scene->main_camera = create_entity(scene, SV_ENTITY_NULL, "Camera");
-    add_component<CameraComponent>(scene, scene->main_camera);
+    Entity& main_camera = get_scene_data()->main_camera;
+    main_camera = create_entity(SV_ENTITY_NULL, "Camera");
+    add_component<CameraComponent>(main_camera);
 
     // Create player
-    m.player = create_entity(scene, SV_ENTITY_NULL, "Player");
-    SpriteComponent* spr = add_component<SpriteComponent>(scene, m.player);
+    m.player = create_entity(SV_ENTITY_NULL, "Player");
+    SpriteComponent* spr = add_component<SpriteComponent>(m.player);
     load_asset_from_file(spr->texture, "assets/images/temp.png");
     spr->texcoord = { 0.f, 0.f, 0.1f, 0.1f  };
-    BodyComponent* body = add_component<BodyComponent>(scene, m.player);
+    BodyComponent* body = add_component<BodyComponent>(m.player);
     body->body_type = BodyType_Dynamic;
 
     // Create cat
-    m.cat = create_entity(scene, SV_ENTITY_NULL, "Cat");
-    spr = add_component<SpriteComponent>(scene, m.cat);
+    m.cat = create_entity(SV_ENTITY_NULL, "Cat");
+    spr = add_component<SpriteComponent>(m.cat);
     spr->texcoord = { 0.f, 0.1f, 0.1f, 0.2f  };
     load_asset_from_file(spr->texture, "assets/images/temp.png");
-    body = add_component<BodyComponent>(scene, m.cat);
+    body = add_component<BodyComponent>(m.cat);
     body->body_type = BodyType_Dynamic;
 
     // Create block
-    Entity block = create_entity(scene, SV_ENTITY_NULL, "Block");
-    spr = add_component<SpriteComponent>(scene, block);
+    Entity block = create_entity(SV_ENTITY_NULL, "Block");
+    spr = add_component<SpriteComponent>(block);
     spr->texcoord = { 0.8f, 0.f, 1.f, 0.2f  };
     load_asset_from_file(spr->texture, "assets/images/temp.png");
-    add_component<BodyComponent>(scene, block);    
+    add_component<BodyComponent>(block);    
     
     return true;
 }
 
-SV_USER bool user_serialize_scene(Scene* scene, Archive* parchive)
+SV_USER bool user_serialize_scene(Archive* parchive)
 {
     GameMemory& m = get_game_memory();
     Archive& archive = *parchive;

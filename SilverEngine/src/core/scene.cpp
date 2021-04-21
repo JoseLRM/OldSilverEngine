@@ -6,6 +6,7 @@
 #include "user.h"
 
 #define PREFAB_COMPONENT_FLAG SV_BIT(31ULL)
+#define SV_SCENE() sv::Scene& scene = *scene_state->scene;
 
 namespace sv {
 
@@ -14,6 +15,7 @@ namespace sv {
     CompID MeshComponent::ID = SV_COMPONENT_ID_INVALID;
     CompID LightComponent::ID = SV_COMPONENT_ID_INVALID;
     CompID BodyComponent::ID = SV_COMPONENT_ID_INVALID;
+
     
     struct EntityInternal {
 
@@ -53,36 +55,52 @@ namespace sv {
 
     };
 
-    struct Scene_internal : public Scene {
-
-	// TODO: Use List
-	std::vector<Entity>	 entities;
-	EntityDataAllocator	 entityData;
-	List<ComponentAllocator> components;
-
-    };
-
-    constexpr u32 ECS_COMPONENT_POOL_SIZE = 100u;
-    constexpr u32 ECS_ENTITY_ALLOC_SIZE = 100u;
-
     struct ComponentRegister {
 
-	std::string						name;
-	u32								size;
-	u32 version;
-	CreateComponentFunction			createFn = nullptr;
-	DestroyComponentFunction		destroyFn = nullptr;
-	MoveComponentFunction			moveFn = nullptr;
-	CopyComponentFunction			copyFn = nullptr;
-	SerializeComponentFunction		serializeFn = nullptr;
+	// TODO: get out of here
+	std::string		        name;
+	u32				size;
+	u32                             version;
+	CreateComponentFunction		createFn = nullptr;
+	DestroyComponentFunction	destroyFn = nullptr;
+	MoveComponentFunction		moveFn = nullptr;
+	CopyComponentFunction		copyFn = nullptr;
+	SerializeComponentFunction	serializeFn = nullptr;
 	DeserializeComponentFunction	deserializeFn = nullptr;
 
     };
 
-    static List<ComponentRegister>	           g_Registers;
-    static std::unordered_map<std::string, CompID> g_CompNames;
+    struct Scene {
 
-#define PARSE_SCENE() sv::Scene_internal& scene = *reinterpret_cast<sv::Scene_internal*>(scene_)
+	SceneData data;
+	
+	char name[SCENENAME_SIZE] = {};
+
+	// ECS
+	
+	// TODO: Use List
+	std::vector<Entity>	 entities;
+	EntityDataAllocator	 entityData;
+	List<ComponentAllocator> components;
+	
+    };
+    
+    struct SceneState {
+
+	static constexpr u32 VERSION = 0u;
+
+	char next_scene_name[SCENENAME_SIZE] = {};
+	Scene* scene = nullptr;
+
+	List<ComponentRegister> registers;
+	// TODO: get out of here
+	std::unordered_map<std::string, CompID> component_names;
+    };
+
+    static SceneState* scene_state = nullptr;
+
+    constexpr u32 ECS_COMPONENT_POOL_SIZE = 100u;
+    constexpr u32 ECS_ENTITY_ALLOC_SIZE = 100u;
     
     SV_INTERNAL void entity_clear(EntityDataAllocator& allocator);
 
@@ -94,34 +112,79 @@ namespace sv {
     bool componentPoolPtrExist(const ComponentPool& pool, void* ptr);	       // Check if the pool contains the ptr
     u32	componentPoolCount(const ComponentPool& pool, size_t compSize);	       // Return the number of valid components allocated in this pool
 
-    void componentAllocatorCreate(Scene* scene, CompID ID);						// Create the allocator
-    void componentAllocatorDestroy(Scene* scene, CompID ID);						// Destroy the allocator
-    BaseComponent* componentAlloc(Scene* scene, CompID compID, Entity entity, bool create = true);	// Allocate and create new component
-    BaseComponent* componentAlloc(Scene* scene, CompID compID, BaseComponent* srcComp, Entity entity);	// Allocate and copy new component
-    void componentFree(Scene* scene, CompID compID, BaseComponent* comp);				// Free and destroy component
-    u32	componentAllocatorCount(Scene* scene, CompID compId);						// Return the number of valid components in all the pools
-    bool componentAllocatorIsEmpty(Scene* scene, CompID compID);					// Return if the allocator is empty
+    void componentAllocatorCreate(CompID ID);						// Create the allocator
+    void componentAllocatorDestroy(CompID ID);						// Destroy the allocator
+    BaseComponent* componentAlloc(CompID compID, Entity entity, bool create = true);	// Allocate and create new component
+    BaseComponent* componentAlloc(CompID compID, BaseComponent* srcComp, Entity entity);// Allocate and copy new component
+    void componentFree(CompID compID, BaseComponent* comp);				// Free and destroy component
+    u32	componentAllocatorCount(CompID compId);						// Return the number of valid components in all the pools
+    bool componentAllocatorIsEmpty(CompID compID);					// Return if the allocator is empty
 
-    bool initialize_scene(Scene** pscene, const char* name)
+    void _initialize_scene()
     {
-	Scene_internal& scene = *new Scene_internal();
-	Scene* scene_ = reinterpret_cast<Scene*>(&scene);
+	scene_state = SV_ALLOCATE_STRUCT(SceneState);
+
+	// TODO register engine components
+    }
+
+    SV_AUX void destroy_current_scene()
+    {
+	if (there_is_scene()) {
+
+	    Scene*& scene = scene_state->scene;
+
+	    // User close TODO: Handle error
+	    _user_close_scene();
+
+	    gui_destroy(scene->data.gui);
+
+	    // Close ECS
+	    {
+		for (CompID i = 0; i < get_component_register_count(); ++i) {
+		    if (component_exist(i))
+			componentAllocatorDestroy(i);
+		}
+		scene->components.clear();
+		scene->entities.clear();
+		entity_clear(scene->entityData);
+	    }
+
+	    scene = nullptr;
+	}
+    }
+    
+    void _close_scene()
+    {
+	destroy_current_scene();
+
+	SV_FREE_STRUCT(SceneState, scene_state);
+    }
+
+    bool _start_scene(const char* name)
+    {
+	Scene*& scene_ptr = scene_state->scene;
+	
+	// Close last scene
+	destroy_current_scene();
+	
+	scene_ptr = SV_ALLOCATE_STRUCT(Scene);
+
+	Scene& scene = *scene_ptr;
 
 	// Init
 	{
 	    // Allocate components
-	    scene.components.resize(g_Registers.size());
+	    scene.components.resize(scene_state->registers.size());
 
-	    for (CompID id = 0u; id < g_Registers.size(); ++id) {
+	    for (CompID id = 0u; id < scene_state->registers.size(); ++id) {
 
-		componentAllocatorCreate(reinterpret_cast<Scene*>(&scene), id);
+		componentAllocatorCreate(id);
 	    }
 
-	    sprintf(scene.name, "%s", name);
+	    strcpy(scene.name, name);
 	}
 
-	SV_CHECK(gui_create(hash_string(name), &scene.gui));
-	//SV_CHECK(create_audio_device(&scene.audio_device));
+	SV_CHECK(gui_create(hash_string(name), &scene.data.gui));
 
 	bool deserialize = false;
 	Archive archive;
@@ -144,10 +207,10 @@ namespace sv {
 		else {
 		    u32 version;
 		    archive >> version;
-		    archive >> scene.main_camera;
+		    archive >> scene.data.main_camera;
 
-		    archive >> scene.gravity;
-		    archive >> scene.air_friction;
+		    archive >> scene.data.gravity;
+		    archive >> scene.data.air_friction;
 
 		    // ECS
 		    {
@@ -179,14 +242,14 @@ namespace sv {
 			}
 
 			// Registers ID
-			CompID invalidCompID = CompID(g_Registers.size());
+			CompID invalidCompID = CompID(scene_state->registers.size());
 			for (u32 i = 0; i < registers.size(); ++i) {
 
 			    Register& reg = registers[i];
 			    reg.ID = invalidCompID;
 
-			    auto it = g_CompNames.find(reg.name.c_str());
-			    if (it != g_CompNames.end()) {
+			    auto it = scene_state->component_names.find(reg.name.c_str());
+			    if (it != scene_state->component_names.end()) {
 				reg.ID = it->second;
 			    }
 
@@ -301,7 +364,7 @@ namespace sv {
 
 					    BaseComponent* comp = reinterpret_cast<BaseComponent*>(it);
 					    if (comp->_id != 0u) {
-						destroy_component(scene_, compID, comp);
+						destroy_component(compID, comp);
 					    }
 
 					    it += compSize;
@@ -317,9 +380,9 @@ namespace sv {
 				    Entity entity;
 				    archive >> entity;
 
-				    BaseComponent* comp = componentAlloc(scene_, compID, entity, false);
-				    create_component(scene_, compID, comp, entity);
-				    deserialize_component(scene_, compID, comp, version , archive);
+				    BaseComponent* comp = componentAlloc(compID, entity, false);
+				    create_component(compID, comp, entity);
+				    deserialize_component(compID, comp, version , archive);
 
 				    scene.entityData.getInternal(entity).components.push_back({compID, comp});
 				}
@@ -334,40 +397,41 @@ namespace sv {
 	}
 
 	// User Init
-	if (!_user_initialize_scene(scene_, deserialize ? &archive : nullptr)) {
+	if (!_user_initialize_scene(deserialize ? &archive : nullptr)) {
 	    // TODO: handle error
 	    return false;
 	}
 	
-	*pscene = scene_;
 	return true;
     }
 
-    bool close_scene(Scene* scene_)
-    {
-	PARSE_SCENE();
+    void _manage_scenes()
+    {	
+	if (scene_state->next_scene_name[0] != '\0') {
 
-	// User close TODO: Handle error
-	_user_close_scene(scene_);
-
-	gui_destroy(scene.gui);
-	//destroy_audio_device(scene.audio_device);
-
-	// Close ECS
-	{
-	    for (CompID i = 0; i < get_component_register_count(); ++i) {
-		if (component_exist(i))
-		    componentAllocatorDestroy(scene_, i);
-	    }
-	    scene.components.clear();
-	    scene.entities.clear();
-	    entity_clear(scene.entityData);
+	    // TODO Handle error
+	    _start_scene(scene_state->next_scene_name);
+	    strcpy(scene_state->next_scene_name, "");
 	}
-		
-	return true;
     }
 
-    bool set_active_scene(const char* name)
+    SceneData* get_scene_data()
+    {
+	SV_SCENE();
+	return &scene.data;
+    }
+
+    const char* get_scene_name()
+    {
+	SV_SCENE();
+	return scene.name;
+    }
+    bool there_is_scene()
+    {
+	return scene_state->scene != nullptr;
+    }
+
+    bool set_scene(const char* name)
     {
 	size_t name_size = strlen(name);
 
@@ -378,46 +442,48 @@ namespace sv {
 	
 	// validate scene
 	if (_user_validate_scene(name)) {
-	    memcpy(engine.next_scene_name, name, name_size + 1u);
+	    strcpy(scene_state->next_scene_name, name);
 	    return true;
 	}
 	return false;
     }
 
-    SV_API bool save_scene(Scene* scene)
+    SV_API bool save_scene()
     {
+	SV_SCENE();
+	
 	char filepath[FILEPATH_SIZE];
-	if (_user_get_scene_filepath(scene->name, filepath)) {
+	if (_user_get_scene_filepath(scene.name, filepath)) {
 
-	    return save_scene(scene, filepath);
+	    return save_scene(filepath);
 	}
 	else return false;
     }
 
-    bool save_scene(Scene* scene_, const char* filepath)
+    bool save_scene(const char* filepath)
     {
-	PARSE_SCENE();
-
+	SV_SCENE();
+	    
 	Archive archive;
 
-	archive << Scene::VERSION;
-	archive << scene.main_camera;
+	archive << SceneState::VERSION;
+	archive << scene.data.main_camera;
 
-	archive << scene.gravity;
-	archive << scene.air_friction;
+	archive << scene.data.gravity;
+	archive << scene.data.air_friction;
 		
 	// ECS
 	{
 	    // Registers
 	    {
 		u32 registersCount = 0u;
-		for (CompID id = 0u; id < g_Registers.size(); ++id) {
+		for (CompID id = 0u; id < scene_state->registers.size(); ++id) {
 		    if (component_exist(id))
 			++registersCount;
 		}
 		archive << registersCount;
 
-		for (CompID id = 0u; id < g_Registers.size(); ++id) {
+		for (CompID id = 0u; id < scene_state->registers.size(); ++id) {
 
 		    if (component_exist(id)) {
 			archive << get_component_name(id) << get_component_size(id) << get_component_version(id);
@@ -449,14 +515,14 @@ namespace sv {
 
 	    // Components
 	    {
-		for (CompID compID = 0u; compID < g_Registers.size(); ++compID) {
+		for (CompID compID = 0u; compID < scene_state->registers.size(); ++compID) {
 
 		    if (!component_exist(compID)) continue;
 
-		    archive << componentAllocatorCount(scene_, compID);
+		    archive << componentAllocatorCount(compID);
 
-		    ComponentIterator it = begin_component_iterator(scene_, compID);
-		    ComponentIterator end = end_component_iterator(scene_, compID);
+		    ComponentIterator it = begin_component_iterator(compID);
+		    ComponentIterator end = end_component_iterator(compID);
 
 		    while (!it.equal(end)) {
 
@@ -465,7 +531,7 @@ namespace sv {
 			it.get(&entity, &component);
 
 			archive << entity;
-			serialize_component(scene_, compID, component, archive);
+			serialize_component(compID, component, archive);
 
 			it.next();
 		    }
@@ -473,34 +539,34 @@ namespace sv {
 	    }
 	}
 
-	_user_serialize_scene(scene_, &archive);
+	_user_serialize_scene(&archive);
 		
 	return archive.saveFile(filepath);
     }
 
-    bool clear_scene(Scene* scene_)
+    bool clear_scene()
     {
-	PARSE_SCENE();
-
+	SV_SCENE();
+	
 	for (CompID i = 0; i < get_component_register_count(); ++i) {
 	    if (component_exist(i))
-		componentAllocatorDestroy(scene_, i);
+		componentAllocatorDestroy(i);
 	}
-	for (CompID id = 0u; id < g_Registers.size(); ++id) {
+	for (CompID id = 0u; id < scene_state->registers.size(); ++id) {
 
-	    componentAllocatorCreate(reinterpret_cast<Scene*>(&scene), id);
+	    componentAllocatorCreate(id);
 	}
 
 	scene.entities.clear();
 	entity_clear(scene.entityData);
 
 	// user initialize scene
-	SV_CHECK(_user_initialize_scene(scene_, nullptr));
+	SV_CHECK(_user_initialize_scene(nullptr));
 
 	return true;
     }
 
-    bool create_entity_model(Scene* scene_, Entity parent, const char* folderpath)
+    bool create_entity_model(Entity parent, const char* folderpath)
     {
 	//PARSE_SCENE();
 		
@@ -528,13 +594,13 @@ namespace sv {
 
 		    if (res) {
 					
-			Entity entity = create_entity(scene_, parent);
-			MeshComponent* comp = add_component<MeshComponent>(scene_, entity);
+			Entity entity = create_entity(parent);
+			MeshComponent* comp = add_component<MeshComponent>(entity);
 			comp->mesh = mesh;
 
 			Mesh* m = mesh.get();
 
-			set_entity_matrix(scene_, entity, m->model_transform_matrix);
+			set_entity_matrix(entity, m->model_transform_matrix);
 
 			if (m->model_material_filepath.size()) {
 					
@@ -611,12 +677,11 @@ namespace sv {
 
     void update_physics()
     {
+	SV_SCENE();
+	
 	f32 dt = engine.deltatime;
-
-	Scene* scene_ = engine.scene;
-	Scene& scene = *engine.scene;
     
-	EntityView<BodyComponent> bodies(scene_);
+	EntityView<BodyComponent> bodies;
 	    
 	for (ComponentView<BodyComponent> view : bodies) {
 
@@ -625,14 +690,14 @@ namespace sv {
 	    if (body.body_type == BodyType_Static)
 		continue;
 
-	    v2_f32 position = get_entity_position2D(scene_, view.entity) + body.offset;
-	    v2_f32 scale = get_entity_scale2D(scene_, view.entity) * body.size;
+	    v2_f32 position = get_entity_position2D(view.entity) + body.offset;
+	    v2_f32 scale = get_entity_scale2D(view.entity) * body.size;
 
 	    // Reset values
 	    body.in_ground = false;
 	
 	    // Gravity
-	    body.vel += scene.gravity * dt;
+	    body.vel += scene.data.gravity * dt;
 	
 	    ComponentView<BodyComponent> vertical_collision = {};
 	    f32 vertical_depth = f32_max;
@@ -660,15 +725,15 @@ namespace sv {
 
 		    next_pos += step;
 	    
-		    EntityView<BodyComponent> bodies0(scene_);
+		    EntityView<BodyComponent> bodies0;
 		    for (ComponentView<BodyComponent> v : bodies0) {
 
 			BodyComponent& b = *v.comp;
 
 			if (b.body_type == BodyType_Static) {
 
-			    v2_f32 p = get_entity_position2D(scene_, v.entity) + b.offset;
-			    v2_f32 s = get_entity_scale2D(scene_, v.entity) * b.size;
+			    v2_f32 p = get_entity_position2D(v.entity) + b.offset;
+			    v2_f32 s = get_entity_scale2D(v.entity) * b.size;
 
 			    v2_f32 to = p - next_pos;
 			    to.x = abs(to.x);
@@ -751,30 +816,28 @@ namespace sv {
 		}
 
 		// Air friction
-		next_vel *= pow(1.f - scene.air_friction, dt);
+		next_vel *= pow(1.f - scene.data.air_friction, dt);
 	    }
 	
 	    position = next_pos;
 	    body.vel = next_vel;
 
-	    set_entity_position2D(scene_, view.entity, position - body.offset);
+	    set_entity_position2D(view.entity, position - body.offset);
 	}
     }
 
     void _update_scene()
     {
-	Scene* scene_ = engine.scene;
-
-	if (scene_ == nullptr)
-	    return;
+	SV_SCENE();
 	
-	PARSE_SCENE();
+	if (!there_is_scene())
+	    return;
 
-	if (!entity_exist(scene_, scene.main_camera)) {
-	    scene.main_camera = SV_ENTITY_NULL;
+	if (!entity_exist(scene.data.main_camera)) {
+	    scene.data.main_camera = SV_ENTITY_NULL;
 	}
 
-	CameraComponent* camera = get_main_camera(scene_);
+	CameraComponent* camera = get_main_camera();
 
 	// Adjust camera
 	if (camera) {
@@ -784,15 +847,15 @@ namespace sv {
 
 	// Update cameras matrices
 	{
-	    EntityView<CameraComponent> cameras(scene_);
+	    EntityView<CameraComponent> cameras;
 
 	    for (ComponentView<CameraComponent> view : cameras) {
 
 		CameraComponent& camera = *view.comp;
 		Entity entity = view.entity;
 
-		v3_f32 position = get_entity_world_position(scene_, entity);
-		v4_f32 rotation = get_entity_world_rotation(scene_, entity);
+		v3_f32 position = get_entity_world_position(entity);
+		v4_f32 rotation = get_entity_world_rotation(entity);
 
 		update_camera_matrices(camera, position, rotation);
 	    }
@@ -814,10 +877,13 @@ namespace sv {
 	event_dispatch("late_update", nullptr);
     }
 
-    CameraComponent* get_main_camera(Scene* scene)
+    CameraComponent* get_main_camera()
     {
-	if (scene->main_camera == SV_ENTITY_NULL || !entity_exist(scene, scene->main_camera)) return nullptr;
-	return get_component<CameraComponent>(scene, scene->main_camera);
+	SV_SCENE();
+	
+	if (entity_exist(scene.data.main_camera))
+	    return get_component<CameraComponent>(scene.data.main_camera);
+	return nullptr;
     }
 
     Ray screen_to_world_ray(v2_f32 position, const v3_f32& camera_position, const v4_f32& camera_rotation, CameraComponent* camera)
@@ -954,17 +1020,17 @@ namespace sv {
 	return a.pools.back();
     }
 
-    SV_INTERNAL void componentAllocatorCreate(Scene* scene_, CompID compID)
+    SV_INTERNAL void componentAllocatorCreate(CompID compID)
     {
-	PARSE_SCENE();
-	componentAllocatorDestroy(scene_, compID);
+	SV_SCENE();
+	componentAllocatorDestroy(compID);
 	componentAllocatorCreatePool(scene.components[compID], size_t(get_component_size(compID)));
     }
 
-    SV_INTERNAL void componentAllocatorDestroy(Scene* scene_, CompID compID)
+    SV_INTERNAL void componentAllocatorDestroy(CompID compID)
     {
-	PARSE_SCENE();
-
+	SV_SCENE();
+	
 	ComponentAllocator& a = scene.components[compID];
 	size_t compSize = size_t(get_component_size(compID));
 
@@ -977,7 +1043,7 @@ namespace sv {
 
 		BaseComponent* comp = reinterpret_cast<BaseComponent*>(ptr);
 		if (comp->_id != 0u) {
-		    destroy_component(scene_, compID, comp);
+		    destroy_component(compID, comp);
 		}
 
 		ptr += compSize;
@@ -989,40 +1055,41 @@ namespace sv {
 	a.pools.clear();
     }
 
-    SV_INTERNAL BaseComponent* componentAlloc(Scene* scene_, CompID compID, Entity entity, bool create)
+    SV_INTERNAL BaseComponent* componentAlloc(CompID compID, Entity entity, bool create)
     {
-	PARSE_SCENE();
-
+	SV_SCENE();
+	
 	ComponentAllocator& a = scene.components[compID];
 	size_t compSize = size_t(get_component_size(compID));
 
 	ComponentPool& pool = componentAllocatorPreparePool(a, compSize);
 	BaseComponent* comp = reinterpret_cast<BaseComponent*>(componentPoolGetPtr(pool, compSize));
 
-	if (create) create_component(scene_, compID, comp, entity);
+	if (create) create_component(compID, comp, entity);
 
 	return comp;
     }
 
-    SV_INTERNAL BaseComponent* componentAlloc(Scene* scene_, CompID compID, BaseComponent* srcComp, Entity entity)
+    SV_INTERNAL BaseComponent* componentAlloc(CompID compID, BaseComponent* srcComp, Entity entity)
     {
-	PARSE_SCENE();
-
+	SV_SCENE();
+	
 	ComponentAllocator& a = scene.components[compID];
 	size_t compSize = size_t(get_component_size(compID));
 
 	ComponentPool& pool = componentAllocatorPreparePool(a, compSize);
 	BaseComponent* comp = reinterpret_cast<BaseComponent*>(componentPoolGetPtr(pool, compSize));
 
-	create_component(scene_, compID, comp, entity);
-	copy_component(scene_, compID, srcComp, comp);
+	create_component(compID, comp, entity);
+	copy_component(compID, srcComp, comp);
 
 	return comp;
     }
 
-    SV_INTERNAL void componentFree(Scene* scene_, CompID compID, BaseComponent* comp)
+    SV_INTERNAL void componentFree(CompID compID, BaseComponent* comp)
     {
-	PARSE_SCENE();
+	SV_SCENE();
+	
 	SV_ASSERT(comp != nullptr);
 
 	ComponentAllocator& a = scene.components[compID];
@@ -1032,7 +1099,7 @@ namespace sv {
 
 	    if (componentPoolPtrExist(*it, comp)) {
 
-		destroy_component(scene_, compID, comp);
+		destroy_component(compID, comp);
 		componentPoolRmvPtr(*it, compSize, comp);
 
 		break;
@@ -1040,10 +1107,10 @@ namespace sv {
 	}
     }
 
-    SV_INTERNAL u32 componentAllocatorCount(Scene* scene_, CompID compID)
+    SV_INTERNAL u32 componentAllocatorCount(CompID compID)
     {
-	PARSE_SCENE();
-
+	SV_SCENE();
+	
 	const ComponentAllocator& a = scene.components[compID];
 	u32 compSize = get_component_size(compID);
 
@@ -1054,10 +1121,10 @@ namespace sv {
 	return res;
     }
 
-    SV_INTERNAL bool componentAllocatorIsEmpty(Scene* scene_, CompID compID)
+    SV_INTERNAL bool componentAllocatorIsEmpty(CompID compID)
     {
-	PARSE_SCENE();
-
+	SV_SCENE();
+	
 	const ComponentAllocator& a = scene.components[compID];
 	u32 compSize = get_component_size(compID);
 
@@ -1080,16 +1147,16 @@ namespace sv {
 		return SV_COMPONENT_ID_INVALID;
 	    }
 
-	    auto it = g_CompNames.find(desc->name);
+	    auto it = scene_state->component_names.find(desc->name);
 
-	    if (it != g_CompNames.end()) {
+	    if (it != scene_state->component_names.end()) {
 		
 		id = it->second;
 	    }
-	    else id = CompID(g_Registers.size());
+	    else id = CompID(scene_state->registers.size());
 	}
 
-	ComponentRegister& reg = (id == CompID(g_Registers.size())) ? g_Registers.emplace_back() : g_Registers[id];
+	ComponentRegister& reg = (id == CompID(scene_state->registers.size())) ? scene_state->registers.emplace_back() : scene_state->registers[id];
 	reg.name = desc->name;
 	reg.size = desc->componentSize;
 	reg.version = desc->version;
@@ -1100,14 +1167,14 @@ namespace sv {
 	reg.serializeFn = desc->serializeFn;
 	reg.deserializeFn = desc->deserializeFn;
 
-	g_CompNames[desc->name] = id;
+	scene_state->component_names[desc->name] = id;
 
 	return id;
     }
 
     void invalidate_component_callbacks(CompID id)
     {
-	ComponentRegister& r = g_Registers[id];
+	ComponentRegister& r = scene_state->registers[id];
 
 	r.createFn = nullptr;
 	r.destroyFn = nullptr;
@@ -1119,64 +1186,64 @@ namespace sv {
 
     const char* get_component_name(CompID ID)
     {
-	return g_Registers[ID].name.c_str();
+	return scene_state->registers[ID].name.c_str();
     }
     u32 get_component_size(CompID ID)
     {
-	return g_Registers[ID].size;
+	return scene_state->registers[ID].size;
     }
     u32 get_component_version(CompID ID)
     {
-	return g_Registers[ID].version;
+	return scene_state->registers[ID].version;
     }
     CompID get_component_id(const char* name)
     {
-	auto it = g_CompNames.find(name);
-	if (it == g_CompNames.end()) return SV_COMPONENT_ID_INVALID;
+	auto it = scene_state->component_names.find(name);
+	if (it == scene_state->component_names.end()) return SV_COMPONENT_ID_INVALID;
 	return it->second;
     }
     u32 get_component_register_count()
     {
-	return u32(g_Registers.size());
+	return u32(scene_state->registers.size());
     }
 
-    void create_component(Scene* scene, CompID ID, BaseComponent* ptr, Entity entity)
+    void create_component(CompID ID, BaseComponent* ptr, Entity entity)
     {
-	g_Registers[ID].createFn(scene, ptr);
+	scene_state->registers[ID].createFn(ptr);
 	ptr->_id = Entity(entity);
     }
 
-    void destroy_component(Scene* scene, CompID ID, BaseComponent* ptr)
+    void destroy_component(CompID ID, BaseComponent* ptr)
     {
-	g_Registers[ID].destroyFn(scene, ptr);
+	scene_state->registers[ID].destroyFn(ptr);
 	ptr->_id = 0u;
     }
 
-    void move_component(Scene* scene, CompID ID, BaseComponent* from, BaseComponent* to)
+    void move_component(CompID ID, BaseComponent* from, BaseComponent* to)
     {
-	g_Registers[ID].moveFn(scene, from, to);
+	scene_state->registers[ID].moveFn(from, to);
     }
 
-    void copy_component(Scene* scene, CompID ID, const BaseComponent* from, BaseComponent* to)
+    void copy_component(CompID ID, const BaseComponent* from, BaseComponent* to)
     {
-	g_Registers[ID].copyFn(scene, from, to);
+	scene_state->registers[ID].copyFn(from, to);
     }
 
-    void serialize_component(Scene* scene, CompID ID, BaseComponent* comp, Archive& archive)
+    void serialize_component(CompID ID, BaseComponent* comp, Archive& archive)
     {
-	SerializeComponentFunction fn = g_Registers[ID].serializeFn;
-	if (fn) fn(scene, comp, archive);
+	SerializeComponentFunction fn = scene_state->registers[ID].serializeFn;
+	if (fn) fn(comp, archive);
     }
 
-    void deserialize_component(Scene* scene, CompID ID, BaseComponent* comp, u32 version, Archive& archive)
+    void deserialize_component(CompID ID, BaseComponent* comp, u32 version, Archive& archive)
     {
-	DeserializeComponentFunction fn = g_Registers[ID].deserializeFn;
-	if (fn) fn(scene, comp, version, archive);
+	DeserializeComponentFunction fn = scene_state->registers[ID].deserializeFn;
+	if (fn) fn(comp, version, archive);
     }
 
     bool component_exist(CompID ID)
     {
-	return g_Registers.size() > ID && g_Registers[ID].createFn != nullptr;
+	return scene_state->registers.size() > ID && scene_state->registers[ID].createFn != nullptr;
     }
 
     ///////////////////////////////////// HELPER FUNCTIONS ////////////////////////////////////////
@@ -1216,8 +1283,10 @@ namespace sv {
 	}
     }
 
-    SV_INLINE static void update_childs(Scene_internal& scene, Entity entity, i32 count)
+    SV_INLINE static void update_childs(Entity entity, i32 count)
     {
+	SV_SCENE();
+	
 	Entity parent = entity;
 
 	while (parent != SV_ENTITY_NULL) {
@@ -1229,9 +1298,9 @@ namespace sv {
 
     ///////////////////////////////////// ENTITIES ////////////////////////////////////////
 
-    Entity create_entity(Scene* scene_, Entity parent, const char* name)
+    Entity create_entity(Entity parent, const char* name)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 
 	Entity entity;
 
@@ -1285,7 +1354,7 @@ namespace sv {
 	    scene.entities.emplace_back(entity);
 	}
 	else {
-	    update_childs(scene, parent, 1u);
+	    update_childs(parent, 1u);
 
 	    // Set parent and handleIndex
 	    EntityInternal& parentData = scene.entityData.getInternal(parent);
@@ -1314,9 +1383,9 @@ namespace sv {
 	return entity;
     }
 
-    void destroy_entity(Scene* scene_, Entity entity)
+    void destroy_entity(Entity entity)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 
 	EntityInternal& entityData = scene.entityData.getInternal(entity);
 
@@ -1324,7 +1393,7 @@ namespace sv {
 
 	// notify parents
 	if (entityData.parent != SV_ENTITY_NULL) {
-	    update_childs(scene, entityData.parent, -i32(count));
+	    update_childs(entityData.parent, -i32(count));
 	}
 
 	// data to remove entities
@@ -1335,7 +1404,7 @@ namespace sv {
 	// remove components & entityData
 	for (size_t i = 0; i < count; i++) {
 	    Entity e = scene.entities[indexBeginDest + i];
-	    clear_entity(scene_, e);
+	    clear_entity(e);
 
 	    { // Free the entity memory
 		auto& a = scene.entityData;
@@ -1361,9 +1430,9 @@ namespace sv {
 	}
     }
 
-    void clear_entity(Scene* scene_, Entity entity)
+    void clear_entity(Entity entity)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 
 	EntityInternal& ed = scene.entityData.getInternal(entity);
 	while (!ed.components.empty()) {
@@ -1371,16 +1440,17 @@ namespace sv {
 	    CompRef ref = ed.components.back();
 	    ed.components.pop_back();
 
-	    componentFree(scene_, ref.id, ref.ptr);
+	    componentFree(ref.id, ref.ptr);
 	}
     }
 
-    static Entity entity_duplicate_recursive(Scene_internal& scene, Entity duplicated, Entity parent)
+    SV_INTERNAL Entity entity_duplicate_recursive(Entity duplicated, Entity parent)
     {
-	Scene* scene_ = reinterpret_cast<Scene*>(&scene);
+	SV_SCENE();
+	
 	Entity copy;
 
-	copy = create_entity(scene_, parent);
+	copy = create_entity(parent);
 
 	EntityInternal& duplicatedEd = scene.entityData.getInternal(duplicated);
 	EntityInternal& copyEd = scene.entityData.getInternal(copy);
@@ -1394,167 +1464,166 @@ namespace sv {
 	    CompID ID = duplicatedEd.components[i].id;
 
 	    BaseComponent* comp = ecs_entitydata_index_get(duplicatedEd, ID);
-	    BaseComponent* newComp = componentAlloc(scene_, ID, comp, copy);
+	    BaseComponent* newComp = componentAlloc(ID, comp, copy);
 
 	    ecs_entitydata_index_add(copyEd, ID, newComp);
 	}
 
 	for (u32 i = 0; i < scene.entityData.getInternal(duplicated).childsCount; ++i) {
 	    Entity toCopy = scene.entities[scene.entityData.getInternal(duplicated).handleIndex + i + 1];
-	    entity_duplicate_recursive(scene, toCopy, copy);
+	    entity_duplicate_recursive(toCopy, copy);
 	    i += scene.entityData.getInternal(toCopy).childsCount;
 	}
 
 	return copy;
     }
 
-    Entity duplicate_entity(Scene* scene_, Entity entity)
+    Entity duplicate_entity(Entity entity)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 
-	Entity res = entity_duplicate_recursive(scene, entity, scene.entityData.getInternal(entity).parent);
+	Entity res = entity_duplicate_recursive(entity, scene.entityData.getInternal(entity).parent);
 	return res;
     }
 
-    bool entity_is_empty(Scene* scene_, Entity entity)
+    bool entity_is_empty(Entity entity)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	return scene.entityData.getInternal(entity).components.empty();
     }
 
-    bool entity_exist(Scene* scene_, Entity entity)
+    bool entity_exist(Entity entity)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	if (entity == SV_ENTITY_NULL || entity > scene.entityData.size) return false;
 
 	EntityInternal& ed = scene.entityData.getInternal(entity);
 	return ed.handleIndex != u64_max;
     }
 
-    const char* get_entity_name(Scene* scene_, Entity entity)
+    const char* get_entity_name(Entity entity)
     {
-	PARSE_SCENE();
-	SV_ASSERT(entity_exist(scene_, entity));
+	SV_SCENE();
+	SV_ASSERT(entity_exist(entity));
 	const std::string& name = scene.entityData.getInternal(entity).name;
 	return name.empty() ? "Unnamed" : name.c_str();
     }
 
-    void set_entity_name(Scene* scene_, Entity entity, const char* name)
+    void set_entity_name(Entity entity, const char* name)
     {
-	PARSE_SCENE();
-	SV_ASSERT(entity_exist(scene_, entity));
+	SV_SCENE();
+	SV_ASSERT(entity_exist(entity));
 	scene.entityData.getInternal(entity).name = name;
     }
 
-    u32 get_entity_childs_count(Scene* scene_, Entity parent)
+    u32 get_entity_childs_count(Entity parent)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	return scene.entityData.getInternal(parent).childsCount;
     }
 
-    void get_entity_childs(Scene* scene_, Entity parent, Entity const** childsArray)
+    void get_entity_childs(Entity parent, Entity const** childsArray)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 
 	const EntityInternal& ed = scene.entityData.getInternal(parent);
 	if (childsArray && ed.childsCount != 0)* childsArray = &scene.entities[ed.handleIndex + 1];
     }
 
-    Entity get_entity_parent(Scene* scene_, Entity entity)
+    Entity get_entity_parent(Entity entity)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	return scene.entityData.getInternal(entity).parent;
     }
 
-    u64* get_entity_flags(Scene* scene_, Entity entity)
+    u64* get_entity_flags(Entity entity)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	return &scene.entityData.getInternal(entity).flags;
     }
 
-    u32 get_entity_component_count(Scene* scene_, Entity entity)
+    u32 get_entity_component_count(Entity entity)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	return u32(scene.entityData.getInternal(entity).components.size());
     }
 
-    u32 get_entity_count(Scene* scene_)
+    u32 get_entity_count()
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	return u32(scene.entities.size());
     }
 
-    Entity get_entity_by_index(Scene* scene_, u32 index)
+    Entity get_entity_by_index(u32 index)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	return scene.entities[index];
     }
 
     /////////////////////////////// COMPONENTS /////////////////////////////////////
 
-    BaseComponent* add_component(Scene* scene_, Entity entity, BaseComponent* comp, CompID componentID, size_t componentSize)
+    BaseComponent* add_component(Entity entity, BaseComponent* comp, CompID componentID, size_t componentSize)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 
-	comp = componentAlloc(scene_, componentID, comp, Entity(entity));
+	comp = componentAlloc(componentID, comp, Entity(entity));
 	ecs_entitydata_index_add(scene.entityData.getInternal(entity), componentID, comp);
 
 	return comp;
     }
 
-    BaseComponent* add_component_by_id(Scene* scene_, Entity entity, CompID componentID)
+    BaseComponent* add_component_by_id(Entity entity, CompID componentID)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 
-	BaseComponent* comp = componentAlloc(scene_, componentID, entity);
+	BaseComponent* comp = componentAlloc(componentID, entity);
 	ecs_entitydata_index_add(scene.entityData.getInternal(entity), componentID, comp);
 
 	return comp;
     }
 
-    BaseComponent* get_component_by_id(Scene* scene_, Entity entity, CompID componentID)
+    BaseComponent* get_component_by_id(Entity entity, CompID componentID)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 
 	return ecs_entitydata_index_get(scene.entityData.getInternal(entity), componentID);
     }
 
-    CompRef get_component_by_index(Scene* scene_, Entity entity, u32 index)
+    CompRef get_component_by_index(Entity entity, u32 index)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	return scene.entityData.getInternal(entity).components[index];
     }
 
-    void remove_component_by_id(Scene* scene_, Entity entity, CompID componentID)
+    void remove_component_by_id(Entity entity, CompID componentID)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 
 	EntityInternal& ed = scene.entityData.getInternal(entity);
 	BaseComponent* comp = ecs_entitydata_index_get(ed, componentID);
 
-	componentFree(scene_, componentID, comp);
+	componentFree(componentID, comp);
 	ecs_entitydata_index_remove(ed, componentID);
     }
 
-    u32 get_component_count(Scene* scene_, CompID ID)
+    u32 get_component_count(CompID ID)
     {
-	return componentAllocatorCount(scene_, ID);
+	return componentAllocatorCount(ID);
     }
 
     // Iterators
 
-    ComponentIterator begin_component_iterator(Scene* scene_, CompID comp_id)
+    ComponentIterator begin_component_iterator(CompID comp_id)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 
 	ComponentIterator iterator;
-	iterator._scene = scene_;
 	iterator.comp_id = comp_id;
 
 	iterator._pool = 0u;
 	u8* ptr = nullptr;
 
-	if (!componentAllocatorIsEmpty(scene_, iterator.comp_id)) {
+	if (!componentAllocatorIsEmpty(iterator.comp_id)) {
 
 	    const ComponentAllocator& list = scene.components[iterator.comp_id];
 	    size_t comp_size = size_t(get_component_size(iterator.comp_id));
@@ -1577,12 +1646,11 @@ namespace sv {
 	return iterator;
     }
 
-    ComponentIterator end_component_iterator(Scene* scene_, CompID comp_id)
+    ComponentIterator end_component_iterator(CompID comp_id)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 
 	ComponentIterator iterator;
-	iterator._scene = scene_;
 	iterator.comp_id = comp_id;
 
 	const ComponentAllocator& list = scene.components[iterator.comp_id];
@@ -1590,7 +1658,7 @@ namespace sv {
 	iterator._pool = u32(list.pools.size()) - 1u;
 	u8* ptr = nullptr;
 
-	if (!componentAllocatorIsEmpty(scene_, iterator.comp_id)) {
+	if (!componentAllocatorIsEmpty(iterator.comp_id)) {
 
 	    size_t compSize = size_t(get_component_size(iterator.comp_id));
 
@@ -1616,7 +1684,7 @@ namespace sv {
 
     void ComponentIterator::next()
     {
-	Scene_internal& scene = *reinterpret_cast<Scene_internal*>(_scene);
+	SV_SCENE();
 
 	auto& list = scene.components[comp_id];
 
@@ -1651,7 +1719,7 @@ namespace sv {
     {
 	// TODO:
 	SV_LOG_ERROR("TODO-> This may fail");
-	Scene_internal& scene = *reinterpret_cast<Scene_internal*>(_scene);
+	SV_SCENE();
 
 	auto& list = scene.components[comp_id];
 
@@ -1677,36 +1745,40 @@ namespace sv {
 
     //////////////////////////////////////////// TRANSFORM ///////////////////////////////////////////////////////////
 
-    SV_AUX void update_world_matrix(Scene_internal& s, Transform& t, Entity entity)
+    SV_AUX void update_world_matrix(Transform& t, Entity entity)
     {
+	SV_SCENE();
+	
 	t._modified = false;
 
-	XMMATRIX m = get_entity_matrix((Scene*)&s, entity);
+	XMMATRIX m = get_entity_matrix(entity);
 
-	EntityInternal& entityData = s.entityData.getInternal(entity);
+	EntityInternal& entityData = scene.entityData.getInternal(entity);
 	Entity parent = entityData.parent;
 
 	if (parent != SV_ENTITY_NULL) {
 	    
-	    XMMATRIX mp = get_entity_world_matrix((Scene*)&s, entity);
+	    XMMATRIX mp = get_entity_world_matrix(entity);
 	    m = m * mp;
 	}
 	
 	XMStoreFloat4x4(&t.world_matrix, m);
     }
 
-    SV_AUX void notify_transform(Scene_internal& s, Transform& t, Entity entity)
+    SV_AUX void notify_transform(Transform& t, Entity entity)
     {
+	SV_SCENE();
+	
 	if (!t._modified) {
 
 	    t._modified = true;
 
-	    auto& list = s.entityData;
+	    auto& list = scene.entityData;
 	    EntityInternal& entityData = list.getInternal(entity);
 
 	    if (entityData.childsCount == 0) return;
 
-	    auto& entities = s.entities;
+	    auto& entities = scene.entities;
 	    for (u32 i = 0; i < entityData.childsCount; ++i) {
 		Transform& et = list.getTransform(entities[entityData.handleIndex + 1 + i]);
 		et._modified = true;
@@ -1714,44 +1786,44 @@ namespace sv {
 	}
     }
 
-    void set_entity_transform(Scene* scene_, Entity entity, const Transform& transform)
+    void set_entity_transform(Entity entity, const Transform& transform)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	Transform& t = scene.entityData.getTransform(entity);
 	t = transform;
-	notify_transform(scene, t, entity);
+	notify_transform(t, entity);
     }
     
-    void set_entity_position(Scene* scene_, Entity entity, const v3_f32& position)
+    void set_entity_position(Entity entity, const v3_f32& position)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	Transform& t = scene.entityData.getTransform(entity);
 	t.position = position;
-	notify_transform(scene, t, entity);
+	notify_transform(t, entity);
     }
     
-    void set_entity_rotation(Scene* scene_, Entity entity, const v4_f32& rotation)
+    void set_entity_rotation(Entity entity, const v4_f32& rotation)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	Transform& t = scene.entityData.getTransform(entity);
 	t.rotation = rotation;
-	notify_transform(scene, t, entity);
+	notify_transform(t, entity);
     }
     
-    void set_entity_scale(Scene* scene_, Entity entity, const v3_f32& scale)
+    void set_entity_scale(Entity entity, const v3_f32& scale)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	Transform& t = scene.entityData.getTransform(entity);
 	t.scale = scale;
-	notify_transform(scene, t, entity);
+	notify_transform(t, entity);
     }
     
-    void set_entity_matrix(Scene* scene_, Entity entity, const XMMATRIX& matrix)
+    void set_entity_matrix(Entity entity, const XMMATRIX& matrix)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	Transform& t = scene.entityData.getTransform(entity);
 	
-	notify_transform(scene, t, entity);
+	notify_transform(t, entity);
 
 	XMVECTOR scale;
 	XMVECTOR rotation;
@@ -1764,133 +1836,133 @@ namespace sv {
 	t.rotation.set_dx(rotation);
     }
 
-    void set_entity_position2D(Scene* scene_, Entity entity, const v2_f32& position)
+    void set_entity_position2D(Entity entity, const v2_f32& position)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	Transform& t = scene.entityData.getTransform(entity);
 	t.position.x = position.x;
 	t.position.y = position.y;
-	notify_transform(scene, t, entity);
+	notify_transform(t, entity);
     }
     
-    Transform* get_entity_transform_ptr(Scene* scene_, Entity entity)
+    Transform* get_entity_transform_ptr(Entity entity)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	Transform& t = scene.entityData.getTransform(entity);
-	notify_transform(scene, t, entity);
+	notify_transform(t, entity);
 
 	return &t;
     }
     
-    v3_f32* get_entity_position_ptr(Scene* scene_, Entity entity)
+    v3_f32* get_entity_position_ptr(Entity entity)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	Transform& t = scene.entityData.getTransform(entity);
-	notify_transform(scene, t, entity);
+	notify_transform(t, entity);
 
 	return &t.position;
     }
     
-    v4_f32* get_entity_rotation_ptr(Scene* scene_, Entity entity)
+    v4_f32* get_entity_rotation_ptr(Entity entity)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	Transform& t = scene.entityData.getTransform(entity);
-	notify_transform(scene, t, entity);
+	notify_transform(t, entity);
 
 	return &t.rotation;
     }
     
-    v3_f32* get_entity_scale_ptr(Scene* scene_, Entity entity)
+    v3_f32* get_entity_scale_ptr(Entity entity)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	Transform& t = scene.entityData.getTransform(entity);
-	notify_transform(scene, t, entity);
+	notify_transform(t, entity);
 
 	return &t.scale;
     }
     
-    v2_f32* get_entity_position2D_ptr(Scene* scene_, Entity entity)
+    v2_f32* get_entity_position2D_ptr(Entity entity)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	Transform& t = scene.entityData.getTransform(entity);
-	notify_transform(scene, t, entity);
+	notify_transform(t, entity);
 
 	return reinterpret_cast<v2_f32*>(&t.position);
     }
     
-    v2_f32* get_entity_scale2D_ptr(Scene* scene_, Entity entity)
+    v2_f32* get_entity_scale2D_ptr(Entity entity)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	Transform& t = scene.entityData.getTransform(entity);
-	notify_transform(scene, t, entity);
+	notify_transform(t, entity);
 
 	return reinterpret_cast<v2_f32*>(&t.scale);
     }
     
-    const Transform& get_entity_transform(Scene* scene_, Entity entity)
+    const Transform& get_entity_transform(Entity entity)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	Transform& t = scene.entityData.getTransform(entity);
 	return t;
     }
     
-    v3_f32 get_entity_position(Scene* scene_, Entity entity)
+    v3_f32 get_entity_position(Entity entity)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	Transform& t = scene.entityData.getTransform(entity);
 	return t.position;
     }
     
-    v4_f32 get_entity_rotation(Scene* scene_, Entity entity)
+    v4_f32 get_entity_rotation(Entity entity)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	Transform& t = scene.entityData.getTransform(entity);
 	return t.rotation;
     }
     
-    v3_f32 get_entity_scale(Scene* scene_, Entity entity)
+    v3_f32 get_entity_scale(Entity entity)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	Transform& t = scene.entityData.getTransform(entity);
 	return t.scale;
     }
     
-    v2_f32 get_entity_position2D(Scene* scene_, Entity entity)
+    v2_f32 get_entity_position2D(Entity entity)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	Transform& t = scene.entityData.getTransform(entity);
 	return t.position.getVec2();
     }
     
-    v2_f32 get_entity_scale2D(Scene* scene_, Entity entity)
+    v2_f32 get_entity_scale2D(Entity entity)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	Transform& t = scene.entityData.getTransform(entity);
 	return t.scale.getVec2();
     }
 
-    XMMATRIX get_entity_matrix(Scene* scene_, Entity entity)
+    XMMATRIX get_entity_matrix(Entity entity)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	Transform& t = scene.entityData.getTransform(entity);
 
 	return XMMatrixScalingFromVector(t.scale.getDX()) * XMMatrixRotationQuaternion(t.rotation.get_dx())
 	    * XMMatrixTranslation(t.position.x, t.position.y, t.position.z);
     }
     
-    v3_f32 get_entity_world_position(Scene* scene_, Entity entity)
+    v3_f32 get_entity_world_position(Entity entity)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	Transform& t = scene.entityData.getTransform(entity);
-	if (t._modified) update_world_matrix(scene, t, entity);
+	if (t._modified) update_world_matrix(t, entity);
 	return *(v3_f32*) &t.world_matrix._41;
     }
     
-    v4_f32 get_entity_world_rotation(Scene* scene_, Entity entity)
+    v4_f32 get_entity_world_rotation(Entity entity)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	Transform& t = scene.entityData.getTransform(entity);
-	if (t._modified) update_world_matrix(scene, t, entity);
+	if (t._modified) update_world_matrix(t, entity);
 	XMVECTOR scale;
 	XMVECTOR rotation;
 	XMVECTOR position;
@@ -1900,19 +1972,19 @@ namespace sv {
 	return v4_f32(rotation);
     }
     
-    v3_f32 get_entity_world_scale(Scene* scene_, Entity entity)
+    v3_f32 get_entity_world_scale(Entity entity)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	Transform& t = scene.entityData.getTransform(entity);
-	if (t._modified) update_world_matrix(scene, t, entity);
+	if (t._modified) update_world_matrix(t, entity);
 	return { (*(v3_f32*)& t.world_matrix._11).length(), (*(v3_f32*)& t.world_matrix._21).length(), (*(v3_f32*)& t.world_matrix._31).length() };
     }
     
-    XMMATRIX get_entity_world_matrix(Scene* scene_, Entity entity)
+    XMMATRIX get_entity_world_matrix(Entity entity)
     {
-	PARSE_SCENE();
+	SV_SCENE();
 	Transform& t = scene.entityData.getTransform(entity);
-	if (t._modified) update_world_matrix(scene, t, entity);
+	if (t._modified) update_world_matrix(t, entity);
 	return XMLoadFloat4x4(&t.world_matrix);
     }
 

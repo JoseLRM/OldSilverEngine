@@ -341,6 +341,8 @@ namespace sv {
 	    return;
 	}
 
+	_initialize_scene();
+
 	// Register components
 	{
 	    register_component<SpriteComponent>("Sprite");
@@ -409,22 +411,7 @@ namespace sv {
 	    _graphics_begin();
 	    _renderer_begin();
 
-	    // Scene management
-	    {
-		if (engine.next_scene_name[0] != '\0') {
-
-		    // Close last scene
-		    if (engine.scene) {
-			close_scene(engine.scene);
-			// TODO: handle error
-		    }
-
-		    initialize_scene(&engine.scene, engine.next_scene_name);
-		    engine.next_scene_name[0] = '\0';
-		    // TODO Handle error
-
-		}
-	    }
+	    _manage_scenes();
 	    
 #if SV_DEV
 	    _console_update();
@@ -457,7 +444,7 @@ namespace sv {
 	    SV_LOG_ERROR("User can't close successfully");
 	}
 	
-	if (engine.scene) close_scene(engine.scene);
+	_close_scene();
 
 	free_unused_assets();
 

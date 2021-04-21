@@ -163,14 +163,14 @@ namespace sv {
 	EntityCreate_Action& data = *(EntityCreate_Action*)pdata;
 
 	Entity parent = data.parent;
-	if (!entity_exist(engine.scene, parent))
+	if (!entity_exist(parent))
 	    parent = SV_ENTITY_NULL;
 
 	const char* name = (const char*)(pdata) + sizeof(data);
 	if (*name == '\0')
 	    name = nullptr;
 	
-	data.entity = create_entity(engine.scene, parent, name);
+	data.entity = create_entity(parent, name);
 
 	if (preturn) {
 	    memcpy(preturn, &data.entity, sizeof(Entity));
@@ -183,11 +183,11 @@ namespace sv {
     SV_INTERNAL void undo_entity_create(void* pdata, void* preturn) {
 
 	EntityCreate_Action& data = *(EntityCreate_Action*)pdata;
-	if (entity_exist(engine.scene, data.entity))
-	    destroy_entity(engine.scene, data.entity);
+	if (entity_exist(data.entity))
+	    destroy_entity(data.entity);
     }
     SV_INTERNAL void construct_entity_sprite(Entity entity) {
-	add_component<SpriteComponent>(engine.scene, entity);
+	add_component<SpriteComponent>(entity);
     }
     SV_INTERNAL Entity editor_create_entity(Entity parent = SV_ENTITY_NULL, const char* name = nullptr, ConstructEntityActionFn construct_entity = nullptr)
     {
@@ -343,7 +343,7 @@ namespace sv {
 
 	    info.object = GizmosObject_None;
 
-	    v3_f32 position = get_entity_position(engine.scene, editor.selected_entity);
+	    v3_f32 position = get_entity_position(editor.selected_entity);
 
 	    const XMMATRIX& vpm = dev.camera.view_projection_matrix;
 	    v2_f32 mouse_position = input.mouse_position * 2.f;
@@ -400,7 +400,7 @@ namespace sv {
 	    }
 	    else {
 
-		v3_f32& position = *get_entity_position_ptr(engine.scene, editor.selected_entity);
+		v3_f32& position = *get_entity_position_ptr(editor.selected_entity);
 		v2_f32 mouse_position = input.mouse_position * 2.f;
 
 		v2_f32 p0, p1;
@@ -427,7 +427,7 @@ namespace sv {
 
 	GizmosInfo& info = editor.gizmos;
 
-	v3_f32 position = get_entity_position(engine.scene, editor.selected_entity);
+	v3_f32 position = get_entity_position(editor.selected_entity);
 
 	constexpr f32 GIZMOS_SIZE = 1.f;
 
@@ -531,12 +531,13 @@ namespace sv {
 
 		CameraComponent& cam = *reinterpret_cast<CameraComponent*>(comp);
 
-		bool main = engine.scene->main_camera == entity;
+		SceneData& d = *get_scene_data();
+		bool main = d.main_camera == entity;
 
 		if (egui_comp_bool("MainCamera", 0u, &main)) {
 
-		    if (main) engine.scene->main_camera = entity;
-		    else engine.scene->main_camera = SV_ENTITY_NULL;
+		    if (main) d.main_camera = entity;
+		    else d.main_camera = SV_ENTITY_NULL;
 		}
 
 		f32 dimension = std::min(cam.width, cam.height);
@@ -599,7 +600,7 @@ namespace sv {
 
 	if (remove) {
 
-	    remove_component_by_id(engine.scene, entity, comp_id);
+	    remove_component_by_id(entity, comp_id);
 	}
     }
 
@@ -617,7 +618,7 @@ namespace sv {
 
 	// Select meshes
 	{
-	    EntityView<MeshComponent> meshes(engine.scene);
+	    EntityView<MeshComponent> meshes;
 
 	    for (ComponentView<MeshComponent> v : meshes) {
 
@@ -629,7 +630,7 @@ namespace sv {
 
 		if (m.mesh.get() == nullptr) continue;
 
-		XMMATRIX wm = get_entity_world_matrix(engine.scene, entity);
+		XMMATRIX wm = get_entity_world_matrix(entity);
 
 		XMMATRIX itm = XMMatrixInverse(0, wm);
 
@@ -666,7 +667,7 @@ namespace sv {
 
 	// Select sprites
 	{
-	    EntityView<SpriteComponent> sprites(engine.scene);
+	    EntityView<SpriteComponent> sprites;
 
 	    ray.origin = v3_f32(ray_origin);
 	    ray.direction = v3_f32(ray_direction);
@@ -688,7 +689,7 @@ namespace sv {
 		if (editor.selected_entity == entity)
 		    continue;
 
-		XMMATRIX tm = get_entity_world_matrix(engine.scene, entity);
+		XMMATRIX tm = get_entity_world_matrix(entity);
 
 		v0 = XMVector3Transform(p0, tm);
 		v1 = XMVector3Transform(p1, tm);
@@ -736,7 +737,7 @@ namespace sv {
 	    gui_bounds(dev.gui, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H));
 	    
 	    if (gui_button(dev.gui, "Duplicate", 1u)) {
-		duplicate_entity(engine.scene, entity);
+		duplicate_entity(entity);
 	    }
 	    y += H;
 
@@ -756,9 +757,9 @@ namespace sv {
 
 	gui_push_id(g, entity);
 
-	const char* name = get_entity_name(engine.scene, entity);
+	const char* name = get_entity_name(entity);
 
-	u32 child_count = get_entity_childs_count(engine.scene, entity);
+	u32 child_count = get_entity_childs_count(entity);
 
 	bool destroy = false;
 
@@ -785,23 +786,23 @@ namespace sv {
 	    gui_end_container(g);
 
 	    const Entity* childs;
-	    child_count = get_entity_childs_count(engine.scene, entity);
-	    get_entity_childs(engine.scene, entity, &childs);
+	    child_count = get_entity_childs_count(entity);
+	    get_entity_childs(entity, &childs);
 
 	    foreach(i, child_count) {
 
 		show_entity(childs[i]);
 
-		get_entity_childs(engine.scene, entity, &childs);
-		child_count = get_entity_childs_count(engine.scene, entity);
+		get_entity_childs(entity, &childs);
+		child_count = get_entity_childs_count(entity);
 
 		if (i < child_count)
-		    i += get_entity_childs_count(engine.scene, childs[i]);
+		    i += get_entity_childs_count(childs[i]);
 	    }
 	}
 
 	if (destroy) {
-	    destroy_entity(engine.scene, entity);
+	    destroy_entity(entity);
 	    if (editor.selected_entity == entity)
 		editor.selected_entity = SV_ENTITY_NULL;
 	}
@@ -813,19 +814,19 @@ namespace sv {
     {
 	if (egui_begin_window("Hierarchy")) {
 
-	    u32 entity_count = get_entity_count(engine.scene);
+	    u32 entity_count = get_entity_count();
 
 	    foreach(entity_index, entity_count) {
 
-		Entity entity = get_entity_by_index(engine.scene, entity_index);
+		Entity entity = get_entity_by_index(entity_index);
 
-		u32 childs = get_entity_childs_count(engine.scene, entity);
+		u32 childs = get_entity_childs_count(entity);
 		show_entity(entity);
 
-		if (entity_exist(engine.scene, entity))
-		    childs = get_entity_childs_count(engine.scene, entity);
+		if (entity_exist(entity))
+		    childs = get_entity_childs_count(entity);
 
-		entity_count = get_entity_count(engine.scene);
+		entity_count = get_entity_count();
 		entity_index += childs;
 	    }
 
@@ -858,7 +859,7 @@ namespace sv {
 
 		// Entity name
 		{
-		    const char* entity_name = get_entity_name(engine.scene, selected);
+		    const char* entity_name = get_entity_name(selected);
 		    egui_header(entity_name, 0u);
 		}
 
@@ -867,16 +868,16 @@ namespace sv {
 
 		// Entity components
 		{
-		    u32 comp_count = get_entity_component_count(engine.scene, selected);
+		    u32 comp_count = get_entity_component_count(selected);
 
 		    gui_push_id(g, "Entity Components");
 
 		    foreach(comp_index, comp_count) {
 
-			CompRef ref = get_component_by_index(engine.scene, selected, comp_index);
+			CompRef ref = get_component_by_index(selected, comp_index);
 
 			show_component_info(selected, ref.id, ref.ptr);
-			comp_count = get_entity_component_count(engine.scene, selected);
+			comp_count = get_entity_component_count(selected);
 		    }
 
 		    gui_pop_id(g);
@@ -888,12 +889,12 @@ namespace sv {
 
 			CompID comp_id = CompID(i);
 
-			if (get_component_by_id(engine.scene, selected, comp_id))
+			if (get_component_by_id(selected, comp_id))
 			    continue;
 			
 			if (gui_button(g, get_component_name(comp_id), comp_id)) {
 			    
-			    add_component_by_id(engine.scene, selected, comp_id);
+			    add_component_by_id(selected, comp_id);
 			}
 		    }
 
@@ -1143,9 +1144,11 @@ namespace sv {
 
     void display_scene_settings()
     {
+	SceneData& s = *get_scene_data();
+	
 	if (egui_begin_window("Scene Settings")) {
 
-	    egui_comp_color("Ambient Light", 0u, &engine.scene->ambient_light);
+	    egui_comp_color("Ambient Light", 0u, &s.ambient_light);
 	    
 	    egui_end_window();
 	}
@@ -1162,14 +1165,8 @@ namespace sv {
 	    {
 		SV_LOG_INFO("Starting edit state");
 		// TODO: Handle error
-		std::string name = engine.scene->name;
-		bool res = close_scene(engine.scene);
-		res = initialize_scene(&engine.scene, name.c_str());
-
-		if (!res) {
-		    SV_LOG_ERROR("Can't init the scene '%s'", name.c_str());
-		}
-
+		_start_scene(get_scene_name());
+		
 		dev.display_windows = true;
 		dev.debug_draw = true;
 	    } break;
@@ -1180,15 +1177,8 @@ namespace sv {
 			
 		if (dev.game_state == GameState_Edit) {
 
-		    char filepath[FILEPATH_SIZE];
-
-		    if (_user_get_scene_filepath(engine.scene->name, filepath)) {
-
-			if (!save_scene(engine.scene, filepath))
-			    SV_LOG_ERROR("Can't save the scene '%s'", engine.scene->name);
-		    }
-		    else
-			SV_LOG_INFO("The scene '%s' is not serializable (Specified by the user)", engine.scene->name);
+		    // TODO: handle error
+		    save_scene();
 
 		    dev.display_windows = false;
 		    dev.debug_draw = false;
@@ -1211,13 +1201,13 @@ namespace sv {
 	// Adjust camera
 	dev.camera.adjust(os_window_aspect());
 
-	if (!entity_exist(engine.scene, editor.selected_entity)) {
+	if (!entity_exist(editor.selected_entity)) {
 	    editor.selected_entity = SV_ENTITY_NULL;
 	}
 
 	if (egui_begin()) {
 
-	    if (!editor.camera_focus && engine.scene != nullptr && dev.display_windows) {
+	    if (!editor.camera_focus && there_is_scene() && dev.display_windows) {
 		display_entity_hierarchy();
 		display_entity_inspector();
 		display_asset_browser();
@@ -1245,7 +1235,7 @@ namespace sv {
 		    }
 
 		    if (egui_button("Clear Scene", 1u)) {
-			clear_scene(engine.scene);
+			clear_scene();
 		    }
 
 		    gui_end_menu_item(dev.gui);
@@ -1287,12 +1277,12 @@ namespace sv {
 	    egui_end();
 	}
 
-	if (dev.debug_draw && engine.scene) {
+	if (dev.debug_draw && there_is_scene()) {
 
 	    control_camera();
 	}
 
-	if (input.unused && engine.scene) {
+	if (input.unused && there_is_scene()) {
 
 	    // Entity selection
 	    if (input.mouse_buttons[MouseButton_Left] == InputState_Released)
@@ -1306,20 +1296,20 @@ namespace sv {
     {
 	CommandList cmd = graphics_commandlist_get();
 		    
-	if (engine.scene) {
+	if (there_is_scene()) {
 
 	    begin_debug_batch(cmd);
 
 	    // Draw selected entity
 	    if (editor.selected_entity != SV_ENTITY_NULL) {
 
-		MeshComponent* mesh_comp = get_component<MeshComponent>(engine.scene, editor.selected_entity);
-		SpriteComponent* sprite_comp = get_component<SpriteComponent>(engine.scene, editor.selected_entity);
+		MeshComponent* mesh_comp = get_component<MeshComponent>(editor.selected_entity);
+		SpriteComponent* sprite_comp = get_component<SpriteComponent>(editor.selected_entity);
 
 		if (mesh_comp && mesh_comp->mesh.get()) {
 
 		    u8 alpha = 5u + u8(f32(sin(timer_now() * 3.5) + 1.0) * 50.f * 0.5f);
-		    XMMATRIX wm = get_entity_world_matrix(engine.scene, editor.selected_entity);
+		    XMMATRIX wm = get_entity_world_matrix(editor.selected_entity);
 		    draw_debug_mesh_wireframe(mesh_comp->mesh.get(), wm, Color::Red(alpha), cmd);
 		}
 		if (sprite_comp) {
@@ -1329,7 +1319,7 @@ namespace sv {
 		    XMVECTOR p2 = XMVectorSet(-0.5f, -0.5f, 0.f, 1.f);
 		    XMVECTOR p3 = XMVectorSet(0.5f, -0.5f, 0.f, 1.f);
 
-		    XMMATRIX tm = get_entity_world_matrix(engine.scene, editor.selected_entity);
+		    XMMATRIX tm = get_entity_world_matrix(editor.selected_entity);
 
 		    p0 = XMVector3Transform(p0, tm);
 		    p1 = XMVector3Transform(p1, tm);
@@ -1389,7 +1379,7 @@ namespace sv {
 	    // Draw collisions
 	    if (dev.draw_collisions) {
 
-		EntityView<BodyComponent> bodies(engine.scene);
+		EntityView<BodyComponent> bodies;
 
 		XMVECTOR p0 = XMVectorSet(-0.5f, 0.5f, 0.f, 1.f);
 		XMVECTOR p1 = XMVectorSet(0.5f, 0.5f, 0.f, 1.f);
@@ -1405,8 +1395,8 @@ namespace sv {
 		    BodyComponent& body = *v.comp;
 		    Entity entity = v.entity;
 
-		    v2_f32 pos = get_entity_position2D(engine.scene, entity) + body.offset;
-		    v2_f32 scale = get_entity_scale2D(engine.scene, entity) * body.size;
+		    v2_f32 pos = get_entity_position2D(entity) + body.offset;
+		    v2_f32 scale = get_entity_scale2D(entity) * body.size;
 		    
 		    tm = XMMatrixScalingFromVector(scale.getDX()) * XMMatrixTranslation(pos.x, pos.y, 0.f);
 		    
@@ -1431,7 +1421,7 @@ namespace sv {
 		vpm = dev.camera.view_projection_matrix;
 	    else {
 
-		CameraComponent* cam = get_main_camera(engine.scene);
+		CameraComponent* cam = get_main_camera();
 		
 		if (cam) {
 

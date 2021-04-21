@@ -12,12 +12,10 @@ namespace sv {
     typedef u16 CompID;
     typedef u32 Entity;
 
-    struct CameraComponent;	
+    struct CameraComponent;
 
-    struct Scene {
+    struct SceneData {
 
-	static constexpr u32 VERSION = 0u;
-		
 	GUI* gui = nullptr;
 	void* user_ptr = nullptr;
 	u32 user_id = 0u;
@@ -28,24 +26,29 @@ namespace sv {
 
 	v2_f32 gravity = { 0.f, -36.f };
 	f32 air_friction = 0.02f;
-
-	char name[SCENENAME_SIZE];
-
+	
     };
 
-    SV_API bool set_active_scene(const char* name);
-    SV_API bool initialize_scene(Scene** pscene, const char* name);
-    SV_API bool save_scene(Scene* scene);
-    SV_API bool save_scene(Scene* scene, const char* filepath);
-    SV_API bool clear_scene(Scene* scene);
-    SV_API bool close_scene(Scene* scene);
+    SV_API SceneData* get_scene_data();
 
+    SV_API bool set_scene(const char* name);
+    SV_API bool save_scene();
+    SV_API bool save_scene(const char* filepath);
+    SV_API bool clear_scene();
+
+    SV_API const char* get_scene_name();
+    SV_API bool there_is_scene();
+
+    void _initialize_scene();
+    void _manage_scenes();
+    void _close_scene();
     void _update_scene();
     void _draw_scene();
+    bool _start_scene(const char* name);
 
-    SV_API bool create_entity_model(Scene* scene, Entity parent, const char* filepath);
+    SV_API bool create_entity_model(Entity parent, const char* filepath);
 
-    SV_API CameraComponent* get_main_camera(Scene* scene);
+    SV_API CameraComponent* get_main_camera();
 
     SV_API Ray screen_to_world_ray(v2_f32 position, const v3_f32& camera_position, const v4_f32& camera_rotation, CameraComponent* camera);
 	
@@ -65,12 +68,12 @@ namespace sv {
 	BaseComponent* ptr;
     };
 
-    typedef void(*CreateComponentFunction)(Scene* scene, BaseComponent*);
-    typedef void(*DestroyComponentFunction)(Scene* scene, BaseComponent*);
-    typedef void(*MoveComponentFunction)(Scene* scene, BaseComponent* from, BaseComponent* to);
-    typedef void(*CopyComponentFunction)(Scene* scene, const BaseComponent* from, BaseComponent* to);
-    typedef void(*SerializeComponentFunction)(Scene* scene, BaseComponent* comp, Archive&);
-    typedef void(*DeserializeComponentFunction)(Scene* scene, BaseComponent* comp, u32 version, Archive&);
+    typedef void(*CreateComponentFunction)(BaseComponent*);
+    typedef void(*DestroyComponentFunction)(BaseComponent*);
+    typedef void(*MoveComponentFunction)(BaseComponent* from, BaseComponent* to);
+    typedef void(*CopyComponentFunction)(const BaseComponent* from, BaseComponent* to);
+    typedef void(*SerializeComponentFunction)(BaseComponent* comp, Archive&);
+    typedef void(*DeserializeComponentFunction)(BaseComponent* comp, u32 version, Archive&);
 
     struct ComponentRegisterDesc {
 
@@ -89,20 +92,20 @@ namespace sv {
     // Component Register
 
     SV_API CompID register_component(const ComponentRegisterDesc* desc);
-    SV_API void invalidate_component_callbacks(CompID id);
+    SV_API void   invalidate_component_callbacks(CompID id);
 
-    SV_API const char* get_component_name(CompID ID);
-    SV_API u32			get_component_size(CompID ID);
-    SV_API u32			get_component_version(CompID ID);
-    SV_API CompID		get_component_id(const char* name);
-    SV_API u32			get_component_register_count();
+    SV_API const char*  get_component_name(CompID ID);
+    SV_API u32		get_component_size(CompID ID);
+    SV_API u32		get_component_version(CompID ID);
+    SV_API CompID	get_component_id(const char* name);
+    SV_API u32		get_component_register_count();
 
-    SV_API void		create_component(Scene* scene, CompID ID, BaseComponent* ptr, Entity entity);
-    SV_API void		destroy_component(Scene* scene, CompID ID, BaseComponent* ptr);
-    SV_API void		move_component(Scene* scene, CompID ID, BaseComponent* from, BaseComponent* to);
-    SV_API void		copy_component(Scene* scene, CompID ID, const BaseComponent* from, BaseComponent* to);
-    SV_API void		serialize_component(Scene* scene, CompID ID, BaseComponent* comp, Archive& archive);
-    SV_API void		deserialize_component(Scene* scene, CompID ID, BaseComponent* comp, u32 version, Archive& archive);
+    SV_API void		create_component(CompID ID, BaseComponent* ptr, Entity entity);
+    SV_API void		destroy_component(CompID ID, BaseComponent* ptr);
+    SV_API void		move_component(CompID ID, BaseComponent* from, BaseComponent* to);
+    SV_API void		copy_component(CompID ID, const BaseComponent* from, BaseComponent* to);
+    SV_API void		serialize_component(CompID ID, BaseComponent* comp, Archive& archive);
+    SV_API void		deserialize_component(CompID ID, BaseComponent* comp, u32 version, Archive& archive);
     SV_API bool		component_exist(CompID ID);
 
     struct Transform {
@@ -123,73 +126,72 @@ namespace sv {
 
     // Local space setters
 
-    SV_API void set_entity_transform(Scene* scene, Entity entity, const Transform& transform);
-    SV_API void set_entity_position(Scene* scene, Entity entity, const v3_f32& position);
-    SV_API void set_entity_rotation(Scene* scene, Entity entity, const v4_f32& rotation);
-    SV_API void set_entity_scale(Scene* scene, Entity entity, const v3_f32& scale);
-    SV_API void set_entity_matrix(Scene* scene, Entity entity, const XMMATRIX& matrix);
+    SV_API void set_entity_transform(Entity entity, const Transform& transform);
+    SV_API void set_entity_position(Entity entity, const v3_f32& position);
+    SV_API void set_entity_rotation(Entity entity, const v4_f32& rotation);
+    SV_API void set_entity_scale(Entity entity, const v3_f32& scale);
+    SV_API void set_entity_matrix(Entity entity, const XMMATRIX& matrix);
 
-    SV_API void set_entity_position2D(Scene* scene, Entity entity, const v2_f32& position);
-    SV_API void set_entity_scale2D(Scene* scene, Entity entity, const v2_f32& scale);
+    SV_API void set_entity_position2D(Entity entity, const v2_f32& position);
+    SV_API void set_entity_scale2D(Entity entity, const v2_f32& scale);
 
     // Local space getters
     
-    SV_API Transform* get_entity_transform_ptr(Scene* scene, Entity entity);
-    SV_API v3_f32*    get_entity_position_ptr(Scene* scene, Entity entity);
-    SV_API v4_f32*    get_entity_rotation_ptr(Scene* scene, Entity entity);
-    SV_API v3_f32*    get_entity_scale_ptr(Scene* scene, Entity entity);
-    SV_API v2_f32*    get_entity_position2D_ptr(Scene* scene, Entity entity);
-    SV_API v2_f32*    get_entity_scale2D_ptr(Scene* scene, Entity entity);
-    SV_API XMMATRIX   get_entity_matrix(Scene* scene, Entity entity);
+    SV_API Transform* get_entity_transform_ptr(Entity entity);
+    SV_API v3_f32*    get_entity_position_ptr(Entity entity);
+    SV_API v4_f32*    get_entity_rotation_ptr(Entity entity);
+    SV_API v3_f32*    get_entity_scale_ptr(Entity entity);
+    SV_API v2_f32*    get_entity_position2D_ptr(Entity entity);
+    SV_API v2_f32*    get_entity_scale2D_ptr(Entity entity);
+    SV_API XMMATRIX   get_entity_matrix(Entity entity);
 
     // Local space const getters
     
-    SV_API const Transform& get_entity_transform(Scene* scene, Entity entity);
-    SV_API v3_f32 get_entity_position(Scene* scene, Entity entity);
-    SV_API v4_f32 get_entity_rotation(Scene* scene, Entity entity);
-    SV_API v3_f32 get_entity_scale(Scene* scene, Entity entity);
-    SV_API v2_f32 get_entity_position2D(Scene* scene, Entity entity);
-    SV_API v2_f32 get_entity_scale2D(Scene* scene, Entity entity);
+    SV_API const Transform& get_entity_transform(Entity entity);
+    SV_API v3_f32 get_entity_position(Entity entity);
+    SV_API v4_f32 get_entity_rotation(Entity entity);
+    SV_API v3_f32 get_entity_scale(Entity entity);
+    SV_API v2_f32 get_entity_position2D(Entity entity);
+    SV_API v2_f32 get_entity_scale2D(Entity entity);
 
     // World space getters
     
-    SV_API v3_f32 get_entity_world_position(Scene* scene, Entity entity);
-    SV_API v4_f32 get_entity_world_rotation(Scene* scene, Entity entity);
-    SV_API v3_f32 get_entity_world_scale(Scene*, Entity entity);
-    SV_API XMMATRIX get_entity_world_matrix(Scene*, Entity entity);
+    SV_API v3_f32 get_entity_world_position(Entity entity);
+    SV_API v4_f32 get_entity_world_rotation(Entity entity);
+    SV_API v3_f32 get_entity_world_scale(Entity entity);
+    SV_API XMMATRIX get_entity_world_matrix(Entity entity);
 
     // Entity
 
-    SV_API Entity       create_entity(Scene* scene, Entity parent = SV_ENTITY_NULL, const char* name = nullptr);
-    SV_API void	        destroy_entity(Scene* scene, Entity entity);
-    SV_API void	        clear_entity(Scene* scene, Entity entity);
-    SV_API Entity       duplicate_entity(Scene* scene, Entity entity);
-    SV_API bool	        entity_is_empty(Scene* scene, Entity entity);
-    SV_API bool	        entity_exist(Scene* scene, Entity entity);
-    SV_API const char*  get_entity_name(Scene* scene, Entity entity);
-    SV_API void	        set_entity_name(Scene* scene, Entity entity, const char* name);
-    SV_API u32	        get_entity_childs_count(Scene* scene, Entity parent);
-    SV_API void		get_entity_childs(Scene* scene, Entity parent, Entity const** childsArray);
-    SV_API Entity	get_entity_parent(Scene* scene, Entity entity);
-    SV_API u64*		get_entity_flags(Scene* scene, Entity entity);
-    SV_API u32		get_entity_component_count(Scene* scene, Entity entity);
-    SV_API u32		get_entity_count(Scene* scene);
-    SV_API Entity	get_entity_by_index(Scene* scene, u32 index);
+    SV_API Entity       create_entity(Entity parent = SV_ENTITY_NULL, const char* name = nullptr);
+    SV_API void	        destroy_entity(Entity entity);
+    SV_API void	        clear_entity(Entity entity);
+    SV_API Entity       duplicate_entity(Entity entity);
+    SV_API bool	        entity_is_empty(Entity entity);
+    SV_API bool	        entity_exist(Entity entity);
+    SV_API const char*  get_entity_name(Entity entity);
+    SV_API void	        set_entity_name(Entity entity, const char* name);
+    SV_API u32	        get_entity_childs_count(Entity parent);
+    SV_API void		get_entity_childs(Entity parent, Entity const** childsArray);
+    SV_API Entity	get_entity_parent(Entity entity);
+    SV_API u64*		get_entity_flags(Entity entity);
+    SV_API u32		get_entity_component_count(Entity entity);
+    SV_API u32		get_entity_count();
+    SV_API Entity	get_entity_by_index(u32 index);
 
     // Components
 
-    SV_API BaseComponent* add_component(Scene* scene, Entity entity, BaseComponent* comp, CompID componentID, size_t componentSize);
-    SV_API BaseComponent* add_component_by_id(Scene* scene, Entity entity, CompID componentID);
-    SV_API BaseComponent* get_component_by_id(Scene* scene, Entity entity, CompID componentID);
-    SV_API CompRef        get_component_by_index(Scene* scene, Entity entity, u32 index);
-    SV_API void		  remove_component_by_id(Scene* scene, Entity entity, CompID componentID);
-    SV_API u32		  get_component_count(Scene* scene, CompID ID);
+    SV_API BaseComponent* add_component(Entity entity, BaseComponent* comp, CompID componentID, size_t componentSize);
+    SV_API BaseComponent* add_component_by_id(Entity entity, CompID componentID);
+    SV_API BaseComponent* get_component_by_id(Entity entity, CompID componentID);
+    SV_API CompRef        get_component_by_index(Entity entity, u32 index);
+    SV_API void		  remove_component_by_id(Entity entity, CompID componentID);
+    SV_API u32		  get_component_count(CompID ID);
 
     // Iterators
 
     struct SV_API ComponentIterator {
 		
-	Scene* _scene;
 	BaseComponent* _it;
 	u32 _pool;
 
@@ -203,8 +205,8 @@ namespace sv {
 
     };
 
-    SV_API ComponentIterator begin_component_iterator(Scene* scene, CompID comp_id);
-    SV_API ComponentIterator end_component_iterator(Scene* scene, CompID comp_id);
+    SV_API ComponentIterator begin_component_iterator(CompID comp_id);
+    SV_API ComponentIterator end_component_iterator(CompID comp_id);
 
     // TEMPLATES
 
@@ -216,43 +218,43 @@ namespace sv {
 	desc.name = name;
 	desc.version = Component::VERSION;
 
-	desc.createFn = [](Scene* scene, BaseComponent* comp_ptr)
+	desc.createFn = [](BaseComponent* comp_ptr)
 	    {
 		Component* comp = new(comp_ptr) Component();
-		comp->create(scene);
+		comp->create();
 	    };
 
-	desc.destroyFn = [](Scene* scene, BaseComponent* comp_ptr)
+	desc.destroyFn = [](BaseComponent* comp_ptr)
 	    {
 		Component* comp = reinterpret_cast<Component*>(comp_ptr);
-		comp->destroy(scene);
+		comp->destroy();
 		comp->~Component();
 	    };
 
-	desc.moveFn = [](Scene* scene, BaseComponent* from_ptr, BaseComponent* to_ptr)
+	desc.moveFn = [](BaseComponent* from_ptr, BaseComponent* to_ptr)
 	    {
 		Component* from = reinterpret_cast<Component*>(from_ptr);
 		Component* to = reinterpret_cast<Component*>(to_ptr);
-		to->move(scene, from);
+		to->move(from);
 	    };
 
-	desc.copyFn = [](Scene* scene, const BaseComponent* from_ptr, BaseComponent* to_ptr)
+	desc.copyFn = [](const BaseComponent* from_ptr, BaseComponent* to_ptr)
 	    {
 		const Component* from = reinterpret_cast<const Component*>(from_ptr);
 		Component* to = reinterpret_cast<Component*>(to_ptr);
-		to->copy(scene, from);
+		to->copy(from);
 	    };
 
-	desc.serializeFn = [](Scene* scene, BaseComponent* comp_, Archive& file)
+	desc.serializeFn = [](BaseComponent* comp_, Archive& file)
 	    {
 		Component* comp = reinterpret_cast<Component*>(comp_);
-		comp->serialize(scene, file);
+		comp->serialize(file);
 	    };
 
-	desc.deserializeFn = [](Scene* scene, BaseComponent* comp_, u32 version, Archive& file)
+	desc.deserializeFn = [](BaseComponent* comp_, u32 version, Archive& file)
 	    {
 		Component* comp = reinterpret_cast<Component*>(comp_);
-		comp->deserialize(scene, version, file);
+		comp->deserialize(version, file);
 	    };
 
 	Component::ID = register_component(&desc);
@@ -266,18 +268,18 @@ namespace sv {
 	desc.name = name;
 	desc.version = Component::VERSION;
 
-	desc.createFn = [](Scene* scene, BaseComponent* compPtr)
+	desc.createFn = [](BaseComponent* compPtr)
 	    {
 		new(compPtr) Component();
 	    };
 
-	desc.destroyFn = [](Scene* scene, BaseComponent* compPtr)
+	desc.destroyFn = [](BaseComponent* compPtr)
 	    {
 		Component* comp = reinterpret_cast<Component*>(compPtr);
 		comp->~Component();
 	    };
 
-	desc.moveFn = [](Scene* scene, BaseComponent* fromB, BaseComponent* toB)
+	desc.moveFn = [](BaseComponent* fromB, BaseComponent* toB)
 	    {
 		Component* from = reinterpret_cast<Component*>(fromB);
 		Component* to = reinterpret_cast<Component*>(toB);
@@ -286,7 +288,7 @@ namespace sv {
 		to->_id = id;
 	    };
 
-	desc.copyFn = [](Scene* scene, const BaseComponent* fromB, BaseComponent* toB)
+	desc.copyFn = [](const BaseComponent* fromB, BaseComponent* toB)
 	    {
 		const Component* from = reinterpret_cast<const Component*>(fromB);
 		Component* to = reinterpret_cast<Component*>(toB);
@@ -295,13 +297,13 @@ namespace sv {
 		to->_id = id;
 	    };
 
-	desc.serializeFn = [](Scene* scene, BaseComponent* comp_, Archive& file)
+	desc.serializeFn = [](BaseComponent* comp_, Archive& file)
 	    {
 		Component* comp = reinterpret_cast<Component*>(comp_);
 		comp->serialize(file);
 	    };
 
-	desc.deserializeFn = [](Scene* scene, BaseComponent* comp_, u32 version, Archive& file)
+	desc.deserializeFn = [](BaseComponent* comp_, u32 version, Archive& file)
 	    {
 		Component* comp = reinterpret_cast<Component*>(comp_);
 		comp->deserialize(version, file);
@@ -311,25 +313,25 @@ namespace sv {
     }
 
     template<typename Component, typename... Args>
-    Component* add_component(Scene* scene, Entity entity, Args&& ... args) {
+    Component* add_component(Entity entity, Args&& ... args) {
 	Component component(std::forward<Args>(args)...);
-	return reinterpret_cast<Component*>(add_component(scene, entity, (BaseComponent*)& component, Component::ID, Component::SIZE));
+	return reinterpret_cast<Component*>(add_component(entity, (BaseComponent*)& component, Component::ID, Component::SIZE));
     }
 
     template<typename Component>
-    Component* add_component(Scene* scene, Entity entity) {
-	return reinterpret_cast<Component*>(add_component_by_id(scene, entity, Component::ID));
+    Component* add_component(Entity entity) {
+	return reinterpret_cast<Component*>(add_component_by_id(entity, Component::ID));
     }
 
     template<typename Component>
-    Component* get_component(Scene* scene, Entity entity)
+    Component* get_component(Entity entity)
     {
-	return reinterpret_cast<Component*>(get_component_by_id(scene, entity, Component::ID));
+	return reinterpret_cast<Component*>(get_component_by_id(entity, Component::ID));
     }
 
     template<typename Component>
-    void remove_component(Scene* scene, Entity entity) {
-	remove_component_by_id(scene, entity, Component::ID);
+    void remove_component(Entity entity) {
+	remove_component_by_id(entity, Component::ID);
     }
 
     template<typename Component>
@@ -341,17 +343,15 @@ namespace sv {
     template<typename Component>
     struct EntityView {
 
-	Scene* _scene;
-
 	struct TemplatedComponentIterator {
 	    ComponentIterator it;
 
-	    TemplatedComponentIterator(Scene* scene, CompID compID, bool end)
+	    TemplatedComponentIterator(CompID compID, bool end)
 		{
 		    if (end)
-			it = end_component_iterator(scene, compID);
+			it = end_component_iterator(compID);
 		    else 
-			it = begin_component_iterator(scene, compID);
+			it = begin_component_iterator(compID);
 		}
 
 	    SV_INLINE ComponentView<Component> operator*() 
@@ -369,22 +369,22 @@ namespace sv {
 	    SV_INLINE void operator--() { it.last(); }
 	};
 
-	EntityView(Scene* scene) : _scene(scene) {}
+	EntityView() {}
 
 	SV_INLINE u32 size()
 	    {
-		return get_component_count(_scene, Component::ID);
+		return get_component_count(Component::ID);
 	    }
 
 	SV_INLINE TemplatedComponentIterator begin()
 	    {
-		TemplatedComponentIterator iterator(_scene, Component::ID, false);
+		TemplatedComponentIterator iterator(Component::ID, false);
 		return iterator;
 	    }
 
 	SV_INLINE TemplatedComponentIterator end()
 	    {
-		TemplatedComponentIterator iterator(_scene, Component::ID, true);
+		TemplatedComponentIterator iterator(Component::ID, true);
 		return iterator;
 	    }
 

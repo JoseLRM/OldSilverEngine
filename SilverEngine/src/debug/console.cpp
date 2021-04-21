@@ -88,7 +88,7 @@ namespace sv {
 
 	const char* name = args[0];
 
-	if (set_active_scene(name)) SV_LOG("Loading scene '%s'", name);
+	if (set_scene(name)) SV_LOG("Loading scene '%s'", name);
 	else {
 
 	    SV_LOG_ERROR("Scene '%s' not found", name);
@@ -183,26 +183,15 @@ namespace sv {
 	    return false;
 	}
 
-	// Save scene
-	char filepath[FILEPATH_SIZE];
-	const char* name = engine.scene->name;
-	
-	if (_user_get_scene_filepath(name, filepath)) {
-
-	    if (!save_scene(engine.scene, filepath)) {
-		SV_LOG_ERROR("Can't save the scene '%s', name");
-		return false;
-	    }
-	    else {
-		SV_LOG("Scene '%s' saved at '%s'", name, filepath);
-	    }
-		
-	    return true;
+	if (!save_scene()) {
+	    SV_LOG_ERROR("Can't save the scene");
+	    return false;
 	}
 	else {
-	    SV_LOG_INFO("The scene '%s' can't be saved (Specified by the user)", name);
-	    return true;
-	}  
+	    SV_LOG("Scene saved");
+	}
+		
+	return true;  
     }
 
     static bool command_clear_scene(const char** args, u32 argc) {
@@ -212,8 +201,8 @@ namespace sv {
 	    return false;
 	}
 
-	if (clear_scene(engine.scene)) {
-	    SV_LOG("Scene '%s' cleared", engine.scene->name);
+	if (clear_scene()) {
+	    SV_LOG("Scene cleared");
 	    return true;
 	}
 	else {
@@ -229,14 +218,9 @@ namespace sv {
 	    return false;
 	}
 
-	if (engine.scene == nullptr) {
-	    SV_LOG_ERROR("Must initialize a scene");
-	    return false;
-	}
-
-	Entity parent = create_entity(engine.scene, SV_ENTITY_NULL, args[0]);
+	Entity parent = create_entity(SV_ENTITY_NULL, args[0]);
 	
-	return create_entity_model(engine.scene, parent, args[0]);
+	return create_entity_model(parent, args[0]);
     }
 
     SV_INTERNAL bool command_set_gamecode_filepath(const char** args, u32 argc) {

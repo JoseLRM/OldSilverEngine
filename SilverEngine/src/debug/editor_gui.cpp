@@ -50,8 +50,8 @@ namespace sv {
 	gui_begin_container(dev.gui, 0u, GuiLayout_Free);
 
 	// TODO: euler rotation
-	v3_f32& position = *get_entity_position_ptr(engine.scene, entity);
-	v3_f32& scale = *get_entity_scale_ptr(engine.scene, entity);
+	v3_f32& position = *get_entity_position_ptr(entity);
+	v3_f32& scale = *get_entity_scale_ptr(entity);
 
 	f32 yoff = 0.f;
 

@@ -1,5 +1,7 @@
 #include "defines.h"
 
+#include "core/scene_internal.h"
+
 #include "core/renderer/renderer_internal.h"
 #include "core/mesh.h"
 #include "debug/console.h"
@@ -876,20 +878,20 @@ namespace sv {
     static List<MeshInstance> mesh_instances;
     static List<LightInstance> light_instances;
     
-    SV_INTERNAL void draw_sprites(Scene* scene, CameraBuffer_GPU& camera_data, CommandList cmd)
+    SV_INTERNAL void draw_sprites(CameraBuffer_GPU& camera_data, CommandList cmd)
     {
 	auto& gfx = renderer->gfx;
 	
 	{
-	    EntityView<SpriteComponent> sprites(scene);
+	    EntityView<SpriteComponent> sprites;
 
 	    for (ComponentView<SpriteComponent> view : sprites) {
 
 		SpriteComponent& spr = *view.comp;
 		Entity entity = view.entity;
 
-		v3_f32 pos = get_entity_world_position(scene, entity);
-		sprite_instances.emplace_back(get_entity_world_matrix(scene, entity), spr.texcoord, spr.texture.get(), spr.color, pos.z);
+		v3_f32 pos = get_entity_world_position(entity);
+		sprite_instances.emplace_back(get_entity_world_matrix(entity), spr.texcoord, spr.texture.get(), spr.color, pos.z);
 	    }
 	}
 
@@ -1026,18 +1028,17 @@ namespace sv {
 
     void _draw_scene()
     {
-	auto& gfx = renderer->gfx;
+	if (!there_is_scene()) return;
 	
-	Scene* scene = engine.scene;
-
-	if (scene == nullptr)
-	    return;
+	auto& gfx = renderer->gfx;
 	    
 	mesh_instances.reset();
 	light_instances.reset();
 	sprite_instances.reset();
 
 	CommandList cmd = graphics_commandlist_get();
+
+	SceneData* scene = get_scene_data();
 
 	// Create environment buffer
 	{
@@ -1048,7 +1049,7 @@ namespace sv {
 
 	// Get lights
 	{
-	    EntityView<LightComponent> lights(scene);
+	    EntityView<LightComponent> lights;
 
 	    for (const ComponentView<LightComponent>& v : lights) {
 
@@ -1058,14 +1059,14 @@ namespace sv {
 		switch (l.light_type)
 		{
 		case LightType_Point:
-		    light_instances.emplace_back(l.color, get_entity_world_position(scene, entity), l.range, l.intensity, l.smoothness);
+		    light_instances.emplace_back(l.color, get_entity_world_position(entity), l.range, l.intensity, l.smoothness);
 		    break;
 
 		case LightType_Direction:
 		{
 		    XMVECTOR direction = XMVectorSet(0.f, 0.f, 1.f, 1.f);
 
-		    direction = XMVector3Transform(direction, XMMatrixRotationQuaternion(get_entity_world_rotation(scene, entity).get_dx()));
+		    direction = XMVector3Transform(direction, XMMatrixRotationQuaternion(get_entity_world_rotation(entity).get_dx()));
 
 		    light_instances.emplace_back(l.color, v3_f32(direction), l.intensity);
 		}
@@ -1095,11 +1096,12 @@ namespace sv {
 		}
 		else {
 					
-		    camera_ = get_main_camera(scene);
+		    camera_ = get_main_camera();
+		    
 		    if (camera_) {
 
-			cam_pos = get_entity_world_position(scene, scene->main_camera);
-			cam_rot = get_entity_world_rotation(scene, scene->main_camera);
+			cam_pos = get_entity_world_position(scene->main_camera);
+			cam_rot = get_entity_world_rotation(scene->main_camera);
 		    }
 		}
 
@@ -1157,7 +1159,7 @@ namespace sv {
 		// DRAW MESHES
 		{
 		    {
-			EntityView<MeshComponent> meshes(scene);
+			EntityView<MeshComponent> meshes;
 
 			for (ComponentView<MeshComponent> view : meshes) {
 
@@ -1167,7 +1169,7 @@ namespace sv {
 			    Mesh* m = mesh.mesh.get();
 			    if (m == nullptr) continue;
 
-			    mesh_instances.emplace_back(get_entity_world_matrix(scene, entity), m, mesh.material.get());
+			    mesh_instances.emplace_back(get_entity_world_matrix(entity), m, mesh.material.get());
 			}
 		    }
 		    
@@ -1364,7 +1366,7 @@ namespace sv {
 			graphics_event_end(cmd);
 		    }
 
-		    draw_sprites(scene, camera_data, cmd);
+		    draw_sprites(camera_data, cmd);
 		}
 
 		/*postprocess_bloom(

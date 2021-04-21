@@ -4,16 +4,15 @@
 
 namespace sv {
 
-    struct Scene;
     struct Archive;
     
     typedef bool(*UserInitializeFn)(bool init);
     typedef bool(*UserCloseFn)(bool close);
     typedef bool(*UserValidateSceneFn)(const char* name);
     typedef bool(*UserGetSceneFilepathFn)(const char* name, char* filepath);
-    typedef bool(*UserInitializeSceneFn)(Scene* scene, Archive* parchive);
-    typedef bool(*UserCloseSceneFn)(Scene* scene);
-    typedef bool(*UserSerializeSceneFn)(Scene* scene, Archive* parchive);
+    typedef bool(*UserInitializeSceneFn)(Archive* parchive);
+    typedef bool(*UserCloseSceneFn)();
+    typedef bool(*UserSerializeSceneFn)(Archive* parchive);
     
     struct UserCallbacks {
 	UserInitializeFn initialize;
@@ -31,8 +30,8 @@ namespace sv {
     bool _user_close(bool close_engine);
     bool _user_validate_scene(const char* name);
     bool _user_get_scene_filepath(const char* name, char* filepath);
-    bool _user_initialize_scene(Scene* scene, Archive* parchive);
-    bool _user_close_scene(Scene* scene);
-    bool _user_serialize_scene(Scene* scene, Archive* parchive); 
+    bool _user_initialize_scene(Archive* parchive);
+    bool _user_close_scene();
+    bool _user_serialize_scene(Archive* parchive); 
 
 }

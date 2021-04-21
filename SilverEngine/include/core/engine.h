@@ -15,8 +15,6 @@ namespace sv {
 	u32		 FPS = 0u;
 	bool		 close_request = false;
 	bool             running = false;
-	Scene*	         scene = nullptr;
-	char	         next_scene_name[SCENENAME_SIZE] = {};
 	void*            game_memory = nullptr;
     };
     
