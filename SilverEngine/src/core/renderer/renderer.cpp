@@ -1,7 +1,5 @@
 #include "defines.h"
 
-#include "core/scene_internal.h"
-
 #include "core/renderer/renderer_internal.h"
 #include "core/mesh.h"
 #include "debug/console.h"
@@ -883,15 +881,20 @@ namespace sv {
 	auto& gfx = renderer->gfx;
 	
 	{
-	    EntityView<SpriteComponent> sprites;
+	    ComponentIterator it;
+	    CompView<SpriteComponent> view;
+	    
+	    if (comp_it_begin(it, view)) {
 
-	    for (ComponentView<SpriteComponent> view : sprites) {
+		do {
 
-		SpriteComponent& spr = *view.comp;
-		Entity entity = view.entity;
+		    SpriteComponent& spr = *view.comp;
+		    Entity entity = view.entity;
 
-		v3_f32 pos = get_entity_world_position(entity);
-		sprite_instances.emplace_back(get_entity_world_matrix(entity), spr.texcoord, spr.texture.get(), spr.color, pos.z);
+		    v3_f32 pos = get_entity_world_position(entity);
+		    sprite_instances.emplace_back(get_entity_world_matrix(entity), spr.texcoord, spr.texture.get(), spr.color, pos.z);
+		}
+		while(comp_it_next(it, view));
 	    }
 	}
 
@@ -1049,31 +1052,36 @@ namespace sv {
 
 	// Get lights
 	{
-	    EntityView<LightComponent> lights;
+	    ComponentIterator it;
+	    CompView<LightComponent> v;
 
-	    for (const ComponentView<LightComponent>& v : lights) {
+	    if (comp_it_begin(it, v)) {
 
-		Entity entity = v.entity;
-		LightComponent& l = *v.comp;
+		do {
 
-		switch (l.light_type)
-		{
-		case LightType_Point:
-		    light_instances.emplace_back(l.color, get_entity_world_position(entity), l.range, l.intensity, l.smoothness);
+		    Entity entity = v.entity;
+		    LightComponent& l = *v.comp;
+
+		    switch (l.light_type)
+		    {
+		    case LightType_Point:
+			light_instances.emplace_back(l.color, get_entity_world_position(entity), l.range, l.intensity, l.smoothness);
+			break;
+
+		    case LightType_Direction:
+		    {
+			XMVECTOR direction = XMVectorSet(0.f, 0.f, 1.f, 1.f);
+
+			direction = XMVector3Transform(direction, XMMatrixRotationQuaternion(get_entity_world_rotation(entity).get_dx()));
+
+			light_instances.emplace_back(l.color, v3_f32(direction), l.intensity);
+		    }
 		    break;
 
-		case LightType_Direction:
-		{
-		    XMVECTOR direction = XMVectorSet(0.f, 0.f, 1.f, 1.f);
-
-		    direction = XMVector3Transform(direction, XMMatrixRotationQuaternion(get_entity_world_rotation(entity).get_dx()));
-
-		    light_instances.emplace_back(l.color, v3_f32(direction), l.intensity);
-		}
-		break;
+		    }
 
 		}
-
+		while(comp_it_next(it, v));
 	    }
 	}
 
@@ -1159,17 +1167,22 @@ namespace sv {
 		// DRAW MESHES
 		{
 		    {
-			EntityView<MeshComponent> meshes;
+			ComponentIterator it;
+			CompView<MeshComponent> view;
 
-			for (ComponentView<MeshComponent> view : meshes) {
+			if (comp_it_begin(it, view)) {
 
-			    MeshComponent& mesh = *view.comp;
-			    Entity entity = view.entity;
+			    do {
 
-			    Mesh* m = mesh.mesh.get();
-			    if (m == nullptr) continue;
+				MeshComponent& mesh = *view.comp;
+				Entity entity = view.entity;
 
-			    mesh_instances.emplace_back(get_entity_world_matrix(entity), m, mesh.material.get());
+				Mesh* m = mesh.mesh.get();
+				if (m == nullptr) continue;
+
+				mesh_instances.emplace_back(get_entity_world_matrix(entity), m, mesh.material.get());
+			    }
+			    while (comp_it_next(it, view));
 			}
 		    }
 		    

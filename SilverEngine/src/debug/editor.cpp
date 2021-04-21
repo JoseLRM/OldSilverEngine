@@ -618,57 +618,52 @@ namespace sv {
 
 	// Select meshes
 	{
-	    EntityView<MeshComponent> meshes;
+	    for_each_comp<MeshComponent>([&] (Entity entity, MeshComponent& m)
+		{
+		    if (editor.selected_entity == entity)
+			return true;
 
-	    for (ComponentView<MeshComponent> v : meshes) {
+		    if (m.mesh.get() == nullptr) return true;
 
-		MeshComponent& m = *v.comp;
-		Entity entity = v.entity;
+		    XMMATRIX wm = get_entity_world_matrix(entity);
 
-		if (editor.selected_entity == entity)
-		    continue;
+		    XMMATRIX itm = XMMatrixInverse(0, wm);
 
-		if (m.mesh.get() == nullptr) continue;
+		    ray.origin = v3_f32(XMVector4Transform(ray_origin, itm));
+		    ray.direction = v3_f32(XMVector4Transform(ray_direction, itm));
 
-		XMMATRIX wm = get_entity_world_matrix(entity);
+		    Mesh& mesh = *m.mesh.get();
 
-		XMMATRIX itm = XMMatrixInverse(0, wm);
+		    u32 triangles = u32(mesh.indices.size()) / 3u;
 
-		ray.origin = v3_f32(XMVector4Transform(ray_origin, itm));
-		ray.direction = v3_f32(XMVector4Transform(ray_direction, itm));
+		    for (u32 i = 0u; i < triangles; ++i) {
 
-		Mesh& mesh = *m.mesh.get();
+			u32 i0 = mesh.indices[i * 3u + 0u];
+			u32 i1 = mesh.indices[i * 3u + 1u];
+			u32 i2 = mesh.indices[i * 3u + 2u];
 
-		u32 triangles = u32(mesh.indices.size()) / 3u;
+			v3_f32 p0 = mesh.positions[i0];
+			v3_f32 p1 = mesh.positions[i1];
+			v3_f32 p2 = mesh.positions[i2];
 
-		for (u32 i = 0u; i < triangles; ++i) {
+			v3_f32 intersection;
 
-		    u32 i0 = mesh.indices[i * 3u + 0u];
-		    u32 i1 = mesh.indices[i * 3u + 1u];
-		    u32 i2 = mesh.indices[i * 3u + 2u];
+			if (intersect_ray_vs_traingle(ray, p0, p1, p2, intersection)) {
 
-		    v3_f32 p0 = mesh.positions[i0];
-		    v3_f32 p1 = mesh.positions[i1];
-		    v3_f32 p2 = mesh.positions[i2];
-
-		    v3_f32 intersection;
-
-		    if (intersect_ray_vs_traingle(ray, p0, p1, p2, intersection)) {
-
-			f32 dis = intersection.length();
-			if (dis < distance) {
-			    distance = dis;
-			    selected = entity;
+			    f32 dis = intersection.length();
+			    if (dis < distance) {
+				distance = dis;
+				selected = entity;
+			    }
 			}
 		    }
-		}
-	    }
+
+		    return true;
+		});
 	}
 
 	// Select sprites
 	{
-	    EntityView<SpriteComponent> sprites;
-
 	    ray.origin = v3_f32(ray_origin);
 	    ray.direction = v3_f32(ray_direction);
 
@@ -682,46 +677,46 @@ namespace sv {
 	    XMVECTOR v2;
 	    XMVECTOR v3;
 
-	    for (ComponentView<SpriteComponent> v : sprites) {
+	    for_each_comp<SpriteComponent>([&] (Entity entity, SpriteComponent&)
+		{
+		    if (editor.selected_entity == entity)
+			return false;
 
-		Entity entity = v.entity;
+		    XMMATRIX tm = get_entity_world_matrix(entity);
 
-		if (editor.selected_entity == entity)
-		    continue;
+		    v0 = XMVector3Transform(p0, tm);
+		    v1 = XMVector3Transform(p1, tm);
+		    v2 = XMVector3Transform(p2, tm);
+		    v3 = XMVector3Transform(p3, tm);
 
-		XMMATRIX tm = get_entity_world_matrix(entity);
+		    f32 dis = f32_max;
 
-		v0 = XMVector3Transform(p0, tm);
-		v1 = XMVector3Transform(p1, tm);
-		v2 = XMVector3Transform(p2, tm);
-		v3 = XMVector3Transform(p3, tm);
+		    v3_f32 intersection;
 
-		f32 dis = f32_max;
+		    // TODO: Ray vs Quad intersection
 
-		v3_f32 intersection;
+		    if (intersect_ray_vs_traingle(ray, v3_f32(v0), v3_f32(v1), v3_f32(v2), intersection)) {
 
-		// TODO: Ray vs Quad intersection
+			dis = intersection.length();
+		    }
+		    else if (intersect_ray_vs_traingle(ray, v3_f32(v1), v3_f32(v3), v3_f32(v2), intersection)) {
+			
+			dis = SV_MIN(intersection.length(), dis);
+		    }
 
-		if (intersect_ray_vs_traingle(ray, v3_f32(v0), v3_f32(v1), v3_f32(v2), intersection)) {
+		    if (dis < distance) {
+			distance = dis;
+			selected = entity;
+		    }
 
-		    dis = intersection.length();
-		}
-		else if (intersect_ray_vs_traingle(ray, v3_f32(v1), v3_f32(v3), v3_f32(v2), intersection)) {
-
-		    dis = std::min(intersection.length(), dis);
-		}
-
-		if (dis < distance) {
-		    distance = dis;
-		    selected = entity;
-		}
-	    }
+		    return true;
+		});
 	}
-
-
+	
+	
 	editor.selected_entity = selected;
     }
-
+    
     static void show_entity_popup(Entity entity, bool& destroy)
     {
 	if (gui_begin_popup(dev.gui, GuiPopupTrigger_LastWidget, MouseButton_Right, 0x3254fa + u64(entity), GuiLayout_Flow)) {
@@ -1379,8 +1374,6 @@ namespace sv {
 	    // Draw collisions
 	    if (dev.draw_collisions) {
 
-		EntityView<BodyComponent> bodies;
-
 		XMVECTOR p0 = XMVectorSet(-0.5f, 0.5f, 0.f, 1.f);
 		XMVECTOR p1 = XMVectorSet(0.5f, 0.5f, 0.f, 1.f);
 		XMVECTOR p2 = XMVectorSet(-0.5f, -0.5f, 0.f, 1.f);
@@ -1390,11 +1383,8 @@ namespace sv {
 
 		XMMATRIX tm;
 		
-		for (ComponentView<BodyComponent> v : bodies) {
-
-		    BodyComponent& body = *v.comp;
-		    Entity entity = v.entity;
-
+		for_each_comp<BodyComponent>([&] (Entity entity, BodyComponent& body)
+		{
 		    v2_f32 pos = get_entity_position2D(entity) + body.offset;
 		    v2_f32 scale = get_entity_scale2D(entity) * body.size;
 		    
@@ -1409,7 +1399,9 @@ namespace sv {
 		    draw_debug_line(v3_f32(v1), v3_f32(v3), Color::Green(), cmd);
 		    draw_debug_line(v3_f32(v3), v3_f32(v2), Color::Green(), cmd);
 		    draw_debug_line(v3_f32(v0), v3_f32(v2), Color::Green(), cmd);
-		}
+
+		    return true;
+		});
 	    }
 
 	    // Draw gizmos

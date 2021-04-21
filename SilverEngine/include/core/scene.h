@@ -61,11 +61,18 @@ namespace sv {
 
     struct BaseComponent {
 	u32 _id = 0u;
+	u32 flags = 0u;
     };
 
     struct CompRef {
 	CompID id;
 	BaseComponent* ptr;
+    };
+
+    template<typename Component>
+    struct CompView {
+	Entity entity;
+	Component* comp;
     };
 
     typedef void(*CreateComponentFunction)(BaseComponent*);
@@ -190,23 +197,46 @@ namespace sv {
 
     // Iterators
 
-    struct SV_API ComponentIterator {
+    struct ComponentIterator {
 		
 	BaseComponent* _it;
+	BaseComponent* _end;
 	u32 _pool;
-
-	CompID comp_id;
-
-	void get(Entity* entity, BaseComponent** comp);
-
-	bool equal(const ComponentIterator& other) const noexcept;
-	void next();
-	void last();
+	CompID _comp_id;
+	u32 _mask;
 
     };
 
-    SV_API ComponentIterator begin_component_iterator(CompID comp_id);
-    SV_API ComponentIterator end_component_iterator(CompID comp_id);
+    SV_API bool comp_it_begin(ComponentIterator& it, Entity& entity, BaseComponent*& comp, CompID comp_id, u32 mask = 0u);
+    SV_API bool comp_it_next(ComponentIterator& it, Entity& entity, BaseComponent*& comp);
+
+    template<typename Component>
+    SV_INTERNAL bool comp_it_begin(ComponentIterator& it, CompView<Component>& view, u32 mask = 0u)
+    {
+	return comp_it_begin(it, view.entity, (BaseComponent*&)view.comp, Component::ID, mask);
+    }
+    
+    template<typename Component>
+    SV_INTERNAL bool comp_it_next(ComponentIterator& it, CompView<Component>& view)
+    {
+	return comp_it_next(it, view.entity, (BaseComponent*&)view.comp);
+    }
+
+    template<typename Component, typename T>
+    SV_INTERNAL void for_each_comp(T fn)
+    {
+	ComponentIterator it;
+	CompView<Component> view;
+
+	if (comp_it_begin(it, view)) {
+	    
+	    do {
+		if (!fn(view.entity, *view.comp))
+		    break;
+	    }
+	    while (comp_it_next(it, view));
+	}
+    }
 
     // TEMPLATES
 
@@ -333,62 +363,6 @@ namespace sv {
     void remove_component(Entity entity) {
 	remove_component_by_id(entity, Component::ID);
     }
-
-    template<typename Component>
-    struct ComponentView {
-	Entity entity;
-	Component* comp;
-    };
-
-    template<typename Component>
-    struct EntityView {
-
-	struct TemplatedComponentIterator {
-	    ComponentIterator it;
-
-	    TemplatedComponentIterator(CompID compID, bool end)
-		{
-		    if (end)
-			it = end_component_iterator(compID);
-		    else 
-			it = begin_component_iterator(compID);
-		}
-
-	    SV_INLINE ComponentView<Component> operator*() 
-		{ 
-		    ComponentView<Component> view;
-		    it.get(&view.entity, reinterpret_cast<BaseComponent**>(&view.comp));
-		    return view;
-		}
-
-	    SV_INLINE bool operator==(const TemplatedComponentIterator& other) const noexcept { return it.equal(other.it); }
-	    SV_INLINE bool operator!=(const TemplatedComponentIterator& other) const noexcept { return !it.equal(other.it); }
-	    SV_INLINE void operator+=(u32 count) { while (count-- > 0) it.next(); }
-	    SV_INLINE void operator-=(u32 count) { while (count-- > 0) it.last(); }
-	    SV_INLINE void operator++() { it.next(); }
-	    SV_INLINE void operator--() { it.last(); }
-	};
-
-	EntityView() {}
-
-	SV_INLINE u32 size()
-	    {
-		return get_component_count(Component::ID);
-	    }
-
-	SV_INLINE TemplatedComponentIterator begin()
-	    {
-		TemplatedComponentIterator iterator(Component::ID, false);
-		return iterator;
-	    }
-
-	SV_INLINE TemplatedComponentIterator end()
-	    {
-		TemplatedComponentIterator iterator(Component::ID, true);
-		return iterator;
-	    }
-
-    };
 
     ///////////////////////////////////////////////////////// COMPONENTS /////////////////////////////////////////////////////////
 
@@ -525,8 +499,8 @@ namespace sv {
     
     // on_body_collision
     struct BodyCollisionEvent {
-	ComponentView<BodyComponent> body0;
-	ComponentView<BodyComponent> body1;
+	CompView<BodyComponent> body0;
+	CompView<BodyComponent> body1;
     };
 
 }

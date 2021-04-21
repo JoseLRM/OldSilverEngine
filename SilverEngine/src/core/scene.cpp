@@ -521,19 +521,16 @@ namespace sv {
 
 		    archive << componentAllocatorCount(compID);
 
-		    ComponentIterator it = begin_component_iterator(compID);
-		    ComponentIterator end = end_component_iterator(compID);
-
-		    while (!it.equal(end)) {
-
-			BaseComponent* component;
-			Entity entity;
-			it.get(&entity, &component);
-
-			archive << entity;
-			serialize_component(compID, component, archive);
-
-			it.next();
+		    BaseComponent* component;
+		    Entity entity;
+		    ComponentIterator it;
+		    
+		    if (comp_it_begin(it, entity, component, compID)) {
+			do {
+			    archive << entity;
+			    serialize_component(compID, component, archive);
+			}
+			while (comp_it_next(it, entity, component));
 		    }
 		}
 	    }
@@ -680,149 +677,161 @@ namespace sv {
 	SV_SCENE();
 	
 	f32 dt = engine.deltatime;
-    
-	EntityView<BodyComponent> bodies;
-	    
-	for (ComponentView<BodyComponent> view : bodies) {
 
-	    BodyComponent& body = *view.comp;
+	ComponentIterator it;
+	CompView<BodyComponent> view;
+
+	if (comp_it_begin(it, view)) {
+	    
+	    do {
+
+		BodyComponent& body = *view.comp;
 		
-	    if (body.body_type == BodyType_Static)
-		continue;
+		if (body.body_type == BodyType_Static)
+		    continue;
 
-	    v2_f32 position = get_entity_position2D(view.entity) + body.offset;
-	    v2_f32 scale = get_entity_scale2D(view.entity) * body.size;
+		v2_f32 position = get_entity_position2D(view.entity) + body.offset;
+		v2_f32 scale = get_entity_scale2D(view.entity) * body.size;
 
-	    // Reset values
-	    body.in_ground = false;
+		// Reset values
+		body.in_ground = false;
 	
-	    // Gravity
-	    body.vel += scene.data.gravity * dt;
+		// Gravity
+		body.vel += scene.data.gravity * dt;
 	
-	    ComponentView<BodyComponent> vertical_collision = {};
-	    f32 vertical_depth = f32_max;
+		CompView<BodyComponent> vertical_collision = {};
+		f32 vertical_depth = f32_max;
 	
-	    ComponentView<BodyComponent> horizontal_collision = {};
-	    f32 horizontal_depth = f32_max;
-	    f32 vertical_offset = 0.f; // Used to avoid the small bumps
+		CompView<BodyComponent> horizontal_collision = {};
+		f32 horizontal_depth = f32_max;
+		f32 vertical_offset = 0.f; // Used to avoid the small bumps
 
-	    v2_f32 next_pos = position;
-	    v2_f32 next_vel = body.vel;
+		v2_f32 next_pos = position;
+		v2_f32 next_vel = body.vel;
 	
-	    // Simulate collisions
-	    {
-		// Detection
+		// Simulate collisions
+		{
+		    // Detection
 
-		v2_f32 final_pos = position + body.vel * dt;
+		    v2_f32 final_pos = position + body.vel * dt;
 
-		v2_f32 step = final_pos - next_pos;
-		f32 adv = SV_MIN(scale.x, scale.y);
-		u32 step_count = SV_MIN(u32(step.length() / adv) + 1u, 5u);
+		    v2_f32 step = final_pos - next_pos;
+		    f32 adv = SV_MIN(scale.x, scale.y);
+		    u32 step_count = SV_MIN(u32(step.length() / adv) + 1u, 5u);
 
-		step /= f32(step_count);
+		    step /= f32(step_count);
 
-		foreach(i, step_count) {
+		    foreach(i, step_count) {
 
-		    next_pos += step;
-	    
-		    EntityView<BodyComponent> bodies0;
-		    for (ComponentView<BodyComponent> v : bodies0) {
+			next_pos += step;
 
-			BodyComponent& b = *v.comp;
+			ComponentIterator it0;
+			CompView<BodyComponent> v;
 
-			if (b.body_type == BodyType_Static) {
-
-			    v2_f32 p = get_entity_position2D(v.entity) + b.offset;
-			    v2_f32 s = get_entity_scale2D(v.entity) * b.size;
-
-			    v2_f32 to = p - next_pos;
-			    to.x = abs(to.x);
-			    to.y = abs(to.y);
-			
-			    v2_f32 min_distance = (s + scale) * 0.5f;
-			    min_distance.x = abs(min_distance.x);
-			    min_distance.y = abs(min_distance.y);
-			
-			    if (to.x < min_distance.x && to.y < min_distance.y) {
-
-				v2_f32 depth = min_distance - to;
-
-				// Vertical collision
-				if (depth.x > depth.y) {
-
-				    if (depth.y < abs(vertical_depth)) {
+			if (comp_it_begin(it0, v)) {
 			    
-					vertical_collision.comp = &b;
-					vertical_collision.entity = v.entity;
-					vertical_depth = depth.y * ((next_pos.y < p.y) ? -1.f : 1.f);
-				    }
-				}
+			    do {
 
-				// Horizontal collision
-				else {
+				BodyComponent& b = *v.comp;
 
-				    if (depth.x < abs(horizontal_depth)) {
+				if (b.body_type == BodyType_Static) {
+
+				    v2_f32 p = get_entity_position2D(v.entity) + b.offset;
+				    v2_f32 s = get_entity_scale2D(v.entity) * b.size;
+
+				    v2_f32 to = p - next_pos;
+				    to.x = abs(to.x);
+				    to.y = abs(to.y);
+			
+				    v2_f32 min_distance = (s + scale) * 0.5f;
+				    min_distance.x = abs(min_distance.x);
+				    min_distance.y = abs(min_distance.y);
+			
+				    if (to.x < min_distance.x && to.y < min_distance.y) {
+
+					v2_f32 depth = min_distance - to;
+
+					// Vertical collision
+					if (depth.x > depth.y) {
+
+					    if (depth.y < abs(vertical_depth)) {
+			    
+						vertical_collision.comp = &b;
+						vertical_collision.entity = v.entity;
+						vertical_depth = depth.y * ((next_pos.y < p.y) ? -1.f : 1.f);
+					    }
+					}
+
+					// Horizontal collision
+					else {
+
+					    if (depth.x < abs(horizontal_depth)) {
 				    
-					horizontal_collision.comp = &b;
-					horizontal_collision.entity = v.entity;
-					horizontal_depth = depth.x * ((next_pos.x < p.x) ? -1.f : 1.f);
+						horizontal_collision.comp = &b;
+						horizontal_collision.entity = v.entity;
+						horizontal_depth = depth.x * ((next_pos.x < p.x) ? -1.f : 1.f);
 
-					if (depth.y < scale.y * 0.05f && next_pos.y > p.y) {
-					    vertical_offset = depth.y;
+						if (depth.y < scale.y * 0.05f && next_pos.y > p.y) {
+						    vertical_offset = depth.y;
+						}
+					    }
 					}
 				    }
 				}
 			    }
+			    while (comp_it_next(it0, v));
 			}
+			
+
+			if (vertical_collision.comp || horizontal_collision.comp)
+			    break;
 		    }
 
-		    if (vertical_collision.comp || horizontal_collision.comp)
-			break;
-		}
+		    // Solve collisions
+		    if (vertical_collision.comp) {
 
-		// Solve collisions
-		if (vertical_collision.comp) {
+			if (vertical_depth > 0.f) {
 
-		    if (vertical_depth > 0.f) {
+			    body.in_ground = true;
+			    // Ground friction
+			    next_vel.x *= pow(1.f - vertical_collision.comp->friction, dt);
+			}
 
-			body.in_ground = true;
-			// Ground friction
-			next_vel.x *= pow(1.f - vertical_collision.comp->friction, dt);
-		    }
-
-		    next_pos.y += vertical_depth;
-		    next_vel.y = next_vel.y * -body.bounciness;
+			next_pos.y += vertical_depth;
+			next_vel.y = next_vel.y * -body.bounciness;
 		    
-		    BodyCollisionEvent event;
-		    event.body0 = view;
-		    event.body1 = vertical_collision;
+			BodyCollisionEvent event;
+			event.body0 = view;
+			event.body1 = vertical_collision;
 
-		    event_dispatch("on_body_collision", &event);
-		}
+			event_dispatch("on_body_collision", &event);
+		    }
 
-		if (horizontal_collision.comp) {
+		    if (horizontal_collision.comp) {
 		
-		    next_pos.x += horizontal_depth;
-		    if (vertical_offset != 0.f)
-			next_pos.y += vertical_offset;
-		    else
-			next_vel.x = next_vel.x * -body.bounciness;
+			next_pos.x += horizontal_depth;
+			if (vertical_offset != 0.f)
+			    next_pos.y += vertical_offset;
+			else
+			    next_vel.x = next_vel.x * -body.bounciness;
 
-		    BodyCollisionEvent event;
-		    event.body0 = view;
-		    event.body1 = horizontal_collision;
+			BodyCollisionEvent event;
+			event.body0 = view;
+			event.body1 = horizontal_collision;
 
-		    event_dispatch("on_body_collision", &event);
+			event_dispatch("on_body_collision", &event);
+		    }
+
+		    // Air friction
+		    next_vel *= pow(1.f - scene.data.air_friction, dt);
 		}
-
-		// Air friction
-		next_vel *= pow(1.f - scene.data.air_friction, dt);
-	    }
 	
-	    position = next_pos;
-	    body.vel = next_vel;
+		position = next_pos;
+		body.vel = next_vel;
 
-	    set_entity_position2D(view.entity, position - body.offset);
+		set_entity_position2D(view.entity, position - body.offset);
+	    }
+	    while (comp_it_next(it, view));
 	}
     }
 
@@ -847,17 +856,21 @@ namespace sv {
 
 	// Update cameras matrices
 	{
-	    EntityView<CameraComponent> cameras;
+	    ComponentIterator it;
+	    CompView<CameraComponent> view;
 
-	    for (ComponentView<CameraComponent> view : cameras) {
+	    if (comp_it_begin(it, view)) {
+		do {
 
-		CameraComponent& camera = *view.comp;
-		Entity entity = view.entity;
+		    CameraComponent& camera = *view.comp;
+		    Entity entity = view.entity;
 
-		v3_f32 position = get_entity_world_position(entity);
-		v4_f32 rotation = get_entity_world_rotation(entity);
+		    v3_f32 position = get_entity_world_position(entity);
+		    v4_f32 rotation = get_entity_world_rotation(entity);
 
-		update_camera_matrices(camera, position, rotation);
+		    update_camera_matrices(camera, position, rotation);
+		}
+		while (comp_it_next(it, view));
 	    }
 
 #if SV_DEV
@@ -1217,6 +1230,7 @@ namespace sv {
     {
 	scene_state->registers[ID].destroyFn(ptr);
 	ptr->_id = 0u;
+	ptr->flags = 0u;
     }
 
     void move_component(CompID ID, BaseComponent* from, BaseComponent* to)
@@ -1613,82 +1627,76 @@ namespace sv {
 
     // Iterators
 
-    ComponentIterator begin_component_iterator(CompID comp_id)
+    bool comp_it_begin(ComponentIterator& it, Entity& entity, BaseComponent*& comp, CompID comp_id, u32 mask)
     {
 	SV_SCENE();
 
-	ComponentIterator iterator;
-	iterator.comp_id = comp_id;
+	it._comp_id = comp_id;
+	it._mask = mask;
+	it._it = nullptr;
+	it._end = nullptr;
+	it._pool = 0u;
+	
+	if (!componentAllocatorIsEmpty(comp_id)) {
 
-	iterator._pool = 0u;
-	u8* ptr = nullptr;
+	    const ComponentAllocator& list = scene.components[comp_id];
+	    size_t comp_size = size_t(get_component_size(comp_id));
 
-	if (!componentAllocatorIsEmpty(iterator.comp_id)) {
+	    u32 pool = 0u;
+	    u8* ptr = nullptr;
 
-	    const ComponentAllocator& list = scene.components[iterator.comp_id];
-	    size_t comp_size = size_t(get_component_size(iterator.comp_id));
+	    // Finding the first component
+	    {
+		while (componentPoolCount(list.pools[pool], comp_size) == 0u) pool++;
 
-	    while (componentPoolCount(list.pools[iterator._pool], comp_size) == 0u) iterator._pool++;
+		ptr = list.pools[pool].data;
 
-	    ptr = list.pools[iterator._pool].data;
-
-	    while (true) {
-		BaseComponent* comp = reinterpret_cast<BaseComponent*>(ptr);
-		if (comp->_id != 0u) {
-		    break;
+		while (true) {
+		    BaseComponent* c = reinterpret_cast<BaseComponent*>(ptr);
+		    if (c->_id != 0u && (c->flags & mask) == mask) {
+			break;
+		    }
+		    ptr += comp_size;
 		}
-		ptr += comp_size;
 	    }
 
+	    it._pool = pool;
+	    it._it = reinterpret_cast<BaseComponent*>(ptr);
+
+	    // Find the end component
+	    {
+		pool = u32(list.pools.size()) - 1u;
+		
+		while (componentPoolCount(list.pools[pool], comp_size) == 0u) pool--;
+		ptr = list.pools[pool].data + list.pools[pool].size;
+	    }
+
+	    it._end = reinterpret_cast<BaseComponent*>(ptr);
 	}
 
-	iterator._it = reinterpret_cast<BaseComponent*>(ptr);
-	return iterator;
+	bool res = it._end != it._it;
+
+	if (res) {
+	    // TODO: premakes
+	    comp = it._it;
+	    entity = Entity(it._it->_id);
+	}
+
+	return res;
     }
 
-    ComponentIterator end_component_iterator(CompID comp_id)
+    
+    bool comp_it_next(ComponentIterator& it, Entity& entity, BaseComponent*& comp)
     {
 	SV_SCENE();
 
-	ComponentIterator iterator;
-	iterator.comp_id = comp_id;
-
-	const ComponentAllocator& list = scene.components[iterator.comp_id];
-
-	iterator._pool = u32(list.pools.size()) - 1u;
-	u8* ptr = nullptr;
-
-	if (!componentAllocatorIsEmpty(iterator.comp_id)) {
-
-	    size_t compSize = size_t(get_component_size(iterator.comp_id));
-
-	    while (componentPoolCount(list.pools[iterator._pool], compSize) == 0u) iterator._pool--;
-
-	    ptr = list.pools[iterator._pool].data + list.pools[iterator._pool].size;
-	}
-
-	iterator._it = reinterpret_cast<BaseComponent*>(ptr);
-	return iterator;
-    }
-
-    void ComponentIterator::get(Entity* entity, BaseComponent** comp)
-    {
-	*comp = _it;
-	*entity = Entity(_it->_id);
-    }
-
-    bool ComponentIterator::equal(const ComponentIterator& other) const noexcept
-    {
-	return _it == other._it;
-    }
-
-    void ComponentIterator::next()
-    {
-	SV_SCENE();
-
-	auto& list = scene.components[comp_id];
+	BaseComponent*& _it = it._it;
+	u32& _pool = it._pool;
+	CompID comp_id = it._comp_id;
+	u32 mask = it._mask;
 
 	size_t comp_size = size_t(get_component_size(comp_id));
+	auto& list = scene.components[comp_id];
 	u8* ptr = reinterpret_cast<u8*>(_it);
 	u8* endPtr = list.pools[_pool].data + list.pools[_pool].size;
 
@@ -1710,37 +1718,20 @@ namespace sv {
 		ptr = compPool.data;
 		endPtr = ptr + compPool.size;
 	    }
-	} while (reinterpret_cast<BaseComponent*>(ptr)->_id == 0u);
+	} while (((BaseComponent*)(ptr))->_id == 0u || (((BaseComponent*)(ptr))->flags & mask) != mask);
 
 	_it = reinterpret_cast<BaseComponent*>(ptr);
-    }
 
-    void ComponentIterator::last()
-    {
-	// TODO:
-	SV_LOG_ERROR("TODO-> This may fail");
-	SV_SCENE();
+	bool res = _it != it._end;
 
-	auto& list = scene.components[comp_id];
+	if (res) {
 
-	size_t compSize = size_t(get_component_size(comp_id));
-	u8* ptr = reinterpret_cast<u8*>(_it);
-	u8* beginPtr = list.pools[_pool].data;
+	    // TODO: premakes
+	    comp = _it;
+	    entity = Entity(_it->_id);
+	}
 
-	do {
-	    ptr -= compSize;
-	    if (ptr == beginPtr) {
-
-		while (list.pools[--_pool].size == 0u);
-
-		ComponentPool& compPool = list.pools[_pool];
-
-		beginPtr = compPool.data;
-		ptr = beginPtr + compPool.size;
-	    }
-	} while (reinterpret_cast<BaseComponent*>(ptr)->_id == 0u);
-
-	_it = reinterpret_cast<BaseComponent*>(ptr);
+	return res;
     }
 
     //////////////////////////////////////////// TRANSFORM ///////////////////////////////////////////////////////////
