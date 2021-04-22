@@ -2272,7 +2272,7 @@ namespace sv {
 	imrend_write(state, color);
     }
 
-    void imrend_draw_sprite(const v3_f32& position, const v2_f32& size, Color color, GPUImage* image, const v4_f32& texcoord, CommandList cmd)
+    void imrend_draw_sprite(const v3_f32& position, const v2_f32& size, Color color, GPUImage* image, GPUImageLayout layout, const v4_f32& texcoord, CommandList cmd)
     {
 	SV_IMREND();
 
@@ -2284,6 +2284,7 @@ namespace sv {
 	imrend_write(state, color);
 	imrend_write(state, image);
 	imrend_write(state, texcoord);
+	// TODO: Image layout
     }
 
     void imrend_draw_text(const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, Font* pfont, Color color, CommandList cmd)

@@ -193,6 +193,7 @@ namespace sv {
 
     struct Raw_Image {
 	GPUImage* image;
+	GPUImageLayout layout;
     };
 
     ///////////////////////////////// WIDGET STRUCTS ///////////////////////////////////
@@ -311,6 +312,7 @@ namespace sv {
 
 	    struct {
 		GPUImage* image;
+		GPUImageLayout layout;
 		GuiImageStyle style;
 	    } popup;
 
@@ -1648,6 +1650,7 @@ namespace sv {
 
 	    Raw_Image raw = _read<Raw_Image>(it);
 	    image.image = raw.image;
+	    image.layout = raw.layout;
 	    image.style = gui.temp_style.image;
 	}
 	break;
@@ -2856,13 +2859,14 @@ namespace sv {
 	return *value;
     }
 
-    void gui_image(GUI* gui, GPUImage* image, u64 id)
+    void gui_image(GUI* gui, GPUImage* image, GPUImageLayout layout, u64 id)
     {
 	PARSE_GUI();
 	hash_combine(id, gui.current_id);
 
 	Raw_Image raw;
 	raw.image = image;
+	raw.layout = layout;
 	
 	write_widget(gui, GuiWidgetType_Image, id, &raw, nullptr);
 
@@ -2910,8 +2914,8 @@ namespace sv {
 
 	    v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y);
 	    v2_f32 size = v2_f32(w.bounds.z, w.bounds.w);
-
-	    imrend_draw_sprite(pos.getVec3(), size, image.style.color, image.image ? image.image : renderer->gfx.image_white, image.style.texcoord, cmd);
+	    
+	    imrend_draw_sprite(pos.getVec3(), size, image.style.color, image.image ? image.image : renderer->gfx.image_white, image.layout, image.style.texcoord, cmd);
 	}
 	break;
 

@@ -175,7 +175,7 @@ namespace sv {
     SV_API bool gui_checkbox(GUI* gui, bool* value, u64 id);
     SV_API bool gui_checkbox(GUI* gui, u64 id);
 
-    SV_API void gui_image(GUI* gui, GPUImage* image, u64 id);
+    SV_API void gui_image(GUI* gui, GPUImage* image, GPUImageLayout layout, u64 id);
 	
     SV_API v4_f32 gui_parent_bounds(GUI* gui);
 

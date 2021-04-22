@@ -244,7 +244,7 @@ namespace sv {
 	gui_same_line(dev.gui, 2u);
 	
 	gui_text(dev.gui, text, 0u);
-	gui_button(dev.gui, "TODO", 1u);
+	gui_image(dev.gui, texture->get(), GPUImageLayout_ShaderResource, 1u);
 
 	AssetPackage* package;
 	if (gui_recive_package(dev.gui, (void**)&package, nullptr, ASSET_BROWSER_PACKAGE_TEXTURE)) {
