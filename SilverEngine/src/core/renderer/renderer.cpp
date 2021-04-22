@@ -25,6 +25,9 @@ namespace sv {
 	COMPILE_PS(gfx.ps_debug_solid, "debug/solid_batch.hlsl");
 	COMPILE_VS(gfx.vs_debug_mesh_wireframe, "debug/mesh_wireframe.hlsl");
 
+	COMPILE_VS(gfx.vs_im, "immediate_shader.hlsl");
+	COMPILE_PS(gfx.ps_im, "immediate_shader.hlsl");
+
 	COMPILE_VS(gfx.vs_text, "text.hlsl");
 	COMPILE_PS(gfx.ps_text, "text.hlsl");
 
@@ -176,6 +179,18 @@ namespace sv {
 	    desc.pData = nullptr;
 
 	    SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_debug_mesh));
+	}
+
+	// Immediate rendering
+	{
+	    desc.bufferType = GPUBufferType_Constant;
+	    desc.usage = ResourceUsage_Dynamic;
+	    desc.CPUAccess = CPUAccess_Write;
+	    desc.size = sizeof(ImRendVertex) * 4u;
+	    desc.pData = nullptr;
+
+	    foreach(i, GraphicsLimits_CommandList)
+		SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_im[i]));
 	}
 
 	// Gaussian blur
@@ -1921,6 +1936,7 @@ namespace sv {
 
     enum ImRendDrawCall : u32 {
 	ImRendDrawCall_Quad,
+	ImRendDrawCall_Sprite,
 	ImRendDrawCall_Text,
     };
 
@@ -2032,6 +2048,15 @@ namespace sv {
     {
 	SV_IMREND();
 
+	graphics_event_begin("Immediate Rendering", cmd);
+
+	auto& gfx = renderer->gfx;
+	
+	GPUImage* att[1];
+	att[0] = gfx.offscreen;
+
+	graphics_renderpass_begin(gfx.renderpass_off, att, cmd);
+
 	state.current_matrix = XMMatrixIdentity();
 	state.matrix_stack.reset();
 	state.scissor_stack.reset();
@@ -2090,14 +2115,49 @@ namespace sv {
 		switch (draw_call) {
 
 		case ImRendDrawCall_Quad:
+		case ImRendDrawCall_Sprite:
 		{
 		    v3_f32 position = imrend_read<v3_f32>(it);
 		    v2_f32 size = imrend_read<v2_f32>(it);
 		    Color color = imrend_read<Color>(it);
+		    GPUImage* image = gfx.image_white;
+		    v4_f32 tc = { 0.f, 0.f, 1.f, 1.f };
 
-		    begin_debug_batch(cmd);
-		    draw_debug_quad(position, size, color, cmd);
-		    end_debug_batch(true, false, state.current_matrix, cmd);
+		    if (draw_call == ImRendDrawCall_Sprite) {
+			image = imrend_read<GPUImage*>(it);
+			tc = imrend_read<v4_f32>(it);
+		    }
+
+		    XMMATRIX m = XMMatrixScaling(size.x, size.y) * XMMatrixTranslation(position.x, position.y, position.z);
+
+		    m *= state.current_matrix;
+
+		    XMVECTOR v0 = XMVector4Transform(XMVectorSet(-0.5f, 0.5f, 0.f), m);
+		    XMVECTOR v1 = XMVector4Transform(XMVectorSet(0.5f, 0.5f, 0.f), m);
+		    XMVECTOR v2 = XMVector4Transform(XMVectorSet(-0.5f, -0.5f, 0.f), m);
+		    XMVECTOR v3 = XMVector4Transform(XMVectorSet(0.5f, -0.5f, 0.f), m);
+		    
+		    ImRendVertex vertices[4u];
+		    vertices[0u] = { v4_f32(v0), v2_f32{tc.x, tc.y}, color };
+		    vertices[1u] = { v4_f32(v1), v2_f32{tc.z, tc.y}, color };
+		    vertices[2u] = { v4_f32(v2), v2_f32{tx.x, tc.w}, color };
+		    vertices[4u] = { v4_f32(v3), v2_f32{tx.z, tc.w}, color };
+
+		    graphics_constantbuffer_bind(gfx.cbuffer_im[cmd], 0u, ShaderType_Vertex, cmd);
+
+		    graphics_image_bind(image, 0u, ShaderType_Pixel, cmd);
+		    graphics_sampler_bind(gfx.sampler_def_linear, 0u, ShaderType_Pixel, cmd);
+
+		    graphics_blendstate_bind(gfx.bs_transparent, cmd);
+		    graphics_depthstencilstate_unbind(cmd);
+		    graphics_inputlayoutstate_unbind(cmd);
+		    graphics_rasterizerstate_unbind(cmd);
+
+		    graphics_topology_set(GraphicsTopology_TriangleStrip, cmd);
+
+		    graphics_constantbuffer_update(gfx.cbuffer_im[cmd], vertices, sizeof(ImRendVertex) * 4u, cmd);
+
+		    graphics_draw(4u, 1u, 0u, 0u, cmd);
 		    
 		}break;
 
@@ -2144,6 +2204,10 @@ namespace sv {
 
 	SV_ASSERT(state.matrix_stack.empty());
 	SV_ASSERT(state.scissor_stack.empty());
+
+	graphics_renderpass_end(cmd);
+
+	graphics_event_end(cmd);
     }
 
     void imrend_push_matrix(const XMMATRIX& matrix, CommandList cmd)
@@ -2194,6 +2258,20 @@ namespace sv {
 	imrend_write(state, position);
 	imrend_write(state, size);
 	imrend_write(state, color);
+    }
+
+    void imrend_draw_sprite(const v3_f32& position, const v2_f32& size, Color color, GPUImage* image, const v4_f32& texcoord, CommandList cmd)
+    {
+	SV_IMREND();
+
+	imrend_write(state, ImRendHeader_DrawCall);
+	imrend_write(state, ImRendDrawCall_Sprite);
+
+	imrend_write(state, position);
+	imrend_write(state, size);
+	imrend_write(state, color);
+	imrend_write(state, image);
+	imrend_write(state, texcoord);
     }
 
     void imrend_draw_text(const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, Font* pfont, Color color, CommandList cmd)

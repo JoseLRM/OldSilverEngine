@@ -124,6 +124,12 @@ namespace sv {
 	InputLayoutState* ils_debug_solid_batch;
 	GPUBuffer* cbuffer_debug_mesh;
 
+	// IMMEDIATE
+
+	Shader* vs_im;
+	Shader* ps_im;
+	GPUBuffer* cbuffer_im[GraphicsLimits_CommandList];
+
 	// TEXT
 
 	Shader* vs_text;
@@ -169,6 +175,13 @@ namespace sv {
 	GPUBuffer* cbuffer_skybox;
 	InputLayoutState* ils_sky;
 
+    };
+
+    struct ImRendVertex {
+	v4_f32 position;
+	v2_f32 texcoord;
+	Color color;
+	u32 padding;
     };
 
     struct ImmediateModeState {
