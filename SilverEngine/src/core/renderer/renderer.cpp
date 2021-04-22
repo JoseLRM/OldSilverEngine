@@ -2199,8 +2199,10 @@ namespace sv {
 		    
 		    max_line_width *= XMVectorGetX(scale);
 		    font_size *= XMVectorGetY(scale);
-		    
+
+		    graphics_renderpass_end(cmd);
 		    draw_text(text, text_size, x, y, max_line_width, max_lines, font_size, aspect, alignment, pfont, color, cmd);
+		    graphics_renderpass_begin(gfx.renderpass_off, att, cmd);
 		    
 		}break;
 		    
