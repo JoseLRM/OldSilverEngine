@@ -24,6 +24,7 @@ namespace sv {
 	GuiWidgetType_Label,
 	GuiWidgetType_Checkbox,
 	GuiWidgetType_Drag,
+	GuiWidgetType_Image,
 	GuiWidgetType_MenuItem,
 	GuiWidgetType_MenuContainer,
 	GuiWidgetType_Package,
@@ -91,6 +92,11 @@ namespace sv {
 	Color text_color = Color::Black();
     };
 
+    struct GuiImageStyle {
+	v4_f32 texcoord;
+	Color color;
+    };
+
     struct GuiFlowLayoutStyle {
 	f32 x0 = 0.1f;
 	f32 x1 = 0.9f;
@@ -108,6 +114,7 @@ namespace sv {
 	GuiCheckboxStyle checkbox;
 	GuiDragStyle drag;
 	GuiMenuItemStyle menuitem;
+	GuiImageStyle image;
 	GuiFlowLayoutStyle flow_layout;
     };
 
@@ -182,6 +189,10 @@ namespace sv {
 
     struct Raw_Reciver {
 	u64 package_id;
+    };
+
+    struct Raw_Image {
+	GPUImage* image;
     };
 
     ///////////////////////////////// WIDGET STRUCTS ///////////////////////////////////
@@ -296,6 +307,11 @@ namespace sv {
 		GuiParentInfo parent_info;
 		bool close_request;
 		GuiPopupStyle style;
+	    } popup;
+
+	    struct {
+		GPUImage* image;
+		GuiImageStyle style;
 	    } popup;
 
 	    struct {
@@ -661,6 +677,13 @@ namespace sv {
 
 	    write_text(gui, raw->text);
 	    write_buffer(gui, raw->active);
+	}
+	break;
+
+	case GuiWidgetType_MenuItem:
+	{
+	    Raw_Image* raw = (Raw_Image*)data;
+	    write_buffer(gui, *raw);
 	}
 	break;
 
@@ -1597,6 +1620,16 @@ namespace sv {
 	    else {
 		++gui.root_menu_count;
 	    }
+	}
+	break;
+
+	case GuiWidgetType_Image:
+	{
+	    auto& image = w.widget.image;
+
+	    Raw_Image raw = _read<Raw_Image>(it);
+	    image.image = raw.image;
+	    image.style = gui.temp_style.image;
 	}
 	break;
 
@@ -2804,6 +2837,19 @@ namespace sv {
 	return *value;
     }
 
+    void gui_image(GUI* gui, GPUImage* image, u64 id)
+    {
+	PARSE_GUI();
+	hash_combine(id, gui.current_id);
+
+	Raw_Image raw;
+	raw.image = image;
+	
+	write_widget(gui, GuiWidgetType_Image, id, &raw, nullptr);
+
+	return modified;
+    }
+
     ///////////////////////////////////////////// GETTERS ///////////////////////////////////////////
 
     v4_f32 gui_parent_bounds(GUI* gui_)
@@ -2836,6 +2882,17 @@ namespace sv {
 			  , pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - renderer->font_opensans.vertical_offset * font_size,
 			  size.x, 1u, font_size, gui.aspect, TextAlignment_Center, &renderer->font_opensans, button.style.text_color, cmd);
 	    }
+	}
+	break;
+
+	case GuiWidgetType_Image:
+	{
+	    auto& image = w.widget.image;
+
+	    v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y);
+	    v2_f32 size = v2_f32(w.bounds.z, w.bounds.w);
+
+	    imrend_draw_sprite(pos.getVec3(), size, image.style.color, image.image ? image.image : renderer->gfx.image_white, image.style.texcoord, cmd);
 	}
 	break;
 

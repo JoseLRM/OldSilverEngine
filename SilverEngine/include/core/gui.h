@@ -92,6 +92,7 @@ namespace sv {
 	GuiStyle_CheckboxShapeSizeMult,
 	GuiStyle_DragTextColor,
 	GuiStyle_DragBackgroundColor,
+	// TODO image
 	// TODO Menuitem
 	GuiStyle_FlowX0,
 	GuiStyle_FlowX1,
@@ -173,6 +174,8 @@ namespace sv {
     SV_API void gui_text(GUI* gui, const char* text, u64 id);
     SV_API bool gui_checkbox(GUI* gui, bool* value, u64 id);
     SV_API bool gui_checkbox(GUI* gui, u64 id);
+
+    SV_API void gui_image(GUI* gui, GPUImage* image, u64 id);
 	
     SV_API v4_f32 gui_parent_bounds(GUI* gui);
 
