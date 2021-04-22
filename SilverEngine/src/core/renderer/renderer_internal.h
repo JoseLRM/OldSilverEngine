@@ -184,14 +184,18 @@ namespace sv {
 	u32 padding;
     };
 
+    struct ImRendScissor {
+	v4_f32 bounds;
+	bool additive;
+    };
+
     struct ImmediateModeState {
 	RawList buffer;
 	
 	List<XMMATRIX> matrix_stack;
-	List<v4_f32> scissor_stack;
+	List<ImRendScissor> scissor_stack;
 	
 	XMMATRIX current_matrix;
-	v4_f32 current_stack;
 	ImRendCamera current_camera;
     };
     

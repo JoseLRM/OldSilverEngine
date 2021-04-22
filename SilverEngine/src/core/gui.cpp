@@ -3073,7 +3073,7 @@ namespace sv {
 		// Draw childs
 
 		const v4_f32& s = parent_info->child_bounds;
-		imrend_push_scissor(s.x, s.y, s.z, s.w, cmd);
+		imrend_push_scissor(s.x, s.y, s.z, s.w, !ignore_scroll(w.type), cmd);
 				
 		GuiIndex* it = gui.indices.data() + parent_info->widget_offset;
 		GuiIndex* end = it + parent_info->widget_count;

@@ -1989,41 +1989,49 @@ namespace sv {
     {
 	v4_f32 s0 = { 0.5f, 0.5f, 1.f, 1.f };
 	
-	for (const v4_f32& s1 : state.scissor_stack) {
+	for (const ImRendScissor& scissor : state.scissor_stack) {
 
-	    f32 min0 = s0.x - s0.z * 0.5f;
-	    f32 max0 = s0.x + s0.z * 0.5f;
+	    if (scissor.additive) {
+
+		const v4_f32& s1 = scissor.bounds;
+
+		f32 min0 = s0.x - s0.z * 0.5f;
+		f32 max0 = s0.x + s0.z * 0.5f;
 	    
-	    f32 min1 = s1.x - s1.z * 0.5f;
-	    f32 max1 = s1.x + s1.z * 0.5f;
+		f32 min1 = s1.x - s1.z * 0.5f;
+		f32 max1 = s1.x + s1.z * 0.5f;
 
-	    f32 min = SV_MAX(min0, min1);
-	    f32 max = SV_MIN(max0, max1);
+		f32 min = SV_MAX(min0, min1);
+		f32 max = SV_MIN(max0, max1);
 
-	    if (min >= max) {
-		s0 = {};
-		break;
-	    }
+		if (min >= max) {
+		    s0 = {};
+		    break;
+		}
 
-	    s0.z = max - min;
-	    s0.x = min + s0.z * 0.5f;
+		s0.z = max - min;
+		s0.x = min + s0.z * 0.5f;
 
-	    min0 = s0.y - s0.w * 0.5f;
-	    max0 = s0.y + s0.w * 0.5f;
+		min0 = s0.y - s0.w * 0.5f;
+		max0 = s0.y + s0.w * 0.5f;
 	    
-	    min1 = s1.y - s1.w * 0.5f;
-	    max1 = s1.y + s1.w * 0.5f;
+		min1 = s1.y - s1.w * 0.5f;
+		max1 = s1.y + s1.w * 0.5f;
 
-	    min = SV_MAX(min0, min1);
-	    max = SV_MIN(max0, max1);
+		min = SV_MAX(min0, min1);
+		max = SV_MIN(max0, max1);
 
-	    if (min >= max) {
-		s0 = {};
-		break;
+		if (min >= max) {
+		    s0 = {};
+		    break;
+		}
+
+		s0.w = max - min;
+		s0.y = min + s0.w * 0.5f;
 	    }
-
-	    s0.w = max - min;
-	    s0.y = min + s0.w * 0.5f;
+	    else {
+		s0 = scissor.bounds;
+	    }
 	}
 
 	const GPUImageInfo& info = graphics_image_info(renderer->gfx.offscreen);
@@ -2088,8 +2096,11 @@ namespace sv {
 
 	    case ImRendHeader_PushScissor:
 	    {
-		v4_f32 scissor = imrend_read<v4_f32>(it);
-		state.scissor_stack.push_back(scissor);
+		ImRendScissor s;
+		s.bounds = imrend_read<v4_f32>(it);
+		s.additive = imrend_read<bool>(it);
+		
+		state.scissor_stack.push_back(s);
 		update_current_scissor(state, cmd);
 	    }
 	    break;
@@ -2225,12 +2236,13 @@ namespace sv {
 	imrend_write(state, ImRendHeader_PopMatrix);
     }
 
-    void imrend_push_scissor(f32 x, f32 y, f32 width, f32 height, CommandList cmd)
+    void imrend_push_scissor(f32 x, f32 y, f32 width, f32 height, bool additive, CommandList cmd)
     {
 	SV_IMREND();
 	
 	imrend_write(state, ImRendHeader_PushScissor);
 	imrend_write(state, v4_f32(x, y, width, height));
+	imrend_write(state, additive);
     }
     
     void imrend_pop_scissor(CommandList cmd)
