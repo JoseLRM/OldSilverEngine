@@ -783,8 +783,13 @@ namespace sv {
     // Color
 
     struct Color {
-	
-	u8 r, g, b, a;
+
+	union {
+	    struct {
+		u8 r, g, b, a;
+	    };
+	    u32 rgba;
+	};
 
 	constexpr static Color Transparent() { return { 0u, 0u, 0u, 0u }; }
 	constexpr static Color Red(u8 a = 255u) { return { 255u, 0u, 0u, a }; }

@@ -244,7 +244,13 @@ namespace sv {
 	gui_same_line(dev.gui, 2u);
 	
 	gui_text(dev.gui, text, 0u);
-	gui_image(dev.gui, texture->get(), GPUImageLayout_ShaderResource, 1u);
+
+	gui_push_style(dev.gui, GuiStyle_FlowX0, 0.3f);
+	gui_push_style(dev.gui, GuiStyle_FlowX1, 0.7f);
+	gui_begin_container(dev.gui, 1u, GuiLayout_Flow);
+	gui_image(dev.gui, texture->get(), GPUImageLayout_ShaderResource, 0u);
+	gui_end_container(dev.gui);
+	gui_pop_style(dev.gui, 2u);
 
 	AssetPackage* package;
 	if (gui_recive_package(dev.gui, (void**)&package, nullptr, ASSET_BROWSER_PACKAGE_TEXTURE)) {

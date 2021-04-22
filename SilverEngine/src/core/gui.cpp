@@ -39,7 +39,7 @@ namespace sv {
     //////////////////////////////// STYLE STRUCTS /////////////////////////////////////
 
     struct GuiContainerStyle {
-	Color color = Color::Gray(100u);
+	Color color = Color::Transparent();
     };
 
     struct GuiWindowStyle {
@@ -93,15 +93,13 @@ namespace sv {
     };
 
     struct GuiImageStyle {
-	v4_f32 texcoord;
-	Color color;
+	v4_f32 texcoord = { 0.f, 0.f, 1.f, 1.f };
+	Color color = Color::White();
     };
 
     struct GuiFlowLayoutStyle {
 	f32 x0 = 0.1f;
 	f32 x1 = 0.9f;
-	f32 sub_x0 = 0.f;
-	f32 sub_x1 = 1.f;
     };
 
     struct GuiStyleData {
@@ -314,7 +312,7 @@ namespace sv {
 		GPUImage* image;
 		GPUImageLayout layout;
 		GuiImageStyle style;
-	    } popup;
+	    } image;
 
 	    struct {
 		void* data;
@@ -590,12 +588,14 @@ namespace sv {
 	    
 	    if (parent_info) {
 
+		write_buffer(gui, parent_info->child_bounds);
 		write_buffer(gui, parent_info->vertical_amplitude);
 		write_buffer(gui, parent_info->horizontal_amplitude);
 		write_buffer(gui, parent_info->vertical_offset);
 		write_buffer(gui, parent_info->has_vertical_scroll);
 	    }
 	    else {
+		write_buffer(gui, v4_f32());
 		write_buffer(gui, 0.f);
 		write_buffer(gui, 0.f);
 		write_buffer(gui, 0.f);
@@ -682,7 +682,7 @@ namespace sv {
 	}
 	break;
 
-	case GuiWidgetType_MenuItem:
+	case GuiWidgetType_Image:
 	{
 	    Raw_Image* raw = (Raw_Image*)data;
 	    write_buffer(gui, *raw);
@@ -1277,25 +1277,6 @@ namespace sv {
 		    v2_f32 new_position = gui.mouse_position + gui.begin_position;
 		    window.state->bounds.x = new_position.x;
 		    window.state->bounds.y = new_position.y;
-
-		    if (input.mouse_buttons[MouseButton_Left] == InputState_Release) {
-
-			v4_f32 decoration_bounds = compute_window_decoration_bounds(gui, w);
-			// TODO: outline bounds
-
-			if (gui.mouse_position.x <= 0.f) {
-			    window.state->bounds.z = 0.3f;
-			    window.state->bounds.w = 1.f - decoration_bounds.w;
-			    window.state->bounds.x = window.state->bounds.z * 0.5f;
-			    window.state->bounds.y = window.state->bounds.w * 0.5f;
-			}
-			if (gui.mouse_position.x >= 1.f) {
-			    window.state->bounds.z = 0.3f;
-			    window.state->bounds.w = 1.f - decoration_bounds.w;
-			    window.state->bounds.x = 1.f - window.state->bounds.z * 0.5f;
-			    window.state->bounds.y = window.state->bounds.w * 0.5f;
-			}
-		    }
 		}
 		break;
 
@@ -1449,10 +1430,6 @@ namespace sv {
 			f32 sub_x0 = x0 + f32(i - begin_index) * element_width;
 			f32 sub_x1 = x0 + f32(i - begin_index + 1u) * element_width;
 			
-			f32 sub_width = sub_x1 - sub_x0;
-			sub_x0 = sub_x0 + style.sub_x0 * sub_width;
-			sub_x1 = sub_x0 + style.sub_x1 * sub_width;
-			
 			coords.xtype = GuiCoordType_Coord;
 			coords.xcoord._0 = GuiCoord::Relative(sub_x0); 
 			coords.xcoord._1 = GuiCoord::Relative(sub_x1); 
@@ -1460,22 +1437,40 @@ namespace sv {
 			coords.ytype = GuiCoordType_Dim;
 			coords.ydim.c = GuiCoord::IPixel(data.yoff);
 			coords.ydim.align = GuiAlign_Top;
+
+			f32 height;
 	    
 			switch (widget.type) {
 
 			case GuiWidgetType_Container:
 			    coords.ydim.d = GuiDim::Adjust();
 
-			    max_height = SV_MAX(max_height, get_parent_info(gui, widget)->vertical_amplitude * gui.resolution.y);
+			    height = get_parent_info(gui, widget)->vertical_amplitude * gui.resolution.y;
 			    
 			    break;
+			    
+			case GuiWidgetType_Image:
+			{
+			    f32 parent_width = parent_info ? parent_info->child_bounds.z : 1.f;
+			    f32 width = ((sub_x1 - sub_x0) * parent_width) * gui.resolution.x;
 
+			    GPUImage* image = (widget.widget.image.image) ? widget.widget.image.image : renderer->gfx.image_white;
+			    const GPUImageInfo& info = graphics_image_info(image);
+
+			    f32 aspect = f32(info.height) / f32(info.width);
+			    height = width * aspect;
+			    coords.ydim.d = GuiDim::Aspect(aspect);
+			}
+			break;
+						
 			default:
 			    coords.ydim.d = GuiDim::Pixel(20.f);
-			    max_height = SV_MAX(max_height, 20.f);
+			    height = 20.f;
 			    break;
 		
-			}	    
+			}
+			
+			max_height = SV_MAX(max_height, height);
 		    }
 
 		    // Padding
@@ -1519,6 +1514,7 @@ namespace sv {
 	    parent_info->max_y = f32_min;
 
 	    parent_info->layout = _read<GuiLayout>(it);
+	    parent_info->child_bounds = _read<v4_f32>(it);
 	    parent_info->vertical_amplitude = _read<f32>(it);
 	    parent_info->horizontal_amplitude = _read<f32>(it);
 	    parent_info->vertical_offset = _read<f32>(it);
@@ -1705,6 +1701,7 @@ namespace sv {
 	case GuiWidgetType_Label:
 	case GuiWidgetType_Checkbox:
 	case GuiWidgetType_Drag:
+	case GuiWidgetType_Image:
 	    w->bounds = compute_widget_bounds(gui, w, parent);
 	    break;
 		
@@ -1996,17 +1993,6 @@ namespace sv {
 	    *pdst = &s.flow_layout.x1;
 	    *psize = sizeof(f32);
 	    break;
-
-	case GuiStyle_FlowSubX0:
-	    *pdst = &s.flow_layout.sub_x0;
-	    *psize = sizeof(f32);
-	    break;
-
-	case GuiStyle_FlowSubX1:
-	    *pdst = &s.flow_layout.sub_x1;
-	    *psize = sizeof(f32);
-	    break;
-
 			
 	}
     }
@@ -2861,16 +2847,13 @@ namespace sv {
 
     void gui_image(GUI* gui, GPUImage* image, GPUImageLayout layout, u64 id)
     {
-	PARSE_GUI();
-	hash_combine(id, gui.current_id);
+	hash_combine(id, gui->current_id);
 
 	Raw_Image raw;
 	raw.image = image;
 	raw.layout = layout;
 	
-	write_widget(gui, GuiWidgetType_Image, id, &raw, nullptr);
-
-	return modified;
+	write_widget(*gui, GuiWidgetType_Image, id, &raw, nullptr);
     }
 
     ///////////////////////////////////////////// GETTERS ///////////////////////////////////////////

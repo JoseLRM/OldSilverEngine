@@ -25,8 +25,8 @@ namespace sv {
 	COMPILE_PS(gfx.ps_debug_solid, "debug/solid_batch.hlsl");
 	COMPILE_VS(gfx.vs_debug_mesh_wireframe, "debug/mesh_wireframe.hlsl");
 
-	COMPILE_VS(gfx.vs_im, "immediate_shader.hlsl");
-	COMPILE_PS(gfx.ps_im, "immediate_shader.hlsl");
+	COMPILE_VS_(gfx.vs_im, "immediate_shader.hlsl");
+	COMPILE_PS_(gfx.ps_im, "immediate_shader.hlsl");
 
 	COMPILE_VS(gfx.vs_text, "text.hlsl");
 	COMPILE_PS(gfx.ps_text, "text.hlsl");
@@ -189,7 +189,7 @@ namespace sv {
 	    desc.size = sizeof(ImRendVertex) * 4u;
 	    desc.pData = nullptr;
 
-	    foreach(i, GraphicsLimits_CommandList)
+	    foreach(i, GraphicsLimit_CommandList)
 		SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_im[i]));
 	}
 
@@ -2139,20 +2139,20 @@ namespace sv {
 			tc = imrend_read<v4_f32>(it);
 		    }
 
-		    XMMATRIX m = XMMatrixScaling(size.x, size.y) * XMMatrixTranslation(position.x, position.y, position.z);
+		    XMMATRIX m = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixTranslation(position.x, position.y, position.z);
 
 		    m *= state.current_matrix;
 
-		    XMVECTOR v0 = XMVector4Transform(XMVectorSet(-0.5f, 0.5f, 0.f), m);
-		    XMVECTOR v1 = XMVector4Transform(XMVectorSet(0.5f, 0.5f, 0.f), m);
-		    XMVECTOR v2 = XMVector4Transform(XMVectorSet(-0.5f, -0.5f, 0.f), m);
-		    XMVECTOR v3 = XMVector4Transform(XMVectorSet(0.5f, -0.5f, 0.f), m);
+		    XMVECTOR v0 = XMVector4Transform(XMVectorSet(-0.5f, 0.5f, 0.f, 1.f), m);
+		    XMVECTOR v1 = XMVector4Transform(XMVectorSet(0.5f, 0.5f, 0.f, 1.f), m);
+		    XMVECTOR v2 = XMVector4Transform(XMVectorSet(-0.5f, -0.5f, 0.f, 1.f), m);
+		    XMVECTOR v3 = XMVector4Transform(XMVectorSet(0.5f, -0.5f, 0.f, 1.f), m);
 		    
 		    ImRendVertex vertices[4u];
 		    vertices[0u] = { v4_f32(v0), v2_f32{tc.x, tc.y}, color };
 		    vertices[1u] = { v4_f32(v1), v2_f32{tc.z, tc.y}, color };
-		    vertices[2u] = { v4_f32(v2), v2_f32{tx.x, tc.w}, color };
-		    vertices[4u] = { v4_f32(v3), v2_f32{tx.z, tc.w}, color };
+		    vertices[2u] = { v4_f32(v2), v2_f32{tc.x, tc.w}, color };
+		    vertices[3u] = { v4_f32(v3), v2_f32{tc.z, tc.w}, color };
 
 		    graphics_constantbuffer_bind(gfx.cbuffer_im[cmd], 0u, ShaderType_Vertex, cmd);
 
@@ -2163,10 +2163,13 @@ namespace sv {
 		    graphics_depthstencilstate_unbind(cmd);
 		    graphics_inputlayoutstate_unbind(cmd);
 		    graphics_rasterizerstate_unbind(cmd);
+		    
+		    graphics_shader_bind(gfx.vs_im, cmd);
+		    graphics_shader_bind(gfx.ps_im, cmd);
 
 		    graphics_topology_set(GraphicsTopology_TriangleStrip, cmd);
 
-		    graphics_constantbuffer_update(gfx.cbuffer_im[cmd], vertices, sizeof(ImRendVertex) * 4u, cmd);
+		    graphics_buffer_update(gfx.cbuffer_im[cmd], vertices, sizeof(ImRendVertex) * 4u, 0u, cmd);
 
 		    graphics_draw(4u, 1u, 0u, 0u, cmd);
 		    

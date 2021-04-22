@@ -30,10 +30,10 @@ Output main(u32 vertex_id : SV_VertexID)
 	output.position = v.position;
 
 	const f32 mult = 1.f / 255.f;
-	output.color.r = f32(v.color >> 24) * mult;
-	output.color.g = f32((v.color >> 16) & 0xFF) * mult;
-	output.color.b = f32((v.color >> 8) & 0xFF) * mult;
-	output.color.a = f32(v.color & 0xFF) * mult;
+	output.color.a = f32(v.color >> 24) * mult;
+	output.color.b = f32((v.color >> 16) & 0xFF) * mult;
+	output.color.g = f32((v.color >> 8) & 0xFF) * mult;
+	output.color.r = f32(v.color & 0xFF) * mult;
 
 	return output;
 }

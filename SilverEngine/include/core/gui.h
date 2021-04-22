@@ -96,8 +96,6 @@ namespace sv {
 	// TODO Menuitem
 	GuiStyle_FlowX0,
 	GuiStyle_FlowX1,
-	GuiStyle_FlowSubX0,
-	GuiStyle_FlowSubX1
     };
 
     enum GuiLayout : u32 {
@@ -192,8 +190,6 @@ namespace sv {
 	gui_push_style(gui, GuiStyle_DragBackgroundColor, *color);
 	gui_push_style(gui, GuiStyle_FlowX0, 0.f);
 	gui_push_style(gui, GuiStyle_FlowX1, 1.f);
-	gui_push_style(gui, GuiStyle_FlowSubX0, 0.03f);
-	gui_push_style(gui, GuiStyle_FlowSubX1, 0.97f);
 	
 	gui_same_line(gui, 4u);
 
@@ -203,7 +199,7 @@ namespace sv {
 	if (gui_drag_u8(gui, &color->b, 1u, 2u)) res = true;
 	if (gui_drag_u8(gui, &color->a, 1u, 3u)) res = true;
 
-	gui_pop_style(gui, 6u);
+	gui_pop_style(gui, 4u);
 	
 	gui_end_container(gui);
 
@@ -218,8 +214,6 @@ namespace sv {
 
 	gui_push_style(gui, GuiStyle_FlowX0, 0.f);
 	gui_push_style(gui, GuiStyle_FlowX1, 1.f);
-	gui_push_style(gui, GuiStyle_FlowSubX0, 0.03f);
-	gui_push_style(gui, GuiStyle_FlowSubX1, 0.97f);
 	
 	gui_same_line(gui, 4u);
 
@@ -229,7 +223,7 @@ namespace sv {
 	if (gui_drag_f32(gui, &v->z, adv, min, max, 2u)) res = true;
 	if (gui_drag_f32(gui, &v->w, adv, min, max, 3u)) res = true;
 
-	gui_pop_style(gui, 5u);
+	gui_pop_style(gui, 3u);
 	
 	gui_end_container(gui);
 
@@ -244,8 +238,6 @@ namespace sv {
 
 	gui_push_style(gui, GuiStyle_FlowX0, 0.f);
 	gui_push_style(gui, GuiStyle_FlowX1, 1.f);
-	gui_push_style(gui, GuiStyle_FlowSubX0, 0.03f);
-	gui_push_style(gui, GuiStyle_FlowSubX1, 0.97f);
 	
 	gui_same_line(gui, 2u);
 
@@ -253,7 +245,7 @@ namespace sv {
 	if (gui_drag_f32(gui, &v->x, adv, min, max, 0u)) res = true;
 	if (gui_drag_f32(gui, &v->y, adv, min, max, 1u)) res = true;
 
-	gui_pop_style(gui, 5u);
+	gui_pop_style(gui, 3u);
 	
 	gui_end_container(gui);
 

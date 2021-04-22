@@ -42,7 +42,7 @@ IF "%compile_engine%"=="false" (
    SET compile_engine=true
 )
 
-SET common_compiler_flags= -MT -nologo -EHa- -GR- -Oi -WX -W4 -wd4127 -wd4211 -wd4238 -wd4459 -wd4996 -wd4456 -wd4281 -wd4100 -wd4530 -FC /std:c++14
+SET common_compiler_flags= -MT -nologo -EHa- -GR- -Oi -WX -W4 -wd4201 -wd4127 -wd4211 -wd4238 -wd4459 -wd4996 -wd4456 -wd4281 -wd4100 -wd4530 -FC /std:c++14
 
 SET common_defines=
 

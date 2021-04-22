@@ -128,7 +128,7 @@ namespace sv {
 
 	Shader* vs_im;
 	Shader* ps_im;
-	GPUBuffer* cbuffer_im[GraphicsLimits_CommandList];
+	GPUBuffer* cbuffer_im[GraphicsLimit_CommandList];
 
 	// TEXT
 

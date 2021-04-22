@@ -1936,7 +1936,7 @@ namespace sv {
     v3_f32 get_entity_scale(Entity entity)
     {
 	SV_SCENE();
-	v& t = scene.entityData.getTransform(entity);
+	EntityTransform& t = scene.entityData.getTransform(entity);
 	return t.scale;
     }
     
