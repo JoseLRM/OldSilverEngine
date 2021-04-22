@@ -117,17 +117,9 @@ namespace sv {
 
     struct Transform {
 
-	// Local space
-	
 	v3_f32 position = { 0.f, 0.f, 0.f };
 	v4_f32 rotation = { 0.f, 0.f, 0.f, 1.f };
 	v3_f32 scale = { 1.f, 1.f, 1.f };
-
-	// World space
-	
-	XMFLOAT4X4 world_matrix;
-
-	bool _modified = true;
 
     };
 
@@ -154,7 +146,7 @@ namespace sv {
 
     // Local space const getters
     
-    SV_API const Transform& get_entity_transform(Entity entity);
+    SV_API Transform get_entity_transform(Entity entity);
     SV_API v3_f32 get_entity_position(Entity entity);
     SV_API v4_f32 get_entity_rotation(Entity entity);
     SV_API v3_f32 get_entity_scale(Entity entity);
@@ -162,7 +154,8 @@ namespace sv {
     SV_API v2_f32 get_entity_scale2D(Entity entity);
 
     // World space getters
-    
+
+    SV_API Transform get_entity_world_transform(Entity entity);
     SV_API v3_f32 get_entity_world_position(Entity entity);
     SV_API v4_f32 get_entity_world_rotation(Entity entity);
     SV_API v3_f32 get_entity_world_scale(Entity entity);

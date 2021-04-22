@@ -28,17 +28,33 @@ namespace sv {
 
     };
 
+    struct EntityTransform {
+
+	// Local space
+	
+	v3_f32 position = { 0.f, 0.f, 0.f };
+	v4_f32 rotation = { 0.f, 0.f, 0.f, 1.f };
+	v3_f32 scale = { 1.f, 1.f, 1.f };
+
+	// World space
+	
+	XMFLOAT4X4 world_matrix;
+
+	bool _modified = true;
+
+    };
+
     struct EntityDataAllocator {
 
 	EntityInternal* internal = nullptr;
-	Transform* transforms = nullptr;
+	EntityTransform* transforms = nullptr;
 
 	u32 size = 0u;
 	u32 capacity = 0u;
 	List<Entity> freelist;
 
 	EntityInternal& getInternal(Entity entity) { SV_ASSERT(entity != SV_ENTITY_NULL && entity <= size); return internal[entity - 1u]; }
-	Transform& getTransform(Entity entity) { SV_ASSERT(entity != SV_ENTITY_NULL && entity <= size); return transforms[entity - 1u]; }
+	EntityTransform& getTransform(Entity entity) { SV_ASSERT(entity != SV_ENTITY_NULL && entity <= size); return transforms[entity - 1u]; }
     };
 
     struct ComponentPool {
@@ -268,8 +284,8 @@ namespace sv {
 			archive >> entityDataCount;
 
 			scene.entities.resize(entityCount);
-			EntityInternal* entity_internal = new EntityInternal[entityDataCount];
-			Transform* entity_transform = new Transform[entityDataCount];
+			EntityInternal* entity_internal = SV_ALLOCATE_STRUCT_ARRAY(EntityInternal, entityDataCount);
+			EntityTransform* entity_transform = SV_ALLOCATE_STRUCT_ARRAY(EntityTransform, entityDataCount);
 
 			for (u32 i = 0; i < entityCount; ++i) {
 
@@ -277,7 +293,7 @@ namespace sv {
 			    archive >> entity;
 
 			    EntityInternal& ed = entity_internal[entity];
-			    Transform& et = entity_transform[entity];
+			    EntityTransform& et = entity_transform[entity];
 
 			    archive >> ed.name;
 
@@ -506,7 +522,7 @@ namespace sv {
 
 		    if (ed.handleIndex != u64_max) {
 
-			Transform& transform = scene.entityData.getTransform(entity);
+			EntityTransform& transform = scene.entityData.getTransform(entity);
 			
 			archive << i << ed.name << ed.childsCount << ed.handleIndex << transform.position << transform.rotation << transform.scale << ed.flags;
 		    }
@@ -1324,8 +1340,8 @@ namespace sv {
 	    if (a.freelist.empty()) {
 
 		if (a.size == a.capacity) {
-		    EntityInternal* new_internal = new EntityInternal[a.capacity + ECS_ENTITY_ALLOC_SIZE];
-		    Transform* new_transforms = new Transform[a.capacity + ECS_ENTITY_ALLOC_SIZE];
+		    EntityInternal* new_internal = SV_ALLOCATE_STRUCT_ARRAY(EntityInternal, a.capacity + ECS_ENTITY_ALLOC_SIZE);
+		    EntityTransform* new_transforms = SV_ALLOCATE_STRUCT_ARRAY(EntityTransform, a.capacity + ECS_ENTITY_ALLOC_SIZE);
 
 		    if (a.internal) {
 
@@ -1340,7 +1356,7 @@ namespace sv {
 			    }
 			}
 			
-			memcpy(new_transforms, a.transforms, a.capacity * sizeof(Transform));
+			memcpy(new_transforms, a.transforms, a.capacity * sizeof(EntityTransform));
 			
 			a.internal -= a.capacity;
 			new_internal -= a.capacity;
@@ -1425,7 +1441,7 @@ namespace sv {
 		
 		SV_ASSERT(a.size >= entity);
 		a.getInternal(entity) = EntityInternal();
-		a.getTransform(entity) = Transform();
+		a.getTransform(entity) = EntityTransform();
 
 		if (entity == a.size) {
 		    a.size--;
@@ -1736,7 +1752,7 @@ namespace sv {
 
     //////////////////////////////////////////// TRANSFORM ///////////////////////////////////////////////////////////
 
-    SV_AUX void update_world_matrix(Transform& t, Entity entity)
+    SV_AUX void update_world_matrix(EntityTransform& t, Entity entity)
     {
 	SV_SCENE();
 	
@@ -1756,7 +1772,7 @@ namespace sv {
 	XMStoreFloat4x4(&t.world_matrix, m);
     }
 
-    SV_AUX void notify_transform(Transform& t, Entity entity)
+    SV_AUX void notify_transform(EntityTransform& t, Entity entity)
     {
 	SV_SCENE();
 	
@@ -1771,7 +1787,7 @@ namespace sv {
 
 	    auto& entities = scene.entities;
 	    for (u32 i = 0; i < entityData.childsCount; ++i) {
-		Transform& et = list.getTransform(entities[entityData.handleIndex + 1 + i]);
+		EntityTransform& et = list.getTransform(entities[entityData.handleIndex + 1 + i]);
 		et._modified = true;
 	    }
 	}
@@ -1780,15 +1796,17 @@ namespace sv {
     void set_entity_transform(Entity entity, const Transform& transform)
     {
 	SV_SCENE();
-	Transform& t = scene.entityData.getTransform(entity);
-	t = transform;
+	EntityTransform& t = scene.entityData.getTransform(entity);
+	t.position = transform.position;
+	t.rotation = transform.rotation;
+	t.scale = transform.scale;
 	notify_transform(t, entity);
     }
     
     void set_entity_position(Entity entity, const v3_f32& position)
     {
 	SV_SCENE();
-	Transform& t = scene.entityData.getTransform(entity);
+	EntityTransform& t = scene.entityData.getTransform(entity);
 	t.position = position;
 	notify_transform(t, entity);
     }
@@ -1796,7 +1814,7 @@ namespace sv {
     void set_entity_rotation(Entity entity, const v4_f32& rotation)
     {
 	SV_SCENE();
-	Transform& t = scene.entityData.getTransform(entity);
+	EntityTransform& t = scene.entityData.getTransform(entity);
 	t.rotation = rotation;
 	notify_transform(t, entity);
     }
@@ -1804,7 +1822,7 @@ namespace sv {
     void set_entity_scale(Entity entity, const v3_f32& scale)
     {
 	SV_SCENE();
-	Transform& t = scene.entityData.getTransform(entity);
+	EntityTransform& t = scene.entityData.getTransform(entity);
 	t.scale = scale;
 	notify_transform(t, entity);
     }
@@ -1812,7 +1830,7 @@ namespace sv {
     void set_entity_matrix(Entity entity, const XMMATRIX& matrix)
     {
 	SV_SCENE();
-	Transform& t = scene.entityData.getTransform(entity);
+	EntityTransform& t = scene.entityData.getTransform(entity);
 	
 	notify_transform(t, entity);
 
@@ -1830,7 +1848,7 @@ namespace sv {
     void set_entity_position2D(Entity entity, const v2_f32& position)
     {
 	SV_SCENE();
-	Transform& t = scene.entityData.getTransform(entity);
+	EntityTransform& t = scene.entityData.getTransform(entity);
 	t.position.x = position.x;
 	t.position.y = position.y;
 	notify_transform(t, entity);
@@ -1839,16 +1857,16 @@ namespace sv {
     Transform* get_entity_transform_ptr(Entity entity)
     {
 	SV_SCENE();
-	Transform& t = scene.entityData.getTransform(entity);
+	EntityTransform& t = scene.entityData.getTransform(entity);
 	notify_transform(t, entity);
 
-	return &t;
+	return reinterpret_cast<Transform*>(&t.position);
     }
     
     v3_f32* get_entity_position_ptr(Entity entity)
     {
 	SV_SCENE();
-	Transform& t = scene.entityData.getTransform(entity);
+	EntityTransform& t = scene.entityData.getTransform(entity);
 	notify_transform(t, entity);
 
 	return &t.position;
@@ -1857,7 +1875,7 @@ namespace sv {
     v4_f32* get_entity_rotation_ptr(Entity entity)
     {
 	SV_SCENE();
-	Transform& t = scene.entityData.getTransform(entity);
+	EntityTransform& t = scene.entityData.getTransform(entity);
 	notify_transform(t, entity);
 
 	return &t.rotation;
@@ -1866,7 +1884,7 @@ namespace sv {
     v3_f32* get_entity_scale_ptr(Entity entity)
     {
 	SV_SCENE();
-	Transform& t = scene.entityData.getTransform(entity);
+	EntityTransform& t = scene.entityData.getTransform(entity);
 	notify_transform(t, entity);
 
 	return &t.scale;
@@ -1875,7 +1893,7 @@ namespace sv {
     v2_f32* get_entity_position2D_ptr(Entity entity)
     {
 	SV_SCENE();
-	Transform& t = scene.entityData.getTransform(entity);
+	EntityTransform& t = scene.entityData.getTransform(entity);
 	notify_transform(t, entity);
 
 	return reinterpret_cast<v2_f32*>(&t.position);
@@ -1884,67 +1902,91 @@ namespace sv {
     v2_f32* get_entity_scale2D_ptr(Entity entity)
     {
 	SV_SCENE();
-	Transform& t = scene.entityData.getTransform(entity);
+	EntityTransform& t = scene.entityData.getTransform(entity);
 	notify_transform(t, entity);
 
 	return reinterpret_cast<v2_f32*>(&t.scale);
     }
     
-    const Transform& get_entity_transform(Entity entity)
+    Transform get_entity_transform(Entity entity)
     {
 	SV_SCENE();
-	Transform& t = scene.entityData.getTransform(entity);
-	return t;
+	EntityTransform& t = scene.entityData.getTransform(entity);
+	Transform trans;
+	trans.position = t.position;
+	trans.rotation = t.rotation;
+	trans.scale = t.scale;
+	return trans;
     }
     
     v3_f32 get_entity_position(Entity entity)
     {
 	SV_SCENE();
-	Transform& t = scene.entityData.getTransform(entity);
+	EntityTransform& t = scene.entityData.getTransform(entity);
 	return t.position;
     }
     
     v4_f32 get_entity_rotation(Entity entity)
     {
 	SV_SCENE();
-	Transform& t = scene.entityData.getTransform(entity);
+	EntityTransform& t = scene.entityData.getTransform(entity);
 	return t.rotation;
     }
     
     v3_f32 get_entity_scale(Entity entity)
     {
 	SV_SCENE();
-	Transform& t = scene.entityData.getTransform(entity);
+	v& t = scene.entityData.getTransform(entity);
 	return t.scale;
     }
     
     v2_f32 get_entity_position2D(Entity entity)
     {
 	SV_SCENE();
-	Transform& t = scene.entityData.getTransform(entity);
+	EntityTransform& t = scene.entityData.getTransform(entity);
 	return t.position.getVec2();
     }
     
     v2_f32 get_entity_scale2D(Entity entity)
     {
 	SV_SCENE();
-	Transform& t = scene.entityData.getTransform(entity);
+	EntityTransform& t = scene.entityData.getTransform(entity);
 	return t.scale.getVec2();
     }
 
     XMMATRIX get_entity_matrix(Entity entity)
     {
 	SV_SCENE();
-	Transform& t = scene.entityData.getTransform(entity);
+	EntityTransform& t = scene.entityData.getTransform(entity);
 
 	return XMMatrixScalingFromVector(t.scale.getDX()) * XMMatrixRotationQuaternion(t.rotation.get_dx())
 	    * XMMatrixTranslation(t.position.x, t.position.y, t.position.z);
+    }
+
+    Transform get_entity_world_transform(Entity entity)
+    {
+	SV_SCENE();
+	EntityTransform& t = scene.entityData.getTransform(entity);
+
+	if (t._modified) update_world_matrix(t, entity);
+	XMVECTOR scale;
+	XMVECTOR rotation;
+	XMVECTOR position;
+
+	XMMatrixDecompose(&scale, &rotation, &position, XMLoadFloat4x4(&t.world_matrix));
+
+	Transform trans;
+	trans.position = v3_f32(position);
+	trans.rotation = v4_f32(rotation);
+	trans.scale = v3_f32(scale);
+
+	return trans;
     }
     
     v3_f32 get_entity_world_position(Entity entity)
     {
 	SV_SCENE();
-	Transform& t = scene.entityData.getTransform(entity);
+	EntityTransform& t = scene.entityData.getTransform(entity);
 	if (t._modified) update_world_matrix(t, entity);
 	return *(v3_f32*) &t.world_matrix._41;
     }
@@ -1952,7 +1994,7 @@ namespace sv {
     v4_f32 get_entity_world_rotation(Entity entity)
     {
 	SV_SCENE();
-	Transform& t = scene.entityData.getTransform(entity);
+	EntityTransform& t = scene.entityData.getTransform(entity);
 	if (t._modified) update_world_matrix(t, entity);
 	XMVECTOR scale;
 	XMVECTOR rotation;
@@ -1966,7 +2008,7 @@ namespace sv {
     v3_f32 get_entity_world_scale(Entity entity)
     {
 	SV_SCENE();
-	Transform& t = scene.entityData.getTransform(entity);
+	EntityTransform& t = scene.entityData.getTransform(entity);
 	if (t._modified) update_world_matrix(t, entity);
 	return { (*(v3_f32*)& t.world_matrix._11).length(), (*(v3_f32*)& t.world_matrix._21).length(), (*(v3_f32*)& t.world_matrix._31).length() };
     }
@@ -1974,7 +2016,7 @@ namespace sv {
     XMMATRIX get_entity_world_matrix(Entity entity)
     {
 	SV_SCENE();
-	Transform& t = scene.entityData.getTransform(entity);
+	EntityTransform& t = scene.entityData.getTransform(entity);
 	if (t._modified) update_world_matrix(t, entity);
 	return XMLoadFloat4x4(&t.world_matrix);
     }
