@@ -1275,6 +1275,25 @@ namespace sv {
 		    v2_f32 new_position = gui.mouse_position + gui.begin_position;
 		    window.state->bounds.x = new_position.x;
 		    window.state->bounds.y = new_position.y;
+
+		    if (input.mouse_buttons[MouseButton_Left] == InputState_Release) {
+
+			v4_f32 decoration_bounds = compute_window_decoration_bounds(gui, w);
+			// TODO: outline bounds
+
+			if (gui.mouse_position.x <= 0.f) {
+			    window.state->bounds.z = 0.3f;
+			    window.state->bounds.w = 1.f - decoration_bounds.w;
+			    window.state->bounds.x = window.state->bounds.z * 0.5f;
+			    window.state->bounds.y = window.state->bounds.w * 0.5f;
+			}
+			if (gui.mouse_position.x >= 1.f) {
+			    window.state->bounds.z = 0.3f;
+			    window.state->bounds.w = 1.f - decoration_bounds.w;
+			    window.state->bounds.x = 1.f - window.state->bounds.z * 0.5f;
+			    window.state->bounds.y = window.state->bounds.w * 0.5f;
+			}
+		    }
 		}
 		break;
 
