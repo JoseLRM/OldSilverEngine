@@ -1,6 +1,7 @@
 #pragma once
 
 #include "defines.h"
+#include "utils/serialize.h"
 
 namespace sv {
 

@@ -8,7 +8,9 @@ pushd %origin_path%
 
 SET platform=win64
 
-SET compile_engine=false
+SET module_platform=false
+SET module_core=false
+SET module_debug=false
 
 SET option_slow=false
 SET option_dev=false
@@ -21,7 +23,9 @@ IF "%1"=="" GOTO end_arg_loop
 
 IF "%1"=="win64" SET platform=win64
 
-IF "%1"=="engine" SET compile_engine=true
+IF "%1"=="platform" SET module_platform=true
+IF "%1"=="core" SET module_core=true
+IF "%1"=="debug" SET module_debug=true
 
 IF "%1"=="slow" SET option_slow=true
 IF "%1"=="dev" SET option_dev=true
@@ -38,11 +42,17 @@ SHIFT
 GOTO arg_loop
 :end_arg_loop
 
-IF "%compile_engine%"=="false" (
-   SET compile_engine=true
+IF "%module_platform%"=="false" (
+IF "%module_core%"=="false" (
+IF "%module_debug%"=="false" (
+   SET module_platform=true
+   SET module_core=true
+   SET module_debug=true
+)
+)
 )
 
-SET common_compiler_flags= -MT -nologo -EHa- -GR- -Oi -WX -W4 -wd4201 -wd4127 -wd4211 -wd4238 -wd4459 -wd4996 -wd4456 -wd4281 -wd4100 -wd4530 -FC /std:c++14
+SET common_compiler_flags= -MP -nologo -EHa- -GR- -Oi -WX -W4 -wd4201 -wd4127 -wd4211 -wd4238 -wd4459 -wd4996 -wd4456 -wd4281 -wd4100 -wd4530 -FC /std:c++14
 
 SET common_defines=
 
@@ -57,10 +67,10 @@ IF "%platform%"=="win64" (
 
 IF "%option_slow%"=="true" (
    SET common_defines=%common_defines% -DSV_SLOW=1
-   SET common_compiler_flags= %common_compiler_flags% -Z7
+   SET common_compiler_flags= %common_compiler_flags% -Z7 -Od
 ) ELSE (
    SET common_defines=%common_defines% -DSV_SLOW=0 -DNDEBUG
-   SET common_compiler_flags= %common_compiler_flags% -GL
+   SET common_compiler_flags= %common_compiler_flags% -GL -Ox
 )
 
 IF "%option_dev%"=="true" (
@@ -92,22 +102,38 @@ SET common_linker_flags= /incremental:no
 REM Silver Engine path
 SET SVP= %origin_path%\SilverEngine\
 
-REM Silver Engine args
 SET sv_defines= -DSV_SILVER_ENGINE=1 %common_defines%
 SET sv_compiler_flags= %common_compiler_flags%
 SET sv_include_paths= /I %SVP%include /I %SVP%src\ /I %SVP%src\external\ /I %VULKAN_SDK%\Include\
-SET sv_link_libs= user32.lib Shell32.lib %VULKAN_SDK%\Lib\vulkan-1.lib assimp.lib sprv.lib
+SET sv_link_libs= user32.lib %VULKAN_SDK%\Lib\vulkan-1.lib assimp.lib sprv.lib
 SET sv_link_flags= %common_linker_flags% /LIBPATH:"%origin_path%\SilverEngine\lib\" /out:..\SilverEngine.exe /PDB:SilverEngine.pdb /LTCG
+SET sv_build_units=
+
+IF "%module_platform%"=="true" (
+   SET sv_build_units=%sv_build_units% %SVP%src\platform_unit.cpp
+) ELSE (
+   SET sv_link_libs=%sv_link_libs% platform_unit.obj
+)
+
+IF "%module_core%"=="true" (
+   SET sv_build_units=%sv_build_units% %SVP%src\core_unit.cpp
+) ELSE (
+   SET sv_link_libs=%sv_link_libs% core_unit.obj
+)
+
+IF "%module_debug%"=="true" (
+   SET sv_build_units=%sv_build_units% %SVP%src\debug_unit.cpp
+) ELSE (
+   SET sv_link_libs=%sv_link_libs% debug_unit.obj
+)
 
 pushd %output_dir%int
 
-IF "%compile_engine%"=="true" (
-   ECHO.
-   ECHO.
-   ECHO.
-   ECHO -- Compiling SilverEngine! --
-   CALL cl %sv_compiler_flags% %sv_defines% %sv_include_paths% %SVP%src\build_unit.cpp /link %sv_link_flags% %sv_link_libs% 
-)
+ECHO.
+ECHO.
+ECHO.
+ECHO -- Compiling SilverEngine! --
+CALL cl %sv_compiler_flags% %sv_defines% %sv_include_paths% %sv_build_units% /link %sv_link_flags% %sv_link_libs% 
 
 ECHO.
 ECHO.

@@ -1,4 +1,6 @@
 #include "utils/serialize.h"
+#include "core/engine.h"
+#include "platform/os.h"
 
 namespace sv {
 

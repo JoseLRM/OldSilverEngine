@@ -30,8 +30,6 @@ SET link_flags= /DLL %linker_flags% /LIBPATH:"%origin_path%\gamecode\lib\"
 
 pushd %output_dir%\game_int\
 
-CALL ..\system\shell.bat
-
 ECHO.
 ECHO.
 ECHO.

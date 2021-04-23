@@ -833,7 +833,8 @@ namespace sv {
 
     void _os_compile_gamecode()
     {
-	system("system\\build_game.bat");
+	system("CALL system\\shell.bat");
+	system("CALL system\\build_game.bat");
     }
     
     bool _os_startup()

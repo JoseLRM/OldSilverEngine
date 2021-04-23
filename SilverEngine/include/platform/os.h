@@ -2,6 +2,8 @@
 
 #include "defines.h"
 #include "utils/math.h"
+#include "utils/allocators.h"
+#include "utils/serialize.h"
 
 namespace sv {
 
@@ -17,17 +19,6 @@ namespace sv {
 
        void system_pause();
     */
-    
-    SV_API void* _allocate_memory(size_t size);
-    SV_API void _free_memory(void* ptr);
-
-#define SV_ALLOCATE_MEMORY(size) sv::_allocate_memory(size)
-#define SV_FREE_MEMORY(ptr) sv::_free_memory(ptr)
-    
-#define SV_ALLOCATE_STRUCT(type) new(SV_ALLOCATE_MEMORY(sizeof(type))) type()
-#define SV_ALLOCATE_STRUCT_ARRAY(type, count) new(SV_ALLOCATE_MEMORY(sizeof(type) * size_t(count))) type[size_t(count)]
-#define SV_FREE_STRUCT(type, ptr) do { (ptr)->~type(); SV_FREE_MEMORY(ptr); } while(0)
-#define SV_FREE_STRUCT_ARRAY(type, ptr, count) do { foreach(i, count) (ptr)[i].~type(); SV_FREE_MEMORY(ptr); } while(0)
 
     // Timer
 
@@ -55,13 +46,6 @@ namespace sv {
     SV_API f64 timer_now();
     SV_API Date timer_date();
     
-}
-
-#include "utils/allocators.h"
-#include "utils/serialize.h"
-
-namespace sv {
-
     // Window
 
     enum WindowState : u32 {

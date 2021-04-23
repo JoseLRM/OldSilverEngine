@@ -1,6 +1,7 @@
 #pragma once
 
 #include "platform/graphics.h"
+#include "platform/os.h"
 #include "core/font.h"
 
 namespace sv {

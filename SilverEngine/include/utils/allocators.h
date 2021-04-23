@@ -1,6 +1,7 @@
 #pragma once
 
-#include "platform/os.h"
+#include "defines.h"
+#include "debug/console.h"
 
 namespace sv {
 

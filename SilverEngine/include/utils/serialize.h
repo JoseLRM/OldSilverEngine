@@ -1,6 +1,8 @@
 #pragma once
 
 #include "defines.h"
+#include "utils/allocators.h"
+#include "utils/math.h"
 
 namespace sv {
 

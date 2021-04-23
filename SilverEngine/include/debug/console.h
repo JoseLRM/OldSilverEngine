@@ -1,5 +1,7 @@
 #pragma once
 
+#include "defines.h"
+
 // Console
 
 #if SV_DEV

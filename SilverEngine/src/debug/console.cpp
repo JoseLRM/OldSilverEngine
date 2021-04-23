@@ -2,7 +2,10 @@
 
 #if SV_DEV
 
+#include "debug/editor.h"
+
 #include "core/scene.h"
+#include "core/engine.h"
 #include "core/renderer/renderer_internal.h"
 
 #include <stdarg.h>
@@ -223,17 +226,6 @@ namespace sv {
 	return create_entity_model(parent, args[0]);
     }
 
-    SV_INTERNAL bool command_set_gamecode_filepath(const char** args, u32 argc) {
-
-	if (argc != 1u) {
-	    SV_LOG_ERROR("Invalid arg count");
-	    return false;
-	}
-
-	set_gamecode_filepath(args[0]);
-	return true;
-    }
-
     void _console_initialize()
     {
 	console.buff = (char*)malloc(CONSOLE_SIZE);
@@ -253,7 +245,6 @@ namespace sv {
 	register_command("save_scene", command_save_scene);
 	register_command("clear_scene", command_clear_scene);
 	register_command("create_entity_model", command_create_entity_model);
-	register_command("set_gamecode_filepath", command_set_gamecode_filepath);
 	
 	//  Recive command history from last execution
 	{
