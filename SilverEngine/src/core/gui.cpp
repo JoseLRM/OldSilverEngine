@@ -19,6 +19,7 @@ namespace sv {
 	GuiWidgetType_Container,
 	GuiWidgetType_Window,
 	GuiWidgetType_Popup,
+	GuiWidgetType_TextField,
 	GuiWidgetType_Button,
 	GuiWidgetType_Slider,
 	GuiWidgetType_Label,
@@ -57,6 +58,11 @@ namespace sv {
 
     struct GuiPopupStyle {
 	Color color = Color::Gray(140u);
+    };
+
+    struct GuiTextFieldStyle {
+	Color text_color = Color::Black();
+	Color background_color = Color::White();
     };
 
     struct GuiButtonStyle {
@@ -152,6 +158,11 @@ namespace sv {
 	Dim ydim;
     };
 
+    struct Raw_TextField {
+	char* buff;
+	u32 pos;
+    };
+    
     struct Raw_Button {
 	const char* text;
     };
@@ -266,7 +277,13 @@ namespace sv {
 
 	    // I hate u
 	    Widget() : window({}) {}
-			
+
+	    struct {
+		const char* text;
+		GuiTextFieldxStyle style;
+		u32 pos;
+	    } text_field;
+	    
 	    struct {
 		const char* text;
 		bool hot;
@@ -411,13 +428,14 @@ namespace sv {
 	v2_f32 begin_position;
 	u64 package_id;		
 	RawList package_data;
+	List<char> current_text_field_value;
 
     };
 
 
     bool gui_create(u64 hashcode, GUI** pgui)
     {
-	GUI& gui = *new GUI();
+	GUI& gui = *SV_ALLOCATE_STRUCT(GUI);
 
 	gui.package_id = 0u;
 
@@ -472,7 +490,7 @@ namespace sv {
 	    }
 	}
 
-	delete& gui;
+	SV_FREE_STRUCT(GUI, &gui);
 	return true;
     }
 
@@ -640,6 +658,15 @@ namespace sv {
 	{
 	    Raw_Popup* raw = (Raw_Popup*)data;
 	    write_buffer(gui, *raw);
+	}
+	break;
+
+	case GuiWidgetType_TextField:
+	{
+	    Raw_TextField* raw = (Raw_TextField*)data;
+
+	    write_text(gui, raw->buff);
+	    write_buffer(gui, raw->pos);
 	}
 	break;
 
@@ -996,6 +1023,7 @@ namespace sv {
 
 	case GuiWidgetType_Drag:
 	case GuiWidgetType_Checkbox:
+	case GuiWidgetType_TextField:
 	case GuiWidgetType_MenuItem:
 	case GuiWidgetType_Package:
 	{
@@ -1209,6 +1237,68 @@ namespace sv {
 
 		free_focus(gui);
 		cb.value = !cb.value;
+	    }
+	}
+	break;
+
+	case GuiWidgetType_TextField:
+	{
+	    auto& field = w.widget.text_field;
+
+	    size_t text_size = field.text ? strlen(field.text) : 0u;
+
+	    if (text_size) {
+
+		gui.current_text_field_value.resize(text_size);
+	    }
+	    else gui.current_text_field_value.reset();
+
+	    foreach(i, text_size) {
+
+		gui.current_text_field_value[i] = field.text[i];
+	    }
+
+	    // Text modification
+	    {
+		if (input.text.size()) {
+		    
+		    field.pos += u32(input.text.size());
+		}
+
+		foreach(i, input.text_commands.size()) {
+
+		    TextCommand txtcmd = input.text_commands[i];
+
+		    switch (txtcmd)
+		    {
+		    case TextCommand_DeleteLeft:
+			if (field.pos) {
+
+			    --field.pos;
+			    console.current_command.erase(console.current_command.begin() + console.cursor_pos);
+
+			    if (text_size) {
+
+				--text_size;
+				field.text[text_size] = '\0';
+			    }
+			}
+			break;
+
+		    case TextCommand_Enter:
+		    {
+			free_focus(gui);
+		    }
+		    break;
+
+		    case TextCommand_Escape:
+			free_focus(gui);
+			break;
+		    }
+		}
+
+		if (input.keys[Key_Left] == InputState_Pressed) field.pos = (field.pos == 0u) ? field.pos : (field.pos - 1u);
+		if (input.keys[Key_Right] == InputState_Pressed) field.pos = (field.pos == text_size) ? field.pos : (field.pos + 1u);
 	    }
 	}
 	break;
@@ -1643,6 +1733,20 @@ namespace sv {
 	}
 	break;
 
+	case GuiWidgetType_TextField:
+	{
+	    auto& field = w.widget.text_field;
+
+	    field.text = (const char*)it;
+	    it += strlen(field.text) + 1u;
+	    if (*field.text == '\0')
+		field.text = nullptr;
+
+	    field.pos = _read<u32>(it);
+	    field.style = gui.temp_style.text_field;
+	}
+	break;
+
 	case GuiWidgetType_Button:
 	{
 	    auto& button = w.widget.button;
@@ -1775,6 +1879,7 @@ namespace sv {
 	switch (w->type)
 	{
 	case GuiWidgetType_Container:
+	case GuiWidgetType_TextField:
 	case GuiWidgetType_Button:
 	case GuiWidgetType_Slider:
 	case GuiWidgetType_Label:
@@ -2774,6 +2879,41 @@ namespace sv {
 
     /////////////////////////////////////// COMMON WIDGETS ///////////////////////////////////////
 
+    bool gui_text_field(GUI* gui, char* buff, size_t buff_size, u64 id)
+    {
+	hash_combine(id, gui->current_id);
+
+	GuiWidget* w = find_widget(gui, id, GuiWidgetType_TextField);
+
+	bool modified = false;
+
+	if (w && gui->focus.id = id && gui->focus.type == GuiWidgetType_TextField) {
+
+	    // TODO: Notify modified if the string is currently modified xd
+	    modified = true;
+	    
+	    auto& field = w->text_field;
+
+	    char* text = gui.current_text_field_value.data();
+	    size_t text_size = strlen(text);
+
+	    size_t write_size = SV_MIN(text_size, buff_size - 1u);
+	    
+	    memcpy(buff, text, write_size);
+	    buff[write_size] = '\0';
+	}
+	
+	{
+	    Raw_TextField raw;
+	    raw.buff = buff;
+	    raw.pos = w ? w->text_field.pos : 0u;
+
+	    write_widget(gui, GuiWidgetType_TextField, id, &raw, nullptr);
+	}
+
+	return modified;
+    }
+    
     bool gui_button(GUI* gui_, const char* text, u64 id)
     {
 	PARSE_GUI();

@@ -155,6 +155,8 @@ namespace sv {
     SV_API void gui_send_package(GUI* gui, const void* package, u32 package_size, u64 package_id);
     SV_API bool gui_recive_package(GUI* gui, void** package, u32* package_size, u64 package_id);
 
+    SV_API bool gui_text_field(GUI* gui, char* buff, size_t buff_size, u64 id);
+    
     SV_API bool gui_button(GUI* gui, const char* text, u64 id);
 	
     SV_API bool gui_drag_f32(GUI* gui, f32* value, f32 adv, f32 min, f32 max, u64 id);
