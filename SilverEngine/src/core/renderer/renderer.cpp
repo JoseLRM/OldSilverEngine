@@ -1988,50 +1988,54 @@ namespace sv {
     SV_AUX void update_current_scissor(ImmediateModeState& state, CommandList cmd)
     {
 	v4_f32 s0 = { 0.5f, 0.5f, 1.f, 1.f };
+
+	u32 begin_index = 0u;
 	
-	for (const ImRendScissor& scissor : state.scissor_stack) {
+	for (i32 i = (i32)state.scissor_stack.size(); i >= 0; --i) {
 
-	    if (scissor.additive) {
-
-		const v4_f32& s1 = scissor.bounds;
-
-		f32 min0 = s0.x - s0.z * 0.5f;
-		f32 max0 = s0.x + s0.z * 0.5f;
-	    
-		f32 min1 = s1.x - s1.z * 0.5f;
-		f32 max1 = s1.x + s1.z * 0.5f;
-
-		f32 min = SV_MAX(min0, min1);
-		f32 max = SV_MIN(max0, max1);
-
-		if (min >= max) {
-		    s0 = {};
-		    break;
-		}
-
-		s0.z = max - min;
-		s0.x = min + s0.z * 0.5f;
-
-		min0 = s0.y - s0.w * 0.5f;
-		max0 = s0.y + s0.w * 0.5f;
-	    
-		min1 = s1.y - s1.w * 0.5f;
-		max1 = s1.y + s1.w * 0.5f;
-
-		min = SV_MAX(min0, min1);
-		max = SV_MIN(max0, max1);
-
-		if (min >= max) {
-		    s0 = {};
-		    break;
-		}
-
-		s0.w = max - min;
-		s0.y = min + s0.w * 0.5f;
+	    if (!state.scissor_stack[i].additive) {
+		begin_index = i;
+		break;
 	    }
-	    else {
-		s0 = scissor.bounds;
+	}
+
+	for (u32 i = begin_index; i < (u32)gui.scissor_stack.size(); ++i) {
+
+	    const v4_f32& s1 = gui.scissor_stack[i].bounds;
+
+	    f32 min0 = s0.x - s0.z * 0.5f;
+	    f32 max0 = s0.x + s0.z * 0.5f;
+	    
+	    f32 min1 = s1.x - s1.z * 0.5f;
+	    f32 max1 = s1.x + s1.z * 0.5f;
+	    
+	    f32 min = SV_MAX(min0, min1);
+	    f32 max = SV_MIN(max0, max1);
+		
+	    if (min >= max) {
+		s0 = {};
+		break;
 	    }
+	    
+	    s0.z = max - min;
+	    s0.x = min + s0.z * 0.5f;
+	    
+	    min0 = s0.y - s0.w * 0.5f;
+	    max0 = s0.y + s0.w * 0.5f;
+	    
+	    min1 = s1.y - s1.w * 0.5f;
+	    max1 = s1.y + s1.w * 0.5f;
+
+	    min = SV_MAX(min0, min1);
+	    max = SV_MIN(max0, max1);
+
+	    if (min >= max) {
+		s0 = {};
+		break;
+	    }
+
+	    s0.w = max - min;
+	    s0.y = min + s0.w * 0.5f;
 	}
 
 	const GPUImageInfo& info = graphics_image_info(renderer->gfx.offscreen);
