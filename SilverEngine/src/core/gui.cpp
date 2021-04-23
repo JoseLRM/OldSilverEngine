@@ -120,6 +120,7 @@ namespace sv {
 	GuiWindowStyle window;
 	GuiPopupStyle popup;
 	GuiButtonStyle button;
+	GuiTextFieldStyle text_field;
 	GuiSliderStyle slider;
 	GuiLabelStyle label;
 	GuiCheckboxStyle checkbox;
@@ -280,7 +281,7 @@ namespace sv {
 
 	    struct {
 		const char* text;
-		GuiTextFieldxStyle style;
+		GuiTextFieldStyle style;
 		u32 pos;
 	    } text_field;
 	    
@@ -1274,14 +1275,8 @@ namespace sv {
 		    case TextCommand_DeleteLeft:
 			if (field.pos) {
 
+			    gui.current_text_field_value.erase(field.pos);
 			    --field.pos;
-			    console.current_command.erase(console.current_command.begin() + console.cursor_pos);
-
-			    if (text_size) {
-
-				--text_size;
-				field.text[text_size] = '\0';
-			    }
 			}
 			break;
 
@@ -1594,25 +1589,21 @@ namespace sv {
 
     SV_AUX void compute_grid_layout(GUI& gui, GuiParentInfo* parent_info)
     {
+	if (parent_info->widget_count == 0u) return;
+	
 	// TODO: Style and dimensions using GuiDim
-	constexpr f32 WIDTH = 30.f;
+	constexpr f32 SIZE = 80.f;
 	constexpr f32 PADDING = 3.f;
 	constexpr f32 MARGIN = 5.f;
 
-	f32 width = WIDTH / gui.resolution.x;
-	f32 height = WIDTH / gui.resolution.y;
-	f32 xpadding = PADDING / gui.resolution.x;
-	f32 ypadding = PADDING / gui.resolution.y;
-	f32 xmargin = MARGIN / gui.resolution.x;
-	f32 ymargin = MARGIN / gui.resolution.y;
+	f32 margin = MARGIN;
+	f32 parent_width = (parent_info->child_bounds.z * gui.resolution.x) - MARGIN * 2.f;
 
-	f32 parent_width = parent_info->child_bounds.z - xmargin * 2.f;
-
-	u32 columns = SV_MAX(u32(parent_width / (width + xpadding)), 1u);
+	u32 columns = SV_MAX(u32(parent_width / (SIZE + PADDING)), 1u);
 	
-	f32 offset = (parent_width - ((width + xpadding) * f32(columns) - xpadding)) * 0.5f;
+	f32 offset = (parent_width - ((SIZE + PADDING) * f32(columns) - PADDING)) * 0.5f;
 	if (offset < 0.f) {
-	    xmargin -= offset;
+	    margin -= offset;
 	    offset = 0.f;
 	}
 
@@ -1628,11 +1619,18 @@ namespace sv {
 	    
 	    if (!ignore_scroll(w.type)) {
 
-		w.bounds.x = xmargin + offset + f32(col) * (width + xpadding) + width * 0.5f;
-		w.bounds.y = ymargin + f32(row) * (height + ypadding) + height * 0.5f;
-		w.bounds.z = width;
-		w.bounds.w = height;
+		Raw_Coords& c = w.raw_coords;
 
+		c.xtype = GuiCoordType_Dim;
+		c.xdim.c = GuiCoord::Pixel(MARGIN + offset + f32(col) * (SIZE + PADDING));
+		c.xdim.d = GuiDim::Pixel(SIZE);
+		c.xdim.align = GuiAlign_Left;
+		
+		c.ytype = GuiCoordType_Dim;
+		c.ydim.c = GuiCoord::IPixel(MARGIN + f32(row) * (SIZE + PADDING));
+		c.ydim.d = GuiDim::Pixel(SIZE);
+		c.ydim.align = GuiAlign_Top;
+		
 		++col;
 
 		if (col == columns) {
@@ -2232,13 +2230,14 @@ namespace sv {
 
 		    GuiParentInfo* parent_info = get_parent_info(gui, current_parent);
 		    SV_ASSERT(parent_info);
+		    
+		    parent_info->widget_count = u32(gui.indices.size()) - parent_info->widget_offset;
 
 		    // Compute grid layout
-		    if (parent_info.layout == GuiLayout_Grid) {
+		    if (parent_info->layout == GuiLayout_Grid) {
 			compute_grid_layout(gui, parent_info);
 		    }
 		    
-		    parent_info->widget_count = u32(gui.indices.size()) - parent_info->widget_offset;
 		    current_parent = parent_info->parent_index;
 		}
 		break;
@@ -2883,18 +2882,18 @@ namespace sv {
     {
 	hash_combine(id, gui->current_id);
 
-	GuiWidget* w = find_widget(gui, id, GuiWidgetType_TextField);
+	GuiWidget* w = find_widget(*gui, id, GuiWidgetType_TextField);
 
 	bool modified = false;
 
-	if (w && gui->focus.id = id && gui->focus.type == GuiWidgetType_TextField) {
+	if (w && gui->focus.id == id && gui->focus.type == GuiWidgetType_TextField) {
 
 	    // TODO: Notify modified if the string is currently modified xd
 	    modified = true;
 	    
-	    auto& field = w->text_field;
+	    //auto& field = w->widget.text_field;
 
-	    char* text = gui.current_text_field_value.data();
+	    char* text = gui->current_text_field_value.data();
 	    size_t text_size = strlen(text);
 
 	    size_t write_size = SV_MIN(text_size, buff_size - 1u);
@@ -2906,9 +2905,9 @@ namespace sv {
 	{
 	    Raw_TextField raw;
 	    raw.buff = buff;
-	    raw.pos = w ? w->text_field.pos : 0u;
+	    raw.pos = w ? w->widget.text_field.pos : 0u;
 
-	    write_widget(gui, GuiWidgetType_TextField, id, &raw, nullptr);
+	    write_widget(*gui, GuiWidgetType_TextField, id, &raw, nullptr);
 	}
 
 	return modified;
@@ -3315,7 +3314,7 @@ namespace sv {
 	    v2_f32 closebutton_size = v2_f32(closebutton.z, closebutton.w);
 
 	    Color decoration_color;
-	    if (gui.focus.type == GuiWigetType_Window && gui.focus.id == w.id) {
+	    if (gui.focus.type == GuiWidgetType_Window && gui.focus.id == w.id) {
 		decoration_color = style.decoration_focus_color;
 	    }
 	    else if (window.hot_decoration) {

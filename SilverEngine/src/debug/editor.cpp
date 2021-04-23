@@ -924,7 +924,7 @@ namespace sv {
 	    constexpr f32 WIDTH = 25.f;
 	    AssetBrowserInfo& info = editor.asset_browser;
 
-	    {		
+	    {
 		gui_begin_container(gui, 0u, GuiLayout_Flow);
 		
 		if (info.filepath[0]) {
