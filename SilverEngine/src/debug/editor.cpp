@@ -759,10 +759,21 @@ namespace sv {
 	bool destroy = false;
 
 	if (child_count == 0u) {
+
+	    bool same = editor.selected_entity == entity;
+
+	    if (same) {
+		gui_push_style(dev.gui, GuiStyle_ButtonColor, Color{240u, 40, 40, 255u});
+		gui_push_style(dev.gui, GuiStyle_ButtonHotColor, Color{240u, 40, 40, 255u});
+	    }
 	    
 	    if (gui_button(g, name, 0u)) {
 
 		editor.selected_entity = entity;
+	    }
+
+	    if (same) {
+		gui_pop_style(dev.gui, 2u);
 	    }
 
 	    show_entity_popup(entity, destroy);
@@ -1141,9 +1152,11 @@ namespace sv {
     {
 	SceneData& s = *get_scene_data();
 	
-	if (egui_begin_window("Scene Settings")) {
+	if (egui_begin_window("Scene Manager")) {
 
-	    egui_comp_color("Ambient Light", 0u, &s.ambient_light);
+	    gui_text(dev.gui, get_scene_name(), 0u);
+	    
+	    egui_comp_color("Ambient Light", 1u, &s.ambient_light);
 	    
 	    egui_end_window();
 	}
@@ -1203,12 +1216,44 @@ namespace sv {
 	if (egui_begin()) {
 
 	    if (!editor.camera_focus && there_is_scene() && dev.display_windows) {
+
+		// Window management
+		{
+		    gui_push_id(dev.gui, "WINDOW MANAGER");
+
+		    gui_xbounds(dev.gui, GuiCoord::Pixel(5.f), GuiCoord::Pixel(150.f));
+		    gui_ybounds(dev.gui, GuiCoord::IPixel(30.f), GuiAlign_Top, GuiDim::Adjust());
+
+		    gui_push_style(dev.gui, GuiStyle_ContainerColor, Color::Red(50u));
+		    gui_push_style(dev.gui, GuiStyle_ButtonColor, Color::White());
+		    gui_push_style(dev.gui, GuiStyle_ButtonHotColor, Color::Red());
+		    
+		    gui_begin_container(dev.gui, 0u, GuiLayout_Flow);
+
+		    if (egui_button("Hierarchy", 0u)) {
+			gui_show_window(dev.gui, "Hierarchy");
+		    }
+		    if (egui_button("Inspector", 1u)) {
+			gui_show_window(dev.gui, "Inspector");
+		    }
+		    if (egui_button("Asset Browser", 2u)) {
+			gui_show_window(dev.gui, "Asset Browser");
+		    }
+		    if (egui_button("Scene Manager", 3u)) {
+			gui_show_window(dev.gui, "Scene Manager");
+		    }
+		    
+		    gui_end_container(dev.gui);
+
+		    gui_pop_style(dev.gui, 3u);
+		    
+		    gui_pop_id(dev.gui);
+		}
+		
 		display_entity_hierarchy();
 		display_entity_inspector();
 		display_asset_browser();
 		display_scene_settings();
-
-		gui_display_style_settings(dev.gui);
 
 		// MENU
 		
@@ -1240,25 +1285,6 @@ namespace sv {
 
 		    // TODO: create specific function
 		    egui_comp_bool("Colisions", 0u, &dev.draw_collisions);
-
-		    gui_end_menu_item(dev.gui);
-		}
-
-		if (gui_begin_menu_item(dev.gui, "Windows", 2u, GuiLayout_Flow)) {
-
-		    if (egui_button("Hierarchy", 0u)) {
-			gui_show_window(dev.gui, "Hierarchy");
-		    }
-		    if (egui_button("Inspector", 1u)) {
-			gui_show_window(dev.gui, "Inspector");
-		    }
-		    if (egui_button("Asset Browser", 2u)) {
-			gui_show_window(dev.gui, "Asset Browser");
-		    }
-
-		    if (egui_button("Scene Settings", 3u)) {
-			gui_show_window(dev.gui, "Scene Settings");
-		    }
 
 		    gui_end_menu_item(dev.gui);
 		}
