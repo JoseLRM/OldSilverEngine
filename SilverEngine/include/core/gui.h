@@ -255,6 +255,35 @@ namespace sv {
 	return res;
     }
 
+    SV_INLINE bool gui_begin_tree(GUI* gui, const char* text, bool* pressed, u64 id)
+    {
+	bool show;
+
+	gui_push_id(gui, id);
+	
+	gui_begin_container(gui, 0u, GuiLayout_Flow);
+	{
+	    gui_same_line(gui, 2u);
+	    // TODO: Adjust
+	    show = gui_checkbox(gui, 0u);
+
+	    bool p = gui_button(gui, text, 1u);
+
+	    if (pressed)
+		*pressed = p;
+	}
+	gui_end_container(gui);
+
+	if (show) gui_begin_container(gui, 1u, GuiLayout_Flow);
+	else gui_pop_id(gui);
+    }
+
+    SV_INLINE void gui_end_tree(GUI* gui)
+    {
+	gui_end_container(gui);
+	gui_pop_id(gui);
+    }
+
     SV_API void gui_display_style_settings(GUI* gui);
 
 }
