@@ -45,7 +45,10 @@ namespace sv {
     struct GuiWindowStyle {
 	Color color = Color::Gray(170u, 20u);
 	Color decoration_color = Color::Gray(100u, 200u);
+	Color decoration_hot_color = Color::Gray(150u, 220u);
+	Color decoration_focus_color = Color::Gray(170u, 255u);
 	Color outline_color = Color::Gray(50u, 200u);
+	Color closebutton_color = Color::Red();
 	f32 decoration_height = 0.04f;
 	f32 outline_size = 0.001f;
 	f32 min_width = 0.1f;
@@ -300,6 +303,7 @@ namespace sv {
 		GuiParentInfo parent_info;
 		GuiWindowState* state;
 		GuiWindowStyle style;
+		bool hot_decoration;
 	    } window;
 
 	    struct {
@@ -920,10 +924,10 @@ namespace sv {
     SV_AUX v4_f32 compute_window_closebutton_bounds(const GUI& gui, const GuiWidget& w, const v4_f32 decoration_bounds)
     {
 	v4_f32 bounds;
-	bounds.x = decoration_bounds.x + decoration_bounds.z * 0.5f - decoration_bounds.w * 0.5f / gui.aspect;
+	bounds.w = decoration_bounds.w;
+	bounds.z = bounds.w / gui.aspect;
+	bounds.x = decoration_bounds.x + decoration_bounds.z * 0.5f - bounds.z * 0.5f;
 	bounds.y = decoration_bounds.y;
-	bounds.z = 0.006f;
-	bounds.w = 0.006f * gui.aspect;
 		
 	return bounds;
     }
@@ -983,11 +987,9 @@ namespace sv {
 
 		button.hot = true;
 
-		// TODO: Set focus and press when is released
-
-		if (input.mouse_buttons[MouseButton_Left] == InputState_Released) {
-		    button.pressed = true;
+		if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
 		    input.unused = false;
+		    set_focus(gui, w.type, w.id);
 		}
 	    }
 	}
@@ -1072,6 +1074,8 @@ namespace sv {
 		if (mouse_in_bounds(gui, decoration)) {
 
 		    input.unused = false;
+
+		    window.hot_decoration = true;
 					
 		    if (button == InputState_Pressed) {
 
@@ -1206,6 +1210,19 @@ namespace sv {
 
 		free_focus(gui);
 		cb.value = !cb.value;
+	    }
+	}
+	break;
+
+	case GuiWidgetType_Button:
+	{
+	    auto& button = w.widget.button;
+
+	    InputState state = input.mouse_buttons[MouseButton_Left];
+	    
+	    if (state == InputState_Released || state == InputState_None) {
+		free_focus(gui);
+		button.pressed = true;
 	    }
 	}
 	break;
@@ -3089,10 +3106,21 @@ namespace sv {
 	    v2_f32 closebutton_position = v2_f32(closebutton.x, closebutton.y);
 	    v2_f32 closebutton_size = v2_f32(closebutton.z, closebutton.w);
 
+	    Color decoration_color;
+	    if (gui.focus.type == GuiWigetType_Window && gui.focus.id == w.id) {
+		decoration_color = style.decoration_focus_color;
+	    }
+	    else if (window.hot_decoration) {
+		decoration_color = style.decoration_hot_color;
+	    }
+	    else {
+		decoration_color = style.decoration_color;
+	    }
+
 	    imrend_draw_quad(content_position.getVec3(0.f), outline_size, style.outline_color, cmd);
 	    imrend_draw_quad(content_position.getVec3(0.f), content_size, style.color, cmd);
-	    imrend_draw_quad(decoration_position.getVec3(0.f), decoration_size, style.decoration_color, cmd);
-	    imrend_draw_quad(closebutton_position.getVec3(0.f), closebutton_size, Color::Red(), cmd);
+	    imrend_draw_quad(decoration_position.getVec3(0.f), decoration_size, decoration_color, cmd);
+	    imrend_draw_quad(closebutton_position.getVec3(0.f), closebutton_size, style.closebutton_color, cmd);
 
 	    if (state.title.size()) {
 
