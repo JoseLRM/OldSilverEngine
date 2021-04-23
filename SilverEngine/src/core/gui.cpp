@@ -105,6 +105,10 @@ namespace sv {
 	f32 x1 = 0.9f;
     };
 
+    struct GuiGridLayoutStyle {
+	
+    };
+
     struct GuiStyleData {
 	GuiContainerStyle container;
 	GuiWindowStyle window;
@@ -117,6 +121,7 @@ namespace sv {
 	GuiMenuItemStyle menuitem;
 	GuiImageStyle image;
 	GuiFlowLayoutStyle flow_layout;
+	GuiGridLayoutStyle grid_layout;
     };
 
     ///////////////////////////////// RAW STRUCTS ///////////////////////////////////////
@@ -230,7 +235,12 @@ namespace sv {
 		f32 yoff;
 		u32 same_line_count;
 		u32 last_same_line;
+		// TODO: Save here the current GuiFreeLayoutStyle
 	    } flow;
+
+	    struct {
+		GuiGridLayoutStyle style;
+	    } grid;
 	};
 	
     };
@@ -401,17 +411,6 @@ namespace sv {
 	v2_f32 begin_position;
 	u64 package_id;		
 	RawList package_data;
-	
-	// TEMP
-
-	struct {
-	    u32 element_count;
-	    u32 columns;
-	    f32 element_size;
-	    u32 element_index;
-	    f32 xoff;
-	    f32 padding;
-	} grid;
 
     };
 
@@ -1503,6 +1502,65 @@ namespace sv {
 	}
     }
 
+    SV_AUX void compute_grid_layout(GUI& gui, GuiParentInfo* parent_info)
+    {
+	// TODO: Style and dimensions using GuiDim
+	constexpr f32 WIDTH = 30.f;
+	constexpr f32 PADDING = 3.f;
+	constexpr f32 MARGIN = 5.f;
+
+	f32 width = WIDTH / gui.resolution.x;
+	f32 height = WIDTH / gui.resolution.y;
+	f32 xpadding = PADDING / gui.resolution.x;
+	f32 ypadding = PADDING / gui.resolution.y;
+	f32 xmargin = MARGIN / gui.resolution.x;
+	f32 ymargin = MARGIN / gui.resolution.y;
+
+	f32 parent_width = parent_info->child_bounds.z - xmargin * 2.f;
+
+	u32 columns = SV_MAX(u32(parent_width / (width + xpadding)), 1u);
+	
+	f32 offset = (parent_width - ((width + xpadding) * f32(columns) - xpadding)) * 0.5f;
+	if (offset < 0.f) {
+	    xmargin -= offset;
+	    offset = 0.f;
+	}
+
+	GuiIndex* it = &gui.indices[parent_info->widget_offset];
+	GuiIndex* end = it + size_t(parent_info->widget_count);
+
+	u32 row = 0u;
+	u32 col = 0u;
+	
+	while (it != end) {
+
+	    GuiWidget& w = gui.widgets[it->index];
+	    
+	    if (!ignore_scroll(w.type)) {
+
+		w.bounds.x = xmargin + offset + f32(col) * (width + xpadding) + width * 0.5f;
+		w.bounds.y = ymargin + f32(row) * (height + ypadding) + height * 0.5f;
+		w.bounds.z = width;
+		w.bounds.w = height;
+
+		++col;
+
+		if (col == columns) {
+		    col = 0u;
+		    ++row;
+		}
+	    }
+
+	    GuiParentInfo* p = get_parent_info(gui, w);
+	    if (p) {
+
+		it += p->widget_count;
+	    }
+
+	    ++it;
+	}
+    }
+
     SV_INLINE static void read_widget(GUI& gui, GuiWidgetType type, u64 id, u32& current_parent, u8*& it)
     {
 	// Add widget
@@ -1542,6 +1600,10 @@ namespace sv {
 		parent_info->flow.yoff = 0.f;
 		parent_info->flow.same_line_count = 1u;
 		parent_info->flow.last_same_line = 1u;
+	    }
+	    else if (parent_info->layout == GuiLayout_Grid) {
+
+		parent_info->grid.style = gui.temp_style.grid_layout;
 	    }
 	}
 	
@@ -2065,6 +2127,12 @@ namespace sv {
 
 		    GuiParentInfo* parent_info = get_parent_info(gui, current_parent);
 		    SV_ASSERT(parent_info);
+
+		    // Compute grid layout
+		    if (parent_info.layout == GuiLayout_Grid) {
+			compute_grid_layout(gui, parent_info);
+		    }
+		    
 		    parent_info->widget_count = u32(gui.indices.size()) - parent_info->widget_offset;
 		    current_parent = parent_info->parent_index;
 		}
@@ -3233,57 +3301,6 @@ namespace sv {
     }
 
     /////////////////////////////////// HIGH LEVEL //////////////////////////////////////////
-
-    void gui_begin_grid(GUI* gui_, u32 element_count, f32 element_size, f32 padding)
-    {
-	PARSE_GUI();
-	auto& grid = gui.grid;
-
-	v4_f32 parent_bounds = gui_parent_bounds(gui_);
-
-	f32 width = parent_bounds.z * gui.resolution.x;
-
-	grid.element_count = element_count;
-	grid.element_index = 0u;
-	grid.columns = SV_MAX(u32((width + padding) / (element_size + padding)), 1u);
-	grid.element_size = element_size;
-	grid.xoff = SV_MAX(width - grid.element_size * f32(grid.columns) - padding * f32(grid.columns - 1u), 0.f) * 0.5f;
-	grid.padding = padding;
-    }
-
-    void gui_begin_grid_element(GUI* gui_, u64 id)
-    {
-	PARSE_GUI();
-	auto& grid = gui.grid;
-	SV_ASSERT(grid.element_index != grid.element_count);
-
-	f32 x = f32(grid.element_index % grid.columns);
-	f32 y = f32(grid.element_index / grid.columns);
-
-	f32 x0 = grid.xoff + x * (grid.element_size + grid.padding);
-	f32 y0 = y * (grid.element_size + grid.padding);
-	f32 x1 = x0 + grid.element_size;
-	f32 y1 = y0 + grid.element_size;
-
-	++grid.element_index;
-
-	gui_bounds(gui_, GuiCoord::Pixel(x0), GuiCoord::Pixel(x1), GuiCoord::IPixel(y0), GuiCoord::IPixel(y1));
-	gui_begin_container(gui_, id, GuiLayout_Flow);
-    }
-
-    void gui_end_grid_element(GUI* gui_)
-    {
-	//PARSE_GUI();
-	//auto& grid = gui.grid;
-
-	gui_end_container(gui_);
-    }
-
-    void gui_end_grid(GUI* gui_)
-    {
-	//	PARSE_GUI();
-	//auto& grid = gui.grid;
-    }
 
     void gui_display_style_settings(GUI* gui)
     {

@@ -100,7 +100,8 @@ namespace sv {
 
     enum GuiLayout : u32 {
 	GuiLayout_Free,
-	GuiLayout_Flow
+	GuiLayout_Flow,
+	GuiLayout_Grid,
     };
 
     struct GUI;
@@ -251,11 +252,6 @@ namespace sv {
 
 	return res;
     }
-    
-    SV_API void gui_begin_grid(GUI* gui, u32 element_count, f32 element_size, f32 padding);
-    SV_API void gui_begin_grid_element(GUI* gui, u64 id);
-    SV_API void gui_end_grid_element(GUI* gui);
-    SV_API void gui_end_grid(GUI* gui);
 
     SV_API void gui_display_style_settings(GUI* gui);
 

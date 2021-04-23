@@ -949,6 +949,8 @@ namespace sv {
 		    folder_name[3] = 't';
 		    folder_name[4] = '\0';
 
+		    gui_same_line(dev.gui, count);
+
 		    foreach(i, count) {
 
 			if (i != 0u) {
@@ -995,20 +997,15 @@ namespace sv {
 	    }
 
 	    {
-		gui_bounds(gui, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(40.f), GuiCoord::Relative(0.f));
-		gui_begin_container(gui, 1u, GuiLayout_Flow);
-
-		gui_bounds(gui, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
-		gui_begin_grid(gui, u32(info.elements.size()), 150.f, 5.f);
+		gui_begin_container(gui, 1u, GuiLayout_Grid);
 
 		foreach(i, info.elements.size()) {
 
 		    const AssetElement& e = info.elements[i];
 
 		    // TODO: ignore unused elements
-		    gui_begin_grid_element(gui, 69u + i);
+		    gui_begin_container(gui, 69u + i, GuiLayout_Flow);
 		    
-		    gui_bounds(gui, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
 		    if (gui_button(gui, nullptr, 0u)) {
 
 			if (e.type == AssetElementType_Directory && !update_browser) {
@@ -1061,13 +1058,11 @@ namespace sv {
 			}
 		    }
 
-		    gui_bounds(gui, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(0.2f));
 		    gui_text(gui, e.name, 1u);
 
-		    gui_end_grid_element(gui);
+		    gui_end_container(gui);
 		}
 
-		gui_end_grid(gui);
 		gui_end_container(gui);
 	    }
 
