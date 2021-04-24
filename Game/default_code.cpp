@@ -15,7 +15,7 @@ SV_USER bool user_initialize(bool init)
     if (init) {
 	engine.game_memory = SV_ALLOCATE_STRUCT(GameMemory);
     
-	set_active_scene("Test");
+	set_scene("Test");
     }
 
     game = reinterpret_cast<GameMemory*>(engine.game_memory);
@@ -33,7 +33,7 @@ SV_USER bool user_close(bool close)
     return true;
 }
 
-SV_USER bool user_initialize_scene(Scene* scene, Archive* parchive)
+SV_USER bool user_initialize_scene(Archive* parchive)
 {    
     if (parchive) {
 	Archive& archive = *parchive;
@@ -43,12 +43,13 @@ SV_USER bool user_initialize_scene(Scene* scene, Archive* parchive)
 
 
     // Create main camera
-    scene->main_camera = create_entity(scene, SV_ENTITY_NULL, "Camera");
-    add_component<CameraComponent>(scene, scene->main_camera);
+    Entity& cam = get_scene_data()->main_camera;
+    cam = create_entity(SV_ENTITY_NULL, "Camera");
+    add_component<CameraComponent>(cam);
 
     // Create some entity
-    game->foo = create_entity(scene, SV_ENTITY_NULL, "Foo");
-    SpriteComponent* spr = add_component<SpriteComponent>(scene, game->foo);
+    game->foo = create_entity(SV_ENTITY_NULL, "Foo");
+    SpriteComponent* spr = add_component<SpriteComponent>(game->foo);
     spr->color = Color::Salmon();
 
     return true;
@@ -56,9 +57,9 @@ SV_USER bool user_initialize_scene(Scene* scene, Archive* parchive)
 
 void update_scene(void*, void*)
 {
-    if (entity_exist(engine.scene, game->foo)) {
+    if (entity_exist(game->foo)) {
 
-	v2_f32& pos = *get_entity_position2D_ptr(engine.scene, game->foo);
+	v2_f32& pos = *get_entity_position2D_ptr(game->foo);
 
 	f64 t = timer_now();
 

@@ -109,6 +109,8 @@ namespace sv {
     struct GuiFlowLayoutStyle {
 	f32 x0 = 0.1f;
 	f32 x1 = 0.9f;
+	f32 sub_x0 = 0.f;
+	f32 sub_x1 = 1.f;
     };
 
     struct GuiGridLayoutStyle {
@@ -247,7 +249,7 @@ namespace sv {
 		f32 yoff;
 		u32 same_line_count;
 		u32 last_same_line;
-		// TODO: Save here the current GuiFreeLayoutStyle
+		GuiFlowLayoutStyle style;
 	    } flow;
 
 	    struct {
@@ -1259,12 +1261,31 @@ namespace sv {
 		gui.current_text_field_value[i] = field.text[i];
 	    }
 
+	    foreach(i, MouseButton_MaxEnum) {
+
+		if (input.mouse_buttons[i] == InputState_Pressed) {
+		    free_focus(gui);
+		    break;
+		}
+	    }
+
 	    // Text modification
 	    {
+		if (gui.current_text_field_value.empty() || gui.current_text_field_value.back() != '\0')
+		    gui.current_text_field_value.push_back('\0');
+		
 		if (input.text.size()) {
 		    
 		    field.pos += u32(input.text.size());
+
+		    gui.current_text_field_value.pop_back();
+		    
+		    for (char c : input.text)
+			gui.current_text_field_value.push_back(c);
+
+		    gui.current_text_field_value.push_back('\0');
 		}
+		    
 
 		foreach(i, input.text_commands.size()) {
 
@@ -1293,7 +1314,7 @@ namespace sv {
 		}
 
 		if (input.keys[Key_Left] == InputState_Pressed) field.pos = (field.pos == 0u) ? field.pos : (field.pos - 1u);
-		if (input.keys[Key_Right] == InputState_Pressed) field.pos = (field.pos == text_size) ? field.pos : (field.pos + 1u);
+		if (input.keys[Key_Right] == InputState_Pressed) field.pos = (field.pos == text_size + 1u) ? field.pos : (field.pos + 1u);
 	    }
 	}
 	break;
@@ -1490,9 +1511,12 @@ namespace sv {
 	case GuiLayout_Flow:
 	{
 	    auto& data = parent_info->flow;
-	    auto& style = gui.temp_style.flow_layout;
+	    auto& style = parent_info->flow.style;
 	    
 	    if (!ignore_scroll(w.type)) {
+
+		w.raw_coords.xcoord._0.value = gui.temp_style.flow_layout.sub_x0;
+		w.raw_coords.xcoord._1.value = gui.temp_style.flow_layout.sub_x1;
 
 		SV_ASSERT(data.same_line_count != 0u);
 		
@@ -1530,6 +1554,14 @@ namespace sv {
 
 			f32 sub_x0 = x0 + f32(i - begin_index) * element_width;
 			f32 sub_x1 = x0 + f32(i - begin_index + 1u) * element_width;
+
+			f32 style_x0 = widget.raw_coords.xcoord._0.value;
+			f32 style_x1 = widget.raw_coords.xcoord._1.value;
+
+			f32 sub_width = sub_x1 - sub_x0;
+			
+			sub_x0 = sub_x0 + style_x0 * sub_width;
+			sub_x1 = sub_x0 + style_x1 * sub_width;
 			
 			coords.xtype = GuiCoordType_Coord;
 			coords.xcoord._0 = GuiCoord::Relative(sub_x0); 
@@ -1578,8 +1610,7 @@ namespace sv {
 		    data.yoff += max_height + 5.f;
 		    data.last_same_line = 1u;
 		}
-		else
-		    --data.same_line_count;
+		else --data.same_line_count;
 	    }
 	}
 	break;
@@ -1688,6 +1719,7 @@ namespace sv {
 		parent_info->flow.yoff = 0.f;
 		parent_info->flow.same_line_count = 1u;
 		parent_info->flow.last_same_line = 1u;
+		parent_info->flow.style = gui.temp_style.flow_layout;
 	    }
 	    else if (parent_info->layout == GuiLayout_Grid) {
 
@@ -2173,6 +2205,16 @@ namespace sv {
 
 	case GuiStyle_FlowX1:
 	    *pdst = &s.flow_layout.x1;
+	    *psize = sizeof(f32);
+	    break;
+
+	case GuiStyle_FlowSubX0:
+	    *pdst = &s.flow_layout.sub_x0;
+	    *psize = sizeof(f32);
+	    break;
+
+	case GuiStyle_FlowSubX1:
+	    *pdst = &s.flow_layout.sub_x1;
 	    *psize = sizeof(f32);
 	    break;
 			
@@ -2894,7 +2936,7 @@ namespace sv {
 	    //auto& field = w->widget.text_field;
 
 	    char* text = gui->current_text_field_value.data();
-	    size_t text_size = strlen(text);
+	    size_t text_size = text ? strlen(text) : 0u;
 
 	    size_t write_size = SV_MIN(text_size, buff_size - 1u);
 	    
@@ -3111,6 +3153,26 @@ namespace sv {
 		imrend_draw_text(button.text, strlen(button.text)
 			  , pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - renderer->font_opensans.vertical_offset * font_size,
 			  size.x, 1u, font_size, gui.aspect, TextAlignment_Center, &renderer->font_opensans, button.style.text_color, cmd);
+	    }
+	}
+	break;
+
+	case GuiWidgetType_TextField:
+	{
+	    auto& field = w.widget.text_field;
+
+	    v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y);
+	    v2_f32 size = v2_f32(w.bounds.z, w.bounds.w);
+
+	    imrend_draw_quad(pos.getVec3(), size, field.style.background_color, cmd);
+
+	    if (field.text) {
+
+		f32 font_size = size.y;
+
+		imrend_draw_text(field.text, strlen(field.text)
+			  , pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - renderer->font_opensans.vertical_offset * font_size,
+			  size.x, 1u, font_size, gui.aspect, TextAlignment_Center, &renderer->font_opensans, field.style.text_color, cmd);
 	    }
 	}
 	break;

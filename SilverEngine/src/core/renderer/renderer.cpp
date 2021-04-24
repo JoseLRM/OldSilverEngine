@@ -25,8 +25,8 @@ namespace sv {
 	COMPILE_PS(gfx.ps_debug_solid, "debug/solid_batch.hlsl");
 	COMPILE_VS(gfx.vs_debug_mesh_wireframe, "debug/mesh_wireframe.hlsl");
 
-	COMPILE_VS_(gfx.vs_im, "immediate_shader.hlsl");
-	COMPILE_PS_(gfx.ps_im, "immediate_shader.hlsl");
+	COMPILE_VS(gfx.vs_im, "immediate_shader.hlsl");
+	COMPILE_PS(gfx.ps_im, "immediate_shader.hlsl");
 
 	COMPILE_VS(gfx.vs_text, "text.hlsl");
 	COMPILE_PS(gfx.ps_text, "text.hlsl");
@@ -1148,15 +1148,15 @@ namespace sv {
 	    }
 #else
 			
-	    CameraComponent* camera_ = get_main_camera(scene);
+	    CameraComponent* camera_ = get_main_camera();
 	    CameraBuffer_GPU camera_data;
 
 	    if (camera_) {
-				
-		Transform camera_trans = get_entity_transform(scene, scene->main_camera);
+
+		Entity cam = get_scene_data()->main_camera;
 		camera_data.projection_matrix = camera_->projection_matrix;
-		camera_data.position = camera_trans.getWorldPosition().getVec4(0.f);
-		camera_data.rotation = camera_trans.getWorldRotation();
+		camera_data.position = get_entity_world_position(cam).getVec4();
+		camera_data.rotation = get_entity_world_rotation(cam);
 		camera_data.view_matrix = camera_->view_matrix;
 		camera_data.view_projection_matrix = camera_->view_projection_matrix;
 		camera_data.inverse_view_matrix = camera_->inverse_view_matrix;

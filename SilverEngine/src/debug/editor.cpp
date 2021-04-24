@@ -52,6 +52,8 @@ namespace sv {
 
 	AssetBrowserInfo asset_browser;
 	GizmosInfo gizmos;
+
+	char next_scene_name[SCENENAME_SIZE + 1u] = "";
     };
 
     GlobalEditorData editor;
@@ -927,72 +929,29 @@ namespace sv {
 	    {
 		gui_begin_container(gui, 0u, GuiLayout_Flow);
 		
-		if (info.filepath[0]) {
+		gui_same_line(gui, 3u);
 
-		    // TODO: Adjust using name size
-		    f32 width = gui_parent_bounds(gui).z * f32(os_window_size().x);
+		if (gui_button(gui, "<", 0u) && info.filepath[0]) {
 
-		    u32 folder_count = 1u;
-		    for (char c : info.filepath)
-			if (c == '/') ++folder_count;
+		    update_browser = true;
+		    size_t len = strlen(info.filepath);
 
-		    u32 count = SV_MIN(SV_MAX(u32(width / WIDTH), 1u), folder_count);
-		    SV_ASSERT(count != 0u);
-		    --count;
-
-		    const char* folder_offset = info.filepath;
-		    char folder_name[FILEPATH_SIZE];
-
-		    folder_name[0] = 'r';
-		    folder_name[1] = 'o';
-		    folder_name[2] = 'o';
-		    folder_name[3] = 't';
-		    folder_name[4] = '\0';
-
-		    gui_same_line(dev.gui, count);
-
-		    foreach(i, count) {
-
-			if (i != 0u) {
-
-			    const char* end = folder_offset;
-			    while (*end != '/') {
-				++end;
-			    }
-
-			    size_t name_size = end - folder_offset;
-			    memcpy(folder_name, folder_offset, name_size);
-			    folder_name[name_size] = '\0';
-
-			    folder_offset = end;
-			    ++folder_offset;
-			}
-			
-			if (gui_button(gui, folder_name, i))
-			{
-
-			    if (!update_browser) {
-
-				const char* end = info.filepath;
-
-				i = count - i;
-				while (i) {
-
-				    if (*end == '/') {
-					--i;
-				    }
-
-				    ++end;
-				}
-
-				sprintf(next_filepath, "%s", end);
-				update_browser = true;
-				break;
-			    }
-			}
+		    info.filepath[--len] = '\0';
+		    
+		    while (len && info.filepath[len - 1u] != '/') {
+			--len;
 		    }
+		    memcpy(next_filepath, info.filepath, len);
+		    next_filepath[len] = '\0';
 		}
+		
+		gui_button(gui, ">", 1u);
+		
+		char filepath[FILEPATH_SIZE + 1u] = "assets/";
+		strcat(filepath, info.filepath);
 
+		gui_text(gui, filepath, 2u);
+		
 		gui_end_container(gui);
 	    }
 
@@ -1078,6 +1037,9 @@ namespace sv {
 
 	    // Update browser elements
 	    if (update_browser) {
+
+		strcpy(info.filepath, next_filepath);
+		sprintf(next_filepath, "assets/%s", info.filepath);
 		
 		while (!file_exists(next_filepath) && next_filepath[0]) {
 
@@ -1089,6 +1051,10 @@ namespace sv {
 			--size;
 			next_filepath[size] = '\0';
 		    }
+		}
+
+		if (strlen(next_filepath) < strlen("assets/")) {
+		    strcpy(next_filepath, "assets/");
 		}
 		
 		// Clear browser data
@@ -1134,9 +1100,16 @@ namespace sv {
 		    SV_LOG_ERROR("Can't create asset browser content at '%s'", next_filepath);
 		}
 		
-
-		sprintf(info.filepath, "%s", next_filepath);
+		
+		strcpy(info.filepath, next_filepath + strlen("assets/"));
 		info.last_update = timer_now();
+	    }
+
+	    if (gui_begin_popup(gui, GuiPopupTrigger_Window, MouseButton_Right, 69u, GuiLayout_Flow)) {
+
+		
+		
+		gui_end_popup(gui);
 	    }
 	    
 	    egui_end_window();
@@ -1150,8 +1123,20 @@ namespace sv {
 	if (egui_begin_window("Scene Manager")) {
 
 	    gui_text(dev.gui, get_scene_name(), 0u);
+
+	    if (gui_begin_tree(dev.gui, "Go to scene", nullptr, 1u)) {
+		
+		gui_text_field(dev.gui, editor.next_scene_name, SCENENAME_SIZE + 1u, 0u);
+
+		if (gui_button(dev.gui, "GO", 1u)) {
+		    set_scene(editor.next_scene_name);
+		    strcpy(editor.next_scene_name, "");
+		}
+		
+		gui_end_tree(dev.gui);
+	    }
 	    
-	    egui_comp_color("Ambient Light", 1u, &s.ambient_light);
+	    egui_comp_color("Ambient Light", 2u, &s.ambient_light);
 	    
 	    egui_end_window();
 	}

@@ -8,6 +8,8 @@
 #include "core/engine.h"
 #include "core/renderer/renderer_internal.h"
 
+#include "platform/os.h"
+
 #include <stdarg.h>
 
 namespace sv {
@@ -681,6 +683,8 @@ namespace sv {
 
 #endif
 
+#if SV_SLOW
+
 namespace sv {
 
     void throw_assertion(const char* content, u32 line, const char* file)
@@ -694,7 +698,8 @@ namespace sv {
 
 	snprintf(text, 500, "'%s', file: '%s', line: %u", content, file, line);
 
-	sv::show_message("ASSERTION!!", text, true);
+	show_message("ASSERTION!!", text, true);
     }
     
 }
+#endif

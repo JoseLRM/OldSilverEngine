@@ -37,6 +37,8 @@ namespace sv {
 
 	DoUndoStack do_undo_stack;
 
+	bool gamecode_updated = false;
+
 	GUI* gui;
     };
 

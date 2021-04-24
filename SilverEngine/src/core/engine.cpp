@@ -23,31 +23,10 @@ namespace sv {
 #endif
 
     ////////////////////////////////////////////////////////////////// UPDATE DLL ////////////////////////////////////////////////////////////
-
-    void set_gamecode_filepath(const char* filepath)
-    {
-	Archive file;
-	file << filepath;
-	if (!bin_write(hash_string("GAME DLL PATH"), file)) {
-
-	    SV_LOG_ERROR("Can't save the gamecode filepath");
-	}
-    }
-
-    SV_AUX void get_usercode_filepath(char* filepath)
-    {
-	Archive file;
-	if (bin_read(hash_string("GAME DLL PATH"), file)) {
-
-	    file >> filepath;
-	}
-	else strcpy(filepath, "system/game_bin/Game.dll");
-    }
     
     SV_AUX void recive_user_callbacks(bool init)
     {
-	char filepath[FILEPATH_SIZE];
-	get_usercode_filepath(filepath);
+	const char* filepath = "system/game_bin/Game.dll";
 	
 #if SV_DEV
 	
@@ -63,6 +42,8 @@ namespace sv {
 	
 	_os_update_user_callbacks("system/game_bin/GameTemp.dll");
 
+	dev.gamecode_updated = true;
+	
 	if (!init)
 	    _user_initialize(false);
 
@@ -71,7 +52,7 @@ namespace sv {
 	    last_user_lib_write = date;
 	}
 #else
-	os_update_user_callbacks(filepath);
+	_os_update_user_callbacks(filepath);
 #endif
     }
     
@@ -84,8 +65,7 @@ namespace sv {
 	
 	if (now - last_update > 1.0) {
 
-	    char filepath[FILEPATH_SIZE];
-	    get_usercode_filepath(filepath);
+	    const char* filepath = "system/game_bin/Game.dll";
 	    
 	    // Check if the file is modified
 	    Date date;

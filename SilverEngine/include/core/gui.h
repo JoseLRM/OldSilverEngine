@@ -97,6 +97,8 @@ namespace sv {
 	// TODO Menuitem
 	GuiStyle_FlowX0,
 	GuiStyle_FlowX1,
+	GuiStyle_FlowSubX0,
+	GuiStyle_FlowSubX1,
     };
 
     enum GuiLayout : u32 {
@@ -194,6 +196,8 @@ namespace sv {
 	gui_push_style(gui, GuiStyle_DragBackgroundColor, *color);
 	gui_push_style(gui, GuiStyle_FlowX0, 0.f);
 	gui_push_style(gui, GuiStyle_FlowX1, 1.f);
+	gui_push_style(gui, GuiStyle_FlowSubX0, 0.02f);
+	gui_push_style(gui, GuiStyle_FlowSubX1, 0.98f);
 	
 	gui_same_line(gui, 4u);
 
@@ -203,7 +207,7 @@ namespace sv {
 	if (gui_drag_u8(gui, &color->b, 1u, 2u)) res = true;
 	if (gui_drag_u8(gui, &color->a, 1u, 3u)) res = true;
 
-	gui_pop_style(gui, 4u);
+	gui_pop_style(gui, 6u);
 	
 	gui_end_container(gui);
 
@@ -218,6 +222,8 @@ namespace sv {
 
 	gui_push_style(gui, GuiStyle_FlowX0, 0.f);
 	gui_push_style(gui, GuiStyle_FlowX1, 1.f);
+	gui_push_style(gui, GuiStyle_FlowSubX0, 0.02f);
+	gui_push_style(gui, GuiStyle_FlowSubX1, 0.98f);
 	
 	gui_same_line(gui, 4u);
 
@@ -227,7 +233,7 @@ namespace sv {
 	if (gui_drag_f32(gui, &v->z, adv, min, max, 2u)) res = true;
 	if (gui_drag_f32(gui, &v->w, adv, min, max, 3u)) res = true;
 
-	gui_pop_style(gui, 3u);
+	gui_pop_style(gui, 5u);
 	
 	gui_end_container(gui);
 
@@ -242,6 +248,8 @@ namespace sv {
 
 	gui_push_style(gui, GuiStyle_FlowX0, 0.f);
 	gui_push_style(gui, GuiStyle_FlowX1, 1.f);
+	gui_push_style(gui, GuiStyle_FlowSubX0, 0.02f);
+	gui_push_style(gui, GuiStyle_FlowSubX1, 0.98f);
 	
 	gui_same_line(gui, 2u);
 
@@ -249,7 +257,7 @@ namespace sv {
 	if (gui_drag_f32(gui, &v->x, adv, min, max, 0u)) res = true;
 	if (gui_drag_f32(gui, &v->y, adv, min, max, 1u)) res = true;
 
-	gui_pop_style(gui, 3u);
+	gui_pop_style(gui, 5u);
 	
 	gui_end_container(gui);
 
@@ -265,10 +273,18 @@ namespace sv {
 	gui_begin_container(gui, 0u, GuiLayout_Flow);
 	{
 	    gui_same_line(gui, 2u);
-	    // TODO: Adjust
+
+	    gui_push_style(gui, GuiStyle_FlowSubX0, 0.0f);
+	    gui_push_style(gui, GuiStyle_FlowSubX1, 0.1f);
+	    
 	    show = gui_checkbox(gui, 0u);
 
+	    gui_push_style(gui, GuiStyle_FlowSubX0, 0.f);
+	    gui_push_style(gui, GuiStyle_FlowSubX1, 1.f);
+
 	    bool p = gui_button(gui, text, 1u);
+
+	    gui_pop_style(gui, 4u);
 
 	    if (pressed)
 		*pressed = p;
@@ -277,6 +293,8 @@ namespace sv {
 
 	if (show) gui_begin_container(gui, 1u, GuiLayout_Flow);
 	else gui_pop_id(gui);
+
+	return show;
     }
 
     SV_INLINE void gui_end_tree(GUI* gui)
