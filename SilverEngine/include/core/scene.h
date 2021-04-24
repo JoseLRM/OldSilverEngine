@@ -19,7 +19,9 @@ namespace sv {
 	GUI* gui = nullptr;
 	void* user_ptr = nullptr;
 	u32 user_id = 0u;
+	
 	Entity main_camera = SV_ENTITY_NULL;
+	Entity player = SV_ENTITY_NULL;
 
 	GPUImage* skybox = nullptr;
 	Color ambient_light = Color::Gray(20u);

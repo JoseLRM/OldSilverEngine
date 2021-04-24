@@ -149,8 +149,7 @@ namespace sv {
 
 	    Scene*& scene = scene_state->scene;
 
-	    // User close TODO: Handle error
-	    _user_close_scene();
+	    event_dispatch("close_scene", nullptr);
 
 	    gui_destroy(scene->data.gui);
 
@@ -223,7 +222,9 @@ namespace sv {
 		else {
 		    u32 version;
 		    archive >> version;
+		    
 		    archive >> scene.data.main_camera;
+		    archive >> scene.data.player;
 
 		    archive >> scene.data.gravity;
 		    archive >> scene.data.air_friction;
@@ -412,11 +413,7 @@ namespace sv {
 	    }
 	}
 
-	// User Init
-	if (!_user_initialize_scene(deserialize ? &archive : nullptr)) {
-	    // TODO: handle error
-	    return false;
-	}
+	event_dispatch("initialize_scene", nullptr);
 	
 	return true;
     }
@@ -483,7 +480,9 @@ namespace sv {
 	Archive archive;
 
 	archive << SceneState::VERSION;
+	
 	archive << scene.data.main_camera;
+	archive << scene.data.player;
 
 	archive << scene.data.gravity;
 	archive << scene.data.air_friction;
@@ -552,7 +551,7 @@ namespace sv {
 	    }
 	}
 
-	_user_serialize_scene(&archive);
+	event_dispatch("save_scene", nullptr);
 		
 	return archive.saveFile(filepath);
     }
@@ -573,8 +572,7 @@ namespace sv {
 	scene.entities.clear();
 	entity_clear(scene.entityData);
 
-	// user initialize scene
-	SV_CHECK(_user_initialize_scene(nullptr));
+	event_dispatch("initialize_scene", nullptr);
 
 	return true;
     }
@@ -899,11 +897,11 @@ namespace sv {
 	    return;
 #endif
 	
-	event_dispatch("update", nullptr);
+	event_dispatch("update_scene", nullptr);
 	    
 	update_physics();
 
-	event_dispatch("late_update", nullptr);
+	event_dispatch("late_update_scene", nullptr);
     }
 
     CameraComponent* get_main_camera()

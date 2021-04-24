@@ -188,9 +188,14 @@ namespace sv {
 	if (entity_exist(data.entity))
 	    destroy_entity(data.entity);
     }
+    
     SV_INTERNAL void construct_entity_sprite(Entity entity) {
 	add_component<SpriteComponent>(entity);
     }
+    SV_INTERNAL void construct_entity_2D_camera(Entity entity) {
+	add_component<CameraComponent>(entity);
+    }
+    
     SV_INTERNAL Entity editor_create_entity(Entity parent = SV_ENTITY_NULL, const char* name = nullptr, ConstructEntityActionFn construct_entity = nullptr)
     {
 	DoUndoStack& stack = dev.do_undo_stack;
@@ -590,11 +595,17 @@ namespace sv {
 
 		BodyComponent& b = *reinterpret_cast<BodyComponent*>(comp);
 
-		egui_comp_drag_v2_f32("Size", 0u, &b.size, 0.005f, 0.f, f32_max);
-		egui_comp_drag_v2_f32("Offset", 1u, &b.offset, 0.005f);
-		egui_comp_drag_f32("Mass", 2u, &b.mass, 0.1f, 0.0f, f32_max);
-		egui_comp_drag_f32("Friction", 3u, &b.friction, 0.001f, 0.0f, 1.f);
-		egui_comp_drag_f32("Bounciness", 4u, &b.bounciness, 0.005f, 0.0f, 1.f);
+		bool dynamic = b.body_type == BodyType_Dynamic;
+
+		if (egui_comp_bool("Dynamic", 0u, &dynamic)) {
+		    b.body_type = dynamic ? BodyType_Dynamic : BodyType_Static;
+		}
+		
+		egui_comp_drag_v2_f32("Size", 1u, &b.size, 0.005f, 0.f, f32_max);
+		egui_comp_drag_v2_f32("Offset", 2u, &b.offset, 0.005f);
+		egui_comp_drag_f32("Mass", 3u, &b.mass, 0.1f, 0.0f, f32_max);
+		egui_comp_drag_f32("Friction", 4u, &b.friction, 0.001f, 0.0f, 1.f);
+		egui_comp_drag_f32("Bounciness", 5u, &b.bounciness, 0.005f, 0.0f, 1.f);
 	    }
 
 	    egui_end_component();
@@ -849,6 +860,11 @@ namespace sv {
 		    editor_create_entity(SV_ENTITY_NULL, "Sprite", construct_entity_sprite);
 		}
 
+		if (gui_button(dev.gui, "Create 2D Camera", 2u)) {
+
+		    editor_create_entity(SV_ENTITY_NULL, "Camera", construct_entity_2D_camera);
+		}
+
 		gui_end_popup(dev.gui);
 	    }
 	    
@@ -889,6 +905,25 @@ namespace sv {
 		    }
 
 		    gui_pop_id(g);
+		}
+
+		// Misc
+		{
+		    gui_push_id(dev.gui, "Misc info");
+
+		    SceneData* scene = get_scene_data();
+		    
+		    bool is_player = selected == scene->player;
+		    
+		    if (gui_checkbox(dev.gui, "Player", &is_player, 0u)) {
+
+			if (is_player) {
+			    scene->player = selected;
+			}
+			else scene->player = SV_ENTITY_NULL;
+		    }
+		    
+		    gui_pop_id(dev.gui);
 		}
 
 		if (gui_begin_popup(g, GuiPopupTrigger_Parent, MouseButton_Right, 0xabc2544 + selected, GuiLayout_Flow)) {
@@ -1105,7 +1140,7 @@ namespace sv {
 		info.last_update = timer_now();
 	    }
 
-	    if (gui_begin_popup(gui, GuiPopupTrigger_Window, MouseButton_Right, 69u, GuiLayout_Flow)) {
+	    if (gui_begin_popup(gui, GuiPopupTrigger_Parent, MouseButton_Right, 69u, GuiLayout_Flow)) {
 
 		
 		
@@ -1124,7 +1159,7 @@ namespace sv {
 
 	    gui_text(dev.gui, get_scene_name(), 0u);
 
-	    if (gui_begin_tree(dev.gui, "Go to scene", nullptr, 1u)) {
+	    if (gui_checkbox(dev.gui, "Go to scene", 1u)) {
 		
 		gui_text_field(dev.gui, editor.next_scene_name, SCENENAME_SIZE + 1u, 0u);
 
@@ -1132,8 +1167,6 @@ namespace sv {
 		    set_scene(editor.next_scene_name);
 		    strcpy(editor.next_scene_name, "");
 		}
-		
-		gui_end_tree(dev.gui);
 	    }
 	    
 	    egui_comp_color("Ambient Light", 2u, &s.ambient_light);
@@ -1222,6 +1255,9 @@ namespace sv {
 		    if (egui_button("Scene Manager", 3u)) {
 			gui_show_window(dev.gui, "Scene Manager");
 		    }
+
+
+		    gui_checkbox(dev.gui, "Colisions", &dev.draw_collisions, 4u);
 		    
 		    gui_end_container(dev.gui);
 
@@ -1235,41 +1271,6 @@ namespace sv {
 		display_asset_browser();
 		display_scene_settings();
 
-		// MENU
-		
-		gui_push_id(dev.gui, "MENU");
-		    
-		if (gui_begin_menu_item(dev.gui, "Game", 0u, GuiLayout_Flow)) {
-
-		    if (dev.game_state == GameState_Edit) {
-
-			if (egui_button("Play", 0u)) {
-			    dev.next_game_state = GameState_Play;
-			}
-		    }
-		    else if (dev.game_state == GameState_Play) {
-
-			if (egui_button("Stop", 0u)) {
-			    dev.next_game_state = GameState_Edit;
-			}
-		    }
-
-		    if (egui_button("Clear Scene", 1u)) {
-			clear_scene();
-		    }
-
-		    gui_end_menu_item(dev.gui);
-		}
-
-		if (gui_begin_menu_item(dev.gui, "View", 1u, GuiLayout_Flow)) {
-
-		    // TODO: create specific function
-		    egui_comp_bool("Colisions", 0u, &dev.draw_collisions);
-
-		    gui_end_menu_item(dev.gui);
-		}
-
-		gui_pop_id(dev.gui);
 	    }
 	    else {
 		// TODO

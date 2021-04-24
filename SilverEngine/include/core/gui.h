@@ -176,8 +176,8 @@ namespace sv {
 	
     SV_API bool gui_slider(GUI* gui, f32* value, f32 min, f32 max, u64 id);
     SV_API void gui_text(GUI* gui, const char* text, u64 id);
-    SV_API bool gui_checkbox(GUI* gui, bool* value, u64 id);
-    SV_API bool gui_checkbox(GUI* gui, u64 id);
+    SV_API bool gui_checkbox(GUI* gui, const char* text, bool* value, u64 id);
+    SV_API bool gui_checkbox(GUI* gui, const char* text, u64 id);
 
     SV_API void gui_image(GUI* gui, GPUImage* image, GPUImageLayout layout, u64 id);
 	
@@ -262,45 +262,6 @@ namespace sv {
 	gui_end_container(gui);
 
 	return res;
-    }
-
-    SV_INLINE bool gui_begin_tree(GUI* gui, const char* text, bool* pressed, u64 id)
-    {
-	bool show;
-
-	gui_push_id(gui, id);
-	
-	gui_begin_container(gui, 0u, GuiLayout_Flow);
-	{
-	    gui_same_line(gui, 2u);
-
-	    gui_push_style(gui, GuiStyle_FlowSubX0, 0.0f);
-	    gui_push_style(gui, GuiStyle_FlowSubX1, 0.1f);
-	    
-	    show = gui_checkbox(gui, 0u);
-
-	    gui_push_style(gui, GuiStyle_FlowSubX0, 0.f);
-	    gui_push_style(gui, GuiStyle_FlowSubX1, 1.f);
-
-	    bool p = gui_button(gui, text, 1u);
-
-	    gui_pop_style(gui, 4u);
-
-	    if (pressed)
-		*pressed = p;
-	}
-	gui_end_container(gui);
-
-	if (show) gui_begin_container(gui, 1u, GuiLayout_Flow);
-	else gui_pop_id(gui);
-
-	return show;
-    }
-
-    SV_INLINE void gui_end_tree(GUI* gui)
-    {
-	gui_end_container(gui);
-	gui_pop_id(gui);
     }
 
     SV_API void gui_display_style_settings(GUI* gui);

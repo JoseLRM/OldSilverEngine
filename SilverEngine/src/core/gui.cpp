@@ -85,6 +85,7 @@ namespace sv {
 
     struct GuiCheckboxStyle {
 	Color button_color = Color::Gray(100u);
+	Color text_color = Color::Black();
 	Color background_color = Color::White();
 	GuiCheckboxShape shape = GuiCheckboxShape_Quad;
 	f32 shape_size_mult = 0.7f;
@@ -180,6 +181,7 @@ namespace sv {
 
     struct Raw_Checkbox {
 	bool value;
+	const char* text;
     };
 
     struct Raw_Label {
@@ -305,6 +307,7 @@ namespace sv {
 
 	    struct {
 		bool value;
+		const char* text;
 		GuiCheckboxStyle style;
 	    } checkbox;
 
@@ -695,7 +698,8 @@ namespace sv {
 	case GuiWidgetType_Checkbox:
 	{
 	    Raw_Checkbox* raw = (Raw_Checkbox*)data;
-	    write_buffer(gui, *raw);
+	    write_buffer(gui, raw->value);
+	    write_text(gui, raw->text);
 	}
 	break;
 
@@ -961,6 +965,18 @@ namespace sv {
 	return bounds;
     }
 
+    SV_AUX v4_f32 compute_checkbox_button_bounds(const GUI& gui, const GuiWidget& w)
+    {
+	v4_f32 bounds;
+
+	bounds.y = w.bounds.y;
+	bounds.w = w.bounds.w;
+	bounds.z = bounds.w / gui.aspect;
+	bounds.x = (w.bounds.x - w.bounds.z * 0.5f) + bounds.z * 0.5f;
+	
+	return bounds;
+    }
+
     static void update_widget(GUI& gui, const GuiIndex& index)
     {
 	GuiParentInfo* parent_info = get_parent_info(gui, index);
@@ -1024,8 +1040,25 @@ namespace sv {
 	}
 	break;
 
-	case GuiWidgetType_Drag:
 	case GuiWidgetType_Checkbox:
+	{
+	    if (input.unused) {
+
+		v4_f32 button_bounds = compute_checkbox_button_bounds(gui, w);
+		
+		if (mouse_in_bounds(gui, button_bounds)) {
+
+		    if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
+
+			set_focus(gui, w.type, index.id);
+			input.unused = false;
+		    }
+		}
+	    }
+	}
+	break;
+
+	case GuiWidgetType_Drag:
 	case GuiWidgetType_TextField:
 	case GuiWidgetType_MenuItem:
 	case GuiWidgetType_Package:
@@ -1810,8 +1843,13 @@ namespace sv {
 	{
 	    auto& cb = w.widget.checkbox;
 			
-	    Raw_Checkbox raw = _read<Raw_Checkbox>(it);
-	    cb.value = raw.value;
+	    cb.value = _read<bool>(it);
+
+	    cb.text = (const char*)(it);
+	    it += strlen(cb.text) + 1u;
+	    if (*cb.text == '\0')
+		cb.text = nullptr;
+	    
 	    cb.style = gui.temp_style.checkbox;
 	}
 	break;
@@ -3065,7 +3103,7 @@ namespace sv {
 	write_widget(gui, GuiWidgetType_Label, id, &raw, nullptr);		
     }
 
-    bool gui_checkbox(GUI* gui_, bool* value, u64 id)
+    bool gui_checkbox(GUI* gui_, const char* text, bool* value, u64 id)
     {
 	PARSE_GUI();
 	hash_combine(id, gui.current_id);
@@ -3084,6 +3122,7 @@ namespace sv {
 	{
 	    Raw_Checkbox raw;
 	    raw.value = *value;
+	    raw.text = text;
 
 	    write_widget(gui, GuiWidgetType_Checkbox, id, &raw, nullptr);
 	}
@@ -3091,7 +3130,7 @@ namespace sv {
 	return modified;
     }
 
-    bool gui_checkbox(GUI* gui_, u64 user_id)
+    bool gui_checkbox(GUI* gui_, const char* text, u64 user_id)
     {
 	PARSE_GUI();
 	u64 id = user_id;
@@ -3107,7 +3146,7 @@ namespace sv {
 	}
 	else value = &it->second;
 		
-	gui_checkbox(gui_, value, user_id);
+	gui_checkbox(gui_, text, value, user_id);
 	return *value;
     }
 
@@ -3275,18 +3314,17 @@ namespace sv {
 	    v2_f32 size;
 
 	    auto& cb = w.widget.checkbox;
-	    pos = v2_f32{ w.bounds.x, w.bounds.y };
-	    size = v2_f32{ w.bounds.z, w.bounds.w };
+	    v4_f32 b = compute_checkbox_button_bounds(gui, w);
+	    pos = v2_f32{ b.x, b.y };
+	    size = v2_f32{ b.z, b.w };
 
 	    imrend_draw_quad(pos.getVec3(0.f), size, cb.style.background_color, cmd);
-
-	    size *= cb.style.shape_size_mult;
 
 	    switch (cb.style.shape)
 	    {
 	    case GuiCheckboxShape_Quad:
 		if (cb.value)
-		    imrend_draw_quad(pos.getVec3(0.f), size, cb.style.button_color, cmd);
+		    imrend_draw_quad(pos.getVec3(0.f), size * cb.style.shape_size_mult, cb.style.button_color, cmd);
 		break;
 
 		// TODO
@@ -3308,6 +3346,18 @@ namespace sv {
 		}
 		break;*/
 		    
+	    }
+
+	    size.x = w.bounds.z - size.x - 0.01f; // Minus some margin
+	    pos.x = w.bounds.x + w.bounds.z * 0.5f - size.x * 0.5f;
+
+	    if (cb.text) {
+
+		f32 font_size = size.y;
+
+		imrend_draw_text(cb.text, strlen(cb.text)
+				 , pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - renderer->font_opensans.vertical_offset * font_size,
+				 size.x, 1u, font_size, gui.aspect, TextAlignment_Left, &renderer->font_opensans, cb.style.text_color, cmd);
 	    }
 	}
 	break;

@@ -188,25 +188,14 @@ namespace sv {
 
 	*remove = false;
 	
-	gui_begin_container(dev.gui, 0u, GuiLayout_Free);
+	bool show = gui_checkbox(dev.gui, get_component_name(comp_id), 0u);
+	
+	if (gui_begin_popup(dev.gui, GuiPopupTrigger_LastWidget, MouseButton_Right, 1u, GuiLayout_Flow)) {
 
-	gui_xbounds(dev.gui, GuiCoord::Pixel(35.f), GuiCoord::IPixel(10.f));
-	gui_ybounds(dev.gui, GuiCoord::IPixel(0.f), GuiAlign_Top, GuiDim::Pixel(20.f));
-	gui_text(dev.gui, get_component_name(comp_id), 1u);
-
-	if (gui_begin_popup(dev.gui, GuiPopupTrigger_LastWidget, MouseButton_Right, 2u, GuiLayout_Flow)) {
-
-	    gui_bounds(dev.gui, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.95f), GuiCoord::IPixel(5.f), GuiCoord::IPixel(25.f));
 	    *remove = gui_button(dev.gui, "Remove", 0u);
 
 	    gui_end_popup(dev.gui);
 	}
-
-	gui_xbounds(dev.gui, GuiCoord::Pixel(0.f), GuiAlign_Left, GuiDim::Aspect());
-	gui_ybounds(dev.gui, GuiCoord::IPixel(0.f), GuiAlign_Top, GuiDim::Pixel(20.f));
-	bool show = gui_checkbox(dev.gui, 3u);
-
-	gui_end_container(dev.gui);
 
 	if (show) {
 
@@ -310,7 +299,7 @@ namespace sv {
 	gui_same_line(dev.gui, 2u);
 	
 	gui_text(dev.gui, text, 0u);
-	bool res = gui_checkbox(dev.gui, value, 1u);
+	bool res = gui_checkbox(dev.gui, "", value, 1u);
 
 	gui_pop_id(dev.gui);
 

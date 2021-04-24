@@ -36,26 +36,5 @@ namespace sv {
 	    return user_callbacks.get_scene_filepath(name, filepath);
 	return false;
     }
-    
-    bool _user_initialize_scene(Archive* parchive)
-    {
-	if (user_callbacks.initialize_scene)
-	    return user_callbacks.initialize_scene(parchive);
-	return true;
-    }
-    
-    bool _user_close_scene()
-    {
-	if (user_callbacks.close_scene)
-	    return user_callbacks.close_scene();
-	return true;
-    }
-    
-    bool _user_serialize_scene(Archive* parchive)
-    {
-	if (user_callbacks.serialize_scene)
-	    return user_callbacks.serialize_scene(parchive);
-	return true;
-    }
-    
+        
 }

@@ -806,10 +806,7 @@ namespace sv {
 	    c.close = (UserCloseFn)GetProcAddress(platform.user_lib, "user_close");
 	    c.validate_scene = (UserValidateSceneFn)GetProcAddress(platform.user_lib, "user_validate_scene");
 	    c.get_scene_filepath = (UserGetSceneFilepathFn)GetProcAddress(platform.user_lib, "user_get_scene_filepath");
-	    c.initialize_scene = (UserInitializeSceneFn)GetProcAddress(platform.user_lib, "user_initialize_scene");
-	    c.close_scene = (UserCloseSceneFn)GetProcAddress(platform.user_lib, "user_close_scene");
-	    c.serialize_scene = (UserSerializeSceneFn)GetProcAddress(platform.user_lib, "user_serialize_scene");
-
+	    
 	    _user_callbacks_set(c);
 
 	    SV_LOG_INFO("User callbacks loaded");
