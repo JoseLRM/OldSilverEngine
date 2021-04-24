@@ -1196,6 +1196,15 @@ namespace sv {
 
 	scene_state->component_names[desc->name] = id;
 
+	if (scene_state->scene && scene_state->registers.size() > scene_state->scene->components.size()) {
+
+	    scene_state->scene->components.resize(scene_state->registers.size());
+	    
+	    for (size_t i = scene_state->scene->components.size(); i < scene_state->registers.size(); ++i) {
+		componentAllocatorCreate(CompID(i));
+	    }
+	}
+
 	return id;
     }
 
