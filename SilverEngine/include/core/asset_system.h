@@ -95,7 +95,14 @@ namespace sv {
     void _update_assets();
 
     SV_API bool create_asset(AssetPtr& asset_ptr, const char* asset_type_name);
+
+    // Load the asset if exists and use the extension to determine how this file should be treated
+    // If it is in use simply get the existing asset
     SV_API bool load_asset_from_file(AssetPtr& asset_ptr, const char* filepath);
+
+    // Only get the asset if is in use
+    SV_API bool get_asset_from_file(AssetPtr& asset_ptr, const char* filepath);
+    
     SV_API void unload_asset(AssetPtr& asset_ptr);
 
     SV_API void* get_asset_content(const AssetPtr& asset_ptr);
@@ -108,15 +115,15 @@ namespace sv {
 
     struct AssetTypeDesc {
 	
-	std::string			name;
-	u32					asset_size;
+	std::string		name;
+	u32			asset_size;
 	const char**		extensions;
-	u32					extension_count;
+	u32			extension_count;
 	AssetCreateFn		create;
 	AssetLoadFileFn		load_file;
 	AssetReloadFileFn	reload_file;
-	AssetFreeFn			free;
-	f32					unused_time;
+	AssetFreeFn		free;
+	f32			unused_time;
 
     };
 

@@ -241,6 +241,20 @@ namespace sv {
 	return true;
     }
 
+    bool get_asset_from_file(AssetPtr& asset_ptr, const char* filepath)
+    {
+	if (filepath == nullptr) return false;
+
+	auto it = filepath_map.find(filepath);
+
+	if (it != filepath_map.end()) {
+	    asset_ptr = AssetPtr(it->second);
+	    return true;
+	}
+
+	return false;
+    }
+
     void unload_asset(AssetPtr& asset_ptr)
     {
 	asset_ptr.~AssetPtr();

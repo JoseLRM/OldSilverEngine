@@ -53,6 +53,14 @@ namespace sv {
 	AssetBrowserInfo asset_browser;
 	GizmosInfo gizmos;
 
+	TextureAsset image;
+	static constexpr v4_f32 TEXCOORD_FOLDER = { 0.f, 0.f, 0.2f, 0.2f };
+
+	struct {
+	    Color color = Color{240u, 40, 40, 255u};
+	    Color strong_color = Color::Red();
+	} palette;
+
 	char next_scene_name[SCENENAME_SIZE + 1u] = "";
     };
 
@@ -456,50 +464,13 @@ namespace sv {
 	}
     }
 
-    /////////////////////////////////////////////// COMMANDS ///////////////////////////////////////////////////////
-
-    bool command_show_window(const char** args, u32 argc)
-    {
-	bool show = true;
-
-	if (argc == 0u) {
-	    SV_LOG_ERROR("This command needs some argument");
-	    return false;
-	}
-
-	if (argc > 2u) {
-	    SV_LOG_ERROR("Too much arguments");
-	    return false;
-	}
-
-	if (argc == 2u) {
-
-	    if (strcmp(args[1], "show") == 0 || strcmp(args[1], "1") == 0) show = true;
-	    else if (strcmp(args[1], "hide") == 0 || strcmp(args[1], "0") == 0) show = false;
-	    else {
-		SV_LOG_ERROR("Invalid argument '%s'", args[1]);
-		return false;
-	    }
-	}
-
-	bool res = show ? gui_show_window(dev.gui, args[0]) : gui_hide_window(dev.gui, args[0]);
-
-	if (res) {
-	    SV_LOG("%s '%s'", show ? "Showing" : "Hiding", args[0]);
-	}
-	else SV_LOG_ERROR("Window '%s' not found", args[0]);
-
-	return res;
-    }
-
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     bool _editor_initialize()
     {
 	SV_CHECK(gui_create(hash_string("EDITOR GUI"), &dev.gui));
 
-	// Register commands
-	SV_CHECK(register_command("wnd", command_show_window));
+	load_asset_from_file(editor.image, "system/images/editor.png");
 
 	return true;
     }
@@ -776,8 +747,8 @@ namespace sv {
 	    bool same = editor.selected_entity == entity;
 
 	    if (same) {
-		gui_push_style(dev.gui, GuiStyle_ButtonColor, Color{240u, 40, 40, 255u});
-		gui_push_style(dev.gui, GuiStyle_ButtonHotColor, Color{240u, 40, 40, 255u});
+		gui_push_style(dev.gui, GuiStyle_ButtonColor, editor.palette.color);
+		gui_push_style(dev.gui, GuiStyle_ButtonHotColor, editor.palette.strong_color);
 	    }
 	    
 	    if (gui_button(g, name, 0u)) {
@@ -993,28 +964,78 @@ namespace sv {
 	    {
 		gui_begin_container(gui, 1u, GuiLayout_Grid);
 
+		gui_push_id(gui, "Asset Elements");
+		gui_push_style(gui, GuiStyle_ContainerColor, editor.palette.color);
+
 		foreach(i, info.elements.size()) {
 
 		    const AssetElement& e = info.elements[i];
 
+		    gui_push_id(gui, (u64)e.type);
+
 		    // TODO: ignore unused elements
-		    gui_begin_container(gui, 69u + i, GuiLayout_Flow);
-		    
-		    if (gui_button(gui, nullptr, 0u)) {
+		    gui_begin_container(gui, i, GuiLayout_Free);
 
-			if (e.type == AssetElementType_Directory && !update_browser) {
+		    gui_bounds(gui, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
 
-			    update_browser = true;
+		    switch (e.type) {
 
-			    size_t new_size = strlen(info.filepath) + strlen(e.name) + 1u;
-			    if (new_size < FILEPATH_SIZE)
-				sprintf(next_filepath, "%s%s/", info.filepath, e.name);
-			    else
-				SV_LOG_ERROR("This filepath exceeds the max filepath size");
+		    case AssetElementType_Directory:
+		    {
+			gui_push_style(gui, GuiStyle_ButtonImage, editor.image.get());
+			gui_push_style(gui, GuiStyle_ButtonTexcoord, editor.TEXCOORD_FOLDER);
+			gui_push_style(gui, GuiStyle_ButtonColor, Color::White());
+			gui_push_style(gui, GuiStyle_ButtonHotColor, editor.palette.strong_color);
+
+			if (gui_button(gui, "", 0u)) {
+
+			    if (e.type == AssetElementType_Directory && !update_browser) {
+
+				update_browser = true;
+
+				size_t new_size = strlen(info.filepath) + strlen(e.name) + 1u;
+				if (new_size < FILEPATH_SIZE)
+				    sprintf(next_filepath, "%s%s/", info.filepath, e.name);
+				else
+				    SV_LOG_ERROR("This filepath exceeds the max filepath size");
+			    }
 			}
-		    }
 
-		    if (e.type != AssetElementType_Directory) {
+			gui_pop_style(gui, 4u);
+		    }
+		    break;
+
+		    case AssetElementType_Texture:
+		    case AssetElementType_Mesh:
+		    case AssetElementType_Material:
+		    {
+			AssetPackage pack;
+			size_t filepath_size = strlen(info.filepath);
+			size_t size = filepath_size + strlen(e.name) + strlen("assets/");
+			SV_ASSERT(size <= FILEPATH_SIZE);
+			if (size > FILEPATH_SIZE) continue;
+
+			sprintf(pack.filepath, "assets/%s%s", info.filepath, e.name);
+
+			u32 styles = 0u;
+
+			if (e.type == AssetElementType_Texture) {
+
+			    TextureAsset tex;
+
+			    if (get_asset_from_file(tex, pack.filepath)) {
+
+				gui_image(gui, tex.get(), GPUImageLayout_ShaderResource, 0u);
+			    }
+			    // TODO: Set default image
+			    else {
+
+			    }
+			}
+			else {
+
+			    gui_image(gui, nullptr, GPUImageLayout_ShaderResource, 0u);
+			}
 
 			u32 id;
 
@@ -1038,24 +1059,26 @@ namespace sv {
 			}
 
 			if (id != u32_max) {
-			
-			    AssetPackage pack;
-			    size_t filepath_size = strlen(info.filepath);
-			    size_t size = filepath_size + strlen(e.name);
-			    SV_ASSERT(size < AssetPackage::MAX_SIZE);
-
-			    memcpy(pack.filepath, info.filepath, filepath_size);
-			    memcpy(pack.filepath + filepath_size, e.name, strlen(e.name));
-			    pack.filepath[size] = '\0';
 			    
 			    gui_send_package(gui, &pack, sizeof(AssetPackage), id);
 			}
+
+			if (styles)
+			    gui_pop_style(gui, styles);
+		    }
+		    break;
+
 		    }
 
+		    gui_ybounds(gui, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.4f));
 		    gui_text(gui, e.name, 1u);
 
 		    gui_end_container(gui);
+		    gui_pop_id(gui);
 		}
+
+		gui_pop_style(gui, 1u);
+		gui_pop_id(gui);
 
 		gui_end_container(gui);
 	    }
@@ -1237,9 +1260,9 @@ namespace sv {
 		    gui_xbounds(dev.gui, GuiCoord::Pixel(5.f), GuiCoord::Pixel(150.f));
 		    gui_ybounds(dev.gui, GuiCoord::IPixel(30.f), GuiAlign_Top, GuiDim::Adjust());
 
-		    gui_push_style(dev.gui, GuiStyle_ContainerColor, Color::Red(50u));
+		    gui_push_style(dev.gui, GuiStyle_ContainerColor, editor.palette.color);
 		    gui_push_style(dev.gui, GuiStyle_ButtonColor, Color::White());
-		    gui_push_style(dev.gui, GuiStyle_ButtonHotColor, Color::Red());
+		    gui_push_style(dev.gui, GuiStyle_ButtonHotColor, editor.palette.strong_color);
 		    
 		    gui_begin_container(dev.gui, 0u, GuiLayout_Flow);
 

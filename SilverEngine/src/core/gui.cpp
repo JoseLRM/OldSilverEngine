@@ -69,6 +69,8 @@ namespace sv {
 	Color color = Color::Gray(200u, 150u);
 	Color hot_color = Color::White(230u);
 	Color text_color = Color::Black();
+	GPUImage* image = nullptr;
+	v4_f32 texcoord = { 0.f, 0.f, 1.f, 1.f };
     };
 
     struct GuiSliderStyle {
@@ -2175,6 +2177,16 @@ namespace sv {
 	    *psize = sizeof(Color);
 	    break;
 
+	case GuiStyle_ButtonImage:
+	    *pdst = &s.button.image;
+	    *psize = sizeof(GPUImage*);
+	    break;
+	    
+	case GuiStyle_ButtonTexcoord:
+	    *pdst = &s.button.texcoord;
+	    *psize = sizeof(v4_f32);
+	    break;
+
 	case GuiStyle_SliderColor:
 	    *pdst = &s.slider.color;
 	    *psize = sizeof(Color);
@@ -2233,6 +2245,11 @@ namespace sv {
 	case GuiStyle_DragBackgroundColor:
 	    *pdst = &s.drag.background_color;
 	    *psize = sizeof(Color);
+	    break;
+
+	case GuiStyle_ImageTexcoord:
+	    *pdst = &s.image.texcoord;
+	    *psize = sizeof(v4_f32);
 	    break;
 
 	    // TODO Menuitem
@@ -2325,7 +2342,10 @@ namespace sv {
 		case GuiHeader_StylePush:
 		{
 		    GuiStyle style = _read<GuiStyle>(it);
-		    u64 data = _read<u64>(it);
+		    u64 data[2u];
+		    memcpy(data, it, sizeof(u64) * 2u);
+
+		    it += sizeof(u64) * 2u;
 
 		    void* dst;
 		    size_t size;
@@ -2451,16 +2471,16 @@ namespace sv {
 
     void gui_push_style(GUI* gui, GuiStyle style, const void* value, size_t size)
     {
-	SV_ASSERT(size <= sizeof(u64));
+	SV_ASSERT(size <= sizeof(u64) * 2u);
 	
 	++gui->style_count;
 	write_buffer(*gui, GuiHeader_StylePush);
 
 	write_buffer(*gui, style);
 	
-	u64 data;
+	u64 data[2u];
 	memcpy(&data, value, size);
-	write_buffer(*gui, value, sizeof(u64));
+	write_buffer(*gui, value, sizeof(u64) * 2u);
     }
     
     void gui_pop_style(GUI* gui, u32 count)
@@ -2993,19 +3013,18 @@ namespace sv {
 	return modified;
     }
     
-    bool gui_button(GUI* gui_, const char* text, u64 id)
+    bool gui_button(GUI* gui, const char* text, u64 id)
     {
-	PARSE_GUI();
-	hash_combine(id, gui.current_id);
+	hash_combine(id, gui->current_id);
 
 	{
 	    Raw_Button raw;
 	    raw.text = text;
 
-	    write_widget(gui, GuiWidgetType_Button, id, &raw, nullptr);
+	    write_widget(*gui, GuiWidgetType_Button, id, &raw, nullptr);
 	}
 
-	GuiWidget* w = find_widget(gui, id, GuiWidgetType_Button);
+	GuiWidget* w = find_widget(*gui, id, GuiWidgetType_Button);
 
 	if (w) {
 	    return w->widget.button.pressed;
@@ -3183,7 +3202,9 @@ namespace sv {
 	    v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y);
 	    v2_f32 size = v2_f32(w.bounds.z, w.bounds.w);
 
-	    imrend_draw_quad(pos.getVec3(), size, button.hot ? button.style.hot_color : button.style.color, cmd);
+	    auto& style = button.style;
+	    // TODO: I'm assuming the image layout
+	    imrend_draw_sprite(pos.getVec3(), size, button.hot ? style.hot_color : style.color, style.image ? style.image : renderer->gfx.image_white, GPUImageLayout_ShaderResource, style.texcoord, cmd);
 
 	    if (button.text) {
 
@@ -3299,10 +3320,9 @@ namespace sv {
 	    
 	    if (label.text) {
 
-		f32 font_size = size.y;
+		f32 font_size = size.y + size.y * renderer->font_opensans.vertical_offset;
 
-		imrend_draw_text(label.text, strlen(label.text), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f -
-			  renderer->font_opensans.vertical_offset * font_size, size.x, 1u, font_size, gui.aspect, label.style.text_alignment,
+		imrend_draw_text(label.text, strlen(label.text), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f, size.x, 1u, font_size, gui.aspect, label.style.text_alignment,
 			  &renderer->font_opensans, label.style.text_color, cmd);
 	    }
 	}

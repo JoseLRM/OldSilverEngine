@@ -81,6 +81,8 @@ namespace sv {
 	GuiStyle_ButtonColor,
 	GuiStyle_ButtonHotColor,
 	GuiStyle_ButtonTextColor,
+	GuiStyle_ButtonImage,
+	GuiStyle_ButtonTexcoord,
 	GuiStyle_SliderColor,
 	GuiStyle_SliderButtonColor,
 	GuiStyle_SliderButtonSize,
@@ -93,7 +95,7 @@ namespace sv {
 	GuiStyle_CheckboxShapeSizeMult,
 	GuiStyle_DragTextColor,
 	GuiStyle_DragBackgroundColor,
-	// TODO image
+	GuiStyle_ImageTexcoord,
 	// TODO Menuitem
 	GuiStyle_FlowX0,
 	GuiStyle_FlowX1,

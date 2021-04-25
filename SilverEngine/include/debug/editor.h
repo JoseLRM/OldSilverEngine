@@ -51,8 +51,7 @@ namespace sv {
     constexpr u32 ASSET_BROWSER_PACKAGE_MATERIAL = 71u;
 	
     struct AssetPackage {
-	static constexpr u32 MAX_SIZE = 500u;
-	char filepath[MAX_SIZE + 1u];
+	char filepath[FILEPATH_SIZE + 1u];
     };
 
     bool egui_begin();
