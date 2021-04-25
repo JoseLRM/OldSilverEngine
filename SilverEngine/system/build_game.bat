@@ -15,12 +15,6 @@ SET linker_flags= /incremental:no
 SET output_dir=%origin_path%\
 IF NOT EXIST %output_dir%game_int\ MKDIR %output_dir%game_int\
 
-ECHO.
-
-ECHO Output directory: %output_dir%
-
-cls
-
 REM Game path
 SET GP= %origin_path%\gamecode\
 
@@ -30,15 +24,7 @@ SET link_flags= /DLL %linker_flags% /LIBPATH:"%origin_path%\gamecode\lib\"
 
 pushd %output_dir%\game_int\
 
-ECHO.
-ECHO.
-ECHO.
-ECHO -- Compiling Game! --
-CALL cl %compiler_flags% %defines% %include_paths% %GP%src\build_unit.cpp /link %link_flags% /DLL %link_libs% /out:..\system\game_bin\Game.dll /PDB:Game.pdb
-)
-
-ECHO.
-ECHO.
+CALL cl %compiler_flags% %defines% %include_paths% %GP%src\build_unit.cpp /link %link_flags% /DLL %link_libs% /out:..\system\game_bin\Game.dll /PDB:Game.pdb > ..\\system\\build_output.txt
 
 popd
 popd

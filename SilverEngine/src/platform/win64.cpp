@@ -315,6 +315,8 @@ namespace sv {
 
 }
 
+
+// TODO: if SV_DEV is disabled use WinMain
 int main(int argc, char* argv[])
 {
     using namespace sv;
@@ -508,9 +510,10 @@ namespace sv {
 	if (size == 0u) return false;
 	
 	*psize = (size_t)size;
-	*pstr = (char*)SV_ALLOCATE_MEMORY(size);
+	*pstr = (char*)SV_ALLOCATE_MEMORY(size + 1u);
 	SetFilePointer(file, NULL, NULL, FILE_BEGIN);
 	ReadFile(file, *pstr, size, NULL, NULL);
+	(*pstr)[*psize] = '\0';
 	
 	CloseHandle(file);
 	return true;
@@ -830,8 +833,7 @@ namespace sv {
 
     void _os_compile_gamecode()
     {
-	system("CALL system\\shell.bat");
-	system("CALL system\\build_game.bat");
+	ShellExecute(NULL, "open", "system\\build_game.bat", NULL, NULL, SW_HIDE);
     }
     
     bool _os_startup()

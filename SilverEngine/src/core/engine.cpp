@@ -63,14 +63,14 @@ namespace sv {
 	static f64 last_update = 0.0;
 	f64 now = timer_now();
 	
-	if (now - last_update > 1.0) {
+	if (now - last_update > 2.0) {
 
 	    const char* filepath = "system/game_bin/Game.dll";
 	    
 	    // Check if the file is modified
 	    Date date;
 	    if (file_date(filepath, nullptr, &date, nullptr)) {
-
+		
 		if (date <= last_user_lib_write)
 		    return;
 	    }
@@ -81,6 +81,20 @@ namespace sv {
 	last_update = now;
 
 	recive_user_callbacks(false);
+
+	char* str;
+	size_t size;
+	if (file_read_text("system/build_output.txt", &str, &size)) {
+
+	    SV_LOG_INFO("Compilation result:\n");
+	    SV_LOG("%s", str);
+	    SV_FREE_MEMORY(str);
+
+	    file_remove("system/build_output.txt");
+	}
+	else {
+	    SV_LOG_ERROR("Compilation output not found");
+	}
     }
 
 #endif

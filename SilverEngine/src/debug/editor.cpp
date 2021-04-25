@@ -1070,7 +1070,7 @@ namespace sv {
 
 		    }
 
-		    gui_ybounds(gui, GuiCoord::Relative(0.1f), GuiCoord::Relative(0.4f));
+		    gui_ybounds(gui, GuiCoord::Relative(0.05f), GuiCoord::Relative(0.3f));
 		    gui_text(gui, e.name, 1u);
 
 		    gui_end_container(gui);
@@ -1184,15 +1184,35 @@ namespace sv {
 
 	    if (gui_checkbox(dev.gui, "Go to scene", 1u)) {
 		
+		gui_begin_container(dev.gui, 2u, GuiLayout_Flow);
+		
 		gui_text_field(dev.gui, editor.next_scene_name, SCENENAME_SIZE + 1u, 0u);
 
-		if (gui_button(dev.gui, "GO", 1u)) {
+		if (gui_button(dev.gui, "GO!", 1u)) {
 		    set_scene(editor.next_scene_name);
 		    strcpy(editor.next_scene_name, "");
 		}
+
+		gui_end_container(dev.gui);
 	    }
-	    
-	    egui_comp_color("Ambient Light", 2u, &s.ambient_light);
+
+	    if (gui_checkbox(dev.gui, "Rendering", 3u)) {
+		
+		gui_begin_container(dev.gui, 4u, GuiLayout_Flow);
+		
+		egui_comp_color("Ambient Light", 0u, &s.ambient_light);
+
+		gui_end_container(dev.gui);
+	    }
+
+	    if (gui_checkbox(dev.gui, "Physics", 5u)) {
+		
+		gui_begin_container(dev.gui, 6u, GuiLayout_Flow);
+		
+		egui_comp_drag_v2_f32("Gravity", 0u, &s.gravity, 0.01f);
+
+		gui_end_container(dev.gui);
+	    }
 	    
 	    egui_end_window();
 	}

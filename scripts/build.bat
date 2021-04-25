@@ -105,7 +105,7 @@ SET SVP= %origin_path%\SilverEngine\
 SET sv_defines= -DSV_SILVER_ENGINE=1 %common_defines%
 SET sv_compiler_flags= %common_compiler_flags%
 SET sv_include_paths= /I %SVP%include /I %SVP%src\ /I %SVP%src\external\ /I %VULKAN_SDK%\Include\
-SET sv_link_libs= user32.lib %VULKAN_SDK%\Lib\vulkan-1.lib assimp.lib sprv.lib
+SET sv_link_libs= user32.lib Shell32.lib %VULKAN_SDK%\Lib\vulkan-1.lib assimp.lib sprv.lib
 SET sv_link_flags= %common_linker_flags% /LIBPATH:"%origin_path%\SilverEngine\lib\" /out:..\SilverEngine.exe /PDB:SilverEngine.pdb /LTCG
 SET sv_build_units=
 

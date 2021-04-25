@@ -34,8 +34,10 @@ MKDIR %RP%bin\ > NUL
 
 DEL %RP%gamecode\src\* /Q /S > NUL
 
-XCOPY Game\default_code.cpp %RP%gamecode\src\ /I /Q /Y > NUL
+XCOPY misc\default_code.cpp %RP%gamecode\src\ /I /Q /Y > NUL
 RENAME %RP%gamecode\src\default_code.cpp build_unit.cpp
+
+XCOPY misc\SilverEditor.bat %RP% /I /Q /Y > NUL
 
 CALL %RP%system\build_game.bat
 
