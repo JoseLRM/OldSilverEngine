@@ -1937,6 +1937,7 @@ namespace sv {
     enum ImRendDrawCall : u32 {
 	ImRendDrawCall_Quad,
 	ImRendDrawCall_Sprite,
+	ImRendDrawCall_Triangle,
 	ImRendDrawCall_Text,
     };
 
@@ -2134,51 +2135,79 @@ namespace sv {
 
 		case ImRendDrawCall_Quad:
 		case ImRendDrawCall_Sprite:
+		case ImRendDrawCall_Triangle:
 		{
-		    v3_f32 position = imrend_read<v3_f32>(it);
-		    v2_f32 size = imrend_read<v2_f32>(it);
-		    Color color = imrend_read<Color>(it);
-		    GPUImage* image = gfx.image_white;
-		    v4_f32 tc = { 0.f, 0.f, 1.f, 1.f };
-
-		    if (draw_call == ImRendDrawCall_Sprite) {
-			image = imrend_read<GPUImage*>(it);
-			tc = imrend_read<v4_f32>(it);
-		    }
-
-		    XMMATRIX m = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixTranslation(position.x, position.y, position.z);
-
-		    m *= state.current_matrix;
-
-		    XMVECTOR v0 = XMVector4Transform(XMVectorSet(-0.5f, 0.5f, 0.f, 1.f), m);
-		    XMVECTOR v1 = XMVector4Transform(XMVectorSet(0.5f, 0.5f, 0.f, 1.f), m);
-		    XMVECTOR v2 = XMVector4Transform(XMVectorSet(-0.5f, -0.5f, 0.f, 1.f), m);
-		    XMVECTOR v3 = XMVector4Transform(XMVectorSet(0.5f, -0.5f, 0.f, 1.f), m);
-		    
-		    ImRendVertex vertices[4u];
-		    vertices[0u] = { v4_f32(v0), v2_f32{tc.x, tc.y}, color };
-		    vertices[1u] = { v4_f32(v1), v2_f32{tc.z, tc.y}, color };
-		    vertices[2u] = { v4_f32(v2), v2_f32{tc.x, tc.w}, color };
-		    vertices[3u] = { v4_f32(v3), v2_f32{tc.z, tc.w}, color };
-
 		    graphics_constantbuffer_bind(gfx.cbuffer_im[cmd], 0u, ShaderType_Vertex, cmd);
-
-		    graphics_image_bind(image, 0u, ShaderType_Pixel, cmd);
-		    graphics_sampler_bind(gfx.sampler_def_linear, 0u, ShaderType_Pixel, cmd);
 
 		    graphics_blendstate_bind(gfx.bs_transparent, cmd);
 		    graphics_depthstencilstate_unbind(cmd);
 		    graphics_inputlayoutstate_unbind(cmd);
 		    graphics_rasterizerstate_unbind(cmd);
+
+		    graphics_sampler_bind(gfx.sampler_def_linear, 0u, ShaderType_Pixel, cmd);
 		    
 		    graphics_shader_bind(gfx.vs_im, cmd);
 		    graphics_shader_bind(gfx.ps_im, cmd);
 
 		    graphics_topology_set(GraphicsTopology_TriangleStrip, cmd);
 
-		    graphics_buffer_update(gfx.cbuffer_im[cmd], vertices, sizeof(ImRendVertex) * 4u, 0u, cmd);
+		    if (draw_call == ImRendDrawCall_Quad || draw_call == ImRendDrawCall_Sprite) {		    
+			v3_f32 position = imrend_read<v3_f32>(it);
+			v2_f32 size = imrend_read<v2_f32>(it);
+			Color color = imrend_read<Color>(it);
+			GPUImage* image = gfx.image_white;
+			v4_f32 tc = { 0.f, 0.f, 1.f, 1.f };
 
-		    graphics_draw(4u, 1u, 0u, 0u, cmd);
+			if (draw_call == ImRendDrawCall_Sprite) {
+			    image = imrend_read<GPUImage*>(it);
+			    tc = imrend_read<v4_f32>(it);
+			}
+
+			XMMATRIX m = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixTranslation(position.x, position.y, position.z);
+
+			m *= state.current_matrix;
+
+			XMVECTOR v0 = XMVector4Transform(XMVectorSet(-0.5f, 0.5f, 0.f, 1.f), m);
+			XMVECTOR v1 = XMVector4Transform(XMVectorSet(0.5f, 0.5f, 0.f, 1.f), m);
+			XMVECTOR v2 = XMVector4Transform(XMVectorSet(-0.5f, -0.5f, 0.f, 1.f), m);
+			XMVECTOR v3 = XMVector4Transform(XMVectorSet(0.5f, -0.5f, 0.f, 1.f), m);
+		    
+			ImRendVertex vertices[4u];
+			vertices[0u] = { v4_f32(v0), v2_f32{tc.x, tc.y}, color };
+			vertices[1u] = { v4_f32(v1), v2_f32{tc.z, tc.y}, color };
+			vertices[2u] = { v4_f32(v2), v2_f32{tc.x, tc.w}, color };
+			vertices[3u] = { v4_f32(v3), v2_f32{tc.z, tc.w}, color };
+
+			graphics_image_bind(image, 0u, ShaderType_Pixel, cmd);
+
+			graphics_buffer_update(gfx.cbuffer_im[cmd], vertices, sizeof(ImRendVertex) * 4u, 0u, cmd);
+
+			graphics_draw(4u, 1u, 0u, 0u, cmd);
+		    }
+		    else if (draw_call == ImRendDrawCall_Triangle) {
+
+			v3_f32 p0 = imrend_read<v3_f32>(it);
+			v3_f32 p1 = imrend_read<v3_f32>(it);
+			v3_f32 p2 = imrend_read<v3_f32>(it);
+			Color color = imrend_read<Color>(it);
+
+			XMMATRIX m = state.current_matrix;
+
+			XMVECTOR v0 = XMVector4Transform(p0.getDX(1.f), m);
+			XMVECTOR v1 = XMVector4Transform(p1.getDX(1.f), m);
+			XMVECTOR v2 = XMVector4Transform(p2.getDX(1.f), m);
+		    
+			ImRendVertex vertices[3u];
+			vertices[0u] = { v4_f32(v0), v2_f32{}, color };
+			vertices[1u] = { v4_f32(v1), v2_f32{}, color };
+			vertices[2u] = { v4_f32(v2), v2_f32{}, color };
+
+			graphics_image_bind(gfx.image_white, 0u, ShaderType_Pixel, cmd);
+
+			graphics_buffer_update(gfx.cbuffer_im[cmd], vertices, sizeof(ImRendVertex) * 3u, 0u, cmd);
+
+			graphics_draw(3u, 1u, 0u, 0u, cmd);
+		    }
 		    
 		}break;
 
@@ -2281,6 +2310,19 @@ namespace sv {
 
 	imrend_write(state, position);
 	imrend_write(state, size);
+	imrend_write(state, color);
+    }
+
+    void imrend_draw_triangle(const v3_f32& p0, const v3_f32& p1, const v3_f32& p2, Color color, CommandList cmd)
+    {
+	SV_IMREND();
+
+	imrend_write(state, ImRendHeader_DrawCall);
+	imrend_write(state, ImRendDrawCall_Triangle);
+	
+	imrend_write(state, p0);
+	imrend_write(state, p1);
+	imrend_write(state, p2);
 	imrend_write(state, color);
     }
 

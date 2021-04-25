@@ -3,11 +3,7 @@
 #if SV_DEV
 
 namespace sv {
-
-    constexpr f32 VPADDING = 5.f;
-    constexpr f32 SEPARATOR = 30.f;
-    constexpr f32 COMP_ITEM_HEIGHT = 30.f;
-
+    
     bool egui_begin()
     {
 	gui_begin(dev.gui, 0.1f, f32(os_window_size().x), f32(os_window_size().y));
@@ -168,7 +164,7 @@ namespace sv {
 
 	    gui_pop_id(dev.gui);
 
-	    yoff += TRANSFORM_HEIGHT + VPADDING;
+	    yoff += TRANSFORM_HEIGHT + 5.f;
 	}
 
 	gui_end_container(dev.gui);
@@ -187,8 +183,15 @@ namespace sv {
 	gui_push_id(dev.gui, id);
 
 	*remove = false;
+
+	// TEMP
+	gui_push_style(dev.gui, GuiStyle_CheckboxBackgroundColor, Color{240u, 40, 40, 255u});
+	gui_push_style(dev.gui, GuiStyle_CheckboxTextAlignment, TextAlignment_Center);
+	gui_push_style(dev.gui, GuiStyle_CheckboxShape, GuiCheckboxShape_Triangle);
 	
 	bool show = gui_checkbox(dev.gui, get_component_name(comp_id), 0u);
+
+	gui_pop_style(dev.gui, 3u);
 	
 	if (gui_begin_popup(dev.gui, GuiPopupTrigger_LastWidget, MouseButton_Right, 1u, GuiLayout_Flow)) {
 

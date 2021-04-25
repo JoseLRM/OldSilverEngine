@@ -19,9 +19,9 @@ namespace sv {
 
     enum GameState : u32 {
 	GameState_Edit,
-	    GameState_Play,
-	    GameState_Pause,
-	    };
+	GameState_Play,
+	GameState_Pause,
+    };
     
     struct GlobalDevData {
 		

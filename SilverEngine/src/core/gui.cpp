@@ -87,9 +87,11 @@ namespace sv {
 
     struct GuiCheckboxStyle {
 	Color button_color = Color::Gray(100u);
+	Color check_color = Color::White();
 	Color text_color = Color::Black();
-	Color background_color = Color::White();
+	Color background_color = Color::Transparent();
 	GuiCheckboxShape shape = GuiCheckboxShape_Quad;
+	TextAlignment text_alignment = TextAlignment_Left;
 	f32 shape_size_mult = 0.7f;
     };
 
@@ -114,6 +116,8 @@ namespace sv {
 	f32 x1 = 0.9f;
 	f32 sub_x0 = 0.f;
 	f32 sub_x1 = 1.f;
+	f32 margin = 5.f;
+	f32 parent_margin = 10.f;
     };
 
     struct GuiGridLayoutStyle {
@@ -1641,8 +1645,8 @@ namespace sv {
 			max_height = SV_MAX(max_height, height);
 		    }
 
-		    // Padding
-		    data.yoff += max_height + 5.f;
+		    // Margin
+		    data.yoff += max_height + style.margin;
 		    data.last_same_line = 1u;
 		}
 		else --data.same_line_count;
@@ -1751,7 +1755,7 @@ namespace sv {
 
 	    if (parent_info->layout == GuiLayout_Flow) {
 
-		parent_info->flow.yoff = 0.f;
+		parent_info->flow.yoff = gui.temp_style.flow_layout.parent_margin;
 		parent_info->flow.same_line_count = 1u;
 		parent_info->flow.last_same_line = 1u;
 		parent_info->flow.style = gui.temp_style.flow_layout;
@@ -2050,7 +2054,16 @@ namespace sv {
 		++it;
 	    }
 
+	    if (parent_info->layout == GuiLayout_Flow) {
+
+		auto& s = parent_info->flow.style;
+
+		parent_info->min_y -= s.parent_margin / gui.resolution.y;
+		parent_info->max_y += s.parent_margin / gui.resolution.y;
+	    }
+
 	    parent_info->vertical_amplitude = parent_info->max_y - parent_info->min_y;
+	    
 	    parent_info->horizontal_amplitude = 0.f; // TODO
 
 	    // Compute child up and down offsets
@@ -2222,6 +2235,11 @@ namespace sv {
 	    *psize = sizeof(Color);
 	    break;
 
+	case GuiStyle_CheckboxCheckColor:
+	    *pdst = &s.checkbox.check_color;
+	    *psize = sizeof(Color);
+	    break;
+
 	case GuiStyle_CheckboxBackgroundColor:
 	    *pdst = &s.checkbox.background_color;
 	    *psize = sizeof(Color);
@@ -2235,6 +2253,11 @@ namespace sv {
 	case GuiStyle_CheckboxShapeSizeMult:
 	    *pdst = &s.checkbox.shape_size_mult;
 	    *psize = sizeof(f32);
+	    break;
+
+	case GuiStyle_CheckboxTextAlignment:
+	    *pdst = &s.checkbox.text_alignment;
+	    *psize = sizeof(TextAlignment);
 	    break;
 
 	case GuiStyle_DragTextColor:
@@ -3338,46 +3361,50 @@ namespace sv {
 	    pos = v2_f32{ b.x, b.y };
 	    size = v2_f32{ b.z, b.w };
 
-	    imrend_draw_quad(pos.getVec3(0.f), size, cb.style.background_color, cmd);
+	    imrend_draw_quad(pos.getVec3(0.f), size, cb.style.button_color, cmd);
 
+	    // Check size
+	    v2_f32 s = size * cb.style.shape_size_mult;
+	    
 	    switch (cb.style.shape)
 	    {
 	    case GuiCheckboxShape_Quad:
 		if (cb.value)
-		    imrend_draw_quad(pos.getVec3(0.f), size * cb.style.shape_size_mult, cb.style.button_color, cmd);
+		    imrend_draw_quad(pos.getVec3(0.f), s, cb.style.check_color, cmd);
 		break;
 
-		// TODO
-		/*
 	    case GuiCheckboxShape_Triangle:
 		if (cb.value) {
-		    draw_debug_triangle(
-			    { pos.x - size.x * 0.5f, pos.y + size.y * 0.5f, 0.f },
-			    { pos.x + size.x * 0.5f, pos.y + size.y * 0.5f, 0.f },
-			    { pos.x, pos.y - size.y * 0.5f, 0.f }
-			    , cb.style.button_color, cmd);
+		    imrend_draw_triangle(
+			    { pos.x - s.x * 0.5f, pos.y + s.y * 0.5f, 0.f },
+			    { pos.x + s.x * 0.5f, pos.y + s.y * 0.5f, 0.f },
+			    { pos.x, pos.y - s.y * 0.5f, 0.f }
+			    , cb.style.check_color, cmd);
 		}
 		else {
-		    draw_debug_triangle(
-			    { pos.x - size.x * 0.5f, pos.y + size.y * 0.5f, 0.f },
-			    { pos.x - size.x * 0.5f, pos.y - size.y * 0.5f, 0.f },
-			    { pos.x + size.x * 0.5f, pos.y, 0.f }
-			    , cb.style.button_color, cmd);
+		    imrend_draw_triangle(
+			    { pos.x - s.x * 0.5f, pos.y + s.y * 0.5f, 0.f },
+			    { pos.x - s.x * 0.5f, pos.y - s.y * 0.5f, 0.f },
+			    { pos.x + s.x * 0.5f, pos.y, 0.f }
+			    , cb.style.check_color, cmd);
 		}
-		break;*/
+		break;
 		    
 	    }
 
-	    size.x = w.bounds.z - size.x - 0.01f; // Minus some margin
+	    size.x = w.bounds.z - size.x;
 	    pos.x = w.bounds.x + w.bounds.z * 0.5f - size.x * 0.5f;
 
+	    imrend_draw_quad(pos.getVec3(0.f), size, cb.style.background_color, cmd);
+	    
 	    if (cb.text) {
 
+		size.x -= 0.01f; // Minus some margin
 		f32 font_size = size.y;
 
 		imrend_draw_text(cb.text, strlen(cb.text)
 				 , pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - renderer->font_opensans.vertical_offset * font_size,
-				 size.x, 1u, font_size, gui.aspect, TextAlignment_Left, &renderer->font_opensans, cb.style.text_color, cmd);
+				 size.x, 1u, font_size, gui.aspect, cb.style.text_alignment, &renderer->font_opensans, cb.style.text_color, cmd);
 	    }
 	}
 	break;

@@ -100,6 +100,7 @@ namespace sv {
     SV_API void imrend_camera(ImRendCamera camera, CommandList cmd);
 
     SV_API void imrend_draw_quad(const v3_f32& position, const v2_f32& size, Color color, CommandList cmd);
+    SV_API void imrend_draw_triangle(const v3_f32& p0, const v3_f32& p1, const v3_f32& p2, Color color, CommandList cmd);
     SV_API void imrend_draw_sprite(const v3_f32& position, const v2_f32& size, Color color, GPUImage* image, GPUImageLayout layout, const v4_f32& texcoord, CommandList cmd);
 
     SV_API void imrend_draw_text(const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, Font* pFont, Color color, CommandList cmd);
