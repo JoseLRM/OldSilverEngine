@@ -831,6 +831,26 @@ namespace sv {
 	
     };
 
+    SV_INLINE Color color_blend(Color c0, Color c1)
+    {
+	Color c;
+	c.r = (c0.r / 2u) + (c1.r / 2u);
+	c.g = (c0.g / 2u) + (c1.g / 2u);
+	c.b = (c0.b / 2u) + (c1.b / 2u);
+	c.a = (c0.a / 2u) + (c1.a / 2u);
+	return c;
+    }
+
+    SV_INLINE Color color_interpolate(Color c0, Color c1, f32 n)
+    {
+	Color c;
+	c.r = u8(f32(c0.r) * (1.f - n)) + u8(f32(c1.r) * n);
+	c.g = u8(f32(c0.g) * (1.f - n)) + u8(f32(c1.g) * n);
+	c.b = u8(f32(c0.b) * (1.f - n)) + u8(f32(c1.b) * n);
+	c.a = u8(f32(c0.a) * (1.f - n)) + u8(f32(c1.a) * n);
+	return c;
+    }
+
     // Random
 
     // return value from 0u to (u32_max / 2u)
