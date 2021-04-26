@@ -198,17 +198,16 @@ namespace sv {
 	BaseComponent* _end;
 	u32 _pool;
 	CompID _comp_id;
-	u32 _mask;
 
     };
 
-    SV_API bool comp_it_begin(ComponentIterator& it, Entity& entity, BaseComponent*& comp, CompID comp_id, u32 mask = 0u);
+    SV_API bool comp_it_begin(ComponentIterator& it, Entity& entity, BaseComponent*& comp, CompID comp_id);
     SV_API bool comp_it_next(ComponentIterator& it, Entity& entity, BaseComponent*& comp);
 
     template<typename Component>
-    SV_INTERNAL bool comp_it_begin(ComponentIterator& it, CompView<Component>& view, u32 mask = 0u)
+    SV_INTERNAL bool comp_it_begin(ComponentIterator& it, CompView<Component>& view)
     {
-	return comp_it_begin(it, view.entity, (BaseComponent*&)view.comp, Component::ID, mask);
+	return comp_it_begin(it, view.entity, (BaseComponent*&)view.comp, Component::ID);
     }
     
     template<typename Component>

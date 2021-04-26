@@ -1650,12 +1650,11 @@ namespace sv {
 
     // Iterators
 
-    bool comp_it_begin(ComponentIterator& it, Entity& entity, BaseComponent*& comp, CompID comp_id, u32 mask)
+    bool comp_it_begin(ComponentIterator& it, Entity& entity, BaseComponent*& comp, CompID comp_id)
     {
 	SV_SCENE();
 
 	it._comp_id = comp_id;
-	it._mask = mask;
 	it._it = nullptr;
 	it._end = nullptr;
 	it._pool = 0u;
@@ -1676,7 +1675,7 @@ namespace sv {
 
 		while (true) {
 		    BaseComponent* c = reinterpret_cast<BaseComponent*>(ptr);
-		    if (c->_id != 0u && (c->flags & mask) == mask) {
+		    if (c->_id != 0u) {
 			break;
 		    }
 		    ptr += comp_size;
@@ -1716,7 +1715,6 @@ namespace sv {
 	BaseComponent*& _it = it._it;
 	u32& _pool = it._pool;
 	CompID comp_id = it._comp_id;
-	u32 mask = it._mask;
 
 	size_t comp_size = size_t(get_component_size(comp_id));
 	auto& list = scene.components[comp_id];
@@ -1741,7 +1739,7 @@ namespace sv {
 		ptr = compPool.data;
 		endPtr = ptr + compPool.size;
 	    }
-	} while (((BaseComponent*)(ptr))->_id == 0u || (((BaseComponent*)(ptr))->flags & mask) != mask);
+	} while (((BaseComponent*)(ptr))->_id == 0u);
 
 	_it = reinterpret_cast<BaseComponent*>(ptr);
 
