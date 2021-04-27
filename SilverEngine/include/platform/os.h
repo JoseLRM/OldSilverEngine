@@ -88,7 +88,7 @@ namespace sv {
 	Date create_date;
 	Date last_write_date;
 	Date last_access_date;
-	char name[50];
+	char name[FILENAME_SIZE];
 	const char* extension;
     };
 
@@ -104,10 +104,11 @@ namespace sv {
     SV_API bool bin_write(size_t hash, const void* data, size_t size);
     SV_API bool bin_write(size_t hash, Archive& archive);
 
-    void _os_compile_gamecode();
     bool _os_startup();
     void _os_recive_input();
     bool _os_shutdown();
+
+    void _os_compile_gamecode();
     void _os_update_user_callbacks(const char* dll);
     void _os_free_user_callbacks();
     

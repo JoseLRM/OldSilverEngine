@@ -19,7 +19,6 @@ namespace sv {
 #if SV_DEV
     GlobalDevData dev;
     static Date last_user_lib_write = {};
-    
 #endif
 
     ////////////////////////////////////////////////////////////////// UPDATE DLL ////////////////////////////////////////////////////////////
@@ -41,8 +40,6 @@ namespace sv {
 	}
 	
 	_os_update_user_callbacks("system/game_bin/GameTemp.dll");
-
-	dev.gamecode_updated = true;
 	
 	if (!init)
 	    _user_initialize(false);
@@ -63,9 +60,31 @@ namespace sv {
 	static f64 last_update = 0.0;
 	f64 now = timer_now();
 	
-	if (now - last_update > 2.0) {
+	if (now - last_update > 1.0) {
 
+	    last_update = now;
 	    const char* filepath = "system/game_bin/Game.dll";
+	    const char* respath = "system/build_output.txt";
+
+	    // Get compilation result
+	    if (file_exists(respath)) {
+
+		char* str;
+		size_t size;
+		if (file_read_text(respath, &str, &size)) {
+
+		    SV_LOG_INFO("Compilation result:\n");
+		    SV_LOG("%s\n", str);
+		    SV_FREE_MEMORY(str);
+
+		    if (!file_remove(respath)) {
+			SV_LOG_ERROR("Can't delete the compilation result file");
+		    }
+		}
+		else {
+		    SV_LOG_ERROR("Can't read the compilation result file");
+		}
+	    }
 	    
 	    // Check if the file is modified
 	    Date date;
@@ -78,23 +97,10 @@ namespace sv {
 	}
 	else return;
 
-	last_update = now;
+	// Reset the last update to get the compilation output in the next frame
+	last_update = 0.0;
 
 	recive_user_callbacks(false);
-
-	char* str;
-	size_t size;
-	if (file_read_text("system/build_output.txt", &str, &size)) {
-
-	    SV_LOG_INFO("Compilation result:\n");
-	    SV_LOG("%s", str);
-	    SV_FREE_MEMORY(str);
-
-	    file_remove("system/build_output.txt");
-	}
-	else {
-	    SV_LOG_ERROR("Compilation output not found");
-	}
     }
 
 #endif

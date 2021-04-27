@@ -792,12 +792,7 @@ namespace sv {
     
     void _os_update_user_callbacks(const char* dll)
     {
-	_user_callbacks_set({});
-	
-	if (platform.user_lib) {
-	    FreeLibrary(platform.user_lib);
-	    platform.user_lib = 0;
-	}
+	_os_free_user_callbacks();
 
 	platform.user_lib = LoadLibrary(dll);
 	
