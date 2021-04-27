@@ -61,6 +61,8 @@ namespace sv {
 
     void serialize_begin(Serializer& s)
     {
+	s.buff.reset();
+	
 	// TODO: move to .cpp
 	serialize_version(s, engine.version);
 	serialize_u32(s, Serializer::VERSION);

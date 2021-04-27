@@ -90,6 +90,16 @@ namespace sv {
 	s.buff.write_back(&n, sizeof(bool));
     }
 
+    SV_INLINE void serialize_color(Serializer& s, Color n)
+    {
+	s.buff.write_back(&n, sizeof(Color));
+    }
+
+    SV_INLINE void serialize_color(Serializer& s, const XMMATRIX& n)
+    {
+	s.buff.write_back(&n, sizeof(XMMATRIX));
+    }
+
     SV_INLINE void serialize_string(Serializer& s, const char* str)
     {
 	size_t len = strlen(str) + 1u;
@@ -204,6 +214,18 @@ namespace sv {
     {
 	s.buff.read_safe(&n, sizeof(bool), d.pos);
 	d.pos += sizeof(bool);
+    }
+
+    SV_INLINE void deserialize_color(Deserializer& d, Color& n)
+    {
+	s.buff.read_safe(&n, sizeof(Color), d.pos);
+	d.pos += sizeof(Color);
+    }
+
+    SV_INLINE void deserialize_xmmatrix(Deserializer& d, XMMATRIX& n)
+    {
+	s.buff.read_safe(&n, sizeof(XMMATRIX), d.pos);
+	d.pos += sizeof(XMMATRIX);
     }
 
     SV_INLINE void deserialize_string_size(Deserializer& d, size_t& size)

@@ -3,8 +3,6 @@
 #include "defines.h"
 
 namespace sv {
-
-    struct Archive;
     
     typedef bool(*UserInitializeFn)(bool init);
     typedef bool(*UserCloseFn)(bool close);

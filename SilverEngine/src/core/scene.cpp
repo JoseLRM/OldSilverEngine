@@ -202,7 +202,7 @@ namespace sv {
 	SV_CHECK(gui_create(hash_string(name), &scene.data.gui));
 
 	bool deserialize = false;
-	Archive archive;
+	Deserializer d;
 
 	// Deserialize
 	{
@@ -213,21 +213,21 @@ namespace sv {
 
 	    if (exist) {
 
-		bool res = archive.openFile(filepath);
+		bool res = deserialize_begin(d, filepath);
 
 		if (!res) {
 
 		    SV_LOG_ERROR("Can't deserialize the scene '%s' at '%s'", name, filepath);
 		}
 		else {
-		    u32 version;
-		    archive >> version;
+		    u32 scene_version;
+		    deserialize_u32(d, scene_version);
 		    
-		    archive >> scene.data.main_camera;
-		    archive >> scene.data.player;
+		    deserialize_entity(d, scene.data.main_camera);
+		    deserialize_entity(d, scene.data.player);
 
-		    archive >> scene.data.gravity;
-		    archive >> scene.data.air_friction;
+		    deserialize_v2_f32(d, scene.data.gravity);
+		    deserialize_f32(d, scene.data.air_friction);
 
 		    // ECS
 		    {
@@ -246,15 +246,19 @@ namespace sv {
 
 			{
 			    u32 registersCount;
-			    archive >> registersCount;
+			    deserialize_u32(d, registersCount);
 			    registers.resize(registersCount);
 
 			    for (auto it = registers.rbegin(); it != registers.rend(); ++it) {
 
-				archive >> it->name;
-				archive >> it->size;
-				archive >> it->version;
-
+				size_t size;
+				deserialize_string_size(d, size);
+				//TEMP
+				it->name.resize(size + 1u);
+				deserialise_string(d, it->name.data(), size);
+				
+				deserialize_u32(d, it->size);
+				deserialize_u32(d, it->version);
 			    }
 			}
 
@@ -281,8 +285,8 @@ namespace sv {
 			u32 entityCount;
 			u32 entityDataCount;
 
-			archive >> entityCount;
-			archive >> entityDataCount;
+			deserialize_u32(d, entityCount);
+			deserialize_u32(d, entityDataCount);
 
 			scene.entities.resize(entityCount);
 			EntityInternal* entity_internal = SV_ALLOCATE_STRUCT_ARRAY(EntityInternal, entityDataCount);
@@ -291,14 +295,23 @@ namespace sv {
 			for (u32 i = 0; i < entityCount; ++i) {
 
 			    Entity entity;
-			    archive >> entity;
+			    deserialize_entity(d, entity);
 
 			    EntityInternal& ed = entity_internal[entity];
 			    EntityTransform& et = entity_transform[entity];
 
-			    archive >> ed.name;
-
-			    archive >> ed.childsCount >> ed.handleIndex >> et.position >> et.rotation >> et.scale >> ed.flags;
+			    // TEMP
+			    size_t size;
+			    deserialize_string_size(d, size);
+			    ed.name.resize(size + 1u);
+			    
+			    deserialize_string(d, ed.name.data(), size);
+			    deserialize_u32(d, ed.childsCount);
+			    deserialize_u32(d, ed.handleIndex);
+			    deserialize_u64(d, ed.flags);
+			    deserialize_v3_f32(d, et.position);
+			    deserialize_v4_f32(d, et.rotation);
+			    deserialize_v3_f32(d, et.scale);
 			}
 
 			// Create entity list and free list
@@ -355,7 +368,7 @@ namespace sv {
 				auto& compList = scene.components[compID];
 				u32 compSize = get_component_size(compID);
 				u32 compCount;
-				archive >> compCount;
+				deserialize_u32(d, compCount);
 
 				if (compCount == 0u) continue;
 				
@@ -395,20 +408,21 @@ namespace sv {
 				while (compCount-- != 0u) {
 
 				    Entity entity;
-				    archive >> entity;
+				    deserialize_entity(d, entity);
 
 				    BaseComponent* comp = componentAlloc(compID, entity, false);
 				    create_component(compID, comp, entity);
-				    deserialize_component(compID, comp, version , archive);
+				    deserialize_component(compID, comp, d, version);
 
 				    scene.entityData.getInternal(entity).components.push_back({compID, comp});
 				}
-
 			    }
 			}
-
-			deserialize = true;
 		    }
+
+		    deserialize_end(d);
+
+		    deserialize = true;
 		}
 	    }
 	}
@@ -477,15 +491,17 @@ namespace sv {
     {
 	SV_SCENE();
 	    
-	Archive archive;
+	Serializer s;
 
-	archive << SceneState::VERSION;
-	
-	archive << scene.data.main_camera;
-	archive << scene.data.player;
+	serialize_begin(s);
 
-	archive << scene.data.gravity;
-	archive << scene.data.air_friction;
+	serialize_u32(s, SceneState::VERSION);
+
+	serialize_entity(s, scene.data.main_camera);
+	serialize_entity(s, scene.data.player);
+
+	serialize_v2_f32(s, scene.data.gravity);
+	serialize_f32(s, scene.data.air_friction);
 		
 	// ECS
 	{
@@ -496,12 +512,16 @@ namespace sv {
 		    if (component_exist(id))
 			++registersCount;
 		}
-		archive << registersCount;
+
+		serialize_u32(s, registersCount);
 
 		for (CompID id = 0u; id < scene_state->registers.size(); ++id) {
 
 		    if (component_exist(id)) {
-			archive << get_component_name(id) << get_component_size(id) << get_component_version(id);
+
+			serialize_string(s, get_component_name(id));
+			serialize_u32(s, get_component_size(id));
+			serialize_u32(s, get_component_version(id));
 		    }
 
 		}
@@ -512,7 +532,8 @@ namespace sv {
 		u32 entityCount = u32(scene.entities.size());
 		u32 entityDataCount = u32(scene.entityData.size);
 
-		archive << entityCount << entityDataCount;
+		serialize_u32(s, entityCount);
+		serialize_u32(s, entityDataCount);
 
 		for (u32 i = 0; i < entityDataCount; ++i) {
 
@@ -522,8 +543,15 @@ namespace sv {
 		    if (ed.handleIndex != u64_max) {
 
 			EntityTransform& transform = scene.entityData.getTransform(entity);
-			
-			archive << i << ed.name << ed.childsCount << ed.handleIndex << transform.position << transform.rotation << transform.scale << ed.flags;
+
+			serialize_entity(s, (Entity)i);
+			serialize_string(s, ed.name.c_str());
+			serialize_u32(s, ed.childsCount);
+			serialize_u32(s, ed.handleIndex);
+			serialize_u64(s, ed.flags);
+			serialize_v3_f32(s, transform.position);
+			serialize_v4_f32(s, transform.rotation);
+			serialize_v3_f32(s, transform.scale);
 		    }
 		}
 	    }
@@ -534,7 +562,7 @@ namespace sv {
 
 		    if (!component_exist(compID)) continue;
 
-		    archive << componentAllocatorCount(compID);
+		    serialize_u32(s, componentAllocatorCount(compID));
 
 		    BaseComponent* component;
 		    Entity entity;
@@ -542,8 +570,8 @@ namespace sv {
 		    
 		    if (comp_it_begin(it, entity, component, compID)) {
 			do {
-			    archive << entity;
-			    serialize_component(compID, component, archive);
+			    serialize_entity(s, entity);
+			    serialize_component(compID, component, s);
 			}
 			while (comp_it_next(it, entity, component));
 		    }
@@ -553,7 +581,7 @@ namespace sv {
 
 	event_dispatch("save_scene", nullptr);
 		
-	return archive.saveFile(filepath);
+	return serialize_end(s, filepath);
     }
 
     bool clear_scene()
@@ -1266,16 +1294,16 @@ namespace sv {
 	scene_state->registers[ID].copyFn(from, to);
     }
 
-    void serialize_component(CompID ID, BaseComponent* comp, Archive& archive)
+    void serialize_component(CompID ID, BaseComponent* comp, Serializer& serializer)
     {
 	SerializeComponentFunction fn = scene_state->registers[ID].serializeFn;
-	if (fn) fn(comp, archive);
+	if (fn) fn(comp, serializer);
     }
 
-    void deserialize_component(CompID ID, BaseComponent* comp, u32 version, Archive& archive)
+    void deserialize_component(CompID ID, BaseComponent* comp, u32 version, Deserializer& deserializer)
     {
 	DeserializeComponentFunction fn = scene_state->registers[ID].deserializeFn;
-	if (fn) fn(comp, version, archive);
+	if (fn) fn(comp, deserializer, version);
     }
 
     bool component_exist(CompID ID)
@@ -2028,53 +2056,87 @@ namespace sv {
 
     //////////////////////////////////////////// COMPONENTS ////////////////////////////////////////////////////////
 
-    void SpriteComponent::serialize(Archive& archive)
+    void SpriteComponent::serialize(Serializer& s)
     {
-	archive << texture << texcoord << color << layer;
+	serialize_asset(s, texture);
+	serialize_v4_f32(s, texcoord);
+	serialize_color(s, color);
+	serialize_u32(s, layer);
     }
 
-    void SpriteComponent::deserialize(u32 version, Archive& archive)
+    void SpriteComponent::deserialize(Deserializer& d, u32 version)
     {
-	archive >> texture >> texcoord >> color >> layer;
+	deserialize_asset(d, texture);
+	deserialize_v4_f32(d, texcoord);
+	deserialize_color(d, color);
+	deserialize_u32(d, layer);
     }
 
-    void CameraComponent::serialize(Archive& archive)
+    void CameraComponent::serialize(Serializer& s)
     {
-	archive << projection_type << near << far << width << height;
+	serialize_u32(s, projection_type);
+	serialize_f32(s, near);
+	serialize_f32(s, far);
+	serialize_f32(s, width);
+	serialize_f32(s, height);
     }
 
-    void CameraComponent::deserialize(u32 version, Archive& archive)
+    void CameraComponent::deserialize(Deserializer& d, u32 version)
     {
-	archive >> (u32&)projection_type >> near >> far >> width >> height;
+	deserialize_u32(d, (u32&)projection_type);
+	deserialize_f32(d, near);
+	deserialize_f32(d, far);
+	deserialize_f32(d, width);
+	deserialize_f32(d, height);
     }
 
-    void MeshComponent::serialize(Archive& archive)
+    void MeshComponent::serialize(Serializer& s)
     {
-	archive << mesh << material;
+	serialize_asset(s, mesh);
+	serialize_asset(s, material);
     }
 
-    void MeshComponent::deserialize(u32 version, Archive& archive)
+    void MeshComponent::deserialize(Deserializer& d, u32 version)
     {
-	archive >> mesh >> material;
+	deserialize_asset(d, mesh);
+	deserialize_asset(d, material);
     }
 
-    void LightComponent::serialize(Archive& archive)
+    void LightComponent::serialize(Serializer& s)
     {
-	archive << light_type << color << intensity << range << smoothness;
+	serialize_u32(s, light_type);
+	serialize_color(s, color);
+	serialize_f32(s, intensity);
+	serialize_f32(s, range);
+	serialize_f32(s, smoothness);
     }
     
-    void LightComponent::deserialize(u32 version, Archive& archive)
+    void LightComponent::deserialize(Deserializer& d, u32 version)
     {
-	archive >> (u32&)light_type >> color >> intensity >> range >> smoothness;
+	deserialize_u32(d, (u32&)light_type);
+	deserialize_color(d, color);
+	deserialize_f32(d, intensity);
+	deserialize_f32(d, range);
+	deserialize_f32(d, smoothness);
     }
 
-    void BodyComponent::serialize(Archive& archive)
+    void BodyComponent::serialize(Serializer& s)
     {
-	archive << body_type << size << offset << mass << friction << bounciness;
+	serialize_u32(s, body_type);
+	serialize_v2_f32(s, size);
+	serialize_v2_f32(s, offset);
+	serialize_f32(s, mass);
+	serialize_f32(s, friction);
+	serialize_f32(s, bounciness);
     }
 
-    void BodyComponent::deserialize(u32 version, Archive& archive)
+    void BodyComponent::deserialize(Deserializer& d, u32 version)
     {
-	archive >> (u32&)body_type >> size >> offset >> mass >> friction >> bounciness;
+	deserialize_u32(d, (u32&)body_type);
+	deserialize_v2_f32(d, size);
+	deserialize_v2_f32(d, offset);
+	deserialize_f32(d, mass);
+	deserialize_f32(d, friction);
+	deserialize_f32(d, bounciness);
     }
 }

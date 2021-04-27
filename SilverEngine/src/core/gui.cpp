@@ -453,20 +453,33 @@ namespace sv {
 
 	// Get last static state
 	{
-	    Archive archive;
-	    bool res = bin_read(hash_string("GUI STATE"), archive);
+	    Deserializer d;
+	    
+	    bool res = bin_read(hash_string("GUI STATE"), d);
 	    if (res) {
 
 		u32 window_count;
-		archive >> window_count;
+		deserialize_u32(d, window_count);
 
 		foreach(i, window_count) {
 
 		    GuiWindowState s;
-		    archive >> s.title >> s.show >> s.bounds;
+
+		    // TEMP
+		    size_t size;
+		    deserialize_string_size(d, size);
+		    s.title.resize(size + 1u);
+
+		    deserialize_string(d, s.title.data(), size);
+
+		    deserialize_bool(d, s.show);
+		    deserialize_v4_f32(d, s.bounds);
+		    
 		    s.id = hash_string(s.title.c_str());
 		    gui.static_state.window[s.id] = s;
 		}
+
+		deserialize_end(d);
 	    }
 	    else {
 		SV_LOG_WARNING("Can't load the last gui static state");
@@ -484,17 +497,19 @@ namespace sv {
 
 	// Save static state
 	{
-	    Archive archive;
+	    Serializer s;
 
-	    archive << u32(gui.static_state.window.size());
+	    serialize_u32(s, u32(gui.static_state.window.size()));
 
 	    for (const auto& it : gui.static_state.window) {
 
-		const GuiWindowState& s = it.second;
-		archive << s.title << s.show << s.bounds;
+		const GuiWindowState& state = it.second;
+		serialize_string(s, state.title.c_str());
+		serialize_bool(s, state.show);
+		serialize_v4_f32(s, state.bounds);
 	    }
 
-	    bool res = bin_write(hash_string("GUI STATE"), archive);
+	    bool res = bin_write(hash_string("GUI STATE"), s);
 
 	    if (!res) {
 

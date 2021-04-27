@@ -741,37 +741,37 @@ namespace sv {
 
     constexpr u32 BIN_PATH_SIZE = 100u;
     
-    SV_AUX void bin_filepath(char* buf, size_t hash)
+    SV_AUX void bin_filepath(char* buf, u64 hash)
     {
 	sprintf(buf, "bin/%zu.bin", hash);
     }
 
-    bool bin_read(size_t hash, List<u8>& data)
+    bool bin_read(u64 hash, List<u8>& data)
     {
-	char filepath[BIN_PATH_SIZE];
+	char filepath[BIN_PATH_SIZE + 1u];
 	bin_filepath(filepath, hash);
 	return file_read_binary(filepath, data);
     }
     
-    bool bin_read(size_t hash, Archive& archive)
+    bool bin_read(u64 hash, Deserializer& deserializer)
     {
-	char filepath[BIN_PATH_SIZE];
+	char filepath[BIN_PATH_SIZE + 1u];
 	bin_filepath(filepath, hash);
-	return archive.openFile(filepath);
+	return deserialize_begin(deserializer, filepath);
     }
 
-    bool bin_write(size_t hash, const void* data, size_t size)
+    bool bin_write(u64 hash, const void* data, size_t size)
     {
-	char filepath[BIN_PATH_SIZE];
+	char filepath[BIN_PATH_SIZE + 1u];
 	bin_filepath(filepath, hash);
 	return file_write_binary(filepath, (u8*)data, size);
     }
     
-    bool bin_write(size_t hash, Archive& archive)
+    bool bin_write(u64 hash, Serializer& serializer)
     {
-	char filepath[BIN_PATH_SIZE];
+	char filepath[BIN_PATH_SIZE + 1u];
 	bin_filepath(filepath, hash);
-	return archive.saveFile(filepath);
+	return serializer_end(serializer, filepath);
     }
 
     // INTERNAL

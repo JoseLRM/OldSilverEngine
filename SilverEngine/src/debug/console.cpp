@@ -250,18 +250,25 @@ namespace sv {
 	
 	//  Recive command history from last execution
 	{
-	    Archive archive;
+	    Deserializer d;
 
-	    if (bin_read(hash_string("CONSOLE HISTORY"), archive)) {
+	    if (bin_read(hash_string("CONSOLE HISTORY"), d)) {
 
 		u32 history_count;
-		archive >> history_count;
+		deserialize_u32(d, history_count);
 
-		history_count = std::min(history_count, HISTORY_COUNT);
+		history_count = SV_MIN(history_count, HISTORY_COUNT);
 
 		for (i32 i = history_count - 1u; i >= 0; --i) {
-					
-		    archive >> console.history[size_t(i)];
+
+		    // TEMP
+		    size_t size;
+		    deserialize_string_size(d, size);
+
+		    auto& s = console.history[size_t(i)];
+		    s.resize(size + 1u);
+		    
+		    deserialize_string(d, s.data(), size);
 		}
 
 		console.history_pos = history_count;
@@ -269,6 +276,8 @@ namespace sv {
 		    console.history_pos = 0u;
 		    console.history_flip = true;
 		}
+
+		deserialize_end(d);
 	    }
 	    else {
 		SV_LOG_ERROR("Command history not found");
@@ -289,19 +298,23 @@ namespace sv {
 
 	// Save command history
 	{
-	    Archive archive;
+	    Serializer s;
+
+	    serialize_begin(s);
 
 	    u32 history_count = console.history_flip ? HISTORY_COUNT : console.history_pos;
-	    archive << history_count;
+
+	    serialize_u32(s, history_count);
+
 	    foreach(i, history_count) {
 
 		i32 pos = (i32(console.history_pos) - i32(i + 1u));
 		while (pos < 0) pos = HISTORY_COUNT + pos;
 		u32 j = pos;
-		archive << console.history[j];
+		serialize_string(s, console.history[j].c_str());
 	    }
 
-	    if (!bin_write(hash_string("CONSOLE HISTORY"), archive)) {
+	    if (!bin_write(hash_string("CONSOLE HISTORY"), s)) {
 		SV_LOG_ERROR("Can't save the console history");
 	    }
 	}

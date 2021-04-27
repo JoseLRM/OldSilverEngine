@@ -81,8 +81,8 @@ namespace sv {
     typedef void(*DestroyComponentFunction)(BaseComponent*);
     typedef void(*MoveComponentFunction)(BaseComponent* from, BaseComponent* to);
     typedef void(*CopyComponentFunction)(const BaseComponent* from, BaseComponent* to);
-    typedef void(*SerializeComponentFunction)(BaseComponent* comp, Archive&);
-    typedef void(*DeserializeComponentFunction)(BaseComponent* comp, u32 version, Archive&);
+    typedef void(*SerializeComponentFunction)(BaseComponent* comp, Serializer& serializer);
+    typedef void(*DeserializeComponentFunction)(BaseComponent* comp, Deserializer& deserializer, u32 version);
 
     struct ComponentRegisterDesc {
 
@@ -113,8 +113,8 @@ namespace sv {
     SV_API void		destroy_component(CompID ID, BaseComponent* ptr);
     SV_API void		move_component(CompID ID, BaseComponent* from, BaseComponent* to);
     SV_API void		copy_component(CompID ID, const BaseComponent* from, BaseComponent* to);
-    SV_API void		serialize_component(CompID ID, BaseComponent* comp, Archive& archive);
-    SV_API void		deserialize_component(CompID ID, BaseComponent* comp, u32 version, Archive& archive);
+    SV_API void		serialize_component(CompID ID, BaseComponent* comp, Serializer& serializer);
+    SV_API void		deserialize_component(CompID ID, BaseComponent* comp, u32 version, Deserializer& deserializer);
     SV_API bool		component_exist(CompID ID);
 
     struct Transform {
@@ -269,16 +269,16 @@ namespace sv {
 		to->copy(from);
 	    };
 
-	desc.serializeFn = [](BaseComponent* comp_, Archive& file)
+	desc.serializeFn = [](BaseComponent* comp_, Serializer& s)
 	    {
 		Component* comp = reinterpret_cast<Component*>(comp_);
-		comp->serialize(file);
+		comp->serialize(s);
 	    };
 
-	desc.deserializeFn = [](BaseComponent* comp_, u32 version, Archive& file)
+	desc.deserializeFn = [](BaseComponent* comp_, Deserializer& d, u32 version)
 	    {
 		Component* comp = reinterpret_cast<Component*>(comp_);
-		comp->deserialize(version, file);
+		comp->deserialize(d, version);
 	    };
 
 	Component::ID = register_component(&desc);
@@ -321,16 +321,16 @@ namespace sv {
 		to->_id = id;
 	    };
 
-	desc.serializeFn = [](BaseComponent* comp_, Archive& file)
+	desc.serializeFn = [](BaseComponent* comp_, Serializer& s)
 	    {
 		Component* comp = reinterpret_cast<Component*>(comp_);
-		comp->serialize(file);
+		comp->serialize(s);
 	    };
 
-	desc.deserializeFn = [](BaseComponent* comp_, u32 version, Archive& file)
+	desc.deserializeFn = [](BaseComponent* comp_, Deserializer& d, u32 version)
 	    {
 		Component* comp = reinterpret_cast<Component*>(comp_);
-		comp->deserialize(version, file);
+		comp->deserialize(d, version);
 	    };
 
 	Component::ID = register_component(&desc);
@@ -375,8 +375,8 @@ namespace sv {
 	Color	     color = Color::White();
 	u32	     layer = 0u;
 
-	void serialize(Archive & archive);
-	void deserialize(u32 version, Archive & archive);
+	void serialize(Serializer& s);
+	void deserialize(Deserializer& s, u32 version);
 
     };
 
@@ -404,8 +404,8 @@ namespace sv {
 	XMMATRIX inverse_projection_matrix;
 	XMMATRIX inverse_view_projection_matrix;
 
-	void serialize(Archive & archive);
-	void deserialize(u32 version, Archive & archive);
+	void serialize(Serializer& s);
+	void deserialize(Deserializer& s, u32 version);
 
 	SV_INLINE void adjust(f32 aspect)
 	{
@@ -443,8 +443,8 @@ namespace sv {
 	MeshAsset		mesh;
 	MaterialAsset	material;
 
-	void serialize(Archive & archive);
-	void deserialize(u32 version, Archive & archive);
+	void serialize(Serializer& s);
+	void deserialize(Deserializer& s, u32 version);
 
     };
 
@@ -465,8 +465,8 @@ namespace sv {
 	f32 range = 5.f;
 	f32 smoothness = 0.5f;
 
-	void serialize(Archive & archive);
-	void deserialize(u32 version, Archive & archive);
+	void serialize(Serializer& s);
+	void deserialize(Deserializer& s, u32 version);
 
     };
 
@@ -489,8 +489,8 @@ namespace sv {
 	f32 friction = 0.99f;
 	f32 bounciness = 0.f;
 
-	void serialize(Archive & archive);
-	void deserialize(u32 version, Archive & archive);
+	void serialize(Serializer& s);
+	void deserialize(Deserializer& s, u32 version);
 	
     };
 

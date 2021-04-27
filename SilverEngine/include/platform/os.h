@@ -98,11 +98,11 @@ namespace sv {
     
     SV_API bool load_image(const char* filePath, void** pdata, u32* width, u32* height);
 
-    SV_API bool bin_read(size_t hash, List<u8>& data);
-    SV_API bool bin_read(size_t hash, Archive& archive);
+    SV_API bool bin_read(u64 hash, List<u8>& data);
+    SV_API bool bin_read(u64 hash, Deserializer& deserializer); // Begins the deserializer
 
-    SV_API bool bin_write(size_t hash, const void* data, size_t size);
-    SV_API bool bin_write(size_t hash, Archive& archive);
+    SV_API bool bin_write(u64 hash, const void* data, size_t size);
+    SV_API bool bin_write(u64 hash, Serializer& serializer); // Ends the serializer
 
     bool _os_startup();
     void _os_recive_input();
