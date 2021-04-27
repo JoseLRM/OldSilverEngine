@@ -910,8 +910,8 @@ namespace sv {
 
 		    v4_f32 tc = spr.texcoord;
 
-		    if (spr.flags | SpriteComponentFlag_XFlip) std::swap(tc.x, tc.z);
-		    if (spr.flags | SpriteComponentFlag_YFlip) std::swap(tc.y, tc.w);
+		    if (spr.flags & SpriteComponentFlag_XFlip) std::swap(tc.x, tc.z);
+		    if (spr.flags & SpriteComponentFlag_YFlip) std::swap(tc.y, tc.w);
 		    
 		    sprite_instances.emplace_back(get_entity_world_matrix(entity), tc, spr.texture.get(), spr.color, pos.z);
 		}

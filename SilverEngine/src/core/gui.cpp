@@ -187,6 +187,7 @@ namespace sv {
 
     struct Raw_Checkbox {
 	bool value;
+	bool modified;
 	const char* text;
     };
 
@@ -313,6 +314,7 @@ namespace sv {
 
 	    struct {
 		bool value;
+		bool modified;
 		const char* text;
 		GuiCheckboxStyle style;
 	    } checkbox;
@@ -715,6 +717,7 @@ namespace sv {
 	{
 	    Raw_Checkbox* raw = (Raw_Checkbox*)data;
 	    write_buffer(gui, raw->value);
+	    write_buffer(gui, raw->modified);
 	    write_text(gui, raw->text);
 	}
 	break;
@@ -1289,6 +1292,7 @@ namespace sv {
 
 		free_focus(gui);
 		cb.value = !cb.value;
+		cb.modified = true;
 	    }
 	}
 	break;
@@ -1860,6 +1864,7 @@ namespace sv {
 	    auto& cb = w.widget.checkbox;
 			
 	    cb.value = _read<bool>(it);
+	    cb.modified = _read<bool>(it);
 
 	    cb.text = (const char*)(it);
 	    it += strlen(cb.text) + 1u;
@@ -3167,13 +3172,14 @@ namespace sv {
 	    GuiWidget& w = gui.widgets[gui.current_focus.index];
 	    SV_ASSERT(w.type == GuiWidgetType_Checkbox);
 	    *value = w.widget.checkbox.value;
-	    modified = true;
+	    modified = w.widget.checkbox.modified;
 	}
 	else modified = false;
 
 	{
 	    Raw_Checkbox raw;
 	    raw.value = *value;
+	    raw.modified = modified;
 	    raw.text = text;
 
 	    write_widget(gui, GuiWidgetType_Checkbox, id, &raw, nullptr);

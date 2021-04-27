@@ -495,6 +495,11 @@ namespace sv {
 		egui_comp_texture("Texture", 1u, &spr.texture);
 		egui_comp_drag_v4_f32("Coords", 2u, &spr.texcoord, 0.01f, 0.f, 1.f);
 
+		bool xflip = spr.flags & SpriteComponentFlag_XFlip;
+		bool yflip = spr.flags & SpriteComponentFlag_YFlip;
+
+		if (egui_comp_bool("XFlip", 3u, &xflip)) spr.flags = spr.flags ^ SpriteComponentFlag_XFlip;
+		if (egui_comp_bool("YFlip", 4u, &yflip)) spr.flags = spr.flags ^ SpriteComponentFlag_YFlip;
 	    }
 	    
 	    if (MeshComponent::ID == comp_id) {
