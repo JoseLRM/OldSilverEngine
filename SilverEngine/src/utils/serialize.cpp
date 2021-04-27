@@ -77,7 +77,7 @@ namespace sv {
 
     bool deserialize_begin(Deserializer& d, const char* filepath)
     {
-	SV_CHECK(file_read_binary(filePath, d.buff));
+	SV_CHECK(file_read_binary(filepath, d.buff));
 	
 	d.pos = 0u;
 

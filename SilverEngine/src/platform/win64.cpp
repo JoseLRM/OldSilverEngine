@@ -475,7 +475,7 @@ namespace sv {
 	return true;
     }
 
-    bool file_read_binary(const char* filepath, List<u8>& data)
+    bool file_read_binary(const char* filepath, RawList& data)
     {
 	HANDLE file = CreateFile(filepath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
@@ -746,7 +746,7 @@ namespace sv {
 	sprintf(buf, "bin/%zu.bin", hash);
     }
 
-    bool bin_read(u64 hash, List<u8>& data)
+    bool bin_read(u64 hash, RawList& data)
     {
 	char filepath[BIN_PATH_SIZE + 1u];
 	bin_filepath(filepath, hash);
@@ -771,7 +771,7 @@ namespace sv {
     {
 	char filepath[BIN_PATH_SIZE + 1u];
 	bin_filepath(filepath, hash);
-	return serializer_end(serializer, filepath);
+	return serialize_end(serializer, filepath);
     }
 
     // INTERNAL

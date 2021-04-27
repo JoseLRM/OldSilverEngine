@@ -68,7 +68,7 @@ namespace sv {
     SV_API void path_clear(char* path);
 
     SV_API bool file_read_binary(const char* filepath, u8** pData, size_t* pSize);
-    SV_API bool file_read_binary(const char* filepath, List<u8>& data);
+    SV_API bool file_read_binary(const char* filepath, RawList& data);
     SV_API bool file_read_text(const char* filepath, char** pstr, size_t* psize);
     SV_API bool file_write_binary(const char* filepath, const u8* data, size_t size, bool append = false, bool recursive = true);
     SV_API bool file_write_text(const char* filepath, const char* str, size_t size, bool append = false, bool recursive = true);
@@ -98,7 +98,7 @@ namespace sv {
     
     SV_API bool load_image(const char* filePath, void** pdata, u32* width, u32* height);
 
-    SV_API bool bin_read(u64 hash, List<u8>& data);
+    SV_API bool bin_read(u64 hash, RawList& data);
     SV_API bool bin_read(u64 hash, Deserializer& deserializer); // Begins the deserializer
 
     SV_API bool bin_write(u64 hash, const void* data, size_t size);

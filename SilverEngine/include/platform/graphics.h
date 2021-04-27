@@ -704,8 +704,8 @@ namespace sv {
 
     // Shader utils
 
-    SV_API bool graphics_shader_compile_string(const ShaderCompileDesc* desc, const char* str, u32 size, List<u8>& data);
-    SV_API bool graphics_shader_compile_file(const ShaderCompileDesc* desc, const char* srcPath, List<u8>& data);
+    SV_API bool graphics_shader_compile_string(const ShaderCompileDesc* desc, const char* str, u32 size, RawList& data);
+    SV_API bool graphics_shader_compile_file(const ShaderCompileDesc* desc, const char* srcPath, RawList& data);
 	
     /*
       Compiles the shader if doesn't exist in the bin file

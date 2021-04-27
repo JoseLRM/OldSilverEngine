@@ -464,14 +464,7 @@ namespace sv {
 		foreach(i, window_count) {
 
 		    GuiWindowState s;
-
-		    // TEMP
-		    size_t size;
-		    deserialize_string_size(d, size);
-		    s.title.resize(size + 1u);
-
-		    deserialize_string(d, s.title.data(), size);
-
+		    deserialize_string(d, s.title);
 		    deserialize_bool(d, s.show);
 		    deserialize_v4_f32(d, s.bounds);
 		    
@@ -498,6 +491,8 @@ namespace sv {
 	// Save static state
 	{
 	    Serializer s;
+
+	    serialize_begin(s);
 
 	    serialize_u32(s, u32(gui.static_state.window.size()));
 

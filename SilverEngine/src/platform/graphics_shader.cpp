@@ -28,7 +28,7 @@ namespace sv {
 	return filePath;
     }
 
-    bool graphics_shader_compile_string(const ShaderCompileDesc* desc, const char* str, u32 size, List<u8>& data)
+    bool graphics_shader_compile_string(const ShaderCompileDesc* desc, const char* str, u32 size, RawList& data)
     {
 	std::string filepath = graphics_shader_random_path();
 
@@ -57,7 +57,7 @@ namespace sv {
 	offset += size;
     }
     
-    bool graphics_shader_compile_file(const ShaderCompileDesc* desc, const char* srcPath, List<u8>& data)
+    bool graphics_shader_compile_file(const ShaderCompileDesc* desc, const char* srcPath, RawList& data)
     {
 	std::string filePath = graphics_shader_random_path();
 
@@ -188,7 +188,7 @@ namespace sv {
 
     bool graphics_shader_compile_fastbin_from_string(const char* name, ShaderType shaderType, Shader** pShader, const char* src, bool alwaisCompile)
     {
-	List<u8> data;
+	RawList data;
 	size_t hash = hash_string(name);
 	hash_combine(hash, shaderType);
 
@@ -221,7 +221,7 @@ namespace sv {
 
 	bool graphics_shader_compile_fastbin_from_file(const char* name, ShaderType shaderType, Shader** pShader, const char* filePath, bool alwaisCompile)
 	{
-	    List<u8> data;
+	    RawList data;
 	    size_t hash = hash_string(name);
 	    hash_combine(hash, shaderType);
 

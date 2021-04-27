@@ -175,6 +175,16 @@ namespace sv {
 	SV_FREE_STRUCT(SceneState, scene_state);
     }
 
+    SV_INLINE void serialize_entity(Serializer& s, Entity entity)
+    {
+	serialize_u32(s, entity);
+    }
+
+    SV_INLINE void deserialize_entity(Deserializer& d, Entity& entity)
+    {
+	deserialize_u32(d, entity);
+    }
+
     bool _start_scene(const char* name)
     {
 	Scene*& scene_ptr = scene_state->scene;
@@ -251,12 +261,7 @@ namespace sv {
 
 			    for (auto it = registers.rbegin(); it != registers.rend(); ++it) {
 
-				size_t size;
-				deserialize_string_size(d, size);
-				//TEMP
-				it->name.resize(size + 1u);
-				deserialise_string(d, it->name.data(), size);
-				
+				deserialize_string(d, it->name);				
 				deserialize_u32(d, it->size);
 				deserialize_u32(d, it->version);
 			    }
@@ -300,14 +305,9 @@ namespace sv {
 			    EntityInternal& ed = entity_internal[entity];
 			    EntityTransform& et = entity_transform[entity];
 
-			    // TEMP
-			    size_t size;
-			    deserialize_string_size(d, size);
-			    ed.name.resize(size + 1u);
-			    
-			    deserialize_string(d, ed.name.data(), size);
+			    deserialize_string(d, ed.name);
 			    deserialize_u32(d, ed.childsCount);
-			    deserialize_u32(d, ed.handleIndex);
+			    deserialize_size_t(d, ed.handleIndex);
 			    deserialize_u64(d, ed.flags);
 			    deserialize_v3_f32(d, et.position);
 			    deserialize_v4_f32(d, et.rotation);
@@ -547,7 +547,7 @@ namespace sv {
 			serialize_entity(s, (Entity)i);
 			serialize_string(s, ed.name.c_str());
 			serialize_u32(s, ed.childsCount);
-			serialize_u32(s, ed.handleIndex);
+			serialize_size_t(s, ed.handleIndex);
 			serialize_u64(s, ed.flags);
 			serialize_v3_f32(s, transform.position);
 			serialize_v4_f32(s, transform.rotation);
@@ -1300,7 +1300,7 @@ namespace sv {
 	if (fn) fn(comp, serializer);
     }
 
-    void deserialize_component(CompID ID, BaseComponent* comp, u32 version, Deserializer& deserializer)
+    void deserialize_component(CompID ID, BaseComponent* comp, Deserializer& deserializer, u32 version)
     {
 	DeserializeComponentFunction fn = scene_state->registers[ID].deserializeFn;
 	if (fn) fn(comp, deserializer, version);

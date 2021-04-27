@@ -31,7 +31,7 @@ namespace sv {
     /////////////////////////// SERIALIZER //////////////////////////////////
 
     struct Serializer {
-	constexpr u32 VERSION = 0u;
+	static constexpr u32 VERSION = 0u;
 	RawList buff;
     };
 
@@ -53,6 +53,11 @@ namespace sv {
     SV_INLINE void serialize_u64(Serializer& s, u64 n)
     {
 	s.buff.write_back(&n, sizeof(u64));
+    }
+    SV_INLINE void serialize_size_t(Serializer& s, size_t n)
+    {
+	u64 n0 = u64(n);
+	s.buff.write_back(&n0, sizeof(u64));
     }
 
     SV_INLINE void serialize_i8(Serializer& s, i8 n)
@@ -95,7 +100,7 @@ namespace sv {
 	s.buff.write_back(&n, sizeof(Color));
     }
 
-    SV_INLINE void serialize_color(Serializer& s, const XMMATRIX& n)
+    SV_INLINE void serialize_xmmatrix(Serializer& s, const XMMATRIX& n)
     {
 	s.buff.write_back(&n, sizeof(XMMATRIX));
     }
@@ -137,12 +142,12 @@ namespace sv {
     /////////////////////////// DESERIALIZER //////////////////////////////////
 
     struct Deserializer {
-	constexpr u32 LAST_VERSION_SUPPORTED = 0u;
+	static constexpr u32 LAST_VERSION_SUPPORTED = 0u;
 	u32 serializer_version;
 	Version engine_version;
 	RawList buff;
 	size_t pos;
-    }
+    };
 
     SV_API bool deserialize_begin(Deserializer& d, const char* filepath);
     SV_API void deserialize_end(Deserializer& d);
@@ -154,88 +159,109 @@ namespace sv {
 
     SV_INLINE void deserialize_u8(Deserializer& d, u8& n)
     {
-	s.buff.read_safe(&n, sizeof(u8), d.pos);
+	d.buff.read_safe(&n, sizeof(u8), d.pos);
 	d.pos += sizeof(u8);
     }
     SV_INLINE void deserialize_u16(Deserializer& d, u16& n)
     {
-	s.buff.read_safe(&n, sizeof(u16), d.pos);
+	d.buff.read_safe(&n, sizeof(u16), d.pos);
 	d.pos += sizeof(u16);
     }
     SV_INLINE void deserialize_u32(Deserializer& d, u32& n)
     {
-	s.buff.read_safe(&n, sizeof(u32), d.pos);
+	d.buff.read_safe(&n, sizeof(u32), d.pos);
 	d.pos += sizeof(u32);
     }
     SV_INLINE void deserialize_u64(Deserializer& d, u64& n)
     {
-	s.buff.read_safe(&n, sizeof(u64), d.pos);
+	d.buff.read_safe(&n, sizeof(u64), d.pos);
 	d.pos += sizeof(u64);
+    }
+    SV_INLINE void deserialize_size_t(Deserializer& d, size_t& n)
+    {
+	u64 n0;
+	d.buff.read_safe(&n0, sizeof(u64), d.pos);
+	d.pos += sizeof(u64);
+	n = size_t(n0);
     }
 
     SV_INLINE void deserialize_i8(Deserializer& d, i8& n)
     {
-	s.buff.read_safe(&n, sizeof(i8), d.pos);
+	d.buff.read_safe(&n, sizeof(i8), d.pos);
 	d.pos += sizeof(i8);
     }
     SV_INLINE void deserialize_i16(Deserializer& d, i16& n)
     {
-	s.buff.read_safe(&n, sizeof(i16), d.pos);
+	d.buff.read_safe(&n, sizeof(i16), d.pos);
 	d.pos += sizeof(i16);
     }
     SV_INLINE void deserialize_i32(Deserializer& d, i32& n)
     {
-	s.buff.read_safe(&n, sizeof(i32), d.pos);
+	d.buff.read_safe(&n, sizeof(i32), d.pos);
 	d.pos += sizeof(i32);
     }
     SV_INLINE void deserialize_i64(Deserializer& d, i64& n)
     {
-	s.buff.read_safe(&n, sizeof(u64), d.pos);
+	d.buff.read_safe(&n, sizeof(u64), d.pos);
 	d.pos += sizeof(u64);
     }
 
     SV_INLINE void deserialize_f32(Deserializer& d, f32& n)
     {
-	s.buff.read_safe(&n, sizeof(f32), d.pos);
+	d.buff.read_safe(&n, sizeof(f32), d.pos);
 	d.pos += sizeof(f32);
     }
     SV_INLINE void deserialize_f64(Deserializer& d, f64& n)
     {
-	s.buff.read_safe(&n, sizeof(f64), d.pos);
+	d.buff.read_safe(&n, sizeof(f64), d.pos);
 	d.pos += sizeof(f64);
     }
 
     SV_INLINE void deserialize_char(Deserializer& d, char& n)
     {
-	s.buff.read_safe(&n, sizeof(char), d.pos);
+	d.buff.read_safe(&n, sizeof(char), d.pos);
 	d.pos += sizeof(char);
     }
     SV_INLINE void deserialize_bool(Deserializer& d, bool& n)
     {
-	s.buff.read_safe(&n, sizeof(bool), d.pos);
+	d.buff.read_safe(&n, sizeof(bool), d.pos);
 	d.pos += sizeof(bool);
     }
 
     SV_INLINE void deserialize_color(Deserializer& d, Color& n)
     {
-	s.buff.read_safe(&n, sizeof(Color), d.pos);
+	d.buff.read_safe(&n, sizeof(Color), d.pos);
 	d.pos += sizeof(Color);
     }
 
     SV_INLINE void deserialize_xmmatrix(Deserializer& d, XMMATRIX& n)
     {
-	s.buff.read_safe(&n, sizeof(XMMATRIX), d.pos);
+	d.buff.read_safe(&n, sizeof(XMMATRIX), d.pos);
 	d.pos += sizeof(XMMATRIX);
     }
 
-    SV_INLINE void deserialize_string_size(Deserializer& d, size_t& size)
+    SV_INLINE size_t deserialize_string_size(Deserializer& d)
     {
+	size_t size;
 	const char* str = (const char*)(d.buff.data() + d.pos);
 	size = strlen(str);
+	return size;
     }
-    SV_INLINE void deserialize_string(Deserializer& d, char* str, size_t size)
+    SV_INLINE void deserialize_string(Deserializer& d, char* str, size_t buff_size)
     {
-	memcpy(str, d.buff.data(), size + 1u);
+	size_t size = deserialize_string_size(d) + 1u;
+
+	size_t read = SV_MIN(size, buff_size);
+	memcpy(str, d.buff.data() + d.pos, read);
+	d.pos += size;
+    }
+    // TODO: move on
+    SV_INLINE void deserialize_string(Deserializer& d, std::string& s)
+    {
+	size_t size = deserialize_string_size(d);
+
+	s.resize(size);
+	memcpy(&s[0], d.buff.data() + d.pos, size);
 	d.pos += size + 1u;
     }
 
@@ -258,9 +284,9 @@ namespace sv {
 	deserialize_f32(d, v.w);
     }
 
-    SV_INLINE void deserialize_version(Deserializer& d, Version n)
+    SV_INLINE void deserialize_version(Deserializer& d, Version& n)
     {
-	s.buff.read_safe(&n, sizeof(Version), d.pos);
+	d.buff.read_safe(&n, sizeof(Version), d.pos);
 	d.pos += sizeof(Version);
     }    
     

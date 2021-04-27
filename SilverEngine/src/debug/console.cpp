@@ -262,13 +262,8 @@ namespace sv {
 		for (i32 i = history_count - 1u; i >= 0; --i) {
 
 		    // TEMP
-		    size_t size;
-		    deserialize_string_size(d, size);
-
 		    auto& s = console.history[size_t(i)];
-		    s.resize(size + 1u);
-		    
-		    deserialize_string(d, s.data(), size);
+		    deserialize_string(d, s);
 		}
 
 		console.history_pos = history_count;

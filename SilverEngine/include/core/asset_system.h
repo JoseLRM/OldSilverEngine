@@ -160,14 +160,13 @@ namespace sv {
 	{
 	    char filepath[FILEPATH_SIZE + 1u];
 
-	    size_t size;
-	    deserialize_string_size(d, size);
+	    size_t size = deserialize_string_size(d);
 
 	    if (size > FILEPATH_SIZE) {
 		SV_LOG_ERROR("The asset filepath size of %ul exceeds the size limit of %ul", size, FILEPATH_SIZE);
 	    }
 
-	    deserialize_string(d, filepath);
+	    deserialize_string(d, filepath, FILEPATH_SIZE + 1u);
 
 	    if (!load_asset_from_file(asset_ptr, filepath)) {
 		SV_LOG_ERROR("Can't load the asset '%s'", filepath);

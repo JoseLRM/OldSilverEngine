@@ -114,7 +114,7 @@ namespace sv {
     SV_API void		move_component(CompID ID, BaseComponent* from, BaseComponent* to);
     SV_API void		copy_component(CompID ID, const BaseComponent* from, BaseComponent* to);
     SV_API void		serialize_component(CompID ID, BaseComponent* comp, Serializer& serializer);
-    SV_API void		deserialize_component(CompID ID, BaseComponent* comp, u32 version, Deserializer& deserializer);
+    SV_API void		deserialize_component(CompID ID, BaseComponent* comp, Deserializer& deserializer, u32 version);
     SV_API bool		component_exist(CompID ID);
 
     struct Transform {

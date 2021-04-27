@@ -41,7 +41,7 @@ namespace sv {
 
     bool font_create(Font& font, const char* filepath, f32 pixel_height, FontFlags flags)
     {
-	List<u8> data;
+	RawList data;
 	SV_CHECK(file_read_binary(filepath, data));
 
 	stbtt_fontinfo info;

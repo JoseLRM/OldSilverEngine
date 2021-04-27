@@ -532,7 +532,7 @@ namespace sv {
 	// Save materials
 	for (const MaterialInfo& m : model_info.materials) {
 
-	    serializer_begin(s);
+	    serialize_begin(s);
 
 	    // Create filepath
 	    {
@@ -573,7 +573,7 @@ namespace sv {
 		serialize_string(s, textures[3].c_str());
 	    }
 
-	    SV_CHECK(serializer_end(s, (ss.str().c_str())));
+	    SV_CHECK(serialize_end(s, (ss.str().c_str())));
 	}
 
 	// Save meshes
@@ -613,7 +613,7 @@ namespace sv {
 		for (const v3_f32& p : m.bitangents)
 		    serialize_v3_f32(s, p);
 		
-		serialize_matrix(s, m.transform_matrix);
+		serialize_xmmatrix(s, m.transform_matrix);
 		serialize_string(s, mat.filepath.c_str());
 	    }
 
