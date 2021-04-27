@@ -17,6 +17,13 @@ void update_scene()
     }
 }
 
+void show_component_info(void*, ShowComponentEvent* event)
+{
+    static bool test = false;
+    
+    egui_comp_bool("", 0u, &test);
+}
+
 SV_USER bool user_initialize(bool init)
 {
     if (init) {
@@ -24,6 +31,7 @@ SV_USER bool user_initialize(bool init)
     }
 
     event_user_register("update_scene", update_scene);
+    event_user_register("show_component_info", show_component_info);
     
     return true;
 }

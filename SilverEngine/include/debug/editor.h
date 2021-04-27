@@ -42,6 +42,10 @@ namespace sv {
 
     extern GlobalDevData SV_API dev;
 
+    struct ShowComponentEvent {
+	CompID comp_id;
+    };
+
     // EDITOR GUI
 
     constexpr u32 ASSET_BROWSER_PACKAGE_TEXTURE = 69u;

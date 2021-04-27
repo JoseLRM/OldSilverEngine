@@ -81,9 +81,6 @@ namespace sv {
 			SV_LOG_ERROR("Can't delete the compilation result file");
 		    }
 		}
-		else {
-		    SV_LOG_ERROR("Can't read the compilation result file");
-		}
 	    }
 	    
 	    // Check if the file is modified

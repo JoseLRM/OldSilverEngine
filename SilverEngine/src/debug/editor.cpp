@@ -2,6 +2,7 @@
 
 #include "core/renderer.h"
 #include "debug/console.h"
+#include "core/event_system.h"
 
 namespace sv {
 
@@ -583,6 +584,13 @@ namespace sv {
 		egui_comp_drag_f32("Friction", 4u, &b.friction, 0.001f, 0.0f, 1.f);
 		egui_comp_drag_f32("Bounciness", 5u, &b.bounciness, 0.005f, 0.0f, 1.f);
 	    }
+
+	    ShowComponentEvent e;
+	    e.comp_id = comp_id;
+
+	    gui_push_id(dev.gui, "User");
+	    event_dispatch("show_component_info", &e);
+	    gui_pop_id(dev.gui);
 
 	    egui_end_component();
 	}
