@@ -132,44 +132,48 @@ namespace sv {
     SV_API void update_asset_files();
     SV_API void free_unused_assets();
 
-    SV_INLINE Archive& operator>>(Archive& archive, AssetPtr& asset_ptr)
+    SV_INLINE void serialize_asset(Serializer& s, AssetPtr& asset_ptr)
+    {
+	if (asset_ptr.ptr == nullptr) serialize_u8(s, 0u);
+	else {
+	    const char* filepath = get_asset_filepath(asset_ptr);
+
+	    if (filepath == nullptr) {
+		serialize_u8(s, 0u);
+	    }
+	    else {
+
+		serialize_u8(s, 1u);
+		serialize_string(s, filepath);
+	    }
+	}
+    }
+
+    SV_INLINE void deserialize_asset(Deserializer& d, AssetPtr& asset_ptr)
     {
 	u8 type;
-	archive >> type;
+	deserialize_u8(d, type);
 
 	switch (type)
 	{
 	case 1u:
 	{
-	    std::string filepath;
-	    archive >> filepath;
+	    char filepath[FILEPATH_SIZE + 1u];
 
-	    if (!load_asset_from_file(asset_ptr, filepath.c_str())) {
-		SV_LOG_ERROR("Can't load the asset '%s'", filepath.c_str());
+	    size_t size;
+	    deserialize_string_size(d, size);
+
+	    if (size > FILEPATH_SIZE) {
+		SV_LOG_ERROR("The asset filepath size of %ul exceeds the size limit of %ul", size, FILEPATH_SIZE);
+	    }
+
+	    deserialize_string(d, filepath);
+
+	    if (!load_asset_from_file(asset_ptr, filepath)) {
+		SV_LOG_ERROR("Can't load the asset '%s'", filepath);
 	    }
 	}break;
 	}
-
-	return archive;
-    }
-
-    SV_INLINE Archive& operator<<(Archive& archive, const AssetPtr& asset_ptr)
-    {
-	if (asset_ptr.ptr == nullptr) archive << u8(0u);
-	else {
-	    const char* filepath = get_asset_filepath(asset_ptr);
-
-	    if (filepath == nullptr) {
-		archive << (u8)(0u);
-	    }
-	    else {
-
-		archive << (u8)(1u);
-		archive << filepath;
-	    }
-	}
-
-	return archive;
     }
 
 }

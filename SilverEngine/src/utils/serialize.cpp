@@ -4,102 +4,6 @@
 
 namespace sv {
 
-    ///////////////////////////////////////////////// ARCHIVE /////////////////////////////////////////////////
-
-    Archive::Archive() : _capacity(0u), _size(0u), _data(nullptr), _pos(0u)
-    {}
-
-    Archive::~Archive()
-    {
-	free();
-    }
-
-    void Archive::reserve(size_t size)
-    {
-	if (_size + size > _capacity) {
-
-	    size_t newSize = size_t(double(_size + size) * 1.5);
-
-	    bool write_version = false;
-
-	    if (_size == 0u) {
-		newSize += sizeof(Version);
-		write_version = true;
-	    }
-
-	    allocate(newSize);
-
-	    if (write_version) {
-		memcpy(_data, &engine.version, sizeof(Version));
-		_size = sizeof(Version);
-	    }
-	}
-    }
-
-    void Archive::write(const void* data, size_t size)
-    {
-	reserve(size);
-
-	memcpy(_data + _size, data, size);
-	_size += size;
-    }
-
-    void Archive::read(void* data, size_t size)
-    {
-	if (_pos + size > _size) {
-	    size_t invalidSize = (_pos + size) - _size;
-	    SV_ZERO_MEMORY((u8*)data + size - invalidSize, invalidSize);
-	    size -= invalidSize;
-	    SV_LOG_WARNING("Archive reading, out of bounds");
-	}
-	memcpy(data, _data + _pos, size);
-	_pos += size;
-    }
-
-    void Archive::erase(size_t size)
-    {
-	SV_ASSERT(size <= _size);
-	_size -= size;
-    }
-
-    bool Archive::openFile(const char* filePath)
-    {
-	_pos = 0u;
-	SV_CHECK(file_read_binary(filePath, &_data, &_size));
-	if (_size < sizeof(Version)) return false;
-	this->operator>>(version);
-	return true;
-    }
-
-    bool Archive::saveFile(const char* filePath, bool append)
-    {
-	return file_write_binary(filePath, _data, _size, append);
-    }
-
-    void Archive::allocate(size_t size)
-    {
-	u8* newData = (u8*)operator new(size);
-
-	if (_data) {
-	    memcpy(newData, _data, _size);
-	    operator delete[](_data);
-	}
-
-	_data = newData;
-	_capacity = size;
-    }
-
-    void Archive::free()
-    {
-	if (_data) {
-	    operator delete[](_data);
-	    _data = nullptr;
-	    _size = 0u;
-	    _capacity = 0u;
-	    _pos = 0u;
-	}
-    }
-
     bool read_var_file(const char* filepath, List<Var>& vars)
     {
 	char* text;
@@ -151,6 +55,46 @@ namespace sv {
 	    return true;
 	}
 	return false;
+    }
+
+    //////////////////////////////////// SERIALIZER /////////////////
+
+    void serialize_begin(Serializer& s)
+    {
+	// TODO: move to .cpp
+	serialize_version(s, engine.version);
+	serialize_u32(s, Serializer::VERSION);
+    }
+
+    bool serialize_end(Serializer& s, const char* filepath)
+    {
+	return file_write_binary(filepath, s.buff.data(), s.buff.size(), false);
+    }
+
+    //////////////////////////////////// DESERIALIZER /////////////////
+
+    bool deserialize_begin(Deserializer& d, const char* filepath)
+    {
+	SV_CHECK(file_read_binary(filePath, d.buff));
+	
+	d.pos = 0u;
+
+	SV_CHECK(deserialize_assert(d, sizeof(Version) + sizeof(u32)));
+
+	deserialize_version(d, d.engine_version);
+	deserialize_u32(d, d.serializer_version);
+
+	if (d.serializer_version < Deserializer::LAST_VERSION_SUPPORTED) {
+	    deserialize_end(d);
+	    return false;
+	}
+
+	return true;
+    }
+    
+    void deserialize_end(Deserializer& d)
+    {
+	d.buff.clear();
     }
     
 }
