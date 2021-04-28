@@ -100,6 +100,14 @@ namespace sv {
 	List<ComponentAllocator> components;
 	
     };
+
+    struct BodyCollision {
+	BodyComponent* b0;
+	BodyComponent* b1;
+	Entity e0;
+	Entity e1;
+	bool leave;
+    };
     
     struct SceneState {
 
@@ -111,6 +119,11 @@ namespace sv {
 	List<ComponentRegister> registers;
 	// TODO: get out of here
 	std::unordered_map<std::string, CompID> component_names;
+
+	// Physics
+
+	List<BodyCollision> last_collisions;
+	List<BodyCollision> current_collisions;
     };
 
     static SceneState* scene_state = nullptr;
@@ -723,6 +736,15 @@ namespace sv {
 	ComponentIterator it;
 	CompView<BodyComponent> view;
 
+	List<BodyCollision>& last_collisions = scene_state->last_collisions;
+	List<BodyCollision>& current_collisions = scene_state->current_collisions;
+
+	last_collisions.reset();
+	foreach(i, current_collisions.size())
+	    last_collisions.push_back(current_collisions[i]);
+	
+	current_collisions.reset();
+
 	if (comp_it_begin(it, view)) {
 	    
 	    do {
@@ -739,7 +761,8 @@ namespace sv {
 		body.in_ground = false;
 	
 		// Gravity
-		body.vel += scene.data.gravity * dt;
+		if (body.body_type == BodyType_Dynamic)
+		    body.vel += scene.data.gravity * dt;
 	
 		CompView<BodyComponent> vertical_collision = {};
 		f32 vertical_depth = f32_max;
@@ -832,40 +855,56 @@ namespace sv {
 		    // Solve collisions
 		    if (vertical_collision.comp) {
 
-			if (vertical_depth > 0.f) {
+			if (body.body_type == BodyType_Dynamic) {
 
-			    body.in_ground = true;
-			    // Ground friction
-			    next_vel.x *= pow(1.f - vertical_collision.comp->friction, dt);
+			    if (vertical_depth > 0.f) {
+
+				body.in_ground = true;
+				// Ground friction
+				next_vel.x *= pow(1.f - vertical_collision.comp->friction, dt);
+			    }
+
+			    next_pos.y += vertical_depth;
+			    next_vel.y = next_vel.y * -body.bounciness;
+			}
+			else if (body.body_type == BodyType_Projectile) {
+			    next_pos.y += vertical_depth;
+			    next_vel.y = -next_vel.y;
 			}
 
-			next_pos.y += vertical_depth;
-			next_vel.y = next_vel.y * -body.bounciness;
-		    
-			BodyCollisionEvent event;
-			event.body0 = view;
-			event.body1 = vertical_collision;
-
-			event_dispatch("on_body_collision", &event);
+			BodyCollision& col = current_collisions.emplace_back();
+			col.b0 = view.comp;
+			col.b1 = vertical_collision.comp;
+			col.e0 = view.entity;
+			col.e1 = vertical_collision.entity;
 		    }
 
 		    if (horizontal_collision.comp) {
+
+			if (body.body_type == BodyType_Dynamic) {
 		
-			next_pos.x += horizontal_depth;
-			if (vertical_offset != 0.f)
-			    next_pos.y += vertical_offset;
-			else
-			    next_vel.x = next_vel.x * -body.bounciness;
+			    next_pos.x += horizontal_depth;
+			    if (vertical_offset != 0.f)
+				next_pos.y += vertical_offset;
+			    else
+				next_vel.x = next_vel.x * -body.bounciness;
 
-			BodyCollisionEvent event;
-			event.body0 = view;
-			event.body1 = horizontal_collision;
+			}
+			else if (body.body_type == BodyType_Projectile) {
+			    next_pos.x += horizontal_depth;
+			    next_vel.x = -next_vel.x;
+			}
 
-			event_dispatch("on_body_collision", &event);
+			BodyCollision& col = current_collisions.emplace_back();
+			col.b0 = view.comp;
+			col.b1 = horizontal_collision.comp;
+			col.e0 = view.entity;
+			col.e1 = horizontal_collision.entity;
 		    }
 
 		    // Air friction
-		    next_vel *= pow(1.f - scene.data.air_friction, dt);
+		    if (body.body_type == BodyType_Dynamic)
+			next_vel *= pow(1.f - scene.data.air_friction, dt);
 		}
 	
 		position = next_pos;
@@ -874,6 +913,43 @@ namespace sv {
 		set_entity_position2D(view.entity, position - body.offset);
 	    }
 	    while (comp_it_next(it, view));
+
+	    // Dispatch events
+	    for (BodyCollision& col : current_collisions) {
+
+		if (col.e1 < col.e0) std::swap(col.e0, col.e1);
+
+		CollisionState state = CollisionState_Enter;
+		
+		for (BodyCollision& c : last_collisions) {
+		    if (col.e0 == c.e0 && col.e1 == c.e1) {
+			state = CollisionState_Stay;
+			c.leave = false;
+			break;
+		    }
+		}
+		
+		BodyCollisionEvent event;
+		event.body0 = CompView<BodyComponent>{ col.e0, col.b0 };
+		event.body1 = CompView<BodyComponent>{ col.e1, col.b1 };
+		event.state = state;
+
+		event_dispatch("on_body_collision", &event);
+
+		col.leave = true;
+	    }
+	    for (BodyCollision& col : last_collisions) {
+
+		if (col.leave) {
+
+		    BodyCollisionEvent event;
+		    event.body0 = CompView<BodyComponent>{ col.e0, col.b0 };
+		    event.body1 = CompView<BodyComponent>{ col.e1, col.b1 };
+		    event.state = CollisionState_Leave;
+		    
+		    event_dispatch("on_body_collision", &event);
+		}
+	    }
 	}
     }
 
@@ -2125,6 +2201,7 @@ namespace sv {
 	serialize_u32(s, body_type);
 	serialize_v2_f32(s, size);
 	serialize_v2_f32(s, offset);
+	serialize_v2_f32(s, vel);
 	serialize_f32(s, mass);
 	serialize_f32(s, friction);
 	serialize_f32(s, bounciness);
@@ -2132,11 +2209,26 @@ namespace sv {
 
     void BodyComponent::deserialize(Deserializer& d, u32 version)
     {
-	deserialize_u32(d, (u32&)body_type);
-	deserialize_v2_f32(d, size);
-	deserialize_v2_f32(d, offset);
-	deserialize_f32(d, mass);
-	deserialize_f32(d, friction);
-	deserialize_f32(d, bounciness);
+	switch (version) {
+	    
+	case 0:
+	    deserialize_u32(d, (u32&)body_type);
+	    deserialize_v2_f32(d, size);
+	    deserialize_v2_f32(d, offset);
+	    deserialize_f32(d, mass);
+	    deserialize_f32(d, friction);
+	    deserialize_f32(d, bounciness);
+	    break;
+
+	case 1:
+	    deserialize_u32(d, (u32&)body_type);
+	    deserialize_v2_f32(d, size);
+	    deserialize_v2_f32(d, offset);
+	    deserialize_v2_f32(d, vel);
+	    deserialize_f32(d, mass);
+	    deserialize_f32(d, friction);
+	    deserialize_f32(d, bounciness);
+	    break;
+	}
     }
 }

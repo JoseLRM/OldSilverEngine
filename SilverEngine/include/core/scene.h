@@ -473,12 +473,13 @@ namespace sv {
     enum BodyType : u32 {
 	BodyType_Static,
 	BodyType_Dynamic,
+	BodyType_Projectile,
     };
 
     struct BodyComponent : public BaseComponent {
 
 	static CompID SV_API ID;
-	static constexpr u32 VERSION = 0u;
+	static constexpr u32 VERSION = 1u;
 
 	BodyType body_type = BodyType_Static;
 	v2_f32 vel;
@@ -495,11 +496,18 @@ namespace sv {
     };
 
     // EVENTS
+
+    enum CollisionState : u32 {
+	CollisionState_Enter,
+	CollisionState_Stay,
+	CollisionState_Leave,
+    };
     
     // on_body_collision
     struct BodyCollisionEvent {
 	CompView<BodyComponent> body0;
 	CompView<BodyComponent> body1;
+	CollisionState state;
     };
 
 }

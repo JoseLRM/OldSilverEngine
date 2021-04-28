@@ -572,17 +572,27 @@ namespace sv {
 
 		BodyComponent& b = *reinterpret_cast<BodyComponent*>(comp);
 
+		// TODO: Use combobox
+		bool static_ = b.body_type == BodyType_Static;
 		bool dynamic = b.body_type == BodyType_Dynamic;
+		bool projectile = b.body_type == BodyType_Projectile;
 
-		if (egui_comp_bool("Dynamic", 0u, &dynamic)) {
+		if (egui_comp_bool("Static", 0u, &static_)) {
+		    b.body_type = static_ ? BodyType_Static : BodyType_Dynamic;
+		}
+		if (egui_comp_bool("Dynamic", 1u, &dynamic)) {
 		    b.body_type = dynamic ? BodyType_Dynamic : BodyType_Static;
 		}
+		if (egui_comp_bool("Projectile", 2u, &projectile)) {
+		    b.body_type = projectile ? BodyType_Projectile : BodyType_Static;
+		}
 		
-		egui_comp_drag_v2_f32("Size", 1u, &b.size, 0.005f, 0.f, f32_max);
-		egui_comp_drag_v2_f32("Offset", 2u, &b.offset, 0.005f);
-		egui_comp_drag_f32("Mass", 3u, &b.mass, 0.1f, 0.0f, f32_max);
-		egui_comp_drag_f32("Friction", 4u, &b.friction, 0.001f, 0.0f, 1.f);
-		egui_comp_drag_f32("Bounciness", 5u, &b.bounciness, 0.005f, 0.0f, 1.f);
+		egui_comp_drag_v2_f32("Size", 3u, &b.size, 0.005f, 0.f, f32_max);
+		egui_comp_drag_v2_f32("Offset", 4u, &b.offset, 0.005f);
+		egui_comp_drag_v2_f32("Velocity", 5u, &b.vel, 0.01f);
+		egui_comp_drag_f32("Mass", 6u, &b.mass, 0.1f, 0.0f, f32_max);
+		egui_comp_drag_f32("Friction", 7u, &b.friction, 0.001f, 0.0f, 1.f);
+		egui_comp_drag_f32("Bounciness", 8u, &b.bounciness, 0.005f, 0.0f, 1.f);
 	    }
 
 	    ShowComponentEvent e;
