@@ -15,7 +15,7 @@ namespace sv {
     bool _event_initialize();
     bool _event_close();
 
-    typedef void(*EventFn)(void* register_data, void* event_data);
+    typedef void(*EventFn)(void* event_data, void* register_data);
 
     SV_API bool _event_register(const char* event_name, EventFn event, u32 flags, void* data, u32 data_size);
     SV_API bool _event_unregister(const char* event_name, EventFn event);

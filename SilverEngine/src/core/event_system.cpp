@@ -183,7 +183,7 @@ namespace sv {
 
 	for (EventRegister& reg : type->registers) {
 
-	    reg.function(reg.data, data);
+	    reg.function(data, reg.data);
 	}
     }
 

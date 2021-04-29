@@ -497,6 +497,14 @@ namespace sv {
 
     // EVENTS
 
+    struct EntityCreateEvent {
+	Entity entity;
+    };
+
+    struct EntityDestroyEvent {
+	Entity entity;
+    };
+    
     enum CollisionState : u32 {
 	CollisionState_Enter,
 	CollisionState_Stay,

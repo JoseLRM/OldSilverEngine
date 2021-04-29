@@ -166,6 +166,14 @@ namespace sv {
 
 	    gui_destroy(scene->data.gui);
 
+	    // TODO: Dispatch events at once
+	    for (Entity entity : scene->entities) {
+
+		EntityDestroyEvent e;
+		e.entity = entity;
+		event_dispatch("on_entity_destroy", &e);
+	    }
+
 	    // Close ECS
 	    {
 		for (CompID i = 0; i < get_component_register_count(); ++i) {
@@ -440,6 +448,15 @@ namespace sv {
 	    }
 	}
 
+	// TODO: dispath all events at once
+	for (Entity entity : scene.entities) {
+
+	    EntityCreateEvent e;
+	    e.entity = entity;
+
+	    event_dispatch("on_entity_create", &e);
+	}
+
 	event_dispatch("initialize_scene", nullptr);
 	
 	return true;
@@ -600,6 +617,14 @@ namespace sv {
     bool clear_scene()
     {
 	SV_SCENE();
+
+	// TODO: Dispatch events at once
+	for (Entity entity : scene.entities) {
+
+	    EntityDestroyEvent e;
+	    e.entity = entity;
+	    event_dispatch("on_entity_destroy", &e);
+	}
 	
 	for (CompID i = 0; i < get_component_register_count(); ++i) {
 	    if (component_exist(i))
@@ -1521,6 +1546,10 @@ namespace sv {
 	if (name)
 	    scene.entityData.getInternal(entity).name = name;
 
+	EntityCreateEvent e;
+	e.entity = entity;
+	event_dispatch("on_entity_create", &e);
+
 	return entity;
     }
 
@@ -1529,18 +1558,29 @@ namespace sv {
 	SV_SCENE();
 
 	EntityInternal& entityData = scene.entityData.getInternal(entity);
-
 	u32 count = entityData.childsCount + 1;
-
-	// notify parents
-	if (entityData.parent != SV_ENTITY_NULL) {
-	    update_childs(entityData.parent, -i32(count));
-	}
 
 	// data to remove entities
 	size_t indexBeginDest = entityData.handleIndex;
 	size_t indexBeginSrc = entityData.handleIndex + count;
 	size_t cpyCant = scene.entities.size() - indexBeginSrc;
+
+	// Dispatch events
+	{
+	    EntityDestroyEvent e;
+
+	    for (size_t i = 0; i < count; ++i) {
+		
+		Entity ent = scene.entities[indexBeginDest + i];
+		e.entity = ent;
+		event_dispatch("on_entity_destroy", &e);
+	    }
+	}
+
+	// notify parents
+	if (entityData.parent != SV_ENTITY_NULL) {
+	    update_childs(entityData.parent, -i32(count));
+	}
 
 	// remove components & entityData
 	for (size_t i = 0; i < count; i++) {
