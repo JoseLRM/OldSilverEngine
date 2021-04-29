@@ -365,6 +365,8 @@ namespace sv {
 
 	recive_user_callbacks(true);
 
+	set_scene("Main");
+
 	// User init
 	if (!_user_initialize(true)) {
 	    engine.running = false;

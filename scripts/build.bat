@@ -165,8 +165,6 @@ IF EXIST  Game.exp DEL Game.exp -Q
 IF EXIST  Game.lib DEL Game.lib -Q
 
 ECHO Creating assets
-
-IF EXIST assets\ RMDIR assets\ /S /Q
      
 XCOPY %GP%assets\ assets /E /I /Q /Y > NUL
 
@@ -186,7 +184,7 @@ IF EXIST SilverEngine.lib (
 
 XCOPY %origin_path%scripts\shell.bat system\ /I /Q /Y > NUL
 
-CALL system/build_game.bat
+
 
 IF "%run%"=="true" SilverEngine.exe
 

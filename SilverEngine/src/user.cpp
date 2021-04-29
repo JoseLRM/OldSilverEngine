@@ -34,7 +34,9 @@ namespace sv {
     {
 	if (user_callbacks.get_scene_filepath)
 	    return user_callbacks.get_scene_filepath(name, filepath);
-	return false;
+
+	sprintf(filepath, "assets/scenes/%s.scene", name);
+	return true;
     }
         
 }
