@@ -519,6 +519,19 @@ namespace sv {
 	return true;
     }
 
+    bool file_read_text(const char* filepath, String& str)
+    {
+	char* buff;
+	size_t size;
+	if (file_read_text(filepath, &buff, &size)) {
+
+	    str.set_buffer_ptr(buff, size);
+	    
+	    return true;
+	}
+	return false;
+    }
+
     SV_AUX bool create_path(const char* filepath)
     {
 	char folder[FILEPATH_SIZE] = "\0";

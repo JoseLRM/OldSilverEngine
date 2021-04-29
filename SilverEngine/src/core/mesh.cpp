@@ -304,211 +304,296 @@ namespace sv {
 
     bool load_model(const char* filepath, ModelInfo& model_info)
     {
+	const char* model_extension = filepath_extension(filepath);
+
+	if (model_extension == nullptr) {
+	    SV_LOG_ERROR("The filepath '%s' isn't a valid model filepath", filepath);
+	    return false;
+	}
+
+	if (strcmp(model_extension, ".obj") != 0) {
+	    SV_LOG_ERROR("Model format '%s' not supported", model_extension);
+	    return false;
+	}
+
+	// Load .obj file
+	String file;
 	
+	if (file_read_text(filepath, file)) {
 
-	return false;
-    }
+	    struct ObjAuxData {
+		u32 position_offset;
+		u32 normal_offset;
+		u32 texcoord_offset;
+	    };
 
-    static bool import_texture(const ModelInfo& model_info, u32 index, const std::string& srcpath, const std::string& dstpath, std::string* textures)
-    {
-	if (srcpath.empty()) return true;
+	    List<v3_f32> normals;
+	    List<v2_f32> texcoords;
+	    List<ObjAuxData> meshes_aux;
 
-	// Compute src name
-	std::string srcname;
-	{
-	    i32 i;
+	    ObjAuxData* mesh_aux = &meshes_aux.emplace_back();
+	    mesh_aux->position_offset = 0u;
+	    mesh_aux->normal_offset = 0u;
+	    mesh_aux->texcoord_offset = 0u;
+			    
+	    MeshInfo* mesh = &model_info.meshes.emplace_back();
+	    bool using_default = true;
+	    
+	    LineProcessor p;
+	    line_begin(p, file.c_str());
+	    
+	    bool corrupted = false;
 
-	    for (i = u32(srcpath.size() - 1u); i >= 0; --i) {
+	    while (line_next(p) && !corrupted) {
 
-		if (srcpath[i] == '/') {
-		    ++i;
+		line_jump_spaces(p.line);
+
+		switch (*p.line) {
+
+		case '#': // Comment
 		    break;
+
+		case 'o': // New Object
+		{
+		    ++p.line;
+
+		    line_jump_spaces(p.line);
+
+		    char delimiters[] = {
+			' ',
+			'\n',
+			'\r'
+		    };
+		    
+		    size_t name_size = string_split(p.line, delimiters, 3u);
+		    if (name_size == 0u) {
+
+			SV_LOG_ERROR("Can't read the object name in line %u", p.line_count);
+			corrupted = true;
+		    }
+		    else {
+
+			if (using_default) {
+			    using_default = false;
+			}
+			else {
+
+			    ObjAuxData* last = mesh_aux;
+			    mesh_aux = &meshes_aux.emplace_back();
+			    mesh_aux->position_offset = (u32)mesh->positions.size() + last->position_offset;;
+			    mesh_aux->normal_offset = (u32)normals.size() + last->normal_offset;
+			    mesh_aux->texcoord_offset = (u32)texcoords.size() + last->texcoord_offset;
+			    
+			    mesh = &model_info.meshes.emplace_back();
+
+			    normals.reset();
+			    texcoords.reset();
+			}
+
+			mesh->name.set(p.line, 0u, name_size);
+		    }
+		}
+		break;
+
+		case 'v': // Vertex info
+		{
+		    ++p.line;
+
+		    switch(*p.line) {
+
+		    case ' ': // Position
+		    {
+			v3_f32& v = mesh->positions.emplace_back();
+
+			bool res = line_read_f32(p.line, v.x);
+			if (res) res = line_read_f32(p.line, v.y);
+			if (res) res = line_read_f32(p.line, v.z);
+			
+			if (!res) {
+			    corrupted = true;
+			    SV_LOG_ERROR("Can't read the vector at line %u", p.line_count);
+			}
+		    }
+		    break;
+
+		    case 'n': // Normal
+		    {
+			++p.line;
+			
+			v3_f32& v = normals.emplace_back();
+
+			bool res = line_read_f32(p.line, v.x);
+			if (res) res = line_read_f32(p.line, v.y);
+			if (res) res = line_read_f32(p.line, v.z);
+			
+			if (!res) {
+			    corrupted = true;
+			    SV_LOG_ERROR("Can't read the vector at line %u", p.line_count);
+			}
+		    }
+		    break;
+
+		    case 't': // Texcoord
+		    {
+			++p.line;
+
+			v2_f32& v = texcoords.emplace_back();
+
+			if (!line_read_f32(p.line, v.x)) {
+			    corrupted = true;
+			    SV_LOG_ERROR("Can't read the vector at line %u", p.line_count);
+			}
+
+			// I think v coord is optional
+			line_read_f32(p.line, v.y);
+		    }
+		    break;
+		    
+		    }		    
+		}
+		break;
+
+		case 'f': // Face
+		{
+		    ++p.line;
+		    line_jump_spaces(p.line);
+
+		    u32 vertex_count = 0u;
+		    
+		    i32 position_index[4u] = {};
+		    i32 normal_index[4u] = {};
+		    i32 texcoord_index[4u] = {};
+
+		    char delimiters[] = {
+			' ',
+			'/'
+		    };
+
+		    bool res;
+
+		    foreach(i, 4) {
+
+			res = line_read_i32(p.line, position_index[i], delimiters, 2u);
+			if (res && *p.line == '/') {
+
+			    ++p.line;
+
+			    if (*p.line == '/') {
+				res = line_read_i32(p.line, normal_index[i], delimiters, 2u);
+			    }
+			    else {
+				res = line_read_i32(p.line, texcoord_index[i], delimiters, 2u);
+
+				if (res && *p.line == '/') {
+				    ++p.line;
+				    res = line_read_i32(p.line, normal_index[i], delimiters, 2u);
+				}
+			    }
+			}
+
+			if (!res) break;
+
+			position_index[i] -= mesh_aux->position_offset;
+			normal_index[i] -= mesh_aux->normal_offset;
+			texcoord_index[i] -= mesh_aux->texcoord_offset;
+
+			++vertex_count;
+
+			line_jump_spaces(p.line);
+			if (*p.line == '\r' || *p.line == '\n') break;
+		    }
+
+		    if (!res || vertex_count < 3) {
+			SV_LOG_ERROR("Can't read the face at line %u", p.line_count);
+			corrupted = false;
+		    }
+		    else {
+
+			i32 position_count = (i32)mesh->positions.size();
+			i32 normal_count = (i32)normals.size();
+			i32 texcoord_count = (i32)texcoords.size();
+
+			foreach(i, vertex_count) {
+			    
+			    bool res = position_index[i] != 0 && (abs(position_index[i])) <= position_count;
+			    if (res) res = normal_index[i] == 0 || (abs(normal_index[i])) <= normal_count;
+			    if (res) res = texcoord_index[i] == 0 || (abs(texcoord_index[i])) <= texcoord_count;
+
+			    if (res) {
+
+				i32 aux = position_index[i];
+				position_index[i] = (aux < 0) ? (position_count + aux) : (aux - 1);
+
+				aux = normal_index[i];
+				normal_index[i] = (aux < 0) ? (normal_count + aux) : (SV_MAX(aux - 1, 0));
+
+				aux = texcoord_index[i];
+				texcoord_index[i] = (aux < 0) ? (texcoord_count + aux) : (SV_MAX(aux - 1, 0));
+			    }
+			    else {
+				SV_LOG_ERROR("Can't read the face at line %u, index out of bounds", p.line_count);
+				corrupted = true;
+				break;
+			    }
+			}
+
+			if (res) {
+			    
+			    u32* index = (u32*) position_index;
+
+			    if (vertex_count == 3u) {
+
+				u32 max_index = SV_MAX(SV_MAX(index[0], index[1]), index[2]);
+
+				if (mesh->normals.size() <= max_index) mesh->normals.resize(max_index + 1u);
+				if (mesh->texcoords.size() <= max_index) mesh->texcoords.resize(max_index + 1u);
+
+				foreach(i, 3u) {
+				
+				    mesh->normals[index[i]] = normals[normal_index[i]];
+				    mesh->texcoords[index[i]] = texcoords[texcoord_index[i]];
+				    mesh->indices.push_back(index[i]);
+				}
+			    }
+			    // TODO: Triangulate quad faces
+			}			
+		    }
+		}
+		break;
+		
 		}
 	    }
 
-	    srcname = srcpath.substr(std::max(i, 0));
-	}
+	    if (corrupted) {
+		return false;
+	    }
 
-	// src name to dst filepath
-	srcname = dstpath + srcname;
-
-	std::string src = model_info.folderpath + srcpath;
-	bool res = file_copy(src.c_str(), srcname.c_str());
-
-	if (res) {
-	    textures[index] = std::move(srcname);
+	    // TEMP
+	    for (auto& m : model_info.meshes) {
+		SV_LOG("Mesh '%s', %u positions, %u normals, %u texcoords", m.name.c_str(), m.positions.size(), m.normals.size(), m.texcoords.size());
+	    }
 	}
 	else {
-
-	    SV_LOG_ERROR("Can't copy the image from '%s' to '%s'", src.c_str(), srcname.c_str());
-	}
-
-	return res;
-    }
-
-    bool import_model(const char* filepath_, const ModelInfo& model_info)
-    {
-	Serializer s;
-
-	u32 unnamed_mesh_count = 0u;
-	u32 unnamed_material_count = 0u;
-
-	std::string filepath = filepath_;
-	if (filepath.back() != '/')
-	    filepath += '/';
-
-	std::string textures_filepath = filepath;
-
-	std::stringstream ss;
-
-	struct Mat {
-	    const MaterialInfo* info;
-	    std::string filepath;
-	};
-	std::vector<Mat> mats;
-	std::string textures[4u];
-
-	// Save materials
-	for (const MaterialInfo& m : model_info.materials) {
-
-	    serialize_begin(s);
-
-	    // Create filepath
-	    {
-		ss.str("");
-		ss.clear();
-		ss << filepath;
-
-		if (m.name.size()) ss << m.name;
-		else ss << "Unnamed" << unnamed_material_count++;
-
-		ss << ".mat";
-	    }
-
-	    mats.push_back({&m, ss.str()});
-
-	    // Copy textures 
-	    {
-		textures[0].clear();
-		textures[1].clear();
-		textures[2].clear();
-		textures[3].clear();
-
-		import_texture(model_info, 0, m.diffuse_map_path, textures_filepath, textures);
-		import_texture(model_info, 1, m.normal_map_path, textures_filepath, textures);
-		import_texture(model_info, 2, m.specular_map_path, textures_filepath, textures);
-		import_texture(model_info, 3, m.emissive_map_path, textures_filepath, textures);
-	    }
-
-	    // Fill archive
-	    {
-		serialize_color(s, m.diffuse_color);
-		serialize_color(s, m.specular_color);
-		serialize_color(s, m.emissive_color);
-		serialize_f32(s, m.shininess);
-		serialize_string(s, textures[0].c_str());
-		serialize_string(s, textures[1].c_str());
-		serialize_string(s, textures[2].c_str());
-		serialize_string(s, textures[3].c_str());
-	    }
-
-	    SV_CHECK(serialize_end(s, (ss.str().c_str())));
-	}
-
-	// Save meshes
-	for (const MeshInfo& m : model_info.meshes) {
-
-	    // Create filepath
-	    {
-		ss.str("");
-		ss.clear();
-		ss << filepath;
-
-		if (m.name.size()) ss << m.name;
-		else ss << "Unnamed" << unnamed_mesh_count++;
-				
-		ss << ".mesh";
-	    }
-
-	    const Mat& mat = mats[m.material_index];
-
-	    serialize_begin(s);
-	    
-	    // Fill archive
-	    {
-		// TEMP
-		for (const v3_f32& p : m.positions)
-		    serialize_v3_f32(s, p);
-
-		for (u32 i : m.indices)
-		    serialize_u32(s, i);
-
-		for (const v2_f32& tc : m.texcoords)
-		    serialize_v2_f32(s, tc);
-
-		for (const v3_f32& p : m.tangents)
-		    serialize_v3_f32(s, p);
-
-		for (const v3_f32& p : m.bitangents)
-		    serialize_v3_f32(s, p);
-		
-		serialize_xmmatrix(s, m.transform_matrix);
-		serialize_string(s, mat.filepath.c_str());
-	    }
-
-	    SV_CHECK(serialize_end(s, (ss.str().c_str())));
+	    SV_LOG_ERROR("Can't load the model '%s', not found", filepath);
 	}
 
 	return true;
     }
 
+    bool import_model(const char* filepath_, const ModelInfo& model_info)
+    {
+	SV_LOG_ERROR("TODO: import_model");
+	return false;
+    }
+
     bool load_mesh(const char* filepath, Mesh& mesh)
     {
-	Deserializer d;
-
-	SV_CHECK(deserialize_begin(d, filepath));
-
-	//archive >> mesh.positions >> mesh.indices >> mesh.texcoords >> mesh.normals >> mesh.tangents >> mesh.bitangents;
-	//archive >> mesh.model_transform_matrix;
-	//archive >> mesh.model_material_filepath;
-
-	deserialize_end(d);
-
 	SV_LOG_ERROR("TODO: load_mesh");
 	return false;
     }
 
-    bool load_material(const char* filepath_, Material& mat)
+    bool load_material(const char* filepath, Material& material)
     {
-	Deserializer d;
-
-	SV_CHECK(deserialize_begin(d, filepath_));
-
-	/*archive >> mat.diffuse_color;
-	archive >> mat.specular_color;
-	archive >> mat.emissive_color;
-	archive >> mat.shininess;
-
-	std::string texpath;
-
-	archive >> texpath;
-	if (texpath.size())
-	    load_asset_from_file(mat.diffuse_map, texpath.c_str());
-
-	archive >> texpath;
-	if (texpath.size())
-	    load_asset_from_file(mat.normal_map, texpath.c_str());
-
-	archive >> texpath;
-	if (texpath.size())
-	    load_asset_from_file(mat.specular_map, texpath.c_str());
-
-	archive >> texpath;
-	if (texpath.size())
-	load_asset_from_file(mat.emissive_map, texpath.c_str());*/
-	
-	deserialize_end(d);
-	
 	SV_LOG_ERROR("TODO: load_material");
 	return false;
     }

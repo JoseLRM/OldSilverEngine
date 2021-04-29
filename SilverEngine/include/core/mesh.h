@@ -1,6 +1,7 @@
 #pragma once
 
 #include "platform/graphics.h"
+#include "utils/string.h"
 
 namespace sv {
 
@@ -51,23 +52,23 @@ namespace sv {
     SV_DEFINE_ASSET(MeshAsset, Mesh);
     SV_DEFINE_ASSET(MaterialAsset, Material);
 
-    void mesh_apply_plane(Mesh& mesh, const XMMATRIX& transform = XMMatrixIdentity());
-    void mesh_apply_cube(Mesh& mesh, const XMMATRIX& transform = XMMatrixIdentity());
-    void mesh_apply_sphere(Mesh& mesh, const XMMATRIX& transform = XMMatrixIdentity());
+    SV_API void mesh_apply_plane(Mesh& mesh, const XMMATRIX& transform = XMMatrixIdentity());
+    SV_API void mesh_apply_cube(Mesh& mesh, const XMMATRIX& transform = XMMatrixIdentity());
+    SV_API void mesh_apply_sphere(Mesh& mesh, const XMMATRIX& transform = XMMatrixIdentity());
 
-    void mesh_set_scale(Mesh& mesh, f32 scale, bool center = false);
-    void mesh_optimize(Mesh& mesh);
-    void mesh_recalculate_normals(Mesh& mesh);
+    SV_API void mesh_set_scale(Mesh& mesh, f32 scale, bool center = false);
+    SV_API void mesh_optimize(Mesh& mesh);
+    SV_API void mesh_recalculate_normals(Mesh& mesh);
 
-    bool mesh_create_buffers(Mesh& mesh, ResourceUsage usage = ResourceUsage_Static);
-    bool mesh_update_buffers(Mesh& mesh, CommandList cmd);
-    bool mesh_clear(Mesh& mesh);
+    SV_API bool mesh_create_buffers(Mesh& mesh, ResourceUsage usage = ResourceUsage_Static);
+    SV_API bool mesh_update_buffers(Mesh& mesh, CommandList cmd);
+    SV_API bool mesh_clear(Mesh& mesh);
 
     // Model loading
 
     struct MeshInfo {
 
-	std::string name;
+	String name;
 
 	List<v3_f32> positions;
 	List<v3_f32> normals;
@@ -84,30 +85,30 @@ namespace sv {
 
     struct MaterialInfo {
 	
-	std::string name;
+	String name;
 	Color diffuse_color;
 	Color specular_color;
 	Color emissive_color;
 	f32 shininess;
-	std::string diffuse_map_path;
-	std::string normal_map_path;
-	std::string specular_map_path;
-	std::string emissive_map_path;
+	String diffuse_map_path;
+	String normal_map_path;
+	String specular_map_path;
+	String emissive_map_path;
     };
 
     struct ModelInfo {
-	std::string folderpath;
+	String folderpath;
 	List<MeshInfo> meshes;
 	List<MaterialInfo> materials;
     };
 
     // Load external model format
-    bool load_model(const char* filepath, ModelInfo& model_info);
+    SV_API bool load_model(const char* filepath, ModelInfo& model_info);
 
     // Create asset files for the engine
-    bool import_model(const char* filepath, const ModelInfo& model_info);
+    SV_API bool import_model(const char* filepath, const ModelInfo& model_info);
 
-    bool load_mesh(const char* filepath, Mesh& mesh);
-    bool load_material(const char* filepath, Material& material);
+    SV_API bool load_mesh(const char* filepath, Mesh& mesh);
+    SV_API bool load_material(const char* filepath, Material& material);
 
 }

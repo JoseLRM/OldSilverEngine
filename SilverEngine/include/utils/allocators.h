@@ -800,6 +800,14 @@ namespace sv {
 	void reserve(size_t size);
 	void resize(size_t size);
 
+	SV_INLINE void set_ptr(void* data, size_t size)
+	{
+	    clear();
+	    _data = (u8*)data;
+	    _size = size;
+	    _capacity = size;
+	}
+
 	SV_INLINE bool empty() const noexcept
 	    {
 		return _size == 0u;

@@ -16,6 +16,12 @@ void show_component_info(void*, ShowComponentEvent* event)
     static bool test = false;
     
     egui_comp_bool("", 0u, &test);
+
+    if (input.keys[Key_Enter] == InputState_Pressed) {
+
+	ModelInfo info;
+	load_model("c:/Users/josel/3D Objects/gobber/GoblinX.obj", info);
+    }
 }
 
 void on_body_collision(void*, BodyCollisionEvent* event)
@@ -36,6 +42,7 @@ SV_USER bool user_initialize(bool init)
 
     event_user_register("update_scene", update_scene);
     event_user_register("on_body_collision", on_body_collision);
+    event_user_register("show_component_info", show_component_info);
     
     return true;
 }

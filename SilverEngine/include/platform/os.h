@@ -4,6 +4,7 @@
 #include "utils/math.h"
 #include "utils/allocators.h"
 #include "utils/serialize.h"
+#include "utils/string.h"
 
 namespace sv {
 
@@ -70,6 +71,7 @@ namespace sv {
     SV_API bool file_read_binary(const char* filepath, u8** pData, size_t* pSize);
     SV_API bool file_read_binary(const char* filepath, RawList& data);
     SV_API bool file_read_text(const char* filepath, char** pstr, size_t* psize);
+    SV_API bool file_read_text(const char* filepath, String& str);
     SV_API bool file_write_binary(const char* filepath, const u8* data, size_t size, bool append = false, bool recursive = true);
     SV_API bool file_write_text(const char* filepath, const char* str, size_t size, bool append = false, bool recursive = true);
 
