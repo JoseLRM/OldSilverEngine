@@ -27,19 +27,17 @@ namespace sv {
 		    _buff.pop_back(1u);
 		}
 		_buff.write_back(str + str_offset, str_size);
+
+		char c = '\0';
+		_buff.write_back(&c, sizeof(char));
 	    }
 
-	SV_INLINE const char* c_str()
+	SV_INLINE const char* c_str() const
 	    {
-		if (_buff.empty() || *(_buff.data() + _buff.size() - 1u) != '\0') {
-
-		    char c = '\0';
-		    _buff.write_back(&c, sizeof(char));
-		}
 		return (const char*)_buff.data();
 	    }
 
-	SV_INLINE size_t size()
+	SV_INLINE size_t size() const
 	    {
 		size_t size = _buff.size();
 		if (size && *(_buff.data() + _buff.size() - 1u) == '\0')
@@ -47,7 +45,7 @@ namespace sv {
 		return size;
 	    }
 
-	SV_INLINE bool empty() { return size() == 0u; }
+	SV_INLINE bool empty() { return size() == 0u; } const
 
 	SV_INLINE void clear()
 	    {

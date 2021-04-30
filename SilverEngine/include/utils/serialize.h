@@ -3,6 +3,7 @@
 #include "defines.h"
 #include "utils/allocators.h"
 #include "utils/math.h"
+#include "utils/string.h"
 
 namespace sv {
 
@@ -111,6 +112,10 @@ namespace sv {
 	s.buff.reserve(len);
 	s.buff.write_back(str, len);
     }
+    SV_INLINE void serialize_string(Serializer& s, const String& str)
+    {
+	serialize_string(s, str.c_str());
+    }
 
     SV_INLINE void serialize_v2_f32(Serializer& s, const v2_f32& v)
     {
@@ -181,6 +186,33 @@ namespace sv {
 	    serialize_f32(s, v->w);
 	    ++v;
 	}
+    }
+
+    SV_INLINE void serialize_u32_array(Serializer& s, const u32* n, u32 count)
+    {
+	s.buff.reserve(sizeof(u32) * (count + 1u));
+	serialize_u32(s, count);
+
+	foreach(i, count)
+	    serialize_u32(s, n[i]);
+    }
+
+    SV_INLINE void serialize_v2_f32_array(Serializer& s, const List<v2_f32>& list)
+    {
+	serialize_v2_f32_array(s, list.data(), (u32)list.size());
+    }
+    SV_INLINE void serialize_v3_f32_array(Serializer& s, const List<v3_f32>& list)
+    {
+	serialize_v3_f32_array(s, list.data(), (u32)list.size());
+    }
+    SV_INLINE void serialize_v4_f32_array(Serializer& s, const List<v4_f32>& list)
+    {
+	serialize_v4_f32_array(s, list.data(), (u32)list.size());
+    }
+
+    SV_INLINE void serialize_u32_array(Serializer& s, const List<u32>& list)
+    {
+	serialize_u32_array(s, list.data(), (u32)list.size());
     }
 
     SV_INLINE void serialize_version(Serializer& s, Version n)
@@ -331,6 +363,65 @@ namespace sv {
 	deserialize_f32(d, v.y);
 	deserialize_f32(d, v.z);
 	deserialize_f32(d, v.w);
+    }
+
+    SV_INLINE void deserialize_v2_f32_array(Deserializer& d, List<v2_f32>& list)
+    {
+	u32 count;
+	deserialize_u32(d, count);
+
+	list.resize(count);
+
+	foreach(i, count)  {
+
+	    v2_f32& v = list[i];
+	    deserialize_f32(d, v.x);
+	    deserialize_f32(d, v.y);
+	}
+    }
+    SV_INLINE void deserialize_v3_f32_array(Deserializer& d, List<v3_f32>& list)
+    {
+	u32 count;
+	deserialize_u32(d, count);
+
+	list.resize(count);
+
+	foreach(i, count)  {
+
+	    v3_f32& v = list[i];
+	    deserialize_f32(d, v.x);
+	    deserialize_f32(d, v.y);
+	    deserialize_f32(d, v.z);
+	}
+    }
+    SV_INLINE void deserialize_v4_f32_array(Deserializer& d, List<v4_f32>& list)
+    {
+	u32 count;
+	deserialize_u32(d, count);
+
+	list.resize(count);
+
+	foreach(i, count)  {
+
+	    v4_f32& v = list[i];
+	    deserialize_f32(d, v.x);
+	    deserialize_f32(d, v.y);
+	    deserialize_f32(d, v.z);
+	    deserialize_f32(d, v.w);
+	}
+    }
+
+    SV_INLINE void deserialize_u32_array(Deserializer& d, List<u32>& list)
+    {
+	u32 count;
+	deserialize_u32(d, count);
+
+	list.resize(count);
+
+	foreach(i, count)  {
+	    
+	    deserialize_u32(d, list[i]);
+	}
     }
 
     SV_INLINE void deserialize_version(Deserializer& d, Version& n)

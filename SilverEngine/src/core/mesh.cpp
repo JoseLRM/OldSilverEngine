@@ -685,7 +685,7 @@ namespace sv {
 	if (deserialize_begin(d, filepath)) {
 
 	    u32 version;
-	    serialize_u32(s, version);
+	    deserialize_u32(d, version);
 	    
 	    deserialize_v3_f32_array(d, mesh.positions);
 	    deserialize_v3_f32_array(d, mesh.normals);
@@ -719,19 +719,19 @@ namespace sv {
 	    deserialize_f32(d, mat.shininess);
 
 	    constexpr size_t buff_size = FILEPATH_SIZE + 1u;
-	    char filepath[buff_size];
+	    char texpath[buff_size];
 
 	    // TODO: Check errors
-	    deserialize_string(d, filepath, buff_size);
+	    deserialize_string(d, texpath, buff_size);
 	    load_asset_from_file(mat.diffuse_map, filepath);
 	    
-	    deserialize_string(d, filepath, buff_size);
+	    deserialize_string(d, texpath, buff_size);
 	    load_asset_from_file(mat.normal_map, filepath);
 
-	    deserialize_string(d, filepath, buff_size);
+	    deserialize_string(d, texpath, buff_size);
 	    load_asset_from_file(mat.specular_map, filepath);
 
-	    deserialize_string(d, filepath, buff_size);
+	    deserialize_string(d, texpath, buff_size);
 	    load_asset_from_file(mat.emissive_map, filepath);
 	    
 	    deserialize_end(d);
