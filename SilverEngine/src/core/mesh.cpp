@@ -580,22 +580,168 @@ namespace sv {
 	return true;
     }
 
-    bool import_model(const char* filepath_, const ModelInfo& model_info)
+    bool import_model(const char* filepath, const ModelInfo& model_info)
     {
-	SV_LOG_ERROR("TODO: import_model");
-	return false;
+	Serializer s;
+
+	// Preparing folder path
+	
+	size_t folderpath_size = strlen(filepath);
+	if (folderpath_size >= FILEPATH_SIZE - 3u) {
+	    SV_LOG_ERROR("This filepath is too large '%s'", filepath);
+	    return false;
+	}
+
+	char folderpath[FILEPATH_SIZE + 1u] = "";
+	if (folderpath_size) {
+
+	    if (folderpath[folderpath_size - 1u] != '/') {
+		sprintf(folderpath, "%s/", filepath);
+	    }
+	    else strcpy(folderpath, filepath);
+	}
+
+	folderpath_size = strlen(folderpath);
+	if (folderpath_size >= FILEPATH_SIZE) {
+	    SV_LOG_ERROR("This filepath is too large '%s'", filepath);
+	    return false;
+	}
+
+	// Creating mesh files
+	
+	for (const MeshInfo& mesh : model_info.meshes) {
+
+	    size_t meshpath_size = folderpath_size + mesh.name.size() + strlen(".mesh");
+	    if (meshpath_size >= FILEPATH_SIZE) {
+		SV_LOG_ERROR("This filepath is too large '%s'", filepath);
+		return false;
+	    }
+	    
+	    serialize_begin(s);
+
+	    serialize_u32(s, 0u); // VERSION
+
+	    serialize_v3_f32_array(s, mesh.positions);
+	    serialize_v3_f32_array(s, mesh.normals);
+	    serialize_v2_f32_array(s, mesh.texcoords);
+	    serialize_u32_array(s, mesh.indices);
+
+	    char meshpath[FILEPATH_SIZE + 1u];
+	    sprintf(meshpath, "%s/%s.mesh", folderpath, mesh.name.c_str());
+
+	    if (!serialize_end(s, meshpath)) {
+		SV_LOG_ERROR("Can't save the mesh '%s'", meshpath);
+		return false;
+	    }
+	    else {
+		SV_LOG_INFO("Mesh file saved '%s'", meshpath);
+	    }
+	}
+
+	// Creating material files
+
+	for (const MaterialInfo& mat : model_info.materials) {
+
+	    size_t matpath_size = folderpath_size + mat.name.size() + strlen(".mat");
+	    if (matpath_size >= FILEPATH_SIZE) {
+		SV_LOG_ERROR("This filepath is too large '%s'", filepath);
+		return false;
+	    }
+	    
+	    serialize_begin(s);
+
+	    serialize_u32(s, 0u); // VERSION
+
+	    serialize_color(s, mat.diffuse_color);
+	    serialize_color(s, mat.specular_color);
+	    serialize_color(s, mat.emissive_color);
+	    serialize_f32(s, mat.shininess);
+	    serialize_string(s, mat.diffuse_map_path);
+	    serialize_string(s, mat.normal_map_path);
+	    serialize_string(s, mat.specular_map_path);
+	    serialize_string(s, mat.emissive_map_path);
+
+	    char matpath[FILEPATH_SIZE + 1u];
+	    sprintf(matpath, "%s/%s.mat", folderpath, mat.name.c_str());
+
+	    if (!serialize_end(s, matpath)) {
+		SV_LOG_ERROR("Can't save the material '%s'", matpath);
+		return false;
+	    }
+	    else {
+		SV_LOG_INFO("Material file saved '%s'", matpath);
+	    }
+	}
+
+	// TODO: Save images
+	
+	return true;
     }
 
     bool load_mesh(const char* filepath, Mesh& mesh)
     {
-	SV_LOG_ERROR("TODO: load_mesh");
-	return false;
+	Deserializer d;
+
+	if (deserialize_begin(d, filepath)) {
+
+	    u32 version;
+	    serialize_u32(s, version);
+	    
+	    deserialize_v3_f32_array(d, mesh.positions);
+	    deserialize_v3_f32_array(d, mesh.normals);
+	    deserialize_v2_f32_array(d, mesh.texcoords);
+	    deserialize_u32_array(d, mesh.indices);
+
+	    // TODO: Compute tangents and bitangents
+	    
+	    deserialize_end(d);
+	}
+	else {
+	    SV_LOG_ERROR("Mesh file '%s', not found", filepath);
+	    return false;
+	}
+	
+	return true;
     }
 
-    bool load_material(const char* filepath, Material& material)
+    bool load_material(const char* filepath, Material& mat)
     {
-	SV_LOG_ERROR("TODO: load_material");
-	return false;
+	Deserializer d;
+
+	if (deserialize_begin(d, filepath)) {
+
+	    u32 version;
+	    deserialize_u32(d, version);
+	    
+	    deserialize_color(d, mat.diffuse_color);
+	    deserialize_color(d, mat.specular_color);
+	    deserialize_color(d, mat.emissive_color);
+	    deserialize_f32(d, mat.shininess);
+
+	    constexpr size_t buff_size = FILEPATH_SIZE + 1u;
+	    char filepath[buff_size];
+
+	    // TODO: Check errors
+	    deserialize_string(d, filepath, buff_size);
+	    load_asset_from_file(mat.diffuse_map, filepath);
+	    
+	    deserialize_string(d, filepath, buff_size);
+	    load_asset_from_file(mat.normal_map, filepath);
+
+	    deserialize_string(d, filepath, buff_size);
+	    load_asset_from_file(mat.specular_map, filepath);
+
+	    deserialize_string(d, filepath, buff_size);
+	    load_asset_from_file(mat.emissive_map, filepath);
+	    
+	    deserialize_end(d);
+	}
+	else {
+	    SV_LOG_ERROR("Mesh file '%s', not found", filepath);
+	    return false;
+	}
+	
+	return true;
     }
 
 }

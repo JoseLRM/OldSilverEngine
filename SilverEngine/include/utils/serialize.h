@@ -134,6 +134,55 @@ namespace sv {
 	serialize_f32(s, v.w);
     }
 
+    SV_INLINE void serialize_v2_f32_array(Serializer& s, const v2_f32* v, u32 count)
+    {
+	s.buff.reserve(sizeof(f32) * 2u * count + sizeof(u32));
+
+	serialize_u32(s, count);
+
+	const v2_f32* end = v + size_t(count);
+
+	while (v != end)  {
+	
+	    serialize_f32(s, v->x);
+	    serialize_f32(s, v->y);
+	    ++v;
+	}
+    }
+    SV_INLINE void serialize_v3_f32_array(Serializer& s, const v3_f32* v, u32 count)
+    {
+	s.buff.reserve(sizeof(f32) * 3u * count + sizeof(u32));
+
+	serialize_u32(s, count);
+
+	const v3_f32* end = v + size_t(count);
+
+	while (v != end)  {
+	
+	    serialize_f32(s, v->x);
+	    serialize_f32(s, v->y);
+	    serialize_f32(s, v->z);
+	    ++v;
+	}
+    }
+    SV_INLINE void serialize_v4_f32_array(Serializer& s, const v4_f32* v, u32 count)
+    {
+	s.buff.reserve(sizeof(f32) * 4u * count + sizeof(u32));
+
+	serialize_u32(s, count);
+
+	const v4_f32* end = v + size_t(count);
+
+	while (v != end)  {
+	
+	    serialize_f32(s, v->x);
+	    serialize_f32(s, v->y);
+	    serialize_f32(s, v->z);
+	    serialize_f32(s, v->w);
+	    ++v;
+	}
+    }
+
     SV_INLINE void serialize_version(Serializer& s, Version n)
     {
 	s.buff.write_back(&n, sizeof(Version));

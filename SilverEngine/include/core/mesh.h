@@ -20,13 +20,13 @@ namespace sv {
 
     struct Mesh {
 
-	std::vector<v3_f32> positions;
-	std::vector<v3_f32> normals;
-	std::vector<v3_f32> tangents;
-	std::vector<v3_f32> bitangents;
-	std::vector<v2_f32> texcoords;
+	List<v3_f32> positions;
+	List<v3_f32> normals;
+	List<v3_f32> tangents;
+	List<v3_f32> bitangents;
+	List<v2_f32> texcoords;
 
-	std::vector<MeshIndex> indices;
+	List<MeshIndex> indices;
 
 	GPUBuffer* vbuffer = nullptr;
 	GPUBuffer* ibuffer = nullptr;
@@ -34,7 +34,7 @@ namespace sv {
 	// Info about the importation of the 3D Model
 
 	XMMATRIX model_transform_matrix = XMMatrixIdentity();
-	std::string model_material_filepath;
+	String model_material_filepath;
 
     };
 
@@ -97,7 +97,7 @@ namespace sv {
     };
 
     struct ModelInfo {
-	String folderpath;
+	String folderpath; // Why i need this??
 	List<MeshInfo> meshes;
 	List<MaterialInfo> materials;
     };
