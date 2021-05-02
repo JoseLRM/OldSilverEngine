@@ -653,13 +653,19 @@ namespace sv {
     
     bool file_copy(const char* srcpath, const char* dstpath)
     {
-	return CopyFileA(srcpath, dstpath, FALSE);
+	if (!CopyFileA(srcpath, dstpath, FALSE)) {
+
+	    create_path(dstpath);
+	    return CopyFileA(srcpath, dstpath, FALSE);
+	}
+	
+	return true;
     }
 
     bool file_exists(const char* filepath)
     {
 	DWORD att = GetFileAttributes(filepath);
-	if(INVALID_FILE_ATTRIBUTES == att && GetLastError() == ERROR_FILE_NOT_FOUND)
+	if(INVALID_FILE_ATTRIBUTES == att)
 	{
 	    return false;
 	}

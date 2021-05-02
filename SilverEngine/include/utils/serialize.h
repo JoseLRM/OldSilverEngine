@@ -114,7 +114,15 @@ namespace sv {
     }
     SV_INLINE void serialize_string(Serializer& s, const String& str)
     {
-	serialize_string(s, str.c_str());
+	const char* st = str.c_str();
+
+	if (st)
+	    serialize_string(s, st);
+	else {
+
+	    char c = '\0';
+	    serialize_string(s, &c);
+	}
     }
 
     SV_INLINE void serialize_v2_f32(Serializer& s, const v2_f32& v)

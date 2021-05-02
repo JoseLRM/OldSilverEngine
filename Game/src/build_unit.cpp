@@ -20,7 +20,14 @@ void show_component_info(void*, ShowComponentEvent* event)
     if (input.keys[Key_Enter] == InputState_Pressed) {
 
 	ModelInfo info;
-	load_model("c:/Users/josel/3D Objects/gobber/GoblinX.obj", info);
+	if (load_model("c:/Users/josel/3D Objects/gobber/GoblinX.obj", info)) {
+
+	    import_model("assets/model_test", info);
+	}
+
+	clear_scene();
+
+	create_entity_model(SV_ENTITY_NULL, "assets/model_test");
     }
 }
 

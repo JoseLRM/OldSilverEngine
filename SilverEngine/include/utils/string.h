@@ -15,6 +15,11 @@ namespace sv {
 		_buff.reset();
 	    }
 
+	SV_INLINE void set(const char* str)
+	    {
+		set(str, 0u, strlen(str));
+	    }
+	
 	SV_INLINE void set(const char* str, size_t str_offset, size_t str_size)
 	    {
 		reset();
@@ -35,6 +40,11 @@ namespace sv {
 	SV_INLINE const char* c_str() const
 	    {
 		return (const char*)_buff.data();
+	    }
+
+	SV_INLINE char* c_str()
+	    {
+		return (char*)_buff.data();
 	    }
 
 	SV_INLINE size_t size() const
@@ -76,6 +86,23 @@ namespace sv {
 	size_t size = it - line;
 	
 	return size;
+    }
+
+    SV_INLINE const char* filepath_name(const char* filepath)
+    {
+	size_t s = strlen(filepath);
+
+	if (s) {
+
+	    --s;
+	    while (s && filepath[s] != '/') --s;
+
+	    if (s) {
+		return filepath + s + 1u;
+	    }
+	}
+	
+	return filepath;
     }
 
     constexpr const char* filepath_extension(const char* filepath)
@@ -238,6 +265,14 @@ namespace sv {
 	value = atoi(value_str);
 
 	return true;
+    }
+
+    SV_INLINE bool line_read_v3_f32(const char*& line, v3_f32& value)
+    {
+	bool res = line_read_f32(line, value.x);
+	if (res) res = line_read_f32(line, value.y);
+	if (res) res = line_read_f32(line, value.z);
+	return res;
     }
     
 }

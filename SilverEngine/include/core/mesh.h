@@ -39,6 +39,7 @@ namespace sv {
     };
 
     struct Material {
+	Color ambient_color;
 	Color diffuse_color;
 	Color specular_color;
 	Color emissive_color;
@@ -72,8 +73,6 @@ namespace sv {
 
 	List<v3_f32> positions;
 	List<v3_f32> normals;
-	List<v3_f32> tangents;
-	List<v3_f32> bitangents;
 	List<v2_f32> texcoords;
 
 	List<MeshIndex> indices;
@@ -86,6 +85,7 @@ namespace sv {
     struct MaterialInfo {
 	
 	String name;
+	Color ambient_color;
 	Color diffuse_color;
 	Color specular_color;
 	Color emissive_color;
@@ -97,7 +97,7 @@ namespace sv {
     };
 
     struct ModelInfo {
-	String folderpath; // Why i need this??
+	char folderpath[FILEPATH_SIZE + 1u];
 	List<MeshInfo> meshes;
 	List<MaterialInfo> materials;
     };

@@ -491,7 +491,7 @@ namespace sv {
 	e.handle = event->entity;
     }
 
-    SV_INLINE void remove_entity_from_hierarchy_folder(HierarchyFolder& folder, Entity entity)
+    SV_INTERNAL void remove_entity_from_hierarchy_folder(HierarchyFolder& folder, Entity entity)
     {
 	foreach(i, folder.entities.size()) {
 
