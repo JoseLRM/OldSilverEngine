@@ -476,6 +476,10 @@ namespace sv {
 	BodyType_Projectile,
     };
 
+    enum BodyComponentFlag : u32 {
+	BodyComponentFlag_Trigger = SV_BIT(0)
+    };
+
     struct BodyComponent : public BaseComponent {
 
 	static CompID SV_API ID;
@@ -518,4 +522,10 @@ namespace sv {
 	CollisionState state;
     };
 
+    // on_trigger_collision
+    struct TriggerCollisionEvent {
+	CompView<BodyComponent> trigger;
+	CompView<BodyComponent> body;
+	CollisionState state;
+    };
 }

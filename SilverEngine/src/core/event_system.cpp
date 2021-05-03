@@ -2,7 +2,7 @@
 
 namespace sv {
 
-    constexpr u32 EVENT_SYSTEM_HASH_ENTRIES = 2u;
+    constexpr u32 EVENT_SYSTEM_HASH_ENTRIES = 3000u;
 
     struct EventRegister {
 	EventFn function;
@@ -173,7 +173,7 @@ namespace sv {
 		if (type->hash_value == 0u) {
 
 		    type->hash_value = hash;
-		    strcpy(type->event_name, event_name);
+		    strcpy(type->name, event_name);
 		    break;
 		}
 		else {

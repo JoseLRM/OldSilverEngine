@@ -11,13 +11,13 @@ void update_scene()
     }
 }
 
-void show_component_info(void*, ShowComponentEvent* event)
+void show_component_info(ShowComponentEvent* event)
 {
     static bool test = false;
     
     egui_comp_bool("", 0u, &test);
 
-    if (input.keys[Key_Enter] == InputState_Pressed) {
+    if (false && input.keys[Key_Enter] == InputState_Pressed) {
 
 	ModelInfo info;
 	if (load_model("c:/Users/josel/3D Objects/gobber/GoblinX.obj", info)) {
@@ -31,13 +31,26 @@ void show_component_info(void*, ShowComponentEvent* event)
     }
 }
 
-void on_body_collision(void*, BodyCollisionEvent* event)
+void on_body_collision(BodyCollisionEvent* event)
 {
     if (event->state == CollisionState_Enter) {
-	SV_LOG("Enter");
+	SV_LOG("Collision Enter");
     }
     if (event->state == CollisionState_Leave) {
-	SV_LOG("Leave");
+	SV_LOG("Collision Leave");
+    }
+}
+
+void on_trigger_collision(TriggerCollisionEvent* event)
+{
+    if (event->state == CollisionState_Enter) {
+	SV_LOG("Trigger Enter");
+	
+    }
+    if (event->state == CollisionState_Leave) {
+	SV_LOG("Trigger Leave");
+	BodyComponent* b = get_component<BodyComponent>(event->body.entity);
+	b->vel += v2_f32(-10, 30);
     }
 }
 
@@ -49,6 +62,7 @@ SV_USER bool user_initialize(bool init)
 
     event_user_register("update_scene", update_scene);
     event_user_register("on_body_collision", on_body_collision);
+    event_user_register("on_trigger_collision", on_trigger_collision);
     event_user_register("show_component_info", show_component_info);
     
     return true;

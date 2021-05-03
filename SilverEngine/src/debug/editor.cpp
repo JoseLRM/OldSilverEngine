@@ -642,6 +642,15 @@ namespace sv {
 		egui_comp_drag_f32("Mass", 6u, &b.mass, 0.1f, 0.0f, f32_max);
 		egui_comp_drag_f32("Friction", 7u, &b.friction, 0.001f, 0.0f, 1.f);
 		egui_comp_drag_f32("Bounciness", 8u, &b.bounciness, 0.005f, 0.0f, 1.f);
+
+		bool is_trigger = b.flags & BodyComponentFlag_Trigger;
+
+		if (egui_comp_bool("Trigger", 9u, &is_trigger)) {
+		    if (is_trigger)
+			b.flags |= BodyComponentFlag_Trigger;
+		    else
+			b.flags = b.flags & (~BodyComponentFlag_Trigger);
+		}
 	    }
 
 	    ShowComponentEvent e;
