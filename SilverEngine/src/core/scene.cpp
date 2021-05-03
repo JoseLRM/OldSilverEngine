@@ -951,7 +951,10 @@ namespace sv {
 	    // Dispatch events
 	    for (BodyCollision& col : current_collisions) {
 
-		if (col.e1 < col.e0) std::swap(col.e0, col.e1);
+		if (col.e1 < col.e0) {
+		    std::swap(col.e0, col.e1);
+		    std::swap(col.b0, col.b1);
+		}
 
 		CollisionState state = CollisionState_Enter;
 		
@@ -966,8 +969,14 @@ namespace sv {
 		if (col.trigger) {
 
 		    TriggerCollisionEvent event;
-		    event.body = CompView<BodyComponent>{ col.e0, col.b0 };
-		    event.trigger = CompView<BodyComponent>{ col.e1, col.b1 };
+		    if (col.b0->flags & BodyComponentFlag_Trigger) {
+			event.trigger = CompView<BodyComponent>{ col.e0, col.b0 };
+			event.body = CompView<BodyComponent>{ col.e1, col.b1 };
+		    }
+		    else {
+			event.body = CompView<BodyComponent>{ col.e0, col.b0 };
+			event.trigger = CompView<BodyComponent>{ col.e1, col.b1 };
+		    }
 		    event.state = state;
 
 		    event_dispatch("on_trigger_collision", &event);
@@ -991,8 +1000,14 @@ namespace sv {
 		    if (col.trigger) {
 
 			TriggerCollisionEvent event;
-			event.body = CompView<BodyComponent>{ col.e0, col.b0 };
-			event.trigger = CompView<BodyComponent>{ col.e1, col.b1 };
+			if (col.b0->flags & BodyComponentFlag_Trigger) {
+			    event.trigger = CompView<BodyComponent>{ col.e0, col.b0 };
+			    event.body = CompView<BodyComponent>{ col.e1, col.b1 };
+			}
+			else {
+			    event.body = CompView<BodyComponent>{ col.e0, col.b0 };
+			    event.trigger = CompView<BodyComponent>{ col.e1, col.b1 };
+			}
 			event.state = CollisionState_Leave;
 
 			event_dispatch("on_trigger_collision", &event);
