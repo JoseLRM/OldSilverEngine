@@ -12,14 +12,12 @@ namespace sv {
     SV_API void printf(const char* str, ...);
     SV_API void show_message(const char* title, const char* content, bool error);    
 
-    /* TODO
-       std::string file_dialog_open(u32 filterCount, const char** filters, const char* startPath);
-       std::string file_dialog_save(u32 filterCount, const char** filters, const char* startPath);
+    SV_API bool file_dialog_open(char* buff, u32 filterCount, const char** filters, const char* startPath);
+    SV_API bool file_dialog_save(char* buff, u32 filterCount, const char** filters, const char* startPath);
 
-       void set_cursor_position(Window* window, f32 x, f32 y);
+    //TODO void set_cursor_position(Window* window, f32 x, f32 y);
 
-       void system_pause();
-    */
+    void system_pause();
 
     // Timer
 
@@ -78,6 +76,7 @@ namespace sv {
     SV_API bool file_remove(const char* filepath);
     SV_API bool file_copy(const char* srcpath, const char* dstpath);
     SV_API bool file_exists(const char* filepath);
+    SV_API bool folder_create(const char* filepath, bool recursive = false);
 
     SV_API bool file_date(const char* filepath, Date* create, Date* last_write, Date* last_access);
 
@@ -100,18 +99,19 @@ namespace sv {
     
     SV_API bool load_image(const char* filePath, void** pdata, u32* width, u32* height);
 
-    SV_API bool bin_read(u64 hash, RawList& data);
-    SV_API bool bin_read(u64 hash, Deserializer& deserializer); // Begins the deserializer
+    // TODO: Move to utils/serialize.h
+    SV_API bool bin_read(u64 hash, RawList& data, bool system = false);
+    SV_API bool bin_read(u64 hash, Deserializer& deserializer, bool system = false); // Begins the deserializer
 
-    SV_API bool bin_write(u64 hash, const void* data, size_t size);
-    SV_API bool bin_write(u64 hash, Serializer& serializer); // Ends the serializer
+    SV_API bool bin_write(u64 hash, const void* data, size_t size, bool system = false);
+    SV_API bool bin_write(u64 hash, Serializer& serializer, bool system = false); // Ends the serializer
 
     bool _os_startup();
     void _os_recive_input();
     bool _os_shutdown();
 
     void _os_compile_gamecode();
-    void _os_update_user_callbacks(const char* dll);
+    bool _os_update_user_callbacks(const char* dll);
     void _os_free_user_callbacks();
     
     enum MouseButton : u32 {

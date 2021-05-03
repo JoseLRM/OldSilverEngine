@@ -17,12 +17,14 @@ void update_scene()
     }
 }
 
+void initialize_game()
+{
+    set_scene("Test");
+}
+
 SV_USER bool user_initialize(bool init)
 {
-    if (init) {
-	set_scene("Test");
-    }
-
+    event_user_register("initialize_game", initialize_game);
     event_user_register("update_scene", update_scene);
     
     return true;

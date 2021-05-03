@@ -105,7 +105,7 @@ SET SVP= %origin_path%\SilverEngine\
 SET sv_defines= -DSV_SILVER_ENGINE=1 %common_defines%
 SET sv_compiler_flags= %common_compiler_flags%
 SET sv_include_paths= /I %SVP%include /I %SVP%src\ /I %SVP%src\external\ /I %VULKAN_SDK%\Include\
-SET sv_link_libs= user32.lib Shell32.lib %VULKAN_SDK%\Lib\vulkan-1.lib sprv.lib
+SET sv_link_libs= user32.lib Comdlg32.lib Shell32.lib %VULKAN_SDK%\Lib\vulkan-1.lib sprv.lib
 SET sv_link_flags= %common_linker_flags% /LIBPATH:"%origin_path%\SilverEngine\lib\" /out:..\SilverEngine.exe /PDB:SilverEngine.pdb /LTCG
 SET sv_build_units=
 
@@ -139,55 +139,10 @@ ECHO.
 ECHO.
 
 popd
-
-pushd %output_dir%
-
-SET SVP= %origin_path%SilverEngine\
-SET GP= %origin_path%Game\
- 
-IF EXIST  SilverEngine.exp DEL SilverEngine.exp -Q
-
-ECHO Creating system data
-
-IF EXIST system (
-   RMDIR system /Q /S
-)
-XCOPY %SVP%system\ system /E /I /Q /Y > NUL
-
-IF NOT EXIST bin MKDIR bin
-
-ECHO Moving DLLs
-
-DEL *.dll > NUL 2> NUL
-XCOPY %SVP%lib\*.dll /I /Q /Y > NUL
-
-IF EXIST  Game.exp DEL Game.exp -Q
-IF EXIST  Game.lib DEL Game.lib -Q
-
-ECHO Creating assets
-     
-XCOPY %GP%assets\ assets /E /I /Q /Y > NUL
-
-IF EXIST gamecode RMDIR gamecode /S /Q
-
-MKDIR gamecode\lib
-MKDIR gamecode\src
-MKDIR gamecode\SilverEngine
-
-XCOPY %SVP%\include gamecode\SilverEngine /E /I /Q /Y > NUL
-XCOPY %GP%\src gamecode\src /E /I /Q /Y > NUL
-
-IF EXIST SilverEngine.lib (
-   XCOPY SilverEngine.lib gamecode\lib /I /Q /Y > NUL
-   DEL SilverEngine.lib
-)
-
-XCOPY %origin_path%scripts\shell.bat system\ /I /Q /Y > NUL
-
-
-
-IF "%run%"=="true" SilverEngine.exe
-
 popd
+
+pushd %origin_path%
+
+XCOPY %output_dir%SilverEngine.lib SilverEngine\system\bin /I /Q /Y > NUL
 
 popd

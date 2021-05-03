@@ -23,22 +23,21 @@ IF NOT EXIST release (
 )
 
 XCOPY %SVP% %RP% /E /I /Q /Y > NUL
+XCOPY SilverEngine\system %RP%system /E /I /Q /Y > NUL
+XCOPY SilverEngine\*.dll %RP% /I /Q /Y > NUL
 
 RMDIR %RP%int\ /Q /S > NUL
 
-RMDIR %RP%assets\ /Q /S > NUL
-MKDIR %RP%assets\ > NUL
+XCOPY misc\default_code.cpp %RP%system\ /I /Q /Y > NUL
 
-RMDIR %RP%bin\ /Q /S > NUL
-MKDIR %RP%bin\ > NUL
+XCOPY SilverEngine\include %RP%include /E /I /Q /Y > NUL
+XCOPY scripts\shell.bat %RP%system /I /Q /Y > NUL
 
-DEL %RP%gamecode\src\* /Q /S > NUL
-
-XCOPY misc\default_code.cpp %RP%gamecode\src\ /I /Q /Y > NUL
-RENAME %RP%gamecode\src\default_code.cpp build_unit.cpp
+REM Delete all the debug info and libraries
+RENAME %RP%SilverEngine.exe SilverEngineTemp
+DEL %RP%SilverEngine.* /Q
+RENAME %RP%SilverEngineTemp SilverEngine.exe
 
 XCOPY misc\SilverEditor.bat %RP% /I /Q /Y > NUL
-
-CALL %RP%system\build_game.bat
 
 popd

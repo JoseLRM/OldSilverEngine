@@ -9,18 +9,18 @@ namespace sv {
 	user_callbacks = callbacks;
     }
 
-    bool _user_initialize(bool init_engine)
+    bool _user_initialize()
     {
 	if (user_callbacks.initialize)
-	    return user_callbacks.initialize(init_engine);
-	return true;
+	    return user_callbacks.initialize();
+	return false;
     }
     
-    bool _user_close(bool close_engine)
+    bool _user_close()
     {
 	if (user_callbacks.close)
-	    return user_callbacks.close(close_engine);
-	return true;
+	    return user_callbacks.close();
+	return false;
     }
     
     bool _user_validate_scene(const char* name)

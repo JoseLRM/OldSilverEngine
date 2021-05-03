@@ -23,7 +23,7 @@ namespace sv {
 	u32 random = math_random_u32(seed);
 
 	seed += 100;
-	std::string filePath = "system/" + std::to_string(random);
+	std::string filePath = "$system/" + std::to_string(random);
 
 	return filePath;
     }
@@ -64,7 +64,7 @@ namespace sv {
 	std::stringstream bat;
 
 	// .exe path
-	bat << "system\\compilers\\dxc.exe ";
+	bat << "system\\bin\\dxc.exe ";
 	
 	// API Specific
 	switch (desc->api)
@@ -163,8 +163,8 @@ namespace sv {
 	}
 
 	// Input - Output
-	bat << srcPath << " -Fo ";
-	bat << filePath.c_str();
+	bat << srcPath + 1u << " -Fo ";
+	bat << filePath.c_str() + 1u;
 
 	bat << " 2> system\\shader_log.txt ";
 	
@@ -196,9 +196,9 @@ namespace sv {
 	desc.shaderType = shaderType;
 
 #if SV_GFX
-	if (alwaisCompile || !bin_read(hash, data)) {
+	if (alwaisCompile || !bin_read(hash, data, true)) {
 #else
-	    if (!bin_read(hash, data)) {
+	    if (!bin_read(hash, data, true)) {
 #endif
 			
 		ShaderCompileDesc c;
@@ -209,7 +209,7 @@ namespace sv {
 		c.shaderType = shaderType;
 
 		SV_CHECK(graphics_shader_compile_string(&c, src, u32(strlen(src)), data));
-		SV_CHECK(bin_write(hash, data.data(), u32(data.size())));
+		SV_CHECK(bin_write(hash, data.data(), u32(data.size()), true));
 
 		SV_LOG_INFO("Shader Compiled: '%s'", name);
 	    }
@@ -229,9 +229,9 @@ namespace sv {
 	    desc.shaderType = shaderType;
 
 #if SV_GFX
-	    if (alwaisCompile || !bin_read(hash, data)) {
+	    if (alwaisCompile || !bin_read(hash, data, true)) {
 #else
-		if (!bin_read(hash, data)) {
+		if (!bin_read(hash, data, true)) {
 #endif
 		    char* str;
 		    size_t str_size;
@@ -254,7 +254,7 @@ namespace sv {
 
 		    SV_FREE_MEMORY(str);
 
-		    SV_CHECK(bin_write(hash, data.data(), u32(data.size())));
+		    SV_CHECK(bin_write(hash, data.data(), u32(data.size()), true));
 
 		    SV_LOG_INFO("Shader Compiled: '%s'", name);
 		}

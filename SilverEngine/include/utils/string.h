@@ -105,6 +105,58 @@ namespace sv {
 	return filepath;
     }
 
+    SV_INLINE char* filepath_name(char* filepath)
+    {
+	size_t s = strlen(filepath);
+
+	if (s) {
+
+	    --s;
+	    while (s && filepath[s] != '/') --s;
+
+	    if (s) {
+		return filepath + s + 1u;
+	    }
+	}
+	
+	return filepath;
+    }
+
+    SV_INLINE char* filepath_extension(char* filepath)
+    {
+	char* last_dot = nullptr;
+
+	char* it = filepath;
+
+	while (*it) {
+
+	    switch (*it) {
+
+	    case '/':
+		last_dot = nullptr;
+		break;
+
+	    case '.':
+		last_dot = it;
+		break;
+		
+	    }
+	    
+	    ++it;
+	}
+
+	if (last_dot) {
+
+	    if (last_dot == filepath)
+		last_dot = nullptr;
+	    
+	    else if (*(last_dot - 1u) == '/')
+		last_dot = nullptr;
+	}
+
+	return last_dot;
+    }
+
     constexpr const char* filepath_extension(const char* filepath)
     {
 	const char* last_dot = nullptr;

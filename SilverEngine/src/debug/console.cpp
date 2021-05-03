@@ -252,7 +252,7 @@ namespace sv {
 	{
 	    Deserializer d;
 
-	    if (bin_read(hash_string("CONSOLE HISTORY"), d)) {
+	    if (bin_read(hash_string("CONSOLE HISTORY"), d, true)) {
 
 		u32 history_count;
 		deserialize_u32(d, history_count);
@@ -309,7 +309,7 @@ namespace sv {
 		serialize_string(s, console.history[j].c_str());
 	    }
 
-	    if (!bin_write(hash_string("CONSOLE HISTORY"), s)) {
+	    if (!bin_write(hash_string("CONSOLE HISTORY"), s, true)) {
 		SV_LOG_ERROR("Can't save the console history");
 	    }
 	}

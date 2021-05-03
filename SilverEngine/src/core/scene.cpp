@@ -90,7 +90,7 @@ namespace sv {
 
 	SceneData data;
 	
-	char name[SCENENAME_SIZE] = {};
+	char name[SCENENAME_SIZE + 1u] = {};
 
 	// ECS
 	
@@ -213,6 +213,9 @@ namespace sv {
 	
 	// Close last scene
 	destroy_current_scene();
+
+	if (name == nullptr)
+	    return true;
 	
 	scene_ptr = SV_ALLOCATE_STRUCT(Scene);
 
@@ -1070,7 +1073,7 @@ namespace sv {
 	}
 
 #if SV_DEV
-	if (dev.game_state != GameState_Play)
+	if (engine.state != EngineState_Play)
 	    return;
 #endif
 	

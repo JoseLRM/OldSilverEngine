@@ -10,7 +10,7 @@ namespace sv {
 
     // SHADER COMPILATION
 
-#define COMPILE_SHADER(type, shader, path, alwais_compile) SV_CHECK(graphics_shader_compile_fastbin_from_file(path, type, &shader, "system/shaders/" path, alwais_compile));
+#define COMPILE_SHADER(type, shader, path, alwais_compile) SV_CHECK(graphics_shader_compile_fastbin_from_file(path, type, &shader, "$system/shaders/" path, alwais_compile));
 #define COMPILE_VS(shader, path) COMPILE_SHADER(ShaderType_Vertex, shader, path, false)
 #define COMPILE_PS(shader, path) COMPILE_SHADER(ShaderType_Pixel, shader, path, false)
 
@@ -656,8 +656,8 @@ namespace sv {
 	SV_CHECK(create_states());
 
 	// Create default fonts
-	SV_CHECK(font_create(renderer->font_opensans, "system/fonts/OpenSans/OpenSans-Regular.ttf", 128.f, 0u));
-	SV_CHECK(font_create(renderer->font_console, "system/fonts/Cousine/Cousine-Regular.ttf", 128.f, 0u));
+	SV_CHECK(font_create(renderer->font_opensans, "$system/fonts/OpenSans/OpenSans-Regular.ttf", 128.f, 0u));
+	SV_CHECK(font_create(renderer->font_console, "$system/fonts/Cousine/Cousine-Regular.ttf", 128.f, 0u));
 
 	return true;
     }

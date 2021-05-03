@@ -22,34 +22,55 @@ namespace sv {
 #endif
 
     ////////////////////////////////////////////////////////////////// UPDATE DLL ////////////////////////////////////////////////////////////
-    
-    SV_AUX void recive_user_callbacks(bool init)
+
+    SV_AUX void close_user_callbacks()
     {
-	const char* filepath = "system/game_bin/Game.dll";
-	
-#if SV_DEV
-	
-	_user_close(false);
+	_user_close();
 
 	event_unregister_flags(EventFlag_User);
 	_os_free_user_callbacks();
+    }
+    
+    SV_AUX bool recive_user_callbacks()
+    {
+	const char* filepath = "Game.dll";
 	
-	if (!file_copy(filepath, "system/game_bin/GameTemp.dll")) {
+#if SV_DEV
+	
+	close_user_callbacks();
+	
+	if (!file_copy(filepath, "int/GameTemp.dll")) {
 	    SV_LOG_ERROR("Can't create temporal game dll");
-	    return;
+	    return false;
 	}
 	
-	_os_update_user_callbacks("system/game_bin/GameTemp.dll");
-	
-	if (!init)
-	    _user_initialize(false);
+	bool res = _os_update_user_callbacks("int/GameTemp.dll");
+
+	if (res) {
+	    
+	    if (!_user_initialize()) {
+
+		SV_LOG_ERROR("The user can't initialize");
+		return false;
+	    }
+	}
 
 	Date date;
 	if (file_date(filepath, nullptr, &date, nullptr)) {
 	    last_user_lib_write = date;
 	}
+
+	return res;
 #else
-	_os_update_user_callbacks(filepath);
+	if ( _os_update_user_callbacks(filepath)) {
+
+	    if (!_user_initialize) {
+		SV_LOG_ERROR("The user can't initialize");
+		return false;
+	    }
+	}
+
+	return true;
 #endif
     }
     
@@ -63,8 +84,8 @@ namespace sv {
 	if (now - last_update > 1.0) {
 
 	    last_update = now;
-	    const char* filepath = "system/game_bin/Game.dll";
-	    const char* respath = "system/build_output.txt";
+	    const char* filepath = "Game.dll";
+	    const char* respath = "int/build_output.txt";
 
 	    // Get compilation result
 	    if (file_exists(respath)) {
@@ -97,7 +118,7 @@ namespace sv {
 	// Reset the last update to get the compilation output in the next frame
 	last_update = 0.0;
 
-	recive_user_callbacks(false);
+	recive_user_callbacks();
     }
 
 #endif
@@ -295,18 +316,17 @@ namespace sv {
 
 	return true;
     }
-    
-    void engine_main()
+
+    SV_INTERNAL bool initialize_engine()
     {
 #if SV_DEV	
 	_console_initialize();
 #endif
-
+	
 	SV_LOG_INFO("Initializing %s", engine.name);
-
 	if (!_event_initialize()) {
 	    SV_LOG_ERROR("Can't initialize event system");
-	    return;
+	    return false;
 	}
 	
 	if (_os_startup()) {
@@ -314,7 +334,7 @@ namespace sv {
 	}
 	else {
 	    SV_LOG_ERROR("Can't initialize OS layer");
-	    return;
+	    return false;
 	}
 
 	// TODO initialize_audio());
@@ -326,7 +346,7 @@ namespace sv {
 	}
 	else {
 	    SV_LOG_ERROR("Can't initialize graphics API");
-	    return;
+	    return false;
 	}
 
 	// Initialize Renderer
@@ -335,11 +355,25 @@ namespace sv {
 	}
 	else {
 	    SV_LOG_ERROR("Can't initialize the renderer");
-	    return;
+	    return false;
 	}
 
 	_initialize_scene();
 
+	if (!register_assets()) {
+	    SV_LOG_ERROR("Can't register default assets");
+	    return false;
+	}
+
+#if SV_DEV
+	_editor_initialize();
+#endif
+
+	return true;
+    }
+
+    SV_INLINE bool initialize_game()
+    {
 	// Register components
 	{
 	    register_component<SpriteComponent>("Sprite");
@@ -350,27 +384,69 @@ namespace sv {
 	    register_component<BodyComponent>("Body");
 	}
 
-	if (!register_assets()) {
-	    SV_LOG_ERROR("Can't register default assets");
-	    return;
+	if (!recive_user_callbacks())
+	{
+	    return false;
+	}
+
+	event_dispatch("initialize_game", nullptr);
+
+	return true;
+    }
+
+    SV_INLINE void close_engine()
+    {
+	SV_LOG_INFO("Closing %s", engine.name);
+
+	_close_scene();	
+
+#if SV_DEV
+        _editor_close();
+#endif
+
+	if (!_renderer_close()) { SV_LOG_ERROR("Can't close render utils"); }
+	if (!_graphics_close()) { SV_LOG_ERROR("Can't close graphicsAPI"); }
+	if (!_os_shutdown()) { SV_LOG_ERROR("Can't shutdown OS layer properly"); }
+	_close_assets();
+	// if (result_fail(task_close())) { SV_LOG_ERROR("Can't close the task system"); }
+
+	_event_close();
+
+#if SV_DEV
+	_console_close();
+#endif
+    }
+    
+    SV_INLINE void close_game()
+    {
+	free_unused_assets();
+
+	event_dispatch("close_game", nullptr);
+	_start_scene(nullptr);
+	close_user_callbacks();
+	
+	free_unused_assets();
+    }
+    
+    void engine_main()
+    {
+	engine.running = true;
+	
+	if (!initialize_engine()) {
+	    SV_LOG_ERROR("Can't initialize the engine");
+	    engine.running = false;
 	}
 
 #if SV_DEV
-	_editor_initialize();
+	engine.state = EngineState_ProjectManagement;
+#else
+	if (engine.running && !initialize_game()) {
+	    SV_LOG_ERROR("Can't initialize the game");
+	    return;
+	}
 #endif
-	
-	engine.running = true;
 
 	static f64 lastTime = 0.f;
-
-	recive_user_callbacks(true);
-
-	set_scene("Main");
-
-	// User init
-	if (!_user_initialize(true)) {
-	    engine.running = false;
-	}
 	
 	while (engine.running) {
 
@@ -435,34 +511,71 @@ namespace sv {
 	    _graphics_end();
 	}
 
-	SV_LOG_INFO("Closing %s", engine.name);
+	
 
 	// User close
-	if (!_user_close(true)) {
+	if (!_user_close()) {
 	    
 	    SV_LOG_ERROR("User can't close successfully");
 	}
 	
-	_close_scene();
-
-	free_unused_assets();
-
-#if SV_DEV
-        _editor_close();
-#endif
-
-	if (!_renderer_close()) { SV_LOG_ERROR("Can't close render utils"); }
-	if (!_graphics_close()) { SV_LOG_ERROR("Can't close graphicsAPI"); }
-	if (!_os_shutdown()) { SV_LOG_ERROR("Can't shutdown OS layer properly"); }
-	_close_assets();
-	// if (result_fail(task_close())) { SV_LOG_ERROR("Can't close the task system"); }
-
-	_event_close();
-
-#if SV_DEV
-	_console_close();
-#endif
+	close_game();
+	close_engine();
 
     }
+
+#if SV_DEV
+
+    void _engine_initialize_project(const char* path)
+    {
+	if (engine.state != EngineState_ProjectManagement) {
+	    SV_LOG_ERROR("Can't initialize the project '%s' right now", path);
+	    return;
+	}
+	
+	strcpy(engine.project_path, path);
+
+	_engine_initialize_game();
+    }
+    
+    void _engine_initialize_game()
+    {
+	if (!initialize_game()) {
+	    SV_LOG_ERROR("Can't initialize the game");
+	    engine.state = EngineState_Uninitialized;
+	    return;
+	}
+
+	engine.state = EngineState_Edit;
+    }
+
+    void _engine_close_project()
+    {
+	if (engine.state == EngineState_ProjectManagement || engine.state == EngineState_None) {
+	    SV_LOG_ERROR("Can't close the project right now");
+	    return;
+	}
+
+	_engine_close_game();
+
+	if (engine.state == EngineState_Uninitialized) {
+
+	    engine.state = EngineState_ProjectManagement;
+	    strcpy(engine.project_path, "");
+	}
+    }
+    
+    void _engine_close_game()
+    {
+	if (engine.state == EngineState_ProjectManagement || engine.state == EngineState_None || engine.state == EngineState_Uninitialized) {
+	    SV_LOG_ERROR("Can't close the game right now");
+	    return;
+	}
+
+	close_game();
+	engine.state = EngineState_Uninitialized;
+    }
+    
+#endif
 
 }

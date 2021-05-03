@@ -3,6 +3,7 @@
 #if SV_DEV
 
 #include "core/scene.h"
+#include "core/engine.h"
 
 namespace sv {
 
@@ -16,18 +17,11 @@ namespace sv {
 	v4_f32 rotation = { 0.f, 0.f, 0.f, 1.f };
 	f32 velocity = 0.45f;
     };
-
-    enum GameState : u32 {
-	GameState_Edit,
-	GameState_Play,
-	GameState_Pause,
-    };
     
     struct GlobalDevData {
 		
 	bool console_active = false;
-	GameState next_game_state = GameState_Edit;
-	GameState game_state = GameState_Edit;
+	EngineState next_engine_state = EngineState_None;
 
 	bool display_windows = true;
 	bool draw_collisions = false;

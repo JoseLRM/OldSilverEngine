@@ -11,8 +11,11 @@
 
 namespace sv {
 
-    bool load_image(const char* filepath, void** pdata, u32* width, u32* height)
+    bool load_image(const char* filepath_, void** pdata, u32* width, u32* height)
     {
+	char filepath[FILEPATH_SIZE + 1u];
+	filepath_resolve(filepath, filepath_);
+	
 	int w = 0, h = 0, bits = 0;
 	void* data = stbi_load(filepath, &w, &h, &bits, 4);
 

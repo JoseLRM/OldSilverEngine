@@ -433,6 +433,57 @@ namespace sv {
 
     // File Management
 
+    SV_AUX bool file_dialog(char* buff, u32 filterCount, const char** filters, const char* filepath_, bool open, bool is_file)
+    {
+	char filepath[MAX_PATH];
+	filepath_resolve(filepath, filepath_);
+	    
+	// TODO: Not use classes, this should be in c in the future
+	RawList abs_filter;
+
+	for (u32 i = 0; i < filterCount; ++i) {
+	    abs_filter.write_back(filters[i * 2u], strlen(filters[i * 2u]));
+	    char c = '\0';
+	    abs_filter.write_back(&c, sizeof(char));
+
+	    abs_filter.write_back(filters[i * 2u + 1u], strlen(filters[i * 2u + 1u]));
+	    abs_filter.write_back(&c, sizeof(char));
+	}
+
+	OPENFILENAMEA file;
+	SV_ZERO_MEMORY(&file, sizeof(OPENFILENAMEA));
+
+	file.lStructSize = sizeof(OPENFILENAMEA);
+	file.hwndOwner = platform.handle;
+	file.lpstrFilter = (char*)abs_filter.data();
+	file.nFilterIndex = 1u;
+	file.lpstrFile = buff;
+	file.lpstrInitialDir = filepath;
+	file.nMaxFile = MAX_PATH;
+	file.Flags = OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR | OFN_FILEMUSTEXIST;
+
+	BOOL result;
+
+	if (open) result = GetOpenFileNameA(&file);
+	else result = GetSaveFileNameA(&file);
+
+	if (result == TRUE) {
+	    path_clear(buff);
+	    return true;
+	}
+	else return false;
+    }
+
+    bool file_dialog_open(char* buff, u32 filterCount, const char** filters, const char* startPath)
+    {
+	return file_dialog(buff, filterCount, filters, startPath, true, true);
+    }
+    
+    bool file_dialog_save(char* buff, u32 filterCount, const char** filters, const char* startPath)
+    {
+	return file_dialog(buff, filterCount, filters, startPath, false, true);
+    }
+    
     bool path_is_absolute(const char* path)
     {
 	SV_ASSERT(path);
@@ -453,8 +504,11 @@ namespace sv {
 	}
     }
 
-    bool file_read_binary(const char* filepath, u8** pdata, size_t* psize)
+    bool file_read_binary(const char* filepath_, u8** pdata, size_t* psize)
     {
+	char filepath[MAX_PATH];
+	filepath_resolve(filepath, filepath_);
+	
 	HANDLE file = CreateFile(filepath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
 	if (file == INVALID_HANDLE_VALUE) {
@@ -475,8 +529,11 @@ namespace sv {
 	return true;
     }
 
-    bool file_read_binary(const char* filepath, RawList& data)
+    bool file_read_binary(const char* filepath_, RawList& data)
     {
+	char filepath[MAX_PATH];
+	filepath_resolve(filepath, filepath_);
+	
 	HANDLE file = CreateFile(filepath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
 	if (file == INVALID_HANDLE_VALUE) {
@@ -496,8 +553,11 @@ namespace sv {
 	return true;
     }
     
-    bool file_read_text(const char* filepath, char** pstr, size_t* psize)
+    bool file_read_text(const char* filepath_, char** pstr, size_t* psize)
     {
+	char filepath[MAX_PATH];
+	filepath_resolve(filepath, filepath_);
+	
 	HANDLE file = CreateFile(filepath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
 	if (file == INVALID_HANDLE_VALUE) {
@@ -519,8 +579,11 @@ namespace sv {
 	return true;
     }
 
-    bool file_read_text(const char* filepath, String& str)
+    bool file_read_text(const char* filepath_, String& str)
     {
+	char filepath[MAX_PATH];
+	filepath_resolve(filepath, filepath_);
+	
 	char* buff;
 	size_t size;
 	if (file_read_text(filepath, &buff, &size)) {
@@ -533,7 +596,7 @@ namespace sv {
     }
 
     SV_AUX bool create_path(const char* filepath)
-    {
+    {	
 	char folder[FILEPATH_SIZE] = "\0";
 		
 	while (true) {
@@ -560,8 +623,11 @@ namespace sv {
 	return true;
     }
     
-    bool file_write_binary(const char* filepath, const u8* data, size_t size, bool append, bool recursive)
+    bool file_write_binary(const char* filepath_, const u8* data, size_t size, bool append, bool recursive)
     {
+	char filepath[MAX_PATH];
+	filepath_resolve(filepath, filepath_);
+	
 	HANDLE file = CreateFile(filepath, GENERIC_WRITE, FILE_SHARE_READ, NULL, append ? CREATE_NEW : CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	
 	if (file == INVALID_HANDLE_VALUE) {
@@ -582,8 +648,11 @@ namespace sv {
 	return true;
     }
     
-    bool file_write_text(const char* filepath, const char* str, size_t size, bool append, bool recursive)
+    bool file_write_text(const char* filepath_, const char* str, size_t size, bool append, bool recursive)
     {
+	char filepath[MAX_PATH];
+	filepath_resolve(filepath, filepath_);
+	
 	HANDLE file = CreateFile(filepath, GENERIC_WRITE, FILE_SHARE_READ, NULL, append ? CREATE_NEW : CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	
 	if (file == INVALID_HANDLE_VALUE) {
@@ -620,8 +689,11 @@ namespace sv {
 	return date;
     }
 
-    bool file_date(const char* filepath, Date* create, Date* last_write, Date* last_access)
+    bool file_date(const char* filepath_, Date* create, Date* last_write, Date* last_access)
     {
+	char filepath[MAX_PATH];
+	filepath_resolve(filepath, filepath_);
+	
 	HANDLE file = CreateFile(filepath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
 	if (file == INVALID_HANDLE_VALUE)
@@ -646,13 +718,21 @@ namespace sv {
 	return true;
     }
 
-    bool file_remove(const char* filepath)
+    bool file_remove(const char* filepath_)
     {
+	char filepath[MAX_PATH];
+	filepath_resolve(filepath, filepath_);
+	
 	return DeleteFile(filepath);
     }
     
-    bool file_copy(const char* srcpath, const char* dstpath)
+    bool file_copy(const char* srcpath_, const char* dstpath_)
     {
+	char srcpath[MAX_PATH];
+	char dstpath[MAX_PATH];
+	filepath_resolve(srcpath, srcpath_);
+	filepath_resolve(dstpath, dstpath_);
+	
 	if (!CopyFileA(srcpath, dstpath, FALSE)) {
 
 	    create_path(dstpath);
@@ -662,14 +742,26 @@ namespace sv {
 	return true;
     }
 
-    bool file_exists(const char* filepath)
+    bool file_exists(const char* filepath_)
     {
+	char filepath[MAX_PATH];
+	filepath_resolve(filepath, filepath_);
+	
 	DWORD att = GetFileAttributes(filepath);
 	if(INVALID_FILE_ATTRIBUTES == att)
 	{
 	    return false;
 	}
 	return true;
+    }
+
+    bool folder_create(const char* filepath_, bool recursive)
+    {
+	char filepath[MAX_PATH];
+	filepath_resolve(filepath, filepath_);
+
+	if (recursive) create_path(filepath);
+	return CreateDirectory(filepath, NULL);
     }
 
     SV_AUX FolderElement finddata_to_folderelement(const WIN32_FIND_DATAA& d)
@@ -701,9 +793,12 @@ namespace sv {
 	return e;
     }
 
-    bool folder_iterator_begin(const char* folderpath_, FolderIterator* iterator, FolderElement* element)
+    bool folder_iterator_begin(const char* folderpath__, FolderIterator* iterator, FolderElement* element)
     {
 	WIN32_FIND_DATAA data;
+
+	char folderpath_[MAX_PATH];
+	filepath_resolve(folderpath_, folderpath__);
 
 	// Clear path
 	char folderpath[MAX_PATH];
@@ -711,8 +806,10 @@ namespace sv {
 	const char* it = folderpath_;
 	char* it0 = folderpath;
 
-	*it0++ = '.';
-	*it0++ = '\\';
+	if (!path_is_absolute(folderpath_)) {
+	    *it0++ = '.';
+	    *it0++ = '\\';
+	}
 	
 	while (*it != '\0') {
 	    if (*it == '/') *it0 = '\\';
@@ -760,36 +857,39 @@ namespace sv {
 
     constexpr u32 BIN_PATH_SIZE = 100u;
     
-    SV_AUX void bin_filepath(char* buf, u64 hash)
+    SV_AUX void bin_filepath(char* buf, u64 hash, bool system)
     {
-	sprintf(buf, "bin/%zu.bin", hash);
+	if (system)
+	    sprintf(buf, "$system/cache/%zu.bin", hash);
+	else
+	    sprintf(buf, "bin/%zu.bin", hash);
     }
 
-    bool bin_read(u64 hash, RawList& data)
+    bool bin_read(u64 hash, RawList& data, bool system)
     {
 	char filepath[BIN_PATH_SIZE + 1u];
-	bin_filepath(filepath, hash);
+	bin_filepath(filepath, hash, system);
 	return file_read_binary(filepath, data);
     }
     
-    bool bin_read(u64 hash, Deserializer& deserializer)
+    bool bin_read(u64 hash, Deserializer& deserializer, bool system)
     {
 	char filepath[BIN_PATH_SIZE + 1u];
-	bin_filepath(filepath, hash);
+	bin_filepath(filepath, hash, system);
 	return deserialize_begin(deserializer, filepath);
     }
 
-    bool bin_write(u64 hash, const void* data, size_t size)
+    bool bin_write(u64 hash, const void* data, size_t size, bool system)
     {
 	char filepath[BIN_PATH_SIZE + 1u];
-	bin_filepath(filepath, hash);
+	bin_filepath(filepath, hash, system);
 	return file_write_binary(filepath, (u8*)data, size);
     }
     
-    bool bin_write(u64 hash, Serializer& serializer)
+    bool bin_write(u64 hash, Serializer& serializer, bool system)
     {
 	char filepath[BIN_PATH_SIZE + 1u];
-	bin_filepath(filepath, hash);
+	bin_filepath(filepath, hash, system);
 	return serialize_end(serializer, filepath);
     }
 
@@ -809,8 +909,11 @@ namespace sv {
 	}
     }
     
-    void _os_update_user_callbacks(const char* dll)
+    bool _os_update_user_callbacks(const char* dll_)
     {
+	char dll[MAX_PATH];
+	filepath_resolve(dll, dll_);
+	
 	_os_free_user_callbacks();
 
 	platform.user_lib = LoadLibrary(dll);
@@ -823,12 +926,23 @@ namespace sv {
 	    c.close = (UserCloseFn)GetProcAddress(platform.user_lib, "user_close");
 	    c.validate_scene = (UserValidateSceneFn)GetProcAddress(platform.user_lib, "user_validate_scene");
 	    c.get_scene_filepath = (UserGetSceneFilepathFn)GetProcAddress(platform.user_lib, "user_get_scene_filepath");
+
+	    if (c.initialize == nullptr) {
+		SV_LOG_ERROR("Can't load game code: Initialize function not found");
+		return false;
+	    }
+	    if (c.close == nullptr) {
+		SV_LOG_ERROR("Can't load game code: Close function not found");
+		return false;
+	    }
 	    
 	    _user_callbacks_set(c);
 
 	    SV_LOG_INFO("User callbacks loaded");
+	    return true;
 	}
 	else SV_LOG_ERROR("Can't find game code");
+	return false;
     }
 
     // Memory
@@ -847,7 +961,21 @@ namespace sv {
 
     void _os_compile_gamecode()
     {
-	ShellExecute(NULL, "open", "system\\build_game.bat", NULL, NULL, SW_HIDE);
+	char project_path[MAX_PATH + 100];
+	strcpy(project_path, engine.project_path);
+
+	foreach (i, strlen(project_path)) {
+
+	    char& c = project_path[i];
+	    if (c == '/')
+		c = '\\';
+	}
+
+#if SV_SLOW
+	strcat(project_path, " shell");
+#endif
+	
+	ShellExecute(NULL, "open", "system\\build_game.bat", project_path, NULL, SW_HIDE);
     }
     
     bool _os_startup()

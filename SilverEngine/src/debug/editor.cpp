@@ -135,7 +135,7 @@ namespace sv {
 	if (input.keys[Key_F5] == InputState_Pressed)
 	    _os_compile_gamecode();
 	
-	if (dev.game_state != GameState_Play) {
+	if (engine.state != EngineState_Play) {
 
 	    // Close engine or play game
 	    if (input.keys[Key_F11] == InputState_Pressed) {
@@ -143,7 +143,7 @@ namespace sv {
 		if (input.keys[Key_Control] && input.keys[Key_Alt])
 		    engine.close_request = true;
 		else
-		    dev.next_game_state = GameState_Play;
+		    dev.next_engine_state = EngineState_Play;
 	    }
 	    
 	    if (input.unused && input.keys[Key_Control]) {
@@ -171,7 +171,7 @@ namespace sv {
 
 	    // Editor mode
 	    if (input.keys[Key_F11] == InputState_Pressed) {
-		dev.next_game_state = GameState_Edit;
+		dev.next_engine_state = EngineState_Edit;
 	    }
 	}
     }
@@ -517,7 +517,7 @@ namespace sv {
     {
 	SV_CHECK(gui_create(hash_string("EDITOR GUI"), &dev.gui));
 
-	load_asset_from_file(editor.image, "system/images/editor.png");
+	load_asset_from_file(editor.image, "$system/images/editor.png");
 
 	event_register("on_entity_create", on_entity_create, 0u);
 	event_register("on_entity_destroy", on_entity_destroy, 0u);
@@ -1286,7 +1286,7 @@ namespace sv {
 
 		FolderIterator it;
 		FolderElement e;
-
+		
 		bool res = folder_iterator_begin(next_filepath, &it, &e);
 
 		if (res) {
@@ -1384,50 +1384,8 @@ namespace sv {
 	}
     }
 
-    void _editor_update()
-    {
-	// CHANGE EDITOR MODE
-	if (dev.game_state != dev.next_game_state) {
-
-	    switch (dev.next_game_state) {
-
-	    case GameState_Edit:
-	    {
-		SV_LOG_INFO("Starting edit state");
-		// TODO: Handle error
-		_start_scene(get_scene_name());
-		
-		dev.display_windows = true;
-		dev.debug_draw = true;
-	    } break;
-
-	    case GameState_Play:
-	    {
-		SV_LOG_INFO("Starting play state");
-			
-		if (dev.game_state == GameState_Edit) {
-
-		    // TODO: handle error
-		    save_scene();
-
-		    dev.display_windows = false;
-		    dev.debug_draw = false;
-		    dev.draw_collisions = false;
-		}
-	    } break;
-
-	    case GameState_Pause:
-	    {
-		SV_LOG_INFO("Game paused");
-	    } break;
-			
-	    }
-		    
-	    dev.game_state = dev.next_game_state;
-	}
-		
-	update_key_shortcuts();
-
+    SV_INTERNAL void update_edit_state()
+    {	
 	// Adjust camera
 	dev.camera.adjust(os_window_aspect());
 
@@ -1467,6 +1425,13 @@ namespace sv {
 
 
 		    gui_checkbox(dev.gui, "Colisions", &dev.draw_collisions, 4u);
+
+		    if (gui_button(dev.gui, "Exit Game", 5u)) {
+			dev.next_engine_state = EngineState_Uninitialized;
+		    }
+		    if (gui_button(dev.gui, "Exit Project", 6u)) {
+			dev.next_engine_state = EngineState_ProjectManagement;
+		    }
 		    
 		    gui_end_container(dev.gui);
 
@@ -1503,103 +1468,279 @@ namespace sv {
 	}
     }
 
-    void _editor_draw()
+    void update_project_state()
     {
-	CommandList cmd = graphics_commandlist_get();
+	if (egui_begin()) {
+
+	    gui_bounds(dev.gui, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
+	    gui_begin_container(dev.gui, 0u, GuiLayout_Flow);
+
+	    if (gui_button(dev.gui, "New project", 0u)) {
+
+		char path[FILEPATH_SIZE + 1u] = "";
 		    
-	if (there_is_scene()) {
+		if (file_dialog_save(path, 0u, nullptr, "")) {
 
-	    begin_debug_batch(cmd);
+		    char* extension = filepath_extension(path);
+		    if (extension != nullptr) {
+			*extension = '\0';
+		    }
+		    strcat(path, ".silver");
 
-	    // Draw selected entity
-	    if (editor.selected_entity != SV_ENTITY_NULL) {
+		    const char* content = "test";
+		    bool res = file_write_text(path, content, strlen(content));
 
-		MeshComponent* mesh_comp = get_component<MeshComponent>(editor.selected_entity);
-		SpriteComponent* sprite_comp = get_component<SpriteComponent>(editor.selected_entity);
+		    if (res) {
+			    
+			char* name = filepath_name(path);
+			*name = '\0';
 
-		if (mesh_comp && mesh_comp->mesh.get()) {
-
-		    u8 alpha = 5u + u8(f32(sin(timer_now() * 3.5) + 1.0) * 50.f * 0.5f);
-		    XMMATRIX wm = get_entity_world_matrix(editor.selected_entity);
-		    draw_debug_mesh_wireframe(mesh_comp->mesh.get(), wm, Color::Red(alpha), cmd);
-		}
-		if (sprite_comp) {
-
-		    XMVECTOR p0 = XMVectorSet(-0.5f, 0.5f, 0.f, 1.f);
-		    XMVECTOR p1 = XMVectorSet(0.5f, 0.5f, 0.f, 1.f);
-		    XMVECTOR p2 = XMVectorSet(-0.5f, -0.5f, 0.f, 1.f);
-		    XMVECTOR p3 = XMVectorSet(0.5f, -0.5f, 0.f, 1.f);
-
-		    XMMATRIX tm = get_entity_world_matrix(editor.selected_entity);
-
-		    p0 = XMVector3Transform(p0, tm);
-		    p1 = XMVector3Transform(p1, tm);
-		    p2 = XMVector3Transform(p2, tm);
-		    p3 = XMVector3Transform(p3, tm);
-
-		    u8 alpha = 50u + u8(f32(sin(timer_now() * 3.5) + 1.0) * 200.f * 0.5f);
-		    Color selection_color = Color::Red(alpha);
-
-		    draw_debug_line(v3_f32(p0), v3_f32(p1), selection_color, cmd);
-		    draw_debug_line(v3_f32(p1), v3_f32(p3), selection_color, cmd);
-		    draw_debug_line(v3_f32(p3), v3_f32(p2), selection_color, cmd);
-		    draw_debug_line(v3_f32(p2), v3_f32(p0), selection_color, cmd);
-		}
-	    }
-
-	    // Draw 2D grid
-	    if (dev.camera.projection_type == ProjectionType_Orthographic && dev.debug_draw) {
-
-		f32 width = dev.camera.width;
-		f32 height = dev.camera.height;
-		f32 mag = dev.camera.getProjectionLength();
-
-		u32 count = 0u;
-		for (f32 i = 0.01f; count < 3u; i *= 10.f) {
-
-		    if (mag / i <= 50.f) {
-
-			Color color;
-
-			switch (count++)
-			{
-			case 0:
-			    color = Color::Gray(50);
-			    break;
-
-			case 1:
-			    color = Color::Gray(100);
-			    break;
-
-			case 2:
-			    color = Color::Gray(150);
-			    break;
-
-			case 3:
-			    color = Color::Gray(200);
-			    break;
+			char folderpath[FILEPATH_SIZE + 1u];
+			    
+			sprintf(folderpath, "%s%s", path, "assets");
+			res = folder_create(folderpath);
+			    
+			if (res) {
+			    sprintf(folderpath, "%s%s", path, "src");
+			    res = folder_create(folderpath);
 			}
 
-			color.a = 10u;
+			if (res) {
 
-			draw_debug_orthographic_grip(dev.camera.position.getVec2(), {}, { width, height }, i, color, cmd);
+			    sprintf(folderpath, "%s%s", path, "src/build_unit.cpp");
+			    res = file_copy("$system/default_code.cpp", folderpath);
+			}
+		    }
+		    
+			
+		    if (res)
+			SV_LOG_INFO("Project in '%s' created", path);
+		    
+		    else {
+			SV_LOG_ERROR("Can't create the project in '%s'", path);
 		    }
 		}
 	    }
+	    if (gui_button(dev.gui, "Open project", 1u)) {
 
-	    // Draw collisions
-	    if (dev.draw_collisions) {
+		char path[FILEPATH_SIZE + 1u] = "";
+
+		const char* filter[] = {
+		    "Silver Engine (.silver)", "*.silver",
+		    "All", "*",
+		    ""
+		};
+
+		if (file_dialog_open(path, 2u, filter, "")) {
+			
+		    *filepath_name(path) = '\0';
+		    _engine_initialize_project(path);
+		}
+	    }
+	
+	    gui_end_container(dev.gui);
+	    
+	    egui_end();
+	}    
+    }
+
+    SV_INTERNAL void update_uninitialized_state()
+    {
+	if (egui_begin()) {
+
+	    gui_bounds(dev.gui, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
+	    gui_begin_container(dev.gui, 0u, GuiLayout_Flow);
+
+	    gui_text(dev.gui, "Game Uninitialized", 0u);
+
+	    if (gui_button(dev.gui, "Initialize", 1u)) {
+
+		_engine_initialize_game();
+	    }
+	
+	    gui_end_container(dev.gui);
+	    
+	    egui_end();
+	}
+    }
+    
+    void _editor_update()
+    {
+	bool exit = false;
+	
+	// CHANGE EDITOR MODE
+	if (dev.next_engine_state != EngineState_None) {
+
+	    switch (dev.next_engine_state) {
+
+	    case EngineState_Uninitialized:
+	    {
+		_engine_close_game();
+		editor.selected_entity = SV_ENTITY_NULL;
+		exit = true;
+	    }
+	    break;
+
+	    case EngineState_ProjectManagement:
+	    {
+		_engine_close_project();
+		editor.selected_entity = SV_ENTITY_NULL;
+		exit = true;
+	    }
+	    break;
+
+	    case EngineState_Edit:
+	    {
+		SV_LOG_INFO("Starting edit state");
+		// TODO: Handle error
+		_start_scene(get_scene_name());
+		
+		dev.display_windows = true;
+		dev.debug_draw = true;
+	    } break;
+
+	    case EngineState_Play:
+	    {
+		SV_LOG_INFO("Starting play state");
+			
+		if (engine.state == EngineState_Edit) {
+
+		    // TODO: handle error
+		    save_scene();
+
+		    dev.display_windows = false;
+		    dev.debug_draw = false;
+		    dev.draw_collisions = false;
+		    editor.selected_entity = SV_ENTITY_NULL;
+		}
+	    } break;
+
+	    case EngineState_Pause:
+	    {
+		SV_LOG_INFO("Game paused");
+	    } break;
+			
+	    }
+		    
+	    engine.state = dev.next_engine_state;
+	    dev.next_engine_state = EngineState_None;
+
+	    if (exit)
+		return;
+	}
+
+	update_key_shortcuts();
+	
+	switch (engine.state) {
+
+	case EngineState_Edit:
+	    update_edit_state();
+	    break;
+
+	case EngineState_ProjectManagement:
+	    update_project_state();
+	    break;
+
+	case EngineState_Uninitialized:
+	    update_uninitialized_state();
+	    break;
+	    
+	}
+    }
+
+    SV_INTERNAL void draw_edit_state(CommandList cmd)
+    {
+	begin_debug_batch(cmd);
+
+	// Draw selected entity
+	if (editor.selected_entity != SV_ENTITY_NULL) {
+
+	    MeshComponent* mesh_comp = get_component<MeshComponent>(editor.selected_entity);
+	    SpriteComponent* sprite_comp = get_component<SpriteComponent>(editor.selected_entity);
+
+	    if (mesh_comp && mesh_comp->mesh.get()) {
+
+		u8 alpha = 5u + u8(f32(sin(timer_now() * 3.5) + 1.0) * 50.f * 0.5f);
+		XMMATRIX wm = get_entity_world_matrix(editor.selected_entity);
+		draw_debug_mesh_wireframe(mesh_comp->mesh.get(), wm, Color::Red(alpha), cmd);
+	    }
+	    if (sprite_comp) {
 
 		XMVECTOR p0 = XMVectorSet(-0.5f, 0.5f, 0.f, 1.f);
 		XMVECTOR p1 = XMVectorSet(0.5f, 0.5f, 0.f, 1.f);
 		XMVECTOR p2 = XMVectorSet(-0.5f, -0.5f, 0.f, 1.f);
 		XMVECTOR p3 = XMVectorSet(0.5f, -0.5f, 0.f, 1.f);
 
-		XMVECTOR v0, v1, v2, v3;
+		XMMATRIX tm = get_entity_world_matrix(editor.selected_entity);
 
-		XMMATRIX tm;
+		p0 = XMVector3Transform(p0, tm);
+		p1 = XMVector3Transform(p1, tm);
+		p2 = XMVector3Transform(p2, tm);
+		p3 = XMVector3Transform(p3, tm);
+
+		u8 alpha = 50u + u8(f32(sin(timer_now() * 3.5) + 1.0) * 200.f * 0.5f);
+		Color selection_color = Color::Red(alpha);
+
+		draw_debug_line(v3_f32(p0), v3_f32(p1), selection_color, cmd);
+		draw_debug_line(v3_f32(p1), v3_f32(p3), selection_color, cmd);
+		draw_debug_line(v3_f32(p3), v3_f32(p2), selection_color, cmd);
+		draw_debug_line(v3_f32(p2), v3_f32(p0), selection_color, cmd);
+	    }
+	}
+
+	// Draw 2D grid
+	if (dev.camera.projection_type == ProjectionType_Orthographic && dev.debug_draw) {
+
+	    f32 width = dev.camera.width;
+	    f32 height = dev.camera.height;
+	    f32 mag = dev.camera.getProjectionLength();
+
+	    u32 count = 0u;
+	    for (f32 i = 0.01f; count < 3u; i *= 10.f) {
+
+		if (mag / i <= 50.f) {
+
+		    Color color;
+
+		    switch (count++)
+		    {
+		    case 0:
+			color = Color::Gray(50);
+			break;
+
+		    case 1:
+			color = Color::Gray(100);
+			break;
+
+		    case 2:
+			color = Color::Gray(150);
+			break;
+
+		    case 3:
+			color = Color::Gray(200);
+			break;
+		    }
+
+		    color.a = 10u;
+
+		    draw_debug_orthographic_grip(dev.camera.position.getVec2(), {}, { width, height }, i, color, cmd);
+		}
+	    }
+	}
+
+	// Draw collisions
+	if (dev.draw_collisions) {
+
+	    XMVECTOR p0 = XMVectorSet(-0.5f, 0.5f, 0.f, 1.f);
+	    XMVECTOR p1 = XMVectorSet(0.5f, 0.5f, 0.f, 1.f);
+	    XMVECTOR p2 = XMVectorSet(-0.5f, -0.5f, 0.f, 1.f);
+	    XMVECTOR p3 = XMVectorSet(0.5f, -0.5f, 0.f, 1.f);
+
+	    XMVECTOR v0, v1, v2, v3;
+
+	    XMMATRIX tm;
 		
-		for_each_comp<BodyComponent>([&] (Entity entity, BodyComponent& body)
+	    for_each_comp<BodyComponent>([&] (Entity entity, BodyComponent& body)
 		{
 		    v2_f32 pos = get_entity_position2D(entity) + body.offset;
 		    v2_f32 scale = get_entity_scale2D(entity) * body.size;
@@ -1618,26 +1759,38 @@ namespace sv {
 
 		    return true;
 		});
-	    }
+	}
 
-	    // Draw gizmos
-	    draw_gizmos(renderer->gfx.offscreen, cmd);
+	// Draw gizmos
+	draw_gizmos(renderer->gfx.offscreen, cmd);
 
-	    XMMATRIX vpm = XMMatrixIdentity();
+	XMMATRIX vpm = XMMatrixIdentity();
 
-	    if (dev.debug_draw)
-		vpm = dev.camera.view_projection_matrix;
-	    else {
+	if (dev.debug_draw)
+	    vpm = dev.camera.view_projection_matrix;
+	else {
 
-		CameraComponent* cam = get_main_camera();
+	    CameraComponent* cam = get_main_camera();
 		
-		if (cam) {
+	    if (cam) {
 
-		    vpm = cam->view_projection_matrix;
-		}
+		vpm = cam->view_projection_matrix;
 	    }
+	}
 
-	    end_debug_batch(true, false, vpm, cmd);
+	end_debug_batch(true, false, vpm, cmd);
+    }
+
+    void _editor_draw()
+    {
+	CommandList cmd = graphics_commandlist_get();
+
+	switch (engine.state) {
+
+	case EngineState_Edit:
+	    draw_edit_state(cmd);
+	    break;
+	    
 	}
 
 	// Draw gui

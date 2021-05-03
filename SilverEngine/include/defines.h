@@ -63,7 +63,7 @@ constexpr f64	f64_ninf = -1.0 * std::numeric_limits<f64>::infinity();
 
 // Misc
 
-constexpr u32 FILEPATH_SIZE = 300u;
+constexpr u32 FILEPATH_SIZE = 259u;
 constexpr u32 FILENAME_SIZE = 50u;
 constexpr u32 SCENENAME_SIZE = 50u;
 
@@ -85,9 +85,9 @@ constexpr u32 SCENENAME_SIZE = 50u;
 #endif
 
 #if SV_PLATFORM_WIN
-#	define SV_INLINE __forceinline
+#define SV_INLINE __forceinline
 #else
-#	define SV_INLINE inline
+#define SV_INLINE inline
 #endif
 
 namespace sv {

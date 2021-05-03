@@ -1,6 +1,9 @@
 # SilverEngine files
 build
 release
+SilverEngine/system/cache
+SilverEngine/system/bin/SilverEngine.lib
+
 
 # VisualStudio files
 .vs/
