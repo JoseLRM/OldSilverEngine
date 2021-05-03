@@ -684,7 +684,7 @@ namespace sv {
 	    font_destroy(renderer->font_opensans);
 	    font_destroy(renderer->font_console);
 
-	    SV_FREE_STRUCT(RendererState, renderer);
+	    SV_FREE_STRUCT(renderer);
 	}
 
 	return true;

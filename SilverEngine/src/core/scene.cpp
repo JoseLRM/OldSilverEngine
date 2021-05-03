@@ -193,7 +193,7 @@ namespace sv {
     {
 	destroy_current_scene();
 
-	SV_FREE_STRUCT(SceneState, scene_state);
+	SV_FREE_STRUCT(scene_state);
     }
 
     SV_INLINE void serialize_entity(Serializer& s, Entity entity)

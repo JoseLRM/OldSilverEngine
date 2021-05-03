@@ -102,8 +102,12 @@ namespace sv {
     
 #define SV_ALLOCATE_STRUCT(type) new(SV_ALLOCATE_MEMORY(sizeof(type))) type()
 #define SV_ALLOCATE_STRUCT_ARRAY(type, count) new(SV_ALLOCATE_MEMORY(sizeof(type) * size_t(count))) type[size_t(count)]
-#define SV_FREE_STRUCT(type, ptr) do { (ptr)->~type(); SV_FREE_MEMORY(ptr); } while(0)
-#define SV_FREE_STRUCT_ARRAY(type, ptr, count) do { foreach(i, count) (ptr)[i].~type(); SV_FREE_MEMORY(ptr); } while(0)
+
+    template <typename T>
+    SV_INLINE void destruct(T& t) { t.~T(); }
+    
+#define SV_FREE_STRUCT(ptr) do { destruct(*ptr); SV_FREE_MEMORY(ptr); } while(0)
+#define SV_FREE_STRUCT_ARRAY(ptr, count) do { foreach(i, count) destruct(ptr[i]); SV_FREE_MEMORY(ptr); } while(0)
 
     // Version
 

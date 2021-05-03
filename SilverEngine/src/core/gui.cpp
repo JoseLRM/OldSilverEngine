@@ -514,7 +514,7 @@ namespace sv {
 	    }
 	}
 
-	SV_FREE_STRUCT(GUI, &gui);
+	SV_FREE_STRUCT(&gui);
 	return true;
     }
 
