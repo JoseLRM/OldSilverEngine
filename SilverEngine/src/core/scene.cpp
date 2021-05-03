@@ -1752,10 +1752,10 @@ namespace sv {
 	return scene.entityData.getInternal(entity).parent;
     }
 
-    u64* get_entity_flags(Entity entity)
+    u64& get_entity_flags(Entity entity)
     {
 	SV_SCENE();
-	return &scene.entityData.getInternal(entity).flags;
+	return scene.entityData.getInternal(entity).flags;
     }
 
     u32 get_entity_component_count(Entity entity)

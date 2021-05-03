@@ -176,7 +176,7 @@ namespace sv {
     SV_API u32	        get_entity_childs_count(Entity parent);
     SV_API void		get_entity_childs(Entity parent, Entity const** childsArray);
     SV_API Entity	get_entity_parent(Entity entity);
-    SV_API u64*		get_entity_flags(Entity entity);
+    SV_API u64&		get_entity_flags(Entity entity);
     SV_API u32		get_entity_component_count(Entity entity);
     SV_API u32		get_entity_count();
     SV_API Entity	get_entity_by_index(u32 index);

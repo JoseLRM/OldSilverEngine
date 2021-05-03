@@ -44,6 +44,10 @@ namespace sv {
 
     struct ShowComponentEvent {
 	CompID comp_id;
+	BaseComponent* comp;
+    };
+    struct ShowEntityEvent {
+	Entity entity;
     };
 
     // EDITOR GUI

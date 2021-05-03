@@ -655,6 +655,7 @@ namespace sv {
 
 	    ShowComponentEvent e;
 	    e.comp_id = comp_id;
+	    e.comp = comp;
 
 	    gui_push_id(dev.gui, "User");
 	    event_dispatch("show_component_info", &e);
@@ -1051,8 +1052,15 @@ namespace sv {
 			}
 			else scene->player = SV_ENTITY_NULL;
 		    }
+
+		    gui_push_id(dev.gui, "User");
+
+		    ShowEntityEvent event;
+		    event.entity = selected;
+
+		    event_dispatch("show_entity_info", &event);
 		    
-		    gui_pop_id(dev.gui);
+		    gui_pop_id(dev.gui, 2u);
 		}
 
 		if (gui_begin_popup(g, GuiPopupTrigger_Parent, MouseButton_Right, 0xabc2544 + selected, GuiLayout_Flow)) {
