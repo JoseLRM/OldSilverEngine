@@ -2,7 +2,7 @@
 
 using namespace sv;
 
-struct TestComponent {
+struct TestComponent : public BaseComponent {
 
     static constexpr u32 VERSION = 1u;
     static CompID ID;
@@ -14,7 +14,7 @@ struct TestComponent {
 	serialize_bool(s, state);
     }
     
-    void deserializer(Deserializer& d, u32 version)
+    void deserialize(Deserializer& d, u32 version)
     {
 	if (version == 1u) {
 	    deserialize_bool(d, state);
@@ -22,7 +22,7 @@ struct TestComponent {
     }
 };
 
-CompID TestComponent::ID = SV_COMPONENT_INVALID_ID;
+CompID TestComponent::ID = SV_COMPONENT_ID_INVALID;
 
 #if SV_DEV
 
@@ -59,7 +59,7 @@ void update_scene()
 }
 
 
-SV_USER bool user_initialize(bool init)
+SV_USER void user_initialize()
 {
     event_user_register("initialize_game", initialize_game);
     event_user_register("update_scene", update_scene);
@@ -68,16 +68,12 @@ SV_USER bool user_initialize(bool init)
 
 #if SV_DEV
     event_user_register("show_component_info", show_component_info);
-#endif
-    
-    return true;
+#endif   
 }
 
-SV_USER bool user_close(bool close)
+SV_USER void user_close()
 {
-    invalidate_component(TestComponent::ID);
-    
-    return true;
+    invalidate_component_callbacks(TestComponent::ID);
 }
 
 SV_USER bool user_get_scene_filepath(const char* name, char* filepath)

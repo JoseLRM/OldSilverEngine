@@ -1392,13 +1392,25 @@ namespace sv {
 
 	scene_state->component_names[desc->name] = id;
 
+	SV_LOG_INFO("Component registred '%s'", desc->name);
+
 	return id;
     }
 
     void invalidate_component_callbacks(CompID id)
     {
-	if (id == SV_COMPONENT_INVALID_ID) {
+	// NOTE: The game callbacks closes after the unregister of all the components callbacks
+	// so the game code will invalidate a component when none exists
+	if (scene_state->registers.size() == 0u)
+	    return;
+	
+	if (id == SV_COMPONENT_ID_INVALID) {
 	    SV_LOG_ERROR("Can't invalidate a invalid component ID");
+	    return;
+	}
+
+	if (id >= scene_state->registers.size()) {
+	    SV_LOG_ERROR("Can't invalidate the component with the ID: %u", id);
 	    return;
 	}
 	
@@ -1420,7 +1432,9 @@ namespace sv {
 	}
 
 	scene_state->registers.clear();
-	component_names.clear();
+	scene_state->component_names.clear();
+
+	SV_LOG_INFO("Components unregistred");
     }
 
     const char* get_component_name(CompID ID)

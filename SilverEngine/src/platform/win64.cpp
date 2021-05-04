@@ -375,6 +375,13 @@ namespace sv {
 	MessageBox(0, content, title, MB_OK | (error ? MB_ICONERROR : MB_ICONINFORMATION));
     }
 
+    bool show_dialog_yesno(const char* title, const char* content)
+    {
+	int res = MessageBox(0, content, title, MB_YESNO | MB_ICONQUESTION);
+
+	return res == IDYES;
+    }
+
     // Window
 
     u64 os_window_handle()
@@ -614,6 +621,9 @@ namespace sv {
 	    folder_size = it - filepath;
 	    memcpy(folder, filepath, folder_size);
 	    folder[folder_size] = '\0';
+
+	    if (folder_size == 3u && folder[1u] == ':')
+		continue;
 
 	    if (!CreateDirectory(folder, NULL) && ERROR_ALREADY_EXISTS != GetLastError()) {
 		return false;
@@ -938,7 +948,6 @@ namespace sv {
 	    
 	    _user_callbacks_set(c);
 
-	    SV_LOG_INFO("User callbacks loaded");
 	    return true;
 	}
 	else SV_LOG_ERROR("Can't find game code");

@@ -84,6 +84,15 @@ namespace sv {
 
     GlobalEditorData editor;
 
+    SV_INTERNAL void show_reset_popup()
+    {
+	if (engine.state != EngineState_ProjectManagement && show_dialog_yesno("Code reloaded!!", "Do you want to reset the game?")) {
+
+	    _engine_reset_game();
+	    dev.next_engine_state = EngineState_Edit;
+	}
+    }
+
     /////////////////////////////////////////////// KEY SHORTCUTS //////////////////////////////////////
 
     SV_AUX void update_key_shortcuts()
@@ -519,6 +528,7 @@ namespace sv {
 
 	event_register("on_entity_create", on_entity_create, 0u);
 	event_register("on_entity_destroy", on_entity_destroy, 0u);
+	event_register("user_callbacks_initialize", show_reset_popup, 0u);
 
 	return true;
     }
@@ -1382,15 +1392,8 @@ namespace sv {
 	}
     }
 
-    SV_INTERNAL void update_edit_state()
-    {	
-	// Adjust camera
-	dev.camera.adjust(os_window_aspect());
-
-	if (!entity_exist(editor.selected_entity)) {
-	    editor.selected_entity = SV_ENTITY_NULL;
-	}
-
+    SV_INTERNAL void display_gui()
+    {
 	if (egui_begin()) {
 
 	    if (!editor.camera_focus && there_is_scene() && dev.debug_draw) {
@@ -1424,9 +1427,6 @@ namespace sv {
 
 		    gui_checkbox(dev.gui, "Colisions", &dev.draw_collisions, 4u);
 
-		    if (gui_button(dev.gui, "Exit Game", 5u)) {
-			dev.next_engine_state = EngineState_Uninitialized;
-		    }
 		    if (gui_button(dev.gui, "Exit Project", 6u)) {
 			dev.next_engine_state = EngineState_ProjectManagement;
 		    }
@@ -1450,19 +1450,46 @@ namespace sv {
 
 	    egui_end();
 	}
+    }
+
+    SV_INTERNAL void do_picking_stuff()
+    {
+	// Entity selection
+	if (input.mouse_buttons[MouseButton_Left] == InputState_Released)
+	    select_entity();
+
+	update_gizmos();	
+    }
+    
+    SV_INTERNAL void update_edit_state()
+    {	
+	// Adjust camera
+	dev.camera.adjust(os_window_aspect());
+
+	if (!entity_exist(editor.selected_entity)) {
+	    editor.selected_entity = SV_ENTITY_NULL;
+	}
+	
+	display_gui();
 
 	if (dev.debug_draw && there_is_scene()) {
 
 	    control_camera();
 	}
 
-	if (input.unused && there_is_scene()) {
+	if (input.unused && there_is_scene())
+	    do_picking_stuff();
+    }
 
-	    // Entity selection
-	    if (input.mouse_buttons[MouseButton_Left] == InputState_Released)
-		select_entity();
+    SV_INTERNAL void update_play_state()
+    {
+	if (dev.debug_draw) {
+	    display_gui();
 
-	    update_gizmos();
+	    if (there_is_scene()) {
+		control_camera();
+		do_picking_stuff();
+	    }
 	}
     }
 
@@ -1541,26 +1568,6 @@ namespace sv {
 	    egui_end();
 	}    
     }
-
-    SV_INTERNAL void update_uninitialized_state()
-    {
-	if (egui_begin()) {
-
-	    gui_bounds(dev.gui, GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
-	    gui_begin_container(dev.gui, 0u, GuiLayout_Flow);
-
-	    gui_text(dev.gui, "Game Uninitialized", 0u);
-
-	    if (gui_button(dev.gui, "Initialize", 1u)) {
-
-		_engine_initialize_game();
-	    }
-	
-	    gui_end_container(dev.gui);
-	    
-	    egui_end();
-	}
-    }
     
     void _editor_update()
     {
@@ -1571,18 +1578,11 @@ namespace sv {
 
 	    switch (dev.next_engine_state) {
 
-	    case EngineState_Uninitialized:
-	    {
-		_engine_close_game();
-		editor.selected_entity = SV_ENTITY_NULL;
-		exit = true;
-	    }
-	    break;
-
 	    case EngineState_ProjectManagement:
 	    {
 		_engine_close_project();
 		editor.selected_entity = SV_ENTITY_NULL;
+		dev.next_engine_state = EngineState_None;
 		exit = true;
 	    }
 	    break;
@@ -1617,9 +1617,11 @@ namespace sv {
 	    } break;
 			
 	    }
-		    
-	    engine.state = dev.next_engine_state;
-	    dev.next_engine_state = EngineState_None;
+
+	    if (dev.next_engine_state != EngineState_None) {
+		engine.state = dev.next_engine_state;
+		dev.next_engine_state = EngineState_None;
+	    }
 
 	    if (exit)
 		return;
@@ -1633,12 +1635,12 @@ namespace sv {
 	    update_edit_state();
 	    break;
 
-	case EngineState_ProjectManagement:
-	    update_project_state();
+	case EngineState_Play:
+	    update_play_state();
 	    break;
 
-	case EngineState_Uninitialized:
-	    update_uninitialized_state();
+	case EngineState_ProjectManagement:
+	    update_project_state();
 	    break;
 	    
 	}
@@ -1646,6 +1648,8 @@ namespace sv {
 
     SV_INTERNAL void draw_edit_state(CommandList cmd)
     {
+	if (!dev.debug_draw) return;
+	
 	begin_debug_batch(cmd);
 
 	// Draw selected entity
@@ -1784,13 +1788,15 @@ namespace sv {
 	switch (engine.state) {
 
 	case EngineState_Edit:
+	case EngineState_Play:
 	    draw_edit_state(cmd);
 	    break;
-	    
+    
 	}
 
 	// Draw gui
-	gui_draw(dev.gui, cmd);
+	if (dev.debug_draw)
+	    gui_draw(dev.gui, cmd);
     }
 
 }

@@ -9,7 +9,6 @@ namespace sv {
     enum EngineState : u32 {
 	EngineState_None,
 	EngineState_ProjectManagement,
-	EngineState_Uninitialized,
 	EngineState_Edit,
 	EngineState_Play,
 	EngineState_Pause,
@@ -50,10 +49,9 @@ namespace sv {
 
 #if SV_DEV
     void _engine_initialize_project(const char* project_path);
-    void _engine_initialize_game();
-
     void _engine_close_project();
-    void _engine_close_game();
+    
+    void _engine_reset_game();
 #endif
     
 }

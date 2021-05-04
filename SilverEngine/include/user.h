@@ -4,8 +4,8 @@
 
 namespace sv {
     
-    typedef bool(*UserInitializeFn)();
-    typedef bool(*UserCloseFn)();
+    typedef void(*UserInitializeFn)();
+    typedef void(*UserCloseFn)();
     typedef bool(*UserValidateSceneFn)(const char* name);
     typedef bool(*UserGetSceneFilepathFn)(const char* name, char* filepath);
     
@@ -18,9 +18,11 @@ namespace sv {
 
     void _user_callbacks_set(const UserCallbacks& callbacks);
 
-    bool _user_initialize();
-    bool _user_close();
+    void _user_initialize();
+    void _user_close();
     bool _user_validate_scene(const char* name);
     bool _user_get_scene_filepath(const char* name, char* filepath);
+
+    bool _user_connected();
 
 }

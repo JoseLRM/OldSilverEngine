@@ -9,18 +9,16 @@ namespace sv {
 	user_callbacks = callbacks;
     }
 
-    bool _user_initialize()
+    void _user_initialize()
     {
 	if (user_callbacks.initialize)
-	    return user_callbacks.initialize();
-	return false;
+	    user_callbacks.initialize();
     }
     
-    bool _user_close()
+    void _user_close()
     {
 	if (user_callbacks.close)
-	    return user_callbacks.close();
-	return false;
+	    user_callbacks.close();
     }
     
     bool _user_validate_scene(const char* name)
@@ -37,6 +35,13 @@ namespace sv {
 
 	sprintf(filepath, "assets/scenes/%s.scene", name);
 	return true;
+    }
+
+    bool _user_connected()
+    {
+	// NOTE: The initialize function is required to connect properly. So if it exists means that
+	// is connected
+	return user_callbacks.initialize;
     }
         
 }

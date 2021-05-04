@@ -10,7 +10,9 @@ namespace sv {
 
     SV_API void print(const char* str);
     SV_API void printf(const char* str, ...);
-    SV_API void show_message(const char* title, const char* content, bool error);    
+    
+    SV_API void show_message(const char* title, const char* content, bool error);
+    SV_API bool show_dialog_yesno(const char* title, const char* content); // Returns true if yes
 
     SV_API bool file_dialog_open(char* buff, u32 filterCount, const char** filters, const char* startPath);
     SV_API bool file_dialog_save(char* buff, u32 filterCount, const char** filters, const char* startPath);
