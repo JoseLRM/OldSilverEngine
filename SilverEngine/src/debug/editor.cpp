@@ -99,14 +99,12 @@ namespace sv {
 	    dev.debug_draw = !dev.debug_draw;
 	}
 
-	// Display windows
-	if (input.keys[Key_F2] == InputState_Pressed) {
-	    dev.display_windows = !dev.display_windows;
-	}
-
 	// Console show - hide
 	if (input.keys[Key_F3] == InputState_Pressed) {
-	    dev.console_active = !dev.console_active;
+
+	    if (console_is_open())
+		console_close();
+	    else console_open();
 	}
 
 	// Change debug camera projection
@@ -1395,7 +1393,7 @@ namespace sv {
 
 	if (egui_begin()) {
 
-	    if (!editor.camera_focus && there_is_scene() && dev.display_windows) {
+	    if (!editor.camera_focus && there_is_scene() && dev.debug_draw) {
 
 		// Window management
 		{
@@ -1595,7 +1593,6 @@ namespace sv {
 		// TODO: Handle error
 		_start_scene(get_scene_name());
 		
-		dev.display_windows = true;
 		dev.debug_draw = true;
 	    } break;
 
@@ -1608,7 +1605,6 @@ namespace sv {
 		    // TODO: handle error
 		    save_scene();
 
-		    dev.display_windows = false;
 		    dev.debug_draw = false;
 		    dev.draw_collisions = false;
 		    editor.selected_entity = SV_ENTITY_NULL;

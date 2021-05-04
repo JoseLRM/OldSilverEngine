@@ -25,10 +25,14 @@ namespace sv {
     static constexpr f32 ANIMATION_TIME = 0.25f;
 
     struct GlobalConsoleData {
+	
+	bool active = false;
+	
 	char* buff;
 	size_t buff_pos;
 	bool buff_flip;
-		
+
+	// TODO: Not use std classes
 	std::string history[HISTORY_COUNT] = {};
 	bool history_flip = false;
 	u32 history_pos = 0u;
@@ -47,13 +51,13 @@ namespace sv {
 
     static bool command_exit(const char** args, u32 argc)
     {
-	dev.console_active = false;
+	engine.close_request = true;
 	return true;
     }
 
     static bool command_close(const char** args, u32 argc)
     {
-	engine.close_request = true;
+	console.active = false;
 	return true;
     }
 
@@ -487,11 +491,26 @@ namespace sv {
 	console.buff_flip = false;
     }
 
+    bool console_is_open()
+    {
+	return console.active;
+    }
+    
+    void console_open()
+    {
+	console.active = true;
+    }
+
+    void console_close()
+    {
+	console.active = false;
+    }
+
     void _console_update()
     {
 	f32 animation_advance = engine.deltatime * (1.f / ANIMATION_TIME);
 
-	if (!dev.console_active || !input.unused) {
+	if (!console.active || !input.unused) {
 	    console.show_fade = SV_MAX(0.f, console.show_fade - animation_advance);
 	    return;
 	}
@@ -609,7 +628,7 @@ namespace sv {
 
     void _console_draw()
     {
-	if (!dev.console_active && console.show_fade == 0.f) return;
+	if (!console.active && console.show_fade == 0.f) return;
 
 	CommandList cmd = graphics_commandlist_get();
 

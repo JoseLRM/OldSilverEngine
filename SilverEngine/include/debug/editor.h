@@ -14,19 +14,18 @@ namespace sv {
 
     struct DebugCamera : public CameraComponent {
 	v3_f32 position;
-	v4_f32 rotation = { 0.f, 0.f, 0.f, 1.f };
+	v4_f32 rotation = { 0.f, 0.f, 0.f, 1.f }; // TODO: Use pitch and yaw
 	f32 velocity = 0.45f;
     };
-    
+
+    // TODO: Remove this struct
     struct GlobalDevData {
-		
-	bool console_active = false;
+	
 	EngineState next_engine_state = EngineState_None;
 
-	bool display_windows = true;
+	bool debug_draw = true;
 	bool draw_collisions = false;
 	
-	bool debug_draw = true;
 	DebugCamera camera;
 
 	DoUndoStack do_undo_stack;

@@ -17,6 +17,10 @@ namespace sv {
     SV_API void console_notify(const char* title, const char* str, ...);
     SV_API void console_clear();
 
+    SV_API bool console_is_open();
+    SV_API void console_open();
+    SV_API void console_close();
+
     void _console_initialize();
     void _console_close();
     void _console_update();
