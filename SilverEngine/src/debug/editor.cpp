@@ -86,7 +86,11 @@ namespace sv {
 
     SV_INTERNAL void show_reset_popup()
     {
-	if (engine.state != EngineState_ProjectManagement && show_dialog_yesno("Code reloaded!!", "Do you want to reset the game?")) {
+	if (dev.engine_state == EngineState_ProjectManagement || dev.engine_state == EngineState_None) {
+	    return;
+	}
+	
+	if (dev.engine_state != EngineState_ProjectManagement && show_dialog_yesno("Code reloaded!!", "Do you want to reset the game?")) {
 
 	    _engine_reset_game();
 	    dev.next_engine_state = EngineState_Edit;
@@ -142,7 +146,7 @@ namespace sv {
 	if (input.keys[Key_F5] == InputState_Pressed)
 	    _os_compile_gamecode();
 	
-	if (engine.state != EngineState_Play) {
+	if (dev.engine_state != EngineState_Play) {
 
 	    // Close engine or play game
 	    if (input.keys[Key_F11] == InputState_Pressed) {
@@ -529,6 +533,9 @@ namespace sv {
 	event_register("on_entity_create", on_entity_create, 0u);
 	event_register("on_entity_destroy", on_entity_destroy, 0u);
 	event_register("user_callbacks_initialize", show_reset_popup, 0u);
+
+	dev.engine_state = EngineState_ProjectManagement;
+	engine.update_scene = false;
 
 	return true;
     }
@@ -1560,6 +1567,7 @@ namespace sv {
 			
 		    *filepath_name(path) = '\0';
 		    _engine_initialize_project(path);
+		    dev.next_engine_state = EngineState_Edit;
 		}
 	    }
 	
@@ -1582,8 +1590,8 @@ namespace sv {
 	    {
 		_engine_close_project();
 		editor.selected_entity = SV_ENTITY_NULL;
-		dev.next_engine_state = EngineState_None;
 		exit = true;
+		engine.update_scene = false;
 	    }
 	    break;
 
@@ -1594,13 +1602,16 @@ namespace sv {
 		_start_scene(get_scene_name());
 		
 		dev.debug_draw = true;
+		engine.update_scene = false;
 	    } break;
 
 	    case EngineState_Play:
 	    {
 		SV_LOG_INFO("Starting play state");
+
+		engine.update_scene = true;
 			
-		if (engine.state == EngineState_Edit) {
+		if (dev.engine_state == EngineState_Edit) {
 
 		    // TODO: handle error
 		    save_scene();
@@ -1614,14 +1625,13 @@ namespace sv {
 	    case EngineState_Pause:
 	    {
 		SV_LOG_INFO("Game paused");
+		engine.update_scene = false;
 	    } break;
 			
 	    }
 
-	    if (dev.next_engine_state != EngineState_None) {
-		engine.state = dev.next_engine_state;
-		dev.next_engine_state = EngineState_None;
-	    }
+	    dev.engine_state = dev.next_engine_state;
+	    dev.next_engine_state = EngineState_None;
 
 	    if (exit)
 		return;
@@ -1629,7 +1639,7 @@ namespace sv {
 
 	update_key_shortcuts();
 	
-	switch (engine.state) {
+	switch (dev.engine_state) {
 
 	case EngineState_Edit:
 	    update_edit_state();
@@ -1785,7 +1795,7 @@ namespace sv {
     {
 	CommandList cmd = graphics_commandlist_get();
 
-	switch (engine.state) {
+	switch (dev.engine_state) {
 
 	case EngineState_Edit:
 	case EngineState_Play:

@@ -18,9 +18,18 @@ namespace sv {
 	f32 velocity = 0.45f;
     };
 
+    enum EngineState : u32 {
+	EngineState_None,
+	EngineState_ProjectManagement,
+	EngineState_Edit,
+	EngineState_Play,
+	EngineState_Pause,
+    };
+
     // TODO: Remove this struct
     struct GlobalDevData {
-	
+
+	EngineState engine_state = EngineState_None;
 	EngineState next_engine_state = EngineState_None;
 
 	bool debug_draw = true;

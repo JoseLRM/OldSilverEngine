@@ -1074,7 +1074,7 @@ namespace sv {
 	}
 
 #if SV_DEV
-	if (engine.state != EngineState_Play)
+	if (!engine.update_scene)
 	    return;
 #endif
 	

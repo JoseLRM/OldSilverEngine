@@ -443,26 +443,15 @@ namespace sv {
 
     SV_AUX void reset_game()
     {
-	if (engine.state == EngineState_ProjectManagement || engine.state == EngineState_None) {
-	    SV_LOG_ERROR("Can't close the game right now");
-	    return;
-	}
-
 	close_game();
 	initialize_game();
     }
 
     SV_AUX void close_project()
     {
-	if (engine.state == EngineState_ProjectManagement || engine.state == EngineState_None) {
-	    SV_LOG_ERROR("Can't close the project right now");
-	    return;
-	}
-
 	close_game();
 	close_user_callbacks();
 
-	engine.state = EngineState_ProjectManagement;
 	strcpy(engine.project_path, "");
     }
     
@@ -475,9 +464,7 @@ namespace sv {
 	    engine.running = false;
 	}
 
-#if SV_DEV
-	engine.state = EngineState_ProjectManagement;
-#else
+#if !(SV_DEV)
 	if (engine.running) initialize_game();
 #endif
 
@@ -569,18 +556,9 @@ namespace sv {
     // TODO: Should handle the runtime of this function
     void _engine_initialize_project(const char* path)
     {
-	if (engine.state != EngineState_ProjectManagement) {
-	    SV_LOG_ERROR("Can't initialize the project '%s' right now", path);
-	    return;
-	}
-	
 	strcpy(engine.project_path, path);
-
 	recive_user_callbacks();
-
 	initialize_game();
-
-	engine.state = EngineState_Edit;
     }
 
     void _engine_close_project()

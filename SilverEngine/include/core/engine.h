@@ -5,14 +5,6 @@
 namespace sv {
 
     struct Scene;
-
-    enum EngineState : u32 {
-	EngineState_None,
-	EngineState_ProjectManagement,
-	EngineState_Edit,
-	EngineState_Play,
-	EngineState_Pause,
-    };
     
     struct GlobalEngineData {
 
@@ -24,8 +16,14 @@ namespace sv {
 	bool		 close_request = false;
 	bool             running = false;
 	void*            game_memory = nullptr;
-	char             project_path[FILEPATH_SIZE + 1u] = "";
-	EngineState      state = EngineState_None;
+
+#if SV_DEV
+	
+	char project_path[FILEPATH_SIZE + 1u] = "";
+	bool update_scene = true;
+
+#endif
+	
     };
     
     extern GlobalEngineData SV_API engine;
