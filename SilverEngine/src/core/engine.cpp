@@ -74,17 +74,17 @@ namespace sv {
 #else
 	if ( _os_update_user_callbacks(filepath)) {
 
-	    if (!_user_initialize) {
-		SV_LOG_ERROR("The user can't initialize");
-		return false;
-	    }
+	    _user_initialize();
+	    
+	    SV_LOG_INFO("User callbacks loaded");
+
+	    event_dispatch("user_callbacks_initialize", 0);
+	    return true;
 	}
 
-	SV_LOG_INFO("User callbacks loaded");
+	SV_LOG_ERROR("Can't load the user callbacks");
 
-	event_dispatch("user_callbacks_initialize");
-
-	return true;
+	return false;
 #endif
     }
     
@@ -441,6 +441,8 @@ namespace sv {
 	SV_LOG_INFO("Game closed");
     }
 
+#if SV_DEV
+
     SV_AUX void reset_game()
     {
 	close_game();
@@ -454,6 +456,8 @@ namespace sv {
 
 	strcpy(engine.project_path, "");
     }
+
+#endif
     
     void engine_main()
     {
@@ -465,6 +469,7 @@ namespace sv {
 	}
 
 #if !(SV_DEV)
+	recive_user_callbacks();
 	if (engine.running) initialize_game();
 #endif
 

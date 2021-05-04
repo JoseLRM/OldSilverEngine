@@ -924,11 +924,6 @@ namespace sv {
 	    if (corrupted) {
 		return false;
 	    }
-
-	    // TEMP
-	    for (auto& m : model_info.meshes) {
-		SV_LOG("Mesh '%s', %u positions, %u normals, %u texcoords", m.name.c_str(), m.positions.size(), m.normals.size(), m.texcoords.size());
-	    }
 	}
 	else {
 	    SV_LOG_ERROR("Can't load the model '%s', not found", filepath);

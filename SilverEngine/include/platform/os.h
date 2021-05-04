@@ -112,7 +112,10 @@ namespace sv {
     void _os_recive_input();
     bool _os_shutdown();
 
+#if SV_DEV
     void _os_compile_gamecode();
+#endif
+    
     bool _os_update_user_callbacks(const char* dll);
     void _os_free_user_callbacks();
     

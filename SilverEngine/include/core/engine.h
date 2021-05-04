@@ -30,19 +30,22 @@ namespace sv {
 
     SV_INLINE void filepath_resolve(char* dst, const char* src)
     {
-	size_t size = strlen(src);
-	if (size) {
-
-	    if (src[0] == '$') {
-		++src;
-		strcpy(dst, src);
-	    }
-	    else {
-		strcpy(dst, engine.project_path);
-		strcat(dst, src);
-	    }
+#if SV_DEV
+	if (src[0] == '$') {
+	    ++src;
+	    strcpy(dst, src);
 	}
-	else strcpy(dst, src);
+	else {
+	    strcpy(dst, engine.project_path);
+	    strcat(dst, src);
+	}
+#else
+	// TODO: This is usless without the dev mode
+	if (src[0] == '$')
+	    ++src;
+	    	
+	strcpy(dst, src);
+#endif
     }
 
 #if SV_DEV
