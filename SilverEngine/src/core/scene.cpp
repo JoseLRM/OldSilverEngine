@@ -114,7 +114,7 @@ namespace sv {
 
 	static constexpr u32 VERSION = 0u;
 
-	char next_scene_name[SCENENAME_SIZE] = {};
+	char next_scene_name[SCENENAME_SIZE + 1u] = {};
 	Scene* scene = nullptr;
 
 	List<ComponentRegister> registers;
@@ -193,6 +193,7 @@ namespace sv {
     void _close_scene()
     {
 	destroy_current_scene();
+	unregister_components();
 
 	SV_FREE_STRUCT(scene_state);
     }
@@ -1346,9 +1347,10 @@ namespace sv {
     CompID register_component(const ComponentRegisterDesc* desc)
     {
 	CompID id;
+	ComponentRegister* reg;
 	
 	// Check if is available
-	{
+	{	    
 	    if (desc->componentSize < sizeof(u32)) {
 		SV_LOG_ERROR("Can't register a component type with size of %u", desc->componentSize);
 		return SV_COMPONENT_ID_INVALID;
@@ -1359,37 +1361,47 @@ namespace sv {
 	    if (it != scene_state->component_names.end()) {
 		
 		id = it->second;
-	    }
-	    else id = CompID(scene_state->registers.size());
-	}
+		reg = &scene_state->registers[id];
 
-	ComponentRegister& reg = (id == CompID(scene_state->registers.size())) ? scene_state->registers.emplace_back() : scene_state->registers[id];
-	reg.name = desc->name;
-	reg.size = desc->componentSize;
-	reg.version = desc->version;
-	reg.createFn = desc->createFn;
-	reg.destroyFn = desc->destroyFn;
-	reg.moveFn = desc->moveFn;
-	reg.copyFn = desc->copyFn;
-	reg.serializeFn = desc->serializeFn;
-	reg.deserializeFn = desc->deserializeFn;
+		if (reg->size != desc->componentSize) {
+		    SV_LOG_ERROR("Can't change the size of a component while the game in playing");
+		    return SV_COMPONENT_ID_INVALID;
+		}
+	    }
+	    else {
+
+		if (there_is_scene()) {
+		    SV_LOG_ERROR("Can't register component while a scene is running");
+		    return SV_COMPONENT_ID_INVALID;
+		}
+		
+		id = CompID(scene_state->registers.size());
+		reg = &scene_state->registers.emplace_back();
+	    }
+	}
+	
+	reg->name = desc->name;
+	reg->size = desc->componentSize;
+	reg->version = desc->version;
+	reg->createFn = desc->createFn;
+	reg->destroyFn = desc->destroyFn;
+	reg->moveFn = desc->moveFn;
+	reg->copyFn = desc->copyFn;
+	reg->serializeFn = desc->serializeFn;
+	reg->deserializeFn = desc->deserializeFn;
 
 	scene_state->component_names[desc->name] = id;
-
-	if (scene_state->scene && scene_state->registers.size() > scene_state->scene->components.size()) {
-
-	    scene_state->scene->components.resize(scene_state->registers.size());
-	    
-	    for (size_t i = scene_state->scene->components.size(); i < scene_state->registers.size(); ++i) {
-		componentAllocatorCreate(CompID(i));
-	    }
-	}
 
 	return id;
     }
 
     void invalidate_component_callbacks(CompID id)
     {
+	if (id == SV_COMPONENT_INVALID_ID) {
+	    SV_LOG_ERROR("Can't invalidate a invalid component ID");
+	    return;
+	}
+	
 	ComponentRegister& r = scene_state->registers[id];
 
 	r.createFn = nullptr;
@@ -1398,6 +1410,17 @@ namespace sv {
 	r.copyFn = nullptr;
 	r.serializeFn = nullptr;
 	r.deserializeFn = nullptr;
+    }
+
+    void unregister_components()
+    {
+	if (there_is_scene()) {
+	    SV_LOG_ERROR("Can't unregister the components while there is scene");
+	    return;
+	}
+
+	scene_state->registers.clear();
+	component_names.clear();
     }
 
     const char* get_component_name(CompID ID)

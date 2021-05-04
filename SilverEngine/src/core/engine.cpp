@@ -424,6 +424,7 @@ namespace sv {
 	event_dispatch("close_game", nullptr);
 	_start_scene(nullptr);
 	close_user_callbacks();
+	unregister_components();
 	
 	free_unused_assets();
     }

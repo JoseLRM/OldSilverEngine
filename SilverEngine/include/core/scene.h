@@ -102,6 +102,7 @@ namespace sv {
 
     SV_API CompID register_component(const ComponentRegisterDesc* desc);
     SV_API void   invalidate_component_callbacks(CompID id);
+    SV_API void   unregister_components();
 
     SV_API const char*  get_component_name(CompID ID);
     SV_API u32		get_component_size(CompID ID);
