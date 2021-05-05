@@ -2,7 +2,7 @@
 
 pushd %~dp0..\
 
-CALL scripts\build.bat win64 dev
+REM CALL scripts\build.bat win64 dev
 
 ECHO.
 ECHO.
@@ -22,21 +22,14 @@ IF NOT EXIST release (
    MKDIR release\win64
 )
 
-XCOPY %SVP% %RP% /E /I /Q /Y > NUL
+XCOPY %SVP%SilverEngine.exe %RP% /I /Q /Y > NUL
 XCOPY SilverEngine\system %RP%system /E /I /Q /Y > NUL
 XCOPY SilverEngine\*.dll %RP% /I /Q /Y > NUL
 
 RMDIR %RP%int\ /Q /S > NUL
 
-XCOPY misc\default_code.cpp %RP%system\ /I /Q /Y > NUL
-
 XCOPY SilverEngine\include %RP%include /E /I /Q /Y > NUL
 XCOPY scripts\shell.bat %RP%system /I /Q /Y > NUL
-
-REM Delete all the debug info and libraries
-RENAME %RP%SilverEngine.exe SilverEngineTemp
-DEL %RP%SilverEngine.* /Q
-RENAME %RP%SilverEngineTemp SilverEngine.exe
 
 XCOPY misc\SilverEditor.bat %RP% /I /Q /Y > NUL
 
