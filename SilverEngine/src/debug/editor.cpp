@@ -432,19 +432,37 @@ namespace sv {
 	    if (info.object != GizmosObject_None && input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
 				
 		info.focus = true;
-
+		input.unused = false;
 	    }
 	}
 
 	else {
 
-	    if (input.mouse_buttons[MouseButton_Left] == InputState_None) {
+	    input.unused = true;
+
+	    if (input.mouse_buttons[MouseButton_Left] == InputState_Released) {
 
 		info.focus = false;
 	    }
 	    else {
 
 		v3_f32& position = *get_entity_position_ptr(editor.selected_entity);
+
+		Ray ray = screen_to_world_ray(input.mouse_position, dev.camera.position, dev.camera.rotation, &dev.camera);
+
+		v3_f32 normal = ray.origin - position;
+		normal.normalize();
+
+		// Find the intersection point of the segment ray to the axis plane
+		v3_f32 intersection;
+		
+		f32 k = (position - ray.origin).dot(normal) / ray.direction.dot(normal);
+		intersection = ray.origin + k * ray.direction;
+		
+
+		if (k > 0.f)
+		    position.y = intersection.y;
+		/*
 		v2_f32 mouse_position = input.mouse_position * 2.f;
 
 		v2_f32 p0, p1;
@@ -460,7 +478,7 @@ namespace sv {
 		XMVECTOR pos = projection.getDX();
 		pos = XMVector3Transform(pos, dev.camera.inverse_view_projection_matrix);
 
-		position.y = XMVectorGetY(pos);
+		position.y = XMVectorGetY(pos);*/
 	    }
 	}
     }
