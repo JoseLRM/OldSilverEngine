@@ -8,8 +8,8 @@ namespace sv {
     
     struct GlobalEngineData {
 
-	const Version    version = { 0, 0, 0 };
-	const char*      name = "SilverEngine 0.0.0";
+	const Version    version = { SV_VERSION_MAJOR, SV_VERSION_MINOR, SV_VERSION_REVISION };
+	const char*      name = "SilverEngine";
 	f32		 deltatime = 0.f;
 	u64		 frame_count = 0U;
 	u32		 FPS = 0u;

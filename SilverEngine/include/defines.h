@@ -1,5 +1,9 @@
 #pragma once
 
+#define SV_VERSION_MAJOR 0
+#define SV_VERSION_MINOR 0
+#define SV_VERSION_REVISION 0
+
 // std includes
 #include <math.h>
 #include <DirectXMath.h>
