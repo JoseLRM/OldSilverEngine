@@ -927,6 +927,7 @@ namespace sv {
 	}
 	else {
 	    SV_LOG_ERROR("Can't load the model '%s', not found", filepath);
+	    return false;
 	}
 
 	return true;

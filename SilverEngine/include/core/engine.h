@@ -1,6 +1,7 @@
 #pragma once
 
 #include "defines.h"
+#include "platform/os.h"
 
 namespace sv {
 
@@ -9,7 +10,6 @@ namespace sv {
     struct GlobalEngineData {
 
 	const Version    version = { SV_VERSION_MAJOR, SV_VERSION_MINOR, SV_VERSION_REVISION };
-	const char*      name = "SilverEngine";
 	f32		 deltatime = 0.f;
 	u64		 frame_count = 0U;
 	u32		 FPS = 0u;
@@ -36,8 +36,12 @@ namespace sv {
 	    strcpy(dst, src);
 	}
 	else {
-	    strcpy(dst, engine.project_path);
-	    strcat(dst, src);
+	    if (path_is_absolute(src))
+		strcpy(dst, src);
+	    else {
+		strcpy(dst, engine.project_path);
+		strcat(dst, src);
+	    }
 	}
 #else
 	// TODO: This is usless without the dev mode

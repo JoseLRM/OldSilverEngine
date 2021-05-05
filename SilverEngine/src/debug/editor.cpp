@@ -1346,7 +1346,45 @@ namespace sv {
 
 	    if (gui_begin_popup(gui, GuiPopupTrigger_Parent, MouseButton_Right, 69u, GuiLayout_Flow)) {
 
-		
+		if (gui_button(dev.gui, "Import Model", 0u)) {
+
+		    char filepath[FILEPATH_SIZE + 1u] = "";
+
+		    const char* filters[] = {
+			"Wavefront OBJ (.obj)", "*.obj",
+			"All", "*",
+			""
+		    };
+			
+		    if (file_dialog_open(filepath, 2u, filters, "")) {
+
+			ModelInfo model_info;
+			    
+			if (load_model(filepath, model_info)) {
+
+			    char folder_name[FILEPATH_SIZE + 1u];
+			    char* c_name = filepath_name(filepath);
+			    strcpy(folder_name, c_name);
+			    c_name = filepath_extension(folder_name);
+			    if (c_name) c_name[0] = '\0';
+
+			    char dst[FILEPATH_SIZE + 1u];
+			    strcpy(dst, "assets/");
+			    strcat(dst, info.filepath);
+			    strcat(dst, folder_name);
+
+			    // TODO: This folder may be duplicated
+
+			    if (import_model(dst, model_info)) {
+				SV_LOG_INFO("Model imported '%s'", filepath);
+			    }
+			    else SV_LOG_ERROR("Can't import the model '%s' at '%s'", filepath, dst);
+			}
+			else {
+			    SV_LOG_ERROR("Can't load the model '%s'", filepath);
+			}
+		    }
+		}
 		
 		gui_end_popup(gui);
 	    }
@@ -1431,10 +1469,9 @@ namespace sv {
 			gui_show_window(dev.gui, "Scene Manager");
 		    }
 
-
 		    gui_checkbox(dev.gui, "Colisions", &dev.draw_collisions, 4u);
 
-		    if (gui_button(dev.gui, "Exit Project", 6u)) {
+		    if (gui_button(dev.gui, "Exit Project", 5u)) {
 			dev.next_engine_state = EngineState_ProjectManagement;
 		    }
 		    

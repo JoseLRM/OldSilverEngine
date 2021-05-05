@@ -457,7 +457,7 @@ namespace sv {
 	{
 	    Deserializer d;
 	    
-	    bool res = bin_read(hash_string("GUI STATE"), d);
+	    bool res = bin_read(hash_string("GUI STATE"), d, true);
 	    if (res) {
 
 		u32 window_count;
@@ -506,7 +506,7 @@ namespace sv {
 		serialize_v4_f32(s, state.bounds);
 	    }
 
-	    bool res = bin_write(hash_string("GUI STATE"), s);
+	    bool res = bin_write(hash_string("GUI STATE"), s, true);
 
 	    if (!res) {
 

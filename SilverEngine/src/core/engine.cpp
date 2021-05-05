@@ -337,7 +337,7 @@ namespace sv {
 	_console_initialize();
 #endif
 	
-	SV_LOG_INFO("Initializing %s", engine.name);
+	SV_LOG_INFO("Initializing SilverEngine %u.%u.%u", SV_VERSION_MAJOR, SV_VERSION_MINOR, SV_VERSION_REVISION);
 	if (!_event_initialize()) {
 	    SV_LOG_ERROR("Can't initialize event system");
 	    return false;
@@ -407,7 +407,7 @@ namespace sv {
 
     SV_AUX void close_engine()
     {
-	SV_LOG_INFO("Closing %s", engine.name);
+	SV_LOG_INFO("Closing SilverEngine");
 
 	close_user_callbacks();
 
