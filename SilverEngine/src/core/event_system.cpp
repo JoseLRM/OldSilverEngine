@@ -2,8 +2,6 @@
 
 namespace sv {
 
-    constexpr u32 EVENT_SYSTEM_HASH_ENTRIES = 3000u;
-
     struct EventRegister {
 	EventFn function;
 	u32 flags;
@@ -15,16 +13,13 @@ namespace sv {
 	List<EventRegister> registers;
 	// TODO: use custom mutex
 	std::mutex mutex;
-
-	u64 hash_value = 0u;
-	EventType* next_in_hash = nullptr;
     };
 
     struct EventSystemState {
 
 	// TODO: use custom mutex
 	std::mutex global_mutex;
-	EventType event_hash[EVENT_SYSTEM_HASH_ENTRIES];
+	ThickHashTable table[3000u];
     };
 
     EventSystemState* event_system = nullptr;
@@ -35,77 +30,48 @@ namespace sv {
 	    
 	return true;
     }
-
-    SV_INTERNAL void free_next_in_hash(EventType* type)
-    {
-	if (type->next_in_hash)
-	    free_next_in_hash(type->next_in_hash);
-
-	SV_FREE_STRUCT(type);
-    }
     
     bool _event_close()
     {
 	if (event_system) {
 
-	    foreach(i, EVENT_SYSTEM_HASH_ENTRIES) {
-
-		EventType& t = event_system->event_hash[i];
-		
-		if (t.next_in_hash)
-		    free_next_in_hash(t.next_in_hash);
-	    }
-	    
 	    SV_FREE_STRUCT(event_system);
 	    event_system = nullptr;
 	}
 	
 	return true;
     }
-
-    SV_INTERNAL void unregister_flags(EventType& type, u32 flags)
-    {
-	type.mutex.lock();
-
-	u32 i = 0u;
-	while (i < type.registers.size()) {
-
-	    EventRegister& reg = type.registers[i];
-		    
-	    if ((reg.flags & flags) == flags) {
-
-		type.registers.erase(i);
-	    }
-	    else ++i;
-	}
-
-	if (type.next_in_hash)
-	    unregister_flags(*type.next_in_hash, flags);
-
-	type.mutex.unlock();
-    }
-
+    
     void event_unregister_flags(u32 flags)
     {
 	if (event_system) {
 
 	    event_system->global_mutex.lock();
 
-	    foreach (i, EVENT_SYSTEM_HASH_ENTRIES) {
+	    for (EventType& t : event_system->table) {
 
-		unregister_flags(event_system->event_hash[i], flags);
+		type.mutex.lock();
+
+		u32 i = 0u;
+		while (i < type.registers.size()) {
+
+		    EventRegister& reg = type.registers[i];
+		    
+		    if ((reg.flags & flags) == flags) {
+
+			type.registers.erase(i);
+		    }
+		    else ++i;
+		}
+
+		type.mutex.unlock();
 	    }
 	    
 	    event_system->global_mutex.unlock();
 	}
     }
 
-    SV_AUX u64 compute_hash(const char* name)
-    {
-	return hash_string(name);
-    }
-
-    SV_AUX EventType* find_type(const char* event_name, bool log_not_found)
+    SV_AUX bool find_type(const char* event_name, bool log_not_found)
     {
 	size_t event_name_size = strlen(event_name);
 
@@ -113,28 +79,10 @@ namespace sv {
 	    SV_LOG_ERROR("The event name '%s' exceeds the max name size '%u'", event_name, event_name_size);
 	    return nullptr;
 	}
-
-	u64 hash = compute_hash(event_name);
 	
 	std::lock_guard<std::mutex> lock(event_system->global_mutex);
 
-	u64 hash_index = hash % EVENT_SYSTEM_HASH_ENTRIES;
-
-	EventType* type = &event_system->event_hash[hash_index];
-
-	do {
-
-	    if (type->hash_value == hash) {
-		break;
-	    }
-	    else if (type->next_in_hash) {
-		type = type->next_in_hash;
-	    }
-	    else {
-		type = nullptr;
-	    }
-	}
-	while (type);
+	EventType* type = event_system->table.find(event_name);
 	
 	if (type == nullptr) {
 
@@ -159,46 +107,14 @@ namespace sv {
 		return false;
 	}
 
-	u64 hash = compute_hash(event_name);
-
-	EventType* type;
 	event_system->global_mutex.lock();
-	{
-	    u64 hash_index = hash % EVENT_SYSTEM_HASH_ENTRIES;
-	    
-	    type = &event_system->event_hash[hash_index];
-
-	    do {
-
-		if (type->hash_value == 0u) {
-
-		    type->hash_value = hash;
-		    strcpy(type->name, event_name);
-		    break;
-		}
-		else {
-
-		    if (type->hash_value == hash) {
-			break;
-		    }
-		    else {
-
-			if (type->next_in_hash == nullptr) {
-			    type->next_in_hash = SV_ALLOCATE_STRUCT(EventType);
-			}
-
-			type = type->next_in_hash;
-		    }
-		}
-	    }
-	    while (true);
-	}
+	EventType& type = event_system->table[event_name];
 	event_system->global_mutex.unlock();
 
 	{
-	    std::lock_guard<std::mutex> lock(type->mutex);
+	    std::lock_guard<std::mutex> lock(type.mutex);
 
-	    for (const EventRegister& reg : type->registers) {
+	    for (const EventRegister& reg : type.registers) {
 
 		if (reg.function == event) {
 		    SV_LOG_ERROR("Duplicated event register in '%s'", event_name);
@@ -206,7 +122,7 @@ namespace sv {
 		}
 	    }
 
-	    EventRegister& reg = type->registers.emplace_back();
+	    EventRegister& reg = type.registers.emplace_back();
 	    reg.function = event;
 	    reg.flags = flags;
 	    SV_ZERO_MEMORY(reg.data, REGISTER_DATA_SIZE);

@@ -875,5 +875,185 @@ namespace sv {
 	RawList      _buffer;
 
     };
+
+    //////////////////////////////////////// THICK HASH TABLE ///////////////////////////////////////////////////
+
+    template<typename T, u32 TABLE_SIZE>
+        struct ThickHashTable {
+
+	struct Entry {
+
+	    T value;
+	    u64 hash = 0u;
+	    Entry* next = nullptr;
+	};
+
+	struct Iterator {
+	    Entry* _root_end = nullptr;
+	    Entry* _root_entry = nullptr;
+	    Entry* _entry = nullptr;
+
+	    void operator++() {
+
+		SV_ASSERT(_entry);
+		SV_ASSERT(_root_entry);
+		
+		_entry = _entry->next;
+		
+		if (_entry == nullptr) {
+
+		    do {
+			++_root_entry;
+			_entry = _root_entry;
+
+			if (_entry == _root_end) break;
+		    }
+		    while (_entry->hash == 0u);
+		}
+	    }
+
+	    bool operator==(const Iterator& it) { return _entry == it._entry; }
+	    bool operator!=(const Iterator& it) { return _entry != it._entry; }
+
+	    T& operator*() { return _entry->value; }
+	    T* operator->() { return &_entry->value; }
+	};
+
+	Entry entries[TABLE_SIZE] = {};
+
+	static constexpr u32 INTERNAL_SEARCH = SV_MIN(TABLE_SIZE, 5u);
+
+	void _free_entry(Entry* entry, bool free) {
+
+	    if (entry->next)
+		_free_entry(entry->next, true);
+
+	    if (free)
+		SV_FREE_STRUCT(entry);
+	}
+
+	~ThickHashTable() {
+
+	    for (size_t i = 0u; i < TABLE_SIZE; ++i) {
+
+		_free_entry(entries + i, false);
+	    }
+	}
+
+	T& get(u64 hash) {
+	    
+	    SV_ASSERT(hash != 0u);
+		
+	    u64 index = hash % TABLE_SIZE;
+	    Entry* next = entries + index;
+
+	    u32 internal_count = 0u;
+
+	    do {
+
+		if (next->hash == hash) {
+
+		    return next->value;
+		}
+		else if (next->hash == 0u) {
+
+		    next->hash = hash;
+		    return next->value;
+		}
+		else {
+
+		    if (internal_count < INTERNAL_SEARCH) {
+			
+			index = (index + 1u) % TABLE_SIZE;
+			next = entries + index;
+			++internal_count;
+		    }
+		    else {
+			
+			if (next->next == nullptr)
+			    next->next = SV_ALLOCATE_STRUCT(Entry);
+
+			next = next->next;
+		    }
+		}
+	    }
+	    while (true);
+	}
+
+	T& strget(const char* str) {
+
+	    u64 hash = hash_string(str);
+	    return get(hash);
+	}
+
+	T* find(u64 hash) {
+
+	    SV_ASSERT(hash != 0u);
+		
+	    u64 index = hash % TABLE_SIZE;
+	    Entry* next = entries + index;
+
+	    u32 internal_count = 0u;
+
+	    do {
+
+		if (next->hash == hash) {
+
+		    return &next->value;
+		}
+		else {
+
+		    if (internal_count < INTERNAL_SEARCH) {
+			
+			index = (index + 1u) % TABLE_SIZE;
+			next = entries + index;
+			++internal_count;
+		    }
+		    else {
+			
+			if (next->next == nullptr)
+			    return nullptr;
+
+			next = next->next;
+		    }
+		}
+	    }
+	    while (true);
+	}
+
+	T& operator[](u64 hash) {
+	    return get(hash);
+	}
+	T& operator[](const char* str) {
+	    return strget(str);
+	}
+	
+	Iterator begin() {
+
+	    Iterator it;
+	    
+	    for (u32 i = 0u; i < TABLE_SIZE; ++i) {
+
+		if (entries[i].hash != 0u) {
+		    it._root_entry = entries + i;
+		    break;
+		}
+	    }
+
+	    it._root_end = entries + TABLE_SIZE;
+
+	    if (it._root_entry == nullptr) it._root_entry = it._root_end;
+	    it._entry = it._root_entry;
+	    
+	    return it;
+	}
+
+	Iterator end() {
+	    Iterator it;
+	    it._entry = entries + TABLE_SIZE;
+	    return it;
+	}
+	
+    };
     
 }
