@@ -11,6 +11,8 @@ namespace sv {
 	GizmosTransformMode_Position
     };
 
+    constexpr f32 GIZMOS_SIZE = 0.1f;
+
     enum GizmosObject : u32 {
 	GizmosObject_None,
 	GizmosObject_AxisX,
@@ -24,7 +26,10 @@ namespace sv {
 
 	GizmosObject object = GizmosObject_None;
 	bool focus = false;
-	v2_f32 start_offset;
+	
+	v3_f32 start_offset;
+	f32 axis_size;
+	f32 selection_size;
     };
 
     enum AssetElementType : u32 {
@@ -357,24 +362,90 @@ namespace sv {
 
     /////////////////////////////////////////////// GIZMOS ///////////////////////////////////////////////////////
 
-    SV_INLINE static void world_to_screen_line(const XMMATRIX& vpm, v3_f32 _p0, v3_f32 _p1, v2_f32& res0, v2_f32& res1)
+    SV_AUX v2_f32 world_point_to_screen(const XMMATRIX& vpm, const v3_f32& position)
     {
-	XMVECTOR p0 = _p0.getDX(1.f);
-	XMVECTOR p1 = _p1.getDX(1.f);
+	XMVECTOR p = position.getDX(1.f);
 
-	p0 = XMVector4Transform(p0, vpm);
-	p1 = XMVector4Transform(p1, vpm);
-
-	f32 d = XMVectorGetW(p0);
-	p0 = XMVectorDivide(p0, XMVectorSet(d, d, d, 1.f));
-	d = XMVectorGetW(p1);
-	p1 = XMVectorDivide(p1, XMVectorSet(d, d, d, 1.f));
-
-	res0 = v2_f32(p0);
-	res1 = v2_f32(p1);
+	p = XMVector4Transform(p, vpm);
+	
+	f32 d = XMVectorGetW(p);
+	p = XMVectorDivide(p, XMVectorSet(d, d, d, 1.f));
+	
+	return v2_f32(p);
     }
 
-    static void update_gizmos()
+    SV_AUX v2_f32 project_line_onto_line(v2_f32 origin, v2_f32 d0, v2_f32 d1)
+    {
+	return origin + (d1.dot(d0) / d1.dot(d1)) * d1;
+    }
+    SV_AUX v3_f32 project_line_onto_line(v3_f32 origin, v3_f32 d0, v3_f32 d1)
+    {
+	return origin + (d1.dot(d0) / d1.dot(d1)) * d1;
+    }
+
+    SV_AUX void intersect_line_vs_plane(v3_f32 line_point, v3_f32 line_direction, v3_f32 plane_point, v3_f32 plane_normal, v3_f32& intersection, f32& distance)
+    {
+	distance = (plane_point - line_point).dot(plane_normal) / line_direction.dot(plane_normal);
+	intersection = line_point + distance * line_direction;
+    }
+
+    SV_AUX void closest_points_between_two_lines(v3_f32 l0_pos, v3_f32 l0_dir, v3_f32 l1_pos, v3_f32 l1_dir, v3_f32& l0_res, v3_f32& l1_res)
+    {
+	v3_f32 u = l0_dir;
+	v3_f32 v = l1_dir;
+	v3_f32 w = l0_pos - l1_pos;
+	f32 a = u.dot(u);         // always >= 0
+	f32 b = u.dot(v);
+	f32 c = v.dot(v);         // always >= 0
+	f32 d = u.dot(w);
+	f32 e = v.dot(w);
+	f32 D = a*c - b*b;        // always >= 0
+	f32 sc, tc;
+
+	constexpr f32 SMALL_NUM = 0.00000001f;
+	
+	// compute the line parameters of the two closest points
+	if (D < SMALL_NUM) {          // the lines are almost parallel
+	    sc = 0.0;
+	    tc = (b>c ? d/b : e/c);    // use the largest denominator
+	}
+	else {
+	    sc = (b*e - c*d) / D;
+	    tc = (a*e - b*d) / D;
+	}
+
+	l0_res = l0_pos + sc * u;
+	l1_res = l1_pos + tc * v;
+    }
+
+    SV_AUX f32 relative_scalar(f32 value, v3_f32 position)
+    {
+	if (dev.camera.projection_type == ProjectionType_Perspective) {
+		
+	    XMVECTOR pos = position.getDX(1.f);
+	    pos = XMVector4Transform(pos, dev.camera.view_matrix);
+	    
+	    f32 distance = XMVectorGetZ(pos);
+
+	    f32 w_near_distance = math_sqrt(dev.camera.near * dev.camera.near + dev.camera.width);
+	    f32 w_near_prop = value / w_near_distance;
+
+	    w_near_distance = math_sqrt(distance * distance + dev.camera.width);
+
+	    f32 h_near_distance = math_sqrt(dev.camera.near * dev.camera.near + dev.camera.height);
+	    f32 h_near_prop = value / h_near_distance;
+
+	    h_near_distance = math_sqrt(distance * distance + dev.camera.height);
+
+	    return (w_near_distance * w_near_prop + h_near_distance * h_near_prop) * 0.5f;
+	}
+	else {
+
+	    return value * dev.camera.getProjectionLength();
+	}
+    }
+
+    SV_INTERNAL void update_gizmos()
     {
 	GizmosInfo& info = editor.gizmos;
 
@@ -383,44 +454,89 @@ namespace sv {
 	    return;
 	}
 
+	v3_f32& position = *get_entity_position_ptr(editor.selected_entity);
+
+	// Compute axis size and selection size
+	{
+	    info.axis_size = relative_scalar(GIZMOS_SIZE, position);
+	    info.selection_size = relative_scalar(0.008f, position);
+	}
+
 	if (!info.focus) {
 
 	    info.object = GizmosObject_None;
-
-	    v3_f32 position = get_entity_position(editor.selected_entity);
-
-	    const XMMATRIX& vpm = dev.camera.view_projection_matrix;
+	    
 	    v2_f32 mouse_position = input.mouse_position * 2.f;
-
-	    constexpr f32 GIZMOS_SIZE = 1.f;
 
 	    switch (info.mode)
 	    {
 
 	    case GizmosTransformMode_Position:
 	    {
-		v2_f32 c, y;
-		world_to_screen_line(vpm, position, position + v3_f32::up(), c, y);
+		GizmosObject obj[] = {
+			GizmosObject_AxisX,
+			GizmosObject_AxisY,
+			GizmosObject_AxisZ
+		};
+		
+		if (dev.camera.projection_type == ProjectionType_Perspective) {
 
-		// y axis
-		{
-		    v2_f32 dir0 = y - c;
-		    v2_f32 dir1 = mouse_position - c;
+		    Ray ray = screen_to_world_ray(input.mouse_position, dev.camera.position, dev.camera.rotation, &dev.camera);
+		    
+		    v3_f32 axis[3u];
+		    axis[0] = v3_f32(info.axis_size, 0.f, 0.f);
+		    axis[1] = v3_f32(0.f, info.axis_size, 0.f);
+		    axis[2] = v3_f32(0.f, 0.f, info.axis_size);
 
-		    f32 max_len = dir0.length();
-		    dir0.normalize();
+		    // TODO: Sort axis update by the distance to the camera
+		    foreach(i, 3u) {
 
-		    f32 dot = dir1.dot(dir0);
+			v3_f32 p0, p1;
+			closest_points_between_two_lines(ray.origin, ray.direction, position, axis[i], p0, p1);
 
-		    if (dot > 0.f && dot <= max_len) {
+			f32 dist0 = (p0 - p1).length();
+			
+			f32 dist1 = -1.f;
 
-			v2_f32 projection = c + dir0 * dot;
+			switch(i) {
+			    
+			case 0:
+			    dist1 = p1.x - position.x;
+			    break;
+			    
+			case 1:
+			    dist1 = p1.y - position.y;
+			    break;
+			    
+			case 2:
+			    dist1 = p1.z - position.z;
+			    break;
+			}
 
-			f32 dist = (projection - mouse_position).length();
+			if (dist0 < info.selection_size && dist1 > 0.f && dist1 <= info.axis_size) {
+			    info.object = obj[i];
+			    info.start_offset = p1 - position;
+			}
+		    }
+		}
+		else {
 
-			if (dist < 0.01f) {
-			    info.object = GizmosObject_AxisY;
-			    info.start_offset.y = position.y + 1.f;
+		    v2_f32 mouse = input.mouse_position * v2_f32(dev.camera.width, dev.camera.height) + dev.camera.position.getVec2();
+		    v2_f32 to_mouse = mouse - position.getVec2();
+			
+		    foreach (i, 2u) {
+
+			v2_f32 axis_direction = ((i == 0) ? v2_f32::right() : v2_f32::up()) * info.axis_size;
+
+			v2_f32 projection = project_line_onto_line(position.getVec2(), to_mouse, axis_direction);
+			f32 dist0 = (mouse - projection).length();
+			f32 dist1 = ((i == 0) ? (projection.x - position.x) : (projection.y - position.y));
+			
+			if (dist0 < info.selection_size && dist1 > 0.f && dist1 <= info.axis_size) {
+			    info.object = obj[i];
+
+			    if (i == 0) info.start_offset = { dist1, 0.f, 0.f };
+			    else info.start_offset = { 0.f, dist1, 0.f };
 			}
 		    }
 		}
@@ -430,7 +546,8 @@ namespace sv {
 	    }
 
 	    if (info.object != GizmosObject_None && input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
-				
+
+		
 		info.focus = true;
 		input.unused = false;
 	    }
@@ -438,52 +555,54 @@ namespace sv {
 
 	else {
 
-	    input.unused = true;
+	    input.unused = false;
 
-	    if (input.mouse_buttons[MouseButton_Left] == InputState_Released) {
+	    if (input.mouse_buttons[MouseButton_Left] == InputState_None) {
 
 		info.focus = false;
 	    }
 	    else {
 
-		v3_f32& position = *get_entity_position_ptr(editor.selected_entity);
+		if (dev.camera.projection_type == ProjectionType_Perspective) {
 
-		Ray ray = screen_to_world_ray(input.mouse_position, dev.camera.position, dev.camera.rotation, &dev.camera);
+		    Ray ray = screen_to_world_ray(input.mouse_position, dev.camera.position, dev.camera.rotation, &dev.camera);
 
-		v3_f32 normal = ray.origin - position;
-		normal.normalize();
+		    v3_f32 axis;
+		    
+		    switch (info.object) {
 
-		// Find the intersection point of the segment ray to the axis plane
-		v3_f32 intersection;
+		    case GizmosObject_AxisX:
+			axis = v3_f32::right();
+			break;
+
+		    case GizmosObject_AxisY:
+			axis = v3_f32::up();
+			break;
+
+		    case GizmosObject_AxisZ:
+			axis = v3_f32::forward();
+			break;
+		    
+		    }
+
+		    v3_f32 p0, p1;
+		    closest_points_between_two_lines(ray.origin, ray.direction, position, axis, p0, p1);
+		    position = p1 - info.start_offset;
+		}
+		else {
+
+		    v2_f32 mouse = input.mouse_position * v2_f32(dev.camera.width, dev.camera.height) + dev.camera.position.getVec2();
 		
-		f32 k = (position - ray.origin).dot(normal) / ray.direction.dot(normal);
-		intersection = ray.origin + k * ray.direction;
-		
-
-		if (k > 0.f)
-		    position.y = intersection.y;
-		/*
-		v2_f32 mouse_position = input.mouse_position * 2.f;
-
-		v2_f32 p0, p1;
-		world_to_screen_line(dev.camera.view_projection_matrix, position, position + v3_f32::up(), p0, p1);
-
-		v2_f32 dir0 = p1 - p0;
-		v2_f32 dir1 = mouse_position - p0;
-
-		dir0.normalize();
-		f32 dot = dir1.dot(dir0);
-
-		v2_f32 projection = p0 + dot * dir0;
-		XMVECTOR pos = projection.getDX();
-		pos = XMVector3Transform(pos, dev.camera.inverse_view_projection_matrix);
-
-		position.y = XMVectorGetY(pos);*/
+		    if (info.object == GizmosObject_AxisX)
+			position.x = mouse.x - info.start_offset.x;
+		    else if (info.object == GizmosObject_AxisY)
+			position.y = mouse.y - info.start_offset.y;
+		}
 	    }
 	}
     }
 
-    static void draw_gizmos(GPUImage* offscreen, CommandList cmd)
+    SV_INTERNAL void draw_gizmos(GPUImage* offscreen, CommandList cmd)
     {
 	if (editor.selected_entity == SV_ENTITY_NULL) return;
 
@@ -491,20 +610,21 @@ namespace sv {
 
 	v3_f32 position = get_entity_position(editor.selected_entity);
 
-	constexpr f32 GIZMOS_SIZE = 1.f;
-
+	f32 axis_size = info.axis_size;
 
 	switch (info.mode)
 	{
 
 	case GizmosTransformMode_Position:
 	{
-	    draw_debug_line(position, position + v3_f32::right() * GIZMOS_SIZE, Color::Red(), cmd);
+	    Color color = ((info.object == GizmosObject_AxisX) ? (info.focus ? Color::Silver() : Color{255u, 50u, 50u, 255u}) : Color::Red());
+	    draw_debug_line(position, position + v3_f32::right() * axis_size, color, cmd);
 
-	    Color color = ((info.object == GizmosObject_AxisY) ? (info.focus ? Color::Silver() : Color::Lime()) : Color::Green());
-	    draw_debug_line(position, position + v3_f32::up() * GIZMOS_SIZE, color, cmd);
+	    color = ((info.object == GizmosObject_AxisY) ? (info.focus ? Color::Silver() : Color::Lime()) : Color::Green());
+	    draw_debug_line(position, position + v3_f32::up() * axis_size, color, cmd);
 
-	    draw_debug_line(position, position + v3_f32::forward() * GIZMOS_SIZE, Color::Blue(), cmd);
+	    color = ((info.object == GizmosObject_AxisZ) ? (info.focus ? Color::Silver() : Color{50u, 50u, 255u, 255u}) : Color::Blue());
+	    draw_debug_line(position, position + v3_f32::forward() * axis_size, color, cmd);
 	}
 	break;
 
@@ -1516,11 +1636,11 @@ namespace sv {
 
     SV_INTERNAL void do_picking_stuff()
     {
+	update_gizmos();
+	
 	// Entity selection
-	if (input.mouse_buttons[MouseButton_Left] == InputState_Released)
+	if (input.unused && input.mouse_buttons[MouseButton_Left] == InputState_Released)
 	    select_entity();
-
-	update_gizmos();	
     }
     
     SV_INTERNAL void update_edit_state()
@@ -1539,7 +1659,7 @@ namespace sv {
 	    control_camera();
 	}
 
-	if (input.unused && there_is_scene())
+	if (there_is_scene())
 	    do_picking_stuff();
     }
 

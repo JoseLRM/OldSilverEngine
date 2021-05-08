@@ -1021,6 +1021,11 @@ namespace sv {
 	    while (true);
 	}
 
+	T* find(const char* str) {
+	    u64 hash = hash_string(str);
+	    return find(hash);
+	}
+
 	T& operator[](u64 hash) {
 	    return get(hash);
 	}

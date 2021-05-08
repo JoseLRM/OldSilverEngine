@@ -19,7 +19,7 @@ namespace sv {
 
 	// TODO: use custom mutex
 	std::mutex global_mutex;
-	ThickHashTable table[3000u];
+	ThickHashTable<EventType, 3000u> table;
     };
 
     EventSystemState* event_system = nullptr;
@@ -50,28 +50,28 @@ namespace sv {
 
 	    for (EventType& t : event_system->table) {
 
-		type.mutex.lock();
+		t.mutex.lock();
 
 		u32 i = 0u;
-		while (i < type.registers.size()) {
+		while (i < t.registers.size()) {
 
-		    EventRegister& reg = type.registers[i];
+		    EventRegister& reg = t.registers[i];
 		    
 		    if ((reg.flags & flags) == flags) {
 
-			type.registers.erase(i);
+			t.registers.erase(i);
 		    }
 		    else ++i;
 		}
 
-		type.mutex.unlock();
+		t.mutex.unlock();
 	    }
 	    
 	    event_system->global_mutex.unlock();
 	}
     }
 
-    SV_AUX bool find_type(const char* event_name, bool log_not_found)
+    SV_AUX EventType* find_type(const char* event_name, bool log_not_found)
     {
 	size_t event_name_size = strlen(event_name);
 
