@@ -2,7 +2,6 @@
 
 #include "platform/graphics.h"
 #include "core/mesh.h"
-#include "core/gui.h"
 
 #define SV_ENTITY_NULL 0u
 #define SV_COMPONENT_ID_INVALID std::numeric_limits<sv::CompID>::max()
@@ -16,7 +15,6 @@ namespace sv {
 
     struct SceneData {
 
-	GUI* gui = nullptr;
 	void* user_ptr = nullptr;
 	u32 user_id = 0u;
 	

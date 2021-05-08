@@ -5,6 +5,9 @@
 #include "core/scene.h"
 #include "core/engine.h"
 
+// TEMP
+#include "debug/gui.h"
+
 namespace sv {
 
     void _editor_update();
@@ -38,8 +41,7 @@ namespace sv {
 	DebugCamera camera;
 
 	DoUndoStack do_undo_stack;
-
-	GUI* gui;
+	
     };
 
     extern GlobalDevData SV_API dev;

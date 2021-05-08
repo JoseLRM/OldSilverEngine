@@ -1415,8 +1415,6 @@ namespace sv {
 			GPUImageLayout_ShaderResource,
 			nullptr,
 			0.8f, 0.03f, os_window_aspect(), cmd);*/
-
-		gui_draw(scene->gui, cmd);
 	    }
 	    else {
 				

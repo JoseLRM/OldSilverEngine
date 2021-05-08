@@ -165,8 +165,6 @@ namespace sv {
 
 	    event_dispatch("close_scene", nullptr);
 
-	    gui_destroy(scene->data.gui);
-
 	    // TODO: Dispatch events at once
 	    for (Entity entity : scene->entities) {
 
@@ -234,8 +232,6 @@ namespace sv {
 
 	    strcpy(scene.name, name);
 	}
-
-	SV_CHECK(gui_create(hash_string(name), &scene.data.gui));
 
 	bool deserialize = false;
 	Deserializer d;

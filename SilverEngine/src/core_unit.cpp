@@ -13,7 +13,6 @@
 #include "core/renderer/font.cpp"
 #include "core/scene.cpp"
 #include "core/mesh.cpp"
-#include "core/gui.cpp"
 #include "core/asset_system.cpp"
 #include "core/event_system.cpp"
 

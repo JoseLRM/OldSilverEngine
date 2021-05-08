@@ -1,8 +1,6 @@
-#include "core/gui.h"
+#include "debug/gui.h"
 
 #include "core/renderer/renderer_internal.h"
-
-#define PARSE_GUI() sv::GUI& gui = *gui_
 
 namespace sv {
 
@@ -446,12 +444,13 @@ namespace sv {
 
     };
 
-
-    bool gui_create(u64 hashcode, GUI** pgui)
+    static GUI* gui = nullptr;
+    
+    bool _gui_initialize()
     {
-	GUI& gui = *SV_ALLOCATE_STRUCT(GUI);
+	gui = SV_ALLOCATE_STRUCT(GUI);
 
-	gui.package_id = 0u;
+	gui->package_id = 0u;
 
 	// Get last static state
 	{
@@ -471,7 +470,7 @@ namespace sv {
 		    deserialize_v4_f32(d, s.bounds);
 		    
 		    s.id = hash_string(s.title.c_str());
-		    gui.static_state.window[s.id] = s;
+		    gui->static_state.window[s.id] = s;
 		}
 
 		deserialize_end(d);
@@ -481,24 +480,20 @@ namespace sv {
 	    }
 	}
 
-	*pgui = (GUI*)& gui;
-
 	return true;
     }
 
-    bool gui_destroy(GUI* gui_)
+    bool _gui_close()
     {
-	PARSE_GUI();
-
 	// Save static state
 	{
 	    Serializer s;
 
 	    serialize_begin(s);
 
-	    serialize_u32(s, u32(gui.static_state.window.size()));
+	    serialize_u32(s, u32(gui->static_state.window.size()));
 
-	    for (const auto& it : gui.static_state.window) {
+	    for (const auto& it : gui->static_state.window) {
 
 		const GuiWindowState& state = it.second;
 		serialize_string(s, state.title.c_str());
@@ -514,47 +509,47 @@ namespace sv {
 	    }
 	}
 
-	SV_FREE_STRUCT(&gui);
+	SV_FREE_STRUCT(gui);
 	return true;
     }
 
     ////////////////////////////////////////// UTILS ////////////////////////////////////////////////
 
-    SV_AUX void write_buffer(GUI& gui, const void* data, size_t size)
+    SV_AUX void write_buffer(const void* data, size_t size)
     {
-	gui.buffer.write_back(data, size);
+	gui->buffer.write_back(data, size);
     }
 
     template<typename T>
-    SV_AUX void write_buffer(GUI& gui, const T& t)
+    SV_AUX void write_buffer(const T& t)
     {
-	write_buffer(gui, &t, sizeof(T));
+	write_buffer(&t, sizeof(T));
     }
 
-    SV_AUX void write_text(GUI& gui, const char* text)
+    SV_AUX void write_text(const char* text)
     {
 
 	if (text == nullptr) {
 
 	    char null = '\0';
-	    write_buffer(gui, &null, 1u);
+	    write_buffer(&null, 1u);
 	}
 	else {
 	    size_t text_size = strlen(text);
-	    write_buffer(gui, text, text_size + 1u);
+	    write_buffer(text, text_size + 1u);
 	}
     }
 
-    SV_INLINE static void set_focus(GUI& gui, GuiWidgetType type, u64 id, u32 action = 0u)
+    SV_INLINE static void set_focus(GuiWidgetType type, u64 id, u32 action = 0u)
     {
-	gui.focus.type = type;
-	gui.focus.id = id;
-	gui.focus.action = action;
+	gui->focus.type = type;
+	gui->focus.id = id;
+	gui->focus.action = action;
     }
 
-    SV_INLINE static void free_focus(GUI& gui)
+    SV_INLINE static void free_focus()
     {
-	gui.focus.type = GuiWidgetType_None;
+	gui->focus.type = GuiWidgetType_None;
     }
 
     SV_AUX bool ignore_scroll(GuiWidgetType type)
@@ -587,12 +582,12 @@ namespace sv {
 	}
     }
 
-    SV_INLINE static bool is_parent(const GuiWidget& w)
+    SV_AUX bool is_parent(const GuiWidget& w)
     {
 	return is_parent(w.type);
     }
 
-    SV_INLINE static GuiParentInfo* get_parent_info(GUI& gui, GuiWidget& parent)
+    SV_AUX GuiParentInfo* get_parent_info(GuiWidget& parent)
     {
 	if (is_parent(parent)) {
 
@@ -600,7 +595,8 @@ namespace sv {
 	}
 	else return nullptr;
     }
-    SV_INLINE static const GuiParentInfo* get_parent_info(const GUI& gui, const GuiWidget& parent)
+
+    SV_AUX const GuiParentInfo* get_parent_info(const GuiWidget& parent)
     {
 	if (is_parent(parent)) {
 
@@ -609,57 +605,52 @@ namespace sv {
 	else return nullptr;
     }
 
-    SV_INLINE static GuiParentInfo* get_parent_info(GUI& gui, const GuiIndex& index)
+    SV_AUX GuiParentInfo* get_parent_info(u32 index)
     {
-	GuiWidget& w = gui.widgets[index.index];
-	return get_parent_info(gui, w);
-    }
-    SV_AUX GuiParentInfo* get_parent_info(GUI& gui, u32 index)
-    {
-	GuiWidget& w = gui.widgets[index];
-	return get_parent_info(gui, w);
+	GuiWidget& w = gui->widgets[index];
+	return get_parent_info(w);
     }
 
-    SV_AUX void write_widget(GUI& gui, GuiWidgetType type, u64 id, void* data, GuiParentInfo* parent_info = nullptr, GuiLayout layout = GuiLayout_Flow)
+    SV_AUX void write_widget(GuiWidgetType type, u64 id, void* data, GuiParentInfo* parent_info = nullptr, GuiLayout layout = GuiLayout_Flow)
     {
-	write_buffer(gui, GuiHeader_Widget);
-	write_buffer(gui, type);
-	write_buffer(gui, id);
+	write_buffer(GuiHeader_Widget);
+	write_buffer(type);
+	write_buffer(id);
 
 	// Write parent raw data
 	if (is_parent(type)) {
 
-	    write_buffer(gui, layout);
+	    write_buffer(layout);
 	    
 	    if (parent_info) {
 
-		write_buffer(gui, parent_info->child_bounds);
-		write_buffer(gui, parent_info->vertical_amplitude);
-		write_buffer(gui, parent_info->horizontal_amplitude);
-		write_buffer(gui, parent_info->vertical_offset);
-		write_buffer(gui, parent_info->has_vertical_scroll);
+		write_buffer(parent_info->child_bounds);
+		write_buffer(parent_info->vertical_amplitude);
+		write_buffer(parent_info->horizontal_amplitude);
+		write_buffer(parent_info->vertical_offset);
+		write_buffer(parent_info->has_vertical_scroll);
 	    }
 	    else {
-		write_buffer(gui, v4_f32());
-		write_buffer(gui, 0.f);
-		write_buffer(gui, 0.f);
-		write_buffer(gui, 0.f);
-		write_buffer(gui, false);
+		write_buffer(v4_f32());
+		write_buffer(0.f);
+		write_buffer(0.f);
+		write_buffer(0.f);
+		write_buffer(false);
 	    }
 	}
 	
 	// Write layout info
 	{
 	    GuiLayout parent_layout;
-	    if (gui.parent_stack.empty())
+	    if (gui->parent_stack.empty())
 		parent_layout = GuiLayout_Free;
 	    else {
 
-		parent_layout = gui.parent_stack.back().layout;
+		parent_layout = gui->parent_stack.back().layout;
 	    }
 
 	    if (parent_layout == GuiLayout_Free)
-		write_buffer(gui, gui.free_bounds);
+		write_buffer(gui->free_bounds);
 	}
 
 	switch (type)
@@ -667,21 +658,21 @@ namespace sv {
 	case GuiWidgetType_Container:
 	{
 	    Raw_Container* raw = (Raw_Container*)data;
-	    write_buffer(gui, *raw);
+	    write_buffer(*raw);
 	}
 	break;
 
 	case GuiWidgetType_Window:
 	{
 	    Raw_Window* raw = (Raw_Window*)data;
-	    write_buffer(gui, *raw);
+	    write_buffer(*raw);
 	}
 	break;
 
 	case GuiWidgetType_Popup:
 	{
 	    Raw_Popup* raw = (Raw_Popup*)data;
-	    write_buffer(gui, *raw);
+	    write_buffer(*raw);
 	}
 	break;
 
@@ -689,8 +680,8 @@ namespace sv {
 	{
 	    Raw_TextField* raw = (Raw_TextField*)data;
 
-	    write_text(gui, raw->buff);
-	    write_buffer(gui, raw->pos);
+	    write_text(raw->buff);
+	    write_buffer(raw->pos);
 	}
 	break;
 
@@ -698,7 +689,7 @@ namespace sv {
 	{
 	    Raw_Button* raw = (Raw_Button*)data;
 
-	    write_text(gui, raw->text);
+	    write_text(raw->text);
 	}
 	break;
 
@@ -709,23 +700,23 @@ namespace sv {
 	{
 	    Raw_Label* raw = (Raw_Label*)data;
 
-	    write_text(gui, raw->text);
+	    write_text(raw->text);
 	}
 	break;
 
 	case GuiWidgetType_Checkbox:
 	{
 	    Raw_Checkbox* raw = (Raw_Checkbox*)data;
-	    write_buffer(gui, raw->value);
-	    write_buffer(gui, raw->modified);
-	    write_text(gui, raw->text);
+	    write_buffer(raw->value);
+	    write_buffer(raw->modified);
+	    write_text(raw->text);
 	}
 	break;
 
 	case GuiWidgetType_Drag:
 	{
 	    Raw_Drag* raw = (Raw_Drag*)data;
-	    write_buffer(gui, *raw);
+	    write_buffer(*raw);
 	}
 	break;
 
@@ -733,15 +724,15 @@ namespace sv {
 	{
 	    Raw_MenuItem* raw = (Raw_MenuItem*)data;
 
-	    write_text(gui, raw->text);
-	    write_buffer(gui, raw->active);
+	    write_text(raw->text);
+	    write_buffer(raw->active);
 	}
 	break;
 
 	case GuiWidgetType_Image:
 	{
 	    Raw_Image* raw = (Raw_Image*)data;
-	    write_buffer(gui, *raw);
+	    write_buffer(*raw);
 	}
 	break;
 
@@ -749,19 +740,19 @@ namespace sv {
 	{
 	    Raw_Package* raw = (Raw_Package*)data;
 
-	    write_buffer(gui, raw->package_size);
+	    write_buffer(raw->package_size);
 	    if (raw->package_size) {
-		write_buffer(gui, raw->package, raw->package_size);
+		write_buffer(raw->package, raw->package_size);
 	    }
 
-	    write_buffer(gui, raw->package_id);
+	    write_buffer(raw->package_id);
 	}
 	break;
 
 	case GuiWidgetType_Reciver:
 	{
 	    Raw_Reciver* raw = (Raw_Reciver*)data;
-	    write_buffer(gui, *raw);
+	    write_buffer(*raw);
 	}
 	break;
 
@@ -769,11 +760,11 @@ namespace sv {
 	    break;
 	}
 
-	gui.last.id = id;
-	gui.last.type = type;
+	gui->last.id = id;
+	gui->last.type = type;
     }
     
-    SV_AUX f32 compute_coord(const GUI& gui, const GuiCoord& coord, f32 resolution, f32 parent_coord, f32 parent_dimension)
+    SV_AUX f32 compute_coord(const GuiCoord& coord, f32 resolution, f32 parent_coord, f32 parent_dimension)
     {
 	f32 res = 0.5f;
 
@@ -806,7 +797,7 @@ namespace sv {
 	return res;
     }
 
-    SV_AUX f32 compute_dimension(const GUI& gui, const GuiDim& dim, f32 resolution, f32 parent_dimension, f32 aspect_dimension, f32 adjust_value, bool xaxis)
+    SV_AUX f32 compute_dimension(const GuiDim& dim, f32 resolution, f32 parent_dimension, f32 aspect_dimension, f32 adjust_value, bool xaxis)
     {
 	f32 res = 0.5f;
 
@@ -818,7 +809,7 @@ namespace sv {
 	    break;
 
 	case GuiDimConstraint_Aspect:
-	    res = dim.value * aspect_dimension * (xaxis ? (1.f / gui.aspect) : gui.aspect);
+	    res = dim.value * aspect_dimension * (xaxis ? (1.f / gui->aspect) : gui->aspect);
 	    break;
 
 	case GuiDimConstraint_Pixel:
@@ -830,7 +821,7 @@ namespace sv {
 	    break;
 
 	case GuiDimConstraint_Scale:
-	    res = dim.value * gui.scale;
+	    res = dim.value * gui->scale;
 	    break;
 
 	case GuiDimConstraint_Adjust:
@@ -842,7 +833,7 @@ namespace sv {
 	return res;
     }
     
-    SV_AUX v2_f32 compute_axis_bounds(const GUI& gui, GuiWidget* widget, bool xaxis, const v4_f32 parent_bounds, f32 aspect_dimension)
+    SV_AUX v2_f32 compute_axis_bounds(const GuiWidget* widget, bool xaxis, const v4_f32 parent_bounds, f32 aspect_dimension)
     {
 	f32 _0, _1;
 
@@ -850,8 +841,8 @@ namespace sv {
 
 	if (xaxis) {
 	    if (raw.xtype == GuiCoordType_Coord) {
-		_0 = compute_coord(gui, raw.xcoord._0, gui.resolution.x, parent_bounds.x, parent_bounds.z);
-		_1 = compute_coord(gui, raw.xcoord._1, gui.resolution.x, parent_bounds.x, parent_bounds.z);
+		_0 = compute_coord(raw.xcoord._0, gui->resolution.x, parent_bounds.x, parent_bounds.z);
+		_1 = compute_coord(raw.xcoord._1, gui->resolution.x, parent_bounds.x, parent_bounds.z);
 	    }
 	    else {
 
@@ -859,11 +850,11 @@ namespace sv {
 
 		if (is_parent(*widget)) {
 
-		    adjust_value = get_parent_info(gui, *widget)->horizontal_amplitude;
+		    adjust_value = get_parent_info(*widget)->horizontal_amplitude;
 		}
 		
-		_0 = compute_coord(gui, raw.xdim.c, gui.resolution.x, parent_bounds.x, parent_bounds.z);
-		_1 = compute_dimension(gui, raw.xdim.d, gui.resolution.x, parent_bounds.z, aspect_dimension, adjust_value, true);
+		_0 = compute_coord(raw.xdim.c, gui->resolution.x, parent_bounds.x, parent_bounds.z);
+		_1 = compute_dimension(raw.xdim.d, gui->resolution.x, parent_bounds.z, aspect_dimension, adjust_value, true);
 
 		switch (raw.xdim.align) {
 		    
@@ -882,8 +873,8 @@ namespace sv {
 	}
 	else {
 	    if (raw.ytype == GuiCoordType_Coord) {
-		_0 = compute_coord(gui, raw.ycoord._0, gui.resolution.y, parent_bounds.y, parent_bounds.w);
-		_1 = compute_coord(gui, raw.ycoord._1, gui.resolution.y, parent_bounds.y, parent_bounds.w);
+		_0 = compute_coord(raw.ycoord._0, gui->resolution.y, parent_bounds.y, parent_bounds.w);
+		_1 = compute_coord(raw.ycoord._1, gui->resolution.y, parent_bounds.y, parent_bounds.w);
 	    }
 	    else {
 
@@ -891,11 +882,11 @@ namespace sv {
 
 		if (is_parent(*widget)) {
 
-		    adjust_value = get_parent_info(gui, *widget)->vertical_amplitude;
+		    adjust_value = get_parent_info(*widget)->vertical_amplitude;
 		}
 		
-		_0 = compute_coord(gui, raw.ydim.c, gui.resolution.y, parent_bounds.y, parent_bounds.w);
-		_1 = compute_dimension(gui, raw.ydim.d, gui.resolution.y, parent_bounds.w, aspect_dimension, adjust_value, false);
+		_0 = compute_coord(raw.ydim.c, gui->resolution.y, parent_bounds.y, parent_bounds.w);
+		_1 = compute_dimension(raw.ydim.d, gui->resolution.y, parent_bounds.w, aspect_dimension, adjust_value, false);
 
 		switch (raw.ydim.align) {
 		    
@@ -918,14 +909,14 @@ namespace sv {
 	return { _0, _1, };
     }
     
-    SV_INTERNAL v4_f32 compute_widget_bounds(const GUI& gui, GuiWidget* widget, GuiWidget* parent)
+    SV_INTERNAL v4_f32 compute_widget_bounds(const GuiWidget* widget, GuiWidget* parent)
     {
 	// TODO: Debug assertions
 
 	v4_f32 parent_bounds;
 	if (parent) {
 
-	    const GuiParentInfo* parent_info = get_parent_info(gui, *parent);
+	    const GuiParentInfo* parent_info = get_parent_info(*parent);
 	    parent_bounds = parent_info->child_bounds;
 	}
 	else parent_bounds = { 0.5f, 0.5f, 1.f, 1.f };
@@ -936,13 +927,13 @@ namespace sv {
 	
 	if (raw.xtype == GuiCoordType_Dim && raw.xdim.d.constraint == GuiDimConstraint_Aspect) {
 	    
-	    yaxis = compute_axis_bounds(gui, widget, false, parent_bounds, 0.5f);
-	    xaxis = compute_axis_bounds(gui, widget, true, parent_bounds, yaxis.y - yaxis.x);
+	    yaxis = compute_axis_bounds(widget, false, parent_bounds, 0.5f);
+	    xaxis = compute_axis_bounds(widget, true, parent_bounds, yaxis.y - yaxis.x);
 	}
 	else {
 
-	    xaxis = compute_axis_bounds(gui, widget, true, parent_bounds, 0.5f);
-	    yaxis = compute_axis_bounds(gui, widget, false, parent_bounds, xaxis.y - xaxis.x);
+	    xaxis = compute_axis_bounds(widget, true, parent_bounds, 0.5f);
+	    yaxis = compute_axis_bounds(widget, false, parent_bounds, xaxis.y - xaxis.x);
 	}
 
 
@@ -956,63 +947,63 @@ namespace sv {
 	return { x, y, w, h };
     }
 
-    SV_AUX bool mouse_in_bounds(const GUI& gui, const v4_f32& bounds)
+    SV_AUX bool mouse_in_bounds(const v4_f32& bounds)
     {
-	return abs(bounds.x - gui.mouse_position.x) <= bounds.z * 0.5f && abs(bounds.y - gui.mouse_position.y) <= bounds.w * 0.5f;
+	return abs(bounds.x - gui->mouse_position.x) <= bounds.z * 0.5f && abs(bounds.y - gui->mouse_position.y) <= bounds.w * 0.5f;
     }
 
-    SV_AUX v4_f32 compute_window_decoration_bounds(const GUI& gui, const GuiWidget& w)
+    SV_AUX v4_f32 compute_window_decoration_bounds(const GuiWidget& w)
     {
 	auto& window = w.widget.window;
 
 	v4_f32 bounds;
 	bounds.x = w.bounds.x;
-	bounds.y = w.bounds.y + w.bounds.w * 0.5f + window.style.decoration_height * 0.5f + window.style.outline_size * gui.aspect;
+	bounds.y = w.bounds.y + w.bounds.w * 0.5f + window.style.decoration_height * 0.5f + window.style.outline_size * gui->aspect;
 	bounds.z = w.bounds.z + window.style.outline_size * 2.f;
 	bounds.w = window.style.decoration_height;
 	return bounds;
     }
 
-    SV_AUX v4_f32 compute_window_closebutton_bounds(const GUI& gui, const GuiWidget& w, const v4_f32 decoration_bounds)
+    SV_AUX v4_f32 compute_window_closebutton_bounds(const GuiWidget& w, const v4_f32 decoration_bounds)
     {
 	v4_f32 bounds;
 	bounds.w = decoration_bounds.w;
-	bounds.z = bounds.w / gui.aspect;
+	bounds.z = bounds.w / gui->aspect;
 	bounds.x = decoration_bounds.x + decoration_bounds.z * 0.5f - bounds.z * 0.5f;
 	bounds.y = decoration_bounds.y;
 		
 	return bounds;
     }
 
-    SV_AUX v4_f32 compute_checkbox_button_bounds(const GUI& gui, const GuiWidget& w)
+    SV_AUX v4_f32 compute_checkbox_button_bounds(const GuiWidget& w)
     {
 	v4_f32 bounds;
 
 	bounds.y = w.bounds.y;
 	bounds.w = w.bounds.w;
-	bounds.z = bounds.w / gui.aspect;
+	bounds.z = bounds.w / gui->aspect;
 	bounds.x = (w.bounds.x - w.bounds.z * 0.5f) + bounds.z * 0.5f;
 	
 	return bounds;
     }
 
-    static void update_widget(GUI& gui, const GuiIndex& index)
+    static void update_widget(const GuiIndex& index)
     {
-	GuiParentInfo* parent_info = get_parent_info(gui, index);
+	GuiParentInfo* parent_info = get_parent_info(index.index);
 
 	// If it is a parent, update childs
 	if (parent_info) {
 
-	    GuiIndex* it = gui.indices.data() + parent_info->widget_offset;
+	    GuiIndex* it = gui->indices.data() + parent_info->widget_offset;
 	    GuiIndex* end = it + parent_info->widget_count;
 
 	    // Update childs parents
 	    while (it != end) {
 
-		GuiParentInfo* p = get_parent_info(gui, *it);
+		GuiParentInfo* p = get_parent_info(it->index);
 		if (p) {
 
-		    update_widget(gui, *it);
+		    update_widget(*it);
 		    it += p->widget_count;
 		}
 
@@ -1020,25 +1011,25 @@ namespace sv {
 	    }
 
 	    // Update normal widgets
-	    it = gui.indices.data() + parent_info->widget_offset;
+	    it = gui->indices.data() + parent_info->widget_offset;
 
 	    while (it != end) {
 
-		GuiParentInfo* p = get_parent_info(gui, *it);
+		GuiParentInfo* p = get_parent_info(it->index);
 		if (p) {
 
 		    it += p->widget_count;
 		}
 		else {
 
-		    update_widget(gui, *it);
+		    update_widget(*it);
 		}
 
 		++it;
 	    }
 	}
 
-	GuiWidget& w = gui.widgets[index.index];
+	GuiWidget& w = gui->widgets[index.index];
 
 	switch (w.type)
 	{
@@ -1047,13 +1038,13 @@ namespace sv {
 	{
 	    auto& button = w.widget.button;
 
-	    if (input.unused && mouse_in_bounds(gui, w.bounds)) {
+	    if (input.unused && mouse_in_bounds(w.bounds)) {
 
 		button.hot = true;
 
 		if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
 		    input.unused = false;
-		    set_focus(gui, w.type, w.id);
+		    set_focus(w.type, w.id);
 		}
 	    }
 	}
@@ -1063,13 +1054,13 @@ namespace sv {
 	{
 	    if (input.unused) {
 
-		v4_f32 button_bounds = compute_checkbox_button_bounds(gui, w);
+		v4_f32 button_bounds = compute_checkbox_button_bounds(w);
 		
-		if (mouse_in_bounds(gui, button_bounds)) {
+		if (mouse_in_bounds(button_bounds)) {
 
 		    if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
 
-			set_focus(gui, w.type, index.id);
+			set_focus(w.type, index.id);
 			input.unused = false;
 		    }
 		}
@@ -1084,11 +1075,11 @@ namespace sv {
 	{
 	    if (input.unused) {
 				
-		if (mouse_in_bounds(gui, w.bounds)) {
+		if (mouse_in_bounds(w.bounds)) {
 
 		    if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
 
-			set_focus(gui, w.type, index.id);
+			set_focus(w.type, index.id);
 			input.unused = false;
 		    }
 		}
@@ -1096,7 +1087,7 @@ namespace sv {
 
 	    if (w.type == GuiWidgetType_MenuItem) {
 				
-		if (mouse_in_bounds(gui, w.bounds)) {
+		if (mouse_in_bounds(w.bounds)) {
 		    w.widget.menu_item.hot = true;
 		}
 	    }
@@ -1114,9 +1105,9 @@ namespace sv {
 		}
 	    }
 
-	    if (any && !mouse_in_bounds(gui, w.bounds)) {
+	    if (any && !mouse_in_bounds(w.bounds)) {
 
-		GuiWidget* menu = &gui.widgets[w.index - 1u];
+		GuiWidget* menu = &gui->widgets[w.index - 1u];
 		menu->widget.menu_item.active = false;
 	    }
 	}
@@ -1135,7 +1126,7 @@ namespace sv {
 		}
 	    }
 
-	    if (any && !mouse_in_bounds(gui, w.bounds)) {
+	    if (any && !mouse_in_bounds(w.bounds)) {
 
 		popup.close_request = true;
 	    }
@@ -1151,9 +1142,9 @@ namespace sv {
 
 		InputState button = input.mouse_buttons[MouseButton_Left];
 
-		v4_f32 decoration = compute_window_decoration_bounds(gui, w);
+		v4_f32 decoration = compute_window_decoration_bounds(w);
 
-		if (mouse_in_bounds(gui, decoration)) {
+		if (mouse_in_bounds(decoration)) {
 
 		    input.unused = false;
 
@@ -1161,13 +1152,13 @@ namespace sv {
 					
 		    if (button == InputState_Pressed) {
 
-			v4_f32 closebutton_bounds = compute_window_closebutton_bounds(gui, w, decoration);
+			v4_f32 closebutton_bounds = compute_window_closebutton_bounds(w, decoration);
 
-			if (mouse_in_bounds(gui, closebutton_bounds)) 
-			    set_focus(gui, GuiWidgetType_Window, state.id, 6u);
+			if (mouse_in_bounds(closebutton_bounds)) 
+			    set_focus(GuiWidgetType_Window, state.id, 6u);
 			else {
-			    gui.begin_position = v2_f32(window.state->bounds.x, window.state->bounds.y) - gui.mouse_position;
-			    set_focus(gui, GuiWidgetType_Window, state.id, 0u);
+			    gui->begin_position = v2_f32(window.state->bounds.x, window.state->bounds.y) - gui->mouse_position;
+			    set_focus(GuiWidgetType_Window, state.id, 0u);
 			}
 		    }
 		}
@@ -1177,9 +1168,9 @@ namespace sv {
 
 		    constexpr f32 SELECTION_SIZE = 0.02f;
 
-		    bool right = mouse_in_bounds(gui, { content.x + content.z * 0.5f, content.y, SELECTION_SIZE, content.w + SELECTION_SIZE * 2.f * gui.aspect });
-		    bool left = mouse_in_bounds(gui, { content.x - content.z * 0.5f, content.y, SELECTION_SIZE, content.w + SELECTION_SIZE * 2.f * gui.aspect });
-		    bool bottom = mouse_in_bounds(gui, { content.x, content.y - content.w * 0.5f, content.z + SELECTION_SIZE * 2.f, SELECTION_SIZE * gui.aspect });
+		    bool right = mouse_in_bounds({ content.x + content.z * 0.5f, content.y, SELECTION_SIZE, content.w + SELECTION_SIZE * 2.f * gui->aspect });
+		    bool left = mouse_in_bounds({ content.x - content.z * 0.5f, content.y, SELECTION_SIZE, content.w + SELECTION_SIZE * 2.f * gui->aspect });
+		    bool bottom = mouse_in_bounds({ content.x, content.y - content.w * 0.5f, content.z + SELECTION_SIZE * 2.f, SELECTION_SIZE * gui->aspect });
 
 		    u32 action = u32_max;
 
@@ -1201,7 +1192,7 @@ namespace sv {
 
 		    if (action != u32_max) {
 			input.unused = false;
-			set_focus(gui, GuiWidgetType_Window, state.id, action);
+			set_focus(GuiWidgetType_Window, state.id, action);
 		    }
 		}
 	    }
@@ -1214,16 +1205,16 @@ namespace sv {
 	// Catch the input if the mouse is inside the parent and update scroll wheel
 	if (parent_info) {
 
-	    if (!gui.catch_input) {
+	    if (!gui->catch_input) {
 
-		gui.catch_input = mouse_in_bounds(gui, w.bounds);
+		gui->catch_input = mouse_in_bounds(w.bounds);
 	    }
 
 	    if (input.unused && parent_info->has_vertical_scroll) {
 
 		const v4_f32& scrollable_bounds = parent_info->child_bounds;
 
-		if (input.mouse_wheel != 0.f && mouse_in_bounds(gui, scrollable_bounds)) {
+		if (input.mouse_wheel != 0.f && mouse_in_bounds(scrollable_bounds)) {
 
 		    parent_info->vertical_offset += input.mouse_wheel * 0.01f;
 		    input.unused = false;
@@ -1234,9 +1225,9 @@ namespace sv {
 	}
     }
 
-    static void update_focus(GUI& gui, const GuiIndex& index)
+    static void update_focus(const GuiIndex& index)
     {
-	GuiWidget& w = gui.widgets[index.index];
+	GuiWidget& w = gui->widgets[index.index];
 
 	switch (w.type)
 	{
@@ -1246,7 +1237,7 @@ namespace sv {
 	    auto& drag = w.widget.drag;
 
 	    if (input.mouse_buttons[MouseButton_Left] == InputState_None) {
-		free_focus(gui);
+		free_focus();
 	    }
 	    else {
 
@@ -1259,7 +1250,7 @@ namespace sv {
 		    f32 min = *reinterpret_cast<f32*>(&drag.min);
 		    f32 max = *reinterpret_cast<f32*>(&drag.max);
 		    
-		    value += input.mouse_dragged.x * gui.resolution.x * adv;
+		    value += input.mouse_dragged.x * gui->resolution.x * adv;
 		    value = SV_MAX(SV_MIN(value, max), min);
 		}
 		break;
@@ -1271,7 +1262,7 @@ namespace sv {
 		    u8 min = *reinterpret_cast<u8*>(&drag.min);
 		    u8 max = *reinterpret_cast<u8*>(&drag.max);
 
-		    i32 add = (i32)round(input.mouse_dragged.x * gui.resolution.x * f32(adv)); 
+		    i32 add = (i32)round(input.mouse_dragged.x * gui->resolution.x * f32(adv)); 
 		    i32 new_value = (i32)value + add;
 		    new_value = SV_MAX(SV_MIN(new_value, i32(max)), i32(min));
 
@@ -1290,7 +1281,7 @@ namespace sv {
 
 	    if (input.mouse_buttons[MouseButton_Left] == InputState_None) {
 
-		free_focus(gui);
+		free_focus();
 		cb.value = !cb.value;
 		cb.modified = true;
 	    }
@@ -1305,38 +1296,38 @@ namespace sv {
 
 	    if (text_size) {
 
-		gui.current_text_field_value.resize(text_size);
+		gui->current_text_field_value.resize(text_size);
 	    }
-	    else gui.current_text_field_value.reset();
+	    else gui->current_text_field_value.reset();
 
 	    foreach(i, text_size) {
 
-		gui.current_text_field_value[i] = field.text[i];
+		gui->current_text_field_value[i] = field.text[i];
 	    }
 
 	    foreach(i, MouseButton_MaxEnum) {
 
 		if (input.mouse_buttons[i] == InputState_Pressed) {
-		    free_focus(gui);
+		    free_focus();
 		    break;
 		}
 	    }
 
 	    // Text modification
 	    {
-		if (gui.current_text_field_value.empty() || gui.current_text_field_value.back() != '\0')
-		    gui.current_text_field_value.push_back('\0');
+		if (gui->current_text_field_value.empty() || gui->current_text_field_value.back() != '\0')
+		    gui->current_text_field_value.push_back('\0');
 		
 		if (input.text.size()) {
 		    
 		    field.pos += u32(input.text.size());
 
-		    gui.current_text_field_value.pop_back();
+		    gui->current_text_field_value.pop_back();
 		    
 		    for (char c : input.text)
-			gui.current_text_field_value.push_back(c);
+			gui->current_text_field_value.push_back(c);
 
-		    gui.current_text_field_value.push_back('\0');
+		    gui->current_text_field_value.push_back('\0');
 		}
 		    
 
@@ -1349,19 +1340,19 @@ namespace sv {
 		    case TextCommand_DeleteLeft:
 			if (field.pos) {
 
-			    gui.current_text_field_value.erase(field.pos);
+			    gui->current_text_field_value.erase(field.pos);
 			    --field.pos;
 			}
 			break;
 
 		    case TextCommand_Enter:
 		    {
-			free_focus(gui);
+			free_focus();
 		    }
 		    break;
 
 		    case TextCommand_Escape:
-			free_focus(gui);
+			free_focus();
 			break;
 		    }
 		}
@@ -1379,7 +1370,7 @@ namespace sv {
 	    InputState state = input.mouse_buttons[MouseButton_Left];
 	    
 	    if (state == InputState_Released || state == InputState_None) {
-		free_focus(gui);
+		free_focus();
 		button.pressed = true;
 	    }
 	}
@@ -1391,9 +1382,9 @@ namespace sv {
 
 	    if (input.mouse_buttons[MouseButton_Left] != InputState_Hold) {
 
-		free_focus(gui);
+		free_focus();
 
-		if (mouse_in_bounds(gui, w.bounds)) {
+		if (mouse_in_bounds(w.bounds)) {
 		    menu.active = !menu.active;
 		}
 	    }
@@ -1407,15 +1398,15 @@ namespace sv {
 	    InputState mouse = input.mouse_buttons[MouseButton_Left];
 	    if (mouse == InputState_Released || mouse == InputState_None) {
 
-		free_focus(gui);
-		gui.package_id = p.package_id;
-		gui.package_data.reset();
-		gui.package_data.write_back(p.data, p.size);
+		free_focus();
+		gui->package_id = p.package_id;
+		gui->package_data.reset();
+		gui->package_data.write_back(p.data, p.size);
 
-		foreach(i, gui.indices.size()) {
+		foreach(i, gui->indices.size()) {
 
-		    GuiWidget* w = &gui.widgets[gui.indices[i].index];
-		    if (w->type == GuiWidgetType_Reciver && w->widget.reciver.package_id == p.package_id && mouse_in_bounds(gui, w->bounds)) {
+		    GuiWidget* w = &gui->widgets[gui->indices[i].index];
+		    if (w->type == GuiWidgetType_Reciver && w->widget.reciver.package_id == p.package_id && mouse_in_bounds(w->bounds)) {
 			w->widget.reciver.recived = true;
 			break;
 		    }
@@ -1430,26 +1421,26 @@ namespace sv {
 
 	    if (input.mouse_buttons[MouseButton_Left] == InputState_None) {
 
-		if (gui.focus.action == 6u) {
+		if (gui->focus.action == 6u) {
 
-		    v4_f32 decoration_bounds = compute_window_decoration_bounds(gui, w);
-		    v4_f32 closebutton_bounds = compute_window_closebutton_bounds(gui, w, decoration_bounds);
+		    v4_f32 decoration_bounds = compute_window_decoration_bounds(w);
+		    v4_f32 closebutton_bounds = compute_window_closebutton_bounds(w, decoration_bounds);
 
-		    if (mouse_in_bounds(gui, closebutton_bounds)) {
+		    if (mouse_in_bounds(closebutton_bounds)) {
 			window.state->show = false;
 		    }
 		}
 
-		free_focus(gui);
+		free_focus();
 	    }
 	    else {
 
-		switch (gui.focus.action)
+		switch (gui->focus.action)
 		{
 
 		case 0u:
 		{
-		    v2_f32 new_position = gui.mouse_position + gui.begin_position;
+		    v2_f32 new_position = gui->mouse_position + gui->begin_position;
 		    window.state->bounds.x = new_position.x;
 		    window.state->bounds.y = new_position.y;
 		}
@@ -1457,7 +1448,7 @@ namespace sv {
 
 		case 1u: // RIGHT
 		{
-		    f32 width = std::max(gui.mouse_position.x - (window.state->bounds.x - window.state->bounds.z * 0.5f), window.style.min_width);
+		    f32 width = std::max(gui->mouse_position.x - (window.state->bounds.x - window.state->bounds.z * 0.5f), window.style.min_width);
 		    window.state->bounds.x -= (window.state->bounds.z - width) * 0.5f;
 		    window.state->bounds.z = width;
 		}
@@ -1465,7 +1456,7 @@ namespace sv {
 
 		case 2u: // LEFT
 		{
-		    f32 width = std::max((window.state->bounds.x + window.state->bounds.z * 0.5f) - gui.mouse_position.x, window.style.min_width);
+		    f32 width = std::max((window.state->bounds.x + window.state->bounds.z * 0.5f) - gui->mouse_position.x, window.style.min_width);
 		    window.state->bounds.x += (window.state->bounds.z - width) * 0.5f;
 		    window.state->bounds.z = width;
 		}
@@ -1473,7 +1464,7 @@ namespace sv {
 
 		case 3u: // BOTTOM
 		{
-		    f32 height = std::max((window.state->bounds.y + window.state->bounds.w * 0.5f) - gui.mouse_position.y, window.style.min_height);
+		    f32 height = std::max((window.state->bounds.y + window.state->bounds.w * 0.5f) - gui->mouse_position.y, window.style.min_height);
 		    window.state->bounds.y += (window.state->bounds.w - height) * 0.5f;
 		    window.state->bounds.w = height;
 		}
@@ -1481,10 +1472,10 @@ namespace sv {
 
 		case 4u: // RIGHT - BOTTOM
 		{
-		    f32 width = std::max(gui.mouse_position.x - (window.state->bounds.x - window.state->bounds.z * 0.5f), window.style.min_width);
+		    f32 width = std::max(gui->mouse_position.x - (window.state->bounds.x - window.state->bounds.z * 0.5f), window.style.min_width);
 		    window.state->bounds.x -= (window.state->bounds.z - width) * 0.5f;
 		    window.state->bounds.z = width;
-		    f32 height = std::max((window.state->bounds.y + window.state->bounds.w * 0.5f) - gui.mouse_position.y, window.style.min_height);
+		    f32 height = std::max((window.state->bounds.y + window.state->bounds.w * 0.5f) - gui->mouse_position.y, window.style.min_height);
 		    window.state->bounds.y += (window.state->bounds.w - height) * 0.5f;
 		    window.state->bounds.w = height;
 		}
@@ -1492,10 +1483,10 @@ namespace sv {
 
 		case 5u: // LEFT - BOTTOM
 		{
-		    f32 width = std::max((window.state->bounds.x + window.state->bounds.z * 0.5f) - gui.mouse_position.x, window.style.min_width);
+		    f32 width = std::max((window.state->bounds.x + window.state->bounds.z * 0.5f) - gui->mouse_position.x, window.style.min_width);
 		    window.state->bounds.x += (window.state->bounds.z - width) * 0.5f;
 		    window.state->bounds.z = width;
-		    f32 height = std::max((window.state->bounds.y + window.state->bounds.w * 0.5f) - gui.mouse_position.y, window.style.min_height);
+		    f32 height = std::max((window.state->bounds.y + window.state->bounds.w * 0.5f) - gui->mouse_position.y, window.style.min_height);
 		    window.state->bounds.y += (window.state->bounds.w - height) * 0.5f;
 		    window.state->bounds.w = height;
 		}
@@ -1511,47 +1502,45 @@ namespace sv {
 
     //////////////////////////////////////////////// BEGIN ///////////////////////////////////////////////////
 
-    void gui_begin(GUI* gui_, f32 scale, f32 width, f32 height)
+    void _gui_begin(f32 scale, f32 width, f32 height)
     {
-	PARSE_GUI();
+	gui->scale = scale;
+	gui->resolution = { width, height };
+	gui->aspect = width / height;
 
-	gui.scale = scale;
-	gui.resolution = { width, height };
-	gui.aspect = width / height;
+	gui->style_count = 0u;
+	
+	gui->ids.reset();
+	gui->parent_stack.reset();
+	
+	gui->mouse_position = input.mouse_position + 0.5f;
+	
+	gui->last.id = 0u;
+	gui->last.type = GuiWidgetType_None;
 
-	gui.style_count = 0u;
-	
-	gui.ids.reset();
-	gui.parent_stack.reset();
-	
-	gui.mouse_position = input.mouse_position + 0.5f;
-	
-	gui.last.id = 0u;
-	gui.last.type = GuiWidgetType_None;
-
-	gui.catch_input = false;
+	gui->catch_input = false;
 
 	// Reset buffer
-	gui.buffer.reset();
+	gui->buffer.reset();
     }
 
     //////////////////////////////////////////////// END ///////////////////////////////////////////////////
 
-    SV_INLINE static void _read(u8*& it, void* data, size_t size)
+    SV_AUX void _read(u8*& it, void* data, size_t size)
     {
 	memcpy(data, it, size);
 	it += size;
     }
 
     template<typename T>
-    SV_INLINE static T _read(u8*& it)
+    SV_AUX T _read(u8*& it)
     {
 	T t;
 	_read(it, &t, sizeof(T));
 	return t;
     }
 
-    SV_AUX void compute_layout(GUI& gui, GuiWidget& w, GuiParentInfo* parent_info, u8*& it)
+    SV_AUX void compute_layout(GuiWidget& w, GuiParentInfo* parent_info, u8*& it)
     {
 	GuiLayout layout = parent_info ? parent_info->layout : GuiLayout_Free;
 
@@ -1568,8 +1557,8 @@ namespace sv {
 	    
 	    if (!ignore_scroll(w.type)) {
 
-		w.raw_coords.xcoord._0.value = gui.temp_style.flow_layout.sub_x0;
-		w.raw_coords.xcoord._1.value = gui.temp_style.flow_layout.sub_x1;
+		w.raw_coords.xcoord._0.value = gui->temp_style.flow_layout.sub_x0;
+		w.raw_coords.xcoord._1.value = gui->temp_style.flow_layout.sub_x1;
 
 		SV_ASSERT(data.same_line_count != 0u);
 		
@@ -1591,7 +1580,7 @@ namespace sv {
 			SV_ASSERT(begin_index > 1u);
 			--begin_index;
 
-			GuiWidget& widget = gui.widgets[begin_index];
+			GuiWidget& widget = gui->widgets[begin_index];
 			if (!ignore_scroll(widget.type)) {
 			    --count;
 			}
@@ -1601,7 +1590,7 @@ namespace sv {
 
 		    for (u32 i = begin_index; i <= end_index; ++i) {
 
-			GuiWidget& widget = gui.widgets[i];
+			GuiWidget& widget = gui->widgets[i];
 			
 			auto& coords = widget.raw_coords;
 
@@ -1631,14 +1620,14 @@ namespace sv {
 			case GuiWidgetType_Container:
 			    coords.ydim.d = GuiDim::Adjust();
 
-			    height = get_parent_info(gui, widget)->vertical_amplitude * gui.resolution.y;
+			    height = get_parent_info(widget)->vertical_amplitude * gui->resolution.y;
 			    
 			    break;
 			    
 			case GuiWidgetType_Image:
 			{
 			    f32 parent_width = parent_info ? parent_info->child_bounds.z : 1.f;
-			    f32 width = ((sub_x1 - sub_x0) * parent_width) * gui.resolution.x;
+			    f32 width = ((sub_x1 - sub_x0) * parent_width) * gui->resolution.x;
 
 			    GPUImage* image = (widget.widget.image.image) ? widget.widget.image.image : renderer->gfx.image_white;
 			    const GPUImageInfo& info = graphics_image_info(image);
@@ -1671,7 +1660,7 @@ namespace sv {
 	}
     }
 
-    SV_AUX void compute_grid_layout(GUI& gui, GuiParentInfo* parent_info)
+    SV_AUX void compute_grid_layout(GuiParentInfo* parent_info)
     {
 	if (parent_info->widget_count == 0u) return;
 	
@@ -1681,7 +1670,7 @@ namespace sv {
 	constexpr f32 MARGIN = 5.f;
 
 	f32 margin = MARGIN;
-	f32 parent_width = (parent_info->child_bounds.z * gui.resolution.x) - MARGIN * 2.f;
+	f32 parent_width = (parent_info->child_bounds.z * gui->resolution.x) - MARGIN * 2.f;
 
 	u32 columns = SV_MAX(u32(parent_width / (SIZE + PADDING)), 1u);
 	
@@ -1691,7 +1680,7 @@ namespace sv {
 	    offset = 0.f;
 	}
 
-	GuiIndex* it = &gui.indices[parent_info->widget_offset];
+	GuiIndex* it = &gui->indices[parent_info->widget_offset];
 	GuiIndex* end = it + size_t(parent_info->widget_count);
 
 	u32 row = 0u;
@@ -1699,7 +1688,7 @@ namespace sv {
 	
 	while (it != end) {
 
-	    GuiWidget& w = gui.widgets[it->index];
+	    GuiWidget& w = gui->widgets[it->index];
 	    
 	    if (!ignore_scroll(w.type)) {
 
@@ -1723,7 +1712,7 @@ namespace sv {
 		}
 	    }
 
-	    GuiParentInfo* p = get_parent_info(gui, w);
+	    GuiParentInfo* p = get_parent_info(w);
 	    if (p) {
 
 		it += p->widget_count;
@@ -1733,29 +1722,29 @@ namespace sv {
 	}
     }
 
-    SV_INLINE static void read_widget(GUI& gui, GuiWidgetType type, u64 id, u32& current_parent, u8*& it)
+    SV_INLINE static void read_widget(GuiWidgetType type, u64 id, u32& current_parent, u8*& it)
     {
 	// Add widget
-	GuiWidget& w = gui.widgets.emplace_back();
+	GuiWidget& w = gui->widgets.emplace_back();
 	w.type = type;
 	w.id = id;
-	w.index = u32(gui.widgets.size() - 1u);
-	gui.indices.emplace_back(w.index, id);
+	w.index = u32(gui->widgets.size() - 1u);
+	gui->indices.emplace_back(w.index, id);
 
 	// Set focus
-	if (gui.focus.type == w.type && gui.focus.id == id) {
-	    gui.current_focus = { w.index, id };
+	if (gui->focus.type == w.type && gui->focus.id == id) {
+	    gui->current_focus = { w.index, id };
 	}
 
 	// Get parent
-	GuiWidget* parent = (current_parent == u32_max) ? nullptr : &gui.widgets[current_parent];
+	GuiWidget* parent = (current_parent == u32_max) ? nullptr : &gui->widgets[current_parent];
 
 	if (is_parent(w)) {
 	    
-	    GuiParentInfo* parent_info = get_parent_info(gui, w);
+	    GuiParentInfo* parent_info = get_parent_info(w);
 	    parent_info->parent_index = current_parent;
 	    current_parent = w.index;
-	    parent_info->widget_offset = u32(gui.indices.size());
+	    parent_info->widget_offset = u32(gui->indices.size());
 	    parent_info->menu_item_count = 0u;
 	    parent_info->min_y = f32_max;
 	    parent_info->max_y = f32_min;
@@ -1769,19 +1758,19 @@ namespace sv {
 
 	    if (parent_info->layout == GuiLayout_Flow) {
 
-		parent_info->flow.yoff = gui.temp_style.flow_layout.parent_margin;
+		parent_info->flow.yoff = gui->temp_style.flow_layout.parent_margin;
 		parent_info->flow.same_line_count = 1u;
 		parent_info->flow.last_same_line = 1u;
-		parent_info->flow.style = gui.temp_style.flow_layout;
+		parent_info->flow.style = gui->temp_style.flow_layout;
 	    }
 	    else if (parent_info->layout == GuiLayout_Grid) {
 
-		parent_info->grid.style = gui.temp_style.grid_layout;
+		parent_info->grid.style = gui->temp_style.grid_layout;
 	    }
 	}
 	
 	// Compute bounds
-	compute_layout(gui, w, parent ? get_parent_info(gui, *parent) : nullptr, it);
+	compute_layout(w, parent ? get_parent_info(*parent) : nullptr, it);
 
 	// Read raw data
 	switch (type)
@@ -1792,14 +1781,14 @@ namespace sv {
 	case GuiWidgetType_Container:
 	{
 	    Raw_Container raw = _read<Raw_Container>(it);
-	    w.widget.container.style = gui.temp_style.container;
+	    w.widget.container.style = gui->temp_style.container;
 	}
 	break;
 
 	case GuiWidgetType_Popup:
 	{
 	    Raw_Popup raw = _read<Raw_Popup>(it);
-	    w.widget.popup.style = gui.temp_style.popup;
+	    w.widget.popup.style = gui->temp_style.popup;
 	    w.widget.popup.close_request = false;
 	    w.bounds = raw.bounds;
 	}
@@ -1808,9 +1797,9 @@ namespace sv {
 	case GuiWidgetType_Window:
 	{
 	    Raw_Window raw = _read<Raw_Window>(it);
-	    w.widget.window.style = gui.temp_style.window;
+	    w.widget.window.style = gui->temp_style.window;
 
-	    GuiWindowState& state = gui.static_state.window[id];
+	    GuiWindowState& state = gui->static_state.window[id];
 	    w.bounds = state.bounds;
 	    w.widget.window.state = &state;
 	}
@@ -1826,7 +1815,7 @@ namespace sv {
 		field.text = nullptr;
 
 	    field.pos = _read<u32>(it);
-	    field.style = gui.temp_style.text_field;
+	    field.style = gui->temp_style.text_field;
 	}
 	break;
 
@@ -1839,7 +1828,7 @@ namespace sv {
 	    if (*button.text == '\0')
 		button.text = nullptr;
 
-	    button.style = gui.temp_style.button;
+	    button.style = gui->temp_style.button;
 	}
 	break;
 
@@ -1852,7 +1841,7 @@ namespace sv {
 	    if (*label.text == '\0')
 		label.text = nullptr;
 
-	    label.style = gui.temp_style.label;
+	    label.style = gui->temp_style.label;
 	}
 	break;
 
@@ -1871,7 +1860,7 @@ namespace sv {
 	    if (*cb.text == '\0')
 		cb.text = nullptr;
 	    
-	    cb.style = gui.temp_style.checkbox;
+	    cb.style = gui->temp_style.checkbox;
 	}
 	break;
 
@@ -1885,7 +1874,7 @@ namespace sv {
 	    drag.min = raw.min;
 	    drag.max = raw.max;
 	    drag.adv = raw.adv;
-	    drag.style = gui.temp_style.drag;
+	    drag.style = gui->temp_style.drag;
 	}
 	break;
 
@@ -1898,16 +1887,16 @@ namespace sv {
 	    if (*menu.text == '\0')
 		menu.text = nullptr;
 
-	    menu.style = gui.temp_style.menuitem;
+	    menu.style = gui->temp_style.menuitem;
 	    menu.active = _read<bool>(it);
 
 	    if (parent) {
 
-		GuiParentInfo* parent_info = get_parent_info(gui, *parent);
+		GuiParentInfo* parent_info = get_parent_info(*parent);
 		++parent_info->menu_item_count;
 	    }
 	    else {
-		++gui.root_menu_count;
+		++gui->root_menu_count;
 	    }
 	}
 	break;
@@ -1919,7 +1908,7 @@ namespace sv {
 	    Raw_Image raw = _read<Raw_Image>(it);
 	    image.image = raw.image;
 	    image.layout = raw.layout;
-	    image.style = gui.temp_style.image;
+	    image.style = gui->temp_style.image;
 	}
 	break;
 
@@ -1962,7 +1951,7 @@ namespace sv {
     constexpr f32 SCROLL_SIZE = 0.005f;
     constexpr f32 SCROLL_BUTTON_SIZE_MULT = 0.2f;
 	
-    static void update_bounds(GUI& gui, GuiWidget* w, GuiWidget* parent, u32& menu_index)
+    static void update_bounds(GuiWidget* w, GuiWidget* parent, u32& menu_index)
     {
 	// Update bounds
 	switch (w->type)
@@ -1975,7 +1964,7 @@ namespace sv {
 	case GuiWidgetType_Checkbox:
 	case GuiWidgetType_Drag:
 	case GuiWidgetType_Image:
-	    w->bounds = compute_widget_bounds(gui, w, parent);
+	    w->bounds = compute_widget_bounds(w, parent);
 	    break;
 		
 	case GuiWidgetType_MenuItem:
@@ -2002,7 +1991,7 @@ namespace sv {
 
 	case GuiWidgetType_MenuContainer:
 	{
-	    GuiWidget* menu = &gui.widgets[w->index - 1u];
+	    GuiWidget* menu = &gui->widgets[w->index - 1u];
 	    w->bounds.x = menu->bounds.x - menu->bounds.z * 0.5f;
 	    w->bounds.y = menu->bounds.y - menu->bounds.z * 0.5f;
 	    w->bounds.z = MENU_CONTAINER_WIDTH;
@@ -2016,9 +2005,9 @@ namespace sv {
 	case GuiWidgetType_Reciver:
 	{
 	    SV_ASSERT(w->index != 0u);
-	    GuiWidget* last = &gui.widgets[w->index - 1u];
+	    GuiWidget* last = &gui->widgets[w->index - 1u];
 
-	    GuiParentInfo* parent_info = get_parent_info(gui, *last);
+	    GuiParentInfo* parent_info = get_parent_info(*last);
 	    if (parent_info) w->bounds = parent_info->child_bounds;
 	    else w->bounds = last->bounds;
 	}
@@ -2026,7 +2015,7 @@ namespace sv {
 
 	}
 
-	GuiParentInfo* parent_info = get_parent_info(gui, *w);
+	GuiParentInfo* parent_info = get_parent_info(*w);
 	if (parent_info) {
 	    
 	    // Update child bounds
@@ -2044,15 +2033,15 @@ namespace sv {
 	    }
 
 	    // Update childs
-	    GuiIndex* it = gui.indices.data() + parent_info->widget_offset;
+	    GuiIndex* it = gui->indices.data() + parent_info->widget_offset;
 	    GuiIndex* end = it + parent_info->widget_count;
 
 	    u32 _menu_index = 0u;
 
 	    while (it != end) {
 
-		GuiWidget* widget = &gui.widgets[it->index];
-		update_bounds(gui, widget, w, _menu_index);
+		GuiWidget* widget = &gui->widgets[it->index];
+		update_bounds(widget, w, _menu_index);
 
 		if (!ignore_scroll(widget->type)) {
 
@@ -2060,7 +2049,7 @@ namespace sv {
 		    parent_info->max_y = SV_MAX(widget->bounds.y + widget->bounds.w * 0.5f, parent_info->max_y);
 		}
 
-		GuiParentInfo* p = get_parent_info(gui, *widget);
+		GuiParentInfo* p = get_parent_info(*widget);
 		if (p) {
 
 		    it += p->widget_count;
@@ -2073,8 +2062,8 @@ namespace sv {
 
 		auto& s = parent_info->flow.style;
 
-		parent_info->min_y -= s.parent_margin / gui.resolution.y;
-		parent_info->max_y += s.parent_margin / gui.resolution.y;
+		parent_info->min_y -= s.parent_margin / gui->resolution.y;
+		parent_info->max_y += s.parent_margin / gui->resolution.y;
 	    }
 
 	    parent_info->vertical_amplitude = parent_info->max_y - parent_info->min_y;
@@ -2099,24 +2088,24 @@ namespace sv {
 		else {
 		    
 		    // Update childs
-		    it = gui.indices.data() + parent_info->widget_offset;
+		    it = gui->indices.data() + parent_info->widget_offset;
 
 		    while (it != end) {
 
-			GuiWidget* widget = &gui.widgets[it->index];
+			GuiWidget* widget = &gui->widgets[it->index];
 
 			if (!ignore_scroll(widget->type)) {
 
 			    widget->bounds.y -= parent_info->vertical_offset;
 
-			    GuiParentInfo* p = get_parent_info(gui, *widget);
+			    GuiParentInfo* p = get_parent_info(*widget);
 			    if (p) {
 				p->child_bounds.y -= parent_info->vertical_offset;
 			    }
 			}
 			else {
 
-			    GuiParentInfo* p = get_parent_info(gui, *widget);
+			    GuiParentInfo* p = get_parent_info(*widget);
 			    if (p) {
 				it += p->widget_count;
 			    }
@@ -2136,12 +2125,12 @@ namespace sv {
 	}
     }
 
-    SV_AUX void get_style_data(GUI& gui, GuiStyle style, size_t* psize, void** pdst, bool temp = true)
+    SV_AUX void get_style_data(GuiStyle style, size_t* psize, void** pdst, bool temp = true)
     {
 	*pdst = nullptr;
 	*psize = 0u;
 
-	GuiStyleData& s = temp ? gui.temp_style : gui.style;
+	GuiStyleData& s = temp ? gui->temp_style : gui->style;
 		    
 	switch (style) {
 	    
@@ -2314,34 +2303,32 @@ namespace sv {
 	}
     }
 
-    void gui_end(GUI* gui_)
+    void _gui_end()
     {
-	PARSE_GUI();
-
 	// Reset last data
-	gui.widgets.reset();
-	gui.indices.reset();
-	gui.root_menu_count = 0u;
+	gui->widgets.reset();
+	gui->indices.reset();
+	gui->root_menu_count = 0u;
 
-	gui.current_focus.index = u32_max;
+	gui->current_focus.index = u32_max;
 
-	if (gui.package_id != 0u) {
+	if (gui->package_id != 0u) {
 
-	    gui.package_id = 0u;
-	    gui.package_data.reset();
+	    gui->package_id = 0u;
+	    gui->package_data.reset();
 	}
 
-	SV_ASSERT(gui.ids.empty());
-	SV_ASSERT(gui.parent_stack.empty());
-	SV_ASSERT(gui.style_count == 0u);
+	SV_ASSERT(gui->ids.empty());
+	SV_ASSERT(gui->parent_stack.empty());
+	SV_ASSERT(gui->style_count == 0u);
 
-	gui.temp_style = gui.style;
-	gui.style_stack.reset();
+	gui->temp_style = gui->style;
+	gui->style_stack.reset();
 
 	// Read widgets from raw data
 	{
-	    u8* it = gui.buffer.data();
-	    u8* end = gui.buffer.data() + gui.buffer.size();
+	    u8* it = gui->buffer.data();
+	    u8* end = gui->buffer.data() + gui->buffer.size();
 
 	    u32 current_parent = u32_max;
 
@@ -2355,7 +2342,7 @@ namespace sv {
 		{
 		    GuiWidgetType type = _read<GuiWidgetType>(it);
 		    u64 id = _read<u64>(it);
-		    read_widget(gui, type, id, current_parent, it);
+		    read_widget(type, id, current_parent, it);
 		}
 		break;
 
@@ -2363,14 +2350,14 @@ namespace sv {
 		{
 		    SV_ASSERT(current_parent != u32_max);
 
-		    GuiParentInfo* parent_info = get_parent_info(gui, current_parent);
+		    GuiParentInfo* parent_info = get_parent_info(current_parent);
 		    SV_ASSERT(parent_info);
 		    
-		    parent_info->widget_count = u32(gui.indices.size()) - parent_info->widget_offset;
+		    parent_info->widget_count = u32(gui->indices.size()) - parent_info->widget_offset;
 
 		    // Compute grid layout
 		    if (parent_info->layout == GuiLayout_Grid) {
-			compute_grid_layout(gui, parent_info);
+			compute_grid_layout(parent_info);
 		    }
 		    
 		    current_parent = parent_info->parent_index;
@@ -2388,11 +2375,11 @@ namespace sv {
 		    void* dst;
 		    size_t size;
 
-		    get_style_data(gui, style, &size, &dst);
+		    get_style_data(style, &size, &dst);
 
 		    if (dst && size) {
-			gui.style_stack.write_back(dst, size);
-			gui.style_stack.write_back(&style, sizeof(GuiStyle));
+			gui->style_stack.write_back(dst, size);
+			gui->style_stack.write_back(&style, sizeof(GuiStyle));
 			memcpy(dst, &data, size);
 		    }
 		}
@@ -2401,15 +2388,15 @@ namespace sv {
 		case GuiHeader_StylePop:
 		{
 		    GuiStyle style;
-		    gui.style_stack.read_and_pop_back(&style, sizeof(GuiStyle));
+		    gui->style_stack.read_and_pop_back(&style, sizeof(GuiStyle));
 
 		    void* dst;
 		    size_t size;
 
-		    get_style_data(gui, style, &size, &dst);
+		    get_style_data(style, &size, &dst);
 
 		    if (dst && size) {
-			gui.style_stack.read_and_pop_back(dst, size);
+			gui->style_stack.read_and_pop_back(dst, size);
 		    }
 		}
 		break;
@@ -2417,7 +2404,7 @@ namespace sv {
 		case GuiHeader_SameLine:
 		{
 		    SV_ASSERT(current_parent != u32_max);
-		    GuiParentInfo* parent_info = get_parent_info(gui, current_parent);
+		    GuiParentInfo* parent_info = get_parent_info(current_parent);
 		    u32 count = _read<u32>(it);
 		    SV_ASSERT(parent_info->flow.same_line_count == 1u);
 		    parent_info->flow.same_line_count = count;
@@ -2432,14 +2419,14 @@ namespace sv {
 	{
 	    u32 menu_index = 0u;
 
-	    foreach(i, gui.indices.size()) {
+	    foreach(i, gui->indices.size()) {
 
-		const GuiIndex& index = gui.indices[i];
-		GuiWidget* widget = &gui.widgets[index.index];
+		const GuiIndex& index = gui->indices[i];
+		GuiWidget* widget = &gui->widgets[index.index];
 
-		update_bounds(gui, widget, nullptr, menu_index);
+		update_bounds(widget, nullptr, menu_index);
 
-		GuiParentInfo* parent_info = get_parent_info(gui, *widget);
+		GuiParentInfo* parent_info = get_parent_info(*widget);
 
 		if (parent_info) {
 					
@@ -2449,20 +2436,20 @@ namespace sv {
 	}
 
 	// Update focus
-	if (gui.current_focus.index != u32_max) {
+	if (gui->current_focus.index != u32_max) {
 
-	    update_focus(gui, gui.current_focus);
+	    update_focus(gui->current_focus);
 	    input.unused = false;
 	}
 
 	// Update widgets
-	foreach(i, gui.indices.size()) {
+	foreach(i, gui->indices.size()) {
 
-	    const GuiIndex& w = gui.indices[i];
+	    const GuiIndex& w = gui->indices[i];
 
-	    update_widget(gui, w);
+	    update_widget(w);
 
-	    GuiParentInfo* parent_info = get_parent_info(gui, w);
+	    GuiParentInfo* parent_info = get_parent_info(w.index);
 	    if (parent_info) {
 
 		i += parent_info->widget_count;
@@ -2470,22 +2457,22 @@ namespace sv {
 	}
 
 	// Catch input
-	if (gui.catch_input)
+	if (gui->catch_input)
 	    input.unused = false;
     }
 
-    SV_INLINE static void update_id(GUI& gui)
+    SV_INLINE static void update_id()
     {
-	gui.current_id = 0U;
-	for (u64 id : gui.ids)
-	    hash_combine(gui.current_id, id);
+	gui->current_id = 0U;
+	for (u64 id : gui->ids)
+	    hash_combine(gui->current_id, id);
     }
 
-    void gui_global_style_get(GUI* gui, GuiStyle style, void* value, size_t size)
+    void gui_global_style_get(GuiStyle style, void* value, size_t size)
     {
 	void* dst;
 	size_t write_size;
-	get_style_data(*gui, style, &write_size, &dst, false);
+	get_style_data(style, &write_size, &dst, false);
 
 	if (dst && write_size) {
 
@@ -2494,11 +2481,11 @@ namespace sv {
 	}
     }
     
-    void gui_global_style_set(GUI* gui, GuiStyle style, const void* value, size_t size)
+    void gui_global_style_set(GuiStyle style, const void* value, size_t size)
     {
 	void* dst;
 	size_t write_size;
-	get_style_data(*gui, style, &write_size, &dst, false);
+	get_style_data(style, &write_size, &dst, false);
 
 	if (dst && write_size) {
 
@@ -2507,132 +2494,125 @@ namespace sv {
 	}
     }
 
-    void gui_push_style(GUI* gui, GuiStyle style, const void* value, size_t size)
+    void gui_push_style(GuiStyle style, const void* value, size_t size)
     {
 	SV_ASSERT(size <= sizeof(u64) * 2u);
 	
 	++gui->style_count;
-	write_buffer(*gui, GuiHeader_StylePush);
+	write_buffer(GuiHeader_StylePush);
 
-	write_buffer(*gui, style);
+	write_buffer(style);
 	
 	u64 data[2u];
 	memcpy(&data, value, size);
-	write_buffer(*gui, value, sizeof(u64) * 2u);
+	write_buffer(value, sizeof(u64) * 2u);
     }
     
-    void gui_pop_style(GUI* gui, u32 count)
+    void gui_pop_style(u32 count)
     {
 	SV_ASSERT(gui->style_count >= count);
 	
 	foreach(i, count) {
 
-	    write_buffer(*gui, GuiHeader_StylePop);
+	    write_buffer(GuiHeader_StylePop);
 	}
 
 	gui->style_count -= count;
     }
 
-    void gui_same_line(GUI* gui, u32 count)
+    void gui_same_line(u32 count)
     {
 	SV_ASSERT(count != 0u);
 	SV_ASSERT(gui->parent_stack.size() && gui->parent_stack.back().layout == GuiLayout_Flow);
-	write_buffer(*gui, GuiHeader_SameLine);
-	write_buffer(*gui, count);
+	write_buffer(GuiHeader_SameLine);
+	write_buffer(count);
     }
 
-    void gui_push_id(GUI* gui_, u64 id)
+    void gui_push_id(u64 id)
     {
-	PARSE_GUI();
-	gui.ids.push_back(id);
-	update_id(gui);
+	gui->ids.push_back(id);
+	update_id();
     }
 
-    void gui_push_id(GUI* gui_, const char* id)
+    void gui_push_id(const char* id)
     {
-	PARSE_GUI();
-	gui.ids.push_back((u64)id);
-	update_id(gui);
+	gui->ids.push_back((u64)id);
+	update_id();
     }
 
-    void gui_pop_id(GUI* gui_, u32 count)
+    void gui_pop_id(u32 count)
     {
-	PARSE_GUI();
-	SV_ASSERT(gui.ids.size() >= count);
-	gui.ids.pop_back(count);
-	update_id(gui);
+	SV_ASSERT(gui->ids.size() >= count);
+	gui->ids.pop_back(count);
+	update_id();
     }
 
-    void gui_xbounds(GUI* gui_, GuiCoord x0, GuiCoord x1)
+    void gui_xbounds(GuiCoord x0, GuiCoord x1)
     {
-	PARSE_GUI();
-	gui.free_bounds.xtype = GuiCoordType_Coord;
-	gui.free_bounds.xcoord._0 = x0;
-	gui.free_bounds.xcoord._1 = x1;
+	gui->free_bounds.xtype = GuiCoordType_Coord;
+	gui->free_bounds.xcoord._0 = x0;
+	gui->free_bounds.xcoord._1 = x1;
     }
     
-    void gui_xbounds(GUI* gui_, GuiCoord x, GuiAlign align, GuiDim w)
-    {
-	PARSE_GUI();
-	gui.free_bounds.xtype = GuiCoordType_Dim;
-	gui.free_bounds.xdim.c = x;
-	gui.free_bounds.xdim.align = align;
-	gui.free_bounds.xdim.d = w;
+    void gui_xbounds(GuiCoord x, GuiAlign align, GuiDim w)
+    {	
+	gui->free_bounds.xtype = GuiCoordType_Dim;
+	gui->free_bounds.xdim.c = x;
+	gui->free_bounds.xdim.align = align;
+	gui->free_bounds.xdim.d = w;
     }
     
-    void gui_ybounds(GUI* gui_, GuiCoord y0, GuiCoord y1)
-    {
-	PARSE_GUI();
-	gui.free_bounds.ytype = GuiCoordType_Coord;
-	gui.free_bounds.ycoord._0 = y0;
-	gui.free_bounds.ycoord._1 = y1;
+    void gui_ybounds(GuiCoord y0, GuiCoord y1)
+    {	
+	gui->free_bounds.ytype = GuiCoordType_Coord;
+	gui->free_bounds.ycoord._0 = y0;
+	gui->free_bounds.ycoord._1 = y1;
     }
     
-    void gui_ybounds(GUI* gui_, GuiCoord y, GuiAlign align, GuiDim h)
-    {
-	PARSE_GUI();
-	gui.free_bounds.ytype = GuiCoordType_Dim;
-	gui.free_bounds.ydim.c = y;
-	gui.free_bounds.ydim.align = align;
-	gui.free_bounds.ydim.d = h;
+    void gui_ybounds(GuiCoord y, GuiAlign align, GuiDim h)
+    {	
+	gui->free_bounds.ytype = GuiCoordType_Dim;
+	gui->free_bounds.ydim.c = y;
+	gui->free_bounds.ydim.align = align;
+	gui->free_bounds.ydim.d = h;
     }
     
-    void gui_bounds(GUI* gui_, GuiCoord x, GuiAlign xalign, GuiDim w, GuiCoord y, GuiAlign yalign, GuiDim h)
+    void gui_bounds(GuiCoord x, GuiAlign xalign, GuiDim w, GuiCoord y, GuiAlign yalign, GuiDim h)
     {
-	PARSE_GUI();
-	gui.free_bounds.xtype = GuiCoordType_Dim;
-	gui.free_bounds.xdim.c = x;
-	gui.free_bounds.xdim.align = xalign;
-	gui.free_bounds.xdim.d = w;
-	gui.free_bounds.ytype = GuiCoordType_Dim;
-	gui.free_bounds.ydim.c = y;
-	gui.free_bounds.ydim.align = yalign;
-	gui.free_bounds.ydim.d = h;
+	
+	gui->free_bounds.xtype = GuiCoordType_Dim;
+	gui->free_bounds.xdim.c = x;
+	gui->free_bounds.xdim.align = xalign;
+	gui->free_bounds.xdim.d = w;
+	gui->free_bounds.ytype = GuiCoordType_Dim;
+	gui->free_bounds.ydim.c = y;
+	gui->free_bounds.ydim.align = yalign;
+	gui->free_bounds.ydim.d = h;
     }
     
-    void gui_bounds(GUI* gui_, GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1)
+    void gui_bounds(GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1)
     {
-	PARSE_GUI();
-	gui.free_bounds.xtype = GuiCoordType_Coord;
-	gui.free_bounds.xcoord._0 = x0;
-	gui.free_bounds.xcoord._1 = x1;
-	gui.free_bounds.ytype = GuiCoordType_Coord;
-	gui.free_bounds.ycoord._0 = y0;
-	gui.free_bounds.ycoord._1 = y1;
+	
+	gui->free_bounds.xtype = GuiCoordType_Coord;
+	gui->free_bounds.xcoord._0 = x0;
+	gui->free_bounds.xcoord._1 = x1;
+	gui->free_bounds.ytype = GuiCoordType_Coord;
+	gui->free_bounds.ycoord._0 = y0;
+	gui->free_bounds.ycoord._1 = y1;
     }
 
     ///////////////////////////////////////////// WIDGETS ///////////////////////////////////////////
 
-    SV_INLINE static GuiWidget* find_widget(GUI& gui, u64 id, GuiWidgetType type)
+    SV_INLINE static GuiWidget* find_widget(u64 id, GuiWidgetType type)
     {
 	GuiIndex res;
 	res.index = u32_max;
 
-	if (gui.parent_stack.empty() || gui.parent_stack.back().parent == nullptr) {
+	if (gui->parent_stack.empty() || gui->parent_stack.back().parent == nullptr) {
 
-	    foreach(i, gui.indices.size()) {
+	    foreach(i, gui->indices.size()) {
 
-		const GuiIndex& w = gui.indices[i];
+		const GuiIndex& w = gui->indices[i];
 
 		if (w.id == id) {
 
@@ -2641,17 +2621,17 @@ namespace sv {
 		}
 		else {
 
-		    GuiParentInfo* parent_info = get_parent_info(gui, w);
+		    GuiParentInfo* parent_info = get_parent_info(w.index);
 		    if (parent_info) i += parent_info->widget_count;
 		}
 	    }
 	}
 	else {
 
-	    WritingParentInfo& info = gui.parent_stack.back();
+	    WritingParentInfo& info = gui->parent_stack.back();
 
-	    GuiParentInfo* parent_info = get_parent_info(gui, *info.parent);
-	    GuiIndex* it = gui.indices.data() + parent_info->widget_offset;
+	    GuiParentInfo* parent_info = get_parent_info(*info.parent);
+	    GuiIndex* it = gui->indices.data() + parent_info->widget_offset;
 	    GuiIndex* end = it + parent_info->widget_count;
 
 	    while (it != end) {
@@ -2663,7 +2643,7 @@ namespace sv {
 		}
 		else {
 
-		    parent_info = get_parent_info(gui, *it);
+		    parent_info = get_parent_info(it->index);
 		    if (parent_info) it += parent_info->widget_count;
 		}
 
@@ -2673,7 +2653,7 @@ namespace sv {
 
 	if (res.index == u32_max) return nullptr;
 
-	GuiWidget* widget = &gui.widgets[res.index];
+	GuiWidget* widget = &gui->widgets[res.index];
 
 	if (widget->type != type) {
 	    SV_ASSERT(!"Widget ID repeated with different widget type");
@@ -2683,54 +2663,53 @@ namespace sv {
 	return widget;
     }
 
-    SV_INLINE void begin_parent(GUI& gui, GuiWidget* parent, u64 id, GuiLayout layout)
+    SV_INLINE void begin_parent(GuiWidget* parent, u64 id, GuiLayout layout)
     {
-	WritingParentInfo& info = gui.parent_stack.emplace_back();
+	WritingParentInfo& info = gui->parent_stack.emplace_back();
 	info.layout = layout;
 	
 	if (parent) {
 	    SV_ASSERT(is_parent(parent->type));
 	    info.parent = parent;
 	}
-	gui_push_id((GUI*)& gui, id);
+	gui_push_id(id);
     }
 
-    SV_INLINE void end_parent(GUI& gui)
+    SV_INLINE void end_parent()
     {
-	write_buffer(gui, GuiHeader_EndOfParent);
-	gui_pop_id((GUI*)& gui);
-	gui.parent_stack.pop_back();
+	write_buffer(GuiHeader_EndOfParent);
+	gui_pop_id();
+	gui->parent_stack.pop_back();
     }
 
-    void gui_begin_container(GUI* gui_, u64 id, GuiLayout layout)
+    void gui_begin_container(u64 id, GuiLayout layout)
     {
-	PARSE_GUI();
-	hash_combine(id, gui.current_id);
+	
+	hash_combine(id, gui->current_id);
 
-	GuiWidget* w = find_widget(gui, id, GuiWidgetType_Container);
+	GuiWidget* w = find_widget(id, GuiWidgetType_Container);
 
 	Raw_Container raw;
 
 	GuiParentInfo* parent_info;
-	if (w) parent_info = get_parent_info(gui, *w);
+	if (w) parent_info = get_parent_info(*w);
 	else parent_info = nullptr;
 
-	write_widget(gui, GuiWidgetType_Container, id, &raw, parent_info, layout);
-	begin_parent(gui, w, id, layout);
+	write_widget(GuiWidgetType_Container, id, &raw, parent_info, layout);
+	begin_parent(w, id, layout);
     }
 
-    void gui_end_container(GUI* gui_)
+    void gui_end_container()
     {
-	PARSE_GUI();
-	end_parent(gui);
+	end_parent();
     }
 
-    bool gui_begin_popup(GUI* gui_, GuiPopupTrigger trigger, MouseButton mouse_button, u64 id, GuiLayout layout)
+    bool gui_begin_popup(GuiPopupTrigger trigger, MouseButton mouse_button, u64 id, GuiLayout layout)
     {
-	PARSE_GUI();
-	hash_combine(id, gui.current_id);
+	
+	hash_combine(id, gui->current_id);
 
-	GuiWidget* w = find_widget(gui, id, GuiWidgetType_Popup);
+	GuiWidget* w = find_widget(id, GuiWidgetType_Popup);
 
 	if (w) {
 
@@ -2742,10 +2721,10 @@ namespace sv {
 	    Raw_Popup raw;
 	    raw.bounds = w->bounds;
 
-	    GuiParentInfo* parent_info = get_parent_info(gui, *w);
+	    GuiParentInfo* parent_info = get_parent_info(*w);
 
-	    write_widget(gui, GuiWidgetType_Popup, w->id, &raw, parent_info, layout);
-	    begin_parent(gui, w, id, layout);
+	    write_widget(GuiWidgetType_Popup, w->id, &raw, parent_info, layout);
+	    begin_parent(w, id, layout);
 	    return true;
 	}
 	else {
@@ -2759,24 +2738,24 @@ namespace sv {
 
 		case GuiPopupTrigger_Parent:
 		{
-		    if (gui.parent_stack.size() && gui.parent_stack.back().parent != nullptr) {
+		    if (gui->parent_stack.size() && gui->parent_stack.back().parent != nullptr) {
 
-			GuiWidget& parent = *gui.parent_stack.back().parent;
+			GuiWidget& parent = *gui->parent_stack.back().parent;
 
-			if (mouse_in_bounds(gui, parent.bounds)) {
+			if (mouse_in_bounds(parent.bounds)) {
 
 			    open = true;
 							
-			    GuiParentInfo* parent_info = get_parent_info(gui, parent);
+			    GuiParentInfo* parent_info = get_parent_info(parent);
 			    SV_ASSERT(parent_info);
 
 			    foreach(i, parent_info->widget_count) {
 
-				const GuiIndex& w = gui.indices[parent_info->widget_offset + i];
+				const GuiIndex& w = gui->indices[parent_info->widget_offset + i];
 
-				const v4_f32& bounds = gui.widgets[w.index].bounds;
+				const v4_f32& bounds = gui->widgets[w.index].bounds;
 
-				if (mouse_in_bounds(gui, bounds)) {
+				if (mouse_in_bounds(bounds)) {
 				    open = false;
 				    break;
 				}
@@ -2788,11 +2767,11 @@ namespace sv {
 
 		case GuiPopupTrigger_LastWidget:
 		{
-		    if (gui.last.type != GuiWidgetType_None) {
+		    if (gui->last.type != GuiWidgetType_None) {
 
-			GuiWidget* w = find_widget(gui, gui.last.id, gui.last.type);
+			GuiWidget* w = find_widget(gui->last.id, gui->last.type);
 
-			if (w && mouse_in_bounds(gui, w->bounds)) {
+			if (w && mouse_in_bounds(w->bounds)) {
 			    open = true;
 			}
 		    }
@@ -2807,11 +2786,11 @@ namespace sv {
 		Raw_Popup raw;
 		raw.bounds.z = 0.1f;
 		raw.bounds.w = 0.2f;
-		raw.bounds.x = gui.mouse_position.x + raw.bounds.z * 0.5f;
-		raw.bounds.y = gui.mouse_position.y - raw.bounds.w * 0.5f;
+		raw.bounds.x = gui->mouse_position.x + raw.bounds.z * 0.5f;
+		raw.bounds.y = gui->mouse_position.y - raw.bounds.w * 0.5f;
 
-		write_widget(gui, GuiWidgetType_Popup, id, &raw, nullptr, layout);
-		begin_parent(gui, w, id, layout);
+		write_widget(GuiWidgetType_Popup, id, &raw, nullptr, layout);
+		begin_parent(w, id, layout);
 		return true;
 	    }
 	}
@@ -2819,23 +2798,21 @@ namespace sv {
 	return false;
     }
 
-    void gui_end_popup(GUI* gui_)
+    void gui_end_popup()
     {
-	PARSE_GUI();
-	end_parent(gui);
+	end_parent();
     }
 
     /////////////////////////////////////// WINDOW ////////////////////////////////////////////////
 
-    bool gui_begin_window(GUI* gui_, const char* title, GuiLayout layout)
+    bool gui_begin_window(const char* title, GuiLayout layout)
     {
-	PARSE_GUI();
 	u64 id = hash_string(title);
 
 	GuiWindowState* state = nullptr;
 
-	auto it = gui.static_state.window.find(id);
-	if (it == gui.static_state.window.end()) {
+	auto it = gui->static_state.window.find(id);
+	if (it == gui->static_state.window.end()) {
 
 	    GuiWindowState s;
 	    s.bounds = { 0.5f, 0.5f, 0.1f, 0.3f };
@@ -2843,45 +2820,44 @@ namespace sv {
 	    s.title = title;
 	    s.id = id;
 
-	    gui.static_state.window[id] = std::move(s);
-	    state = &gui.static_state.window[id];
+	    gui->static_state.window[id] = std::move(s);
+	    state = &gui->static_state.window[id];
 	}
 	else state = &it->second;
 
 	if (state->show) {
 	    Raw_Window raw;
 
-	    GuiWidget* w = find_widget(gui, id, GuiWidgetType_Window);
+	    GuiWidget* w = find_widget(id, GuiWidgetType_Window);
 
 	    GuiParentInfo* parent_info;
-	    if (w) parent_info = get_parent_info(gui, *w);
+	    if (w) parent_info = get_parent_info(*w);
 	    else parent_info = nullptr;
 
-	    write_widget(gui, GuiWidgetType_Window, id, &raw, parent_info, layout);
-	    begin_parent(gui, w, id, layout);
+	    write_widget(GuiWidgetType_Window, id, &raw, parent_info, layout);
+	    begin_parent(w, id, layout);
 	}
 
 	return state->show;
     }
 
-    void gui_end_window(GUI* gui_)
+    void gui_end_window()
     {
-	PARSE_GUI();
-	end_parent(gui);
+	end_parent();
     }
 
-    SV_INLINE static GuiWindowState* get_window_state(GUI& gui, u64 id)
+    SV_AUX GuiWindowState* get_window_state(u64 id)
     {
-	auto it = gui.static_state.window.find(id);
-	if (it == gui.static_state.window.end()) return nullptr;
+	auto it = gui->static_state.window.find(id);
+	if (it == gui->static_state.window.end()) return nullptr;
 	return &it->second;
     }
 
-    bool gui_show_window(GUI* gui_, const char* title)
+    bool gui_show_window(const char* title)
     {
-	PARSE_GUI();
+	
 	u64 id = hash_string(title);
-	GuiWindowState* state = get_window_state(gui, id);
+	GuiWindowState* state = get_window_state(id);
 
 	if (state) {
 
@@ -2892,11 +2868,11 @@ namespace sv {
 	return false;
     }
 
-    bool gui_hide_window(GUI* gui_, const char* title)
+    bool gui_hide_window(const char* title)
     {
-	PARSE_GUI();
+	
 	u64 id = hash_string(title);
-	GuiWindowState* state = get_window_state(gui, id);
+	GuiWindowState* state = get_window_state(id);
 
 	if (state) {
 
@@ -2909,12 +2885,12 @@ namespace sv {
 
     /////////////////////////////////////// MENU ITEM /////////////////////////////////////////
 
-    bool gui_begin_menu_item(GUI* gui_, const char* text, u64 id, GuiLayout layout)
+    bool gui_begin_menu_item(const char* text, u64 id, GuiLayout layout)
     {
-	PARSE_GUI();
-	hash_combine(id, gui.current_id);
+	
+	hash_combine(id, gui->current_id);
 
-	GuiWidget* w = find_widget(gui, id, GuiWidgetType_MenuItem);
+	GuiWidget* w = find_widget(id, GuiWidgetType_MenuItem);
 
 	{
 	    Raw_MenuItem raw;
@@ -2922,10 +2898,10 @@ namespace sv {
 	    raw.active = w ? w->widget.menu_item.active : false;
 
 	    GuiParentInfo* parent_info;
-	    if (w) parent_info = get_parent_info(gui, *w);
+	    if (w) parent_info = get_parent_info(*w);
 	    else parent_info = nullptr;
 
-	    write_widget(gui, GuiWidgetType_MenuItem, id, &raw, parent_info);
+	    write_widget(GuiWidgetType_MenuItem, id, &raw, parent_info);
 	}
 
 	if (w && w->widget.menu_item.active) {
@@ -2933,10 +2909,10 @@ namespace sv {
 	    u64 container_id = id;
 	    hash_combine(container_id, 0x32d9f32ac);
 
-	    write_widget(gui, GuiWidgetType_MenuContainer, container_id, nullptr, get_parent_info(gui, *w), layout);
+	    write_widget(GuiWidgetType_MenuContainer, container_id, nullptr, get_parent_info(*w), layout);
 
-	    GuiWidget* c = find_widget(gui, container_id, GuiWidgetType_MenuContainer);
-	    begin_parent(gui, c, container_id, layout);
+	    GuiWidget* c = find_widget(container_id, GuiWidgetType_MenuContainer);
+	    begin_parent(c, container_id, layout);
 
 	    return true;
 	}
@@ -2944,27 +2920,26 @@ namespace sv {
 	return false;
     }
 
-    void gui_end_menu_item(GUI* gui_)
+    void gui_end_menu_item()
     {
-	PARSE_GUI();
-	end_parent(gui);
+	end_parent();
     }
 
     /////////////////////////////////////// PACKAGE ///////////////////////////////////////
 
-    void gui_send_package(GUI* gui_, const void* package, u32 package_size, u64 package_id)
+    void gui_send_package(const void* package, u32 package_size, u64 package_id)
     {
-	PARSE_GUI();
+	
 
-	SV_ASSERT(gui.last.type != GuiWidgetType_None);
+	SV_ASSERT(gui->last.type != GuiWidgetType_None);
 		
-	u64 id = gui.last.id;
+	u64 id = gui->last.id;
 	hash_combine(id, 0x89562f8a732db);
 	hash_combine(package_id, 0xa89d4fb319);
 
 	Raw_Package raw;
 		
-	if (gui.current_focus.index != u32_max && gui.current_focus.id == id) {
+	if (gui->current_focus.index != u32_max && gui->current_focus.id == id) {
 			
 	    raw.package = package;
 	    raw.package_size = package_size;
@@ -2972,41 +2947,41 @@ namespace sv {
 	}
 	else raw.package_size = 0u;
 		
-	write_widget(gui, GuiWidgetType_Package, id, &raw, nullptr);
+	write_widget(GuiWidgetType_Package, id, &raw, nullptr);
     }
 	
-    bool gui_recive_package(GUI* gui_, void** package, u32* package_size, u64 package_id)
+    bool gui_recive_package(void** package, u32* package_size, u64 package_id)
     {
-	PARSE_GUI();
+	
 
-	SV_ASSERT(gui.last.type != GuiWidgetType_None);
+	SV_ASSERT(gui->last.type != GuiWidgetType_None);
 		
-	u64 id = gui.last.id;
+	u64 id = gui->last.id;
 	hash_combine(id, 0x89562f8a732db);
 	hash_combine(package_id, 0xa89d4fb319);
 
-	if (gui.current_focus.index != u32_max && gui.focus.type == GuiWidgetType_Package) {
+	if (gui->current_focus.index != u32_max && gui->focus.type == GuiWidgetType_Package) {
 
-	    GuiWidget* package_widget = &gui.widgets[gui.current_focus.index];
+	    GuiWidget* package_widget = &gui->widgets[gui->current_focus.index];
 
 	    if (package_widget->widget.package.package_id == package_id) {
 
 		Raw_Reciver raw;
 		raw.package_id = package_id;
 
-		write_widget(gui, GuiWidgetType_Reciver, id, &raw, nullptr);
+		write_widget(GuiWidgetType_Reciver, id, &raw, nullptr);
 	    }
 	}
 		
-	if (package_id == gui.package_id) {
+	if (package_id == gui->package_id) {
 
-	    GuiWidget* w = find_widget(gui, id, GuiWidgetType_Reciver);
+	    GuiWidget* w = find_widget(id, GuiWidgetType_Reciver);
 
 	    if (w && w->widget.reciver.recived) {
 
-		gui.package_id = 0u;
-		*package = gui.package_data.data();
-		if (package_size)* package_size = u32(gui.package_data.size());
+		gui->package_id = 0u;
+		*package = gui->package_data.data();
+		if (package_size)* package_size = u32(gui->package_data.size());
 		return true;
 	    }
 	}
@@ -3016,11 +2991,11 @@ namespace sv {
 
     /////////////////////////////////////// COMMON WIDGETS ///////////////////////////////////////
 
-    bool gui_text_field(GUI* gui, char* buff, size_t buff_size, u64 id)
+    bool gui_text_field(char* buff, size_t buff_size, u64 id)
     {
 	hash_combine(id, gui->current_id);
 
-	GuiWidget* w = find_widget(*gui, id, GuiWidgetType_TextField);
+	GuiWidget* w = find_widget(id, GuiWidgetType_TextField);
 
 	bool modified = false;
 
@@ -3045,13 +3020,13 @@ namespace sv {
 	    raw.buff = buff;
 	    raw.pos = w ? w->widget.text_field.pos : 0u;
 
-	    write_widget(*gui, GuiWidgetType_TextField, id, &raw, nullptr);
+	    write_widget(GuiWidgetType_TextField, id, &raw, nullptr);
 	}
 
 	return modified;
     }
     
-    bool gui_button(GUI* gui, const char* text, u64 id)
+    bool gui_button(const char* text, u64 id)
     {
 	hash_combine(id, gui->current_id);
 
@@ -3059,10 +3034,10 @@ namespace sv {
 	    Raw_Button raw;
 	    raw.text = text;
 
-	    write_widget(*gui, GuiWidgetType_Button, id, &raw, nullptr);
+	    write_widget(GuiWidgetType_Button, id, &raw, nullptr);
 	}
 
-	GuiWidget* w = find_widget(*gui, id, GuiWidgetType_Button);
+	GuiWidget* w = find_widget(id, GuiWidgetType_Button);
 
 	if (w) {
 	    return w->widget.button.pressed;
@@ -3072,15 +3047,15 @@ namespace sv {
 	}
     }
 
-    SV_AUX bool gui_drag(GUI& gui, u64* value, u64 adv, u64 min, u64 max, u64 id, GuiPrimitive primitive)
+    SV_AUX bool gui_drag(u64* value, u64 adv, u64 min, u64 max, u64 id, GuiPrimitive primitive)
     {
-	hash_combine(id, gui.current_id);
+	hash_combine(id, gui->current_id);
 
 	bool modified;
 
-	if (gui.current_focus.index != u32_max && gui.current_focus.id == id) {
+	if (gui->current_focus.index != u32_max && gui->current_focus.id == id) {
 
-	    GuiWidget& w = gui.widgets[gui.current_focus.index];
+	    GuiWidget& w = gui->widgets[gui->current_focus.index];
 	    SV_ASSERT(w.type == GuiWidgetType_Drag);
 
 	    *value = w.widget.drag.value;
@@ -3096,13 +3071,13 @@ namespace sv {
 	    raw.adv = adv;
 	    raw.primitive = primitive;
 
-	    write_widget(gui, GuiWidgetType_Drag, id, &raw, nullptr);
+	    write_widget(GuiWidgetType_Drag, id, &raw, nullptr);
 	}
 
 	return modified;
     }
 
-    bool gui_drag_f32(GUI* gui, f32* value, f32 adv, f32 min, f32 max, u64 id)
+    bool gui_drag_f32(f32* value, f32 adv, f32 min, f32 max, u64 id)
     {
 	u64 _value;
 	u64 _adv;
@@ -3114,7 +3089,7 @@ namespace sv {
 	memcpy(&_min, &min, sizeof(f32));
 	memcpy(&_max, &max, sizeof(f32));
 
-	bool res = gui_drag(*gui, &_value, _adv, _min, _max, id, GuiPrimitive_f32);
+	bool res = gui_drag(&_value, _adv, _min, _max, id, GuiPrimitive_f32);
 
 	if (res) {
 	    memcpy(value, &_value, sizeof(f32));
@@ -3123,7 +3098,7 @@ namespace sv {
 	return res;
     }
 
-    bool gui_drag_u8(GUI* gui, u8* value, u8 adv, u8 min, u8 max, u64 id)
+    bool gui_drag_u8(u8* value, u8 adv, u8 min, u8 max, u64 id)
     {
 	u64 _value;
 	u64 _adv;
@@ -3135,7 +3110,7 @@ namespace sv {
 	memcpy(&_min, &min, sizeof(u8));
 	memcpy(&_max, &max, sizeof(u8));
 
-	bool res = gui_drag(*gui, &_value, _adv, _min, _max, id, GuiPrimitive_u8);
+	bool res = gui_drag(&_value, _adv, _min, _max, id, GuiPrimitive_u8);
 
 	if (res) {
 	    memcpy(value, &_value, sizeof(u8));
@@ -3144,32 +3119,30 @@ namespace sv {
 	return res;
     }
     
-    bool gui_slider(GUI* gui, f32* value, f32 min, f32 max, u64 id)
+    bool gui_slider(f32* value, f32 min, f32 max, u64 id)
     {
 	return false;
     }
 
-    void gui_text(GUI* gui_, const char* text, u64 id)
+    void gui_text(const char* text, u64 id)
     {
-	PARSE_GUI();
-	hash_combine(id, gui.current_id);
+	hash_combine(id, gui->current_id);
 		
 	Raw_Label raw;
 	raw.text = text;
 
-	write_widget(gui, GuiWidgetType_Label, id, &raw, nullptr);		
+	write_widget(GuiWidgetType_Label, id, &raw, nullptr);		
     }
 
-    bool gui_checkbox(GUI* gui_, const char* text, bool* value, u64 id)
-    {
-	PARSE_GUI();
-	hash_combine(id, gui.current_id);
+    bool gui_checkbox(const char* text, bool* value, u64 id)
+    {	
+	hash_combine(id, gui->current_id);
 
 	bool modified;
 
-	if (gui.current_focus.index != u32_max && gui.current_focus.id == id) {
+	if (gui->current_focus.index != u32_max && gui->current_focus.id == id) {
 
-	    GuiWidget& w = gui.widgets[gui.current_focus.index];
+	    GuiWidget& w = gui->widgets[gui->current_focus.index];
 	    SV_ASSERT(w.type == GuiWidgetType_Checkbox);
 	    *value = w.widget.checkbox.value;
 	    modified = w.widget.checkbox.modified;
@@ -3182,33 +3155,32 @@ namespace sv {
 	    raw.modified = modified;
 	    raw.text = text;
 
-	    write_widget(gui, GuiWidgetType_Checkbox, id, &raw, nullptr);
+	    write_widget(GuiWidgetType_Checkbox, id, &raw, nullptr);
 	}
 
 	return modified;
     }
 
-    bool gui_checkbox(GUI* gui_, const char* text, u64 user_id)
+    bool gui_checkbox(const char* text, u64 user_id)
     {
-	PARSE_GUI();
 	u64 id = user_id;
-	hash_combine(id, gui.current_id);
+	hash_combine(id, gui->current_id);
 
 	bool* value = nullptr;
 
-	auto it = gui.static_state.checkbox.find(id);
-	if (it == gui.static_state.checkbox.end()) {
+	auto it = gui->static_state.checkbox.find(id);
+	if (it == gui->static_state.checkbox.end()) {
 
-	    gui.static_state.checkbox[id] = false;
-	    value = &gui.static_state.checkbox[id];
+	    gui->static_state.checkbox[id] = false;
+	    value = &gui->static_state.checkbox[id];
 	}
 	else value = &it->second;
 		
-	gui_checkbox(gui_, text, value, user_id);
+	gui_checkbox(text, value, user_id);
 	return *value;
     }
 
-    void gui_image(GUI* gui, GPUImage* image, GPUImageLayout layout, u64 id)
+    void gui_image(GPUImage* image, GPUImageLayout layout, u64 id)
     {
 	hash_combine(id, gui->current_id);
 
@@ -3216,20 +3188,20 @@ namespace sv {
 	raw.image = image;
 	raw.layout = layout;
 	
-	write_widget(*gui, GuiWidgetType_Image, id, &raw, nullptr);
+	write_widget(GuiWidgetType_Image, id, &raw, nullptr);
     }
 
     ///////////////////////////////////////////// GETTERS ///////////////////////////////////////////
 
-    v4_f32 gui_parent_bounds(GUI* gui_)
+    v4_f32 gui_parent_bounds()
     {
-	PARSE_GUI();
-	return (gui.parent_stack.size() && gui.parent_stack.back().parent) ? gui.parent_stack.back().parent->bounds : v4_f32{};
+	
+	return (gui->parent_stack.size() && gui->parent_stack.back().parent) ? gui->parent_stack.back().parent->bounds : v4_f32{};
     }
 
     ///////////////////////////////////////////// RENDERING ///////////////////////////////////////////
 
-    SV_INTERNAL void draw_widget(GUI& gui, const GuiWidget& w, CommandList cmd)
+    SV_INTERNAL void draw_widget(const GuiWidget& w, CommandList cmd)
     {	
 	switch (w.type)
 	{
@@ -3251,7 +3223,7 @@ namespace sv {
 
 		imrend_draw_text(button.text, strlen(button.text)
 			  , pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - renderer->font_opensans.vertical_offset * font_size,
-			  size.x, 1u, font_size, gui.aspect, TextAlignment_Center, &renderer->font_opensans, button.style.text_color, cmd);
+			  size.x, 1u, font_size, gui->aspect, TextAlignment_Center, &renderer->font_opensans, button.style.text_color, cmd);
 	    }
 	}
 	break;
@@ -3271,7 +3243,7 @@ namespace sv {
 
 		imrend_draw_text(field.text, strlen(field.text)
 			  , pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - renderer->font_opensans.vertical_offset * font_size,
-			  size.x, 1u, font_size, gui.aspect, TextAlignment_Center, &renderer->font_opensans, field.style.text_color, cmd);
+			  size.x, 1u, font_size, gui->aspect, TextAlignment_Center, &renderer->font_opensans, field.style.text_color, cmd);
 	    }
 	}
 	break;
@@ -3322,7 +3294,7 @@ namespace sv {
 
 	    imrend_draw_text(strbuff, strlen(strbuff)
 		      , pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - renderer->font_opensans.vertical_offset * font_size,
-		      size.x, 1u, font_size, gui.aspect, TextAlignment_Center, &renderer->font_opensans, drag.style.text_color, cmd);
+		      size.x, 1u, font_size, gui->aspect, TextAlignment_Center, &renderer->font_opensans, drag.style.text_color, cmd);
 	}
 	break;
 
@@ -3341,7 +3313,7 @@ namespace sv {
 
 		imrend_draw_text(menu.text, strlen(menu.text)
 			  , pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - renderer->font_opensans.vertical_offset * font_size,
-			  size.x, 1u, font_size, gui.aspect, TextAlignment_Center, &renderer->font_opensans, menu.style.text_color, cmd);
+			  size.x, 1u, font_size, gui->aspect, TextAlignment_Center, &renderer->font_opensans, menu.style.text_color, cmd);
 	    }
 	}
 	break;
@@ -3361,7 +3333,7 @@ namespace sv {
 
 		f32 font_size = size.y + size.y * renderer->font_opensans.vertical_offset;
 
-		imrend_draw_text(label.text, strlen(label.text), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f, size.x, 1u, font_size, gui.aspect, label.style.text_alignment,
+		imrend_draw_text(label.text, strlen(label.text), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f, size.x, 1u, font_size, gui->aspect, label.style.text_alignment,
 			  &renderer->font_opensans, label.style.text_color, cmd);
 	    }
 	}
@@ -3373,7 +3345,7 @@ namespace sv {
 	    v2_f32 size;
 
 	    auto& cb = w.widget.checkbox;
-	    v4_f32 b = compute_checkbox_button_bounds(gui, w);
+	    v4_f32 b = compute_checkbox_button_bounds(w);
 	    pos = v2_f32{ b.x, b.y };
 	    size = v2_f32{ b.z, b.w };
 
@@ -3420,7 +3392,7 @@ namespace sv {
 
 		imrend_draw_text(cb.text, strlen(cb.text)
 				 , pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - renderer->font_opensans.vertical_offset * font_size,
-				 size.x, 1u, font_size, gui.aspect, cb.style.text_alignment, &renderer->font_opensans, cb.style.text_color, cmd);
+				 size.x, 1u, font_size, gui->aspect, cb.style.text_alignment, &renderer->font_opensans, cb.style.text_color, cmd);
 	    }
 	}
 	break;
@@ -3471,8 +3443,8 @@ namespace sv {
 	    const GuiWindowState& state = *window.state;
 	    const GuiWindowStyle& style = window.style;
 
-	    v4_f32 decoration = compute_window_decoration_bounds(gui, w);
-	    v4_f32 closebutton = compute_window_closebutton_bounds(gui, w, decoration);
+	    v4_f32 decoration = compute_window_decoration_bounds(w);
+	    v4_f32 closebutton = compute_window_closebutton_bounds(w, decoration);
 
 	    v2_f32 outline_size;
 	    v2_f32 content_position;
@@ -3481,7 +3453,7 @@ namespace sv {
 	    content_position = v2_f32{ w.bounds.x, w.bounds.y };
 	    content_size = v2_f32{ w.bounds.z, w.bounds.w };
 
-	    outline_size = content_size + v2_f32{ style.outline_size, style.outline_size * gui.aspect } *2.f;
+	    outline_size = content_size + v2_f32{ style.outline_size, style.outline_size * gui->aspect } *2.f;
 
 	    v2_f32 decoration_position = v2_f32(decoration.x, decoration.y);
 	    v2_f32 decoration_size = v2_f32(decoration.z, decoration.w);
@@ -3489,7 +3461,7 @@ namespace sv {
 	    v2_f32 closebutton_size = v2_f32(closebutton.z, closebutton.w);
 
 	    Color decoration_color;
-	    if (gui.focus.type == GuiWidgetType_Window && gui.focus.id == w.id) {
+	    if (gui->focus.type == GuiWidgetType_Window && gui->focus.id == w.id) {
 		decoration_color = style.decoration_focus_color;
 	    }
 	    else if (window.hot_decoration) {
@@ -3511,7 +3483,7 @@ namespace sv {
 		imrend_draw_text(state.title.c_str(), state.title.size()
 			  , decoration_position.x - decoration_size.x * 0.5f + 0.01f, decoration_position.y +
 			  decoration_size.y * 0.25f - renderer->font_opensans.vertical_offset * font_size, decoration_size.x, 1u, font_size,
-				 gui.aspect, TextAlignment_Left, &renderer->font_opensans, Color::White(), cmd);
+				 gui->aspect, TextAlignment_Left, &renderer->font_opensans, Color::White(), cmd);
 	    }
 	}
 	break;
@@ -3520,7 +3492,7 @@ namespace sv {
 
 	// If it is a parent, draw childs and some parent stuff
 	{
-	    const GuiParentInfo* parent_info = get_parent_info(gui, w);
+	    const GuiParentInfo* parent_info = get_parent_info(w);
 	    if (parent_info) {
 
 		// Draw vertical scroll
@@ -3548,31 +3520,31 @@ namespace sv {
 		const v4_f32& s = parent_info->child_bounds;
 		imrend_push_scissor(s.x, s.y, s.z, s.w, !ignore_scroll(w.type), cmd);
 				
-		GuiIndex* it = gui.indices.data() + parent_info->widget_offset;
+		GuiIndex* it = gui->indices.data() + parent_info->widget_offset;
 		GuiIndex* end = it + parent_info->widget_count;
 
 		// Draw normal widgets
 		while (it != end) {
 
-		    GuiParentInfo* p = get_parent_info(gui, *it);
+		    GuiParentInfo* p = get_parent_info(it->index);
 		    if (p) {
 
 			it += p->widget_count;
 		    }
-		    else draw_widget(gui, gui.widgets[it->index], cmd);
+		    else draw_widget(gui->widgets[it->index], cmd);
 
 		    ++it;
 		}
 
 		// Draw parents
-		it = gui.indices.data() + parent_info->widget_offset;
+		it = gui->indices.data() + parent_info->widget_offset;
 
 		while (it != end) {
 
-		    GuiParentInfo* p = get_parent_info(gui, *it);
+		    GuiParentInfo* p = get_parent_info(it->index);
 		    if (p) {
 
-			draw_widget(gui, gui.widgets[it->index], cmd);
+			draw_widget(gui->widgets[it->index], cmd);
 			it += p->widget_count;
 		    }
 
@@ -3584,30 +3556,28 @@ namespace sv {
 	}
     }
 
-    void gui_draw(GUI* gui_, CommandList cmd)
+    void gui_draw(CommandList cmd)
     {
-	PARSE_GUI();
-
 	imrend_begin_batch(cmd);
 
 	imrend_camera(ImRendCamera_Normal, cmd);
 
-	foreach(i, gui.indices.size()) {
+	foreach(i, gui->indices.size()) {
 
-	    const GuiIndex& w = gui.indices[i];
+	    const GuiIndex& w = gui->indices[i];
 
-	    draw_widget(gui, gui.widgets[w.index], cmd);
+	    draw_widget(gui->widgets[w.index], cmd);
 
-	    GuiParentInfo* parent_index = get_parent_info(gui, w);
+	    GuiParentInfo* parent_index = get_parent_info(w.index);
 	    if (parent_index) {
 
 		i += parent_index->widget_count;
 	    }
 	}
 
-	if (gui.focus.type == GuiWidgetType_Package) {
+	if (gui->focus.type == GuiWidgetType_Package) {
 
-	    imrend_draw_quad((gui.mouse_position).getVec3(0.f), v2_f32{ 0.01f, 0.01f * gui.aspect }, Color::Green(), cmd);
+	    imrend_draw_quad((gui->mouse_position).getVec3(0.f), v2_f32{ 0.01f, 0.01f * gui->aspect }, Color::Green(), cmd);
 
 	}
 
@@ -3616,106 +3586,106 @@ namespace sv {
 
     /////////////////////////////////// HIGH LEVEL //////////////////////////////////////////
 
-    void gui_display_style_settings(GUI* gui)
+    void gui_display_style_settings()
     {
-	if (gui_begin_window(gui, "Style Settings", GuiLayout_Flow)) {
+	if (gui_begin_window("Style Settings", GuiLayout_Flow)) {
 
 	    u64 id = 0u;
 	    
-	    gui_push_style(gui, GuiStyle_TextAlignment, TextAlignment_Left);
+	    gui_push_style(GuiStyle_TextAlignment, TextAlignment_Left);
 	    
-	    gui_same_line(gui, 2u);
-	    gui_text(gui, "Container Color", id++);
-	    gui_drag_color4(gui, &gui->style.container.color, id++);
+	    gui_same_line(2u);
+	    gui_text("Container Color", id++);
+	    gui_drag_color4(&gui->style.container.color, id++);
 
-	    gui_same_line(gui, 2u);
-	    gui_text(gui, "Window Color", id++);
-	    gui_drag_color4(gui, &gui->style.window.color, id++);
+	    gui_same_line(2u);
+	    gui_text("Window Color", id++);
+	    gui_drag_color4(&gui->style.window.color, id++);
 
-	    gui_same_line(gui, 2u);
-	    gui_text(gui, "Window Decoration Color", id++);
-	    gui_drag_color4(gui, &gui->style.window.decoration_color, id++);
+	    gui_same_line(2u);
+	    gui_text("Window Decoration Color", id++);
+	    gui_drag_color4(&gui->style.window.decoration_color, id++);
 
-	    gui_same_line(gui, 2u);
-	    gui_text(gui, "Window Outline Color", id++);
-	    gui_drag_color4(gui, &gui->style.window.outline_color, id++);
+	    gui_same_line(2u);
+	    gui_text("Window Outline Color", id++);
+	    gui_drag_color4(&gui->style.window.outline_color, id++);
 	    
-	    gui_same_line(gui, 2u);
-	    gui_text(gui, "Window Decoration Height", id++);
-	    gui_drag_f32(gui, &gui->style.window.decoration_height, 0.01f, 0.f, 1.f, id++);
+	    gui_same_line(2u);
+	    gui_text("Window Decoration Height", id++);
+	    gui_drag_f32(&gui->style.window.decoration_height, 0.01f, 0.f, 1.f, id++);
 
-	    gui_same_line(gui, 2u);
-	    gui_text(gui, "Window Min Width", id++);
-	    gui_drag_f32(gui, &gui->style.window.min_width, 0.01f, 0.f, 1.f, id++);
+	    gui_same_line(2u);
+	    gui_text("Window Min Width", id++);
+	    gui_drag_f32(&gui->style.window.min_width, 0.01f, 0.f, 1.f, id++);
 
-	    gui_same_line(gui, 2u);
-	    gui_text(gui, "Window Min Height", id++);
-	    gui_drag_f32(gui, &gui->style.window.min_height, 0.01f, 0.f, 1.f, id++);
+	    gui_same_line(2u);
+	    gui_text("Window Min Height", id++);
+	    gui_drag_f32(&gui->style.window.min_height, 0.01f, 0.f, 1.f, id++);
 
-	    gui_same_line(gui, 2u);
-	    gui_text(gui, "Popup Color", id++);
-	    gui_drag_color4(gui, &gui->style.popup.color, id++);
+	    gui_same_line(2u);
+	    gui_text("Popup Color", id++);
+	    gui_drag_color4(&gui->style.popup.color, id++);
 
-	    gui_same_line(gui, 2u);
-	    gui_text(gui, "Button Color", id++);
-	    gui_drag_color4(gui, &gui->style.button.color, id++);
+	    gui_same_line(2u);
+	    gui_text("Button Color", id++);
+	    gui_drag_color4(&gui->style.button.color, id++);
 
-	    gui_same_line(gui, 2u);
-	    gui_text(gui, "Button Hot Color", id++);
-	    gui_drag_color4(gui, &gui->style.button.hot_color, id++);
+	    gui_same_line(2u);
+	    gui_text("Button Hot Color", id++);
+	    gui_drag_color4(&gui->style.button.hot_color, id++);
 
-	    gui_same_line(gui, 2u);
-	    gui_text(gui, "Button Text Color", id++);
-	    gui_drag_color4(gui, &gui->style.button.text_color, id++);
+	    gui_same_line(2u);
+	    gui_text("Button Text Color", id++);
+	    gui_drag_color4(&gui->style.button.text_color, id++);
 
-	    gui_same_line(gui, 2u);
-	    gui_text(gui, "Slider Color", id++);
-	    gui_drag_color4(gui, &gui->style.slider.color, id++);
+	    gui_same_line(2u);
+	    gui_text("Slider Color", id++);
+	    gui_drag_color4(&gui->style.slider.color, id++);
 
-	    gui_same_line(gui, 2u);
-	    gui_text(gui, "Slider Button Color", id++);
-	    gui_drag_color4(gui, &gui->style.slider.button_color, id++);
+	    gui_same_line(2u);
+	    gui_text("Slider Button Color", id++);
+	    gui_drag_color4(&gui->style.slider.button_color, id++);
 
-	    gui_same_line(gui, 2u);
-	    gui_text(gui, "Slider Button Size", id++);
-	    //gui_drag_f32(gui, &gui->style.slider.button_size, 0.01f, 0.f, 1.f, id++);
-	    gui_button(gui, "TODO", id++);
+	    gui_same_line(2u);
+	    gui_text("Slider Button Size", id++);
+	    //gui_drag_f32(&gui->style.slider.button_size, 0.01f, 0.f, 1.f, id++);
+	    gui_button("TODO", id++);
 
-	    gui_same_line(gui, 2u);
-	    gui_text(gui, "Text Color", id++);
-	    gui_drag_color4(gui, &gui->style.label.text_color, id++);
+	    gui_same_line(2u);
+	    gui_text("Text Color", id++);
+	    gui_drag_color4(&gui->style.label.text_color, id++);
 
-	    gui_same_line(gui, 2u);
-	    gui_text(gui, "Text Background Color", id++);
-	    gui_drag_color4(gui, &gui->style.label.background_color, id++);
+	    gui_same_line(2u);
+	    gui_text("Text Background Color", id++);
+	    gui_drag_color4(&gui->style.label.background_color, id++);
 
-	    gui_same_line(gui, 2u);
-	    gui_text(gui, "Checkbox Color", id++);
-	    gui_drag_color4(gui, &gui->style.checkbox.button_color, id++);
+	    gui_same_line(2u);
+	    gui_text("Checkbox Color", id++);
+	    gui_drag_color4(&gui->style.checkbox.button_color, id++);
 
-	    gui_same_line(gui, 2u);
-	    gui_text(gui, "Checkbox Background Color", id++);
-	    gui_drag_color4(gui, &gui->style.checkbox.background_color, id++);
+	    gui_same_line(2u);
+	    gui_text("Checkbox Background Color", id++);
+	    gui_drag_color4(&gui->style.checkbox.background_color, id++);
 
-	    gui_same_line(gui, 2u);
-	    gui_text(gui, "Drag Text Color", id++);
-	    gui_drag_color4(gui, &gui->style.drag.text_color, id++);
+	    gui_same_line(2u);
+	    gui_text("Drag Text Color", id++);
+	    gui_drag_color4(&gui->style.drag.text_color, id++);
 
-	    gui_same_line(gui, 2u);
-	    gui_text(gui, "Drag Background Color", id++);
-	    gui_drag_color4(gui, &gui->style.drag.background_color, id++);
+	    gui_same_line(2u);
+	    gui_text("Drag Background Color", id++);
+	    gui_drag_color4(&gui->style.drag.background_color, id++);
 
-	    gui_same_line(gui, 2u);
-	    gui_text(gui, "Flow x0", id++);
-	    gui_drag_f32(gui, &gui->style.flow_layout.x0, 0.01f, 0.f, 1.f, id++);
+	    gui_same_line(2u);
+	    gui_text("Flow x0", id++);
+	    gui_drag_f32(&gui->style.flow_layout.x0, 0.01f, 0.f, 1.f, id++);
 
-	    gui_same_line(gui, 2u);
-	    gui_text(gui, "Flow x1", id++);
-	    gui_drag_f32(gui, &gui->style.flow_layout.x1, 0.01f, 0.f, 1.f, id++);
+	    gui_same_line(2u);
+	    gui_text("Flow x1", id++);
+	    gui_drag_f32(&gui->style.flow_layout.x1, 0.01f, 0.f, 1.f, id++);
 
-	    gui_pop_style(gui, 1u);
+	    gui_pop_style(1u);
 	    
-	    gui_end_window(gui);
+	    gui_end_window();
 	}
     }
 }
