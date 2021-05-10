@@ -426,358 +426,375 @@ namespace sv {
     ////////////////////////////////////////////////////// LIST //////////////////////////////////////////////////
     
     template<typename T>
-	struct SV_API ListIterator {
-	    T* ptr;
+    struct SV_API ListIterator {
+	T* ptr;
 
-	    T* operator->() const noexcept { return ptr; }
-	    T& operator*() const noexcept { return *ptr; }
+	T* operator->() const noexcept { return ptr; }
+	T& operator*() const noexcept { return *ptr; }
 
-	    ListIterator& operator++() noexcept { ++ptr; return *this; }
-	    ListIterator operator++(int) noexcept { ListIterator temp = *this; ++ptr; return temp; }
-	    ListIterator& operator+=(i64 n) noexcept { ptr += n; return *this; }
+	ListIterator& operator++() noexcept { ++ptr; return *this; }
+	ListIterator operator++(int) noexcept { ListIterator temp = *this; ++ptr; return temp; }
+	ListIterator& operator+=(i64 n) noexcept { ptr += n; return *this; }
 
-	    ListIterator& operator--() noexcept { --ptr; return *this; }
-	    ListIterator operator--(int) noexcept { ListIterator temp = *this; --ptr; return temp; }
-	    ListIterator& operator-=(i64 n) noexcept { ptr -= n; return *this; }
+	ListIterator& operator--() noexcept { --ptr; return *this; }
+	ListIterator operator--(int) noexcept { ListIterator temp = *this; --ptr; return temp; }
+	ListIterator& operator-=(i64 n) noexcept { ptr -= n; return *this; }
 
-	    bool operator==(const ListIterator& other) const noexcept { return ptr == other.ptr; }
-	    bool operator!=(const ListIterator& other) const noexcept { return ptr != other.ptr; }
-	    bool operator<(const ListIterator& other) const noexcept { return ptr < other.ptr; }
-	    bool operator<=(const ListIterator& other) const noexcept { return ptr <= other.ptr; }
-	    bool operator>(const ListIterator& other) const noexcept { return ptr > other.ptr; }
-	    bool operator>=(const ListIterator& other) const noexcept { return ptr >= other.ptr; }
+	bool operator==(const ListIterator& other) const noexcept { return ptr == other.ptr; }
+	bool operator!=(const ListIterator& other) const noexcept { return ptr != other.ptr; }
+	bool operator<(const ListIterator& other) const noexcept { return ptr < other.ptr; }
+	bool operator<=(const ListIterator& other) const noexcept { return ptr <= other.ptr; }
+	bool operator>(const ListIterator& other) const noexcept { return ptr > other.ptr; }
+	bool operator>=(const ListIterator& other) const noexcept { return ptr >= other.ptr; }
 
 	ListIterator(T* ptr) : ptr(ptr) {}
-	};
+    };
 
     template<typename T>
-	struct SV_API ListConstIterator {
-	    const T* ptr;
+    struct SV_API ListConstIterator {
+	const T* ptr;
 
-	    const T* operator->() const noexcept { return ptr; }
-	    const T& operator*() const noexcept { return *ptr; }
+	const T* operator->() const noexcept { return ptr; }
+	const T& operator*() const noexcept { return *ptr; }
 
-	    ListConstIterator& operator++() noexcept { ++ptr; return *this; }
-	    ListConstIterator operator++(int) noexcept { ListConstIterator temp = *this; ++ptr; return temp; }
-	    ListConstIterator& operator+=(i64 n) noexcept { ptr += n; return *this; }
+	ListConstIterator& operator++() noexcept { ++ptr; return *this; }
+	ListConstIterator operator++(int) noexcept { ListConstIterator temp = *this; ++ptr; return temp; }
+	ListConstIterator& operator+=(i64 n) noexcept { ptr += n; return *this; }
 
-	    ListConstIterator& operator--() noexcept { --ptr; return *this; }
-	    ListConstIterator operator--(int) noexcept { ListConstIterator temp = *this; --ptr; return temp; }
-	    ListConstIterator& operator-=(i64 n) noexcept { ptr -= n; return *this; }
+	ListConstIterator& operator--() noexcept { --ptr; return *this; }
+	ListConstIterator operator--(int) noexcept { ListConstIterator temp = *this; --ptr; return temp; }
+	ListConstIterator& operator-=(i64 n) noexcept { ptr -= n; return *this; }
 
-	    bool operator==(const ListConstIterator& other) const noexcept { return ptr == other.ptr; }
-	    bool operator!=(const ListConstIterator& other) const noexcept { return ptr != other.ptr; }
-	    bool operator<(const ListConstIterator& other) const noexcept { return ptr < other.ptr; }
-	    bool operator<=(const ListConstIterator& other) const noexcept { return ptr <= other.ptr; }
-	    bool operator>(const ListConstIterator& other) const noexcept { return ptr > other.ptr; }
-	    bool operator>=(const ListConstIterator& other) const noexcept { return ptr >= other.ptr; }
+	bool operator==(const ListConstIterator& other) const noexcept { return ptr == other.ptr; }
+	bool operator!=(const ListConstIterator& other) const noexcept { return ptr != other.ptr; }
+	bool operator<(const ListConstIterator& other) const noexcept { return ptr < other.ptr; }
+	bool operator<=(const ListConstIterator& other) const noexcept { return ptr <= other.ptr; }
+	bool operator>(const ListConstIterator& other) const noexcept { return ptr > other.ptr; }
+	bool operator>=(const ListConstIterator& other) const noexcept { return ptr >= other.ptr; }
 
 	ListConstIterator(const T* ptr) : ptr(ptr) {}
-	};
+    };
 
     template<typename T>
-	struct SV_API List {
+    struct SV_API List {
 
-	    List() = default;
-	    ~List()
-		{
-		    clear();
-		}
+	List() = default;
+	~List()
+	{
+	    clear();
+	}
 
-	    List(const List& other)
-		{
-		    if (other._data) {
+	List(const List& other)
+	{
+	    if (other._data) {
 
-			_data = (T*)SV_ALLOCATE_MEMORY(sizeof(T) * other._size);
+		_data = (T*)SV_ALLOCATE_MEMORY(sizeof(T) * other._size);
 				
-			foreach(i, other._size) {
-			    _data[i] = other._data[i];
-			}
-			_size = other._size;
-			_capacity = other._capacity;
-		    }
-		    else {
-			_size = 0u;
-			_capacity = 0u;
-			_data = nullptr;
-		    }
+		foreach(i, other._size) {
+		    _data[i] = other._data[i];
 		}
+		_size = other._size;
+		_capacity = other._capacity;
+	    }
+	    else {
+		_size = 0u;
+		_capacity = 0u;
+		_data = nullptr;
+	    }
+	}
 
-	    List(List&& other)
-		{
-		    _data = other._data;
-		    _size = other._size;
-		    _capacity = other._capacity;
-		    other._data = nullptr;
-		    other._size = 0u;
-		    other._capacity = 0u;
+	List(List&& other)
+	{
+	    _data = other._data;
+	    _size = other._size;
+	    _capacity = other._capacity;
+	    other._data = nullptr;
+	    other._size = 0u;
+	    other._capacity = 0u;
+	}
+
+	List& operator=(const List& other) 
+	{
+	    clear();
+
+	    if (other._data) {
+
+		_data = (T*)SV_ALLOCATE_MEMORY(sizeof(T) * other._size);
+
+		foreach(i, other._size) {
+		    _data[i] = other._data[i];
 		}
-
-	    List& operator=(const List& other) 
-	    {
-		clear();
-
-		if (other._data) {
-
-		    _data = (T*)SV_ALLOCATE_MEMORY(sizeof(T) * other._size);
-
-		    foreach(i, other._size) {
-			_data[i] = other._data[i];
-		    }
-		    _size = other._size;
-		    _capacity = other._capacity;
-		}
-		else {
-		    _size = 0u;
-		    _capacity = 0u;
-		    _data = nullptr;
-		}
-
-		return *this;
+		_size = other._size;
+		_capacity = other._capacity;
+	    }
+	    else {
+		_size = 0u;
+		_capacity = 0u;
+		_data = nullptr;
 	    }
 
-		List& operator=(List&& other) 
-		{
-		    clear();
+	    return *this;
+	}
 
-		    _data = other._data;
-		    _size = other._size;
-		    _capacity = other._capacity;
-		    other._data = nullptr;
-		    other._size = 0u;
-		    other._capacity = 0u;
+	List& operator=(List&& other) 
+	{
+	    clear();
 
-		    return *this;
+	    _data = other._data;
+	    _size = other._size;
+	    _capacity = other._capacity;
+	    other._data = nullptr;
+	    other._size = 0u;
+	    other._capacity = 0u;
+
+	    return *this;
+	}
+
+	template<typename... Args>
+	T& emplace_back(Args&& ...args)
+	{
+	    T* t = _add();
+	    new(t) T(std::forward<Args>(args)...);
+	    return *t;
+	}
+
+	void push_back(const T& o)
+	{
+	    T* t = _add();
+	    new(t) T(o);
+	}
+
+	void push_back(T&& o)
+	{
+	    T* t = _add();
+	    new(t) T(std::move(o));
+	}
+
+	void pop_back()
+	{
+	    back().~T();
+	    --_size;
+	}
+
+	void pop_back(u32 count)
+	{
+	    SV_ASSERT(_size >= count);
+
+	    T* end = _data + _size;
+	    T* it = _data + _size - count;
+
+	    while (it != end) {
+
+		it->~T();
+		++it;
+	    }
+			
+	    _size -= count;
+	}
+
+	void reserve(size_t size)
+	{
+	    if (_size + size > _capacity) _reallocate(_size + size);
+	}
+
+	void resize(size_t size)
+	{
+	    reserve(size);
+	    if (size > _size) {
+		for (size_t i = _size; i < size; ++i) {
+		    new(_data + i) T();
 		}
+	    }
+	    _size = size;
+	}
 
-		    template<typename... Args>
-		    T& emplace_back(Args&& ...args)
-		{
-		    T* t = _add();
-		    new(t) T(std::forward<Args>(args)...);
-		    return *t;
-		}
+	ListIterator<T> erase(const ListIterator<T>& it_)
+	{
+	    T* it = it_.ptr;
+	    T* end = _data + _size;
+	    it->~T();
 
-	    void push_back(const T& o)
-		{
-		    T* t = _add();
-		    new(t) T(o);
-		}
+	    while (it != end - 1u) {
 
-	    void push_back(T&& o)
-		{
-		    T* t = _add();
-		    new(t) T(std::move(o));
-		}
+		*it = std::move(*(it + 1u));
+		++it;
+	    }
 
-	    void pop_back()
-		{
-		    back().~T();
-		    --_size;
-		}
+	    --_size;
+	    return ListIterator<T>(it);
+	}
 
-	    void pop_back(u32 count)
-		{
-		    SV_ASSERT(_size >= count);
+	void erase(size_t index)
+	{
+	    SV_ASSERT(index < _size);
+	    T* it = _data + index;
+	    T* end = _data + _size;
+	    it->~T();
 
+	    while (it != end - 1u) {
+
+		*it = std::move(*(it + 1u));
+		++it;
+	    }
+
+	    --_size;
+	}
+
+	void insert(const T& t, size_t index)
+	{
+	    SV_ASSERT(index < _size);
+	    _add();
+	    
+	    T* it = _data + _size - 1u;
+	    T* end = _data + index;
+
+	    while (it != end) {
+
+		*it = std::move(*(it - 1u));
+		--it;
+	    }
+
+	    *it = t;
+	}
+
+	T& operator[](size_t index)
+	{
+	    SV_ASSERT(index < _size);
+	    return _data[index];
+	}
+
+	const T& operator[](size_t index) const
+	{
+	    SV_ASSERT(index < _size);
+	    return _data[index];
+	}
+
+	bool empty() const noexcept
+	{
+	    return _size == 0u;
+	}
+	size_t size() const noexcept
+	{
+	    return _size;
+	}
+	size_t capacity() const noexcept
+	{
+	    return _capacity;
+	}
+	T* data() noexcept
+	{
+	    return _data;
+	}
+	const T* data() const noexcept
+	{
+	    return _data;
+	}
+
+	T& back()
+	{
+	    SV_ASSERT(_size != 0u);
+	    return _data[_size - 1u];
+	}
+	const T& back() const
+	{
+	    SV_ASSERT(_size != 0u);
+	    return _data[_size - 1u];
+	}
+	T& front()
+	{
+	    SV_ASSERT(_size != 0u);
+	    return *_data;
+	}
+	const T& front() const
+	{
+	    SV_ASSERT(_size != 0u);
+	    return *_data;
+	}
+
+	void reset()
+	{
+	    foreach(i, _size)
+		_data[i].~T();
+
+	    _size = 0u;
+	}
+	void clear()
+	{
+	    foreach(i, _size)
+		_data[i].~T();
+
+	    if (_data != nullptr) {
+		SV_FREE_MEMORY(_data);
+		_data = nullptr;
+	    }
+	    _size = 0u;
+	    _capacity = 0u;
+	}
+
+	SV_INLINE void _reallocate(size_t size)
+	{
+	    T* newData = reinterpret_cast<T*>(SV_ALLOCATE_MEMORY(size * sizeof(T)));
+
+	    if (_data) {
+		if (size < _size) {
+		    T* it = _data + size;
 		    T* end = _data + _size;
-		    T* it = _data + _size - count;
-
 		    while (it != end) {
-
 			it->~T();
 			++it;
-		    }
-			
-		    _size -= count;
-		}
-
-	    void reserve(size_t size)
-		{
-		    if (_size + size > _capacity) _reallocate(_size + size);
-		}
-
-	    void resize(size_t size)
-		{
-		    reserve(size);
-		    if (size > _size) {
-			for (size_t i = _size; i < size; ++i) {
-			    new(_data + i) T();
-			}
 		    }
 		    _size = size;
 		}
 
-	    ListIterator<T> erase(const ListIterator<T>& it_)
-		{
-		    T* it = it_.ptr;
-		    T* end = _data + _size;
-		    it->~T();
+		T* it0 = _data;
+		T* it1 = newData;
+		T* end = _data + _size;
 
-		    while (it != end - 1u) {
+		while (it0 != end) {
 
-			*it = std::move(*(it + 1u));
-			++it;
-		    }
+		    new(it1) T(std::move(*it0));
 
-		    --_size;
-		    return ListIterator<T>(it);
+		    ++it0;
+		    ++it1;
 		}
 
-	    void erase(size_t index)
-		{
-		    SV_ASSERT(index < _size);
-		    T* it = _data + index;
-		    T* end = _data + _size;
-		    it->~T();
+		SV_FREE_MEMORY(_data);
+	    }
 
-		    while (it != end - 1u) {
+	    _data = newData;
+	    _capacity = size;
+	}
 
-			*it = std::move(*(it + 1u));
-			++it;
-		    }
+	SV_INLINE T* _add()
+	{
+	    if (_size == _capacity)
+		_reallocate(size_t(round(double(_capacity + 1) * 1.7)));
+	    return _data + _size++;
+	}
 
-		    --_size;
-		}
+	SV_INLINE ListIterator<T> begin() noexcept
+	{
+	    return ListIterator<T>(_data);
+	}
+	SV_INLINE ListConstIterator<T> begin() const noexcept
+	{
+	    return ListConstIterator<T>(_data);
+	}
 
-	    T& operator[](size_t index)
-		{
-		    SV_ASSERT(index < _size);
-		    return _data[index];
-		}
+	SV_INLINE ListIterator<T> end() noexcept
+	{
+	    return ListIterator<T>(_data + _size);
+	}
+	SV_INLINE ListConstIterator<T> end() const noexcept
+	{
+	    return ListConstIterator<T>(_data + _size);
+	}
 
-	    const T& operator[](size_t index) const
-		{
-		    SV_ASSERT(index < _size);
-		    return _data[index];
-		}
+	T* _data = nullptr;
+	size_t _size = 0u;
+	size_t _capacity = 0u;
 
-	    bool empty() const noexcept
-		{
-		    return _size == 0u;
-		}
-	    size_t size() const noexcept
-		{
-		    return _size;
-		}
-	    size_t capacity() const noexcept
-		{
-		    return _capacity;
-		}
-	    T* data() noexcept
-		{
-		    return _data;
-		}
-	    const T* data() const noexcept
-		{
-		    return _data;
-		}
-
-	    T& back()
-		{
-		    SV_ASSERT(_size != 0u);
-		    return _data[_size - 1u];
-		}
-	    const T& back() const
-		{
-		    SV_ASSERT(_size != 0u);
-		    return _data[_size - 1u];
-		}
-	    T& front()
-		{
-		    SV_ASSERT(_size != 0u);
-		    return *_data;
-		}
-	    const T& front() const
-		{
-		    SV_ASSERT(_size != 0u);
-		    return *_data;
-		}
-
-	    void reset()
-		{
-		    foreach(i, _size)
-			_data[i].~T();
-
-		    _size = 0u;
-		}
-	    void clear()
-		{
-		    foreach(i, _size)
-			_data[i].~T();
-
-		    if (_data != nullptr) {
-			SV_FREE_MEMORY(_data);
-			_data = nullptr;
-		    }
-		    _size = 0u;
-		    _capacity = 0u;
-		}
-
-	    SV_INLINE void _reallocate(size_t size)
-		{
-		    T* newData = reinterpret_cast<T*>(SV_ALLOCATE_MEMORY(size * sizeof(T)));
-
-		    if (_data) {
-			if (size < _size) {
-			    T* it = _data + size;
-			    T* end = _data + _size;
-			    while (it != end) {
-				it->~T();
-				++it;
-			    }
-			    _size = size;
-			}
-
-			T* it0 = _data;
-			T* it1 = newData;
-			T* end = _data + _size;
-
-			while (it0 != end) {
-
-			    new(it1) T(std::move(*it0));
-
-			    ++it0;
-			    ++it1;
-			}
-
-			SV_FREE_MEMORY(_data);
-		    }
-
-		    _data = newData;
-		    _capacity = size;
-		}
-
-	    SV_INLINE T* _add()
-		{
-		    if (_size == _capacity)
-			_reallocate(size_t(round(double(_capacity + 1) * 1.7)));
-		    return _data + _size++;
-		}
-
-	    SV_INLINE ListIterator<T> begin() noexcept
-		{
-		    return ListIterator<T>(_data);
-		}
-	    SV_INLINE ListConstIterator<T> begin() const noexcept
-		{
-		    return ListConstIterator<T>(_data);
-		}
-
-	    SV_INLINE ListIterator<T> end() noexcept
-		{
-		    return ListIterator<T>(_data + _size);
-		}
-	    SV_INLINE ListConstIterator<T> end() const noexcept
-		{
-		    return ListConstIterator<T>(_data + _size);
-		}
-
-	    T* _data = nullptr;
-	    size_t _size = 0u;
-	    size_t _capacity = 0u;
-
-	};
+    };
 
     // RAW LIST
 
@@ -785,9 +802,9 @@ namespace sv {
 
 	RawList() = default;
 	~RawList()
-	    {
-		clear();
-	    }
+	{
+	    clear();
+	}
 
 	void write_back(const void* src, size_t size);
 	
@@ -809,30 +826,30 @@ namespace sv {
 	}
 
 	SV_INLINE bool empty() const noexcept
-	    {
-		return _size == 0u;
-	    }
+	{
+	    return _size == 0u;
+	}
 	SV_INLINE size_t size() const noexcept
-	    {
-		return _size;
-	    }
+	{
+	    return _size;
+	}
 	SV_INLINE size_t capacity() const noexcept
-	    {
-		return _capacity;
-	    }
+	{
+	    return _capacity;
+	}
 	SV_INLINE u8* data() noexcept
-	    {
-		return _data;
-	    }
+	{
+	    return _data;
+	}
 	SV_INLINE const u8* data() const noexcept
-	    {
-		return _data;
-	    }
+	{
+	    return _data;
+	}
 
 	SV_INLINE void reset()
-	    {
-		_size = 0u;
-	    }
+	{
+	    _size = 0u;
+	}
 	
 	void clear();
 	
@@ -879,7 +896,7 @@ namespace sv {
     //////////////////////////////////////// THICK HASH TABLE ///////////////////////////////////////////////////
 
     template<typename T, u32 TABLE_SIZE>
-        struct ThickHashTable {
+    struct ThickHashTable {
 
 	struct Entry {
 
