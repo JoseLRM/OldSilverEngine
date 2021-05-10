@@ -112,13 +112,19 @@ namespace sv {
 	
 	List<u64> ids;
 	u64 current_id;
+
+	struct {
+	    u64 id;
+	    GuiWidgetType type;
+	    GuiRootInfo* root;
+	} last_widget;
 	
 	// STATE
 	
 	GuiRootInfo root_info;
 
-	GuiRootInfo* current_root;
-	
+	List<GuiRootInfo*> root_stack;
+
 	struct {
 	    GuiRootInfo* root;
 	    GuiWidgetType type;
@@ -259,7 +265,12 @@ namespace sv {
 	
 	gui->buffer.reset();
 
-	gui->current_root = &gui->root_info;
+	gui->root_stack.reset();
+	gui->root_stack.push_back(&gui->root_info);
+
+	gui->last_widget.id = 0u;
+	gui->last_widget.type = GuiWidgetType_None;
+	gui->last_widget.root = nullptr;
 
 	return true;
     }
@@ -306,7 +317,7 @@ namespace sv {
 
     SV_AUX void read_widget(u8*& it)
     {
-	GuiWidget& w = gui->current_root->widgets.emplace_back();
+	GuiWidget& w = gui->root_stack.back()->widgets.emplace_back();
 
 	w.bounds = {};
 	w.type = gui_read<GuiWidgetType>(it);
@@ -377,14 +388,14 @@ namespace sv {
 	    image.image = gui_read<GPUImage*>(it);
 	    image.layout = gui_read<GPUImageLayout>(it);
 
-	    f32 root_aspect = gui->current_root->bounds.z / gui->current_root->bounds.w;
+	    f32 root_aspect = gui->root_stack.back()->bounds.z / gui->root_stack.back()->bounds.w;
 	    height = width * root_aspect * gui->aspect;
 	}
 	break;
 		    
 	}
 		
-	f32& yoff = gui->current_root->yoff;
+	f32& yoff = gui->root_stack.back()->yoff;
 	w.bounds = { 0.5f, 1.f - (yoff + height * 0.5f), width, height };
 	yoff += height + 0.05f;
     }
@@ -703,8 +714,9 @@ namespace sv {
 	
 	u8* it = gui->buffer.data();
 	u8* end = it + gui->buffer.size();
-
-	gui->current_root = &gui->root_info;
+	
+	gui->root_stack.reset();
+	gui->root_stack.push_back(&gui->root_info)x;
 
 	while (it != end) {
 
@@ -714,7 +726,7 @@ namespace sv {
 
 	    case GuiHeader_BeginWindow:
 	    {
-		SV_ASSERT(gui->current_root == &gui->root_info);
+		SV_ASSERT(gui->root_stack.back() == &gui->root_info);
 
 		u64 hash = gui_read<u64>(it);
 
@@ -722,7 +734,7 @@ namespace sv {
 		SV_ASSERT(state);
 
 		if (state) {
-		    gui->current_root = &state->root_info;
+		    gui->root_stack.push_back(&state->root_info);
 		    state->active = true;
 		}
 	    }
@@ -730,12 +742,12 @@ namespace sv {
 
 	    case GuiHeader_EndWindow:
 	    {
-		SV_ASSERT(gui->current_root != &gui->root_info);
+		SV_ASSERT(gui->root_stack.back() != &gui->root_info);
 
-		update_root_bounds(*gui->current_root);
+		update_root_bounds(*gui->root_stack.back());
 
 		// Set new root
-		gui->current_root = &gui->root_info;
+		gui->root_stack.pop_back()x;
 	    }
 	    break;
 
@@ -827,7 +839,7 @@ namespace sv {
 	    gui_write(GuiHeader_BeginWindow);
 	    gui_write(hash);
 
-	    gui->current_root = &state->root_info;
+	    gui->root_stack.push_back(&state->root_info);
 
 	    gui_push_id(state->hash);
 	}
@@ -838,8 +850,33 @@ namespace sv {
     void gui_end_window()
     {
 	gui_write(GuiHeader_EndWindow);
-	gui->current_root = &gui->root_info;
+	gui->root_stack.pop_back();
 	gui_pop_id();
+    }
+
+    bool gui_begin_popup(const char* title, GuiPopupTrigger trigger)
+    {
+	bool show = false;
+
+	// TODO: Check if it should show
+
+	if (show) {
+
+	    u64 id = gui->current_id;
+	    hash_combine(id, trigger);
+
+	    if (trigger == GuiPopupTrigger_LastWidget)
+		hash_combine(id, gui->last_widget.id);
+
+	    // TODO: Begin popup
+	}
+
+	return show;
+    }
+    
+    void gui_end_popup()
+    {
+	// TODO: End popup
     }
 
     bool gui_show_window(const char* title)
@@ -903,9 +940,8 @@ namespace sv {
     SV_AUX GuiWidget* find_widget(GuiWidgetType type, u64 id)
     {
 	// TODO: Optimize
-	SV_ASSERT(gui->current_root);
 
-	for (GuiWidget& w : gui->current_root->widgets) {
+	for (GuiWidget& w : gui->root_stack.back()->widgets) {
 
 	    if (w.type == type && w.id == id)
 		return &w;
@@ -914,13 +950,22 @@ namespace sv {
 	return nullptr;
     }
 
+    SV_AUX void write_widget(GuiWidgetType type, u64 id)
+    {
+	gui_write(GuiHeader_Widget);
+	gui_write(type);
+	gui_write(id);
+
+	gui->last_widget.type = type;
+	gui->last_widget.id = id;
+	gui->last_widget.root = gui->root_stack.back();
+    }
+
     bool gui_button(const char* text, u64 id)
     {
 	compute_id(id);
 	
-	gui_write(GuiHeader_Widget);
-	gui_write(GuiWidgetType_Button);
-	gui_write(id);
+	write_widget(GuiWidgetType_Button, id);
 	gui_write_text(text);
 	
 	GuiWidget* button = find_widget(GuiWidgetType_Button, id);
@@ -939,9 +984,7 @@ namespace sv {
     {
 	compute_id(id);
 	
-	gui_write(GuiHeader_Widget);
-	gui_write(GuiWidgetType_Checkbox);
-	gui_write(id);
+	write_widget(GuiWidgetType_Checkbox, id);
 	gui_write_text(text);
 	
 	GuiWidget* checkbox = find_widget(GuiWidgetType_Checkbox, id);
@@ -966,9 +1009,7 @@ namespace sv {
     {
 	compute_id(id);
 	
-	gui_write(GuiHeader_Widget);
-	gui_write(GuiWidgetType_Checkbox);
-	gui_write(id);
+	write_widget(GuiWidgetType_Checkbox, id);
 	gui_write_text(text);
 	
 	GuiWidget* checkbox = find_widget(GuiWidgetType_Checkbox, id);
@@ -984,9 +1025,7 @@ namespace sv {
     {
 	compute_id(id);
 
-	gui_write(GuiHeader_Widget);
-	gui_write(GuiWidgetType_Drag);
-	gui_write(id);
+	write_widget(GuiWidgetType_Drag, id);
 	gui_write(adv);
 	gui_write(min);
 	gui_write(max);
@@ -1013,9 +1052,7 @@ namespace sv {
     {
 	compute_id(id);
 	
-	gui_write(GuiHeader_Widget);
-	gui_write(GuiWidgetType_Text);
-	gui_write(id);
+	write_widget(GuiWidgetType_Text, id);
 	gui_write_text(text);
     }
 
@@ -1023,9 +1060,7 @@ namespace sv {
     {
 	compute_id(id);
 	
-	gui_write(GuiHeader_Widget);
-	gui_write(GuiWidgetType_Collapse);
-	gui_write(id);
+	write_widget(GuiWidgetType_Collapse, id);
 	gui_write_text(text);
 	
 	GuiWidget* collapse = find_widget(GuiWidgetType_Collapse, id);
@@ -1041,9 +1076,7 @@ namespace sv {
     {
 	compute_id(id);
 	
-	gui_write(GuiHeader_Widget);
-	gui_write(GuiWidgetType_Image);
-	gui_write(id);
+	write_widget(GuiWidgetType_Image, id);
 	gui_write(image);
 	gui_write(layout);
     }
