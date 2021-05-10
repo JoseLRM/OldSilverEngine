@@ -73,11 +73,19 @@ namespace sv {
 
     };
 
+    enum GuiRootType : u32 {
+	GuiRootType_Screen,
+	GuiRootType_Window,
+	GuiRootType_Popup
+    };
+
     struct GuiRootInfo {
 
 	List<GuiWidget> widgets;
 	v4_f32 bounds = { 0.5f, 0.5f, 1.f, 1.f };
 	f32 yoff;
+	GuiRootType type = GuiRootType_Screen;
+	void* state = nullptr;
 	
     };
 
@@ -190,7 +198,11 @@ namespace sv {
 		    deserialize_v4_f32(d, s.root_info.bounds);
 		    
 		    s.hash = hash_string(s.title);
-		    gui->windows[s.hash] = s;
+
+		    GuiWindowState& state = gui->windows[s.hash];
+		    state = s;
+		    state.root_info.type = GuiRootType_Window;
+		    state.root_info.state = &state;
 		}
 
 		deserialize_end(d);
@@ -390,143 +402,8 @@ namespace sv {
 	}
     }
 
-    SV_AUX void update_widget(GuiWidget& w, GuiRootInfo& root)
+    SV_AUX void update_focus()
     {
-	const v4_f32& bounds = w.bounds;
-
-	switch (w.type) {
-
-	case GuiWidgetType_Button:
-	{
-	    if (input.unused) {
-
-		auto& button = w.widget.button;
-			
-		if (mouse_in_bounds(bounds)) {
-
-		    button.hot = true;
-
-		    if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
-			set_focus(root, w.type, w.id);
-		    }
-		}
-		else button.hot = false;
-	    }
-	} break;
-
-	case GuiWidgetType_Checkbox:
-	{
-	    if (input.unused) {
-
-		v4_f32 button_bounds = compute_checkbox_button(w);
-			
-		if (mouse_in_bounds(button_bounds)) {
-
-		    if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
-			set_focus(root, w.type, w.id);
-		    }
-		}
-	    }
-	} break;
-
-	case GuiWidgetType_Drag:
-	case GuiWidgetType_Collapse:
-	{
-	    if (input.unused) {
-			
-		if (mouse_in_bounds(bounds)) {
-
-		    if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
-			set_focus(root, w.type, w.id);
-		    }
-		}
-	    }
-	} break;
-		
-	}
-    }
-
-    void _gui_end()
-    {
-	// Reset roots
-
-	reset_root(gui->root_info);
-	gui->current_focus = nullptr;
-
-	for (GuiWindowState& window : gui->windows) {
-	    reset_root(window.root_info);
-	    window.active = false;
-	}
-
-	// Read buffer
-	
-	u8* it = gui->buffer.data();
-	u8* end = it + gui->buffer.size();
-
-	gui->current_root = &gui->root_info;
-
-	while (it != end) {
-
-	    GuiHeader header = gui_read<GuiHeader>(it);
-
-	    switch (header) {
-
-	    case GuiHeader_BeginWindow:
-	    {
-		SV_ASSERT(gui->current_root == &gui->root_info);
-
-		u64 hash = gui_read<u64>(it);
-
-		GuiWindowState* state = gui->windows.find(hash);
-		SV_ASSERT(state);
-
-		if (state) {
-		    gui->current_root = &state->root_info;
-		    state->active = true;
-		}
-	    }
-	    break;
-
-	    case GuiHeader_EndWindow:
-	    {
-		SV_ASSERT(gui->current_root != &gui->root_info);
-
-		update_root_bounds(*gui->current_root);
-
-		// Set new root
-		gui->current_root = &gui->root_info;
-	    }
-	    break;
-
-	    case GuiHeader_Widget:
-	    {
-		read_widget(it);
-	    }
-	    break;
-		
-	    }
-	}
-
-	update_root_bounds(gui->root_info);
-
-	// Find focus
-	if (gui->focus.type != GuiWidgetType_None && gui->focus.type != GuiWidgetType_Root) {
-
-	    for (GuiWidget& w : gui->focus.root->widgets) {
-
-		if (gui->focus.type == w.type && gui->focus.id == w.id) {
-		    gui->current_focus = &w;
-		    break;
-		}
-	    }
-
-	    // Not found
-	    if (gui->current_focus == nullptr) {
-		free_focus();
-	    }
-	}
-
-	// Update focus
 	if (gui->focus.type == GuiWidgetType_Root) {
 
 	    v4_f32& bounds = gui->focus.root->bounds;
@@ -673,70 +550,241 @@ namespace sv {
 	    
 	    input.unused = false;
 	}
+    }
 
-	// Update widgets
-	for (GuiWindowState& window : gui->windows) {
+    SV_AUX void update_widget(GuiWidget& w, GuiRootInfo& root)
+    {
+	const v4_f32& bounds = w.bounds;
 
-	    if (!window.active) continue;
-	    
-	    for (GuiWidget& w : window.root_info.widgets) {
-		
-		update_widget(w, window.root_info);
-	    }
+	switch (w.type) {
 
-	    // Update window
-
+	case GuiWidgetType_Button:
+	{
 	    if (input.unused) {
 
-		if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
+		auto& button = w.widget.button;
+			
+		if (mouse_in_bounds(bounds)) {
 
-		    if (mouse_in_bounds(compute_window_decoration(window.root_info.bounds))) {
+		    button.hot = true;
+
+		    if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
+			set_focus(root, w.type, w.id);
+		    }
+		}
+		else button.hot = false;
+	    }
+	} break;
+
+	case GuiWidgetType_Checkbox:
+	{
+	    if (input.unused) {
+
+		v4_f32 button_bounds = compute_checkbox_button(w);
+			
+		if (mouse_in_bounds(button_bounds)) {
+
+		    if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
+			set_focus(root, w.type, w.id);
+		    }
+		}
+	    }
+	} break;
+
+	case GuiWidgetType_Drag:
+	case GuiWidgetType_Collapse:
+	{
+	    if (input.unused) {
+			
+		if (mouse_in_bounds(bounds)) {
+
+		    if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
+			set_focus(root, w.type, w.id);
+		    }
+		}
+	    }
+	} break;
+		
+	}
+    }
+
+    SV_INTERNAL void update_root(GuiRootInfo& root)
+    {
+	GuiWindowState* window = (root.type == GuiRootType_Window) ? (GuiWindowState*)root.state : nullptr;
+	
+	if (window && !window.active) return;
+	    
+	for (GuiWidget& w : root.widgets) {
+		
+	    update_widget(w, root);
+	}
+
+	// Update window
+
+	if (window && input.unused) {
+
+	    v4_f32 decoration = compute_window_decoration(root.bounds);
+
+	    // Limit bounds
+	    {
+		v4_f32& b = root.bounds;
+
+		b.z = math_clamp01(b.z);
+		b.w = math_clamp(0.f, b.w, 1.f - decoration.w);
 		    
-			set_focus(window.root_info, GuiWidgetType_Root, 0u, 0u);
-			gui->selection_offset = v2_f32{ window.root_info.bounds.x, window.root_info.bounds.y } - gui->mouse_position;
-			input.unused = false;
+		f32 min_x = b.z * 0.5f;
+		f32 max_x = 1.f - min_x;
+		f32 min_y = b.w * 0.5f;
+		f32 max_y = 1.f - b.w * 0.5f - decoration.w;
+
+		b.x = math_clamp(min_x, b.x, max_x);
+		b.y = math_clamp(min_y, b.y, max_y);
+	    }
+
+	    if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
+
+		if (mouse_in_bounds(decoration)) {
+		    
+		    set_focus(root, GuiWidgetType_Root, window.hash, 0u);
+		    gui->selection_offset = v2_f32{ root.bounds.x, root.bounds.y } - gui->mouse_position;
+		    input.unused = false;
+		}
+
+		if (input.unused) {
+
+		    const v4_f32& content = root.bounds;
+
+		    constexpr f32 SELECTION_SIZE = 0.02f;
+
+		    bool right = mouse_in_bounds({ content.x + content.z * 0.5f, content.y, SELECTION_SIZE, content.w + SELECTION_SIZE * 2.f * gui->aspect });
+		    bool left = mouse_in_bounds({ content.x - content.z * 0.5f, content.y, SELECTION_SIZE, content.w + SELECTION_SIZE * 2.f * gui->aspect });
+		    bool bottom = mouse_in_bounds({ content.x, content.y - content.w * 0.5f, content.z + SELECTION_SIZE * 2.f, SELECTION_SIZE * gui->aspect });
+
+		    u32 action = u32_max;
+
+		    if (right && bottom) {
+			action = 4u;
+		    }
+		    else if (left && bottom) {
+			action = 5u;
+		    }
+		    else if (right) {
+			action = 1u;
+		    }
+		    else if (left) {
+			action = 2u;
+		    }
+		    else if (bottom) {
+			action = 3u;
 		    }
 
-		    if (input.unused) {
-
-			const v4_f32& content = window.root_info.bounds;
-
-			constexpr f32 SELECTION_SIZE = 0.02f;
-
-			bool right = mouse_in_bounds({ content.x + content.z * 0.5f, content.y, SELECTION_SIZE, content.w + SELECTION_SIZE * 2.f * gui->aspect });
-			bool left = mouse_in_bounds({ content.x - content.z * 0.5f, content.y, SELECTION_SIZE, content.w + SELECTION_SIZE * 2.f * gui->aspect });
-			bool bottom = mouse_in_bounds({ content.x, content.y - content.w * 0.5f, content.z + SELECTION_SIZE * 2.f, SELECTION_SIZE * gui->aspect });
-
-			u32 action = u32_max;
-
-			if (right && bottom) {
-			    action = 4u;
-			}
-			else if (left && bottom) {
-			    action = 5u;
-			}
-			else if (right) {
-			    action = 1u;
-			}
-			else if (left) {
-			    action = 2u;
-			}
-			else if (bottom) {
-			    action = 3u;
-			}
-
-			if (action != u32_max) {
-			    input.unused = false;
-			    set_focus(window.root_info, GuiWidgetType_Root, 0u, action);
-			}
+		    if (action != u32_max) {
+			input.unused = false;
+			set_focus(root, GuiWidgetType_Root, window.hash, action);
 		    }
 		}
 	    }
 	}
-	for (GuiWidget& w : gui->root_info.widgets) {
-		
-	    update_widget(w, gui->root_info);
+    }
+
+    void _gui_end()
+    {
+	// Reset roots
+
+	reset_root(gui->root_info);
+	gui->current_focus = nullptr;
+
+	for (GuiWindowState& window : gui->windows) {
+	    reset_root(window.root_info);
+	    window.active = false;
 	}
+
+	// Read buffer
+	
+	u8* it = gui->buffer.data();
+	u8* end = it + gui->buffer.size();
+
+	gui->current_root = &gui->root_info;
+
+	while (it != end) {
+
+	    GuiHeader header = gui_read<GuiHeader>(it);
+
+	    switch (header) {
+
+	    case GuiHeader_BeginWindow:
+	    {
+		SV_ASSERT(gui->current_root == &gui->root_info);
+
+		u64 hash = gui_read<u64>(it);
+
+		GuiWindowState* state = gui->windows.find(hash);
+		SV_ASSERT(state);
+
+		if (state) {
+		    gui->current_root = &state->root_info;
+		    state->active = true;
+		}
+	    }
+	    break;
+
+	    case GuiHeader_EndWindow:
+	    {
+		SV_ASSERT(gui->current_root != &gui->root_info);
+
+		update_root_bounds(*gui->current_root);
+
+		// Set new root
+		gui->current_root = &gui->root_info;
+	    }
+	    break;
+
+	    case GuiHeader_Widget:
+	    {
+		read_widget(it);
+	    }
+	    break;
+		
+	    }
+	}
+
+	update_root_bounds(gui->root_info);
+
+	// Find focus
+	if (gui->focus.type != GuiWidgetType_None && gui->focus.type != GuiWidgetType_Root) {
+
+	    for (GuiWidget& w : gui->focus.root->widgets) {
+
+		if (gui->focus.type == w.type && gui->focus.id == w.id) {
+		    gui->current_focus = &w;
+		    break;
+		}
+	    }
+
+	    // Not found
+	    if (gui->current_focus == nullptr) {
+		free_focus();
+	    }
+	}
+
+	update_focus();
+
+	// Update focused root
+	if (gui->focus.type != GuiWidgetType_None) {
+
+	    update_root(*gui->focus.root);
+	}
+
+	// Update windows
+	for (GuiWindowState& window : gui->windows) {
+
+	    if (gui->focus.root != &window.root_info)
+		update_root(window.root_info);
+	}
+
+	// Update screen
+	if (gui->focus.root != &gui->root_info)
+	    update_root(gui->root_info);
     }
     
     template<typename T>
@@ -758,21 +806,20 @@ namespace sv {
 
 	if (state == nullptr) {
 
-	    GuiWindowState s;
-	    s.root_info.bounds = { 0.5f, 0.5f, 0.1f, 0.3f };
-	    s.show = true;
-
 	    size_t title_size = strlen(title);
 	    if (title_size > GUI_WINDOW_NAME_SIZE || title_size == 0u) {
 		SV_LOG_ERROR("Invalid window name '%s'", title);
 		return false;
 	    }
-	    
+
+	    GuiWindowState& s = gui->windows[hash];
+	    s.root_info.bounds = { 0.5f, 0.5f, 0.1f, 0.3f };
+	    s.root_info.type = GuiRootType_Window;
+	    s.root_info.state = &s;
+	    s.show = true;
 	    strcpy(s.title, title);
 	    s.hash = hash;
-
-	    gui->windows[hash] = std::move(s);
-	    state = &gui->windows[hash];
+	    state = &s;
 	}
 
 	if (state->show) {
@@ -1003,6 +1050,19 @@ namespace sv {
 
     SV_AUX void draw_root(const GuiRootInfo& root, CommandList cmd) {
 
+	const GuiWindowState* window = (root.type == GuiRootType_Window) ? (const GuiWindowState*)root.state : nullptr;
+
+	if (window) {
+
+	    if (!window->active) return;
+
+	    const v4_f32& b = window->root_info.bounds;
+	    v4_f32 decoration = compute_window_decoration(b);
+	    
+	    imrend_draw_quad({ b.x, b.y, 0.f }, { b.z, b.w }, Color::White(), cmd);
+	    imrend_draw_quad({ decoration.x, decoration.y, 0.f }, { decoration.z, decoration.w }, Color::Gray(100u), cmd);
+	}
+
 	// Draw widgets
 	for (const GuiWidget& w : root.widgets) {
 
@@ -1187,18 +1247,20 @@ namespace sv {
 
 	draw_root(gui->root_info, cmd);
 
+	GuiRootInfo* focus = nullptr;
+
 	for (const GuiWindowState& window : gui->windows) {
 
-	    if (!window.active) continue;
-
-	    const v4_f32& b = window.root_info.bounds;
-	    v4_f32 decoration = compute_window_decoration(b);
-	    
-	    imrend_draw_quad({ b.x, b.y, 0.f }, { b.z, b.w }, Color::White(), cmd);
-	    imrend_draw_quad({ decoration.x, decoration.y, 0.f }, { decoration.z, decoration.w }, Color::Gray(100u), cmd);
+	    if (gui->focus.root == &window.root_info) {
+		focus = &window.root_info;
+		continue;
+	    }
 
 	    draw_root(window.root_info, cmd);
 	}
+
+	if (focus)
+	    draw_root(*focus);
 
 	imrend_flush(cmd);
     }

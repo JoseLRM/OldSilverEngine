@@ -38,6 +38,18 @@ namespace sv {
 	return n * y;
     }
 
+    SV_INLINE f32 math_clamp(f32 min, f32 n, f32 max)
+    {
+	if (n < min) n = min;
+	else if (n > max) n = max;
+	return n;
+    }
+
+    SV_INLINE f32 math_clamp01(f32 n)
+    {
+	return math_clamp(0.f, n, 1.f);
+    }
+
     template<typename T>
 	constexpr T math_gauss(T x, T sigma) noexcept
     {
