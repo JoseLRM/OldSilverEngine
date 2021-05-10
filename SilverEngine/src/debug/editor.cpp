@@ -193,7 +193,7 @@ namespace sv {
     }
 
     /////////////////////////////////////////////// DO UNDO ACTIONS ////////////////////////////////////
-
+    /*
     typedef void(*ConstructEntityActionFn)(Entity entity);
     
     struct EntityCreate_Action {
@@ -266,7 +266,7 @@ namespace sv {
 	stack.unlock();
 
 	return res;
-    }
+	}*/
 
     /////////////////////////////////////////////// CAMERA ///////////////////////////////////////
 
@@ -683,7 +683,7 @@ namespace sv {
 	SV_CHECK(_gui_close());
 	return true;
     }
-
+    
     static void show_component_info(Entity entity, CompID comp_id, BaseComponent* comp)
     {
 	bool remove;
@@ -823,7 +823,7 @@ namespace sv {
 	}
     }
 
-    SV_INLINE static void select_entity()
+    SV_AUX void select_entity()
     {
 	v2_f32 mouse = input.mouse_position;
 
@@ -937,32 +937,26 @@ namespace sv {
     }
     
     static void show_entity_popup(Entity entity, bool& destroy)
-    {
+    {/*
 	if (gui_begin_popup(GuiPopupTrigger_LastWidget, MouseButton_Right, 0x3254fa + u64(entity), GuiLayout_Flow)) {
 
 	    f32 y = 0.f;
 	    constexpr f32 H = 20.f;
-
-	    gui_bounds(GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H));
 	    
 	    destroy = gui_button("Destroy", 0u);
 	    y += H;
-
-	    gui_bounds(GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H));
 	    
 	    if (gui_button("Duplicate", 1u)) {
 		duplicate_entity(entity);
 	    }
 	    y += H;
-
-	    gui_bounds(GuiCoord::Relative(0.1f), GuiCoord::Relative(0.9f), GuiCoord::IPixel(y), GuiCoord::IPixel(y + H));
 	    
 	    if (gui_button("Create Child", 2u)) {
 		editor_create_entity(entity);
 	    }
 
 	    gui_end_popup();
-	}
+	    }*/
     }
 
     SV_INTERNAL void show_entity(Entity entity)
@@ -976,37 +970,22 @@ namespace sv {
 	bool destroy = false;
 
 	if (child_count == 0u) {
-
-	    bool same = editor.selected_entity == entity;
-
-	    if (same) {
-		gui_push_style(GuiStyle_ButtonColor, editor.palette.color);
-		gui_push_style(GuiStyle_ButtonHotColor, editor.palette.strong_color);
-	    }
 	    
 	    if (gui_button(name, 0u)) {
 
 		editor.selected_entity = entity;
-	    }
-
-	    if (same) {
-		gui_pop_style(2u);
 	    }
 
 	    show_entity_popup(entity, destroy);
 	}
 	else {
 	    
-	    gui_begin_container(1u, GuiLayout_Flow);
-	    
 	    if (gui_button(name, 0u)) {
-
+		
 		editor.selected_entity = entity;
 	    }
 
 	    show_entity_popup(entity, destroy);
-
-	    gui_end_container();
 
 	    const Entity* childs;
 	    child_count = get_entity_childs_count(entity);
@@ -1057,6 +1036,7 @@ namespace sv {
     // Returns if the folder should be destroyed
     SV_AUX bool display_create_popup(HierarchyFolder& folder)
     {
+	/*
 	bool destroy = false;
 	
 	gui_push_id("Create Popup");
@@ -1108,7 +1088,8 @@ namespace sv {
 
 	gui_pop_id();
 
-	return destroy;
+	return destroy;*/
+	return false;
     }
 
     SV_INTERNAL void display_hierarchy_folder(HierarchyFolder& folder)
@@ -1119,7 +1100,7 @@ namespace sv {
 	
 	for (HierarchyFolder& f : folder.folders) {
 
-	    gui_checkbox(f.path, &f.show, id++);
+	    gui_checkbox(f.path, f.show, id++);
 
 	    display_create_popup(f);
 
@@ -1143,13 +1124,13 @@ namespace sv {
 	// Asser that all the entities exists
 	update_hierarchy_folder(data.root);
 	
-	if (egui_begin_window("Hierarchy")) {
+	if (gui_begin_window("Hierarchy")) {
 
 	    display_hierarchy_folder(data.root);
 
 	    display_create_popup(data.root);
 	    
-	    egui_end_window();
+	    gui_end_window();
 	}
     }
 
@@ -1157,7 +1138,7 @@ namespace sv {
     {
 	Entity selected = editor.selected_entity;
 
-	if (egui_begin_window("Inspector")) {
+	if (gui_begin_window("Inspector")) {
 
 	    if (selected != SV_ENTITY_NULL) {
 
@@ -1195,7 +1176,7 @@ namespace sv {
 		    
 		    bool is_player = selected == scene->player;
 		    
-		    if (gui_checkbox("Player", &is_player, 0u)) {
+		    if (gui_checkbox("Player", is_player, 0u)) {
 
 			if (is_player) {
 			    scene->player = selected;
@@ -1213,7 +1194,7 @@ namespace sv {
 		    gui_pop_id(2u);
 		}
 
-		if (gui_begin_popup(GuiPopupTrigger_Parent, MouseButton_Right, 0xabc2544 + selected, GuiLayout_Flow)) {
+		/*if (gui_begin_popup(GuiPopupTrigger_Parent, MouseButton_Right, 0xabc2544 + selected, GuiLayout_Flow)) {
 		    u32 count = get_component_register_count();
 		    foreach(i, count) {
 
@@ -1229,19 +1210,20 @@ namespace sv {
 		    }
 
 		    gui_end_popup();
-		}
+		    }*/
 	    }
 
-	    egui_end_window();
+	    gui_end_window();
 	}
     }
 
+    /*
     static void display_asset_browser()
     {
 	bool update_browser = false;
 	char next_filepath[FILEPATH_SIZE];
 
-	if (egui_begin_window("Asset Browser")) {
+	if (gui_begin_window("Asset Browser")) {
 
 	    constexpr f32 WIDTH = 25.f;
 	    AssetBrowserInfo& info = editor.asset_browser;
@@ -1288,9 +1270,7 @@ namespace sv {
 		    gui_push_id((u64)e.type);
 
 		    // TODO: ignore unused elements
-		    gui_begin_container(i, GuiLayout_Free);
-
-		    gui_bounds(GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
+		    gui_begin_container(i, GuiLayout_Flow);
 
 		    switch (e.type) {
 
@@ -1384,7 +1364,6 @@ namespace sv {
 
 		    }
 
-		    gui_ybounds(GuiCoord::Relative(0.05f), GuiCoord::Relative(0.3f));
 		    gui_text(e.name, 1u);
 
 		    gui_end_container();
@@ -1524,108 +1503,82 @@ namespace sv {
 	    
 	    egui_end_window();
 	}
-    }
+	}*/
 
     void display_scene_settings()
     {
 	SceneData& s = *get_scene_data();
 	
-	if (egui_begin_window("Scene Manager")) {
+	if (gui_begin_window("Scene Manager")) {
 
 	    gui_text(get_scene_name(), 0u);
 
-	    if (gui_checkbox("Go to scene", 1u)) {
+	    if (gui_collapse("Go to scene", 1u)) {
 		
-		gui_begin_container(2u, GuiLayout_Flow);
-		
-		gui_text_field(editor.next_scene_name, SCENENAME_SIZE + 1u, 0u);
+		//gui_text_field(editor.next_scene_name, SCENENAME_SIZE + 1u, 0u);
 
 		if (gui_button("GO!", 1u)) {
 		    set_scene(editor.next_scene_name);
 		    strcpy(editor.next_scene_name, "");
 		}
-
-		gui_end_container();
 	    }
 
-	    if (gui_checkbox("Rendering", 3u)) {
-		
-		gui_begin_container(4u, GuiLayout_Flow);
-		
+	    if (gui_collapse("Rendering", 3u)) {
 		egui_comp_color("Ambient Light", 0u, &s.ambient_light);
-
-		gui_end_container();
 	    }
 
-	    if (gui_checkbox("Physics", 5u)) {
-		
-		gui_begin_container(6u, GuiLayout_Flow);
+	    if (gui_collapse("Physics", 5u)) {
 		
 		egui_comp_drag_v2_f32("Gravity", 0u, &s.gravity, 0.01f);
-
-		gui_end_container();
 	    }
 	    
-	    egui_end_window();
+	    gui_end_window();
 	}
     }
 
     SV_INTERNAL void display_gui()
     {
-	if (egui_begin()) {
+	if (_gui_begin()) {
 
 	    if (!editor.camera_focus && there_is_scene() && dev.debug_draw) {
 
 		// Window management
-		{
-		    gui_push_id("WINDOW MANAGER");
+		if (gui_begin_window("Window Manager")) {
 
-		    gui_xbounds(GuiCoord::Pixel(5.f), GuiCoord::Pixel(150.f));
-		    gui_ybounds(GuiCoord::IPixel(30.f), GuiAlign_Top, GuiDim::Adjust());
-
-		    gui_push_style(GuiStyle_ContainerColor, editor.palette.color);
-		    gui_push_style(GuiStyle_ButtonColor, Color::White());
-		    gui_push_style(GuiStyle_ButtonHotColor, editor.palette.strong_color);
-		    
-		    gui_begin_container(0u, GuiLayout_Flow);
-
-		    if (egui_button("Hierarchy", 0u)) {
+		    if (gui_button("Hierarchy", 0u)) {
 			gui_show_window("Hierarchy");
 		    }
-		    if (egui_button("Inspector", 1u)) {
+		    if (gui_button("Inspector", 1u)) {
 			gui_show_window("Inspector");
 		    }
-		    if (egui_button("Asset Browser", 2u)) {
+		    if (gui_button("Asset Browser", 2u)) {
 			gui_show_window("Asset Browser");
 		    }
-		    if (egui_button("Scene Manager", 3u)) {
+		    if (gui_button("Scene Manager", 3u)) {
 			gui_show_window("Scene Manager");
 		    }
 
-		    gui_checkbox("Colisions", &dev.draw_collisions, 4u);
+		    gui_checkbox("Colisions", dev.draw_collisions, 4u);
 
 		    if (gui_button("Exit Project", 5u)) {
 			dev.next_engine_state = EngineState_ProjectManagement;
 		    }
 		    
-		    gui_end_container();
-
-		    gui_pop_style(3u);
-		    
-		    gui_pop_id();
+		    gui_end_window();
 		}
 		
 		display_entity_hierarchy();
 		display_entity_inspector();
-		display_asset_browser();
+		//display_asset_browser();
 		display_scene_settings();
+		
 
 	    }
 	    else {
 		// TODO
 	    }
 
-	    egui_end();
+	    _gui_end();
 	}
     }
 
@@ -1672,13 +1625,10 @@ namespace sv {
 
     void update_project_state()
     {
-	if (egui_begin()) {
-
-	    gui_bounds(GuiCoord::Relative(0.f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
-	    gui_begin_container(0u, GuiLayout_Flow);
+	if (_gui_begin()) {
 
 	    if (gui_button("New project", 0u)) {
-
+		
 		char path[FILEPATH_SIZE + 1u] = "";
 		    
 		if (file_dialog_save(path, 0u, nullptr, "")) {
@@ -1740,10 +1690,8 @@ namespace sv {
 		    dev.next_engine_state = EngineState_Edit;
 		}
 	    }
-	
-	    gui_end_container();
 	    
-	    egui_end();
+	    _gui_end();
 	}    
     }
     
@@ -1976,7 +1924,7 @@ namespace sv {
 
 	// Draw gui
 	if (dev.debug_draw)
-	    gui_draw(cmd);
+	    _gui_draw(cmd);
     }
 
 }

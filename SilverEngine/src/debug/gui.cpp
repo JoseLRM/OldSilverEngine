@@ -1,386 +1,98 @@
 #include "debug/gui.h"
 
-#include "core/renderer/renderer_internal.h"
+#include "core/renderer.h"
 
 namespace sv {
 
     enum GuiHeader : u32 {
+	
+	GuiHeader_BeginWindow,
+	GuiHeader_EndWindow,
+	
 	GuiHeader_Widget,
-	GuiHeader_EndOfParent,
-	GuiHeader_StylePush,
-	GuiHeader_StylePop,
-	GuiHeader_SameLine
     };
     
     enum GuiWidgetType : u32 {
 	GuiWidgetType_None,
-	GuiWidgetType_Container,
-	GuiWidgetType_Window,
-	GuiWidgetType_Popup,
-	GuiWidgetType_TextField,
+	GuiWidgetType_Root, // Special value, is used to save the focus of the root
 	GuiWidgetType_Button,
-	GuiWidgetType_Slider,
-	GuiWidgetType_Label,
 	GuiWidgetType_Checkbox,
 	GuiWidgetType_Drag,
+	GuiWidgetType_Text,
+	GuiWidgetType_Collapse,
 	GuiWidgetType_Image,
-	GuiWidgetType_MenuItem,
-	GuiWidgetType_MenuContainer,
-	GuiWidgetType_Package,
-	GuiWidgetType_Reciver,
-    };
-
-    enum GuiPrimitive : u32 {
-	GuiPrimitive_f32,
-	GuiPrimitive_u8,
-    };
-
-    //////////////////////////////// STYLE STRUCTS /////////////////////////////////////
-
-    struct GuiContainerStyle {
-	Color color = Color::Transparent();
-    };
-
-    struct GuiWindowStyle {
-	Color color = Color::Gray(170u, 20u);
-	Color decoration_color = Color::Gray(100u, 200u);
-	Color decoration_hot_color = Color::Gray(150u, 220u);
-	Color decoration_focus_color = Color::Gray(170u, 255u);
-	Color outline_color = Color::Gray(50u, 200u);
-	Color closebutton_color = Color::Red();
-	f32 decoration_height = 0.04f;
-	f32 outline_size = 0.001f;
-	f32 min_width = 0.1f;
-	f32 min_height = 0.f;
-    };
-
-    struct GuiPopupStyle {
-	Color color = Color::Gray(140u);
-    };
-
-    struct GuiTextFieldStyle {
-	Color text_color = Color::Black();
-	Color background_color = Color::White();
-    };
-
-    struct GuiButtonStyle {
-	Color color = Color::Gray(200u, 150u);
-	Color hot_color = Color::White(230u);
-	Color text_color = Color::Black();
-	GPUImage* image = nullptr;
-	v4_f32 texcoord = { 0.f, 0.f, 1.f, 1.f };
-    };
-
-    struct GuiSliderStyle {
-	Color color = Color::Gray(5u);
-	Color button_color = Color::White();
-	v2_f32 button_size = { 0.01f, 0.03f };
-    };
-
-    struct GuiLabelStyle {
-	Color text_color = Color::White();
-	TextAlignment text_alignment = TextAlignment_Center;
-	Color background_color = Color::Gray(100u, 0u);
-    };
-
-    struct GuiCheckboxStyle {
-	Color button_color = Color::Gray(100u);
-	Color check_color = Color::White();
-	Color text_color = Color::Black();
-	Color background_color = Color::Transparent();
-	GuiCheckboxShape shape = GuiCheckboxShape_Quad;
-	TextAlignment text_alignment = TextAlignment_Left;
-	f32 shape_size_mult = 0.7f;
-    };
-
-    struct GuiDragStyle {
-	Color text_color = Color::Black();
-	Color background_color = Color::White();
-    };
-
-    struct GuiMenuItemStyle {
-	Color color = Color::White();
-	Color hot_color = Color::Gray(200u);
-	Color text_color = Color::Black();
-    };
-
-    struct GuiImageStyle {
-	v4_f32 texcoord = { 0.f, 0.f, 1.f, 1.f };
-	Color color = Color::White();
-    };
-
-    struct GuiFlowLayoutStyle {
-	f32 x0 = 0.1f;
-	f32 x1 = 0.9f;
-	f32 sub_x0 = 0.f;
-	f32 sub_x1 = 1.f;
-	f32 margin = 5.f;
-	f32 parent_margin = 10.f;
-    };
-
-    struct GuiGridLayoutStyle {
-	
-    };
-
-    struct GuiStyleData {
-	GuiContainerStyle container;
-	GuiWindowStyle window;
-	GuiPopupStyle popup;
-	GuiButtonStyle button;
-	GuiTextFieldStyle text_field;
-	GuiSliderStyle slider;
-	GuiLabelStyle label;
-	GuiCheckboxStyle checkbox;
-	GuiDragStyle drag;
-	GuiMenuItemStyle menuitem;
-	GuiImageStyle image;
-	GuiFlowLayoutStyle flow_layout;
-	GuiGridLayoutStyle grid_layout;
-    };
-
-    ///////////////////////////////// RAW STRUCTS ///////////////////////////////////////
-
-    enum GuiCoordType : u8 {
-	GuiCoordType_Coord,
-	GuiCoordType_Dim,
-    };
-    
-    struct Raw_Coords {
-
-	struct Coord {
-	    GuiCoord _0;
-	    GuiCoord _1;
-	};
-
-	struct Dim {
-	    GuiCoord c;
-	    GuiAlign align;
-	    GuiDim d;
-	};
-	
-	GuiCoordType xtype;
-	Coord xcoord;
-	Dim xdim;
-	GuiCoordType ytype;
-	Coord ycoord;
-	Dim ydim;
-    };
-
-    struct Raw_TextField {
-	char* buff;
-	u32 pos;
-    };
-    
-    struct Raw_Button {
-	const char* text;
-    };
-
-    struct Raw_Drag {
-	GuiPrimitive primitive;
-	u64 value;
-	u64 min;
-	u64 max;
-	u64 adv;
-    };
-
-    struct Raw_Checkbox {
-	bool value;
-	bool modified;
-	const char* text;
-    };
-
-    struct Raw_Label {
-	const char* text;
-    };
-
-    struct Raw_Container {
-    };
-
-    struct Raw_Window {
-    };
-
-    struct Raw_Popup {
-	v4_f32 bounds;
-    };
-
-    struct Raw_MenuItem {
-	const char* text;
-	bool active;
-    };
-
-    struct Raw_Package {
-	const void* package;
-	u32 package_size;
-	u64 package_id;
-    };
-
-    struct Raw_Reciver {
-	u64 package_id;
-    };
-
-    struct Raw_Image {
-	GPUImage* image;
-	GPUImageLayout layout;
-    };
-
-    ///////////////////////////////// WIDGET STRUCTS ///////////////////////////////////
-
-    struct GuiIndex {
-	u32 index;
-	u64 id;
-
-	GuiIndex() = default;
-	GuiIndex(u32 index, u64 id) : index(index), id(id) {}
-    };
-
-    struct GuiParentInfo {
-
-	u32 widget_offset;
-	u32 widget_count;
-
-	u32 parent_index;
-	u32 menu_item_count;
-	bool has_vertical_scroll;
-	v4_f32 child_bounds;
-
-	f32 vertical_offset;
-	f32 min_y;
-	f32 max_y;
-
-	f32 vertical_amplitude; // The total vertical size that ocupe the childs
-	f32 horizontal_amplitude; // The total horizontal size that ocupe the childs
-
-	GuiLayout layout;
-	union {
-	    struct {
-		f32 yoff;
-		u32 same_line_count;
-		u32 last_same_line;
-		GuiFlowLayoutStyle style;
-	    } flow;
-
-	    struct {
-		GuiGridLayoutStyle style;
-	    } grid;
-	};
-	
-    };
-
-    struct GuiWindowState {
-
-	v4_f32 bounds;
-	bool show;
-	std::string title;
-	u64 id;
-
     };
 
     struct GuiWidget {
 
 	v4_f32 bounds;
-	u32 index;
-	u64 id;
 	GuiWidgetType type;
-	Raw_Coords raw_coords;
+	u64 id;
 
 	union Widget {
 
 	    // I hate u
-	    Widget() : window({}) {}
+	    Widget() : button({}) {}
 
-	    struct {
-		const char* text;
-		GuiTextFieldStyle style;
-		u32 pos;
-	    } text_field;
-	    
 	    struct {
 		const char* text;
 		bool hot;
 		bool pressed;
-		GuiButtonStyle style;
 	    } button;
 
 	    struct {
-		GuiPrimitive primitive;
-		u64 value;
-		u64 min;
-		u64 max;
-		u64 adv;
-		GuiDragStyle style;
-	    } drag;
-
-	    struct {
-		bool value;
-		bool modified;
 		const char* text;
-		GuiCheckboxStyle style;
+		bool pressed;
+		bool value;
 	    } checkbox;
 
 	    struct {
-		const char* text;
-		GuiLabelStyle style;
-	    } label;
+		f32 adv;
+		f32 min;
+		f32 max;
+		f32 value;
+	    } drag;
 
 	    struct {
 		const char* text;
-		GuiMenuItemStyle style;
-		bool hot;
+	    } text;
+
+	    struct {
+		const char* text;
 		bool active;
-	    } menu_item;
-
-	    struct {
-		GuiParentInfo parent_info;
-	    } menu_container;
-
-	    struct {
-		GuiParentInfo parent_info;
-		GuiContainerStyle style;
-	    } container;
-
-	    struct {
-		GuiParentInfo parent_info;
-		GuiWindowState* state;
-		GuiWindowStyle style;
-		bool hot_decoration;
-	    } window;
-
-	    struct {
-		GuiParentInfo parent_info;
-		bool close_request;
-		GuiPopupStyle style;
-	    } popup;
+	    } collapse;
 
 	    struct {
 		GPUImage* image;
 		GPUImageLayout layout;
-		GuiImageStyle style;
 	    } image;
-
-	    struct {
-		void* data;
-		u32 size;
-		u64 package_id;
-	    } package;
-
-	    struct {
-		u64 package_id;
-		bool recived;
-	    } reciver;
-
+	    
 	} widget;
 
 	GuiWidget() = default;
 
     };
 
-    struct WritingParentInfo {
-	GuiWidget* parent;
-	GuiLayout layout;
+    struct GuiRootInfo {
+
+	List<GuiWidget> widgets;
+	v4_f32 bounds = { 0.5f, 0.5f, 1.f, 1.f };
+	f32 yoff;
+	
     };
 
-    struct GuiLayoutData {
-	GuiLayout type;
+    struct GuiWindowState {
+
+	bool show;
+	bool active;
+	char title[GUI_WINDOW_NAME_SIZE + 1u];
+	u64 hash;
+	GuiRootInfo root_info;
+
+    };
+
+    struct WritingParentInfo {
+	GuiWidget* parent;
     };
 
     struct GUI {
@@ -390,67 +102,75 @@ namespace sv {
 	RawList buffer;
 	List<WritingParentInfo> parent_stack;
 	
-	GuiIndex current_focus;
-	Raw_Coords free_bounds;
-	
 	List<u64> ids;
-	u32 style_count;
 	u64 current_id;
-
-	struct {
-	    u64 id;
-	    GuiWidgetType type;
-	}last;
 	
 	// STATE
+	
+	GuiRootInfo root_info;
 
-	List<GuiWidget> widgets;
-	List<GuiIndex> indices;
-	
-	RawList style_stack;
-	
-	u32 root_menu_count;
+	GuiRootInfo* current_root;
 	
 	struct {
+	    GuiRootInfo* root;
 	    GuiWidgetType type;
 	    u64 id;
 	    u32 action;
 	} focus;
 
-	bool catch_input;
+	v2_f32 selection_offset;
 
-	GuiStyleData style;
-	GuiStyleData temp_style;
-	
-	// STATIC STATE
-	struct {
-	    std::unordered_map<u64, GuiWindowState> window;
-	    std::unordered_map<u64, bool> checkbox;
-	} static_state;
+	GuiWidget* current_focus = nullptr;
+
+	ThickHashTable<GuiWindowState, 50u> windows;
 
 	// SETTINGS
 
 	f32 scale;
+
+	// PRECOMPUTED
+
 	v2_f32 resolution;
 	f32 aspect;
 	v2_f32 mouse_position;
-	
-	// AUX
-
-	v2_f32 begin_position;
-	u64 package_id;		
-	RawList package_data;
-	List<char> current_text_field_value;
 
     };
 
     static GUI* gui = nullptr;
+
+    SV_AUX bool mouse_in_bounds(const v4_f32& bounds)
+    {
+	return abs(gui->mouse_position.x - bounds.x) < bounds.z * 0.5f &&
+	    abs(gui->mouse_position.y - bounds.y) < bounds.w * 0.5f;
+    }
+
+    SV_AUX v4_f32 compute_checkbox_button(const GuiWidget& w)
+    {
+	v4_f32 button_bounds = w.bounds;
+	button_bounds.z = button_bounds.w / gui->aspect;
+	button_bounds.x = button_bounds.x - w.bounds.z * 0.5f + button_bounds.z * 0.5f;
+	return button_bounds;
+    }
+    SV_AUX v4_f32 compute_collapse_button(const GuiWidget& w)
+    {
+	v4_f32 button_bounds = w.bounds;
+	button_bounds.z = button_bounds.w / gui->aspect;
+	button_bounds.x = button_bounds.x - w.bounds.z * 0.5f + button_bounds.z * 0.5f;
+	return button_bounds;
+    }
+    SV_AUX v4_f32 compute_window_decoration(const v4_f32& b)
+    {
+	v4_f32 bounds;
+	bounds.x = b.x;
+	bounds.z = b.z;
+	bounds.w = 0.03f;
+	bounds.y = b.y + b.w * 0.5f + bounds.w * 0.5f;
+	return bounds;
+    }
     
     bool _gui_initialize()
     {
 	gui = SV_ALLOCATE_STRUCT(GUI);
-
-	gui->package_id = 0u;
 
 	// Get last static state
 	{
@@ -465,12 +185,12 @@ namespace sv {
 		foreach(i, window_count) {
 
 		    GuiWindowState s;
-		    deserialize_string(d, s.title);
+		    deserialize_string(d, s.title, GUI_WINDOW_NAME_SIZE);
 		    deserialize_bool(d, s.show);
-		    deserialize_v4_f32(d, s.bounds);
+		    deserialize_v4_f32(d, s.root_info.bounds);
 		    
-		    s.id = hash_string(s.title.c_str());
-		    gui->static_state.window[s.id] = s;
+		    s.hash = hash_string(s.title);
+		    gui->windows[s.hash] = s;
 		}
 
 		deserialize_end(d);
@@ -491,14 +211,13 @@ namespace sv {
 
 	    serialize_begin(s);
 
-	    serialize_u32(s, u32(gui->static_state.window.size()));
+	    serialize_u32(s, u32(gui->windows.size()));
 
-	    for (const auto& it : gui->static_state.window) {
+	    for (const GuiWindowState& state : gui->windows) {
 
-		const GuiWindowState& state = it.second;
-		serialize_string(s, state.title.c_str());
+		serialize_string(s, state.title);
 		serialize_bool(s, state.show);
-		serialize_v4_f32(s, state.bounds);
+		serialize_v4_f32(s, state.root_info.bounds);
 	    }
 
 	    bool res = bin_write(hash_string("GUI STATE"), s, true);
@@ -513,2329 +232,557 @@ namespace sv {
 	return true;
     }
 
-    ////////////////////////////////////////// UTILS ////////////////////////////////////////////////
-
-    SV_AUX void write_buffer(const void* data, size_t size)
+    bool _gui_begin()
     {
-	gui->buffer.write_back(data, size);
-    }
-
-    template<typename T>
-    SV_AUX void write_buffer(const T& t)
-    {
-	write_buffer(&t, sizeof(T));
-    }
-
-    SV_AUX void write_text(const char* text)
-    {
-
-	if (text == nullptr) {
-
-	    char null = '\0';
-	    write_buffer(&null, 1u);
-	}
-	else {
-	    size_t text_size = strlen(text);
-	    write_buffer(text, text_size + 1u);
-	}
-    }
-
-    SV_INLINE static void set_focus(GuiWidgetType type, u64 id, u32 action = 0u)
-    {
-	gui->focus.type = type;
-	gui->focus.id = id;
-	gui->focus.action = action;
-    }
-
-    SV_INLINE static void free_focus()
-    {
-	gui->focus.type = GuiWidgetType_None;
-    }
-
-    SV_AUX bool ignore_scroll(GuiWidgetType type)
-    {
-	switch (type)
-	{
-	case GuiWidgetType_MenuItem:
-	case GuiWidgetType_MenuContainer:
-	case GuiWidgetType_Window:
-	case GuiWidgetType_Popup:
-	    return true;
-
-	default:
-	    return false;
-	}
-    }
-    
-    SV_INLINE static bool is_parent(GuiWidgetType type)
-    {
-	switch (type)
-	{
-	case GuiWidgetType_MenuContainer:
-	case GuiWidgetType_Container:
-	case GuiWidgetType_Window:
-	case GuiWidgetType_Popup:
-	    return true;
-
-	default:
-	    return false;
-	}
-    }
-
-    SV_AUX bool is_parent(const GuiWidget& w)
-    {
-	return is_parent(w.type);
-    }
-
-    SV_AUX GuiParentInfo* get_parent_info(GuiWidget& parent)
-    {
-	if (is_parent(parent)) {
-
-	    return reinterpret_cast<GuiParentInfo*>(&parent.widget);
-	}
-	else return nullptr;
-    }
-
-    SV_AUX const GuiParentInfo* get_parent_info(const GuiWidget& parent)
-    {
-	if (is_parent(parent)) {
-
-	    return reinterpret_cast<const GuiParentInfo*>(&parent.widget);
-	}
-	else return nullptr;
-    }
-
-    SV_AUX GuiParentInfo* get_parent_info(u32 index)
-    {
-	GuiWidget& w = gui->widgets[index];
-	return get_parent_info(w);
-    }
-
-    SV_AUX void write_widget(GuiWidgetType type, u64 id, void* data, GuiParentInfo* parent_info = nullptr, GuiLayout layout = GuiLayout_Flow)
-    {
-	write_buffer(GuiHeader_Widget);
-	write_buffer(type);
-	write_buffer(id);
-
-	// Write parent raw data
-	if (is_parent(type)) {
-
-	    write_buffer(layout);
-	    
-	    if (parent_info) {
-
-		write_buffer(parent_info->child_bounds);
-		write_buffer(parent_info->vertical_amplitude);
-		write_buffer(parent_info->horizontal_amplitude);
-		write_buffer(parent_info->vertical_offset);
-		write_buffer(parent_info->has_vertical_scroll);
-	    }
-	    else {
-		write_buffer(v4_f32());
-		write_buffer(0.f);
-		write_buffer(0.f);
-		write_buffer(0.f);
-		write_buffer(false);
-	    }
-	}
+	f32 width = (f32) os_window_size().x;
+	f32 height = (f32) os_window_size().y;
 	
-	// Write layout info
-	{
-	    GuiLayout parent_layout;
-	    if (gui->parent_stack.empty())
-		parent_layout = GuiLayout_Free;
-	    else {
-
-		parent_layout = gui->parent_stack.back().layout;
-	    }
-
-	    if (parent_layout == GuiLayout_Free)
-		write_buffer(gui->free_bounds);
-	}
-
-	switch (type)
-	{
-	case GuiWidgetType_Container:
-	{
-	    Raw_Container* raw = (Raw_Container*)data;
-	    write_buffer(*raw);
-	}
-	break;
-
-	case GuiWidgetType_Window:
-	{
-	    Raw_Window* raw = (Raw_Window*)data;
-	    write_buffer(*raw);
-	}
-	break;
-
-	case GuiWidgetType_Popup:
-	{
-	    Raw_Popup* raw = (Raw_Popup*)data;
-	    write_buffer(*raw);
-	}
-	break;
-
-	case GuiWidgetType_TextField:
-	{
-	    Raw_TextField* raw = (Raw_TextField*)data;
-
-	    write_text(raw->buff);
-	    write_buffer(raw->pos);
-	}
-	break;
-
-	case GuiWidgetType_Button:
-	{
-	    Raw_Button* raw = (Raw_Button*)data;
-
-	    write_text(raw->text);
-	}
-	break;
-
-	case GuiWidgetType_Slider:
-	    break;
-
-	case GuiWidgetType_Label:
-	{
-	    Raw_Label* raw = (Raw_Label*)data;
-
-	    write_text(raw->text);
-	}
-	break;
-
-	case GuiWidgetType_Checkbox:
-	{
-	    Raw_Checkbox* raw = (Raw_Checkbox*)data;
-	    write_buffer(raw->value);
-	    write_buffer(raw->modified);
-	    write_text(raw->text);
-	}
-	break;
-
-	case GuiWidgetType_Drag:
-	{
-	    Raw_Drag* raw = (Raw_Drag*)data;
-	    write_buffer(*raw);
-	}
-	break;
-
-	case GuiWidgetType_MenuItem:
-	{
-	    Raw_MenuItem* raw = (Raw_MenuItem*)data;
-
-	    write_text(raw->text);
-	    write_buffer(raw->active);
-	}
-	break;
-
-	case GuiWidgetType_Image:
-	{
-	    Raw_Image* raw = (Raw_Image*)data;
-	    write_buffer(*raw);
-	}
-	break;
-
-	case GuiWidgetType_Package:
-	{
-	    Raw_Package* raw = (Raw_Package*)data;
-
-	    write_buffer(raw->package_size);
-	    if (raw->package_size) {
-		write_buffer(raw->package, raw->package_size);
-	    }
-
-	    write_buffer(raw->package_id);
-	}
-	break;
-
-	case GuiWidgetType_Reciver:
-	{
-	    Raw_Reciver* raw = (Raw_Reciver*)data;
-	    write_buffer(*raw);
-	}
-	break;
-
-	default:
-	    break;
-	}
-
-	gui->last.id = id;
-	gui->last.type = type;
-    }
-    
-    SV_AUX f32 compute_coord(const GuiCoord& coord, f32 resolution, f32 parent_coord, f32 parent_dimension)
-    {
-	f32 res = 0.5f;
-
-	// Centred coord
-	switch (coord.constraint)
-	{
-	case GuiCoordConstraint_Relative:
-	    res = coord.value * parent_dimension;
-	    break;
-
-	case GuiCoordConstraint_Center:
-	    res = 0.5f * parent_dimension;
-	    break;
-
-	case GuiCoordConstraint_Pixel:
-	case GuiCoordConstraint_InversePixel:
-	    res = coord.value / resolution;
-	    break;
-
-	}
-
-	// Inverse coord
-	if (coord.constraint == GuiCoordConstraint_InversePixel) {
-	    res = parent_dimension - res;
-	}
-
-	// Parent offset
-	res += (parent_coord - parent_dimension * 0.5f);
-
-	return res;
-    }
-
-    SV_AUX f32 compute_dimension(const GuiDim& dim, f32 resolution, f32 parent_dimension, f32 aspect_dimension, f32 adjust_value, bool xaxis)
-    {
-	f32 res = 0.5f;
-
-	// Centred coord
-	switch (dim.constraint)
-	{
-	case GuiDimConstraint_Relative:
-	    res = dim.value * parent_dimension;
-	    break;
-
-	case GuiDimConstraint_Aspect:
-	    res = dim.value * aspect_dimension * (xaxis ? (1.f / gui->aspect) : gui->aspect);
-	    break;
-
-	case GuiDimConstraint_Pixel:
-	    res = dim.value / resolution;
-	    break;
-
-	case GuiDimConstraint_Absolute:
-	    res = dim.value;
-	    break;
-
-	case GuiDimConstraint_Scale:
-	    res = dim.value * gui->scale;
-	    break;
-
-	case GuiDimConstraint_Adjust:
-	    res = dim.value * adjust_value;
-	    break;
-	    
-	}
-	
-	return res;
-    }
-    
-    SV_AUX v2_f32 compute_axis_bounds(const GuiWidget* widget, bool xaxis, const v4_f32 parent_bounds, f32 aspect_dimension)
-    {
-	f32 _0, _1;
-
-	const Raw_Coords& raw = widget->raw_coords;
-
-	if (xaxis) {
-	    if (raw.xtype == GuiCoordType_Coord) {
-		_0 = compute_coord(raw.xcoord._0, gui->resolution.x, parent_bounds.x, parent_bounds.z);
-		_1 = compute_coord(raw.xcoord._1, gui->resolution.x, parent_bounds.x, parent_bounds.z);
-	    }
-	    else {
-
-		f32 adjust_value = 0.f;
-
-		if (is_parent(*widget)) {
-
-		    adjust_value = get_parent_info(*widget)->horizontal_amplitude;
-		}
-		
-		_0 = compute_coord(raw.xdim.c, gui->resolution.x, parent_bounds.x, parent_bounds.z);
-		_1 = compute_dimension(raw.xdim.d, gui->resolution.x, parent_bounds.z, aspect_dimension, adjust_value, true);
-
-		switch (raw.xdim.align) {
-		    
-		case GuiAlign_Center:
-		    _0 -= _1 * 0.5f;
-		    break;
-
-		case GuiAlign_Right:
-		    _0 -= _1;
-		    break;
-		    
-		}
-
-		_1 = _0 + _1;
-	    }
-	}
-	else {
-	    if (raw.ytype == GuiCoordType_Coord) {
-		_0 = compute_coord(raw.ycoord._0, gui->resolution.y, parent_bounds.y, parent_bounds.w);
-		_1 = compute_coord(raw.ycoord._1, gui->resolution.y, parent_bounds.y, parent_bounds.w);
-	    }
-	    else {
-
-		f32 adjust_value = 0.f;
-
-		if (is_parent(*widget)) {
-
-		    adjust_value = get_parent_info(*widget)->vertical_amplitude;
-		}
-		
-		_0 = compute_coord(raw.ydim.c, gui->resolution.y, parent_bounds.y, parent_bounds.w);
-		_1 = compute_dimension(raw.ydim.d, gui->resolution.y, parent_bounds.w, aspect_dimension, adjust_value, false);
-
-		switch (raw.ydim.align) {
-		    
-		case GuiAlign_Center:
-		    _0 -= _1 * 0.5f;
-		    break;
-
-		case GuiAlign_Top:
-		    _0 -= _1;
-		    break;
-		    
-		}
-
-		_1 = _0 + _1;
-	    }
-	}
-
-	if (_1 < _0) std::swap(_0, _1);
-
-	return { _0, _1, };
-    }
-    
-    SV_INTERNAL v4_f32 compute_widget_bounds(const GuiWidget* widget, GuiWidget* parent)
-    {
-	// TODO: Debug assertions
-
-	v4_f32 parent_bounds;
-	if (parent) {
-
-	    const GuiParentInfo* parent_info = get_parent_info(*parent);
-	    parent_bounds = parent_info->child_bounds;
-	}
-	else parent_bounds = { 0.5f, 0.5f, 1.f, 1.f };
-
-	v2_f32 xaxis, yaxis;
-
-	const Raw_Coords& raw = widget->raw_coords;
-	
-	if (raw.xtype == GuiCoordType_Dim && raw.xdim.d.constraint == GuiDimConstraint_Aspect) {
-	    
-	    yaxis = compute_axis_bounds(widget, false, parent_bounds, 0.5f);
-	    xaxis = compute_axis_bounds(widget, true, parent_bounds, yaxis.y - yaxis.x);
-	}
-	else {
-
-	    xaxis = compute_axis_bounds(widget, true, parent_bounds, 0.5f);
-	    yaxis = compute_axis_bounds(widget, false, parent_bounds, xaxis.y - xaxis.x);
-	}
-
-
-	f32 w = xaxis.y - xaxis.x;
-	f32 h = yaxis.y - yaxis.x;
-	f32 x = xaxis.x + w * 0.5f;
-	f32 y = yaxis.x + h * 0.5f;
-
-	SV_ASSERT(w >= 0.f && h >= 0.f);
-	
-	return { x, y, w, h };
-    }
-
-    SV_AUX bool mouse_in_bounds(const v4_f32& bounds)
-    {
-	return abs(bounds.x - gui->mouse_position.x) <= bounds.z * 0.5f && abs(bounds.y - gui->mouse_position.y) <= bounds.w * 0.5f;
-    }
-
-    SV_AUX v4_f32 compute_window_decoration_bounds(const GuiWidget& w)
-    {
-	auto& window = w.widget.window;
-
-	v4_f32 bounds;
-	bounds.x = w.bounds.x;
-	bounds.y = w.bounds.y + w.bounds.w * 0.5f + window.style.decoration_height * 0.5f + window.style.outline_size * gui->aspect;
-	bounds.z = w.bounds.z + window.style.outline_size * 2.f;
-	bounds.w = window.style.decoration_height;
-	return bounds;
-    }
-
-    SV_AUX v4_f32 compute_window_closebutton_bounds(const GuiWidget& w, const v4_f32 decoration_bounds)
-    {
-	v4_f32 bounds;
-	bounds.w = decoration_bounds.w;
-	bounds.z = bounds.w / gui->aspect;
-	bounds.x = decoration_bounds.x + decoration_bounds.z * 0.5f - bounds.z * 0.5f;
-	bounds.y = decoration_bounds.y;
-		
-	return bounds;
-    }
-
-    SV_AUX v4_f32 compute_checkbox_button_bounds(const GuiWidget& w)
-    {
-	v4_f32 bounds;
-
-	bounds.y = w.bounds.y;
-	bounds.w = w.bounds.w;
-	bounds.z = bounds.w / gui->aspect;
-	bounds.x = (w.bounds.x - w.bounds.z * 0.5f) + bounds.z * 0.5f;
-	
-	return bounds;
-    }
-
-    static void update_widget(const GuiIndex& index)
-    {
-	GuiParentInfo* parent_info = get_parent_info(index.index);
-
-	// If it is a parent, update childs
-	if (parent_info) {
-
-	    GuiIndex* it = gui->indices.data() + parent_info->widget_offset;
-	    GuiIndex* end = it + parent_info->widget_count;
-
-	    // Update childs parents
-	    while (it != end) {
-
-		GuiParentInfo* p = get_parent_info(it->index);
-		if (p) {
-
-		    update_widget(*it);
-		    it += p->widget_count;
-		}
-
-		++it;
-	    }
-
-	    // Update normal widgets
-	    it = gui->indices.data() + parent_info->widget_offset;
-
-	    while (it != end) {
-
-		GuiParentInfo* p = get_parent_info(it->index);
-		if (p) {
-
-		    it += p->widget_count;
-		}
-		else {
-
-		    update_widget(*it);
-		}
-
-		++it;
-	    }
-	}
-
-	GuiWidget& w = gui->widgets[index.index];
-
-	switch (w.type)
-	{
-
-	case GuiWidgetType_Button:
-	{
-	    auto& button = w.widget.button;
-
-	    if (input.unused && mouse_in_bounds(w.bounds)) {
-
-		button.hot = true;
-
-		if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
-		    input.unused = false;
-		    set_focus(w.type, w.id);
-		}
-	    }
-	}
-	break;
-
-	case GuiWidgetType_Checkbox:
-	{
-	    if (input.unused) {
-
-		v4_f32 button_bounds = compute_checkbox_button_bounds(w);
-		
-		if (mouse_in_bounds(button_bounds)) {
-
-		    if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
-
-			set_focus(w.type, index.id);
-			input.unused = false;
-		    }
-		}
-	    }
-	}
-	break;
-
-	case GuiWidgetType_Drag:
-	case GuiWidgetType_TextField:
-	case GuiWidgetType_MenuItem:
-	case GuiWidgetType_Package:
-	{
-	    if (input.unused) {
-				
-		if (mouse_in_bounds(w.bounds)) {
-
-		    if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
-
-			set_focus(w.type, index.id);
-			input.unused = false;
-		    }
-		}
-	    }
-
-	    if (w.type == GuiWidgetType_MenuItem) {
-				
-		if (mouse_in_bounds(w.bounds)) {
-		    w.widget.menu_item.hot = true;
-		}
-	    }
-	}
-	break;
-
-	case GuiWidgetType_MenuContainer:
-	{
-	    bool any = false;
-
-	    foreach(i, MouseButton_MaxEnum) {
-		if (input.mouse_buttons[i] == InputState_Pressed) {
-		    any = true;
-		    break;
-		}
-	    }
-
-	    if (any && !mouse_in_bounds(w.bounds)) {
-
-		GuiWidget* menu = &gui->widgets[w.index - 1u];
-		menu->widget.menu_item.active = false;
-	    }
-	}
-	break;
-
-	case GuiWidgetType_Popup:
-	{
-	    auto& popup = w.widget.popup;
-
-	    bool any = false;
-
-	    foreach(i, MouseButton_MaxEnum) {
-		if (input.mouse_buttons[i] == InputState_Pressed) {
-		    any = true;
-		    break;
-		}
-	    }
-
-	    if (any && !mouse_in_bounds(w.bounds)) {
-
-		popup.close_request = true;
-	    }
-	}
-	break;
-
-	case GuiWidgetType_Window:
-	{
-	    auto& window = w.widget.window;
-	    GuiWindowState& state = *window.state;
-
-	    if (input.unused) {
-
-		InputState button = input.mouse_buttons[MouseButton_Left];
-
-		v4_f32 decoration = compute_window_decoration_bounds(w);
-
-		if (mouse_in_bounds(decoration)) {
-
-		    input.unused = false;
-
-		    window.hot_decoration = true;
-					
-		    if (button == InputState_Pressed) {
-
-			v4_f32 closebutton_bounds = compute_window_closebutton_bounds(w, decoration);
-
-			if (mouse_in_bounds(closebutton_bounds)) 
-			    set_focus(GuiWidgetType_Window, state.id, 6u);
-			else {
-			    gui->begin_position = v2_f32(window.state->bounds.x, window.state->bounds.y) - gui->mouse_position;
-			    set_focus(GuiWidgetType_Window, state.id, 0u);
-			}
-		    }
-		}
-		else if (button == InputState_Pressed) {
-					
-		    const v4_f32& content = window.state->bounds;
-
-		    constexpr f32 SELECTION_SIZE = 0.02f;
-
-		    bool right = mouse_in_bounds({ content.x + content.z * 0.5f, content.y, SELECTION_SIZE, content.w + SELECTION_SIZE * 2.f * gui->aspect });
-		    bool left = mouse_in_bounds({ content.x - content.z * 0.5f, content.y, SELECTION_SIZE, content.w + SELECTION_SIZE * 2.f * gui->aspect });
-		    bool bottom = mouse_in_bounds({ content.x, content.y - content.w * 0.5f, content.z + SELECTION_SIZE * 2.f, SELECTION_SIZE * gui->aspect });
-
-		    u32 action = u32_max;
-
-		    if (right && bottom) {
-			action = 4u;
-		    }
-		    else if (left && bottom) {
-			action = 5u;
-		    }
-		    else if (right) {
-			action = 1u;
-		    }
-		    else if (left) {
-			action = 2u;
-		    }
-		    else if (bottom) {
-			action = 3u;
-		    }
-
-		    if (action != u32_max) {
-			input.unused = false;
-			set_focus(GuiWidgetType_Window, state.id, action);
-		    }
-		}
-	    }
-	}
-	break;
-
-	}
-
-
-	// Catch the input if the mouse is inside the parent and update scroll wheel
-	if (parent_info) {
-
-	    if (!gui->catch_input) {
-
-		gui->catch_input = mouse_in_bounds(w.bounds);
-	    }
-
-	    if (input.unused && parent_info->has_vertical_scroll) {
-
-		const v4_f32& scrollable_bounds = parent_info->child_bounds;
-
-		if (input.mouse_wheel != 0.f && mouse_in_bounds(scrollable_bounds)) {
-
-		    parent_info->vertical_offset += input.mouse_wheel * 0.01f;
-		    input.unused = false;
-		}
-
-		parent_info->vertical_offset = SV_MAX(SV_MIN(parent_info->vertical_offset, parent_info->max_y), parent_info->min_y);
-	    }
-	}
-    }
-
-    static void update_focus(const GuiIndex& index)
-    {
-	GuiWidget& w = gui->widgets[index.index];
-
-	switch (w.type)
-	{
-
-	case GuiWidgetType_Drag:
-	{
-	    auto& drag = w.widget.drag;
-
-	    if (input.mouse_buttons[MouseButton_Left] == InputState_None) {
-		free_focus();
-	    }
-	    else {
-
-		switch (drag.primitive) {
-
-		case GuiPrimitive_f32:
-		{
-		    f32& value = *reinterpret_cast<f32*>(&drag.value);
-		    f32 adv = *reinterpret_cast<f32*>(&drag.adv);
-		    f32 min = *reinterpret_cast<f32*>(&drag.min);
-		    f32 max = *reinterpret_cast<f32*>(&drag.max);
-		    
-		    value += input.mouse_dragged.x * gui->resolution.x * adv;
-		    value = SV_MAX(SV_MIN(value, max), min);
-		}
-		break;
-		
-		case GuiPrimitive_u8:
-		{
-		    u8& value = *reinterpret_cast<u8*>(&drag.value);
-		    u8 adv = *reinterpret_cast<u8*>(&drag.adv);
-		    u8 min = *reinterpret_cast<u8*>(&drag.min);
-		    u8 max = *reinterpret_cast<u8*>(&drag.max);
-
-		    i32 add = (i32)round(input.mouse_dragged.x * gui->resolution.x * f32(adv)); 
-		    i32 new_value = (i32)value + add;
-		    new_value = SV_MAX(SV_MIN(new_value, i32(max)), i32(min));
-
-		    value = (u8)new_value;
-		}
-		break;
-		    
-		}
-	    }
-	}
-	break;
-
-	case GuiWidgetType_Checkbox:
-	{
-	    auto& cb = w.widget.checkbox;
-
-	    if (input.mouse_buttons[MouseButton_Left] == InputState_None) {
-
-		free_focus();
-		cb.value = !cb.value;
-		cb.modified = true;
-	    }
-	}
-	break;
-
-	case GuiWidgetType_TextField:
-	{
-	    auto& field = w.widget.text_field;
-
-	    size_t text_size = field.text ? strlen(field.text) : 0u;
-
-	    if (text_size) {
-
-		gui->current_text_field_value.resize(text_size);
-	    }
-	    else gui->current_text_field_value.reset();
-
-	    foreach(i, text_size) {
-
-		gui->current_text_field_value[i] = field.text[i];
-	    }
-
-	    foreach(i, MouseButton_MaxEnum) {
-
-		if (input.mouse_buttons[i] == InputState_Pressed) {
-		    free_focus();
-		    break;
-		}
-	    }
-
-	    // Text modification
-	    {
-		if (gui->current_text_field_value.empty() || gui->current_text_field_value.back() != '\0')
-		    gui->current_text_field_value.push_back('\0');
-		
-		if (input.text.size()) {
-		    
-		    field.pos += u32(input.text.size());
-
-		    gui->current_text_field_value.pop_back();
-		    
-		    for (char c : input.text)
-			gui->current_text_field_value.push_back(c);
-
-		    gui->current_text_field_value.push_back('\0');
-		}
-		    
-
-		foreach(i, input.text_commands.size()) {
-
-		    TextCommand txtcmd = input.text_commands[i];
-
-		    switch (txtcmd)
-		    {
-		    case TextCommand_DeleteLeft:
-			if (field.pos) {
-
-			    gui->current_text_field_value.erase(field.pos);
-			    --field.pos;
-			}
-			break;
-
-		    case TextCommand_Enter:
-		    {
-			free_focus();
-		    }
-		    break;
-
-		    case TextCommand_Escape:
-			free_focus();
-			break;
-		    }
-		}
-
-		if (input.keys[Key_Left] == InputState_Pressed) field.pos = (field.pos == 0u) ? field.pos : (field.pos - 1u);
-		if (input.keys[Key_Right] == InputState_Pressed) field.pos = (field.pos == text_size + 1u) ? field.pos : (field.pos + 1u);
-	    }
-	}
-	break;
-
-	case GuiWidgetType_Button:
-	{
-	    auto& button = w.widget.button;
-
-	    InputState state = input.mouse_buttons[MouseButton_Left];
-	    
-	    if (state == InputState_Released || state == InputState_None) {
-		free_focus();
-		button.pressed = true;
-	    }
-	}
-	break;
-
-	case GuiWidgetType_MenuItem:
-	{
-	    auto& menu = w.widget.menu_item;
-
-	    if (input.mouse_buttons[MouseButton_Left] != InputState_Hold) {
-
-		free_focus();
-
-		if (mouse_in_bounds(w.bounds)) {
-		    menu.active = !menu.active;
-		}
-	    }
-	}
-	break;
-
-	case GuiWidgetType_Package:
-	{
-	    auto& p = w.widget.package;
-
-	    InputState mouse = input.mouse_buttons[MouseButton_Left];
-	    if (mouse == InputState_Released || mouse == InputState_None) {
-
-		free_focus();
-		gui->package_id = p.package_id;
-		gui->package_data.reset();
-		gui->package_data.write_back(p.data, p.size);
-
-		foreach(i, gui->indices.size()) {
-
-		    GuiWidget* w = &gui->widgets[gui->indices[i].index];
-		    if (w->type == GuiWidgetType_Reciver && w->widget.reciver.package_id == p.package_id && mouse_in_bounds(w->bounds)) {
-			w->widget.reciver.recived = true;
-			break;
-		    }
-		}
-	    }
-	}
-	break;
-		
-	case GuiWidgetType_Window:
-	{
-	    auto& window = w.widget.window;
-
-	    if (input.mouse_buttons[MouseButton_Left] == InputState_None) {
-
-		if (gui->focus.action == 6u) {
-
-		    v4_f32 decoration_bounds = compute_window_decoration_bounds(w);
-		    v4_f32 closebutton_bounds = compute_window_closebutton_bounds(w, decoration_bounds);
-
-		    if (mouse_in_bounds(closebutton_bounds)) {
-			window.state->show = false;
-		    }
-		}
-
-		free_focus();
-	    }
-	    else {
-
-		switch (gui->focus.action)
-		{
-
-		case 0u:
-		{
-		    v2_f32 new_position = gui->mouse_position + gui->begin_position;
-		    window.state->bounds.x = new_position.x;
-		    window.state->bounds.y = new_position.y;
-		}
-		break;
-
-		case 1u: // RIGHT
-		{
-		    f32 width = std::max(gui->mouse_position.x - (window.state->bounds.x - window.state->bounds.z * 0.5f), window.style.min_width);
-		    window.state->bounds.x -= (window.state->bounds.z - width) * 0.5f;
-		    window.state->bounds.z = width;
-		}
-		break;
-
-		case 2u: // LEFT
-		{
-		    f32 width = std::max((window.state->bounds.x + window.state->bounds.z * 0.5f) - gui->mouse_position.x, window.style.min_width);
-		    window.state->bounds.x += (window.state->bounds.z - width) * 0.5f;
-		    window.state->bounds.z = width;
-		}
-		break;
-
-		case 3u: // BOTTOM
-		{
-		    f32 height = std::max((window.state->bounds.y + window.state->bounds.w * 0.5f) - gui->mouse_position.y, window.style.min_height);
-		    window.state->bounds.y += (window.state->bounds.w - height) * 0.5f;
-		    window.state->bounds.w = height;
-		}
-		break;
-
-		case 4u: // RIGHT - BOTTOM
-		{
-		    f32 width = std::max(gui->mouse_position.x - (window.state->bounds.x - window.state->bounds.z * 0.5f), window.style.min_width);
-		    window.state->bounds.x -= (window.state->bounds.z - width) * 0.5f;
-		    window.state->bounds.z = width;
-		    f32 height = std::max((window.state->bounds.y + window.state->bounds.w * 0.5f) - gui->mouse_position.y, window.style.min_height);
-		    window.state->bounds.y += (window.state->bounds.w - height) * 0.5f;
-		    window.state->bounds.w = height;
-		}
-		break;
-
-		case 5u: // LEFT - BOTTOM
-		{
-		    f32 width = std::max((window.state->bounds.x + window.state->bounds.z * 0.5f) - gui->mouse_position.x, window.style.min_width);
-		    window.state->bounds.x += (window.state->bounds.z - width) * 0.5f;
-		    window.state->bounds.z = width;
-		    f32 height = std::max((window.state->bounds.y + window.state->bounds.w * 0.5f) - gui->mouse_position.y, window.style.min_height);
-		    window.state->bounds.y += (window.state->bounds.w - height) * 0.5f;
-		    window.state->bounds.w = height;
-		}
-		break;
-
-		}
-	    }
-	}
-	break;
-
-	}
-    }
-
-    //////////////////////////////////////////////// BEGIN ///////////////////////////////////////////////////
-
-    void _gui_begin(f32 scale, f32 width, f32 height)
-    {
-	gui->scale = scale;
 	gui->resolution = { width, height };
 	gui->aspect = width / height;
-
-	gui->style_count = 0u;
 	
 	gui->ids.reset();
 	gui->parent_stack.reset();
 	
 	gui->mouse_position = input.mouse_position + 0.5f;
 	
-	gui->last.id = 0u;
-	gui->last.type = GuiWidgetType_None;
-
-	gui->catch_input = false;
-
-	// Reset buffer
 	gui->buffer.reset();
-    }
 
-    //////////////////////////////////////////////// END ///////////////////////////////////////////////////
+	gui->current_root = &gui->root_info;
 
-    SV_AUX void _read(u8*& it, void* data, size_t size)
-    {
-	memcpy(data, it, size);
-	it += size;
+	return true;
     }
 
     template<typename T>
-    SV_AUX T _read(u8*& it)
+    SV_AUX T gui_read(u8*& it)
     {
 	T t;
-	_read(it, &t, sizeof(T));
+	memcpy(&t, it, sizeof(T));
+	it += sizeof(T);
 	return t;
     }
 
-    SV_AUX void compute_layout(GuiWidget& w, GuiParentInfo* parent_info, u8*& it)
+    SV_AUX const char* gui_read_text(u8*& it)
     {
-	GuiLayout layout = parent_info ? parent_info->layout : GuiLayout_Free;
+	const char* text = (const char*)it;
+	it += strlen(text) + 1u;
 
-	switch (layout) {
+	if (*text == '\0') text = nullptr;
+	return text;
+    }
 
-	case GuiLayout_Free:
-	    w.raw_coords = _read<Raw_Coords>(it);
-	    break;
+    SV_AUX void reset_root(GuiRootInfo& root)
+    {
+	root.widgets.reset();
+	root.yoff = 0.1f;
+    }
 
-	case GuiLayout_Flow:
-	{
-	    auto& data = parent_info->flow;
-	    auto& style = parent_info->flow.style;
-	    
-	    if (!ignore_scroll(w.type)) {
+    SV_AUX void set_focus(GuiRootInfo& root, GuiWidgetType type, u64 id, u32 action = 0u)
+    {
+	gui->focus.root = &root;
+	gui->focus.type = type;
+	gui->focus.id = id;
+	gui->focus.action = action;
+    }
 
-		w.raw_coords.xcoord._0.value = gui->temp_style.flow_layout.sub_x0;
-		w.raw_coords.xcoord._1.value = gui->temp_style.flow_layout.sub_x1;
+    SV_AUX void free_focus()
+    {
+	gui->focus.root = nullptr;
+	gui->focus.type = GuiWidgetType_None;
+	gui->focus.id = 0u;
+	gui->focus.action = 0u;
+    }
 
-		SV_ASSERT(data.same_line_count != 0u);
-		
-		if (data.same_line_count == 1u) {
+    SV_AUX void read_widget(u8*& it)
+    {
+	GuiWidget& w = gui->current_root->widgets.emplace_back();
 
-		    f32 x0 = style.x0;
-		    f32 x1 = style.x1;
-		    if (x1 < x0) std::swap(x0, x1);
+	w.bounds = {};
+	w.type = gui_read<GuiWidgetType>(it);
+	w.id = gui_read<u64>(it);
+
+	f32 height = 0.f;
+	f32 width = 0.9f;
+
+	switch (w.type) {
 		    
-		    f32 width = x1 - x0;
-		    f32 element_width = width / f32(data.last_same_line);
-
-		    u32 count = data.last_same_line - 1u;
-		    u32 end_index = w.index;
-		    u32 begin_index = w.index;
-
-		    while(count) {
-
-			SV_ASSERT(begin_index > 1u);
-			--begin_index;
-
-			GuiWidget& widget = gui->widgets[begin_index];
-			if (!ignore_scroll(widget.type)) {
-			    --count;
-			}
-		    }
-
-		    f32 max_height = 0.f;
-
-		    for (u32 i = begin_index; i <= end_index; ++i) {
-
-			GuiWidget& widget = gui->widgets[i];
-			
-			auto& coords = widget.raw_coords;
-
-			f32 sub_x0 = x0 + f32(i - begin_index) * element_width;
-			f32 sub_x1 = x0 + f32(i - begin_index + 1u) * element_width;
-
-			f32 style_x0 = widget.raw_coords.xcoord._0.value;
-			f32 style_x1 = widget.raw_coords.xcoord._1.value;
-
-			f32 sub_width = sub_x1 - sub_x0;
-			
-			sub_x0 = sub_x0 + style_x0 * sub_width;
-			sub_x1 = sub_x0 + style_x1 * sub_width;
-			
-			coords.xtype = GuiCoordType_Coord;
-			coords.xcoord._0 = GuiCoord::Relative(sub_x0); 
-			coords.xcoord._1 = GuiCoord::Relative(sub_x1); 
-
-			coords.ytype = GuiCoordType_Dim;
-			coords.ydim.c = GuiCoord::IPixel(data.yoff);
-			coords.ydim.align = GuiAlign_Top;
-
-			f32 height;
-	    
-			switch (widget.type) {
-
-			case GuiWidgetType_Container:
-			    coords.ydim.d = GuiDim::Adjust();
-
-			    height = get_parent_info(widget)->vertical_amplitude * gui->resolution.y;
-			    
-			    break;
-			    
-			case GuiWidgetType_Image:
-			{
-			    f32 parent_width = parent_info ? parent_info->child_bounds.z : 1.f;
-			    f32 width = ((sub_x1 - sub_x0) * parent_width) * gui->resolution.x;
-
-			    GPUImage* image = (widget.widget.image.image) ? widget.widget.image.image : renderer->gfx.image_white;
-			    const GPUImageInfo& info = graphics_image_info(image);
-
-			    f32 aspect = f32(info.height) / f32(info.width);
-			    height = width * aspect;
-			    coords.ydim.d = GuiDim::Aspect(aspect);
-			}
-			break;
-						
-			default:
-			    coords.ydim.d = GuiDim::Pixel(20.f);
-			    height = 20.f;
-			    break;
-		
-			}
-			
-			max_height = SV_MAX(max_height, height);
-		    }
-
-		    // Margin
-		    data.yoff += max_height + style.margin;
-		    data.last_same_line = 1u;
-		}
-		else --data.same_line_count;
-	    }
-	}
-	break;
-
-	}
-    }
-
-    SV_AUX void compute_grid_layout(GuiParentInfo* parent_info)
-    {
-	if (parent_info->widget_count == 0u) return;
-	
-	// TODO: Style and dimensions using GuiDim
-	constexpr f32 SIZE = 80.f;
-	constexpr f32 PADDING = 3.f;
-	constexpr f32 MARGIN = 5.f;
-
-	f32 margin = MARGIN;
-	f32 parent_width = (parent_info->child_bounds.z * gui->resolution.x) - MARGIN * 2.f;
-
-	u32 columns = SV_MAX(u32(parent_width / (SIZE + PADDING)), 1u);
-	
-	f32 offset = (parent_width - ((SIZE + PADDING) * f32(columns) - PADDING)) * 0.5f;
-	if (offset < 0.f) {
-	    margin -= offset;
-	    offset = 0.f;
-	}
-
-	GuiIndex* it = &gui->indices[parent_info->widget_offset];
-	GuiIndex* end = it + size_t(parent_info->widget_count);
-
-	u32 row = 0u;
-	u32 col = 0u;
-	
-	while (it != end) {
-
-	    GuiWidget& w = gui->widgets[it->index];
-	    
-	    if (!ignore_scroll(w.type)) {
-
-		Raw_Coords& c = w.raw_coords;
-
-		c.xtype = GuiCoordType_Dim;
-		c.xdim.c = GuiCoord::Pixel(MARGIN + offset + f32(col) * (SIZE + PADDING));
-		c.xdim.d = GuiDim::Pixel(SIZE);
-		c.xdim.align = GuiAlign_Left;
-		
-		c.ytype = GuiCoordType_Dim;
-		c.ydim.c = GuiCoord::IPixel(MARGIN + f32(row) * (SIZE + PADDING));
-		c.ydim.d = GuiDim::Pixel(SIZE);
-		c.ydim.align = GuiAlign_Top;
-		
-		++col;
-
-		if (col == columns) {
-		    col = 0u;
-		    ++row;
-		}
-	    }
-
-	    GuiParentInfo* p = get_parent_info(w);
-	    if (p) {
-
-		it += p->widget_count;
-	    }
-
-	    ++it;
-	}
-    }
-
-    SV_INLINE static void read_widget(GuiWidgetType type, u64 id, u32& current_parent, u8*& it)
-    {
-	// Add widget
-	GuiWidget& w = gui->widgets.emplace_back();
-	w.type = type;
-	w.id = id;
-	w.index = u32(gui->widgets.size() - 1u);
-	gui->indices.emplace_back(w.index, id);
-
-	// Set focus
-	if (gui->focus.type == w.type && gui->focus.id == id) {
-	    gui->current_focus = { w.index, id };
-	}
-
-	// Get parent
-	GuiWidget* parent = (current_parent == u32_max) ? nullptr : &gui->widgets[current_parent];
-
-	if (is_parent(w)) {
-	    
-	    GuiParentInfo* parent_info = get_parent_info(w);
-	    parent_info->parent_index = current_parent;
-	    current_parent = w.index;
-	    parent_info->widget_offset = u32(gui->indices.size());
-	    parent_info->menu_item_count = 0u;
-	    parent_info->min_y = f32_max;
-	    parent_info->max_y = f32_min;
-
-	    parent_info->layout = _read<GuiLayout>(it);
-	    parent_info->child_bounds = _read<v4_f32>(it);
-	    parent_info->vertical_amplitude = _read<f32>(it);
-	    parent_info->horizontal_amplitude = _read<f32>(it);
-	    parent_info->vertical_offset = _read<f32>(it);
-	    parent_info->has_vertical_scroll = _read<bool>(it);
-
-	    if (parent_info->layout == GuiLayout_Flow) {
-
-		parent_info->flow.yoff = gui->temp_style.flow_layout.parent_margin;
-		parent_info->flow.same_line_count = 1u;
-		parent_info->flow.last_same_line = 1u;
-		parent_info->flow.style = gui->temp_style.flow_layout;
-	    }
-	    else if (parent_info->layout == GuiLayout_Grid) {
-
-		parent_info->grid.style = gui->temp_style.grid_layout;
-	    }
-	}
-	
-	// Compute bounds
-	compute_layout(w, parent ? get_parent_info(*parent) : nullptr, it);
-
-	// Read raw data
-	switch (type)
-	{
-	case GuiWidgetType_MenuContainer:
-	    break;
-
-	case GuiWidgetType_Container:
-	{
-	    Raw_Container raw = _read<Raw_Container>(it);
-	    w.widget.container.style = gui->temp_style.container;
-	}
-	break;
-
-	case GuiWidgetType_Popup:
-	{
-	    Raw_Popup raw = _read<Raw_Popup>(it);
-	    w.widget.popup.style = gui->temp_style.popup;
-	    w.widget.popup.close_request = false;
-	    w.bounds = raw.bounds;
-	}
-	break;
-
-	case GuiWidgetType_Window:
-	{
-	    Raw_Window raw = _read<Raw_Window>(it);
-	    w.widget.window.style = gui->temp_style.window;
-
-	    GuiWindowState& state = gui->static_state.window[id];
-	    w.bounds = state.bounds;
-	    w.widget.window.state = &state;
-	}
-	break;
-
-	case GuiWidgetType_TextField:
-	{
-	    auto& field = w.widget.text_field;
-
-	    field.text = (const char*)it;
-	    it += strlen(field.text) + 1u;
-	    if (*field.text == '\0')
-		field.text = nullptr;
-
-	    field.pos = _read<u32>(it);
-	    field.style = gui->temp_style.text_field;
-	}
-	break;
-
 	case GuiWidgetType_Button:
 	{
 	    auto& button = w.widget.button;
+	    button.text = gui_read_text(it);
 
-	    button.text = (const char*)it;
-	    it += strlen(button.text) + 1u;
-	    if (*button.text == '\0')
-		button.text = nullptr;
+	    button.hot = false;
+	    button.pressed = false;
 
-	    button.style = gui->temp_style.button;
+	    height = 0.1f;
 	}
 	break;
-
-	case GuiWidgetType_Label:
-	{
-	    auto& label = w.widget.label;
-
-	    label.text = (const char*)it;
-	    it += strlen(label.text) + 1u;
-	    if (*label.text == '\0')
-		label.text = nullptr;
-
-	    label.style = gui->temp_style.label;
-	}
-	break;
-
-	case GuiWidgetType_Slider:
-	    break;
 
 	case GuiWidgetType_Checkbox:
 	{
-	    auto& cb = w.widget.checkbox;
-			
-	    cb.value = _read<bool>(it);
-	    cb.modified = _read<bool>(it);
+	    auto& checkbox = w.widget.checkbox;
+	    checkbox.text = gui_read_text(it);
+	    checkbox.value = gui_read<bool>(it);
+	    checkbox.pressed = false;
 
-	    cb.text = (const char*)(it);
-	    it += strlen(cb.text) + 1u;
-	    if (*cb.text == '\0')
-		cb.text = nullptr;
-	    
-	    cb.style = gui->temp_style.checkbox;
+	    height = 0.1f;
 	}
 	break;
-
+		
 	case GuiWidgetType_Drag:
 	{
 	    auto& drag = w.widget.drag;
+	    drag.adv = gui_read<f32>(it);
+	    drag.min = gui_read<f32>(it);
+	    drag.max = gui_read<f32>(it);
+	    drag.value = gui_read<f32>(it);
 
-	    Raw_Drag raw = _read<Raw_Drag>(it);
-	    drag.primitive = raw.primitive;
-	    drag.value = raw.value;
-	    drag.min = raw.min;
-	    drag.max = raw.max;
-	    drag.adv = raw.adv;
-	    drag.style = gui->temp_style.drag;
+	    height = 0.1f;
 	}
 	break;
 
-	case GuiWidgetType_MenuItem:
+	case GuiWidgetType_Text:
 	{
-	    auto& menu = w.widget.menu_item;
+	    auto& text = w.widget.text;
+	    text.text = gui_read_text(it);
 
-	    menu.text = (const char*)it;
-	    it += strlen(menu.text) + 1u;
-	    if (*menu.text == '\0')
-		menu.text = nullptr;
+	    height = 0.1f;
+	}
+	break;
 
-	    menu.style = gui->temp_style.menuitem;
-	    menu.active = _read<bool>(it);
+	case GuiWidgetType_Collapse:
+	{
+	    auto& collapse = w.widget.collapse;
+	    collapse.text = gui_read_text(it);
+	    collapse.active = gui_read<bool>(it);
 
-	    if (parent) {
-
-		GuiParentInfo* parent_info = get_parent_info(*parent);
-		++parent_info->menu_item_count;
-	    }
-	    else {
-		++gui->root_menu_count;
-	    }
+	    height = 0.1f;
 	}
 	break;
 
 	case GuiWidgetType_Image:
 	{
 	    auto& image = w.widget.image;
+	    image.image = gui_read<GPUImage*>(it);
+	    image.layout = gui_read<GPUImageLayout>(it);
 
-	    Raw_Image raw = _read<Raw_Image>(it);
-	    image.image = raw.image;
-	    image.layout = raw.layout;
-	    image.style = gui->temp_style.image;
+	    f32 root_aspect = gui->current_root->bounds.z / gui->current_root->bounds.w;
+	    height = width * root_aspect * gui->aspect;
 	}
 	break;
-
-	case GuiWidgetType_Package:
-	{
-	    auto& p = w.widget.package;
-			
-	    p.size = _read<u32>(it);
-	    if (p.size) {
-		p.data = it;
-		it += p.size;
-	    }
-	    else p.data = nullptr;
-
-	    p.package_id = _read<u64>(it);
+		    
 	}
-	break;
+		
+	f32& yoff = gui->current_root->yoff;
+	w.bounds = { 0.5f, 1.f - (yoff + height * 0.5f), width, height };
+	yoff += height + 0.05f;
+    }
 
-	case GuiWidgetType_Reciver:
-	{
-	    auto& reciver = w.widget.reciver;
+    SV_AUX void update_root_bounds(GuiRootInfo& root)
+    {
+	v4_f32 b = root.bounds;
+		
+	for (GuiWidget& w : root.widgets) {
 
-	    Raw_Reciver raw = _read<Raw_Reciver>(it);
-	    reciver.package_id = raw.package_id;
-	}
-	break;
-
-	default:
-	    SV_ASSERT(0);
+	    w.bounds.x = (w.bounds.x * b.z) + b.x - (b.z * 0.5f);
+	    w.bounds.y = (w.bounds.y * b.w) + b.y - (b.w * 0.5f);
+	    w.bounds.z *= b.z;
+	    w.bounds.w *= b.w;
 	}
     }
 
-    // TEMP
-    constexpr f32 MENU_HEIGHT = 0.02f;
-    constexpr f32 MENU_WIDTH = 0.04f;
-
-    constexpr f32 MENU_CONTAINER_HEIGHT = 0.1f;
-    constexpr f32 MENU_CONTAINER_WIDTH = 0.1f;
-
-    constexpr f32 SCROLL_SIZE = 0.005f;
-    constexpr f32 SCROLL_BUTTON_SIZE_MULT = 0.2f;
-	
-    static void update_bounds(GuiWidget* w, GuiWidget* parent, u32& menu_index)
+    SV_AUX void update_widget(GuiWidget& w, GuiRootInfo& root)
     {
-	// Update bounds
-	switch (w->type)
-	{
-	case GuiWidgetType_Container:
-	case GuiWidgetType_TextField:
+	const v4_f32& bounds = w.bounds;
+
+	switch (w.type) {
+
 	case GuiWidgetType_Button:
-	case GuiWidgetType_Slider:
-	case GuiWidgetType_Label:
+	{
+	    if (input.unused) {
+
+		auto& button = w.widget.button;
+			
+		if (mouse_in_bounds(bounds)) {
+
+		    button.hot = true;
+
+		    if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
+			set_focus(root, w.type, w.id);
+		    }
+		}
+		else button.hot = false;
+	    }
+	} break;
+
 	case GuiWidgetType_Checkbox:
-	case GuiWidgetType_Drag:
-	case GuiWidgetType_Image:
-	    w->bounds = compute_widget_bounds(w, parent);
-	    break;
-		
-	case GuiWidgetType_MenuItem:
 	{
-	    v4_f32 parent_bounds;
+	    if (input.unused) {
 
-	    if (parent) {
-		parent_bounds = parent->bounds;
-	    }
-	    else {
-		parent_bounds = { 0.5f, 0.5f, 1.f, 1.f };
-	    }
+		v4_f32 button_bounds = compute_checkbox_button(w);
+			
+		if (mouse_in_bounds(button_bounds)) {
 
-	    w->bounds.x = (parent_bounds.x - parent_bounds.z * 0.5f) + MENU_WIDTH * f32(menu_index);
-	    w->bounds.y = parent_bounds.y + parent_bounds.w * 0.5f;
-	    w->bounds.z = MENU_WIDTH;
-	    w->bounds.w = MENU_HEIGHT;
-	    w->bounds.x += w->bounds.z * 0.5f;
-	    w->bounds.y -= w->bounds.w * 0.5f;
-
-	    ++menu_index;
-	}
-	break;
-
-	case GuiWidgetType_MenuContainer:
-	{
-	    GuiWidget* menu = &gui->widgets[w->index - 1u];
-	    w->bounds.x = menu->bounds.x - menu->bounds.z * 0.5f;
-	    w->bounds.y = menu->bounds.y - menu->bounds.z * 0.5f;
-	    w->bounds.z = MENU_CONTAINER_WIDTH;
-	    w->bounds.w = MENU_CONTAINER_HEIGHT;
-	    w->bounds.x += w->bounds.z * 0.5f;
-	    w->bounds.y -= w->bounds.w * 0.5f;
-	}
-	break;
-
-	case GuiWidgetType_Package:
-	case GuiWidgetType_Reciver:
-	{
-	    SV_ASSERT(w->index != 0u);
-	    GuiWidget* last = &gui->widgets[w->index - 1u];
-
-	    GuiParentInfo* parent_info = get_parent_info(*last);
-	    if (parent_info) w->bounds = parent_info->child_bounds;
-	    else w->bounds = last->bounds;
-	}
-	break;
-
-	}
-
-	GuiParentInfo* parent_info = get_parent_info(*w);
-	if (parent_info) {
-	    
-	    // Update child bounds
-	    parent_info->child_bounds = w->bounds;
-	    if (parent_info->menu_item_count) {
-				
-		parent_info->child_bounds.w -= MENU_HEIGHT;
-		parent_info->child_bounds.y -= MENU_HEIGHT * 0.5f;
-	    }
-
-	    if (parent_info->has_vertical_scroll) {
-		
-		parent_info->child_bounds.z -= SCROLL_SIZE;
-		parent_info->child_bounds.x -= SCROLL_SIZE * 0.5f;
-	    }
-
-	    // Update childs
-	    GuiIndex* it = gui->indices.data() + parent_info->widget_offset;
-	    GuiIndex* end = it + parent_info->widget_count;
-
-	    u32 _menu_index = 0u;
-
-	    while (it != end) {
-
-		GuiWidget* widget = &gui->widgets[it->index];
-		update_bounds(widget, w, _menu_index);
-
-		if (!ignore_scroll(widget->type)) {
-
-		    parent_info->min_y = SV_MIN(widget->bounds.y - widget->bounds.w * 0.5f, parent_info->min_y);
-		    parent_info->max_y = SV_MAX(widget->bounds.y + widget->bounds.w * 0.5f, parent_info->max_y);
-		}
-
-		GuiParentInfo* p = get_parent_info(*widget);
-		if (p) {
-
-		    it += p->widget_count;
-		}
-
-		++it;
-	    }
-
-	    if (parent_info->layout == GuiLayout_Flow) {
-
-		auto& s = parent_info->flow.style;
-
-		parent_info->min_y -= s.parent_margin / gui->resolution.y;
-		parent_info->max_y += s.parent_margin / gui->resolution.y;
-	    }
-
-	    parent_info->vertical_amplitude = parent_info->max_y - parent_info->min_y;
-	    
-	    parent_info->horizontal_amplitude = 0.f; // TODO
-
-	    // Compute child up and down offsets
-	    f32 parent_min = parent_info->child_bounds.y - parent_info->child_bounds.w * 0.5f;
-	    f32 parent_max = parent_info->child_bounds.y + parent_info->child_bounds.w * 0.5f;
-
-	    // Enable - Disable scroll bars (this bool is saved in raw data and used in the next frame)
-	    parent_info->has_vertical_scroll = parent_info->min_y < parent_min || parent_info->max_y > parent_max;
-
-	    if (parent_info->has_vertical_scroll) {
-
-		parent_info->min_y = SV_MIN(parent_info->min_y - parent_min, 0.f);
-		parent_info->max_y = SV_MAX(parent_info->max_y - parent_max, 0.f);
-
-		if (-parent_info->min_y + parent_info->max_y < 0.01f) {
-		    parent_info->has_vertical_scroll = false;
-		}
-		else {
-		    
-		    // Update childs
-		    it = gui->indices.data() + parent_info->widget_offset;
-
-		    while (it != end) {
-
-			GuiWidget* widget = &gui->widgets[it->index];
-
-			if (!ignore_scroll(widget->type)) {
-
-			    widget->bounds.y -= parent_info->vertical_offset;
-
-			    GuiParentInfo* p = get_parent_info(*widget);
-			    if (p) {
-				p->child_bounds.y -= parent_info->vertical_offset;
-			    }
-			}
-			else {
-
-			    GuiParentInfo* p = get_parent_info(*widget);
-			    if (p) {
-				it += p->widget_count;
-			    }
-			}
-
-			++it;
+		    if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
+			set_focus(root, w.type, w.id);
 		    }
 		}
 	    }
-	    
-	    if (!parent_info->has_vertical_scroll) {
+	} break;
 
-		parent_info->vertical_offset = 0.f;
-		parent_info->min_y = 0.f;
-		parent_info->max_y = 0.f;
-	    }
-	}
-    }
-
-    SV_AUX void get_style_data(GuiStyle style, size_t* psize, void** pdst, bool temp = true)
-    {
-	*pdst = nullptr;
-	*psize = 0u;
-
-	GuiStyleData& s = temp ? gui->temp_style : gui->style;
-		    
-	switch (style) {
-	    
-	case GuiStyle_ContainerColor:
-	    *pdst = &s.container.color;
-	    *psize = sizeof(Color);
-	    break;
-	    
-	case GuiStyle_WindowBackgroundColor:
-	    *pdst = &s.window.color;
-	    *psize = sizeof(Color);
-	    break;
-	    
-	case GuiStyle_WindowDecorationColor:
-	    *pdst = &s.window.decoration_color;
-	    *psize = sizeof(Color);
-	    break;
-	    
-	case GuiStyle_WindowOutlineColor:
-	    *pdst = &s.window.outline_color;
-	    *psize = sizeof(Color);
-	    break;
-	    
-	case GuiStyle_WindowDecorationHeight:
-	    *pdst = &s.window.decoration_height;
-	    *psize = sizeof(f32);
-	    break;
-	    
-	case GuiStyle_WindowOutlineSize:
-	    *pdst = &s.window.outline_size;
-	    *psize = sizeof(f32);
-	    break;
-	    
-	case GuiStyle_WindowMinWidth:
-	    *pdst = &s.window.min_width;
-	    *psize = sizeof(f32);
-	    break;
-	    
-	case GuiStyle_WindowMinHeight:
-	    *pdst = &s.window.min_height;
-	    *psize = sizeof(f32);
-	    break;
-	    
-	case GuiStyle_PopupColor:
-	    *pdst = &s.popup.color;
-	    *psize = sizeof(Color);
-	    break;
-	    
-	case GuiStyle_ButtonColor:
-	    *pdst = &s.button.color;
-	    *psize = sizeof(Color);
-	    break;
-	    
-	case GuiStyle_ButtonHotColor:
-	    *pdst = &s.button.hot_color;
-	    *psize = sizeof(Color);
-	    break;
-	    
-	case GuiStyle_ButtonTextColor:
-	    *pdst = &s.button.text_color;
-	    *psize = sizeof(Color);
-	    break;
-
-	case GuiStyle_ButtonImage:
-	    *pdst = &s.button.image;
-	    *psize = sizeof(GPUImage*);
-	    break;
-	    
-	case GuiStyle_ButtonTexcoord:
-	    *pdst = &s.button.texcoord;
-	    *psize = sizeof(v4_f32);
-	    break;
-
-	case GuiStyle_SliderColor:
-	    *pdst = &s.slider.color;
-	    *psize = sizeof(Color);
-	    break;
-
-	case GuiStyle_SliderButtonColor:
-	    *pdst = &s.slider.button_color;
-	    *psize = sizeof(Color);
-	    break;
-
-	case GuiStyle_SliderButtonSize:
-	    *pdst = &s.slider.button_size;
-	    *psize = sizeof(f32);
-	    break;
-
-	case GuiStyle_TextColor:
-	    *pdst = &s.label.text_color;
-	    *psize = sizeof(Color);
-	    break;
-
-	case GuiStyle_TextAlignment:
-	    *pdst = &s.label.text_alignment;
-	    *psize = sizeof(TextAlignment);
-	    break;
-
-	case GuiStyle_TextBackgroundColor:
-	    *pdst = &s.label.background_color;
-	    *psize = sizeof(Color);
-	    break;
-
-	case GuiStyle_CheckboxButtonColor:
-	    *pdst = &s.checkbox.button_color;
-	    *psize = sizeof(Color);
-	    break;
-
-	case GuiStyle_CheckboxCheckColor:
-	    *pdst = &s.checkbox.check_color;
-	    *psize = sizeof(Color);
-	    break;
-
-	case GuiStyle_CheckboxBackgroundColor:
-	    *pdst = &s.checkbox.background_color;
-	    *psize = sizeof(Color);
-	    break;
-
-	case GuiStyle_CheckboxShape:
-	    *pdst = &s.checkbox.shape;
-	    *psize = sizeof(GuiCheckboxShape);
-	    break;
-
-	case GuiStyle_CheckboxShapeSizeMult:
-	    *pdst = &s.checkbox.shape_size_mult;
-	    *psize = sizeof(f32);
-	    break;
-
-	case GuiStyle_CheckboxTextAlignment:
-	    *pdst = &s.checkbox.text_alignment;
-	    *psize = sizeof(TextAlignment);
-	    break;
-
-	case GuiStyle_DragTextColor:
-	    *pdst = &s.drag.text_color;
-	    *psize = sizeof(Color);
-	    break;
-
-	case GuiStyle_DragBackgroundColor:
-	    *pdst = &s.drag.background_color;
-	    *psize = sizeof(Color);
-	    break;
-
-	case GuiStyle_ImageTexcoord:
-	    *pdst = &s.image.texcoord;
-	    *psize = sizeof(v4_f32);
-	    break;
-
-	    // TODO Menuitem
-	case GuiStyle_FlowX0:
-	    *pdst = &s.flow_layout.x0;
-	    *psize = sizeof(f32);
-	    break;
-
-	case GuiStyle_FlowX1:
-	    *pdst = &s.flow_layout.x1;
-	    *psize = sizeof(f32);
-	    break;
-
-	case GuiStyle_FlowSubX0:
-	    *pdst = &s.flow_layout.sub_x0;
-	    *psize = sizeof(f32);
-	    break;
-
-	case GuiStyle_FlowSubX1:
-	    *pdst = &s.flow_layout.sub_x1;
-	    *psize = sizeof(f32);
-	    break;
+	case GuiWidgetType_Drag:
+	case GuiWidgetType_Collapse:
+	{
+	    if (input.unused) {
 			
+		if (mouse_in_bounds(bounds)) {
+
+		    if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
+			set_focus(root, w.type, w.id);
+		    }
+		}
+	    }
+	} break;
+		
 	}
     }
 
     void _gui_end()
     {
-	// Reset last data
-	gui->widgets.reset();
-	gui->indices.reset();
-	gui->root_menu_count = 0u;
+	// Reset roots
 
-	gui->current_focus.index = u32_max;
+	reset_root(gui->root_info);
+	gui->current_focus = nullptr;
 
-	if (gui->package_id != 0u) {
-
-	    gui->package_id = 0u;
-	    gui->package_data.reset();
+	for (GuiWindowState& window : gui->windows) {
+	    reset_root(window.root_info);
+	    window.active = false;
 	}
 
-	SV_ASSERT(gui->ids.empty());
-	SV_ASSERT(gui->parent_stack.empty());
-	SV_ASSERT(gui->style_count == 0u);
+	// Read buffer
+	
+	u8* it = gui->buffer.data();
+	u8* end = it + gui->buffer.size();
 
-	gui->temp_style = gui->style;
-	gui->style_stack.reset();
+	gui->current_root = &gui->root_info;
 
-	// Read widgets from raw data
-	{
-	    u8* it = gui->buffer.data();
-	    u8* end = gui->buffer.data() + gui->buffer.size();
+	while (it != end) {
 
-	    u32 current_parent = u32_max;
+	    GuiHeader header = gui_read<GuiHeader>(it);
 
-	    while (it != end) {
+	    switch (header) {
 
-		GuiHeader header = _read<GuiHeader>(it);
+	    case GuiHeader_BeginWindow:
+	    {
+		SV_ASSERT(gui->current_root == &gui->root_info);
 
-		switch(header) {
+		u64 hash = gui_read<u64>(it);
 
-		case GuiHeader_Widget:
-		{
-		    GuiWidgetType type = _read<GuiWidgetType>(it);
-		    u64 id = _read<u64>(it);
-		    read_widget(type, id, current_parent, it);
+		GuiWindowState* state = gui->windows.find(hash);
+		SV_ASSERT(state);
+
+		if (state) {
+		    gui->current_root = &state->root_info;
+		    state->active = true;
 		}
-		break;
+	    }
+	    break;
 
-		case GuiHeader_EndOfParent:
-		{
-		    SV_ASSERT(current_parent != u32_max);
+	    case GuiHeader_EndWindow:
+	    {
+		SV_ASSERT(gui->current_root != &gui->root_info);
 
-		    GuiParentInfo* parent_info = get_parent_info(current_parent);
-		    SV_ASSERT(parent_info);
-		    
-		    parent_info->widget_count = u32(gui->indices.size()) - parent_info->widget_offset;
+		update_root_bounds(*gui->current_root);
 
-		    // Compute grid layout
-		    if (parent_info->layout == GuiLayout_Grid) {
-			compute_grid_layout(parent_info);
-		    }
-		    
-		    current_parent = parent_info->parent_index;
-		}
-		break;
+		// Set new root
+		gui->current_root = &gui->root_info;
+	    }
+	    break;
 
-		case GuiHeader_StylePush:
-		{
-		    GuiStyle style = _read<GuiStyle>(it);
-		    u64 data[2u];
-		    memcpy(data, it, sizeof(u64) * 2u);
-
-		    it += sizeof(u64) * 2u;
-
-		    void* dst;
-		    size_t size;
-
-		    get_style_data(style, &size, &dst);
-
-		    if (dst && size) {
-			gui->style_stack.write_back(dst, size);
-			gui->style_stack.write_back(&style, sizeof(GuiStyle));
-			memcpy(dst, &data, size);
-		    }
-		}
-		break;
-
-		case GuiHeader_StylePop:
-		{
-		    GuiStyle style;
-		    gui->style_stack.read_and_pop_back(&style, sizeof(GuiStyle));
-
-		    void* dst;
-		    size_t size;
-
-		    get_style_data(style, &size, &dst);
-
-		    if (dst && size) {
-			gui->style_stack.read_and_pop_back(dst, size);
-		    }
-		}
-		break;
-
-		case GuiHeader_SameLine:
-		{
-		    SV_ASSERT(current_parent != u32_max);
-		    GuiParentInfo* parent_info = get_parent_info(current_parent);
-		    u32 count = _read<u32>(it);
-		    SV_ASSERT(parent_info->flow.same_line_count == 1u);
-		    parent_info->flow.same_line_count = count;
-		    parent_info->flow.last_same_line = count;
-		}
-		    
-		}
+	    case GuiHeader_Widget:
+	    {
+		read_widget(it);
+	    }
+	    break;
+		
 	    }
 	}
 
-	// Compute widget bounds
-	{
-	    u32 menu_index = 0u;
+	update_root_bounds(gui->root_info);
 
-	    foreach(i, gui->indices.size()) {
+	// Find focus
+	if (gui->focus.type != GuiWidgetType_None && gui->focus.type != GuiWidgetType_Root) {
 
-		const GuiIndex& index = gui->indices[i];
-		GuiWidget* widget = &gui->widgets[index.index];
+	    for (GuiWidget& w : gui->focus.root->widgets) {
 
-		update_bounds(widget, nullptr, menu_index);
-
-		GuiParentInfo* parent_info = get_parent_info(*widget);
-
-		if (parent_info) {
-					
-		    i += parent_info->widget_count;
+		if (gui->focus.type == w.type && gui->focus.id == w.id) {
+		    gui->current_focus = &w;
+		    break;
 		}
+	    }
+
+	    // Not found
+	    if (gui->current_focus == nullptr) {
+		free_focus();
 	    }
 	}
 
 	// Update focus
-	if (gui->current_focus.index != u32_max) {
+	if (gui->focus.type == GuiWidgetType_Root) {
 
-	    update_focus(gui->current_focus);
+	    v4_f32& bounds = gui->focus.root->bounds;
+
+	    f32 min_width = 0.03f;
+	    f32 min_height = 0.0f;
+
+	    switch (gui->focus.action)
+	    {
+
+	    case 0u:
+	    {
+		bounds.x = gui->mouse_position.x + gui->selection_offset.x;
+		bounds.y = gui->mouse_position.y + gui->selection_offset.y;
+	    }
+	    break;
+
+	    case 1u: // RIGHT
+	    {
+		f32 width = SV_MAX(gui->mouse_position.x - (bounds.x - bounds.z * 0.5f), min_width);
+		bounds.x -= (bounds.z - width) * 0.5f;
+		bounds.z = width;
+	    }
+	    break;
+
+	    case 2u: // LEFT
+	    {
+		f32 width = SV_MAX((bounds.x + bounds.z * 0.5f) - gui->mouse_position.x, min_width);
+		bounds.x += (bounds.z - width) * 0.5f;
+		bounds.z = width;
+	    }
+	    break;
+
+	    case 3u: // BOTTOM
+	    {
+		f32 height = SV_MAX((bounds.y + bounds.w * 0.5f) - gui->mouse_position.y, min_height);
+		bounds.y += (bounds.w - height) * 0.5f;
+		bounds.w = height;
+	    }
+	    break;
+
+	    case 4u: // RIGHT - BOTTOM
+	    {
+		f32 width = SV_MAX(gui->mouse_position.x - (bounds.x - bounds.z * 0.5f), min_width);
+		bounds.x -= (bounds.z - width) * 0.5f;
+		bounds.z = width;
+		f32 height = SV_MAX((bounds.y + bounds.w * 0.5f) - gui->mouse_position.y, min_height);
+		bounds.y += (bounds.w - height) * 0.5f;
+		bounds.w = height;
+	    }
+	    break;
+
+	    case 5u: // LEFT - BOTTOM
+	    {
+		f32 width = SV_MAX((bounds.x + bounds.z * 0.5f) - gui->mouse_position.x, min_width);
+		bounds.x += (bounds.z - width) * 0.5f;
+		bounds.z = width;
+		f32 height = SV_MAX((bounds.y + bounds.w * 0.5f) - gui->mouse_position.y, min_height);
+		bounds.y += (bounds.w - height) * 0.5f;
+		bounds.w = height;
+	    }
+	    break;
+
+	    }
+	    
+	    if (input.mouse_buttons[MouseButton_Left] == InputState_None)
+		free_focus();
+	}
+	else if (gui->current_focus) {
+	    
+	    GuiWidget& w = *gui->current_focus;
+	    
+	    switch (w.type) {
+		    
+	    case GuiWidgetType_Button:
+	    {
+		InputState state = input.mouse_buttons[MouseButton_Left];
+		
+		if (state == InputState_Released || state == InputState_None) {
+
+		    if (mouse_in_bounds(w.bounds))
+			w.widget.button.pressed = true;
+		    
+		    free_focus();
+		}
+	    }
+	    break;
+
+	    case GuiWidgetType_Checkbox:
+	    {
+		InputState state = input.mouse_buttons[MouseButton_Left];
+		
+		if (state == InputState_Released || state == InputState_None) {
+
+		    v4_f32 button_bounds = compute_checkbox_button(w);
+
+		    if (mouse_in_bounds(button_bounds)) {
+			w.widget.checkbox.pressed = true;
+			w.widget.checkbox.value = !w.widget.checkbox.value;
+		    }
+		    
+		    free_focus();
+		}
+	    }
+	    break;
+
+	    case GuiWidgetType_Drag:
+	    {
+		auto& drag = w.widget.drag;
+
+		if (input.mouse_buttons[MouseButton_Left] == InputState_None) {
+		    free_focus();
+		}
+		else {
+
+		    f32& value = drag.value;
+		    f32 adv = drag.adv;
+		    f32 min = drag.min;
+		    f32 max = drag.max;
+		    
+		    value += input.mouse_dragged.x * gui->resolution.x * adv;
+		    value = SV_MAX(SV_MIN(value, max), min);
+		}
+	    }
+	    break;
+
+	    case GuiWidgetType_Collapse:
+	    {
+		InputState state = input.mouse_buttons[MouseButton_Left];
+		
+		if (state == InputState_Released || state == InputState_None) {
+
+		    if (mouse_in_bounds(w.bounds)) {
+			w.widget.collapse.active = !w.widget.collapse.active;
+		    }
+		    
+		    free_focus();
+		}
+	    }
+	    break;
+		
+	    }
+	
+	    
 	    input.unused = false;
 	}
 
 	// Update widgets
-	foreach(i, gui->indices.size()) {
+	for (GuiWindowState& window : gui->windows) {
 
-	    const GuiIndex& w = gui->indices[i];
-
-	    update_widget(w);
-
-	    GuiParentInfo* parent_info = get_parent_info(w.index);
-	    if (parent_info) {
-
-		i += parent_info->widget_count;
+	    if (!window.active) continue;
+	    
+	    for (GuiWidget& w : window.root_info.widgets) {
+		
+		update_widget(w, window.root_info);
 	    }
-	}
 
-	// Catch input
-	if (gui->catch_input)
-	    input.unused = false;
-    }
+	    // Update window
 
-    SV_INLINE static void update_id()
-    {
-	gui->current_id = 0U;
-	for (u64 id : gui->ids)
-	    hash_combine(gui->current_id, id);
-    }
+	    if (input.unused) {
 
-    void gui_global_style_get(GuiStyle style, void* value, size_t size)
-    {
-	void* dst;
-	size_t write_size;
-	get_style_data(style, &write_size, &dst, false);
+		if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
 
-	if (dst && write_size) {
+		    if (mouse_in_bounds(compute_window_decoration(window.root_info.bounds))) {
+		    
+			set_focus(window.root_info, GuiWidgetType_Root, 0u, 0u);
+			gui->selection_offset = v2_f32{ window.root_info.bounds.x, window.root_info.bounds.y } - gui->mouse_position;
+			input.unused = false;
+		    }
 
-	    SV_ASSERT(write_size == size);
-	    memcpy(value, dst, write_size);
-	}
-    }
-    
-    void gui_global_style_set(GuiStyle style, const void* value, size_t size)
-    {
-	void* dst;
-	size_t write_size;
-	get_style_data(style, &write_size, &dst, false);
+		    if (input.unused) {
 
-	if (dst && write_size) {
+			const v4_f32& content = window.root_info.bounds;
 
-	    SV_ASSERT(write_size == size);
-	    memcpy(dst, value, write_size);
-	}
-    }
+			constexpr f32 SELECTION_SIZE = 0.02f;
 
-    void gui_push_style(GuiStyle style, const void* value, size_t size)
-    {
-	SV_ASSERT(size <= sizeof(u64) * 2u);
-	
-	++gui->style_count;
-	write_buffer(GuiHeader_StylePush);
+			bool right = mouse_in_bounds({ content.x + content.z * 0.5f, content.y, SELECTION_SIZE, content.w + SELECTION_SIZE * 2.f * gui->aspect });
+			bool left = mouse_in_bounds({ content.x - content.z * 0.5f, content.y, SELECTION_SIZE, content.w + SELECTION_SIZE * 2.f * gui->aspect });
+			bool bottom = mouse_in_bounds({ content.x, content.y - content.w * 0.5f, content.z + SELECTION_SIZE * 2.f, SELECTION_SIZE * gui->aspect });
 
-	write_buffer(style);
-	
-	u64 data[2u];
-	memcpy(&data, value, size);
-	write_buffer(value, sizeof(u64) * 2u);
-    }
-    
-    void gui_pop_style(u32 count)
-    {
-	SV_ASSERT(gui->style_count >= count);
-	
-	foreach(i, count) {
+			u32 action = u32_max;
 
-	    write_buffer(GuiHeader_StylePop);
-	}
+			if (right && bottom) {
+			    action = 4u;
+			}
+			else if (left && bottom) {
+			    action = 5u;
+			}
+			else if (right) {
+			    action = 1u;
+			}
+			else if (left) {
+			    action = 2u;
+			}
+			else if (bottom) {
+			    action = 3u;
+			}
 
-	gui->style_count -= count;
-    }
-
-    void gui_same_line(u32 count)
-    {
-	SV_ASSERT(count != 0u);
-	SV_ASSERT(gui->parent_stack.size() && gui->parent_stack.back().layout == GuiLayout_Flow);
-	write_buffer(GuiHeader_SameLine);
-	write_buffer(count);
-    }
-
-    void gui_push_id(u64 id)
-    {
-	gui->ids.push_back(id);
-	update_id();
-    }
-
-    void gui_push_id(const char* id)
-    {
-	gui->ids.push_back((u64)id);
-	update_id();
-    }
-
-    void gui_pop_id(u32 count)
-    {
-	SV_ASSERT(gui->ids.size() >= count);
-	gui->ids.pop_back(count);
-	update_id();
-    }
-
-    void gui_xbounds(GuiCoord x0, GuiCoord x1)
-    {
-	gui->free_bounds.xtype = GuiCoordType_Coord;
-	gui->free_bounds.xcoord._0 = x0;
-	gui->free_bounds.xcoord._1 = x1;
-    }
-    
-    void gui_xbounds(GuiCoord x, GuiAlign align, GuiDim w)
-    {	
-	gui->free_bounds.xtype = GuiCoordType_Dim;
-	gui->free_bounds.xdim.c = x;
-	gui->free_bounds.xdim.align = align;
-	gui->free_bounds.xdim.d = w;
-    }
-    
-    void gui_ybounds(GuiCoord y0, GuiCoord y1)
-    {	
-	gui->free_bounds.ytype = GuiCoordType_Coord;
-	gui->free_bounds.ycoord._0 = y0;
-	gui->free_bounds.ycoord._1 = y1;
-    }
-    
-    void gui_ybounds(GuiCoord y, GuiAlign align, GuiDim h)
-    {	
-	gui->free_bounds.ytype = GuiCoordType_Dim;
-	gui->free_bounds.ydim.c = y;
-	gui->free_bounds.ydim.align = align;
-	gui->free_bounds.ydim.d = h;
-    }
-    
-    void gui_bounds(GuiCoord x, GuiAlign xalign, GuiDim w, GuiCoord y, GuiAlign yalign, GuiDim h)
-    {
-	
-	gui->free_bounds.xtype = GuiCoordType_Dim;
-	gui->free_bounds.xdim.c = x;
-	gui->free_bounds.xdim.align = xalign;
-	gui->free_bounds.xdim.d = w;
-	gui->free_bounds.ytype = GuiCoordType_Dim;
-	gui->free_bounds.ydim.c = y;
-	gui->free_bounds.ydim.align = yalign;
-	gui->free_bounds.ydim.d = h;
-    }
-    
-    void gui_bounds(GuiCoord x0, GuiCoord x1, GuiCoord y0, GuiCoord y1)
-    {
-	
-	gui->free_bounds.xtype = GuiCoordType_Coord;
-	gui->free_bounds.xcoord._0 = x0;
-	gui->free_bounds.xcoord._1 = x1;
-	gui->free_bounds.ytype = GuiCoordType_Coord;
-	gui->free_bounds.ycoord._0 = y0;
-	gui->free_bounds.ycoord._1 = y1;
-    }
-
-    ///////////////////////////////////////////// WIDGETS ///////////////////////////////////////////
-
-    SV_INLINE static GuiWidget* find_widget(u64 id, GuiWidgetType type)
-    {
-	GuiIndex res;
-	res.index = u32_max;
-
-	if (gui->parent_stack.empty() || gui->parent_stack.back().parent == nullptr) {
-
-	    foreach(i, gui->indices.size()) {
-
-		const GuiIndex& w = gui->indices[i];
-
-		if (w.id == id) {
-
-		    res = w;
-		    break;
-		}
-		else {
-
-		    GuiParentInfo* parent_info = get_parent_info(w.index);
-		    if (parent_info) i += parent_info->widget_count;
-		}
-	    }
-	}
-	else {
-
-	    WritingParentInfo& info = gui->parent_stack.back();
-
-	    GuiParentInfo* parent_info = get_parent_info(*info.parent);
-	    GuiIndex* it = gui->indices.data() + parent_info->widget_offset;
-	    GuiIndex* end = it + parent_info->widget_count;
-
-	    while (it != end) {
-
-		if (it->id == id) {
-
-		    res = *it;
-		    break;
-		}
-		else {
-
-		    parent_info = get_parent_info(it->index);
-		    if (parent_info) it += parent_info->widget_count;
-		}
-
-		++it;
-	    }
-	}
-
-	if (res.index == u32_max) return nullptr;
-
-	GuiWidget* widget = &gui->widgets[res.index];
-
-	if (widget->type != type) {
-	    SV_ASSERT(!"Widget ID repeated with different widget type");
-	    return nullptr;
-	}
-
-	return widget;
-    }
-
-    SV_INLINE void begin_parent(GuiWidget* parent, u64 id, GuiLayout layout)
-    {
-	WritingParentInfo& info = gui->parent_stack.emplace_back();
-	info.layout = layout;
-	
-	if (parent) {
-	    SV_ASSERT(is_parent(parent->type));
-	    info.parent = parent;
-	}
-	gui_push_id(id);
-    }
-
-    SV_INLINE void end_parent()
-    {
-	write_buffer(GuiHeader_EndOfParent);
-	gui_pop_id();
-	gui->parent_stack.pop_back();
-    }
-
-    void gui_begin_container(u64 id, GuiLayout layout)
-    {
-	
-	hash_combine(id, gui->current_id);
-
-	GuiWidget* w = find_widget(id, GuiWidgetType_Container);
-
-	Raw_Container raw;
-
-	GuiParentInfo* parent_info;
-	if (w) parent_info = get_parent_info(*w);
-	else parent_info = nullptr;
-
-	write_widget(GuiWidgetType_Container, id, &raw, parent_info, layout);
-	begin_parent(w, id, layout);
-    }
-
-    void gui_end_container()
-    {
-	end_parent();
-    }
-
-    bool gui_begin_popup(GuiPopupTrigger trigger, MouseButton mouse_button, u64 id, GuiLayout layout)
-    {
-	
-	hash_combine(id, gui->current_id);
-
-	GuiWidget* w = find_widget(id, GuiWidgetType_Popup);
-
-	if (w) {
-
-	    auto& popup = w->widget.popup;
-
-	    if (popup.close_request)
-		return false;
-
-	    Raw_Popup raw;
-	    raw.bounds = w->bounds;
-
-	    GuiParentInfo* parent_info = get_parent_info(*w);
-
-	    write_widget(GuiWidgetType_Popup, w->id, &raw, parent_info, layout);
-	    begin_parent(w, id, layout);
-	    return true;
-	}
-	else {
-
-	    bool open = false;
-
-	    if (input.mouse_buttons[mouse_button] == InputState_Released) {
-
-		switch (trigger)
-		{
-
-		case GuiPopupTrigger_Parent:
-		{
-		    if (gui->parent_stack.size() && gui->parent_stack.back().parent != nullptr) {
-
-			GuiWidget& parent = *gui->parent_stack.back().parent;
-
-			if (mouse_in_bounds(parent.bounds)) {
-
-			    open = true;
-							
-			    GuiParentInfo* parent_info = get_parent_info(parent);
-			    SV_ASSERT(parent_info);
-
-			    foreach(i, parent_info->widget_count) {
-
-				const GuiIndex& w = gui->indices[parent_info->widget_offset + i];
-
-				const v4_f32& bounds = gui->widgets[w.index].bounds;
-
-				if (mouse_in_bounds(bounds)) {
-				    open = false;
-				    break;
-				}
-			    }
+			if (action != u32_max) {
+			    input.unused = false;
+			    set_focus(window.root_info, GuiWidgetType_Root, 0u, action);
 			}
 		    }
 		}
-		break;
-
-		case GuiPopupTrigger_LastWidget:
-		{
-		    if (gui->last.type != GuiWidgetType_None) {
-
-			GuiWidget* w = find_widget(gui->last.id, gui->last.type);
-
-			if (w && mouse_in_bounds(w->bounds)) {
-			    open = true;
-			}
-		    }
-		}
-		break;
-
-		}
-	    }
-
-	    if (open) {
-
-		Raw_Popup raw;
-		raw.bounds.z = 0.1f;
-		raw.bounds.w = 0.2f;
-		raw.bounds.x = gui->mouse_position.x + raw.bounds.z * 0.5f;
-		raw.bounds.y = gui->mouse_position.y - raw.bounds.w * 0.5f;
-
-		write_widget(GuiWidgetType_Popup, id, &raw, nullptr, layout);
-		begin_parent(w, id, layout);
-		return true;
 	    }
 	}
-
-	return false;
+	for (GuiWidget& w : gui->root_info.widgets) {
+		
+	    update_widget(w, gui->root_info);
+	}
+    }
+    
+    template<typename T>
+    SV_AUX void gui_write(const T& t)
+    {
+	gui->buffer.write_back(&t, sizeof(T));
     }
 
-    void gui_end_popup()
+    SV_AUX void gui_write_text(const char* text)
     {
-	end_parent();
+	gui->buffer.write_back(text, strlen(text) + 1u);
     }
 
-    /////////////////////////////////////// WINDOW ////////////////////////////////////////////////
-
-    bool gui_begin_window(const char* title, GuiLayout layout)
+    bool gui_begin_window(const char* title)
     {
-	u64 id = hash_string(title);
+	u64 hash = hash_string(title);
 
-	GuiWindowState* state = nullptr;
+	GuiWindowState* state = gui->windows.find(hash);
 
-	auto it = gui->static_state.window.find(id);
-	if (it == gui->static_state.window.end()) {
+	if (state == nullptr) {
 
 	    GuiWindowState s;
-	    s.bounds = { 0.5f, 0.5f, 0.1f, 0.3f };
+	    s.root_info.bounds = { 0.5f, 0.5f, 0.1f, 0.3f };
 	    s.show = true;
-	    s.title = title;
-	    s.id = id;
 
-	    gui->static_state.window[id] = std::move(s);
-	    state = &gui->static_state.window[id];
+	    size_t title_size = strlen(title);
+	    if (title_size > GUI_WINDOW_NAME_SIZE || title_size == 0u) {
+		SV_LOG_ERROR("Invalid window name '%s'", title);
+		return false;
+	    }
+	    
+	    strcpy(s.title, title);
+	    s.hash = hash;
+
+	    gui->windows[hash] = std::move(s);
+	    state = &gui->windows[hash];
 	}
-	else state = &it->second;
 
 	if (state->show) {
-	    Raw_Window raw;
 
-	    GuiWidget* w = find_widget(id, GuiWidgetType_Window);
+	    gui_write(GuiHeader_BeginWindow);
+	    gui_write(hash);
 
-	    GuiParentInfo* parent_info;
-	    if (w) parent_info = get_parent_info(*w);
-	    else parent_info = nullptr;
+	    gui->current_root = &state->root_info;
 
-	    write_widget(GuiWidgetType_Window, id, &raw, parent_info, layout);
-	    begin_parent(w, id, layout);
+	    gui_push_id(state->hash);
 	}
 
 	return state->show;
@@ -2843,21 +790,15 @@ namespace sv {
 
     void gui_end_window()
     {
-	end_parent();
-    }
-
-    SV_AUX GuiWindowState* get_window_state(u64 id)
-    {
-	auto it = gui->static_state.window.find(id);
-	if (it == gui->static_state.window.end()) return nullptr;
-	return &it->second;
+	gui_write(GuiHeader_EndWindow);
+	gui->current_root = &gui->root_info;
+	gui_pop_id();
     }
 
     bool gui_show_window(const char* title)
     {
-	
-	u64 id = hash_string(title);
-	GuiWindowState* state = get_window_state(id);
+	u64 hash = hash_string(title);
+	GuiWindowState* state = gui->windows.find(hash);
 
 	if (state) {
 
@@ -2870,9 +811,8 @@ namespace sv {
 
     bool gui_hide_window(const char* title)
     {
-	
-	u64 id = hash_string(title);
-	GuiWindowState* state = get_window_state(id);
+	u64 hash = hash_string(title);
+	GuiWindowState* state = gui->windows.find(hash);
 
 	if (state) {
 
@@ -2883,809 +823,383 @@ namespace sv {
 	return false;
     }
 
-    /////////////////////////////////////// MENU ITEM /////////////////////////////////////////
-
-    bool gui_begin_menu_item(const char* text, u64 id, GuiLayout layout)
+    SV_AUX void update_id()
     {
-	
-	hash_combine(id, gui->current_id);
-
-	GuiWidget* w = find_widget(id, GuiWidgetType_MenuItem);
-
-	{
-	    Raw_MenuItem raw;
-	    raw.text = text;
-	    raw.active = w ? w->widget.menu_item.active : false;
-
-	    GuiParentInfo* parent_info;
-	    if (w) parent_info = get_parent_info(*w);
-	    else parent_info = nullptr;
-
-	    write_widget(GuiWidgetType_MenuItem, id, &raw, parent_info);
-	}
-
-	if (w && w->widget.menu_item.active) {
-			
-	    u64 container_id = id;
-	    hash_combine(container_id, 0x32d9f32ac);
-
-	    write_widget(GuiWidgetType_MenuContainer, container_id, nullptr, get_parent_info(*w), layout);
-
-	    GuiWidget* c = find_widget(container_id, GuiWidgetType_MenuContainer);
-	    begin_parent(c, container_id, layout);
-
-	    return true;
-	}
-
-	return false;
+	gui->current_id = 0U;
+	for (u64 id : gui->ids)
+	    hash_combine(gui->current_id, id);
     }
 
-    void gui_end_menu_item()
+    void gui_push_id(u64 id)
     {
-	end_parent();
-    }
-
-    /////////////////////////////////////// PACKAGE ///////////////////////////////////////
-
-    void gui_send_package(const void* package, u32 package_size, u64 package_id)
-    {
-	
-
-	SV_ASSERT(gui->last.type != GuiWidgetType_None);
-		
-	u64 id = gui->last.id;
-	hash_combine(id, 0x89562f8a732db);
-	hash_combine(package_id, 0xa89d4fb319);
-
-	Raw_Package raw;
-		
-	if (gui->current_focus.index != u32_max && gui->current_focus.id == id) {
-			
-	    raw.package = package;
-	    raw.package_size = package_size;
-	    raw.package_id = package_id;
-	}
-	else raw.package_size = 0u;
-		
-	write_widget(GuiWidgetType_Package, id, &raw, nullptr);
-    }
-	
-    bool gui_recive_package(void** package, u32* package_size, u64 package_id)
-    {
-	
-
-	SV_ASSERT(gui->last.type != GuiWidgetType_None);
-		
-	u64 id = gui->last.id;
-	hash_combine(id, 0x89562f8a732db);
-	hash_combine(package_id, 0xa89d4fb319);
-
-	if (gui->current_focus.index != u32_max && gui->focus.type == GuiWidgetType_Package) {
-
-	    GuiWidget* package_widget = &gui->widgets[gui->current_focus.index];
-
-	    if (package_widget->widget.package.package_id == package_id) {
-
-		Raw_Reciver raw;
-		raw.package_id = package_id;
-
-		write_widget(GuiWidgetType_Reciver, id, &raw, nullptr);
-	    }
-	}
-		
-	if (package_id == gui->package_id) {
-
-	    GuiWidget* w = find_widget(id, GuiWidgetType_Reciver);
-
-	    if (w && w->widget.reciver.recived) {
-
-		gui->package_id = 0u;
-		*package = gui->package_data.data();
-		if (package_size)* package_size = u32(gui->package_data.size());
-		return true;
-	    }
-	}
-		
-	return false;
-    }
-
-    /////////////////////////////////////// COMMON WIDGETS ///////////////////////////////////////
-
-    bool gui_text_field(char* buff, size_t buff_size, u64 id)
-    {
-	hash_combine(id, gui->current_id);
-
-	GuiWidget* w = find_widget(id, GuiWidgetType_TextField);
-
-	bool modified = false;
-
-	if (w && gui->focus.id == id && gui->focus.type == GuiWidgetType_TextField) {
-
-	    // TODO: Notify modified if the string is currently modified xd
-	    modified = true;
-	    
-	    //auto& field = w->widget.text_field;
-
-	    char* text = gui->current_text_field_value.data();
-	    size_t text_size = text ? strlen(text) : 0u;
-
-	    size_t write_size = SV_MIN(text_size, buff_size - 1u);
-	    
-	    memcpy(buff, text, write_size);
-	    buff[write_size] = '\0';
-	}
-	
-	{
-	    Raw_TextField raw;
-	    raw.buff = buff;
-	    raw.pos = w ? w->widget.text_field.pos : 0u;
-
-	    write_widget(GuiWidgetType_TextField, id, &raw, nullptr);
-	}
-
-	return modified;
+	gui->ids.push_back(id);
+	update_id();
     }
     
+    void gui_push_id(const char* id)
+    {
+	gui_push_id(u64(id));
+    }
+    
+    void gui_pop_id(u32 count)
+    {
+	SV_ASSERT(gui->ids.size() >= count);
+	gui->ids.pop_back(count);
+	update_id();
+    }
+
+    SV_AUX void compute_id(u64& id)
+    {
+	hash_combine(id, gui->current_id);
+    }
+
+    SV_AUX GuiWidget* find_widget(GuiWidgetType type, u64 id)
+    {
+	// TODO: Optimize
+	SV_ASSERT(gui->current_root);
+
+	for (GuiWidget& w : gui->current_root->widgets) {
+
+	    if (w.type == type && w.id == id)
+		return &w;
+	}
+
+	return nullptr;
+    }
+
     bool gui_button(const char* text, u64 id)
     {
-	hash_combine(id, gui->current_id);
+	compute_id(id);
+	
+	gui_write(GuiHeader_Widget);
+	gui_write(GuiWidgetType_Button);
+	gui_write(id);
+	gui_write_text(text);
+	
+	GuiWidget* button = find_widget(GuiWidgetType_Button, id);
 
-	{
-	    Raw_Button raw;
-	    raw.text = text;
+	bool pressed = false;
 
-	    write_widget(GuiWidgetType_Button, id, &raw, nullptr);
+	if (button) {
+
+	    pressed = button->widget.button.pressed;
 	}
-
-	GuiWidget* w = find_widget(id, GuiWidgetType_Button);
-
-	if (w) {
-	    return w->widget.button.pressed;
-	}
-	else {
-	    return false;
-	}
+	
+	return pressed;
     }
 
-    SV_AUX bool gui_drag(u64* value, u64 adv, u64 min, u64 max, u64 id, GuiPrimitive primitive)
+    bool gui_checkbox(const char* text, bool& value, u64 id)
     {
-	hash_combine(id, gui->current_id);
+	compute_id(id);
+	
+	gui_write(GuiHeader_Widget);
+	gui_write(GuiWidgetType_Checkbox);
+	gui_write(id);
+	gui_write_text(text);
+	
+	GuiWidget* checkbox = find_widget(GuiWidgetType_Checkbox, id);
 
-	bool modified;
+	bool pressed = false;
 
-	if (gui->current_focus.index != u32_max && gui->current_focus.id == id) {
+	if (checkbox) {
 
-	    GuiWidget& w = gui->widgets[gui->current_focus.index];
-	    SV_ASSERT(w.type == GuiWidgetType_Drag);
-
-	    *value = w.widget.drag.value;
-	    modified = true;
-	}
-	else modified = false;
-
-	{
-	    Raw_Drag raw;
-	    raw.value = *value;
-	    raw.min = min;
-	    raw.max = max;
-	    raw.adv = adv;
-	    raw.primitive = primitive;
-
-	    write_widget(GuiWidgetType_Drag, id, &raw, nullptr);
+	    pressed = checkbox->widget.checkbox.pressed;
 	}
 
-	return modified;
+	if (pressed) {
+	    value = checkbox->widget.checkbox.value;
+	}
+
+	gui_write(value);
+	
+	return pressed;
     }
 
-    bool gui_drag_f32(f32* value, f32 adv, f32 min, f32 max, u64 id)
+    bool gui_checkbox(const char* text, u64 id)
     {
-	u64 _value;
-	u64 _adv;
-	u64 _min;
-	u64 _max;
+	compute_id(id);
+	
+	gui_write(GuiHeader_Widget);
+	gui_write(GuiWidgetType_Checkbox);
+	gui_write(id);
+	gui_write_text(text);
+	
+	GuiWidget* checkbox = find_widget(GuiWidgetType_Checkbox, id);
 
-	memcpy(&_value, value, sizeof(f32));
-	memcpy(&_adv, &adv, sizeof(f32));
-	memcpy(&_min, &min, sizeof(f32));
-	memcpy(&_max, &max, sizeof(f32));
-
-	bool res = gui_drag(&_value, _adv, _min, _max, id, GuiPrimitive_f32);
-
-	if (res) {
-	    memcpy(value, &_value, sizeof(f32));
-	}
-
-	return res;
+	bool value = checkbox && checkbox->widget.checkbox.value;
+	
+	gui_write(value);
+	
+	return value;
     }
 
-    bool gui_drag_u8(u8* value, u8 adv, u8 min, u8 max, u64 id)
+    bool gui_drag_f32(f32& value, f32 adv, f32 min, f32 max, u64 id)
     {
-	u64 _value;
-	u64 _adv;
-	u64 _min;
-	u64 _max;
+	compute_id(id);
 
-	memcpy(&_value, value, sizeof(u8));
-	memcpy(&_adv, &adv, sizeof(u8));
-	memcpy(&_min, &min, sizeof(u8));
-	memcpy(&_max, &max, sizeof(u8));
+	gui_write(GuiHeader_Widget);
+	gui_write(GuiWidgetType_Drag);
+	gui_write(id);
+	gui_write(adv);
+	gui_write(min);
+	gui_write(max);
+	
+	GuiWidget* drag = find_widget(GuiWidgetType_Drag, id);
 
-	bool res = gui_drag(&_value, _adv, _min, _max, id, GuiPrimitive_u8);
+	bool pressed = false;
 
-	if (res) {
-	    memcpy(value, &_value, sizeof(u8));
+	if (drag && gui->current_focus == drag) {
+
+	    pressed = true;
 	}
 
-	return res;
-    }
-    
-    bool gui_slider(f32* value, f32 min, f32 max, u64 id)
-    {
-	return false;
+	if (pressed) {
+	    value = drag->widget.drag.value;
+	}
+
+	gui_write(value);
+	
+	return pressed;
     }
 
     void gui_text(const char* text, u64 id)
     {
-	hash_combine(id, gui->current_id);
-		
-	Raw_Label raw;
-	raw.text = text;
-
-	write_widget(GuiWidgetType_Label, id, &raw, nullptr);		
+	compute_id(id);
+	
+	gui_write(GuiHeader_Widget);
+	gui_write(GuiWidgetType_Text);
+	gui_write(id);
+	gui_write_text(text);
     }
 
-    bool gui_checkbox(const char* text, bool* value, u64 id)
-    {	
-	hash_combine(id, gui->current_id);
-
-	bool modified;
-
-	if (gui->current_focus.index != u32_max && gui->current_focus.id == id) {
-
-	    GuiWidget& w = gui->widgets[gui->current_focus.index];
-	    SV_ASSERT(w.type == GuiWidgetType_Checkbox);
-	    *value = w.widget.checkbox.value;
-	    modified = w.widget.checkbox.modified;
-	}
-	else modified = false;
-
-	{
-	    Raw_Checkbox raw;
-	    raw.value = *value;
-	    raw.modified = modified;
-	    raw.text = text;
-
-	    write_widget(GuiWidgetType_Checkbox, id, &raw, nullptr);
-	}
-
-	return modified;
-    }
-
-    bool gui_checkbox(const char* text, u64 user_id)
+    bool gui_collapse(const char* text, u64 id)
     {
-	u64 id = user_id;
-	hash_combine(id, gui->current_id);
+	compute_id(id);
+	
+	gui_write(GuiHeader_Widget);
+	gui_write(GuiWidgetType_Collapse);
+	gui_write(id);
+	gui_write_text(text);
+	
+	GuiWidget* collapse = find_widget(GuiWidgetType_Collapse, id);
 
-	bool* value = nullptr;
+	bool active = collapse && collapse->widget.collapse.active;
 
-	auto it = gui->static_state.checkbox.find(id);
-	if (it == gui->static_state.checkbox.end()) {
-
-	    gui->static_state.checkbox[id] = false;
-	    value = &gui->static_state.checkbox[id];
-	}
-	else value = &it->second;
-		
-	gui_checkbox(text, value, user_id);
-	return *value;
+	gui_write(active);
+	
+	return active;
     }
 
     void gui_image(GPUImage* image, GPUImageLayout layout, u64 id)
     {
-	hash_combine(id, gui->current_id);
-
-	Raw_Image raw;
-	raw.image = image;
-	raw.layout = layout;
+	compute_id(id);
 	
-	write_widget(GuiWidgetType_Image, id, &raw, nullptr);
+	gui_write(GuiHeader_Widget);
+	gui_write(GuiWidgetType_Image);
+	gui_write(id);
+	gui_write(image);
+	gui_write(layout);
     }
 
-    ///////////////////////////////////////////// GETTERS ///////////////////////////////////////////
+    SV_AUX void draw_root(const GuiRootInfo& root, CommandList cmd) {
 
-    v4_f32 gui_parent_bounds()
-    {
-	
-	return (gui->parent_stack.size() && gui->parent_stack.back().parent) ? gui->parent_stack.back().parent->bounds : v4_f32{};
-    }
+	// Draw widgets
+	for (const GuiWidget& w : root.widgets) {
 
-    ///////////////////////////////////////////// RENDERING ///////////////////////////////////////////
+	    switch (w.type) {
 
-    SV_INTERNAL void draw_widget(const GuiWidget& w, CommandList cmd)
-    {	
-	switch (w.type)
-	{
-
-	case GuiWidgetType_Button:
-	{
-	    auto& button = w.widget.button;
-
-	    v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y);
-	    v2_f32 size = v2_f32(w.bounds.z, w.bounds.w);
-
-	    auto& style = button.style;
-	    // TODO: I'm assuming the image layout
-	    imrend_draw_sprite(pos.getVec3(), size, button.hot ? style.hot_color : style.color, style.image ? style.image : renderer->gfx.image_white, GPUImageLayout_ShaderResource, style.texcoord, cmd);
-
-	    if (button.text) {
-
-		f32 font_size = size.y;
-
-		imrend_draw_text(button.text, strlen(button.text)
-			  , pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - renderer->font_opensans.vertical_offset * font_size,
-			  size.x, 1u, font_size, gui->aspect, TextAlignment_Center, &renderer->font_opensans, button.style.text_color, cmd);
-	    }
-	}
-	break;
-
-	case GuiWidgetType_TextField:
-	{
-	    auto& field = w.widget.text_field;
-
-	    v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y);
-	    v2_f32 size = v2_f32(w.bounds.z, w.bounds.w);
-
-	    imrend_draw_quad(pos.getVec3(), size, field.style.background_color, cmd);
-
-	    if (field.text) {
-
-		f32 font_size = size.y;
-
-		imrend_draw_text(field.text, strlen(field.text)
-			  , pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - renderer->font_opensans.vertical_offset * font_size,
-			  size.x, 1u, font_size, gui->aspect, TextAlignment_Center, &renderer->font_opensans, field.style.text_color, cmd);
-	    }
-	}
-	break;
-
-	case GuiWidgetType_Image:
-	{
-	    auto& image = w.widget.image;
-
-	    v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y);
-	    v2_f32 size = v2_f32(w.bounds.z, w.bounds.w);
-	    
-	    imrend_draw_sprite(pos.getVec3(), size, image.style.color, image.image ? image.image : renderer->gfx.image_white, image.layout, image.style.texcoord, cmd);
-	}
-	break;
-
-	case GuiWidgetType_Drag:
-	{
-	    v2_f32 pos;
-	    v2_f32 size;
-
-	    auto& drag = w.widget.drag;
-	    pos = v2_f32{ w.bounds.x, w.bounds.y };
-	    size = v2_f32{ w.bounds.z, w.bounds.w };
-
-	    imrend_draw_quad(pos.getVec3(0.f), size, drag.style.background_color, cmd);
-
-	    f32 font_size = size.y;
-
-	    char strbuff[100u] = "\0";
-	    
-	    switch (drag.primitive) {
-
-	    case GuiPrimitive_f32:
+	    case GuiWidgetType_Button:
 	    {
-		f32 value = *reinterpret_cast<const f32*>(&drag.value);
-		sprintf(strbuff, "%f", value);
+		auto& button = w.widget.button;
+
+		const v4_f32& b = w.bounds;
+
+		v2_f32 pos = { b.x, b.y };
+		v2_f32 size = { b.z, b.w };
+
+		Color color = Color::Salmon();
+
+		if (gui->current_focus == &w)
+		    color = Color::White();
+		else if (button.hot)
+		    color = Color::Red();
+		    
+		imrend_draw_quad(pos.getVec3(), size, color, cmd);
+
+		if (button.text) {
+
+		    Font& font = renderer_default_font();
+			
+		    f32 font_size = size.y;
+
+		    imrend_draw_text(button.text, strlen(button.text), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font.vertical_offset * font_size, size.x, 1u, font_size, gui->aspect, TextAlignment_Center, &font, Color::Black(), cmd);
+		}
 	    }
 	    break;
 
-	    case GuiPrimitive_u8:
+	    case GuiWidgetType_Checkbox:
 	    {
-		u8 value = *reinterpret_cast<const u8*>(&drag.value);
-		sprintf(strbuff, "%u", (u32)value);
-	    }
-	    break;
-		
-	    }
+		v2_f32 pos;
+		v2_f32 size;
 
-	    imrend_draw_text(strbuff, strlen(strbuff)
-		      , pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - renderer->font_opensans.vertical_offset * font_size,
-		      size.x, 1u, font_size, gui->aspect, TextAlignment_Center, &renderer->font_opensans, drag.style.text_color, cmd);
-	}
-	break;
+		auto& cb = w.widget.checkbox;
+		v4_f32 b = compute_checkbox_button(w);
+		pos = v2_f32{ b.x, b.y };
+		size = v2_f32{ b.z, b.w };
 
-	case GuiWidgetType_MenuItem:
-	{
-	    auto& menu = w.widget.menu_item;
+		imrend_draw_quad(pos.getVec3(0.f), size, Color::Salmon(), cmd);
 
-	    v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y);
-	    v2_f32 size = v2_f32(w.bounds.z, w.bounds.w);
-
-	    imrend_draw_quad(pos.getVec3(), size, menu.hot ? menu.style.hot_color : menu.style.color, cmd);
-
-	    if (menu.text) {
-
-		f32 font_size = size.y;
-
-		imrend_draw_text(menu.text, strlen(menu.text)
-			  , pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - renderer->font_opensans.vertical_offset * font_size,
-			  size.x, 1u, font_size, gui->aspect, TextAlignment_Center, &renderer->font_opensans, menu.style.text_color, cmd);
-	    }
-	}
-	break;
-
-	case GuiWidgetType_Label:
-	{
-	    v2_f32 pos;
-	    v2_f32 size;
-
-	    auto& label = w.widget.label;
-	    pos = v2_f32{ w.bounds.x, w.bounds.y };
-	    size = v2_f32{ w.bounds.z, w.bounds.w };
-
-	    imrend_draw_quad(pos.getVec3(0.f), size, label.style.background_color, cmd);
+		// Check size
+		v2_f32 s = size * 0.7f;
 	    
-	    if (label.text) {
-
-		f32 font_size = size.y + size.y * renderer->font_opensans.vertical_offset;
-
-		imrend_draw_text(label.text, strlen(label.text), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f, size.x, 1u, font_size, gui->aspect, label.style.text_alignment,
-			  &renderer->font_opensans, label.style.text_color, cmd);
-	    }
-	}
-	break;
-
-	case GuiWidgetType_Checkbox:
-	{
-	    v2_f32 pos;
-	    v2_f32 size;
-
-	    auto& cb = w.widget.checkbox;
-	    v4_f32 b = compute_checkbox_button_bounds(w);
-	    pos = v2_f32{ b.x, b.y };
-	    size = v2_f32{ b.z, b.w };
-
-	    imrend_draw_quad(pos.getVec3(0.f), size, cb.style.button_color, cmd);
-
-	    // Check size
-	    v2_f32 s = size * cb.style.shape_size_mult;
-	    
-	    switch (cb.style.shape)
-	    {
-	    case GuiCheckboxShape_Quad:
 		if (cb.value)
-		    imrend_draw_quad(pos.getVec3(0.f), s, cb.style.check_color, cmd);
-		break;
+		    imrend_draw_quad(pos.getVec3(0.f), s, Color::Red(), cmd);
 
-	    case GuiCheckboxShape_Triangle:
-		if (cb.value) {
+		size.x = w.bounds.z - size.x;
+		pos.x = w.bounds.x + w.bounds.z * 0.5f - size.x * 0.5f;
+
+		imrend_draw_quad(pos.getVec3(0.f), size, Color::Transparent(), cmd);
+	    
+		if (cb.text) {
+
+		    size.x -= 0.01f; // Minus some margin
+		    f32 font_size = size.y;
+
+		    Font& font = renderer_default_font();
+
+		    imrend_draw_text(cb.text, strlen(cb.text), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font.vertical_offset * font_size, size.x, 1u, font_size, gui->aspect, TextAlignment_Left, &font, Color::Black(), cmd);
+		}
+	    }
+	    break;
+
+	    case GuiWidgetType_Drag:
+	    {
+		v2_f32 pos;
+		v2_f32 size;
+
+		auto& drag = w.widget.drag;
+		pos = v2_f32{ w.bounds.x, w.bounds.y };
+		size = v2_f32{ w.bounds.z, w.bounds.w };
+
+		imrend_draw_quad(pos.getVec3(0.f), size, Color::Salmon(), cmd);
+
+		f32 font_size = size.y;
+
+		char strbuff[100u] = "\0";
+	    
+		sprintf(strbuff, "%f", drag.value);
+
+		Font& font = renderer_default_font();
+		imrend_draw_text(strbuff, strlen(strbuff), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font.vertical_offset * font_size, size.x, 1u, font_size, gui->aspect, TextAlignment_Center, &font, Color::Black(), cmd);
+	    }
+	    break;
+
+	    case GuiWidgetType_Text:
+	    {
+		v2_f32 pos;
+		v2_f32 size;
+
+		auto& text = w.widget.text;
+		pos = v2_f32{ w.bounds.x, w.bounds.y };
+		size = v2_f32{ w.bounds.z, w.bounds.w };
+
+		imrend_draw_quad(pos.getVec3(0.f), size, Color::Transparent(), cmd);
+	    
+		if (text.text) {
+
+		    Font& font = renderer_default_font();
+		    f32 font_size = size.y + size.y * font.vertical_offset;
+
+		    imrend_draw_text(text.text, strlen(text.text), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f, size.x, 1u, font_size, gui->aspect, TextAlignment_Center, &font, Color::Black(), cmd);
+		}
+	    }
+	    break;
+
+	    case GuiWidgetType_Collapse:
+	    {
+		v2_f32 pos;
+		v2_f32 size;
+
+		auto& collapse = w.widget.collapse;
+
+		pos = v2_f32{ w.bounds.x, w.bounds.y };
+		size = v2_f32{ w.bounds.z, w.bounds.w };
+
+		imrend_draw_quad(pos.getVec3(0.f), size, Color::Salmon(), cmd);
+
+		// Arrow size
+		v4_f32 arrow_bounds = compute_collapse_button(w);
+		v2_f32 p = v2_f32(arrow_bounds.x, arrow_bounds.y);
+		v2_f32 s = v2_f32(arrow_bounds.z, arrow_bounds.w) * 0.7f;
+	    
+		if (collapse.active) {
+
 		    imrend_draw_triangle(
-			    { pos.x - s.x * 0.5f, pos.y + s.y * 0.5f, 0.f },
-			    { pos.x + s.x * 0.5f, pos.y + s.y * 0.5f, 0.f },
-			    { pos.x, pos.y - s.y * 0.5f, 0.f }
-			    , cb.style.check_color, cmd);
+			    { p.x - s.x * 0.5f, p.y + s.y * 0.5f, 0.f },
+			    { p.x + s.x * 0.5f, p.y + s.y * 0.5f, 0.f },
+			    { p.x, p.y - s.y * 0.5f, 0.f }
+			    , Color::White(), cmd);
 		}
 		else {
 		    imrend_draw_triangle(
-			    { pos.x - s.x * 0.5f, pos.y + s.y * 0.5f, 0.f },
-			    { pos.x - s.x * 0.5f, pos.y - s.y * 0.5f, 0.f },
-			    { pos.x + s.x * 0.5f, pos.y, 0.f }
-			    , cb.style.check_color, cmd);
+			    { p.x - s.x * 0.5f, p.y + s.y * 0.5f, 0.f },
+			    { p.x - s.x * 0.5f, p.y - s.y * 0.5f, 0.f },
+			    { p.x + s.x * 0.5f, p.y, 0.f }
+			    , Color::White(), cmd);
 		}
-		break;
-		    
-	    }
 
-	    size.x = w.bounds.z - size.x;
-	    pos.x = w.bounds.x + w.bounds.z * 0.5f - size.x * 0.5f;
-
-	    imrend_draw_quad(pos.getVec3(0.f), size, cb.style.background_color, cmd);
+		size.x = w.bounds.z - arrow_bounds.z;
+		pos.x = w.bounds.x + w.bounds.z * 0.5f - size.x * 0.5f;
 	    
-	    if (cb.text) {
+		if (collapse.text) {
 
-		size.x -= 0.01f; // Minus some margin
-		f32 font_size = size.y;
+		    size.x -= 0.01f; // Minus some margin
+		    f32 font_size = size.y;
 
-		imrend_draw_text(cb.text, strlen(cb.text)
-				 , pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - renderer->font_opensans.vertical_offset * font_size,
-				 size.x, 1u, font_size, gui->aspect, cb.style.text_alignment, &renderer->font_opensans, cb.style.text_color, cmd);
+		    Font& font = renderer_default_font();
+
+		    imrend_draw_text(collapse.text, strlen(collapse.text), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font.vertical_offset * font_size, size.x, 1u, font_size, gui->aspect, TextAlignment_Left, &font, Color::Black(), cmd);
+		}
 	    }
-	}
-	break;
+	    break;
 
-	case GuiWidgetType_Container:
-	{
-	    auto& container = w.widget.container;
+	    case GuiWidgetType_Image:
+	    {
+		auto& image = w.widget.image;
 
-	    v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y);
-	    v2_f32 size = v2_f32(w.bounds.z, w.bounds.w);
-
-	    imrend_draw_quad(pos.getVec3(), size, container.style.color, cmd);
-	}
-	break;
-
-	case GuiWidgetType_Reciver:
-	{
-	    v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y);
-	    v2_f32 size = v2_f32(w.bounds.z, w.bounds.w);
-
-	    imrend_draw_quad(pos.getVec3(), size, Color::White(180u), cmd);
-	}
-	break;
-
-	case GuiWidgetType_MenuContainer:
-	{
-	    v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y);
-	    v2_f32 size = v2_f32(w.bounds.z, w.bounds.w);
-
-	    imrend_draw_quad(pos.getVec3(), size, Color::White(), cmd);
-	}
-	break;
-
-	case GuiWidgetType_Popup:
-	{
-	    auto& popup = w.widget.popup;
-
-	    v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y);
-	    v2_f32 size = v2_f32(w.bounds.z, w.bounds.w);
-
-	    imrend_draw_quad(pos.getVec3(), size, popup.style.color, cmd);
-	}
-	break;
-
-	case GuiWidgetType_Window:
-	{
-	    auto& window = w.widget.window;
-	    const GuiWindowState& state = *window.state;
-	    const GuiWindowStyle& style = window.style;
-
-	    v4_f32 decoration = compute_window_decoration_bounds(w);
-	    v4_f32 closebutton = compute_window_closebutton_bounds(w, decoration);
-
-	    v2_f32 outline_size;
-	    v2_f32 content_position;
-	    v2_f32 content_size;
-
-	    content_position = v2_f32{ w.bounds.x, w.bounds.y };
-	    content_size = v2_f32{ w.bounds.z, w.bounds.w };
-
-	    outline_size = content_size + v2_f32{ style.outline_size, style.outline_size * gui->aspect } *2.f;
-
-	    v2_f32 decoration_position = v2_f32(decoration.x, decoration.y);
-	    v2_f32 decoration_size = v2_f32(decoration.z, decoration.w);
-	    v2_f32 closebutton_position = v2_f32(closebutton.x, closebutton.y);
-	    v2_f32 closebutton_size = v2_f32(closebutton.z, closebutton.w);
-
-	    Color decoration_color;
-	    if (gui->focus.type == GuiWidgetType_Window && gui->focus.id == w.id) {
-		decoration_color = style.decoration_focus_color;
+		v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y);
+		v2_f32 size = v2_f32(w.bounds.z, w.bounds.w);
+	    
+		imrend_draw_sprite(pos.getVec3(), size, Color::White(), image.image ? image.image : renderer_white_image(), image.layout, { 0.f, 0.f, 1.f, 1.f }, cmd);
 	    }
-	    else if (window.hot_decoration) {
-		decoration_color = style.decoration_hot_color;
-	    }
-	    else {
-		decoration_color = style.decoration_color;
-	    }
-
-	    imrend_draw_quad(content_position.getVec3(0.f), outline_size, style.outline_color, cmd);
-	    imrend_draw_quad(content_position.getVec3(0.f), content_size, style.color, cmd);
-	    imrend_draw_quad(decoration_position.getVec3(0.f), decoration_size, decoration_color, cmd);
-	    imrend_draw_quad(closebutton_position.getVec3(0.f), closebutton_size, style.closebutton_color, cmd);
-
-	    if (state.title.size()) {
-
-		f32 font_size = decoration_size.y * 0.5f;
-
-		imrend_draw_text(state.title.c_str(), state.title.size()
-			  , decoration_position.x - decoration_size.x * 0.5f + 0.01f, decoration_position.y +
-			  decoration_size.y * 0.25f - renderer->font_opensans.vertical_offset * font_size, decoration_size.x, 1u, font_size,
-				 gui->aspect, TextAlignment_Left, &renderer->font_opensans, Color::White(), cmd);
-	    }
-	}
-	break;
-
-	}
-
-	// If it is a parent, draw childs and some parent stuff
-	{
-	    const GuiParentInfo* parent_info = get_parent_info(w);
-	    if (parent_info) {
-
-		// Draw vertical scroll
-		if (parent_info->has_vertical_scroll) {
-
-		    f32 norm = 1.f - ((parent_info->vertical_offset - parent_info->min_y) / (parent_info->max_y - parent_info->min_y));
-
-		    v4_f32 scroll_bounds = parent_info->child_bounds;
-		    //scroll_bounds.y += parent_info->vertical_offset;
-
-		    scroll_bounds.x += scroll_bounds.z * 0.5f + SCROLL_SIZE * 0.5f;
-		    scroll_bounds.z = SCROLL_SIZE;
+	    break;
 		    
-		    f32 button_height = scroll_bounds.w * SCROLL_BUTTON_SIZE_MULT;
-		    f32 button_space = scroll_bounds.w - button_height;
-		    f32 button_y = (scroll_bounds.y + scroll_bounds.w * 0.5f) - (button_height * 0.5f) - (norm * button_space);
-					
-		    imrend_draw_quad(v2_f32(scroll_bounds.x, scroll_bounds.y).getVec3(0.f), v2_f32(scroll_bounds.z, scroll_bounds.w), Color::Red(), cmd);
-		    imrend_draw_quad(v2_f32(scroll_bounds.x, button_y).getVec3(0.f), v2_f32(scroll_bounds.z, button_height), Color::Green(), cmd);
-
-		}
-				
-		// Draw childs
-
-		const v4_f32& s = parent_info->child_bounds;
-		imrend_push_scissor(s.x, s.y, s.z, s.w, !ignore_scroll(w.type), cmd);
-				
-		GuiIndex* it = gui->indices.data() + parent_info->widget_offset;
-		GuiIndex* end = it + parent_info->widget_count;
-
-		// Draw normal widgets
-		while (it != end) {
-
-		    GuiParentInfo* p = get_parent_info(it->index);
-		    if (p) {
-
-			it += p->widget_count;
-		    }
-		    else draw_widget(gui->widgets[it->index], cmd);
-
-		    ++it;
-		}
-
-		// Draw parents
-		it = gui->indices.data() + parent_info->widget_offset;
-
-		while (it != end) {
-
-		    GuiParentInfo* p = get_parent_info(it->index);
-		    if (p) {
-
-			draw_widget(gui->widgets[it->index], cmd);
-			it += p->widget_count;
-		    }
-
-		    ++it;
-		}
-
-		imrend_pop_scissor(cmd);
 	    }
+		
 	}
     }
-
-    void gui_draw(CommandList cmd)
+    
+    void _gui_draw(CommandList cmd)
     {
 	imrend_begin_batch(cmd);
 
 	imrend_camera(ImRendCamera_Normal, cmd);
 
-	foreach(i, gui->indices.size()) {
+	draw_root(gui->root_info, cmd);
 
-	    const GuiIndex& w = gui->indices[i];
+	for (const GuiWindowState& window : gui->windows) {
 
-	    draw_widget(gui->widgets[w.index], cmd);
+	    if (!window.active) continue;
 
-	    GuiParentInfo* parent_index = get_parent_info(w.index);
-	    if (parent_index) {
+	    const v4_f32& b = window.root_info.bounds;
+	    v4_f32 decoration = compute_window_decoration(b);
+	    
+	    imrend_draw_quad({ b.x, b.y, 0.f }, { b.z, b.w }, Color::White(), cmd);
+	    imrend_draw_quad({ decoration.x, decoration.y, 0.f }, { decoration.z, decoration.w }, Color::Gray(100u), cmd);
 
-		i += parent_index->widget_count;
-	    }
-	}
-
-	if (gui->focus.type == GuiWidgetType_Package) {
-
-	    imrend_draw_quad((gui->mouse_position).getVec3(0.f), v2_f32{ 0.01f, 0.01f * gui->aspect }, Color::Green(), cmd);
-
+	    draw_root(window.root_info, cmd);
 	}
 
 	imrend_flush(cmd);
-    }
-
-    /////////////////////////////////// HIGH LEVEL //////////////////////////////////////////
-
-    void gui_display_style_settings()
-    {
-	if (gui_begin_window("Style Settings", GuiLayout_Flow)) {
-
-	    u64 id = 0u;
-	    
-	    gui_push_style(GuiStyle_TextAlignment, TextAlignment_Left);
-	    
-	    gui_same_line(2u);
-	    gui_text("Container Color", id++);
-	    gui_drag_color4(&gui->style.container.color, id++);
-
-	    gui_same_line(2u);
-	    gui_text("Window Color", id++);
-	    gui_drag_color4(&gui->style.window.color, id++);
-
-	    gui_same_line(2u);
-	    gui_text("Window Decoration Color", id++);
-	    gui_drag_color4(&gui->style.window.decoration_color, id++);
-
-	    gui_same_line(2u);
-	    gui_text("Window Outline Color", id++);
-	    gui_drag_color4(&gui->style.window.outline_color, id++);
-	    
-	    gui_same_line(2u);
-	    gui_text("Window Decoration Height", id++);
-	    gui_drag_f32(&gui->style.window.decoration_height, 0.01f, 0.f, 1.f, id++);
-
-	    gui_same_line(2u);
-	    gui_text("Window Min Width", id++);
-	    gui_drag_f32(&gui->style.window.min_width, 0.01f, 0.f, 1.f, id++);
-
-	    gui_same_line(2u);
-	    gui_text("Window Min Height", id++);
-	    gui_drag_f32(&gui->style.window.min_height, 0.01f, 0.f, 1.f, id++);
-
-	    gui_same_line(2u);
-	    gui_text("Popup Color", id++);
-	    gui_drag_color4(&gui->style.popup.color, id++);
-
-	    gui_same_line(2u);
-	    gui_text("Button Color", id++);
-	    gui_drag_color4(&gui->style.button.color, id++);
-
-	    gui_same_line(2u);
-	    gui_text("Button Hot Color", id++);
-	    gui_drag_color4(&gui->style.button.hot_color, id++);
-
-	    gui_same_line(2u);
-	    gui_text("Button Text Color", id++);
-	    gui_drag_color4(&gui->style.button.text_color, id++);
-
-	    gui_same_line(2u);
-	    gui_text("Slider Color", id++);
-	    gui_drag_color4(&gui->style.slider.color, id++);
-
-	    gui_same_line(2u);
-	    gui_text("Slider Button Color", id++);
-	    gui_drag_color4(&gui->style.slider.button_color, id++);
-
-	    gui_same_line(2u);
-	    gui_text("Slider Button Size", id++);
-	    //gui_drag_f32(&gui->style.slider.button_size, 0.01f, 0.f, 1.f, id++);
-	    gui_button("TODO", id++);
-
-	    gui_same_line(2u);
-	    gui_text("Text Color", id++);
-	    gui_drag_color4(&gui->style.label.text_color, id++);
-
-	    gui_same_line(2u);
-	    gui_text("Text Background Color", id++);
-	    gui_drag_color4(&gui->style.label.background_color, id++);
-
-	    gui_same_line(2u);
-	    gui_text("Checkbox Color", id++);
-	    gui_drag_color4(&gui->style.checkbox.button_color, id++);
-
-	    gui_same_line(2u);
-	    gui_text("Checkbox Background Color", id++);
-	    gui_drag_color4(&gui->style.checkbox.background_color, id++);
-
-	    gui_same_line(2u);
-	    gui_text("Drag Text Color", id++);
-	    gui_drag_color4(&gui->style.drag.text_color, id++);
-
-	    gui_same_line(2u);
-	    gui_text("Drag Background Color", id++);
-	    gui_drag_color4(&gui->style.drag.background_color, id++);
-
-	    gui_same_line(2u);
-	    gui_text("Flow x0", id++);
-	    gui_drag_f32(&gui->style.flow_layout.x0, 0.01f, 0.f, 1.f, id++);
-
-	    gui_same_line(2u);
-	    gui_text("Flow x1", id++);
-	    gui_drag_f32(&gui->style.flow_layout.x1, 0.01f, 0.f, 1.f, id++);
-
-	    gui_pop_style(1u);
-	    
-	    gui_end_window();
-	}
     }
 }

@@ -920,6 +920,7 @@ namespace sv {
 	};
 
 	Entry entries[TABLE_SIZE] = {};
+	size_t _size = 0u;
 
 	static constexpr u32 INTERNAL_SEARCH = SV_MIN(TABLE_SIZE, 5u);
 
@@ -958,6 +959,7 @@ namespace sv {
 		else if (next->hash == 0u) {
 
 		    next->hash = hash;
+		    ++_size;
 		    return next->value;
 		}
 		else {
@@ -1032,6 +1034,9 @@ namespace sv {
 	T& operator[](const char* str) {
 	    return strget(str);
 	}
+
+	SV_INLINE size_t size() const { return _size; }
+	SV_INLINE size_t empty() const { return _size == 0u; }
 	
 	Iterator begin() {
 

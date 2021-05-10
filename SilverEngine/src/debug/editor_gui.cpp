@@ -4,34 +4,6 @@
 
 namespace sv {
     
-    bool egui_begin()
-    {
-	_gui_begin(0.1f, f32(os_window_size().x), f32(os_window_size().y));
-		
-		
-
-	return true;
-    }
-
-    void egui_end()
-    {
-	_gui_end();
-    }
-
-    bool egui_begin_window(const char* title)
-    {	
-	if (gui_begin_window(title, GuiLayout_Flow)) {
-	    return true;
-	}
-
-	return false;
-    }
-
-    void egui_end_window()
-    {
-	gui_end_window();
-    }
-
     void egui_header(const char* text, u64 id)
     {
 	gui_text(text, id);
@@ -42,9 +14,8 @@ namespace sv {
 	constexpr f32 TRANSFORM_HEIGHT = 30.f;
 
 	gui_push_id("ENTITY TRANSFORM");
-	
-	gui_begin_container(0u, GuiLayout_Free);
 
+	/*
 	// TODO: euler rotation
 	v3_f32& position = *get_entity_position_ptr(entity);
 	v3_f32& scale = *get_entity_scale_ptr(entity);
@@ -79,14 +50,8 @@ namespace sv {
 	    {
 		gui_push_style(GuiStyle_ButtonColor, Color{ 229u, 25u, 25u, 255u });
 		
-		gui_bounds(GuiCoord::Relative(0.5f - ELEMENT_WIDTH * 1.5f - INTERN_PADDING),
-			   GuiCoord::Relative(0.5f - ELEMENT_WIDTH * 0.5f - INTERN_PADDING),
-			   GuiCoord::IPixel(yoff),
-			   GuiCoord::IPixel(yoff + TRANSFORM_HEIGHT));
+		gui_begin_container(1u, GuiLayout_Flow);
 		
-		gui_begin_container(1u, GuiLayout_Free);
-		
-		gui_bounds(GuiCoord::Relative(0.f), GuiCoord::Relative(0.25f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
 		if (gui_button("X", 0u)) {
 
 		    if (i == 1u)
@@ -95,7 +60,6 @@ namespace sv {
 			values->x = 0.f;
 		}
 
-		gui_bounds(GuiCoord::Relative(0.25f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
 		gui_drag_f32(&values->x, 0.1f, 1u);
 
 		gui_end_container();
@@ -107,14 +71,8 @@ namespace sv {
 	    {
 		gui_push_style(GuiStyle_ButtonColor, Color{ 51u, 204u, 51u, 255u });
 		
-		gui_bounds(GuiCoord::Relative(0.5f - ELEMENT_WIDTH * 0.5f),
-			   GuiCoord::Relative(0.5f + ELEMENT_WIDTH * 0.5f),
-			   GuiCoord::IPixel(yoff),
-			   GuiCoord::IPixel(yoff + TRANSFORM_HEIGHT));
-		
-		gui_begin_container(2u, GuiLayout_Free);
+		gui_begin_container(2u, GuiLayout_Flow);
 
-		gui_bounds(GuiCoord::Relative(0.f), GuiCoord::Relative(0.25f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
 		if (gui_button("Y", 0u)) {
 
 		    if (i == 1u)
@@ -123,7 +81,6 @@ namespace sv {
 			values->y = 0.f;
 		}
 
-		gui_bounds(GuiCoord::Relative(0.25f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
 		gui_drag_f32(&values->y, 0.1f, 1u);
 
 		gui_end_container();
@@ -134,15 +91,9 @@ namespace sv {
 	    // Z
 	    {
 		gui_push_style(GuiStyle_ButtonColor, Color{ 13u, 25u, 229u, 255u });
-		
-		gui_bounds(GuiCoord::Relative(0.5f + ELEMENT_WIDTH * 0.5f + INTERN_PADDING),
-			   GuiCoord::Relative(0.5f + ELEMENT_WIDTH * 1.5f + INTERN_PADDING),
-			   GuiCoord::IPixel(yoff),
-			   GuiCoord::IPixel(yoff + TRANSFORM_HEIGHT));
-		
-		gui_begin_container(3u, GuiLayout_Free);
 
-		gui_bounds(GuiCoord::Relative(0.f), GuiCoord::Relative(0.25f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
+		gui_begin_container(3u, GuiLayout_Flow);
+
 		if (gui_button("Z", 0u)) {
 
 		    if (i == 1u)
@@ -151,7 +102,6 @@ namespace sv {
 			values->z = 0.f;
 		}
 
-		gui_bounds(GuiCoord::Relative(0.25f), GuiCoord::Relative(1.f), GuiCoord::Relative(0.f), GuiCoord::Relative(1.f));
 		gui_drag_f32(&values->z, 0.1f, 1u);
 
 		gui_end_container();
@@ -164,14 +114,9 @@ namespace sv {
 	    yoff += TRANSFORM_HEIGHT + 5.f;
 	}
 
-	gui_end_container();
+	gui_end_container();*/
 
 	gui_pop_id();
-    }
-
-    bool egui_button(const char* text, u64 id)
-    {
-	return gui_button(text, id);
     }
 
     bool egui_begin_component(Entity entity, CompID comp_id, bool* remove)
@@ -180,22 +125,15 @@ namespace sv {
 	gui_push_id(id);
 
 	*remove = false;
-
-	// TEMP
-	gui_push_style(GuiStyle_CheckboxBackgroundColor, Color{240u, 40, 40, 255u});
-	gui_push_style(GuiStyle_CheckboxTextAlignment, TextAlignment_Center);
-	gui_push_style(GuiStyle_CheckboxShape, GuiCheckboxShape_Triangle);
 	
-	bool show = gui_checkbox(get_component_name(comp_id), 0u);
-
-	gui_pop_style(3u);
+	bool show = gui_collapse(get_component_name(comp_id), 0u);
 	
-	if (gui_begin_popup(GuiPopupTrigger_LastWidget, MouseButton_Right, 1u, GuiLayout_Flow)) {
+	/*if (gui_begin_popup(GuiPopupTrigger_LastWidget, MouseButton_Right, 1u, GuiLayout_Flow)) {
 
 	    *remove = gui_button("Remove", 0u);
 
 	    gui_end_popup();
-	}
+	    }*/
 
 	if (show) {
 
@@ -218,10 +156,10 @@ namespace sv {
     {
 	gui_push_id(id);
 
-	gui_same_line(2u);
+	/*gui_same_line(2u);
 	
 	gui_text(text, 0u);
-	gui_drag_color4(pcolor, 1u);
+	gui_drag_color4(pcolor, 1u);*/
 
 	gui_pop_id();
     }
@@ -230,12 +168,9 @@ namespace sv {
     {
 	gui_push_id(id);
 
-	gui_same_line(2u);
-	
-	gui_text(text, 0u);
 	gui_image(texture->get(), GPUImageLayout_ShaderResource, 0u);
 
-	AssetPackage* package;
+	/*AssetPackage* package;
 	if (gui_recive_package((void**)&package, nullptr, ASSET_BROWSER_PACKAGE_TEXTURE)) {
 
 	    bool res = load_asset_from_file(*texture, package->filepath);
@@ -243,7 +178,7 @@ namespace sv {
 
 		SV_LOG_ERROR("Can't load the texture '%s'", package->filepath);
 	    }
-	}
+	    }*/
 
 	gui_pop_id();
     }
@@ -252,7 +187,7 @@ namespace sv {
     {
 	gui_push_id(id);
 
-	gui_same_line(2u);
+	/*gui_same_line(2u);
 	
 	gui_text(text, 0u);
 	gui_button("TODO", 1u);
@@ -265,7 +200,7 @@ namespace sv {
 
 		SV_LOG_ERROR("Can't load the mesh '%s'", package->filepath);
 	    }
-	}
+	    }*/
 
 	gui_pop_id();
     }
@@ -274,7 +209,7 @@ namespace sv {
     {
 	gui_push_id(id);
 
-	gui_same_line(2u);
+	/*gui_same_line(2u);
 	
 	gui_text(text, 0u);
 	gui_button("TODO", 1u);
@@ -287,33 +222,22 @@ namespace sv {
 
 		SV_LOG_ERROR("Can't load the material '%s'", package->filepath);
 	    }
-	}
+	    }*/
 
 	gui_pop_id();
     }
 
     bool egui_comp_bool(const char* text, u64 id, bool* value)
     {
-	gui_push_id(id);
-
-	gui_same_line(2u);
-	
-	gui_text(text, 0u);
-	bool res = gui_checkbox("", value, 1u);
-
-	gui_pop_id();
-
-	return res;
+	return gui_checkbox(text, *value, id);
     }
 
     bool egui_comp_drag_f32(const char* text, u64 id, f32* value, f32 adv, f32 min, f32 max)
     {
 	gui_push_id(id);
 
-	gui_same_line(2u);
-
 	gui_text(text, 0u);
-	bool res = gui_drag_f32(value, adv, min, max, 1u);
+	bool res = gui_drag_f32(*value, adv, min, max, 1u);
 
 	gui_pop_id();
 
@@ -322,7 +246,7 @@ namespace sv {
 
     bool egui_comp_drag_v4_f32(const char* text, u64 id, v4_f32* value, f32 adv, f32 min, f32 max)
     {
-	gui_push_id(id);
+	/*gui_push_id(id);
 
 	gui_same_line(2u);
 
@@ -331,12 +255,13 @@ namespace sv {
 
 	gui_pop_id();
 
-	return res;
+	return res;*/
+	return false;
     }
 
     bool egui_comp_drag_v2_f32(const char* text, u64 id, v2_f32* value, f32 adv, f32 min, f32 max)
     {
-	gui_push_id(id);
+	/*gui_push_id(id);
 	
 	gui_same_line(2u);
 
@@ -345,9 +270,10 @@ namespace sv {
 
 	gui_pop_id();
 
-	return res;
+	return res;*/
+	return false;
     }
-
+    
 }
 
 #endif

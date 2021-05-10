@@ -32,6 +32,9 @@ namespace sv {
 
     void draw_text_area(const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, u32 line_offset, bool bottom_top, Font* pFont, Color color, CommandList cmd);
 
+    SV_API Font& renderer_default_font();
+    SV_API GPUImage* renderer_white_image();
+
     // SCENE
 
     void draw_scene();

@@ -1663,6 +1663,16 @@ namespace sv {
 	draw_text(text, text_size, x, y, max_line_width, max_lines, font_size, aspect, alignment, &font, cmd);
     }
 
+    Font& renderer_default_font()
+    {
+	return renderer->font_opensans;
+    }
+
+    GPUImage* renderer_white_image()
+    {
+	return renderer->gfx.image_white;
+    }
+
     // POSTPROCESSING
 
     void postprocess_gaussian_blur(

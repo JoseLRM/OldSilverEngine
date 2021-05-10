@@ -64,12 +64,6 @@ namespace sv {
 	char filepath[FILEPATH_SIZE + 1u];
     };
 
-    bool egui_begin();
-    void egui_end();
-
-    SV_API bool egui_begin_window(const char* title);
-    SV_API void egui_end_window();
-
     SV_API void egui_header(const char* text, u64 id);
     SV_API bool egui_button(const char* text, u64 id);
     SV_API void egui_transform(Entity entity);
