@@ -3,6 +3,7 @@ build
 release
 SilverEngine/system/cache
 SilverEngine/system/bin/SilverEngine.lib
+SilverEngine/system/shader_log.txt
 
 
 # VisualStudio files

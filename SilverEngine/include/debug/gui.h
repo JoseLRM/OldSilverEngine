@@ -16,6 +16,11 @@ namespace sv {
 
     void _gui_draw(CommandList cmd);
 
+    enum GuiWindowFlag : u32 {
+	GuiWindowFlag_None,
+	GuiWindowFlag_NoClose = SV_BIT(0u),
+    };
+
     enum GuiPopupTrigger : u32 {
 	GuiPopupTrigger_Root,
 	GuiPopupTrigger_LastWidget
@@ -25,12 +30,12 @@ namespace sv {
     SV_API void gui_push_id(const char* id);
     SV_API void gui_pop_id(u32 count = 1u);
 	
-    SV_API bool gui_begin_window(const char* title);
+    SV_API bool gui_begin_window(const char* title, u32 flags = 0u);
     SV_API void gui_end_window();
     SV_API bool gui_show_window(const char* title);
     SV_API bool gui_hide_window(const char* title);
 
-    SV_API bool gui_begin_popup(const char* title, GuiPopupTrigger trigger);
+    SV_API bool gui_begin_popup(GuiPopupTrigger trigger);
     SV_API void gui_end_popup();
 
     SV_API bool gui_button(const char* text, u64 id);

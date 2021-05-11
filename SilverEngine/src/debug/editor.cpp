@@ -193,7 +193,7 @@ namespace sv {
     }
 
     /////////////////////////////////////////////// DO UNDO ACTIONS ////////////////////////////////////
-    /*
+    
     typedef void(*ConstructEntityActionFn)(Entity entity);
     
     struct EntityCreate_Action {
@@ -266,7 +266,7 @@ namespace sv {
 	stack.unlock();
 
 	return res;
-	}*/
+    }
 
     /////////////////////////////////////////////// CAMERA ///////////////////////////////////////
 
@@ -937,8 +937,8 @@ namespace sv {
     }
     
     static void show_entity_popup(Entity entity, bool& destroy)
-    {/*
-	if (gui_begin_popup(GuiPopupTrigger_LastWidget, MouseButton_Right, 0x3254fa + u64(entity), GuiLayout_Flow)) {
+    {
+	if (gui_begin_popup(GuiPopupTrigger_LastWidget)) {
 
 	    f32 y = 0.f;
 	    constexpr f32 H = 20.f;
@@ -956,7 +956,7 @@ namespace sv {
 	    }
 
 	    gui_end_popup();
-	    }*/
+	}
     }
 
     SV_INTERNAL void show_entity(Entity entity)
@@ -1036,16 +1036,15 @@ namespace sv {
     // Returns if the folder should be destroyed
     SV_AUX bool display_create_popup(HierarchyFolder& folder)
     {
-	/*
 	bool destroy = false;
 	
 	gui_push_id("Create Popup");
 
 	HierarchyFolder& root = editor.hierarchy.root;
 
-	GuiPopupTrigger trigger = (&root == &folder) ? GuiPopupTrigger_Parent : GuiPopupTrigger_LastWidget;
+	GuiPopupTrigger trigger = (&root == &folder) ? GuiPopupTrigger_Root : GuiPopupTrigger_LastWidget;
 	
-	if (gui_begin_popup(trigger, MouseButton_Right, 0x5634c, GuiLayout_Flow)) {
+	if (gui_begin_popup(trigger)) {
 
 	    if (gui_button("Create Folder", 0u)) {
 		// TODO: do undo actions
@@ -1088,8 +1087,7 @@ namespace sv {
 
 	gui_pop_id();
 
-	return destroy;*/
-	return false;
+	return destroy;
     }
 
     SV_INTERNAL void display_hierarchy_folder(HierarchyFolder& folder)
@@ -1543,7 +1541,7 @@ namespace sv {
 	    if (!editor.camera_focus && there_is_scene() && dev.debug_draw) {
 
 		// Window management
-		if (gui_begin_window("Window Manager")) {
+		if (gui_begin_window("Window Manager", GuiWindowFlag_NoClose)) {
 
 		    if (gui_button("Hierarchy", 0u)) {
 			gui_show_window("Hierarchy");

@@ -43,6 +43,8 @@ namespace sv {
 	
 	GuiHeader_BeginWindow,
 	GuiHeader_EndWindow,
+	GuiHeader_BeginPopup,
+	GuiHeader_EndPopup,
 	
 	GuiHeader_Widget,
     };
@@ -129,10 +131,11 @@ namespace sv {
 
     struct GuiWindowState {
 
-	// TODO: bool show
+	bool show;
 	char title[GUI_WINDOW_NAME_SIZE + 1u];
 	u64 hash;
 	GuiRootInfo root_info;
+	u32 flags;
 
     };
 
@@ -149,6 +152,8 @@ namespace sv {
 	
 	List<u64> ids;
 	u64 current_id;
+
+	bool popup_request = false;
 
 	struct {
 	    u64 id;
@@ -179,7 +184,6 @@ namespace sv {
 
 	struct  {
 	    GuiRootInfo root;
-	    char title[GUI_WINDOW_NAME_SIZE] = "";
 	    v2_f32 origin;
 	    u64 id = 0u;
 	} popup;
@@ -264,11 +268,13 @@ namespace sv {
 		deserialize_u32(d, window_count);
 
 		foreach(i, window_count) {
-
+		    
 		    GuiWindowState s;
+		    deserialize_bool(d, s.show);
 		    deserialize_string(d, s.title, GUI_WINDOW_NAME_SIZE);
 		    deserialize_v4_f32(d, s.root_info.bounds);
-		    
+
+		    s.flags = 0u;
 		    s.hash = hash_string(s.title);
 
 		    GuiWindowState& state = gui->windows[s.hash];
@@ -300,15 +306,11 @@ namespace sv {
 
 	    serialize_u32(s, u32(gui->windows.size()));
 
-	    for (const GuiRootInfo* root : gui->roots) {
+	    for (const GuiWindowState& state : gui->windows) {
 
-		if (root->type == GuiRootType_Window) {
-
-		    GuiWindowState& state = *(GuiWindowState*)root->state;
-		    
-		    serialize_string(s, state.title);
-		    serialize_v4_f32(s, state.root_info.bounds);
-		}
+		serialize_bool(s, state.show);
+		serialize_string(s, state.title);
+		serialize_v4_f32(s, state.root_info.bounds);
 	    }
 
 	    bool res = bin_write(hash_string("GUI STATE"), s, true);
@@ -344,6 +346,8 @@ namespace sv {
 	gui->last_widget.id = 0u;
 	gui->last_widget.type = GuiWidgetType_None;
 	gui->last_widget.root = nullptr;
+
+	gui->popup_request = false;
 
 	return true;
     }
@@ -650,9 +654,9 @@ namespace sv {
 		    case GuiType_v2_f32:
 		    {
 			f32* value = nullptr;
-			f32 adv;
-			f32 min;
-			f32 max;
+			f32 adv = 0.f;
+			f32 min = 0.f;
+			f32 max = 0.f;
 			    
 			if (drag.type == GuiType_f32) {
 			    
@@ -677,7 +681,7 @@ namespace sv {
 			if (value) {
 			    
 			    *value += input.mouse_dragged.x * gui->resolution.x * adv;
-			    *value = math_clamp(min, value, max);
+			    *value = math_clamp(min, *value, max);
 			}
 		    }
 		    break;
@@ -796,18 +800,16 @@ namespace sv {
 	for (GuiWidget& w : root.widgets) {
 		
 	    update_widget(w, root);
-	}
-
-	
+	}	
 
 	bool catch_input = false;
 
-	if (input.unused) {
+	switch (root.type) {
 
-	    switch (root.type) {
-
-	    case GuiRootType_Window:
-	    {
+	case GuiRootType_Window:
+	{
+	    if (input.unused) {
+		
 		v4_f32 decoration = compute_window_decoration(root.bounds);
 		if (mouse_in_bounds(root.bounds) || mouse_in_bounds(decoration))
 		    catch_input = true;
@@ -834,9 +836,7 @@ namespace sv {
 
 		    if (mouse_in_bounds(decoration)) {
 
-			v4_f32 closebutton = compute_window_closebutton(decoration);
-
-			if (mouse_in_bounds(closebutton)) {
+			if (!(window->flags & GuiWindowFlag_NoClose) && mouse_in_bounds(compute_window_closebutton(decoration))) {
 			    set_focus(root, GuiWidgetType_Root, window->hash, 6u);
 			}
 			else {
@@ -882,21 +882,24 @@ namespace sv {
 		    }
 		}
 	    }
-	    break;
+	}
+	break;
 
-	    case GuiRootType_Popup:
-	    {
-		if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
+	case GuiRootType_Popup:
+	{
+	    if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
 
-		    if (!mouse_in_bounds(root.bounds)) {
-			gui->popup.id = 0u;
-			input.unused = false;
-		    }
+		if (!mouse_in_bounds(root.bounds)) {
+		    gui->popup.id = 0u;
+		    input.unused = false;
 		}
 	    }
-	    break;
+
+	    if (mouse_in_bounds(root.bounds))
+		catch_input = true;
+	}
+	break;
 	    
-	    }
 	}
 
 	if (catch_input) {
@@ -922,7 +925,6 @@ namespace sv {
 	gui->current_focus = nullptr;
 
 	reset_root(gui->popup.root);
-	gui->popup.id = 0u;
 
 	for (GuiWindowState& window : gui->windows) {
 	    reset_root(window.root_info);
@@ -960,7 +962,7 @@ namespace sv {
 
 	    case GuiHeader_EndWindow:
 	    {
-		SV_ASSERT(gui->root_stack.back().type == GuiRootType_Window);
+		SV_ASSERT(gui->root_stack.back()->type == GuiRootType_Window);
 
 		update_root_bounds(*gui->root_stack.back());
 
@@ -971,11 +973,13 @@ namespace sv {
 
 	    case GuiHeader_BeginPopup:
 	    {
-		const char* text = gui_read_text(it);
-		strcpy(gui->popup.title, text);
+		u64 id = gui_read<u64>(it);
+		v2_f32 origin = gui_read<v2_f32>(it);
 
-		gui->popup.id = gui_read<u64>(it);
-		gui->popup.origin = gui_read<v2_f32>(it);
+		if (id != gui->popup.id) {
+		    gui->popup.origin = origin;
+		    gui->popup.id = id;
+		}
 
 		gui->root_stack.push_back(&gui->popup.root);
 		gui->roots.push_back(&gui->popup.root);
@@ -984,17 +988,17 @@ namespace sv {
 
 	    case GuiHeader_EndPopup:
 	    {
-		SV_ASSERT(gui->root_stack.back().type == GuiRootType_Popup);
+		SV_ASSERT(gui->root_stack.back()->type == GuiRootType_Popup);
 
 		// Compute bounds
 		{
 		    v2_f32 size;
-		    size.x = 400.f / gui->resolution.x * gui->scale;
-		    size.y = - (gui->popup.root.yoff + 7.f) / gui->resolution.y * gui->scale;
+		    size.x = 200.f / gui->resolution.x * gui->scale;
+		    size.y = (gui->popup.root.yoff + 7.f) / gui->resolution.y * gui->scale;
 
 		    v2_f32 pos = gui->popup.origin;
 		    // TODO: Check if the popup is outside the screen
-		    pos += size * 0.5f;
+		    pos += v2_f32(size.x, -size.y) * 0.5f;
 
 		    gui->popup.root.bounds = { pos.x, pos.y, size.x, size.y };
 		}
@@ -1038,7 +1042,7 @@ namespace sv {
 
 	// Sort roots list
 	std::sort(gui->roots.data(), gui->roots.data() + gui->roots.size(), [] (GuiRootInfo* r0, GuiRootInfo* r1) {
-		return r0->priority > r1->priotity;
+		return (r0->type == GuiRootType_Popup && r1->type != GuiRootType_Popup) || r0->priority > r1->priority;
 	    });
 
 	// Update roots
@@ -1068,20 +1072,23 @@ namespace sv {
 	gui->buffer.write_back(ptr, size);
     }
 
-    SV_AUX bool showing_window(GuiWindowState* state)
+    SV_AUX GuiWidget* find_widget(GuiWidgetType type, u64 id, GuiRootInfo* root = nullptr)
     {
-	bool show = false;
-	
-	for (GuiRootInfo* root : gui->roots) {
-	    if (root == &state->root_info) {
-		show = true;
-		break;
-	    }
+	// TODO: Optimize
+
+	if (root == nullptr)
+	    root = gui->root_stack.back();
+
+	for (GuiWidget& w : root->widgets) {
+
+	    if (w.type == type && w.id == id)
+		return &w;
 	}
-	return show;
+
+	return nullptr;
     }
 
-    bool gui_begin_window(const char* title)
+    bool gui_begin_window(const char* title, u32 flags)
     {
 	u64 hash = hash_string(title);
 
@@ -1104,9 +1111,12 @@ namespace sv {
 	    state = &s;
 	}
 
-	bool show = showing_window(state);
+	state->flags = flags;
+
+	if (state->flags & GuiWindowFlag_NoClose)
+	    state->show = true;
 	
-	if (show) {
+	if (state->show) {
 
 	    gui_write(GuiHeader_BeginWindow);
 	    gui_write(hash);
@@ -1116,7 +1126,7 @@ namespace sv {
 	    gui_push_id(state->hash);
 	}
 
-	return show;
+	return state->show;
     }
 
     void gui_end_window()
@@ -1126,7 +1136,7 @@ namespace sv {
 	gui_pop_id();
     }
 
-    bool gui_begin_popup(const char* title, GuiPopupTrigger trigger)
+    bool gui_begin_popup(GuiPopupTrigger trigger)
     {
 	// Compute id
 	u64 id = gui->current_id;
@@ -1154,7 +1164,7 @@ namespace sv {
 	
 	// Check if should show the popup
 
-	if (gui->popup.id == id) {
+	if (gui->popup.id == id && !gui->popup_request) {
 
 	    // Is showing right now
 	    show = true;
@@ -1171,9 +1181,9 @@ namespace sv {
 
 		    show = true;
 
-		    for (GuiWidget* w : root->widgets) {
+		    for (GuiWidget& w : root->widgets) {
 
-			if (mouse_in_bounds(w->bounds)) {
+			if (mouse_in_bounds(w.bounds)) {
 			    show = false;
 			    break;
 			}
@@ -1197,18 +1207,15 @@ namespace sv {
 
 	if (show) {
 
-	    u64 id = gui->current_id;
-	    hash_combine(id, trigger);
-
-	    if (trigger == GuiPopupTrigger_LastWidget)
-		hash_combine(id, gui->last_widget.id);
-
 	    gui_write(GuiHeader_BeginPopup);
-	    gui_write_text(title);
 	    gui_write(id);
+	    gui_write(gui->mouse_position); // origin
 
-	    v2_f32 origin_point = gui->mouse_position;
-	    gui_write(origin_point);
+	    gui->root_stack.push_back(&gui->popup.root);
+	    
+	    gui_push_id(id);
+
+	    gui->popup_request = true;
 	}
 
 	return show;
@@ -1217,6 +1224,8 @@ namespace sv {
     void gui_end_popup()
     {
 	gui_write(GuiHeader_EndPopup);
+	gui->root_stack.pop_back();
+	gui_pop_id();
     }
 
     bool gui_show_window(const char* title)
@@ -1226,15 +1235,8 @@ namespace sv {
 
 	if (state == nullptr) return false;
 
-	bool show = showing_window(state);
-
-	if (!show) {
-
-	    gui->roots.push_back(&state->root_info);
-	    return true;
-	}
-
-	return false;
+	state->show = true;
+	return true;
     }
 
     bool gui_hide_window(const char* title)
@@ -1244,24 +1246,8 @@ namespace sv {
 
 	if (state == nullptr) return false;
 
-	u32 index = u32_max;
-
-	foreach(i, gui->roots.size()) {
-
-	    if (gui->roots[i] == &state->root_info) {
-
-		index = i;
-		break;
-	    }
-	}
-
-	if (index != u32_max) {
-
-	    gui->roots.erase(index);
-	    return true;
-	}
-
-	return false;
+	state->show = false;
+	return true;
     }
 
     SV_AUX void update_id()
@@ -1292,22 +1278,6 @@ namespace sv {
     SV_AUX void compute_id(u64& id)
     {
 	hash_combine(id, gui->current_id);
-    }
-
-    SV_AUX GuiWidget* find_widget(GuiWidgetType type, u64 id, GuiRootInfo* root = nullptr)
-    {
-	// TODO: Optimize
-
-	if (root == nullptr)
-	    root = gui->root_stack.back();
-
-	for (GuiWidget& w : root->widgets) {
-
-	    if (w.type == type && w.id == id)
-		return &w;
-	}
-
-	return nullptr;
     }
 
     SV_AUX void write_widget(GuiWidgetType type, u64 id)
@@ -1472,7 +1442,7 @@ namespace sv {
 	    
 	    imrend_draw_quad({ b.x, b.y, 0.f }, { b.z, b.w }, background_color, cmd);
 	    imrend_draw_quad({ decoration.x, decoration.y, 0.f }, { decoration.z, decoration.w }, decoration_color, cmd);
-	    imrend_draw_quad({ closebutton.x, closebutton.y, 0.f }, { closebutton.z, closebutton.w }, closebutton_color, cmd);
+	    if (!(window->flags & GuiWindowFlag_NoClose)) imrend_draw_quad({ closebutton.x, closebutton.y, 0.f }, { closebutton.z, closebutton.w }, closebutton_color, cmd);
 	}
 	break;
 
@@ -1591,9 +1561,9 @@ namespace sv {
 			f32 value = 0u;
 
 			if (drag.type == GuiType_f32)
-			    value = *reinterpret_cast<f32*>(drag.value_data);
+			    value = *reinterpret_cast<const f32*>(drag.value_data);
 			else if (drag.type == GuiType_v2_f32)
-			    value = (*reinterpret_cast<v2_f32*>(drag.value_data))[i];
+			    value = (*reinterpret_cast<const v2_f32*>(drag.value_data))[i];
 			
 			sprintf(strbuff, "%f", value);
 		    }
