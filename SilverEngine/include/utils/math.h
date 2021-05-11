@@ -80,6 +80,14 @@ namespace sv {
 	    constexpr Vector2D(T x, T y) : x(x), y(y) {}
 	    explicit constexpr Vector2D(const XMVECTOR& v) : x(XMVectorGetX(v)), y(XMVectorGetY(v)) {}
 
+	    SV_INLINE const f32& operator[](u32 index) const noexcept
+	    {
+		return (index == 0u) ? x : y;
+	    }
+	    SV_INLINE f32& operator[](u32 index) noexcept
+	    {
+		return (index == 0u) ? x : y;
+	    }
 	    SV_INLINE bool operator==(const vec& v) const noexcept
 	    {
 		return x == v.x && y == v.y;

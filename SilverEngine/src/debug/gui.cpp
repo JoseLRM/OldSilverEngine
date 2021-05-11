@@ -4,6 +4,41 @@
 
 namespace sv {
 
+    enum GuiType : u32 {
+	GuiType_f32,
+	GuiType_v2_f32,
+    };
+
+    SV_INTERNAL constexpr size_t sizeof_type(GuiType type)
+    {
+	switch (type) {
+
+	case GuiType_f32:
+	    return sizeof(f32);
+
+	case GuiType_v2_f32:
+	    return sizeof(v2_f32);
+
+	default:
+	    return 0;
+	}
+    }
+
+    SV_INTERNAL constexpr u32 vectorof_type(GuiType type)
+    {
+	switch (type) {
+
+	case GuiType_f32:
+	    return 1u;
+
+	case GuiType_v2_f32:
+	    return 2u;
+
+	default:
+	    return 0;
+	}
+    }
+
     enum GuiHeader : u32 {
 	
 	GuiHeader_BeginWindow,
@@ -47,10 +82,12 @@ namespace sv {
 	    } checkbox;
 
 	    struct {
-		f32 adv;
-		f32 min;
-		f32 max;
-		f32 value;
+		u8 adv_data[sizeof(v4_f32)];
+		u8 min_data[sizeof(v4_f32)];
+		u8 max_data[sizeof(v4_f32)];
+		u8 value_data[sizeof(v4_f32)];
+		GuiType type;
+		u32 current_vector = 0u;
 	    } drag;
 
 	    struct {
@@ -180,6 +217,18 @@ namespace sv {
 	button_bounds.z = button_bounds.w / gui->aspect;
 	button_bounds.x = button_bounds.x - w.bounds.z * 0.5f + button_bounds.z * 0.5f;
 	return button_bounds;
+    }
+    // TODO: This repeats operations
+    SV_AUX v4_f32 compute_drag_slot(u32 vector, u32 index, const v4_f32& bounds)
+    {
+	f32 padding = 3.f / gui->resolution.x;
+	
+	v4_f32 b = bounds;
+	f32 width = bounds.z / f32(vector);
+	
+	b.z = (bounds.z - padding * f32(vector - 1u)) / f32(vector);
+	b.x = (bounds.x - bounds.z * 0.5f) + (width * f32(index)) + b.z * 0.5f;
+	return b;
     }
     SV_AUX v4_f32 compute_window_decoration(const v4_f32& b)
     {
@@ -317,6 +366,12 @@ namespace sv {
 	return text;
     }
 
+    SV_AUX void gui_read_raw(void* dst, size_t size, u8*& it)
+    {
+	memcpy(dst, it, size);
+	it += size;
+    }
+
     SV_AUX void reset_root(GuiRootInfo& root)
     {
 	root.widgets.reset();
@@ -383,10 +438,14 @@ namespace sv {
 	case GuiWidgetType_Drag:
 	{
 	    auto& drag = w.widget.drag;
-	    drag.adv = gui_read<f32>(it);
-	    drag.min = gui_read<f32>(it);
-	    drag.max = gui_read<f32>(it);
-	    drag.value = gui_read<f32>(it);
+	    GuiType type = gui_read<GuiType>(it);
+
+	    size_t size = sizeof_type(type);
+	    
+	    gui_read_raw(drag.adv_data, size, it);
+	    gui_read_raw(drag.min_data, size, it);
+	    gui_read_raw(drag.max_data, size, it);
+	    gui_read_raw(drag.value_data, size, it);
 
 	    height = 25.f;
 	}
@@ -585,13 +644,45 @@ namespace sv {
 		}
 		else {
 
-		    f32& value = drag.value;
-		    f32 adv = drag.adv;
-		    f32 min = drag.min;
-		    f32 max = drag.max;
+		    switch (drag.type) {
+
+		    case GuiType_f32:
+		    case GuiType_v2_f32:
+		    {
+			f32* value = nullptr;
+			f32 adv;
+			f32 min;
+			f32 max;
+			    
+			if (drag.type == GuiType_f32) {
+			    
+			    value = reinterpret_cast<f32*>(drag.value_data);
+			    adv = *reinterpret_cast<f32*>(drag.adv_data);
+			    min = *reinterpret_cast<f32*>(drag.min_data);
+			    max = *reinterpret_cast<f32*>(drag.max_data);
+			}
+			else if (drag.type == GuiType_v2_f32) {
+			    
+			    v2_f32* value_vec = reinterpret_cast<v2_f32*>(drag.value_data);
+			    v2_f32 adv_vec = *reinterpret_cast<v2_f32*>(drag.adv_data);
+			    v2_f32 min_vec = *reinterpret_cast<v2_f32*>(drag.min_data);
+			    v2_f32 max_vec = *reinterpret_cast<v2_f32*>(drag.max_data);
+
+			    value = &((*value_vec)[drag.current_vector]);
+			    adv = adv_vec[drag.current_vector];
+			    min = min_vec[drag.current_vector];
+			    max = max_vec[drag.current_vector];
+			}
+
+			if (value) {
+			    
+			    *value += input.mouse_dragged.x * gui->resolution.x * adv;
+			    *value = math_clamp(min, value, max);
+			}
+		    }
+		    break;
 		    
-		    value += input.mouse_dragged.x * gui->resolution.x * adv;
-		    value = SV_MAX(SV_MIN(value, max), min);
+		    }
 		}
 	    }
 	    break;
@@ -659,6 +750,30 @@ namespace sv {
 	} break;
 
 	case GuiWidgetType_Drag:
+	{
+	    if (input.unused) {
+
+		auto& drag = w.widget.drag;
+
+		u32 vector = vectorof_type(drag.type);
+		v4_f32 bounds;
+
+		foreach(i, vector) {
+		    bounds = compute_drag_slot(vector, i, w.bounds);
+
+		    if (mouse_in_bounds(bounds)) {
+
+			if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
+			    set_focus(root, w.type, w.id);
+			    drag.current_vector = i;
+			    input.unused = true;
+			    break;
+			}
+		    }
+		}
+	    }
+	} break;
+
 	case GuiWidgetType_Collapse:
 	{
 	    if (input.unused) {
@@ -946,6 +1061,11 @@ namespace sv {
     SV_AUX void gui_write_text(const char* text)
     {
 	gui->buffer.write_back(text, strlen(text) + 1u);
+    }
+
+    SV_AUX void gui_write_raw(const void* ptr, size_t size)
+    {
+	gui->buffer.write_back(ptr, size);
     }
 
     SV_AUX bool showing_window(GuiWindowState* state)
@@ -1261,14 +1381,17 @@ namespace sv {
 	return value;
     }
 
-    bool gui_drag_f32(f32& value, f32 adv, f32 min, f32 max, u64 id)
+    SV_AUX bool gui_drag(void* value, void* adv, void* min, void* max, GuiType type, u64 id)
     {
+	size_t size = sizeof_type(type);
+
 	compute_id(id);
 
 	write_widget(GuiWidgetType_Drag, id);
-	gui_write(adv);
-	gui_write(min);
-	gui_write(max);
+	gui_write(type);
+	gui_write_raw(adv, size);
+	gui_write_raw(min, size);
+	gui_write_raw(max, size);
 	
 	GuiWidget* drag = find_widget(GuiWidgetType_Drag, id);
 
@@ -1280,12 +1403,21 @@ namespace sv {
 	}
 
 	if (pressed) {
-	    value = drag->widget.drag.value;
+	    memcpy(value, drag->widget.drag.value_data, size);
 	}
 
-	gui_write(value);
+	gui_write_raw(value, size);
 	
 	return pressed;
+    }
+
+    bool gui_drag_f32(f32& value, f32 adv, f32 min, f32 max, u64 id)
+    {
+	return gui_drag(&value, &adv, &min, &max, GuiType_f32, id);
+    }
+    bool gui_drag_v2_f32(v2_f32& value, f32 adv, f32 min, f32 max, u64 id)
+    {
+	return gui_drag(&value, &adv, &min, &max, GuiType_v2_f32, id);
     }
 
     void gui_text(const char* text, u64 id)
@@ -1432,16 +1564,45 @@ namespace sv {
 		pos = v2_f32{ w.bounds.x, w.bounds.y };
 		size = v2_f32{ w.bounds.z, w.bounds.w };
 
-		imrend_draw_quad(pos.getVec3(0.f), size, Color::Salmon(), cmd);
-
-		f32 font_size = size.y;
-
-		char strbuff[100u] = "\0";
-	    
-		sprintf(strbuff, "%f", drag.value);
+		imrend_draw_quad(pos.getVec3(0.f), size, Color::Gray(130u), cmd);
 
 		Font& font = renderer_default_font();
-		imrend_draw_text(strbuff, strlen(strbuff), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font.vertical_offset * font_size, size.x, 1u, font_size, gui->aspect, TextAlignment_Center, &font, Color::Black(), cmd);
+		v4_f32 bounds;
+		u32 vector = vectorof_type(drag.type);
+		char strbuff[100u];
+
+		foreach(i, vector) {
+		    
+		    bounds = compute_drag_slot(vector, i, w.bounds);
+		    pos = v2_f32{ bounds.x, bounds.y };
+		    size = v2_f32{ bounds.z, bounds.w };
+		    
+		    imrend_draw_quad(pos.getVec3(0.f), size, Color::Salmon(), cmd);
+
+		    f32 font_size = size.y;
+
+		    strcpy(strbuff, "\0");
+
+		    switch (drag.type) {
+
+		    case GuiType_v2_f32:
+		    case GuiType_f32:
+		    {
+			f32 value = 0u;
+
+			if (drag.type == GuiType_f32)
+			    value = *reinterpret_cast<f32*>(drag.value_data);
+			else if (drag.type == GuiType_v2_f32)
+			    value = (*reinterpret_cast<v2_f32*>(drag.value_data))[i];
+			
+			sprintf(strbuff, "%f", value);
+		    }
+		    break;
+		    
+		    }
+
+		    imrend_draw_text(strbuff, strlen(strbuff), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font.vertical_offset * font_size, size.x, 1u, font_size, gui->aspect, TextAlignment_Center, &font, Color::Black(), cmd);
+		}
 	    }
 	    break;
 
