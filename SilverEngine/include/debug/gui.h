@@ -43,6 +43,8 @@ namespace sv {
     SV_API bool gui_checkbox(const char* text, u64 id);
     SV_API bool gui_drag_f32(f32& value, f32 adv, f32 min, f32 max, u64 id);
     SV_API bool gui_drag_v2_f32(v2_f32& value, f32 adv, f32 min, f32 max, u64 id);
+    SV_API bool gui_drag_v3_f32(v3_f32& value, f32 adv, f32 min, f32 max, u64 id);
+    SV_API bool gui_drag_v4_f32(v4_f32& value, f32 adv, f32 min, f32 max, u64 id);
     SV_API void gui_text(const char* text, u64 id);
     SV_API bool gui_collapse(const char* text, u64 id);
     SV_API void gui_image(GPUImage* image, GPUImageLayout layout, u64 id);

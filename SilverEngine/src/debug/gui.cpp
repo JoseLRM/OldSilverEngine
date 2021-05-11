@@ -7,6 +7,8 @@ namespace sv {
     enum GuiType : u32 {
 	GuiType_f32,
 	GuiType_v2_f32,
+	GuiType_v3_f32,
+	GuiType_v4_f32,
     };
 
     SV_INTERNAL constexpr size_t sizeof_type(GuiType type)
@@ -18,6 +20,12 @@ namespace sv {
 
 	case GuiType_v2_f32:
 	    return sizeof(v2_f32);
+
+	case GuiType_v3_f32:
+	    return sizeof(v3_f32);
+
+	case GuiType_v4_f32:
+	    return sizeof(v4_f32);
 
 	default:
 	    return 0;
@@ -33,6 +41,12 @@ namespace sv {
 
 	case GuiType_v2_f32:
 	    return 2u;
+
+	case GuiType_v3_f32:
+	    return 3u;
+
+	case GuiType_v4_f32:
+	    return 4u;
 
 	default:
 	    return 0;
@@ -84,9 +98,9 @@ namespace sv {
 	    } checkbox;
 
 	    struct {
-		u8 adv_data[sizeof(v4_f32)];
-		u8 min_data[sizeof(v4_f32)];
-		u8 max_data[sizeof(v4_f32)];
+		u8 adv_data[sizeof(f32)];
+		u8 min_data[sizeof(f32)];
+		u8 max_data[sizeof(f32)];
 		u8 value_data[sizeof(v4_f32)];
 		GuiType type;
 		u32 current_vector = 0u;
@@ -442,14 +456,17 @@ namespace sv {
 	case GuiWidgetType_Drag:
 	{
 	    auto& drag = w.widget.drag;
-	    GuiType type = gui_read<GuiType>(it);
+	    drag.type = gui_read<GuiType>(it);
 
-	    size_t size = sizeof_type(type);
+	    size_t size = sizeof_type(drag.type);
+	    size_t comp_size = size / vectorof_type(drag.type);
 	    
-	    gui_read_raw(drag.adv_data, size, it);
-	    gui_read_raw(drag.min_data, size, it);
-	    gui_read_raw(drag.max_data, size, it);
+	    gui_read_raw(drag.adv_data, comp_size, it);
+	    gui_read_raw(drag.min_data, comp_size, it);
+	    gui_read_raw(drag.max_data, comp_size, it);
 	    gui_read_raw(drag.value_data, size, it);
+
+	    drag.current_vector = gui_read<u32>(it);
 
 	    height = 25.f;
 	}
@@ -652,30 +669,32 @@ namespace sv {
 
 		    case GuiType_f32:
 		    case GuiType_v2_f32:
+		    case GuiType_v3_f32:
+		    case GuiType_v4_f32:
 		    {
 			f32* value = nullptr;
-			f32 adv = 0.f;
-			f32 min = 0.f;
-			f32 max = 0.f;
+			f32 adv = *reinterpret_cast<f32*>(drag.adv_data);
+			f32 min = *reinterpret_cast<f32*>(drag.min_data);
+			f32 max = *reinterpret_cast<f32*>(drag.max_data);
 			    
 			if (drag.type == GuiType_f32) {
 			    
 			    value = reinterpret_cast<f32*>(drag.value_data);
-			    adv = *reinterpret_cast<f32*>(drag.adv_data);
-			    min = *reinterpret_cast<f32*>(drag.min_data);
-			    max = *reinterpret_cast<f32*>(drag.max_data);
 			}
 			else if (drag.type == GuiType_v2_f32) {
 			    
 			    v2_f32* value_vec = reinterpret_cast<v2_f32*>(drag.value_data);
-			    v2_f32 adv_vec = *reinterpret_cast<v2_f32*>(drag.adv_data);
-			    v2_f32 min_vec = *reinterpret_cast<v2_f32*>(drag.min_data);
-			    v2_f32 max_vec = *reinterpret_cast<v2_f32*>(drag.max_data);
-
 			    value = &((*value_vec)[drag.current_vector]);
-			    adv = adv_vec[drag.current_vector];
-			    min = min_vec[drag.current_vector];
-			    max = max_vec[drag.current_vector];
+			}
+			else if (drag.type == GuiType_v3_f32) {
+			    
+			    v3_f32* value_vec = reinterpret_cast<v3_f32*>(drag.value_data);
+			    value = &((*value_vec)[drag.current_vector]);
+			}
+			else if (drag.type == GuiType_v4_f32) {
+			    
+			    v4_f32* value_vec = reinterpret_cast<v4_f32*>(drag.value_data);
+			    value = &((*value_vec)[drag.current_vector]);
 			}
 
 			if (value) {
@@ -759,15 +778,17 @@ namespace sv {
 
 		auto& drag = w.widget.drag;
 
-		u32 vector = vectorof_type(drag.type);
-		v4_f32 bounds;
+		if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
+		    
+		    u32 vector = vectorof_type(drag.type);
+		    v4_f32 bounds;
+		
+		    foreach(i, vector) {
+			
+			bounds = compute_drag_slot(vector, i, w.bounds);
 
-		foreach(i, vector) {
-		    bounds = compute_drag_slot(vector, i, w.bounds);
-
-		    if (mouse_in_bounds(bounds)) {
-
-			if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
+			if (mouse_in_bounds(bounds)) {
+			    
 			    set_focus(root, w.type, w.id);
 			    drag.current_vector = i;
 			    input.unused = true;
@@ -777,7 +798,7 @@ namespace sv {
 		}
 	    }
 	} break;
-
+	
 	case GuiWidgetType_Collapse:
 	{
 	    if (input.unused) {
@@ -1354,14 +1375,15 @@ namespace sv {
     SV_AUX bool gui_drag(void* value, void* adv, void* min, void* max, GuiType type, u64 id)
     {
 	size_t size = sizeof_type(type);
+	size_t comp_size = size / vectorof_type(type);
 
 	compute_id(id);
 
 	write_widget(GuiWidgetType_Drag, id);
 	gui_write(type);
-	gui_write_raw(adv, size);
-	gui_write_raw(min, size);
-	gui_write_raw(max, size);
+	gui_write_raw(adv, comp_size);
+	gui_write_raw(min, comp_size);
+	gui_write_raw(max, comp_size);
 	
 	GuiWidget* drag = find_widget(GuiWidgetType_Drag, id);
 
@@ -1377,6 +1399,7 @@ namespace sv {
 	}
 
 	gui_write_raw(value, size);
+	gui_write(drag ? drag->widget.drag.current_vector : 0u);
 	
 	return pressed;
     }
@@ -1388,6 +1411,14 @@ namespace sv {
     bool gui_drag_v2_f32(v2_f32& value, f32 adv, f32 min, f32 max, u64 id)
     {
 	return gui_drag(&value, &adv, &min, &max, GuiType_v2_f32, id);
+    }
+    bool gui_drag_v3_f32(v3_f32& value, f32 adv, f32 min, f32 max, u64 id)
+    {
+	return gui_drag(&value, &adv, &min, &max, GuiType_v3_f32, id);
+    }
+    bool gui_drag_v4_f32(v4_f32& value, f32 adv, f32 min, f32 max, u64 id)
+    {
+	return gui_drag(&value, &adv, &min, &max, GuiType_v4_f32, id);
     }
 
     void gui_text(const char* text, u64 id)
@@ -1473,9 +1504,9 @@ namespace sv {
 		Color color = Color::Salmon();
 
 		if (gui->current_focus == &w)
-		    color = Color::White();
+		    color = Color::LightSalmon();
 		else if (button.hot)
-		    color = Color::Red();
+		    color = Color::DarkSalmon();
 		    
 		imrend_draw_quad(pos.getVec3(), size, color, cmd);
 
@@ -1531,10 +1562,6 @@ namespace sv {
 		v2_f32 size;
 
 		auto& drag = w.widget.drag;
-		pos = v2_f32{ w.bounds.x, w.bounds.y };
-		size = v2_f32{ w.bounds.z, w.bounds.w };
-
-		imrend_draw_quad(pos.getVec3(0.f), size, Color::Gray(130u), cmd);
 
 		Font& font = renderer_default_font();
 		v4_f32 bounds;
@@ -1555,8 +1582,10 @@ namespace sv {
 
 		    switch (drag.type) {
 
-		    case GuiType_v2_f32:
 		    case GuiType_f32:
+		    case GuiType_v2_f32:
+		    case GuiType_v3_f32:
+		    case GuiType_v4_f32:
 		    {
 			f32 value = 0u;
 
@@ -1564,6 +1593,10 @@ namespace sv {
 			    value = *reinterpret_cast<const f32*>(drag.value_data);
 			else if (drag.type == GuiType_v2_f32)
 			    value = (*reinterpret_cast<const v2_f32*>(drag.value_data))[i];
+			else if (drag.type == GuiType_v3_f32)
+			    value = (*reinterpret_cast<const v3_f32*>(drag.value_data))[i];
+			else if (drag.type == GuiType_v4_f32)
+			    value = (*reinterpret_cast<const v4_f32*>(drag.value_data))[i];
 			
 			sprintf(strbuff, "%f", value);
 		    }

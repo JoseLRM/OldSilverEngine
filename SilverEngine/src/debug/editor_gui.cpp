@@ -246,32 +246,26 @@ namespace sv {
 
     bool egui_comp_drag_v4_f32(const char* text, u64 id, v4_f32* value, f32 adv, f32 min, f32 max)
     {
-	/*gui_push_id(id);
-
-	gui_same_line(2u);
+	gui_push_id(id);
 
 	gui_text(text, 0u);
-	bool res = gui_drag_v4_f32(value, adv, min, max, 1u);
+	bool res = gui_drag_v4_f32(*value, adv, min, max, 1u);
 
 	gui_pop_id();
 
-	return res;*/
-	return false;
+	return res;
     }
 
     bool egui_comp_drag_v2_f32(const char* text, u64 id, v2_f32* value, f32 adv, f32 min, f32 max)
     {
-	/*gui_push_id(id);
-	
-	gui_same_line(2u);
+	gui_push_id(id);
 
 	gui_text(text, 0u);
-	bool res = gui_drag_v2_f32(value, adv, min, max, 1u);
+	bool res = gui_drag_v2_f32(*value, adv, min, max, 1u);
 
 	gui_pop_id();
 
-	return res;*/
-	return false;
+	return res;
     }
     
 }

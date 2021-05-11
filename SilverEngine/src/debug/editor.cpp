@@ -1192,7 +1192,8 @@ namespace sv {
 		    gui_pop_id(2u);
 		}
 
-		/*if (gui_begin_popup(GuiPopupTrigger_Parent, MouseButton_Right, 0xabc2544 + selected, GuiLayout_Flow)) {
+		if (gui_begin_popup(GuiPopupTrigger_Root)) {
+		    
 		    u32 count = get_component_register_count();
 		    foreach(i, count) {
 
@@ -1208,7 +1209,7 @@ namespace sv {
 		    }
 
 		    gui_end_popup();
-		    }*/
+		}
 	    }
 
 	    gui_end_window();

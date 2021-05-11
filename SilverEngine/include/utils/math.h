@@ -346,6 +346,27 @@ namespace sv {
 	    constexpr Vector3D(T x, T y, T z) : x(x), y(y), z(z) {}
 	    explicit constexpr Vector3D(const XMVECTOR& v) : x(XMVectorGetX(v)), y(XMVectorGetY(v)), z(XMVectorGetZ(v)) {}
 
+	SV_INLINE const f32& operator[](u32 index) const noexcept {
+	    switch (index) {
+	    case 0:
+		return x;
+	    case 1:
+		return y;
+	    default:
+		return z;
+	    }
+	}
+	SV_INLINE f32& operator[](u32 index) noexcept {
+	    switch (index) {
+	    case 0:
+		return x;
+	    case 1:
+		return y;
+	    default:
+		return z;
+	    }
+	}
+
 	    SV_INLINE void operator+=(const vec& v) noexcept
 		{
 		    x += v.x;
@@ -620,6 +641,31 @@ namespace sv {
 	    constexpr Vector4D(T n) : x(n), y(n), z(n), w(n) {}
 	    constexpr Vector4D(T x, T y, T z, T w) : x(x), y(y), z(z), w(w) {}
 	    explicit constexpr Vector4D(const XMVECTOR& v) : x(XMVectorGetX(v)), y(XMVectorGetY(v)), z(XMVectorGetZ(v)), w(XMVectorGetW(v)) {}
+
+	SV_INLINE const f32& operator[](u32 index) const noexcept {
+	    switch (index) {
+	    case 0:
+		return x;
+	    case 1:
+		return y;
+	    case 2:
+		return z;
+	    default:
+		return w;
+	    }
+	}
+	SV_INLINE f32& operator[](u32 index) noexcept {
+	    switch (index) {
+	    case 0:
+		return x;
+	    case 1:
+		return y;
+	    case 2:
+		return z;
+	    default:
+		return w;
+	    }
+	}
 
 	    // sum
 	    inline void operator+=(const vec& v) noexcept
