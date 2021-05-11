@@ -31,7 +31,7 @@ void show_component_info(ShowComponentEvent* event)
     if (event->comp_id == TestComponent::ID) {
 	
 	TestComponent* comp = reinterpret_cast<TestComponent*>(event->comp);
-	egui_comp_bool("State", 0u, &comp->state);
+	gui_checkbox("State", comp->state, 0u);
     }
 }
 

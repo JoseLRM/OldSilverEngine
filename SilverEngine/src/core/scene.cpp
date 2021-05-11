@@ -1676,15 +1676,15 @@ namespace sv {
 	    { // Free the entity memory
 		auto& a = scene.entityData;
 		
-		SV_ASSERT(a.size >= entity);
-		a.getInternal(entity) = EntityInternal();
-		a.getTransform(entity) = EntityTransform();
+		SV_ASSERT(a.size >= e);
+		a.getInternal(e) = EntityInternal();
+		a.getTransform(e) = EntityTransform();
 
-		if (entity == a.size) {
+		if (e == a.size) {
 		    a.size--;
 		}
 		else {
-		    a.freelist.push_back(entity);
+		    a.freelist.push_back(e);
 		}
 	    }
 	}
@@ -2000,7 +2000,7 @@ namespace sv {
 
 	if (parent != SV_ENTITY_NULL) {
 	    
-	    XMMATRIX mp = get_entity_world_matrix(entity);
+	    XMMATRIX mp = get_entity_world_matrix(parent);
 	    m = m * mp;
 	}
 	

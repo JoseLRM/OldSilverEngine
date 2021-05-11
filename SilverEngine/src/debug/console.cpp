@@ -146,7 +146,7 @@ namespace sv {
 	const char* srcpath;
 	const char* dstpath;
 
-	std::string srcpath_str;
+	char src[FILEPATH_SIZE + 1u] = "";
 
 	if (argc == 2u) {
 	    srcpath = args[0u];
@@ -160,15 +160,16 @@ namespace sv {
 		"obj", "*.obj",
 	    };
 
-	    //srcpath_str = file_dialog_open(2u, filters, "");
-	    return false;
-	    //if (srcpath_str.empty()) return true;
-	    //srcpath = srcpath_str.c_str();
+	    if (!file_dialog_open(src, 2u, filters, "")) {
+		return true;
+	    }
+
+	    srcpath = src;
 	}
 
 	ModelInfo model_info;
 
-	if (!load_model(srcpath, model_info)) {
+	if (!load_model(src, model_info)) {
 
 	    SV_LOG_ERROR("Can't load '%s'", srcpath);
 	    return false;

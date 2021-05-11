@@ -841,7 +841,7 @@ namespace sv {
 
 			foreach(i, vertex_count) {
 			    
-			    bool res = position_index[i] != 0 && (abs(position_index[i])) <= position_count;
+			    res = position_index[i] != 0 && (abs(position_index[i])) <= position_count;
 			    if (res) res = normal_index[i] == 0 || (abs(normal_index[i])) <= normal_count;
 			    if (res) res = texcoord_index[i] == 0 || (abs(texcoord_index[i])) <= texcoord_count;
 
