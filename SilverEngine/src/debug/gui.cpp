@@ -61,6 +61,8 @@ namespace sv {
 	GuiHeader_EndPopup,
 	
 	GuiHeader_Widget,
+
+	GuiHeader_Separator,
     };
     
     enum GuiWidgetType : u32 {
@@ -1038,6 +1040,13 @@ namespace sv {
 		read_widget(it);
 	    }
 	    break;
+
+	    case GuiHeader_Separator:
+	    {
+		f32 separation = gui_read<f32>(it);
+		gui->root_stack.back()->yoff += separation;
+	    }
+	    break;
 		
 	    }
 	}
@@ -1455,6 +1464,12 @@ namespace sv {
 	write_widget(GuiWidgetType_Image, id, 0u);
 	gui_write(image);
 	gui_write(layout);
+    }
+
+    void gui_separator(f32 separation)
+    {
+	gui_write(GuiHeader_Separator);
+	gui_write(separation);
     }
 
     SV_AUX void draw_root(const GuiRootInfo& root, CommandList cmd)

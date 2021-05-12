@@ -59,11 +59,13 @@ namespace sv {
     {
 	gui_push_id(id);
 
-	/*gui_same_line(2u);
-	
 	gui_text(text, 0u);
-	gui_drag_color4(pcolor, 1u);*/
-
+	
+	v4_f32 value = pcolor->toVec4();
+	if (gui_drag_v4_f32(value, 0.01f, 0.f, 1.f, 1u)) {
+	    pcolor->setFloat(value.x, value.y, value.z, value.w);
+	}
+	
 	gui_pop_id();
     }
 
