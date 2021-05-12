@@ -22,6 +22,10 @@ namespace sv {
 	GuiDragFlag_Rotation = SV_BIT(2)
     };
 
+    enum GuiImageDrag : u32 {
+	GuiImageFlag_Fullscreen = SV_BIT(0)
+    };
+
     enum GuiWindowFlag : u32 {
 	GuiWindowFlag_NoClose = SV_BIT(0u),
     };
@@ -52,7 +56,7 @@ namespace sv {
     SV_API bool gui_drag_v4_f32(v4_f32& value, f32 adv, f32 min, f32 max, u64 id, u32 flags = 0u);
     SV_API void gui_text(const char* text, u64 id);
     SV_API bool gui_collapse(const char* text, u64 id);
-    SV_API void gui_image(GPUImage* image, GPUImageLayout layout, u64 id);
+    SV_API void gui_image(GPUImage* image, GPUImageLayout layout, u64 id, u32 flags = 0u);
     SV_API void gui_separator(f32 separation);
     
 }

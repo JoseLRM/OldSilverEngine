@@ -1626,6 +1626,19 @@ namespace sv {
     {
 	if (_gui_begin()) {
 
+	    // TEST
+	    {
+		if (gui_begin_window("Test")) {
+
+		    TextureAsset tex;
+
+		    if (load_asset_from_file(tex, "$system/images/skymap.jpeg"))
+			gui_image(tex.get(), GPUImageLayout_ShaderResource, 0u, GuiImageFlag_Fullscreen);
+		    
+		    gui_end_window();
+		}
+	    }
+
 	    if (gui_button("New project", 0u)) {
 		
 		char path[FILEPATH_SIZE + 1u] = "";
