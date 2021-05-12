@@ -17,9 +17,9 @@ namespace sv {
 
 	gui_push_id("ENTITY TRANSFORM");
 	
-	gui_drag_v3_f32(position, 0.05f, -f32_max, f32_min, 0u, GuiDragFlag_Position);
-	//gui_drag_v3_f32(rotation, 0.05f, -f32_max, f32_min, 0u, GuiDragFlag_Rotation);
-	gui_drag_v3_f32(scale, 0.05f, -f32_max, f32_min, 0u, GuiDragFlag_Scale);
+	gui_drag_v3_f32(position, 0.05f, -f32_max, f32_max, 0u, GuiDragFlag_Position);
+	//gui_drag_v3_f32(rotation, 0.05f, -f32_max, f32_max, 1u, GuiDragFlag_Rotation);
+	gui_drag_v3_f32(scale, 0.05f, -f32_max, f32_max, 2u, GuiDragFlag_Scale);
 	
 	gui_pop_id();
     }

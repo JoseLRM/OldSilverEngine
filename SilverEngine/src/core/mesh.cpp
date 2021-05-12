@@ -259,7 +259,7 @@ namespace sv {
 
     bool mesh_create_buffers(Mesh& mesh, ResourceUsage usage)
     {
-	ASSERT_VERTICES();
+	//ASSERT_VERTICES();
 	SV_ASSERT(usage != ResourceUsage_Staging);
 	if (mesh.vbuffer || mesh.ibuffer) return false;
 
@@ -523,6 +523,19 @@ namespace sv {
 	else SV_LOG_ERROR("Can't load the mtl file at '%s'", filepath);
     }
 
+    SV_AUX u32 parse_objindex_to_absolute(i32 i, i32 max)
+    {
+	if (i > 0) {
+	    --i;
+	}
+	else if (i < 0) {
+	    i = max + i;
+	}
+	else i = 0;
+
+	return u32(i);
+    }
+
     bool load_model(const char* filepath, ModelInfo& model_info)
     {
 	const char* model_extension = filepath_extension(filepath);
@@ -550,24 +563,27 @@ namespace sv {
 	
 	if (file_read_text(filepath, file)) {
 
-	    struct ObjAuxData {
-		u32 position_offset;
-		u32 normal_offset;
-		u32 texcoord_offset;
+	    struct ObjIndex {
+		i32 position_index;
+		i32 normal_index;
+		i32 texcoord_index;
 	    };
-
+	    
+	    struct ObjMesh {
+		String name;
+		List<ObjIndex> indices;
+		u32 material_index;
+	    };
+	    
+	    List<v3_f32> positions;
 	    List<v3_f32> normals;
 	    List<v2_f32> texcoords;
-	    List<ObjAuxData> meshes_aux;
-
-	    ObjAuxData* mesh_aux = &meshes_aux.emplace_back();
-	    mesh_aux->position_offset = 0u;
-	    mesh_aux->normal_offset = 0u;
-	    mesh_aux->texcoord_offset = 0u;
-			    
-	    MeshInfo* mesh = &model_info.meshes.emplace_back();
+	    List<ObjMesh> meshes;
+	    
+	    ObjMesh* mesh = &meshes.emplace_back();
 	    mesh->material_index = u32_max;
 	    bool using_default = true;
+	    bool shading = true;
 	    
 	    LineProcessor p;
 	    line_begin(p, file.c_str());
@@ -701,20 +717,53 @@ namespace sv {
 			}
 			else {
 
-			    ObjAuxData* last = mesh_aux;
-			    mesh_aux = &meshes_aux.emplace_back();
-			    mesh_aux->position_offset = (u32)mesh->positions.size() + last->position_offset;;
-			    mesh_aux->normal_offset = (u32)normals.size() + last->normal_offset;
-			    mesh_aux->texcoord_offset = (u32)texcoords.size() + last->texcoord_offset;
-			    
-			    mesh = &model_info.meshes.emplace_back();
+			    mesh = &meshes.emplace_back();
 			    mesh->material_index = u32_max;
-
-			    normals.reset();
-			    texcoords.reset();
 			}
 
 			mesh->name.set(p.line, 0u, name_size);
+		    }
+		}
+		break;
+
+		case 's': // TODO
+		{
+		    ++p.line;
+		    line_jump_spaces(p.line);
+		    if (*p.line != 1)
+			shading = false;
+		}
+		break;
+
+		case 'g': // New Group
+		{
+		    ++p.line;
+
+		    line_jump_spaces(p.line);
+
+		    char delimiters[] = {
+			' ',
+			'\n',
+			'\r'
+		    };
+		    
+		    size_t name_size = string_split(p.line, delimiters, 3u);
+		    if (name_size == 0u) {
+
+			SV_LOG_ERROR("Can't read the object name in line %u", p.line_count);
+			corrupted = true;
+		    }
+		    else {
+
+			if (mesh->indices.empty()) {
+
+			    mesh->name.set(p.line, 0u, name_size);
+			}
+			else {
+
+			    mesh = &meshes.emplace_back();
+			    mesh->material_index = u32_max;
+			}
 		    }
 		}
 		break;
@@ -727,7 +776,7 @@ namespace sv {
 
 		    case ' ': // Position
 		    {
-			v3_f32& v = mesh->positions.emplace_back();
+			v3_f32& v = positions.emplace_back();
 
 			bool res = line_read_f32(p.line, v.x);
 			if (res) res = line_read_f32(p.line, v.y);
@@ -768,7 +817,7 @@ namespace sv {
 			    SV_LOG_ERROR("Can't read the vector at line %u", p.line_count);
 			}
 
-			// I think v coord is optional
+			// v coord is optional
 			line_read_f32(p.line, v.y);
 
 			v.y = 1.f - v.y;
@@ -819,10 +868,6 @@ namespace sv {
 
 			if (!res) break;
 
-			position_index[i] -= mesh_aux->position_offset;
-			normal_index[i] -= mesh_aux->normal_offset;
-			texcoord_index[i] -= mesh_aux->texcoord_offset;
-
 			++vertex_count;
 
 			line_jump_spaces(p.line);
@@ -830,91 +875,60 @@ namespace sv {
 		    }
 
 		    if (!res || vertex_count < 3) {
+			res = false;
 			SV_LOG_ERROR("Can't read the face at line %u", p.line_count);
 			corrupted = false;
 		    }
-		    else {
 
-			i32 position_count = (i32)mesh->positions.size();
-			i32 normal_count = (i32)normals.size();
-			i32 texcoord_count = (i32)texcoords.size();
-
-			foreach(i, vertex_count) {
+		    if (res) {
 			    
-			    res = position_index[i] != 0 && (abs(position_index[i])) <= position_count;
-			    if (res) res = normal_index[i] == 0 || (abs(normal_index[i])) <= normal_count;
-			    if (res) res = texcoord_index[i] == 0 || (abs(texcoord_index[i])) <= texcoord_count;
+			if (vertex_count == 3u) {
 
-			    if (res) {
+			    foreach(i, 3u) {
 
-				i32 aux = position_index[i];
-				position_index[i] = (aux < 0) ? (position_count + aux) : (aux - 1);
-
-				aux = normal_index[i];
-				normal_index[i] = (aux < 0) ? (normal_count + aux) : (SV_MAX(aux - 1, 0));
-
-				aux = texcoord_index[i];
-				texcoord_index[i] = (aux < 0) ? (texcoord_count + aux) : (SV_MAX(aux - 1, 0));
-			    }
-			    else {
-				SV_LOG_ERROR("Can't read the face at line %u, index out of bounds", p.line_count);
-				corrupted = true;
-				break;
+				ObjIndex& index = mesh->indices.emplace_back();
+				index.position_index = position_index[i];
+				index.normal_index = normal_index[i];
+				index.texcoord_index = texcoord_index[i];
 			    }
 			}
+			else if (vertex_count == 4u) {
 
-			if (res) {
-			    
-			    u32* index = (u32*) position_index;
+			    foreach(i, 3u) {
 
-			    if (mesh->normals.empty()) mesh->normals.resize(mesh->positions.size());
-			    if (mesh->texcoords.empty()) mesh->texcoords.resize(mesh->positions.size());
-			    
-			    if (vertex_count == 3u) {
-
-				foreach(i, 3u) {
-				
-				    mesh->normals[index[i]] = normals[normal_index[i]];
-				    mesh->texcoords[index[i]] = texcoords[texcoord_index[i]];
-				    mesh->indices.push_back(index[i]);
-				}
+				ObjIndex& index = mesh->indices.emplace_back();
+				index.position_index = position_index[i];
+				index.normal_index = normal_index[i];
+				index.texcoord_index = texcoord_index[i];
 			    }
-			    else if (vertex_count == 4u) {
 
-				foreach(i, 3u) {
-				
-				    mesh->normals[index[i]] = normals[normal_index[i]];
-				    mesh->texcoords[index[i]] = texcoords[texcoord_index[i]];
-				    mesh->indices.push_back(index[i]);
-				}
+			    foreach(j, 3u) {
 
-				foreach(j, 3u) {
-
-				    u32 i;
+				u32 i;
 				    
-				    switch (j) {
+				switch (j) {
 
-				    case 0:
-					i = 0u;
-					break;
+				case 0:
+				    i = 0u;
+				    break;
 
-				    case 1:
-					i = 2u;
-					break;
+				case 1:
+				    i = 2u;
+				    break;
 
-				    default:
-					i = 3u;
-					break;
+				default:
+				    i = 3u;
+				    break;
 					
-				    }
-				
-				    mesh->normals[index[i]] = normals[normal_index[i]];
-				    mesh->texcoords[index[i]] = texcoords[texcoord_index[i]];
-				    mesh->indices.push_back(index[i]);
 				}
+				
+				ObjIndex& index = mesh->indices.emplace_back();
+				index.position_index = position_index[i];
+				index.normal_index = normal_index[i];
+				index.texcoord_index = texcoord_index[i];
 			    }
-			}			
-		    }
+			}
+		    }			
 		}
 		break;
 		
@@ -923,6 +937,75 @@ namespace sv {
 
 	    if (corrupted) {
 		return false;
+	    }
+
+	    // Parse obj format to my own format
+	    {
+		for (ObjMesh& obj_mesh : meshes) {
+
+		    if (obj_mesh.indices.empty())
+			continue;
+
+		    // Compute min and max position indices
+		    u32 min_position_index = u32_max;
+		    u32 max_position_index = 0u;
+		    for (const ObjIndex& index : obj_mesh.indices) {
+
+			i32 i = index.position_index;
+
+			if (i > 0) {
+			    --i;
+			}
+			else if (i < 0) {
+			    i = i32(positions.size()) + i;
+			}
+			else i = min_position_index;
+
+			min_position_index = SV_MIN(u32(i), min_position_index);
+			max_position_index = SV_MAX(u32(i), max_position_index);
+		    }
+
+		    MeshInfo& mesh = model_info.meshes.emplace_back();
+
+		    if (obj_mesh.name.size())
+			mesh.name.set(obj_mesh.name.c_str());
+
+		    mesh.material_index = obj_mesh.material_index;
+
+		    u32 elements = max_position_index - min_position_index + 1u;
+
+		    mesh.positions.resize(elements);
+		    mesh.normals.resize(elements);
+		    mesh.texcoords.resize(elements);
+
+		    mesh.indices.resize(obj_mesh.indices.size());
+
+		    memcpy(mesh.positions.data(), positions.data() + min_position_index, elements * sizeof(v3_f32));
+
+		    const ObjIndex* it0 = obj_mesh.indices.data();
+		    MeshIndex* it1 = mesh.indices.data();
+		    const ObjIndex* end = obj_mesh.indices.data() + obj_mesh.indices.size();
+
+		    i32 max = i32(positions.size());
+		    u32 min = min_position_index;
+
+		    while (it0 != end) {
+
+			u32 index = parse_objindex_to_absolute(it0->position_index, max) - min;
+			u32 normal_index = parse_objindex_to_absolute(it0->normal_index, max);
+			u32 texcoord_index = parse_objindex_to_absolute(it0->texcoord_index, max);
+
+			// TODO: Handle errors
+			
+			mesh.normals[index] = normals[normal_index];
+			mesh.texcoords[index] = texcoords[texcoord_index];
+			
+			*it1 = index;
+
+			++it0;
+			++it1;
+		    }
+		}
 	    }
 	}
 	else {
