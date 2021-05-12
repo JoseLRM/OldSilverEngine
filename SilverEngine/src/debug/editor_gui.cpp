@@ -11,111 +11,16 @@ namespace sv {
 
     void egui_transform(Entity entity)
     {
-	constexpr f32 TRANSFORM_HEIGHT = 30.f;
-
-	gui_push_id("ENTITY TRANSFORM");
-
-	/*
 	// TODO: euler rotation
 	v3_f32& position = *get_entity_position_ptr(entity);
 	v3_f32& scale = *get_entity_scale_ptr(entity);
 
-	f32 yoff = 0.f;
-
-	foreach(i, 2u) {
-
-	    gui_push_id(i + 0x23549abf);
-
-	    v3_f32* values;
-
-	    switch (i) {
-	    case 0:
-		values = &position;
-		break;
-	    case 1:
-		values = &scale;
-		break;
-	    default:
-		values = &position;
-	    }
-
-	    // TODO: Hot color
-
-	    constexpr f32 EXTERN_PADDING = 0.03f;
-	    constexpr f32 INTERN_PADDING = 0.07f;
-
-	    constexpr f32 ELEMENT_WIDTH = (1.f - EXTERN_PADDING * 2.f - INTERN_PADDING * 2.f) / 3.f;
-	    
-	    // X
-	    {
-		gui_push_style(GuiStyle_ButtonColor, Color{ 229u, 25u, 25u, 255u });
-		
-		gui_begin_container(1u, GuiLayout_Flow);
-		
-		if (gui_button("X", 0u)) {
-
-		    if (i == 1u)
-			values->x = 1.f;
-		    else
-			values->x = 0.f;
-		}
-
-		gui_drag_f32(&values->x, 0.1f, 1u);
-
-		gui_end_container();
-
-		gui_pop_style();
-	    }
-
-	    // Y
-	    {
-		gui_push_style(GuiStyle_ButtonColor, Color{ 51u, 204u, 51u, 255u });
-		
-		gui_begin_container(2u, GuiLayout_Flow);
-
-		if (gui_button("Y", 0u)) {
-
-		    if (i == 1u)
-			values->y = 1.f;
-		    else
-			values->y = 0.f;
-		}
-
-		gui_drag_f32(&values->y, 0.1f, 1u);
-
-		gui_end_container();
-
-		gui_pop_style();
-	    }
-
-	    // Z
-	    {
-		gui_push_style(GuiStyle_ButtonColor, Color{ 13u, 25u, 229u, 255u });
-
-		gui_begin_container(3u, GuiLayout_Flow);
-
-		if (gui_button("Z", 0u)) {
-
-		    if (i == 1u)
-			values->z = 1.f;
-		    else
-			values->z = 0.f;
-		}
-
-		gui_drag_f32(&values->z, 0.1f, 1u);
-
-		gui_end_container();
-
-		gui_pop_style();
-	    }
-
-	    gui_pop_id();
-
-	    yoff += TRANSFORM_HEIGHT + 5.f;
-	}
-
-	gui_end_container();*/
-
+	gui_push_id("ENTITY TRANSFORM");
+	
+	gui_drag_v3_f32(position, 0.05f, -f32_max, f32_min, 0u, GuiDragFlag_Position);
+	//gui_drag_v3_f32(rotation, 0.05f, -f32_max, f32_min, 0u, GuiDragFlag_Rotation);
+	gui_drag_v3_f32(scale, 0.05f, -f32_max, f32_min, 0u, GuiDragFlag_Scale);
+	
 	gui_pop_id();
     }
 
@@ -128,12 +33,10 @@ namespace sv {
 	
 	bool show = gui_collapse(get_component_name(comp_id), 0u);
 	
-	/*if (gui_begin_popup(GuiPopupTrigger_LastWidget, MouseButton_Right, 1u, GuiLayout_Flow)) {
-
+	if (gui_begin_popup(GuiPopupTrigger_LastWidget)) {
 	    *remove = gui_button("Remove", 0u);
-
 	    gui_end_popup();
-	    }*/
+	}
 
 	if (show) {
 

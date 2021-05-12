@@ -79,6 +79,7 @@ namespace sv {
 	v4_f32 bounds;
 	GuiWidgetType type;
 	u64 id;
+	u32 flags;
 
 	union Widget {
 
@@ -424,6 +425,7 @@ namespace sv {
 	w.bounds = {};
 	w.type = gui_read<GuiWidgetType>(it);
 	w.id = gui_read<u64>(it);
+	w.flags = gui_read<u32>(it);
 
 	f32 height = 0.f;
 	f32 width = 0.9f;
@@ -1301,11 +1303,12 @@ namespace sv {
 	hash_combine(id, gui->current_id);
     }
 
-    SV_AUX void write_widget(GuiWidgetType type, u64 id)
+    SV_AUX void write_widget(GuiWidgetType type, u64 id, u32 flags)
     {
 	gui_write(GuiHeader_Widget);
 	gui_write(type);
 	gui_write(id);
+	gui_write(flags);
 
 	gui->last_widget.type = type;
 	gui->last_widget.id = id;
@@ -1316,7 +1319,7 @@ namespace sv {
     {
 	compute_id(id);
 	
-	write_widget(GuiWidgetType_Button, id);
+	write_widget(GuiWidgetType_Button, id, 0u);
 	gui_write_text(text);
 	
 	GuiWidget* button = find_widget(GuiWidgetType_Button, id);
@@ -1335,7 +1338,7 @@ namespace sv {
     {
 	compute_id(id);
 	
-	write_widget(GuiWidgetType_Checkbox, id);
+	write_widget(GuiWidgetType_Checkbox, id, 0u);
 	gui_write_text(text);
 	
 	GuiWidget* checkbox = find_widget(GuiWidgetType_Checkbox, id);
@@ -1360,7 +1363,7 @@ namespace sv {
     {
 	compute_id(id);
 	
-	write_widget(GuiWidgetType_Checkbox, id);
+	write_widget(GuiWidgetType_Checkbox, id, 0u);
 	gui_write_text(text);
 	
 	GuiWidget* checkbox = find_widget(GuiWidgetType_Checkbox, id);
@@ -1372,14 +1375,14 @@ namespace sv {
 	return value;
     }
 
-    SV_AUX bool gui_drag(void* value, void* adv, void* min, void* max, GuiType type, u64 id)
+    SV_AUX bool gui_drag(void* value, void* adv, void* min, void* max, GuiType type, u64 id, u32 flags)
     {
 	size_t size = sizeof_type(type);
 	size_t comp_size = size / vectorof_type(type);
 
 	compute_id(id);
 
-	write_widget(GuiWidgetType_Drag, id);
+	write_widget(GuiWidgetType_Drag, id, flags);
 	gui_write(type);
 	gui_write_raw(adv, comp_size);
 	gui_write_raw(min, comp_size);
@@ -1404,28 +1407,28 @@ namespace sv {
 	return pressed;
     }
 
-    bool gui_drag_f32(f32& value, f32 adv, f32 min, f32 max, u64 id)
+    bool gui_drag_f32(f32& value, f32 adv, f32 min, f32 max, u64 id, u32 flags)
     {
-	return gui_drag(&value, &adv, &min, &max, GuiType_f32, id);
+	return gui_drag(&value, &adv, &min, &max, GuiType_f32, id, flags);
     }
-    bool gui_drag_v2_f32(v2_f32& value, f32 adv, f32 min, f32 max, u64 id)
+    bool gui_drag_v2_f32(v2_f32& value, f32 adv, f32 min, f32 max, u64 id, u32 flags)
     {
-	return gui_drag(&value, &adv, &min, &max, GuiType_v2_f32, id);
+	return gui_drag(&value, &adv, &min, &max, GuiType_v2_f32, id, flags);
     }
-    bool gui_drag_v3_f32(v3_f32& value, f32 adv, f32 min, f32 max, u64 id)
+    bool gui_drag_v3_f32(v3_f32& value, f32 adv, f32 min, f32 max, u64 id, u32 flags)
     {
-	return gui_drag(&value, &adv, &min, &max, GuiType_v3_f32, id);
+	return gui_drag(&value, &adv, &min, &max, GuiType_v3_f32, id, flags);
     }
-    bool gui_drag_v4_f32(v4_f32& value, f32 adv, f32 min, f32 max, u64 id)
+    bool gui_drag_v4_f32(v4_f32& value, f32 adv, f32 min, f32 max, u64 id, u32 flags)
     {
-	return gui_drag(&value, &adv, &min, &max, GuiType_v4_f32, id);
+	return gui_drag(&value, &adv, &min, &max, GuiType_v4_f32, id, flags);
     }
 
     void gui_text(const char* text, u64 id)
     {
 	compute_id(id);
 	
-	write_widget(GuiWidgetType_Text, id);
+	write_widget(GuiWidgetType_Text, id, 0u);
 	gui_write_text(text);
     }
 
@@ -1433,7 +1436,7 @@ namespace sv {
     {
 	compute_id(id);
 	
-	write_widget(GuiWidgetType_Collapse, id);
+	write_widget(GuiWidgetType_Collapse, id, 0u);
 	gui_write_text(text);
 	
 	GuiWidget* collapse = find_widget(GuiWidgetType_Collapse, id);
@@ -1449,7 +1452,7 @@ namespace sv {
     {
 	compute_id(id);
 	
-	write_widget(GuiWidgetType_Image, id);
+	write_widget(GuiWidgetType_Image, id, 0u);
 	gui_write(image);
 	gui_write(layout);
     }
@@ -1573,8 +1576,28 @@ namespace sv {
 		    bounds = compute_drag_slot(vector, i, w.bounds);
 		    pos = v2_f32{ bounds.x, bounds.y };
 		    size = v2_f32{ bounds.z, bounds.w };
+
+		    Color color = Color::Salmon();
+
+		    if (w.flags & (GuiDragFlag_Position | GuiDragFlag_Scale | GuiDragFlag_Rotation)) {
+
+			switch (i) {
+
+			case 0:
+			    color = Color{ 229u, 25u, 25u, 255u };
+			    break;
+			case 1:
+			    color = Color{ 51u, 204u, 51u, 255u };
+			    break;
+			case 2:
+			    color = Color{ 13u, 25u, 229u, 255u };
+			    break;
+			default:
+			    color = Color::Gray(150u);
+			}
+		    }
 		    
-		    imrend_draw_quad(pos.getVec3(0.f), size, Color::Salmon(), cmd);
+		    imrend_draw_quad(pos.getVec3(0.f), size, color, cmd);
 
 		    f32 font_size = size.y;
 
