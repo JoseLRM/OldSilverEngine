@@ -4,7 +4,9 @@
 
 namespace sv {
 
-    constexpr f32 GUI_DOCKING_SELECTION_SIZE = 0.3f;
+    constexpr f32 GUI_DOCKING_SECTION_SIZE = 0.3f;
+    constexpr f32 GUI_DOCKING_BUTTON_WIDTH = 0.05f;
+    constexpr f32 GUI_DOCKING_BUTTON_HEIGHT = 0.03f;
 
     enum GuiType : u32 {
 	GuiType_f32,
@@ -54,6 +56,15 @@ namespace sv {
 	    return 0;
 	}
     }
+
+    enum GuiDockingLocation : u32 {
+	GuiDockingLocation_Center,
+	GuiDockingLocation_Left,
+	GuiDockingLocation_Right,
+	GuiDockingLocation_Top,
+	GuiDockingLocation_Bottom,
+	GuiDockingLocation_MaxEnum
+    };
 
     enum GuiHeader : u32 {
 	
@@ -270,6 +281,128 @@ namespace sv {
 	bounds.x = decoration.x + decoration.z * 0.5f - bounds.z * 1.5f;
 	bounds.y = decoration.y;
 	return bounds;
+    }
+
+    SV_AUX GuiDockingLocation compute_docking_location()
+    {
+	constexpr f32 CENTER_WIDTH = 0.5f;
+	f32 CENTER_HEIGHT = CENTER_WIDTH / gui->aspect;
+
+	v2_f32 point = gui->mouse_position - v2_f32(0.5f, 0.5f);
+	
+	if (abs(point.x) <= CENTER_WIDTH * 0.5f && abs(point.y) <= CENTER_HEIGHT * 0.5f)
+	    return GuiDockingLocation_Center;
+
+	if (abs(point.x) > abs(point.y)) {
+
+	    if (point.x < 0.f) {
+
+		return GuiDockingLocation_Left;
+	    }
+
+	    return GuiDockingLocation_Right;
+	}
+	else {
+	    if (point.y < 0.f) {
+
+		return GuiDockingLocation_Bottom;
+	    }
+
+	    return GuiDockingLocation_Top;
+	}
+    }
+    SV_AUX v4_f32 compute_docking_button(GuiDockingLocation location, bool selected)
+    {
+	constexpr f32 SIZE = GUI_DOCKING_SECTION_SIZE;
+	constexpr f32 BUTTON_WIDTH = GUI_DOCKING_BUTTON_WIDTH;
+	constexpr f32 BUTTON_HEIGHT = GUI_DOCKING_BUTTON_HEIGHT;
+
+	v4_f32 b;
+	b.z = BUTTON_WIDTH;
+	b.w = BUTTON_HEIGHT * gui->aspect;
+
+	switch (location) {
+
+	case GuiDockingLocation_Center:
+	    b.x = 0.5f;
+	    b.y = 0.5f;
+	    break;
+
+	case GuiDockingLocation_Left:
+	    b.x = SIZE * 0.5f;
+	    b.y = 0.5f;
+	    break;
+
+	case GuiDockingLocation_Right:
+	    b.x = 1.f - SIZE * 0.5f;
+	    b.y = 0.5f;
+	    break;
+
+	case GuiDockingLocation_Bottom:
+	    b.y = SIZE * 0.5f;
+	    b.x = 0.5f;
+	    break;
+
+	case GuiDockingLocation_Top:
+	    b.y = 1.f - SIZE * 0.5f;
+	    b.x = 0.5f;
+	    break;
+	    
+	}
+
+	if (selected) {
+	    b.z *= 1.3f;
+	    b.w *= 1.3f;
+	}
+	
+	return b;
+    }
+    SV_AUX v4_f32 compute_docking_section(GuiDockingLocation location)
+    {
+	constexpr f32 SIZE = GUI_DOCKING_SECTION_SIZE;
+	
+	v4_f32 b;
+
+	switch (location) {
+
+	case GuiDockingLocation_Center:
+	    b.x = 0.5f;
+	    b.y = 0.5f;
+	    b.z = 1.f;
+	    b.w = 1.f;
+	    break;
+
+	case GuiDockingLocation_Left:
+	    b.x = SIZE * 0.5f;
+	    b.y = 0.5f;
+	    b.z = SIZE;
+	    b.w = 1.f;
+	    break;
+
+	case GuiDockingLocation_Right:
+	    b.x = 1.f - SIZE * 0.5f;
+	    b.y = 0.5f;
+	    b.z = SIZE;
+	    b.w = 1.f;
+	    break;
+
+	case GuiDockingLocation_Bottom:
+	    b.y = SIZE * 0.5f;
+	    b.x = 0.5f;
+	    b.z = 1.f;
+	    b.w = SIZE;
+	    break;
+
+	case GuiDockingLocation_Top:
+	    b.y = 1.f - SIZE * 0.5f;
+	    b.x = 0.5f;
+	    b.z = 1.f;
+	    b.w = SIZE;
+	    break;
+	    
+	}
+	
+	return b;
     }
     
     bool _gui_initialize()
@@ -560,8 +693,21 @@ namespace sv {
 
 	    case 0u:
 	    {
-		bounds.x = gui->mouse_position.x + gui->selection_offset.x;
-		bounds.y = gui->mouse_position.y + gui->selection_offset.y;
+		if (input.mouse_buttons[MouseButton_Left] == InputState_Released) {
+		    
+		    GuiDockingLocation location = compute_docking_location();
+		    v4_f32 button = compute_docking_button(location, true);
+
+		    if (mouse_in_bounds(button)) {
+
+			bounds = compute_docking_section(location);
+		    }
+		}
+		else {
+		    
+		    bounds.x = gui->mouse_position.x + gui->selection_offset.x;
+		    bounds.y = gui->mouse_position.y + gui->selection_offset.y;
+		}
 	    }
 	    break;
 
@@ -1744,86 +1890,6 @@ namespace sv {
 		
 	}
     }
-
-    enum GuiDockingLocation : u32 {
-	GuiDockingLocation_Center,
-	GuiDockingLocation_Left,
-	GuiDockingLocation_Right,
-	GuiDockingLocation_Top,
-	GuiDockingLocation_Bottom,
-	GuiDockingLocation_MaxEnum
-    };
-
-    SV_AUX GuiDockingLocation compute_docking_location()
-    {
-	constexpr f32 CENTER_WIDTH = 0.5f;
-	f32 CENTER_HEIGHT = CENTER_WIDTH / gui->aspect;
-
-	v2_f32 point = gui->mouse_position - v2_f32(0.5f, 0.5f);
-	
-	if (abs(point.x) <= CENTER_WIDTH * 0.5f && abs(point.y) <= CENTER_HEIGHT * 0.5f)
-	    return GuiDockingLocation_Center;
-
-	if (abs(point.x) > abs(point.y)) {
-
-	    if (point.x < 0.f) {
-
-		return GuiDockingLocation_Left;
-	    }
-
-	    return GuiDockingLocation_Right;
-	}
-	else {
-	    if (point.y < 0.f) {
-
-		return GuiDockingLocation_Bottom;
-	    }
-
-	    return GuiDockingLocation_Top;
-	}
-    }
-
-    SV_AUX v4_f32 compute_docking_button(GuiDockingLocation location)
-    {
-	constexpr f32 SIZE = GUI_DOCKING_SELECTION_SIZE;
-	constexpr f32 BUTTON_WIDTH = 0.05f;
-	constexpr f32 BUTTON_HEIGHT = 0.03f;
-
-	v4_f32 b;
-	b.z = BUTTON_WIDTH;
-	b.w = BUTTON_HEIGHT * gui->aspect;
-
-	switch (location) {
-
-	case GuiDockingLocation_Center:
-	    b.x = 0.5f;
-	    b.y = 0.5f;
-	    break;
-
-	case GuiDockingLocation_Left:
-	    b.x = SIZE * 0.5f;
-	    b.y = 0.5f;
-	    break;
-
-	case GuiDockingLocation_Right:
-	    b.x = 1.f - SIZE * 0.5f;
-	    b.y = 0.5f;
-	    break;
-
-	case GuiDockingLocation_Bottom:
-	    b.y = SIZE * 0.5f;
-	    b.x = 0.5f;
-	    break;
-
-	case GuiDockingLocation_Top:
-	    b.y = 1.f - SIZE * 0.5f;
-	    b.x = 0.5f;
-	    break;
-	    
-	}
-	
-	return b;
-    }
     
     void _gui_draw(CommandList cmd)
     {
@@ -1842,42 +1908,22 @@ namespace sv {
 
 		//GuiWindowState& window = *(GuiWindowState*)gui->focus.root->state;
 
-		constexpr f32 SELECTION_SIZE = GUI_DOCKING_SELECTION_SIZE;
 		constexpr Color BUTTON_COLOR = Color::LightSalmon(200u);
 		constexpr Color BUTTON_SELECTED_COLOR = Color::Red();
 		constexpr Color BACKGROUND_COLOR = Color::Gray(150u, 40u);
 
 		GuiDockingLocation location = compute_docking_location();
 
-		switch (location) {
-		    
-		case GuiDockingLocation_Center:
-		    imrend_draw_quad({ 0.5f, 0.5f, 0.f }, { 1.f, 1.f }, BACKGROUND_COLOR, cmd);
-		    break;
-
-		case GuiDockingLocation_Left:
-		    imrend_draw_quad({ SELECTION_SIZE * 0.5f, 0.5f, 0.f }, { SELECTION_SIZE, 1.f }, BACKGROUND_COLOR, cmd);
-		    break;
-
-		case GuiDockingLocation_Right:
-		    imrend_draw_quad({ 1.f - SELECTION_SIZE * 0.5f, 0.5f, 0.f }, { SELECTION_SIZE, 1.f }, BACKGROUND_COLOR, cmd);
-		    break;
-
-		case GuiDockingLocation_Bottom:
-		    imrend_draw_quad({ 0.5f, SELECTION_SIZE * 0.5f, 0.f }, { 1.f, SELECTION_SIZE }, BACKGROUND_COLOR, cmd);
-		    break;
-
-		case GuiDockingLocation_Top:
-		    imrend_draw_quad({ 0.5f, 1.f - SELECTION_SIZE * 0.5f, 0.f }, { 1.f, SELECTION_SIZE }, BACKGROUND_COLOR, cmd);
-		    break;
-		    
-		}
+		v4_f32 section = compute_docking_section(location);
+		imrend_draw_quad({ section.x, section.y, 0.f }, { section.z, section.w }, BACKGROUND_COLOR, cmd);
 
 		foreach(i, GuiDockingLocation_MaxEnum) {
 
-		    v4_f32 b = compute_docking_button(GuiDockingLocation(i));
+		    v4_f32 b = compute_docking_button(GuiDockingLocation(i), i == location);
 
-		    imrend_draw_quad({ b.x, b.y, 0.f }, { b.z, b.w }, BUTTON_COLOR, cmd);
+		    Color color = (i == location) ? BUTTON_SELECTED_COLOR : BUTTON_COLOR;
+
+		    imrend_draw_quad({ b.x, b.y, 0.f }, v2_f32{ b.z, b.w } * scale, color, cmd);
 		}
 	    }
 	}
