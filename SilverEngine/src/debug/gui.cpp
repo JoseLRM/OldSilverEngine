@@ -58,6 +58,17 @@ namespace sv {
 	}
     }
 
+    enum GuiWindowAction : u32 {
+	GuiWindowAction_None,
+	GuiWindowAction_Move,
+	GuiWindowAction_ResizeRight,
+	GuiWindowAction_ResizeLeft,
+	GuiWindowAction_ResizeBottom,
+	GuiWindowAction_ResizeBottomRight,
+	GuiWindowAction_ResizeBottomLeft,
+	GuiWindowAction_CloseButton,
+    };
+
     enum GuiDockingLocation : u32 {
 	GuiDockingLocation_Center,
 	GuiDockingLocation_Left,
@@ -158,7 +169,18 @@ namespace sv {
 	GuiRootType type = GuiRootType_Screen;
 	void* state = nullptr;
 	u32 priority = 0u; // Used to sort the roots list
+	GuiRootInfo* docked_into = nullptr;
+	bool used = false; // The docking system should know if the window is used or not
+	v2_f32 last_size;
 	
+    };
+
+    struct GuiDockingInfo {
+	GuiRootInfo* roots[GuiDockingLocation_MaxEnum] = {};
+	f32 left_pos = 0.9f;
+	f32 right_pos = 0.1f;
+	f32 bottom_pos = 0.1f;
+	f32 top_pos = 0.9f;
     };
 
     struct GuiWindowState {
@@ -168,6 +190,7 @@ namespace sv {
 	u64 hash;
 	GuiRootInfo root_info;
 	u32 flags;
+	GuiDockingInfo docking;
 
     };
 
@@ -198,6 +221,7 @@ namespace sv {
 	GuiStyle style;
 	
 	GuiRootInfo root_info;
+	GuiDockingInfo docking;
 	List<GuiRootInfo*> roots;
 	List<GuiRootInfo*> root_stack;
 
@@ -288,35 +312,55 @@ namespace sv {
 	return &root != &gui->root_info && (root.yoff > root.bounds.w * gui->resolution.y);
     }
 
-    SV_AUX GuiDockingLocation compute_docking_location()
+    SV_AUX void compute_docking_location(GuiDockingLocation& location, GuiRootInfo*& root)
     {
-	constexpr f32 CENTER_WIDTH = 0.5f;
+	root = &gui->root_info;
+
+	for (GuiRootInfo* r : gui->roots) {
+
+	    if (r == root)
+		continue;
+	    
+	    if (mouse_in_bounds(r->bounds)) {
+		root = r;
+		break;
+	    }
+	}
+
+	f32 CENTER_WIDTH = 0.5f * root->bounds.z;
 	f32 CENTER_HEIGHT = CENTER_WIDTH / gui->aspect;
 
-	v2_f32 point = gui->mouse_position - v2_f32(0.5f, 0.5f);
+	v2_f32 point = gui->mouse_position * v2_f32(root->bounds.z, root->bounds.w) + v2_f32(root->bounds.x, root->bounds.y) - v2_f32(root->bounds.z, root->bounds.w) * 0.5f;
+	point -= v2_f32(root->bounds.x, root->bounds.y) * v2_f32(root->bounds.z, root->bounds.w);
 	
-	if (abs(point.x) <= CENTER_WIDTH * 0.5f && abs(point.y) <= CENTER_HEIGHT * 0.5f)
-	    return GuiDockingLocation_Center;
+	if (abs(point.x) <= CENTER_WIDTH * 0.5f && abs(point.y) <= CENTER_HEIGHT * 0.5f) {
+	    location = GuiDockingLocation_Center;
+	    return;
+	}
 
 	if (abs(point.x) > abs(point.y)) {
 
 	    if (point.x < 0.f) {
 
-		return GuiDockingLocation_Left;
+		location = GuiDockingLocation_Left;
+		return;
 	    }
 
-	    return GuiDockingLocation_Right;
+	    location = GuiDockingLocation_Right;
+	    return;
 	}
 	else {
 	    if (point.y < 0.f) {
 
-		return GuiDockingLocation_Bottom;
+		location = GuiDockingLocation_Bottom;
+		return;
 	    }
 
-	    return GuiDockingLocation_Top;
+	    location = GuiDockingLocation_Top;
+	    return;
 	}
     }
-    SV_AUX v4_f32 compute_docking_button(GuiDockingLocation location, bool selected)
+    SV_AUX v4_f32 compute_docking_button(GuiDockingLocation location, GuiRootInfo* root, bool selected)
     {
 	constexpr f32 SIZE = GUI_DOCKING_SECTION_SIZE;
 	constexpr f32 BUTTON_WIDTH = GUI_DOCKING_BUTTON_WIDTH;
@@ -359,10 +403,16 @@ namespace sv {
 	    b.z *= 1.3f;
 	    b.w *= 1.3f;
 	}
+
+	const v4_f32& p = root->bounds;
+	b.x = (b.x * p.z) + p.x - p.z * 0.5f;
+	b.y = (b.y * p.w) + p.y - p.w * 0.5f;
+	b.z *= p.z;
+	b.w *= p.w;
 	
 	return b;
     }
-    SV_AUX v4_f32 compute_docking_section(GuiDockingLocation location)
+    SV_AUX v4_f32 compute_docking_section(GuiDockingLocation location, GuiRootInfo* root)
     {
 	constexpr f32 SIZE = GUI_DOCKING_SECTION_SIZE;
 	
@@ -406,8 +456,63 @@ namespace sv {
 	    break;
 	    
 	}
+
+	const v4_f32& p = root->bounds;
+	b.x = (b.x * p.z) + p.x - p.z * 0.5f;
+	b.y = (b.y * p.w) + p.y - p.w * 0.5f;
+	b.z *= p.z;
+	b.w *= p.w;
 	
 	return b;
+    }
+
+    SV_AUX GuiDockingInfo* get_docking(GuiRootInfo& root)
+    {
+	if (&root == &gui->root_info)
+	    return &gui->docking;
+
+	if (root.type == GuiRootType_Window) {
+
+	    GuiWindowState& state = *(GuiWindowState*)root.state;
+	    return &state.docking;
+	}
+
+	return nullptr;
+    }
+
+    SV_AUX void dock(GuiRootInfo& docked, GuiRootInfo& to, GuiDockingLocation location)
+    {
+	GuiDockingInfo* docking = get_docking(to);
+
+	SV_ASSERT(docking);
+	if (docking == nullptr) return;
+	
+	docking->roots[location] = &docked;
+	docked.docked_into = &to;
+	docked.last_size = { docked.bounds.z, docked.bounds.w };
+    }
+
+    SV_AUX void undock(GuiRootInfo& root)
+    {
+	if (root.docked_into) {
+
+	    GuiDockingInfo* docking = get_docking(*root.docked_into);
+
+	    SV_ASSERT(docking);
+	    if (docking) {
+
+		foreach(i, GuiDockingLocation_MaxEnum) {
+
+		    if (docking->roots[i] == &root) {
+			docking->roots[i] = nullptr;
+		    }
+		}
+	    }
+	    
+	    root.docked_into = nullptr;
+	    root.bounds.z = root.last_size.x;
+	    root.bounds.w = root.last_size.y;
+	}
     }
     
     bool _gui_initialize()
@@ -537,6 +642,17 @@ namespace sv {
     {
 	root.widgets.reset();
 	root.yoff = 7.f;
+	root.used = false;
+
+	GuiDockingInfo* docking = get_docking(root);
+	if (docking) {
+
+	    foreach(i, GuiDockingLocation_MaxEnum) {
+
+		if (docking->roots[i])
+		    reset_root(*docking->roots[i]);
+	    }
+	}
     }
 
     SV_AUX void set_focus(GuiRootInfo& root, GuiWidgetType type, u64 id, u32 action = 0u)
@@ -705,19 +821,23 @@ namespace sv {
 	    f32 min_width = 0.03f;
 	    f32 min_height = 0.0f;
 
-	    switch (gui->focus.action)
+	    switch ((GuiWindowAction)gui->focus.action)
 	    {
 
-	    case 0u:
-	    {
+	    case GuiWindowAction_Move:
+	    {		
 		if (input.mouse_buttons[MouseButton_Left] == InputState_Released) {
 		    
-		    GuiDockingLocation location = compute_docking_location();
-		    v4_f32 button = compute_docking_button(location, true);
+		    GuiDockingLocation location;
+		    GuiRootInfo* docking_root;
+		    
+		    compute_docking_location(location, docking_root);
+		    
+		    v4_f32 button = compute_docking_button(location, docking_root, true);
 
 		    if (mouse_in_bounds(button)) {
 
-			bounds = compute_docking_section(location);
+			dock(*gui->focus.root, *docking_root, location);
 		    }
 		}
 		else {
@@ -728,7 +848,7 @@ namespace sv {
 	    }
 	    break;
 
-	    case 1u: // RIGHT
+	    case GuiWindowAction_ResizeRight:
 	    {
 		f32 width = SV_MAX(gui->mouse_position.x - (bounds.x - bounds.z * 0.5f), min_width);
 		bounds.x -= (bounds.z - width) * 0.5f;
@@ -736,7 +856,7 @@ namespace sv {
 	    }
 	    break;
 
-	    case 2u: // LEFT
+	    case GuiWindowAction_ResizeLeft:
 	    {
 		f32 width = SV_MAX((bounds.x + bounds.z * 0.5f) - gui->mouse_position.x, min_width);
 		bounds.x += (bounds.z - width) * 0.5f;
@@ -744,7 +864,7 @@ namespace sv {
 	    }
 	    break;
 
-	    case 3u: // BOTTOM
+	    case GuiWindowAction_ResizeBottom:
 	    {
 		f32 height = SV_MAX((bounds.y + bounds.w * 0.5f) - gui->mouse_position.y, min_height);
 		bounds.y += (bounds.w - height) * 0.5f;
@@ -752,7 +872,7 @@ namespace sv {
 	    }
 	    break;
 
-	    case 4u: // RIGHT - BOTTOM
+	    case GuiWindowAction_ResizeBottomRight:
 	    {
 		f32 width = SV_MAX(gui->mouse_position.x - (bounds.x - bounds.z * 0.5f), min_width);
 		bounds.x -= (bounds.z - width) * 0.5f;
@@ -763,7 +883,7 @@ namespace sv {
 	    }
 	    break;
 
-	    case 5u: // LEFT - BOTTOM
+	    case GuiWindowAction_ResizeBottomLeft:
 	    {
 		f32 width = SV_MAX((bounds.x + bounds.z * 0.5f) - gui->mouse_position.x, min_width);
 		bounds.x += (bounds.z - width) * 0.5f;
@@ -780,7 +900,7 @@ namespace sv {
 
 	    if (state == InputState_Released || state == InputState_None) {
 
-		if (gui->focus.action == 6u) {
+		if (gui->focus.action == GuiWindowAction_CloseButton) {
 
 		    v4_f32 decoration = compute_window_decoration(bounds);
 		    v4_f32 closebutton = compute_window_closebutton(decoration);
@@ -996,12 +1116,59 @@ namespace sv {
 	}
     }
 
+    SV_AUX void update_docking(GuiRootInfo& root, GuiDockingInfo& docking)
+    {
+	foreach(i, GuiDockingLocation_MaxEnum) {
+
+	    GuiRootInfo*& r = docking.roots[i];
+
+	    if (r) {
+
+		if (r->docked_into != &root) {
+		    r = nullptr;
+		    continue;
+		}
+
+		if (!r->used)
+		    undock(*r);
+		else {
+
+		    v4_f32 section = compute_docking_section((GuiDockingLocation)i, &root);
+
+		    if (r->type == GuiRootType_Window) {
+
+			v4_f32 decoration = compute_window_decoration(r->bounds);
+			section.y -= decoration.w * 0.5f;
+			section.w -= decoration.w;
+		    }
+			
+		    r->bounds = section;
+		}
+	    }
+	}
+    }
+
+    SV_AUX void update_docking()
+    {
+	update_docking(gui->root_info, gui->docking);
+
+	for (GuiRootInfo* root : gui->roots) {
+
+	    GuiDockingInfo* docking = get_docking(*root);
+
+	    if (docking) {
+
+		update_docking(*root, *docking);
+	    }
+	}
+    }
+
     SV_INTERNAL void update_root(GuiRootInfo& root)
     {    
 	for (GuiWidget& w : root.widgets) {
 		
 	    update_widget(w, root);
-	}	
+	}
 
 	bool catch_input = false;
 
@@ -1038,10 +1205,17 @@ namespace sv {
 		    if (mouse_in_bounds(decoration)) {
 
 			if (!(window->flags & GuiWindowFlag_NoClose) && mouse_in_bounds(compute_window_closebutton(decoration))) {
-			    set_focus(root, GuiWidgetType_Root, window->hash, 6u);
+			    set_focus(root, GuiWidgetType_Root, window->hash, GuiWindowAction_CloseButton);
 			}
 			else {
-			    set_focus(root, GuiWidgetType_Root, window->hash, 0u);
+
+			    if (window->root_info.docked_into != nullptr) {
+				undock(window->root_info);
+				root.bounds.x = gui->mouse_position.x;
+				root.bounds.y = gui->mouse_position.y - root.bounds.w * 0.5f - decoration.w * 0.5f;
+			    }
+			    
+			    set_focus(root, GuiWidgetType_Root, window->hash, GuiWindowAction_Move);
 			    gui->selection_offset = v2_f32{ root.bounds.x, root.bounds.y } - gui->mouse_position;
 			}
 		    
@@ -1058,25 +1232,25 @@ namespace sv {
 			bool left = mouse_in_bounds({ content.x - content.z * 0.5f, content.y, SELECTION_SIZE, content.w + SELECTION_SIZE * 2.f * gui->aspect });
 			bool bottom = mouse_in_bounds({ content.x, content.y - content.w * 0.5f, content.z + SELECTION_SIZE * 2.f, SELECTION_SIZE * gui->aspect });
 
-			u32 action = u32_max;
+			GuiWindowAction action = GuiWindowAction_None;
 
 			if (right && bottom) {
-			    action = 4u;
+			    GuiWindowAction_ResizeBottomRight;
 			}
 			else if (left && bottom) {
-			    action = 5u;
+			    action = GuiWindowAction_ResizeBottomLeft;
 			}
 			else if (right) {
-			    action = 1u;
+			    action = GuiWindowAction_ResizeRight;
 			}
 			else if (left) {
-			    action = 2u;
+			    action = GuiWindowAction_ResizeLeft;
 			}
 			else if (bottom) {
-			    action = 3u;
+			    action = GuiWindowAction_ResizeBottom;
 			}
 
-			if (action != u32_max) {
+			if (action != GuiWindowAction_None) {
 			    input.unused = false;
 			    set_focus(root, GuiWidgetType_Root, window->hash, action);
 			}
@@ -1115,8 +1289,10 @@ namespace sv {
 
 		// Scroll
 		if (root_has_scroll(root)) {
-		    root.vertical_offset += mouse_wheel / gui->resolution.y * 3.f;
-		    root.vertical_offset = math_clamp(0.f, root.vertical_offset, root.yoff);
+		    root.vertical_offset -= input.mouse_wheel / gui->resolution.y * 8.f;
+
+		    f32 max = root.yoff / gui->resolution.y - root.bounds.w;
+		    root.vertical_offset = math_clamp(0.f, root.vertical_offset, max);
 		}
 	    }
 	}
@@ -1129,6 +1305,7 @@ namespace sv {
 	gui->roots.reset();
 
 	reset_root(gui->root_info);
+	gui->root_info.used = true;
 	gui->current_focus = nullptr;
 
 	reset_root(gui->popup.root);
@@ -1161,6 +1338,9 @@ namespace sv {
 		SV_ASSERT(state);
 
 		if (state) {
+
+		    state->root_info.used = true;
+
 		    gui->root_stack.push_back(&state->root_info);
 		    gui->roots.push_back(&state->root_info);
 		}
@@ -1187,7 +1367,7 @@ namespace sv {
 		    gui->popup.origin = origin;
 		    gui->popup.id = id;
 		}
-
+		gui->popup.root.used = true;
 		gui->root_stack.push_back(&gui->popup.root);
 		gui->roots.push_back(&gui->popup.root);
 	    }
@@ -1237,6 +1417,11 @@ namespace sv {
 
 	update_root_bounds(gui->root_info);
 
+	// Sort roots list
+	std::sort(gui->roots.data(), gui->roots.data() + gui->roots.size(), [] (GuiRootInfo* r0, GuiRootInfo* r1) {
+		return (r0->type == GuiRootType_Popup && r1->type != GuiRootType_Popup) || r0->priority > r1->priority;
+	    });
+
 	// Find focus
 	if (gui->focus.type != GuiWidgetType_None && gui->focus.type != GuiWidgetType_Root) {
 
@@ -1256,10 +1441,8 @@ namespace sv {
 
 	update_focus();
 
-	// Sort roots list
-	std::sort(gui->roots.data(), gui->roots.data() + gui->roots.size(), [] (GuiRootInfo* r0, GuiRootInfo* r1) {
-		return (r0->type == GuiRootType_Popup && r1->type != GuiRootType_Popup) || r0->priority > r1->priority;
-	    });
+	// Update docking bounds
+	update_docking();
 
 	// Update roots
 	for (GuiRootInfo* root : gui->roots) {
@@ -1671,9 +1854,11 @@ namespace sv {
 	    v4_f32 decoration = compute_window_decoration(b);
 	    v4_f32 closebutton = compute_window_closebutton(decoration);
 
-	    Color background_color = (gui->roots.front() == &root) ? style.root_focused_background_color : style.root_background_color;
-	    Color decoration_color = (gui->roots.front() == &root) ? style.window_focused_decoration_color : style.window_decoration_color;
-	    Color closebutton_color = (gui->roots.front() == &root) ? Color::Red() : Color::Gray(200u);
+	    GuiRootInfo* last_root = gui->roots.size() ? gui->roots.front() : nullptr;
+
+	    Color background_color = (last_root == &root) ? style.root_focused_background_color : style.root_background_color;
+	    Color decoration_color = (last_root == &root) ? style.window_focused_decoration_color : style.window_decoration_color;
+	    Color closebutton_color = (last_root == &root) ? Color::Red() : Color::Gray(200u);
 	    
 	    imrend_draw_quad({ b.x, b.y, 0.f }, { b.z, b.w }, background_color, cmd);
 	    imrend_draw_quad({ decoration.x, decoration.y, 0.f }, { decoration.z, decoration.w }, decoration_color, cmd);
@@ -1703,15 +1888,16 @@ namespace sv {
 
 	    f32 min = root.bounds.y - root.bounds.w * 0.5f;
 	    f32 max = root.bounds.y + root.bounds.w * 0.5f;
-	    f32 norm_value = root.vertical_offset / root.yoff;
 
+	    f32 norm_value = 1.f - root.vertical_offset / ((root.yoff / gui->resolution.y) - root.bounds.w);
+	    
 	    f32 height = max - min;
 	    f32 button_height = 0.2f * height;
 	    
-	    f32 y = (min + button_height * 0.5f) + norm_value * (height - button_height * 0.5f);
+	    f32 y = (min + button_height * 0.5f) + norm_value * (height - button_height);
 	    
-	    imrend_draw_quad({ x, root.bounds.y }, { width, root.bounds.w }, color, cmd);
-	    imrend_draw_quad({ x, y }, { width, button_height }, button_color, cmd);
+	    imrend_draw_quad({ x, root.bounds.y, 0.f }, { width, root.bounds.w }, color, cmd);
+	    imrend_draw_quad({ x, y, 0.f }, { width, button_height }, button_color, cmd);
 	}
 
 	// Draw widgets
@@ -1939,6 +2125,7 @@ namespace sv {
     
     void _gui_draw(CommandList cmd)
     {
+	const GuiStyle& style = gui->style;
 	imrend_begin_batch(cmd);
 
 	imrend_camera(ImRendCamera_Normal, cmd);
@@ -1950,7 +2137,7 @@ namespace sv {
 
 	// Docking effects
 	{
-	    if (gui->focus.type == GuiWidgetType_Root && gui->focus.root->type == GuiRootType_Window) {
+	    if (gui->focus.type == GuiWidgetType_Root && gui->focus.root->type == GuiRootType_Window && gui->focus.action == GuiWindowAction_Move) {
 
 		//GuiWindowState& window = *(GuiWindowState*)gui->focus.root->state;
 
@@ -1958,18 +2145,20 @@ namespace sv {
 		constexpr Color BUTTON_SELECTED_COLOR = Color::Red();
 		constexpr Color BACKGROUND_COLOR = Color::Gray(150u, 40u);
 
-		GuiDockingLocation location = compute_docking_location();
+		GuiRootInfo* docked_into;
+		GuiDockingLocation location;
+		compute_docking_location(location, docked_into);
 
-		v4_f32 section = compute_docking_section(location);
+		v4_f32 section = compute_docking_section(location, docked_into);
 		imrend_draw_quad({ section.x, section.y, 0.f }, { section.z, section.w }, BACKGROUND_COLOR, cmd);
 
 		foreach(i, GuiDockingLocation_MaxEnum) {
 
-		    v4_f32 b = compute_docking_button(GuiDockingLocation(i), i == location);
+		    v4_f32 b = compute_docking_button(GuiDockingLocation(i), docked_into, i == location);
 
 		    Color color = (i == location) ? BUTTON_SELECTED_COLOR : BUTTON_COLOR;
 
-		    imrend_draw_quad({ b.x, b.y, 0.f }, v2_f32{ b.z, b.w } * scale, color, cmd);
+		    imrend_draw_quad({ b.x, b.y, 0.f }, v2_f32{ b.z, b.w } * style.scale, color, cmd);
 		}
 	    }
 	}
