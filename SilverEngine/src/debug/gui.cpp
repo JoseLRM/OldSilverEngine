@@ -7,6 +7,7 @@ namespace sv {
     constexpr f32 GUI_DOCKING_SECTION_SIZE = 0.3f;
     constexpr f32 GUI_DOCKING_BUTTON_WIDTH = 0.05f;
     constexpr f32 GUI_DOCKING_BUTTON_HEIGHT = 0.03f;
+    constexpr f32 GUI_SCROLL_SIZE = 5.f;
 
     enum GuiType : u32 {
 	GuiType_f32,
@@ -153,6 +154,7 @@ namespace sv {
 	List<GuiWidget> widgets;
 	v4_f32 bounds = { 0.5f, 0.5f, 1.f, 1.f };
 	f32 yoff;
+	f32 vertical_offset = 0.f;
 	GuiRootType type = GuiRootType_Screen;
 	void* state = nullptr;
 	u32 priority = 0u; // Used to sort the roots list
@@ -279,6 +281,11 @@ namespace sv {
 	bounds.x = decoration.x + decoration.z * 0.5f - bounds.z * 1.5f;
 	bounds.y = decoration.y;
 	return bounds;
+    }
+
+    SV_AUX bool root_has_scroll(const GuiRootInfo& root)
+    {
+	return &root != &gui->root_info && (root.yoff > root.bounds.w * gui->resolution.y);
     }
 
     SV_AUX GuiDockingLocation compute_docking_location()
@@ -662,14 +669,26 @@ namespace sv {
     SV_AUX void update_root_bounds(GuiRootInfo& root)
     {
 	v4_f32 b = root.bounds;
+	
+	f32 scale = gui->style.scale;
 
-	f32 inv_height = 1.f / gui->resolution.y;
-		
+	f32 inv_height = 1.f / gui->resolution.y * scale;
+	
+	root.yoff *= scale;
+
+	f32 root_width = b.z;
+
+	if (root_has_scroll(root)) {
+	    f32 scroll = GUI_SCROLL_SIZE / gui->resolution.x;
+	    root_width = SV_MAX(root_width - scroll, 0.f);
+	}
+	else root.vertical_offset = 0.f;
+
 	for (GuiWidget& w : root.widgets) {
 
-	    w.bounds.x = (w.bounds.x * b.z) + b.x - (b.z * 0.5f);
-	    w.bounds.y = (1.f - w.bounds.y) * inv_height + b.y + b.w * 0.5f;
-	    w.bounds.z *= b.z;
+	    w.bounds.x = (w.bounds.x * root_width) + b.x - (root_width * 0.5f);
+	    w.bounds.y = (1.f - w.bounds.y) * inv_height + b.y + b.w * 0.5f + root.vertical_offset;
+	    w.bounds.z *= root_width;
 	    w.bounds.w *= inv_height;
 	}
     }
@@ -1092,6 +1111,12 @@ namespace sv {
 		
 		if (gui->focus.type == GuiWidgetType_None && input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
 		    set_focus(root, GuiWidgetType_Root, 0u, u32_max);
+		}
+
+		// Scroll
+		if (root_has_scroll(root)) {
+		    root.vertical_offset += mouse_wheel / gui->resolution.y * 3.f;
+		    root.vertical_offset = math_clamp(0.f, root.vertical_offset, root.yoff);
 		}
 	    }
 	}
@@ -1664,6 +1689,29 @@ namespace sv {
 	}
 	break;
 	
+	}
+
+	// Draw scroll
+	if (root_has_scroll(root)) {
+
+	    f32 width = GUI_SCROLL_SIZE / gui->resolution.x;
+
+	    Color color = Color::Green();
+	    Color button_color = Color::Blue();
+
+	    f32 x = root.bounds.x + root.bounds.z * 0.5f - width * 0.5f;
+
+	    f32 min = root.bounds.y - root.bounds.w * 0.5f;
+	    f32 max = root.bounds.y + root.bounds.w * 0.5f;
+	    f32 norm_value = root.vertical_offset / root.yoff;
+
+	    f32 height = max - min;
+	    f32 button_height = 0.2f * height;
+	    
+	    f32 y = (min + button_height * 0.5f) + norm_value * (height - button_height * 0.5f);
+	    
+	    imrend_draw_quad({ x, root.bounds.y }, { width, root.bounds.w }, color, cmd);
+	    imrend_draw_quad({ x, y }, { width, button_height }, button_color, cmd);
 	}
 
 	// Draw widgets
