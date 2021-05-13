@@ -16,6 +16,20 @@ namespace sv {
 
     void _gui_draw(CommandList cmd);
 
+    struct GuiStyle {
+	Color widget_primary_color = Color::Salmon();
+	Color widget_secondary_color = Color::DarkSalmon();
+	Color widget_highlighted_color = Color::LightSalmon();
+	Color widget_focused_color = Color::Red();
+	Color widget_text_color = Color::Black();
+	Color check_color = Color::Red();
+	Color root_background_color = Color::White(70u);
+	Color root_focused_background_color = Color::White(150u);
+	Color window_decoration_color = Color::Gray(150u);
+	Color window_focused_decoration_color = Color::Salmon(100u);
+	f32 scale = 1.f;
+    };
+
     enum GuiDragFlag : u32 {
 	GuiDragFlag_Position = SV_BIT(0),
 	GuiDragFlag_Scale = SV_BIT(1),

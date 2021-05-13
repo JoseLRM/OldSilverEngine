@@ -724,7 +724,7 @@ namespace sv {
 	u32 image_height = h / 3u;
 
 	Color* images[6u] = {};
-	Color* mem = (Color*)malloc(image_width * image_height * 4u * 6u);
+	Color* mem = (Color*)SV_ALLOCATE_MEMORY(image_width * image_height * 4u * 6u);
 
 	foreach(i, 6u) {
 

@@ -192,6 +192,8 @@ namespace sv {
 	} last_widget;
 	
 	// STATE
+
+	GuiStyle style;
 	
 	GuiRootInfo root_info;
 	List<GuiRootInfo*> roots;
@@ -217,10 +219,6 @@ namespace sv {
 	    v2_f32 origin;
 	    u64 id = 0u;
 	} popup;
-
-	// SETTINGS
-
-	f32 scale = 1.f;
 
 	// PRECOMPUTED
 
@@ -1174,11 +1172,13 @@ namespace sv {
 	    {
 		SV_ASSERT(gui->root_stack.back()->type == GuiRootType_Popup);
 
+		f32 scale = gui->style.scale;
+		
 		// Compute bounds
 		{
 		    v2_f32 size;
-		    size.x = 200.f / gui->resolution.x * gui->scale;
-		    size.y = (gui->popup.root.yoff + 7.f) / gui->resolution.y * gui->scale;
+		    size.x = 200.f / gui->resolution.x * scale;
+		    size.y = (gui->popup.root.yoff + 7.f) / gui->resolution.y * scale;
 
 		    v2_f32 pos = gui->popup.origin;
 		    // TODO: Check if the popup is outside the screen
@@ -1633,6 +1633,8 @@ namespace sv {
 
     SV_AUX void draw_root(const GuiRootInfo& root, CommandList cmd)
     {
+	const GuiStyle& style = gui->style;
+	
 	// Draw root
 	switch (root.type) {
 
@@ -1644,8 +1646,8 @@ namespace sv {
 	    v4_f32 decoration = compute_window_decoration(b);
 	    v4_f32 closebutton = compute_window_closebutton(decoration);
 
-	    Color background_color = (gui->roots.front() == &root) ? Color::White(150u) : Color::White(70u);
-	    Color decoration_color = (gui->roots.front() == &root) ? Color::Gray(150u) : Color::Gray(100u);
+	    Color background_color = (gui->roots.front() == &root) ? style.root_focused_background_color : style.root_background_color;
+	    Color decoration_color = (gui->roots.front() == &root) ? style.window_focused_decoration_color : style.window_decoration_color;
 	    Color closebutton_color = (gui->roots.front() == &root) ? Color::Red() : Color::Gray(200u);
 	    
 	    imrend_draw_quad({ b.x, b.y, 0.f }, { b.z, b.w }, background_color, cmd);
@@ -1657,7 +1659,7 @@ namespace sv {
 	case GuiRootType_Popup:
 	{
 	    const v4_f32& b = root.bounds;
-	    Color background_color = Color::White(200u);
+	    Color background_color = style.root_focused_background_color;;
 	    imrend_draw_quad({ b.x, b.y, 0.f }, { b.z, b.w }, background_color, cmd);
 	}
 	break;
@@ -1678,12 +1680,12 @@ namespace sv {
 		v2_f32 pos = { b.x, b.y };
 		v2_f32 size = { b.z, b.w };
 
-		Color color = Color::Salmon();
+		Color color = style.widget_primary_color;
 
 		if (gui->current_focus == &w)
-		    color = Color::LightSalmon();
+		    color = style.widget_focused_color;
 		else if (button.hot)
-		    color = Color::DarkSalmon();
+		    color = style.widget_highlighted_color;
 		    
 		imrend_draw_quad(pos.getVec3(), size, color, cmd);
 
@@ -1693,7 +1695,7 @@ namespace sv {
 			
 		    f32 font_size = size.y;
 
-		    imrend_draw_text(button.text, strlen(button.text), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font.vertical_offset * font_size, size.x, 1u, font_size, gui->aspect, TextAlignment_Center, &font, Color::Black(), cmd);
+		    imrend_draw_text(button.text, strlen(button.text), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font.vertical_offset * font_size, size.x, 1u, font_size, gui->aspect, TextAlignment_Center, &font, style.widget_text_color, cmd);
 		}
 	    }
 	    break;
@@ -1708,18 +1710,16 @@ namespace sv {
 		pos = v2_f32{ b.x, b.y };
 		size = v2_f32{ b.z, b.w };
 
-		imrend_draw_quad(pos.getVec3(0.f), size, Color::Salmon(), cmd);
+		imrend_draw_quad(pos.getVec3(0.f), size, style.widget_primary_color, cmd);
 
 		// Check size
 		v2_f32 s = size * 0.7f;
 	    
 		if (cb.value)
-		    imrend_draw_quad(pos.getVec3(0.f), s, Color::Red(), cmd);
-
+		    imrend_draw_quad(pos.getVec3(0.f), s, style.check_color, cmd);
+		
 		size.x = w.bounds.z - size.x;
 		pos.x = w.bounds.x + w.bounds.z * 0.5f - size.x * 0.5f;
-
-		imrend_draw_quad(pos.getVec3(0.f), size, Color::Transparent(), cmd);
 	    
 		if (cb.text) {
 
@@ -1728,7 +1728,7 @@ namespace sv {
 
 		    Font& font = renderer_default_font();
 
-		    imrend_draw_text(cb.text, strlen(cb.text), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font.vertical_offset * font_size, size.x, 1u, font_size, gui->aspect, TextAlignment_Left, &font, Color::Black(), cmd);
+		    imrend_draw_text(cb.text, strlen(cb.text), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font.vertical_offset * font_size, size.x, 1u, font_size, gui->aspect, TextAlignment_Left, &font, style.widget_text_color, cmd);
 		}
 	    }
 	    break;
@@ -1751,7 +1751,7 @@ namespace sv {
 		    pos = v2_f32{ bounds.x, bounds.y };
 		    size = v2_f32{ bounds.z, bounds.w };
 
-		    Color color = Color::Salmon();
+		    Color color = style.widget_primary_color;
 
 		    if (w.flags & (GuiDragFlag_Position | GuiDragFlag_Scale | GuiDragFlag_Rotation)) {
 
@@ -1801,7 +1801,7 @@ namespace sv {
 		    
 		    }
 
-		    imrend_draw_text(strbuff, strlen(strbuff), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font.vertical_offset * font_size, size.x, 1u, font_size, gui->aspect, TextAlignment_Center, &font, Color::Black(), cmd);
+		    imrend_draw_text(strbuff, strlen(strbuff), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font.vertical_offset * font_size, size.x, 1u, font_size, gui->aspect, TextAlignment_Center, &font, style.widget_text_color, cmd);
 		}
 	    }
 	    break;
@@ -1814,15 +1814,13 @@ namespace sv {
 		auto& text = w.widget.text;
 		pos = v2_f32{ w.bounds.x, w.bounds.y };
 		size = v2_f32{ w.bounds.z, w.bounds.w };
-
-		imrend_draw_quad(pos.getVec3(0.f), size, Color::Transparent(), cmd);
 	    
 		if (text.text) {
 
 		    Font& font = renderer_default_font();
 		    f32 font_size = size.y + size.y * font.vertical_offset;
 
-		    imrend_draw_text(text.text, strlen(text.text), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f, size.x, 1u, font_size, gui->aspect, TextAlignment_Center, &font, Color::Black(), cmd);
+		    imrend_draw_text(text.text, strlen(text.text), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f, size.x, 1u, font_size, gui->aspect, TextAlignment_Center, &font, style.widget_text_color, cmd);
 		}
 	    }
 	    break;
@@ -1837,7 +1835,7 @@ namespace sv {
 		pos = v2_f32{ w.bounds.x, w.bounds.y };
 		size = v2_f32{ w.bounds.z, w.bounds.w };
 
-		imrend_draw_quad(pos.getVec3(0.f), size, Color::Salmon(), cmd);
+		imrend_draw_quad(pos.getVec3(0.f), size, style.widget_primary_color, cmd);
 
 		// Arrow size
 		v4_f32 arrow_bounds = compute_collapse_button(w);
@@ -1870,7 +1868,7 @@ namespace sv {
 
 		    Font& font = renderer_default_font();
 
-		    imrend_draw_text(collapse.text, strlen(collapse.text), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font.vertical_offset * font_size, size.x, 1u, font_size, gui->aspect, TextAlignment_Left, &font, Color::Black(), cmd);
+		    imrend_draw_text(collapse.text, strlen(collapse.text), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font.vertical_offset * font_size, size.x, 1u, font_size, gui->aspect, TextAlignment_Left, &font, style.widget_text_color, cmd);
 		}
 	    }
 	    break;
