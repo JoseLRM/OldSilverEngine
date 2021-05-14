@@ -15,7 +15,7 @@
 namespace sv {
 
     static constexpr u32 HISTORY_COUNT = 100u;
-    static constexpr u32 CONSOLE_SIZE = 10000u;
+    static constexpr u32 CONSOLE_SIZE = 100000u;
     static constexpr f32 CONSOLE_HEIGHT = 1.7f;
     static constexpr u32 LINE_COUNT = 35u;
     static constexpr f32 TEXT_SIZE = CONSOLE_HEIGHT / f32(LINE_COUNT);
@@ -235,7 +235,7 @@ namespace sv {
 
     void _console_initialize()
     {
-	console.buff = (char*)malloc(CONSOLE_SIZE);
+	console.buff = (char*)SV_ALLOCATE_MEMORY(CONSOLE_SIZE);
 	console.buff_pos = 0U;
 	console.buff_flip = false;
 
@@ -380,7 +380,7 @@ namespace sv {
 
 	    size_t arg_size = command - name;
 	    char*& arg = args.emplace_back();
-	    arg = (char*)malloc(arg_size + 1u);
+	    arg = (char*)SV_ALLOCATE_MEMORY(arg_size + 1u);
 	    memcpy(arg, name, arg_size);
 	    arg[arg_size] = '\0';
 
@@ -636,7 +636,7 @@ namespace sv {
 	// Flip console
 	if (console.buff_flip && console.buff_pos) {
 
-	    char* aux = (char*)malloc(console.buff_pos);
+	    char* aux = (char*)SV_ALLOCATE_MEMORY(console.buff_pos);
 	    memcpy(aux, console.buff, console.buff_pos);
 
 	    memcpy(console.buff, console.buff + console.buff_pos, CONSOLE_SIZE - console.buff_pos);
