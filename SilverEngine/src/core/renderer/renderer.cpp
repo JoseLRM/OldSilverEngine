@@ -34,9 +34,8 @@ namespace sv {
 	COMPILE_VS(gfx.vs_sprite, "sprite/default.hlsl");
 	COMPILE_PS(gfx.ps_sprite, "sprite/default.hlsl");
 
-	COMPILE_VS(gfx.vs_mesh_geometry, "mesh_geometry.hlsl");
-	COMPILE_PS(gfx.ps_mesh_geometry, "mesh_geometry.hlsl");
-	COMPILE_PS(gfx.ps_mesh_lighting, "mesh_lighting.hlsl");
+	COMPILE_VS(gfx.vs_mesh_default, "mesh_default.hlsl");
+	COMPILE_PS(gfx.ps_mesh_default, "mesh_default.hlsl");
 
 	COMPILE_VS(gfx.vs_sky, "skymapping.hlsl");
 	COMPILE_PS(gfx.ps_sky, "skymapping.hlsl");
@@ -105,7 +104,7 @@ namespace sv {
 	att[0].storeOp = AttachmentOperation_Store;
 	att[0].stencilLoadOp = AttachmentOperation_DontCare;
 	att[0].stencilStoreOp = AttachmentOperation_DontCare;
-	att[0].format = GBUFFER_DIFFUSE_FORMAT;
+	att[0].format = OFFSCREEN_FORMAT;
 	att[0].initialLayout = GPUImageLayout_RenderTarget;
 	att[0].layout = GPUImageLayout_RenderTarget;
 	att[0].finalLayout = GPUImageLayout_RenderTarget;
@@ -298,13 +297,13 @@ namespace sv {
 	    desc.usage = ResourceUsage_Dynamic;
 	    desc.CPUAccess = CPUAccess_Write;
 
-	    desc.size = sizeof(MeshData);
+	    desc.size = sizeof(GPU_MeshData);
 	    SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_mesh_instance));
 
 	    desc.size = sizeof(Material);
 	    SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_material));
 
-	    desc.size = sizeof(LightData) * LIGHT_COUNT;
+	    desc.size = sizeof(GPU_LightData) * LIGHT_COUNT;
 	    SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_light_instances));
 	}
 
@@ -401,11 +400,6 @@ namespace sv {
 	    desc.layout = GPUImageLayout_DepthStencil;
 	    desc.type = GPUImageType_DepthStencil | GPUImageType_ShaderResource;
 	    SV_CHECK(graphics_image_create(&desc, &gfx.gbuffer_depthstencil));
-
-	    desc.format = GBUFFER_DIFFUSE_FORMAT;
-	    desc.layout = GPUImageLayout_RenderTarget;
-	    desc.type = GPUImageType_RenderTarget | GPUImageType_ShaderResource;
-	    SV_CHECK(graphics_image_create(&desc, &gfx.gbuffer_diffuse));
 
 	    desc.format = GBUFFER_NORMAL_FORMAT;
 	    desc.layout = GPUImageLayout_RenderTarget;
@@ -697,7 +691,6 @@ namespace sv {
 	CommandList cmd = graphics_commandlist_begin();
 
 	graphics_image_clear(gfx.offscreen, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, Color::Black(), 1.f, 0u, cmd);
-	graphics_image_clear(gfx.gbuffer_diffuse, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, Color::Transparent(), 1.f, 0u, cmd);
 	graphics_image_clear(gfx.gbuffer_normal, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, Color::Transparent(), 1.f, 0u, cmd);
 	graphics_image_clear(gfx.gbuffer_ssao, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, Color::Red(), 1.f, 0u, cmd);
 	graphics_image_clear(gfx.gbuffer_depthstencil, GPUImageLayout_DepthStencil, GPUImageLayout_DepthStencil, Color::Black(), 1.f, 0u, cmd);
@@ -1050,6 +1043,53 @@ namespace sv {
 	}
     }
 
+    SV_AUX bool update_light_buffer(u32 offset)
+    {
+	// Send light data
+	u32 light_count = SV_MIN(LIGHT_COUNT, u32(light_instances.size()) - offset);
+			    
+	GPU_LightData lights[LIGHT_COUNT] = {};
+
+	XMMATRIX rotation_view_matrix;
+	{
+	    XMFLOAT4X4 vm;
+	    XMStoreFloat4x4(&vm, camera_data.view_matrix);
+	    vm._41 = 0.f;
+	    vm._42 = 0.f;
+	    vm._43 = 0.f;
+	    vm._44 = 1.f;
+
+	    rotation_view_matrix = XMLoadFloat4x4(&vm);
+	}
+
+	foreach(i, light_count) {
+
+	    GPU_LightData& l0 = light_data[i];
+	    const LightInstance& l1 = light_instances[i + offset];
+
+	    l0.type = l1.type;
+	    l0.color = l1.color.toVec3();
+	    l0.intensity = l1.intensity;
+
+	    switch (l1.type)
+	    {
+	    case LightType_Point:
+		l0.position = v3_f32(XMVector4Transform(l1.position.getDX(1.f), camera_data.view_matrix));
+		l0.range = l1.range;
+		l0.smoothness = l1.smoothness;
+		break;
+
+	    case LightType_Direction:
+		l0.position = v3_f32(XMVector3Transform(l1.position.getDX(1.f), rotation_view_matrix));
+		break;
+	    }
+	}
+
+	graphics_buffer_update(gfx.cbuffer_light_instances, light_data, sizeof(GPU_LightData) * LIGHT_COUNT, 0u, cmd);
+
+	return light_count;
+    }
+
     void _draw_scene()
     {
 	if (!there_is_scene()) return;
@@ -1209,13 +1249,11 @@ namespace sv {
 		    
 		    if (mesh_instances.size()) {
 
-			graphics_event_begin("Mesh_GeometryPass", cmd);
-
-			// GEOMETRY PASS
+			graphics_event_begin("MeshRendering", cmd);
 			
 			// Prepare state
-			graphics_shader_bind(gfx.vs_mesh_geometry, cmd);
-			graphics_shader_bind(gfx.ps_mesh_geometry, cmd);
+			graphics_shader_bind(gfx.vs_mesh_default, cmd);
+			graphics_shader_bind(gfx.ps_mesh_default, cmd);
 			graphics_inputlayoutstate_bind(gfx.ils_mesh, cmd);
 			graphics_depthstencilstate_bind(gfx.dss_default_depth, cmd);
 			graphics_rasterizerstate_bind(gfx.rs_back_culling, cmd);
@@ -1230,10 +1268,15 @@ namespace sv {
 			graphics_constantbuffer_bind(gfx.cbuffer_camera, 1u, ShaderType_Vertex, cmd);
 						
 			graphics_constantbuffer_bind(material_buffer, 0u, ShaderType_Pixel, cmd);
+			graphics_constantbuffer_bind(gfx.cbuffer_light_instances, 1u, ShaderType_Pixel, cmd);
+			graphics_constantbuffer_bind(gfx.cbuffer_environment, 2u, ShaderType_Pixel, cmd);
 
 			// Begin renderpass
-			GPUImage* att[3u] = { gfx.gbuffer_diffuse, gfx.gbuffer_normal, gfx.gbuffer_depthstencil };
+			GPUImage* att[3u] = { gfx.offscreen, gfx.gbuffer_normal, gfx.gbuffer_depthstencil };
 			graphics_renderpass_begin(gfx.renderpass_gbuffer, att, cmd);
+
+			// TODO: Multiple lights
+			update_light_buffer(0u);
 
 			foreach(i, mesh_instances.size()) {
 
@@ -1287,115 +1330,17 @@ namespace sv {
 
 			    // Update instance data
 			    {
-				MeshData mesh_data;
+				GPU_MeshData mesh_data;
 				mesh_data.model_view_matrix = inst.transform_matrix * camera_data.view_matrix;
 				mesh_data.inv_model_view_matrix = XMMatrixInverse(nullptr, mesh_data.model_view_matrix);
 
-				graphics_buffer_update(instance_buffer, &mesh_data, sizeof(MeshData), 0u, cmd);
+				graphics_buffer_update(instance_buffer, &mesh_data, sizeof(GPU_MeshData), 0u, cmd);
 			    }
 
 			    graphics_draw_indexed(u32(inst.mesh->indices.size()), 1u, 0u, 0u, 0u, cmd);
 			}
 
 			graphics_renderpass_end(cmd);
-
-			graphics_event_end(cmd);
-
-			// LIGHT PASS
-			// TODO: add ambient light once, not use sampler, specular and emissive
-			
-			graphics_event_begin("Mesh_LightingPass", cmd);
-
-			// Change GBuffer layout
-			GPUBarrier barriers[4u];
-			barriers[0u] = GPUBarrier::Image(gfx.gbuffer_diffuse, GPUImageLayout_RenderTarget, GPUImageLayout_ShaderResource);
-			barriers[1u] = GPUBarrier::Image(gfx.gbuffer_normal, GPUImageLayout_RenderTarget, GPUImageLayout_ShaderResource);
-			barriers[2u] = GPUBarrier::Image(gfx.gbuffer_depthstencil, GPUImageLayout_DepthStencil, GPUImageLayout_DepthStencilReadOnly);
-
-			graphics_barrier(barriers, 3u, cmd);
-
-			screenspace_ambient_occlusion(cmd);
-			
-			// Prepare state
-			graphics_shader_bind(gfx.vs_default_postprocess, cmd);
-			graphics_shader_bind(gfx.ps_mesh_lighting, cmd);
-			graphics_constantbuffer_bind(gfx.cbuffer_light_instances, 0u, ShaderType_Pixel, cmd);
-			graphics_constantbuffer_bind(gfx.cbuffer_environment, 1u, ShaderType_Pixel, cmd);
-			graphics_constantbuffer_bind(gfx.cbuffer_camera, 2u, ShaderType_Pixel, cmd);
-			graphics_image_bind(gfx.gbuffer_diffuse, 0u, ShaderType_Pixel, cmd);
-			graphics_image_bind(gfx.gbuffer_normal, 1u, ShaderType_Pixel, cmd);
-			graphics_image_bind(gfx.gbuffer_depthstencil, 2u, ShaderType_Pixel, cmd);
-			graphics_image_bind(gfx.gbuffer_ssao, 3u, ShaderType_Pixel, cmd);
-			graphics_inputlayoutstate_unbind(cmd);
-			graphics_blendstate_bind(gfx.bs_addition, cmd);
-
-			graphics_topology_set(GraphicsTopology_TriangleStrip, cmd);
-			
-			att[0] = gfx.offscreen;
-			graphics_renderpass_begin(gfx.renderpass_off, att, cmd);
-
-			// Update light buffer
-			u32 light_offset = 0u;
-
-			do {
-			
-			    // Send light data
-			    u32 light_count = SV_MIN(LIGHT_COUNT, u32(light_instances.size()) - light_offset);
-			    
-			    LightData light_data[LIGHT_COUNT] = {};
-
-			    XMMATRIX rotation_view_matrix;
-			    {
-				XMFLOAT4X4 vm;
-				XMStoreFloat4x4(&vm, camera_data.view_matrix);
-				vm._41 = 0.f;
-				vm._42 = 0.f;
-				vm._43 = 0.f;
-				vm._44 = 1.f;
-
-				rotation_view_matrix = XMLoadFloat4x4(&vm);
-			    }
-
-			    foreach(i, light_count) {
-
-				LightData& l0 = light_data[i];
-				const LightInstance& l1 = light_instances[i + light_offset];
-
-				l0.type = l1.type;
-				l0.color = l1.color.toVec3();
-				l0.intensity = l1.intensity;
-
-				switch (l1.type)
-				{
-				case LightType_Point:
-				    l0.position = v3_f32(XMVector4Transform(l1.position.getDX(1.f), camera_data.view_matrix));
-				    l0.range = l1.range;
-				    l0.smoothness = l1.smoothness;
-				    break;
-
-				case LightType_Direction:
-				    l0.position = v3_f32(XMVector3Transform(l1.position.getDX(1.f), rotation_view_matrix));
-				    break;
-				}
-			    }
-
-			    graphics_buffer_update(gfx.cbuffer_light_instances, light_data, sizeof(LightData) * LIGHT_COUNT, 0u, cmd);
-
-			    light_offset += light_count;
-			
-			    postprocessing_draw_call(cmd);
-
-			}
-			while (light_offset != light_instances.size());
-			
-			graphics_renderpass_end(cmd);
-
-			barriers[0u] = GPUBarrier::Image(gfx.gbuffer_diffuse, GPUImageLayout_ShaderResource, GPUImageLayout_RenderTarget);
-			barriers[1u] = GPUBarrier::Image(gfx.gbuffer_normal, GPUImageLayout_ShaderResource, GPUImageLayout_RenderTarget);
-			barriers[2u] = GPUBarrier::Image(gfx.gbuffer_depthstencil, GPUImageLayout_DepthStencilReadOnly, GPUImageLayout_DepthStencil);
-			barriers[3u] = GPUBarrier::Image(gfx.gbuffer_ssao, GPUImageLayout_ShaderResource, GPUImageLayout_RenderTarget);
-
-			graphics_barrier(barriers, 4u, cmd);
 
 			graphics_event_end(cmd);
 		    }

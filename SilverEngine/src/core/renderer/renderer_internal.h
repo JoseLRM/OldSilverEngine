@@ -6,27 +6,27 @@ namespace sv {
 
     constexpr u32 LIGHT_COUNT = 1u;
 
-    struct LightData {
-	v3_f32		position;
-	LightType	type;
-	v3_f32		color;
-	f32			range;
-	f32			intensity;
-	f32			smoothness;
-	f32 padding0;
-	f32 padding1;
+    struct GPU_LightData {
+	v3_f32	  position;
+	LightType type;
+	v3_f32	  color;
+	f32	  range;
+	f32	  intensity;
+	f32	  smoothness;
+	f32       padding0;
+	f32       padding1;
     };
 
-    struct MeshData {
+    struct GPU_MeshInstanceData {
 	XMMATRIX model_view_matrix;
 	XMMATRIX inv_model_view_matrix;
     };
 
-    struct MaterialData {
+    struct GPU_MaterialData {
 	v3_f32 diffuse_color;
-	u32 flags;
+	u32    flags;
 	v3_f32 specular_color;
-	f32 shininess;
+	f32    shininess;
 	v3_f32 emissive_color;
     };
 
@@ -34,7 +34,7 @@ namespace sv {
 #define MAT_FLAG_SPECULAR_MAPPING SV_BIT(1u)
 #define MAT_FLAG_EMISSIVE_MAPPING SV_BIT(2u)
 
-    struct CameraBuffer_GPU {
+    struct GPU_CameraData {
 	XMMATRIX view_matrix;
 	XMMATRIX projection_matrix;
 	XMMATRIX view_projection_matrix;
@@ -111,7 +111,6 @@ namespace sv {
 	// GBUFFER
 
 	GPUImage* offscreen;
-	GPUImage* gbuffer_diffuse;
 	GPUImage* gbuffer_normal;
 	GPUImage* gbuffer_depthstencil;
 	GPUImage* gbuffer_ssao;
@@ -146,9 +145,8 @@ namespace sv {
 
 	// MESH
 
-	Shader* vs_mesh_geometry;
-	Shader* ps_mesh_geometry;
-	Shader* ps_mesh_lighting;
+	Shader* vs_mesh_default;
+	Shader* ps_mesh_default;
 	InputLayoutState* ils_mesh;
 	BlendState* bs_mesh;
 	GPUBuffer* cbuffer_material;
