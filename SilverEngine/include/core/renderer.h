@@ -10,9 +10,8 @@ namespace sv {
     void _renderer_begin();
     void _renderer_end();
 
-    constexpr Format OFFSCREEN_FORMAT = Format_R8G8B8A8_UNORM;
+    constexpr Format OFFSCREEN_FORMAT = Format_R16G16B16A16_FLOAT;
     constexpr Format GBUFFER_DEPTH_FORMAT = Format_D24_UNORM_S8_UINT;
-    constexpr Format GBUFFER_DIFFUSE_FORMAT = Format_R16G16B16A16_FLOAT;
     constexpr Format GBUFFER_NORMAL_FORMAT = Format_R16G16B16A16_FLOAT;
     constexpr Format GBUFFER_SSAO_FORMAT = Format_R32_FLOAT;
 

@@ -1192,6 +1192,13 @@ namespace sv {
 	    SV_LOG_ERROR("Mesh file '%s', not found", filepath);
 	    return false;
 	}
+
+	// Compute tangents and bitangents
+	{
+	    mesh.tangents.resize(mesh.positions.size());
+
+	    // TODO
+	}
 	
 	return true;
     }
