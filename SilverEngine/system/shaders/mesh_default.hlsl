@@ -149,7 +149,7 @@ Output main(Input input)
 
 		case LIGHT_TYPE_POINT:
 		{
-			float3 to_light = light.position - position;
+			float3 to_light = light.position - input.position;
 			f32 distance = length(to_light);
 			to_light = normalize(to_light);
 
@@ -157,12 +157,12 @@ Output main(Input input)
 			f32 diffuse = max(dot(normal, to_light), 0.1f);
 
 			// Specular
-			f32 specular = pow(max(dot(normalize(-position), reflect(-to_light, normal)), 0.f), shininess) * specular_mul;
+			f32 specular = pow(max(dot(normalize(-input.position), reflect(-to_light, normal)), 0.f), material.shininess) * specular_mul;
 
 			// attenuation TODO: Smoothness
 			f32 att = 1.f - smoothstep(light.smoothness * light.range, light.range, distance);
 
-			//light_accumulation += light.color * specular * specular_color * light.intensity * att;
+			//light_accumulation += light.color * specular * material.specular_color * light.intensity * att;
 			light_accumulation += light.color * light.intensity * att * diffuse;
 		}
 		break;
@@ -173,9 +173,9 @@ Output main(Input input)
 			f32 diffuse = max(dot(normal, light.position), 0.f);
 
 			// Specular
-			float specular = pow(max(dot(normalize(-position), reflect(-light.position, normal)), 0.f), shininess) * specular_mul;
+			float specular = pow(max(dot(normalize(-input.position), reflect(-light.position, normal)), 0.f), material.shininess) * specular_mul;
 
-			light_accumulation += light.color * (diffuse_color.rgb + (specular * specular_color)) * light.intensity;
+			light_accumulation += light.color * (diffuse_color.rgb + (specular * material.specular_color)) * light.intensity;
 		}
 		break;
 
@@ -185,7 +185,7 @@ Output main(Input input)
 	// Ambient lighting
 	light_accumulation = max(environment.ambient_light, light_accumulation);
 
-	output.color = float4(diffuse_color * light_accumulation, 1.f);
+	output.color = float4(diffuse_color.rgb * light_accumulation, 1.f);
 	
 	// TODO: Emissive	
 	

@@ -90,29 +90,13 @@ namespace sv {
 	    it = vertices.data();
 	    end = vertices.data() + vertices.size();
 
-	    const v3_f32* tanIt = mesh.tangents.data();
+	    const v4_f32* tanIt = mesh.tangents.data();
 
 	    while (it != end)
 	    {
 		it->tangents = *tanIt;
 
 		++tanIt;
-		++it;
-	    }
-	}
-	// BITANGENTS
-	if (mesh.bitangents.size() == vertices.size()) {
-	    
-	    it = vertices.data();
-	    end = vertices.data() + vertices.size();
-
-	    const v3_f32* biIt = mesh.bitangents.data();
-
-	    while (it != end)
-	    {
-		it->bitangents = *biIt;
-
-		++biIt;
 		++it;
 	    }
 	}
@@ -259,7 +243,7 @@ namespace sv {
 
     bool mesh_create_buffers(Mesh& mesh, ResourceUsage usage)
     {
-	//ASSERT_VERTICES();
+	ASSERT_VERTICES();
 	SV_ASSERT(usage != ResourceUsage_Staging);
 	if (mesh.vbuffer || mesh.ibuffer) return false;
 

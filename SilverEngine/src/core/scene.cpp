@@ -486,7 +486,7 @@ namespace sv {
     }
     bool there_is_scene()
     {
-	return scene_state->scene != nullptr;
+	return scene_state && scene_state->scene != nullptr;
     }
 
     bool set_scene(const char* name)

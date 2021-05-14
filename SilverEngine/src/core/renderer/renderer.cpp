@@ -219,7 +219,7 @@ namespace sv {
 	    desc.bufferType = GPUBufferType_Constant;
 	    desc.usage = ResourceUsage_Default;
 	    desc.CPUAccess = CPUAccess_Write;
-	    desc.size = sizeof(CameraBuffer_GPU);
+	    desc.size = sizeof(GPU_CameraData);
 	    desc.pData = nullptr;
 
 	    SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_camera));
@@ -297,7 +297,7 @@ namespace sv {
 	    desc.usage = ResourceUsage_Dynamic;
 	    desc.CPUAccess = CPUAccess_Write;
 
-	    desc.size = sizeof(GPU_MeshData);
+	    desc.size = sizeof(GPU_MeshInstanceData);
 	    SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_mesh_instance));
 
 	    desc.size = sizeof(Material);
@@ -838,7 +838,7 @@ namespace sv {
 	graphics_draw(4u, 1u, 0u, 0u, cmd);
     }
 
-    SV_INTERNAL void screenspace_ambient_occlusion(CommandList cmd)
+    /*SV_INTERNAL void screenspace_ambient_occlusion(CommandList cmd)
     {
 	auto& gfx = renderer->gfx;
 	
@@ -876,14 +876,14 @@ namespace sv {
 	    );
 
 	graphics_event_end(cmd);
-    }
+	}*/
 
-    // Temp data
+    // TEMP
     static List<SpriteInstance> sprite_instances;
     static List<MeshInstance> mesh_instances;
     static List<LightInstance> light_instances;
     
-    SV_INTERNAL void draw_sprites(CameraBuffer_GPU& camera_data, CommandList cmd)
+    SV_INTERNAL void draw_sprites(GPU_CameraData& camera_data, CommandList cmd)
     {
 	auto& gfx = renderer->gfx;
 	
@@ -1042,12 +1042,12 @@ namespace sv {
 	}
     }
 
-    SV_AUX bool update_light_buffer(u32 offset)
+    SV_AUX bool update_light_buffer(const GPU_CameraData& camera_data, u32 offset, CommandList cmd)
     {
 	// Send light data
 	u32 light_count = SV_MIN(LIGHT_COUNT, u32(light_instances.size()) - offset);
 			    
-	GPU_LightData lights[LIGHT_COUNT] = {};
+	GPU_LightData light_data[LIGHT_COUNT] = {};
 
 	XMMATRIX rotation_view_matrix;
 	{
@@ -1084,7 +1084,7 @@ namespace sv {
 	    }
 	}
 
-	graphics_buffer_update(gfx.cbuffer_light_instances, light_data, sizeof(GPU_LightData) * LIGHT_COUNT, 0u, cmd);
+	graphics_buffer_update(renderer->gfx.cbuffer_light_instances, light_data, sizeof(GPU_LightData) * LIGHT_COUNT, 0u, cmd);
 
 	return light_count;
     }
@@ -1150,7 +1150,7 @@ namespace sv {
 
 #if SV_DEV
 	    CameraComponent* camera_ = nullptr;
-	    CameraBuffer_GPU camera_data;
+	    GPU_CameraData camera_data;
 
 	    {
 		v3_f32 cam_pos;
@@ -1188,7 +1188,7 @@ namespace sv {
 		    camera_data.near = camera_->near;
 		    camera_data.far = camera_->far;
 		    
-		    graphics_buffer_update(gfx.cbuffer_camera, &camera_data, sizeof(CameraBuffer_GPU), 0u, cmd);
+		    graphics_buffer_update(gfx.cbuffer_camera, &camera_data, sizeof(GPU_CameraData), 0u, cmd);
 		}
 	    }
 #else
@@ -1212,7 +1212,7 @@ namespace sv {
 		camera_data.near = camera_->near;
 		camera_data.far = camera_->far;
 		
-		graphics_buffer_update(gfx.cbuffer_camera, &camera_data, sizeof(CameraBuffer_GPU), 0u, cmd);
+		graphics_buffer_update(gfx.cbuffer_camera, &camera_data, sizeof(GPU_CameraData), 0u, cmd);
 	    }
 
 #endif
@@ -1275,7 +1275,7 @@ namespace sv {
 			graphics_renderpass_begin(gfx.renderpass_gbuffer, att, cmd);
 
 			// TODO: Multiple lights
-			update_light_buffer(0u);
+			update_light_buffer(camera_data, 0u, cmd);
 
 			foreach(i, mesh_instances.size()) {
 
@@ -1286,7 +1286,7 @@ namespace sv {
 
 			    // Update material data
 			    {
-				MaterialData material_data;
+				GPU_MaterialData material_data;
 				material_data.flags = 0u;
 
 				if (inst.material) {
@@ -1324,16 +1324,16 @@ namespace sv {
 				    material_data.shininess = 0.5f;
 				}
 
-				graphics_buffer_update(material_buffer, &material_data, sizeof(MaterialData), 0u, cmd);
+				graphics_buffer_update(material_buffer, &material_data, sizeof(GPU_MaterialData), 0u, cmd);
 			    }
 
 			    // Update instance data
 			    {
-				GPU_MeshData mesh_data;
+				GPU_MeshInstanceData mesh_data;
 				mesh_data.model_view_matrix = inst.transform_matrix * camera_data.view_matrix;
 				mesh_data.inv_model_view_matrix = XMMatrixInverse(nullptr, mesh_data.model_view_matrix);
 
-				graphics_buffer_update(instance_buffer, &mesh_data, sizeof(GPU_MeshData), 0u, cmd);
+				graphics_buffer_update(instance_buffer, &mesh_data, sizeof(GPU_MeshInstanceData), 0u, cmd);
 			    }
 
 			    graphics_draw_indexed(u32(inst.mesh->indices.size()), 1u, 0u, 0u, 0u, cmd);
