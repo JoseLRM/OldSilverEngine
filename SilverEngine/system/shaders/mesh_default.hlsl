@@ -5,8 +5,7 @@
 struct Input {
 	float3 position : Position;
 	float3 normal : Normal;
-	float3 tangent : Tangent;
-	float3 bitangent : Bitangent;
+	float4 tangent : Tangent;
 	float2 texcoord : Texcoord;
 };
 
@@ -34,9 +33,12 @@ Output main(Input input)
 	output.frag_position = pos.xyz;
 	output.position = mul(pos, camera.pm);
 
+	float3 tangent = input.tangent.xyz;
+	float3 bitangent = cross(input.normal, tangent) * input.tangent.w;
+
 	output.normal = mul((float3x3)imvm, input.normal);
-	output.tangent = mul((float3x3)imvm, input.tangent);
-	output.bitangent = mul((float3x3)imvm, input.bitangent);
+	output.tangent = mul((float3x3)imvm, tangent);
+	output.bitangent = mul((float3x3)imvm, bitangent);
 
 	output.texcoord = input.texcoord;
 

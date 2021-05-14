@@ -502,11 +502,10 @@ namespace sv {
 
 	    elements[0] = { "Position", 0u, 0u, 0u, Format_R32G32B32_FLOAT };
 	    elements[1] = { "Normal", 0u, 0u, 3u * sizeof(f32), Format_R32G32B32_FLOAT };
-	    elements[2] = { "Tangent", 0u, 0u, 6u * sizeof(f32), Format_R32G32B32_FLOAT };
-	    elements[3] = { "Bitangent", 0u, 0u, 9u * sizeof(f32), Format_R32G32B32_FLOAT };
-	    elements[4] = { "Texcoord", 0u, 0u, 12u * sizeof(f32), Format_R32G32_FLOAT };
+	    elements[2] = { "Tangent", 0u, 0u, 6u * sizeof(f32), Format_R32G32B32A32_FLOAT };
+	    elements[3] = { "Texcoord", 0u, 0u, 10u * sizeof(f32), Format_R32G32_FLOAT };
 
-	    desc.elementCount = 5u;
+	    desc.elementCount = 4u;
 	    desc.slotCount = 1u;
 	    SV_CHECK(graphics_inputlayoutstate_create(&desc, &gfx.ils_mesh));
 

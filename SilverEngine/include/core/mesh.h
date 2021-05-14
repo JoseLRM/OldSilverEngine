@@ -9,12 +9,11 @@ namespace sv {
     constexpr u32 MATERIAL_NAME_SIZE = 100u;
 
     typedef u32 MeshIndex;
-
+    
     struct MeshVertex {
 	v3_f32 position;
 	v3_f32 normal;
-	v3_f32 tangents;
-	v3_f32 bitangents;
+	v4_f32 tangents;
 	v2_f32 texcoord;
     };
 
@@ -22,8 +21,7 @@ namespace sv {
 
 	List<v3_f32> positions;
 	List<v3_f32> normals;
-	List<v3_f32> tangents;
-	List<v3_f32> bitangents;
+	List<v4_f32> tangents;
 	List<v2_f32> texcoords;
 
 	List<MeshIndex> indices;
