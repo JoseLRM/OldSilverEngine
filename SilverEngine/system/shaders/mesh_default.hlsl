@@ -60,7 +60,7 @@ struct Input {
 struct Output {
 	float4 color : SV_Target0;
 	float4 normal : SV_Target1;
-	//TODO float4 emissive : SV_Target2;
+	float4 emission : SV_Target2;
 };
 
 struct Material {
@@ -114,6 +114,8 @@ Output main(Input input)
 	// DIFFUSE
 	float4 diffuse_color = diffuse_map.Sample(sam, input.texcoord);
 	if (diffuse_color.a < 0.01f) discard;
+
+	diffuse_color.rgb *= material.diffuse_color;
 
 	// NORMAL
 	float3 normal;
@@ -187,8 +189,10 @@ Output main(Input input)
 
 	output.color = float4(diffuse_color.rgb * light_accumulation, 1.f);
 	
-	// TODO: Emissive	
-	
+	// Emissive	
+	output.emission.rgb = material.emissive_color;
+	// TEMP
+	output.emission.a = 1.f;
 
 	return output;
 }

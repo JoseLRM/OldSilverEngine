@@ -283,7 +283,7 @@ namespace sv {
 	return true;
     }
 
-    SV_INLINE bool line_read_i32(const char*& line, i32& value, char* delimiters, u32 delimiter_count)
+    SV_INLINE bool line_read_i32(const char*& line, i32& value, const char* delimiters, u32 delimiter_count)
     {
 	value = 0;
 	line_jump_spaces(line);

@@ -804,7 +804,7 @@ namespace sv {
 	}
 
 	// Create API primitive
-	SV_CHECK(g_Device.create(GraphicsPrimitiveType_DepthStencilState, desc, (Primitive_internal*)* rasterizerState));
+	SV_CHECK(g_Device.create(GraphicsPrimitiveType_RasterizerState, desc, (Primitive_internal*)* rasterizerState));
 
 	// Set parameters
 	RasterizerState_internal* p = reinterpret_cast<RasterizerState_internal*>(*rasterizerState);

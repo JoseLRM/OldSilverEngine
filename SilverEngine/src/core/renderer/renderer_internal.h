@@ -112,6 +112,7 @@ namespace sv {
 
 	GPUImage* offscreen;
 	GPUImage* gbuffer_normal;
+	GPUImage* gbuffer_emission;
 	GPUImage* gbuffer_depthstencil;
 	GPUImage* gbuffer_ssao;
 

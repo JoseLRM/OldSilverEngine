@@ -361,6 +361,97 @@ namespace sv {
 		}
 		break;
 
+		case 'i':
+		{
+		    ++p.line;
+
+		    if (p.line[0] == 'l' && p.line[1] == 'l' && p.line[2] == 'u' && p.line[3] == 'm') {
+
+			p.line += 4u;
+
+			line_jump_spaces(p.line);
+
+			const char* delimiters = " \r\n";
+
+			bool res = true;
+
+			i32 value;
+			if (line_read_i32(p.line, value, delimiters, (u32)strlen(delimiters))) {
+
+			    if (value < 0 || value > 10)
+				res = false;
+			    else {
+
+				switch (value) {
+
+				case 0: // Color on and Ambient off
+				    mat->transparent = false;
+				    mat->culling = RasterizerCullMode_Back;
+				    break;
+				    
+				case 1: // Color on and Ambient on
+				    mat->transparent = false;
+				    mat->culling = RasterizerCullMode_Back;
+				    break;
+				    
+				case 2: // Highlight on
+				    mat->transparent = false;
+				    mat->culling = RasterizerCullMode_Back;
+				    break;
+				    
+				case 3: // Reflection on and Ray trace on
+				    mat->transparent = false;
+				    mat->culling = RasterizerCullMode_Back;
+				    break;
+				    
+				case 4: // Transparency: Glass on. Reflection: Ray trace on
+				    mat->transparent = true;
+				    mat->culling = RasterizerCullMode_None;
+				    break;
+				    
+				case 5:	// Reflection: Fresnel on and Ray trace on
+				    mat->transparent = false;
+				    mat->culling = RasterizerCullMode_Back;
+				    break;
+				    
+				case 6: // Transparency: Refraction on. Reflection: Fresnel off and Ray trace on
+				    mat->transparent = true;
+				    mat->culling = RasterizerCullMode_None;
+				    break;
+				    
+				case 7: // Transparency: Refraction on. Reflection: Fresnel on and Ray trace on
+				    mat->transparent = true;
+				    mat->culling = RasterizerCullMode_None;
+				    break;
+				    
+				case 8: // Reflection on and Ray trace off
+				    mat->transparent = false;
+				    mat->culling = RasterizerCullMode_Back;
+				    break;
+				    
+				case 9:	// Transparency: Glass on. Reflection: Ray trace off
+				    mat->transparent = true;
+				    mat->culling = RasterizerCullMode_None;
+				    break;
+				    
+				case 10:// Casts shadows onto invisible surfaces
+				    mat->transparent = false;
+				    mat->culling = RasterizerCullMode_Back;
+				    break;
+				    
+				}
+			    }
+			}
+			else res = false;
+			
+			if (!res) {
+
+			    SV_LOG_ERROR("Illum value not available in mtl '%s', line %u", filepath, p.line_count);
+			}
+		    }
+		}
+		break;
+
 		case 'n':
 		{
 		    ++p.line;
@@ -547,15 +638,16 @@ namespace sv {
 	
 	if (file_read_text(filepath, file)) {
 
-	    struct ObjIndex {
-		i32 position_index;
-		i32 normal_index;
-		i32 texcoord_index;
+	    struct ObjTriangle {
+		i32 position_indices[3u];
+		i32 normal_indices[3u];
+		i32 texcoord_indices[3u];
+		bool smooth;
 	    };
 	    
 	    struct ObjMesh {
 		String name;
-		List<ObjIndex> indices;
+		List<ObjTriangle> triangles;
 		u32 material_index;
 	    };
 	    
@@ -567,7 +659,7 @@ namespace sv {
 	    ObjMesh* mesh = &meshes.emplace_back();
 	    mesh->material_index = u32_max;
 	    bool using_default = true;
-	    bool shading = true;
+	    bool smooth = true;
 	    
 	    LineProcessor p;
 	    line_begin(p, file.c_str());
@@ -710,12 +802,13 @@ namespace sv {
 		}
 		break;
 
-		case 's': // TODO
+		case 's':
 		{
 		    ++p.line;
 		    line_jump_spaces(p.line);
 		    if (*p.line != 1)
-			shading = false;
+			smooth = false;
+		    else smooth = true;
 		}
 		break;
 
@@ -739,7 +832,7 @@ namespace sv {
 		    }
 		    else {
 
-			if (mesh->indices.empty()) {
+			if (mesh->triangles.empty()) {
 
 			    mesh->name.set(p.line, 0u, name_size);
 			}
@@ -805,6 +898,7 @@ namespace sv {
 			line_read_f32(p.line, v.y);
 
 			v.y = 1.f - v.y;
+
 		    }
 		    break;
 		    
@@ -819,9 +913,9 @@ namespace sv {
 
 		    u32 vertex_count = 0u;
 		    
-		    i32 position_index[4u] = {};
-		    i32 normal_index[4u] = {};
-		    i32 texcoord_index[4u] = {};
+		    i32 position_index[16u] = {};
+		    i32 normal_index[16u] = {};
+		    i32 texcoord_index[16u] = {};
 
 		    char delimiters[] = {
 			' ',
@@ -830,7 +924,9 @@ namespace sv {
 
 		    bool res;
 
-		    foreach(i, 4) {
+		    constexpr u32 POLYGON_COUNT = 4u;
+
+		    foreach(i, POLYGON_COUNT) {
 
 			res = line_read_i32(p.line, position_index[i], delimiters, 2u);
 			if (res && *p.line == '/') {
@@ -858,6 +954,10 @@ namespace sv {
 			if (*p.line == '\r' || *p.line == '\n') break;
 		    }
 
+		    if (*p.line != '\r' && *p.line != '\n') {
+			SV_LOG_ERROR("Can't read more than %u vertices in one face. Try to triangulate this .obj. Line %u", POLYGON_COUNT, p.line_count);
+		    }
+
 		    if (!res || vertex_count < 3) {
 			res = false;
 			SV_LOG_ERROR("Can't read the face at line %u", p.line_count);
@@ -868,22 +968,28 @@ namespace sv {
 			    
 			if (vertex_count == 3u) {
 
+			    ObjTriangle& t = mesh->triangles.emplace_back();
+			    t.smooth = smooth;
+			    
 			    foreach(i, 3u) {
-
-				ObjIndex& index = mesh->indices.emplace_back();
-				index.position_index = position_index[i];
-				index.normal_index = normal_index[i];
-				index.texcoord_index = texcoord_index[i];
+				
+				t.position_indices[i] = position_index[i];
+				t.normal_indices[i] = normal_index[i];
+				t.texcoord_indices[i] = texcoord_index[i];
 			    }
 			}
 			else if (vertex_count == 4u) {
 
+			    ObjTriangle& t0 = mesh->triangles.emplace_back();
+			    t0.smooth = smooth;
+			    ObjTriangle& t1 = mesh->triangles.emplace_back();
+			    t1.smooth = smooth;
+
 			    foreach(i, 3u) {
 
-				ObjIndex& index = mesh->indices.emplace_back();
-				index.position_index = position_index[i];
-				index.normal_index = normal_index[i];
-				index.texcoord_index = texcoord_index[i];
+				t0.position_indices[i] = position_index[i];
+				t0.normal_indices[i] = normal_index[i];
+				t0.texcoord_indices[i] = texcoord_index[i];
 			    }
 
 			    foreach(j, 3u) {
@@ -906,10 +1012,9 @@ namespace sv {
 					
 				}
 				
-				ObjIndex& index = mesh->indices.emplace_back();
-				index.position_index = position_index[i];
-				index.normal_index = normal_index[i];
-				index.texcoord_index = texcoord_index[i];
+				t1.position_indices[j] = position_index[i];
+				t1.normal_indices[j] = normal_index[i];
+				t1.texcoord_indices[j] = texcoord_index[i];
 			    }
 			}
 		    }			
@@ -927,26 +1032,29 @@ namespace sv {
 	    {
 		for (ObjMesh& obj_mesh : meshes) {
 
-		    if (obj_mesh.indices.empty())
+		    if (obj_mesh.triangles.empty())
 			continue;
 
 		    // Compute min and max position indices
 		    u32 min_position_index = u32_max;
 		    u32 max_position_index = 0u;
-		    for (const ObjIndex& index : obj_mesh.indices) {
+		    for (const ObjTriangle& t : obj_mesh.triangles) {
 
-			i32 i = index.position_index;
+			foreach(j, 3u) {
+			    
+			    i32 i = t.position_indices[j];
 
-			if (i > 0) {
-			    --i;
+			    if (i > 0) {
+				--i;
+			    }
+			    else if (i < 0) {
+				i = i32(positions.size()) + i;
+			    }
+			    else i = min_position_index;
+
+			    min_position_index = SV_MIN(u32(i), min_position_index);
+			    max_position_index = SV_MAX(u32(i), max_position_index);
 			}
-			else if (i < 0) {
-			    i = i32(positions.size()) + i;
-			}
-			else i = min_position_index;
-
-			min_position_index = SV_MIN(u32(i), min_position_index);
-			max_position_index = SV_MAX(u32(i), max_position_index);
 		    }
 
 		    MeshInfo& mesh = model_info.meshes.emplace_back();
@@ -962,32 +1070,35 @@ namespace sv {
 		    mesh.normals.resize(elements);
 		    mesh.texcoords.resize(elements);
 
-		    mesh.indices.resize(obj_mesh.indices.size());
+		    mesh.indices.resize(obj_mesh.triangles.size() * 3u);
 
 		    memcpy(mesh.positions.data(), positions.data() + min_position_index, elements * sizeof(v3_f32));
 
-		    const ObjIndex* it0 = obj_mesh.indices.data();
+		    const ObjTriangle* it0 = obj_mesh.triangles.data();
 		    MeshIndex* it1 = mesh.indices.data();
-		    const ObjIndex* end = obj_mesh.indices.data() + obj_mesh.indices.size();
+		    const ObjTriangle* end = obj_mesh.triangles.data() + obj_mesh.triangles.size();
 
 		    i32 max = i32(positions.size());
 		    u32 min = min_position_index;
 
 		    while (it0 != end) {
 
-			u32 index = parse_objindex_to_absolute(it0->position_index, max) - min;
-			u32 normal_index = parse_objindex_to_absolute(it0->normal_index, max);
-			u32 texcoord_index = parse_objindex_to_absolute(it0->texcoord_index, max);
+			foreach(j, 3u) {
+			    
+			    u32 index = parse_objindex_to_absolute(it0->position_indices[j], max) - min;
+			    u32 normal_index = parse_objindex_to_absolute(it0->normal_indices[j], max);
+			    u32 texcoord_index = parse_objindex_to_absolute(it0->texcoord_indices[j], max);
 
-			// TODO: Handle errors
+			    // TODO: Handle errors
 			
-			mesh.normals[index] = normals[normal_index];
-			mesh.texcoords[index] = texcoords[texcoord_index];
+			    mesh.normals[index] = normals[normal_index];
+			    mesh.texcoords[index] = texcoords[texcoord_index];
 			
-			*it1 = index;
+			    *it1 = index;
+			    ++it1;
+			}
 
 			++it0;
-			++it1;
 		    }
 		}
 	    }
@@ -1103,7 +1214,13 @@ namespace sv {
 	    
 	    serialize_begin(s);
 
-	    serialize_u32(s, 0u); // VERSION
+	    serialize_u32(s, 1u); // VERSION
+
+	    // Renderer settings
+	    {
+		serialize_bool(s, mat.transparent);
+		serialize_u32(s, mat.culling);
+	    }
 
 	    serialize_color(s, mat.ambient_color);
 	    serialize_color(s, mat.diffuse_color);
@@ -1147,8 +1264,6 @@ namespace sv {
 	    deserialize_v2_f32_array(d, mesh.texcoords);
 	    deserialize_u32_array(d, mesh.indices);
 
-	    // TODO: Compute tangents and bitangents
-
 	    char matname[FILEPATH_SIZE + 1u];
 	    deserialize_string(d, matname, FILEPATH_SIZE + 1u);
 
@@ -1180,8 +1295,47 @@ namespace sv {
 	// Compute tangents and bitangents
 	{
 	    mesh.tangents.resize(mesh.positions.size());
+	    
+	    MeshIndex* it = mesh.indices.data();
+	    MeshIndex* end = mesh.indices.data() + mesh.indices.size();
 
-	    // TODO
+	    while (it < end) {
+
+		MeshIndex i0 = *(it + 0);
+		MeshIndex i1 = *(it + 1);
+		MeshIndex i2 = *(it + 2);
+		
+		v3_f32 pos0 = mesh.positions[i0];
+		v3_f32 pos1 = mesh.positions[i1];
+		v3_f32 pos2 = mesh.positions[i2];
+
+		v2_f32 tc0 = mesh.texcoords[i0];
+		v2_f32 tc1 = mesh.texcoords[i1];
+		v2_f32 tc2 = mesh.texcoords[i2];
+
+		v3_f32 normal = (mesh.normals[i0] + mesh.normals[i1] + mesh.normals[i2]) / 3.f;
+
+		v3_f32 edge0 = pos1 - pos0;
+		v3_f32 edge1 = pos2 - pos0;
+		
+		v2_f32 deltaUV0 = tc1 - tc0;
+		v2_f32 deltaUV1 = tc2 - tc0;
+
+		f32 f = 1.f / (deltaUV0.x * deltaUV1.y - deltaUV1.x * deltaUV0.y);
+
+		v4_f32 tan;
+		tan.x = f * (deltaUV1.y * edge0.x + deltaUV0.y * edge1.x);
+		tan.y = f * (deltaUV1.y * edge0.y + deltaUV0.y * edge1.y);
+		tan.z = f * (deltaUV1.y * edge0.z + deltaUV0.y * edge1.z);
+		tan.w = 1.f;
+
+		// TODO: I'm losing tangent precission here
+		mesh.tangents[i0] = tan;
+		mesh.tangents[i1] = tan;
+		mesh.tangents[i2] = tan;
+		
+		it += 3u;
+	    }
 	}
 	
 	return true;
@@ -1195,6 +1349,11 @@ namespace sv {
 
 	    u32 version;
 	    deserialize_u32(d, version);
+
+	    if (version != 0u) {
+		deserialize_bool(d, mat.transparent);
+		deserialize_u32(d, (u32&)mat.culling);
+	    }
 
 	    deserialize_color(d, mat.ambient_color);
 	    deserialize_color(d, mat.diffuse_color);

@@ -37,11 +37,20 @@ namespace sv {
     };
 
     struct Material {
+
+	// Pipeline settings
+	bool transparent = false;
+	RasterizerCullMode culling = RasterizerCullMode_Back;
+	
+	// Values
 	Color ambient_color;
 	Color diffuse_color;
 	Color specular_color;
 	Color emissive_color;
-	f32   shininess;
+	f32   shininess = 0.1f;
+
+	// Textures
+	
 	TextureAsset diffuse_map;
 	TextureAsset normal_map;
 	TextureAsset specular_map;
@@ -81,13 +90,23 @@ namespace sv {
     };
 
     struct MaterialInfo {
-	
+
 	String name;
+	
+	// Pipeline settings
+	bool transparent = false;
+	RasterizerCullMode culling = RasterizerCullMode_Back;
+
+	// Values
+	
 	Color ambient_color;
 	Color diffuse_color;
 	Color specular_color;
 	Color emissive_color;
 	f32 shininess;
+
+	// Textures
+	
 	String diffuse_map_path;
 	String normal_map_path;
 	String specular_map_path;

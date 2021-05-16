@@ -34,8 +34,8 @@ namespace sv {
 	COMPILE_VS(gfx.vs_sprite, "sprite/default.hlsl");
 	COMPILE_PS(gfx.ps_sprite, "sprite/default.hlsl");
 
-	COMPILE_VS(gfx.vs_mesh_default, "mesh_default.hlsl");
-	COMPILE_PS(gfx.ps_mesh_default, "mesh_default.hlsl");
+	COMPILE_VS_(gfx.vs_mesh_default, "mesh_default.hlsl");
+	COMPILE_PS_(gfx.ps_mesh_default, "mesh_default.hlsl");
 
 	COMPILE_VS(gfx.vs_sky, "skymapping.hlsl");
 	COMPILE_PS(gfx.ps_sky, "skymapping.hlsl");
@@ -122,18 +122,28 @@ namespace sv {
 
 	att[2].loadOp = AttachmentOperation_Load;
 	att[2].storeOp = AttachmentOperation_Store;
-	att[2].stencilLoadOp = AttachmentOperation_Load;
-	att[2].stencilStoreOp = AttachmentOperation_Store;
-	att[2].format = GBUFFER_DEPTH_FORMAT;
-	att[2].initialLayout = GPUImageLayout_DepthStencil;
-	att[2].layout = GPUImageLayout_DepthStencil;
-	att[2].finalLayout = GPUImageLayout_DepthStencil;
-	att[2].type = AttachmentType_DepthStencil;
+	att[2].stencilLoadOp = AttachmentOperation_DontCare;
+	att[2].stencilStoreOp = AttachmentOperation_DontCare;
+	att[2].format = GBUFFER_EMISSION_FORMAT;
+	att[2].initialLayout = GPUImageLayout_RenderTarget;
+	att[2].layout = GPUImageLayout_RenderTarget;
+	att[2].finalLayout = GPUImageLayout_RenderTarget;
+	att[2].type = AttachmentType_RenderTarget;
 
-	desc.attachmentCount = 3u;
+	att[3].loadOp = AttachmentOperation_Load;
+	att[3].storeOp = AttachmentOperation_Store;
+	att[3].stencilLoadOp = AttachmentOperation_Load;
+	att[3].stencilStoreOp = AttachmentOperation_Store;
+	att[3].format = GBUFFER_DEPTH_FORMAT;
+	att[3].initialLayout = GPUImageLayout_DepthStencil;
+	att[3].layout = GPUImageLayout_DepthStencil;
+	att[3].finalLayout = GPUImageLayout_DepthStencil;
+	att[3].type = AttachmentType_DepthStencil;
+
+	desc.attachmentCount = 4u;
 	CREATE_RENDERPASS("GBufferRenderPass", gfx.renderpass_gbuffer);
 
-	// Offscreen pass
+	// SSAO pass
 	att[0].loadOp = AttachmentOperation_Load;
 	att[0].storeOp = AttachmentOperation_Store;
 	att[0].stencilLoadOp = AttachmentOperation_DontCare;
@@ -405,6 +415,11 @@ namespace sv {
 	    desc.layout = GPUImageLayout_RenderTarget;
 	    desc.type = GPUImageType_RenderTarget | GPUImageType_ShaderResource;
 	    SV_CHECK(graphics_image_create(&desc, &gfx.gbuffer_normal));
+
+	    desc.format = GBUFFER_EMISSION_FORMAT;
+	    desc.layout = GPUImageLayout_RenderTarget;
+	    desc.type = GPUImageType_RenderTarget | GPUImageType_ShaderResource;
+	    SV_CHECK(graphics_image_create(&desc, &gfx.gbuffer_emission));
 
 	    desc.format = GBUFFER_SSAO_FORMAT;
 	    desc.layout = GPUImageLayout_RenderTarget;
@@ -691,6 +706,7 @@ namespace sv {
 
 	graphics_image_clear(gfx.offscreen, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, Color::Black(), 1.f, 0u, cmd);
 	graphics_image_clear(gfx.gbuffer_normal, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, Color::Transparent(), 1.f, 0u, cmd);
+	graphics_image_clear(gfx.gbuffer_emission, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, Color::Black(), 1.f, 0u, cmd);
 	graphics_image_clear(gfx.gbuffer_ssao, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, Color::Red(), 1.f, 0u, cmd);
 	graphics_image_clear(gfx.gbuffer_depthstencil, GPUImageLayout_DepthStencil, GPUImageLayout_DepthStencil, Color::Black(), 1.f, 0u, cmd);
 	
@@ -1255,7 +1271,6 @@ namespace sv {
 			graphics_shader_bind(gfx.ps_mesh_default, cmd);
 			graphics_inputlayoutstate_bind(gfx.ils_mesh, cmd);
 			graphics_depthstencilstate_bind(gfx.dss_default_depth, cmd);
-			graphics_rasterizerstate_bind(gfx.rs_back_culling, cmd);
 			graphics_blendstate_bind(gfx.bs_mesh, cmd);
 			graphics_sampler_bind(gfx.sampler_def_linear, 0u, ShaderType_Pixel, cmd);
 
@@ -1271,7 +1286,7 @@ namespace sv {
 			graphics_constantbuffer_bind(gfx.cbuffer_environment, 2u, ShaderType_Pixel, cmd);
 
 			// Begin renderpass
-			GPUImage* att[3u] = { gfx.offscreen, gfx.gbuffer_normal, gfx.gbuffer_depthstencil };
+			GPUImage* att[] = { gfx.offscreen, gfx.gbuffer_normal, gfx.gbuffer_emission, gfx.gbuffer_depthstencil };
 			graphics_renderpass_begin(gfx.renderpass_gbuffer, att, cmd);
 
 			// TODO: Multiple lights
@@ -1310,6 +1325,22 @@ namespace sv {
 				    material_data.specular_color = inst.material->specular_color.toVec3();
 				    material_data.emissive_color = inst.material->emissive_color.toVec3();
 				    material_data.shininess = inst.material->shininess;
+
+				    switch (inst.material->culling) {
+
+				    case RasterizerCullMode_Back:
+					graphics_rasterizerstate_bind(gfx.rs_back_culling, cmd);
+					break;
+					
+				    case RasterizerCullMode_Front:
+					// TODO: graphics_rasterizerstate_bind(gfx.rs_front_culling, cmd);
+					break;
+
+				    case RasterizerCullMode_None:
+					graphics_rasterizerstate_unbind(cmd);
+					break;
+					
+				    }
 				}
 				else {
 
@@ -1322,6 +1353,8 @@ namespace sv {
 				    material_data.specular_color = Color::Gray(160u).toVec3();
 				    material_data.emissive_color = Color::Black().toVec3();
 				    material_data.shininess = 0.5f;
+
+				    graphics_rasterizerstate_bind(gfx.rs_back_culling, cmd);
 				}
 
 				graphics_buffer_update(material_buffer, &material_data, sizeof(GPU_MaterialData), 0u, cmd);
@@ -1347,7 +1380,7 @@ namespace sv {
 		    draw_sprites(camera_data, cmd);
 		}
 
-		/*postprocess_bloom(
+		postprocess_bloom(
 			gfx.offscreen,
 			GPUImageLayout_RenderTarget,
 			GPUImageLayout_RenderTarget,
@@ -1357,8 +1390,10 @@ namespace sv {
 			gfx.image_aux1,
 			GPUImageLayout_ShaderResource,
 			GPUImageLayout_ShaderResource,
-			nullptr,
-			0.8f, 0.03f, os_window_aspect(), cmd);*/
+			gfx.gbuffer_emission,
+			GPUImageLayout_RenderTarget,
+			GPUImageLayout_RenderTarget,
+			0.8f, 0.03f, os_window_aspect(), cmd);
 	    }
 	    else {
 				
@@ -1742,8 +1777,8 @@ namespace sv {
     }
 
     void postprocess_addition(
-	    GPUImage* src,
 	    GPUImage* dst,
+	    GPUImage* src,
 	    CommandList cmd
 	)
     {
@@ -1781,14 +1816,16 @@ namespace sv {
 	    GPUImage* aux1, // Used to blur the image
 	    GPUImageLayout aux1_layout0, 
 	    GPUImageLayout aux1_layout1,
-	    GPUImage* emissive,
+	    GPUImage* emission,
+	    GPUImageLayout emission_layout0, 
+	    GPUImageLayout emission_layout1,
 	    f32 threshold,
 	    f32 intensity,
 	    f32 aspect,
 	    CommandList cmd
 	)
     {
-	GPUBarrier barriers[2];
+	GPUBarrier barriers[3];
 	u32 barrier_count = 0u;
 	GPUImage* att[1u];
 
@@ -1814,6 +1851,9 @@ namespace sv {
 	    if (aux0_layout0 != GPUImageLayout_RenderTarget) {
 		barriers[barrier_count++] = GPUBarrier::Image(aux0, aux0_layout0, GPUImageLayout_RenderTarget);
 	    }
+	    if (emission_layout0 != GPUImageLayout_ShaderResource) {
+		barriers[barrier_count++] = GPUBarrier::Image(emission, emission_layout0, GPUImageLayout_ShaderResource);
+	    }
 			
 	    if (barrier_count) {
 		graphics_barrier(barriers, barrier_count, cmd);
@@ -1836,9 +1876,9 @@ namespace sv {
 	}
 
 	// Add emissive map
-	if (emissive) {
+	if (emission) {
 
-	    postprocess_addition(aux0, emissive, cmd);
+	    postprocess_addition(aux0, emission, cmd);
 	}
 
 	// Blur image
@@ -1858,7 +1898,7 @@ namespace sv {
 	    barriers[0u] = GPUBarrier::Image(src, GPUImageLayout_ShaderResource, GPUImageLayout_RenderTarget);
 	    graphics_barrier(barriers, 1u, cmd);
 			
-	    postprocess_addition(aux0, src, cmd);
+	    postprocess_addition(src, aux0, cmd);
 	}
 
 	// Last memory barriers
@@ -1871,6 +1911,9 @@ namespace sv {
 	}
 	if (aux0_layout1 != GPUImageLayout_ShaderResource) {
 	    barriers[barrier_count++] = GPUBarrier::Image(aux0, GPUImageLayout_ShaderResource, aux0_layout1);
+	}
+	if (emission_layout1 != GPUImageLayout_ShaderResource) {
+	    barriers[barrier_count++] = GPUBarrier::Image(emission, GPUImageLayout_ShaderResource, emission_layout1);
 	}
 	if (barrier_count) {
 	    graphics_barrier(barriers, barrier_count, cmd);

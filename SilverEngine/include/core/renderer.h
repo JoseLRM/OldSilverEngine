@@ -13,6 +13,7 @@ namespace sv {
     constexpr Format OFFSCREEN_FORMAT = Format_R16G16B16A16_FLOAT;
     constexpr Format GBUFFER_DEPTH_FORMAT = Format_D24_UNORM_S8_UINT;
     constexpr Format GBUFFER_NORMAL_FORMAT = Format_R16G16B16A16_FLOAT;
+    constexpr Format GBUFFER_EMISSION_FORMAT = Format_R16G16B16A16_FLOAT;
     constexpr Format GBUFFER_SSAO_FORMAT = Format_R32_FLOAT;
 
     // Functions
@@ -71,7 +72,9 @@ namespace sv {
 	    GPUImage* aux1, // Used to blur the image
 	    GPUImageLayout aux1_layout0, 
 	    GPUImageLayout aux1_layout1,
-	    GPUImage* emissive, // The layout should be ShaderResource
+	    GPUImage* emission,
+	    GPUImageLayout emission_layout0, 
+	    GPUImageLayout emission_layout1,
 	    f32 threshold,
 	    f32 intensity,
 	    f32 aspect,
