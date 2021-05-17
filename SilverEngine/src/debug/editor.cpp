@@ -272,6 +272,19 @@ namespace sv {
 
     static void control_camera()
     {
+	if (dev.postprocessing) {
+
+	    CameraComponent* cam = get_main_camera();
+
+	    if (cam) {
+		dev.camera.bloom = cam->bloom;
+	    }
+	    else dev.postprocessing = false;
+	}
+	else {
+	    dev.camera.bloom = {};
+	}
+	
 	if (!input.unused)
 	    return;
 
@@ -782,6 +795,13 @@ namespace sv {
 		if (egui_comp_drag_f32("Dimension", 3u, &dimension, 0.01f, 0.01f)) {
 		    cam.width = dimension;
 		    cam.height = dimension;
+		}
+
+		gui_checkbox("Bloom", cam.bloom.active, 4u);
+		if (cam.bloom.active) {
+
+		    egui_comp_drag_f32("Threshold", 5u, &cam.bloom.threshold, 0.001f, 0.f, 1.f);
+		    egui_comp_drag_f32("Intensity", 6u, &cam.bloom.intensity, 0.001f, 0.f, 1.f);
 		}
 	    }
 
@@ -1583,8 +1603,9 @@ namespace sv {
 		    }
 
 		    gui_checkbox("Colisions", dev.draw_collisions, 4u);
+		    gui_checkbox("Postprocessing", dev.postprocessing, 5u);
 
-		    if (gui_button("Exit Project", 5u)) {
+		    if (gui_button("Exit Project", 6u)) {
 			dev.next_engine_state = EngineState_ProjectManagement;
 		    }
 		    

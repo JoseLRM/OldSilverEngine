@@ -388,7 +388,7 @@ namespace sv {
     struct CameraComponent : public BaseComponent {
 
 	static CompID SV_API ID;
-	static constexpr u32 VERSION = 0u;
+	static constexpr u32 VERSION = 1u;
 
 	ProjectionType projection_type = ProjectionType_Orthographic;
 	f32 near = -1000.f;
@@ -402,6 +402,12 @@ namespace sv {
 	XMMATRIX inverse_view_matrix;
 	XMMATRIX inverse_projection_matrix;
 	XMMATRIX inverse_view_projection_matrix;
+
+	struct {
+	    bool active = false;
+	    f32 threshold = 0.6f;
+	    f32 intensity = 0.03f;
+	} bloom;
 
 	void serialize(Serializer& s);
 	void deserialize(Deserializer& s, u32 version);

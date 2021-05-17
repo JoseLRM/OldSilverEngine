@@ -36,6 +36,7 @@ namespace sv {
 	EngineState next_engine_state = EngineState_None;
 
 	bool debug_draw = true;
+	bool postprocessing = true;
 	bool draw_collisions = false;
 	
 	DebugCamera camera;

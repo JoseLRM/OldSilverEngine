@@ -2281,15 +2281,36 @@ namespace sv {
 	serialize_f32(s, far);
 	serialize_f32(s, width);
 	serialize_f32(s, height);
+
+	serialize_bool(s, bloom.active);
+	serialize_f32(s, bloom.threshold);
+	serialize_f32(s, bloom.intensity);
     }
 
     void CameraComponent::deserialize(Deserializer& d, u32 version)
     {
-	deserialize_u32(d, (u32&)projection_type);
-	deserialize_f32(d, near);
-	deserialize_f32(d, far);
-	deserialize_f32(d, width);
-	deserialize_f32(d, height);
+	switch (version) {
+
+	case 0:
+	    deserialize_u32(d, (u32&)projection_type);
+	    deserialize_f32(d, near);
+	    deserialize_f32(d, far);
+	    deserialize_f32(d, width);
+	    deserialize_f32(d, height);
+	    break;
+
+	case 1:
+	    deserialize_u32(d, (u32&)projection_type);
+	    deserialize_f32(d, near);
+	    deserialize_f32(d, far);
+	    deserialize_f32(d, width);
+	    deserialize_f32(d, height);
+	    deserialize_bool(d, bloom.active);
+	    deserialize_f32(d, bloom.threshold);
+	    deserialize_f32(d, bloom.intensity);
+	    break;
+
+	}
     }
 
     void MeshComponent::serialize(Serializer& s)

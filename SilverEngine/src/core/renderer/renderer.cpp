@@ -1363,20 +1363,26 @@ namespace sv {
 		    draw_sprites(camera_data, cmd);
 		}
 
-		postprocess_bloom(
-			gfx.offscreen,
-			GPUImageLayout_RenderTarget,
-			GPUImageLayout_RenderTarget,
-			gfx.image_aux0,
-			GPUImageLayout_ShaderResource,
-			GPUImageLayout_ShaderResource,
-			gfx.image_aux1,
-			GPUImageLayout_ShaderResource,
-			GPUImageLayout_ShaderResource,
-			gfx.gbuffer_emission,
-			GPUImageLayout_RenderTarget,
-			GPUImageLayout_RenderTarget,
-			0.8f, 0.03f, os_window_aspect(), cmd);
+		// Postprocessing
+		
+		if (camera_->bloom.active) {
+		    
+		    postprocess_bloom(
+			    gfx.offscreen,
+			    GPUImageLayout_RenderTarget,
+			    GPUImageLayout_RenderTarget,
+			    gfx.image_aux0,
+			    GPUImageLayout_ShaderResource,
+			    GPUImageLayout_ShaderResource,
+			    gfx.image_aux1,
+			    GPUImageLayout_ShaderResource,
+			    GPUImageLayout_ShaderResource,
+			    gfx.gbuffer_emission,
+			    GPUImageLayout_RenderTarget,
+			    GPUImageLayout_RenderTarget,
+			    camera_->bloom.threshold, camera_->bloom.intensity, os_window_aspect(), cmd);
+
+		}
 	    }
 	    else {
 				
