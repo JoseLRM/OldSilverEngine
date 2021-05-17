@@ -155,17 +155,20 @@ Output main(Input input)
 			f32 distance = length(to_light);
 			to_light = normalize(to_light);
 
+			float3 acc = float3(0.f, 0.f, 0.f);
+
 			// Diffuse
 			f32 diffuse = max(dot(normal, to_light), 0.1f);
+			acc += light.color * diffuse;
 
 			// Specular
 			f32 specular = pow(max(dot(normalize(-input.position), reflect(-to_light, normal)), 0.f), material.shininess) * specular_mul;
+			acc += light.color * specular * material.specular_color;
 
 			// attenuation TODO: Smoothness
 			f32 att = 1.f - smoothstep(light.smoothness * light.range, light.range, distance);
 
-			//light_accumulation += light.color * specular * material.specular_color * light.intensity * att;
-			light_accumulation += light.color * light.intensity * att * diffuse;
+			light_accumulation += acc * att * light.intensity;
 		}
 		break;
 

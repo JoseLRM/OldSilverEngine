@@ -683,8 +683,31 @@ namespace sv {
 	SV_CHECK(_gui_close());
 	return true;
     }
+
+    SV_AUX void gui_material(Material& mat)
+    {
+	gui_push_id("Material");
+	
+	u64 id = 0u;
+	
+	gui_text("Pipeline Settings", id++);
+	gui_separator(5.f);
+	
+	gui_checkbox("Transparent", mat.transparent, id++);
+
+	gui_text("Values", id++);
+	gui_separator(5.f);
+
+	egui_comp_color("Ambient Color", id++, &mat.ambient_color);
+	egui_comp_color("Diffuse Color", id++, &mat.diffuse_color);
+	egui_comp_color("Specular Color", id++, &mat.specular_color);
+	egui_comp_color("Emissive Color", id++, &mat.emissive_color);
+	egui_comp_drag_f32("Shininess", id++, &mat.shininess);
+	
+	gui_pop_id();
+    }
     
-    static void show_component_info(Entity entity, CompID comp_id, BaseComponent* comp)
+    SV_INTERNAL void show_component_info(Entity entity, CompID comp_id, BaseComponent* comp)
     {
 	bool remove;
 
@@ -710,7 +733,9 @@ namespace sv {
 		MeshComponent& m = *reinterpret_cast<MeshComponent*>(comp);
 
 		egui_comp_mesh("Mesh", 0u, &m.mesh);
-		egui_comp_material("Material", 1u, &m.material);
+		//egui_comp_material("Material", 1u, &m.material);
+		if (m.material.get())
+		    gui_material(*m.material.get());
 	    }
 
 	    if (CameraComponent::ID == comp_id) {

@@ -290,6 +290,16 @@ namespace sv {
 	return true;
     }
 
+    SV_AUX void set_default_material(MaterialInfo* mat)
+    {
+	// Defaults
+	mat->ambient_color.setFloat(0.2f, 0.2f, 0.2f, 1.f);
+	mat->diffuse_color.setFloat(0.8f, 0.8f, 0.8f, 1.f);
+	mat->specular_color.setFloat(1.f, 1.f, 1.f, 1.f);
+	mat->emissive_color.setFloat(0.f, 0.f, 0.f, 1.f);
+	mat->shininess = 1.f;
+    }
+
     SV_AUX void read_mtl(const char* filepath, ModelInfo& model_info)
     {
 	String file;
@@ -297,6 +307,7 @@ namespace sv {
 	if (file_read_text(filepath, file)) {
 
 	    MaterialInfo* mat = &model_info.materials.emplace_back();
+	    set_default_material(mat);
 	    bool use_default = true;
 	    
 	    LineProcessor p;
@@ -483,6 +494,7 @@ namespace sv {
 			    }
 
 			    mat->name.set(p.line, 0u, name_size);
+			    set_default_material(mat);
 			}
 		    }
 		}
@@ -982,8 +994,6 @@ namespace sv {
 
 			    ObjTriangle& t0 = mesh->triangles.emplace_back();
 			    t0.smooth = smooth;
-			    ObjTriangle& t1 = mesh->triangles.emplace_back();
-			    t1.smooth = smooth;
 
 			    foreach(i, 3u) {
 
@@ -991,6 +1001,9 @@ namespace sv {
 				t0.normal_indices[i] = normal_index[i];
 				t0.texcoord_indices[i] = texcoord_index[i];
 			    }
+
+			    ObjTriangle& t1 = mesh->triangles.emplace_back();
+			    t1.smooth = smooth;
 
 			    foreach(j, 3u) {
 
@@ -1043,6 +1056,7 @@ namespace sv {
 			foreach(j, 3u) {
 			    
 			    i32 i = t.position_indices[j];
+			    SV_ASSERT(i != 0);
 
 			    if (i > 0) {
 				--i;
@@ -1091,7 +1105,6 @@ namespace sv {
 
 			    // TODO: Handle errors
 			
-
 			    mesh.normals[index] = normals[normal_index];
 			    mesh.texcoords[index] = texcoords[texcoord_index];
 			
