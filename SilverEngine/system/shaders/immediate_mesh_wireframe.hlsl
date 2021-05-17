@@ -16,7 +16,8 @@ SV_CONSTANT_BUFFER(mesh_data, b0) {
 };
 
 struct Output {
-	float4 color : FragColor;
+	float2 texcoord : FragTexcoord;
+       	float4 color : FragColor;
 	float4 position : SV_Position;
 };
 
@@ -26,6 +27,7 @@ Output main(Input input) {
 
 	output.position = mul(float4(input.position, 1.f), tm);
 	output.color = color;
+	output.texcoord = float2(0.f, 0.f);
 
 	return output;
 }

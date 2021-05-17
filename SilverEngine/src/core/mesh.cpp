@@ -1116,6 +1116,37 @@ namespace sv {
 		    }
 		}
 	    }
+
+	    // Centralize meshes
+	    for (MeshInfo& mesh : model_info.meshes) {
+
+		f32 min_x = f32_max;
+		f32 min_y = f32_max;
+		f32 min_z = f32_max;
+		f32 max_x = -f32_max;
+		f32 max_y = -f32_max;
+		f32 max_z = -f32_max;
+
+		for (const v3_f32& pos : mesh.positions) {
+
+		    min_x = SV_MIN(min_x, pos.x);
+		    min_y = SV_MIN(min_y, pos.y);
+		    min_z = SV_MIN(min_z, pos.z);
+
+		    max_x = SV_MAX(max_x, pos.x);
+		    max_y = SV_MAX(max_y, pos.y);
+		    max_z = SV_MAX(max_z, pos.z);
+		}
+
+		v3_f32 center = v3_f32(min_x + (max_x - min_x) * 0.5f, min_y + (max_y - min_y) * 0.5f, min_z + (max_z - min_z) * 0.5f);
+
+		for (v3_f32& pos : mesh.positions) {
+
+		    pos -= center;
+		}
+
+		mesh.transform_matrix = XMMatrixTranslation(center.x, center.y, center.z);
+	    }
 	}
 	else {
 	    SV_LOG_ERROR("Can't load the model '%s', not found", filepath);
@@ -1192,7 +1223,7 @@ namespace sv {
 	    
 	    serialize_begin(s);
 
-	    serialize_u32(s, 0u); // VERSION
+	    serialize_u32(s, 1u); // VERSION
 
 	    serialize_v3_f32_array(s, mesh.positions);
 	    serialize_v3_f32_array(s, mesh.normals);
@@ -1203,6 +1234,8 @@ namespace sv {
 		serialize_string(s, "");
 	    else
 		serialize_string(s, model_info.materials[mesh.material_index].name);
+
+	    serialize_xmmatrix(s, mesh.transform_matrix);
 
 	    char meshpath[FILEPATH_SIZE + 1u];
 	    sprintf(meshpath, "%s%s.mesh", folderpath, mesh.name.c_str());
@@ -1297,6 +1330,10 @@ namespace sv {
 		strcat(matpath, matname);
 
 		mesh.model_material_filepath.set(matpath);
+	    }
+
+	    if (version != 0) {
+		deserialize_xmmatrix(d, mesh.model_transform_matrix);
 	    }
 	    
 	    deserialize_end(d);

@@ -1827,7 +1827,7 @@ namespace sv {
 
 	    if (mesh_comp && mesh_comp->mesh.get()) {
 
-		u8 alpha = 5u + u8(f32(sin(timer_now() * 3.5) + 1.0) * 20.f * 0.5f);
+		u8 alpha = 5u + u8(f32(sin(timer_now() * 3.5) + 1.0) * 30.f * 0.5f);
 		XMMATRIX wm = get_entity_world_matrix(editor.selected_entity);
 
 		imrend_push_matrix(wm, cmd);

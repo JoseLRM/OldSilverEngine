@@ -23,7 +23,7 @@ namespace sv {
 	
 	COMPILE_VS(gfx.vs_im_primitive, "immediate_shader.hlsl");
 	COMPILE_PS(gfx.ps_im_primitive, "immediate_shader.hlsl");
-	COMPILE_VS(gfx.vs_im_mesh_wireframe, "immediate_mesh_wireframe.hlsl");
+	COMPILE_VS_(gfx.vs_im_mesh_wireframe, "immediate_mesh_wireframe.hlsl");
 
 	COMPILE_VS(gfx.vs_text, "text.hlsl");
 	COMPILE_PS(gfx.ps_text, "text.hlsl");
@@ -2234,12 +2234,14 @@ namespace sv {
 
 		case ImRendDrawCall_MeshWireframe:
 		{
+		    graphics_image_bind(gfx.image_white, 0u, ShaderType_Pixel, cmd);
 		    graphics_inputlayoutstate_bind(gfx.ils_mesh, cmd);
 		    graphics_shader_bind(gfx.vs_im_mesh_wireframe, cmd);
 		    graphics_shader_bind(gfx.ps_im_primitive, cmd);
 		    graphics_topology_set(GraphicsTopology_Triangles, cmd);
 		    graphics_constantbuffer_bind(gfx.cbuffer_im_mesh[cmd], 0u, ShaderType_Vertex, cmd);
 		    graphics_rasterizerstate_bind(gfx.rs_wireframe, cmd);
+		    graphics_blendstate_bind(gfx.bs_transparent, cmd);
 
 		    Mesh* mesh = imrend_read<Mesh*>(it);
 		    Color color = imrend_read<Color>(it);
