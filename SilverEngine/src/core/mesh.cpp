@@ -912,10 +912,12 @@ namespace sv {
 		    line_jump_spaces(p.line);
 
 		    u32 vertex_count = 0u;
+
+		    constexpr u32 POLYGON_COUNT = 4u;
 		    
-		    i32 position_index[16u] = {};
-		    i32 normal_index[16u] = {};
-		    i32 texcoord_index[16u] = {};
+		    i32 position_index[POLYGON_COUNT] = {};
+		    i32 normal_index[POLYGON_COUNT] = {};
+		    i32 texcoord_index[POLYGON_COUNT] = {};
 
 		    char delimiters[] = {
 			' ',
@@ -923,8 +925,6 @@ namespace sv {
 		    };
 
 		    bool res;
-
-		    constexpr u32 POLYGON_COUNT = 4u;
 
 		    foreach(i, POLYGON_COUNT) {
 
@@ -1091,6 +1091,7 @@ namespace sv {
 
 			    // TODO: Handle errors
 			
+
 			    mesh.normals[index] = normals[normal_index];
 			    mesh.texcoords[index] = texcoords[texcoord_index];
 			
