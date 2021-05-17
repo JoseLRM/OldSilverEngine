@@ -104,30 +104,21 @@ namespace sv {
 
     SV_API void imrend_camera(ImRendCamera camera, CommandList cmd);
 
+    // Draw calls
+
     SV_API void imrend_draw_quad(const v3_f32& position, const v2_f32& size, Color color, CommandList cmd);
+    SV_API void imrend_draw_line(const v3_f32& p0, const v3_f32& p1, Color color, CommandList cmd);
     SV_API void imrend_draw_triangle(const v3_f32& p0, const v3_f32& p1, const v3_f32& p2, Color color, CommandList cmd);
     SV_API void imrend_draw_sprite(const v3_f32& position, const v2_f32& size, Color color, GPUImage* image, GPUImageLayout layout, const v4_f32& texcoord, CommandList cmd);
 
+    SV_API void imrend_draw_mesh_wireframe(Mesh* mesh, Color color, CommandList cmd);
+
+    // TODO: Change parameters
     SV_API void imrend_draw_text(const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, Font* pFont, Color color, CommandList cmd);
-
-    // DEBUG RENDERER
-
-    SV_API void begin_debug_batch(CommandList cmd);
-    SV_API void end_debug_batch(bool transparent_blend, bool depth_test, const XMMATRIX& viewProjectionMatrix, CommandList cmd);
-
-    SV_API void draw_debug_quad(const XMMATRIX& matrix, Color color, CommandList cmd);
-    SV_API void draw_debug_line(const v3_f32& p0, const v3_f32& p1, Color color, CommandList cmd);
-    SV_API void draw_debug_triangle(const v3_f32& p0, const v3_f32& p1, const v3_f32& p2, Color color, CommandList cmd);
-    SV_API void draw_debug_mesh_wireframe(Mesh* mesh, const XMMATRIX& transform, Color color, CommandList cmd);
-
-    // Helper functions
-
-    SV_API void draw_debug_quad(const v3_f32& position, const v2_f32& size, Color color, CommandList cmd);
-    SV_API void draw_debug_quad(const v3_f32& position, const v2_f32& size, const v3_f32& rotation, Color color, CommandList cmd);
-    SV_API void draw_debug_quad(const v3_f32& position, const v2_f32& size, const v4_f32& rotationQuat, Color color, CommandList cmd);
+    SV_API void imrend_draw_text_area(const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, u32 line_offset, bool bottom_top, Font* pFont, Color color, CommandList cmd);
 
     // High level draw calls
 
-    SV_API void draw_debug_orthographic_grip(const v2_f32& position, const v2_f32& offset, const v2_f32& size, const v2_f32& gridSize, Color color, CommandList cmd);
+    SV_API void imrend_draw_orthographic_grip(const v2_f32& position, const v2_f32& offset, const v2_f32& size, const v2_f32& gridSize, Color color, CommandList cmd);
 
 }

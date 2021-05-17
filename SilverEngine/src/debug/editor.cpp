@@ -618,13 +618,13 @@ namespace sv {
 	case GizmosTransformMode_Position:
 	{
 	    Color color = ((info.object == GizmosObject_AxisX) ? (info.focus ? Color::Silver() : Color{255u, 50u, 50u, 255u}) : Color::Red());
-	    draw_debug_line(position, position + v3_f32::right() * axis_size, color, cmd);
+	    imrend_draw_line(position, position + v3_f32::right() * axis_size, color, cmd);
 
 	    color = ((info.object == GizmosObject_AxisY) ? (info.focus ? Color::Silver() : Color::Lime()) : Color::Green());
-	    draw_debug_line(position, position + v3_f32::up() * axis_size, color, cmd);
+	    imrend_draw_line(position, position + v3_f32::up() * axis_size, color, cmd);
 
 	    color = ((info.object == GizmosObject_AxisZ) ? (info.focus ? Color::Silver() : Color{50u, 50u, 255u, 255u}) : Color::Blue());
-	    draw_debug_line(position, position + v3_f32::forward() * axis_size, color, cmd);
+	    imrend_draw_line(position, position + v3_f32::forward() * axis_size, color, cmd);
 	}
 	break;
 
@@ -1815,7 +1815,9 @@ namespace sv {
     {
 	if (!dev.debug_draw) return;
 	
-	begin_debug_batch(cmd);
+	imrend_begin_batch(cmd);
+
+	imrend_camera(ImRendCamera_Editor, cmd);
 
 	// Draw selected entity
 	if (editor.selected_entity != SV_ENTITY_NULL) {
@@ -1825,9 +1827,12 @@ namespace sv {
 
 	    if (mesh_comp && mesh_comp->mesh.get()) {
 
-		u8 alpha = 5u + u8(f32(sin(timer_now() * 3.5) + 1.0) * 50.f * 0.5f);
+		u8 alpha = 5u + u8(f32(sin(timer_now() * 3.5) + 1.0) * 20.f * 0.5f);
 		XMMATRIX wm = get_entity_world_matrix(editor.selected_entity);
-		draw_debug_mesh_wireframe(mesh_comp->mesh.get(), wm, Color::Red(alpha), cmd);
+
+		imrend_push_matrix(wm, cmd);
+		imrend_draw_mesh_wireframe(mesh_comp->mesh.get(), Color::Red(alpha), cmd);
+		imrend_pop_matrix(cmd);
 	    }
 	    if (sprite_comp) {
 
@@ -1846,10 +1851,10 @@ namespace sv {
 		u8 alpha = 50u + u8(f32(sin(timer_now() * 3.5) + 1.0) * 200.f * 0.5f);
 		Color selection_color = Color::Red(alpha);
 
-		draw_debug_line(v3_f32(p0), v3_f32(p1), selection_color, cmd);
-		draw_debug_line(v3_f32(p1), v3_f32(p3), selection_color, cmd);
-		draw_debug_line(v3_f32(p3), v3_f32(p2), selection_color, cmd);
-		draw_debug_line(v3_f32(p2), v3_f32(p0), selection_color, cmd);
+		imrend_draw_line(v3_f32(p0), v3_f32(p1), selection_color, cmd);
+		imrend_draw_line(v3_f32(p1), v3_f32(p3), selection_color, cmd);
+		imrend_draw_line(v3_f32(p3), v3_f32(p2), selection_color, cmd);
+		imrend_draw_line(v3_f32(p2), v3_f32(p0), selection_color, cmd);
 	    }
 	}
 
@@ -1888,7 +1893,7 @@ namespace sv {
 
 		    color.a = 10u;
 
-		    draw_debug_orthographic_grip(dev.camera.position.getVec2(), {}, { width, height }, i, color, cmd);
+		    imrend_draw_orthographic_grip(dev.camera.position.getVec2(), {}, { width, height }, i, color, cmd);
 		}
 	    }
 	}
@@ -1917,10 +1922,10 @@ namespace sv {
 		    v2 = XMVector3Transform(p2, tm);
 		    v3 = XMVector3Transform(p3, tm);
 
-		    draw_debug_line(v3_f32(v0), v3_f32(v1), Color::Green(), cmd);
-		    draw_debug_line(v3_f32(v1), v3_f32(v3), Color::Green(), cmd);
-		    draw_debug_line(v3_f32(v3), v3_f32(v2), Color::Green(), cmd);
-		    draw_debug_line(v3_f32(v0), v3_f32(v2), Color::Green(), cmd);
+		    imrend_draw_line(v3_f32(v0), v3_f32(v1), Color::Green(), cmd);
+		    imrend_draw_line(v3_f32(v1), v3_f32(v3), Color::Green(), cmd);
+		    imrend_draw_line(v3_f32(v3), v3_f32(v2), Color::Green(), cmd);
+		    imrend_draw_line(v3_f32(v0), v3_f32(v2), Color::Green(), cmd);
 
 		    return true;
 		});
@@ -1943,7 +1948,7 @@ namespace sv {
 	    }
 	}
 
-	end_debug_batch(true, false, vpm, cmd);
+	imrend_flush(cmd);
     }
 
     void _editor_draw()

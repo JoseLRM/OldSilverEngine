@@ -9,7 +9,6 @@
 
 #include "core/engine.cpp"
 #include "core/renderer/renderer.cpp"
-#include "core/renderer/debug_renderer.cpp"
 #include "core/renderer/font.cpp"
 #include "core/scene.cpp"
 #include "core/mesh.cpp"

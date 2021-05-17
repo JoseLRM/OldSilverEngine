@@ -72,11 +72,6 @@ namespace sv {
 	SpriteVertex data[SPRITE_BATCH_COUNT * 4u];
     };
 
-    struct DebugVertex_Solid {
-	v4_f32 position;
-	Color color;
-    };
-
     struct GaussianBlurData {
 	f32 intensity;
 	u32 horizontal;
@@ -116,19 +111,13 @@ namespace sv {
 	GPUImage* gbuffer_depthstencil;
 	GPUImage* gbuffer_ssao;
 
-	// DEBUG
-
-	Shader* vs_debug_solid_batch;
-	Shader* vs_debug_mesh_wireframe;
-	Shader* ps_debug_solid;
-	InputLayoutState* ils_debug_solid_batch;
-	GPUBuffer* cbuffer_debug_mesh;
-
 	// IMMEDIATE
 
-	Shader* vs_im;
-	Shader* ps_im;
-	GPUBuffer* cbuffer_im[GraphicsLimit_CommandList];
+	Shader* vs_im_primitive;
+	Shader* ps_im_primitive;
+	Shader* vs_im_mesh_wireframe;
+	GPUBuffer* cbuffer_im_primitive[GraphicsLimit_CommandList];
+	GPUBuffer* cbuffer_im_mesh[GraphicsLimit_CommandList];
 
 	// TEXT
 

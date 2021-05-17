@@ -21,12 +21,9 @@ namespace sv {
     {
 	auto& gfx = renderer->gfx;
 	
-	COMPILE_VS(gfx.vs_debug_solid_batch, "debug/solid_batch.hlsl");
-	COMPILE_PS(gfx.ps_debug_solid, "debug/solid_batch.hlsl");
-	COMPILE_VS(gfx.vs_debug_mesh_wireframe, "debug/mesh_wireframe.hlsl");
-
-	COMPILE_VS(gfx.vs_im, "immediate_shader.hlsl");
-	COMPILE_PS(gfx.ps_im, "immediate_shader.hlsl");
+	COMPILE_VS(gfx.vs_im_primitive, "immediate_shader.hlsl");
+	COMPILE_PS(gfx.ps_im_primitive, "immediate_shader.hlsl");
+	COMPILE_VS(gfx.vs_im_mesh_wireframe, "immediate_mesh_wireframe.hlsl");
 
 	COMPILE_VS(gfx.vs_text, "text.hlsl");
 	COMPILE_PS(gfx.ps_text, "text.hlsl");
@@ -178,17 +175,6 @@ namespace sv {
 
 	    SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_environment));
 	}
-		
-	// Debug mesh
-	{
-	    desc.bufferType = GPUBufferType_Constant;
-	    desc.usage = ResourceUsage_Default;
-	    desc.CPUAccess = CPUAccess_Write;
-	    desc.size = sizeof(XMMATRIX) + sizeof(v4_f32);
-	    desc.pData = nullptr;
-
-	    SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_debug_mesh));
-	}
 
 	// Immediate rendering
 	{
@@ -199,7 +185,16 @@ namespace sv {
 	    desc.pData = nullptr;
 
 	    foreach(i, GraphicsLimit_CommandList)
-		SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_im[i]));
+		SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_im_primitive[i]));
+
+	    desc.bufferType = GPUBufferType_Constant;
+	    desc.usage = ResourceUsage_Dynamic;
+	    desc.CPUAccess = CPUAccess_Write;
+	    desc.size = sizeof(XMMATRIX) + sizeof(v4_f32);
+	    desc.pData = nullptr;
+
+	    foreach(i, GraphicsLimit_CommandList)
+		SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_im_mesh[i]));
 	}
 
 	// Gaussian blur
@@ -477,18 +472,6 @@ namespace sv {
 	    InputLayoutStateDesc desc;
 	    desc.pSlots = slots;
 	    desc.pElements = elements;
-
-	    // DEBUG
-	    slots[0].instanced = false;
-	    slots[0].slot = 0u;
-	    slots[0].stride = sizeof(DebugVertex_Solid);
-
-	    elements[0] = { "Position", 0u, 0u, 0u, Format_R32G32B32A32_FLOAT };
-	    elements[1] = { "Color", 0u, 0u, 4u * sizeof(f32), Format_R8G8B8A8_UNORM };
-
-	    desc.elementCount = 2u;
-	    desc.slotCount = 1u;
-	    SV_CHECK(graphics_inputlayoutstate_create(&desc, &gfx.ils_debug_solid_batch));
 
 	    // TEXT
 	    slots[0] = { 0u, sizeof(TextVertex), false };
@@ -1939,7 +1922,12 @@ namespace sv {
 	ImRendDrawCall_Quad,
 	ImRendDrawCall_Sprite,
 	ImRendDrawCall_Triangle,
+	ImRendDrawCall_Line,
+	
+	ImRendDrawCall_MeshWireframe,
+	
 	ImRendDrawCall_Text,
+	ImRendDrawCall_TextArea,
     };
 
     /* TODO 
@@ -1964,27 +1952,32 @@ namespace sv {
 
     SV_AUX void update_current_matrix(ImmediateModeState& state)
     {
-	XMMATRIX matrix;
-
-	switch (state.current_camera)
-	{
-	case ImRendCamera_Normal:
-	    matrix = XMMatrixScaling(2.f, 2.f, 1.f) * XMMatrixTranslation(-1.f, -1.f, 0.f);
-	    break;
-
-	case ImRendCamera_Clip:
-	default:
-	    matrix = XMMatrixIdentity();
-	    
-	}
-	
+	XMMATRIX matrix = XMMatrixIdentity();
 
 	for (const XMMATRIX& m : state.matrix_stack) {
 
 	    matrix = XMMatrixMultiply(matrix, m);
 	}
 
-	state.current_matrix = matrix;
+	XMMATRIX vpm;
+	
+	switch (state.current_camera)
+	{
+	case ImRendCamera_Normal:
+	    vpm = XMMatrixScaling(2.f, 2.f, 1.f) * XMMatrixTranslation(-1.f, -1.f, 0.f);
+	    break;
+
+	case ImRendCamera_Editor:
+	    vpm = dev.camera.view_projection_matrix;
+	    break;
+
+	case ImRendCamera_Clip:
+	default:
+	    vpm = XMMatrixIdentity();
+	    
+	}
+
+	state.current_matrix = matrix * vpm;
     }
 
     SV_AUX void update_current_scissor(ImmediateModeState& state, CommandList cmd)
@@ -2137,8 +2130,9 @@ namespace sv {
 		case ImRendDrawCall_Quad:
 		case ImRendDrawCall_Sprite:
 		case ImRendDrawCall_Triangle:
+		case ImRendDrawCall_Line:
 		{
-		    graphics_constantbuffer_bind(gfx.cbuffer_im[cmd], 0u, ShaderType_Vertex, cmd);
+		    graphics_constantbuffer_bind(gfx.cbuffer_im_primitive[cmd], 0u, ShaderType_Vertex, cmd);
 
 		    graphics_blendstate_bind(gfx.bs_transparent, cmd);
 		    graphics_depthstencilstate_unbind(cmd);
@@ -2147,12 +2141,13 @@ namespace sv {
 
 		    graphics_sampler_bind(gfx.sampler_def_linear, 0u, ShaderType_Pixel, cmd);
 		    
-		    graphics_shader_bind(gfx.vs_im, cmd);
-		    graphics_shader_bind(gfx.ps_im, cmd);
+		    graphics_shader_bind(gfx.vs_im_primitive, cmd);
+		    graphics_shader_bind(gfx.ps_im_primitive, cmd);
 
-		    graphics_topology_set(GraphicsTopology_TriangleStrip, cmd);
+		    if (draw_call == ImRendDrawCall_Quad || draw_call == ImRendDrawCall_Sprite) {
 
-		    if (draw_call == ImRendDrawCall_Quad || draw_call == ImRendDrawCall_Sprite) {		    
+			graphics_topology_set(GraphicsTopology_TriangleStrip, cmd);
+			
 			v3_f32 position = imrend_read<v3_f32>(it);
 			v2_f32 size = imrend_read<v2_f32>(it);
 			Color color = imrend_read<Color>(it);
@@ -2181,11 +2176,13 @@ namespace sv {
 
 			graphics_image_bind(image, 0u, ShaderType_Pixel, cmd);
 
-			graphics_buffer_update(gfx.cbuffer_im[cmd], vertices, sizeof(ImRendVertex) * 4u, 0u, cmd);
+			graphics_buffer_update(gfx.cbuffer_im_primitive[cmd], vertices, sizeof(ImRendVertex) * 4u, 0u, cmd);
 
 			graphics_draw(4u, 1u, 0u, 0u, cmd);
 		    }
 		    else if (draw_call == ImRendDrawCall_Triangle) {
+
+			graphics_topology_set(GraphicsTopology_TriangleStrip, cmd);
 
 			v3_f32 p0 = imrend_read<v3_f32>(it);
 			v3_f32 p1 = imrend_read<v3_f32>(it);
@@ -2205,10 +2202,97 @@ namespace sv {
 
 			graphics_image_bind(gfx.image_white, 0u, ShaderType_Pixel, cmd);
 
-			graphics_buffer_update(gfx.cbuffer_im[cmd], vertices, sizeof(ImRendVertex) * 3u, 0u, cmd);
+			graphics_buffer_update(gfx.cbuffer_im_primitive[cmd], vertices, sizeof(ImRendVertex) * 3u, 0u, cmd);
 
 			graphics_draw(3u, 1u, 0u, 0u, cmd);
 		    }
+		    else if (draw_call == ImRendDrawCall_Line) {
+
+			graphics_topology_set(GraphicsTopology_Lines, cmd);
+
+			v3_f32 p0 = imrend_read<v3_f32>(it);
+			v3_f32 p1 = imrend_read<v3_f32>(it);
+			Color color = imrend_read<Color>(it);
+
+			XMMATRIX m = state.current_matrix;
+
+			XMVECTOR v0 = XMVector4Transform(p0.getDX(1.f), m);
+			XMVECTOR v1 = XMVector4Transform(p1.getDX(1.f), m);
+		    
+			ImRendVertex vertices[2u];
+			vertices[0u] = { v4_f32(v0), v2_f32{}, color };
+			vertices[1u] = { v4_f32(v1), v2_f32{}, color };
+
+			graphics_image_bind(gfx.image_white, 0u, ShaderType_Pixel, cmd);
+
+			graphics_buffer_update(gfx.cbuffer_im_primitive[cmd], vertices, sizeof(ImRendVertex) * 2u, 0u, cmd);
+
+			graphics_draw(3u, 1u, 0u, 0u, cmd);
+		    }
+		    
+		}break;
+
+		case ImRendDrawCall_MeshWireframe:
+		{
+		    graphics_inputlayoutstate_bind(gfx.ils_mesh, cmd);
+		    graphics_shader_bind(gfx.vs_im_mesh_wireframe, cmd);
+		    graphics_shader_bind(gfx.ps_im_primitive, cmd);
+		    graphics_topology_set(GraphicsTopology_Triangles, cmd);
+		    graphics_constantbuffer_bind(gfx.cbuffer_im_mesh[cmd], 0u, ShaderType_Vertex, cmd);
+		    graphics_rasterizerstate_bind(gfx.rs_wireframe, cmd);
+
+		    Mesh* mesh = imrend_read<Mesh*>(it);
+		    Color color = imrend_read<Color>(it);
+
+		    graphics_vertexbuffer_bind(mesh->vbuffer, 0u, 0u, cmd);
+		    graphics_indexbuffer_bind(mesh->ibuffer, 0u, cmd);
+
+		    struct {
+			XMMATRIX matrix;
+			v4_f32 color;
+		    } data;
+
+		    data.matrix = state.current_matrix;
+		    data.color = color.toVec4();
+
+		    graphics_buffer_update(gfx.cbuffer_im_mesh[cmd], &data, sizeof(data), 0u, cmd);
+		    graphics_draw_indexed((u32)mesh->indices.size(), 1u, 0u, 0u, 0u, cmd);
+		}
+		break;
+		
+		case ImRendDrawCall_TextArea:
+		{
+		    const char* text = (const char*)it;
+		    it += strlen(text) + 1u;
+
+		    size_t text_size = imrend_read<size_t>(it);
+		    f32 x = imrend_read<f32>(it);
+		    f32 y = imrend_read<f32>(it);
+		    f32 max_line_width = imrend_read<f32>(it);
+		    u32 max_lines = imrend_read<u32>(it);
+		    f32 font_size = imrend_read<f32>(it);
+		    f32 aspect = imrend_read<f32>(it);
+		    TextAlignment alignment = imrend_read<TextAlignment>(it);
+		    u32 line_offset = imrend_read<u32>(it);
+		    bool bottom_top = imrend_read<bool>(it);
+		    Font* pfont = imrend_read<Font*>(it);
+		    Color color = imrend_read<Color>(it);
+		    
+		    XMVECTOR pos = v2_f32(x, y).getDX();
+		    pos = XMVector3Transform(pos, state.current_matrix);
+		    x = XMVectorGetX(pos);
+		    y = XMVectorGetY(pos);
+
+		    XMVECTOR rot, scale;
+		    
+		    XMMatrixDecompose(&scale, &rot, &pos, state.current_matrix);
+		    
+		    max_line_width *= XMVectorGetX(scale);
+		    font_size *= XMVectorGetY(scale);
+
+		    graphics_renderpass_end(cmd);
+		    draw_text_area(text, text_size, x, y, max_line_width, max_lines, font_size, aspect, alignment, line_offset, bottom_top, pfont, color, cmd);
+		    graphics_renderpass_begin(gfx.renderpass_off, att, cmd);
 		    
 		}break;
 
@@ -2305,12 +2389,24 @@ namespace sv {
     void imrend_draw_quad(const v3_f32& position, const v2_f32& size, Color color, CommandList cmd)
     {
 	SV_IMREND();
-
+	
 	imrend_write(state, ImRendHeader_DrawCall);
 	imrend_write(state, ImRendDrawCall_Quad);
 
 	imrend_write(state, position);
 	imrend_write(state, size);
+	imrend_write(state, color);
+    }
+
+    void imrend_draw_line(const v3_f32& p0, const v3_f32& p1, Color color, CommandList cmd)
+    {
+	SV_IMREND();
+	
+	imrend_write(state, ImRendHeader_DrawCall);
+	imrend_write(state, ImRendDrawCall_Line);
+
+	imrend_write(state, p0);
+	imrend_write(state, p1);
 	imrend_write(state, color);
     }
 
@@ -2342,6 +2438,17 @@ namespace sv {
 	// TODO: Image layout
     }
 
+    void imrend_draw_mesh_wireframe(Mesh* mesh, Color color, CommandList cmd)
+    {
+	SV_IMREND();
+
+	imrend_write(state, ImRendHeader_DrawCall);
+	imrend_write(state, ImRendDrawCall_MeshWireframe);
+	
+	imrend_write(state, mesh);
+	imrend_write(state, color);
+    }
+
     void imrend_draw_text(const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, Font* pfont, Color color, CommandList cmd)
     {
 	SV_IMREND();
@@ -2364,4 +2471,40 @@ namespace sv {
 	imrend_write(state, color);
     }
 
+    void imrend_draw_text_area(const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, u32 line_offset, bool bottom_top, Font* pfont, Color color, CommandList cmd)
+    {
+	SV_IMREND();
+
+	imrend_write(state, ImRendHeader_DrawCall);
+	imrend_write(state, ImRendDrawCall_TextArea);
+
+	state.buffer.write_back(text, text_size);
+	imrend_write(state, '\0');
+
+	imrend_write(state, text_size);
+	imrend_write(state, x);
+	imrend_write(state, y);
+	imrend_write(state, max_line_width);
+	imrend_write(state, max_lines);
+	imrend_write(state, font_size);
+	imrend_write(state, aspect);
+	imrend_write(state, alignment);
+	imrend_write(state, line_offset);
+	imrend_write(state, bottom_top);
+	imrend_write(state, pfont);
+	imrend_write(state, color);
+    }
+    
+    void imrend_draw_orthographic_grip(const v2_f32& position, const v2_f32& offset, const v2_f32& size, const v2_f32& gridSize, Color color, CommandList cmd)
+    {
+	v2_f32 begin = position - offset - size / 2.f;
+	v2_f32 end = begin + size;
+
+	for (f32 y = i32(begin.y / gridSize.y) * gridSize.y; y < end.y; y += gridSize.y) {
+	    imrend_draw_line({ begin.x + offset.x, y + offset.y, 0.f }, { end.x + offset.x, y + offset.y, 0.f }, color, cmd);
+	}
+	for (f32 x = i32(begin.x / gridSize.x) * gridSize.x; x < end.x; x += gridSize.x) {
+	    imrend_draw_line({ x + offset.x, begin.y + offset.y, 0.f }, { x + offset.x, end.y + offset.y, 0.f }, color, cmd);
+	}
+    }
 }

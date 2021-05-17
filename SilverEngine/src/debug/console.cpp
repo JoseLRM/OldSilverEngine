@@ -658,7 +658,9 @@ namespace sv {
 	console.line_count = compute_text_lines(console.buff, u32(console.buff_pos), TEXT_SIZE, 2.f, aspect, &renderer->font_console);
 	console.text_offset = std::min(console.text_offset, std::max(f32(console.line_count) - f32(LINE_COUNT), 0.f));
 
-	begin_debug_batch(cmd);
+	imrend_begin_batch(cmd);
+
+	imrend_camera(ImRendCamera_Clip, cmd);
 
 	f32 console_width = 2.f;
 	f32 console_x = 0.f;
@@ -669,17 +671,15 @@ namespace sv {
 	    console_x -= SCROLL_WIDTH * 0.5f;
 
 	    // Draw scroll
-	    draw_debug_quad({ 1.f - SCROLL_WIDTH * 0.5f, 1.f - console_height * 0.5f + animation, 0.f }, { SCROLL_WIDTH, console_height }, Color::Gray(20u), cmd);
+	    imrend_draw_quad({ 1.f - SCROLL_WIDTH * 0.5f, 1.f - console_height * 0.5f + animation, 0.f }, { SCROLL_WIDTH, console_height }, Color::Gray(20u), cmd);
 
 	    f32 value = console.text_offset / f32(console.line_count - std::min(console.line_count, LINE_COUNT));
 
-	    draw_debug_quad({ 1.f - SCROLL_WIDTH * 0.5f, animation + (1.f - console_height + SCROLL_HEIGHT * 0.5f) + (console_height - SCROLL_HEIGHT) * value, 0.f }, { SCROLL_WIDTH, SCROLL_HEIGHT }, Color::White(), cmd);
+	    imrend_draw_quad({ 1.f - SCROLL_WIDTH * 0.5f, animation + (1.f - console_height + SCROLL_HEIGHT * 0.5f) + (console_height - SCROLL_HEIGHT) * value, 0.f }, { SCROLL_WIDTH, SCROLL_HEIGHT }, Color::White(), cmd);
 	}
 
-	draw_debug_quad({ console_x, animation + 1.f - console_height * 0.5f, 0.f }, { console_width, console_height }, Color::Black(180u), cmd);
-	draw_debug_quad({ 0.f, animation + 1.f - console_height - command_height * 0.5f, 0.f }, { 2.f, command_height }, Color::Black(), cmd);
-
-	end_debug_batch(true, false, XMMatrixIdentity(), cmd);
+	imrend_draw_quad({ console_x, animation + 1.f - console_height * 0.5f, 0.f }, { console_width, console_height }, Color::Black(180u), cmd);
+	imrend_draw_quad({ 0.f, animation + 1.f - console_height - command_height * 0.5f, 0.f }, { 2.f, command_height }, Color::Black(), cmd);
 
 	f32 text_x = -1.f;
 	f32 text_y = 1.f - console_height + animation;
@@ -689,22 +689,20 @@ namespace sv {
 
 	if (console.current_command.size()) {
 			
-	    draw_text(console.current_command.c_str(), console.current_command.size(), text_x, text_y, 2.f, 1u, COMMAND_TEXT_SIZE, aspect, TextAlignment_Left, &renderer->font_console, Color::White(), cmd);
+	    imrend_draw_text(console.current_command.c_str(), console.current_command.size(), text_x, text_y, 2.f, 1u, COMMAND_TEXT_SIZE, aspect, TextAlignment_Left, &renderer->font_console, Color::White(), cmd);
 	}
 
 	if (console.buff_pos) {
 
-	    draw_text_area(console.buff, console.buff_pos, buffer_x, buffer_y, console_width, LINE_COUNT, TEXT_SIZE, aspect, TextAlignment_Left, u32(console.text_offset), true, &renderer->font_console, Color::White(), cmd);
+	    imrend_draw_text_area(console.buff, console.buff_pos, buffer_x, buffer_y, console_width, LINE_COUNT, TEXT_SIZE, aspect, TextAlignment_Left, u32(console.text_offset), true, &renderer->font_console, Color::White(), cmd);
 	}
-
-	begin_debug_batch(cmd);
 
 	f32 width = compute_text_width(console.current_command.c_str(), console.cursor_pos, COMMAND_TEXT_SIZE, aspect, &renderer->font_console);
 	f32 char_width = renderer->font_console.glyphs['i'].w * COMMAND_TEXT_SIZE;
 
-	draw_debug_quad({ text_x + width + char_width * 0.5f, text_y - command_height * 0.5f, 0.f }, { char_width, command_height }, Color::Red(100u), cmd);
+	imrend_draw_quad({ text_x + width + char_width * 0.5f, text_y - command_height * 0.5f, 0.f }, { char_width, command_height }, Color::Red(100u), cmd);
 
-	end_debug_batch(true, false, XMMatrixIdentity(), cmd);
+	imrend_flush(cmd);
     }
 
 }
