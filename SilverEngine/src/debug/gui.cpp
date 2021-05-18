@@ -185,7 +185,8 @@ namespace sv {
 
     struct GuiWindow {
 
-	GuiWindowState* current_state = nullptr;
+	List<GuiWindowState*> states;
+	u32 current_index = 0u;
 	GuiRootInfo root = {};
 	u32 priority = 0u;
 	
@@ -832,7 +833,7 @@ namespace sv {
 			GuiWindow* win = gui->focus.root->window;
 			SV_ASSERT(win);
 
-			gui_hide_window(win->current_state->title);
+			//TODO: gui_hide_window(win->states[win->current_].back()->title);
 		    }
 		}
 		
@@ -1057,8 +1058,6 @@ namespace sv {
 		if (mouse_in_bounds(root.bounds) || mouse_in_bounds(decoration))
 		    catch_input = true;
 
-		GuiWindow* window = root.window;
-
 		// Limit bounds
 		{
 		    v4_f32& b = root.bounds;
@@ -1079,7 +1078,8 @@ namespace sv {
 
 		    if (mouse_in_bounds(decoration)) {
 
-			if (!(window->current_state->flags & GuiWindowFlag_NoClose) && mouse_in_bounds(compute_window_closebutton(decoration))) {
+			// TODO: !(window->current_state->flags & GuiWindowFlag_NoClose)
+			if (mouse_in_bounds(compute_window_closebutton(decoration))) {
 			    set_focus(root, GuiWidgetType_Root, 0u, GuiWindowAction_CloseButton);
 			}
 			else {
@@ -1167,9 +1167,45 @@ namespace sv {
 	}
     }
 
+    SV_AUX GuiWindow* find_window_from_state(GuiWindowState* state)
+    {
+	foreach(i, gui->window_count) {
+
+	    for (GuiWindowState* s : gui->windows[i].states) {
+		
+		if (s == state) {
+		    return &gui->windows[i];
+		}
+	    }
+	}
+
+	return nullptr;
+    }
+
     void _gui_end()
     {
 	// Reset roots
+
+	{
+	    u32 i = 0u;
+	    while (i < gui->window_count) {
+		
+		if (gui->windows[i].states.empty()) {
+
+		    GuiWindow& win = gui->windows[i];
+		    win = {};
+
+		    if (i != gui->window_count - 1u) {
+
+			win = gui->windows[gui->window_count - 1u];
+			gui->windows[gui->window_count - 1u] = {};
+		    }
+
+		    --gui->window_count;
+		}
+		else ++i;
+	    }
+	}
 
 	gui->sorted_windows.reset();
 
@@ -1207,23 +1243,12 @@ namespace sv {
 
 		if (state) {
 
-		    // Find window
+		    GuiWindow* win = find_window_from_state(state);
 
-		    u32 index = u32_max;
-
-		    foreach(i, gui->window_count) {
-
-			if (gui->windows[i].current_state == state) {
-			    index = i;
-			}
-		    }
-
-		    if (index != u32_max) {
-
-			GuiWindow& win = gui->windows[index];
+		    if (win) {
 		    
-			gui->root_stack.push_back(&win.root);
-			gui->sorted_windows.push_back(&win);
+			gui->root_stack.push_back(&win->root);
+			gui->sorted_windows.push_back(win);
 		    }
 		}
 	    }
@@ -1405,27 +1430,19 @@ namespace sv {
 
 	if (show) {
 
-	    u32 index = u32_max;
+	    GuiWindow* win = find_window_from_state(state);
 
-	    foreach(i, gui->window_count) {
+	    if (win == nullptr) {
 
-		if (gui->windows[i].current_state == state) {
-		    index = i;
-		}
+		u32 index = gui->window_count++;
+		win = &gui->windows[index];
+		win->states.push_back(state);
+		win->current_index = 0u;
+		win->root.type = GuiRootType_Window;
+		win->root.window = win;
 	    }
-
-	    if (index == u32_max) {
-
-		index = gui->window_count++;
-		GuiWindow& win = gui->windows[index];
-		win.current_state = state;
-		win.root.type = GuiRootType_Window;
-		win.root.window = &win;
-	    }
-
-	    GuiWindow& win = gui->windows[index];
 	    
-	    gui->root_stack.push_back(&win.root);
+	    gui->root_stack.push_back(&win->root);
 	    gui_push_id(state->hash);
 	}
 	else gui_write(GuiHeader_EndWindow);
@@ -1767,7 +1784,8 @@ namespace sv {
 	    
 	    imrend_draw_quad({ b.x, b.y, 0.f }, { b.z, b.w }, background_color, cmd);
 	    imrend_draw_quad({ decoration.x, decoration.y, 0.f }, { decoration.z, decoration.w }, decoration_color, cmd);
-	    if (!(window->current_state->flags & GuiWindowFlag_NoClose)) imrend_draw_quad({ closebutton.x, closebutton.y, 0.f }, { closebutton.z, closebutton.w }, closebutton_color, cmd);
+	    // TODO: !(window->current_state->flags & GuiWindowFlag_NoClose)) 
+	    imrend_draw_quad({ closebutton.x, closebutton.y, 0.f }, { closebutton.z, closebutton.w }, closebutton_color, cmd);
 	}
 	break;
 
