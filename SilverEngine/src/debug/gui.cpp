@@ -160,27 +160,18 @@ namespace sv {
 	GuiRootType_Popup
     };
 
+    struct GuiWindow;
+    
     struct GuiRootInfo {
 
 	List<GuiWidget> widgets;
 	v4_f32 bounds = { 0.5f, 0.5f, 1.f, 1.f };
-	f32 yoff;
+	f32 yoff = 0.f;
 	f32 vertical_offset = 0.f;
 	GuiRootType type = GuiRootType_Screen;
-	void* state = nullptr;
-	u32 priority = 0u; // Used to sort the roots list
-	GuiRootInfo* docked_into = nullptr;
-	bool used = false; // The docking system should know if the window is used or not
+	GuiWindow* window = nullptr;
 	v2_f32 last_size;
 	
-    };
-
-    struct GuiDockingInfo {
-	GuiRootInfo* roots[GuiDockingLocation_MaxEnum] = {};
-	f32 left_pos = 0.9f;
-	f32 right_pos = 0.1f;
-	f32 bottom_pos = 0.1f;
-	f32 top_pos = 0.9f;
     };
 
     struct GuiWindowState {
@@ -188,10 +179,16 @@ namespace sv {
 	bool show;
 	char title[GUI_WINDOW_NAME_SIZE + 1u];
 	u64 hash;
-	GuiRootInfo root_info;
 	u32 flags;
-	GuiDockingInfo docking;
 
+    };
+
+    struct GuiWindow {
+
+	GuiWindowState* current_state = nullptr;
+	GuiRootInfo root = {};
+	u32 priority = 0u;
+	
     };
 
     struct WritingParentInfo {
@@ -221,9 +218,11 @@ namespace sv {
 	GuiStyle style;
 	
 	GuiRootInfo root_info;
-	GuiDockingInfo docking;
-	List<GuiRootInfo*> roots;
 	List<GuiRootInfo*> root_stack;
+	// TODO: Use indexed list
+	GuiWindow windows[100u];
+	u32 window_count = 0u;
+	List<GuiWindow*> sorted_windows;
 
 	u32 priority_count = 0u;
 
@@ -238,7 +237,7 @@ namespace sv {
 
 	GuiWidget* current_focus = nullptr;
 
-	ThickHashTable<GuiWindowState, 50u> windows;
+	ThickHashTable<GuiWindowState, 50u> window_states;
 
 	struct  {
 	    GuiRootInfo root;
@@ -311,7 +310,7 @@ namespace sv {
     {
 	return &root != &gui->root_info && (root.yoff > root.bounds.w * gui->resolution.y);
     }
-
+    /*
     SV_AUX void compute_docking_location(GuiDockingLocation& location, GuiRootInfo*& root)
     {
 	root = &gui->root_info;
@@ -464,63 +463,14 @@ namespace sv {
 	b.w *= p.w;
 	
 	return b;
-    }
-
-    SV_AUX GuiDockingInfo* get_docking(GuiRootInfo& root)
-    {
-	if (&root == &gui->root_info)
-	    return &gui->docking;
-
-	if (root.type == GuiRootType_Window) {
-
-	    GuiWindowState& state = *(GuiWindowState*)root.state;
-	    return &state.docking;
-	}
-
-	return nullptr;
-    }
-
-    SV_AUX void dock(GuiRootInfo& docked, GuiRootInfo& to, GuiDockingLocation location)
-    {
-	GuiDockingInfo* docking = get_docking(to);
-
-	SV_ASSERT(docking);
-	if (docking == nullptr) return;
-	
-	docking->roots[location] = &docked;
-	docked.docked_into = &to;
-	docked.last_size = { docked.bounds.z, docked.bounds.w };
-    }
-
-    SV_AUX void undock(GuiRootInfo& root)
-    {
-	if (root.docked_into) {
-
-	    GuiDockingInfo* docking = get_docking(*root.docked_into);
-
-	    SV_ASSERT(docking);
-	    if (docking) {
-
-		foreach(i, GuiDockingLocation_MaxEnum) {
-
-		    if (docking->roots[i] == &root) {
-			docking->roots[i] = nullptr;
-		    }
-		}
-	    }
-	    
-	    root.docked_into = nullptr;
-	    root.bounds.z = root.last_size.x;
-	    root.bounds.w = root.last_size.y;
-	}
-    }
+	}*/
     
     bool _gui_initialize()
     {
 	gui = SV_ALLOCATE_STRUCT(GUI);
 
 	// Get last static state
-	{
+	/*{
 	    Deserializer d;
 	    
 	    bool res = bin_read(hash_string("GUI STATE"), d, true);
@@ -539,7 +489,7 @@ namespace sv {
 		    s.flags = 0u;
 		    s.hash = hash_string(s.title);
 
-		    GuiWindowState& state = gui->windows[s.hash];
+		    GuiWindowState& state = gui->window_states[s.hash];
 		    state = s;
 		    state.root_info.type = GuiRootType_Window;
 		    state.root_info.state = &state;
@@ -550,10 +500,9 @@ namespace sv {
 	    else {
 		SV_LOG_WARNING("Can't load the last gui static state");
 	    }
-	}
+	}*/
 
 	gui->popup.root.type = GuiRootType_Popup;
-	gui->popup.root.state = &gui->popup;
 
 	return true;
     }
@@ -561,14 +510,14 @@ namespace sv {
     bool _gui_close()
     {
 	// Save static state
-	{
+	/*{
 	    Serializer s;
 
 	    serialize_begin(s);
 
-	    serialize_u32(s, u32(gui->windows.size()));
+	    serialize_u32(s, u32(gui->window_states.size()));
 
-	    for (const GuiWindowState& state : gui->windows) {
+	    for (const GuiWindowState& state : gui->window_states) {
 
 		serialize_bool(s, state.show);
 		serialize_string(s, state.title);
@@ -581,7 +530,7 @@ namespace sv {
 
 		SV_LOG_ERROR("Can't save the gui static state");
 	    }
-	}
+	    }*/
 
 	SV_FREE_STRUCT(gui);
 	return true;
@@ -642,17 +591,6 @@ namespace sv {
     {
 	root.widgets.reset();
 	root.yoff = 7.f;
-	root.used = false;
-
-	GuiDockingInfo* docking = get_docking(root);
-	if (docking) {
-
-	    foreach(i, GuiDockingLocation_MaxEnum) {
-
-		if (docking->roots[i])
-		    reset_root(*docking->roots[i]);
-	    }
-	}
     }
 
     SV_AUX void set_focus(GuiRootInfo& root, GuiWidgetType type, u64 id, u32 action = 0u)
@@ -665,7 +603,8 @@ namespace sv {
 	    gui->focus.action = action;
 	}
 
-	root.priority = ++gui->priority_count;
+	if (root.type == GuiRootType_Window)
+	    root.window->priority = ++gui->priority_count;
     }
 
     SV_AUX void free_focus()
@@ -825,26 +764,9 @@ namespace sv {
 	    {
 
 	    case GuiWindowAction_Move:
-	    {		
-		if (input.mouse_buttons[MouseButton_Left] == InputState_Released) {
-		    
-		    GuiDockingLocation location;
-		    GuiRootInfo* docking_root;
-		    
-		    compute_docking_location(location, docking_root);
-		    
-		    v4_f32 button = compute_docking_button(location, docking_root, true);
-
-		    if (mouse_in_bounds(button)) {
-
-			dock(*gui->focus.root, *docking_root, location);
-		    }
-		}
-		else {
-		    
-		    bounds.x = gui->mouse_position.x + gui->selection_offset.x;
-		    bounds.y = gui->mouse_position.y + gui->selection_offset.y;
-		}
+	    {
+		bounds.x = gui->mouse_position.x + gui->selection_offset.x;
+		bounds.y = gui->mouse_position.y + gui->selection_offset.y;
 	    }
 	    break;
 
@@ -907,10 +829,10 @@ namespace sv {
 		    
 		    if (mouse_in_bounds(closebutton)) {
 
-			GuiWindowState* state = (GuiWindowState*)gui->focus.root->state;
-			SV_ASSERT(state);
+			GuiWindow* win = gui->focus.root->window;
+			SV_ASSERT(win);
 
-			gui_hide_window(state->title);
+			gui_hide_window(win->current_state->title);
 		    }
 		}
 		
@@ -1116,53 +1038,6 @@ namespace sv {
 	}
     }
 
-    SV_AUX void update_docking(GuiRootInfo& root, GuiDockingInfo& docking)
-    {
-	foreach(i, GuiDockingLocation_MaxEnum) {
-
-	    GuiRootInfo*& r = docking.roots[i];
-
-	    if (r) {
-
-		if (r->docked_into != &root) {
-		    r = nullptr;
-		    continue;
-		}
-
-		if (!r->used)
-		    undock(*r);
-		else {
-
-		    v4_f32 section = compute_docking_section((GuiDockingLocation)i, &root);
-
-		    if (r->type == GuiRootType_Window) {
-
-			v4_f32 decoration = compute_window_decoration(r->bounds);
-			section.y -= decoration.w * 0.5f;
-			section.w -= decoration.w;
-		    }
-			
-		    r->bounds = section;
-		}
-	    }
-	}
-    }
-
-    SV_AUX void update_docking()
-    {
-	update_docking(gui->root_info, gui->docking);
-
-	for (GuiRootInfo* root : gui->roots) {
-
-	    GuiDockingInfo* docking = get_docking(*root);
-
-	    if (docking) {
-
-		update_docking(*root, *docking);
-	    }
-	}
-    }
-
     SV_INTERNAL void update_root(GuiRootInfo& root)
     {    
 	for (GuiWidget& w : root.widgets) {
@@ -1182,7 +1057,7 @@ namespace sv {
 		if (mouse_in_bounds(root.bounds) || mouse_in_bounds(decoration))
 		    catch_input = true;
 
-		GuiWindowState* window = (GuiWindowState*)root.state;
+		GuiWindow* window = root.window;
 
 		// Limit bounds
 		{
@@ -1204,18 +1079,12 @@ namespace sv {
 
 		    if (mouse_in_bounds(decoration)) {
 
-			if (!(window->flags & GuiWindowFlag_NoClose) && mouse_in_bounds(compute_window_closebutton(decoration))) {
-			    set_focus(root, GuiWidgetType_Root, window->hash, GuiWindowAction_CloseButton);
+			if (!(window->current_state->flags & GuiWindowFlag_NoClose) && mouse_in_bounds(compute_window_closebutton(decoration))) {
+			    set_focus(root, GuiWidgetType_Root, 0u, GuiWindowAction_CloseButton);
 			}
 			else {
-
-			    if (window->root_info.docked_into != nullptr) {
-				undock(window->root_info);
-				root.bounds.x = gui->mouse_position.x;
-				root.bounds.y = gui->mouse_position.y - root.bounds.w * 0.5f - decoration.w * 0.5f;
-			    }
 			    
-			    set_focus(root, GuiWidgetType_Root, window->hash, GuiWindowAction_Move);
+			    set_focus(root, GuiWidgetType_Root, 0u, GuiWindowAction_Move);
 			    gui->selection_offset = v2_f32{ root.bounds.x, root.bounds.y } - gui->mouse_position;
 			}
 		    
@@ -1252,7 +1121,7 @@ namespace sv {
 
 			if (action != GuiWindowAction_None) {
 			    input.unused = false;
-			    set_focus(root, GuiWidgetType_Root, window->hash, action);
+			    set_focus(root, GuiWidgetType_Root, 0u, action);
 			}
 		    }
 		}
@@ -1302,16 +1171,15 @@ namespace sv {
     {
 	// Reset roots
 
-	gui->roots.reset();
+	gui->sorted_windows.reset();
 
 	reset_root(gui->root_info);
-	gui->root_info.used = true;
 	gui->current_focus = nullptr;
 
 	reset_root(gui->popup.root);
 
-	for (GuiWindowState& window : gui->windows) {
-	    reset_root(window.root_info);
+	foreach(i, gui->window_count) {
+	    reset_root(gui->windows[i].root);
 	}
 
 	// Read buffer
@@ -1334,15 +1202,29 @@ namespace sv {
 
 		u64 hash = gui_read<u64>(it);
 
-		GuiWindowState* state = gui->windows.find(hash);
+		GuiWindowState* state = gui->window_states.find(hash);
 		SV_ASSERT(state);
 
 		if (state) {
 
-		    state->root_info.used = true;
+		    // Find window
 
-		    gui->root_stack.push_back(&state->root_info);
-		    gui->roots.push_back(&state->root_info);
+		    u32 index = u32_max;
+
+		    foreach(i, gui->window_count) {
+
+			if (gui->windows[i].current_state == state) {
+			    index = i;
+			}
+		    }
+
+		    if (index != u32_max) {
+
+			GuiWindow& win = gui->windows[index];
+		    
+			gui->root_stack.push_back(&win.root);
+			gui->sorted_windows.push_back(&win);
+		    }
 		}
 	    }
 	    break;
@@ -1367,9 +1249,8 @@ namespace sv {
 		    gui->popup.origin = origin;
 		    gui->popup.id = id;
 		}
-		gui->popup.root.used = true;
+		
 		gui->root_stack.push_back(&gui->popup.root);
-		gui->roots.push_back(&gui->popup.root);
 	    }
 	    break;
 
@@ -1418,8 +1299,8 @@ namespace sv {
 	update_root_bounds(gui->root_info);
 
 	// Sort roots list
-	std::sort(gui->roots.data(), gui->roots.data() + gui->roots.size(), [] (GuiRootInfo* r0, GuiRootInfo* r1) {
-		return (r0->type == GuiRootType_Popup && r1->type != GuiRootType_Popup) || r0->priority > r1->priority;
+	std::sort(gui->sorted_windows.data(), gui->sorted_windows.data() + gui->sorted_windows.size(), [] (GuiWindow* w0, GuiWindow* w1) {
+		return w0->priority > w1->priority;
 	    });
 
 	// Find focus
@@ -1441,13 +1322,14 @@ namespace sv {
 
 	update_focus();
 
-	// Update docking bounds
-	update_docking();
+	// Update popup
+	if (gui->popup.id != 0u)
+	    update_root(gui->popup.root);
 
-	// Update roots
-	for (GuiRootInfo* root : gui->roots) {
+	// Update windows
+	for (GuiWindow* w : gui->sorted_windows) {
 
-	    update_root(*root);
+	    update_root(w->root);
 	}
 
 	// Update screen
@@ -1491,7 +1373,7 @@ namespace sv {
     {
 	u64 hash = hash_string(title);
 
-	GuiWindowState* state = gui->windows.find(hash);
+	GuiWindowState* state = gui->window_states.find(hash);
 
 	if (state == nullptr) {
 
@@ -1501,12 +1383,10 @@ namespace sv {
 		return false;
 	    }
 
-	    GuiWindowState& s = gui->windows[hash];
-	    s.root_info.bounds = { 0.5f, 0.5f, 0.1f, 0.3f };
-	    s.root_info.type = GuiRootType_Window;
-	    s.root_info.state = &s;
+	    GuiWindowState& s = gui->window_states[hash];
 	    strcpy(s.title, title);
 	    s.hash = hash;
+	    s.show = true;
 	    state = &s;
 	}
 
@@ -1514,18 +1394,43 @@ namespace sv {
 
 	if (state->flags & GuiWindowFlag_NoClose)
 	    state->show = true;
+
+	bool show = state->show;
 	
 	if (state->show) {
 
 	    gui_write(GuiHeader_BeginWindow);
 	    gui_write(hash);
-
-	    gui->root_stack.push_back(&state->root_info);
-
-	    gui_push_id(state->hash);
 	}
 
-	return state->show;
+	if (show) {
+
+	    u32 index = u32_max;
+
+	    foreach(i, gui->window_count) {
+
+		if (gui->windows[i].current_state == state) {
+		    index = i;
+		}
+	    }
+
+	    if (index == u32_max) {
+
+		index = gui->window_count++;
+		GuiWindow& win = gui->windows[index];
+		win.current_state = state;
+		win.root.type = GuiRootType_Window;
+		win.root.window = &win;
+	    }
+
+	    GuiWindow& win = gui->windows[index];
+	    
+	    gui->root_stack.push_back(&win.root);
+	    gui_push_id(state->hash);
+	}
+	else gui_write(GuiHeader_EndWindow);
+
+	return show;
     }
 
     void gui_end_window()
@@ -1630,7 +1535,7 @@ namespace sv {
     bool gui_show_window(const char* title)
     {
 	u64 hash = hash_string(title);
-	GuiWindowState* state = gui->windows.find(hash);
+	GuiWindowState* state = gui->window_states.find(hash);
 
 	if (state == nullptr) return false;
 
@@ -1641,7 +1546,7 @@ namespace sv {
     bool gui_hide_window(const char* title)
     {
 	u64 hash = hash_string(title);
-	GuiWindowState* state = gui->windows.find(hash);
+	GuiWindowState* state = gui->window_states.find(hash);
 
 	if (state == nullptr) return false;
 
@@ -1848,21 +1753,21 @@ namespace sv {
 
 	case GuiRootType_Window:
 	{
-	    const GuiWindowState* window = (const GuiWindowState*)root.state;
+	    const GuiWindow* window = root.window;
 
-	    const v4_f32& b = window->root_info.bounds;
+	    const v4_f32& b = window->root.bounds;
 	    v4_f32 decoration = compute_window_decoration(b);
 	    v4_f32 closebutton = compute_window_closebutton(decoration);
 
-	    GuiRootInfo* last_root = gui->roots.size() ? gui->roots.front() : nullptr;
+	    GuiWindow* last_win = gui->sorted_windows.size() ? gui->sorted_windows.front() : nullptr;
 
-	    Color background_color = (last_root == &root) ? style.root_focused_background_color : style.root_background_color;
-	    Color decoration_color = (last_root == &root) ? style.window_focused_decoration_color : style.window_decoration_color;
-	    Color closebutton_color = (last_root == &root) ? Color::Red() : Color::Gray(200u);
+	    Color background_color = (last_win == window) ? style.root_focused_background_color : style.root_background_color;
+	    Color decoration_color = (last_win == window) ? style.window_focused_decoration_color : style.window_decoration_color;
+	    Color closebutton_color = (last_win == window) ? Color::Red() : Color::Gray(200u);
 	    
 	    imrend_draw_quad({ b.x, b.y, 0.f }, { b.z, b.w }, background_color, cmd);
 	    imrend_draw_quad({ decoration.x, decoration.y, 0.f }, { decoration.z, decoration.w }, decoration_color, cmd);
-	    if (!(window->flags & GuiWindowFlag_NoClose)) imrend_draw_quad({ closebutton.x, closebutton.y, 0.f }, { closebutton.z, closebutton.w }, closebutton_color, cmd);
+	    if (!(window->current_state->flags & GuiWindowFlag_NoClose)) imrend_draw_quad({ closebutton.x, closebutton.y, 0.f }, { closebutton.z, closebutton.w }, closebutton_color, cmd);
 	}
 	break;
 
@@ -2125,18 +2030,24 @@ namespace sv {
     
     void _gui_draw(CommandList cmd)
     {
-	const GuiStyle& style = gui->style;
+	//const GuiStyle& style = gui->style;
 	imrend_begin_batch(cmd);
 
 	imrend_camera(ImRendCamera_Normal, cmd);
 
+	// Draw screen
 	draw_root(gui->root_info, cmd);
 
-	for (i32 i = (i32)gui->roots.size() - 1; i >= 0; --i)
-	    draw_root(*gui->roots[i], cmd);
+	// Draw windows
+	for (i32 i = (i32)gui->sorted_windows.size() - 1; i >= 0; --i)
+	    draw_root(gui->sorted_windows[i]->root, cmd);
+
+	// Draw popup
+	if (gui->popup.id != 0u)
+	    draw_root(gui->popup.root, cmd);
 
 	// Docking effects
-	{
+	/*{
 	    if (gui->focus.type == GuiWidgetType_Root && gui->focus.root->type == GuiRootType_Window && gui->focus.action == GuiWindowAction_Move) {
 
 		//GuiWindowState& window = *(GuiWindowState*)gui->focus.root->state;
@@ -2161,7 +2072,7 @@ namespace sv {
 		    imrend_draw_quad({ b.x, b.y, 0.f }, v2_f32{ b.z, b.w } * style.scale, color, cmd);
 		}
 	    }
-	}
+	    }*/
 
 	imrend_flush(cmd);
     }
