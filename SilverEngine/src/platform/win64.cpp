@@ -21,6 +21,13 @@ namespace sv {
 	v2_u32 position;
 	bool resize;
 	WindowState state;
+
+	bool resize_request;
+	v2_u32 new_size;
+	v2_u32 new_position;
+	DWORD new_style;
+	v2_u32 old_size; // Size before fullscreen
+	v2_u32 old_position; // Position before fullscreen
     };
 
     GlobalPlatformData platform;
@@ -278,9 +285,6 @@ namespace sv {
 	    case SIZE_MINIMIZED:
 		platform.state = WindowState_Minimized;
 		break;
-	    default:
-		platform.state = WindowState_Windowed;
-		break;
 	    }
 
 	    platform.resize = true;
@@ -289,8 +293,8 @@ namespace sv {
 	}
 	case WM_MOVE:
 	{
-	    //wnd.bounds.x = LOWORD(lParam);
-	    //wnd.bounds.y = HIWORD(lParam);
+	    platform.position.x = LOWORD(lParam);
+	    platform.position.y = HIWORD(lParam);
 
 	    break;
 	}
@@ -339,6 +343,7 @@ int main(int argc, char* argv[])
     platform.hinstance = hInstance;
     platform.handle = 0;
     platform.resize = false;
+    platform.resize_request = false;
     platform.state = WindowState_Windowed;
 
     engine_main();
@@ -409,19 +414,28 @@ namespace sv {
 	    platform.state = WindowState_Fullscreen;
 
 	    DWORD style = WS_POPUP | WS_VISIBLE;
-	    SetWindowLongPtrW(platform.handle, GWL_STYLE, (LONG_PTR)style);
-
 	    v2_u32 size = os_desktop_size();
 
-	    SetWindowPos(platform.handle, 0, 0, 0, size.x, size.y, 0);
+	    platform.new_size = size;
+	    platform.new_position = { 0u, 0u };
+	    platform.new_style = style;
+	    platform.old_size = platform.size;
+	    platform.old_position = platform.position;
+	    platform.resize_request = true;
 	}
 	else {
 
 	    if (platform.state != WindowState_Fullscreen)
 		return;
+
+	    platform.state = WindowState_Windowed;
 	    
 	    DWORD style = WS_VISIBLE | WS_CAPTION | WS_SYSMENU | WS_OVERLAPPED | WS_BORDER | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SIZEBOX;
-	    SetWindowLongPtrW(platform.handle, GWL_STYLE, (LONG_PTR)style);
+
+	    platform.new_size = platform.old_size;
+	    platform.new_position = platform.old_position;
+	    platform.new_style = style;
+	    platform.resize_request = true;
 	}
     }
     
@@ -1010,6 +1024,13 @@ namespace sv {
     
     void _os_recive_input()
     {
+	if (platform.resize_request) {
+
+	    platform.resize_request = false;
+	    SetWindowLongPtrW(platform.handle, GWL_STYLE, (LONG_PTR)platform.new_style);
+	    SetWindowPos(platform.handle, 0, platform.new_position.x, platform.new_position.y, platform.new_size.x, platform.new_size.y, 0);
+	}
+	
 	MSG msg;
 	
 	while (PeekMessageA(&msg, 0, 0u, 0u, PM_REMOVE) > 0) {

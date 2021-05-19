@@ -380,6 +380,7 @@ namespace sv {
     void graphics_swapchain_resize()
     {
 	g_Device.swapchain_resize();
+	SV_LOG_INFO("Swapchain resized");
     }
 
     PipelineState& graphics_state_get() noexcept
