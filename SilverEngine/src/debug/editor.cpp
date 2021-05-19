@@ -715,7 +715,7 @@ namespace sv {
 	egui_comp_color("Diffuse Color", id++, &mat.diffuse_color);
 	egui_comp_color("Specular Color", id++, &mat.specular_color);
 	egui_comp_color("Emissive Color", id++, &mat.emissive_color);
-	egui_comp_drag_f32("Shininess", id++, &mat.shininess);
+	gui_drag_f32("Shininess", mat.shininess, 0.01f, 0.f, 300.f, id++);
 	
 	gui_pop_id();
     }
@@ -732,13 +732,13 @@ namespace sv {
 
 		egui_comp_color("Color", 0u, &spr.color);
 		egui_comp_texture("Texture", 1u, &spr.texture);
-		egui_comp_drag_v4_f32("Coords", 2u, &spr.texcoord, 0.01f, 0.f, 1.f);
+		gui_drag_v4_f32("Coords", spr.texcoord, 0.01f, 0.f, 1.f, 2u);
 
 		bool xflip = spr.flags & SpriteComponentFlag_XFlip;
 		bool yflip = spr.flags & SpriteComponentFlag_YFlip;
 
-		if (egui_comp_bool("XFlip", 3u, &xflip)) spr.flags = spr.flags ^ SpriteComponentFlag_XFlip;
-		if (egui_comp_bool("YFlip", 4u, &yflip)) spr.flags = spr.flags ^ SpriteComponentFlag_YFlip;
+		if (gui_checkbox("XFlip", xflip, 3u)) spr.flags = spr.flags ^ SpriteComponentFlag_XFlip;
+		if (gui_checkbox("YFlip", yflip, 4u)) spr.flags = spr.flags ^ SpriteComponentFlag_YFlip;
 	    }
 	    
 	    if (MeshComponent::ID == comp_id) {
@@ -758,7 +758,7 @@ namespace sv {
 		SceneData& d = *get_scene_data();
 		bool main = d.main_camera == entity;
 
-		if (egui_comp_bool("MainCamera", 0u, &main)) {
+		if (gui_checkbox("MainCamera", main, 0u)) {
 
 		    if (main) d.main_camera = entity;
 		    else d.main_camera = SV_ENTITY_NULL;
@@ -790,9 +790,9 @@ namespace sv {
 		    far_adv = 0.3f;
 		}
 
-		egui_comp_drag_f32("Near", 1u, &cam.near, near_adv, near_min, near_max);
-		egui_comp_drag_f32("Far", 2u, &cam.far, far_adv, far_min, far_max);
-		if (egui_comp_drag_f32("Dimension", 3u, &dimension, 0.01f, 0.01f)) {
+		gui_drag_f32("Near", cam.near, near_adv, near_min, near_max, 1u);
+		gui_drag_f32("Far", cam.far, far_adv, far_min, far_max, 2u);
+		if (gui_drag_f32("Dimension", dimension, 0.01f, 0.01f, f32_max, 3u)) {
 		    cam.width = dimension;
 		    cam.height = dimension;
 		}
@@ -800,8 +800,8 @@ namespace sv {
 		gui_checkbox("Bloom", cam.bloom.active, 4u);
 		if (cam.bloom.active) {
 
-		    egui_comp_drag_f32("Threshold", 5u, &cam.bloom.threshold, 0.001f, 0.f, 1.f);
-		    egui_comp_drag_f32("Intensity", 6u, &cam.bloom.intensity, 0.001f, 0.f, 1.f);
+		    gui_drag_f32("Threshold", cam.bloom.threshold, 0.001f, 0.f, 1.f, 5u);
+		    gui_drag_f32("Intensity", cam.bloom.intensity, 0.001f, 0.f, 1.f, 6u);
 		}
 	    }
 
@@ -816,9 +816,9 @@ namespace sv {
 		}
 
 		egui_comp_color("Color", 0u, &l.color);
-		egui_comp_drag_f32("Intensity", 1u, &l.intensity, 0.05f, 0.0f, f32_max);
-		egui_comp_drag_f32("Range", 2u, &l.range, 0.1f, 0.0f, f32_max);
-		egui_comp_drag_f32("Smoothness", 3u, &l.smoothness, 0.005f, 0.0f, 1.f);
+		gui_drag_f32("Intensity", l.intensity, 0.05f, 0.0f, f32_max, 1u);
+		gui_drag_f32("Range", l.range, 0.1f, 0.0f, f32_max, 2u);
+		gui_drag_f32("Smoothness", l.smoothness, 0.005f, 0.0f, 1.f, 3u);
 	    }
 
 	    if (BodyComponent::ID == comp_id) {
@@ -830,26 +830,26 @@ namespace sv {
 		bool dynamic = b.body_type == BodyType_Dynamic;
 		bool projectile = b.body_type == BodyType_Projectile;
 
-		if (egui_comp_bool("Static", 0u, &static_)) {
+		if (gui_checkbox("Static", static_, 0u)) {
 		    b.body_type = static_ ? BodyType_Static : BodyType_Dynamic;
 		}
-		if (egui_comp_bool("Dynamic", 1u, &dynamic)) {
+		if (gui_checkbox("Dynamic", dynamic, 1u)) {
 		    b.body_type = dynamic ? BodyType_Dynamic : BodyType_Static;
 		}
-		if (egui_comp_bool("Projectile", 2u, &projectile)) {
+		if (gui_checkbox("Projectile", projectile, 2u)) {
 		    b.body_type = projectile ? BodyType_Projectile : BodyType_Static;
 		}
 		
-		egui_comp_drag_v2_f32("Size", 3u, &b.size, 0.005f, 0.f, f32_max);
-		egui_comp_drag_v2_f32("Offset", 4u, &b.offset, 0.005f);
-		egui_comp_drag_v2_f32("Velocity", 5u, &b.vel, 0.01f);
-		egui_comp_drag_f32("Mass", 6u, &b.mass, 0.1f, 0.0f, f32_max);
-		egui_comp_drag_f32("Friction", 7u, &b.friction, 0.001f, 0.0f, 1.f);
-		egui_comp_drag_f32("Bounciness", 8u, &b.bounciness, 0.005f, 0.0f, 1.f);
+		gui_drag_v2_f32("Size", b.size, 0.005f, 0.f, f32_max, 3u);
+		gui_drag_v2_f32("Offset", b.offset, 0.005f, -f32_max, f32_max, 4u);
+		gui_drag_v2_f32("Velocity", b.vel, 0.01f, -f32_max, f32_max, 5u);
+		gui_drag_f32("Mass", b.mass, 0.1f, 0.0f, f32_max, 6u);
+		gui_drag_f32("Friction", b.friction, 0.001f, 0.0f, 1.f, 7u);
+		gui_drag_f32("Bounciness", b.bounciness, 0.005f, 0.0f, 1.f, 8u);
 
 		bool is_trigger = b.flags & BodyComponentFlag_Trigger;
 
-		if (egui_comp_bool("Trigger", 9u, &is_trigger)) {
+		if (gui_checkbox("Trigger", is_trigger, 9u)) {
 		    if (is_trigger)
 			b.flags |= BodyComponentFlag_Trigger;
 		    else
@@ -1579,7 +1579,7 @@ namespace sv {
 
 	    if (gui_collapse("Physics", 5u)) {
 		
-		egui_comp_drag_v2_f32("Gravity", 0u, &s.gravity, 0.01f);
+		gui_drag_v2_f32("Gravity", s.gravity, 0.01f, -f32_max, f32_max, 0u);
 	    }
 	    
 	    gui_end_window();

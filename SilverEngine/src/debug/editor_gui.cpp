@@ -17,9 +17,9 @@ namespace sv {
 
 	gui_push_id("ENTITY TRANSFORM");
 	
-	gui_drag_v3_f32(position, 0.05f, -f32_max, f32_max, 0u, GuiDragFlag_Position);
+	gui_drag_v3_f32(0, position, 0.05f, -f32_max, f32_max, 0u, GuiDragFlag_Position);
 	//gui_drag_v3_f32(rotation, 0.05f, -f32_max, f32_max, 1u, GuiDragFlag_Rotation);
-	gui_drag_v3_f32(scale, 0.05f, -f32_max, f32_max, 2u, GuiDragFlag_Scale);
+	gui_drag_v3_f32(0, scale, 0.05f, -f32_max, f32_max, 2u, GuiDragFlag_Scale);
 	
 	gui_pop_id();
     }
@@ -57,16 +57,10 @@ namespace sv {
 	
     void egui_comp_color(const char* text, u64 id, Color* pcolor)
     {
-	gui_push_id(id);
-
-	gui_text(text, 0u);
-	
 	v4_f32 value = pcolor->toVec4();
-	if (gui_drag_v4_f32(value, 0.01f, 0.f, 1.f, 1u)) {
+	if (gui_drag_v4_f32(text, value, 0.01f, 0.f, 1.f, id)) {
 	    pcolor->setFloat(value.x, value.y, value.z, value.w);
 	}
-	
-	gui_pop_id();
     }
 
     void egui_comp_texture(const char* text, u64 id, TextureAsset* texture)
@@ -130,47 +124,6 @@ namespace sv {
 	    }*/
 
 	gui_pop_id();
-    }
-
-    bool egui_comp_bool(const char* text, u64 id, bool* value)
-    {
-	return gui_checkbox(text, *value, id);
-    }
-
-    bool egui_comp_drag_f32(const char* text, u64 id, f32* value, f32 adv, f32 min, f32 max)
-    {
-	gui_push_id(id);
-
-	gui_text(text, 0u);
-	bool res = gui_drag_f32(*value, adv, min, max, 1u);
-
-	gui_pop_id();
-
-	return res;
-    }
-
-    bool egui_comp_drag_v4_f32(const char* text, u64 id, v4_f32* value, f32 adv, f32 min, f32 max)
-    {
-	gui_push_id(id);
-
-	gui_text(text, 0u);
-	bool res = gui_drag_v4_f32(*value, adv, min, max, 1u);
-
-	gui_pop_id();
-
-	return res;
-    }
-
-    bool egui_comp_drag_v2_f32(const char* text, u64 id, v2_f32* value, f32 adv, f32 min, f32 max)
-    {
-	gui_push_id(id);
-
-	gui_text(text, 0u);
-	bool res = gui_drag_v2_f32(*value, adv, min, max, 1u);
-
-	gui_pop_id();
-
-	return res;
     }
     
 }

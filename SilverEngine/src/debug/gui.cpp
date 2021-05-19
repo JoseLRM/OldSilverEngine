@@ -127,6 +127,7 @@ namespace sv {
 	    } checkbox;
 
 	    struct {
+		const char* text;
 		u8 adv_data[sizeof(f32)];
 		u8 min_data[sizeof(f32)];
 		u8 max_data[sizeof(f32)];
@@ -284,15 +285,35 @@ namespace sv {
 	return button_bounds;
     }
     // TODO: This repeats operations
-    SV_AUX v4_f32 compute_drag_slot(u32 vector, u32 index, const v4_f32& bounds)
+    SV_AUX v4_f32 compute_drag_slot(const GuiWidget& drag, u32 index)
     {
+	const v4_f32& bounds = drag.bounds;
+	u32 vector = vectorof_type(drag.widget.drag.type);
+
+	f32 drag_width = bounds.z;
+	f32 off = 0.f;
+
+	if (drag.widget.drag.text) {
+	    drag_width *= 0.5f;
+	    off = drag_width;
+	}
+
+	f32 width = drag_width / f32(vector);
+	
 	f32 padding = 3.f / gui->resolution.x;
-	
+
 	v4_f32 b = bounds;
-	f32 width = bounds.z / f32(vector);
-	
-	b.z = (bounds.z - padding * f32(vector - 1u)) / f32(vector);
+	b.z = (drag_width - padding * f32(vector - 1u)) / f32(vector);
 	b.x = (bounds.x - bounds.z * 0.5f) + (width * f32(index)) + b.z * 0.5f;
+	b.x += off;
+	return b;
+    }
+    SV_AUX v4_f32 compute_drag_text(const GuiWidget& drag)
+    {
+	v4_f32 b = drag.bounds;
+	b.x = b.x - b.z * 0.5f;
+	b.z *= 0.5f;
+	b.x += b.z * 0.5f;
 	return b;
     }
     SV_AUX v4_f32 compute_window_decoration(const GuiRootInfo& root)
@@ -691,6 +712,13 @@ namespace sv {
 	case GuiWidgetType_Drag:
 	{
 	    auto& drag = w.widget.drag;
+
+	    bool has_text = gui_read<bool>(it);
+	    if (has_text)
+		drag.text = gui_read_text(it);
+	    else
+		drag.text = nullptr;
+	    
 	    drag.type = gui_read<GuiType>(it);
 
 	    size_t size = sizeof_type(drag.type);
@@ -1116,7 +1144,7 @@ namespace sv {
 		
 		    foreach(i, vector) {
 			
-			bounds = compute_drag_slot(vector, i, w.bounds);
+			bounds = compute_drag_slot(w, i);
 
 			if (mouse_in_bounds(bounds)) {
 			    
@@ -1148,10 +1176,13 @@ namespace sv {
     }
 
     SV_INTERNAL void update_root(GuiRootInfo& root)
-    {    
-	for (GuiWidget& w : root.widgets) {
+    {
+	if (mouse_in_bounds(root.widget_bounds)) {
+	    
+	    for (GuiWidget& w : root.widgets) {
 		
-	    update_widget(w, root);
+		update_widget(w, root);
+	    }
 	}
 
 	bool catch_input = false;
@@ -1237,7 +1268,7 @@ namespace sv {
 			GuiWindowAction action = GuiWindowAction_None;
 
 			if (right && bottom) {
-			    GuiWindowAction_ResizeBottomRight;
+			    action = GuiWindowAction_ResizeBottomRight;
 			}
 			else if (left && bottom) {
 			    action = GuiWindowAction_ResizeBottomLeft;
@@ -1828,7 +1859,7 @@ namespace sv {
 	return value;
     }
 
-    SV_AUX bool gui_drag(void* value, void* adv, void* min, void* max, GuiType type, u64 id, u32 flags)
+    SV_AUX bool gui_drag(const char* text, void* value, void* adv, void* min, void* max, GuiType type, u64 id, u32 flags)
     {
 	size_t size = sizeof_type(type);
 	size_t comp_size = size / vectorof_type(type);
@@ -1836,6 +1867,13 @@ namespace sv {
 	compute_id(id);
 
 	write_widget(GuiWidgetType_Drag, id, flags);
+
+	if (text) {
+	    gui_write(true);
+	    gui_write_text(text);
+	}
+	else gui_write(false);
+	
 	gui_write(type);
 	gui_write_raw(adv, comp_size);
 	gui_write_raw(min, comp_size);
@@ -1860,21 +1898,21 @@ namespace sv {
 	return pressed;
     }
 
-    bool gui_drag_f32(f32& value, f32 adv, f32 min, f32 max, u64 id, u32 flags)
+    bool gui_drag_f32(const char* text, f32& value, f32 adv, f32 min, f32 max, u64 id, u32 flags)
     {
-	return gui_drag(&value, &adv, &min, &max, GuiType_f32, id, flags);
+	return gui_drag(text, &value, &adv, &min, &max, GuiType_f32, id, flags);
     }
-    bool gui_drag_v2_f32(v2_f32& value, f32 adv, f32 min, f32 max, u64 id, u32 flags)
+    bool gui_drag_v2_f32(const char* text, v2_f32& value, f32 adv, f32 min, f32 max, u64 id, u32 flags)
     {
-	return gui_drag(&value, &adv, &min, &max, GuiType_v2_f32, id, flags);
+	return gui_drag(text, &value, &adv, &min, &max, GuiType_v2_f32, id, flags);
     }
-    bool gui_drag_v3_f32(v3_f32& value, f32 adv, f32 min, f32 max, u64 id, u32 flags)
+    bool gui_drag_v3_f32(const char* text, v3_f32& value, f32 adv, f32 min, f32 max, u64 id, u32 flags)
     {
-	return gui_drag(&value, &adv, &min, &max, GuiType_v3_f32, id, flags);
+	return gui_drag(text, &value, &adv, &min, &max, GuiType_v3_f32, id, flags);
     }
-    bool gui_drag_v4_f32(v4_f32& value, f32 adv, f32 min, f32 max, u64 id, u32 flags)
+    bool gui_drag_v4_f32(const char* text, v4_f32& value, f32 adv, f32 min, f32 max, u64 id, u32 flags)
     {
-	return gui_drag(&value, &adv, &min, &max, GuiType_v4_f32, id, flags);
+	return gui_drag(text, &value, &adv, &min, &max, GuiType_v4_f32, id, flags);
     }
 
     void gui_text(const char* text, u64 id)
@@ -1990,6 +2028,12 @@ namespace sv {
 	    imrend_draw_quad({ x, y, 0.f }, { width, button_height }, button_color, cmd);
 	}
 
+	// Push widget scissor
+	{
+	    const v4_f32& b = root.widget_bounds;
+	    imrend_push_scissor(b.x, b.y, b.z, b.w, false, cmd);
+	}
+
 	// Draw widgets
 	for (const GuiWidget& w : root.widgets) {
 
@@ -2071,7 +2115,7 @@ namespace sv {
 
 		foreach(i, vector) {
 		    
-		    bounds = compute_drag_slot(vector, i, w.bounds);
+		    bounds = compute_drag_slot(w, i);
 		    pos = v2_f32{ bounds.x, bounds.y };
 		    size = v2_f32{ bounds.z, bounds.w };
 
@@ -2126,6 +2170,20 @@ namespace sv {
 		    }
 
 		    imrend_draw_text(strbuff, strlen(strbuff), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font.vertical_offset * font_size, size.x, 1u, font_size, gui->aspect, TextAlignment_Center, &font, style.widget_text_color, cmd);
+
+		    if (drag.text) {
+
+			v4_f32 text_bounds = compute_drag_text(w);
+			v2_f32 size = { text_bounds.z, text_bounds.w };
+			v2_f32 pos = { text_bounds.x, text_bounds.y };
+
+			size.x -= 0.01f; // Minus some margin
+			f32 font_size = size.y;
+
+			Font& font = renderer_default_font();
+
+			imrend_draw_text(drag.text, strlen(drag.text), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font.vertical_offset * font_size, size.x, 1u, font_size, gui->aspect, TextAlignment_Left, &font, style.widget_text_color, cmd);
+		    }
 		}
 	    }
 	    break;
@@ -2211,6 +2269,8 @@ namespace sv {
 	    }
 		
 	}
+
+	imrend_pop_scissor(cmd);
     }
     
     void _gui_draw(CommandList cmd)

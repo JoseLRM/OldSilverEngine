@@ -76,10 +76,6 @@ namespace sv {
     SV_API void egui_comp_texture(const char* text, u64 id, TextureAsset* texture);
     SV_API void egui_comp_mesh(const char* text, u64 id, MeshAsset* mesh);
     SV_API void egui_comp_material(const char* text, u64 id, MaterialAsset* material);
-    SV_API bool egui_comp_bool(const char* text, u64 id, bool* value);
-    SV_API bool egui_comp_drag_f32(const char* text, u64 id, f32* value, f32 adv = 0.1f, f32 min = -f32_max, f32 max = f32_max);
-    SV_API bool egui_comp_drag_v4_f32(const char* text, u64 id, v4_f32* value, f32 adv = 0.1f, f32 min = -f32_max, f32 max = f32_max);
-    SV_API bool egui_comp_drag_v2_f32(const char* text, u64 id, v2_f32* value, f32 adv = 0.1f, f32 min = -f32_max, f32 max = f32_max);
 
 }
 
