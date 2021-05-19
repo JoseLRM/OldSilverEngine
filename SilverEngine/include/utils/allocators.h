@@ -657,6 +657,18 @@ namespace sv {
 	    *it = t;
 	}
 
+	void insert(const List& list)
+	{
+	    reserve(_size + list.size());
+
+	    for (size_t i = _size; i < (_size + list.size()); ++i) {
+
+		_data[i] = list[i - _size];
+	    }
+	    
+	    _size += list.size();
+	}
+
 	T& operator[](size_t index)
 	{
 	    SV_ASSERT(index < _size);

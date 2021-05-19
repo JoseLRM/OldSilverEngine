@@ -766,8 +766,25 @@ namespace sv {
 
 	    case GuiWindowAction_Move:
 	    {
-		bounds.x = gui->mouse_position.x + gui->selection_offset.x;
-		bounds.y = gui->mouse_position.y + gui->selection_offset.y;
+		if (input.mouse_buttons[MouseButton_Left] == InputState_Released) {
+
+		    for (GuiWindow* w : gui->sorted_windows) {
+
+			GuiWindow* r = gui->focus.root->window;
+			if (w == r)
+			    continue;
+
+			if (mouse_in_bounds(w->root.bounds)) {
+
+			    w->states.insert(r->states);
+			    r->states.reset();
+			}
+		    }
+		}
+		else {
+		    bounds.x = gui->mouse_position.x + gui->selection_offset.x;
+		    bounds.y = gui->mouse_position.y + gui->selection_offset.y;
+		}
 	    }
 	    break;
 
@@ -1248,7 +1265,9 @@ namespace sv {
 		    if (win) {
 		    
 			gui->root_stack.push_back(&win->root);
-			gui->sorted_windows.push_back(win);
+
+			if (win->current_index < win->states.size() && win->states[win->current_index] == state)
+			    gui->sorted_windows.push_back(win);
 		    }
 		}
 	    }
@@ -1347,6 +1366,18 @@ namespace sv {
 
 	update_focus();
 
+	// In update focus the windows are docked onto others and if one window is empty the app should crash
+	u32 i = 0u;
+	while (i != gui->sorted_windows.size()) {
+
+	    GuiWindow* w = gui->sorted_windows[i];
+	    if (w->states.empty()) {
+
+		gui->sorted_windows.erase(i);
+	    }
+	    else ++i;
+	}
+
 	// Update popup
 	if (gui->popup.id != 0u)
 	    update_root(gui->popup.root);
@@ -1426,9 +1457,6 @@ namespace sv {
 
 	    gui_write(GuiHeader_BeginWindow);
 	    gui_write(hash);
-	}
-
-	if (show) {
 
 	    GuiWindow* win = find_window_from_state(state);
 
@@ -1440,12 +1468,18 @@ namespace sv {
 		win->current_index = 0u;
 		win->root.type = GuiRootType_Window;
 		win->root.window = win;
+		win->root.bounds = { 0.5f, 0.5f, 0.3f, 0.3f };
 	    }
-	    
-	    gui->root_stack.push_back(&win->root);
-	    gui_push_id(state->hash);
+
+	    if (win->current_index >= win->states.size() || win->states[win->current_index] != state) {
+		gui_write(GuiHeader_EndWindow);
+		show = false;
+	    }
+	    else {
+		gui->root_stack.push_back(&win->root);
+		gui_push_id(state->hash);
+	    }
 	}
-	else gui_write(GuiHeader_EndWindow);
 
 	return show;
     }
