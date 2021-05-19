@@ -525,7 +525,7 @@ namespace sv {
 		    _data[i] = other._data[i];
 		}
 		_size = other._size;
-		_capacity = other._capacity;
+		_capacity = _size;
 	    }
 	    else {
 		_size = 0u;
