@@ -809,6 +809,12 @@ namespace sv {
 
 		LightComponent& l = *reinterpret_cast<LightComponent*>(comp);
 
+		bool direction = l.light_type == LightType_Direction;
+		if (gui_checkbox("Directional", direction, 10u)) {
+		    if (direction) l.light_type = LightType_Direction;
+		    else l.light_type = LightType_Point;
+		}
+
 		egui_comp_color("Color", 0u, &l.color);
 		egui_comp_drag_f32("Intensity", 1u, &l.intensity, 0.05f, 0.0f, f32_max);
 		egui_comp_drag_f32("Range", 2u, &l.range, 0.1f, 0.0f, f32_max);

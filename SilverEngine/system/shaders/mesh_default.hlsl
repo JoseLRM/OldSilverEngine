@@ -174,13 +174,17 @@ Output main(Input input)
 
 		case LIGHT_TYPE_DIRECTION:
 		{
+		        float3 acc = float3(0.f, 0.f, 0.f);
+			
 			// Diffuse
 			f32 diffuse = max(dot(normal, light.position), 0.f);
+			acc += light.color * diffuse;
 
 			// Specular
 			float specular = pow(max(dot(normalize(-input.position), reflect(-light.position, normal)), 0.f), material.shininess) * specular_mul;
+			acc += light.color * specular * material.specular_color;
 
-			light_accumulation += light.color * (diffuse_color.rgb + (specular * material.specular_color)) * light.intensity;
+			light_accumulation += acc * light.intensity;
 		}
 		break;
 
