@@ -111,14 +111,6 @@ namespace sv {
 	GPUImage* gbuffer_depthstencil;
 	GPUImage* gbuffer_ssao;
 
-	// IMMEDIATE
-
-	Shader* vs_im_primitive;
-	Shader* ps_im_primitive;
-	Shader* vs_im_mesh_wireframe;
-	GPUBuffer* cbuffer_im_primitive[GraphicsLimit_CommandList];
-	GPUBuffer* cbuffer_im_mesh[GraphicsLimit_CommandList];
-
 	// TEXT
 
 	Shader* vs_text;
@@ -164,32 +156,9 @@ namespace sv {
 	InputLayoutState* ils_sky;
 
     };
-
-    struct ImRendVertex {
-	v4_f32 position;
-	v2_f32 texcoord;
-	Color color;
-	u32 padding;
-    };
-
-    struct ImRendScissor {
-	v4_f32 bounds;
-	bool additive;
-    };
-
-    struct ImmediateModeState {
-	RawList buffer;
-	
-	List<XMMATRIX> matrix_stack;
-	List<ImRendScissor> scissor_stack;
-	
-	XMMATRIX current_matrix;
-	ImRendCamera current_camera;
-    };
     
     struct RendererState {
 
-	ImmediateModeState immediate_mode_state[GraphicsLimit_CommandList];
 	GraphicsObjects gfx = {};
 
 	u8* batch_data[GraphicsLimit_CommandList] = {};
