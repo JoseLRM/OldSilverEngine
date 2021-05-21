@@ -92,6 +92,12 @@ namespace sv {
 	
 	return type;
     }
+
+    void event_unregister_all(const char* event_name)
+    {
+	std::lock_guard<std::mutex> lock(event_system->global_mutex);
+	event_system->table.erase(event_name);
+    }
     
     bool _event_register(const char* event_name, EventFn event, u32 flags, void* data, u32 data_size)
     {

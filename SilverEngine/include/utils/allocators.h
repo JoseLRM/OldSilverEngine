@@ -1072,6 +1072,11 @@ namespace sv {
 	    return true;
 	}
 
+	bool erase(const char* str) {
+	    u64 hash = hash_string(str);
+	    return erase(hash);
+	}
+
 	T& operator[](u64 hash) {
 	    return get(hash);
 	}

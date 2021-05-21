@@ -20,6 +20,7 @@ namespace sv {
     SV_API bool _event_register(const char* event_name, EventFn event, u32 flags, void* data, u32 data_size);
     SV_API bool _event_unregister(const char* event_name, EventFn event);
     SV_API void event_unregister_flags(u32 flags);
+    SV_API void event_unregister_all(const char* event_name);
     
     SV_API void event_dispatch(const char* event_name, void* data);
 
