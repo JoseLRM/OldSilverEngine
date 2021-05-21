@@ -917,6 +917,33 @@ namespace sv {
 	return serialize_end(serializer, filepath);
     }
 
+    //////////////////////////////// MULTITHREADING ////////////////////////////
+
+    bool mutex_create(Mutex& mutex)
+    {
+	mutex._handle = (u64)CreateMutexA(NULL, false, NULL);
+	return mutex._handle != NULL;
+    }
+    
+    void mutex_destroy(Mutex mutex)
+    {
+	if (mutex._handle != NULL) {
+	    CloseHandle((HANDLE)mutex._handle);
+	}
+    }
+
+    void mutex_lock(Mutex mutex)
+    {
+	SV_ASSERT(mutex._handle != 0u);
+	WaitForSingleObject((HANLDE)mutex._handle, INFINITE);
+    }
+    
+    void mutex_unlock(Mutex mutex)
+    {
+	SV_ASSERT(mutex._handle != 0u);
+	ReleaseMutex((HANLDE)mutex._handle);
+    }
+
     // INTERNAL
 
     void graphics_swapchain_resize();

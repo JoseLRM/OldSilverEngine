@@ -108,6 +108,18 @@ namespace sv {
     SV_API bool bin_write(u64 hash, const void* data, size_t size, bool system = false);
     SV_API bool bin_write(u64 hash, Serializer& serializer, bool system = false); // Ends the serializer
 
+    // MULTITHREADING STUFF
+
+    struct Mutex { u64 _handle = 0u; };
+    
+    SV_API bool mutex_create(Mutex& mutex);
+    SV_API void mutex_destroy(Mutex mutex);
+
+    SV_API void mutex_lock(Mutex mutex);
+    SV_API void mutex_unlock(Mutex mutex);
+
+    // INTERNAL
+
     bool _os_startup();
     void _os_recive_input();
     bool _os_shutdown();
