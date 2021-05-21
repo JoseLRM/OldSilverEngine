@@ -951,8 +951,6 @@ namespace sv {
 	Entry entries[TABLE_SIZE] = {};
 	size_t _size = 0u;
 
-	static constexpr u32 INTERNAL_SEARCH = SV_MIN(TABLE_SIZE, 5u);
-
 	void _free_entry(Entry* entry, bool free) {
 
 	    if (entry->next)
@@ -977,8 +975,6 @@ namespace sv {
 	    u64 index = hash % TABLE_SIZE;
 	    Entry* next = entries + index;
 
-	    u32 internal_count = 0u;
-
 	    do {
 
 		if (next->hash == hash) {
@@ -993,19 +989,10 @@ namespace sv {
 		}
 		else {
 
-		    if (internal_count < INTERNAL_SEARCH) {
-			
-			index = (index + 1u) % TABLE_SIZE;
-			next = entries + index;
-			++internal_count;
-		    }
-		    else {
-			
-			if (next->next == nullptr)
-			    next->next = SV_ALLOCATE_STRUCT(Entry);
+		    if (next->next == nullptr)
+			next->next = SV_ALLOCATE_STRUCT(Entry);
 
-			next = next->next;
-		    }
+		    next = next->next;
 		}
 	    }
 	    while (true);
@@ -1017,44 +1004,72 @@ namespace sv {
 	    return get(hash);
 	}
 
-	T* find(u64 hash) {
+	SV_INLINE void _find_entry(u64 hash, Entry** entry, Entry** parent) {
 
 	    SV_ASSERT(hash != 0u);
 		
 	    u64 index = hash % TABLE_SIZE;
 	    Entry* next = entries + index;
 
-	    u32 internal_count = 0u;
+	    *entry = nullptr;
+	    *parent = nullptr;
 
 	    do {
 
 		if (next->hash == hash) {
 
-		    return &next->value;
+		    *entry = next;
+		    return;
 		}
 		else {
 
-		    if (internal_count < INTERNAL_SEARCH) {
-			
-			index = (index + 1u) % TABLE_SIZE;
-			next = entries + index;
-			++internal_count;
-		    }
-		    else {
-			
-			if (next->next == nullptr)
-			    return nullptr;
+		    if (next->next == nullptr)
+			return;
 
-			next = next->next;
-		    }
+		    *parent = next;
+		    next = next->next;
 		}
 	    }
 	    while (true);
 	}
 
+	T* find(u64 hash) {
+
+	    Entry* entry, parent;
+	    _find_entry(hash, &entry, &parent);
+	    return entry ? &entry->value : nullptr;
+	}
+
 	T* find(const char* str) {
 	    u64 hash = hash_string(str);
 	    return find(hash);
+	}
+
+	bool erase(u64 hash) {
+
+	    Entry* entry, parent;
+	    _find_entry(hash, &entry, &parent);
+	    
+	    if (entry == nullptr) return false;
+
+	    // Is root
+	    if (parent == nullptr) {
+
+		entry->value.~T();
+		entry->hash = 0u;
+
+		if (entry->next) {
+
+		    *entry = std::move(*entry->next);
+		}
+	    }
+	    else {
+
+		parent->next = entry->next;
+		SV_FREE_STRUCT(entry);
+	    }
+
+	    return true;
 	}
 
 	T& operator[](u64 hash) {
