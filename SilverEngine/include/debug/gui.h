@@ -72,5 +72,8 @@ namespace sv {
     SV_API bool gui_collapse(const char* text, u64 id);
     SV_API void gui_image(GPUImage* image, GPUImageLayout layout, u64 id, u32 flags = 0u);
     SV_API void gui_separator(f32 separation);
+
+    SV_API void gui_begin_grid(f32 width, f32 padding, u64 id);
+    SV_API void gui_end_grid();
     
 }

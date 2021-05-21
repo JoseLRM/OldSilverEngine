@@ -1614,6 +1614,19 @@ namespace sv {
 		    if (gui_button("Exit Project", 6u)) {
 			dev.next_engine_state = EngineState_ProjectManagement;
 		    }
+
+		    // TEST
+		    gui_begin_grid(100.f, 3.f, 7u);
+
+		    gui_button("Test0", 0u);
+		    gui_button("Test1", 1u);
+		    gui_button("Test2", 2u);
+		    gui_button("Test3", 3u);
+		    gui_button("Test4", 4u);
+		    gui_button("Test5", 5u);
+		    gui_button("Test6", 6u);
+		    
+		    gui_end_grid();
 		    
 		    gui_end_window();
 		}

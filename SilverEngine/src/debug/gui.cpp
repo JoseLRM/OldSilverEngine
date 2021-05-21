@@ -89,6 +89,9 @@ namespace sv {
 	GuiHeader_Widget,
 
 	GuiHeader_Separator,
+
+	GuiHeader_BeginGrid,
+	GuiHeader_EndGrid,
     };
     
     enum GuiWidgetType : u32 {
@@ -162,11 +165,27 @@ namespace sv {
 	GuiRootType_Popup
     };
 
+    enum GuiReadWidgetState : u32 {
+	GuiReadWidgetState_Grid
+    };
+
+    struct GuiReadWidgetStateData {
+
+	GuiReadWidgetState state;
+
+	struct {
+	    f32 width;
+	    f32 padding;
+	    f32 xoff;
+	};
+    };
+
     struct GuiWindow;
     
     struct GuiRootInfo {
 
 	List<GuiWidget> widgets;
+	List<GuiReadWidgetStateData> read_widget_state_stack;
 	
 	// Thats where the widgets are projected.
 	// the window has is own bounds
@@ -672,6 +691,80 @@ namespace sv {
 	gui->focus.action = 0u;
     }
 
+    SV_AUX void compute_widget_bounds(GuiRootInfo& root, GuiWidget& w)
+    {
+	GuiReadWidgetStateData* state_data = root.read_widget_state_stack.empty() ? nullptr : &root.read_widget_state_stack.back();
+
+	if (state_data == nullptr) {
+	    
+	    f32 height = 0.f;
+	    f32 width = 0.9f;
+
+	    switch (w.type) {
+		    
+	    case GuiWidgetType_Button:
+	    case GuiWidgetType_Checkbox:		
+	    case GuiWidgetType_Drag:
+	    case GuiWidgetType_Text:
+	    case GuiWidgetType_Collapse:
+		height = 25.f;
+		break;
+
+	    case GuiWidgetType_Image:
+	    {
+		if (w.flags & GuiImageFlag_Fullscreen) {
+
+		    root.yoff = 0.f;
+		    width = 1.f;
+		    height = root.widget_bounds.w * gui->resolution.y;
+		}
+		else {
+		
+		    width = 0.5f;
+		    height = width * root.widget_bounds.z * gui->resolution.x;
+		}
+	    }
+	    break;
+		    
+	    }
+
+	    f32 separation = 5.f;
+	
+	    w.bounds = { 0.5f, root.yoff + height * 0.5f, width, height };
+	    root.yoff += height + separation;
+	}
+	else if (state_data->state == GuiReadWidgetState_Grid) {
+
+	    auto& data = *state_data;
+
+	    f32 relative_space = 0.95f;
+
+	    f32 space = relative_space * root.widget_bounds.z * gui->resolution.x;
+
+	    f32 x0 = data.xoff;
+	    f32 x1 = x0 + data.width;
+
+	    if (x1 > space && data.xoff != 0.f) {
+
+		data.xoff = 0.f;
+		root.yoff += data.padding + data.width;
+
+		x0 = 0.f;
+		x1 = data.width;
+	    }
+
+	    data.xoff += (x1 - x0) + data.padding;
+
+	    x0 = x0 / space + (1.f - relative_space) * 0.5f;
+	    x1 = x1 / space - (1.f - relative_space) * 0.5f;
+
+	    w.bounds.z = x1 - x0;
+	    w.bounds.x = x0 + w.bounds.z * 0.5f;
+	    w.bounds.y = root.yoff + data.width * 0.5f;
+	    w.bounds.w = data.width;
+	}
+    }
+
     SV_AUX void read_widget(u8*& it)
     {
 	GuiWidget& w = gui->root_stack.back()->widgets.emplace_back();
@@ -681,9 +774,8 @@ namespace sv {
 	w.id = gui_read<u64>(it);
 	w.flags = gui_read<u32>(it);
 
-	f32 height = 0.f;
-	f32 width = 0.9f;
-
+	GuiRootInfo& root = *gui->root_stack.back();
+	
 	switch (w.type) {
 		    
 	case GuiWidgetType_Button:
@@ -693,8 +785,6 @@ namespace sv {
 
 	    button.hot = false;
 	    button.pressed = false;
-
-	    height = 25.f;
 	}
 	break;
 
@@ -704,8 +794,6 @@ namespace sv {
 	    checkbox.text = gui_read_text(it);
 	    checkbox.value = gui_read<bool>(it);
 	    checkbox.pressed = false;
-
-	    height = 25.f;
 	}
 	break;
 		
@@ -730,8 +818,6 @@ namespace sv {
 	    gui_read_raw(drag.value_data, size, it);
 
 	    drag.current_vector = gui_read<u32>(it);
-
-	    height = 25.f;
 	}
 	break;
 
@@ -739,8 +825,6 @@ namespace sv {
 	{
 	    auto& text = w.widget.text;
 	    text.text = gui_read_text(it);
-
-	    height = 25.f;
 	}
 	break;
 
@@ -749,8 +833,6 @@ namespace sv {
 	    auto& collapse = w.widget.collapse;
 	    collapse.text = gui_read_text(it);
 	    collapse.active = gui_read<bool>(it);
-
-	    height = 25.f;
 	}
 	break;
 
@@ -759,30 +841,12 @@ namespace sv {
 	    auto& image = w.widget.image;
 	    image.image = gui_read<GPUImage*>(it);
 	    image.layout = gui_read<GPUImageLayout>(it);
-
-	    GuiRootInfo& root = *gui->root_stack.back();
-
-	    if (w.flags & GuiImageFlag_Fullscreen) {
-
-		root.yoff = 0.f;
-		width = 1.f;
-		height = root.widget_bounds.w * gui->resolution.y;
-	    }
-	    else {
-		
-		width = 0.5f;
-		height = width * root.widget_bounds.z * gui->resolution.x;
-	    }
 	}
 	break;
 		    
 	}
-
-	f32 separation = 5.f;
-	f32& yoff = gui->root_stack.back()->yoff;
 	
-	w.bounds = { 0.5f, yoff + height * 0.5f, width, height };
-	yoff += height + separation;
+	compute_widget_bounds(root, w);
     }
 
     SV_AUX void update_root_bounds(GuiRootInfo& root)
@@ -1488,6 +1552,37 @@ namespace sv {
 		gui->root_stack.back()->yoff += separation;
 	    }
 	    break;
+
+	    case GuiHeader_BeginGrid:
+	    {
+		GuiRootInfo& root = *gui->root_stack.back();
+		GuiReadWidgetStateData& data = root.read_widget_state_stack.emplace_back();
+		data.state = GuiReadWidgetState_Grid;
+		data.width = gui_read<f32>(it);
+		data.padding = gui_read<f32>(it);
+		data.xoff = 0.f;
+	    }
+	    break;
+
+	    case GuiHeader_EndGrid:
+	    {
+		GuiRootInfo& root = *gui->root_stack.back();
+		auto& stack = root.read_widget_state_stack;
+		
+		if (stack.size() && stack.back().state == GuiReadWidgetState_Grid) {
+
+		    auto& data = stack.back();
+		    
+		    if (data.xoff != 0.f) {
+
+			root.yoff += data.width + data.padding;
+		    }
+		    
+		    stack.pop_back();
+		}
+		else SV_ASSERT(0);
+	    }
+	    break;
 		
 	    }
 	}
@@ -1952,6 +2047,20 @@ namespace sv {
     {
 	gui_write(GuiHeader_Separator);
 	gui_write(separation);
+    }
+
+    void gui_begin_grid(f32 width, f32 padding, u64 id)
+    {
+	gui_push_id(id);
+	gui_write(GuiHeader_BeginGrid);
+	gui_write(width);
+	gui_write(padding);
+    }
+    
+    void gui_end_grid()
+    {
+	gui_pop_id();
+	gui_write(GuiHeader_EndGrid);
     }
 
     SV_AUX void draw_root(const GuiRootInfo& root, CommandList cmd)
