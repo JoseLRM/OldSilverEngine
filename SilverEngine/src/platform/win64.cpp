@@ -448,6 +448,28 @@ namespace sv {
 	return { u32(rect.right), u32(rect.bottom) };
     }
 
+    LibraryHandle os_library_load(const char* filepath_)
+    {
+	char filepath[MAX_PATH];
+	filepath_resolve(filepath, filepath_);
+	
+	LibraryHandle lib = (LibraryHandle)LoadLibrary(filepath);
+	return lib;
+    }
+    
+    void os_library_free(LibraryHandle lib)
+    {
+	if (lib) {
+
+	    FreeLibrary((HINSTANCE)lib);
+	}
+    }
+    
+    void* os_library_proc_address(LibraryHandle lib, const char* name)
+    {
+	return (void*) GetProcAddress((HINSTANCE)lib, name);
+    }
+
     // File Management
 
     SV_AUX bool file_dialog(char* buff, u32 filterCount, const char** filters, const char* filepath_, bool open, bool is_file)

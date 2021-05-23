@@ -55,6 +55,8 @@ namespace sv {
 	WindowState_Minimized,
 	WindowState_Fullscreen,
     };
+
+    typedef u64 LibraryHandle;
     
     SV_API u64 os_window_handle();
     SV_API v2_u32 os_window_size();
@@ -62,6 +64,10 @@ namespace sv {
     SV_API void os_window_set_fullscreen(bool fullscreen);
     SV_API WindowState os_window_state();
     SV_API v2_u32 os_desktop_size();
+
+    SV_API LibraryHandle os_library_load(const char* filepath);
+    SV_API void os_library_free(LibraryHandle lib);
+    SV_API void* os_library_proc_address(LibraryHandle lib, const char* name);
     
     // File Management
 
@@ -91,7 +97,7 @@ namespace sv {
 	Date create_date;
 	Date last_write_date;
 	Date last_access_date;
-	char name[FILENAME_SIZE];
+	char name[FILENAME_SIZE + 1u];
 	const char* extension;
     };
 
