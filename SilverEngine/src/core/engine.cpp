@@ -393,6 +393,7 @@ namespace sv {
 	// Register components
 	{
 	    register_component<SpriteComponent>("Sprite");
+	    register_component<AnimatedSpriteComponent>("Animated Sprite");
 	    register_component<CameraComponent>("Camera");
 	    register_component<MeshComponent>("Mesh");
 	    register_component<LightComponent>("Light");

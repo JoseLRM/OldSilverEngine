@@ -68,6 +68,7 @@ namespace sv {
     SV_API bool gui_drag_v2_f32(const char* text, v2_f32& value, f32 adv, f32 min, f32 max, u64 id, u32 flags = 0u);
     SV_API bool gui_drag_v3_f32(const char* text, v3_f32& value, f32 adv, f32 min, f32 max, u64 id, u32 flags = 0u);
     SV_API bool gui_drag_v4_f32(const char* text, v4_f32& value, f32 adv, f32 min, f32 max, u64 id, u32 flags = 0u);
+    SV_API bool gui_drag_u32(const char* text, u32& value, u32 adv, u32 min, u32 max, u64 id, u32 flags = 0u);
     SV_API void gui_text(const char* text, u64 id);
     SV_API bool gui_collapse(const char* text, u64 id);
     SV_API void gui_image(GPUImage* image, GPUImageLayout layout, u64 id, u32 flags = 0u);

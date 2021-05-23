@@ -891,6 +891,38 @@ namespace sv {
 		while(comp_it_next(it, view));
 	    }
 	}
+	{
+	    ComponentIterator it;
+	    CompView<AnimatedSpriteComponent> view;
+	    
+	    if (comp_it_begin(it, view)) {
+
+		do {
+
+		    AnimatedSpriteComponent& s = *view.comp;
+		    Entity entity = view.entity;
+
+		    v3_f32 pos = get_entity_world_position(entity);
+
+		    u32 index = s.index + s.begin_index;
+		    u32 width_index = index % s.grid_width;
+		    u32 height_index = index / s.grid_width;
+
+		    f32 x = f32(width_index) / f32(s.grid_width);
+		    f32 y = f32(height_index) / f32(s.grid_height);
+		    f32 width = 1.f / f32(s.grid_width);
+		    f32 height = 1.f / f32(s.grid_height);
+
+		    v4_f32 tc = { x, y, x + width, y + height };
+
+		    if (s.flags & SpriteComponentFlag_XFlip) std::swap(tc.x, tc.z);
+		    if (s.flags & SpriteComponentFlag_YFlip) std::swap(tc.y, tc.w);
+		    
+		    sprite_instances.emplace_back(get_entity_world_matrix(entity), tc, s.texture.get(), s.color, pos.z);
+		}
+		while(comp_it_next(it, view));
+	    }
+	}
 
 	if (sprite_instances.size()) {
 

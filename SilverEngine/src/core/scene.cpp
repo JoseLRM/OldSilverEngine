@@ -11,6 +11,7 @@
 namespace sv {
 
     CompID SpriteComponent::ID = SV_COMPONENT_ID_INVALID;
+    CompID AnimatedSpriteComponent::ID = SV_COMPONENT_ID_INVALID;
     CompID CameraComponent::ID = SV_COMPONENT_ID_INVALID;
     CompID MeshComponent::ID = SV_COMPONENT_ID_INVALID;
     CompID LightComponent::ID = SV_COMPONENT_ID_INVALID;
@@ -1073,6 +1074,28 @@ namespace sv {
 #endif
 	
 	event_dispatch("update_scene", nullptr);
+
+	// Update animations
+	{
+	    f32 dt = engine.deltatime;
+	    
+	    ComponentIterator it;
+	    CompView<AnimatedSpriteComponent> view;
+	    if (comp_it_begin(it, view)) {
+		do {
+
+		    AnimatedSpriteComponent& s = *view.comp;
+
+		    s.time += dt;
+		    if (s.time > s.frame_time) {
+
+			s.index = (s.index + 1u) % s.frames;
+			s.time = s.time - s.frame_time;
+		    }
+		}
+		while (comp_it_next(it, view));
+	    }
+	}
 	    
 	update_physics();
 
@@ -2279,6 +2302,34 @@ namespace sv {
     {
 	deserialize_asset(d, texture);
 	deserialize_v4_f32(d, texcoord);
+	deserialize_color(d, color);
+	deserialize_u32(d, layer);
+    }
+
+    void AnimatedSpriteComponent::serialize(Serializer& s)
+    {
+	serialize_asset(s, texture);
+	serialize_u32(s, grid_width);
+	serialize_u32(s, grid_height);
+	serialize_u32(s, begin_index);
+	serialize_u32(s, frames);
+	serialize_f32(s, frame_time);
+	serialize_u32(s, index);
+	serialize_f32(s, time);
+	serialize_color(s, color);
+	serialize_u32(s, layer);
+    }
+
+    void AnimatedSpriteComponent::deserialize(Deserializer& d, u32 version)
+    {
+	deserialize_asset(d, texture);
+	deserialize_u32(d, grid_width);
+	deserialize_u32(d, grid_height);
+	deserialize_u32(d, begin_index);
+	deserialize_u32(d, frames);
+	deserialize_f32(d, frame_time);
+	deserialize_u32(d, index);
+	deserialize_f32(d, time);
 	deserialize_color(d, color);
 	deserialize_u32(d, layer);
     }

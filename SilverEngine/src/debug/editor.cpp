@@ -740,6 +740,28 @@ namespace sv {
 		if (gui_checkbox("XFlip", xflip, 3u)) spr.flags = spr.flags ^ SpriteComponentFlag_XFlip;
 		if (gui_checkbox("YFlip", yflip, 4u)) spr.flags = spr.flags ^ SpriteComponentFlag_YFlip;
 	    }
+
+	    if (AnimatedSpriteComponent::ID == comp_id) {
+
+		AnimatedSpriteComponent& spr = *reinterpret_cast<AnimatedSpriteComponent*>(comp);
+
+		egui_comp_color("Color", 0u, &spr.color);
+		egui_comp_texture("Texture", 1u, &spr.texture);
+		gui_drag_u32("Grid Width", spr.grid_width, 1u, 0u, u32_max, 2u);
+		gui_drag_u32("Grid Height", spr.grid_height, 1u, 0u, u32_max, 3u);
+		gui_drag_u32("Begin Index", spr.begin_index, 1u, 0u, u32_max, 4u);
+		gui_drag_u32("Frames", spr.frames, 1u, 0u, u32_max, 5u);
+		gui_drag_f32("Frame Time", spr.frame_time, 0.01f, 0.f, f32_max, 6u);
+
+		gui_drag_u32("Index", spr.index, 1u, 0u, spr.grid_width * spr.grid_height, 7u);
+		gui_drag_f32("Time", spr.time, 0.01f, 0.f, f32_max, 8u);
+
+		bool xflip = spr.flags & SpriteComponentFlag_XFlip;
+		bool yflip = spr.flags & SpriteComponentFlag_YFlip;
+
+		if (gui_checkbox("XFlip", xflip, 9u)) spr.flags = spr.flags ^ SpriteComponentFlag_XFlip;
+		if (gui_checkbox("YFlip", yflip, 10u)) spr.flags = spr.flags ^ SpriteComponentFlag_YFlip;
+	    }
 	    
 	    if (MeshComponent::ID == comp_id) {
 

@@ -14,6 +14,7 @@ namespace sv {
 	GuiType_v2_f32,
 	GuiType_v3_f32,
 	GuiType_v4_f32,
+	GuiType_u32,
     };
 
     SV_INTERNAL constexpr size_t sizeof_type(GuiType type)
@@ -32,6 +33,9 @@ namespace sv {
 	case GuiType_v4_f32:
 	    return sizeof(v4_f32);
 
+	case GuiType_u32:
+	    return sizeof(u32);
+
 	default:
 	    return 0;
 	}
@@ -42,6 +46,7 @@ namespace sv {
 	switch (type) {
 
 	case GuiType_f32:
+	case GuiType_u32:
 	    return 1u;
 
 	case GuiType_v2_f32:
@@ -1127,6 +1132,27 @@ namespace sv {
 			}
 		    }
 		    break;
+
+		    case GuiType_u32:
+		    {
+			u32* value = nullptr;
+			u32 adv = *reinterpret_cast<u32*>(drag.adv_data);
+			u32 min = *reinterpret_cast<u32*>(drag.min_data);
+			u32 max = *reinterpret_cast<u32*>(drag.max_data);
+			    
+			if (drag.type == GuiType_u32) {
+			    
+			    value = reinterpret_cast<u32*>(drag.value_data);
+			}
+
+			if (value) {
+
+			    i32 n = i32(input.mouse_dragged.x * gui->resolution.x * adv);
+			    *value = (-n > (i32)*value) ? 0u : (*value + n);
+			    *value = math_clamp(min, *value, max);
+			}
+		    }
+		    break;
 		    
 		    }
 		}
@@ -2009,6 +2035,10 @@ namespace sv {
     {
 	return gui_drag(text, &value, &adv, &min, &max, GuiType_v4_f32, id, flags);
     }
+    bool gui_drag_u32(const char* text, u32& value, u32 adv, u32 min, u32 max, u64 id, u32 flags)
+    {
+	return gui_drag(text, &value, &adv, &min, &max, GuiType_u32, id, flags);
+    }
 
     void gui_text(const char* text, u64 id)
     {
@@ -2273,6 +2303,17 @@ namespace sv {
 			    value = (*reinterpret_cast<const v4_f32*>(drag.value_data))[i];
 			
 			sprintf(strbuff, "%f", value);
+		    }
+		    break;
+
+		    case GuiType_u32:
+		    {
+			u32 value = 0u;
+
+			if (drag.type == GuiType_u32)
+			    value = *reinterpret_cast<const u32*>(drag.value_data);
+			
+			sprintf(strbuff, "%u", value);
 		    }
 		    break;
 		    

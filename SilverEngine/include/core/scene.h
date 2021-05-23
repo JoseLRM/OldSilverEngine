@@ -382,6 +382,29 @@ namespace sv {
 
     };
 
+    struct AnimatedSpriteComponent : public BaseComponent {
+
+	static CompID SV_API ID;
+	static constexpr u32 VERSION = 0u;
+	
+	TextureAsset texture;
+	u32          grid_width = 10u;
+	u32          grid_height = 10u;
+	u32          begin_index = 0u;
+	u32          frames = 1u;
+	f32          frame_time = 0.4f;
+
+	u32          index = 0u;
+	f32          time = 0.f;
+	
+	Color	     color = Color::White();
+	u32	     layer = 0u;
+
+	void serialize(Serializer& s);
+	void deserialize(Deserializer& s, u32 version);
+
+    };
+
     enum ProjectionType : u32 {
 	ProjectionType_Clip,
 	ProjectionType_Orthographic,
