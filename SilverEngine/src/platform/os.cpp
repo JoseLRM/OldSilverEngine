@@ -9,6 +9,9 @@
 
 #include "external/stbi_lib.h"
 
+// TEMP
+#include <chrono>
+
 namespace sv {
 
     bool load_image(const char* filepath_, void** pdata, u32* width, u32* height)

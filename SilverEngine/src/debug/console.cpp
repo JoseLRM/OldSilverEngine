@@ -14,10 +14,11 @@
 
 namespace sv {
 
+    static constexpr u32 COMMAND_LINE_SIZE = 100u;
     static constexpr u32 HISTORY_COUNT = 100u;
-    static constexpr u32 CONSOLE_SIZE = 100000u;
+    static constexpr u32 CONSOLE_SIZE = 200000u;
     static constexpr f32 CONSOLE_HEIGHT = 1.7f;
-    static constexpr u32 LINE_COUNT = 35u;
+    static constexpr u32 LINE_COUNT = 40u;
     static constexpr f32 TEXT_SIZE = CONSOLE_HEIGHT / f32(LINE_COUNT);
     static constexpr f32 COMMAND_TEXT_SIZE = 0.06f;
     static constexpr f32 SCROLL_WIDTH = 0.03f;
@@ -32,14 +33,13 @@ namespace sv {
 	size_t buff_pos;
 	bool buff_flip;
 
-	// TODO: Not use std classes
-	std::string history[HISTORY_COUNT] = {};
+	char history[COMMAND_LINE_SIZE + 1u][HISTORY_COUNT] = {};
 	bool history_flip = false;
 	u32 history_pos = 0u;
 	u32 history_offset = 0u;
 
-	std::unordered_map<std::string, CommandFn> commands;
-	std::string current_command;
+	ThickHashTable<CommandFn, 300u> commands;
+	char current_command[COMMAND_LINE_SIZE + 1u];
 	u32 cursor_pos = 0u;
 	f32 text_offset = 0.f;
 	u32 line_count = 0u;
@@ -47,7 +47,7 @@ namespace sv {
 	f32 show_fade = 0.f;
     };
 
-    static GlobalConsoleData console;
+    SV_INTERNAL GlobalConsoleData console;
 
     static bool command_exit(const char** args, u32 argc)
     {
@@ -266,9 +266,8 @@ namespace sv {
 
 		for (i32 i = history_count - 1u; i >= 0; --i) {
 
-		    // TEMP
-		    auto& s = console.history[size_t(i)];
-		    deserialize_string(d, s);
+		    char* s = console.history[size_t(i)];
+		    deserialize_string(d, s, COMMAND_LINE_SIZE + 1u);
 		}
 
 		console.history_pos = history_count;
@@ -296,6 +295,8 @@ namespace sv {
 	console.buff_pos = 0U;
 	console.buff_flip = false;
 
+	console.commands.clear();
+
 	// Save command history
 	{
 	    Serializer s;
@@ -311,7 +312,7 @@ namespace sv {
 		i32 pos = (i32(console.history_pos) - i32(i + 1u));
 		while (pos < 0) pos = HISTORY_COUNT + pos;
 		u32 j = pos;
-		serialize_string(s, console.history[j].c_str());
+		serialize_string(s, console.history[j]);
 	    }
 
 	    if (!bin_write(hash_string("CONSOLE HISTORY"), s, true)) {
@@ -329,14 +330,20 @@ namespace sv {
 
 	while (*command == ' ') ++command;
 
-	if (*command == '\0') {
+	size_t command_size = strlen(command);
+
+	if (command_size == 0u) {
 	    SV_LOG_ERROR("This is an empty command string");
+	    return false;
+	}
+	else if (command_size > COMMAND_LINE_SIZE) {
+	    SV_LOG_ERROR("This command is too large");
 	    return false;
 	}
 
 	// Save to history
 	{
-	    console.history[console.history_pos] = command;
+	    strcpy(console.history[console.history_pos], command);
 	    u32 new_pos = (console.history_pos + 1u) % HISTORY_COUNT;
 	    if (new_pos < console.history_pos) console.history_flip = true;
 	    console.history_pos = new_pos;
@@ -347,16 +354,15 @@ namespace sv {
 
 	while (*command != ' ' && *command != '\0') ++command;
 
-	size_t command_size = command - name;
+	command_size = command - name;
 
-	std::string command_name;
-	command_name.resize(command_size);
+	char command_name[COMMAND_LINE_SIZE + 1u];
+	memcpy(command_name, name, command_size);
+	command_name[command_size] = '\0';
 
-	memcpy((void*)command_name.data(), name, command_size);
-
-	auto it = console.commands.find(command_name);
-	if (it == console.commands.end()) {
-	    SV_LOG_ERROR("Command '%s' not found", command_name.c_str());
+	CommandFn* fn = console.commands.find(command_name);
+	if (fn == nullptr) {
+	    SV_LOG_ERROR("Command '%s' not found", command_name);
 	    return false;
 	}
 
@@ -389,7 +395,7 @@ namespace sv {
 	    while (*command == ' ') ++command;
 	}
 
-	bool res = it->second((const char**)args.data(), u32(args.size()));
+	bool res = (*fn)((const char**)args.data(), u32(args.size()));
 
 	// Free
 	for (char* arg : args)
@@ -402,8 +408,8 @@ namespace sv {
     {
 	if (command_fn == nullptr || name == nullptr || *name == '\0') return false;
 
-	auto it = console.commands.find(name);
-	if (it != console.commands.end()) return false;
+	CommandFn* fn = console.commands.find(name);
+	if (fn != nullptr) return false;
 		
 	console.commands[name] = command_fn;
 	return true;
@@ -546,22 +552,32 @@ namespace sv {
 		    i32 pos = i32(console.history_pos) - i32(console.history_offset);
 		    while (pos < 0) pos = HISTORY_COUNT + pos;
 					
-		    console.current_command = console.history[size_t(pos)];
-		    console.cursor_pos = (u32)console.current_command.size();
+		    string_copy(console.current_command, console.history[size_t(pos)], COMMAND_LINE_SIZE + 1u);
+		    console.cursor_pos = (u32)strlen(console.current_command);
 		}
 		else {
-		    console.current_command.clear();
+		    strcpy(console.current_command, "");
 		    console.cursor_pos = 0u;
 		}
 	    }
 	}
 		
-	if (input.text.size()) {
+	if (input.text.size() && console.cursor_pos < COMMAND_LINE_SIZE) {
 
-	    console.current_command.insert(console.current_command.begin() + console.cursor_pos, input.text.begin(), input.text.end());
-	    console.cursor_pos += u32(input.text.size());
+	    size_t current_size = strlen(console.current_command);
+	    size_t append_size = input.text.size();
 
-	    console.history_offset = 0u;
+	    if (current_size + append_size > COMMAND_LINE_SIZE)
+		append_size = COMMAND_LINE_SIZE - current_size;
+
+	    if (append_size) {
+
+		size_t overflow = string_insert(console.current_command, input.text.c_str(), console.cursor_pos, COMMAND_LINE_SIZE + 1u);
+	    
+		console.cursor_pos += u32(input.text.size() - overflow);
+
+		console.history_offset = 0u;
+	    }
 	}
 
 	bool execute = false;
@@ -576,13 +592,19 @@ namespace sv {
 		if (console.cursor_pos) {
 
 		    --console.cursor_pos;
-		    console.current_command.erase(console.current_command.begin() + console.cursor_pos);
+		    string_erase(console.current_command, console.cursor_pos);
 		}
 		break;
 	    case TextCommand_DeleteRight:
-		if (console.cursor_pos < console.current_command.size()) console.current_command.erase(console.current_command.begin() + console.cursor_pos);
-		break;
-
+	    {
+		size_t size = strlen(console.current_command);
+		if (console.cursor_pos < size) {
+		    
+		    string_erase(console.current_command, console.cursor_pos);
+		}
+	    }
+	    break;
+		
 	    case TextCommand_Enter:
 	    {
 		execute = true;
@@ -595,11 +617,11 @@ namespace sv {
 	}
 
 	if (input.keys[Key_Left] == InputState_Pressed) console.cursor_pos = (console.cursor_pos == 0u) ? console.cursor_pos : (console.cursor_pos - 1u);
-	if (input.keys[Key_Right] == InputState_Pressed) console.cursor_pos = (console.cursor_pos == console.current_command.size()) ? console.cursor_pos : (console.cursor_pos + 1u);
+	if (input.keys[Key_Right] == InputState_Pressed) console.cursor_pos = (console.cursor_pos == strlen(console.current_command)) ? console.cursor_pos : (console.cursor_pos + 1u);
 
-	if (execute && console.current_command.size()) {
-	    execute_command(console.current_command.c_str());
-	    console.current_command.clear();
+	if (execute && strlen(console.current_command)) {
+	    execute_command(console.current_command);
+	    strcpy(console.current_command, "");
 	    console.cursor_pos = 0u;
 	}
 
@@ -687,9 +709,9 @@ namespace sv {
 	f32 buffer_x = -1.f;
 	f32 buffer_y = 1.f + animation;
 
-	if (console.current_command.size()) {
+	if (console.current_command[0]) {
 			
-	    imrend_draw_text(console.current_command.c_str(), console.current_command.size(), text_x, text_y, 2.f, 1u, COMMAND_TEXT_SIZE, aspect, TextAlignment_Left, &renderer->font_console, Color::White(), cmd);
+	    imrend_draw_text(console.current_command, strlen(console.current_command), text_x, text_y, 2.f, 1u, COMMAND_TEXT_SIZE, aspect, TextAlignment_Left, &renderer->font_console, Color::White(), cmd);
 	}
 
 	if (console.buff_pos) {
@@ -697,7 +719,7 @@ namespace sv {
 	    imrend_draw_text_area(console.buff, console.buff_pos, buffer_x, buffer_y, console_width, LINE_COUNT, TEXT_SIZE, aspect, TextAlignment_Left, u32(console.text_offset), true, &renderer->font_console, Color::White(), cmd);
 	}
 
-	f32 width = compute_text_width(console.current_command.c_str(), console.cursor_pos, COMMAND_TEXT_SIZE, aspect, &renderer->font_console);
+	f32 width = compute_text_width(console.current_command, console.cursor_pos, COMMAND_TEXT_SIZE, aspect, &renderer->font_console);
 	f32 char_width = renderer->font_console.glyphs['i'].w * COMMAND_TEXT_SIZE;
 
 	imrend_draw_quad({ text_x + width + char_width * 0.5f, text_y - command_height * 0.5f, 0.f }, { char_width, command_height }, Color::Red(100u), cmd);

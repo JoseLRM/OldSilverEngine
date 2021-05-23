@@ -33,26 +33,29 @@ namespace sv {
     {
 	Graphics_vk& gfx = graphics_vulkan_device_get();
 
+	SV_CHECK(mutex_create(p.mutex));
+	SV_CHECK(mutex_create(p.creationMutex));
+
 	// Create
-	std::lock_guard<std::mutex> lock(p.creationMutex);
+	SV_LOCK_GUARD(p.creationMutex, lock);
 
 	// Check if it is created
 	if (p.layout != VK_NULL_HANDLE) return true;
 
 	// Get Semantic names
 	if (pVertexShader) {
-	    p.semanticNames.insert(pVertexShader->semanticNames.begin(), pVertexShader->semanticNames.end());
+	    p.semanticNames.insert(pVertexShader->semanticNames);
 	}
 	if (pPixelShader) {
-	    p.semanticNames.insert(pPixelShader->semanticNames.begin(), pPixelShader->semanticNames.end());
+	    p.semanticNames.insert(pPixelShader->semanticNames);
 	}
 	if (pGeometryShader) {
-	    p.semanticNames.insert(pGeometryShader->semanticNames.begin(), pGeometryShader->semanticNames.end());
+	    p.semanticNames.insert(pGeometryShader->semanticNames);
 	}
 
 	// Create Pipeline Layout
 	{
-	    std::vector<VkDescriptorSetLayout> layouts;
+	    List<VkDescriptorSetLayout> layouts;
 
 	    if (pVertexShader) {
 		p.setLayout.layouts[ShaderType_Vertex] = pVertexShader->layout;
@@ -87,10 +90,13 @@ namespace sv {
     {
 	Graphics_vk& gfx = graphics_vulkan_device_get();
 
+	mutex_destroy(pipeline.mutex);
+	mutex_destroy(pipeline.creationMutex);
+
 	vkDestroyPipelineLayout(gfx.device, pipeline.layout, nullptr);
 
-	for (auto& it : pipeline.pipelines) {
-	    vkDestroyPipeline(gfx.device, it.second, nullptr);
+	for (VkPipeline p : pipeline.pipelines) {
+	    vkDestroyPipeline(gfx.device, p, nullptr);
 	}
 	return true;
     }
@@ -103,10 +109,10 @@ namespace sv {
 
 	hash_combine(hash, renderPass.renderPass);
 
-	std::lock_guard<std::mutex> lock(pipeline.mutex);
+	SV_LOCK_GUARD(pipeline.mutex, lock);
 
-	auto it = pipeline.pipelines.find(hash);
-	if (it == pipeline.pipelines.end()) {
+	VkPipeline* it = pipeline.pipelines.find(hash);
+	if (it == nullptr) {
 
 	    // Shader Stages
 	    VkPipelineShaderStageCreateInfo shaderStages[ShaderType_GraphicsCount] = {};
@@ -315,7 +321,7 @@ namespace sv {
 	    pipeline.pipelines[hash] = res;
 	}
 	else {
-	    res = it->second;
+	    res = *it;
 	}
 
 	pipeline.lastUsage = timer_now();

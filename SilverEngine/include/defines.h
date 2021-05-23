@@ -5,17 +5,13 @@
 #define SV_VERSION_REVISION 0
 
 // std includes
-#include <math.h>
 #include <DirectXMath.h>
-#include <string>
-#include <map>
-#include <unordered_map>
-#include <queue>
-#include <functional>
-#include <mutex>
-#include <shared_mutex>
+
+// TEMP
+#include <limits>
+#include <utility>
+#include <string.h>
 #include <atomic>
-#include <fstream>
 #include <algorithm>
 
 using namespace DirectX;

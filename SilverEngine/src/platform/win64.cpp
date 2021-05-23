@@ -253,11 +253,7 @@ namespace sv {
 	    case 0x09:
 
 		// TODO: Tabulations input
-		input.text.push_back(' ');
-		input.text.push_back(' ');
-		input.text.push_back(' ');
-		input.text.push_back(' ');
-
+		input.text.append("    ");
 		break;
 
 	    case 0x0D:
@@ -265,7 +261,7 @@ namespace sv {
 		break;
 
 	    default:
-		input.text.push_back(char(wParam));
+		input.text.append(char(wParam));
 		break;
 	    }
 
@@ -935,13 +931,13 @@ namespace sv {
     void mutex_lock(Mutex mutex)
     {
 	SV_ASSERT(mutex._handle != 0u);
-	WaitForSingleObject((HANLDE)mutex._handle, INFINITE);
+	WaitForSingleObject((HANDLE)mutex._handle, INFINITE);
     }
     
     void mutex_unlock(Mutex mutex)
     {
 	SV_ASSERT(mutex._handle != 0u);
-	ReleaseMutex((HANLDE)mutex._handle);
+	ReleaseMutex((HANDLE)mutex._handle);
     }
 
     // INTERNAL
@@ -1001,6 +997,7 @@ namespace sv {
     {
 	void* ptr = nullptr;
 	while (ptr == nullptr) ptr = malloc(size);
+	memset(ptr, 0, size);
 	return ptr;
     }
     

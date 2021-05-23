@@ -24,7 +24,8 @@ namespace sv {
 	u32 childsCount = 0u;
 	List<CompRef> components;
 	u64 flags = 0u;
-	std::string name;
+	// TODO: Should move this to other pool
+	char name[ENTITY_NAME_SIZE + 1u] = "Unnamed";
 
     };
 
@@ -73,8 +74,7 @@ namespace sv {
 
     struct ComponentRegister {
 
-	// TODO: get out of here
-	std::string		        name;
+	char		                name[COMPONENT_NAME_SIZE + 1u];
 	u32				size;
 	u32                             version;
 	CreateComponentFunction		createFn = nullptr;
@@ -94,8 +94,7 @@ namespace sv {
 
 	// ECS
 	
-	// TODO: Use List
-	std::vector<Entity>	 entities;
+	List<Entity>	         entities;
 	EntityDataAllocator	 entityData;
 	List<ComponentAllocator> components;
 	
@@ -117,9 +116,8 @@ namespace sv {
 	char next_scene_name[SCENENAME_SIZE + 1u] = {};
 	Scene* scene = nullptr;
 
-	List<ComponentRegister> registers;
-	// TODO: get out of here
-	std::unordered_map<std::string, CompID> component_names;
+	List<ComponentRegister>     registers;
+	ThickHashTable<CompID, 50u> component_names;
 
 	// Physics
 
@@ -267,23 +265,23 @@ namespace sv {
 			entity_clear(scene.entityData);
 
 			struct Register {
-			    std::string name;
+			    char name[COMPONENT_NAME_SIZE + 1u];
 			    u32 size;
 			    u32 version;
 			    CompID ID;
 			};
 
 			// Registers
-			std::vector<Register> registers;
+			List<Register> registers;
 
 			{
 			    u32 registersCount;
 			    deserialize_u32(d, registersCount);
 			    registers.resize(registersCount);
 
-			    for (auto it = registers.rbegin(); it != registers.rend(); ++it) {
+			    for (auto it = registers.begin(); it != registers.end(); ++it) {
 
-				deserialize_string(d, it->name);				
+				deserialize_string(d, it->name, COMPONENT_NAME_SIZE + 1u);			
 				deserialize_u32(d, it->size);
 				deserialize_u32(d, it->version);
 			    }
@@ -296,13 +294,13 @@ namespace sv {
 			    Register& reg = registers[i];
 			    reg.ID = invalidCompID;
 
-			    auto it = scene_state->component_names.find(reg.name.c_str());
-			    if (it != scene_state->component_names.end()) {
-				reg.ID = it->second;
+			    CompID* id = scene_state->component_names.find(reg.name);
+			    if (id) {
+				reg.ID = *id;
 			    }
 
 			    if (reg.ID == invalidCompID) {
-				SV_LOG_ERROR("Component '%s' doesn't exist", reg.name.c_str());
+				SV_LOG_ERROR("Component '%s' doesn't exist", reg.name);
 				return false;
 			    }
 
@@ -327,7 +325,7 @@ namespace sv {
 			    EntityInternal& ed = entity_internal[entity];
 			    EntityTransform& et = entity_transform[entity];
 
-			    deserialize_string(d, ed.name);
+			    deserialize_string(d, ed.name, ENTITY_NAME_SIZE + 1u);
 			    deserialize_u32(d, ed.childsCount);
 			    deserialize_size_t(d, ed.handleIndex);
 			    deserialize_u64(d, ed.flags);
@@ -383,7 +381,7 @@ namespace sv {
 
 			// Components
 			{
-			    for (auto it = registers.rbegin(); it != registers.rend(); ++it) {
+			    for (auto it = registers.begin(); it != registers.end(); ++it) {
 
 				CompID compID = it->ID;
 				u32 version = it->version;
@@ -576,7 +574,7 @@ namespace sv {
 			EntityTransform& transform = scene.entityData.getTransform(entity);
 
 			serialize_entity(s, (Entity)i);
-			serialize_string(s, ed.name.c_str());
+			serialize_string(s, ed.name);
 			serialize_u32(s, ed.childsCount);
 			serialize_size_t(s, ed.handleIndex);
 			serialize_u64(s, ed.flags);
@@ -889,7 +887,7 @@ namespace sv {
 
 				    body.in_ground = true;
 				    // Ground friction
-				    next_vel.x *= pow(1.f - vertical_collision.comp->friction, dt);
+				    next_vel.x *= (f32)pow(1.f - vertical_collision.comp->friction, dt);
 				}
 
 				next_pos.y += vertical_depth;
@@ -938,7 +936,7 @@ namespace sv {
 
 		    // Air friction
 		    if (body.body_type == BodyType_Dynamic)
-			next_vel *= pow(1.f - scene.data.air_friction, dt);
+			next_vel *= (f32)pow(1.f - scene.data.air_friction, dt);
 		}
 	
 		position = next_pos;
@@ -1344,6 +1342,11 @@ namespace sv {
     {
 	CompID id;
 	ComponentRegister* reg;
+
+	if (strlen(desc->name) > COMPONENT_NAME_SIZE) {
+	    SV_LOG_ERROR("Can't register a component with the name '%s', too large", desc->name);
+	    return SV_COMPONENT_ID_INVALID;
+	}
 	
 	// Check if is available
 	{	    
@@ -1352,11 +1355,11 @@ namespace sv {
 		return SV_COMPONENT_ID_INVALID;
 	    }
 
-	    auto it = scene_state->component_names.find(desc->name);
+	    CompID* id_ = scene_state->component_names.find(desc->name);
 
-	    if (it != scene_state->component_names.end()) {
+	    if (id_) {
 		
-		id = it->second;
+		id = *id_;
 		reg = &scene_state->registers[id];
 
 		if (reg->size != desc->componentSize) {
@@ -1376,7 +1379,7 @@ namespace sv {
 	    }
 	}
 	
-	reg->name = desc->name;
+	strcpy(reg->name, desc->name);
 	reg->size = desc->componentSize;
 	reg->version = desc->version;
 	reg->createFn = desc->createFn;
@@ -1435,7 +1438,7 @@ namespace sv {
 
     const char* get_component_name(CompID ID)
     {
-	return scene_state->registers[ID].name.c_str();
+	return scene_state->registers[ID].name;
     }
     u32 get_component_size(CompID ID)
     {
@@ -1447,9 +1450,9 @@ namespace sv {
     }
     CompID get_component_id(const char* name)
     {
-	auto it = scene_state->component_names.find(name);
-	if (it == scene_state->component_names.end()) return SV_COMPONENT_ID_INVALID;
-	return it->second;
+	CompID* id = scene_state->component_names.find(name);
+	if (id == nullptr) return SV_COMPONENT_ID_INVALID;
+	return *id;
     }
     u32 get_component_register_count()
     {
@@ -1621,7 +1624,7 @@ namespace sv {
 		scene.entities.emplace_back(entity);
 	    }
 	    else {
-		scene.entities.insert(scene.entities.begin() + index, entity);
+		scene.entities.insert(entity, index);
 
 		for (size_t i = index + 1; i < scene.entities.size(); ++i) {
 		    scene.entityData.getInternal(scene.entities[i]).handleIndex++;
@@ -1630,7 +1633,7 @@ namespace sv {
 	}
 
 	if (name)
-	    scene.entityData.getInternal(entity).name = name;
+	    strcpy(scene.entityData.getInternal(entity).name, name);
 
 	EntityCreateEvent e;
 	e.entity = entity;
@@ -1722,7 +1725,7 @@ namespace sv {
 	EntityInternal& duplicatedEd = scene.entityData.getInternal(duplicated);
 	EntityInternal& copyEd = scene.entityData.getInternal(copy);
 
-	copyEd.name = duplicatedEd.name;
+	strcpy(copyEd.name, duplicatedEd.name);
 
 	scene.entityData.getTransform(copy) = scene.entityData.getTransform(duplicated);
 	copyEd.flags = duplicatedEd.flags;
@@ -1772,15 +1775,21 @@ namespace sv {
     {
 	SV_SCENE();
 	SV_ASSERT(entity_exist(entity));
-	const std::string& name = scene.entityData.getInternal(entity).name;
-	return name.empty() ? "Unnamed" : name.c_str();
+	const char* name = scene.entityData.getInternal(entity).name;
+	return name;
     }
 
     void set_entity_name(Entity entity, const char* name)
     {
 	SV_SCENE();
 	SV_ASSERT(entity_exist(entity));
-	scene.entityData.getInternal(entity).name = name;
+
+	if (strlen(name) > ENTITY_NAME_SIZE) {
+	    SV_LOG_ERROR("Entity name '%s' is too large", name);
+	    return;
+	}
+	
+	strcpy(scene.entityData.getInternal(entity).name, name);
     }
 
     u32 get_entity_childs_count(Entity parent)

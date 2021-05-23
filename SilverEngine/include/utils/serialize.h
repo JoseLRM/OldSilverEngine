@@ -338,19 +338,11 @@ namespace sv {
     }
     SV_INLINE void deserialize_string(Deserializer& d, char* str, size_t buff_size)
     {
-	size_t size = deserialize_string_size(d) + 1u;
-
-	size_t read = SV_MIN(size, buff_size);
-	memcpy(str, d.buff.data() + d.pos, read);
-	d.pos += size;
-    }
-    // TODO: move on
-    SV_INLINE void deserialize_string(Deserializer& d, std::string& s)
-    {
 	size_t size = deserialize_string_size(d);
 
-	s.resize(size);
-	memcpy(&s[0], d.buff.data() + d.pos, size);
+	size_t read = SV_MIN(size, buff_size - 1u);
+	memcpy(str, d.buff.data() + d.pos, read);
+	str[read] = '\0';
 	d.pos += size + 1u;
     }
 

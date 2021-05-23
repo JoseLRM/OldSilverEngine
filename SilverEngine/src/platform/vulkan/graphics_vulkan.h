@@ -86,6 +86,9 @@ namespace sv {
 
 #include "graphics_vulkan_conversions.h"
 
+// TEMP TODO
+#include <map>
+
 namespace sv {
 
     struct Graphics_vk;
@@ -134,13 +137,14 @@ namespace sv {
     };
 
     struct VulkanDescriptorSet {
-	std::vector<VkDescriptorSet>	sets;
-	u32							used = 0u;
+	List<VkDescriptorSet>	sets;
+	u32			used = 0u;
     };
 
     struct DescriptorPool {
-	std::vector<VulkanDescriptorPool>						pools;
-	std::map<VkDescriptorSetLayout, VulkanDescriptorSet>	sets;
+	List<VulkanDescriptorPool>			     pools;
+	// TODO: Get out of here
+	std::map<VkDescriptorSetLayout, VulkanDescriptorSet> sets;
     };
 
     struct ShaderResourceBinding {
@@ -149,7 +153,7 @@ namespace sv {
     };
     struct ShaderDescriptorSetLayout {
 	VkDescriptorSetLayout setLayout;
-	std::vector<ShaderResourceBinding> bindings;
+	List<ShaderResourceBinding> bindings;
 	u32 count[3];
     };
 
@@ -169,13 +173,13 @@ namespace sv {
 		return *this;
 	    }
 
-	std::mutex mutex;
-	std::mutex creationMutex;
+	Mutex mutex;
+	Mutex creationMutex;
 
-	std::map<std::string, u32>   semanticNames;
+	ThickHashTable<u32, 10u>   semanticNames;
 
 	VkPipelineLayout	     layout = VK_NULL_HANDLE;
-	std::map<size_t, VkPipeline> pipelines;
+	ThickHashTable<VkPipeline, 100u> pipelines;
 	PipelineDescriptorSetLayout  setLayout;
 	VkDescriptorSet		     descriptorSets[ShaderType_GraphicsCount] = {};
 	f64			     lastUsage;
@@ -215,17 +219,17 @@ namespace sv {
     };
     // Shader
     struct Shader_vk : public Shader_internal {
-	VkShaderModule							module = VK_NULL_HANDLE;
-	std::unordered_map<std::string, u32>	semanticNames;
-	ShaderDescriptorSetLayout				layout;
-	u64									ID;
+	VkShaderModule		  module = VK_NULL_HANDLE;
+	ThickHashTable<u32, 10u>  semanticNames;
+	ShaderDescriptorSetLayout layout;
+	u64			  ID;
     };
     // RenderPass
     struct RenderPass_vk : public RenderPass_internal {
-	VkRenderPass									renderPass;
-	std::vector<std::pair<size_t, VkFramebuffer>>	frameBuffers;
-	VkRenderPassBeginInfo							beginInfo;
-	std::mutex										mutex;
+	VkRenderPass				renderPass;
+	List<std::pair<size_t, VkFramebuffer>>	frameBuffers;
+	VkRenderPassBeginInfo			beginInfo;
+	Mutex					mutex;
     };
     // InputLayoutState
     struct InputLayoutState_vk : public InputLayoutState_internal {
@@ -264,22 +268,22 @@ namespace sv {
 	VkSemaphore							semPresent = VK_NULL_HANDLE;
 
 	VkSurfaceCapabilitiesKHR			capabilities;
-	std::vector<VkPresentModeKHR>		presentModes;
-	std::vector<VkSurfaceFormatKHR>		formats;
+	List<VkPresentModeKHR>		presentModes;
+	List<VkSurfaceFormatKHR>		formats;
 
 	VkFormat							currentFormat;
 	VkColorSpaceKHR						currentColorSpace;
 	VkPresentModeKHR					currentPresentMode;
 	VkExtent2D							currentExtent;
 
-	std::vector<VkFence>				imageFences;
+	List<VkFence>				imageFences;
 	u32									imageIndex;
 
 	struct Image {
 	    VkImage image;
 	    VkImageView view;
 	};
-	std::vector<Image> images;
+	List<Image> images;
     };
 
     struct Graphics_vk {
@@ -324,7 +328,7 @@ namespace sv {
 	List<Frame> frames;
 	u32	    frameCount;
 	u32	    currentFrame = 0u;
-	std::mutex  mutexCMD;
+	Mutex       mutexCMD;
 	u32	    activeCMDCount = 0u;
 
 	SV_INLINE Frame& GetFrame() noexcept { return frames[currentFrame]; }
@@ -332,15 +336,15 @@ namespace sv {
 
 	// Binding Members
 
-	VkRenderPass                     activeRenderPass[GraphicsLimit_CommandList];
-	std::map<size_t, VulkanPipeline> pipelines;
-	std::mutex			 pipelinesMutex;
+	VkRenderPass                         activeRenderPass[GraphicsLimit_CommandList];
+	// TODO
+	std::unordered_map<u64, VulkanPipeline> pipelines;
+	Mutex			             pipelinesMutex;
 
-    private:
 	u64 IDCount = 0u;
-	std::mutex IDMutex;
-    public:
-	inline u64 GetID() noexcept { std::lock_guard<std::mutex> lock(IDMutex); return IDCount++; }
+	Mutex IDMutex;
+	
+	SV_INLINE u64 GetID() noexcept { SV_LOCK_GUARD(IDMutex, lock); return IDCount++; }
 
     };
 

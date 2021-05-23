@@ -51,7 +51,7 @@ namespace sv {
 
     void RawList::pop_back(size_t size)
     {
-	SV_ASSERT(size >= _size);
+	SV_ASSERT(_size >= size);
 	_size -= size;
     }
 
@@ -352,7 +352,7 @@ namespace sv {
     u32 SizedInstanceAllocator::unfreed_count() const noexcept
     {
 	u32 unfreed = 0u;
-	for (auto it = m_Pools.cbegin(); it != m_Pools.cend(); ++it) {
+	for (auto it = m_Pools.begin(); it != m_Pools.end(); ++it) {
 	    unfreed += it->unfreed_count();
 	}
 	return unfreed;

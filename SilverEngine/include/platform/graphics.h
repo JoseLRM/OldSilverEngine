@@ -93,9 +93,9 @@ namespace sv {
     };
 
     struct ShaderAttribute {
-	std::string			name;
+	char		    name[30u];
 	ShaderAttributeType type;
-	u32					offset;
+	u32		    offset;
     };
 
     enum GPUImageType : u8 {
@@ -345,13 +345,18 @@ namespace sv {
 	GPUImageRegion dst_region;
     };
 
+    struct ShaderMacro {
+	const char* name;
+	const char* value;
+    };
+
     struct ShaderCompileDesc {
-	GraphicsAPI											api;
-	ShaderType											shaderType;
-	u32													majorVersion;
-	u32													minorVersion;
-	const char*											entryPoint;
-	std::vector<std::pair<const char*, const char*>>	macros;
+	GraphicsAPI	  api;
+	ShaderType	  shaderType;
+	u32		  majorVersion;
+	u32		  minorVersion;
+	const char*	  entryPoint;
+	List<ShaderMacro> macros;
     };
 
     // Primitive Descriptors
@@ -415,27 +420,27 @@ namespace sv {
 	ShaderType shader_type;
 
 	struct ResourceImage {
-	    std::string name;
-	    u32			binding_slot;
+	    String name;
+	    u32	 binding_slot;
 	};
 
 	struct ResourceSampler {
-	    std::string name;
-	    u32			binding_slot;
+	    String name;
+	    u32	 binding_slot;
 	};
 
 	struct ResourceBuffer {
-	    std::string						name;
-	    u32								binding_slot;
-	    std::vector<ShaderAttribute>	attributes;
-	    u32								size;
+	    String name;
+	    u32			  binding_slot;
+	    List<ShaderAttribute> attributes;
+	    u32			  size;
 	};
 
-	std::vector<ResourceImage>		images;
-	std::vector<ResourceSampler>	samplers;
-	std::vector<ResourceBuffer>		constant_buffers;
+	List<ResourceImage>   images;
+	List<ResourceSampler> samplers;
+	List<ResourceBuffer>  constant_buffers;
 
-	std::vector<ShaderAttribute>	input;
+	List<ShaderAttribute> input;
     };
 
     struct AttachmentDesc {
@@ -456,8 +461,8 @@ namespace sv {
     };
 
     struct RenderPassInfo {
-	u32							depthstencil_attachment_index;
-	std::vector<AttachmentDesc> attachments;
+	u32                  depthstencil_attachment_index;
+	List<AttachmentDesc> attachments;
     };
 
     struct InputElementDesc {
@@ -482,8 +487,8 @@ namespace sv {
     };
 
     struct InputLayoutStateInfo {
-	std::vector<InputSlotDesc>		slots;
-	std::vector<InputElementDesc>	elements;
+	List<InputSlotDesc>		slots;
+	List<InputElementDesc>	elements;
     };
 
     struct BlendAttachmentDesc {
@@ -498,40 +503,40 @@ namespace sv {
     };
 
     struct BlendStateDesc {
-	BlendAttachmentDesc*	pAttachments	= nullptr;
-	u32						attachmentCount = 0u;
-	v4_f32					blendConstants	= { 1.f, 1.f, 1.f, 1.f };
+	BlendAttachmentDesc* pAttachments    = nullptr;
+	u32		     attachmentCount = 0u;
+	v4_f32		     blendConstants  = { 1.f, 1.f, 1.f, 1.f };
     };
 
     struct BlendStateInfo {
-	std::vector<BlendAttachmentDesc>	attachments;
-	v4_f32								blendConstants;
+	List<BlendAttachmentDesc> attachments;
+	v4_f32			  blendConstants;
     };
 
     struct RasterizerStateDesc {
-	bool				wireframe	= false;
-	RasterizerCullMode	cullMode	= RasterizerCullMode_Back;
-	bool				clockwise	= true;
+	bool		   wireframe = false;
+	RasterizerCullMode cullMode  = RasterizerCullMode_Back;
+	bool		   clockwise = true;
     };
 
     struct RasterizerStateInfo : public RasterizerStateDesc {};
 
     struct StencilStateDesc {
-	StencilOperation   failOp		= StencilOperation_Keep;
-	StencilOperation   passOp		= StencilOperation_Keep;
+	StencilOperation   failOp	= StencilOperation_Keep;
+	StencilOperation   passOp	= StencilOperation_Keep;
 	StencilOperation   depthFailOp	= StencilOperation_Keep;
 	CompareOperation   compareOp	= CompareOperation_Never;
     };
 
     struct DepthStencilStateDesc {
-	bool					depthTestEnabled	= false;
-	bool					depthWriteEnabled	= false;
-	CompareOperation		depthCompareOp		= CompareOperation_Less;
-	bool					stencilTestEnabled	= false;
-	u32						readMask			= 0xFF;
-	u32						writeMask			= 0xFF;
-	StencilStateDesc		front;
-	StencilStateDesc		back;
+	bool		 depthTestEnabled   = false;
+	bool		 depthWriteEnabled  = false;
+	CompareOperation depthCompareOp	    = CompareOperation_Less;
+	bool		 stencilTestEnabled = false;
+	u32		 readMask	    = 0xFF;
+	u32		 writeMask	    = 0xFF;
+	StencilStateDesc front;
+	StencilStateDesc back;
     };
 
     struct DepthStencilStateInfo : public DepthStencilStateDesc {};

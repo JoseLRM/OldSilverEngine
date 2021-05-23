@@ -11,14 +11,11 @@ namespace sv {
     struct EventType {
 	char name[EVENTNAME_SIZE + 1u];
 	List<EventRegister> registers;
-	// TODO: use custom mutex
-	std::mutex mutex;
+	Mutex mutex;
     };
 
     struct EventSystemState {
-
-	// TODO: use custom mutex
-	std::mutex global_mutex;
+	Mutex global_mutex;
 	ThickHashTable<EventType, 3000u> table;
     };
 
@@ -27,6 +24,8 @@ namespace sv {
     bool _event_initialize()
     {
 	event_system = SV_ALLOCATE_STRUCT(EventSystemState);
+
+	SV_CHECK(mutex_create(event_system->global_mutex));
 	    
 	return true;
     }
@@ -34,6 +33,12 @@ namespace sv {
     bool _event_close()
     {
 	if (event_system) {
+
+	    mutex_destroy(event_system->global_mutex);
+
+	    for (EventType& t : event_system->table) {
+		mutex_destroy(t.mutex);
+	    }
 
 	    SV_FREE_STRUCT(event_system);
 	    event_system = nullptr;
@@ -46,11 +51,11 @@ namespace sv {
     {
 	if (event_system) {
 
-	    event_system->global_mutex.lock();
+	    mutex_lock(event_system->global_mutex);
 
 	    for (EventType& t : event_system->table) {
 
-		t.mutex.lock();
+		mutex_lock(t.mutex);
 
 		u32 i = 0u;
 		while (i < t.registers.size()) {
@@ -64,10 +69,10 @@ namespace sv {
 		    else ++i;
 		}
 
-		t.mutex.unlock();
+		mutex_unlock(t.mutex);
 	    }
 	    
-	    event_system->global_mutex.unlock();
+	    mutex_unlock(event_system->global_mutex);
 	}
     }
 
@@ -80,7 +85,7 @@ namespace sv {
 	    return nullptr;
 	}
 	
-	std::lock_guard<std::mutex> lock(event_system->global_mutex);
+	SV_LOCK_GUARD(event_system->global_mutex, lock);
 
 	EventType* type = event_system->table.find(event_name);
 	
@@ -95,7 +100,7 @@ namespace sv {
 
     void event_unregister_all(const char* event_name)
     {
-	std::lock_guard<std::mutex> lock(event_system->global_mutex);
+	SV_LOCK_GUARD(event_system->global_mutex, lock);
 	event_system->table.erase(event_name);
     }
     
@@ -113,12 +118,17 @@ namespace sv {
 		return false;
 	}
 
-	event_system->global_mutex.lock();
+	mutex_lock(event_system->global_mutex);
+
 	EventType& type = event_system->table[event_name];
-	event_system->global_mutex.unlock();
+
+	if (!mutex_valid(type.mutex))
+	    mutex_create(type.mutex);
+	
+	mutex_unlock(event_system->global_mutex);
 
 	{
-	    std::lock_guard<std::mutex> lock(type.mutex);
+	    SV_LOCK_GUARD(type.mutex, lock);
 
 	    for (const EventRegister& reg : type.registers) {
 
@@ -148,7 +158,7 @@ namespace sv {
 	if (type == nullptr) return false;
 
 	{
-	    std::lock_guard<std::mutex> lock(type->mutex);
+	    SV_LOCK_GUARD(type->mutex, lock);
 
 	    foreach (i, type->registers.size()) {
 
@@ -170,7 +180,7 @@ namespace sv {
 
 	if (type == nullptr) return;
 
-	std::lock_guard<std::mutex> lock(type->mutex);
+	SV_LOCK_GUARD(type->mutex, lock);
 
 	for (EventRegister& reg : type->registers) {
 

@@ -983,7 +983,7 @@ namespace sv {
 	    p1 = f32(offset) + math_random_f32(seed * (u32(offset) + 0x9e3779b9 + (u32(offset) << 6) + (u32(offset) >> 2)));
 
 	    f32 pos = (n - p1) / (p0 - p1);
-	    pos = cos(PI - pos * PI) * 0.5f + 0.5f;
+	    pos = (f32)cos(PI - pos * PI) * 0.5f + 0.5f;
 
 	    f32 h1 = math_random_f32(seed * 24332 * (u32(offset) + 0x9e3779b9 + (u32(offset) << 6) + (u32(offset) >> 2)));
 
@@ -995,7 +995,7 @@ namespace sv {
 	    p1 = f32(offset) + math_random_f32(seed * (u32(offset) + 0x9e3779b9 + (u32(offset) << 6) + (u32(offset) >> 2)));
 
 	    f32 pos = (n - p0) / (p1 - p0);
-	    pos = cos(PI - pos * -PI) * 0.5f + 0.5f;
+	    pos = (f32)cos(PI - pos * -PI) * 0.5f + 0.5f;
 
 	    f32 h1 = math_random_f32(seed * 24332 * (u32(offset) + 0x9e3779b9 + (u32(offset) << 6) + (u32(offset) >> 2)));
 

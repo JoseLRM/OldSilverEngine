@@ -148,8 +148,8 @@ namespace sv {
 
 	// User Macro
 	for (auto it = desc->macros.begin(); it != desc->macros.end(); ++it) {
-	    const char* name = it->first;
-	    const char* value = it->second;
+	    const char* name = it->name;
+	    const char* value = it->value;
 
 	    if (strlen(name) == 0u) continue;
 

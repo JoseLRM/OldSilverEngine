@@ -46,7 +46,7 @@ namespace sv {
 
     static ImRendGlobalState* imrend_state = 0;
     
-#define SV_IMREND() auto& state = imrend_state->state[cmd]; auto& imgfx = imrend_state->gfx
+#define SV_IMREND() auto& state = imrend_state->state[cmd]
 
     enum ImRendHeader : u32 {
 	ImRendHeader_PushMatrix,
@@ -71,6 +71,12 @@ namespace sv {
 	ImRendDrawCall_TextArea,
     };
 
+#undef COMPILE_SHADER
+#undef COMPILE_VS
+#undef COMPILE_PS
+#undef COMPILE_VS_
+#undef COMPILE_PS_
+    
 #define COMPILE_SHADER(type, shader, path, alwais_compile) SV_CHECK(graphics_shader_compile_fastbin_from_file(path, type, &shader, "$system/shaders/immediate_mode/" path, alwais_compile))
 #define COMPILE_VS(shader, path) COMPILE_SHADER(ShaderType_Vertex, shader, path, false)
 #define COMPILE_PS(shader, path) COMPILE_SHADER(ShaderType_Pixel, shader, path, false)
@@ -86,7 +92,7 @@ namespace sv {
 	
 	COMPILE_VS(imgfx.vs_primitive, "primitive_shader.hlsl");
 	COMPILE_PS(imgfx.ps_primitive, "primitive_shader.hlsl");
-	COMPILE_VS_(imgfx.vs_mesh_wireframe, "mesh_wireframe.hlsl");
+	COMPILE_VS(imgfx.vs_mesh_wireframe, "mesh_wireframe.hlsl");
 
 	foreach(i, GraphicsLimit_CommandList) {
 
@@ -113,6 +119,8 @@ namespace sv {
 		SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_mesh));
 	    }
 	}
+
+	return true;
     }
 
     void _imrend_close()
@@ -138,7 +146,7 @@ namespace sv {
     }
 
     template<typename T>
-    SV_AUX void imrend_write(ImmediateModeState& state, const T& t)
+    SV_AUX void imrend_write(ImRendState& state, const T& t)
     {
 	state.buffer.write_back(&t, sizeof(T));
     }
@@ -152,7 +160,7 @@ namespace sv {
 	return t;
     }
 
-    SV_AUX void update_current_matrix(ImmediateModeState& state)
+    SV_AUX void update_current_matrix(ImRendState& state)
     {
 	XMMATRIX matrix = XMMatrixIdentity();
 
@@ -182,7 +190,7 @@ namespace sv {
 	state.current_matrix = matrix * vpm;
     }
 
-    SV_AUX void update_current_scissor(ImmediateModeState& state, CommandList cmd)
+    SV_AUX void update_current_scissor(ImRendState& state, CommandList cmd)
     {
 	v4_f32 s0 = { 0.5f, 0.5f, 1.f, 1.f };
 
@@ -259,6 +267,7 @@ namespace sv {
     void imrend_flush(CommandList cmd)
     {
 	SV_IMREND();
+	auto& imgfx = imrend_state->gfx;
 
 	graphics_event_begin("Immediate Rendering", cmd);
 

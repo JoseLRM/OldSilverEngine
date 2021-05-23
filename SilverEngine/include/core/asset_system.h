@@ -5,6 +5,8 @@
 
 namespace sv {
 
+    constexpr u32 ASSET_NAME_SIZE = 30u;
+
     struct SV_API AssetPtr {
 
 	AssetPtr() = default;
@@ -115,15 +117,15 @@ namespace sv {
 
     struct AssetTypeDesc {
 	
-	std::string		name;
-	u32			asset_size;
-	const char**		extensions;
-	u32			extension_count;
-	AssetCreateFn		create;
-	AssetLoadFileFn		load_file;
-	AssetReloadFileFn	reload_file;
-	AssetFreeFn		free;
-	f32			unused_time;
+	const char*	  name;
+	u32		  asset_size;
+	const char**	  extensions;
+	u32		  extension_count;
+	AssetCreateFn	  create;
+	AssetLoadFileFn	  load_file;
+	AssetReloadFileFn reload_file;
+	AssetFreeFn	  free;
+	f32		  unused_time;
 
     };
 

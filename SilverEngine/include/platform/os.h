@@ -118,6 +118,16 @@ namespace sv {
     SV_API void mutex_lock(Mutex mutex);
     SV_API void mutex_unlock(Mutex mutex);
 
+    SV_INLINE bool mutex_valid(Mutex mutex) { return mutex._handle != 0u; }
+
+    struct _LockGuard {
+	Mutex* m;
+	_LockGuard(Mutex* mutex) : m(mutex) { mutex_lock(*m); }
+	~_LockGuard() { mutex_unlock(*m); }
+    };
+
+#define SV_LOCK_GUARD(mutex, name) _LockGuard name(&mutex);
+
     // INTERNAL
 
     bool _os_startup();
@@ -241,8 +251,8 @@ namespace sv {
 	InputState keys[Key_MaxEnum];
 	InputState mouse_buttons[MouseButton_MaxEnum];
 
-	std::string text;
-	std::vector<TextCommand> text_commands;
+	String text;
+	List<TextCommand> text_commands;
 
 	v2_f32	mouse_position;
 	v2_f32	mouse_last_pos;

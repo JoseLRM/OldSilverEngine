@@ -8,6 +8,9 @@
 
 namespace sv {
 
+    constexpr u32 ENTITY_NAME_SIZE = 30u;
+    constexpr u32 COMPONENT_NAME_SIZE = 30u;
+
     typedef u16 CompID;
     typedef u32 Entity;
 

@@ -216,7 +216,7 @@ namespace sv {
 		    it->count[samplerIndex] >= layout.count[samplerIndex] * VULKAN_DESCRIPTOR_ALLOC_COUNT &&
 		    it->count[imageIndex] >= layout.count[imageIndex] * VULKAN_DESCRIPTOR_ALLOC_COUNT &&
 		    it->count[uniformIndex] >= layout.count[uniformIndex] * VULKAN_DESCRIPTOR_ALLOC_COUNT) {
-		    pool = it._Ptr;
+		    pool = &(*it);
 		    break;
 		}
 	    }
@@ -341,6 +341,10 @@ namespace sv {
     bool graphics_vulkan_initialize()
     {
 	g_API = std::make_unique<Graphics_vk>();
+
+	SV_CHECK(mutex_create(g_API->mutexCMD));
+	SV_CHECK(mutex_create(g_API->pipelinesMutex));
+	SV_CHECK(mutex_create(g_API->IDMutex));
 
 	// Instance extensions and validation layers
 #if SV_GFX
@@ -692,6 +696,10 @@ namespace sv {
     {
 	vkDeviceWaitIdle(g_API->device);
 
+	mutex_destroy(g_API->mutexCMD);
+	mutex_destroy(g_API->pipelinesMutex);
+	mutex_destroy(g_API->IDMutex);
+
 	// Destroy swapchain
 	graphics_vulkan_swapchain_destroy(false);
 	
@@ -908,10 +916,10 @@ namespace sv {
 
     CommandList graphics_vulkan_commandlist_begin()
     {
-	g_API->mutexCMD.lock();
+	mutex_lock(g_API->mutexCMD);
 	CommandList index = g_API->activeCMDCount++;
 	VkCommandBuffer cmd = g_API->frames[g_API->currentFrame].commandBuffers[index];
-	g_API->mutexCMD.unlock();
+	mutex_unlock(g_API->mutexCMD);
 
 	VkCommandBufferBeginInfo begin_info{};
 	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -925,14 +933,14 @@ namespace sv {
 
     CommandList graphics_vulkan_commandlist_last()
     {
-	std::lock_guard<std::mutex> lock(g_API->mutexCMD);
+	SV_LOCK_GUARD(g_API->mutexCMD, lock);
 	SV_ASSERT(g_API->activeCMDCount != 0);
 	return g_API->activeCMDCount - 1u;
     }
 
     u32 graphics_vulkan_commandlist_count()
     {
-	std::lock_guard<std::mutex> lock(g_API->mutexCMD);
+	SV_LOCK_GUARD(g_API->mutexCMD, lock);
 	return g_API->activeCMDCount;
     }
 
@@ -954,7 +962,7 @@ namespace sv {
 	    }
 
 	    // Find framebuffer
-	    std::lock_guard<std::mutex> lock(renderPass.mutex);
+	    SV_LOCK_GUARD(renderPass.mutex, lock);
 
 	    for (auto it = renderPass.frameBuffers.begin(); it != renderPass.frameBuffers.end(); ++it) {
 
@@ -1730,12 +1738,13 @@ namespace sv {
 	    VulkanPipeline* pipelinePtr = nullptr;
 	    {
 		// Critical Section
-		std::lock_guard<std::mutex> lock(g_API->pipelinesMutex);
+		SV_LOCK_GUARD(g_API->pipelinesMutex, lock);
 		auto it = g_API->pipelines.find(pipelineHash);
 		if (it == g_API->pipelines.end()) {
 					
 		    // Create New Pipeline Object
 		    VulkanPipeline& p = g_API->pipelines[pipelineHash];
+		    
 		    Shader_vk* vertexShader = reinterpret_cast<Shader_vk*>(state.vertexShader);
 		    Shader_vk* pixelShader = reinterpret_cast<Shader_vk*>(state.pixelShader);
 		    Shader_vk* geometryShader = reinterpret_cast<Shader_vk*>(state.geometryShader);
@@ -2587,7 +2596,7 @@ namespace sv {
 		shader.semanticNames[input.name.c_str() + 7] = comp.get_decoration(input.id, spv::Decoration::DecorationLocation);
 
 		ShaderAttribute attr;
-		attr.name = std::move(input.name);
+		strcpy(attr.name, input.name.c_str());
 		attr.type = graphics_vulkan_parse_spirvtype(comp.get_type(input.base_type_id));
 
 		if (attr.type != ShaderAttributeType_Unknown) {
@@ -2646,7 +2655,7 @@ namespace sv {
 		    // Add image to shader info
 		    shader.info.images.emplace_back();
 		    ShaderInfo::ResourceImage& res = shader.info.images.back();
-		    res.name = std::move(image.name);
+		    res.name.set(image.name.c_str());
 		    res.binding_slot = binding.binding - GraphicsLimit_Sampler;
 		}
 	    }
@@ -2677,7 +2686,7 @@ namespace sv {
 		    // Add cbuffer to shader info
 		    shader.info.constant_buffers.emplace_back();
 		    ShaderInfo::ResourceBuffer& res = shader.info.constant_buffers.back();
-		    res.name = uniform.name.c_str() + 5;
+		    res.name.set(uniform.name.c_str() + 5);
 		    res.binding_slot = binding.binding - (GraphicsLimit_Sampler + GraphicsLimit_GPUImage);
 		    graphics_vulkan_parse_spirvstruct(comp, uniform.base_type_id, res.attributes);
 		    res.size = res.attributes.empty() ? 0u : (res.attributes.back().offset + graphics_shader_attribute_size(res.attributes.back().type));
@@ -2738,6 +2747,8 @@ namespace sv {
 
 	bool hasDepthStencil = false;
 	u32 colorIt = 0u;
+
+	SV_CHECK(mutex_create(renderPass.mutex));
 
 	for (u32 i = 0; i < desc.attachmentCount; ++i) {
 	    const AttachmentDesc& attDesc = desc.pAttachments[i];
@@ -2860,6 +2871,8 @@ namespace sv {
 
     bool graphics_vulkan_renderpass_destroy(RenderPass_vk& renderPass)
     {
+	mutex_destroy(renderPass.mutex);
+	
 	vkDestroyRenderPass(g_API->device, renderPass.renderPass, nullptr);
 	for (auto& it : renderPass.frameBuffers) {
 	    vkDestroyFramebuffer(g_API->device, it.second, nullptr);

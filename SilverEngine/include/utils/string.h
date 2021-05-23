@@ -26,6 +26,14 @@ namespace sv {
 		append(str, str_offset, str_size);
 	    }
 
+	SV_INLINE void append(char c) {
+	    append(&c, 0u, 1u);
+	}
+	SV_INLINE void append(const char* str) {
+
+	    append(str, 0u, strlen(str));
+	}
+
 	SV_INLINE void append(const char* str, size_t str_offset, size_t str_size)
 	    {
 		if (_buff.size() && *(_buff.data() + _buff.size() - 1u) == '\0') {
@@ -86,6 +94,95 @@ namespace sv {
 	size_t size = it - line;
 	
 	return size;
+    }
+
+    constexpr size_t string_size(const char* str)
+    {
+	size_t size = 0u;
+	while (*str++) ++size;
+	return size;
+    }
+
+    SV_INLINE size_t string_append(char* dst, const char* src, size_t buff_size)
+    {
+	size_t src_size = string_size(src);
+	size_t dst_size = string_size(dst);
+
+	size_t new_size = src_size + dst_size;
+
+	size_t overflows = (buff_size < (new_size + 1u)) ? (new_size + 1u) - buff_size : 0u;
+
+	size_t append_size = src_size - (overflows > src_size) ? 0u : (src_size - overflows);
+
+	memcpy(dst + dst_size, src, append_size);
+	new_size = dst_size + append_size;
+	dst[new_size] = '\0';
+	
+	return overflows;
+    }
+
+    SV_INLINE void string_erase(char* str, size_t index)
+    {
+	size_t size = string_size(str);
+
+	char* it = str + index + 1u;
+	char* end = str + size;
+
+	while (it < end) {
+
+	    *(it - 1u) = *it;
+	    ++it;
+	}
+	*(end - 1u) = '\0';
+    }
+
+    SV_INLINE size_t string_copy(char* dst, const char* src, size_t buff_size)
+    {
+	size_t src_size = string_size(src);
+
+	size_t size = SV_MIN(buff_size - 1u, src_size);
+	memcpy(dst, src, size);
+	dst[size] = '\0';
+	return (src_size > buff_size - 1u) ? (src_size - buff_size - 1u) : 0u;
+    }
+
+    SV_INLINE size_t string_insert(char* dst, const char* src, size_t index, size_t buff_size)
+    {
+	if (buff_size <= index)
+	    return 0u;
+	
+	size_t src_size = string_size(src);
+	size_t dst_size = string_size(dst);
+
+	index = SV_MIN(dst_size, index);
+
+	size_t moved_index = index + src_size;
+	if (moved_index < buff_size - 1u) {
+
+	    size_t move_size = SV_MIN(dst_size - index, buff_size - moved_index - 1u);
+
+	    char* end = dst + moved_index - 1u;
+	    char* it0 = dst + moved_index + move_size;
+	    char* it1 = dst + index + move_size;
+
+	    while (it0 != end) {
+
+		*it0 = *it1;
+		--it1;
+		--it0;
+	    }
+	}
+
+	size_t src_cpy = SV_MIN(src_size, buff_size - 1u - index);
+	memcpy(dst + index, src, src_cpy);
+
+	size_t final_size = SV_MIN(buff_size - 1u, src_size + dst_size);
+	dst[final_size] = '\0';
+
+	if (src_size + dst_size > buff_size - 1u) {
+	    return (src_size - dst_size) - (buff_size - 1u);
+	}
+	return 0u;
     }
 
     SV_INLINE const char* filepath_name(const char* filepath)

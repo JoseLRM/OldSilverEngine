@@ -3,6 +3,10 @@
 #include "platform/graphics.h"
 #include "utils/allocators.h"
 
+// TEMP TODO
+#include <mutex>
+#include <functional>
+
 namespace sv {
 
     // Primitives internal
@@ -236,6 +240,7 @@ namespace sv {
 	FNP_graphics_api_event_mark	event_mark;
 	FNP_graphics_api_event_end	event_end;
 
+	// TODO
 	std::unique_ptr<SizedInstanceAllocator> bufferAllocator;
 	std::mutex								bufferMutex;
 

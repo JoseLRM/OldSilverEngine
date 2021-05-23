@@ -1,6 +1,9 @@
 #include "core/asset_system.h"
 #include "utils/allocators.h"
 
+// TODO TEMP
+#include <unordered_map>
+
 namespace sv {
 
     // Time to update one asset type, after this time will update the next type
