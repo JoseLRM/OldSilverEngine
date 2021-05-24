@@ -108,6 +108,8 @@ namespace sv {
 	GuiWidgetType_Text,
 	GuiWidgetType_Collapse,
 	GuiWidgetType_Image,
+	GuiWidgetType_SelectFilepath,
+	GuiWidgetType_AssetButton,
     };
 
     struct GuiWidget {
@@ -124,7 +126,6 @@ namespace sv {
 
 	    struct {
 		const char* text;
-		bool hot;
 		bool pressed;
 	    } button;
 
@@ -157,6 +158,17 @@ namespace sv {
 		GPUImage* image;
 		GPUImageLayout layout;
 	    } image;
+
+	    struct {
+		const char* text;
+		GPUImage* image;
+		GPUImageLayout layout;
+		bool pressed;
+	    } asset_button;
+
+	    struct {
+		const char* filepath;
+	    } select_filepath;
 	    
 	} widget;
 
@@ -712,6 +724,7 @@ namespace sv {
 	    case GuiWidgetType_Drag:
 	    case GuiWidgetType_Text:
 	    case GuiWidgetType_Collapse:
+	    case GuiWidgetType_SelectFilepath:
 		height = 25.f;
 		break;
 
@@ -760,8 +773,8 @@ namespace sv {
 
 	    data.xoff += (x1 - x0) + data.padding;
 
-	    x0 = x0 / space + (1.f - relative_space) * 0.5f;
-	    x1 = x1 / space - (1.f - relative_space) * 0.5f;
+	    x0 = x0 / gui->resolution.x / root.widget_bounds.z + (1.f - relative_space) * 0.5f;
+	    x1 = x1 / gui->resolution.x / root.widget_bounds.z + (1.f - relative_space) * 0.5f;
 
 	    w.bounds.z = x1 - x0;
 	    w.bounds.x = x0 + w.bounds.z * 0.5f;
@@ -788,7 +801,6 @@ namespace sv {
 	    auto& button = w.widget.button;
 	    button.text = gui_read_text(it);
 
-	    button.hot = false;
 	    button.pressed = false;
 	}
 	break;
@@ -846,6 +858,22 @@ namespace sv {
 	    auto& image = w.widget.image;
 	    image.image = gui_read<GPUImage*>(it);
 	    image.layout = gui_read<GPUImageLayout>(it);
+	}
+	break;
+
+	case GuiWidgetType_SelectFilepath:
+	{
+	    auto& select = w.widget.select_filepath;
+	    select.filepath = gui_read_text(it);
+	}
+	break;
+
+	case GuiWidgetType_AssetButton:
+	{
+	    auto& asset = w.widget.asset_button;
+	    asset.text = gui_read_text(it);
+	    asset.image = gui_read<GPUImage*>(it);
+	    asset.layout = gui_read<GPUImageLayout>(it);
 	}
 	break;
 		    
@@ -1173,6 +1201,20 @@ namespace sv {
 		}
 	    }
 	    break;
+
+	    case GuiWidgetType_AssetButton:
+	    {
+		InputState state = input.mouse_buttons[MouseButton_Left];
+		
+		if (state == InputState_Released || state == InputState_None) {
+
+		    if (mouse_in_bounds(w.bounds))
+			w.widget.asset_button.pressed = true;
+		    
+		    free_focus();
+		}
+	    }
+	    break;
 		
 	    }
 	}
@@ -1187,21 +1229,18 @@ namespace sv {
 	switch (w.type) {
 
 	case GuiWidgetType_Button:
+	case GuiWidgetType_AssetButton:
+	case GuiWidgetType_Collapse:
 	{
 	    if (input.unused) {
-
-		auto& button = w.widget.button;
 			
 		if (mouse_in_bounds(bounds)) {
-
-		    button.hot = true;
 
 		    if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
 			set_focus(root, w.type, w.id);
 			input.unused = true;
 		    }
 		}
-		else button.hot = false;
 	    }
 	} break;
 
@@ -1247,20 +1286,24 @@ namespace sv {
 		}
 	    }
 	} break;
-	
-	case GuiWidgetType_Collapse:
-	{
-	    if (input.unused) {
-			
-		if (mouse_in_bounds(bounds)) {
 
-		    if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
-			set_focus(root, w.type, w.id);
-			input.unused = true;
-		    }
-		}
-	    }
-	} break;
+	case GuiWidgetType_SelectFilepath:
+	{
+	    // TODO
+	    /*auto& select = w.widget.select_filepath;
+
+	    const char* filepath = select.filepath ? select.filepath : "";
+	    const char* it = filepath;
+
+	    u32 folder_count = 0u;
+
+	    while (*it) {
+
+		//v4_f32 b = compute_select_filepath_folder(it, folder_count, renderer_default_font());
+		++folder_count;
+	    }*/
+	}
+	break;
 		
 	}
     }
@@ -2093,6 +2136,36 @@ namespace sv {
 	gui_write(GuiHeader_EndGrid);
     }
 
+    bool gui_select_filepath(const char* filepath, char* out, u64 id, u32 flags)
+    {
+	compute_id(id);
+	
+	write_widget(GuiWidgetType_SelectFilepath, id, flags);
+	gui_write_text(filepath);
+
+	//GuiWidget* asset = find_widget(GuiWidgetType_AssetButton, id);
+	//bool pressed = asset ? asset->widget.asset_button.pressed : false;
+	//return pressed;
+
+	return false;
+    }
+
+    bool gui_asset_button(const char* text, GPUImage* image, GPUImageLayout layout, u64 id, u32 flags)
+    {
+	compute_id(id);
+	
+	write_widget(GuiWidgetType_AssetButton, id, flags);
+	gui_write_text(text);
+	gui_write(image);
+	gui_write(layout);
+
+	GuiWidget* asset = find_widget(GuiWidgetType_AssetButton, id);
+
+	bool pressed = asset ? asset->widget.asset_button.pressed : false;
+
+	return pressed;
+    }
+
     SV_AUX void draw_root(const GuiRootInfo& root, CommandList cmd)
     {
 	const GuiStyle& style = gui->style;
@@ -2191,7 +2264,7 @@ namespace sv {
 
 		if (gui->current_focus == &w)
 		    color = style.widget_focused_color;
-		else if (button.hot)
+		else if (mouse_in_bounds(w.bounds))
 		    color = style.widget_highlighted_color;
 		    
 		imrend_draw_quad(pos.getVec3(), size, color, cmd);
@@ -2413,6 +2486,54 @@ namespace sv {
 		v2_f32 size = v2_f32(w.bounds.z, w.bounds.w);
 	    
 		imrend_draw_sprite(pos.getVec3(), size, Color::White(), image.image ? image.image : renderer_white_image(), image.layout, { 0.f, 0.f, 1.f, 1.f }, cmd);
+	    }
+	    break;
+
+	    case GuiWidgetType_AssetButton:
+	    {
+		auto& asset = w.widget.asset_button;
+
+		v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y);
+		v2_f32 size = v2_f32(w.bounds.z, w.bounds.w);
+
+		Color color = Color::White();
+
+		if (mouse_in_bounds(w.bounds))
+		    color = Color::Gray(100);
+	    
+		imrend_draw_sprite(pos.getVec3(), size, color, asset.image ? asset.image : renderer_white_image(), asset.layout, { 0.f, 0.f, 1.f, 1.f }, cmd);
+
+		if (asset.text) {
+
+		    pos.y -= size.y * 0.35f;
+		    size.y *= 0.35f;
+
+		    Font& font = renderer_default_font();
+		    f32 font_size = size.y + size.y * font.vertical_offset;
+
+		    imrend_draw_text(asset.text, strlen(asset.text), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f, size.x, 1u, font_size, gui->aspect, TextAlignment_Center, &font, style.widget_text_color, cmd);
+		}
+	    }
+	    break;
+
+	    case GuiWidgetType_SelectFilepath:
+	    {
+		v2_f32 pos;
+		v2_f32 size;
+
+		auto& select = w.widget.select_filepath;
+		pos = v2_f32{ w.bounds.x, w.bounds.y };
+		size = v2_f32{ w.bounds.z, w.bounds.w };
+
+		const char* text = select.filepath;
+
+		if (text == nullptr)
+		    text = "";
+
+		Font& font = renderer_default_font();
+		f32 font_size = size.y + size.y * font.vertical_offset;
+
+		imrend_draw_text(text, strlen(text), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f, size.x, 1u, font_size, gui->aspect, TextAlignment_Left, &font, style.widget_text_color, cmd);
 	    }
 	    break;
 		    

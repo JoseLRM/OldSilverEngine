@@ -1289,51 +1289,39 @@ namespace sv {
 	}
     }
 
-    /*
-    static void display_asset_browser()
+    SV_INTERNAL void display_asset_browser()
     {
 	bool update_browser = false;
-	char next_filepath[FILEPATH_SIZE];
+	char next_filepath[FILEPATH_SIZE + 1] = "";
 
 	if (gui_begin_window("Asset Browser")) {
 
-	    constexpr f32 WIDTH = 25.f;
 	    AssetBrowserInfo& info = editor.asset_browser;
 
-	    {
-		gui_begin_container(0u, GuiLayout_Flow);
-		
-		gui_same_line(3u);
+	    // TEMP
+	    if (input.unused && input.keys[Key_Control] && input.keys[Key_B] == InputState_Pressed) {
 
-		if (gui_button("<", 0u) && info.filepath[0]) {
+		string_copy(next_filepath, info.filepath, FILEPATH_SIZE + 1u);
 
-		    update_browser = true;
-		    size_t len = strlen(info.filepath);
+		char* end = next_filepath;
+		char* it = next_filepath + string_size(next_filepath) - 1u;
 
-		    info.filepath[--len] = '\0';
-		    
-		    while (len && info.filepath[len - 1u] != '/') {
-			--len;
-		    }
-		    memcpy(next_filepath, info.filepath, len);
-		    next_filepath[len] = '\0';
-		}
-		
-		gui_button(">", 1u);
-		
-		char filepath[FILEPATH_SIZE + 1u] = "assets/";
-		strcat(filepath, info.filepath);
+		while (it > end && *it != '/') --it;
 
-		gui_text(filepath, 2u);
+		if (it >= end) next_filepath[0] = '\0';
+		else if (*it == '/') *(it + 1u) = '\0';
 		
-		gui_end_container();
+		
+		update_browser = true;
 	    }
 
-	    {
-		gui_begin_container(1u, GuiLayout_Grid);
+	    if (gui_select_filepath(info.filepath, next_filepath, 0u)) {
 
-		gui_push_id("Asset Elements");
-		gui_push_style(GuiStyle_ContainerColor, editor.palette.color);
+		update_browser = true;
+	    }
+	    
+	    {
+		gui_begin_grid(85.f, 3.f, 1u);
 
 		foreach(i, info.elements.size()) {
 
@@ -1342,19 +1330,12 @@ namespace sv {
 		    gui_push_id((u64)e.type);
 
 		    // TODO: ignore unused elements
-		    gui_begin_container(i, GuiLayout_Flow);
-
 		    switch (e.type) {
 
 		    case AssetElementType_Directory:
 		    {
-			gui_push_style(GuiStyle_ButtonImage, editor.image.get());
-			gui_push_style(GuiStyle_ButtonTexcoord, editor.TEXCOORD_FOLDER);
-			gui_push_style(GuiStyle_ButtonColor, Color::White());
-			gui_push_style(GuiStyle_ButtonHotColor, editor.palette.strong_color);
-
-			if (gui_button("", 0u)) {
-
+			if (gui_asset_button(e.name, nullptr, GPUImageLayout_ShaderResource, 0u)) {
+			    
 			    if (e.type == AssetElementType_Directory && !update_browser) {
 
 				update_browser = true;
@@ -1366,8 +1347,6 @@ namespace sv {
 				    SV_LOG_ERROR("This filepath exceeds the max filepath size");
 			    }
 			}
-
-			gui_pop_style(4u);
 		    }
 		    break;
 
@@ -1383,24 +1362,22 @@ namespace sv {
 
 			sprintf(pack.filepath, "assets/%s%s", info.filepath, e.name);
 
-			u32 styles = 0u;
-
 			if (e.type == AssetElementType_Texture) {
 
 			    TextureAsset tex;
 
 			    if (get_asset_from_file(tex, pack.filepath)) {
 
-				gui_image(tex.get(), GPUImageLayout_ShaderResource, 0u);
+				gui_asset_button(e.name, tex.get(), GPUImageLayout_ShaderResource, 0u);
 			    }
 			    // TODO: Set default image
 			    else {
-
+				gui_asset_button(e.name, nullptr, GPUImageLayout_ShaderResource, 0u);
 			    }
 			}
 			else {
 
-			    gui_image(nullptr, GPUImageLayout_ShaderResource, 0u);
+			    gui_asset_button(e.name, nullptr, GPUImageLayout_ShaderResource, 0u);
 			}
 
 			u32 id;
@@ -1426,26 +1403,15 @@ namespace sv {
 
 			if (id != u32_max) {
 			    
-			    gui_send_package(&pack, sizeof(AssetPackage), id);
+			    //gui_send_package(&pack, sizeof(AssetPackage), id);
 			}
-
-			if (styles)
-			    gui_pop_style(styles);
 		    }
 		    break;
 
 		    }
-
-		    gui_text(e.name, 1u);
-
-		    gui_end_container();
-		    gui_pop_id();
 		}
 
-		gui_pop_style(1u);
-		gui_pop_id();
-
-		gui_end_container();
+		gui_end_grid();
 	    }
 
 	    // Update per time
@@ -1528,7 +1494,7 @@ namespace sv {
 		info.last_update = timer_now();
 	    }
 
-	    if (gui_begin_popup(GuiPopupTrigger_Parent, MouseButton_Right, 69u, GuiLayout_Flow)) {
+	    if (gui_begin_popup(GuiPopupTrigger_Root)) {
 
 		if (gui_button("Import Model", 0u)) {
 
@@ -1573,9 +1539,9 @@ namespace sv {
 		gui_end_popup();
 	    }
 	    
-	    egui_end_window();
+	    gui_end_window();
 	}
-	}*/
+    }
 
     void display_scene_settings()
     {
@@ -1636,26 +1602,12 @@ namespace sv {
 		    if (gui_button("Exit Project", 6u)) {
 			dev.next_engine_state = EngineState_ProjectManagement;
 		    }
-
-		    // TEST
-		    gui_begin_grid(100.f, 3.f, 7u);
-
-		    gui_button("Test0", 0u);
-		    gui_button("Test1", 1u);
-		    gui_button("Test2", 2u);
-		    gui_button("Test3", 3u);
-		    gui_button("Test4", 4u);
-		    gui_button("Test5", 5u);
-		    gui_button("Test6", 6u);
-		    
-		    gui_end_grid();
-		    
 		    gui_end_window();
 		}
 		
 		display_entity_hierarchy();
 		display_entity_inspector();
-		//display_asset_browser();
+		display_asset_browser();
 		display_scene_settings();
 		
 

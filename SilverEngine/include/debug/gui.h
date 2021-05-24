@@ -76,5 +76,8 @@ namespace sv {
 
     SV_API void gui_begin_grid(f32 width, f32 padding, u64 id);
     SV_API void gui_end_grid();
+
+    SV_API bool gui_select_filepath(const char* filepath, char* out, u64 id, u32 flags = 0u);
+    SV_API bool gui_asset_button(const char* text, GPUImage* image, GPUImageLayout layout, u64 id, u32 flags = 0u);
     
 }

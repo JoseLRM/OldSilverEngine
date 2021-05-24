@@ -362,6 +362,18 @@ namespace sv {
 
     ///////////////////////////////////////////////////////// COMPONENTS /////////////////////////////////////////////////////////
 
+    // TODO
+    /*struct SpriteSheet {
+
+	static constexpr VERSION = 0u;
+
+	TextureAsset texture;
+	IndexedList<v4_f32> sprites;
+	
+    };
+
+    SV_DEFINE_ASSET(SpriteSheetAsset, SpriteSheet);*/
+
     enum SpriteComponentFlag : u32 {
 	SpriteComponentFlag_XFlip = SV_BIT(0), // Reverse the sprite coordinates in the x axis
 	SpriteComponentFlag_YFlip = SV_BIT(1), // Reverse the sprite coordinates in the y axis
