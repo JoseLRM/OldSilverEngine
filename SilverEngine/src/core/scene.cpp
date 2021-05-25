@@ -2290,6 +2290,62 @@ namespace sv {
 
     //////////////////////////////////////////// COMPONENTS ////////////////////////////////////////////////////////
 
+    bool SpriteSheet::add_sprite(u32& id, const char* name, const v4_f32& texcoord)
+    {
+	if (name == nullptr) name "Unnamed";
+	
+	size_t name_size = string_size(name);
+	if (name_size > SPRITE_NAME_SIZE) {
+	    SV_LOG_ERROR("The sprite name '%s' is too large", name);
+	    return false;
+	}
+
+	// TODO: Check if have repeated sprite names
+
+	id = sprites.emplace();
+
+	Sprite& s = sprites[id];
+	s.texcoord = texcoord;
+	string_copy(s.name, name, SPRITE_NAME_SIZE + 1u);
+
+	return true;
+    }
+    
+    bool SpriteSheet::add_sprite_animation(u32& id, const char* name, u32* sprites, u32 frames, f32 frame_time)
+    {
+	if (name == nullptr) name "Unnamed";
+	
+	size_t name_size = string_size(name);
+	if (name_size > SPRITE_NAME_SIZE) {
+	    SV_LOG_ERROR("The sprite animation name '%s' is too large", name);
+	    return false;
+	}
+
+	if (frames > SPRITE_ANIMATION_MAX_FRAMES) {
+	    SV_LOG_ERROR("The sprite animation '%s' has %u sprites, the limit is %u", name, frames, SPRITE_ANIMATION_MAX_FRAMES);
+	    return false;
+	}
+
+	// TODO: Check if have repeated sprite names
+
+	id = sprite_animations.emplace();
+
+	SpriteAnimation& s = sprite_animations[id];
+	string_copy(s.name, name, SPRITE_NAME_SIZE + 1u);
+	memcpy(s.sprites, sprites, frames * sizeof(u32));
+	s.frames = frames;
+	s.frame_time = frame_time;
+
+	return true;
+    }
+
+    v4_f32 SpriteSheet::get_sprite_texcoord(u32 id)
+    {
+	if (sprites.exists(id))
+	    return sprites[id].texcoord;
+	else return { 0.f, 0.f, 1.f, 1.f };
+    }
+
     void SpriteComponent::serialize(Serializer& s)
     {
 	serialize_asset(s, texture);

@@ -1198,7 +1198,7 @@ namespace sv {
 
 	void erase(u32 index) {
 
-	    SV_ASSERT(_size >= index && _data[index].used);
+	    SV_ASSERT(exists(index));
 	    _data[index].used = false;
 	    _data[index].value.~T();
 
@@ -1237,6 +1237,10 @@ namespace sv {
 	    }
 
 	    _size = 0u;
+	}
+
+	bool exists(u32 index) {
+	    return index < _size && _data[index].used;
 	}
 
 	size_t size() { return _size; }

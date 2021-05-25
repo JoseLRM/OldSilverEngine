@@ -361,18 +361,38 @@ namespace sv {
     }
 
     ///////////////////////////////////////////////////////// COMPONENTS /////////////////////////////////////////////////////////
+    
+    constexpr u32 SPRITE_NAME_SIZE = 15u;
+    constexpr u32 SPRITE_ANIMATION_MAX_FRAMES = 32u;
+    
+    struct Sprite {
+	char name[SPRITE_NAME_SIZE + 1u];
+	v4_f32 texcoord;
+    };
 
-    // TODO
-    /*struct SpriteSheet {
+    struct SpriteAnimation {
+	char name[SPRITE_NAME_SIZE + 1u];
+	u32 sprites[SPRITE_ANIMATION_MAX];
+	u32 frames;
+	f32 frame_time;
+    };
+    
+    struct SpriteSheet {
 
 	static constexpr VERSION = 0u;
 
 	TextureAsset texture;
-	IndexedList<v4_f32> sprites;
+	IndexedList<Sprite> sprites;
+	IndexedList<SpriteAnimation> sprite_animations;
+
+	bool add_sprite(u32& id, const char* name, const v4_f32& texcoord);
+	bool add_sprite_animation(u32& id, const char* name, u32* sprites, u32 frames, f32 frame_time);
+
+	v4_f32 get_sprite_texcoord(u32 id);
 	
     };
 
-    SV_DEFINE_ASSET(SpriteSheetAsset, SpriteSheet);*/
+    SV_DEFINE_ASSET(SpriteSheetAsset, SpriteSheet);
 
     enum SpriteComponentFlag : u32 {
 	SpriteComponentFlag_XFlip = SV_BIT(0), // Reverse the sprite coordinates in the x axis
