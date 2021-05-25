@@ -1160,5 +1160,176 @@ namespace sv {
 	List<Pool> m_Pools;
 
     };
+
+    ///////////////////////////////////////////// INDEXED LIST //////////////////////////////////////////////////////////////////////////////
+
+        template<typename T>
+    struct IndexedList {
+
+	struct Entry {
+	    bool used;
+	    T value;
+	};
+
+	~IndexedList() {
+	    clear();
+	}
+
+	template<typename... Args>
+	u32 emplace(Args&& ...args) {
+	    
+	    T* t;
+	    u32 index;
+	    _add(&t, &index);
+	    
+	    new(t) T(std::forward<Args>(args)...);
+	    return index;
+	}
+
+	u32 push(const T& t) {
+	    
+	    T* new_t;
+	    u32 index;
+	    _add(&new_t, &index);
+
+	    new(new_t) T(t);
+	    return index;
+	}
+
+	void erase(u32 index) {
+
+	    SV_ASSERT(_size >= index && _data[index].used);
+	    _data[index].used = false;
+	    _data[index].value.~T();
+
+	    if (index + 1u == _size)
+		--_size;
+	}
+
+	T& operator[](u32 index) {
+	    return _data[index].value;
+	}
+
+	void clear() {
+
+	    if (_data) {
+		foreach(i, _size) {
+
+		    if (_data[i].used)
+			_data[i].value.~T();
+		}
+
+		SV_FREE_MEMORY(_data);
+		_data = nullptr;
+		_size = 0u;
+		_capacity = 0u;
+	    }
+	}
+
+	void reset() {
+
+	    foreach(i, _size) {
+
+		if (_data[i].used) {
+		    _data[i].~T();
+		    _data[i].used = false;
+		}
+	    }
+
+	    _size = 0u;
+	}
+
+	size_t size() { return _size; }
+	
+	void _add(T** t, u32* index) {
+
+	    Entry* entry = nullptr;
+	    *index = u32_max;
+
+	    foreach(i, _size) {
+		if (!_data[i].used) {
+		    entry = _data + i;
+		    *index = i;
+		    break;
+		}
+	    }
+
+	    if (entry == nullptr) {
+
+		if (_size >= _capacity) {
+
+		    _reallocate(size_t(round(double(_capacity + 1) * 1.7)));
+		}
+		
+
+		*index = u32(_size);
+		entry = _data + _size;
+		++_size;
+		    
+	    }
+
+	    SV_ASSERT(entry);
+	    entry->used = true;
+	    *t = &entry->value;
+	}
+
+	SV_INLINE void _reallocate(size_t size) {
+	    
+	    Entry* new_data = reinterpret_cast<Entry*>(SV_ALLOCATE_MEMORY(size * sizeof(Entry)));
+
+	    if (size > _size) {
+
+		Entry* it = new_data + _size;
+		Entry* end = new_data + size;
+
+		while (it != end) {
+
+		    it->used = false;
+		    ++it;
+		}
+	    }
+
+	    if (_data) {
+		
+		if (size < _size) {
+
+		    Entry* it = _data + size;
+		    Entry* end = _data + _size;
+		    while (it != end) {
+
+			if (it->used)
+			    it->value.~T();
+			++it;
+		    }
+		    _size = size;
+		}
+
+		Entry* it0 = _data;
+		Entry* it1 = new_data;
+		Entry* end = _data + _size;
+
+		while (it0 != end) {
+
+		    if (it0->used)
+			new(it1) Entry(std::move(*it0));
+		    else
+			it1->used = false;
+
+		    ++it0;
+		    ++it1;
+		}		
+
+		SV_FREE_MEMORY(_data);
+	    }
+
+	    _data = new_data;
+	    _capacity = size;
+	}
+
+	Entry* _data = NULL;
+	size_t _size = 0u;
+	size_t _capacity = 0u;
+	
+    };
     
 }
