@@ -1368,6 +1368,29 @@ namespace sv {
 				--_size;
 		}
 
+		IndexedListIterator<T> erase(IndexedListIterator<T> it) {
+
+			u32 index = it.get_index();
+			SV_ASSERT(exists(index));
+			_data[index].used = false;
+			_data[index].value.~T();
+
+			if (index + 1u == _size) {
+				--_size;
+
+				Entry* end = _compute_end_ptr();
+				if (end != it.end) {
+
+					if (it.end == it.next) {
+						it.next = end;
+					}
+					it.end = end;
+				}
+			}
+
+			return ++it;
+		}
+
 		T& operator[](u32 index) {
 			return _data[index].value;
 		}
@@ -1439,6 +1462,17 @@ namespace sv {
 			return IndexedListIterator<T>(_data, it, end);
 		}
 
+		Entry* _compute_end_ptr() {
+
+			Entry* end = _data + _size - 1u;
+
+			while (!end->used && end != _data)
+				--end;
+			
+			++end;
+			return end;
+		}
+
 		ConstIndexedListIterator<T> begin() const {
 
 			const Entry* it = NULL;
@@ -1455,13 +1489,8 @@ namespace sv {
 					it = NULL;
 
 				if (it != NULL) {
-
-					end = _data + _size - 1u;
-
-					while (!end->used && end != _data)
-						--end;
-
-					++end;
+					
+					end = _compute_end_ptr();
 				}
 			}
 
