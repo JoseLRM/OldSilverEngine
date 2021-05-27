@@ -18,17 +18,17 @@ namespace sv {
 
     struct SceneData {
 
-	void* user_ptr = nullptr;
-	u32 user_id = 0u;
+		void* user_ptr = nullptr;
+		u32 user_id = 0u;
 	
-	Entity main_camera = SV_ENTITY_NULL;
-	Entity player = SV_ENTITY_NULL;
+		Entity main_camera = SV_ENTITY_NULL;
+		Entity player = SV_ENTITY_NULL;
 
-	GPUImage* skybox = nullptr;
-	Color ambient_light = Color::Gray(20u);
+		GPUImage* skybox = nullptr;
+		Color ambient_light = Color::Gray(20u);
 
-	v2_f32 gravity = { 0.f, -36.f };
-	f32 air_friction = 0.02f;
+		v2_f32 gravity = { 0.f, -36.f };
+		f32 air_friction = 0.02f;
 	
     };
 
@@ -58,24 +58,24 @@ namespace sv {
     ////////////////////////////////////////// ECS ////////////////////////////////////////////////////////
 
     enum EntitySystemFlag : u64 {
-	EntitySystemFlag_None = 0u,
-	EntitySystemFlag_NoSerialize = SV_BIT(32)
+		EntitySystemFlag_None = 0u,
+		EntitySystemFlag_NoSerialize = SV_BIT(32)
     };
 
     struct BaseComponent {
-	u32 _id = 0u;
-	u32 flags = 0u;
+		u32 _id = 0u;
+		u32 flags = 0u;
     };
 
     struct CompRef {
-	CompID id;
-	BaseComponent* ptr;
+		CompID id;
+		BaseComponent* ptr;
     };
 
     template<typename Component>
     struct CompView {
-	Entity entity;
-	Component* comp;
+		Entity entity;
+		Component* comp;
     };
 
     typedef void(*CreateComponentFunction)(BaseComponent*);
@@ -87,15 +87,15 @@ namespace sv {
 
     struct ComponentRegisterDesc {
 
-	const char*                   name;
-	u32			      componentSize;
-	u32                           version;
-	CreateComponentFunction	      createFn;
-	DestroyComponentFunction      destroyFn;
-	MoveComponentFunction	      moveFn;
-	CopyComponentFunction	      copyFn;
-	SerializeComponentFunction    serializeFn;
-	DeserializeComponentFunction  deserializeFn;
+		const char*                   name;
+		u32			      componentSize;
+		u32                           version;
+		CreateComponentFunction	      createFn;
+		DestroyComponentFunction      destroyFn;
+		MoveComponentFunction	      moveFn;
+		CopyComponentFunction	      copyFn;
+		SerializeComponentFunction    serializeFn;
+		DeserializeComponentFunction  deserializeFn;
 
     };
 
@@ -121,9 +121,9 @@ namespace sv {
 
     struct Transform {
 
-	v3_f32 position = { 0.f, 0.f, 0.f };
-	v4_f32 rotation = { 0.f, 0.f, 0.f, 1.f };
-	v3_f32 scale = { 1.f, 1.f, 1.f };
+		v3_f32 position = { 0.f, 0.f, 0.f };
+		v4_f32 rotation = { 0.f, 0.f, 0.f, 1.f };
+		v3_f32 scale = { 1.f, 1.f, 1.f };
 
     };
 
@@ -196,10 +196,10 @@ namespace sv {
 
     struct ComponentIterator {
 		
-	BaseComponent* _it;
-	BaseComponent* _end;
-	u32 _pool;
-	CompID _comp_id;
+		BaseComponent* _it;
+		BaseComponent* _end;
+		u32 _pool;
+		CompID _comp_id;
 
     };
 
@@ -209,29 +209,29 @@ namespace sv {
     template<typename Component>
     SV_INTERNAL bool comp_it_begin(ComponentIterator& it, CompView<Component>& view)
     {
-	return comp_it_begin(it, view.entity, (BaseComponent*&)view.comp, Component::ID);
+		return comp_it_begin(it, view.entity, (BaseComponent*&)view.comp, Component::ID);
     }
     
     template<typename Component>
     SV_INTERNAL bool comp_it_next(ComponentIterator& it, CompView<Component>& view)
     {
-	return comp_it_next(it, view.entity, (BaseComponent*&)view.comp);
+		return comp_it_next(it, view.entity, (BaseComponent*&)view.comp);
     }
 
     template<typename Component, typename T>
     SV_INTERNAL void for_each_comp(T fn)
     {
-	ComponentIterator it;
-	CompView<Component> view;
+		ComponentIterator it;
+		CompView<Component> view;
 
-	if (comp_it_begin(it, view)) {
+		if (comp_it_begin(it, view)) {
 	    
-	    do {
-		if (!fn(view.entity, *view.comp))
-		    break;
-	    }
-	    while (comp_it_next(it, view));
-	}
+			do {
+				if (!fn(view.entity, *view.comp))
+					break;
+			}
+			while (comp_it_next(it, view));
+		}
     }
 
     // TEMPLATES
@@ -239,125 +239,125 @@ namespace sv {
     template<typename Component>
     void register_component_ex(const char* name)
     {
-	ComponentRegisterDesc desc;
-	desc.componentSize = sizeof(Component);
-	desc.name = name;
-	desc.version = Component::VERSION;
+		ComponentRegisterDesc desc;
+		desc.componentSize = sizeof(Component);
+		desc.name = name;
+		desc.version = Component::VERSION;
 
-	desc.createFn = [](BaseComponent* comp_ptr)
-	    {
-		Component* comp = new(comp_ptr) Component();
-		comp->create();
-	    };
+		desc.createFn = [](BaseComponent* comp_ptr)
+			{
+				Component* comp = new(comp_ptr) Component();
+				comp->create();
+			};
 
-	desc.destroyFn = [](BaseComponent* comp_ptr)
-	    {
-		Component* comp = reinterpret_cast<Component*>(comp_ptr);
-		comp->destroy();
-		comp->~Component();
-	    };
+		desc.destroyFn = [](BaseComponent* comp_ptr)
+			{
+				Component* comp = reinterpret_cast<Component*>(comp_ptr);
+				comp->destroy();
+				comp->~Component();
+			};
 
-	desc.moveFn = [](BaseComponent* from_ptr, BaseComponent* to_ptr)
-	    {
-		Component* from = reinterpret_cast<Component*>(from_ptr);
-		Component* to = reinterpret_cast<Component*>(to_ptr);
-		to->move(from);
-	    };
+		desc.moveFn = [](BaseComponent* from_ptr, BaseComponent* to_ptr)
+			{
+				Component* from = reinterpret_cast<Component*>(from_ptr);
+				Component* to = reinterpret_cast<Component*>(to_ptr);
+				to->move(from);
+			};
 
-	desc.copyFn = [](const BaseComponent* from_ptr, BaseComponent* to_ptr)
-	    {
-		const Component* from = reinterpret_cast<const Component*>(from_ptr);
-		Component* to = reinterpret_cast<Component*>(to_ptr);
-		to->copy(from);
-	    };
+		desc.copyFn = [](const BaseComponent* from_ptr, BaseComponent* to_ptr)
+			{
+				const Component* from = reinterpret_cast<const Component*>(from_ptr);
+				Component* to = reinterpret_cast<Component*>(to_ptr);
+				to->copy(from);
+			};
 
-	desc.serializeFn = [](BaseComponent* comp_, Serializer& s)
-	    {
-		Component* comp = reinterpret_cast<Component*>(comp_);
-		comp->serialize(s);
-	    };
+		desc.serializeFn = [](BaseComponent* comp_, Serializer& s)
+			{
+				Component* comp = reinterpret_cast<Component*>(comp_);
+				comp->serialize(s);
+			};
 
-	desc.deserializeFn = [](BaseComponent* comp_, Deserializer& d, u32 version)
-	    {
-		Component* comp = reinterpret_cast<Component*>(comp_);
-		comp->deserialize(d, version);
-	    };
+		desc.deserializeFn = [](BaseComponent* comp_, Deserializer& d, u32 version)
+			{
+				Component* comp = reinterpret_cast<Component*>(comp_);
+				comp->deserialize(d, version);
+			};
 
-	Component::ID = register_component(&desc);
+		Component::ID = register_component(&desc);
     }
 
     template<typename Component>
     void register_component(const char* name)
     {
-	ComponentRegisterDesc desc;
-	desc.componentSize = sizeof(Component);
-	desc.name = name;
-	desc.version = Component::VERSION;
+		ComponentRegisterDesc desc;
+		desc.componentSize = sizeof(Component);
+		desc.name = name;
+		desc.version = Component::VERSION;
 
-	desc.createFn = [](BaseComponent* compPtr)
-	    {
-		new(compPtr) Component();
-	    };
+		desc.createFn = [](BaseComponent* compPtr)
+			{
+				new(compPtr) Component();
+			};
 
-	desc.destroyFn = [](BaseComponent* compPtr)
-	    {
-		Component* comp = reinterpret_cast<Component*>(compPtr);
-		comp->~Component();
-	    };
+		desc.destroyFn = [](BaseComponent* compPtr)
+			{
+				Component* comp = reinterpret_cast<Component*>(compPtr);
+				comp->~Component();
+			};
 
-	desc.moveFn = [](BaseComponent* fromB, BaseComponent* toB)
-	    {
-		Component* from = reinterpret_cast<Component*>(fromB);
-		Component* to = reinterpret_cast<Component*>(toB);
-		u32 id = to->_id;
-		*to = std::move(*from);
-		to->_id = id;
-	    };
+		desc.moveFn = [](BaseComponent* fromB, BaseComponent* toB)
+			{
+				Component* from = reinterpret_cast<Component*>(fromB);
+				Component* to = reinterpret_cast<Component*>(toB);
+				u32 id = to->_id;
+				*to = std::move(*from);
+				to->_id = id;
+			};
 
-	desc.copyFn = [](const BaseComponent* fromB, BaseComponent* toB)
-	    {
-		const Component* from = reinterpret_cast<const Component*>(fromB);
-		Component* to = reinterpret_cast<Component*>(toB);
-		u32 id = to->_id;
-		*to = *from;
-		to->_id = id;
-	    };
+		desc.copyFn = [](const BaseComponent* fromB, BaseComponent* toB)
+			{
+				const Component* from = reinterpret_cast<const Component*>(fromB);
+				Component* to = reinterpret_cast<Component*>(toB);
+				u32 id = to->_id;
+				*to = *from;
+				to->_id = id;
+			};
 
-	desc.serializeFn = [](BaseComponent* comp_, Serializer& s)
-	    {
-		Component* comp = reinterpret_cast<Component*>(comp_);
-		comp->serialize(s);
-	    };
+		desc.serializeFn = [](BaseComponent* comp_, Serializer& s)
+			{
+				Component* comp = reinterpret_cast<Component*>(comp_);
+				comp->serialize(s);
+			};
 
-	desc.deserializeFn = [](BaseComponent* comp_, Deserializer& d, u32 version)
-	    {
-		Component* comp = reinterpret_cast<Component*>(comp_);
-		comp->deserialize(d, version);
-	    };
+		desc.deserializeFn = [](BaseComponent* comp_, Deserializer& d, u32 version)
+			{
+				Component* comp = reinterpret_cast<Component*>(comp_);
+				comp->deserialize(d, version);
+			};
 
-	Component::ID = register_component(&desc);
+		Component::ID = register_component(&desc);
     }
 
     template<typename Component, typename... Args>
     Component* add_component(Entity entity, Args&& ... args) {
-	Component component(std::forward<Args>(args)...);
-	return reinterpret_cast<Component*>(add_component(entity, (BaseComponent*)& component, Component::ID, Component::SIZE));
+		Component component(std::forward<Args>(args)...);
+		return reinterpret_cast<Component*>(add_component(entity, (BaseComponent*)& component, Component::ID, Component::SIZE));
     }
 
     template<typename Component>
     Component* add_component(Entity entity) {
-	return reinterpret_cast<Component*>(add_component_by_id(entity, Component::ID));
+		return reinterpret_cast<Component*>(add_component_by_id(entity, Component::ID));
     }
 
     template<typename Component>
     Component* get_component(Entity entity)
     {
-	return reinterpret_cast<Component*>(get_component_by_id(entity, Component::ID));
+		return reinterpret_cast<Component*>(get_component_by_id(entity, Component::ID));
     }
 
     template<typename Component>
     void remove_component(Entity entity) {
-	remove_component_by_id(entity, Component::ID);
+		remove_component_by_id(entity, Component::ID);
     }
 
     ///////////////////////////////////////////////////////// COMPONENTS /////////////////////////////////////////////////////////
@@ -366,229 +366,235 @@ namespace sv {
     constexpr u32 SPRITE_ANIMATION_MAX_FRAMES = 32u;
     
     struct Sprite {
-	char name[SPRITE_NAME_SIZE + 1u];
-	v4_f32 texcoord;
+		char name[SPRITE_NAME_SIZE + 1u];
+		v4_f32 texcoord;
     };
 
     struct SpriteAnimation {
-	char name[SPRITE_NAME_SIZE + 1u];
-	u32 sprites[SPRITE_ANIMATION_MAX];
-	u32 frames;
-	f32 frame_time;
+		char name[SPRITE_NAME_SIZE + 1u];
+		u32 sprites[SPRITE_ANIMATION_MAX_FRAMES];
+		u32 frames;
+		f32 frame_time;
     };
-    
+
+	// TODO: Cache friendly
     struct SpriteSheet {
 
-	static constexpr VERSION = 0u;
+		static constexpr u32 VERSION = 0u;
 
-	TextureAsset texture;
-	IndexedList<Sprite> sprites;
-	IndexedList<SpriteAnimation> sprite_animations;
+		TextureAsset texture;
+		IndexedList<Sprite> sprites;
+		IndexedList<SpriteAnimation> sprite_animations;
 
-	bool add_sprite(u32& id, const char* name, const v4_f32& texcoord);
-	bool add_sprite_animation(u32& id, const char* name, u32* sprites, u32 frames, f32 frame_time);
-
-	v4_f32 get_sprite_texcoord(u32 id);
+		bool add_sprite(u32* id, const char* name, const v4_f32& texcoord);
+		bool modify_sprite(u32 id, const char* name, const v4_f32& texcoord);
+		
+		bool add_sprite_animation(u32& id, const char* name, u32* sprites, u32 frames, f32 frame_time);
+	
+		v4_f32 get_sprite_texcoord(u32 id);
 	
     };
+
+    SV_API void serialize_sprite_sheet(Serializer& s, const SpriteSheet& sheet);
+    SV_API void deserialize_sprite_sheet(Deserializer& d, SpriteSheet& sheet);
 
     SV_DEFINE_ASSET(SpriteSheetAsset, SpriteSheet);
 
     enum SpriteComponentFlag : u32 {
-	SpriteComponentFlag_XFlip = SV_BIT(0), // Reverse the sprite coordinates in the x axis
-	SpriteComponentFlag_YFlip = SV_BIT(1), // Reverse the sprite coordinates in the y axis
+		SpriteComponentFlag_XFlip = SV_BIT(0), // Reverse the sprite coordinates in the x axis
+		SpriteComponentFlag_YFlip = SV_BIT(1), // Reverse the sprite coordinates in the y axis
     };
 
     struct SpriteComponent : public BaseComponent {
 
-	static CompID SV_API ID;
-	static constexpr u32 VERSION = 0u;
+		static CompID SV_API ID;
+		static constexpr u32 VERSION = 0u;
 	
-	TextureAsset texture;
-	v4_f32	     texcoord = { 0.f, 0.f, 1.f, 1.f };
-	Color	     color = Color::White();
-	u32	     layer = 0u;
+		TextureAsset texture;
+		v4_f32	     texcoord = { 0.f, 0.f, 1.f, 1.f };
+		Color	     color = Color::White();
+		u32	     layer = 0u;
 
-	void serialize(Serializer& s);
-	void deserialize(Deserializer& s, u32 version);
+		void serialize(Serializer& s);
+		void deserialize(Deserializer& s, u32 version);
 
     };
 
     struct AnimatedSpriteComponent : public BaseComponent {
 
-	static CompID SV_API ID;
-	static constexpr u32 VERSION = 0u;
+		static CompID SV_API ID;
+		static constexpr u32 VERSION = 0u;
 	
-	TextureAsset texture;
-	u32          grid_width = 10u;
-	u32          grid_height = 10u;
-	u32          begin_index = 0u;
-	u32          frames = 1u;
-	f32          frame_time = 0.4f;
+		TextureAsset texture;
+		u32          grid_width = 10u;
+		u32          grid_height = 10u;
+		u32          begin_index = 0u;
+		u32          frames = 1u;
+		f32          frame_time = 0.4f;
 
-	u32          index = 0u;
-	f32          time = 0.f;
+		u32          index = 0u;
+		f32          time = 0.f;
 	
-	Color	     color = Color::White();
-	u32	     layer = 0u;
+		Color	     color = Color::White();
+		u32	     layer = 0u;
 
-	void serialize(Serializer& s);
-	void deserialize(Deserializer& s, u32 version);
+		void serialize(Serializer& s);
+		void deserialize(Deserializer& s, u32 version);
 
     };
 
     enum ProjectionType : u32 {
-	ProjectionType_Clip,
-	ProjectionType_Orthographic,
-	ProjectionType_Perspective,
+		ProjectionType_Clip,
+		ProjectionType_Orthographic,
+		ProjectionType_Perspective,
     };
 
     struct CameraComponent : public BaseComponent {
 
-	static CompID SV_API ID;
-	static constexpr u32 VERSION = 1u;
+		static CompID SV_API ID;
+		static constexpr u32 VERSION = 1u;
 
-	ProjectionType projection_type = ProjectionType_Orthographic;
-	f32 near = -1000.f;
-	f32 far = 1000.f;
-	f32 width = 10.f;
-	f32 height = 10.f;
+		ProjectionType projection_type = ProjectionType_Orthographic;
+		f32 near = -1000.f;
+		f32 far = 1000.f;
+		f32 width = 10.f;
+		f32 height = 10.f;
 
-	XMMATRIX view_matrix;
-	XMMATRIX projection_matrix;
-	XMMATRIX view_projection_matrix;
-	XMMATRIX inverse_view_matrix;
-	XMMATRIX inverse_projection_matrix;
-	XMMATRIX inverse_view_projection_matrix;
+		XMMATRIX view_matrix;
+		XMMATRIX projection_matrix;
+		XMMATRIX view_projection_matrix;
+		XMMATRIX inverse_view_matrix;
+		XMMATRIX inverse_projection_matrix;
+		XMMATRIX inverse_view_projection_matrix;
 
-	struct {
-	    bool active = false;
-	    f32 threshold = 0.6f;
-	    f32 intensity = 0.03f;
-	} bloom;
+		struct {
+			bool active = false;
+			f32 threshold = 0.6f;
+			f32 intensity = 0.03f;
+		} bloom;
 
-	void serialize(Serializer& s);
-	void deserialize(Deserializer& s, u32 version);
+		void serialize(Serializer& s);
+		void deserialize(Deserializer& s, u32 version);
 
-	SV_INLINE void adjust(f32 aspect)
-	{
-	    if (width / height == aspect) return;
-	    v2_f32 res = { width, height };
-	    f32 mag = res.length();
-	    res.x = aspect;
-	    res.y = 1.f;
-	    res.normalize();
-	    res *= mag;
-	    width = res.x;
-	    height = res.y;
-	}
+		SV_INLINE void adjust(f32 aspect)
+			{
+				if (width / height == aspect) return;
+				v2_f32 res = { width, height };
+				f32 mag = res.length();
+				res.x = aspect;
+				res.y = 1.f;
+				res.normalize();
+				res *= mag;
+				width = res.x;
+				height = res.y;
+			}
 
-	SV_INLINE f32 getProjectionLength()
-	{
-	    return math_sqrt(width * width + height * height);
-	}
+		SV_INLINE f32 getProjectionLength()
+			{
+				return math_sqrt(width * width + height * height);
+			}
 
-	SV_INLINE void setProjectionLength(f32 length)
-	{
-	    f32 currentLength = getProjectionLength();
-	    if (currentLength == length) return;
-	    width = width / currentLength * length;
-	    height = height / currentLength * length;
-	}
+		SV_INLINE void setProjectionLength(f32 length)
+			{
+				f32 currentLength = getProjectionLength();
+				if (currentLength == length) return;
+				width = width / currentLength * length;
+				height = height / currentLength * length;
+			}
 
     };
 
     struct MeshComponent : public BaseComponent {
 
-	static CompID SV_API ID;
-	static constexpr u32 VERSION = 0u;
+		static CompID SV_API ID;
+		static constexpr u32 VERSION = 0u;
 	
-	MeshAsset		mesh;
-	MaterialAsset	material;
+		MeshAsset		mesh;
+		MaterialAsset	material;
 
-	void serialize(Serializer& s);
-	void deserialize(Deserializer& s, u32 version);
+		void serialize(Serializer& s);
+		void deserialize(Deserializer& s, u32 version);
 
     };
 
     enum LightType : u32 {
-	LightType_Point,
-	LightType_Direction,
-	LightType_Spot,
+		LightType_Point,
+		LightType_Direction,
+		LightType_Spot,
     };
 
     struct LightComponent : public BaseComponent {
 
-	static CompID SV_API ID;
-	static constexpr u32 VERSION = 0u;
+		static CompID SV_API ID;
+		static constexpr u32 VERSION = 0u;
 	
-	LightType light_type = LightType_Point;
-	Color color = Color::White();
-	f32 intensity = 1.f;
-	f32 range = 5.f;
-	f32 smoothness = 0.5f;
+		LightType light_type = LightType_Point;
+		Color color = Color::White();
+		f32 intensity = 1.f;
+		f32 range = 5.f;
+		f32 smoothness = 0.5f;
 
-	void serialize(Serializer& s);
-	void deserialize(Deserializer& s, u32 version);
+		void serialize(Serializer& s);
+		void deserialize(Deserializer& s, u32 version);
 
     };
 
     enum BodyType : u32 {
-	BodyType_Static,
-	BodyType_Dynamic,
-	BodyType_Projectile,
+		BodyType_Static,
+		BodyType_Dynamic,
+		BodyType_Projectile,
     };
 
     enum BodyComponentFlag : u32 {
-	BodyComponentFlag_Trigger = SV_BIT(0)
+		BodyComponentFlag_Trigger = SV_BIT(0)
     };
 
     struct BodyComponent : public BaseComponent {
 
-	static CompID SV_API ID;
-	static constexpr u32 VERSION = 1u;
+		static CompID SV_API ID;
+		static constexpr u32 VERSION = 1u;
 
-	BodyType body_type = BodyType_Static;
-	v2_f32 vel;
-	v2_f32 size = { 1.f, 1.f };
-	v2_f32 offset = { 0.f, 0.f };
-	bool in_ground = false;
-	f32 mass = 1.f;
-	f32 friction = 0.99f;
-	f32 bounciness = 0.f;
+		BodyType body_type = BodyType_Static;
+		v2_f32 vel;
+		v2_f32 size = { 1.f, 1.f };
+		v2_f32 offset = { 0.f, 0.f };
+		bool in_ground = false;
+		f32 mass = 1.f;
+		f32 friction = 0.99f;
+		f32 bounciness = 0.f;
 
-	void serialize(Serializer& s);
-	void deserialize(Deserializer& s, u32 version);
+		void serialize(Serializer& s);
+		void deserialize(Deserializer& s, u32 version);
 	
     };
 
     // EVENTS
 
     struct EntityCreateEvent {
-	Entity entity;
+		Entity entity;
     };
 
     struct EntityDestroyEvent {
-	Entity entity;
+		Entity entity;
     };
     
     enum CollisionState : u32 {
-	CollisionState_Enter,
-	CollisionState_Stay,
-	CollisionState_Leave,
+		CollisionState_Enter,
+		CollisionState_Stay,
+		CollisionState_Leave,
     };
     
     // on_body_collision
     struct BodyCollisionEvent {
-	CompView<BodyComponent> body0;
-	CompView<BodyComponent> body1;
-	CollisionState state;
+		CompView<BodyComponent> body0;
+		CompView<BodyComponent> body1;
+		CollisionState state;
     };
 
     // on_trigger_collision
     struct TriggerCollisionEvent {
-	CompView<BodyComponent> trigger;
-	CompView<BodyComponent> body;
-	CollisionState state;
+		CompView<BodyComponent> trigger;
+		CompView<BodyComponent> body;
+		CollisionState state;
     };
 }

@@ -9,88 +9,89 @@ namespace sv {
 
     struct SV_API AssetPtr {
 
-	AssetPtr() = default;
+		AssetPtr() = default;
 
-	AssetPtr::AssetPtr(void* ptr) : ptr(ptr)
+		AssetPtr::AssetPtr(void* ptr) : ptr(ptr)
 	    {
-		std::atomic<i32>* ref = reinterpret_cast<std::atomic<i32>*>(ptr);
-		ref->fetch_add(1);
+			std::atomic<i32>* ref = reinterpret_cast<std::atomic<i32>*>(ptr);
+			ref->fetch_add(1);
 	    }
 
-	AssetPtr::~AssetPtr()
+		AssetPtr::~AssetPtr()
 	    {
-		if (ptr) {
-		    std::atomic<i32>* ref = reinterpret_cast<std::atomic<i32>*>(ptr);
-		    ref->fetch_add(-1);
-		    ptr = nullptr;
-		}
+			if (ptr) {
+				std::atomic<i32>* ref = reinterpret_cast<std::atomic<i32>*>(ptr);
+				ref->fetch_add(-1);
+				ptr = nullptr;
+			}
 	    }
 
-	AssetPtr::AssetPtr(const AssetPtr& other)
+		AssetPtr::AssetPtr(const AssetPtr& other)
 	    {
-		if (other.ptr) {
-		    ptr = other.ptr;
-		    std::atomic<i32>* ref = reinterpret_cast<std::atomic<i32>*>(ptr);
-		    ref->fetch_add(1);
-		}
+			if (other.ptr) {
+				ptr = other.ptr;
+				std::atomic<i32>* ref = reinterpret_cast<std::atomic<i32>*>(ptr);
+				ref->fetch_add(1);
+			}
 	    }
 
-	AssetPtr& AssetPtr::operator=(const AssetPtr& other)
+		AssetPtr& AssetPtr::operator=(const AssetPtr& other)
 	    {
-		if (ptr) {
-		    std::atomic<i32>* ref = reinterpret_cast<std::atomic<i32>*>(ptr);
-		    ref->fetch_add(-1);
-		}
+			if (ptr) {
+				std::atomic<i32>* ref = reinterpret_cast<std::atomic<i32>*>(ptr);
+				ref->fetch_add(-1);
+			}
 
-		ptr = other.ptr;
+			ptr = other.ptr;
 
-		if (ptr) {
-		    std::atomic<i32>* ref = reinterpret_cast<std::atomic<i32>*>(ptr);
-		    ref->fetch_add(1);
-		}
+			if (ptr) {
+				std::atomic<i32>* ref = reinterpret_cast<std::atomic<i32>*>(ptr);
+				ref->fetch_add(1);
+			}
 
-		return *this;
+			return *this;
 	    }
 
-	AssetPtr::AssetPtr(AssetPtr&& other) noexcept
+		AssetPtr::AssetPtr(AssetPtr&& other) noexcept
 	    {
-		ptr = other.ptr;
-		other.ptr = nullptr;
+			ptr = other.ptr;
+			other.ptr = nullptr;
 	    }
 
-	AssetPtr& AssetPtr::operator=(AssetPtr&& other) noexcept
+		AssetPtr& AssetPtr::operator=(AssetPtr&& other) noexcept
 	    {
-		if (ptr) {
-		    std::atomic<i32>* ref = reinterpret_cast<std::atomic<i32>*>(ptr);
-		    ref->fetch_add(-1);
-		}
+			if (ptr) {
+				std::atomic<i32>* ref = reinterpret_cast<std::atomic<i32>*>(ptr);
+				ref->fetch_add(-1);
+			}
 
-		ptr = other.ptr;
-		other.ptr = nullptr;
+			ptr = other.ptr;
+			other.ptr = nullptr;
 
-		return *this;
+			return *this;
 	    }
 
-	inline bool operator==(const AssetPtr& other) const noexcept { return ptr == other.ptr; }
-	inline bool operator!=(const AssetPtr& other) const noexcept { return ptr != other.ptr; }
+		inline bool operator==(const AssetPtr& other) const noexcept { return ptr == other.ptr; }
+		inline bool operator!=(const AssetPtr& other) const noexcept { return ptr != other.ptr; }
 
-	void* ptr = nullptr;
+		void* ptr = nullptr;
 
     };
 
-#define SV_DEFINE_ASSET_PTR(name, ptr_type) struct name {		\
-	SV_INLINE ptr_type get() const noexcept { ptr_type* ptr = reinterpret_cast<ptr_type*>(get_asset_content(asset_ptr)); return ptr ? *ptr : nullptr; } \
-	SV_INLINE operator AssetPtr& () { return asset_ptr; }		\
-	SV_INLINE operator const AssetPtr& () const { return asset_ptr; } \
-	AssetPtr asset_ptr;						\
+#define SV_DEFINE_ASSET_PTR(name, ptr_type) struct name {				\
+		SV_INLINE ptr_type get() const noexcept { ptr_type* ptr = reinterpret_cast<ptr_type*>(get_asset_content(asset_ptr)); return ptr ? *ptr : nullptr; } \
+		SV_INLINE operator AssetPtr& () { return asset_ptr; }			\
+		SV_INLINE operator const AssetPtr& () const { return asset_ptr; } \
+		AssetPtr asset_ptr;												\
     }
 
-#define SV_DEFINE_ASSET(name, type) struct name {			\
-	SV_INLINE type* get() const noexcept { return reinterpret_cast<type*>(get_asset_content(asset_ptr)); } \
-	SV_INLINE type* operator->() const noexcept { return get(); }	\
-	SV_INLINE operator AssetPtr& () { return asset_ptr; }		\
-	SV_INLINE operator const AssetPtr& () const { return asset_ptr; } \
-	AssetPtr asset_ptr;						\
+#define SV_DEFINE_ASSET(name, type) struct name {						\
+		SV_INLINE type* get() const noexcept { return reinterpret_cast<type*>(get_asset_content(asset_ptr)); } \
+		SV_INLINE const char* get_filepath() const noexcept { return get_asset_filepath(asset_ptr); } \
+		SV_INLINE type* operator->() const noexcept { return get(); }	\
+		SV_INLINE operator AssetPtr& () { return asset_ptr; }			\
+		SV_INLINE operator const AssetPtr& () const { return asset_ptr; } \
+		AssetPtr asset_ptr;												\
     }
 
     void _close_assets();
@@ -117,15 +118,15 @@ namespace sv {
 
     struct AssetTypeDesc {
 	
-	const char*	  name;
-	u32		  asset_size;
-	const char**	  extensions;
-	u32		  extension_count;
-	AssetCreateFn	  create;
-	AssetLoadFileFn	  load_file;
-	AssetReloadFileFn reload_file;
-	AssetFreeFn	  free;
-	f32		  unused_time;
+		const char*	  name;
+		u32		  asset_size;
+		const char**	  extensions;
+		u32		  extension_count;
+		AssetCreateFn	  create;
+		AssetLoadFileFn	  load_file;
+		AssetReloadFileFn reload_file;
+		AssetFreeFn	  free;
+		f32		  unused_time;
 
     };
 
@@ -134,47 +135,47 @@ namespace sv {
     SV_API void update_asset_files();
     SV_API void free_unused_assets();
 
-    SV_INLINE void serialize_asset(Serializer& s, AssetPtr& asset_ptr)
+    SV_INLINE void serialize_asset(Serializer& s, const AssetPtr& asset_ptr)
     {
-	if (asset_ptr.ptr == nullptr) serialize_u8(s, 0u);
-	else {
-	    const char* filepath = get_asset_filepath(asset_ptr);
+		if (asset_ptr.ptr == nullptr) serialize_u8(s, 0u);
+		else {
+			const char* filepath = get_asset_filepath(asset_ptr);
 
-	    if (filepath == nullptr) {
-		serialize_u8(s, 0u);
-	    }
-	    else {
+			if (filepath == nullptr) {
+				serialize_u8(s, 0u);
+			}
+			else {
 
-		serialize_u8(s, 1u);
-		serialize_string(s, filepath);
-	    }
-	}
+				serialize_u8(s, 1u);
+				serialize_string(s, filepath);
+			}
+		}
     }
 
     SV_INLINE void deserialize_asset(Deserializer& d, AssetPtr& asset_ptr)
     {
-	u8 type;
-	deserialize_u8(d, type);
+		u8 type;
+		deserialize_u8(d, type);
 
-	switch (type)
-	{
-	case 1u:
-	{
-	    char filepath[FILEPATH_SIZE + 1u];
+		switch (type)
+		{
+		case 1u:
+		{
+			char filepath[FILEPATH_SIZE + 1u];
 
-	    size_t size = deserialize_string_size(d);
+			size_t size = deserialize_string_size(d);
 
-	    if (size > FILEPATH_SIZE) {
-		SV_LOG_ERROR("The asset filepath size of %ul exceeds the size limit of %ul", size, FILEPATH_SIZE);
-	    }
+			if (size > FILEPATH_SIZE) {
+				SV_LOG_ERROR("The asset filepath size of %ul exceeds the size limit of %ul", size, FILEPATH_SIZE);
+			}
 
-	    deserialize_string(d, filepath, FILEPATH_SIZE + 1u);
+			deserialize_string(d, filepath, FILEPATH_SIZE + 1u);
 
-	    if (!load_asset_from_file(asset_ptr, filepath)) {
-		SV_LOG_ERROR("Can't load the asset '%s'", filepath);
-	    }
-	}break;
-	}
+			if (!load_asset_from_file(asset_ptr, filepath)) {
+				SV_LOG_ERROR("Can't load the asset '%s'", filepath);
+			}
+		}break;
+		}
     }
 
 }

@@ -24,24 +24,24 @@ namespace sv {
     // Timer
 
     struct Date {
-	u32 year;
-	u32 month;
-	u32 day;
-	u32 hour;
-	u32 minute;
-	u32 second;
-	u32 milliseconds;
+		u32 year;
+		u32 month;
+		u32 day;
+		u32 hour;
+		u32 minute;
+		u32 second;
+		u32 milliseconds;
 
-	SV_INLINE bool operator<=(const Date& other)
-	    {
-		if (year != other.year) return year <= other.year;
-		else if (month != other.month) return month <= other.month;
-		else if (day != other.day) return day <= other.day;
-		else if (hour != other.hour) return hour <= other.hour;
-		else if (minute != other.minute) return minute <= other.minute;
-		else if (second != other.second) return second <= other.second;
-		return milliseconds <= other.milliseconds;
-	    }
+		SV_INLINE bool operator<=(const Date& other)
+			{
+				if (year != other.year) return year <= other.year;
+				else if (month != other.month) return month <= other.month;
+				else if (day != other.day) return day <= other.day;
+				else if (hour != other.hour) return hour <= other.hour;
+				else if (minute != other.minute) return minute <= other.minute;
+				else if (second != other.second) return second <= other.second;
+				return milliseconds <= other.milliseconds;
+			}
     };
 
     SV_API f64 timer_now();
@@ -50,10 +50,10 @@ namespace sv {
     // Window
 
     enum WindowState : u32 {
-	WindowState_Windowed,
-	WindowState_Maximized,
-	WindowState_Minimized,
-	WindowState_Fullscreen,
+		WindowState_Windowed,
+		WindowState_Maximized,
+		WindowState_Minimized,
+		WindowState_Fullscreen,
     };
 
     typedef u64 LibraryHandle;
@@ -89,16 +89,16 @@ namespace sv {
     SV_API bool file_date(const char* filepath, Date* create, Date* last_write, Date* last_access);
 
     struct FolderIterator {
-	u64 _handle;
+		u64 _handle;
     };
 
     struct FolderElement {
-	bool is_file;
-	Date create_date;
-	Date last_write_date;
-	Date last_access_date;
-	char name[FILENAME_SIZE + 1u];
-	const char* extension;
+		bool is_file;
+		Date create_date;
+		Date last_write_date;
+		Date last_access_date;
+		char name[FILENAME_SIZE + 1u];
+		const char* extension;
     };
 
     SV_API bool folder_iterator_begin(const char* folderpath, FolderIterator* iterator, FolderElement* element);
@@ -127,9 +127,9 @@ namespace sv {
     SV_INLINE bool mutex_valid(Mutex mutex) { return mutex._handle != 0u; }
 
     struct _LockGuard {
-	Mutex* m;
-	_LockGuard(Mutex* mutex) : m(mutex) { mutex_lock(*m); }
-	~_LockGuard() { mutex_unlock(*m); }
+		Mutex* m;
+		_LockGuard(Mutex* mutex) : m(mutex) { mutex_lock(*m); }
+		~_LockGuard() { mutex_unlock(*m); }
     };
 
 #define SV_LOCK_GUARD(mutex, name) _LockGuard name(&mutex);
@@ -146,129 +146,5 @@ namespace sv {
     
     bool _os_update_user_callbacks(const char* dll);
     void _os_free_user_callbacks();
-    
-    enum MouseButton : u32 {
-	MouseButton_Left,
-	MouseButton_Right,
-	MouseButton_Center,
-
-	MouseButton_MaxEnum,
-	MouseButton_None,
-    };
-
-    enum Key : u32 {
-	Key_Tab,
-	Key_Shift,
-	Key_Control,
-	Key_Capital,
-	Key_Escape,
-	Key_Alt,
-	Key_Space,
-	Key_Left,
-	Key_Up,
-	Key_Right,
-	Key_Down,
-	Key_Enter,
-	Key_Insert,
-	Key_Delete,
-	Key_Supr,
-	Key_A,
-	Key_B,
-	Key_C,
-	Key_D,
-	Key_E,
-	Key_F,
-	Key_G,
-	Key_H,
-	Key_I,
-	Key_J,
-	Key_K,
-	Key_L,
-	Key_M,
-	Key_N,
-	Key_O,
-	Key_P,
-	Key_Q,
-	Key_R,
-	Key_S,
-	Key_T,
-	Key_U,
-	Key_V,
-	Key_W,
-	Key_X,
-	Key_Y,
-	Key_Z,
-	Key_Num0,
-	Key_Num1,
-	Key_Num2,
-	Key_Num3,
-	Key_Num4,
-	Key_Num5,
-	Key_Num6,
-	Key_Num7,
-	Key_Num8,
-	Key_Num9,
-	Key_F1,
-	Key_F2,
-	Key_F3,
-	Key_F4,
-	Key_F5,
-	Key_F6,
-	Key_F7,
-	Key_F8,
-	Key_F9,
-	Key_F10,
-	Key_F11,
-	Key_F12,
-	Key_F13,
-	Key_F14,
-	Key_F15,
-	Key_F16,
-	Key_F17,
-	Key_F18,
-	Key_F19,
-	Key_F20,
-	Key_F21,
-	Key_F22,
-	Key_F23,
-	Key_F24,
-
-	Key_MaxEnum,
-	Key_None,
-    };
-
-    enum InputState : u8 {
-	InputState_None,
-	InputState_Pressed,
-	InputState_Hold,
-	InputState_Released,
-    };
-
-    enum TextCommand : u32 {
-	TextCommand_Null,
-	TextCommand_DeleteLeft,
-	TextCommand_DeleteRight,
-	TextCommand_Enter,
-	TextCommand_Escape,
-    };
-
-    struct GlobalInputData {
-
-	InputState keys[Key_MaxEnum];
-	InputState mouse_buttons[MouseButton_MaxEnum];
-
-	String text;
-	List<TextCommand> text_commands;
-
-	v2_f32	mouse_position;
-	v2_f32	mouse_last_pos;
-	v2_f32	mouse_dragged;
-	f32	mouse_wheel;
-
-	bool unused;
-
-    };
-
-    extern GlobalInputData SV_API input;
     
 }

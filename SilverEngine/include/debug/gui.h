@@ -17,36 +17,36 @@ namespace sv {
     void _gui_draw(CommandList cmd);
 
     struct GuiStyle {
-	Color widget_primary_color = Color::Salmon();
-	Color widget_secondary_color = Color::DarkSalmon();
-	Color widget_highlighted_color = Color::LightSalmon();
-	Color widget_focused_color = Color::Red();
-	Color widget_text_color = Color::Black();
-	Color check_color = Color::Red();
-	Color root_background_color = Color::White(70u);
-	Color root_focused_background_color = Color::White(150u);
-	Color window_decoration_color = Color::Gray(150u);
-	Color window_focused_decoration_color = Color::Salmon(100u);
-	f32 scale = 1.f;
+		Color widget_primary_color = Color::Salmon();
+		Color widget_secondary_color = Color::DarkSalmon();
+		Color widget_highlighted_color = Color::LightSalmon();
+		Color widget_focused_color = Color::Red();
+		Color widget_text_color = Color::Black();
+		Color check_color = Color::Red();
+		Color root_background_color = Color::White(70u);
+		Color root_focused_background_color = Color::White(150u);
+		Color window_decoration_color = Color::Gray(150u);
+		Color window_focused_decoration_color = Color::Salmon(100u);
+		f32 scale = 1.f;
     };
 
     enum GuiDragFlag : u32 {
-	GuiDragFlag_Position = SV_BIT(0),
-	GuiDragFlag_Scale = SV_BIT(1),
-	GuiDragFlag_Rotation = SV_BIT(2)
+		GuiDragFlag_Position = SV_BIT(0),
+		GuiDragFlag_Scale = SV_BIT(1),
+		GuiDragFlag_Rotation = SV_BIT(2)
     };
 
     enum GuiImageDrag : u32 {
-	GuiImageFlag_Fullscreen = SV_BIT(0)
+		GuiImageFlag_Fullscreen = SV_BIT(0)
     };
 
     enum GuiWindowFlag : u32 {
-	GuiWindowFlag_NoClose = SV_BIT(0u),
+		GuiWindowFlag_NoClose = SV_BIT(0u),
     };
 
     enum GuiPopupTrigger : u32 {
-	GuiPopupTrigger_Root,
-	GuiPopupTrigger_LastWidget
+		GuiPopupTrigger_Root,
+		GuiPopupTrigger_LastWidget
     };
 
     SV_API void gui_push_id(u64 id);
@@ -62,6 +62,7 @@ namespace sv {
     SV_API void gui_end_popup();
 
     SV_API bool gui_button(const char* text, u64 id);
+	SV_API bool gui_image_button(const char* text, GPUImage* image, v4_f32 texcoord, u64 id);
     SV_API bool gui_checkbox(const char* text, bool& value, u64 id);
     SV_API bool gui_checkbox(const char* text, u64 id);
     SV_API bool gui_drag_f32(const char* text, f32& value, f32 adv, f32 min, f32 max, u64 id, u32 flags = 0u);
@@ -70,14 +71,19 @@ namespace sv {
     SV_API bool gui_drag_v4_f32(const char* text, v4_f32& value, f32 adv, f32 min, f32 max, u64 id, u32 flags = 0u);
     SV_API bool gui_drag_u32(const char* text, u32& value, u32 adv, u32 min, u32 max, u64 id, u32 flags = 0u);
     SV_API void gui_text(const char* text, u64 id);
+	SV_API bool gui_text_field(char* buff, size_t buff_size, u64 id, u32 flags = 0u);
     SV_API bool gui_collapse(const char* text, u64 id);
-    SV_API void gui_image(GPUImage* image, GPUImageLayout layout, u64 id, u32 flags = 0u);
+    SV_API void gui_image(GPUImage* image, f32 height, v4_f32 texcoord, u64 id, u32 flags = 0u);
     SV_API void gui_separator(f32 separation);
 
     SV_API void gui_begin_grid(f32 width, f32 padding, u64 id);
     SV_API void gui_end_grid();
 
     SV_API bool gui_select_filepath(const char* filepath, char* out, u64 id, u32 flags = 0u);
-    SV_API bool gui_asset_button(const char* text, GPUImage* image, GPUImageLayout layout, u64 id, u32 flags = 0u);
+    SV_API bool gui_asset_button(const char* text, GPUImage* image, u64 id, u32 flags = 0u);
+
+    // HELPERS
+
+    SV_INLINE void gui_image(GPUImage* image, f32 height, u64 id, u32 flags = 0u) { gui_image(image, height, { 0.f, 0.f, 1.f, 1.f }, id, flags); }
     
 }

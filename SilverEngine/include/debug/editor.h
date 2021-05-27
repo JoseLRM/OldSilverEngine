@@ -60,6 +60,7 @@ namespace sv {
     constexpr u32 ASSET_BROWSER_PACKAGE_TEXTURE = 69u;
     constexpr u32 ASSET_BROWSER_PACKAGE_MESH = 70u;
     constexpr u32 ASSET_BROWSER_PACKAGE_MATERIAL = 71u;
+    constexpr u32 ASSET_BROWSER_PACKAGE_SPRITE_SHEET = 72u;
 	
     struct AssetPackage {
 	char filepath[FILEPATH_SIZE + 1u];
