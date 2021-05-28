@@ -316,6 +316,17 @@ namespace sv {
 			return *_data;
 		}
 
+		T* find(const T& t) {
+
+			foreach(i, _size) {
+
+				if (_data[i] == t)
+					return _data + i;
+			}
+
+			return NULL;
+		}
+
 		void reset()
 		{
 			foreach(i, _size)
@@ -1366,6 +1377,8 @@ namespace sv {
 
 			if (index + 1u == _size)
 				--_size;
+
+			--_using;
 		}
 
 		IndexedListIterator<T> erase(IndexedListIterator<T> it) {
@@ -1387,6 +1400,8 @@ namespace sv {
 					it.end = end;
 				}
 			}
+
+			--_using;
 
 			return ++it;
 		}
@@ -1410,6 +1425,7 @@ namespace sv {
 				SV_FREE_MEMORY(_data);
 				_data = nullptr;
 				_size = 0u;
+				_using = 0u;
 				_capacity = 0u;
 			}
 		}
@@ -1425,13 +1441,14 @@ namespace sv {
 			}
 
 			_size = 0u;
+			_using = 0u;
 		}
 
 		bool exists(u32 index) const {
 			return index < _size && _data[index].used;
 		}
 
-		size_t size() const { return _size; }
+		size_t size() const { return _using; }
 
 		IndexedListIterator<T> begin() {
 
@@ -1462,7 +1479,7 @@ namespace sv {
 			return IndexedListIterator<T>(_data, it, end);
 		}
 
-		Entry* _compute_end_ptr() {
+		Entry* _compute_end_ptr() const {
 
 			Entry* end = _data + _size - 1u;
 
@@ -1525,6 +1542,7 @@ namespace sv {
 			}
 
 			SV_ASSERT(entry);
+			++_using;
 			entry->used = true;
 			*t = &entry->value;
 		}
@@ -1585,6 +1603,7 @@ namespace sv {
 		Entry* _data = NULL;
 		size_t _size = 0u;
 		size_t _capacity = 0u;
+		size_t _using = 0u;
 	
     };
     
