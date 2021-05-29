@@ -1584,8 +1584,10 @@ namespace sv {
 
 				while (it0 != end) {
 
-					if (it0->used)
-						new(it1) Entry(std::move(*it0));
+					if (it0->used) {
+						new(&it1->value) T(std::move(it0->value));
+						it1->used = true;
+					}
 					else
 						it1->used = false;
 

@@ -24,9 +24,11 @@ namespace sv {
 		Color widget_text_color = Color::Black();
 		Color check_color = Color::Red();
 		Color root_background_color = Color::White(70u);
-		Color root_focused_background_color = Color::White(150u);
+		Color root_focused_background_color = Color::White();
 		Color window_decoration_color = Color::Gray(150u);
-		Color window_focused_decoration_color = Color::Salmon(100u);
+		Color window_focused_decoration_color = Color::Salmon();
+		Color docking_button = Color::Red();
+		Color docking_highlighted_button = Color::White();
 		f32 scale = 1.f;
     };
 

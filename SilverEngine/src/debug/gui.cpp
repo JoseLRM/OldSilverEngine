@@ -4,9 +4,6 @@
 
 namespace sv {
 
-    constexpr f32 GUI_DOCKING_SECTION_SIZE = 0.3f;
-    constexpr f32 GUI_DOCKING_BUTTON_WIDTH = 0.05f;
-    constexpr f32 GUI_DOCKING_BUTTON_HEIGHT = 0.03f;
     constexpr f32 GUI_SCROLL_SIZE = 5.f;
 
     enum GuiType : u32 {
@@ -74,9 +71,8 @@ namespace sv {
 		GuiWindowAction_CloseButton,
     };
 
-	enum GuiWindowContainerAction : u32 {
-		GuiWindowContainerAction_None,
-		GuiWindowContainerAction_SwapWindow,
+	enum GuiWindowNodeAction : u32 {
+		GuiWindowNodeAction_SwapWindow,
 	};
 
     enum GuiDockingLocation : u32 {
@@ -198,7 +194,7 @@ namespace sv {
 		GuiRootType_None,
 		GuiRootType_Screen,
 		GuiRootType_Window,
-		GuiRootType_WindowContainer,
+		GuiRootType_WindowNode,
 		GuiRootType_Popup
     };
 
@@ -249,36 +245,42 @@ namespace sv {
 
     };
 
-	struct GuiWindowDocking {
-		u32 container_id;
-		GuiDockingLocation location;
+	enum GuiDockingSplit : u32 {
+		GuiDockingSplit_None,
+		GuiDockingSplit_Horizontal,
+		GuiDockingSplit_Vertical
 	};
 
-	struct GuiWindowContainer {
+	struct GuiWindowNode {
 
-		List<GuiWindowState*> states;
-		u32 current_index = 0u;
-		GuiRootInfo root = {};
-
-		GuiWindowDocking docking[4u];
-		u32 docking_count = 0u;
+		bool is_node;
+		bool is_root;
 		v4_f32 bounds;
 
 		struct {
-			u32 selected_button;
-			v2_f32 selection_point;
-		} focus_data;
+			List<GuiWindowState*> states;
+			u32 current_index = 0u;
+			GuiRootInfo root = {};
+
+			struct {
+				u32 selected_button;
+				v2_f32 selection_point;
+			} focus_data;
+		} win;
+
+		struct {
+
+			GuiDockingSplit split;
+			u32 id0;
+			u32 id1;
+			
+		} node;
 		
 	};
 
     struct GuiWindow {
 
-		//
-		// 0 should be alwais the center and the other are determinated by his location.
-		// The order affects the bounds of the docked windows
-		//
-		GuiWindowDocking docking[5u];
-		u32 docking_count = 0u;
+		u32 root_id;
 		
 		u32 priority = 0u;
 		v4_f32 bounds = { 0.5f, 0.5f, 0.2f, 0.35f };
@@ -318,7 +320,7 @@ namespace sv {
 		GuiRootInfo root_info;
 		List<GuiRootIndex> root_stack;
 		IndexedList<GuiWindow> windows;
-		IndexedList<GuiWindowContainer> window_containers;
+		IndexedList<GuiWindowNode> window_nodes;
 		List<u32> sorted_windows;
 
 		u32 priority_count = 0u;
@@ -424,19 +426,19 @@ namespace sv {
 		bounds.y = decoration.y;
 		return bounds;
     }
-    SV_AUX f32 compute_window_buttons_height(const GuiWindowContainer& window)
+    SV_AUX f32 compute_window_buttons_height(const GuiWindowNode& window)
     {
 		return 20.f / gui->resolution.y;
     }
-    SV_AUX v4_f32 compute_window_buttons(const GuiWindowContainer& window)
+    SV_AUX v4_f32 compute_window_buttons(const GuiWindowNode& window)
     {
-		v4_f32 b = window.root.widget_bounds;
+		v4_f32 b = window.win.root.widget_bounds;
 		f32 height = compute_window_buttons_height(window);
 		b.y += b.w * 0.5f + height * 0.5f;
 		b.w = height;
 		return b;
     }
-    SV_AUX v4_f32 compute_window_button(const GuiWindowContainer& window, v4_f32 buttons, u32 index)
+    SV_AUX v4_f32 compute_window_button(const GuiWindowNode& window, v4_f32 buttons, u32 index)
     {
 		f32 width = 50.f / gui->resolution.x;
 		f32 padding = 3.f / gui->resolution.x;
@@ -462,8 +464,11 @@ namespace sv {
 		case GuiRootType_Screen:
 			return &gui->root_info;
 
-		case GuiRootType_WindowContainer:
-			return &gui->window_containers[index.index].root;
+		case GuiRootType_WindowNode:
+		{
+			GuiWindowNode& node = gui->window_nodes[index.index];
+			return node.is_node ? NULL : &node.win.root;
+		}
 
 		case GuiRootType_Popup:
 			return &gui->popup.root;
@@ -473,161 +478,6 @@ namespace sv {
 			
 		}
 	}
-	
-    /*
-	  SV_AUX void compute_docking_location(GuiDockingLocation& location, GuiRootInfo*& root)
-	  {
-	  root = &gui->root_info;
-
-	  for (GuiRootInfo* r : gui->roots) {
-
-	  if (r == root)
-	  continue;
-	    
-	  if (mouse_in_bounds(r->bounds)) {
-	  root = r;
-	  break;
-	  }
-	  }
-
-	  f32 CENTER_WIDTH = 0.5f * root->bounds.z;
-	  f32 CENTER_HEIGHT = CENTER_WIDTH / gui->aspect;
-
-	  v2_f32 point = gui->mouse_position * v2_f32(root->bounds.z, root->bounds.w) + v2_f32(root->bounds.x, root->bounds.y) - v2_f32(root->bounds.z, root->bounds.w) * 0.5f;
-	  point -= v2_f32(root->bounds.x, root->bounds.y) * v2_f32(root->bounds.z, root->bounds.w);
-	
-	  if (abs(point.x) <= CENTER_WIDTH * 0.5f && abs(point.y) <= CENTER_HEIGHT * 0.5f) {
-	  location = GuiDockingLocation_Center;
-	  return;
-	  }
-
-	  if (abs(point.x) > abs(point.y)) {
-
-	  if (point.x < 0.f) {
-
-	  location = GuiDockingLocation_Left;
-	  return;
-	  }
-
-	  location = GuiDockingLocation_Right;
-	  return;
-	  }
-	  else {
-	  if (point.y < 0.f) {
-
-	  location = GuiDockingLocation_Bottom;
-	  return;
-	  }
-
-	  location = GuiDockingLocation_Top;
-	  return;
-	  }
-	  }
-	  SV_AUX v4_f32 compute_docking_button(GuiDockingLocation location, GuiRootInfo* root, bool selected)
-	  {
-	  constexpr f32 SIZE = GUI_DOCKING_SECTION_SIZE;
-	  constexpr f32 BUTTON_WIDTH = GUI_DOCKING_BUTTON_WIDTH;
-	  constexpr f32 BUTTON_HEIGHT = GUI_DOCKING_BUTTON_HEIGHT;
-
-	  v4_f32 b;
-	  b.z = BUTTON_WIDTH;
-	  b.w = BUTTON_HEIGHT * gui->aspect;
-
-	  switch (location) {
-
-	  case GuiDockingLocation_Center:
-	  b.x = 0.5f;
-	  b.y = 0.5f;
-	  break;
-
-	  case GuiDockingLocation_Left:
-	  b.x = SIZE * 0.5f;
-	  b.y = 0.5f;
-	  break;
-
-	  case GuiDockingLocation_Right:
-	  b.x = 1.f - SIZE * 0.5f;
-	  b.y = 0.5f;
-	  break;
-
-	  case GuiDockingLocation_Bottom:
-	  b.y = SIZE * 0.5f;
-	  b.x = 0.5f;
-	  break;
-
-	  case GuiDockingLocation_Top:
-	  b.y = 1.f - SIZE * 0.5f;
-	  b.x = 0.5f;
-	  break;
-	    
-	  }
-
-	  if (selected) {
-	  b.z *= 1.3f;
-	  b.w *= 1.3f;
-	  }
-
-	  const v4_f32& p = root->bounds;
-	  b.x = (b.x * p.z) + p.x - p.z * 0.5f;
-	  b.y = (b.y * p.w) + p.y - p.w * 0.5f;
-	  b.z *= p.z;
-	  b.w *= p.w;
-	
-	  return b;
-	  }
-	  SV_AUX v4_f32 compute_docking_section(GuiDockingLocation location, GuiRootInfo* root)
-	  {
-	  constexpr f32 SIZE = GUI_DOCKING_SECTION_SIZE;
-	
-	  v4_f32 b;
-
-	  switch (location) {
-
-	  case GuiDockingLocation_Center:
-	  b.x = 0.5f;
-	  b.y = 0.5f;
-	  b.z = 1.f;
-	  b.w = 1.f;
-	  break;
-
-	  case GuiDockingLocation_Left:
-	  b.x = SIZE * 0.5f;
-	  b.y = 0.5f;
-	  b.z = SIZE;
-	  b.w = 1.f;
-	  break;
-
-	  case GuiDockingLocation_Right:
-	  b.x = 1.f - SIZE * 0.5f;
-	  b.y = 0.5f;
-	  b.z = SIZE;
-	  b.w = 1.f;
-	  break;
-
-	  case GuiDockingLocation_Bottom:
-	  b.y = SIZE * 0.5f;
-	  b.x = 0.5f;
-	  b.z = 1.f;
-	  b.w = SIZE;
-	  break;
-
-	  case GuiDockingLocation_Top:
-	  b.y = 1.f - SIZE * 0.5f;
-	  b.x = 0.5f;
-	  b.z = 1.f;
-	  b.w = SIZE;
-	  break;
-	    
-	  }
-
-	  const v4_f32& p = root->bounds;
-	  b.x = (b.x * p.z) + p.x - p.z * 0.5f;
-	  b.y = (b.y * p.w) + p.y - p.w * 0.5f;
-	  b.z *= p.z;
-	  b.w *= p.w;
-	
-	  return b;
-	  }*/
     
     bool _gui_initialize()
     {
@@ -979,32 +829,6 @@ namespace sv {
 		compute_widget_bounds(root, w);
     }
 
-	SV_AUX void compute_window_docking_bounds(GuiWindowDocking docking, v4_f32& b0, v4_f32& b1)
-	{
-		b0 = b1;
-		
-		switch (docking.location) {
-
-		case GuiDockingLocation_Left:
-			b0.z = b1.z * 0.4f;
-			b0.x = (b0.x - b1.z * 0.5f) + b0.z * 0.5f;
-			b1.z -= b0.z;
-			b1.x += b0.z * 0.5f;
-			break;
-
-		case GuiDockingLocation_Right:
-			b0.z = b1.z * 0.4f;
-			b0.x = (b0.x + b1.z * 0.5f) - b0.z * 0.5f;
-			b1.z -= b0.z;
-			b1.x -= b0.z * 0.5f;
-			break;
-
-		default:
-			SV_ASSERT(0);
-				
-		}
-	}
-
     SV_AUX void adjust_widget_bounds(GuiRootIndex root_index)
     {
 		GuiRootInfo* root_ptr = get_root_info(root_index);
@@ -1038,121 +862,224 @@ namespace sv {
 		}
     }
 
-	SV_INTERNAL void update_window_container_bounds(u32 container_id)
+	SV_INTERNAL void update_window_node_bounds(u32 node_id, v4_f32 parent_bounds, bool root)
 	{
-		GuiWindowContainer& container = gui->window_containers[container_id];
-
-		{
-			v4_f32& b = container.bounds;
-
-			// Update docked containers
-			foreach(i, container.docking_count) {
-
-				GuiWindowDocking doc = container.docking[i];
-			
-				v4_f32 docking_bounds;
-				compute_window_docking_bounds(doc, docking_bounds, b);
-
-				GuiWindowContainer& c = gui->window_containers[doc.container_id];
-				c.bounds = docking_bounds;
-				update_window_container_bounds(doc.container_id);
-			}
-		}
-
-		{
-			v4_f32& b = container.root.widget_bounds;
-			
-			b = container.bounds;
+		GuiWindowNode& node = gui->window_nodes[node_id];
+		node.bounds = parent_bounds;
+		node.is_root = root;
 		
-			if (container.states.size() > 1u) {
-				
-				f32 height = compute_window_buttons_height(container);
+		if (!node.is_node) {
+
+			auto& win = node.win;
+
+			v4_f32& b = win.root.widget_bounds;
+	    
+			b = parent_bounds;
+
+			if (!root || win.states.size() > 1u) {
+
+				f32 height = compute_window_buttons_height(node);
 
 				b.y -= height * 0.5f;
 				b.w -= height;
 			}
-		}
 
-		adjust_widget_bounds({ GuiRootType_WindowContainer, container_id });
+			adjust_widget_bounds({ GuiRootType_WindowNode, node_id });
+		}
+		else {
+
+			v4_f32 b0;
+			v4_f32 b1;
+
+			if (node.node.split == GuiDockingSplit_Vertical) {
+
+				b0.x = parent_bounds.x;
+				b0.z = parent_bounds.z;
+				b0.w = parent_bounds.w * 0.5f;
+				b0.y = parent_bounds.y - parent_bounds.w * 0.5f + b0.w * 0.5f;
+
+				b1.x = parent_bounds.x;
+				b1.z = parent_bounds.z;
+				b1.w = parent_bounds.w * 0.5f;
+				b1.y = parent_bounds.y + parent_bounds.w * 0.5f - b0.w * 0.5f;
+			}
+			else {
+
+				b0.z = parent_bounds.z * 0.5f;
+				b0.x = parent_bounds.x - parent_bounds.z * 0.5f + b0.z * 0.5f;
+				b0.w = parent_bounds.w;
+				b0.y = parent_bounds.y;
+
+				b1.z = parent_bounds.z * 0.5f;
+				b1.x = parent_bounds.x + parent_bounds.z * 0.5f - b0.z * 0.5f;
+				b1.w = parent_bounds.w;
+				b1.y = parent_bounds.y;
+			}
+
+			if (node.node.id0 != u32_max)
+				update_window_node_bounds(node.node.id0, b0, false);
+
+			if (node.node.id1 != u32_max)
+				update_window_node_bounds(node.node.id1, b1, false);
+		}
 	}
 
 	// Updates all the container hierarchy
 	SV_AUX void update_window_bounds(GuiWindow& window)
 	{
-		v4_f32 container_bounds[5u];		
-		container_bounds[0] = window.bounds;
+		update_window_node_bounds(window.root_id, window.bounds, true);
+	}
 
-		for (u32 i = 1u; i < window.docking_count; ++i) {
-
-			compute_window_docking_bounds(window.docking[i], container_bounds[i], container_bounds[0]);
-		}
+	SV_INTERNAL void close_window_node(u32 node_id)
+	{
+		GuiWindowNode& node = gui->window_nodes[node_id];
 		
-		foreach(i, window.docking_count) {
-			
-			GuiWindowContainer& container = gui->window_containers[window.docking[i].container_id];
-			container.bounds = container_bounds[i];
+		if (!node.is_node) {
 
-			update_window_container_bounds(window.docking[i].container_id);
+			for (GuiWindowState* s : node.win.states) {
+				gui_hide_window(s->title);
+			}
 		}
+		else {
+
+			if (node.node.id0 != u32_max) close_window_node(node.node.id0);
+			if (node.node.id1 != u32_max) close_window_node(node.node.id1);
+		}
+
+		gui->window_nodes.erase(node_id);
 	}
 
-	SV_INTERNAL void close_window_container(u32 container_id)
+	SV_INTERNAL u32 find_selected_node(u32 node_id)
 	{
-		GuiWindowContainer& c = gui->window_containers[container_id];
-		
-		foreach(i, c.states.size()) {
-							
-			GuiWindowState* state = c.states[i];
-							
-			if (!(state->flags & GuiWindowFlag_NoClose))
-				gui_hide_window(state->title);
+		GuiWindowNode& node = gui->window_nodes[node_id];
+
+		if (mouse_in_bounds(node.bounds)) {
+
+			if (node.is_node) {
+
+				u32 id = u32_max;
+
+				if (node.node.id0 != u32_max) id = find_selected_node(node.node.id0);
+				if (id != u32_max) return id;
+
+				if (node.node.id1 != u32_max) id = find_selected_node(node.node.id1);
+				if (id != u32_max) return id;
+			}
+
+			return node_id;
 		}
 
-		foreach(i, c.docking_count) {
-
-			close_window_container(c.docking[i].container_id);
-		}
+		return u32_max;
 	}
 
-	SV_INTERNAL u32 find_selected_window_container(u32 container_id)
+	SV_AUX bool find_selected_window(u32& window_id, u32& node_id, u32 window_filter)
 	{
-		GuiWindowContainer& container = gui->window_containers[container_id];
+		for (u32 w : gui->sorted_windows) {
 
-		foreach(i, container.docking_count) {
-
-			u32 id = find_selected_window_container(container.docking[i].container_id);
-
-			if (id != u32_max)
-				return id;
-		}
-
-		if (mouse_in_bounds(container.bounds))
-			return container_id;
-		else return u32_max;
-	}
-
-	SV_AUX bool find_selected_window(u32& window_id, u32& container_id, u32 window_filter)
-	{
-		for (u32 w : gui->sorted_windows)
-		{
 			if (w == window_filter) continue;
 
-			GuiWindow& window = gui->windows[w];
+			GuiWindow& win = gui->windows[w];
 
-			foreach(i, window.docking_count) {
+			u32 id = find_selected_node(win.root_id);
 
-				u32 id = find_selected_window_container(window.docking[i].container_id);
+			if (id != u32_max) {
 
-				if (id != u32_max) {
-
-					window_id = w;
-					container_id = id;
-					return true;
-				}
+				window_id = w;
+				node_id = id;
+				return true;
 			}
 		}
 
 		return false;
+	}
+
+	SV_INTERNAL bool dereference_node_parent(u32 node_id, u32 child_id)
+	{
+		GuiWindowNode& node = gui->window_nodes[node_id];
+
+		if (node.is_node) {
+
+			if (node.node.id0 == child_id) {
+				node.node.id0 = u32_max;
+				return true;
+			}
+			else if (node.node.id0 != u32_max) {
+
+				if (dereference_node_parent(node.node.id0, child_id))
+					return true;
+			}
+
+			if (node.node.id1 == child_id) {
+				node.node.id1 = u32_max;
+				return true;
+			}
+			else if (node.node.id1 != u32_max) {
+
+				if (dereference_node_parent(node.node.id1, child_id))
+					return true;
+			}
+		}
+
+		return false;
+	}
+
+	SV_INTERNAL void insert_node_states(List<GuiWindowState*>& list, u32 node_id)
+	{
+		GuiWindowNode& node = gui->window_nodes[node_id];
+
+		if (node.is_node) {
+
+			if (node.node.id0 != u32_max) insert_node_states(list, node.node.id0);
+			if (node.node.id1 != u32_max) insert_node_states(list, node.node.id1);
+		}
+		else {
+			list.insert(node.win.states);
+			node.win.states.clear();
+		}
+	}
+
+	SV_AUX v4_f32 compute_docking_button(v4_f32 bounds, GuiDockingLocation location)
+	{
+		constexpr f32 BUTTON_SIZE = 40.f;
+		constexpr f32 SECTION_SIZE = 150.f;
+
+		f32 button_width = BUTTON_SIZE / gui->resolution.x;
+		f32 button_height = BUTTON_SIZE / gui->resolution.y;
+		
+		f32 width = SECTION_SIZE / gui->resolution.x;
+		f32 height = SECTION_SIZE / gui->resolution.y;
+
+		bounds.z = button_width;
+		bounds.w = button_height;
+
+		switch (location) {
+
+		case GuiDockingLocation_Left:
+			bounds.x = bounds.x - width * 0.5f + button_width * 0.5f;
+			break;
+
+		case GuiDockingLocation_Right:
+			bounds.x = bounds.x + width * 0.5f - button_width * 0.5f;
+			break;
+
+		case GuiDockingLocation_Bottom:
+			bounds.y = bounds.y - height * 0.5f + button_height * 0.5f;
+			break;
+
+		case GuiDockingLocation_Top:
+			bounds.y = bounds.y + height * 0.5f - button_height * 0.5f;
+			break;
+
+		case GuiDockingLocation_Center:
+			break;
+
+		default:
+			SV_ASSERT(0);
+			return {};
+			
+		}
+
+		return bounds;
 	}
 
     SV_AUX void update_focus()
@@ -1177,25 +1104,79 @@ namespace sv {
 				if (input.mouse_buttons[MouseButton_Left] == InputState_Released) {
 
 					u32 window_id;
-					u32 container_id;
-					if (find_selected_window(window_id, container_id, gui->focus.root.index)) {
+					u32 node_id;
+					if (find_selected_window(window_id, node_id, gui->focus.root.index)) {
 
-						GuiWindowContainer& container = gui->window_containers[container_id];
+						IndexedList<GuiWindowNode>& nodes = gui->window_nodes;
 
-						if (container.docking_count == 0u) {
-							
-							u32 new_container_id = gui->window_containers.emplace();
-							GuiWindowContainer& new_container = gui->window_containers[new_container_id];
+						foreach(i, GuiDockingLocation_MaxEnum) {
 
-							GuiWindowDocking& doc = container.docking[container.docking_count++];
-							doc.location = GuiDockingLocation_Left;
-							doc.container_id = new_container_id;
+							v4_f32 b = compute_docking_button(nodes[node_id].bounds, (GuiDockingLocation)i);
 
-							foreach(i, w.docking_count) {
+							if (mouse_in_bounds(b)) {
 
-								GuiWindowContainer& c = gui->window_containers[w.docking[i].container_id];
-								new_container.states.insert(c.states);
-								c.states.reset();
+								GuiDockingSplit split;
+								bool left = false;
+
+								switch(i) {
+
+								case GuiDockingLocation_Left:
+									split = GuiDockingSplit_Horizontal;
+									left = true;
+									break;
+
+								case GuiDockingLocation_Right:
+									split = GuiDockingSplit_Horizontal;
+									break;
+
+								case GuiDockingLocation_Bottom:
+									split = GuiDockingSplit_Vertical;
+									left = true;
+									break;
+
+								case GuiDockingLocation_Top:
+									split = GuiDockingSplit_Vertical;
+									break;
+
+								default:
+									split = GuiDockingSplit_None;
+									break;
+									
+								}
+
+								if (!nodes[node_id].is_node) {
+
+									if (split == GuiDockingSplit_None) {
+
+										insert_node_states(nodes[node_id].win.states, gui->windows[gui->focus.root.index].root_id);
+									}
+									else {
+										
+										u32 new_node_id = gui->window_nodes.emplace();
+										GuiWindowNode& new_node = gui->window_nodes[new_node_id];
+										new_node.is_node = false;
+										new_node.win.states.insert(nodes[node_id].win.states);
+
+										nodes[node_id].is_node = true;
+
+										nodes[node_id].node.split = split;
+
+										if (left) {
+											nodes[node_id].node.id1 = new_node_id;
+											nodes[node_id].node.id0 = w.root_id;
+										}
+										else {
+											nodes[node_id].node.id0 = new_node_id;
+											nodes[node_id].node.id1 = w.root_id;
+										}
+										
+										nodes[node_id].win.states.clear();
+
+										gui->windows.erase(gui->focus.root.index);
+									}
+								}
+								
+								break;
 							}
 						}
 					}
@@ -1267,10 +1248,8 @@ namespace sv {
 		    
 					if (mouse_in_bounds(closebutton)) {
 
-						foreach(i, w.docking_count) {
-
-							close_window_container(w.docking[i].container_id);
-						}
+						close_window_node(w.root_id);
+						gui->windows.erase(gui->focus.root.index);
 					}
 				}
 		
@@ -1278,47 +1257,72 @@ namespace sv {
 			}
 		
 		}
-		else if (gui->focus.type == GuiWidgetType_Root && gui->focus.root.type == GuiRootType_WindowContainer) {
+		else if (gui->focus.type == GuiWidgetType_Root && gui->focus.root.type == GuiRootType_WindowNode) {
 
-			GuiWindowContainer& w = gui->window_containers[gui->focus.root.index];
+			IndexedList<GuiWindowNode>& nodes = gui->window_nodes;
+			u32 node_id = gui->focus.root.index;
 			
-			switch ((GuiWindowContainerAction)gui->focus.action)
+			switch ((GuiWindowNodeAction)gui->focus.action)
 			{
 
-			case GuiWindowContainerAction_SwapWindow:
-			{
-				u32 index = w.focus_data.selected_button;
+			case GuiWindowNodeAction_SwapWindow:
+			{	
+				u32 index = nodes[node_id].win.focus_data.selected_button;
 
-				if (index < w.states.size()) {
+				if (index < nodes[node_id].win.states.size()) {
 
-					v2_f32& point = w.focus_data.selection_point;
+					v2_f32& point = nodes[node_id].win.focus_data.selection_point;
 
 					if ((point - gui->mouse_position).length() > 0.03f) {
 
-						u32 new_index = gui->window_containers.emplace();
-						GuiWindowContainer& new_con = gui->window_containers[new_index];
+						u32 new_window_id = gui->windows.emplace();
+						GuiWindow& new_window = gui->windows[new_window_id];
 
-						new_con.states.push_back(w.states[index]);
-						w.current_index = 0u;
-						w.states.erase(index);
+						/*if (nodes[node_id].win.states.size() == 1u) {
 
-						u32 new_window_index = gui->windows.emplace();
-						GuiWindow& new_win = gui->windows[new_window_index];
-						new_win.docking_count = 1u;
-						new_win.docking[0].location = GuiDockingLocation_Center;
-						new_win.docking[0].container_id = new_index;
+							// Dereference the parent
+							{
+								for (auto it = gui->windows.begin();
+									 it.has_next();
+									 ++it)
+								{
+									if (it->root_id == u32_max)
+										continue;
+									
+									if (it->root_id == node_id) {
+										it->root_id = u32_max;
+										break;
+									}
+									else {
+
+										if (dereference_node_parent(it->root_id, node_id))
+											break;
+									}
+								}
+							}
+
+							new_window.root_id = node_id;
+							}*/
+						u32 new_node_id = gui->window_nodes.emplace();
+						GuiWindowNode& new_node = gui->window_nodes[new_node_id];
+						new_node.is_node = false;
+						new_node.is_root = true;
+						new_node.win.states.emplace_back(nodes[node_id].win.states[index]);
+						nodes[node_id].win.states.erase(index);
 						
-						new_win.focus_data.selection_point = { 0.f, -new_win.bounds.w * 0.5f };						
+						new_window.root_id = new_node_id;
+						
+						new_window.focus_data.selection_point = { 0.f, -new_window.bounds.w * 0.5f };						
 
-						set_focus({ GuiRootType_Window, new_window_index }, GuiWidgetType_Root, 0u, GuiWindowAction_Move);
+						set_focus({ GuiRootType_Window, new_window_id }, GuiWidgetType_Root, 0u, GuiWindowAction_Move);
 					}
 					else if (input.mouse_buttons[MouseButton_Left] == InputState_Released) {
 		    
-						v4_f32 buttons_bounds = compute_window_buttons(w);
-						v4_f32 bounds = compute_window_button(w, buttons_bounds, index);
+						v4_f32 buttons_bounds = compute_window_buttons(nodes[node_id]);
+						v4_f32 bounds = compute_window_button(nodes[node_id], buttons_bounds, index);
 
 						if (mouse_in_bounds(bounds)) {
-							w.current_index = index;
+							nodes[node_id].win.current_index = index;
 						}
 					}
 				}
@@ -1623,16 +1627,12 @@ namespace sv {
 
 			if (root_index.type == GuiRootType_Window) {
 
-				GuiWindow& win = gui->windows[root_index.index];
-				
-				foreach(i, win.docking_count) {
+				GuiWindow& window = gui->windows[root_index.index];
 
-					update_root({ GuiRootType_WindowContainer, win.docking[i].container_id });
-				}
+				// Update hierarchy
+				update_root({ GuiRootType_WindowNode, window.root_id });
 
 				if (input.unused) {
-
-					GuiWindow& window = gui->windows[root_index.index];
 		
 					v4_f32 decoration = compute_window_decoration(window);
 					if (mouse_in_bounds(window.bounds) || mouse_in_bounds(decoration))
@@ -1711,9 +1711,12 @@ namespace sv {
 					}
 				}
 			}
-			else {
-				SV_ASSERT(0);
-				return;
+			else if (root_index.type == GuiRootType_WindowNode) {
+
+				GuiWindowNode& node = gui->window_nodes[root_index.index];
+				
+				if (node.node.id0 != u32_max) update_root({ GuiRootType_WindowNode, node.node.id0 });
+				if (node.node.id1 != u32_max) update_root({ GuiRootType_WindowNode, node.node.id1 });
 			}
 		}
 		else {
@@ -1730,39 +1733,36 @@ namespace sv {
 
 			switch (root_index.type) {
 
-			case GuiRootType_WindowContainer:
+			case GuiRootType_WindowNode:
 			{
-				GuiWindowContainer& container = gui->window_containers[root_index.index];
+				GuiWindowNode& node = gui->window_nodes[root_index.index];
 
-				if (container.states.size() > 1 && input.unused && input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
+				if (!node.is_node) {
+
+					if (mouse_in_bounds(node.bounds))
+						catch_input = true;
+
+					auto& win = node.win;
+
+					if ((!node.is_root || win.states.size() > 1) && input.unused && input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
 		
-					v4_f32 buttons = compute_window_buttons(container);
+						v4_f32 buttons = compute_window_buttons(node);
 
-					if (mouse_in_bounds(buttons)) {
+						if (mouse_in_bounds(buttons)) {
 
-						foreach(i, container.states.size()) {
+							foreach(i, win.states.size()) {
 
-							v4_f32 b = compute_window_button(container, buttons, i);
-							if (mouse_in_bounds(b)) {
+								v4_f32 b = compute_window_button(node, buttons, i);
+								if (mouse_in_bounds(b)) {
 
-								set_focus({ GuiRootType_WindowContainer, root_index.index }, GuiWidgetType_Root, 0u, GuiWindowContainerAction_SwapWindow);
-								container.focus_data.selected_button = i;
-								input.unused = false;
-								container.focus_data.selection_point = gui->mouse_position;
-								break;
+									set_focus({ GuiRootType_WindowNode, root_index.index }, GuiWidgetType_Root, 0u, GuiWindowNodeAction_SwapWindow);
+									win.focus_data.selected_button = i;
+									input.unused = false;
+									win.focus_data.selection_point = gui->mouse_position;
+									break;
+								}
 							}
 						}
-					}
-				}
-
-				if (input.unused) {
-
-					foreach(i, container.docking_count) {
-
-						update_root({ GuiRootType_WindowContainer, container.docking[i].container_id });
-
-						if (!input.unused)
-							break;
 					}
 				}
 			}
@@ -1810,51 +1810,100 @@ namespace sv {
 		}
     }
 
-	SV_INTERNAL u32 find_state_inside_container(u32 container_id, GuiWindowState* state)
+	SV_INTERNAL u32 find_window_from_state_inside_node(GuiWindowState* state, u32 node_id)
 	{
-		GuiWindowContainer& container = gui->window_containers[container_id];
-
-		for (GuiWindowState* s : container.states) {
+		if (node_id == u32_max) return u32_max;
 		
-			if (s == state) {
-				return container_id;
+		GuiWindowNode& node = gui->window_nodes[node_id];
+
+		if (!node.is_node) {
+
+			auto& win = node.win;
+
+			for (GuiWindowState* s : win.states) {
+
+				if (s == state) {
+					return node_id;
+				}
 			}
 		}
+		else {
 
-		foreach(i, container.docking_count) {
+			u32 id = find_window_from_state_inside_node(state, node.node.id0);
 
-			u32 id = find_state_inside_container(container.docking[i].container_id, state);
+			if (id == u32_max) {
+				id = find_window_from_state_inside_node(state, node.node.id1);
+			}
 
-			if (id != u32_max)
+			if (id != u32_max) {
 				return id;
+			}
 		}
 
 		return u32_max;
 	}
 
-    SV_AUX void find_window_from_state(GuiWindowState* state, u32& window_id, u32& container_id)
+    SV_AUX void find_window_from_state(GuiWindowState* state, u32& window_id, u32& root_id)
     {
 		for (auto it = gui->windows.begin();
 			 it.has_next();
-			 ++it
-			)
+			 ++it)
 		{
-			foreach(i, it->docking_count) {
+			u32 id = find_window_from_state_inside_node(state, it->root_id);
 
-				u32 id = find_state_inside_container(it->docking[i].container_id, state);
-					
-				if (id != u32_max) {
+			if (id != u32_max) {
 
-					container_id = id;
-					window_id = it.get_index();
-					return;
-				}
+				window_id = it.get_index();
+				root_id = id;
+				return;
 			}
 		}
-
+		
 		window_id = u32_max;
-		container_id = u32_max;
+		root_id = u32_max;
     }
+
+	SV_INTERNAL void reset_window_node(u32 node_id)
+	{
+		GuiWindowNode& n = gui->window_nodes[node_id];
+
+		if (!n.is_node) {
+
+			if (n.win.states.size() == 0u) {
+				gui->window_nodes.erase(node_id);
+			}
+			else reset_root(n.win.root);
+		}
+		else {
+
+			n.win.root.widgets.clear();
+
+			if (n.node.id0 != u32_max) reset_window_node(n.node.id0);
+			if (n.node.id1 != u32_max) reset_window_node(n.node.id1);
+
+			bool e0 = gui->window_nodes.exists(n.node.id0);
+			bool e1 = gui->window_nodes.exists(n.node.id1);
+
+			u32 next_id = u32_max;
+
+			if (!e0 && !e1) {
+				gui->window_nodes.erase(node_id);
+			}
+			else if (!e0) {
+				next_id = n.node.id1;
+			}
+			else if (!e1) {
+				next_id = n.node.id0;
+			}
+
+			if (next_id != u32_max) {
+
+				GuiWindowNode& next = gui->window_nodes[next_id];
+				n = std::move(next);
+				gui->window_nodes.erase(next_id);
+			}
+		}
+	}
 
     void _gui_end()
     {
@@ -1862,76 +1911,26 @@ namespace sv {
 		// his state have the show in true
 		
 		// Reset roots
-
-		for (auto it = gui->window_containers.begin();
-			 it.has_next(); )
-		{
-			GuiWindowContainer& container = *it;
-
-			// Erase unused window states inside container
-			for (auto it = container.states.begin(); it != container.states.end();) {
-
-				GuiWindowState* state = *it;
-				if (!state->show)
-					it = container.states.erase(it);
-				else
-					++it;
-			}
-
-			// Update docking containers
-			foreach(i, container.docking_count) {
-
-				u32 id = container.docking[i].container_id;
-
-				if (!gui->window_containers.exists(id)) {
-
-					for (u32 j = i + 1u; j < container.docking_count; ++j) {
-
-						container.docking[j - 1] = container.docking[j];
-					}
-
-					--container.docking_count;
-				}
-			}
-
-			// Remove window container if it is empty
-			if (container.states.empty() && container.docking_count == 0u) {
-
-				it = gui->window_containers.erase(it);
-			}
-			// Reset widgets
-			else {
-				
-				reset_root(container.root);
-				++it;
-			}
-		}
-
+		
 		for (auto it = gui->windows.begin();
 			 it.has_next(); )
 		{
 			GuiWindow& win = *it;
 
-			foreach(i, win.docking_count) {
-
-				u32 id = win.docking[i].container_id;
-				
-				if (!gui->window_containers.exists(id)) {
-
-					for (u32 j = i + 1u; j < win.docking_count; ++j) {
-
-						win.docking[j - 1] = win.docking[j];
-					}
-
-					--win.docking_count;
-				}
-			}
-		
-			if (win.docking_count == 0u) {
+			if (!gui->window_nodes.exists(win.root_id)) {
 
 				it = gui->windows.erase(it);
 			}
-			else ++it;
+			else {
+				
+				reset_window_node(win.root_id);
+		
+				if (!gui->window_nodes.exists(win.root_id)) {
+
+					it = gui->windows.erase(it);
+				}
+				else ++it;
+			}
 		}
 		
 		gui->sorted_windows.reset();
@@ -1969,16 +1968,17 @@ namespace sv {
 
 					if (state) {
 
-						u32 window_id, container_id;
-						find_window_from_state(state, window_id, container_id);
+						u32 window_id, node_id;
+						find_window_from_state(state, window_id, node_id);
 
-						if (container_id != u32_max) {
+						if (node_id != u32_max) {
 		    
-							gui->root_stack.push_back({ GuiRootType_WindowContainer, container_id });
+							gui->root_stack.push_back({ GuiRootType_WindowNode, node_id });
 
-							GuiWindowContainer& container = gui->window_containers[container_id];
+							GuiWindowNode& node = gui->window_nodes[node_id];
+							auto& win = node.win;
 
-							if (container.current_index < container.states.size() && container.states[container.current_index] == state) {
+							if (win.current_index < win.states.size() && win.states[win.current_index] == state) {
 
 								if (gui->sorted_windows.find(window_id) == nullptr)
 									gui->sorted_windows.push_back(window_id);
@@ -1991,7 +1991,7 @@ namespace sv {
 
 			case GuiHeader_EndWindow:
 			{
-				SV_ASSERT(gui->root_stack.back().type == GuiRootType_WindowContainer);
+				SV_ASSERT(gui->root_stack.back().type == GuiRootType_WindowNode);
 
 				// Set new root
 				gui->root_stack.pop_back();
@@ -2229,37 +2229,37 @@ namespace sv {
 			gui_write(hash);
 
 			u32 window_id;
-			u32 container_id;
-			find_window_from_state(state, window_id, container_id);
+			u32 node_id;
+			find_window_from_state(state, window_id, node_id);
 
 			GuiWindow* win;
-			GuiWindowContainer* con;
+			GuiWindowNode* node;
 
-			if (container_id == u32_max) {
+			if (node_id == u32_max) {
 
 				window_id = gui->windows.emplace();
-				container_id = gui->window_containers.emplace();
+				node_id = gui->window_nodes.emplace();
 				
 				win = &gui->windows[window_id];
-				con = &gui->window_containers[container_id];
+				node = &gui->window_nodes[node_id];
 
-				win->docking[0].location = GuiDockingLocation_Center;
-				win->docking[0].container_id = container_id;
-				win->docking_count = 1u;
+				win->root_id = node_id;
 				
-				con->states.push_back(state);
-				con->current_index = 0u;
+				node->is_node = false;
+
+				node->win.states.push_back(state);
+				node->win.current_index = 0u;
 			}
 			else {
 				win = &gui->windows[window_id];
-				con = &gui->window_containers[container_id];
+				node = &gui->window_nodes[node_id];
 			}
 
-			if (con->current_index >= con->states.size() || con->states[con->current_index] != state) {
+			if (node->win.current_index >= node->win.states.size() || node->win.states[node->win.current_index] != state) {
 				show = false;
 			}
 			else {
-				gui->root_stack.push_back({ GuiRootType_WindowContainer, container_id });
+				gui->root_stack.push_back({ GuiRootType_WindowNode, node_id });
 				gui_push_id(state->hash);
 			}
 
@@ -2708,32 +2708,34 @@ namespace sv {
 			// TODO: !(window->current_state->flags & GuiWindowFlag_NoClose)) 
 			imrend_draw_quad({ closebutton.x, closebutton.y, 0.f }, { closebutton.z, closebutton.w }, closebutton_color, cmd);
 
-			foreach(i, window.docking_count) {
-
-				draw_root({ GuiRootType_WindowContainer, window.docking[i].container_id }, cmd);
-			}
+			draw_root({ GuiRootType_WindowNode, window.root_id }, cmd);
 		}
 		break;
 
-		case GuiRootType_WindowContainer:
+		case GuiRootType_WindowNode:
 		{
-			GuiWindowContainer& container = gui->window_containers[root_index.index];
-			
-			if (container.states.size() > 1u) {
+			GuiWindowNode& node = gui->window_nodes[root_index.index];
 
-				v4_f32 container_buttons = compute_window_buttons(container);
-				imrend_draw_quad({ container_buttons.x, container_buttons.y, 0.f }, { container_buttons.z, container_buttons.w }, Color::Red(), cmd);
+			if (!node.is_node) {
 
-				foreach (i, container.states.size()) {
+				auto& win = node.win;
+				
+				if (!node.is_root || win.states.size() > 1u) {
 
-					v4_f32 button = compute_window_button(container, container_buttons, i);
-					imrend_draw_quad({ button.x, button.y, 0.f }, { button.z, button.w }, Color::Blue(), cmd);
+					v4_f32 node_buttons = compute_window_buttons(node);
+					imrend_draw_quad({ node_buttons.x, node_buttons.y, 0.f }, { node_buttons.z, node_buttons.w }, Color::Red(), cmd);
+
+					foreach (i, win.states.size()) {
+
+						v4_f32 button = compute_window_button(node, node_buttons, i);
+						imrend_draw_quad({ button.x, button.y, 0.f }, { button.z, button.w }, Color::Blue(), cmd);
+					}
 				}
 			}
-
-			foreach(i, container.docking_count) {
-					
-				draw_root({ GuiRootType_WindowContainer, container.docking[i].container_id }, cmd);
+			else {
+				
+				if (node.node.id0 != u32_max) draw_root({ GuiRootType_WindowNode, node.node.id0 }, cmd);
+				if (node.node.id1 != u32_max) draw_root({ GuiRootType_WindowNode, node.node.id1 }, cmd);
 			}
 		}
 		break;
@@ -3180,32 +3182,31 @@ namespace sv {
 			draw_root({ GuiRootType_Popup, 0u }, cmd);
 
 		// Docking effects
-		/*{
-		  if (gui->focus.type == GuiWidgetType_Root && gui->focus.root->type == GuiRootType_Window && gui->focus.action == GuiWindowAction_Move) {
+		{
+			if (gui->focus.type == GuiWidgetType_Root && gui->focus.root.type == GuiRootType_Window && gui->focus.action == GuiWindowAction_Move) {
 
-		  //GuiWindowState& window = *(GuiWindowState*)gui->focus.root->state;
+				u32 window_id, node_id;
+				
+				if (find_selected_window(window_id, node_id, gui->focus.root.index)) {
+					
+					GuiWindowNode& node = gui->window_nodes[node_id];
 
-		  constexpr Color BUTTON_COLOR = Color::LightSalmon(200u);
-		  constexpr Color BUTTON_SELECTED_COLOR = Color::Red();
-		  constexpr Color BACKGROUND_COLOR = Color::Gray(150u, 40u);
+					foreach(i, GuiDockingLocation_MaxEnum) {
 
-		  GuiRootInfo* docked_into;
-		  GuiDockingLocation location;
-		  compute_docking_location(location, docked_into);
+						v4_f32 bounds = compute_docking_button(node.bounds, (GuiDockingLocation)i);
+						Color color = gui->style.docking_button;
 
-		  v4_f32 section = compute_docking_section(location, docked_into);
-		  imrend_draw_quad({ section.x, section.y, 0.f }, { section.z, section.w }, BACKGROUND_COLOR, cmd);
-
-		  foreach(i, GuiDockingLocation_MaxEnum) {
-
-		  v4_f32 b = compute_docking_button(GuiDockingLocation(i), docked_into, i == location);
-
-		  Color color = (i == location) ? BUTTON_SELECTED_COLOR : BUTTON_COLOR;
-
-		  imrend_draw_quad({ b.x, b.y, 0.f }, v2_f32{ b.z, b.w } * style.scale, color, cmd);
-		  }
-		  }
-		  }*/
+						if (mouse_in_bounds(bounds)) {
+							bounds.z *= 1.3f;
+							bounds.w *= 1.3f;
+							color = gui->style.docking_highlighted_button;
+						}
+						
+						imrend_draw_quad({bounds.x, bounds.y, 0.f}, {bounds.z, bounds.w}, color, cmd);
+					}
+				}
+			}
+		}
 
 		imrend_flush(cmd);
     }
