@@ -63,6 +63,9 @@ namespace sv {
     SV_API bool gui_begin_popup(GuiPopupTrigger trigger);
     SV_API void gui_end_popup();
 
+	SV_API void gui_send_package(const void* data, size_t size, u64 package_id);
+	SV_API bool gui_recive_package(void** dst, u64 package_id);
+
     SV_API bool gui_button(const char* text, u64 id);
 	SV_API bool gui_image_button(const char* text, GPUImage* image, v4_f32 texcoord, u64 id);
     SV_API bool gui_checkbox(const char* text, bool& value, u64 id);

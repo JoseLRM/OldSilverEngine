@@ -69,15 +69,15 @@ namespace sv {
 
 		gui_image(texture->get(), 50.f, 0u);
 
-		/*AssetPackage* package;
-		  if (gui_recive_package((void**)&package, nullptr, ASSET_BROWSER_PACKAGE_TEXTURE)) {
+		AssetPackage* package;
+		if (gui_recive_package((void**)&package, ASSET_BROWSER_PACKAGE_TEXTURE)) {
 
-		  bool res = load_asset_from_file(*texture, package->filepath);
-		  if (!res) {
+			bool res = load_asset_from_file(*texture, package->filepath);
+			if (!res) {
 
-		  SV_LOG_ERROR("Can't load the texture '%s'", package->filepath);
-		  }
-		  }*/
+				SV_LOG_ERROR("Can't load the texture '%s'", package->filepath);
+			}
+		}
 
 		gui_pop_id();
     }

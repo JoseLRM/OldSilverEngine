@@ -60,6 +60,11 @@ namespace sv {
 		}
     }
 
+	enum GuiWidgetAction : u32 {
+		GuiWidgetAction_None,
+		GuiWidgetAction_MovePackage,
+	};
+
     enum GuiWindowAction : u32 {
 		GuiWindowAction_None,
 		GuiWindowAction_Move,
@@ -94,6 +99,7 @@ namespace sv {
 		GuiHeader_Widget,
 
 		GuiHeader_Separator,
+		GuiHeader_SendPackage,
 
 		GuiHeader_BeginGrid,
 		GuiHeader_EndGrid,
@@ -120,6 +126,8 @@ namespace sv {
 		GuiWidgetType type;
 		u64 id;
 		u32 flags;
+
+		u64 package_id;
 
 		union Widget {
 
@@ -301,6 +309,12 @@ namespace sv {
 		bool undock_request;
 	};
 
+	struct GuiWidgetRef {
+		u64 id;
+		GuiWidgetType type;
+		GuiRootIndex root;
+	};
+
     struct GUI {
 
 		// CONTEXT
@@ -313,11 +327,7 @@ namespace sv {
 
 		bool popup_request = false;
 
-		struct {
-			u64 id;
-			GuiWidgetType type;
-			GuiRootIndex root;
-		} last_widget;
+		GuiWidgetRef last_widget;
 	
 		// STATE
 
@@ -339,6 +349,7 @@ namespace sv {
 			GuiWidgetType type;
 			u64 id;
 			u32 action;
+			v2_f32 start_mouse_position;
 		} focus;
 
 		GuiWidget* current_focus = nullptr;
@@ -353,6 +364,13 @@ namespace sv {
 
 		RawList text_field_buffer;
 		u32 text_field_cursor = 0u;
+
+		struct {
+			RawList buffer;
+			List<GuiWidgetRef> recivers;
+			u64 reciver_id;
+			bool first_frame; // Used to not remove the data for one frame
+		} package;
 
 		// PRECOMPUTED
 
@@ -585,6 +603,20 @@ namespace sv {
 
 		gui->popup_request = false;
 
+		// Reset package data
+		
+		gui->package.recivers.reset();
+		if (gui->focus.type == GuiWidgetType_Root || gui->focus.type == GuiWidgetType_None || gui->focus.action != GuiWidgetAction_MovePackage) {
+
+			if (gui->package.first_frame) {
+				gui->package.first_frame = false;
+			}
+			else {
+				gui->package.buffer.clear();
+				gui->package.reciver_id = 0u;
+			}
+		}
+
 		return true;
     }
 
@@ -675,6 +707,8 @@ namespace sv {
 				win->priority = ++gui->priority_count;
 			}
 		}
+
+		gui->focus.start_mouse_position = gui->mouse_position;
     }
 
     SV_AUX void free_focus()
@@ -779,6 +813,7 @@ namespace sv {
 		w.type = gui_read<GuiWidgetType>(it);
 		w.id = gui_read<u64>(it);
 		w.flags = gui_read<u32>(it);
+		w.package_id = u64_max;
 	
 		switch (w.type) {
 		    
@@ -918,6 +953,26 @@ namespace sv {
 			w.bounds.z *= root_width;
 			w.bounds.w *= inv_height;
 		}
+    }
+
+	SV_AUX GuiWidget* find_widget(GuiWidgetType type, u64 id, GuiRootIndex root_index = {GuiRootType_None, 0u})
+    {
+		// TODO: Optimize
+
+		if (root_index.type == GuiRootType_None)
+			root_index = gui->root_stack.back();
+		
+		GuiRootInfo* root = get_root_info(root_index);
+		SV_ASSERT(root);
+		if (root == NULL) return nullptr;
+
+		for (GuiWidget& w : root->widgets) {
+
+			if (w.type == type && w.id == id)
+				return &w;
+		}
+
+		return nullptr;
     }
 
 	SV_INTERNAL void update_window_node_bounds(u32 node_id, v4_f32 parent_bounds, bool root)
@@ -1382,20 +1437,20 @@ namespace sv {
 									if (it->root_id == u32_max)
 										continue;
 									
-									if (it->root_id == node_id) {
+										if (it->root_id == node_id) {
 										it->root_id = u32_max;
 										break;
-									}
-									else {
+										}
+										else {
 
 										if (dereference_node_parent(it->root_id, node_id))
-											break;
-									}
-								}
-							}
+										break;
+										}
+										}
+										}
 
-							new_window.root_id = node_id;
-							}*/
+										new_window.root_id = node_id;
+										}*/
 						u32 new_node_id = gui->window_nodes.emplace();
 						GuiWindowNode& new_node = gui->window_nodes[new_node_id];
 						new_node.is_node = false;
@@ -1434,184 +1489,215 @@ namespace sv {
 		else if (gui->current_focus) {
 	    
 			GuiWidget& w = *gui->current_focus;
-	    
-			switch (w.type) {
-		    
-			case GuiWidgetType_Button:
-			{
-				InputState state = input.mouse_buttons[MouseButton_Left];
-		
-				if (state == InputState_Released || state == InputState_None) {
 
-					if (mouse_in_bounds(w.bounds))
-						w.widget.button.pressed = true;
+			if (gui->focus.action == GuiWidgetAction_None) {
+
+				switch (w.type) {
 		    
-					free_focus();
+				case GuiWidgetType_Button:
+				{
+					InputState state = input.mouse_buttons[MouseButton_Left];
+		
+					if (state == InputState_Released || state == InputState_None) {
+
+						if (mouse_in_bounds(w.bounds))
+							w.widget.button.pressed = true;
+		    
+						free_focus();
+					}
+				}
+				break;
+
+				case GuiWidgetType_TextField:
+				{
+					InputState state = input.mouse_buttons[MouseButton_Left];
+				
+					if (input.keys[Key_Enter] || (state && !mouse_in_bounds(w.bounds))) {
+						free_focus();
+					}
+					else {
+
+						auto& field = w.widget.text_field;
+
+						if (field.buff_size != gui->text_field_buffer.size()) {
+							gui->text_field_buffer.resize(field.buff_size);
+
+							const char* text = field.text ? field.text : NULL;
+						
+							string_copy((char*)gui->text_field_buffer.data(), text, field.buff_size);
+							gui->text_field_cursor = (u32)string_size(text);
+						}
+					
+						string_modify((char*)gui->text_field_buffer.data(), field.buff_size, gui->text_field_cursor, NULL);
+					}
+				}
+				break;
+
+				case GuiWidgetType_ImageButton:
+				{
+					InputState state = input.mouse_buttons[MouseButton_Left];
+		
+					if (state == InputState_Released || state == InputState_None) {
+
+						if (mouse_in_bounds(w.bounds))
+							w.widget.image_button.pressed = true;
+		    
+						free_focus();
+					}
+				}
+				break;
+
+				case GuiWidgetType_Checkbox:
+				{
+					InputState state = input.mouse_buttons[MouseButton_Left];
+		
+					if (state == InputState_Released || state == InputState_None) {
+
+						v4_f32 button_bounds = compute_checkbox_button(w);
+
+						if (mouse_in_bounds(button_bounds)) {
+							w.widget.checkbox.pressed = true;
+							w.widget.checkbox.value = !w.widget.checkbox.value;
+						}
+		    
+						free_focus();
+					}
+				}
+				break;
+
+				case GuiWidgetType_Drag:
+				{
+					auto& drag = w.widget.drag;
+
+					if (input.mouse_buttons[MouseButton_Left] == InputState_None) {
+						free_focus();
+					}
+					else {
+
+						switch (drag.type) {
+
+						case GuiType_f32:
+						case GuiType_v2_f32:
+						case GuiType_v3_f32:
+						case GuiType_v4_f32:
+						{
+							f32* value = nullptr;
+							f32 adv = *reinterpret_cast<f32*>(drag.adv_data);
+							f32 min = *reinterpret_cast<f32*>(drag.min_data);
+							f32 max = *reinterpret_cast<f32*>(drag.max_data);
+			    
+							if (drag.type == GuiType_f32) {
+			    
+								value = reinterpret_cast<f32*>(drag.value_data);
+							}
+							else if (drag.type == GuiType_v2_f32) {
+			    
+								v2_f32* value_vec = reinterpret_cast<v2_f32*>(drag.value_data);
+								value = &((*value_vec)[drag.current_vector]);
+							}
+							else if (drag.type == GuiType_v3_f32) {
+			    
+								v3_f32* value_vec = reinterpret_cast<v3_f32*>(drag.value_data);
+								value = &((*value_vec)[drag.current_vector]);
+							}
+							else if (drag.type == GuiType_v4_f32) {
+			    
+								v4_f32* value_vec = reinterpret_cast<v4_f32*>(drag.value_data);
+								value = &((*value_vec)[drag.current_vector]);
+							}
+
+							if (value) {
+			    
+								*value += input.mouse_dragged.x * gui->resolution.x * adv;
+								*value = math_clamp(min, *value, max);
+							}
+						}
+						break;
+
+						case GuiType_u32:
+						{
+							u32* value = nullptr;
+							u32 adv = *reinterpret_cast<u32*>(drag.adv_data);
+							u32 min = *reinterpret_cast<u32*>(drag.min_data);
+							u32 max = *reinterpret_cast<u32*>(drag.max_data);
+			    
+							if (drag.type == GuiType_u32) {
+			    
+								value = reinterpret_cast<u32*>(drag.value_data);
+							}
+
+							if (value) {
+
+								i32 n = i32(input.mouse_dragged.x * gui->resolution.x * adv);
+								*value = (-n > (i32)*value) ? 0u : (*value + n);
+								*value = math_clamp(min, *value, max);
+							}
+						}
+						break;
+		    
+						}
+					}
+				}
+				break;
+
+				case GuiWidgetType_Collapse:
+				{
+					InputState state = input.mouse_buttons[MouseButton_Left];
+		
+					if (state == InputState_Released || state == InputState_None) {
+
+						if (mouse_in_bounds(w.bounds)) {
+							w.widget.collapse.active = !w.widget.collapse.active;
+						}
+		    
+						free_focus();
+					}
+				}
+				break;
+
+				case GuiWidgetType_AssetButton:
+				{
+					InputState state = input.mouse_buttons[MouseButton_Left];
+		
+					if (state == InputState_Released || state == InputState_None) {
+
+						if (mouse_in_bounds(w.bounds))
+							w.widget.asset_button.pressed = true;
+		    
+						free_focus();
+					}
+				}
+				break;
+		
+				}
+
+				// Package stuff
+				if (w.package_id != u64_max && input.mouse_buttons[MouseButton_Left]) {
+
+					if ((gui->mouse_position - gui->focus.start_mouse_position).length() > 0.03f) {
+						set_focus(gui->focus.root, w.type, w.id, GuiWidgetAction_MovePackage);
+					}
 				}
 			}
-			break;
+			else if (gui->focus.action == GuiWidgetAction_MovePackage) {
 
-			case GuiWidgetType_TextField:
-			{
 				InputState state = input.mouse_buttons[MouseButton_Left];
 				
-				if (input.keys[Key_Enter] || (state && !mouse_in_bounds(w.bounds))) {
-					free_focus();
-				}
-				else {
+				if (state == InputState_Released || state == InputState_None) {
 
-					auto& field = w.widget.text_field;
+					for (const GuiWidgetRef& ref : gui->package.recivers) {
 
-					if (field.buff_size != gui->text_field_buffer.size()) {
-						gui->text_field_buffer.resize(field.buff_size);
+						GuiWidget* w = find_widget(ref.type, ref.id, ref.root);
 
-						const char* text = field.text ? field.text : NULL;
-						
-						string_copy((char*)gui->text_field_buffer.data(), text, field.buff_size);
-						gui->text_field_cursor = (u32)string_size(text);
+						if (w && mouse_in_bounds(w->bounds)) {
+							gui->package.reciver_id = w->id;
+							gui->package.first_frame = true;
+							break;
+						}
 					}
 					
-					string_modify((char*)gui->text_field_buffer.data(), field.buff_size, gui->text_field_cursor, NULL);
-				}
-			}
-			break;
-
-			case GuiWidgetType_ImageButton:
-			{
-				InputState state = input.mouse_buttons[MouseButton_Left];
-		
-				if (state == InputState_Released || state == InputState_None) {
-
-					if (mouse_in_bounds(w.bounds))
-						w.widget.image_button.pressed = true;
-		    
 					free_focus();
 				}
-			}
-			break;
-
-			case GuiWidgetType_Checkbox:
-			{
-				InputState state = input.mouse_buttons[MouseButton_Left];
-		
-				if (state == InputState_Released || state == InputState_None) {
-
-					v4_f32 button_bounds = compute_checkbox_button(w);
-
-					if (mouse_in_bounds(button_bounds)) {
-						w.widget.checkbox.pressed = true;
-						w.widget.checkbox.value = !w.widget.checkbox.value;
-					}
-		    
-					free_focus();
-				}
-			}
-			break;
-
-			case GuiWidgetType_Drag:
-			{
-				auto& drag = w.widget.drag;
-
-				if (input.mouse_buttons[MouseButton_Left] == InputState_None) {
-					free_focus();
-				}
-				else {
-
-					switch (drag.type) {
-
-					case GuiType_f32:
-					case GuiType_v2_f32:
-					case GuiType_v3_f32:
-					case GuiType_v4_f32:
-					{
-						f32* value = nullptr;
-						f32 adv = *reinterpret_cast<f32*>(drag.adv_data);
-						f32 min = *reinterpret_cast<f32*>(drag.min_data);
-						f32 max = *reinterpret_cast<f32*>(drag.max_data);
-			    
-						if (drag.type == GuiType_f32) {
-			    
-							value = reinterpret_cast<f32*>(drag.value_data);
-						}
-						else if (drag.type == GuiType_v2_f32) {
-			    
-							v2_f32* value_vec = reinterpret_cast<v2_f32*>(drag.value_data);
-							value = &((*value_vec)[drag.current_vector]);
-						}
-						else if (drag.type == GuiType_v3_f32) {
-			    
-							v3_f32* value_vec = reinterpret_cast<v3_f32*>(drag.value_data);
-							value = &((*value_vec)[drag.current_vector]);
-						}
-						else if (drag.type == GuiType_v4_f32) {
-			    
-							v4_f32* value_vec = reinterpret_cast<v4_f32*>(drag.value_data);
-							value = &((*value_vec)[drag.current_vector]);
-						}
-
-						if (value) {
-			    
-							*value += input.mouse_dragged.x * gui->resolution.x * adv;
-							*value = math_clamp(min, *value, max);
-						}
-					}
-					break;
-
-					case GuiType_u32:
-					{
-						u32* value = nullptr;
-						u32 adv = *reinterpret_cast<u32*>(drag.adv_data);
-						u32 min = *reinterpret_cast<u32*>(drag.min_data);
-						u32 max = *reinterpret_cast<u32*>(drag.max_data);
-			    
-						if (drag.type == GuiType_u32) {
-			    
-							value = reinterpret_cast<u32*>(drag.value_data);
-						}
-
-						if (value) {
-
-							i32 n = i32(input.mouse_dragged.x * gui->resolution.x * adv);
-							*value = (-n > (i32)*value) ? 0u : (*value + n);
-							*value = math_clamp(min, *value, max);
-						}
-					}
-					break;
-		    
-					}
-				}
-			}
-			break;
-
-			case GuiWidgetType_Collapse:
-			{
-				InputState state = input.mouse_buttons[MouseButton_Left];
-		
-				if (state == InputState_Released || state == InputState_None) {
-
-					if (mouse_in_bounds(w.bounds)) {
-						w.widget.collapse.active = !w.widget.collapse.active;
-					}
-		    
-					free_focus();
-				}
-			}
-			break;
-
-			case GuiWidgetType_AssetButton:
-			{
-				InputState state = input.mouse_buttons[MouseButton_Left];
-		
-				if (state == InputState_Released || state == InputState_None) {
-
-					if (mouse_in_bounds(w.bounds))
-						w.widget.asset_button.pressed = true;
-		    
-					free_focus();
-				}
-			}
-			break;
-		
 			}
 		}
 
@@ -2159,6 +2245,26 @@ namespace sv {
 			}
 			break;
 
+			case GuiHeader_SendPackage:
+			{
+				u64 package_id = gui_read<u64>(it);
+					
+				GuiRootInfo* root = get_root_info(gui->root_stack.back());
+
+				SV_ASSERT(root);
+				if (root) {
+
+					if (root->widgets.size()) {
+
+						GuiWidget& w = root->widgets.back();
+						w.package_id = package_id;
+					}
+					else SV_ASSERT(0);
+				}
+				else SV_ASSERT(0);
+			}
+			break;
+
 			case GuiHeader_BeginGrid:
 			{
 				GuiRootInfo* root = get_root_info(gui->root_stack.back());
@@ -2358,26 +2464,6 @@ namespace sv {
 		gui->buffer.write_back(ptr, size);
     }
 
-    SV_AUX GuiWidget* find_widget(GuiWidgetType type, u64 id, GuiRootIndex root_index = {GuiRootType_None, 0u})
-    {
-		// TODO: Optimize
-
-		if (root_index.type == GuiRootType_None)
-			root_index = gui->root_stack.back();
-		
-		GuiRootInfo* root = get_root_info(root_index);
-		SV_ASSERT(root);
-		if (root == NULL) return nullptr;
-
-		for (GuiWidget& w : root->widgets) {
-
-			if (w.type == type && w.id == id)
-				return &w;
-		}
-
-		return nullptr;
-    }
-
     bool gui_begin_window(const char* title, u32 flags)
     {
 		u64 hash = hash_string(title);
@@ -2554,6 +2640,42 @@ namespace sv {
 		gui->root_stack.pop_back();
 		gui_pop_id();
     }
+
+	void gui_send_package(const void* data, size_t size, u64 package_id)
+	{
+		gui_write(GuiHeader_SendPackage);
+		gui_write(package_id);
+
+		if (gui->focus.type != GuiWidgetType_None && gui->focus.type != GuiWidgetType_Root && gui->focus.action == GuiWidgetAction_MovePackage) {
+			
+			if (gui->current_focus && gui->current_focus->package_id == package_id && gui->last_widget.id == gui->focus.id && gui->last_widget.type == gui->focus.type) {
+
+				gui->package.buffer.resize(size);
+				memcpy(gui->package.buffer.data(), data, size);
+			}
+		}
+	}
+	
+	bool gui_recive_package(void** dst, u64 package_id)
+	{
+		bool write = false;
+		
+		if (gui->focus.type != GuiWidgetType_None && gui->focus.type != GuiWidgetType_Root && gui->focus.action == GuiWidgetAction_MovePackage) {
+
+			if (gui->current_focus && gui->current_focus->package_id == package_id) {
+				gui->package.recivers.push_back(gui->last_widget);
+			}
+		}
+		else if (gui->last_widget.id == gui->package.reciver_id) {
+
+			if (gui->package.buffer.data()) {
+				*dst = gui->package.buffer.data();
+				write = true;
+			}
+		}
+		
+		return write;
+	}
 
     bool gui_show_window(const char* title)
     {
@@ -3390,6 +3512,24 @@ namespace sv {
 					}
 						
 					imrend_draw_quad({b.x, b.y, 0.f}, {b.z, b.w}, color, cmd);
+				}
+			}
+		}
+
+		// Package send and recive effects
+		{
+			if (gui->focus.type != GuiWidgetType_Root && gui->focus.type != GuiWidgetType_None && gui->focus.action == GuiWidgetAction_MovePackage) {
+
+				imrend_draw_quad(gui->mouse_position.getVec3(), {0.02f, 0.02f}, Color::Red(), cmd);
+
+				for (const GuiWidgetRef& ref : gui->package.recivers) {
+
+					const GuiWidget* w = find_widget(ref.type, ref.id, ref.root);
+					if (w) {
+
+						v4_f32 b = w->bounds;
+						imrend_draw_quad({ b.x, b.y, 0.f }, { b.z, b.w }, Color::Green(50u), cmd);
+					}
 				}
 			}
 		}

@@ -1427,7 +1427,7 @@ namespace sv {
 
 						if (id != u32_max) {
 			    
-							//gui_send_package(&pack, sizeof(AssetPackage), id);
+							gui_send_package(&pack, sizeof(AssetPackage), id);
 						}
 					}
 					break;
