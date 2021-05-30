@@ -2412,7 +2412,7 @@ namespace sv {
 		return true;
     }
     
-    bool SpriteSheet::add_sprite_animation(u32& id, const char* name, u32* sprites_ptr, u32 frames, f32 frame_time)
+    bool SpriteSheet::add_sprite_animation(u32* _id, const char* name, u32* sprites_ptr, u32 frames, f32 frame_time)
     {
 		if (name == nullptr) name = "Unnamed";
 	
@@ -2422,20 +2422,28 @@ namespace sv {
 			return false;
 		}
 
-		if (frames > SPRITE_ANIMATION_MAX_FRAMES) {
-			SV_LOG_ERROR("The sprite animation '%s' has %u sprites, the limit is %u", name, frames, SPRITE_ANIMATION_MAX_FRAMES);
-			return false;
+		// Check if have repeated sprite names
+		for (auto it = sprite_animations.begin();
+			 it.has_next();
+			 ++it)
+		{
+			SpriteAnimation& s = *it;
+
+			if (string_equals(s.name, name)) {
+				SV_LOG_ERROR("Can''t add the sprite animation '%s', the name is used", name);
+				return false;
+			}
 		}
 
-		// TODO: Check if have repeated sprite names
-
-		id = sprite_animations.emplace();
+		u32 id = sprite_animations.emplace();
 
 		SpriteAnimation& s = sprite_animations[id];
 		string_copy(s.name, name, SPRITE_NAME_SIZE + 1u);
 		memcpy(s.sprites, sprites_ptr, frames * sizeof(u32));
 		s.frames = frames;
 		s.frame_time = frame_time;
+
+		if (_id) *_id = id;
 
 		return true;
     }

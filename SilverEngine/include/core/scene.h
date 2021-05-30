@@ -389,7 +389,7 @@ namespace sv {
 		bool add_sprite(u32* id, const char* name, const v4_f32& texcoord);
 		bool modify_sprite(u32 id, const char* name, const v4_f32& texcoord);
 		
-		bool add_sprite_animation(u32& id, const char* name, u32* sprites, u32 frames, f32 frame_time);
+		bool add_sprite_animation(u32* id, const char* name, u32* sprites, u32 frames, f32 frame_time);
 	
 		v4_f32 get_sprite_texcoord(u32 id);
 	

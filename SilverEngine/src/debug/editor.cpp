@@ -73,6 +73,9 @@ namespace sv {
 		SpriteSheetEditorState_ModifySprite,
 		SpriteSheetEditorState_NewSprite,
 		SpriteSheetEditorState_AnimationList,
+		SpriteSheetEditorState_NewAnimation,
+		SpriteSheetEditorState_ModifyAnimation,
+		SpriteSheetEditorState_AddSprite,
 	};
 
     struct SpriteSheetEditorData {
@@ -80,7 +83,9 @@ namespace sv {
 		SpriteSheetEditorState state = SpriteSheetEditorState_Main;
 		SpriteSheetEditorState next_state = SpriteSheetEditorState_Main;
 		Sprite temp_sprite;
+		SpriteAnimation temp_anim;
 		u32 modifying_id = 0u;
+		f32 simulation_time = 0.f;
     };
 
     struct GlobalEditorData {
@@ -1715,7 +1720,7 @@ namespace sv {
 
 					gui_drag_v4_f32("Texcoord", sprite.texcoord, 0.001f, 0.f, 1.f, 2u);
 
-					if (gui_button("Add sprite", 3u)) {
+					if (gui_button("Save", 3u)) {
 
 						if (sheet->add_sprite(NULL, sprite.name, sprite.texcoord)) {
 							
@@ -1753,6 +1758,115 @@ namespace sv {
 					}
 				}
 				break;
+
+				case SpriteSheetEditorState_AnimationList:
+				{
+					u64 id = 0u;
+					
+					if (gui_button("New Sprite Animation", id++)) {
+						data.next_state = SpriteSheetEditorState_NewAnimation;
+					}
+
+					u32 remove_id = u32_max;
+					
+					for (auto it = sheet->sprite_animations.begin();
+						 it.has_next();
+						 ++it)
+					{
+						u32 index = it.get_index();
+						SpriteAnimation& anim = *it;
+
+						u32 current_sprite = u32(data.simulation_time / anim.frame_time) % anim.frames;
+						v4_f32 texcoord = sheet->get_sprite_texcoord(anim.sprites[current_sprite]);
+						
+						if (gui_image_button(anim.name, image, texcoord, index + 28349u)) {
+
+							data.modifying_id = index;
+							data.next_state = SpriteSheetEditorState_ModifyAnimation;
+						}
+						else if (gui_begin_popup(GuiPopupTrigger_LastWidget)) {
+
+							if (gui_button("Remove", 0u)) {
+
+								remove_id = index;
+							}
+
+							gui_end_popup();
+						}
+					}
+
+					if (remove_id != u32_max) {
+
+						sheet->sprite_animations.erase(remove_id);
+						save = true;
+					}
+
+					data.simulation_time += engine.deltatime;
+				}
+				break;
+
+				case SpriteSheetEditorState_NewAnimation:
+				{
+					SpriteAnimation& anim = data.temp_anim;
+
+					if (anim.frames) {
+						
+						u32 current_spr = u32(data.simulation_time / anim.frame_time) % anim.frames;
+						v4_f32 texcoord = sheet->get_sprite_texcoord(anim.sprites[current_spr]);
+					
+						gui_image(image, 80.f, texcoord, 0u);
+					}
+					else gui_image(NULL, 80.f, {}, 0u);
+
+					gui_text_field(anim.name, SPRITE_NAME_SIZE + 1u, 1u);
+					
+					foreach(i, anim.frames) {
+
+						u32 spr_id = anim.sprites[i];
+						
+						if (sheet->sprites.exists(spr_id)) {
+
+							const Sprite& spr = sheet->sprites[spr_id];
+
+							if (gui_image_button(spr.name, image, spr.texcoord, spr_id + 84390u)) {
+								
+							}
+						}
+						else {
+							// TODO
+						}
+					}
+
+					if (gui_button("Add Sprite", 2u)) {
+						data.next_state = SpriteSheetEditorState_AddSprite;
+					}
+					if (gui_button("Save", 3u)) {
+						if (sheet->add_sprite_animation(NULL, anim.name, anim.sprites, anim.frames, anim.frame_time)) {
+							
+							save = true;
+							data.next_state = SpriteSheetEditorState_AnimationList;
+						}
+					}
+
+					data.simulation_time += engine.deltatime;
+				}
+				break;
+
+				case SpriteSheetEditorState_AddSprite:
+				{
+					for (auto it = sheet->sprites.begin();
+						 it.has_next();
+						 ++it)
+					{
+						if (gui_image_button(it->name, image, it->texcoord, it.get_index() + 38543u)) {
+
+							data.next_state = SpriteSheetEditorState_NewAnimation;
+							u32& spr = data.temp_anim.sprites[data.temp_anim.frames++];
+							spr = it.get_index();
+						}
+					}
+				}
+				break;
 					
 				}
 
@@ -1768,11 +1882,28 @@ namespace sv {
 					}
 					break;
 
+					case SpriteSheetEditorState_NewAnimation:
+					{
+						if (data.state != SpriteSheetEditorState_AddSprite) {
+							
+							string_copy(data.temp_anim.name, "Name", SPRITE_NAME_SIZE + 1u);
+							data.temp_anim.frames = 0u;
+							data.temp_anim.frame_time = 0.1f;
+						}
+					}
+					break;
+
 					case SpriteSheetEditorState_ModifySprite:
 					{
 						Sprite& s = sheet->sprites[data.modifying_id];
 						string_copy(data.temp_sprite.name, s.name, SPRITE_NAME_SIZE + 1u);
 						data.temp_sprite.texcoord = s.texcoord;
+					}
+					break;
+
+					case SpriteSheetEditorState_AnimationList:
+					{
+						data.simulation_time = 0.f;
 					}
 					break;
 						
