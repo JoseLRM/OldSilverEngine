@@ -408,12 +408,12 @@ namespace sv {
     struct SpriteComponent : public BaseComponent {
 
 		static CompID SV_API ID;
-		static constexpr u32 VERSION = 0u;
-	
-		TextureAsset texture;
-		v4_f32	     texcoord = { 0.f, 0.f, 1.f, 1.f };
-		Color	     color = Color::White();
-		u32	     layer = 0u;
+		static constexpr u32 VERSION = 1u;
+
+		SpriteSheetAsset sprite_sheet;
+		u32              sprite_id = 0u;
+		Color	         color = Color::White();
+		u32	             layer = 0u;
 
 		void serialize(Serializer& s);
 		void deserialize(Deserializer& s, u32 version);
@@ -423,20 +423,17 @@ namespace sv {
     struct AnimatedSpriteComponent : public BaseComponent {
 
 		static CompID SV_API ID;
-		static constexpr u32 VERSION = 0u;
+		static constexpr u32 VERSION = 1u;
 	
-		TextureAsset texture;
-		u32          grid_width = 10u;
-		u32          grid_height = 10u;
-		u32          begin_index = 0u;
-		u32          frames = 1u;
-		f32          frame_time = 0.4f;
-
-		u32          index = 0u;
-		f32          time = 0.f;
+		SpriteSheetAsset sprite_sheet;
+		u32              animation_id = 0u;
+		u32              index = 0u;
+		f32              time_mult = 1.f;
+		f32              simulation_time = 0.f;
+		
 	
 		Color	     color = Color::White();
-		u32	     layer = 0u;
+		u32	         layer = 0u;
 
 		void serialize(Serializer& s);
 		void deserialize(Deserializer& s, u32 version);

@@ -1125,28 +1125,6 @@ namespace sv {
 #endif
 	
 		event_dispatch("update_scene", nullptr);
-
-		// Update animations
-		{
-			f32 dt = engine.deltatime;
-	    
-			ComponentIterator it;
-			CompView<AnimatedSpriteComponent> view;
-			if (comp_it_begin(it, view)) {
-				do {
-
-					AnimatedSpriteComponent& s = *view.comp;
-
-					s.time += dt;
-					if (s.time > s.frame_time) {
-
-						s.index = (s.index + 1u) % s.frames;
-						s.time = s.time - s.frame_time;
-					}
-				}
-				while (comp_it_next(it, view));
-			}
-		}
 	    
 		update_physics();
 
@@ -2526,46 +2504,69 @@ namespace sv {
 
     void SpriteComponent::serialize(Serializer& s)
     {
-		serialize_asset(s, texture);
-		serialize_v4_f32(s, texcoord);
+		serialize_asset(s, sprite_sheet);
+		serialize_u32(s, sprite_id);
 		serialize_color(s, color);
 		serialize_u32(s, layer);
     }
 
     void SpriteComponent::deserialize(Deserializer& d, u32 version)
     {
-		deserialize_asset(d, texture);
-		deserialize_v4_f32(d, texcoord);
-		deserialize_color(d, color);
-		deserialize_u32(d, layer);
+		// TODO: Deprecated
+		if (version == 0u) {
+			TextureAsset tex;
+			v4_f32 texcoord;
+			deserialize_asset(d, tex);
+			deserialize_v4_f32(d, texcoord);
+			deserialize_color(d, color);
+			deserialize_u32(d, layer);
+		}
+		else {
+			deserialize_asset(d, sprite_sheet);
+			deserialize_u32(d, sprite_id);
+			deserialize_color(d, color);
+			deserialize_u32(d, layer);
+		}
     }
 
     void AnimatedSpriteComponent::serialize(Serializer& s)
     {
-		serialize_asset(s, texture);
-		serialize_u32(s, grid_width);
-		serialize_u32(s, grid_height);
-		serialize_u32(s, begin_index);
-		serialize_u32(s, frames);
-		serialize_f32(s, frame_time);
+		serialize_asset(s, sprite_sheet);
+		serialize_u32(s, animation_id);
 		serialize_u32(s, index);
-		serialize_f32(s, time);
+		serialize_f32(s, time_mult);
+		serialize_f32(s, simulation_time);
 		serialize_color(s, color);
 		serialize_u32(s, layer);
     }
 
     void AnimatedSpriteComponent::deserialize(Deserializer& d, u32 version)
     {
-		deserialize_asset(d, texture);
-		deserialize_u32(d, grid_width);
-		deserialize_u32(d, grid_height);
-		deserialize_u32(d, begin_index);
-		deserialize_u32(d, frames);
-		deserialize_f32(d, frame_time);
-		deserialize_u32(d, index);
-		deserialize_f32(d, time);
-		deserialize_color(d, color);
-		deserialize_u32(d, layer);
+		// TODO: Deprecated
+		if (version == 0u) {
+			TextureAsset texture;
+			u32 t;
+			f32 f;
+			deserialize_asset(d, texture);
+			deserialize_u32(d, t);
+			deserialize_u32(d, t);
+			deserialize_u32(d, t);
+			deserialize_u32(d, t);
+			deserialize_f32(d, f);
+			deserialize_u32(d, index);
+			deserialize_f32(d, f);
+			deserialize_color(d, color);
+			deserialize_u32(d, layer);
+		}
+		else {
+			deserialize_asset(d, sprite_sheet);
+			deserialize_u32(d, animation_id);
+			deserialize_u32(d, index);
+			deserialize_f32(d, time_mult);
+			deserialize_f32(d, simulation_time);
+			deserialize_color(d, color);
+			deserialize_u32(d, layer);
+		}
     }
 
     void CameraComponent::serialize(Serializer& s)

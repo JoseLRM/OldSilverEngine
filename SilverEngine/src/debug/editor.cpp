@@ -42,12 +42,12 @@ namespace sv {
     };
 
     struct AssetElement {
-		char name[FILENAME_SIZE];
+		char name[FILENAME_SIZE + 1];
 		AssetElementType type;
     };
 
     struct AssetBrowserInfo {
-		char filepath[FILEPATH_SIZE] = {};
+		char filepath[FILEPATH_SIZE + 1] = {};
 		List<AssetElement> elements;
 		f64 last_update = 0.0;
     };
@@ -57,7 +57,7 @@ namespace sv {
     };
 
     struct HierarchyFolder {
-		char path[FILEPATH_SIZE];
+		char path[FILEPATH_SIZE + 1];
 		List<EditorEntity> entities;
 		List<HierarchyFolder> folders;
 		bool show;
@@ -730,10 +730,10 @@ namespace sv {
 		gui_text("Values", id++);
 		gui_separator(5.f);
 
-		egui_comp_color("Ambient Color", id++, &mat.ambient_color);
-		egui_comp_color("Diffuse Color", id++, &mat.diffuse_color);
-		egui_comp_color("Specular Color", id++, &mat.specular_color);
-		egui_comp_color("Emissive Color", id++, &mat.emissive_color);
+		gui_drag_color("Ambient Color", mat.ambient_color, id++);
+		gui_drag_color("Diffuse Color", mat.diffuse_color, id++);
+		gui_drag_color("Specular Color", mat.specular_color, id++);
+		gui_drag_color("Emissive Color", mat.emissive_color, id++);
 		gui_drag_f32("Shininess", mat.shininess, 0.01f, 0.f, 300.f, id++);
 	
 		gui_pop_id();
@@ -749,9 +749,8 @@ namespace sv {
 
 				SpriteComponent& spr = *reinterpret_cast<SpriteComponent*>(comp);
 
-				egui_comp_color("Color", 0u, &spr.color);
-				egui_comp_texture("Texture", 1u, &spr.texture);
-				gui_drag_v4_f32("Coords", spr.texcoord, 0.01f, 0.f, 1.f, 2u);
+				gui_sprite("Sprite", spr.sprite_sheet, spr.sprite_id, 0u);
+				gui_drag_color("Color", spr.color, 1u);
 
 				bool xflip = spr.flags & SpriteComponentFlag_XFlip;
 				bool yflip = spr.flags & SpriteComponentFlag_YFlip;
@@ -764,16 +763,16 @@ namespace sv {
 
 				AnimatedSpriteComponent& spr = *reinterpret_cast<AnimatedSpriteComponent*>(comp);
 
-				egui_comp_color("Color", 0u, &spr.color);
-				egui_comp_texture("Texture", 1u, &spr.texture);
-				gui_drag_u32("Grid Width", spr.grid_width, 1u, 0u, u32_max, 2u);
-				gui_drag_u32("Grid Height", spr.grid_height, 1u, 0u, u32_max, 3u);
-				gui_drag_u32("Begin Index", spr.begin_index, 1u, 0u, u32_max, 4u);
-				gui_drag_u32("Frames", spr.frames, 1u, 0u, u32_max, 5u);
-				gui_drag_f32("Frame Time", spr.frame_time, 0.01f, 0.f, f32_max, 6u);
+				SpriteSheet* sheet = spr.sprite_sheet.get();
+				u32 max_index = 0u;
 
-				gui_drag_u32("Index", spr.index, 1u, 0u, spr.grid_width * spr.grid_height, 7u);
-				gui_drag_f32("Time", spr.time, 0.01f, 0.f, f32_max, 8u);
+				if (sheet && sheet->sprite_animations.exists(spr.animation_id))
+					max_index = sheet->sprite_animations[spr.animation_id].frames;
+
+				gui_sprite_animation("Animation", spr.sprite_sheet, spr.animation_id, 0u);
+				gui_drag_color("Color", spr.color, 1u);
+				gui_drag_u32("Index", spr.index, 1u, 0u, max_index, 2u);
+				gui_drag_f32("Time Mult", spr.time_mult, 0.01f, 0.f, f32_max, 6u);
 
 				bool xflip = spr.flags & SpriteComponentFlag_XFlip;
 				bool yflip = spr.flags & SpriteComponentFlag_YFlip;
@@ -856,7 +855,7 @@ namespace sv {
 					else l.light_type = LightType_Point;
 				}
 
-				egui_comp_color("Color", 0u, &l.color);
+				gui_drag_color("Color", l.color, 0u);
 				gui_drag_f32("Intensity", l.intensity, 0.05f, 0.0f, f32_max, 1u);
 				gui_drag_f32("Range", l.range, 0.1f, 0.0f, f32_max, 2u);
 				gui_drag_f32("Smoothness", l.smoothness, 0.005f, 0.0f, 1.f, 3u);
@@ -1317,6 +1316,8 @@ namespace sv {
 
 			AssetBrowserInfo& info = editor.asset_browser;
 
+			string_copy(next_filepath, info.filepath, FILEPATH_SIZE + 1u);
+
 			// TEMP
 			if (input.unused && input.keys[Key_Control] && input.keys[Key_B] == InputState_Pressed) {
 
@@ -1365,6 +1366,27 @@ namespace sv {
 								else
 									SV_LOG_ERROR("This filepath exceeds the max filepath size");
 							}
+						}
+
+						if (gui_begin_popup(GuiPopupTrigger_LastWidget)) {
+
+							if (gui_button("Remove", 0u)) {
+
+								update_browser = true;
+
+								char filepath[FILEPATH_SIZE + 1u] = "assets/";
+								string_append(filepath, info.filepath, FILEPATH_SIZE + 1u);
+								string_append(filepath, e.name, FILEPATH_SIZE + 1u);
+
+								if (folder_remove(filepath)) {
+									SV_LOG_INFO("Folder '%s' removed", filepath);
+								}
+								else {
+									SV_LOG_ERROR("Can't remove the folder '%s'", filepath);
+								}
+							}
+							
+							gui_end_popup();
 						}
 					}
 					break;
@@ -1521,7 +1543,24 @@ namespace sv {
 
 			if (gui_begin_popup(GuiPopupTrigger_Root)) {
 
-				if (gui_button("Import Model", 0u)) {
+				u64 id = 0u;
+
+				if (gui_button("Create Folder", id++)) {
+
+					update_browser = true;
+
+					char filepath[FILEPATH_SIZE + 1u] = "assets/";
+					string_append(filepath, info.filepath, FILEPATH_SIZE + 1u);
+					string_append(filepath, "unnamed", FILEPATH_SIZE + 1u);
+
+					if (!folder_create(filepath)) {
+						SV_LOG_ERROR("Can't create the folder '%s'", filepath);
+					}
+				}
+
+				gui_separator(10.f);
+
+				if (gui_button("Import Model", id++)) {
 
 					char filepath[FILEPATH_SIZE + 1u] = "";
 
@@ -1561,7 +1600,7 @@ namespace sv {
 					}
 				}
 
-				if (gui_button("Create Sprite Sheet", 1u)) {
+				if (gui_button("Create Sprite Sheet", id++)) {
 
 					char filepath[FILEPATH_SIZE + 1u] = "assets/";
 
@@ -1625,7 +1664,7 @@ namespace sv {
 			}
 
 			if (gui_collapse("Rendering", 3u)) {
-				egui_comp_color("Ambient Light", 0u, &s.ambient_light);
+				gui_drag_color("Ambient Light", s.ambient_light, 0u);
 			}
 
 			if (gui_collapse("Physics", 5u)) {
@@ -1652,10 +1691,7 @@ namespace sv {
 				GPUImage* image = sheet->texture.get();
 
 				// TODO: back button in the window
-
-				// TEMP
-				load_asset_from_file(sheet->texture, "assets/images/temp.png");
-
+				
 				switch (data.state) {
 
 				case SpriteSheetEditorState_Main:
@@ -1672,12 +1708,18 @@ namespace sv {
 				case SpriteSheetEditorState_SpriteList:
 				{
 					u64 id = 0u;
+
+					if (egui_comp_texture("Texture", id++, &sheet->texture))
+						save = true;
 					
 					if (gui_button("New Sprite", id++)) {
 						data.next_state = SpriteSheetEditorState_NewSprite;
 					}
 
 					u32 remove_id = u32_max;
+
+					GuiSpritePackage package;
+					string_copy(package.sprite_sheet_filepath, data.current_sprite_sheet.get_filepath(), FILEPATH_SIZE + 1u);
 					
 					for (auto it = sheet->sprites.begin();
 						 it.has_next();
@@ -1691,7 +1733,11 @@ namespace sv {
 							data.modifying_id = index;
 							data.next_state = SpriteSheetEditorState_ModifySprite;
 						}
-						else if (gui_begin_popup(GuiPopupTrigger_LastWidget)) {
+
+						package.sprite_id = it.get_index();
+						gui_send_package(&package, sizeof(GuiSpritePackage), GUI_PACKAGE_SPRITE);
+						
+						if (gui_begin_popup(GuiPopupTrigger_LastWidget)) {
 
 							if (gui_button("Remove", 0u)) {
 
@@ -1768,6 +1814,9 @@ namespace sv {
 					}
 
 					u32 remove_id = u32_max;
+
+					GuiSpriteAnimationPackage package;
+					string_copy(package.sprite_sheet_filepath, data.current_sprite_sheet.get_filepath(), FILEPATH_SIZE + 1u);
 					
 					for (auto it = sheet->sprite_animations.begin();
 						 it.has_next();
@@ -1784,7 +1833,12 @@ namespace sv {
 							data.modifying_id = index;
 							data.next_state = SpriteSheetEditorState_ModifyAnimation;
 						}
-						else if (gui_begin_popup(GuiPopupTrigger_LastWidget)) {
+
+						package.animation_id = it.get_index();
+
+						gui_send_package(&package, sizeof(GuiSpriteAnimationPackage), GUI_PACKAGE_SPRITE_ANIMATION);
+						
+						if (gui_begin_popup(GuiPopupTrigger_LastWidget)) {
 
 							if (gui_button("Remove", 0u)) {
 
@@ -1968,6 +2022,9 @@ namespace sv {
 				display_asset_browser();
 				display_scene_settings();
 				display_spritesheet_editor();
+				gui_display_style_editor();
+
+				event_dispatch("display_gui", NULL);
 
 			}
 			else {

@@ -3,6 +3,7 @@
 #include "platform/graphics.h"
 #include "platform/os.h"
 #include "core/font.h"
+#include "core/scene.h"
 
 namespace sv {
 
@@ -17,18 +18,18 @@ namespace sv {
     void _gui_draw(CommandList cmd);
 
     struct GuiStyle {
-		Color widget_primary_color = Color::Salmon();
-		Color widget_secondary_color = Color::DarkSalmon();
+		Color widget_primary_color = { 30u, 0u, 0u, 255u };
+		Color widget_secondary_color = { 20u, 5u, 5u, 255u };
 		Color widget_highlighted_color = Color::LightSalmon();
 		Color widget_focused_color = Color::Red();
-		Color widget_text_color = Color::Black();
-		Color check_color = Color::Red();
-		Color root_background_color = Color::White(70u);
-		Color root_focused_background_color = Color::White();
-		Color window_decoration_color = Color::Gray(150u);
-		Color window_focused_decoration_color = Color::Salmon();
-		Color docking_button = Color::Red();
-		Color docking_highlighted_button = Color::White();
+		Color widget_text_color = Color::White();
+		Color check_color = Color::White();
+		Color root_background_color = Color::Black(150u);
+		Color root_focused_background_color = Color::Gray(2u);
+		Color window_decoration_color = Color::Gray(128u);
+		Color window_focused_decoration_color = { 180u, 128u, 128u, 255u };
+		Color docking_button_color = Color::Red();
+		Color docking_highlighted_button_color = Color::White();
 		f32 scale = 1.f;
     };
 
@@ -90,5 +91,83 @@ namespace sv {
     // HELPERS
 
     SV_INLINE void gui_image(GPUImage* image, f32 height, u64 id, u32 flags = 0u) { gui_image(image, height, { 0.f, 0.f, 1.f, 1.f }, id, flags); }
-    
+
+	// HIGH LEVEL
+
+	constexpr u64 GUI_PACKAGE_SPRITE = 0x4F39A88B2;
+	constexpr u64 GUI_PACKAGE_SPRITE_ANIMATION = 0xA34C39E83;
+
+	struct GuiSpritePackage {
+		char sprite_sheet_filepath[FILEPATH_SIZE + 1u];
+		u32 sprite_id;
+	};
+
+	struct GuiSpriteAnimationPackage {
+		char sprite_sheet_filepath[FILEPATH_SIZE + 1u];
+		u32 animation_id;
+	};
+
+	SV_INLINE bool gui_sprite(const char* text, SpriteSheetAsset& sprite_sheet, u32& sprite_id, u64 id)
+	{
+		SpriteSheet* sheet = sprite_sheet.get();
+		GPUImage* image = sheet ? sprite_sheet->texture.get() : NULL;
+		v4_f32 texcoord = sheet ? sheet->get_sprite_texcoord(sprite_id) : v4_f32{};
+		
+		gui_image(image, 70.f, texcoord, id);
+		
+		GuiSpritePackage* package;
+
+		if (gui_recive_package((void**)&package, GUI_PACKAGE_SPRITE)) {
+
+			SpriteSheetAsset asset;
+
+			if (load_asset_from_file(asset, package->sprite_sheet_filepath)) {
+
+				sprite_sheet = asset;
+				sprite_id = package->sprite_id;
+				return true;
+			}
+		}
+		
+		return false;
+	}
+
+	SV_INLINE bool gui_sprite_animation(const char* text, SpriteSheetAsset& sprite_sheet, u32& animation_id, u64 id)
+	{
+		SpriteSheet* sheet = sprite_sheet.get();
+		GPUImage* image = sheet ? sprite_sheet->texture.get() : NULL;
+		// TODO
+		v4_f32 texcoord = sheet ? sheet->get_sprite_texcoord(animation_id) : v4_f32{};
+		
+		gui_image(image, 70.f, texcoord, id);
+		
+		GuiSpriteAnimationPackage* package;
+
+		if (gui_recive_package((void**)&package, GUI_PACKAGE_SPRITE_ANIMATION)) {
+
+			SpriteSheetAsset asset;
+
+			if (load_asset_from_file(asset, package->sprite_sheet_filepath)) {
+
+				sprite_sheet = asset;
+				animation_id = package->animation_id;
+				return true;
+			}
+		}
+		
+		return false;
+	}
+
+	SV_INLINE bool gui_drag_color(const char* text, Color& color, u64 id)
+	{
+		v4_f32 value = color.toVec4();
+		if (gui_drag_v4_f32(text, value, 0.01f, 0.f, 1.f, id)) {
+			color.setFloat(value.x, value.y, value.z, value.w);
+			return true;
+		}
+		return false;
+	}
+
+	SV_API void gui_display_style_editor();
+	
 }

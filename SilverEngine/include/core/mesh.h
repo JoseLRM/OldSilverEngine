@@ -11,50 +11,50 @@ namespace sv {
     typedef u32 MeshIndex;
     
     struct MeshVertex {
-	v3_f32 position;
-	v3_f32 normal;
-	v4_f32 tangents;
-	v2_f32 texcoord;
+		v3_f32 position;
+		v3_f32 normal;
+		v4_f32 tangents;
+		v2_f32 texcoord;
     };
 
     struct Mesh {
 
-	List<v3_f32> positions;
-	List<v3_f32> normals;
-	List<v4_f32> tangents;
-	List<v2_f32> texcoords;
+		List<v3_f32> positions;
+		List<v3_f32> normals;
+		List<v4_f32> tangents;
+		List<v2_f32> texcoords;
 
-	List<MeshIndex> indices;
+		List<MeshIndex> indices;
 
-	GPUBuffer* vbuffer = nullptr;
-	GPUBuffer* ibuffer = nullptr;
+		GPUBuffer* vbuffer = nullptr;
+		GPUBuffer* ibuffer = nullptr;
 
-	// Info about the importation of the 3D Model
+		// Info about the importation of the 3D Model
 
-	XMMATRIX model_transform_matrix = XMMatrixIdentity();
-	String model_material_filepath;
+		XMMATRIX model_transform_matrix = XMMatrixIdentity();
+		String model_material_filepath;
 
     };
 
     struct Material {
 
-	// Pipeline settings
-	bool transparent = false;
-	RasterizerCullMode culling = RasterizerCullMode_Back;
+		// Pipeline settings
+		bool transparent = false;
+		RasterizerCullMode culling = RasterizerCullMode_Back;
 	
-	// Values
-	Color ambient_color;
-	Color diffuse_color;
-	Color specular_color;
-	Color emissive_color;
-	f32   shininess = 0.1f;
+		// Values
+		Color ambient_color;
+		Color diffuse_color;
+		Color specular_color;
+		Color emissive_color;
+		f32   shininess = 0.1f;
 
-	// Textures
+		// Textures
 	
-	TextureAsset diffuse_map;
-	TextureAsset normal_map;
-	TextureAsset specular_map;
-	TextureAsset emissive_map;
+		TextureAsset diffuse_map;
+		TextureAsset normal_map;
+		TextureAsset specular_map;
+		TextureAsset emissive_map;
     }; 
 
     SV_DEFINE_ASSET(MeshAsset, Mesh);
@@ -70,53 +70,54 @@ namespace sv {
 
     SV_API bool mesh_create_buffers(Mesh& mesh, ResourceUsage usage = ResourceUsage_Static);
     SV_API bool mesh_update_buffers(Mesh& mesh, CommandList cmd);
+	SV_API bool mesh_destroy_buffers(Mesh& mesh);
     SV_API bool mesh_clear(Mesh& mesh);
 
     // Model loading
 
     struct MeshInfo {
 
-	String name;
+		String name;
 
-	List<v3_f32> positions;
-	List<v3_f32> normals;
-	List<v2_f32> texcoords;
+		List<v3_f32> positions;
+		List<v3_f32> normals;
+		List<v2_f32> texcoords;
 
-	List<MeshIndex> indices;
+		List<MeshIndex> indices;
 
-	XMMATRIX transform_matrix;
-	u32 material_index = u32_max;
+		XMMATRIX transform_matrix;
+		u32 material_index = u32_max;
 
     };
 
     struct MaterialInfo {
 
-	String name;
+		String name;
 	
-	// Pipeline settings
-	bool transparent = false;
-	RasterizerCullMode culling = RasterizerCullMode_Back;
+		// Pipeline settings
+		bool transparent = false;
+		RasterizerCullMode culling = RasterizerCullMode_Back;
 
-	// Values
+		// Values
 	
-	Color ambient_color;
-	Color diffuse_color;
-	Color specular_color;
-	Color emissive_color;
-	f32 shininess;
+		Color ambient_color;
+		Color diffuse_color;
+		Color specular_color;
+		Color emissive_color;
+		f32 shininess;
 
-	// Textures
+		// Textures
 	
-	String diffuse_map_path;
-	String normal_map_path;
-	String specular_map_path;
-	String emissive_map_path;
+		String diffuse_map_path;
+		String normal_map_path;
+		String specular_map_path;
+		String emissive_map_path;
     };
 
     struct ModelInfo {
-	char folderpath[FILEPATH_SIZE + 1u];
-	List<MeshInfo> meshes;
-	List<MaterialInfo> materials;
+		char folderpath[FILEPATH_SIZE + 1u];
+		List<MeshInfo> meshes;
+		List<MaterialInfo> materials;
     };
 
     // Load external model format

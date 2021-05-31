@@ -8,7 +8,7 @@ namespace sv {
     ////////////////////////////////////////////////////// LIST //////////////////////////////////////////////////
     
     template<typename T>
-    struct SV_API ListIterator {
+    struct ListIterator {
 		T* ptr;
 
 		T* operator->() const noexcept { return ptr; }
@@ -33,7 +33,7 @@ namespace sv {
     };
 
     template<typename T>
-    struct SV_API ListConstIterator {
+    struct ListConstIterator {
 		const T* ptr;
 
 		const T* operator->() const noexcept { return ptr; }
@@ -58,7 +58,7 @@ namespace sv {
     };
 
     template<typename T>
-    struct SV_API List {
+    struct List {
 
 		List() = default;
 		~List()
@@ -478,10 +478,10 @@ namespace sv {
     };
     
     //////////////////////////////////// DO UNDO STACK /////////////////////////////////////////////////
+
+	typedef void(*ActionFn)(void* data, void* return_data);
     
-    typedef void(*ActionFn)(void* data, void* return_data);
-    
-    struct SV_API DoUndoStack {
+    struct DoUndoStack {
 	
 		void push_action(ActionFn do_fn, ActionFn undo_fn);
 		void push_data(const void* data, size_t size);
@@ -496,7 +496,7 @@ namespace sv {
 
 		SV_INLINE void lock() {} // TODO
 		SV_INLINE void unlock() {} // TODO
-	
+
 		struct Action {
 			ActionFn do_fn = nullptr;
 			ActionFn undo_fn = nullptr;
@@ -504,8 +504,8 @@ namespace sv {
 		};
 	
 		List<Action> _stack;
-		u32          _stack_pos = 0u;
-		RawList      _buffer;
+		u32        _stack_pos = 0u;
+		RawList    _buffer;
 
     };
 

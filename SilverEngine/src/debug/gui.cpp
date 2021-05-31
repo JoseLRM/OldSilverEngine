@@ -1216,7 +1216,7 @@ namespace sv {
 
 			case GuiWindowAction_Move:
 			{
-				if (input.mouse_buttons[MouseButton_Left] == InputState_Released) {
+				if (input.mouse_buttons[MouseButton_Left] == InputState_Released && input.keys[Key_Control]) {
 
 					u32 window_id;
 					u32 node_id;
@@ -3488,7 +3488,7 @@ namespace sv {
 
 		// Docking effects
 		{
-			if (gui->focus.type == GuiWidgetType_Root && gui->focus.root.type == GuiRootType_Window && gui->focus.action == GuiWindowAction_Move) {
+			if (gui->focus.type == GuiWidgetType_Root && gui->focus.root.type == GuiRootType_Window && gui->focus.action == GuiWindowAction_Move && input.keys[Key_Control]) {
 
 				u32 window_id, node_id;
 
@@ -3503,12 +3503,12 @@ namespace sv {
 				foreach(i, GuiDockingLocation_MaxEnum) {
 
 					v4_f32 b = compute_docking_button(bounds, (GuiDockingLocation)i, screen);
-					Color color = gui->style.docking_button;
+					Color color = gui->style.docking_button_color;
 
 					if (mouse_in_bounds(b)) {
 						b.z *= 1.3f;
 						b.w *= 1.3f;
-						color = gui->style.docking_highlighted_button;
+						color = gui->style.docking_highlighted_button_color;
 					}
 						
 					imrend_draw_quad({b.x, b.y, 0.f}, {b.z, b.w}, color, cmd);
@@ -3536,4 +3536,31 @@ namespace sv {
 
 		imrend_flush(cmd);
     }
+
+	//////////////////////////////// HIGH LEVEL ///////////////////////////////////////////
+
+	void gui_display_style_editor()
+	{
+		if (gui_begin_window("Style Editor")) {
+
+			GuiStyle& s = gui->style;
+			u64 id = 0u;
+
+			gui_drag_color("Widget Primary Color", s.widget_primary_color, id++);
+			gui_drag_color("Widget Secondary Color", s.widget_secondary_color, id++);
+			gui_drag_color("Widget Highlighted Color", s.widget_highlighted_color, id++);
+			gui_drag_color("Widget Text Color", s.widget_text_color, id++);
+			gui_drag_color("Check Color", s.check_color, id++);
+			gui_drag_color("Root Background Color", s.root_background_color, id++);
+			gui_drag_color("Root Focused Background Color", s.root_focused_background_color, id++);
+			gui_drag_color("Window Decoration Color", s.window_decoration_color, id++);
+			gui_drag_color("Window Focused Decoration Color", s.window_focused_decoration_color, id++);
+			gui_drag_color("Docking Button Color", s.docking_button_color, id++);
+			gui_drag_color("Docking Highlighted Button Color", s.docking_highlighted_button_color, id++);
+			gui_drag_f32("Scale", s.scale, 0.001f, 0.01f, 10.f, id++);
+			
+			gui_end_window();
+		}
+	}
+	
 }

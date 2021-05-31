@@ -54,17 +54,12 @@ namespace sv {
     {
 		gui_pop_id(2u);
     }
-	
-    void egui_comp_color(const char* text, u64 id, Color* pcolor)
-    {
-		v4_f32 value = pcolor->toVec4();
-		if (gui_drag_v4_f32(text, value, 0.01f, 0.f, 1.f, id)) {
-			pcolor->setFloat(value.x, value.y, value.z, value.w);
-		}
-    }
+   
 
-    void egui_comp_texture(const char* text, u64 id, TextureAsset* texture)
+    bool egui_comp_texture(const char* text, u64 id, TextureAsset* texture)
     {
+		bool res = false;
+		
 		gui_push_id(id);
 
 		gui_image(texture->get(), 50.f, 0u);
@@ -72,7 +67,7 @@ namespace sv {
 		AssetPackage* package;
 		if (gui_recive_package((void**)&package, ASSET_BROWSER_PACKAGE_TEXTURE)) {
 
-			bool res = load_asset_from_file(*texture, package->filepath);
+			res = load_asset_from_file(*texture, package->filepath);
 			if (!res) {
 
 				SV_LOG_ERROR("Can't load the texture '%s'", package->filepath);
@@ -80,6 +75,8 @@ namespace sv {
 		}
 
 		gui_pop_id();
+
+		return res;
     }
 
     void egui_comp_mesh(const char* text, u64 id, MeshAsset* mesh)

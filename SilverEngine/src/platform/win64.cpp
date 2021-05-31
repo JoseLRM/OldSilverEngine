@@ -806,6 +806,14 @@ namespace sv {
 		return CreateDirectory(filepath, NULL);
     }
 
+	bool folder_remove(const char* filepath_)
+    {
+		char filepath[MAX_PATH];
+		filepath_resolve(filepath, filepath_);
+
+		return RemoveDirectoryA(filepath);
+    }
+
     SV_AUX FolderElement finddata_to_folderelement(const WIN32_FIND_DATAA& d)
     {
 		FolderElement e;

@@ -85,6 +85,7 @@ namespace sv {
     SV_API bool file_copy(const char* srcpath, const char* dstpath);
     SV_API bool file_exists(const char* filepath);
     SV_API bool folder_create(const char* filepath, bool recursive = false);
+	SV_API bool folder_remove(const char* filepath);
 
     SV_API bool file_date(const char* filepath, Date* create, Date* last_write, Date* last_access);
 
