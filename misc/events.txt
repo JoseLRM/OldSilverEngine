@@ -1,0 +1,35 @@
+------- EVENT NAMES -------
+
+** ECS **
+
+on_entity_create
+on_entity_destroy
+
+** RUNTIME **
+
+user_callbacks_initialize
+user_callbacks_close
+initialize_game
+close_game
+
+** SCENE **
+
+initialize_scene
+draw_scene
+save_scene
+update_scene
+late_update_scene
+close_scene
+
+** EDITOR **
+
+display_gui
+show_component_info
+
+** PHYSICS **
+
+on_body_collision
+on_trigger_collision
+
+
+

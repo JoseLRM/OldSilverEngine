@@ -3,189 +3,189 @@
 namespace sv {
 
     struct EventRegister {
-	EventFn function;
-	u32 flags;
-	u8 data[REGISTER_DATA_SIZE];
+		EventFn function;
+		u32 flags;
+		u8 data[REGISTER_DATA_SIZE];
     };
 
     struct EventType {
-	char name[EVENTNAME_SIZE + 1u];
-	List<EventRegister> registers;
-	Mutex mutex;
+		char name[EVENTNAME_SIZE + 1u];
+		List<EventRegister> registers;
+		Mutex mutex;
     };
 
     struct EventSystemState {
-	Mutex global_mutex;
-	ThickHashTable<EventType, 3000u> table;
+		Mutex global_mutex;
+		ThickHashTable<EventType, 3000u> table;
     };
 
     EventSystemState* event_system = nullptr;
 
     bool _event_initialize()
     {
-	event_system = SV_ALLOCATE_STRUCT(EventSystemState);
+		event_system = SV_ALLOCATE_STRUCT(EventSystemState);
 
-	SV_CHECK(mutex_create(event_system->global_mutex));
+		SV_CHECK(mutex_create(event_system->global_mutex));
 	    
-	return true;
+		return true;
     }
     
     bool _event_close()
     {
-	if (event_system) {
+		if (event_system) {
 
-	    mutex_destroy(event_system->global_mutex);
+			mutex_destroy(event_system->global_mutex);
 
-	    for (EventType& t : event_system->table) {
-		mutex_destroy(t.mutex);
-	    }
+			for (EventType& t : event_system->table) {
+				mutex_destroy(t.mutex);
+			}
 
-	    SV_FREE_STRUCT(event_system);
-	    event_system = nullptr;
-	}
+			SV_FREE_STRUCT(event_system);
+			event_system = nullptr;
+		}
 	
-	return true;
+		return true;
     }
     
     void event_unregister_flags(u32 flags)
     {
-	if (event_system) {
+		if (event_system) {
 
-	    mutex_lock(event_system->global_mutex);
+			mutex_lock(event_system->global_mutex);
 
-	    for (EventType& t : event_system->table) {
+			for (EventType& t : event_system->table) {
 
-		mutex_lock(t.mutex);
+				mutex_lock(t.mutex);
 
-		u32 i = 0u;
-		while (i < t.registers.size()) {
+				u32 i = 0u;
+				while (i < t.registers.size()) {
 
-		    EventRegister& reg = t.registers[i];
+					EventRegister& reg = t.registers[i];
 		    
-		    if ((reg.flags & flags) == flags) {
+					if ((reg.flags & flags) == flags) {
 
-			t.registers.erase(i);
-		    }
-		    else ++i;
-		}
+						t.registers.erase(i);
+					}
+					else ++i;
+				}
 
-		mutex_unlock(t.mutex);
-	    }
+				mutex_unlock(t.mutex);
+			}
 	    
-	    mutex_unlock(event_system->global_mutex);
-	}
+			mutex_unlock(event_system->global_mutex);
+		}
     }
 
     SV_AUX EventType* find_type(const char* event_name, bool log_not_found)
     {
-	size_t event_name_size = strlen(event_name);
+		size_t event_name_size = strlen(event_name);
 
-	if (event_name_size > EVENTNAME_SIZE) {
-	    SV_LOG_ERROR("The event name '%s' exceeds the max name size '%u'", event_name, event_name_size);
-	    return nullptr;
-	}
+		if (event_name_size > EVENTNAME_SIZE) {
+			SV_LOG_ERROR("The event name '%s' exceeds the max name size '%u'", event_name, event_name_size);
+			return nullptr;
+		}
 	
-	SV_LOCK_GUARD(event_system->global_mutex, lock);
+		SV_LOCK_GUARD(event_system->global_mutex, lock);
 
-	EventType* type = event_system->table.find(event_name);
+		EventType* type = event_system->table.find(event_name);
 	
-	if (type == nullptr) {
+		if (type == nullptr) {
 
-	    if (log_not_found)
-		SV_LOG_ERROR("Event '%s' not found", event_name);
-	}
+			if (log_not_found)
+				SV_LOG_ERROR("Event '%s' not found", event_name);
+		}
 	
-	return type;
+		return type;
     }
 
     void event_unregister_all(const char* event_name)
     {
-	SV_LOCK_GUARD(event_system->global_mutex, lock);
-	event_system->table.erase(event_name);
+		SV_LOCK_GUARD(event_system->global_mutex, lock);
+		event_system->table.erase(event_name);
     }
     
     bool _event_register(const char* event_name, EventFn event, u32 flags, void* data, u32 data_size)
     {
-	size_t event_name_size = strlen(event_name);
+		size_t event_name_size = strlen(event_name);
 
-	if (event_name_size > EVENTNAME_SIZE) {
-	    SV_LOG_ERROR("The event name '%s' exceeds the max name size '%u'", event_name, event_name_size);
-	    return false;
-	}
-
-	if (data && data_size > REGISTER_DATA_SIZE) {
-		SV_LOG_ERROR("The register data size exceeds the max register data size '%u'", data_size);
-		return false;
-	}
-
-	mutex_lock(event_system->global_mutex);
-
-	EventType& type = event_system->table[event_name];
-
-	if (!mutex_valid(type.mutex))
-	    mutex_create(type.mutex);
-	
-	mutex_unlock(event_system->global_mutex);
-
-	{
-	    SV_LOCK_GUARD(type.mutex, lock);
-
-	    for (const EventRegister& reg : type.registers) {
-
-		if (reg.function == event) {
-		    SV_LOG_ERROR("Duplicated event register in '%s'", event_name);
-		    return false;
+		if (event_name_size > EVENTNAME_SIZE) {
+			SV_LOG_ERROR("The event name '%s' exceeds the max name size '%u'", event_name, event_name_size);
+			return false;
 		}
-	    }
 
-	    EventRegister& reg = type.registers.emplace_back();
-	    reg.function = event;
-	    reg.flags = flags;
-	    SV_ZERO_MEMORY(reg.data, REGISTER_DATA_SIZE);
+		if (data && data_size > REGISTER_DATA_SIZE) {
+			SV_LOG_ERROR("The register data size exceeds the max register data size '%u'", data_size);
+			return false;
+		}
 
-	    if (data) {
-		memcpy(reg.data, data, data_size);
-	    }
-	}
+		mutex_lock(event_system->global_mutex);
 
-	return true;
+		EventType& type = event_system->table[event_name];
+
+		if (!mutex_valid(type.mutex))
+			mutex_create(type.mutex);
+	
+		mutex_unlock(event_system->global_mutex);
+
+		{
+			SV_LOCK_GUARD(type.mutex, lock);
+
+			for (const EventRegister& reg : type.registers) {
+
+				if (reg.function == event) {
+					SV_LOG_ERROR("Duplicated event register in '%s'", event_name);
+					return false;
+				}
+			}
+
+			EventRegister& reg = type.registers.emplace_back();
+			reg.function = event;
+			reg.flags = flags;
+			SV_ZERO_MEMORY(reg.data, REGISTER_DATA_SIZE);
+
+			if (data) {
+				memcpy(reg.data, data, data_size);
+			}
+		}
+
+		return true;
     }
     
     bool _event_unregister(const char* event_name, EventFn event)
     {
-	EventType* type = find_type(event_name, true);
+		EventType* type = find_type(event_name, true);
 
-	if (type == nullptr) return false;
+		if (type == nullptr) return false;
 
-	{
-	    SV_LOCK_GUARD(type->mutex, lock);
+		{
+			SV_LOCK_GUARD(type->mutex, lock);
 
-	    foreach (i, type->registers.size()) {
+			foreach (i, type->registers.size()) {
 
-		const EventRegister& reg = type->registers[i];
+				const EventRegister& reg = type->registers[i];
 
-		if (reg.function == event) {
-		    type->registers.erase(i);
-		    return false;
+				if (reg.function == event) {
+					type->registers.erase(i);
+					return false;
+				}
+			}
 		}
-	    }
-	}
 
-	return true;
+		return true;
     }
     
     void event_dispatch(const char* event_name, void* data)
     {
-	EventType* type = find_type(event_name, false);
+		EventType* type = find_type(event_name, false);
 
-	if (type == nullptr) return;
+		if (type == nullptr) return;
 
-	SV_LOCK_GUARD(type->mutex, lock);
+		SV_LOCK_GUARD(type->mutex, lock);
 
-	for (EventRegister& reg : type->registers) {
+		for (EventRegister& reg : type->registers) {
 
-	    reg.function(data, reg.data);
-	}
+			reg.function(data, reg.data);
+		}
     }
 
 }
