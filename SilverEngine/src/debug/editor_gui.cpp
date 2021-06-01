@@ -11,15 +11,29 @@ namespace sv {
 
     void egui_transform(Entity entity)
     {
-		// TODO: euler rotation
+		// TODO: This is global
+		static v3_f32 rotation;
+		static v4_f32 last_quaternion;
+		
 		v3_f32& position = *get_entity_position_ptr(entity);
+		v4_f32& rotation_quat = *get_entity_rotation_ptr(entity);
 		v3_f32& scale = *get_entity_scale_ptr(entity);
+
+		if (rotation_quat != last_quaternion) {
+			
+			rotation = quaternion_to_euler_angles(rotation_quat);
+		}
 
 		gui_push_id("ENTITY TRANSFORM");
 	
-		gui_drag_v3_f32(0, position, 0.05f, -f32_max, f32_max, 0u, GuiDragFlag_Position);
-		//gui_drag_v3_f32(rotation, 0.05f, -f32_max, f32_max, 1u, GuiDragFlag_Rotation);
-		gui_drag_v3_f32(0, scale, 0.05f, -f32_max, f32_max, 2u, GuiDragFlag_Scale);
+		gui_drag_v3_f32(NULL, position, 0.05f, -f32_max, f32_max, 0u, GuiDragFlag_Position);
+		if (gui_drag_v3_f32(NULL, rotation, 0.05f, -f32_max, f32_max, 1u, GuiDragFlag_Rotation)) {
+
+			rotation_quat = quaternion_from_euler_angles(rotation);
+		}
+		gui_drag_v3_f32(NULL, scale, 0.05f, -f32_max, f32_max, 2u, GuiDragFlag_Scale);
+
+		last_quaternion = rotation_quat;
 	
 		gui_pop_id();
     }

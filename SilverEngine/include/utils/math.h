@@ -510,6 +510,13 @@ namespace sv {
 			}
 		}
 
+		bool operator==(const vec& v) const {
+			return x == v.x && y == v.y && z == v.z && w == v.w;
+		}
+		bool operator!=(const vec& v) const {
+			return x != v.x && y != v.y && z != v.z && w != v.w;
+		}
+		
 	    // sum
 	    inline void operator+=(const vec& v) noexcept
 			{
@@ -836,6 +843,68 @@ namespace sv {
     // Matrix
 
     XMMATRIX math_matrix_view(const v3_f32& position, const v4_f32& directionQuat);
+
+	// Quaternion
+
+	// TODO: WTF is going on
+	SV_INLINE v3_f32 quaternion_to_euler_angles(v4_f32 quat)
+	{
+		v3_f32 euler;
+
+		// roll (x-axis rotation)
+
+		XMFLOAT4 q;
+		q.x = quat.x;
+		q.y = quat.y;
+		q.z = quat.z;
+		q.w = quat.w;
+		float sinr_cosp = 2.f * (q.w * q.x + q.y * q.z);
+		float cosr_cosp = 1.f - 2.f * (q.x * q.x + q.y * q.y);
+		euler.x = atan2f(sinr_cosp, cosr_cosp);
+
+		// pitch (y-axis rotation)
+		float sinp = 2.f * (q.w * q.y - q.z * q.x);
+		if (abs(sinp) >= 1.f)
+			euler.y = copysignf(PI / 2.f, sinp); // use 90 degrees if out of range
+		else
+			euler.y = asinf(sinp);
+
+		// yaw (z-axis rotation)
+		float siny_cosp = 2 * (q.w * q.z + q.x * q.y);
+		float cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z);
+		euler.z = atan2f(siny_cosp, cosy_cosp);
+
+		if (euler.x < 0.f) {
+			euler.x = 2.f * PI + euler.x;
+		}
+		if (euler.y < 0.f) {
+			euler.y = 2.f * PI + euler.y;
+		}
+		if (euler.z < 0.f) {
+			euler.z = 2.f * PI + euler.z;
+		}
+
+		return euler;
+    }
+
+	// TODO: WTF is going on 2
+	SV_INLINE v4_f32 quaternion_from_euler_angles(v3_f32 euler)
+	{
+		float cy = cosf(euler.z * 0.5f);
+		float sy = sinf(euler.z * 0.5f);
+		float cp = cosf(euler.y * 0.5f);
+		float sp = sinf(euler.y * 0.5f);
+		float cr = cosf(euler.x * 0.5f);
+		float sr = sinf(euler.x * 0.5f);
+
+		v4_f32 q;
+		q.w = cr * cp * cy + sr * sp * sy;
+		q.x = sr * cp * cy - cr * sp * sy;
+		q.y = cr * sp * cy + sr * cp * sy;
+		q.z = cr * cp * sy - sr * sp * cy;
+
+		return q;
+	}
 
     // Intersection
 
