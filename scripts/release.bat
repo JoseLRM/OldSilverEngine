@@ -2,7 +2,7 @@
 
 pushd %~dp0..\
 
-REM CALL scripts\build.bat win64 dev
+CALL scripts\build.bat win64 editor
 
 ECHO.
 ECHO.

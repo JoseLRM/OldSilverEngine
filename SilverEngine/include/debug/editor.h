@@ -1,6 +1,6 @@
 #pragma once
 
-#if SV_DEV
+#if SV_EDITOR
 
 #include "core/scene.h"
 #include "core/engine.h"

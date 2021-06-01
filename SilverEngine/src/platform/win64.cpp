@@ -316,7 +316,7 @@ namespace sv {
 }
 
 
-// TODO: if SV_DEV is disabled use WinMain
+// TODO: if SV_EDITOR is disabled use WinMain
 int main(int argc, char* argv[])
 {
     using namespace sv;
@@ -1036,7 +1036,7 @@ namespace sv {
 		free(ptr);
     }
 
-#if SV_DEV
+#if SV_EDITOR
 
     void _os_compile_gamecode()
     {

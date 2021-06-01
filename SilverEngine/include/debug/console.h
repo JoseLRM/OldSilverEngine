@@ -4,7 +4,7 @@
 
 // Console
 
-#if SV_DEV
+#if SV_EDITOR
 
 namespace sv {
 	

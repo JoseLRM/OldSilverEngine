@@ -1182,7 +1182,7 @@ namespace sv {
 		// Draw cameras
 		{
 
-#if SV_DEV
+#if SV_EDITOR
 			CameraComponent* camera_ = nullptr;
 			GPU_CameraData camera_data;
 

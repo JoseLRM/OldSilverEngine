@@ -1,6 +1,6 @@
 #include "debug/console.h"
 
-#if SV_DEV
+#if SV_EDITOR
 
 #include "debug/editor.h"
 
@@ -684,7 +684,7 @@ namespace sv {
 
     void throw_assertion(const char* content, u32 line, const char* file)
     {
-#if SV_DEV
+#if SV_EDITOR
 		console_notify("ASSERTION", "'%s', file: '%s', line: %u", content, file, line);	
 #endif
 	

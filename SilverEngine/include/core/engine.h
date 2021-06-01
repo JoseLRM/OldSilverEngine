@@ -17,7 +17,7 @@ namespace sv {
 	bool             running = false;
 	void*            game_memory = nullptr;
 
-#if SV_DEV
+#if SV_EDITOR
 	
 	char project_path[FILEPATH_SIZE + 1u] = "";
 	bool update_scene = true;
@@ -30,7 +30,7 @@ namespace sv {
 
     SV_INLINE void filepath_resolve(char* dst, const char* src)
     {
-#if SV_DEV
+#if SV_EDITOR
 	if (src[0] == '$') {
 	    ++src;
 	    strcpy(dst, src);
@@ -52,7 +52,7 @@ namespace sv {
 #endif
     }
 
-#if SV_DEV
+#if SV_EDITOR
     void _engine_initialize_project(const char* project_path);
     void _engine_close_project();
     

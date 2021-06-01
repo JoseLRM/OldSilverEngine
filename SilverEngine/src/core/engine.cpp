@@ -16,7 +16,7 @@ namespace sv {
     GlobalEngineData engine;
     GlobalInputData input;
 
-#if SV_DEV
+#if SV_EDITOR
     GlobalDevData dev;
     static Date last_user_lib_write = {};
 
@@ -44,7 +44,7 @@ namespace sv {
     {
 		const char* filepath = "Game.dll";
 	
-#if SV_DEV
+#if SV_EDITOR
 	
 		close_user_callbacks();
 	
@@ -88,7 +88,7 @@ namespace sv {
 #endif
     }
     
-#if SV_DEV
+#if SV_EDITOR
     
     SV_INTERNAL void update_user_callbacks()
     {
@@ -333,7 +333,7 @@ namespace sv {
 
     SV_INTERNAL bool initialize_engine()
     {
-#if SV_DEV	
+#if SV_EDITOR	
 		_console_initialize();
 #endif
 	
@@ -379,7 +379,7 @@ namespace sv {
 			return false;
 		}
 
-#if SV_DEV
+#if SV_EDITOR
 		_editor_initialize();
 #endif
 
@@ -414,7 +414,7 @@ namespace sv {
 
 		_close_scene();	
 
-#if SV_DEV
+#if SV_EDITOR
         _editor_close();
 #endif
 
@@ -426,7 +426,7 @@ namespace sv {
 
 		_event_close();
 
-#if SV_DEV
+#if SV_EDITOR
 		_console_close();
 #endif
     }
@@ -442,7 +442,7 @@ namespace sv {
 		SV_LOG_INFO("Game closed");
     }
 
-#if SV_DEV
+#if SV_EDITOR
 
     SV_AUX void reset_game()
     {
@@ -469,7 +469,7 @@ namespace sv {
 			engine.running = false;
 		}
 
-#if !(SV_DEV)
+#if !(SV_EDITOR)
 		recive_user_callbacks();
 		if (engine.running) initialize_game();
 #endif
@@ -499,7 +499,7 @@ namespace sv {
 				}
 			}
 
-#if SV_DEV
+#if SV_EDITOR
 			update_user_callbacks();
 
 			if (close_project_request) {
@@ -529,7 +529,7 @@ namespace sv {
 
 			_manage_scenes();
 	    
-#if SV_DEV
+#if SV_EDITOR
 			_console_update();
 			_editor_update();
 	    
@@ -543,7 +543,7 @@ namespace sv {
 			_draw_scene();
 	    
 			// Draw editor and the console	    
-#if SV_DEV
+#if SV_EDITOR
 			_editor_draw();
 			_console_draw();
 #endif
@@ -557,7 +557,7 @@ namespace sv {
 
     }
 
-#if SV_DEV
+#if SV_EDITOR
 
     // TODO: Should handle the runtime of this function
     void _engine_initialize_project(const char* path)

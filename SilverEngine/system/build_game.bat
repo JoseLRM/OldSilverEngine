@@ -16,7 +16,7 @@ pushd %GP%
 
 SET compiler_flags= -MT -nologo -EHa- -GR- -Oi -WX -W4 -wd4201 -wd4127 -wd4211 -wd4238 -wd4459 -wd4996 -wd4456 -wd4281 -wd4100 -wd4530 -FC /std:c++14 -Z7
 
-SET defines= -DSV_PLATFORM_WIN=1 -DSV_SLOW=0 -DSV_DEV=1 -DSV_GFX=0
+SET defines= -DSV_PLATFORM_WIN=1 -DSV_SLOW=0 -DSV_EDITOR=1 -DSV_GFX=0
 
 SET linker_flags= /incremental:no
  

@@ -88,7 +88,7 @@ namespace sv {
 	ImRendCamera_Scene,
 	ImRendCamera_Normal,
 
-#if SV_DEV
+#if SV_EDITOR
 	ImRendCamera_Editor,
 #endif
     };

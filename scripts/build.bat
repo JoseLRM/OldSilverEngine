@@ -13,7 +13,7 @@ SET module_core=false
 SET module_debug=false
 
 SET option_slow=false
-SET option_dev=false
+SET option_editor=false
 SET option_gfx=false
 
 SET run=false
@@ -28,11 +28,11 @@ IF "%1"=="core" SET module_core=true
 IF "%1"=="debug" SET module_debug=true
 
 IF "%1"=="slow" SET option_slow=true
-IF "%1"=="dev" SET option_dev=true
+IF "%1"=="editor" SET option_editor=true
 IF "%1"=="gfx" SET option_gfx=true
 IF "%1"=="all" (
    SET option_slow=true
-   SET option_dev=true
+   SET option_editor=true
    SET option_gfx=true
 )
 
@@ -73,10 +73,10 @@ IF "%option_slow%"=="true" (
    SET common_compiler_flags= %common_compiler_flags% -GL -Ox
 )
 
-IF "%option_dev%"=="true" (
-   SET common_defines=%common_defines% -DSV_DEV=1
+IF "%option_editor%"=="true" (
+   SET common_defines=%common_defines% -DSV_EDITOR=1
 ) ELSE (
-   SET common_defines=%common_defines% -DSV_DEV=0
+   SET common_defines=%common_defines% -DSV_EDITOR=0
 )
 
 IF "%option_gfx%"=="true" (

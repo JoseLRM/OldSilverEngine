@@ -1,4 +1,4 @@
-#if SV_DEV
+#if SV_EDITOR
 
 #include "core/renderer.h"
 #include "debug/console.h"
