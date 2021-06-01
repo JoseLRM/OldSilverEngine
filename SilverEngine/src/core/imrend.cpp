@@ -402,9 +402,9 @@ namespace sv {
 
 						XMMATRIX m = state.current_matrix;
 
-						XMVECTOR v0 = XMVector4Transform(p0.getDX(1.f), m);
-						XMVECTOR v1 = XMVector4Transform(p1.getDX(1.f), m);
-						XMVECTOR v2 = XMVector4Transform(p2.getDX(1.f), m);
+						XMVECTOR v0 = XMVector4Transform(vec3_to_dx(p0, 1.f), m);
+						XMVECTOR v1 = XMVector4Transform(vec3_to_dx(p1, 1.f), m);
+						XMVECTOR v2 = XMVector4Transform(vec3_to_dx(p2, 1.f), m);
 		    
 						ImRendVertex vertices[3u];
 						vertices[0u] = { v4_f32(v0), v2_f32{}, color };
@@ -427,8 +427,8 @@ namespace sv {
 
 						XMMATRIX m = state.current_matrix;
 
-						XMVECTOR v0 = XMVector4Transform(p0.getDX(1.f), m);
-						XMVECTOR v1 = XMVector4Transform(p1.getDX(1.f), m);
+						XMVECTOR v0 = XMVector4Transform(vec3_to_dx(p0, 1.f), m);
+						XMVECTOR v1 = XMVector4Transform(vec3_to_dx(p1, 1.f), m);
 		    
 						ImRendVertex vertices[2u];
 						vertices[0u] = { v4_f32(v0), v2_f32{}, color };
@@ -491,7 +491,7 @@ namespace sv {
 					Font* pfont = imrend_read<Font*>(it);
 					Color color = imrend_read<Color>(it);
 		    
-					XMVECTOR pos = v2_f32(x, y).getDX();
+					XMVECTOR pos = vec2_to_dx(v2_f32(x, y));
 					pos = XMVector3Transform(pos, state.current_matrix);
 					x = XMVectorGetX(pos);
 					y = XMVectorGetY(pos);
@@ -525,7 +525,7 @@ namespace sv {
 					Font* pfont = imrend_read<Font*>(it);
 					Color color = imrend_read<Color>(it);
 		    
-					XMVECTOR pos = v2_f32(x, y).getDX();
+					XMVECTOR pos = vec2_to_dx(v2_f32(x, y));
 					pos = XMVector3Transform(pos, state.current_matrix);
 					x = XMVectorGetX(pos);
 					y = XMVectorGetY(pos);

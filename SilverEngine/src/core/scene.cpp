@@ -858,7 +858,7 @@ namespace sv {
 
 					v2_f32 step = final_pos - next_pos;
 					f32 adv = SV_MIN(scale.x, scale.y);
-					u32 step_count = SV_MIN(u32(step.length() / adv) + 1u, 5u);
+					u32 step_count = SV_MIN(u32(vec2_length(step) / adv) + 1u, 5u);
 
 					step /= f32(step_count);
 
@@ -1160,8 +1160,8 @@ namespace sv {
 		}
 		else {
 
-			position = position * v2_f32(camera->width, camera->height) + camera_position.getVec2();
-			ray.origin = position.getVec3(camera->near);
+			position = position * v2_f32(camera->width, camera->height) + vec3_to_vec2(camera_position);
+			ray.origin = vec2_to_vec3(position, camera->near);
 			ray.direction = { 0.f, 0.f, 1.f };
 		}
 
@@ -2136,8 +2136,8 @@ namespace sv {
 
 		XMMatrixDecompose(&scale, &rotation, &position, matrix);
 
-		t.position.setDX(position);
-		t.scale.setDX(scale);
+		t.position = position;
+		t.scale = scale;
 		t.rotation.set_dx(rotation);
     }
 
@@ -2240,14 +2240,14 @@ namespace sv {
     {
 		SV_SCENE();
 		EntityTransform& t = scene.entityData.getTransform(entity);
-		return t.position.getVec2();
+		return vec3_to_vec2(t.position);
     }
     
     v2_f32 get_entity_scale2D(Entity entity)
     {
 		SV_SCENE();
 		EntityTransform& t = scene.entityData.getTransform(entity);
-		return t.scale.getVec2();
+		return vec3_to_vec2(t.scale);
     }
 
     XMMATRIX get_entity_matrix(Entity entity)
@@ -2255,7 +2255,7 @@ namespace sv {
 		SV_SCENE();
 		EntityTransform& t = scene.entityData.getTransform(entity);
 
-		return XMMatrixScalingFromVector(t.scale.getDX()) * XMMatrixRotationQuaternion(t.rotation.get_dx())
+		return XMMatrixScalingFromVector(vec3_to_dx(t.scale)) * XMMatrixRotationQuaternion(t.rotation.get_dx())
 			* XMMatrixTranslation(t.position.x, t.position.y, t.position.z);
     }
 
@@ -2306,7 +2306,7 @@ namespace sv {
 		SV_SCENE();
 		EntityTransform& t = scene.entityData.getTransform(entity);
 		if (t._modified) update_world_matrix(t, entity);
-		return { (*(v3_f32*)& t.world_matrix._11).length(), (*(v3_f32*)& t.world_matrix._21).length(), (*(v3_f32*)& t.world_matrix._31).length() };
+		return { vec3_length(*(v3_f32*)& t.world_matrix._11), vec3_length(*(v3_f32*)& t.world_matrix._21), vec3_length(*(v3_f32*)& t.world_matrix._31) };
     }
     
     XMMATRIX get_entity_world_matrix(Entity entity)

@@ -173,7 +173,7 @@ namespace sv {
 	{
 		v4_f32 value = color.toVec4();
 		if (gui_drag_v4_f32(text, value, 0.01f, 0.f, 1.f, id)) {
-			color.setFloat(value.x, value.y, value.z, value.w);
+			color = color_float(value.x, value.y, value.z, value.w);
 			return true;
 		}
 		return false;

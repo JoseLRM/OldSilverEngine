@@ -19,524 +19,524 @@ namespace sv {
     // Enums
 
     enum GraphicsAPI {
-	GraphicsAPI_Invalid,
-	GraphicsAPI_Vulkan,
+		GraphicsAPI_Invalid,
+		GraphicsAPI_Vulkan,
     };
 
     enum GraphicsLimit : u32 {
-	GraphicsLimit_CommandList = 32,
-	GraphicsLimit_VertexBuffer = 32,
-	GraphicsLimit_ConstantBuffer = 32u,
-	GraphicsLimit_GPUImage = 32u,
-	GraphicsLimit_Sampler = 16u,
-	GraphicsLimit_Viewport = 16u,
-	GraphicsLimit_Scissor = 16u,
-	GraphicsLimit_InputSlot = 16u,
-	GraphicsLimit_InputElement = 16u,
-	GraphicsLimit_GPUBarrier = 8u,
-	GraphicsLimit_AttachmentRT = 8u,
-	GraphicsLimit_Attachment = (GraphicsLimit_AttachmentRT + 1u)
+		GraphicsLimit_CommandList = 32,
+		GraphicsLimit_VertexBuffer = 32,
+		GraphicsLimit_ConstantBuffer = 32u,
+		GraphicsLimit_GPUImage = 32u,
+		GraphicsLimit_Sampler = 16u,
+		GraphicsLimit_Viewport = 16u,
+		GraphicsLimit_Scissor = 16u,
+		GraphicsLimit_InputSlot = 16u,
+		GraphicsLimit_InputElement = 16u,
+		GraphicsLimit_GPUBarrier = 8u,
+		GraphicsLimit_AttachmentRT = 8u,
+		GraphicsLimit_Attachment = (GraphicsLimit_AttachmentRT + 1u)
     };
 
     enum GraphicsPrimitiveType : u8 {
-	GraphicsPrimitiveType_Invalid,
-	GraphicsPrimitiveType_Image,
-	GraphicsPrimitiveType_Sampler,
-	GraphicsPrimitiveType_Buffer,
-	GraphicsPrimitiveType_Shader,
-	GraphicsPrimitiveType_RenderPass,
-	GraphicsPrimitiveType_InputLayoutState,
-	GraphicsPrimitiveType_BlendState,
-	GraphicsPrimitiveType_DepthStencilState,
-	GraphicsPrimitiveType_RasterizerState,
+		GraphicsPrimitiveType_Invalid,
+		GraphicsPrimitiveType_Image,
+		GraphicsPrimitiveType_Sampler,
+		GraphicsPrimitiveType_Buffer,
+		GraphicsPrimitiveType_Shader,
+		GraphicsPrimitiveType_RenderPass,
+		GraphicsPrimitiveType_InputLayoutState,
+		GraphicsPrimitiveType_BlendState,
+		GraphicsPrimitiveType_DepthStencilState,
+		GraphicsPrimitiveType_RasterizerState,
     };
 
     enum GraphicsPipelineMode : u8 {
-	GraphicsPipelineMode_Graphics,
-	GraphicsPipelineMode_Compute,
+		GraphicsPipelineMode_Graphics,
+		GraphicsPipelineMode_Compute,
     };
 
     enum GPUBufferType : u8 {
-	GPUBufferType_Invalid,
-	GPUBufferType_Vertex,
-	GPUBufferType_Index,
-	GPUBufferType_Constant,
+		GPUBufferType_Invalid,
+		GPUBufferType_Vertex,
+		GPUBufferType_Index,
+		GPUBufferType_Constant,
     };
 
     enum ShaderType : u32 {
-	ShaderType_Vertex,
-	ShaderType_Pixel,
-	ShaderType_Geometry,
-	ShaderType_Hull,
-	ShaderType_Domain,
-	ShaderType_GraphicsCount = 5u,
+		ShaderType_Vertex,
+		ShaderType_Pixel,
+		ShaderType_Geometry,
+		ShaderType_Hull,
+		ShaderType_Domain,
+		ShaderType_GraphicsCount = 5u,
 
-	ShaderType_Compute,
+		ShaderType_Compute,
     };
 
     enum ShaderAttributeType : u32 {
-	ShaderAttributeType_Unknown,
-	ShaderAttributeType_Float,
-	ShaderAttributeType_Float2,
-	ShaderAttributeType_Float3,
-	ShaderAttributeType_Float4,
-	ShaderAttributeType_Half,
-	ShaderAttributeType_Double,
-	ShaderAttributeType_Boolean,
-	ShaderAttributeType_UInt32,
-	ShaderAttributeType_UInt64,
-	ShaderAttributeType_Int32,
-	ShaderAttributeType_Int64,
-	ShaderAttributeType_Char,
-	ShaderAttributeType_Mat3,
-	ShaderAttributeType_Mat4,
+		ShaderAttributeType_Unknown,
+		ShaderAttributeType_Float,
+		ShaderAttributeType_Float2,
+		ShaderAttributeType_Float3,
+		ShaderAttributeType_Float4,
+		ShaderAttributeType_Half,
+		ShaderAttributeType_Double,
+		ShaderAttributeType_Boolean,
+		ShaderAttributeType_UInt32,
+		ShaderAttributeType_UInt64,
+		ShaderAttributeType_Int32,
+		ShaderAttributeType_Int64,
+		ShaderAttributeType_Char,
+		ShaderAttributeType_Mat3,
+		ShaderAttributeType_Mat4,
     };
 
     struct ShaderAttribute {
-	char		    name[30u];
-	ShaderAttributeType type;
-	u32		    offset;
+		char		    name[30u];
+		ShaderAttributeType type;
+		u32		    offset;
     };
 
     enum GPUImageType : u8 {
-	GPUImageType_RenderTarget	= SV_BIT(0),
-	GPUImageType_ShaderResource = SV_BIT(1),
-	GPUImageType_DepthStencil	= SV_BIT(2),
-	GPUImageType_CubeMap		= SV_BIT(3),
+		GPUImageType_RenderTarget	= SV_BIT(0),
+		GPUImageType_ShaderResource = SV_BIT(1),
+		GPUImageType_DepthStencil	= SV_BIT(2),
+		GPUImageType_CubeMap		= SV_BIT(3),
     };
     typedef u8 GPUImageTypeFlags;
 
     enum ResourceUsage : u8 {
-	ResourceUsage_Default,
-	ResourceUsage_Static,
-	ResourceUsage_Dynamic,
-	ResourceUsage_Staging
+		ResourceUsage_Default,
+		ResourceUsage_Static,
+		ResourceUsage_Dynamic,
+		ResourceUsage_Staging
     };
 	
     enum CPUAccess : u8 {
-	CPUAccess_None = 0u,
-	CPUAccess_Read = SV_BIT(0),
-	CPUAccess_Write = SV_BIT(1),
-	CPUAccess_All = CPUAccess_Read | CPUAccess_Write,
+		CPUAccess_None = 0u,
+		CPUAccess_Read = SV_BIT(0),
+		CPUAccess_Write = SV_BIT(1),
+		CPUAccess_All = CPUAccess_Read | CPUAccess_Write,
     };
     typedef u8 CPUAccessFlags;
 
     enum GPUImageLayout {
-	GPUImageLayout_Undefined,
-	GPUImageLayout_General,
-	GPUImageLayout_RenderTarget,
-	GPUImageLayout_DepthStencil,
-	GPUImageLayout_DepthStencilReadOnly,
-	GPUImageLayout_ShaderResource,
-	GPUImageLayout_Present,
+		GPUImageLayout_Undefined,
+		GPUImageLayout_General,
+		GPUImageLayout_RenderTarget,
+		GPUImageLayout_DepthStencil,
+		GPUImageLayout_DepthStencilReadOnly,
+		GPUImageLayout_ShaderResource,
+		GPUImageLayout_Present,
     };
 	
     enum Format : u32 {
 
-	Format_Unknown,
-	Format_R32G32B32A32_FLOAT,
-	Format_R32G32B32A32_UINT,
-	Format_R32G32B32A32_SINT,
-	Format_R32G32B32_FLOAT,
-	Format_R32G32B32_UINT,
-	Format_R32G32B32_SINT,
-	Format_R16G16B16A16_FLOAT,
-	Format_R16G16B16A16_UNORM,
-	Format_R16G16B16A16_UINT,
-	Format_R16G16B16A16_SNORM,
-	Format_R16G16B16A16_SINT,
-	Format_R32G32_FLOAT,
-	Format_R32G32_UINT,
-	Format_R32G32_SINT,
-	Format_R8G8B8A8_UNORM,
-	Format_R8G8B8A8_SRGB,
-	Format_R8G8B8A8_UINT,
-	Format_R8G8B8A8_SNORM,
-	Format_R8G8B8A8_SINT,
-	Format_R16G16_FLOAT,
-	Format_R16G16_UNORM,
-	Format_R16G16_UINT,
-	Format_R16G16_SNORM,
-	Format_R16G16_SINT,
-	Format_D32_FLOAT,
-	Format_R32_FLOAT,
-	Format_R32_UINT,
-	Format_R32_SINT,
-	Format_D24_UNORM_S8_UINT,
-	Format_R8G8_UNORM,
-	Format_R8G8_UINT,
-	Format_R8G8_SNORM,
-	Format_R8G8_SINT,
-	Format_R16_FLOAT,
-	Format_D16_UNORM,
-	Format_R16_UNORM,
-	Format_R16_UINT,
-	Format_R16_SNORM,
-	Format_R16_SINT,
-	Format_R8_UNORM,
-	Format_R8_UINT,
-	Format_R8_SNORM,
-	Format_R8_SINT,
-	Format_BC1_UNORM,
-	Format_BC1_SRGB,
-	Format_BC2_UNORM,
-	Format_BC2_SRGB,
-	Format_BC3_UNORM,
-	Format_BC3_SRGB,
-	Format_BC4_UNORM,
-	Format_BC4_SNORM,
-	Format_BC5_UNORM,
-	Format_BC5_SNORM,
-	Format_B8G8R8A8_UNORM,
-	Format_B8G8R8A8_SRGB,
+		Format_Unknown,
+		Format_R32G32B32A32_FLOAT,
+		Format_R32G32B32A32_UINT,
+		Format_R32G32B32A32_SINT,
+		Format_R32G32B32_FLOAT,
+		Format_R32G32B32_UINT,
+		Format_R32G32B32_SINT,
+		Format_R16G16B16A16_FLOAT,
+		Format_R16G16B16A16_UNORM,
+		Format_R16G16B16A16_UINT,
+		Format_R16G16B16A16_SNORM,
+		Format_R16G16B16A16_SINT,
+		Format_R32G32_FLOAT,
+		Format_R32G32_UINT,
+		Format_R32G32_SINT,
+		Format_R8G8B8A8_UNORM,
+		Format_R8G8B8A8_SRGB,
+		Format_R8G8B8A8_UINT,
+		Format_R8G8B8A8_SNORM,
+		Format_R8G8B8A8_SINT,
+		Format_R16G16_FLOAT,
+		Format_R16G16_UNORM,
+		Format_R16G16_UINT,
+		Format_R16G16_SNORM,
+		Format_R16G16_SINT,
+		Format_D32_FLOAT,
+		Format_R32_FLOAT,
+		Format_R32_UINT,
+		Format_R32_SINT,
+		Format_D24_UNORM_S8_UINT,
+		Format_R8G8_UNORM,
+		Format_R8G8_UINT,
+		Format_R8G8_SNORM,
+		Format_R8G8_SINT,
+		Format_R16_FLOAT,
+		Format_D16_UNORM,
+		Format_R16_UNORM,
+		Format_R16_UINT,
+		Format_R16_SNORM,
+		Format_R16_SINT,
+		Format_R8_UNORM,
+		Format_R8_UINT,
+		Format_R8_SNORM,
+		Format_R8_SINT,
+		Format_BC1_UNORM,
+		Format_BC1_SRGB,
+		Format_BC2_UNORM,
+		Format_BC2_SRGB,
+		Format_BC3_UNORM,
+		Format_BC3_SRGB,
+		Format_BC4_UNORM,
+		Format_BC4_SNORM,
+		Format_BC5_UNORM,
+		Format_BC5_SNORM,
+		Format_B8G8R8A8_UNORM,
+		Format_B8G8R8A8_SRGB,
 
     };
 	
     enum GraphicsTopology {
-	GraphicsTopology_Points,
-	GraphicsTopology_Lines,
-	GraphicsTopology_LineStrip,
-	GraphicsTopology_Triangles,
-	GraphicsTopology_TriangleStrip,
+		GraphicsTopology_Points,
+		GraphicsTopology_Lines,
+		GraphicsTopology_LineStrip,
+		GraphicsTopology_Triangles,
+		GraphicsTopology_TriangleStrip,
     };
 	
     enum IndexType : u8 {
-	IndexType_16,
-	IndexType_32,
+		IndexType_16,
+		IndexType_32,
     };
 	
     enum RasterizerCullMode {
-	RasterizerCullMode_None,
-	RasterizerCullMode_Front,
-	RasterizerCullMode_Back,
-	RasterizerCullMode_FrontAndBack,
+		RasterizerCullMode_None,
+		RasterizerCullMode_Front,
+		RasterizerCullMode_Back,
+		RasterizerCullMode_FrontAndBack,
     };
 
     enum AttachmentOperation {
-	AttachmentOperation_DontCare,
-	AttachmentOperation_Load,
-	AttachmentOperation_Store,
-	AttachmentOperation_Clear
+		AttachmentOperation_DontCare,
+		AttachmentOperation_Load,
+		AttachmentOperation_Store,
+		AttachmentOperation_Clear
     };
 
     enum AttachmentType {
-	AttachmentType_RenderTarget,
-	AttachmentType_DepthStencil
+		AttachmentType_RenderTarget,
+		AttachmentType_DepthStencil
     };
 
     enum CompareOperation {
-	CompareOperation_Never,
-	CompareOperation_Less,
-	CompareOperation_Equal,
-	CompareOperation_LessOrEqual,
-	CompareOperation_Greater,
-	CompareOperation_NotEqual,
-	CompareOperation_GreaterOrEqual,
-	CompareOperation_Always,
+		CompareOperation_Never,
+		CompareOperation_Less,
+		CompareOperation_Equal,
+		CompareOperation_LessOrEqual,
+		CompareOperation_Greater,
+		CompareOperation_NotEqual,
+		CompareOperation_GreaterOrEqual,
+		CompareOperation_Always,
     };
 
     enum StencilOperation {
-	StencilOperation_Keep,
-	StencilOperation_Zero,
-	StencilOperation_Replace,
-	StencilOperation_IncrementAndClamp,
-	StencilOperation_DecrementAndClamp,
-	StencilOperation_Invert,
-	StencilOperation_IncrementAndWrap,
-	StencilOperation_DecrementAndWrap
+		StencilOperation_Keep,
+		StencilOperation_Zero,
+		StencilOperation_Replace,
+		StencilOperation_IncrementAndClamp,
+		StencilOperation_DecrementAndClamp,
+		StencilOperation_Invert,
+		StencilOperation_IncrementAndWrap,
+		StencilOperation_DecrementAndWrap
     };
 
     enum BlendOperation {
-	BlendOperation_Add,
-	BlendOperation_Substract,
-	BlendOperation_ReverseSubstract,
-	BlendOperation_Min,
-	BlendOperation_Max,
+		BlendOperation_Add,
+		BlendOperation_Substract,
+		BlendOperation_ReverseSubstract,
+		BlendOperation_Min,
+		BlendOperation_Max,
     };
 
     enum ColorComponent {
-	ColorComponent_None = 0,
-	ColorComponent_R = SV_BIT(0),
-	ColorComponent_G = SV_BIT(1),
-	ColorComponent_B = SV_BIT(2),
-	ColorComponent_A = SV_BIT(3),
-	ColorComponent_RGB = (ColorComponent_R | ColorComponent_G | ColorComponent_B),
-	ColorComponent_All = (ColorComponent_RGB | ColorComponent_A),
+		ColorComponent_None = 0,
+		ColorComponent_R = SV_BIT(0),
+		ColorComponent_G = SV_BIT(1),
+		ColorComponent_B = SV_BIT(2),
+		ColorComponent_A = SV_BIT(3),
+		ColorComponent_RGB = (ColorComponent_R | ColorComponent_G | ColorComponent_B),
+		ColorComponent_All = (ColorComponent_RGB | ColorComponent_A),
     };
     typedef u8 ColorComponentFlags;
 
     enum BlendFactor {
-	BlendFactor_Zero,
-	BlendFactor_One,
-	BlendFactor_SrcColor,
-	BlendFactor_OneMinusSrcColor,
-	BlendFactor_DstColor,
-	BlendFactor_OneMinusDstColor,
-	BlendFactor_SrcAlpha,
-	BlendFactor_OneMinusSrcAlpha,
-	BlendFactor_DstAlpha,
-	BlendFactor_OneMinusDstAlpha,
-	BlendFactor_ConstantColor,
-	BlendFactor_OneMinusConstantColor,
-	BlendFactor_ConstantAlpha,
-	BlendFactor_OneMinusConstantAlpha,
-	BlendFactor_SrcAlphaSaturate,
-	BlendFactor_Src1Color,
-	BlendFactor_OneMinusSrc1Color,
-	BlendFactor_Src1Alpha,
-	BlendFactor_OneMinusSrc1Alpha,
+		BlendFactor_Zero,
+		BlendFactor_One,
+		BlendFactor_SrcColor,
+		BlendFactor_OneMinusSrcColor,
+		BlendFactor_DstColor,
+		BlendFactor_OneMinusDstColor,
+		BlendFactor_SrcAlpha,
+		BlendFactor_OneMinusSrcAlpha,
+		BlendFactor_DstAlpha,
+		BlendFactor_OneMinusDstAlpha,
+		BlendFactor_ConstantColor,
+		BlendFactor_OneMinusConstantColor,
+		BlendFactor_ConstantAlpha,
+		BlendFactor_OneMinusConstantAlpha,
+		BlendFactor_SrcAlphaSaturate,
+		BlendFactor_Src1Color,
+		BlendFactor_OneMinusSrc1Color,
+		BlendFactor_Src1Alpha,
+		BlendFactor_OneMinusSrc1Alpha,
     };
 
     enum SamplerFilter {
-	SamplerFilter_Nearest,
-	SamplerFilter_Linear,
+		SamplerFilter_Nearest,
+		SamplerFilter_Linear,
     };
 
     enum SamplerAddressMode {
-	SamplerAddressMode_Wrap,
-	SamplerAddressMode_Mirror,
-	SamplerAddressMode_Clamp,
-	SamplerAddressMode_Border
+		SamplerAddressMode_Wrap,
+		SamplerAddressMode_Mirror,
+		SamplerAddressMode_Clamp,
+		SamplerAddressMode_Border
     };
 	
     enum SamplerBorderColor {
     };
 	
     enum BarrierType : u8 {
-	BarrierType_Image
+		BarrierType_Image
     };
 
     struct Viewport {
-	float x, y, width, height, minDepth, maxDepth;
+		float x, y, width, height, minDepth, maxDepth;
     };
 
     struct Scissor {
-	u32 x, y, width, height;
+		u32 x, y, width, height;
     };
 
     struct GPUBarrier {
-	union {
-	    struct {
-		GPUImage* pImage;
-		GPUImageLayout oldLayout;
-		GPUImageLayout newLayout;
-	    } image;
-	};
-	BarrierType type;
+		union {
+			struct {
+				GPUImage* pImage;
+				GPUImageLayout oldLayout;
+				GPUImageLayout newLayout;
+			} image;
+		};
+		BarrierType type;
 
-	inline static GPUBarrier Image(GPUImage* image, GPUImageLayout oldLayout, GPUImageLayout newLayout)
-	    {
-		GPUBarrier barrier;
-		barrier.image.pImage = image;
-		barrier.image.oldLayout = oldLayout;
-		barrier.image.newLayout = newLayout;
-		barrier.type = BarrierType_Image;
-		return barrier;
-	    }
+		inline static GPUBarrier Image(GPUImage* image, GPUImageLayout oldLayout, GPUImageLayout newLayout)
+			{
+				GPUBarrier barrier;
+				barrier.image.pImage = image;
+				barrier.image.oldLayout = oldLayout;
+				barrier.image.newLayout = newLayout;
+				barrier.type = BarrierType_Image;
+				return barrier;
+			}
     };
 
     struct GPUImageRegion {
-	v3_i32 offset0;
-	v3_i32 offset1;
+		v3_i32 offset0;
+		v3_i32 offset1;
     };
 
     struct GPUImageBlit {
-	GPUImageRegion src_region;
-	GPUImageRegion dst_region;
+		GPUImageRegion src_region;
+		GPUImageRegion dst_region;
     };
 
     struct ShaderMacro {
-	const char* name;
-	const char* value;
+		const char* name;
+		const char* value;
     };
 
     struct ShaderCompileDesc {
-	GraphicsAPI	  api;
-	ShaderType	  shaderType;
-	u32		  majorVersion;
-	u32		  minorVersion;
-	const char*	  entryPoint;
-	List<ShaderMacro> macros;
+		GraphicsAPI	  api;
+		ShaderType	  shaderType;
+		u32		  majorVersion;
+		u32		  minorVersion;
+		const char*	  entryPoint;
+		List<ShaderMacro> macros;
     };
 
     // Primitive Descriptors
 
     struct GPUBufferDesc {
-	GPUBufferType	bufferType;
-	ResourceUsage	usage		= ResourceUsage_Static;
-	CPUAccessFlags	CPUAccess	= CPUAccess_None;
-	u32				size		= 0u;
-	IndexType		indexType	= IndexType_32;
-	void*			pData		= nullptr;
+		GPUBufferType	bufferType;
+		ResourceUsage	usage		= ResourceUsage_Static;
+		CPUAccessFlags	CPUAccess	= CPUAccess_None;
+		u32				size		= 0u;
+		IndexType		indexType	= IndexType_32;
+		void*			pData		= nullptr;
     };
 
     struct GPUBufferInfo {
-	GPUBufferType	bufferType;
-	ResourceUsage	usage;
-	CPUAccessFlags	CPUAccess;
-	u32				size;
-	IndexType		indexType;
+		GPUBufferType	bufferType;
+		ResourceUsage	usage;
+		CPUAccessFlags	CPUAccess;
+		u32				size;
+		IndexType		indexType;
     };
 
     struct GPUImageDesc {
-	void*				pData		= nullptr;
-	u32					size		= 0u;
-	Format				format;
-	GPUImageLayout		layout;
-	GPUImageTypeFlags	type;
-	ResourceUsage		usage		= ResourceUsage_Static;
-	CPUAccessFlags		CPUAccess	= CPUAccess_None;
-	u32					width;
-	u32					height;
+		void*				pData		= nullptr;
+		u32					size		= 0u;
+		Format				format;
+		GPUImageLayout		layout;
+		GPUImageTypeFlags	type;
+		ResourceUsage		usage		= ResourceUsage_Static;
+		CPUAccessFlags		CPUAccess	= CPUAccess_None;
+		u32					width;
+		u32					height;
     };
 
     struct GPUImageInfo {
-	Format				format;
-	GPUImageTypeFlags	type;
-	ResourceUsage		usage;
-	CPUAccessFlags		CPUAccess;
-	u32					width;
-	u32					height;
+		Format				format;
+		GPUImageTypeFlags	type;
+		ResourceUsage		usage;
+		CPUAccessFlags		CPUAccess;
+		u32					width;
+		u32					height;
     };
 
     struct SamplerDesc {
-	SamplerAddressMode	addressModeU	= SamplerAddressMode_Wrap;
-	SamplerAddressMode	addressModeV	= SamplerAddressMode_Wrap;
-	SamplerAddressMode	addressModeW	= SamplerAddressMode_Wrap;
-	SamplerFilter		minFilter		= SamplerFilter_Linear;
-	SamplerFilter		magFilter		= SamplerFilter_Linear;
+		SamplerAddressMode	addressModeU	= SamplerAddressMode_Wrap;
+		SamplerAddressMode	addressModeV	= SamplerAddressMode_Wrap;
+		SamplerAddressMode	addressModeW	= SamplerAddressMode_Wrap;
+		SamplerFilter		minFilter		= SamplerFilter_Linear;
+		SamplerFilter		magFilter		= SamplerFilter_Linear;
     };
 
     struct SamplerInfo : public SamplerDesc {};
 
     struct ShaderDesc {
-	void*		pBinData		= nullptr;
-	size_t		binDataSize		= 0u;
-	ShaderType	shaderType;
+		void*		pBinData		= nullptr;
+		size_t		binDataSize		= 0u;
+		ShaderType	shaderType;
     };
 
     struct ShaderInfo {
 
-	ShaderType shader_type;
+		ShaderType shader_type;
 
-	struct ResourceImage {
-	    String name;
-	    u32	 binding_slot;
-	};
+		struct ResourceImage {
+			String name;
+			u32	 binding_slot;
+		};
 
-	struct ResourceSampler {
-	    String name;
-	    u32	 binding_slot;
-	};
+		struct ResourceSampler {
+			String name;
+			u32	 binding_slot;
+		};
 
-	struct ResourceBuffer {
-	    String name;
-	    u32			  binding_slot;
-	    List<ShaderAttribute> attributes;
-	    u32			  size;
-	};
+		struct ResourceBuffer {
+			String name;
+			u32			  binding_slot;
+			List<ShaderAttribute> attributes;
+			u32			  size;
+		};
 
-	List<ResourceImage>   images;
-	List<ResourceSampler> samplers;
-	List<ResourceBuffer>  constant_buffers;
+		List<ResourceImage>   images;
+		List<ResourceSampler> samplers;
+		List<ResourceBuffer>  constant_buffers;
 
-	List<ShaderAttribute> input;
+		List<ShaderAttribute> input;
     };
 
     struct AttachmentDesc {
-	AttachmentOperation	loadOp;
-	AttachmentOperation storeOp;
-	AttachmentOperation stencilLoadOp;
-	AttachmentOperation stencilStoreOp;
-	Format				format;
-	GPUImageLayout		initialLayout;
-	GPUImageLayout		layout;
-	GPUImageLayout		finalLayout;
-	AttachmentType		type;
+		AttachmentOperation	loadOp;
+		AttachmentOperation storeOp;
+		AttachmentOperation stencilLoadOp;
+		AttachmentOperation stencilStoreOp;
+		Format				format;
+		GPUImageLayout		initialLayout;
+		GPUImageLayout		layout;
+		GPUImageLayout		finalLayout;
+		AttachmentType		type;
     };
 
     struct RenderPassDesc {
-	AttachmentDesc* pAttachments = nullptr;
-	u32				attachmentCount = 0u;
+		AttachmentDesc* pAttachments = nullptr;
+		u32				attachmentCount = 0u;
     };
 
     struct RenderPassInfo {
-	u32                  depthstencil_attachment_index;
-	List<AttachmentDesc> attachments;
+		u32                  depthstencil_attachment_index;
+		List<AttachmentDesc> attachments;
     };
 
     struct InputElementDesc {
-	const char* name;
-	u32			index;
-	u32			inputSlot;
-	u32			offset;
-	Format		format;
+		const char* name;
+		u32			index;
+		u32			inputSlot;
+		u32			offset;
+		Format		format;
     };
 
     struct InputSlotDesc {
-	u32		slot;
-	u32		stride;
-	bool	instanced;
+		u32		slot;
+		u32		stride;
+		bool	instanced;
     };
 
     struct InputLayoutStateDesc {
-	InputSlotDesc*		pSlots			= nullptr;
-	u32					slotCount		= 0u;
-	InputElementDesc*	pElements		= nullptr;
-	u32					elementCount	= 0u;
+		InputSlotDesc*		pSlots			= nullptr;
+		u32					slotCount		= 0u;
+		InputElementDesc*	pElements		= nullptr;
+		u32					elementCount	= 0u;
     };
 
     struct InputLayoutStateInfo {
-	List<InputSlotDesc>		slots;
-	List<InputElementDesc>	elements;
+		List<InputSlotDesc>		slots;
+		List<InputElementDesc>	elements;
     };
 
     struct BlendAttachmentDesc {
-	bool				blendEnabled			= false;
-	BlendFactor			srcColorBlendFactor		= BlendFactor_One;
-	BlendFactor			dstColorBlendFactor		= BlendFactor_One;
-	BlendOperation		colorBlendOp			= BlendOperation_Add;
-	BlendFactor			srcAlphaBlendFactor		= BlendFactor_One;
-	BlendFactor			dstAlphaBlendFactor		= BlendFactor_One;
-	BlendOperation		alphaBlendOp			= BlendOperation_Add;
-	ColorComponentFlags colorWriteMask			= ColorComponent_All;
+		bool				blendEnabled			= false;
+		BlendFactor			srcColorBlendFactor		= BlendFactor_One;
+		BlendFactor			dstColorBlendFactor		= BlendFactor_One;
+		BlendOperation		colorBlendOp			= BlendOperation_Add;
+		BlendFactor			srcAlphaBlendFactor		= BlendFactor_One;
+		BlendFactor			dstAlphaBlendFactor		= BlendFactor_One;
+		BlendOperation		alphaBlendOp			= BlendOperation_Add;
+		ColorComponentFlags colorWriteMask			= ColorComponent_All;
     };
 
     struct BlendStateDesc {
-	BlendAttachmentDesc* pAttachments    = nullptr;
-	u32		     attachmentCount = 0u;
-	v4_f32		     blendConstants  = { 1.f, 1.f, 1.f, 1.f };
+		BlendAttachmentDesc* pAttachments    = nullptr;
+		u32		     attachmentCount = 0u;
+		v4_f32		     blendConstants  = { 1.f, 1.f, 1.f, 1.f };
     };
 
     struct BlendStateInfo {
-	List<BlendAttachmentDesc> attachments;
-	v4_f32			  blendConstants;
+		List<BlendAttachmentDesc> attachments;
+		v4_f32			  blendConstants;
     };
 
     struct RasterizerStateDesc {
-	bool		   wireframe = false;
-	RasterizerCullMode cullMode  = RasterizerCullMode_Back;
-	bool		   clockwise = true;
+		bool		   wireframe = false;
+		RasterizerCullMode cullMode  = RasterizerCullMode_Back;
+		bool		   clockwise = true;
     };
 
     struct RasterizerStateInfo : public RasterizerStateDesc {};
 
     struct StencilStateDesc {
-	StencilOperation   failOp	= StencilOperation_Keep;
-	StencilOperation   passOp	= StencilOperation_Keep;
-	StencilOperation   depthFailOp	= StencilOperation_Keep;
-	CompareOperation   compareOp	= CompareOperation_Never;
+		StencilOperation   failOp	= StencilOperation_Keep;
+		StencilOperation   passOp	= StencilOperation_Keep;
+		StencilOperation   depthFailOp	= StencilOperation_Keep;
+		CompareOperation   compareOp	= CompareOperation_Never;
     };
 
     struct DepthStencilStateDesc {
-	bool		 depthTestEnabled   = false;
-	bool		 depthWriteEnabled  = false;
-	CompareOperation depthCompareOp	    = CompareOperation_Less;
-	bool		 stencilTestEnabled = false;
-	u32		 readMask	    = 0xFF;
-	u32		 writeMask	    = 0xFF;
-	StencilStateDesc front;
-	StencilStateDesc back;
+		bool		 depthTestEnabled   = false;
+		bool		 depthWriteEnabled  = false;
+		CompareOperation depthCompareOp	    = CompareOperation_Less;
+		bool		 stencilTestEnabled = false;
+		u32		 readMask	    = 0xFF;
+		u32		 writeMask	    = 0xFF;
+		StencilStateDesc front;
+		StencilStateDesc back;
     };
 
     struct DepthStencilStateInfo : public DepthStencilStateDesc {};
@@ -730,7 +730,7 @@ namespace sv {
 
     struct GraphicsProperties {
 
-	bool reverse_y;
+		bool reverse_y;
 
     };
 

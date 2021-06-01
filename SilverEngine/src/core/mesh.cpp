@@ -21,19 +21,19 @@ namespace sv {
 		v3 = XMVector3Transform(XMVectorSet(0.5f, 0.f, -0.5f, 0.f), transformMatrix);
 
 		v3_f32* pos = mesh.positions.data() + vertexOffset;
-		pos->setDX(v0); ++pos;
-		pos->setDX(v1); ++pos;
-		pos->setDX(v2); ++pos;
-		pos->setDX(v3);
+		*pos = v0; ++pos;
+		*pos = v1; ++pos;
+		*pos = v2; ++pos;
+		*pos = v3;
 
 		// Normals
 		v0 = XMVector3Rotate(XMVectorSet(0.f, 1.f, 0.f, 0.f), rotationQuaternion);
 
 		v3_f32* nor = mesh.normals.data() + vertexOffset;
-		nor->setDX(v0); ++nor;
-		nor->setDX(v0); ++nor;
-		nor->setDX(v0); ++nor;
-		nor->setDX(v0);
+		*nor = v0; ++nor;
+		*nor = v0; ++nor;
+		*nor = v0; ++nor;
+		*nor = v0;
 
 		// Indices
 		u32* ind = mesh.indices.data();
@@ -257,10 +257,10 @@ namespace sv {
 			v3_f32 l0 = p1 - p0;
 			v3_f32 l1 = p2 - p0;
 
-			l0.normalize();
-			l1.normalize();
+			l0 = vec3_normalize(l0);
+			l1 = vec3_normalize(l1);
 
-			v3_f32 normal = l0.cross(l1);
+			v3_f32 normal = vec3_cross(l0, l1);
 
 			mesh.normals[i0] += normal;
 			mesh.normals[i1] += normal;
@@ -271,7 +271,7 @@ namespace sv {
 
 		foreach(i, mesh.normals.size()) {
 
-			mesh.normals[i].normalize();
+			mesh.normals[i] = vec3_normalize(mesh.normals[i]);
 		}
 	}
 	
@@ -399,10 +399,10 @@ namespace sv {
     SV_AUX void set_default_material(MaterialInfo* mat)
     {
 		// Defaults
-		mat->ambient_color.setFloat(0.2f, 0.2f, 0.2f, 1.f);
-		mat->diffuse_color.setFloat(0.8f, 0.8f, 0.8f, 1.f);
-		mat->specular_color.setFloat(1.f, 1.f, 1.f, 1.f);
-		mat->emissive_color.setFloat(0.f, 0.f, 0.f, 1.f);
+		mat->ambient_color = color_float(0.2f, 0.2f, 0.2f, 1.f);
+		mat->diffuse_color = color_float(0.8f, 0.8f, 0.8f, 1.f);
+		mat->specular_color = color_float(1.f, 1.f, 1.f, 1.f);
+		mat->emissive_color = color_float(0.f, 0.f, 0.f, 1.f);
 		mat->shininess = 1.f;
     }
 
@@ -617,7 +617,7 @@ namespace sv {
 
 						if (line_read_v3_f32(p.line, color)) {
 
-							mat->ambient_color.setFloat(color.x, color.y, color.z);
+							mat->ambient_color = color_float(color.x, color.y, color.z);
 						}
 						else {
 							corrupted = true;
@@ -632,7 +632,7 @@ namespace sv {
 
 						if (line_read_v3_f32(p.line, color)) {
 
-							mat->diffuse_color.setFloat(color.x, color.y, color.z);
+							mat->diffuse_color = color_float(color.x, color.y, color.z);
 						}
 						else {
 							corrupted = true;
@@ -647,7 +647,7 @@ namespace sv {
 
 						if (line_read_v3_f32(p.line, color)) {
 
-							mat->specular_color.setFloat(color.x, color.y, color.z);
+							mat->specular_color = color_float(color.x, color.y, color.z);
 						}
 						else {
 							corrupted = true;
@@ -662,7 +662,7 @@ namespace sv {
 
 						if (line_read_v3_f32(p.line, color)) {
 
-							mat->emissive_color.setFloat(color.x, color.y, color.z);
+							mat->emissive_color = color_float(color.x, color.y, color.z);
 						}
 						else {
 							corrupted = true;

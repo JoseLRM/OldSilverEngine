@@ -372,7 +372,7 @@ namespace sv {
 
 				v2_f32 drag = input.mouse_dragged;
 
-				dev.camera.position -= (drag * v2_f32{ dev.camera.width, dev.camera.height }).getVec3();
+				dev.camera.position -= vec2_to_vec3((drag * v2_f32{ dev.camera.width, dev.camera.height }));
 				input.unused = false;
 			}
 			else editor.camera_focus = false;
@@ -396,7 +396,7 @@ namespace sv {
 
     SV_AUX v2_f32 world_point_to_screen(const XMMATRIX& vpm, const v3_f32& position)
     {
-		XMVECTOR p = position.getDX(1.f);
+		XMVECTOR p = vec3_to_dx(position, 1.f);
 
 		p = XMVector4Transform(p, vpm);
 	
@@ -408,16 +408,16 @@ namespace sv {
 
     SV_AUX v2_f32 project_line_onto_line(v2_f32 origin, v2_f32 d0, v2_f32 d1)
     {
-		return origin + (d1.dot(d0) / d1.dot(d1)) * d1;
+		return origin + (vec2_dot(d1, d0) / vec2_dot(d1, d1)) * d1;
     }
     SV_AUX v3_f32 project_line_onto_line(v3_f32 origin, v3_f32 d0, v3_f32 d1)
     {
-		return origin + (d1.dot(d0) / d1.dot(d1)) * d1;
+		return origin + (vec3_dot(d1, d0) / vec3_dot(d1, d1)) * d1;
     }
 
     SV_AUX void intersect_line_vs_plane(v3_f32 line_point, v3_f32 line_direction, v3_f32 plane_point, v3_f32 plane_normal, v3_f32& intersection, f32& distance)
     {
-		distance = (plane_point - line_point).dot(plane_normal) / line_direction.dot(plane_normal);
+		distance = vec3_dot(plane_point - line_point, plane_normal) / vec3_dot(line_direction, plane_normal);
 		intersection = line_point + distance * line_direction;
     }
 
@@ -426,11 +426,11 @@ namespace sv {
 		v3_f32 u = l0_dir;
 		v3_f32 v = l1_dir;
 		v3_f32 w = l0_pos - l1_pos;
-		f32 a = u.dot(u);         // always >= 0
-		f32 b = u.dot(v);
-		f32 c = v.dot(v);         // always >= 0
-		f32 d = u.dot(w);
-		f32 e = v.dot(w);
+		f32 a = vec3_dot(u, u);         // always >= 0
+		f32 b = vec3_dot(u, v);
+		f32 c = vec3_dot(v, v);         // always >= 0
+		f32 d = vec3_dot(u, w);
+		f32 e = vec3_dot(v, w);
 		f32 D = a*c - b*b;        // always >= 0
 		f32 sc, tc;
 
@@ -454,7 +454,7 @@ namespace sv {
     {
 		if (dev.camera.projection_type == ProjectionType_Perspective) {
 		
-			XMVECTOR pos = position.getDX(1.f);
+			XMVECTOR pos = vec3_to_dx(position, 1.f);
 			pos = XMVector4Transform(pos, dev.camera.view_matrix);
 	    
 			f32 distance = XMVectorGetZ(pos);
@@ -526,7 +526,7 @@ namespace sv {
 						v3_f32 p0, p1;
 						closest_points_between_two_lines(ray.origin, ray.direction, position, axis[i], p0, p1);
 
-						f32 dist0 = (p0 - p1).length();
+						f32 dist0 = vec3_length(p0 - p1);
 			
 						f32 dist1 = -1.f;
 
@@ -553,15 +553,15 @@ namespace sv {
 				}
 				else {
 
-					v2_f32 mouse = input.mouse_position * v2_f32(dev.camera.width, dev.camera.height) + dev.camera.position.getVec2();
-					v2_f32 to_mouse = mouse - position.getVec2();
+					v2_f32 mouse = input.mouse_position * v2_f32(dev.camera.width, dev.camera.height) + vec3_to_vec2(dev.camera.position);
+					v2_f32 to_mouse = mouse - vec3_to_vec2(position);
 			
 					foreach (i, 2u) {
 
 						v2_f32 axis_direction = ((i == 0) ? v2_f32::right() : v2_f32::up()) * info.axis_size;
 
-						v2_f32 projection = project_line_onto_line(position.getVec2(), to_mouse, axis_direction);
-						f32 dist0 = (mouse - projection).length();
+						v2_f32 projection = project_line_onto_line(vec3_to_vec2(position), to_mouse, axis_direction);
+						f32 dist0 = vec2_length(mouse - projection);
 						f32 dist1 = ((i == 0) ? (projection.x - position.x) : (projection.y - position.y));
 			
 						if (dist0 < info.selection_size && dist1 > 0.f && dist1 <= info.axis_size) {
@@ -623,7 +623,7 @@ namespace sv {
 				}
 				else {
 
-					v2_f32 mouse = input.mouse_position * v2_f32(dev.camera.width, dev.camera.height) + dev.camera.position.getVec2();
+					v2_f32 mouse = input.mouse_position * v2_f32(dev.camera.width, dev.camera.height) + vec3_to_vec2(dev.camera.position);
 		
 					if (info.object == GizmosObject_AxisX)
 						position.x = mouse.x - info.start_offset.x;
@@ -935,8 +935,8 @@ namespace sv {
 
 		Ray ray = screen_to_world_ray(mouse, dev.camera.position, dev.camera.rotation, &dev.camera);
 
-		XMVECTOR ray_origin = ray.origin.getDX(1.f);
-		XMVECTOR ray_direction = ray.direction.getDX(0.f);
+		XMVECTOR ray_origin = vec3_to_dx(ray.origin, 1.f);
+		XMVECTOR ray_direction = vec3_to_dx(ray.direction, 0.f);
 
 		Entity selected = SV_ENTITY_NULL;
 		f32 distance = f32_max;
@@ -975,7 +975,7 @@ namespace sv {
 
 						if (intersect_ray_vs_traingle(ray, p0, p1, p2, intersection)) {
 
-							f32 dis = intersection.length();
+							f32 dis = vec3_length(intersection);
 							if (dis < distance) {
 								distance = dis;
 								selected = entity;
@@ -1022,11 +1022,11 @@ namespace sv {
 
 					if (intersect_ray_vs_traingle(ray, v3_f32(v0), v3_f32(v1), v3_f32(v2), intersection)) {
 
-						dis = intersection.length();
+						dis = vec3_length(intersection);
 					}
 					else if (intersect_ray_vs_traingle(ray, v3_f32(v1), v3_f32(v3), v3_f32(v2), intersection)) {
 			
-						dis = SV_MIN(intersection.length(), dis);
+						dis = SV_MIN(vec3_length(intersection), dis);
 					}
 
 					if (dis < distance) {
@@ -2355,7 +2355,7 @@ namespace sv {
 
 					color.a = 10u;
 
-					imrend_draw_orthographic_grip(dev.camera.position.getVec2(), {}, { width, height }, i, color, cmd);
+					imrend_draw_orthographic_grip(vec3_to_vec2(dev.camera.position), {}, { width, height }, i, color, cmd);
 				}
 			}
 		}
@@ -2377,7 +2377,7 @@ namespace sv {
 					v2_f32 pos = get_entity_position2D(entity) + body.offset;
 					v2_f32 scale = get_entity_scale2D(entity) * body.size;
 		    
-					tm = XMMatrixScalingFromVector(scale.getDX()) * XMMatrixTranslation(pos.x, pos.y, 0.f);
+					tm = XMMatrixScalingFromVector(vec2_to_dx(scale)) * XMMatrixTranslation(pos.x, pos.y, 0.f);
 		    
 					v0 = XMVector3Transform(p0, tm);
 					v1 = XMVector3Transform(p1, tm);

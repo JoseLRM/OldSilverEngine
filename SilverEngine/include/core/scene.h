@@ -477,10 +477,10 @@ namespace sv {
 			{
 				if (width / height == aspect) return;
 				v2_f32 res = { width, height };
-				f32 mag = res.length();
+				f32 mag = vec2_length(res);
 				res.x = aspect;
 				res.y = 1.f;
-				res.normalize();
+				res = vec2_normalize(res);
 				res *= mag;
 				width = res.x;
 				height = res.y;

@@ -65,295 +65,212 @@ namespace sv {
 
     // Vector Structs
 
-    template<typename T, typename floatType>
-	struct Vector2D;
-    template<typename T, typename floatType>
-	struct Vector3D;
-    template<typename T, typename floatType>
-	struct Vector4D;
+	struct v2_f32 {
+		
+		f32 x = 0.f;
+		f32 y = 0.f;
 
-    template<typename T, typename floatType>
-	struct SV_API Vector2D {
+		v2_f32() = default;
+		v2_f32(f32 x, f32 y) : x(x), y(y) {}
+		v2_f32(f32 n) : x(n), y(n) {}
+		v2_f32(XMVECTOR v) : x(XMVectorGetX(v)), y(XMVectorGetY(v)) {}
 
-	    T x;
-	    T y;
+		f32& operator[](u32 index) {
+			return (index == 0u) ? x : y;
+		}
+		const f32& operator[](u32 index) const {
+			return (index == 0u) ? x : y;
+		}
 
-	    using vec = Vector2D<T, floatType>;
-	    using vec3 = Vector3D<T, floatType>;
-	    using vec4 = Vector4D<T, floatType>;
+		bool operator==(v2_f32 v) const {
+			return x == v.x && y == v.y;
+		}
+	    bool operator!=(v2_f32 v) const {
+			return x != v.x && y != v.y;
+		}
 
-	    constexpr Vector2D() : x(), y() {}
-	    constexpr Vector2D(T n) : x(n), y(n) {}
-	    constexpr Vector2D(T x, T y) : x(x), y(y) {}
-	    explicit constexpr Vector2D(const XMVECTOR& v) : x(XMVectorGetX(v)), y(XMVectorGetY(v)) {}
+	    void operator+=(v2_f32 v) {
+			x += v.x;
+			y += v.y;
+		}
 
-	    SV_INLINE const f32& operator[](u32 index) const noexcept
-			{
-				return (index == 0u) ? x : y;
-			}
-	    SV_INLINE f32& operator[](u32 index) noexcept
-			{
-				return (index == 0u) ? x : y;
-			}
-	    SV_INLINE bool operator==(const vec& v) const noexcept
-			{
-				return x == v.x && y == v.y;
-			}
-	    SV_INLINE bool operator!=(const vec& v) const noexcept
-			{
-				return x != v.x && y != v.y;
-			}
+	    void operator+=(f32 v) {
+			x += v;
+			y += v;
+		}
 
-	    SV_INLINE void operator+=(const vec& v) noexcept
-			{
-				x += v.x;
-				y += v.y;
-			}
+	    void operator-=(v2_f32 v) {
+			x -= v.x;
+			y -= v.y;
+		}
 
-	    SV_INLINE void operator+=(const T v) noexcept
-			{
-				x += v;
-				y += v;
-			}
+	    void operator-=(f32 v) {
+			x -= v;
+			y -= v;
+		}
 
-	    SV_INLINE void operator-=(const vec& v) noexcept
-			{
-				x -= v.x;
-				y -= v.y;
-			}
+	    void operator*=(v2_f32 v) {
+			x *= v.x;
+			y *= v.y;
+		}
 
-	    SV_INLINE void operator-=(const T v) noexcept
-			{
-				x -= v;
-				y -= v;
-			}
+	    void operator*=(f32 v) {
+			x *= v;
+			y *= v;
+		}
 
-	    SV_INLINE void operator*=(const vec& v) noexcept
-			{
-				x *= v.x;
-				y *= v.y;
-			}
+	    void operator/=(v2_f32 v) {
+			x /= v.x;
+			y /= v.y;
+		}
 
-	    SV_INLINE void operator*=(const T v) noexcept
-			{
-				x *= v;
-				y *= v;
-			}
+	    void operator/=(f32 v) {
+			x /= v;
+			y /= v;
+		}
 
-	    SV_INLINE void operator/=(const vec& v) noexcept
-			{
-				x /= v.x;
-				y /= v.y;
-			}
-
-	    SV_INLINE void operator/=(const T v) noexcept
-			{
-				x /= v;
-				y /= v;
-			}
-
-	    // methods
-
-	    constexpr floatType length() const noexcept
-			{
-				return math_sqrt(floatType(x) * floatType(x) + floatType(y) * floatType(y));
-			}
-
-	    SV_INLINE void normalize() noexcept
-			{
-				floatType m = length();
-				x /= m;
-				y /= m;
-			}
-
-	    SV_INLINE vec vecTo(const vec& other) const noexcept
-			{
-				return other - *this;
-			}
-
-	    SV_INLINE floatType distanceTo(const vec& other) const noexcept
-			{
-				return vecTo(other).length();
-			}
-
-	    SV_INLINE floatType angle() const noexcept
-			{
-				floatType res = atan2(floatType(y), floatType(x));
-				if (res < 0.0) {
-					res = (2.0 * PI) + res;
-				}
-				return res;
-			}
-
-	    SV_INLINE void setAngle(floatType angle) noexcept
-			{
-				floatType mag = length();
-				x = cos(angle);
-				x *= mag;
-				y = sin(angle);
-				y *= mag;
-			}
-
-	    SV_INLINE floatType dot(const vec& v) const noexcept
-			{
-				return x * v.x + y * v.y;
-			}
-
-	    SV_INLINE vec perpendicular(bool clockwise = true) const noexcept
-			{
-				if (clockwise) {
-					return { y, -x };
-				}
-				else {
-					return { -y, x };
-				}
-			}
-
-	    // normal must be normalized
-	    SV_INLINE vec reflection(const vec& normal) const noexcept
-			{
-				SV_ASSERT(normal.length() == 1.f);
-				return *this - 2.0 * dot(normal) * normal;
-			}
-
-	    // setters
-	    SV_INLINE void set(T x, T y) noexcept
-			{
-				*this = { x, y };
-			}
-	    SV_INLINE void setVec3(const vec3& v) noexcept
-			{
-				*this = { v.x, v.y };
-			}
-	    SV_INLINE void setVec4(const vec4& v) noexcept
-			{
-				*this = { v.x, v.y };
-			}
-	    SV_INLINE void setDX(const XMVECTOR& v) noexcept
-			{
-				*this = { XMVectorGetX(v), XMVectorGetY(v) };
-			}
-
-	    // getters
-	    SV_INLINE vec3 getVec3(T z = 0) const noexcept
-			{
-				return { x, y, z };
-			}
-	    SV_INLINE vec4 getVec4(T z = 0, T w = 0) const noexcept
-			{
-				return { x, y, z, w };
-			}
-	    SV_INLINE XMVECTOR getDX(T z = 0, T w = 0) const noexcept
-			{
-				return XMVectorSet(x, y, z, w);
-			}
-
-	    SV_INLINE vec _xx() const noexcept { return vec{ x, x }; }
-	    //SV_INLINE vec _xy() const noexcept { return vec{ x, y }; }
-	    SV_INLINE vec _yx() const noexcept { return vec{ y, x }; }
-	    SV_INLINE vec _yy() const noexcept { return vec{ y, y }; }
-
-	    static SV_INLINE vec up() { return { 0, 1 }; }
-	    static SV_INLINE vec down() { static_assert(std::numeric_limits<T>::is_signed(), "This method doesn't support unsigned types"); return { 0, -1 }; }
-	    static SV_INLINE vec left() { static_assert(std::numeric_limits<T>::is_signed(), "This method doesn't support unsigned types"); return { -1, 0 }; }
-	    static SV_INLINE vec right() { return { 1, 0 }; }
-	    static SV_INLINE vec zero() { return { 0, 0 }; }
-	    static SV_INLINE vec one() { return { 1, 1 }; }
-	    static SV_INLINE vec infinity() { return vec{ std::numeric_limits<floatType>::infinity() }; }
-	    static SV_INLINE vec negativeInfinity() { static_assert(std::numeric_limits<T>::is_signed(), "This method doesn't support unsigned types"); return vec{ -1. * std::numeric_limits<floatType>::infinity() }; }
-
+		static v2_f32 up() { return { 0.f, 1.f }; }
+	    static v2_f32 down() { return { 0.f, -1.f }; }
+	    static v2_f32 left() { return { -1.f, 0.f }; }
+	    static v2_f32 right() { return { 1.f, 0.f }; }
+	    static v2_f32 zero() { return { 0.f, 0 }; }
+	    static v2_f32 one() { return { 1.f, 1.f }; }
 	};
 
-    template<typename T, typename floatType>
-	SV_INLINE Vector2D<T, floatType> operator+(const Vector2D<T, floatType>& v0, const Vector2D<T, floatType>& v1) noexcept
+	SV_INLINE v2_f32 operator+(v2_f32 v0, v2_f32 v1)
     {
-		return Vector2D<T, floatType>(v0.x + v1.x, v0.y + v1.y);
+		return v2_f32{ v0.x + v1.x, v0.y + v1.y };
     }
-
-    template<typename T, typename floatType>
-	SV_INLINE Vector2D<T, floatType> operator+(const Vector2D<T, floatType>& v, const T n) noexcept
+	SV_INLINE v2_f32 operator+(v2_f32 v, f32 n)
     {
-		return Vector2D<T, floatType>(v.x + n, v.y + n);
+		return v2_f32{ v.x + n, v.y + n };
     }
-
-    template<typename T, typename floatType>
-	SV_INLINE Vector2D<T, floatType> operator+(const T n, const Vector2D<T, floatType>& v) noexcept
+	SV_INLINE v2_f32 operator+(f32 n, v2_f32 v)
     {
-		return Vector2D<T, floatType>(v.x + n, v.y + n);
+		return v2_f32{ v.x + n, v.y + n };
     }
-
-    template<typename T, typename floatType>
-	SV_INLINE Vector2D<T, floatType> operator-(const Vector2D<T, floatType>& v0, const Vector2D<T, floatType>& v1) noexcept
+	SV_INLINE v2_f32 operator-(v2_f32 v0, v2_f32 v1)
     {
-		return Vector2D<T, floatType>(v0.x - v1.x, v0.y - v1.y);
+		return v2_f32{ v0.x - v1.x, v0.y - v1.y };
     }
-
-    template<typename T, typename floatType>
-	SV_INLINE Vector2D<T, floatType> operator-(const Vector2D<T, floatType>& v, const T n) noexcept
+	SV_INLINE v2_f32 operator-(v2_f32 v, f32 n)
     {
-		return Vector2D<T, floatType>(v.x - n, v.y - n);
+		return v2_f32{ v.x - n, v.y - n };
     }
-
-    template<typename T, typename floatType>
-	SV_INLINE Vector2D<T, floatType> operator-(const T n, const Vector2D<T, floatType>& v) noexcept
+	SV_INLINE v2_f32 operator-(f32 n, v2_f32 v)
     {
-		return Vector2D<T, floatType>(v.x - n, v.y - n);
+		return v2_f32{ n - v.x, n - v.y };
     }
-
-    template<typename T, typename floatType>
-	SV_INLINE Vector2D<T, floatType> operator*(const Vector2D<T, floatType>& v0, const Vector2D<T, floatType>& v1) noexcept
+	SV_INLINE v2_f32 operator*(v2_f32 v0, v2_f32 v1)
     {
-		return Vector2D<T, floatType>(v0.x * v1.x, v0.y * v1.y);
+		return v2_f32{ v0.x * v1.x, v0.y * v1.y };
     }
-
-    template<typename T, typename floatType>
-	SV_INLINE Vector2D<T, floatType> operator*(const Vector2D<T, floatType>& v, const T n) noexcept
+	SV_INLINE v2_f32 operator*(v2_f32 v, f32 n)
     {
-		return Vector2D<T, floatType>(v.x * n, v.y * n);
+		return v2_f32{ v.x * n, v.y * n };
     }
-    template<typename T, typename floatType>
-	SV_INLINE Vector2D<T, floatType> operator*(const T n, const Vector2D<T, floatType>& v) noexcept
+	SV_INLINE v2_f32 operator*(f32 n, v2_f32 v)
     {
-		return Vector2D<T, floatType>(v.x * n, v.y * n);
+		return v2_f32{ n * v.x, n * v.y };
     }
-
-    template<typename T, typename floatType>
-	SV_INLINE Vector2D<T, floatType> operator/(const Vector2D<T, floatType>& v0, const Vector2D<T, floatType>& v1) noexcept
+	SV_INLINE v2_f32 operator/(v2_f32 v0, v2_f32 v1)
     {
-		return Vector2D<T, floatType>(v0.x / v1.x, v0.y / v1.y);
+		return v2_f32{ v0.x / v1.x, v0.y / v1.y };
     }
-
-    template<typename T, typename floatType>
-	SV_INLINE Vector2D<T, floatType> operator/(const Vector2D<T, floatType>& v, const T n) noexcept
+	SV_INLINE v2_f32 operator/(v2_f32 v, f32 n)
     {
-		return Vector2D<T, floatType>(v.x / n, v.y / n);
+		return v2_f32{ v.x / n, v.y / n };
     }
-
-    template<typename T, typename floatType>
-	SV_INLINE Vector2D<T, floatType> operator/(const T n, const Vector2D<T, floatType>& v) noexcept
+	SV_INLINE v2_f32 operator/(f32 n, v2_f32 v)
     {
-		return Vector2D<T, floatType>(v.x / n, v.y / n);
+		return v2_f32{ n / v.x, n / v.y };
     }
+    
+	SV_INLINE f32 vec2_length(v2_f32 v)
+	{
+		return math_sqrt(v.x * v.x + v.y * v.y);
+	}
 
+	SV_INLINE v2_f32 vec2_normalize(v2_f32 v)
+	{
+		f32 mag = vec2_length(v);
+		v.x /= mag;
+		v.y /= mag;
+		return v;
+	}
 
-    // VECTOR 3D
-    template<typename T, typename floatType>
-	struct SV_API Vector3D {
+	SV_INLINE v2_f32 vec2_to(v2_f32 from, v2_f32 to)
+	{
+		return to - from;
+	}
 
-	    T x;
-	    T y;
-	    T z;
+	SV_INLINE f32 vec2_distance(v2_f32 from, v2_f32 to)
+	{
+		return vec2_length(vec2_to(from, to));
+	}
+	
+	SV_INLINE f32 vec2_angle(v2_f32 v)
+	{
+		f32 res = atan2f(v.y, v.x);
+		if (res < 0.0) {
+			res = (2.f * PI) + res;
+		}
+		return res;
+	}
+	
+	SV_INLINE v2_f32 vec2_set_angle(v2_f32 v, f32 angle)
+	{
+		f32 mag = vec2_length(v);
+		v.x = cosf(angle);
+		v.x *= mag;
+		v.y = sinf(angle);
+		v.y *= mag;
+		return v;
+	}
+	
+	SV_INLINE f32 vec2_dot(v2_f32 v0, v2_f32 v1)
+	{
+		return v0.x * v1.x + v0.y * v1.y;
+	}
+	
+	SV_INLINE v2_f32 vec2_perpendicular(v2_f32 v, bool clockwise = true)
+	{
+		return clockwise ? v2_f32{ v.y, -v.x } : v2_f32{ -v.y, v.x };
+	}
+	
+	// NOTE: normal must be normalized
+	SV_INLINE v2_f32 vec2_reflection(v2_f32 v, v2_f32 normal)
+	{
+		SV_ASSERT(vec2_length(normal) == 1.f);
+		return v - 2.f * vec2_dot(v, normal) * normal;
+	}
 
-	    using vec = Vector3D<T, floatType>;
-	    using vec2 = Vector2D<T, floatType>;
-	    using vec4 = Vector4D<T, floatType>;
+	struct v2_u32 {
 
-	    constexpr Vector3D() : x(), y(), z() {}
-	    constexpr Vector3D(T n) : x(n), y(n), z(n) {}
-	    constexpr Vector3D(T x, T y, T z) : x(x), y(y), z(z) {}
-	    explicit constexpr Vector3D(const XMVECTOR& v) : x(XMVectorGetX(v)), y(XMVectorGetY(v)), z(XMVectorGetZ(v)) {}
+		u32 x = 0u;
+		u32 y = 0u;
+		
+	};
 
-		SV_INLINE const f32& operator[](u32 index) const noexcept {
+	struct v2_i32 {
+
+		i32 x = 0u;
+		i32 y = 0u;
+		
+	};
+
+    struct v3_f32 {
+
+		f32 x = 0.f;
+		f32 y = 0.f;
+		f32 z = 0.f;
+
+		v3_f32() = default;
+		v3_f32(f32 x, f32 y, f32 z) : x(x), y(y), z(z) {}
+		v3_f32(f32 n) : x(n), y(n), z(n) {}
+		v3_f32(XMVECTOR v) : x(XMVectorGetX(v)), y(XMVectorGetY(v)), z(XMVectorGetZ(v)) {}
+
+		const f32& operator[](u32 index) const {
 			switch (index) {
 			case 0:
 				return x;
@@ -363,7 +280,7 @@ namespace sv {
 				return z;
 			}
 		}
-		SV_INLINE f32& operator[](u32 index) noexcept {
+		f32& operator[](u32 index) {
 			switch (index) {
 			case 0:
 				return x;
@@ -374,261 +291,182 @@ namespace sv {
 			}
 		}
 
-	    SV_INLINE void operator+=(const vec& v) noexcept
-			{
-				x += v.x;
-				y += v.y;
-				z += v.z;
-			}
+	    bool operator==(v3_f32 v) const {
+			return x == v.x && y == v.y && z == v.z;
+		}
+	    bool operator!=(v3_f32 v) const {
+			return x != v.x && y != v.y && z != v.z;
+		}
 
-	    SV_INLINE void operator+=(const T v) noexcept
-			{
-				x += v;
-				y += v;
-				z += v;
-			}
+	    void operator+=(v3_f32 v) {
+			x += v.x;
+			y += v.y;
+			z += v.z;
+		}
 
-	    SV_INLINE void operator-=(const vec& v) noexcept
-			{
-				x -= v.x;
-				y -= v.y;
-				z -= v.z;
-			}
+	    void operator+=(f32 v) {
+			x += v;
+			y += v;
+			z += v;
+		}
 
-	    SV_INLINE void operator-=(const T v) noexcept
-			{
-				x -= v;
-				y -= v;
-				z -= v;
-			}
+	    void operator-=(v3_f32 v) {
+			x -= v.x;
+			y -= v.y;
+			z -= v.z;
+		}
 
-	    SV_INLINE void operator*=(const vec& v) noexcept
-			{
-				x *= v.x;
-				y *= v.y;
-				z *= v.z;
-			}
+	    void operator-=(f32 v) {
+			x -= v;
+			y -= v;
+			z -= v;
+		}
 
-	    SV_INLINE void operator*=(const T v) noexcept
-			{
-				x *= v;
-				y *= v;
-				z *= v;
-			}
+	    void operator*=(v3_f32 v) {
+			x *= v.x;
+			y *= v.y;
+			z *= v.z;
+		}
 
-	    SV_INLINE void operator/=(const vec& v) noexcept
-			{
-				x /= v.x;
-				y /= v.y;
-				z /= v.z;
-			}
+	    void operator*=(f32 v) {
+			x *= v;
+			y *= v;
+			z *= v;
+		}
 
-	    SV_INLINE void operator/=(const T v) noexcept
-			{
-				x /= v;
-				y /= v;
-				z /= v;
-			}
+	    void operator/=(v3_f32 v) {
+			x /= v.x;
+			y /= v.y;
+			z /= v.z;
+		}
 
-	    constexpr floatType length() const noexcept
-			{
-				return math_sqrt(x * x + y * y + z * z);
-			}
+	    void operator/=(f32 v) {
+			x /= v;
+			y /= v;
+			z /= v;
+		}
 
-	    SV_INLINE void normalize() noexcept
-			{
-				floatType m = length();
-				x /= m;
-				y /= m;
-				z /= m;
-			}
-	    SV_INLINE vec vecTo(const vec& v) const noexcept
-			{
-				return v - *this;
-			}
-	    SV_INLINE floatType distanceTo(const vec& v) const noexcept
-			{
-				return vecTo(v).length();
-			}
+		static v3_f32 up() { return { 0.f, 1.f, 0.f }; }
+	    static v3_f32 down() { return { 0.f, -1.f, 0.f }; }
+	    static v3_f32 left() { return { -1.f, 0.f, 0.f }; }
+	    static v3_f32 right() { return { 1.f, 0.f, 0.f }; }
+	    static v3_f32 forward() { return { 0.f, 0.f, 1.f }; }
+	    static v3_f32 back() { return { 0.f, 0.f, -1.f }; }
+	    static v3_f32 zero() { return { 0.f, 0.f, 0.f }; }
+	    static v3_f32 one() { return { 1.f, 1.f, 1.f }; }
+		
+	};
+	
+	SV_INLINE v3_f32 operator+(v3_f32 v0, v3_f32 v1)
+    {
+		return v3_f32{ v0.x + v1.x, v0.y + v1.y, v0.z + v1.z };
+    }
+	SV_INLINE v3_f32 operator+(v3_f32 v, f32 n)
+    {
+		return v3_f32{ v.x + n, v.y + n, v.z + n };
+    }
+	SV_INLINE v3_f32 operator+(f32 n, v3_f32 v)
+    {
+		return v3_f32{ v.x + n, v.y + n, v.z + n };
+    }
+	SV_INLINE v3_f32 operator-(v3_f32 v0, v3_f32 v1)
+    {
+		return v3_f32{ v0.x - v1.x, v0.y - v1.y, v0.z - v1.z };
+    }
+	SV_INLINE v3_f32 operator-(v3_f32 v, f32 n)
+    {
+		return v3_f32{ v.x - n, v.y - n, v.z - n };
+    }
+	SV_INLINE v3_f32 operator-(f32 n, v3_f32 v)
+    {
+		return v3_f32{ n - v.x, n - v.y, n - v.z };
+    }
+	SV_INLINE v3_f32 operator*(v3_f32 v0, v3_f32 v1)
+    {
+		return v3_f32{ v0.x * v1.x, v0.y * v1.y, v0.z * v1.z };
+    }
+	SV_INLINE v3_f32 operator*(v3_f32 v, f32 n)
+    {
+		return v3_f32{ v.x * n, v.y * n, v.z * n };
+    }
+	SV_INLINE v3_f32 operator*(f32 n, v3_f32 v)
+    {
+		return v3_f32{ n * v.x, n * v.y, n * v.z };
+    }
+	SV_INLINE v3_f32 operator/(v3_f32 v0, v3_f32 v1)
+    {
+		return v3_f32{ v0.x / v1.x, v0.y / v1.y, v0.z / v1.z };
+    }
+	SV_INLINE v3_f32 operator/(v3_f32 v, f32 n)
+    {
+		return v3_f32{ v.x / n, v.y / n, v.z / n };
+    }
+	SV_INLINE v3_f32 operator/(f32 n, v3_f32 v)
+    {
+		return v3_f32{ n / v.x, n / v.y, n / v.z };
+    }
+    
+	SV_INLINE f32 vec3_length(v3_f32 v)
+	{
+		return math_sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+	}
 
-	    SV_INLINE floatType dot(const vec& v) const noexcept
-			{
-				return x * v.x + y * v.y + z * v.z;
-			}
+	SV_INLINE v3_f32 vec3_normalize(v3_f32 v)
+	{
+		f32 mag = vec3_length(v);
+		v.x /= mag;
+		v.y /= mag;
+		v.z /= mag;
+		return v;
+	}
 
-	    SV_INLINE vec cross(const vec& v) const noexcept
-			{
-				vec r;
-				r.x = y * v.z - z * v.y;
-				r.y = z * v.x - x * v.z;
-				r.z = x * v.y - y * v.x;
-				return r;
-			}
+	SV_INLINE v3_f32 vec3_to(v3_f32 from, v3_f32 to)
+	{
+		return to - from;
+	}
 
-	    // normal should be normalized
-	    SV_INLINE vec reflection(const vec& normal) const noexcept
-			{
-				SV_ASSERT(normal.length() == 1.f);
-				return 2 * dot(normal) * normal - *this;
-			}
+	SV_INLINE f32 vec3_distance(v3_f32 from, v3_f32 to)
+	{
+		return vec3_length(vec3_to(from, to));
+	}
+	
+	SV_INLINE f32 vec3_dot(v3_f32 v0, v3_f32 v1)
+	{
+		return v0.x * v1.x + v0.y * v1.y + v0.z * v1.z;
+	}
+	
+	SV_INLINE v3_f32 vec3_cross(v3_f32 v0, v3_f32 v1)
+	{
+		v3_f32 r;
+		r.x = v0.y * v1.z - v0.z * v1.y;
+		r.y = v0.z * v1.x - v0.x * v1.z;
+		r.z = v0.x * v1.y - v0.y * v1.x;
+		return r;
+	}
+	
+	// NOTE: normal must be normalized
+	SV_INLINE v3_f32 vec3_reflection(v3_f32 v, v3_f32 normal)
+	{
+		SV_ASSERT(vec3_length(normal) == 1.f);
+		return 2.f * vec3_dot(v, normal) * normal - v;
+	}
 
-	    // setters
-	    SV_INLINE void set(T x, T y, T z) noexcept
-			{
-				*this = { x, y, z };
-			}
-	    SV_INLINE void setVec2(const vec2& v, T z = 0) noexcept
-			{
-				*this = { v.x, v.y, z };
-			}
-	    SV_INLINE void setVec4(const vec4& v) noexcept
-			{
-				*this = { v.x, v.y, v.z };
-			}
-	    SV_INLINE void setDX(const XMVECTOR& v) noexcept
-			{
-				*this = { XMVectorGetX(v), XMVectorGetY(v), XMVectorGetZ(v) };
-			}
+	struct v3_u32 {
 
-	    // getters
-	    SV_INLINE vec2 getVec2() const noexcept
-			{
-				return { x, y };
-			}
-	    SV_INLINE vec4 getVec4(T w = 0) const noexcept
-			{
-				return { x, y, z, w };
-			}
-	    SV_INLINE XMVECTOR getDX(T w = 0) const noexcept
-			{
-				return XMVectorSet(x, y, z, w);
-			}
-
-	    SV_INLINE vec2 _xx() const noexcept { return vec2{ x, x }; }
-	    SV_INLINE vec2 _xy() const noexcept { return vec2{ x, y }; }
-	    SV_INLINE vec2 _xz() const noexcept { return vec2{ x, z }; }
-	    SV_INLINE vec2 _yx() const noexcept { return vec2{ y, x }; }
-	    SV_INLINE vec2 _yy() const noexcept { return vec2{ y, y }; }
-	    SV_INLINE vec2 _yz() const noexcept { return vec2{ y, z }; }
-	    SV_INLINE vec2 _zx() const noexcept { return vec2{ z, x }; }
-	    SV_INLINE vec2 _zy() const noexcept { return vec2{ z, y }; }
-	    SV_INLINE vec2 _zz() const noexcept { return vec2{ z, z }; }
-
-	    SV_INLINE vec _xxx() const noexcept { return vec{ x, x, x }; }
-	    SV_INLINE vec _xxy() const noexcept { return vec{ x, x, y }; }
-	    SV_INLINE vec _xxz() const noexcept { return vec{ x, x, z }; }
-	    SV_INLINE vec _xyx() const noexcept { return vec{ x, y, x }; }
-	    SV_INLINE vec _xyy() const noexcept { return vec{ x, y, y }; }
-	    // SV_INLINE vec _xyz() const noexcept { return vec{ x, y, z }; }
-	    SV_INLINE vec _xzx() const noexcept { return vec{ x, z, x }; }
-	    SV_INLINE vec _xzy() const noexcept { return vec{ x, z, y }; }
-	    SV_INLINE vec _xzz() const noexcept { return vec{ x, z, z }; }
-
-	    SV_INLINE vec _yxx() const noexcept { return vec{ y, x, x }; }
-	    SV_INLINE vec _yxy() const noexcept { return vec{ y, x, y }; }
-	    SV_INLINE vec _yxz() const noexcept { return vec{ y, x, z }; }
-	    SV_INLINE vec _yyx() const noexcept { return vec{ y, y, x }; }
-	    SV_INLINE vec _yyy() const noexcept { return vec{ y, y, y }; }
-	    SV_INLINE vec _yyz() const noexcept { return vec{ y, y, z }; }
-	    SV_INLINE vec _yzx() const noexcept { return vec{ y, z, x }; }
-	    SV_INLINE vec _yzy() const noexcept { return vec{ y, z, y }; }
-	    SV_INLINE vec _yzz() const noexcept { return vec{ y, z, z }; }
-
-	    SV_INLINE vec _zxx() const noexcept { return vec{ z, x, x }; }
-	    SV_INLINE vec _zxy() const noexcept { return vec{ z, x, y }; }
-	    SV_INLINE vec _zxz() const noexcept { return vec{ z, x, z }; }
-	    SV_INLINE vec _zyx() const noexcept { return vec{ z, y, x }; }
-	    SV_INLINE vec _zyy() const noexcept { return vec{ z, y, y }; }
-	    SV_INLINE vec _zyz() const noexcept { return vec{ z, y, z }; }
-	    SV_INLINE vec _zzx() const noexcept { return vec{ z, z, x }; }
-	    SV_INLINE vec _zzy() const noexcept { return vec{ z, z, y }; }
-	    SV_INLINE vec _zzz() const noexcept { return vec{ z, z, z }; }
-
-	    static SV_INLINE vec up() { return { 0, 1, 0 }; }
-	    static SV_INLINE vec down() { static_assert(std::numeric_limits<T>::is_signed(), "This method doesn't support unsigned types"); return { 0, -1, 0 }; }
-	    static SV_INLINE vec left() { static_assert(std::numeric_limits<T>::is_signed(), "This method doesn't support unsigned types"); return { -1, 0, 0 }; }
-	    static SV_INLINE vec right() { return { 1, 0, 0 }; }
-	    static SV_INLINE vec forward() { return { 0, 0, 1 }; }
-	    static SV_INLINE vec back() { static_assert(std::numeric_limits<T>::is_signed(), "This method doesn't support unsigned types"); return { 0, 0, -1 }; }
-	    static SV_INLINE vec zero() { return { 0, 0, 0 }; }
-	    static SV_INLINE vec one() { return { 1, 1, 1 }; }
-	    static SV_INLINE vec infinity() { return vec{ std::numeric_limits<floatType>::infinity() }; }
-	    static SV_INLINE vec negativeInfinity() { static_assert(std::numeric_limits<T>::is_signed(), "This method doesn't support unsigned types"); return vec{ -1. * std::numeric_limits<floatType>::infinity() }; }
-
+		u32 x = 0u;
+		u32 y = 0u;
+		u32 z = 0u;
+		
 	};
 
-    template<typename T, typename floatType>
-	SV_INLINE Vector3D<T, floatType> operator+(const Vector3D<T, floatType>& v0, const Vector3D<T, floatType>& v1) noexcept
-    {
-		return Vector3D<T, floatType>(v0.x + v1.x, v0.y + v1.y, v0.z + v1.z);
-    }
+	struct v3_i32 {
 
-    template<typename T, typename floatType>
-	SV_INLINE Vector3D<T, floatType> operator+(const Vector3D<T, floatType>& v, const T n) noexcept
-    {
-		return Vector3D<T, floatType>(v.x + n, v.y + n, v.z + n);
-    }
-
-    template<typename T, typename floatType>
-	SV_INLINE Vector3D<T, floatType> operator+(const T n, const Vector3D<T, floatType>& v) noexcept
-    {
-		return Vector3D<T, floatType>(v.x + n, v.y + n, v.z + n);
-    }
-
-    template<typename T, typename floatType>
-	SV_INLINE Vector3D<T, floatType> operator-(const Vector3D<T, floatType>& v0, const Vector3D<T, floatType>& v1) noexcept
-    {
-		return Vector3D<T, floatType>(v0.x - v1.x, v0.y - v1.y, v0.z - v1.z);
-    }
-
-    template<typename T, typename floatType>
-	SV_INLINE Vector3D<T, floatType> operator-(const Vector3D<T, floatType>& v, const T n) noexcept
-    {
-		return Vector3D<T, floatType>(v.x - n, v.y - n, v.z - n);
-    }
-
-    template<typename T, typename floatType>
-	SV_INLINE Vector3D<T, floatType> operator-(const T n, const Vector3D<T, floatType>& v) noexcept
-    {
-		return Vector3D<T, floatType>(v.x - n, v.y - n, v.z - n);
-    }
-
-    template<typename T, typename floatType>
-	SV_INLINE Vector3D<T, floatType> operator*(const Vector3D<T, floatType>& v0, const Vector3D<T, floatType>& v1) noexcept
-    {
-		return Vector3D<T, floatType>(v0.x * v1.x, v0.y * v1.y, v0.z * v1.z);
-    }
-
-    template<typename T, typename floatType>
-	SV_INLINE Vector3D<T, floatType> operator*(const Vector3D<T, floatType>& v, const T n) noexcept
-    {
-		return Vector3D<T, floatType>(v.x * n, v.y * n, v.z * n);
-    }
-
-    template<typename T, typename floatType>
-	SV_INLINE Vector3D<T, floatType> operator*(const T n, const Vector3D<T, floatType>& v) noexcept
-    {
-		return Vector3D<T, floatType>(v.x * n, v.y * n, v.z * n);
-    }
-
-    template<typename T, typename floatType>
-	SV_INLINE Vector3D<T, floatType> operator/(const Vector3D<T, floatType>& v0, const Vector3D<T, floatType>& v1) noexcept
-    {
-		return Vector3D<T, floatType>(v0.x / v1.x, v0.y / v1.y, v0.z / v1.z);
-    }
-
-    template<typename T, typename floatType>
-	SV_INLINE Vector3D<T, floatType> operator/(const Vector3D<T, floatType>& v, const T n) noexcept
-    {
-		return Vector3D<T, floatType>(v.x / n, v.y / n, v.z / n);
-    }
-
-    template<typename T, typename floatType>
-	SV_INLINE Vector3D<T, floatType> operator/(const T n, const Vector3D<T, floatType>& v) noexcept
-    {
-		return Vector3D<T, floatType>(v.x / n, v.y / n, v.z / n);
-    }
-
+		i32 x = 0u;
+		i32 y = 0u;
+		i32 z = 0u;
+		
+	};
+	
     // VECTOR 4D
 
     // TODO: Vector4 are incomplete
@@ -641,8 +479,6 @@ namespace sv {
 	    T w;
 
 	    using vec = Vector4D<T, floatType>;
-	    using vec2 = Vector2D<T, floatType>;
-	    using vec3 = Vector3D<T, floatType>;
 
 	    constexpr Vector4D() : x(), y(), z(), w() {}
 	    constexpr Vector4D(T n) : x(n), y(n), z(n), w(n) {}
@@ -797,61 +633,46 @@ namespace sv {
 			{
 				*this = { x, y, z, w };
 			}
-	    inline void set_vec2(const vec2& v) noexcept
-			{
-				*this = { v.x, v.y, z, w };
-			}
-	    inline void set_vec3(const vec3& v) noexcept
-			{
-				*this = { v.x, v.y, v.z, w };
-			}
 	    inline void set_dx(const XMVECTOR& v) noexcept
 			{
 				*this = { XMVectorGetX(v), XMVectorGetY(v), XMVectorGetZ(v), XMVectorGetW(v) };
 			}
 
 	    // getters
-	    inline vec2 get_vec2() const noexcept
-			{
-				return { x, y };
-			}
-	    inline vec3 get_vec3() const noexcept
-			{
-				return { x, y, z };
-			}
 	    inline XMVECTOR get_dx() const noexcept
 			{
 				return XMVectorSet(x, y, z, w);
 			}
 	};
 
-    typedef Vector2D<f32, f32> v2_f32;
-    typedef Vector3D<f32, f32> v3_f32;
     typedef Vector4D<f32, f32> v4_f32;
-
-    typedef Vector2D<f64, f64> v2_f64;
-    typedef Vector3D<f64, f64> v3_f64;
     typedef Vector4D<f64, f64> v4_f64;
-
-    typedef Vector2D<u32, f32> v2_u32;
-    typedef Vector3D<u32, f32> v3_u32;
     typedef Vector4D<u32, f32> v4_u32;
-
-    typedef Vector2D<i32, f32> v2_i32;
-    typedef Vector3D<i32, f32> v3_i32;
     typedef Vector4D<i32, f32> v4_i32;
-
-    typedef Vector2D<u64, f64> v2_u64;
-    typedef Vector3D<u64, f64> v3_u64;
     typedef Vector4D<u64, f64> v4_u64;
-
-    typedef Vector2D<i64, f64> v2_i64;
-    typedef Vector3D<i64, f64> v3_i64;
     typedef Vector4D<i64, f64> v4_i64;
-
-    typedef Vector2D<bool, f32> v2_bool;
-    typedef Vector3D<bool, f32> v3_bool;
     typedef Vector4D<bool, f32> v4_bool;
+
+	SV_INLINE v3_f32 vec2_to_vec3(v2_f32 v, f32 z = 0.f)
+	{
+		return v3_f32{ v.x, v.y, z };
+	}
+	SV_INLINE XMVECTOR vec2_to_dx(v2_f32 v, f32 z = 0.f, f32 w = 0.f)
+	{
+		return XMVectorSet(v.x, v.y, z, w);
+	}
+	SV_INLINE v2_f32 vec3_to_vec2(v3_f32 v)
+	{
+		return v2_f32{ v.x, v.y };
+	}
+	SV_INLINE v4_f32 vec3_to_vec4(v3_f32 v, f32 w = 0.f)
+	{
+		return v4_f32{ v.x, v.y, v.z, w };
+	}
+	SV_INLINE XMVECTOR vec3_to_dx(v3_f32 v, f32 w = 0.f)
+	{
+		return XMVectorSet(v.x, v.y, v.z, w);
+	}
 
     // Color
 
@@ -888,21 +709,23 @@ namespace sv {
 		constexpr static Color DarkSalmon(u8 a = 255u) { return { 233u, 150u, 122u, a }; }
 		constexpr static Color LightSalmon(u8 a = 255u) { return { 255u, 160u, 122u, a }; }
 
-		SV_INLINE bool operator==(const Color& o) { return o.r == r && o.g == g && o.b == b; }
-		SV_INLINE bool operator!=(const Color& o) { return o.r != r || o.g != g || o.b != b; }
+		bool operator==(const Color& o) { return o.r == r && o.g == g && o.b == b; }
+		bool operator!=(const Color& o) { return o.r != r || o.g != g || o.b != b; }
 
-		SV_INLINE v4_f32 toVec4() const { return { f32(r) * (1.f / 255.f), f32(g) * (1.f / 255.f), f32(b) * (1.f / 255.f), f32(a) * (1.f / 255.f) }; }
-		SV_INLINE v3_f32 toVec3() const { return { f32(r) * (1.f / 255.f), f32(g) * (1.f / 255.f), f32(b) * (1.f / 255.f) }; }
-
-		SV_INLINE void setFloat(f32 _r, f32 _g, f32 _b, f32 _a = 1.f)
-			{
-				r = u8(_r * 255.f);
-				g = u8(_g * 255.f);
-				b = u8(_b * 255.f);
-				a = u8(_a * 255.f);
-			}
+		v4_f32 toVec4() const { return { f32(r) * (1.f / 255.f), f32(g) * (1.f / 255.f), f32(b) * (1.f / 255.f), f32(a) * (1.f / 255.f) }; }
+		v3_f32 toVec3() const { return { f32(r) * (1.f / 255.f), f32(g) * (1.f / 255.f), f32(b) * (1.f / 255.f) }; }
 	
     };
+
+	SV_INLINE Color color_float(f32 r, f32 g, f32 b, f32 a = 1.f)
+	{
+		Color c;
+		c.r = u8(r * 255.f);
+		c.g = u8(g * 255.f);
+		c.b = u8(b * 255.f);
+		c.a = u8(a * 255.f);
+		return c;
+	}	
 
     SV_INLINE Color color_blend(Color c0, Color c1)
     {
@@ -1032,21 +855,21 @@ namespace sv {
 		f32 a, f, u, v;
 		edge1 = v1 - v0;
 		edge2 = v2 - v0;
-		h = ray.direction.cross(edge2);
-		a = edge1.dot(h);
+		h = vec3_cross(ray.direction, edge2);
+		a = vec3_dot(edge1, h);
 		if (a > -EPSILON && a < EPSILON)
 			return false;    // This ray is parallel to this triangle.
 		f = 1.f / a;
 		s = ray.origin - v0;
-		u = f * s.dot(h);
+		u = f * vec3_dot(s, h);
 		if (u < 0.0 || u > 1.0)
 			return false;
-		q = s.cross(edge1);
-		v = f * ray.direction.dot(q);
+		q = vec3_cross(s, edge1);
+		v = f * vec3_dot(ray.direction, q);
 		if (v < 0.0 || u + v > 1.0)
 			return false;
 		// At this stage we can compute t to find out where the intersection point is on the line.
-		float t = f * edge2.dot(q);
+		float t = f * vec3_dot(edge2, q);
 		if (t > EPSILON) // ray intersection
 		{
 			outIntersectionPoint = ray.origin + ray.direction * t;

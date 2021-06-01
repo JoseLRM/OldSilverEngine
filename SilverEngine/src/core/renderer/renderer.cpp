@@ -1107,13 +1107,13 @@ namespace sv {
 			switch (l1.type)
 			{
 			case LightType_Point:
-				l0.position = v3_f32(XMVector4Transform(l1.position.getDX(1.f), camera_data.view_matrix));
+				l0.position = v3_f32(XMVector4Transform(vec3_to_dx(l1.position, 1.f), camera_data.view_matrix));
 				l0.range = l1.range;
 				l0.smoothness = l1.smoothness;
 				break;
 
 			case LightType_Direction:
-				l0.position = v3_f32(XMVector3Transform(l1.position.getDX(1.f), rotation_view_matrix));
+				l0.position = v3_f32(XMVector3Transform(vec3_to_dx(l1.position, 1.f), rotation_view_matrix));
 				break;
 			}
 		}
@@ -1210,7 +1210,7 @@ namespace sv {
 				if (camera_) {
 						
 					camera_data.projection_matrix = camera_->projection_matrix;
-					camera_data.position = cam_pos.getVec4(0.f);
+					camera_data.position = vec3_to_vec4(cam_pos, 0.f);
 					camera_data.rotation = cam_rot;
 					camera_data.view_matrix = camera_->view_matrix;
 					camera_data.view_projection_matrix = camera_->view_projection_matrix;

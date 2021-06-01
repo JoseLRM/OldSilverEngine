@@ -1460,7 +1460,7 @@ namespace sv {
 
 					v2_f32& point = nodes[node_id].win.focus_data.selection_point;
 
-					if ((point - gui->mouse_position).length() > 0.03f) {
+					if (vec2_length(point - gui->mouse_position) > 0.03f) {
 
 						u32 new_window_id = gui->windows.emplace();
 						GuiWindow& new_window = gui->windows[new_window_id];
@@ -1713,7 +1713,7 @@ namespace sv {
 				// Package stuff
 				if (w.package_id != u64_max && input.mouse_buttons[MouseButton_Left]) {
 
-					if ((gui->mouse_position - gui->focus.start_mouse_position).length() > 0.03f) {
+					if (vec2_length(gui->mouse_position - gui->focus.start_mouse_position) > 0.03f) {
 						set_focus(gui->focus.root, w.type, w.id, GuiWidgetAction_MovePackage);
 					}
 				}
@@ -3181,7 +3181,7 @@ namespace sv {
 					else if (mouse_in_bounds(w.bounds))
 						color = style.widget_highlighted_color;
 		    
-					imrend_draw_quad(pos.getVec3(), size, color, cmd);
+					imrend_draw_quad(vec2_to_vec3(pos), size, color, cmd);
 
 					if (button.text) {
 
@@ -3210,7 +3210,7 @@ namespace sv {
 					else if (mouse_in_bounds(w.bounds))
 						color = style.widget_highlighted_color;
 		    
-					imrend_draw_quad(pos.getVec3(), size, color, cmd);
+					imrend_draw_quad(vec2_to_vec3(pos), size, color, cmd);
 
 					constexpr f32 RELATIVE_HEIGHT = 0.95f;
 
@@ -3222,7 +3222,7 @@ namespace sv {
 					size = { image_bounds.z, image_bounds.w };
 					pos = { image_bounds.x, image_bounds.y };
 
-					imrend_draw_sprite(pos.getVec3(), size, Color::White(), button.image ? button.image : renderer_white_image(), GPUImageLayout_ShaderResource, button.texcoord, cmd);
+					imrend_draw_sprite(vec2_to_vec3(pos), size, Color::White(), button.image ? button.image : renderer_white_image(), GPUImageLayout_ShaderResource, button.texcoord, cmd);
 
 					if (button.text) {
 
@@ -3252,13 +3252,13 @@ namespace sv {
 					pos = v2_f32{ b.x, b.y };
 					size = v2_f32{ b.z, b.w };
 
-					imrend_draw_quad(pos.getVec3(0.f), size, style.widget_primary_color, cmd);
+					imrend_draw_quad(vec2_to_vec3(pos), size, style.widget_primary_color, cmd);
 
 					// Check size
 					v2_f32 s = size * 0.7f;
 	    
 					if (cb.value)
-						imrend_draw_quad(pos.getVec3(0.f), s, style.check_color, cmd);
+						imrend_draw_quad(vec2_to_vec3(pos), s, style.check_color, cmd);
 		
 					size.x = w.bounds.z - size.x;
 					pos.x = w.bounds.x + w.bounds.z * 0.5f - size.x * 0.5f;
@@ -3285,7 +3285,7 @@ namespace sv {
 					pos = v2_f32{ b.x, b.y };
 					size = v2_f32{ b.z, b.w };
 
-					imrend_draw_quad(pos.getVec3(0.f), size, style.widget_primary_color, cmd);
+					imrend_draw_quad(vec2_to_vec3(pos), size, style.widget_primary_color, cmd);
 
 					// TODO: Draw triangle here
 		
@@ -3342,7 +3342,7 @@ namespace sv {
 							}
 						}
 		    
-						imrend_draw_quad(pos.getVec3(0.f), size, color, cmd);
+						imrend_draw_quad(vec2_to_vec3(pos), size, color, cmd);
 
 						f32 font_size = size.y;
 
@@ -3437,7 +3437,7 @@ namespace sv {
 					else
 						color = style.widget_secondary_color;
 
-					imrend_draw_quad(pos.getVec3(), size, color, cmd);
+					imrend_draw_quad(vec2_to_vec3(pos), size, color, cmd);
 	    
 					if (text.text) {
 
@@ -3459,7 +3459,7 @@ namespace sv {
 					pos = v2_f32{ w.bounds.x, w.bounds.y };
 					size = v2_f32{ w.bounds.z, w.bounds.w };
 
-					imrend_draw_quad(pos.getVec3(0.f), size, style.widget_primary_color, cmd);
+					imrend_draw_quad(vec2_to_vec3(pos), size, style.widget_primary_color, cmd);
 
 					// Arrow size
 					v4_f32 arrow_bounds = compute_collapse_button(w);
@@ -3504,7 +3504,7 @@ namespace sv {
 					v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y);
 					v2_f32 size = v2_f32(w.bounds.z, w.bounds.w);
 	    
-					imrend_draw_sprite(pos.getVec3(), size, Color::White(), image.image ? image.image : renderer_white_image(), GPUImageLayout_ShaderResource, image.texcoord, cmd);
+					imrend_draw_sprite(vec2_to_vec3(pos), size, Color::White(), image.image ? image.image : renderer_white_image(), GPUImageLayout_ShaderResource, image.texcoord, cmd);
 				}
 				break;
 
@@ -3520,7 +3520,7 @@ namespace sv {
 					if (mouse_in_bounds(w.bounds))
 						color = Color::Gray(100);
 	    
-					imrend_draw_sprite(pos.getVec3(), size, color, asset.image ? asset.image : renderer_white_image(), GPUImageLayout_ShaderResource, asset.texcoord, cmd);
+					imrend_draw_sprite(vec2_to_vec3(pos), size, color, asset.image ? asset.image : renderer_white_image(), GPUImageLayout_ShaderResource, asset.texcoord, cmd);
 
 					if (asset.text) {
 
@@ -3655,7 +3655,7 @@ namespace sv {
 		{
 			if (gui->focus.type != GuiWidgetType_Root && gui->focus.type != GuiWidgetType_None && gui->focus.action == GuiWidgetAction_MovePackage) {
 
-				imrend_draw_quad(gui->mouse_position.getVec3(), {0.02f, 0.02f}, Color::Red(), cmd);
+				imrend_draw_quad(vec2_to_vec3(gui->mouse_position), {0.02f, 0.02f}, Color::Red(), cmd);
 
 				for (const GuiWidgetRef& ref : gui->package.recivers) {
 
