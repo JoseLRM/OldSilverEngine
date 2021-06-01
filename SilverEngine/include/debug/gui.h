@@ -24,7 +24,7 @@ namespace sv {
 		Color widget_focused_color = Color::Red();
 		Color widget_text_color = Color::White();
 		Color check_color = Color::White();
-		Color root_background_color = Color::Black(150u);
+		Color root_background_color = Color::Gray(2u, 220u);
 		Color root_focused_background_color = Color::Gray(2u);
 		Color window_decoration_color = Color::Gray(128u);
 		Color window_focused_decoration_color = { 180u, 128u, 128u, 255u };
@@ -45,6 +45,13 @@ namespace sv {
 
     enum GuiWindowFlag : u32 {
 		GuiWindowFlag_NoClose = SV_BIT(0u),
+		GuiWindowFlag_NoDocking = SV_BIT(1u),
+		GuiWindowFlag_FocusMaster = SV_BIT(2u),
+		GuiWindowFlag_DefaultHide = SV_BIT(3u),
+		GuiWindowFlag_NoResize = SV_BIT(4u),
+		GuiWindowFlag_AutoResize = SV_BIT(5u) | GuiWindowFlag_NoResize,
+
+		GuiWindowFlag_Temporal = GuiWindowFlag_FocusMaster | GuiWindowFlag_NoDocking | GuiWindowFlag_DefaultHide | GuiWindowFlag_AutoResize,
     };
 
     enum GuiPopupTrigger : u32 {
@@ -63,30 +70,34 @@ namespace sv {
 
     SV_API bool gui_begin_popup(GuiPopupTrigger trigger);
     SV_API void gui_end_popup();
+	SV_API void gui_close_popup();
 
 	SV_API void gui_send_package(const void* data, size_t size, u64 package_id);
 	SV_API bool gui_recive_package(void** dst, u64 package_id);
 
-    SV_API bool gui_button(const char* text, u64 id);
-	SV_API bool gui_image_button(const char* text, GPUImage* image, v4_f32 texcoord, u64 id);
-    SV_API bool gui_checkbox(const char* text, bool& value, u64 id);
-    SV_API bool gui_checkbox(const char* text, u64 id);
-    SV_API bool gui_drag_f32(const char* text, f32& value, f32 adv, f32 min, f32 max, u64 id, u32 flags = 0u);
-    SV_API bool gui_drag_v2_f32(const char* text, v2_f32& value, f32 adv, f32 min, f32 max, u64 id, u32 flags = 0u);
-    SV_API bool gui_drag_v3_f32(const char* text, v3_f32& value, f32 adv, f32 min, f32 max, u64 id, u32 flags = 0u);
-    SV_API bool gui_drag_v4_f32(const char* text, v4_f32& value, f32 adv, f32 min, f32 max, u64 id, u32 flags = 0u);
-    SV_API bool gui_drag_u32(const char* text, u32& value, u32 adv, u32 min, u32 max, u64 id, u32 flags = 0u);
-    SV_API void gui_text(const char* text, u64 id);
+    SV_API bool gui_button(const char* text, u64 id = u64_max);
+	SV_API bool gui_image_button(const char* text, GPUImage* image, v4_f32 texcoord, u64 id = u64_max);
+    SV_API bool gui_checkbox(const char* text, bool& value, u64 id = u64_max);
+    SV_API bool gui_checkbox(const char* text, u64 id = u64_max);
+    SV_API bool gui_drag_f32(const char* text, f32& value, f32 adv = 0.1f, f32 min = -f32_max, f32 max = f32_max, u64 id = u64_max, u32 flags = 0u);
+    SV_API bool gui_drag_v2_f32(const char* text, v2_f32& value, f32 adv = 0.1f, f32 min = -f32_max, f32 max = f32_max, u64 id = u64_max, u32 flags = 0u);
+    SV_API bool gui_drag_v3_f32(const char* text, v3_f32& value, f32 adv = 0.1f, f32 min = -f32_max, f32 max = f32_max, u64 id = u64_max, u32 flags = 0u);
+    SV_API bool gui_drag_v4_f32(const char* text, v4_f32& value, f32 adv = 0.1f, f32 min = -f32_max, f32 max = f32_max, u64 id = u64_max, u32 flags = 0u);
+    SV_API bool gui_drag_u32(const char* text, u32& value, u32 adv = 1u, u32 min = 0u, u32 max = u32_max, u64 id = u64_max, u32 flags = 0u);
+    SV_API void gui_text(const char* text, u64 id = u64_max);
 	SV_API bool gui_text_field(char* buff, size_t buff_size, u64 id, u32 flags = 0u);
-    SV_API bool gui_collapse(const char* text, u64 id);
+    SV_API bool gui_collapse(const char* text, u64 id = u64_max);
     SV_API void gui_image(GPUImage* image, f32 height, v4_f32 texcoord, u64 id, u32 flags = 0u);
     SV_API void gui_separator(f32 separation);
+
+	SV_API bool gui_begin_combobox(const char* preview, u64 id, u32 flags = 0u);
+	SV_API void gui_end_combobox();
 
     SV_API void gui_begin_grid(f32 width, f32 padding, u64 id);
     SV_API void gui_end_grid();
 
     SV_API bool gui_select_filepath(const char* filepath, char* out, u64 id, u32 flags = 0u);
-    SV_API bool gui_asset_button(const char* text, GPUImage* image, u64 id, u32 flags = 0u);
+    SV_API bool gui_asset_button(const char* text, GPUImage* image, v4_f32 texcoord, u64 id, u32 flags = 0u);
 
     // HELPERS
 
@@ -107,7 +118,7 @@ namespace sv {
 		u32 animation_id;
 	};
 
-	SV_INLINE bool gui_sprite(const char* text, SpriteSheetAsset& sprite_sheet, u32& sprite_id, u64 id)
+	SV_INLINE bool gui_sprite(const char* text, SpriteSheetAsset& sprite_sheet, u32& sprite_id, u64 id = u64_max)
 	{
 		SpriteSheet* sheet = sprite_sheet.get();
 		GPUImage* image = sheet ? sprite_sheet->texture.get() : NULL;
@@ -132,7 +143,7 @@ namespace sv {
 		return false;
 	}
 
-	SV_INLINE bool gui_sprite_animation(const char* text, SpriteSheetAsset& sprite_sheet, u32& animation_id, u64 id)
+	SV_INLINE bool gui_sprite_animation(const char* text, SpriteSheetAsset& sprite_sheet, u32& animation_id, u64 id = u64_max)
 	{
 		SpriteSheet* sheet = sprite_sheet.get();
 		GPUImage* image = sheet ? sprite_sheet->texture.get() : NULL;
@@ -158,7 +169,7 @@ namespace sv {
 		return false;
 	}
 
-	SV_INLINE bool gui_drag_color(const char* text, Color& color, u64 id)
+	SV_INLINE bool gui_drag_color(const char* text, Color& color, u64 id = u64_max)
 	{
 		v4_f32 value = color.toVec4();
 		if (gui_drag_v4_f32(text, value, 0.01f, 0.f, 1.f, id)) {

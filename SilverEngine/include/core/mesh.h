@@ -66,7 +66,9 @@ namespace sv {
 
     SV_API void mesh_set_scale(Mesh& mesh, f32 scale, bool center = false);
     SV_API void mesh_optimize(Mesh& mesh);
-    SV_API void mesh_recalculate_normals(Mesh& mesh);
+    SV_API void mesh_calculate_normals(Mesh& mesh);
+	SV_API void mesh_calculate_tangents(Mesh& mesh);
+	SV_API void mesh_recalculate_normals_and_tangents(Mesh& mesh);
 
     SV_API bool mesh_create_buffers(Mesh& mesh, ResourceUsage usage = ResourceUsage_Static);
     SV_API bool mesh_update_buffers(Mesh& mesh, CommandList cmd);

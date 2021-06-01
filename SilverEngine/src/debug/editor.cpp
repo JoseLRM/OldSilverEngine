@@ -804,7 +804,7 @@ namespace sv {
 					else d.main_camera = SV_ENTITY_NULL;
 				}
 
-				f32 dimension = std::min(cam.width, cam.height);
+				f32 dimension = SV_MIN(cam.width, cam.height);
 
 				f32 near_min;
 				f32 near_max;
@@ -812,6 +812,7 @@ namespace sv {
 				f32 far_min;
 				f32 far_max;
 				f32 far_adv;
+				const char* preview;
 
 				if (cam.projection_type == ProjectionType_Perspective) {
 					near_min = 0.001f;
@@ -820,6 +821,7 @@ namespace sv {
 					far_min = cam.near;
 					far_max = f32_max;
 					far_adv = 0.3f;
+					preview = "Orthographic";
 				}
 				else {
 					near_min = f32_min;
@@ -828,20 +830,33 @@ namespace sv {
 					far_min = cam.near;
 					far_max = f32_max;
 					far_adv = 0.3f;
+					preview = "Perspective";
 				}
 
-				gui_drag_f32("Near", cam.near, near_adv, near_min, near_max, 1u);
-				gui_drag_f32("Far", cam.far, far_adv, far_min, far_max, 2u);
-				if (gui_drag_f32("Dimension", dimension, 0.01f, 0.01f, f32_max, 3u)) {
+				if (gui_begin_combobox(preview, 0u)) {
+
+					if (gui_button("Orthographic")) {
+						cam.projection_type = ProjectionType_Orthographic;
+					}
+					if (gui_button("Perspective")) {
+						cam.projection_type = ProjectionType_Perspective;
+					}
+
+					gui_end_combobox();
+				}
+
+				gui_drag_f32("Near", cam.near, near_adv, near_min, near_max);
+				gui_drag_f32("Far", cam.far, far_adv, far_min, far_max);
+				if (gui_drag_f32("Dimension", dimension, 0.01f, 0.01f, f32_max)) {
 					cam.width = dimension;
 					cam.height = dimension;
 				}
 
-				gui_checkbox("Bloom", cam.bloom.active, 4u);
+				gui_checkbox("Bloom", cam.bloom.active);
 				if (cam.bloom.active) {
 
-					gui_drag_f32("Threshold", cam.bloom.threshold, 0.001f, 0.f, 1.f, 5u);
-					gui_drag_f32("Intensity", cam.bloom.intensity, 0.001f, 0.f, 1.f, 6u);
+					gui_drag_f32("Threshold", cam.bloom.threshold, 0.001f, 0.f, 1.f);
+					gui_drag_f32("Intensity", cam.bloom.intensity, 0.001f, 0.f, 1.f);
 				}
 			}
 
@@ -855,10 +870,10 @@ namespace sv {
 					else l.light_type = LightType_Point;
 				}
 
-				gui_drag_color("Color", l.color, 0u);
-				gui_drag_f32("Intensity", l.intensity, 0.05f, 0.0f, f32_max, 1u);
-				gui_drag_f32("Range", l.range, 0.1f, 0.0f, f32_max, 2u);
-				gui_drag_f32("Smoothness", l.smoothness, 0.005f, 0.0f, 1.f, 3u);
+				gui_drag_color("Color", l.color);
+				gui_drag_f32("Intensity", l.intensity, 0.05f, 0.0f, f32_max);
+				gui_drag_f32("Range", l.range, 0.1f, 0.0f, f32_max);
+				gui_drag_f32("Smoothness", l.smoothness, 0.005f, 0.0f, 1.f);
 			}
 
 			if (BodyComponent::ID == comp_id) {
@@ -870,26 +885,26 @@ namespace sv {
 				bool dynamic = b.body_type == BodyType_Dynamic;
 				bool projectile = b.body_type == BodyType_Projectile;
 
-				if (gui_checkbox("Static", static_, 0u)) {
+				if (gui_checkbox("Static", static_)) {
 					b.body_type = static_ ? BodyType_Static : BodyType_Dynamic;
 				}
-				if (gui_checkbox("Dynamic", dynamic, 1u)) {
+				if (gui_checkbox("Dynamic", dynamic)) {
 					b.body_type = dynamic ? BodyType_Dynamic : BodyType_Static;
 				}
-				if (gui_checkbox("Projectile", projectile, 2u)) {
+				if (gui_checkbox("Projectile", projectile)) {
 					b.body_type = projectile ? BodyType_Projectile : BodyType_Static;
 				}
 		
-				gui_drag_v2_f32("Size", b.size, 0.005f, 0.f, f32_max, 3u);
-				gui_drag_v2_f32("Offset", b.offset, 0.005f, -f32_max, f32_max, 4u);
-				gui_drag_v2_f32("Velocity", b.vel, 0.01f, -f32_max, f32_max, 5u);
-				gui_drag_f32("Mass", b.mass, 0.1f, 0.0f, f32_max, 6u);
-				gui_drag_f32("Friction", b.friction, 0.001f, 0.0f, 1.f, 7u);
-				gui_drag_f32("Bounciness", b.bounciness, 0.005f, 0.0f, 1.f, 8u);
+				gui_drag_v2_f32("Size", b.size, 0.005f, 0.f);
+				gui_drag_v2_f32("Offset", b.offset, 0.005f);
+				gui_drag_v2_f32("Velocity", b.vel, 0.01f);
+				gui_drag_f32("Mass", b.mass, 0.1f, 0.0f);
+				gui_drag_f32("Friction", b.friction, 0.001f, 0.0f, 1.f);
+				gui_drag_f32("Bounciness", b.bounciness, 0.005f, 0.0f, 1.f);
 
 				bool is_trigger = b.flags & BodyComponentFlag_Trigger;
 
-				if (gui_checkbox("Trigger", is_trigger, 9u)) {
+				if (gui_checkbox("Trigger", is_trigger)) {
 					if (is_trigger)
 						b.flags |= BodyComponentFlag_Trigger;
 					else
@@ -1309,14 +1324,39 @@ namespace sv {
 
     SV_INTERNAL void display_asset_browser()
     {
+		AssetBrowserInfo& info = editor.asset_browser;
+		
 		bool update_browser = false;
 		char next_filepath[FILEPATH_SIZE + 1] = "";
 
+		string_copy(next_filepath, info.filepath, FILEPATH_SIZE + 1u);
+
+		if (gui_begin_window("Create Folder", GuiWindowFlag_Temporal)) {
+
+			static char foldername[FILENAME_SIZE + 1u] = "";
+			
+			gui_text_field(foldername, FILENAME_SIZE + 1u, 0u);
+
+			if (gui_button("Create")) {
+				
+				update_browser = true;
+
+				char filepath[FILEPATH_SIZE + 1u] = "assets/";
+				string_append(filepath, info.filepath, FILEPATH_SIZE + 1u);
+				string_append(filepath, foldername, FILEPATH_SIZE + 1u);
+
+				if (!folder_create(filepath)) {
+					SV_LOG_ERROR("Can't create the folder '%s'", filepath);
+				}
+
+				gui_hide_window("Create Folder");
+				string_copy(foldername, "", FILENAME_SIZE + 1u);
+			}
+
+			gui_end_window();
+		}
+
 		if (gui_begin_window("Asset Browser")) {
-
-			AssetBrowserInfo& info = editor.asset_browser;
-
-			string_copy(next_filepath, info.filepath, FILEPATH_SIZE + 1u);
 
 			// TEMP
 			if (input.unused && input.keys[Key_Control] && input.keys[Key_B] == InputState_Pressed) {
@@ -1354,7 +1394,7 @@ namespace sv {
 
 					case AssetElementType_Directory:
 					{
-						if (gui_asset_button(e.name, nullptr, 0u)) {
+						if (gui_asset_button(e.name, editor.image.get(), editor.TEXCOORD_FOLDER, 0u)) {
 			    
 							if (e.type == AssetElementType_Directory && !update_browser) {
 
@@ -1410,16 +1450,16 @@ namespace sv {
 
 							if (get_asset_from_file(tex, pack.filepath)) {
 
-								gui_asset_button(e.name, tex.get(), 0u);
+								gui_asset_button(e.name, tex.get(), {0.f, 0.f, 1.f, 1.f}, 0u);
 							}
 							// TODO: Set default image
 							else {
-								gui_asset_button(e.name, nullptr, 0u);
+								gui_asset_button(e.name, nullptr, {0.f, 0.f, 1.f, 1.f}, 0u);
 							}
 						}
 						else {
 
-							gui_asset_button(e.name, nullptr, 0u);
+							gui_asset_button(e.name, nullptr, {0.f, 0.f, 1.f, 1.f}, 0u);
 						}
 
 						u32 id;
@@ -1547,15 +1587,8 @@ namespace sv {
 
 				if (gui_button("Create Folder", id++)) {
 
-					update_browser = true;
-
-					char filepath[FILEPATH_SIZE + 1u] = "assets/";
-					string_append(filepath, info.filepath, FILEPATH_SIZE + 1u);
-					string_append(filepath, "unnamed", FILEPATH_SIZE + 1u);
-
-					if (!folder_create(filepath)) {
-						SV_LOG_ERROR("Can't create the folder '%s'", filepath);
-					}
+					gui_show_window("Create Folder");
+					gui_close_popup();
 				}
 
 				gui_separator(10.f);
@@ -1995,23 +2028,23 @@ namespace sv {
 				// Window management
 				if (gui_begin_window("Window Manager", GuiWindowFlag_NoClose)) {
 
-					if (gui_button("Hierarchy", 0u)) {
+					if (gui_button("Hierarchy")) {
 						gui_show_window("Hierarchy");
 					}
-					if (gui_button("Inspector", 1u)) {
+					if (gui_button("Inspector")) {
 						gui_show_window("Inspector");
 					}
-					if (gui_button("Asset Browser", 2u)) {
+					if (gui_button("Asset Browser")) {
 						gui_show_window("Asset Browser");
 					}
-					if (gui_button("Scene Manager", 3u)) {
+					if (gui_button("Scene Manager")) {
 						gui_show_window("Scene Manager");
 					}
 
-					gui_checkbox("Colisions", dev.draw_collisions, 4u);
-					gui_checkbox("Postprocessing", dev.postprocessing, 5u);
+					gui_checkbox("Colisions", dev.draw_collisions);
+					gui_checkbox("Postprocessing", dev.postprocessing);
 
-					if (gui_button("Exit Project", 6u)) {
+					if (gui_button("Exit Project")) {
 						dev.next_engine_state = EngineState_ProjectManagement;
 					}
 					gui_end_window();

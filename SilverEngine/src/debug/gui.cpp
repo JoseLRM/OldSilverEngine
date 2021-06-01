@@ -95,7 +95,8 @@ namespace sv {
 		GuiHeader_EndWindow,
 		GuiHeader_BeginPopup,
 		GuiHeader_EndPopup,
-	
+		GuiHeader_ClosePopup,
+		
 		GuiHeader_Widget,
 
 		GuiHeader_Separator,
@@ -111,6 +112,7 @@ namespace sv {
 		GuiWidgetType_Button,
 		GuiWidgetType_ImageButton,
 		GuiWidgetType_Checkbox,
+		GuiWidgetType_Combobox,
 		GuiWidgetType_Drag,
 		GuiWidgetType_Text,
 		GuiWidgetType_TextField,
@@ -153,6 +155,10 @@ namespace sv {
 			} checkbox;
 
 			struct {
+				const char* preview;
+			} combobox;
+
+			struct {
 				const char* text;
 				u8 adv_data[sizeof(f32)];
 				u8 min_data[sizeof(f32)];
@@ -185,6 +191,7 @@ namespace sv {
 			struct {
 				const char* text;
 				GPUImage* image;
+				v4_f32 texcoord;
 				bool pressed;
 			} asset_button;
 
@@ -342,7 +349,7 @@ namespace sv {
 		IndexedList<GuiWindowNode> window_nodes;
 		List<u32> sorted_windows;
 
-		u32 priority_count = 0u;
+		u32 priority_count = 1u;
 
 		struct {
 			GuiRootIndex root = { GuiRootType_None, 0u };
@@ -698,13 +705,13 @@ namespace sv {
 		}
 
 		if (root.type == GuiRootType_Window)
-			gui->windows[root.index].priority = ++gui->priority_count;
+			gui->windows[root.index].priority = gui->priority_count++;
 		else if (root.type == GuiRootType_WindowNode) {
 
 			GuiWindow* win = find_window_of_node(root.index);
 			if (win) {
 
-				win->priority = ++gui->priority_count;
+				win->priority = gui->priority_count++;
 			}
 		}
 
@@ -736,6 +743,7 @@ namespace sv {
 			case GuiWidgetType_Text:
 			case GuiWidgetType_TextField:
 			case GuiWidgetType_SelectFilepath:
+			case GuiWidgetType_Combobox:
 				height = 25.f;
 				break;
 
@@ -845,6 +853,13 @@ namespace sv {
 			checkbox.pressed = false;
 		}
 		break;
+
+		case GuiWidgetType_Combobox:
+		{
+			auto& combobox = w.widget.combobox;
+			combobox.preview = gui_read_text(it);
+		}
+		break;
 		
 		case GuiWidgetType_Drag:
 		{
@@ -914,6 +929,7 @@ namespace sv {
 			auto& asset = w.widget.asset_button;
 			asset.text = gui_read_text(it);
 			asset.image = gui_read<GPUImage*>(it);
+			asset.texcoord = gui_read<v4_f32>(it);
 		}
 		break;
 		    
@@ -1037,9 +1053,29 @@ namespace sv {
 		}
 	}
 
+	// Returns the flags if the window only have one state
+	SV_AUX u32 get_window_flags(GuiWindow& window)
+	{
+		if (gui->window_nodes.exists(window.root_id)) {
+				
+			GuiWindowNode& node = gui->window_nodes[window.root_id];
+
+			if (!node.is_node && node.win.states.size() == 1u)
+				return node.win.states.back()->flags;
+		}
+
+		return 0u;
+	}
+
 	// Updates all the container hierarchy
 	SV_AUX void update_window_bounds(GuiWindow& window)
 	{
+		if (get_window_flags(window) & GuiWindowFlag_AutoResize) {
+
+			GuiWindowNode& node = gui->window_nodes[window.root_id];
+			window.bounds.w = node.win.root.yoff / gui->resolution.y;
+		}
+		
 		update_window_node_bounds(window.root_id, window.bounds, true);
 	}
 
@@ -1085,13 +1121,16 @@ namespace sv {
 		return u32_max;
 	}
 
-	SV_AUX bool find_selected_window(u32& window_id, u32& node_id, u32 window_filter)
+	SV_AUX bool find_selected_window(u32& window_id, u32& node_id, u32 window_filter, bool docking_filter)
 	{
 		for (u32 w : gui->sorted_windows) {
 
 			if (w == window_filter) continue;
 
 			GuiWindow& win = gui->windows[w];
+
+			if (docking_filter && get_window_flags(win) & GuiWindowFlag_NoDocking)
+				continue;
 
 			u32 id = find_selected_node(win.root_id);
 
@@ -1216,11 +1255,11 @@ namespace sv {
 
 			case GuiWindowAction_Move:
 			{
-				if (input.mouse_buttons[MouseButton_Left] == InputState_Released && input.keys[Key_Control]) {
+				if (input.mouse_buttons[MouseButton_Left] == InputState_Released && input.keys[Key_Control] && !(get_window_flags(w) & GuiWindowFlag_NoDocking)) {
 
 					u32 window_id;
 					u32 node_id;
-					if (find_selected_window(window_id, node_id, gui->focus.root.index)) {
+					if (find_selected_window(window_id, node_id, gui->focus.root.index, true)) {
 
 						IndexedList<GuiWindowNode>& nodes = gui->window_nodes;
 
@@ -1522,7 +1561,7 @@ namespace sv {
 						if (field.buff_size != gui->text_field_buffer.size()) {
 							gui->text_field_buffer.resize(field.buff_size);
 
-							const char* text = field.text ? field.text : NULL;
+							const char* text = field.text ? field.text : "";
 						
 							string_copy((char*)gui->text_field_buffer.data(), text, field.buff_size);
 							gui->text_field_cursor = (u32)string_size(text);
@@ -1725,6 +1764,7 @@ namespace sv {
 					if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
 						set_focus(root_index , w.type, w.id);
 						input.unused = true;
+						// TODO: WTF??
 						gui->text_field_cursor;
 						gui->text_field_buffer.clear();
 					}
@@ -1891,7 +1931,7 @@ namespace sv {
 								action = GuiWindowAction_ResizeBottom;
 							}
 
-							if (action != GuiWindowAction_None) {
+							if (action != GuiWindowAction_None && !(get_window_flags(window) & GuiWindowFlag_NoResize)) {
 								input.unused = false;
 								set_focus(root_index, GuiWidgetType_Root, 0u, action);
 							}
@@ -2132,6 +2172,8 @@ namespace sv {
 		
 		reset_root(gui->popup.root);
 
+		bool close_popup_request = false;
+
 		// Read buffer
 		
 		u8* it = gui->buffer.data();
@@ -2225,6 +2267,12 @@ namespace sv {
 
 				// Set new root
 				gui->root_stack.pop_back();
+			}
+			break;
+
+			case GuiHeader_ClosePopup:
+			{
+				close_popup_request = true;
 			}
 			break;
 
@@ -2323,8 +2371,15 @@ namespace sv {
 		}
 
 		// Sort roots list
-		std::sort(gui->sorted_windows.data(), gui->sorted_windows.data() + gui->sorted_windows.size(), [] (u32 w0, u32 w1) {
-				return gui->windows[w0].priority > gui->windows[w1].priority;
+		std::sort(gui->sorted_windows.data(), gui->sorted_windows.data() + gui->sorted_windows.size(), [] (u32 i0, u32 i1) {
+
+				GuiWindow& w0 = gui->windows[i0];
+				GuiWindow& w1 = gui->windows[i1];
+
+				u32 p0 = (get_window_flags(w0) & GuiWindowFlag_FocusMaster) ? (gui->priority_count + w0.priority) : w0.priority;
+				u32 p1 = (get_window_flags(w1) & GuiWindowFlag_FocusMaster) ? (gui->priority_count + w1.priority) : w1.priority;
+				
+				return p0 > p1;
 			});
 
 		// Find focus
@@ -2446,6 +2501,11 @@ namespace sv {
 		// Update screen
 		if (gui->focus.root.type != GuiRootType_Screen)
 			update_root({ GuiRootType_Screen, 0u });
+
+
+		if (close_popup_request) {
+			gui->popup.id = 0u;
+		}
     }
     
     template<typename T>
@@ -2481,7 +2541,7 @@ namespace sv {
 			GuiWindowState& s = gui->window_states[hash];
 			strcpy(s.title, title);
 			s.hash = hash;
-			s.show = true;
+			s.show = (flags & GuiWindowFlag_DefaultHide) ? false : true;
 			state = &s;
 		}
 
@@ -2640,6 +2700,11 @@ namespace sv {
 		gui->root_stack.pop_back();
 		gui_pop_id();
     }
+	
+	void gui_close_popup()
+	{
+		gui_write(GuiHeader_ClosePopup);
+	}
 
 	void gui_send_package(const void* data, size_t size, u64 package_id)
 	{
@@ -2743,6 +2808,7 @@ namespace sv {
 
     bool gui_button(const char* text, u64 id)
     {
+		if (id == u64_max) id = (u64)text;
 		compute_id(id);
 	
 		write_widget(GuiWidgetType_Button, id, 0u);
@@ -2762,6 +2828,7 @@ namespace sv {
 
 	bool gui_image_button(const char* text, GPUImage* image, v4_f32 texcoord, u64 id)
     {
+		if (id == u64_max) id = (u64)text;
 		compute_id(id);
 	
 		write_widget(GuiWidgetType_ImageButton, id, 0u);
@@ -2783,6 +2850,7 @@ namespace sv {
 
     bool gui_checkbox(const char* text, bool& value, u64 id)
     {
+		if (id == u64_max) id = (u64)text;
 		compute_id(id);
 	
 		write_widget(GuiWidgetType_Checkbox, id, 0u);
@@ -2808,6 +2876,7 @@ namespace sv {
 
     bool gui_checkbox(const char* text, u64 id)
     {
+		if (id == u64_max) id = (u64)text;
 		compute_id(id);
 	
 		write_widget(GuiWidgetType_Checkbox, id, 0u);
@@ -2824,6 +2893,7 @@ namespace sv {
 
     SV_AUX bool gui_drag(const char* text, void* value, void* adv, void* min, void* max, GuiType type, u64 id, u32 flags)
     {
+		if (id == u64_max) id = (u64)text;
 		size_t size = sizeof_type(type);
 		size_t comp_size = size / vectorof_type(type);
 
@@ -2884,6 +2954,7 @@ namespace sv {
 
     void gui_text(const char* text, u64 id)
     {
+		if (id == u64_max) id = (u64)text;
 		compute_id(id);
 	
 		write_widget(GuiWidgetType_Text, id, 0u);
@@ -2914,6 +2985,7 @@ namespace sv {
 
     bool gui_collapse(const char* text, u64 id)
     {
+		if (id == u64_max) id = (u64)text;
 		compute_id(id);
 	
 		write_widget(GuiWidgetType_Collapse, id, 0u);
@@ -2944,6 +3016,25 @@ namespace sv {
 		gui_write(separation);
     }
 
+	bool gui_begin_combobox(const char* preview, u64 id, u32 flags)
+	{
+		compute_id(id);
+	
+		write_widget(GuiWidgetType_Combobox, id, flags);
+		gui_write_text(preview);
+	
+		//GuiWidget* combo = find_widget(GuiWidgetType_Combobox, id);
+
+		
+		// TODO
+		return false;
+	}
+
+	void gui_end_combobox()
+	{
+		// TODO
+	}
+
     void gui_begin_grid(f32 width, f32 padding, u64 id)
     {
 		gui_push_id(id);
@@ -2972,13 +3063,15 @@ namespace sv {
 		return false;
     }
 
-    bool gui_asset_button(const char* text, GPUImage* image, u64 id, u32 flags)
+    bool gui_asset_button(const char* text, GPUImage* image, v4_f32 texcoord, u64 id, u32 flags)
     {
+		if (id == u64_max) id = (u64)text;
 		compute_id(id);
 	
 		write_widget(GuiWidgetType_AssetButton, id, flags);
 		gui_write_text(text);
 		gui_write(image);
+		gui_write(texcoord);
 
 		GuiWidget* asset = find_widget(GuiWidgetType_AssetButton, id);
 
@@ -3178,6 +3271,35 @@ namespace sv {
 						Font& font = renderer_default_font();
 
 						imrend_draw_text(cb.text, strlen(cb.text), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font.vertical_offset * font_size, size.x, 1u, font_size, gui->aspect, TextAlignment_Left, &font, style.widget_text_color, cmd);
+					}
+				}
+				break;
+
+				case GuiWidgetType_Combobox:
+				{
+					v2_f32 pos;
+					v2_f32 size;
+
+					auto& cb = w.widget.combobox;
+					v4_f32 b = compute_checkbox_button(w);
+					pos = v2_f32{ b.x, b.y };
+					size = v2_f32{ b.z, b.w };
+
+					imrend_draw_quad(pos.getVec3(0.f), size, style.widget_primary_color, cmd);
+
+					// TODO: Draw triangle here
+		
+					size.x = w.bounds.z - size.x;
+					pos.x = w.bounds.x + w.bounds.z * 0.5f - size.x * 0.5f;
+
+					if (cb.preview) {
+
+						size.x -= 0.01f; // Minus some margin
+						f32 font_size = size.y;
+
+						Font& font = renderer_default_font();
+
+						imrend_draw_text(cb.preview, strlen(cb.preview), pos.x - size.x * 0.5f, pos.y + size.y * 0.5f - font.vertical_offset * font_size, size.x, 1u, font_size, gui->aspect, TextAlignment_Left, &font, style.widget_text_color, cmd);
 					}
 				}
 				break;
@@ -3398,7 +3520,7 @@ namespace sv {
 					if (mouse_in_bounds(w.bounds))
 						color = Color::Gray(100);
 	    
-					imrend_draw_sprite(pos.getVec3(), size, color, asset.image ? asset.image : renderer_white_image(), GPUImageLayout_ShaderResource, { 0.f, 0.f, 1.f, 1.f }, cmd);
+					imrend_draw_sprite(pos.getVec3(), size, color, asset.image ? asset.image : renderer_white_image(), GPUImageLayout_ShaderResource, asset.texcoord, cmd);
 
 					if (asset.text) {
 
@@ -3479,6 +3601,16 @@ namespace sv {
 		for (i32 i = (i32)gui->sorted_windows.size() - 1; i >= 0; --i) {
 
 			u32 id = gui->sorted_windows[i];
+
+			// Focus Master background
+			if (i == 0u) {
+
+				GuiWindow& win = gui->windows[id];
+				if (get_window_flags(win) & GuiWindowFlag_FocusMaster) {
+					imrend_draw_quad({0.5f, 0.5f, 0.f}, {1.f, 1.f}, Color::Gray(200u, 50u), cmd);
+				}
+			}
+			
 			draw_root({ GuiRootType_Window, id }, cmd);
 		}
 
@@ -3490,28 +3622,31 @@ namespace sv {
 		{
 			if (gui->focus.type == GuiWidgetType_Root && gui->focus.root.type == GuiRootType_Window && gui->focus.action == GuiWindowAction_Move && input.keys[Key_Control]) {
 
-				u32 window_id, node_id;
+				if (gui->windows.exists(gui->focus.root.index) && !(get_window_flags(gui->windows[gui->focus.root.index]) & GuiWindowFlag_NoDocking)) { 
 
-				v4_f32 bounds = { 0.5f, 0.5f, 1.f, 1.f };
-				bool screen = !find_selected_window(window_id, node_id, gui->focus.root.index);
+					u32 window_id, node_id;
 
-				if (!screen) {
-					GuiWindowNode& node = gui->window_nodes[node_id];
-					bounds = node.bounds;
-				}
+					v4_f32 bounds = { 0.5f, 0.5f, 1.f, 1.f };
+					bool screen = !find_selected_window(window_id, node_id, gui->focus.root.index, true);
 
-				foreach(i, GuiDockingLocation_MaxEnum) {
-
-					v4_f32 b = compute_docking_button(bounds, (GuiDockingLocation)i, screen);
-					Color color = gui->style.docking_button_color;
-
-					if (mouse_in_bounds(b)) {
-						b.z *= 1.3f;
-						b.w *= 1.3f;
-						color = gui->style.docking_highlighted_button_color;
+					if (!screen) {
+						GuiWindowNode& node = gui->window_nodes[node_id];
+						bounds = node.bounds;
 					}
+
+					foreach(i, GuiDockingLocation_MaxEnum) {
+
+						v4_f32 b = compute_docking_button(bounds, (GuiDockingLocation)i, screen);
+						Color color = gui->style.docking_button_color;
+
+						if (mouse_in_bounds(b)) {
+							b.z *= 1.3f;
+							b.w *= 1.3f;
+							color = gui->style.docking_highlighted_button_color;
+						}
 						
-					imrend_draw_quad({b.x, b.y, 0.f}, {b.z, b.w}, color, cmd);
+						imrend_draw_quad({b.x, b.y, 0.f}, {b.z, b.w}, color, cmd);
+					}
 				}
 			}
 		}

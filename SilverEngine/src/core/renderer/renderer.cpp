@@ -1368,9 +1368,9 @@ namespace sv {
 									graphics_image_bind(gfx.image_white, 3u, ShaderType_Pixel, cmd);
 
 									material_data.diffuse_color = Color::Gray(160u).toVec3();
-									material_data.specular_color = Color::Gray(160u).toVec3();
+									material_data.specular_color = Color::Gray(10u).toVec3();
 									material_data.emissive_color = Color::Black().toVec3();
-									material_data.shininess = 0.5f;
+									material_data.shininess = 1.f;
 
 									graphics_rasterizerstate_bind(gfx.rs_back_culling, cmd);
 								}

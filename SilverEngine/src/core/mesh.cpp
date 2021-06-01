@@ -236,7 +236,95 @@ namespace sv {
 		SV_LOG_ERROR("TODO");
     }
 
-    void mesh_recalculate_normals(Mesh& mesh)
+	void mesh_calculate_normals(Mesh& mesh)
+	{
+		// TODO: Optimize
+		
+		mesh.normals.resize(mesh.positions.size());
+
+		u32 i = 0u;
+		
+		while (i < (u32)mesh.indices.size()) {
+
+			MeshIndex i0 = mesh.indices[i + 0];
+			MeshIndex i1 = mesh.indices[i + 1];
+			MeshIndex i2 = mesh.indices[i + 2];
+
+			v3_f32 p0 = mesh.positions[i0];
+			v3_f32 p1 = mesh.positions[i1];
+			v3_f32 p2 = mesh.positions[i2];
+
+			v3_f32 l0 = p1 - p0;
+			v3_f32 l1 = p2 - p0;
+
+			l0.normalize();
+			l1.normalize();
+
+			v3_f32 normal = l0.cross(l1);
+
+			mesh.normals[i0] += normal;
+			mesh.normals[i1] += normal;
+			mesh.normals[i2] += normal;
+
+			i += 3u;
+		}
+
+		foreach(i, mesh.normals.size()) {
+
+			mesh.normals[i].normalize();
+		}
+	}
+	
+	void mesh_calculate_tangents(Mesh& mesh)
+	{
+		if (mesh.texcoords.size() != mesh.positions.size())
+			return;
+		
+		mesh.tangents.resize(mesh.positions.size());
+	    
+		MeshIndex* it = mesh.indices.data();
+		MeshIndex* end = mesh.indices.data() + mesh.indices.size();
+
+		while (it < end) {
+
+			MeshIndex i0 = *(it + 0);
+			MeshIndex i1 = *(it + 1);
+			MeshIndex i2 = *(it + 2);
+		
+			v3_f32 pos0 = mesh.positions[i0];
+			v3_f32 pos1 = mesh.positions[i1];
+			v3_f32 pos2 = mesh.positions[i2];
+
+			v2_f32 tc0 = mesh.texcoords[i0];
+			v2_f32 tc1 = mesh.texcoords[i1];
+			v2_f32 tc2 = mesh.texcoords[i2];
+
+			v3_f32 normal = (mesh.normals[i0] + mesh.normals[i1] + mesh.normals[i2]) / 3.f;
+
+			v3_f32 edge0 = pos1 - pos0;
+			v3_f32 edge1 = pos2 - pos0;
+		
+			v2_f32 deltaUV0 = tc1 - tc0;
+			v2_f32 deltaUV1 = tc2 - tc0;
+
+			f32 f = 1.f / (deltaUV0.x * deltaUV1.y - deltaUV1.x * deltaUV0.y);
+
+			v4_f32 tan;
+			tan.x = f * (deltaUV1.y * edge0.x + deltaUV0.y * edge1.x);
+			tan.y = f * (deltaUV1.y * edge0.y + deltaUV0.y * edge1.y);
+			tan.z = f * (deltaUV1.y * edge0.z + deltaUV0.y * edge1.z);
+			tan.w = 1.f;
+
+			// TODO: I'm losing tangent precission here
+			mesh.tangents[i0] = tan;
+			mesh.tangents[i1] = tan;
+			mesh.tangents[i2] = tan;
+		
+			it += 3u;
+		}
+	}
+
+    void mesh_recalculate_normals_and_tangents(Mesh& mesh)
     {
 		SV_LOG_ERROR("TODO");
     }
@@ -1361,51 +1449,7 @@ namespace sv {
 			return false;
 		}
 
-		// Compute tangents and bitangents
-		{
-			mesh.tangents.resize(mesh.positions.size());
-	    
-			MeshIndex* it = mesh.indices.data();
-			MeshIndex* end = mesh.indices.data() + mesh.indices.size();
-
-			while (it < end) {
-
-				MeshIndex i0 = *(it + 0);
-				MeshIndex i1 = *(it + 1);
-				MeshIndex i2 = *(it + 2);
-		
-				v3_f32 pos0 = mesh.positions[i0];
-				v3_f32 pos1 = mesh.positions[i1];
-				v3_f32 pos2 = mesh.positions[i2];
-
-				v2_f32 tc0 = mesh.texcoords[i0];
-				v2_f32 tc1 = mesh.texcoords[i1];
-				v2_f32 tc2 = mesh.texcoords[i2];
-
-				v3_f32 normal = (mesh.normals[i0] + mesh.normals[i1] + mesh.normals[i2]) / 3.f;
-
-				v3_f32 edge0 = pos1 - pos0;
-				v3_f32 edge1 = pos2 - pos0;
-		
-				v2_f32 deltaUV0 = tc1 - tc0;
-				v2_f32 deltaUV1 = tc2 - tc0;
-
-				f32 f = 1.f / (deltaUV0.x * deltaUV1.y - deltaUV1.x * deltaUV0.y);
-
-				v4_f32 tan;
-				tan.x = f * (deltaUV1.y * edge0.x + deltaUV0.y * edge1.x);
-				tan.y = f * (deltaUV1.y * edge0.y + deltaUV0.y * edge1.y);
-				tan.z = f * (deltaUV1.y * edge0.z + deltaUV0.y * edge1.z);
-				tan.w = 1.f;
-
-				// TODO: I'm losing tangent precission here
-				mesh.tangents[i0] = tan;
-				mesh.tangents[i1] = tan;
-				mesh.tangents[i2] = tan;
-		
-				it += 3u;
-			}
-		}
+		mesh_calculate_tangents(mesh);
 	
 		return true;
     }
