@@ -466,7 +466,7 @@ namespace sv {
 					} data;
 
 					data.matrix = state.current_matrix;
-					data.color = color.toVec4();
+					data.color = color_to_vec4(color);
 
 					graphics_buffer_update(state.gfx.cbuffer_mesh, &data, sizeof(data), 0u, cmd);
 					graphics_draw_indexed((u32)mesh->indices.size(), 1u, 0u, 0u, 0u, cmd);

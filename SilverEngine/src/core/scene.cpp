@@ -2138,7 +2138,7 @@ namespace sv {
 
 		t.position = position;
 		t.scale = scale;
-		t.rotation.set_dx(rotation);
+		t.rotation = rotation;
     }
 
     void set_entity_position2D(Entity entity, const v2_f32& position)
@@ -2255,7 +2255,7 @@ namespace sv {
 		SV_SCENE();
 		EntityTransform& t = scene.entityData.getTransform(entity);
 
-		return XMMatrixScalingFromVector(vec3_to_dx(t.scale)) * XMMatrixRotationQuaternion(t.rotation.get_dx())
+		return XMMatrixScalingFromVector(vec3_to_dx(t.scale)) * XMMatrixRotationQuaternion(vec4_to_dx(t.rotation))
 			* XMMatrixTranslation(t.position.x, t.position.y, t.position.z);
     }
 

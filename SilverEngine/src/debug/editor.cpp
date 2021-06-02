@@ -310,7 +310,7 @@ namespace sv {
 
 		if (dev.camera.projection_type == ProjectionType_Perspective) {
 
-			XMVECTOR rotation = dev.camera.rotation.get_dx();
+			XMVECTOR rotation = vec4_to_dx(dev.camera.rotation);
 
 			XMVECTOR direction;
 			XMMATRIX rotation_matrix;
@@ -964,7 +964,7 @@ namespace sv {
 					f32 min_scale = relative_scalar(0.02f, pos);
 					f32 scale = SV_MAX(min_scale, 1.f);
 
-					XMMATRIX tm = XMMatrixScaling(scale, scale, 1.f) * XMMatrixRotationQuaternion(dev.camera.rotation.get_dx()) * XMMatrixTranslation(pos.x, pos.y, pos.z);
+					XMMATRIX tm = XMMatrixScaling(scale, scale, 1.f) * XMMatrixRotationQuaternion(vec4_to_dx(dev.camera.rotation)) * XMMatrixTranslation(pos.x, pos.y, pos.z);
 
 					v0 = XMVector3Transform(p0, tm);
 					v1 = XMVector3Transform(p1, tm);
@@ -2416,7 +2416,7 @@ namespace sv {
 					f32 min_scale = relative_scalar(0.02f, pos);
 					f32 scale = SV_MAX(min_scale, 1.f);
 					
-					tm = XMMatrixScaling(scale, scale, 1.f) * XMMatrixRotationQuaternion(dev.camera.rotation.get_dx()) * XMMatrixTranslation(pos.x, pos.y, pos.z);
+					tm = XMMatrixScaling(scale, scale, 1.f) * XMMatrixRotationQuaternion(vec4_to_dx(dev.camera.rotation)) * XMMatrixTranslation(pos.x, pos.y, pos.z);
 
 					imrend_push_matrix(tm, cmd);
 
@@ -2430,7 +2430,7 @@ namespace sv {
 
 						v3_f32 dir = v3_f32::forward();
 
-						XMVECTOR quat = get_entity_world_rotation(entity).get_dx();
+						XMVECTOR quat = vec4_to_dx(get_entity_world_rotation(entity));
 
 						tm = XMMatrixRotationQuaternion(quat);
 

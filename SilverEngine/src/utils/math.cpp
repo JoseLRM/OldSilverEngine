@@ -10,7 +10,7 @@ namespace sv {
 		direction = XMVectorSet(0.f, 0.f, 1.f, 0.f);
 		pos = vec3_to_dx(position);
 
-		direction = XMVector3Transform(direction, XMMatrixRotationQuaternion(directionQuat.get_dx()));
+		direction = XMVector3Transform(direction, XMMatrixRotationQuaternion(vec4_to_dx(directionQuat)));
 
 		target = XMVectorAdd(pos, direction);
 		return XMMatrixLookAtLH(pos, target, XMVectorSet(0.f, 1.f, 0.f, 0.f));

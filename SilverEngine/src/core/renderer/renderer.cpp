@@ -1089,7 +1089,7 @@ namespace sv {
 			const LightInstance& l1 = light_instances[i + offset];
 
 			l0.type = l1.type;
-			l0.color = l1.color.toVec3();
+			l0.color = color_to_vec3(l1.color);
 			l0.intensity = l1.intensity;
 
 			switch (l1.type)
@@ -1128,7 +1128,7 @@ namespace sv {
 		// Create environment buffer
 		{
 			EnvironmentData data;
-			data.ambient_light = scene->ambient_light.toVec3();
+			data.ambient_light = color_to_vec3(scene->ambient_light);
 			graphics_buffer_update(gfx.cbuffer_environment, &data, sizeof(EnvironmentData), 0u, cmd);
 		}
 
@@ -1216,7 +1216,7 @@ namespace sv {
 					ComponentIterator it;
 					CompView<LightComponent> v;
 
-					XMVECTOR camera_quat = camera_data.rotation.get_dx();
+					XMVECTOR camera_quat = vec4_to_dx(camera_data.rotation);
 					XMVECTOR quat;
 
 					if (comp_it_begin(it, v)) {
@@ -1240,7 +1240,7 @@ namespace sv {
 							case LightType_Direction:
 							{
 								XMVECTOR direction = XMVectorSet(0.f, 0.f, -1.f, 0.f);
-								quat = XMQuaternionMultiply(get_entity_world_rotation(entity).get_dx(), XMQuaternionInverse(camera_quat));
+								quat = XMQuaternionMultiply(vec4_to_dx(get_entity_world_rotation(entity)), XMQuaternionInverse(camera_quat));
 
 								direction = XMVector3Transform(direction, XMMatrixRotationQuaternion(quat));
 
@@ -1336,9 +1336,9 @@ namespace sv {
 									if (emissive_map) { graphics_image_bind(emissive_map, 3u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_EMISSIVE_MAPPING; }
 									else graphics_image_bind(gfx.image_white, 3u, ShaderType_Pixel, cmd);
 
-									material_data.diffuse_color = inst.material->diffuse_color.toVec3();
-									material_data.specular_color = inst.material->specular_color.toVec3();
-									material_data.emissive_color = inst.material->emissive_color.toVec3();
+									material_data.diffuse_color = color_to_vec3(inst.material->diffuse_color);
+									material_data.specular_color = color_to_vec3(inst.material->specular_color);
+									material_data.emissive_color = color_to_vec3(inst.material->emissive_color);
 									material_data.shininess = inst.material->shininess;
 
 									switch (inst.material->culling) {
@@ -1364,9 +1364,9 @@ namespace sv {
 									graphics_image_bind(gfx.image_white, 2u, ShaderType_Pixel, cmd);
 									graphics_image_bind(gfx.image_white, 3u, ShaderType_Pixel, cmd);
 
-									material_data.diffuse_color = Color::Gray(160u).toVec3();
-									material_data.specular_color = Color::Gray(10u).toVec3();
-									material_data.emissive_color = Color::Black().toVec3();
+									material_data.diffuse_color = color_to_vec3(Color::Gray(160u));
+									material_data.specular_color = color_to_vec3(Color::Gray(10u));
+									material_data.emissive_color = color_to_vec3(Color::Black());
 									material_data.shininess = 1.f;
 
 									graphics_rasterizerstate_bind(gfx.rs_back_culling, cmd);

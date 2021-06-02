@@ -1168,7 +1168,7 @@ namespace sv {
 	}
 	else {
 
-	    v4_f32 col = clearColor.toVec4();
+	    v4_f32 col = color_to_vec4(clearColor);
 	    VkClearColorValue clear = { col.x, col.y, col.z, col.w };
 	    vkCmdClearColorImage(cmd, image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear, 1u, &range);
 

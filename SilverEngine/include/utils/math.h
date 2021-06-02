@@ -70,9 +70,9 @@ namespace sv {
 		f32 x = 0.f;
 		f32 y = 0.f;
 
-		v2_f32() = default;
-		v2_f32(f32 x, f32 y) : x(x), y(y) {}
-		v2_f32(f32 n) : x(n), y(n) {}
+		constexpr v2_f32() = default;
+		constexpr v2_f32(f32 x, f32 y) : x(x), y(y) {}
+		constexpr v2_f32(f32 n) : x(n), y(n) {}
 		v2_f32(XMVECTOR v) : x(XMVectorGetX(v)), y(XMVectorGetY(v)) {}
 
 		f32& operator[](u32 index) {
@@ -265,9 +265,9 @@ namespace sv {
 		f32 y = 0.f;
 		f32 z = 0.f;
 
-		v3_f32() = default;
-		v3_f32(f32 x, f32 y, f32 z) : x(x), y(y), z(z) {}
-		v3_f32(f32 n) : x(n), y(n), z(n) {}
+		constexpr v3_f32() = default;
+		constexpr v3_f32(f32 x, f32 y, f32 z) : x(x), y(y), z(z) {}
+		constexpr v3_f32(f32 n) : x(n), y(n), z(n) {}
 		v3_f32(XMVECTOR v) : x(XMVectorGetX(v)), y(XMVectorGetY(v)), z(XMVectorGetZ(v)) {}
 
 		const f32& operator[](u32 index) const {
@@ -466,26 +466,20 @@ namespace sv {
 		i32 z = 0u;
 		
 	};
-	
-    // VECTOR 4D
 
-    // TODO: Vector4 are incomplete
-    template<typename T, typename floatType>
-	struct SV_API Vector4D {
+	struct v4_f32 {
 
-	    T x;
-	    T y;
-	    T z;
-	    T w;
+		f32 x = 0.f;
+		f32 y = 0.f;
+		f32 z = 0.f;
+		f32 w = 0.f;
 
-	    using vec = Vector4D<T, floatType>;
+		constexpr v4_f32() = default;
+		constexpr v4_f32(f32 n) : x(n), y(n), z(n), w(n) {}
+		constexpr v4_f32(f32 x, f32 y, f32 z, f32 w) : x(x), y(y), z(z), w(w) {}
+		v4_f32(XMVECTOR v) : x(XMVectorGetX(v)), y(XMVectorGetY(v)), z(XMVectorGetZ(v)), w(XMVectorGetW(v)) {}
 
-	    constexpr Vector4D() : x(), y(), z(), w() {}
-	    constexpr Vector4D(T n) : x(n), y(n), z(n), w(n) {}
-	    constexpr Vector4D(T x, T y, T z, T w) : x(x), y(y), z(z), w(w) {}
-		constexpr Vector4D(const XMVECTOR& v) : x(XMVectorGetX(v)), y(XMVectorGetY(v)), z(XMVectorGetZ(v)), w(XMVectorGetW(v)) {}
-
-		SV_INLINE const f32& operator[](u32 index) const noexcept {
+		const f32& operator[](u32 index) const {
 			switch (index) {
 			case 0:
 				return x;
@@ -497,7 +491,7 @@ namespace sv {
 				return w;
 			}
 		}
-		SV_INLINE f32& operator[](u32 index) noexcept {
+		f32& operator[](u32 index) {
 			switch (index) {
 			case 0:
 				return x;
@@ -510,159 +504,121 @@ namespace sv {
 			}
 		}
 
-		bool operator==(const vec& v) const {
+		bool operator==(v4_f32 v) const {
 			return x == v.x && y == v.y && z == v.z && w == v.w;
 		}
-		bool operator!=(const vec& v) const {
+		bool operator!=(v4_f32 v) const {
 			return x != v.x && y != v.y && z != v.z && w != v.w;
 		}
 		
-	    // sum
-	    inline void operator+=(const vec& v) noexcept
-			{
-				x += v.x;
-				y += v.y;
-				z += v.z;
-				w += v.w;
-			}
-	    inline vec operator+(const vec& v) const noexcept
-			{
-				return vec(x + v.x, y + v.y, z + v.z, w + v.w);
-			}
-	    inline void operator+=(const T v) noexcept
-			{
-				x += v;
-				y += v;
-				z += v;
-				w += v;
-			}
-	    inline vec operator+(const T v) const noexcept
-			{
-				return vec(x + v, y + v, z + v, w + v);
-			}
-
-	    // substract
-	    inline void operator-=(const vec& v) noexcept
-			{
-				x -= v.x;
-				y -= v.y;
-				z -= v.z;
-				w -= v.w;
-			}
-	    inline vec operator-(const vec& v) const noexcept
-			{
-				return vec(x - v.x, y - v.y, z - v.z, w - v.w);
-			}
-	    inline void operator-=(const float v) noexcept
-			{
-				x -= v;
-				y -= v;
-				z -= v;
-				w -= v;
-			}
-	    inline vec operator-(const T v) const noexcept
-			{
-				return vec(x - v, y - v, z - v, w - v);
-			}
-
-	    // multipication
-	    inline void operator*=(const vec& v) noexcept
-			{
-				x *= v.x;
-				y *= v.y;
-				z *= v.z;
-				w *= v.w;
-			}
-	    inline vec operator*(const vec& v) const noexcept
-			{
-				return vec(x * v.x, y * v.y, z * v.z, w * v.w);
-			}
-	    inline void operator*=(const T v) noexcept
-			{
-				x *= v;
-				y *= v;
-				z *= v;
-				w *= v;
-			}
-	    inline vec operator*(const T v) const noexcept
-			{
-				return vec(x * v, y * v, z * v, w * v);
-			}
-
-	    // divide
-	    inline void operator/=(const vec& v) noexcept
-			{
-				x /= v.x;
-				y /= v.y;
-				z /= v.z;
-				w /= v.w;
-			}
-	    inline vec operator/(const vec& v) const noexcept
-			{
-				return vec(x / v.x, y / v.y, z / v.z, w / v.w);
-			}
-	    inline void operator/=(const T v) noexcept
-			{
-				x /= v;
-				y /= v;
-				z /= v;
-				w /= v;
-			}
-	    inline vec operator/(const T v) const noexcept
-			{
-				return vec(x / v, y / v, z / v, w / v);
-			}
-
-	    // methods
-	    constexpr float length() const noexcept
-			{
-				return math_sqrt(x * x + y * y + z * z + w * w);
-			}
-	    inline void normalize() noexcept
-			{
-				float m = length();
-				x /= m;
-				y /= m;
-				z /= m;
-				w /= m;
-			}
-	    inline vec vec_to(const vec& other)
-			{
-				return other - *this;
-			}
-	    inline float distance_to(const vec& other)
-			{
-				return vec_to(other).length();
-			}
-
-	    // setters
-	    inline void set(T x, T y, T z, T w) noexcept
-			{
-				*this = { x, y, z, w };
-			}
-	    inline void set_dx(const XMVECTOR& v) noexcept
-			{
-				*this = { XMVectorGetX(v), XMVectorGetY(v), XMVectorGetZ(v), XMVectorGetW(v) };
-			}
-
-	    // getters
-	    inline XMVECTOR get_dx() const noexcept
-			{
-				return XMVectorSet(x, y, z, w);
-			}
+	    void operator+=(v4_f32 v) {
+			x += v.x;
+			y += v.y;
+			z += v.z;
+			w += v.w;
+		}
+	    void operator+=(f32 v) {
+			x += v;
+			y += v;
+			z += v;
+			w += v;
+		}
+	    void operator-=(v4_f32 v) {
+			x -= v.x;
+			y -= v.y;
+			z -= v.z;
+			w -= v.w;
+		}
+	    void operator-=(f32 v) {
+			x -= v;
+			y -= v;
+			z -= v;
+			w -= v;
+		}
+	    void operator*=(v4_f32 v) {
+			x *= v.x;
+			y *= v.y;
+			z *= v.z;
+			w *= v.w;
+		}
+	    void operator*=(f32 v) {
+			x *= v;
+			y *= v;
+			z *= v;
+			w *= v;
+		}
+	    void operator/=(v4_f32 v) {
+			x /= v.x;
+			y /= v.y;
+			z /= v.z;
+			w /= v.w;
+		}
+	    void operator/=(f32 v) {
+			x /= v;
+			y /= v;
+			z /= v;
+			w /= v;
+		}
+		
 	};
 
-    typedef Vector4D<f32, f32> v4_f32;
-    typedef Vector4D<f64, f64> v4_f64;
-    typedef Vector4D<u32, f32> v4_u32;
-    typedef Vector4D<i32, f32> v4_i32;
-    typedef Vector4D<u64, f64> v4_u64;
-    typedef Vector4D<i64, f64> v4_i64;
-    typedef Vector4D<bool, f32> v4_bool;
+	SV_INLINE v4_f32 operator+(v4_f32 v0, v4_f32 v1)
+    {
+		return v4_f32{ v0.x + v1.x, v0.y + v1.y, v0.z + v1.z, v0.w + v1.w };
+    }
+	SV_INLINE v4_f32 operator+(v4_f32 v, f32 n)
+    {
+		return v4_f32{ v.x + n, v.y + n, v.z + n, v.w + n };
+    }
+	SV_INLINE v4_f32 operator+(f32 n, v4_f32 v)
+    {
+		return v4_f32{ v.x + n, v.y + n, v.z + n, v.w + n };
+    }
+	SV_INLINE v4_f32 operator-(v4_f32 v0, v4_f32 v1)
+    {
+		return v4_f32{ v0.x - v1.x, v0.y - v1.y, v0.z - v1.z, v0.w - v1.w };
+    }
+	SV_INLINE v4_f32 operator-(v4_f32 v, f32 n)
+    {
+		return v4_f32{ v.x - n, v.y - n, v.z - n, v.w - n };
+    }
+	SV_INLINE v4_f32 operator-(f32 n, v4_f32 v)
+    {
+		return v4_f32{ n - v.x, n - v.y, n - v.z, n - v.w };
+    }
+	
+	SV_INLINE f32 vec4_length(v4_f32 v)
+	{
+		return math_sqrt(v.x * v.x + v.y * v.y + v.z * v.z + v.w * v.w);
+	}
+	
+	SV_INLINE v4_f32 vec4_normalize(v4_f32 v)
+	{
+		f32 m = vec4_length(v);
+		v.x /= m;
+		v.y /= m;
+		v.z /= m;
+		v.w /= m;
+		return v;
+	}
+
+	SV_INLINE v4_f32 vec4_to(v4_f32 from, v4_f32 to)
+	{
+		return to - from;
+	}
+
+	SV_INLINE f32 vec4_distance(v4_f32 from, v4_f32 to)
+	{
+		return vec4_length(vec4_to(from, to));
+	}
 
 	SV_INLINE v3_f32 vec2_to_vec3(v2_f32 v, f32 z = 0.f)
 	{
 		return v3_f32{ v.x, v.y, z };
+	}
+	SV_INLINE v4_f32 vec2_to_vec4(v2_f32 v, f32 z = 0.f, f32 w = 0.f)
+	{
+		return v4_f32{ v.x, v.y, z, w };
 	}
 	SV_INLINE XMVECTOR vec2_to_dx(v2_f32 v, f32 z = 0.f, f32 w = 0.f)
 	{
@@ -679,6 +635,10 @@ namespace sv {
 	SV_INLINE XMVECTOR vec3_to_dx(v3_f32 v, f32 w = 0.f)
 	{
 		return XMVectorSet(v.x, v.y, v.z, w);
+	}
+	SV_INLINE v2_f32 vec4_to_vec2(v4_f32 v)
+	{
+		return v2_f32{ v.x, v.y };
 	}
 	SV_INLINE v3_f32 vec4_to_vec3(v4_f32 v)
 	{
@@ -726,21 +686,25 @@ namespace sv {
 
 		bool operator==(const Color& o) { return o.r == r && o.g == g && o.b == b; }
 		bool operator!=(const Color& o) { return o.r != r || o.g != g || o.b != b; }
-
-		v4_f32 toVec4() const { return { f32(r) * (1.f / 255.f), f32(g) * (1.f / 255.f), f32(b) * (1.f / 255.f), f32(a) * (1.f / 255.f) }; }
-		v3_f32 toVec3() const { return { f32(r) * (1.f / 255.f), f32(g) * (1.f / 255.f), f32(b) * (1.f / 255.f) }; }
 	
     };
 
-	SV_INLINE Color color_float(f32 r, f32 g, f32 b, f32 a = 1.f)
+	constexpr Color color_float(f32 r, f32 g, f32 b, f32 a = 1.f)
 	{
-		Color c;
-		c.r = u8(r * 255.f);
-		c.g = u8(g * 255.f);
-		c.b = u8(b * 255.f);
-		c.a = u8(a * 255.f);
-		return c;
-	}	
+		return { u8(r * 255.f), u8(g * 255.f), u8(b * 255.f), u8(a * 255.f) };
+	}
+
+	constexpr v3_f32 color_to_vec3(Color c)
+	{
+		constexpr f32 mult = (1.f / 255.f);
+		return { f32(c.r) * mult, f32(c.g) * mult, f32(c.b) * mult };
+	}
+	
+	constexpr v4_f32 color_to_vec4(Color c)
+	{
+		constexpr f32 mult = (1.f / 255.f);
+		return { f32(c.r) * mult, f32(c.g) * mult, f32(c.b) * mult, f32(c.a) * mult };
+	}
 
     SV_INLINE Color color_blend(Color c0, Color c1)
     {

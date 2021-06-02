@@ -171,7 +171,7 @@ namespace sv {
 
 	SV_INLINE bool gui_drag_color(const char* text, Color& color, u64 id = u64_max)
 	{
-		v4_f32 value = color.toVec4();
+		v4_f32 value = color_to_vec4(color);
 		if (gui_drag_v4_f32(text, value, 0.01f, 0.f, 1.f, id)) {
 			color = color_float(value.x, value.y, value.z, value.w);
 			return true;
