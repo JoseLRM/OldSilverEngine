@@ -99,7 +99,8 @@ namespace sv {
 		HierarchyData hierarchy;
 	
 		TextureAsset image;
-		static constexpr v4_f32 TEXCOORD_FOLDER = { 0.f, 0.f, 0.2f, 0.2f };
+		static constexpr v4_f32 TEXCOORD_FOLDER = { 0.f, 0.f, 0.1f, 0.1f };
+		static constexpr v4_f32 TEXCOORD_LIGHT_PROBE = { 0.7f, 0.7f, 1.f, 1.f };
 
 		SpriteSheetEditorData sprite_sheet_editor_data;
 
@@ -941,73 +942,29 @@ namespace sv {
 		Entity selected = SV_ENTITY_NULL;
 		f32 distance = f32_max;
 
-		// Select meshes
+		XMVECTOR p0 = XMVectorSet(-0.5f, 0.5f, 0.f, 1.f);
+		XMVECTOR p1 = XMVectorSet(0.5f, 0.5f, 0.f, 1.f);
+		XMVECTOR p2 = XMVectorSet(-0.5f, -0.5f, 0.f, 1.f);
+		XMVECTOR p3 = XMVectorSet(0.5f, -0.5f, 0.f, 1.f);
+
+		XMVECTOR v0;
+		XMVECTOR v1;
+		XMVECTOR v2;
+		XMVECTOR v3;
+
+		// Select lights
 		{
-			for_each_comp<MeshComponent>([&] (Entity entity, MeshComponent& m)
+			for_each_comp<LightComponent>([&] (Entity entity, LightComponent& l)
 				{
 					if (editor.selected_entity == entity)
 						return true;
 
-					if (m.mesh.get() == nullptr) return true;
+					v3_f32 pos = get_entity_world_position(entity);
 
-					XMMATRIX wm = get_entity_world_matrix(entity);
+					f32 min_scale = relative_scalar(0.02f, pos);
+					f32 scale = SV_MAX(min_scale, 1.f);
 
-					XMMATRIX itm = XMMatrixInverse(0, wm);
-
-					ray.origin = v3_f32(XMVector4Transform(ray_origin, itm));
-					ray.direction = v3_f32(XMVector4Transform(ray_direction, itm));
-
-					Mesh& mesh = *m.mesh.get();
-
-					u32 triangles = u32(mesh.indices.size()) / 3u;
-
-					for (u32 i = 0u; i < triangles; ++i) {
-
-						u32 i0 = mesh.indices[i * 3u + 0u];
-						u32 i1 = mesh.indices[i * 3u + 1u];
-						u32 i2 = mesh.indices[i * 3u + 2u];
-
-						v3_f32 p0 = mesh.positions[i0];
-						v3_f32 p1 = mesh.positions[i1];
-						v3_f32 p2 = mesh.positions[i2];
-
-						v3_f32 intersection;
-
-						if (intersect_ray_vs_traingle(ray, p0, p1, p2, intersection)) {
-
-							f32 dis = vec3_length(intersection);
-							if (dis < distance) {
-								distance = dis;
-								selected = entity;
-							}
-						}
-					}
-
-					return true;
-				});
-		}
-
-		// Select sprites
-		{
-			ray.origin = v3_f32(ray_origin);
-			ray.direction = v3_f32(ray_direction);
-
-			XMVECTOR p0 = XMVectorSet(-0.5f, 0.5f, 0.f, 1.f);
-			XMVECTOR p1 = XMVectorSet(0.5f, 0.5f, 0.f, 1.f);
-			XMVECTOR p2 = XMVectorSet(-0.5f, -0.5f, 0.f, 1.f);
-			XMVECTOR p3 = XMVectorSet(0.5f, -0.5f, 0.f, 1.f);
-
-			XMVECTOR v0;
-			XMVECTOR v1;
-			XMVECTOR v2;
-			XMVECTOR v3;
-
-			for_each_comp<SpriteComponent>([&] (Entity entity, SpriteComponent&)
-				{
-					if (editor.selected_entity == entity)
-						return false;
-
-					XMMATRIX tm = get_entity_world_matrix(entity);
+					XMMATRIX tm = XMMatrixScaling(scale, scale, 1.f) * XMMatrixRotationQuaternion(dev.camera.rotation.get_dx()) * XMMatrixTranslation(pos.x, pos.y, pos.z);
 
 					v0 = XMVector3Transform(p0, tm);
 					v1 = XMVector3Transform(p1, tm);
@@ -1033,11 +990,99 @@ namespace sv {
 						distance = dis;
 						selected = entity;
 					}
-
 					return true;
 				});
 		}
-	
+
+		if (selected == SV_ENTITY_NULL) {
+
+			// Select meshes
+			{
+				for_each_comp<MeshComponent>([&] (Entity entity, MeshComponent& m)
+					{
+						if (editor.selected_entity == entity)
+							return true;
+
+						if (m.mesh.get() == nullptr) return true;
+
+						XMMATRIX wm = get_entity_world_matrix(entity);
+
+						XMMATRIX itm = XMMatrixInverse(0, wm);
+
+						ray.origin = v3_f32(XMVector4Transform(ray_origin, itm));
+						ray.direction = v3_f32(XMVector4Transform(ray_direction, itm));
+
+						Mesh& mesh = *m.mesh.get();
+
+						u32 triangles = u32(mesh.indices.size()) / 3u;
+
+						for (u32 i = 0u; i < triangles; ++i) {
+
+							u32 i0 = mesh.indices[i * 3u + 0u];
+							u32 i1 = mesh.indices[i * 3u + 1u];
+							u32 i2 = mesh.indices[i * 3u + 2u];
+
+							v3_f32 p0 = mesh.positions[i0];
+							v3_f32 p1 = mesh.positions[i1];
+							v3_f32 p2 = mesh.positions[i2];
+
+							v3_f32 intersection;
+
+							if (intersect_ray_vs_traingle(ray, p0, p1, p2, intersection)) {
+
+								f32 dis = vec3_length(intersection);
+								if (dis < distance) {
+									distance = dis;
+									selected = entity;
+								}
+							}
+						}
+
+						return true;
+					});
+			}
+
+			// Select sprites
+			{
+				ray.origin = v3_f32(ray_origin);
+				ray.direction = v3_f32(ray_direction);
+
+				for_each_comp<SpriteComponent>([&] (Entity entity, SpriteComponent&)
+					{
+						if (editor.selected_entity == entity)
+							return false;
+
+						XMMATRIX tm = get_entity_world_matrix(entity);
+
+						v0 = XMVector3Transform(p0, tm);
+						v1 = XMVector3Transform(p1, tm);
+						v2 = XMVector3Transform(p2, tm);
+						v3 = XMVector3Transform(p3, tm);
+
+						f32 dis = f32_max;
+
+						v3_f32 intersection;
+
+						// TODO: Ray vs Quad intersection
+
+						if (intersect_ray_vs_traingle(ray, v3_f32(v0), v3_f32(v1), v3_f32(v2), intersection)) {
+
+							dis = vec3_length(intersection);
+						}
+						else if (intersect_ray_vs_traingle(ray, v3_f32(v1), v3_f32(v3), v3_f32(v2), intersection)) {
+			
+							dis = SV_MIN(vec3_length(intersection), dis);
+						}
+
+						if (dis < distance) {
+							distance = dis;
+							selected = entity;
+						}
+
+						return true;
+					});
+			}
+		}
 	
 		editor.selected_entity = selected;
     }
@@ -2358,6 +2403,45 @@ namespace sv {
 					imrend_draw_orthographic_grip(vec3_to_vec2(dev.camera.position), {}, { width, height }, i, color, cmd);
 				}
 			}
+		}
+
+		// Draw light probes
+		{
+			XMMATRIX tm;
+			
+			for_each_comp<LightComponent>([&] (Entity entity, LightComponent& light)
+				{
+					v3_f32 pos = get_entity_world_position(entity);
+
+					f32 min_scale = relative_scalar(0.02f, pos);
+					f32 scale = SV_MAX(min_scale, 1.f);
+					
+					tm = XMMatrixScaling(scale, scale, 1.f) * XMMatrixRotationQuaternion(dev.camera.rotation.get_dx()) * XMMatrixTranslation(pos.x, pos.y, pos.z);
+
+					imrend_push_matrix(tm, cmd);
+
+					imrend_draw_sprite({}, { 1.f, 1.f }, Color::White(), editor.image.get(), GPUImageLayout_ShaderResource, editor.TEXCOORD_LIGHT_PROBE, cmd);
+
+					imrend_pop_matrix(cmd);
+
+					if (entity == editor.selected_entity && light.light_type == LightType_Direction) {
+
+						// Draw light direction
+
+						v3_f32 dir = v3_f32::forward();
+
+						XMVECTOR quat = get_entity_world_rotation(entity).get_dx();
+
+						tm = XMMatrixRotationQuaternion(quat);
+
+						dir = XMVector3Transform(vec3_to_dx(dir), tm);
+
+						dir = vec3_normalize(dir) * scale * 1.5f;
+						imrend_draw_line(pos, pos + dir, light.color, cmd);
+					}
+
+					return true;
+				});
 		}
 
 		// Draw collisions

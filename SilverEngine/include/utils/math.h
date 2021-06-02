@@ -483,7 +483,7 @@ namespace sv {
 	    constexpr Vector4D() : x(), y(), z(), w() {}
 	    constexpr Vector4D(T n) : x(n), y(n), z(n), w(n) {}
 	    constexpr Vector4D(T x, T y, T z, T w) : x(x), y(y), z(z), w(w) {}
-	    explicit constexpr Vector4D(const XMVECTOR& v) : x(XMVectorGetX(v)), y(XMVectorGetY(v)), z(XMVectorGetZ(v)), w(XMVectorGetW(v)) {}
+		constexpr Vector4D(const XMVECTOR& v) : x(XMVectorGetX(v)), y(XMVectorGetY(v)), z(XMVectorGetZ(v)), w(XMVectorGetW(v)) {}
 
 		SV_INLINE const f32& operator[](u32 index) const noexcept {
 			switch (index) {
@@ -679,6 +679,14 @@ namespace sv {
 	SV_INLINE XMVECTOR vec3_to_dx(v3_f32 v, f32 w = 0.f)
 	{
 		return XMVectorSet(v.x, v.y, v.z, w);
+	}
+	SV_INLINE v3_f32 vec4_to_vec3(v4_f32 v)
+	{
+		return v3_f32{ v.x, v.y, v.z };
+	}
+	SV_INLINE XMVECTOR vec4_to_dx(v4_f32 v)
+	{
+		return XMVectorSet(v.x, v.y, v.z, v.w);
 	}
 
     // Color

@@ -1083,18 +1083,6 @@ namespace sv {
 			    
 		GPU_LightData light_data[LIGHT_COUNT] = {};
 
-		XMMATRIX rotation_view_matrix;
-		{
-			XMFLOAT4X4 vm;
-			XMStoreFloat4x4(&vm, camera_data.view_matrix);
-			vm._41 = 0.f;
-			vm._42 = 0.f;
-			vm._43 = 0.f;
-			vm._44 = 1.f;
-
-			rotation_view_matrix = XMLoadFloat4x4(&vm);
-		}
-
 		foreach(i, light_count) {
 
 			GPU_LightData& l0 = light_data[i];
@@ -1107,13 +1095,13 @@ namespace sv {
 			switch (l1.type)
 			{
 			case LightType_Point:
-				l0.position = v3_f32(XMVector4Transform(vec3_to_dx(l1.position, 1.f), camera_data.view_matrix));
+				l0.position = l1.position;
 				l0.range = l1.range;
 				l0.smoothness = l1.smoothness;
 				break;
 
 			case LightType_Direction:
-				l0.position = v3_f32(XMVector3Transform(vec3_to_dx(l1.position, 1.f), rotation_view_matrix));
+				l0.position = l1.position;
 				break;
 			}
 		}
@@ -1142,41 +1130,6 @@ namespace sv {
 			EnvironmentData data;
 			data.ambient_light = scene->ambient_light.toVec3();
 			graphics_buffer_update(gfx.cbuffer_environment, &data, sizeof(EnvironmentData), 0u, cmd);
-		}
-
-		// Get lights
-		{
-			ComponentIterator it;
-			CompView<LightComponent> v;
-
-			if (comp_it_begin(it, v)) {
-
-				do {
-
-					Entity entity = v.entity;
-					LightComponent& l = *v.comp;
-
-					switch (l.light_type)
-					{
-					case LightType_Point:
-						light_instances.emplace_back(l.color, get_entity_world_position(entity), l.range, l.intensity, l.smoothness);
-						break;
-
-					case LightType_Direction:
-					{
-						XMVECTOR direction = XMVectorSet(0.f, 0.f, 1.f, 1.f);
-
-						direction = XMVector3Transform(direction, XMMatrixRotationQuaternion(get_entity_world_rotation(entity).get_dx()));
-
-						light_instances.emplace_back(l.color, v3_f32(direction), l.intensity);
-					}
-					break;
-
-					}
-
-				}
-				while(comp_it_next(it, v));
-			}
 		}
 
 		// Draw cameras
@@ -1257,6 +1210,50 @@ namespace sv {
 
 				if (scene->skybox && camera.projection_type == ProjectionType_Perspective)
 					draw_sky(scene->skybox, camera_data.view_matrix, camera_data.projection_matrix, cmd);
+
+				// GET LIGHTS
+				{
+					ComponentIterator it;
+					CompView<LightComponent> v;
+
+					XMVECTOR camera_quat = camera_data.rotation.get_dx();
+					XMVECTOR quat;
+
+					if (comp_it_begin(it, v)) {
+
+						do {
+
+							Entity entity = v.entity;
+							LightComponent& l = *v.comp;
+
+							switch (l.light_type)
+							{
+							case LightType_Point:
+							{
+								XMVECTOR position = vec3_to_dx(get_entity_world_position(entity), 1.f);
+								position = XMVector4Transform(position, camera_data.view_matrix);
+								
+								light_instances.emplace_back(l.color, position, l.range, l.intensity, l.smoothness);
+								break;
+							}
+
+							case LightType_Direction:
+							{
+								XMVECTOR direction = XMVectorSet(0.f, 0.f, -1.f, 0.f);
+								quat = XMQuaternionMultiply(get_entity_world_rotation(entity).get_dx(), XMQuaternionInverse(camera_quat));
+
+								direction = XMVector3Transform(direction, XMMatrixRotationQuaternion(quat));
+
+								light_instances.emplace_back(l.color, v3_f32(direction), l.intensity);
+							}
+							break;
+
+							}
+
+						}
+						while(comp_it_next(it, v));
+					}
+				}
 
 				// DRAW MESHES
 				{
