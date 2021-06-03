@@ -362,6 +362,7 @@ namespace sv {
 		GuiWidget* current_focus = nullptr;
 
 		ThickHashTable<GuiWindowState, 50u> window_states;
+		ThickHashTable<bool, 100u> bools;
 
 		struct  {
 			GuiRootInfo root;
@@ -671,23 +672,6 @@ namespace sv {
 		}
 
 		*gui = {};
-		/*gui->buffer.clear();
-		gui->parent_stack.clear();
-		gui->ids.clear();
-		gui->root_info = {};
-		gui->root_stack.clear();
-		gui->screen_docking_count = 0u;
-		gui->windows.clear();
-		gui->window_nodes.clear();
-		gui->sorted_windows.clear();
-		gui->focus.root = { GuiRootType_None, 0u };
-		gui->focus.type = GuiWidgetType_None;
-		gui->current_focus = NULL;
-		gui->window_states.clear();
-		gui->popup.id = 0u;
-		gui->text_field_buffer.clear();
-		gui->package.recivers.clear();
-		gui->package.buffer.clear();*/
 	}
 
     bool _gui_close()
@@ -3064,14 +3048,23 @@ namespace sv {
 	
 		write_widget(GuiWidgetType_Checkbox, id, 0u);
 		gui_write_text(text);
-	
+
+		
+		bool* value = gui->bools.find(id);
+
+		if (value == NULL) {
+			value = &gui->bools[id];
+			*value = false;
+		}
+
 		GuiWidget* checkbox = find_widget(GuiWidgetType_Checkbox, id);
 
-		bool value = checkbox && checkbox->widget.checkbox.value;
+		if (checkbox)
+			*value = checkbox->widget.checkbox.value;
+		
+		gui_write(*value);
 	
-		gui_write(value);
-	
-		return value;
+		return *value;
     }
 
     SV_AUX bool gui_drag(const char* text, void* value, void* adv, void* min, void* max, GuiType type, u64 id, u32 flags)
@@ -3168,19 +3161,27 @@ namespace sv {
 
     bool gui_collapse(const char* text, u64 id)
     {
-		if (id == u64_max) id = (u64)text;
+			if (id == u64_max) id = (u64)text;
 		compute_id(id);
 	
 		write_widget(GuiWidgetType_Collapse, id, 0u);
 		gui_write_text(text);
-	
+
+		bool* active = gui->bools.find(id);
+
+		if (active == NULL) {
+			active = &gui->bools[id];
+			*active = false;
+		}
+
 		GuiWidget* collapse = find_widget(GuiWidgetType_Collapse, id);
 
-		bool active = collapse && collapse->widget.collapse.active;
-
-		gui_write(active);
+		if (collapse)
+			*active = collapse->widget.collapse.active;
+		
+		gui_write(*active);
 	
-		return active;
+		return *active;
     }
 
     void gui_image(GPUImage* image, f32 height, v4_f32 texcoord, u64 id, u32 flags)
