@@ -11,6 +11,7 @@ namespace sv {
 
     bool _gui_initialize();
     bool _gui_close();
+	void _gui_load(const char* name);
 
     bool _gui_begin();
     void _gui_end();

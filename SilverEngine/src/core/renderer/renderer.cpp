@@ -775,11 +775,10 @@ namespace sv {
 		v4_f32	  texcoord;
 		GPUImage* image;
 		Color	  color;
-		f32	  layer;
 
 		SpriteInstance() = default;
-		SpriteInstance(const XMMATRIX& m, const v4_f32& texcoord, GPUImage* image, Color color, f32 layer)
-			: tm(m), texcoord(texcoord), image(image), color(color), layer(layer) {}
+		SpriteInstance(const XMMATRIX& m, const v4_f32& texcoord, GPUImage* image, Color color)
+			: tm(m), texcoord(texcoord), image(image), color(color) {}
     };
 
     struct MeshInstance {
@@ -895,7 +894,7 @@ namespace sv {
 					if (spr.flags & SpriteComponentFlag_XFlip) std::swap(tc.x, tc.z);
 					if (spr.flags & SpriteComponentFlag_YFlip) std::swap(tc.y, tc.w);
 		    
-					sprite_instances.emplace_back(get_entity_world_matrix(entity), tc, image, spr.color, pos.z);
+					sprite_instances.emplace_back(get_entity_world_matrix(entity), tc, image, spr.color);
 				}
 				while(comp_it_next(it, view));
 			}
@@ -939,19 +938,13 @@ namespace sv {
 					if (s.flags & SpriteComponentFlag_XFlip) std::swap(tc.x, tc.z);
 					if (s.flags & SpriteComponentFlag_YFlip) std::swap(tc.y, tc.w);
 		    
-					sprite_instances.emplace_back(get_entity_world_matrix(entity), tc, image, s.color, pos.z);
+					sprite_instances.emplace_back(get_entity_world_matrix(entity), tc, image, s.color);
 				}
 				while(comp_it_next(it, view));
 			}
 		}
 
 		if (sprite_instances.size()) {
-
-			// Sort sprites
-			std::sort(sprite_instances.data(), sprite_instances.data() + sprite_instances.size(), [](const SpriteInstance& s0, const SpriteInstance& s1)
-				{
-					return s0.layer < s1.layer;
-				});
 
 			GPUBuffer* batch_buffer = get_batch_buffer(sizeof(SpriteData), cmd);
 			SpriteData& data = *(SpriteData*)renderer->batch_data[cmd];
@@ -967,7 +960,7 @@ namespace sv {
 			graphics_shader_bind(gfx.vs_sprite, cmd);
 			graphics_shader_bind(gfx.ps_sprite, cmd);
 			graphics_blendstate_bind(gfx.bs_transparent, cmd);
-			graphics_depthstencilstate_unbind(cmd);
+			graphics_depthstencilstate_bind(gfx.dss_default_depth, cmd);
 
 			GPUImage* att[2];
 			att[0] = gfx.offscreen;

@@ -385,6 +385,8 @@ namespace sv {
 		f32 aspect;
 		v2_f32 mouse_position;
 
+		u64 hash = 0u;
+
     };
 
     static GUI* gui = nullptr;
@@ -516,75 +518,256 @@ namespace sv {
 			
 		}
 	}
+
+	SV_INTERNAL void deserialize_node(Deserializer& d, u32& id, bool is_root)
+	{
+		bool exists; 
+		deserialize_bool(d, exists);
+
+		if (exists) {
+
+			auto& nodes = gui->window_nodes;
+			id = gui->window_nodes.emplace();
+
+			deserialize_bool(d, nodes[id].is_node);
+			nodes[id].is_root = is_root;
+
+			if (nodes[id].is_node) {
+
+				deserialize_u32(d, (u32&)nodes[id].node.split);
+
+				u32 id0;
+				u32 id1;
+				
+				deserialize_node(d, id0, false);
+				deserialize_node(d, id1, false);
+
+				nodes[id].node.id0 = id0;
+				nodes[id].node.id1 = id1;
+			}
+			else {
+
+				u32 state_count;
+				deserialize_u32(d, state_count);
+
+				foreach(i, state_count) {
+
+					u64 hash;
+					deserialize_u64(d, hash);
+
+					GuiWindowState* state = gui->window_states.find(hash);
+					if (state) {
+						nodes[id].win.states.push_back(state);
+					}
+				}
+
+				deserialize_u32(d, nodes[id].win.current_index);
+				if (nodes[id].win.states.size())
+					nodes[id].win.current_index = SV_MIN(nodes[id].win.current_index, u32(nodes[id].win.states.size()) - 1u);
+			}
+		}
+		else id = u32_max;
+	}
     
     bool _gui_initialize()
     {
 		gui = SV_ALLOCATE_STRUCT(GUI);
 
-		// Get last static state
-		/*{
-		  Deserializer d;
-	    
-		  bool res = bin_read(hash_string("GUI STATE"), d, true);
-		  if (res) {
-
-		  u32 window_count;
-		  deserialize_u32(d, window_count);
-
-		  foreach(i, window_count) {
-		    
-		  GuiWindowState s;
-		  deserialize_bool(d, s.show);
-		  deserialize_string(d, s.title, GUI_WINDOW_NAME_SIZE);
-		  deserialize_v4_f32(d, s.root_info.bounds);
-
-		  s.flags = 0u;
-		  s.hash = hash_string(s.title);
-
-		  GuiWindowState& state = gui->window_states[s.hash];
-		  state = s;
-		  state.root_info.type = GuiRootType_Window;
-		  state.root_info.state = &state;
-		  }
-
-		  deserialize_end(d);
-		  }
-		  else {
-		  SV_LOG_WARNING("Can't load the last gui static state");
-		  }
-		  }*/
-
 		return true;
     }
+
+	SV_INTERNAL void serialize_node(Serializer& s, u32 node_id)
+	{
+		if (!gui->window_nodes.exists(node_id)) {
+
+			serialize_bool(s, false);
+			return;
+		}
+
+		serialize_bool(s, true);
+
+		GuiWindowNode& node = gui->window_nodes[node_id];
+		
+		serialize_bool(s, node.is_node);
+
+		if (node.is_node) {
+
+			serialize_u32(s, node.node.split);
+			serialize_node(s, node.node.id0);
+			serialize_node(s, node.node.id1);
+		}
+		else {
+
+			serialize_u32(s, (u32)node.win.states.size());
+
+			for (GuiWindowState* state : node.win.states) {
+				serialize_u64(s, state->hash);
+			}
+			
+			serialize_u32(s, node.win.current_index);
+		}
+	}
+
+	SV_INTERNAL void clean_up_gui()
+	{
+		// Save static state
+		if (gui->hash != 0u) {
+			
+			Serializer s;
+			
+			serialize_begin(s);
+			
+			// VERSION
+			serialize_u32(s, 4u);
+			
+			serialize_u32(s, u32(gui->window_states.size()));
+
+			for (const GuiWindowState& state : gui->window_states) {
+
+				serialize_bool(s, state.show);
+				serialize_string(s, state.title);
+				serialize_u32(s, state.flags);
+			}
+
+			// Docking tree
+
+			serialize_u32(s, (u32)gui->screen_docking_count);
+			serialize_u32(s, (u32)gui->windows.size());
+
+			for (auto it = gui->windows.begin();
+				 it.has_next();
+				 ++it)
+			{
+				serialize_node(s, it->root_id);
+				serialize_v4_f32(s, it->bounds);
+
+				// Screen docking
+
+				u32 docking_id = u32_max;
+
+				foreach(i, gui->screen_docking_count) {
+
+					if (gui->screen_docking[i].window_id == it.get_index()) {
+						
+						docking_id = i;
+						break;
+					}
+				}
+
+				serialize_u32(s, docking_id);
+
+				if (docking_id != u32_max) {
+					
+					serialize_u32(s, gui->screen_docking[docking_id].location);
+				}
+			}	
+			
+			bool res = bin_write(gui->hash, s, true);
+
+			if (!res) {
+			  
+				SV_LOG_ERROR("Can't save the gui static state");
+			}  
+		}
+
+		*gui = {};
+		/*gui->buffer.clear();
+		gui->parent_stack.clear();
+		gui->ids.clear();
+		gui->root_info = {};
+		gui->root_stack.clear();
+		gui->screen_docking_count = 0u;
+		gui->windows.clear();
+		gui->window_nodes.clear();
+		gui->sorted_windows.clear();
+		gui->focus.root = { GuiRootType_None, 0u };
+		gui->focus.type = GuiWidgetType_None;
+		gui->current_focus = NULL;
+		gui->window_states.clear();
+		gui->popup.id = 0u;
+		gui->text_field_buffer.clear();
+		gui->package.recivers.clear();
+		gui->package.buffer.clear();*/
+	}
 
     bool _gui_close()
     {
-		// Save static state
-		/*{
-		  Serializer s;
+		if (gui == NULL) return true;
 
-		  serialize_begin(s);
-
-		  serialize_u32(s, u32(gui->window_states.size()));
-
-		  for (const GuiWindowState& state : gui->window_states) {
-
-		  serialize_bool(s, state.show);
-		  serialize_string(s, state.title);
-		  serialize_v4_f32(s, state.root_info.bounds);
-		  }
-
-		  bool res = bin_write(hash_string("GUI STATE"), s, true);
-
-		  if (!res) {
-
-		  SV_LOG_ERROR("Can't save the gui static state");
-		  }
-		  }*/
-
+		clean_up_gui();
+		
 		SV_FREE_STRUCT(gui);
 		return true;
     }
+
+	void _gui_load(const char* name)
+	{
+		u64 hash = hash_string(name);
+		hash_combine(hash, hash_string("GUI STATE"));
+
+		clean_up_gui();
+
+		gui->hash = hash;
+
+		// Get last static state
+		{	
+			Deserializer d;
+	    
+			bool res = bin_read(hash, d, true);
+			if (res) {
+
+				u32 version;
+				deserialize_u32(d, version);
+
+				if (version == 4u) {
+
+					u32 window_state_count;
+					deserialize_u32(d, window_state_count);
+
+					foreach(i, window_state_count) {
+		    
+						GuiWindowState s;
+						deserialize_bool(d, s.show);
+						deserialize_string(d, s.title, GUI_WINDOW_NAME_SIZE + 1u);
+						deserialize_u32(d, s.flags);
+
+						s.hash = hash_string(s.title);
+
+						GuiWindowState& state = gui->window_states[s.hash];
+						state = s;
+					}
+
+					// Docking tree
+					u32 window_count;
+					deserialize_u32(d, gui->screen_docking_count);
+					deserialize_u32(d, window_count);
+
+					foreach(i, window_count) {
+
+						u32 window_id = gui->windows.emplace();
+						GuiWindow& window = gui->windows[window_id];
+
+						deserialize_node(d, window.root_id, true);
+						deserialize_v4_f32(d, window.bounds);
+
+						u32 screen_docking_id;
+						deserialize_u32(d, screen_docking_id);
+
+						if (screen_docking_id < 5u) {
+							
+							deserialize_u32(d, (u32&)gui->screen_docking[screen_docking_id].location);
+							gui->screen_docking[screen_docking_id].window_id = window_id;
+						}
+					}
+				}
+
+				deserialize_end(d);
+			}
+			else {
+				SV_LOG_WARNING("Can't load the last gui static state");
+			}
+		}
+	}
 
     bool _gui_begin()
     {
@@ -1467,29 +1650,29 @@ namespace sv {
 
 						/*if (nodes[node_id].win.states.size() == 1u) {
 
-							// Dereference the parent
-							{
-								for (auto it = gui->windows.begin();
-									 it.has_next();
-									 ++it)
-								{
-									if (it->root_id == u32_max)
-										continue;
+						// Dereference the parent
+						{
+						for (auto it = gui->windows.begin();
+						it.has_next();
+						++it)
+						{
+						if (it->root_id == u32_max)
+						continue;
 									
-										if (it->root_id == node_id) {
-										it->root_id = u32_max;
-										break;
-										}
-										else {
+						if (it->root_id == node_id) {
+						it->root_id = u32_max;
+						break;
+						}
+						else {
 
-										if (dereference_node_parent(it->root_id, node_id))
-										break;
-										}
-										}
-										}
+						if (dereference_node_parent(it->root_id, node_id))
+						break;
+						}
+						}
+						}
 
-										new_window.root_id = node_id;
-										}*/
+						new_window.root_id = node_id;
+						}*/
 						u32 new_node_id = gui->window_nodes.emplace();
 						GuiWindowNode& new_node = gui->window_nodes[new_node_id];
 						new_node.is_node = false;

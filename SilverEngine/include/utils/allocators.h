@@ -715,6 +715,8 @@ namespace sv {
 					e->hash = 0u;
 				}
 			}
+
+			_size = 0u;
 		}
 
 		T& operator[](u64 hash) {

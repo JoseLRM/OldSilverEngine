@@ -90,7 +90,7 @@ namespace sv {
 
     struct GlobalEditorData {
 
-		Entity selected_entity = SV_ENTITY_NULL;
+		List<Entity> selected_entities;
 		bool camera_focus = false;
 
 		AssetBrowserInfo asset_browser;
@@ -108,6 +108,13 @@ namespace sv {
     };
 
     GlobalEditorData editor;
+
+	SV_AUX bool is_entity_selected(Entity entity)
+	{
+		for (Entity e : editor.selected_entities)
+			if (e == entity) return true;
+		return false;
+	}
 
     SV_INTERNAL void show_reset_popup()
     {
@@ -200,6 +207,14 @@ namespace sv {
 					stack.lock();
 					stack.do_action(nullptr);
 					stack.unlock();
+				}
+
+				// Duplicate
+				if (input.keys[Key_D] == InputState_Pressed) {
+
+					for (Entity e : editor.selected_entities) {
+						duplicate_entity(e);
+					}
 				}
 			}
 		}
@@ -478,17 +493,30 @@ namespace sv {
 		}
     }
 
+	SV_AUX v3_f32 compute_selected_entities_position()
+	{
+		v3_f32 position;
+		
+		f32 mult = 1.f / f32(editor.selected_entities.size());
+		for (Entity e : editor.selected_entities) {
+
+			position += get_entity_world_position(e) * mult;
+		}
+
+		return position;
+	}
+
     SV_INTERNAL void update_gizmos()
     {
 		GizmosInfo& info = editor.gizmos;
 
-		if (!input.unused || editor.selected_entity == SV_ENTITY_NULL) {
+		if (!input.unused || editor.selected_entities.empty()) {
 			info.focus = false;
 			return;
 		}
 
-		v3_f32& position = *get_entity_position_ptr(editor.selected_entity);
-
+		v3_f32 position = compute_selected_entities_position();
+		
 		// Compute axis size and selection size
 		{
 			info.axis_size = relative_scalar(GIZMOS_SIZE, position);
@@ -596,6 +624,8 @@ namespace sv {
 			}
 			else {
 
+				v3_f32 init_pos = position;
+
 				if (dev.camera.projection_type == ProjectionType_Perspective) {
 
 					Ray ray = screen_to_world_ray(input.mouse_position, dev.camera.position, dev.camera.rotation, &dev.camera);
@@ -631,17 +661,37 @@ namespace sv {
 					else if (info.object == GizmosObject_AxisY)
 						position.y = mouse.y - info.start_offset.y;
 				}
+
+				// Set new position
+				v3_f32 move = position - init_pos;
+				
+				for (Entity e : editor.selected_entities) {
+
+					v3_f32& pos = *get_entity_position_ptr(e);
+
+					Entity parent = get_entity_parent(e);
+
+					if (entity_exist(parent)) {
+
+						XMMATRIX wm = get_entity_world_matrix(parent);
+
+						wm = XMMatrixInverse(NULL, wm);
+						
+						pos += (v3_f32)XMVector4Transform(vec3_to_dx(move), wm);
+					}
+					else pos += move;
+				}
 			}
 		}
     }
 
     SV_INTERNAL void draw_gizmos(GPUImage* offscreen, CommandList cmd)
     {
-		if (editor.selected_entity == SV_ENTITY_NULL) return;
+		if (editor.selected_entities.empty()) return;
 
 		GizmosInfo& info = editor.gizmos;
 
-		v3_f32 position = get_entity_position(editor.selected_entity);
+		v3_f32 position = compute_selected_entities_position();
 
 		f32 axis_size = info.axis_size;
 
@@ -706,6 +756,7 @@ namespace sv {
 		event_register("user_callbacks_initialize", show_reset_popup, 0u);
 
 		dev.engine_state = EngineState_ProjectManagement;
+		_gui_load("PROJECT");
 		engine.update_scene = false;
 
 		return true;
@@ -956,7 +1007,7 @@ namespace sv {
 		{
 			for_each_comp<LightComponent>([&] (Entity entity, LightComponent& l)
 				{
-					if (editor.selected_entity == entity)
+					if (is_entity_selected(entity))
 						return true;
 
 					v3_f32 pos = get_entity_world_position(entity);
@@ -1000,7 +1051,7 @@ namespace sv {
 			{
 				for_each_comp<MeshComponent>([&] (Entity entity, MeshComponent& m)
 					{
-						if (editor.selected_entity == entity)
+						if (is_entity_selected(entity))
 							return true;
 
 						if (m.mesh.get() == nullptr) return true;
@@ -1049,8 +1100,8 @@ namespace sv {
 
 				for_each_comp<SpriteComponent>([&] (Entity entity, SpriteComponent&)
 					{
-						if (editor.selected_entity == entity)
-							return false;
+						if (is_entity_selected(entity))
+							return true;
 
 						XMMATRIX tm = get_entity_world_matrix(entity);
 
@@ -1083,8 +1134,12 @@ namespace sv {
 					});
 			}
 		}
-	
-		editor.selected_entity = selected;
+
+		if (!input.keys[Key_Shift])
+			editor.selected_entities.reset();
+
+		if (selected != SV_ENTITY_NULL)
+			editor.selected_entities.push_back(selected);
     }
     
     static void show_entity_popup(Entity entity, bool& destroy)
@@ -1124,7 +1179,8 @@ namespace sv {
 	    
 			if (gui_button(name, 0u)) {
 
-				editor.selected_entity = entity;
+				editor.selected_entities.reset();
+				editor.selected_entities.push_back(entity);
 			}
 
 			show_entity_popup(entity, destroy);
@@ -1133,7 +1189,8 @@ namespace sv {
 	    
 			if (gui_button(name, 0u)) {
 		
-				editor.selected_entity = entity;
+				editor.selected_entities.reset();
+				editor.selected_entities.push_back(entity);
 			}
 
 			show_entity_popup(entity, destroy);
@@ -1156,8 +1213,14 @@ namespace sv {
 
 		if (destroy) {
 			destroy_entity(entity);
-			if (editor.selected_entity == entity)
-				editor.selected_entity = SV_ENTITY_NULL;
+			
+			foreach(i, editor.selected_entities.size()) {
+				
+				if (editor.selected_entities[i] == entity) {
+					editor.selected_entities.erase(i);
+					break;
+				}
+			}
 		}
 
 		gui_pop_id();
@@ -1285,7 +1348,7 @@ namespace sv {
 
     void display_entity_inspector()
     {
-		Entity selected = editor.selected_entity;
+		Entity selected = (editor.selected_entities.size() == 1u) ? editor.selected_entities.back() : SV_ENTITY_NULL;
 
 		if (gui_begin_window("Inspector")) {
 
@@ -1396,6 +1459,61 @@ namespace sv {
 
 				gui_hide_window("Create Folder");
 				string_copy(foldername, "", FILENAME_SIZE + 1u);
+			}
+
+			gui_end_window();
+		}
+
+		if (gui_begin_window("Import Model", GuiWindowFlag_Temporal)) {
+
+			static char foldername[FILENAME_SIZE + 1u] = "";
+			static bool create_folder = false;
+
+			gui_checkbox("Create Folder", create_folder);
+
+			if (create_folder) {
+
+				gui_text_field(foldername, FILENAME_SIZE + 1u, 0u);
+			}
+
+			if (gui_button("Import")) {
+
+				if (string_size(foldername) == 0u)
+					create_folder = false;
+
+				char filepath[FILEPATH_SIZE + 1u] = "";
+
+				const char* filters[] = {
+					"Wavefront OBJ (.obj)", "*.obj",
+					"All", "*",
+					""
+				};
+			
+				if (file_dialog_open(filepath, 2u, filters, "")) {
+
+					ModelInfo model_info;
+			    
+					if (load_model(filepath, model_info)) {
+
+						char dst[FILEPATH_SIZE + 1u];
+						string_copy(dst, "assets/", FILEPATH_SIZE + 1u);
+						string_append(dst, info.filepath, FILEPATH_SIZE + 1u);
+						if (create_folder)
+							string_append(dst, foldername, FILEPATH_SIZE + 1u);
+
+						if (import_model(dst, model_info)) {
+							SV_LOG_INFO("Model imported '%s'", filepath);
+						}
+						else SV_LOG_ERROR("Can't import the model '%s' at '%s'", filepath, dst);
+					}
+					else {
+						SV_LOG_ERROR("Can't load the model '%s'", filepath);
+					}
+				}
+
+				create_folder = false;
+				string_copy(foldername, "", FILENAME_SIZE + 1u);
+				gui_hide_window("Import Model");
 			}
 
 			gui_end_window();
@@ -1640,42 +1758,8 @@ namespace sv {
 
 				if (gui_button("Import Model", id++)) {
 
-					char filepath[FILEPATH_SIZE + 1u] = "";
-
-					const char* filters[] = {
-						"Wavefront OBJ (.obj)", "*.obj",
-						"All", "*",
-						""
-					};
-			
-					if (file_dialog_open(filepath, 2u, filters, "")) {
-
-						ModelInfo model_info;
-			    
-						if (load_model(filepath, model_info)) {
-
-							char folder_name[FILEPATH_SIZE + 1u];
-							char* c_name = filepath_name(filepath);
-							strcpy(folder_name, c_name);
-							c_name = filepath_extension(folder_name);
-							if (c_name) c_name[0] = '\0';
-
-							char dst[FILEPATH_SIZE + 1u];
-							strcpy(dst, "assets/");
-							strcat(dst, info.filepath);
-							strcat(dst, folder_name);
-
-							// TODO: This folder may be duplicated
-
-							if (import_model(dst, model_info)) {
-								SV_LOG_INFO("Model imported '%s'", filepath);
-							}
-							else SV_LOG_ERROR("Can't import the model '%s' at '%s'", filepath, dst);
-						}
-						else {
-							SV_LOG_ERROR("Can't load the model '%s'", filepath);
-						}
-					}
+					gui_show_window("Import Model");
+					gui_close_popup();
 				}
 
 				if (gui_button("Create Sprite Sheet", id++)) {
@@ -2127,8 +2211,11 @@ namespace sv {
 		// Adjust camera
 		dev.camera.adjust(os_window_aspect());
 
-		if (!entity_exist(editor.selected_entity)) {
-			editor.selected_entity = SV_ENTITY_NULL;
+		for (u32 i = 0u; i < editor.selected_entities.size();) {
+
+			if (!entity_exist(editor.selected_entities[i]))
+				editor.selected_entities.erase(i);
+			else ++i;
 		}
 	
 		display_gui();
@@ -2251,9 +2338,10 @@ namespace sv {
 			case EngineState_ProjectManagement:
 			{
 				_engine_close_project();
-				editor.selected_entity = SV_ENTITY_NULL;
+				editor.selected_entities.reset();
 				exit = true;
 				engine.update_scene = false;
+				_gui_load("PROJECT");
 			}
 			break;
 
@@ -2265,6 +2353,7 @@ namespace sv {
 		
 				dev.debug_draw = true;
 				engine.update_scene = false;
+				_gui_load(engine.project_path);
 			} break;
 
 			case EngineState_Play:
@@ -2280,7 +2369,7 @@ namespace sv {
 
 					dev.debug_draw = false;
 					dev.draw_collisions = false;
-					editor.selected_entity = SV_ENTITY_NULL;
+					editor.selected_entities.reset();
 				}
 			} break;
 
@@ -2327,15 +2416,15 @@ namespace sv {
 		imrend_camera(ImRendCamera_Editor, cmd);
 
 		// Draw selected entity
-		if (editor.selected_entity != SV_ENTITY_NULL) {
+		for (Entity entity : editor.selected_entities) {
 
-			MeshComponent* mesh_comp = get_component<MeshComponent>(editor.selected_entity);
-			SpriteComponent* sprite_comp = get_component<SpriteComponent>(editor.selected_entity);
+			MeshComponent* mesh_comp = get_component<MeshComponent>(entity);
+			SpriteComponent* sprite_comp = get_component<SpriteComponent>(entity);
 
 			if (mesh_comp && mesh_comp->mesh.get()) {
 
 				u8 alpha = 5u + u8(f32(sin(timer_now() * 3.5) + 1.0) * 30.f * 0.5f);
-				XMMATRIX wm = get_entity_world_matrix(editor.selected_entity);
+				XMMATRIX wm = get_entity_world_matrix(entity);
 
 				imrend_push_matrix(wm, cmd);
 				imrend_draw_mesh_wireframe(mesh_comp->mesh.get(), Color::Red(alpha), cmd);
@@ -2348,7 +2437,7 @@ namespace sv {
 				XMVECTOR p2 = XMVectorSet(-0.5f, -0.5f, 0.f, 1.f);
 				XMVECTOR p3 = XMVectorSet(0.5f, -0.5f, 0.f, 1.f);
 
-				XMMATRIX tm = get_entity_world_matrix(editor.selected_entity);
+				XMMATRIX tm = get_entity_world_matrix(entity);
 
 				p0 = XMVector3Transform(p0, tm);
 				p1 = XMVector3Transform(p1, tm);
@@ -2424,7 +2513,7 @@ namespace sv {
 
 					imrend_pop_matrix(cmd);
 
-					if (entity == editor.selected_entity && light.light_type == LightType_Direction) {
+					if (is_entity_selected(entity) && light.light_type == LightType_Direction) {
 
 						// Draw light direction
 
