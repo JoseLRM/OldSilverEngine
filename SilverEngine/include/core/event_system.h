@@ -8,8 +8,8 @@ namespace sv {
     constexpr u32 REGISTER_DATA_SIZE = 16u;
 
     enum EventFlag : u32 {
-	EventFlag_None = 0u,
-	EventFlag_User = SV_BIT(0u),
+		EventFlag_None = 0u,
+		EventFlag_User = SV_BIT(0u),
     };
     
     bool _event_initialize();
@@ -27,25 +27,25 @@ namespace sv {
     template<typename T>
     SV_INLINE bool event_register(const char* event_name, T event, u32 flags, void* data, u32 data_size)
     {
-	return _event_register(event_name, (EventFn) event, flags, data, data_size);
+		return _event_register(event_name, (EventFn) event, flags, data, data_size);
     }
 
     template<typename T>
     SV_INLINE bool event_unregister(const char* event_name, T event)
     {
-	return _event_unregister(event_name, (EventFn) event);
+		return _event_unregister(event_name, (EventFn) event);
     }
 
     template<typename T>
     SV_INLINE bool event_register(const char* event_name, T event, u32 flags)
     {
-	return event_register(event_name, event, flags, nullptr, 0u);
+		return event_register(event_name, event, flags, nullptr, 0u);
     }
 
     template<typename T>
     SV_INLINE bool event_user_register(const char* event_name, T event, u32 flags = EventFlag_None)
     {
-	return event_register(event_name, event, flags | EventFlag_User);
+		return event_register(event_name, event, flags | EventFlag_User);
     }
     
 }

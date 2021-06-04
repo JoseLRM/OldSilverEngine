@@ -372,7 +372,10 @@ namespace sv {
 			return false;
 		}
 
-		_initialize_scene();
+		if (!_scene_initialize()) {
+			SV_LOG_ERROR("Can't initialize scene system");
+			return false;
+		}
 
 		if (!register_assets()) {
 			SV_LOG_ERROR("Can't register default assets");
@@ -412,7 +415,7 @@ namespace sv {
 
 		close_user_callbacks();
 
-		_close_scene();	
+		_scene_close();	
 
 #if SV_EDITOR
         _editor_close();
@@ -554,7 +557,6 @@ namespace sv {
 	
 		close_game();
 		close_engine();
-
     }
 
 #if SV_EDITOR

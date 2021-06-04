@@ -18,6 +18,7 @@ initialize_scene
 draw_scene
 save_scene
 update_scene
+update_physics
 late_update_scene
 close_scene
 

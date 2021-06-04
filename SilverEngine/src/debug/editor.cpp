@@ -931,6 +931,7 @@ namespace sv {
 			if (BodyComponent::ID == comp_id) {
 
 				BodyComponent& b = *reinterpret_cast<BodyComponent*>(comp);
+				const SceneData& scene = *get_scene_data();
 
 				// TODO: Use combobox
 				bool static_ = b.body_type == BodyType_Static;
@@ -946,10 +947,28 @@ namespace sv {
 				if (gui_checkbox("Projectile", projectile)) {
 					b.body_type = projectile ? BodyType_Projectile : BodyType_Static;
 				}
-		
-				gui_drag_v2_f32("Size", b.size, 0.005f, 0.f);
-				gui_drag_v2_f32("Offset", b.offset, 0.005f);
-				gui_drag_v2_f32("Velocity", b.vel, 0.01f);
+
+				if (scene.physics.in_3D) {
+					gui_drag_v3_f32("Size", b.size, 0.005f, 0.f);
+					gui_drag_v3_f32("Offset", b.offset, 0.005f);
+					gui_drag_v3_f32("Velocity", b.vel, 0.01f);
+				}
+				else {
+					v2_f32 v2;
+
+					v2 = vec3_to_vec2(b.size);
+					if (gui_drag_v2_f32("Size", v2, 0.005f, 0.f))
+						b.size = vec2_to_vec3(v2);
+
+					v2 = vec3_to_vec2(b.offset);
+					if (gui_drag_v2_f32("Offset", v2, 0.005f))
+						b.offset = vec2_to_vec3(v2);
+
+					v2 = vec3_to_vec2(b.vel);
+					if (gui_drag_v2_f32("Velocity", v2, 0.01f))
+						b.vel = vec2_to_vec3(v2);
+				}
+				
 				gui_drag_f32("Mass", b.mass, 0.1f, 0.0f);
 				gui_drag_f32("Friction", b.friction, 0.001f, 0.0f, 1.f);
 				gui_drag_f32("Bounciness", b.bounciness, 0.005f, 0.0f, 1.f);
@@ -1810,28 +1829,48 @@ namespace sv {
     void display_scene_settings()
     {
 		SceneData& s = *get_scene_data();
+
+		if (gui_begin_window("Go to scene", GuiWindowFlag_Temporal)) {
+		
+			gui_text_field(editor.next_scene_name, SCENENAME_SIZE + 1u, 0u);
+
+			gui_separator(10.f);
+
+			if (gui_button("GO!")) {
+				set_scene(editor.next_scene_name);
+				string_copy(editor.next_scene_name, "", SCENENAME_SIZE + 1u);
+
+				gui_hide_window("Go to scene");
+			}
+
+			gui_end_window();
+		}
 	
-		if (gui_begin_window("Scene Manager")) {
+		if (gui_begin_window("Scene Settings")) {
 
 			gui_text(get_scene_name(), 0u);
 
-			if (gui_collapse("Go to scene", 1u)) {
-		
-				//gui_text_field(editor.next_scene_name, SCENENAME_SIZE + 1u, 0u);
+			if (gui_button("Go to scene"))
+				gui_show_window("Go to scene");
 
-				if (gui_button("GO!", 1u)) {
-					set_scene(editor.next_scene_name);
-					strcpy(editor.next_scene_name, "");
+			if (gui_collapse("Rendering")) {
+				gui_drag_color("Ambient Light", s.ambient_light);
+			}
+
+			if (gui_collapse("Physics")) {
+
+				if (s.physics.in_3D) {
+					gui_drag_v3_f32("Gravity", s.physics.gravity, 0.01f, -f32_max, f32_max);
 				}
-			}
+				else {
+					v2_f32 v2;
 
-			if (gui_collapse("Rendering", 3u)) {
-				gui_drag_color("Ambient Light", s.ambient_light, 0u);
-			}
-
-			if (gui_collapse("Physics", 5u)) {
-		
-				gui_drag_v2_f32("Gravity", s.gravity, 0.01f, -f32_max, f32_max, 0u);
+					v2 = vec3_to_vec2(s.physics.gravity);
+					if (gui_drag_v2_f32("Gravity", v2, 0.01f, -f32_max, f32_max))
+						s.physics.gravity = vec2_to_vec3(v2);
+				}
+				
+				gui_checkbox("3D", s.physics.in_3D);
 			}
 	    
 			gui_end_window();
@@ -2166,8 +2205,8 @@ namespace sv {
 					if (gui_button("Asset Browser")) {
 						gui_show_window("Asset Browser");
 					}
-					if (gui_button("Scene Manager")) {
-						gui_show_window("Scene Manager");
+					if (gui_button("Scene Settings")) {
+						gui_show_window("Scene Settings");
 					}
 
 					gui_checkbox("Colisions", dev.draw_collisions);
@@ -2536,34 +2575,77 @@ namespace sv {
 		// Draw collisions
 		if (dev.draw_collisions) {
 
-			XMVECTOR p0 = XMVectorSet(-0.5f, 0.5f, 0.f, 1.f);
-			XMVECTOR p1 = XMVectorSet(0.5f, 0.5f, 0.f, 1.f);
-			XMVECTOR p2 = XMVectorSet(-0.5f, -0.5f, 0.f, 1.f);
-			XMVECTOR p3 = XMVectorSet(0.5f, -0.5f, 0.f, 1.f);
+			XMVECTOR p0 = XMVectorSet(-0.5f, 0.5f, 0.5f, 1.f);
+			XMVECTOR p1 = XMVectorSet(0.5f, 0.5f, 0.5f, 1.f);
+			XMVECTOR p2 = XMVectorSet(-0.5f, -0.5f, 0.5f, 1.f);
+			XMVECTOR p3 = XMVectorSet(0.5f, -0.5f, 0.5f, 1.f);
+			XMVECTOR p4 = XMVectorSet(-0.5f, 0.5f, -0.5f, 1.f);
+			XMVECTOR p5 = XMVectorSet(0.5f, 0.5f, -0.5f, 1.f);
+			XMVECTOR p6 = XMVectorSet(-0.5f, -0.5f, -0.5f, 1.f);
+			XMVECTOR p7 = XMVectorSet(0.5f, -0.5f, -0.5f, 1.f);
 
-			XMVECTOR v0, v1, v2, v3;
+			XMVECTOR v0, v1, v2, v3, v4, v5, v6, v7;
 
 			XMMATRIX tm;
+
+			if (get_scene_data()->physics.in_3D) {
 		
-			for_each_comp<BodyComponent>([&] (Entity entity, BodyComponent& body)
-				{
-					v2_f32 pos = get_entity_position2D(entity) + body.offset;
-					v2_f32 scale = get_entity_scale2D(entity) * body.size;
+				for_each_comp<BodyComponent>([&] (Entity entity, BodyComponent& body)
+					{
+						v3_f32 pos = get_entity_world_position(entity) + body.offset;
+						v3_f32 scale = get_entity_world_scale(entity) * body.size;
 		    
-					tm = XMMatrixScalingFromVector(vec2_to_dx(scale)) * XMMatrixTranslation(pos.x, pos.y, 0.f);
+						tm = XMMatrixScalingFromVector(vec3_to_dx(scale)) * XMMatrixTranslation(pos.x, pos.y, pos.z);
 		    
-					v0 = XMVector3Transform(p0, tm);
-					v1 = XMVector3Transform(p1, tm);
-					v2 = XMVector3Transform(p2, tm);
-					v3 = XMVector3Transform(p3, tm);
+						v0 = XMVector3Transform(p0, tm);
+						v1 = XMVector3Transform(p1, tm);
+						v2 = XMVector3Transform(p2, tm);
+						v3 = XMVector3Transform(p3, tm);
+						v4 = XMVector3Transform(p4, tm);
+						v5 = XMVector3Transform(p5, tm);
+						v6 = XMVector3Transform(p6, tm);
+						v7 = XMVector3Transform(p7, tm);
 
-					imrend_draw_line(v3_f32(v0), v3_f32(v1), Color::Green(), cmd);
-					imrend_draw_line(v3_f32(v1), v3_f32(v3), Color::Green(), cmd);
-					imrend_draw_line(v3_f32(v3), v3_f32(v2), Color::Green(), cmd);
-					imrend_draw_line(v3_f32(v0), v3_f32(v2), Color::Green(), cmd);
+						imrend_draw_line(v3_f32(v0), v3_f32(v1), Color::Green(), cmd);
+						imrend_draw_line(v3_f32(v1), v3_f32(v3), Color::Green(), cmd);
+						imrend_draw_line(v3_f32(v3), v3_f32(v2), Color::Green(), cmd);
+						imrend_draw_line(v3_f32(v0), v3_f32(v2), Color::Green(), cmd);
 
-					return true;
-				});
+						imrend_draw_line(v3_f32(v4), v3_f32(v5), Color::Green(), cmd);
+						imrend_draw_line(v3_f32(v5), v3_f32(v7), Color::Green(), cmd);
+						imrend_draw_line(v3_f32(v7), v3_f32(v6), Color::Green(), cmd);
+						imrend_draw_line(v3_f32(v4), v3_f32(v6), Color::Green(), cmd);
+
+						imrend_draw_line(v3_f32(v0), v3_f32(v4), Color::Green(), cmd);
+						imrend_draw_line(v3_f32(v1), v3_f32(v5), Color::Green(), cmd);
+						imrend_draw_line(v3_f32(v2), v3_f32(v6), Color::Green(), cmd);
+						imrend_draw_line(v3_f32(v3), v3_f32(v7), Color::Green(), cmd);
+
+						return true;
+					});
+			}
+			else {
+
+				for_each_comp<BodyComponent>([&] (Entity entity, BodyComponent& body)
+					{
+						v2_f32 pos = vec3_to_vec2(get_entity_world_position(entity)) + vec3_to_vec2(body.offset);
+						v2_f32 scale = vec3_to_vec2(get_entity_world_scale(entity)) * vec3_to_vec2(body.size);
+		    
+						tm = XMMatrixScalingFromVector(vec2_to_dx(scale)) * XMMatrixTranslation(pos.x, pos.y, 0.f);
+		    
+						v0 = XMVector3Transform(p0, tm);
+						v1 = XMVector3Transform(p1, tm);
+						v2 = XMVector3Transform(p2, tm);
+						v3 = XMVector3Transform(p3, tm);
+
+						imrend_draw_line(v3_f32(v0), v3_f32(v1), Color::Green(), cmd);
+						imrend_draw_line(v3_f32(v1), v3_f32(v3), Color::Green(), cmd);
+						imrend_draw_line(v3_f32(v3), v3_f32(v2), Color::Green(), cmd);
+						imrend_draw_line(v3_f32(v0), v3_f32(v2), Color::Green(), cmd);
+
+						return true;
+					});
+			}
 		}
 
 		// Draw gizmos

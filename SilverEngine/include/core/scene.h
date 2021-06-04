@@ -27,8 +27,11 @@ namespace sv {
 		GPUImage* skybox = nullptr;
 		Color ambient_light = Color::Gray(20u);
 
-		v2_f32 gravity = { 0.f, -36.f };
-		f32 air_friction = 0.02f;
+		struct {
+			v3_f32 gravity = { 0.f, -36.f, 0.f };
+			f32 air_friction = 0.02f;
+			bool in_3D = false;
+		} physics;
 	
     };
 
@@ -42,9 +45,9 @@ namespace sv {
     SV_API const char* get_scene_name();
     SV_API bool there_is_scene();
 
-    void _initialize_scene();
+    bool _scene_initialize();
     void _manage_scenes();
-    void _close_scene();
+    void _scene_close();
     void _update_scene();
     void _draw_scene();
     bool _start_scene(const char* name);
@@ -549,12 +552,12 @@ namespace sv {
     struct BodyComponent : public BaseComponent {
 
 		static CompID SV_API ID;
-		static constexpr u32 VERSION = 1u;
+		static constexpr u32 VERSION = 2u;
 
 		BodyType body_type = BodyType_Static;
-		v2_f32 vel;
-		v2_f32 size = { 1.f, 1.f };
-		v2_f32 offset = { 0.f, 0.f };
+		v3_f32 vel;
+		v3_f32 size = { 1.f, 1.f, 1.f };
+		v3_f32 offset = { 0.f, 0.f, 0.f };
 		bool in_ground = false;
 		f32 mass = 1.f;
 		f32 friction = 0.99f;

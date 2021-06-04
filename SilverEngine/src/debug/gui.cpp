@@ -3264,7 +3264,7 @@ namespace sv {
 		return pressed;
     }
 
-    SV_AUX void draw_root(GuiRootIndex root_index, CommandList cmd)
+    SV_INTERNAL void draw_root(GuiRootIndex root_index, CommandList cmd)
     {
 		const GuiStyle& style = gui->style;
 	
