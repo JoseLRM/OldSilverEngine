@@ -177,9 +177,11 @@ namespace sv {
 			vpm = XMMatrixScaling(2.f, 2.f, 1.f) * XMMatrixTranslation(-1.f, -1.f, 0.f);
 			break;
 
+#if SV_EDITOR
 		case ImRendCamera_Editor:
 			vpm = dev.camera.view_projection_matrix;
 			break;
+#endif
 
 		case ImRendCamera_Clip:
 		default:
@@ -272,6 +274,9 @@ namespace sv {
 		graphics_event_begin("Immediate Rendering", cmd);
 
 		auto& gfx = renderer->gfx;
+
+		graphics_viewport_set(gfx.offscreen, 0u, cmd);
+		graphics_scissor_set(gfx.offscreen, 0u, cmd);
 	
 		GPUImage* att[1];
 		att[0] = gfx.offscreen;
@@ -371,12 +376,14 @@ namespace sv {
 							layout = imrend_read<GPUImageLayout>(it);
 							tc = imrend_read<v4_f32>(it);
 							
-							if (layout != GPUImageLayout_ShaderResource) {
-
+							if (layout != GPUImageLayout_ShaderResource && layout != GPUImageLayout_DepthStencilReadOnly) {
+								
 								// TEMP
 								graphics_renderpass_end(cmd);
-								GPUBarrier barrier = GPUBarrier::Image(image, layout, GPUImageLayout_ShaderResource);
+								
+								GPUBarrier barrier = GPUBarrier::Image(image, layout, (layout == GPUImageLayout_DepthStencil) ? GPUImageLayout_DepthStencilReadOnly : GPUImageLayout_ShaderResource);
 								graphics_barrier(&barrier, 1u, cmd);
+								
 								graphics_renderpass_begin(gfx.renderpass_off, att, cmd);
 							}
 						}
@@ -402,8 +409,8 @@ namespace sv {
 
 						graphics_draw(4u, 1u, 0u, 0u, cmd);
 
-						if (draw_call == ImRendDrawCall_Sprite && layout != GPUImageLayout_ShaderResource) {
-							GPUBarrier barrier = GPUBarrier::Image(image, GPUImageLayout_ShaderResource, layout);
+						if (draw_call == ImRendDrawCall_Sprite && layout != GPUImageLayout_ShaderResource && layout != GPUImageLayout_DepthStencilReadOnly) {
+							GPUBarrier barrier = GPUBarrier::Image(image, (layout == GPUImageLayout_DepthStencil) ? GPUImageLayout_DepthStencilReadOnly : GPUImageLayout_ShaderResource, layout);
 							// TEMP
 							graphics_renderpass_end(cmd);
 							graphics_barrier(&barrier, 1u, cmd);

@@ -926,6 +926,14 @@ namespace sv {
 				gui_drag_f32("Intensity", l.intensity, 0.05f, 0.0f, f32_max);
 				gui_drag_f32("Range", l.range, 0.1f, 0.0f, f32_max);
 				gui_drag_f32("Smoothness", l.smoothness, 0.005f, 0.0f, 1.f);
+
+				gui_separator(5.f);
+
+				gui_checkbox("Shadow Mapping", l.shadow_mapping_enabled);
+
+				if (l.shadow_mapping_enabled) {
+					// TODO
+				}
 			}
 
 			if (BodyComponent::ID == comp_id) {

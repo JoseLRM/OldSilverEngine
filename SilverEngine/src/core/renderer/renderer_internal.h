@@ -4,17 +4,15 @@
 
 namespace sv {
 
-    constexpr u32 LIGHT_COUNT = 1u;
-
     struct GPU_LightData {
 		v3_f32	  position;
 		LightType type;
 		v3_f32	  color;
-		f32	  range;
-		f32	  intensity;
-		f32	  smoothness;
+		f32	      range;
+		f32	      intensity;
+		f32	      smoothness;
+		u32       has_shadows;
 		f32       padding0;
-		f32       padding1;
     };
 
 	struct GPU_ShadowData {
@@ -100,6 +98,7 @@ namespace sv {
 		GPUBuffer* vbuffer_batch[GraphicsLimit_CommandList];
 		DepthStencilState* dss_default_depth;
 		RasterizerState* rs_back_culling;
+		RasterizerState* rs_front_culling;
 		RasterizerState* rs_wireframe;
 		RasterizerState* rs_wireframe_back_culling;
 		RasterizerState* rs_wireframe_front_culling;
@@ -171,6 +170,11 @@ namespace sv {
 		InputLayoutState* ils_sky;
 
     };
+
+	struct ShadowMapRef {
+		Entity entity;
+		GPUImage* image;
+	};
     
     struct RendererState {
 
@@ -180,6 +184,8 @@ namespace sv {
 
 		Font font_opensans;
 		Font font_console;
+
+		List<ShadowMapRef> shadow_maps;
     };
 
     extern RendererState* renderer;

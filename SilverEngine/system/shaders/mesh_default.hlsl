@@ -88,12 +88,11 @@ struct Light {
 	f32    range;
 	f32    intensity;
 	f32    smoothness;
+	u32    has_shadows;
 };
 
-#define LIGHT_COUNT 1u
-
 SV_CONSTANT_BUFFER(light_instances_buffer, b1) {
-	Light lights[LIGHT_COUNT];
+	Light light;
 };
 SV_CONSTANT_BUFFER(shadow_data_buffer, b2) {
 	matrix shadow_matrix;
@@ -117,6 +116,60 @@ f32 compute_shadows(float3 position)
     f32 depth = shadow_map.Sample(sam, light_space.xy).r;
     
     return (light_space.z < (depth + 0.002f)) ? 1.f : 0.f;
+}
+
+float3 compute_light(float3 position, float3 normal, f32 specular_mul)
+{
+    float3 acc = float3(0.f, 0.f, 0.f);
+    
+    switch (light.type) {
+
+    case LIGHT_TYPE_POINT:
+    {
+	float3 to_light = light.position - position;
+	f32 distance = length(to_light);
+	to_light = normalize(to_light);	
+
+	// Diffuse
+	f32 diffuse = max(dot(normal, to_light), 0.1f);
+	acc += light.color * diffuse;
+
+	// Specular
+	f32 specular = pow(max(dot(normalize(-position), reflect(-to_light, normal)), 0.f), material.shininess) * specular_mul;
+	acc += light.color * specular * material.specular_color;
+
+	// attenuation TODO: Smoothness
+	f32 att = 1.f - smoothstep(light.smoothness * light.range, light.range, distance);
+
+	acc = acc * att * light.intensity;
+	}
+	break;
+
+	case LIGHT_TYPE_DIRECTION:
+	{
+	
+	// Diffuse
+	f32 diffuse = max(dot(normal, light.position), 0.f);
+	acc += light.color * diffuse;
+
+	// Specular
+	float specular = pow(max(dot(normalize(-position), reflect(-light.position, normal)), 0.f), material.shininess) * specular_mul;
+	acc += light.color * specular * material.specular_color;
+
+	// Shadows
+	if (light.has_shadows) {
+
+	f32 shadow_mult = compute_shadows(position);
+	acc *= shadow_mult;
+	}
+
+	acc = acc * light.intensity;
+	}
+	break;
+
+	}
+
+	return acc;
 }
 
 Output main(Input input)
@@ -151,63 +204,10 @@ Output main(Input input)
 	}
 	else specular_mul = 1.f;
 
-	// Compute lighting
-	float3 light_accumulation = float3(0.f, 0.f, 0.f);
-
-	[unroll]
-	foreach(i, LIGHT_COUNT) {
-
-		Light light = lights[i];
-
-		switch (light.type) {
-
-		case LIGHT_TYPE_POINT:
-		{
-			float3 to_light = light.position - input.position;
-			f32 distance = length(to_light);
-			to_light = normalize(to_light);
-
-			float3 acc = float3(0.f, 0.f, 0.f);
-
-			// Diffuse
-			f32 diffuse = max(dot(normal, to_light), 0.1f);
-			acc += light.color * diffuse;
-
-			// Specular
-			f32 specular = pow(max(dot(normalize(-input.position), reflect(-to_light, normal)), 0.f), material.shininess) * specular_mul;
-			acc += light.color * specular * material.specular_color;
-
-			// attenuation TODO: Smoothness
-			f32 att = 1.f - smoothstep(light.smoothness * light.range, light.range, distance);
-
-			light_accumulation += acc * att * light.intensity;
-		}
-		break;
-
-		case LIGHT_TYPE_DIRECTION:
-		{
-		        float3 acc = float3(0.f, 0.f, 0.f);
-			
-			// Diffuse
-			f32 diffuse = max(dot(normal, light.position), 0.f);
-			acc += light.color * diffuse;
-
-			// Specular
-			float specular = pow(max(dot(normalize(-input.position), reflect(-light.position, normal)), 0.f), material.shininess) * specular_mul;
-			acc += light.color * specular * material.specular_color;
-
-			light_accumulation += acc * light.intensity;
-		}
-		break;
-
-		}
-	}
-
-	// Shadow mapping
-	f32 shadow_mult = compute_shadows(input.position);
+	float3 light_color = compute_light(input.position, normal, specular_mul);
 
 	// Ambient lighting
-	light_accumulation = max(environment.ambient_light, light_accumulation * shadow_mult);
+	float3 light_accumulation = max(environment.ambient_light, light_color);
 
 	output.color = float4(diffuse_color.rgb * light_accumulation, 1.f);
 	

@@ -2361,11 +2361,6 @@ namespace sv {
 		deserialize_asset(d, material);
     }
 
-	LightComponent::~LightComponent()
-	{
-		graphics_destroy(shadow_map);
-	}
-
     void LightComponent::serialize(Serializer& s)
     {
 		serialize_u32(s, light_type);
@@ -2373,15 +2368,31 @@ namespace sv {
 		serialize_f32(s, intensity);
 		serialize_f32(s, range);
 		serialize_f32(s, smoothness);
+		serialize_bool(s, shadow_mapping_enabled);
     }
     
     void LightComponent::deserialize(Deserializer& d, u32 version)
     {
-		deserialize_u32(d, (u32&)light_type);
-		deserialize_color(d, color);
-		deserialize_f32(d, intensity);
-		deserialize_f32(d, range);
-		deserialize_f32(d, smoothness);
+		switch(version) {
+
+		case 0:
+			deserialize_u32(d, (u32&)light_type);
+			deserialize_color(d, color);
+			deserialize_f32(d, intensity);
+			deserialize_f32(d, range);
+			deserialize_f32(d, smoothness);
+			break;
+
+		case 1:
+			deserialize_u32(d, (u32&)light_type);
+			deserialize_color(d, color);
+			deserialize_f32(d, intensity);
+			deserialize_f32(d, range);
+			deserialize_f32(d, smoothness);
+			deserialize_bool(d, shadow_mapping_enabled);
+			break;
+			
+		}
     }
 
     void BodyComponent::serialize(Serializer& s)

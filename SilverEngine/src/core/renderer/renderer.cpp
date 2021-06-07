@@ -299,7 +299,7 @@ namespace sv {
 			desc.size = sizeof(Material);
 			SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_material));
 
-			desc.size = sizeof(GPU_LightData) * LIGHT_COUNT;
+			desc.size = sizeof(GPU_LightData);
 			SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_light_instances));
 		}
 
@@ -587,6 +587,9 @@ namespace sv {
 
 			graphics_rasterizerstate_create(&desc, &gfx.rs_back_culling);
 
+			desc.cullMode = RasterizerCullMode_Front;
+			graphics_rasterizerstate_create(&desc, &gfx.rs_front_culling);
+
 			desc.wireframe = true;
 			desc.cullMode = RasterizerCullMode_None;
 			desc.clockwise = true;
@@ -692,6 +695,12 @@ namespace sv {
 				}
 			}
 
+			// Free shadow maps
+			for (ShadowMapRef ref : renderer->shadow_maps) {
+				graphics_destroy(ref.image);
+			}
+			renderer->shadow_maps.clear();
+
 			font_destroy(renderer->font_opensans);
 			font_destroy(renderer->font_console);
 
@@ -712,9 +721,8 @@ namespace sv {
 		graphics_image_clear(gfx.gbuffer_emission, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, Color::Black(), 1.f, 0u, cmd);
 		graphics_image_clear(gfx.gbuffer_ssao, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, Color::Red(), 1.f, 0u, cmd);
 		graphics_image_clear(gfx.gbuffer_depthstencil, GPUImageLayout_DepthStencil, GPUImageLayout_DepthStencil, Color::Black(), 1.f, 0u, cmd);
-	
-		graphics_viewport_set(gfx.offscreen, 0u, cmd);
-		graphics_scissor_set(gfx.offscreen, 0u, cmd);
+
+		// TODO: Free unused shadow maps
     }
 
     void _renderer_end()
@@ -829,6 +837,7 @@ namespace sv {
 
     struct LightInstance {
 
+		Entity entity;
 		LightComponent* comp;
 
 		union {
@@ -900,6 +909,9 @@ namespace sv {
     SV_INTERNAL void draw_sprites(GPU_CameraData& camera_data, CommandList cmd)
     {
 		auto& gfx = renderer->gfx;
+
+		graphics_viewport_set(gfx.offscreen, 0u, cmd);
+		graphics_scissor_set(gfx.offscreen, 0u, cmd);
 	
 		{
 			ComponentIterator it;
@@ -1103,6 +1115,32 @@ namespace sv {
 		}
     }
 
+	SV_AUX GPUImage* get_shadow_map(Entity entity, LightComponent* light)
+	{
+		for (const ShadowMapRef& ref : renderer->shadow_maps) {
+			if (ref.entity == entity)
+				return ref.image;
+		}
+
+		// Create new shadow map
+		
+		ShadowMapRef& ref = renderer->shadow_maps.emplace_back();
+		ref.entity = entity;
+
+		GPUImageDesc desc;
+		desc.width = 4000u;
+		desc.height = 4000u;
+		desc.format = GBUFFER_DEPTH_FORMAT;
+		desc.layout = GPUImageLayout_DepthStencilReadOnly;
+		desc.type = GPUImageType_DepthStencil | GPUImageType_ShaderResource;
+
+		// TODO: Handle error
+							
+		graphics_image_create(&desc, &ref.image);
+
+		return ref.image;
+	}
+
     void _draw_scene()
     {
 		if (!there_is_scene()) return;
@@ -1173,13 +1211,13 @@ namespace sv {
 #else
 			
 			CameraComponent* camera_ = get_main_camera();
-			CameraBuffer_GPU camera_data;
+			GPU_CameraData camera_data;
 
 			if (camera_) {
 
 				Entity cam = get_scene_data()->main_camera;
 				camera_data.projection_matrix = camera_->projection_matrix;
-				camera_data.position = get_entity_world_position(cam).getVec4();
+				camera_data.position = vec3_to_vec4(get_entity_world_position(cam));
 				camera_data.rotation = get_entity_world_rotation(cam);
 				camera_data.view_matrix = camera_->view_matrix;
 				camera_data.view_projection_matrix = camera_->view_projection_matrix;
@@ -1219,6 +1257,7 @@ namespace sv {
 							LightComponent& l = *v.comp;
 
 							LightInstance& inst = light_instances.emplace_back();
+							inst.entity = entity;
 							inst.comp = &l;
 
 							switch (l.light_type)
@@ -1284,90 +1323,90 @@ namespace sv {
 				// SHADOW MAPPING
 				if (light_instances.size()) {
 
-					graphics_event_begin("Shadow Mapping", cmd);
+					LightInstance* it = light_instances.data();
+					LightInstance* end = it + light_instances.size();
 
-					LightInstance& light = light_instances.back();
-
-					if (light.comp->light_type == LightType_Direction) {
-
-						GPUImage*& shadow_map = light.comp->shadow_map;
-						auto& l = light.direction;
-
-						if (shadow_map == NULL) {
-
-							GPUImageDesc desc;
-							desc.width = 1920u;
-							desc.height = 1920u;
-							desc.format = GBUFFER_DEPTH_FORMAT;
-							desc.layout = GPUImageLayout_DepthStencilReadOnly;
-							desc.type = GPUImageType_DepthStencil | GPUImageType_ShaderResource;
-
-							// TODO: Handle error
-							
-							graphics_image_create(&desc, &shadow_map);
-						}
-						
-						XMMATRIX vpm;
-						{
-							XMVECTOR dir = XMVectorSet(0.f, 0.f, 1.f, 0.f);
-							dir = XMVector3Transform(dir, XMMatrixRotationQuaternion(vec4_to_dx(l.world_rotation)));
-							dir = XMVector3Normalize(dir);
-
-							// TODO
-							//vpm = mat_view_from_direction(vec4_to_vec3(camera_data.position), dir, v3_f32::up());
-							constexpr f32 FAR = 100.f;
-							constexpr f32 NEAR = 0.03f;
-							
-							v3_f32 direction = dir;
-
-							v3_f32 pos = vec4_to_vec3(camera_data.position) - direction * FAR * 0.3f;
-							
-							XMMATRIX view = mat_view_from_quaternion(pos, l.world_rotation);
-							XMMATRIX projection = XMMatrixOrthographicLH(100.f, 100.f, NEAR, FAR);
-
-							vpm = view * projection;
-							
-							l.shadow_matrix = camera_data.inverse_view_matrix * vpm * XMMatrixScaling(0.5f, 0.5f, 1.f) * XMMatrixTranslation(0.5f, 0.5f, 0.f);
-						}
-
-						graphics_constantbuffer_bind(gfx.cbuffer_shadow_mapping, 0u, ShaderType_Vertex, cmd);
-						graphics_shader_unbind(ShaderType_Pixel, cmd);
-						graphics_shader_bind(gfx.vs_shadow, cmd);
-						graphics_depthstencilstate_bind(gfx.dss_default_depth, cmd);
-						graphics_inputlayoutstate_bind(gfx.ils_mesh, cmd);
-						graphics_blendstate_unbind(cmd);
-						graphics_rasterizerstate_unbind(cmd);
-
-						graphics_viewport_set(shadow_map, 0u, cmd);
-						graphics_scissor_set(shadow_map, 0u, cmd);
-						
-						GPUImage* att[1u];
-						att[0u] = shadow_map;
-						
-						// TODO: Use renderpass
-						graphics_image_clear(shadow_map, GPUImageLayout_DepthStencilReadOnly, GPUImageLayout_DepthStencil, Color::Black(), 1.f, 0u, cmd);
-
-						graphics_renderpass_begin(gfx.renderpass_shadow_mapping, att, cmd);
-
-						for (const MeshInstance& mesh : mesh_instances) {
-
-							GPU_ShadowMappingData data;
-							data.tm = mesh.world_matrix * vpm;
-
-							graphics_buffer_update(gfx.cbuffer_shadow_mapping, &data, sizeof(GPU_ShadowMappingData), 0u, cmd);
-							graphics_vertexbuffer_bind(mesh.mesh->vbuffer, 0u, 0u, cmd);
-							graphics_indexbuffer_bind(mesh.mesh->ibuffer, 0u, cmd);
-
-							graphics_draw_indexed(u32(mesh.mesh->indices.size()), 1u, 0u, 0u, 0u, cmd);
-						}
-						
-						graphics_renderpass_end(cmd);
-
-						GPUBarrier barrier = GPUBarrier::Image(shadow_map, GPUImageLayout_DepthStencil, GPUImageLayout_DepthStencilReadOnly);
-						graphics_barrier(&barrier, 1u, cmd);
+					while (it != end) {
+						if (it->comp->shadow_mapping_enabled)
+							break;
+						++it;
 					}
 
-					graphics_event_end(cmd);
+					while (it != end) {
+
+						graphics_event_begin("Shadow Mapping", cmd);
+						
+						LightInstance& light = light_instances.back();
+
+						if (light.comp->light_type == LightType_Direction) {
+
+							GPUImage* shadow_map = get_shadow_map(light.entity, light.comp);
+							auto& l = light.direction;
+
+							XMMATRIX vpm;
+							{
+								XMVECTOR dir = XMVectorSet(0.f, 0.f, 1.f, 0.f);
+								dir = XMVector3Transform(dir, XMMatrixRotationQuaternion(vec4_to_dx(l.world_rotation)));
+								dir = XMVector3Normalize(dir);
+
+								// TODO
+								//vpm = mat_view_from_direction(vec4_to_vec3(camera_data.position), dir, v3_f32::up());
+								constexpr f32 FAR = 2000.f;
+								constexpr f32 NEAR = 0.03f;
+							
+								v3_f32 direction = dir;
+
+								v3_f32 pos = vec4_to_vec3(camera_data.position) - direction * FAR * 0.3f;
+							
+								XMMATRIX view = mat_view_from_quaternion(pos, l.world_rotation);
+								XMMATRIX projection = XMMatrixOrthographicLH(100.f, 100.f, NEAR, FAR);
+
+								vpm = view * projection;
+							
+								l.shadow_matrix = camera_data.inverse_view_matrix * vpm * XMMatrixScaling(0.5f, 0.5f, 1.f) * XMMatrixTranslation(0.5f, 0.5f, 0.f);
+							}
+
+							graphics_constantbuffer_bind(gfx.cbuffer_shadow_mapping, 0u, ShaderType_Vertex, cmd);
+							graphics_shader_unbind(ShaderType_Pixel, cmd);
+							graphics_shader_bind(gfx.vs_shadow, cmd);
+							graphics_depthstencilstate_bind(gfx.dss_default_depth, cmd);
+							graphics_inputlayoutstate_bind(gfx.ils_mesh, cmd);
+							graphics_rasterizerstate_bind(gfx.rs_front_culling, cmd);
+							graphics_blendstate_unbind(cmd);
+
+							graphics_viewport_set(shadow_map, 0u, cmd);
+							graphics_scissor_set(shadow_map, 0u, cmd);
+						
+							GPUImage* att[1u];
+							att[0u] = shadow_map;
+						
+							// TODO: Use renderpass
+							graphics_image_clear(shadow_map, GPUImageLayout_DepthStencilReadOnly, GPUImageLayout_DepthStencil, Color::Black(), 1.f, 0u, cmd);
+
+							graphics_renderpass_begin(gfx.renderpass_shadow_mapping, att, cmd);
+
+							for (const MeshInstance& mesh : mesh_instances) {
+
+								GPU_ShadowMappingData data;
+								data.tm = mesh.world_matrix * vpm;
+
+								graphics_buffer_update(gfx.cbuffer_shadow_mapping, &data, sizeof(GPU_ShadowMappingData), 0u, cmd);
+								graphics_vertexbuffer_bind(mesh.mesh->vbuffer, 0u, 0u, cmd);
+								graphics_indexbuffer_bind(mesh.mesh->ibuffer, 0u, cmd);
+
+								graphics_draw_indexed(u32(mesh.mesh->indices.size()), 1u, 0u, 0u, 0u, cmd);
+							}
+						
+							graphics_renderpass_end(cmd);
+
+							GPUBarrier barrier = GPUBarrier::Image(shadow_map, GPUImageLayout_DepthStencil, GPUImageLayout_DepthStencilReadOnly);
+							graphics_barrier(&barrier, 1u, cmd);
+						}
+
+						graphics_event_end(cmd);
+
+						++it;
+					}
 				}
 
 				// DRAW MESHES
@@ -1403,24 +1442,22 @@ namespace sv {
 						GPUImage* att[] = { gfx.offscreen, gfx.gbuffer_normal, gfx.gbuffer_emission, gfx.gbuffer_depthstencil };
 						graphics_renderpass_begin(gfx.renderpass_gbuffer, att, cmd);
 
-						// TODO: Multiple lights
-						{
-							u32 offset = 0u;
-							
+						for (const LightInstance& light : light_instances) {
+
 							// Send light data
-							u32 light_count = SV_MIN(LIGHT_COUNT, u32(light_instances.size()) - offset);
-			    
-							GPU_LightData light_data[LIGHT_COUNT] = {};
-							GPU_ShadowData shadow_data;
+							{			    
+								GPU_LightData light_data = {};
+								GPU_ShadowData shadow_data;
 
-							foreach(i, light_count) {
+								graphics_image_bind(gfx.image_white, 4u, ShaderType_Pixel, cmd);
 
-								GPU_LightData& l0 = light_data[i];
-								const LightInstance& l1 = light_instances[i + offset];
+								GPU_LightData& l0 = light_data;
+								const LightInstance& l1 = light;
 
 								l0.type = l1.comp->light_type;
 								l0.color = color_to_vec3(l1.comp->color);
 								l0.intensity = l1.comp->intensity;
+								l0.has_shadows = 0u;
 
 								switch (l1.comp->light_type)
 								{
@@ -1432,93 +1469,100 @@ namespace sv {
 
 								case LightType_Direction:
 									l0.position = l1.direction.view_direction;
-									graphics_image_bind(l1.comp->shadow_map, 4u, ShaderType_Pixel, cmd);
-									shadow_data.shadow_matrix = l1.direction.shadow_matrix;
+
+									if (l1.comp->shadow_mapping_enabled) {
+
+										GPUImage* shadow_map = get_shadow_map(l1.entity, l1.comp);
+										
+										graphics_image_bind(shadow_map, 4u, ShaderType_Pixel, cmd);
+										shadow_data.shadow_matrix = l1.direction.shadow_matrix;
+										l0.has_shadows = 1u;
+									}
 									break;
 								}
+
+								graphics_buffer_update(gfx.cbuffer_light_instances, &light_data, sizeof(GPU_LightData), 0u, cmd);
+								graphics_buffer_update(gfx.cbuffer_shadow_data, &shadow_data, sizeof(GPU_ShadowData), 0u, cmd);
 							}
 
-							graphics_buffer_update(gfx.cbuffer_light_instances, light_data, sizeof(GPU_LightData) * LIGHT_COUNT, 0u, cmd);
-							graphics_buffer_update(gfx.cbuffer_shadow_data, &shadow_data, sizeof(GPU_ShadowData), 0u, cmd);
-						}
+							foreach(i, mesh_instances.size()) {
 
-						foreach(i, mesh_instances.size()) {
+								const MeshInstance& inst = mesh_instances[i];
 
-							const MeshInstance& inst = mesh_instances[i];
+								graphics_vertexbuffer_bind(inst.mesh->vbuffer, 0u, 0u, cmd);
+								graphics_indexbuffer_bind(inst.mesh->ibuffer, 0u, cmd);
 
-							graphics_vertexbuffer_bind(inst.mesh->vbuffer, 0u, 0u, cmd);
-							graphics_indexbuffer_bind(inst.mesh->ibuffer, 0u, cmd);
+								// Update material data
+								{
+									GPU_MaterialData material_data;
+									material_data.flags = 0u;
 
-							// Update material data
-							{
-								GPU_MaterialData material_data;
-								material_data.flags = 0u;
+									if (inst.material) {
 
-								if (inst.material) {
+										GPUImage* diffuse_map = inst.material->diffuse_map.get();
+										GPUImage* normal_map = inst.material->normal_map.get();
+										GPUImage* specular_map = inst.material->specular_map.get();
+										GPUImage* emissive_map = inst.material->emissive_map.get();
 
-									GPUImage* diffuse_map = inst.material->diffuse_map.get();
-									GPUImage* normal_map = inst.material->normal_map.get();
-									GPUImage* specular_map = inst.material->specular_map.get();
-									GPUImage* emissive_map = inst.material->emissive_map.get();
+										graphics_image_bind(diffuse_map ? diffuse_map : gfx.image_white, 0u, ShaderType_Pixel, cmd);
+										if (normal_map) { graphics_image_bind(normal_map, 1u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_NORMAL_MAPPING; }
+										else graphics_image_bind(gfx.image_white, 1u, ShaderType_Pixel, cmd);
 
-									graphics_image_bind(diffuse_map ? diffuse_map : gfx.image_white, 0u, ShaderType_Pixel, cmd);
-									if (normal_map) { graphics_image_bind(normal_map, 1u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_NORMAL_MAPPING; }
-									else graphics_image_bind(gfx.image_white, 1u, ShaderType_Pixel, cmd);
+										if (specular_map) { graphics_image_bind(specular_map, 2u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_SPECULAR_MAPPING; }
+										else graphics_image_bind(gfx.image_white, 2u, ShaderType_Pixel, cmd);
 
-									if (specular_map) { graphics_image_bind(specular_map, 2u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_SPECULAR_MAPPING; }
-									else graphics_image_bind(gfx.image_white, 2u, ShaderType_Pixel, cmd);
+										if (emissive_map) { graphics_image_bind(emissive_map, 3u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_EMISSIVE_MAPPING; }
+										else graphics_image_bind(gfx.image_white, 3u, ShaderType_Pixel, cmd);
 
-									if (emissive_map) { graphics_image_bind(emissive_map, 3u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_EMISSIVE_MAPPING; }
-									else graphics_image_bind(gfx.image_white, 3u, ShaderType_Pixel, cmd);
+										material_data.diffuse_color = color_to_vec3(inst.material->diffuse_color);
+										material_data.specular_color = color_to_vec3(inst.material->specular_color);
+										material_data.emissive_color = color_to_vec3(inst.material->emissive_color);
+										material_data.shininess = inst.material->shininess;
 
-									material_data.diffuse_color = color_to_vec3(inst.material->diffuse_color);
-									material_data.specular_color = color_to_vec3(inst.material->specular_color);
-									material_data.emissive_color = color_to_vec3(inst.material->emissive_color);
-									material_data.shininess = inst.material->shininess;
+										switch (inst.material->culling) {
 
-									switch (inst.material->culling) {
-
-									case RasterizerCullMode_Back:
-										graphics_rasterizerstate_bind(gfx.rs_back_culling, cmd);
-										break;
+										case RasterizerCullMode_Back:
+											graphics_rasterizerstate_bind(gfx.rs_back_culling, cmd);
+											break;
 					
-									case RasterizerCullMode_Front:
-										// TODO: graphics_rasterizerstate_bind(gfx.rs_front_culling, cmd);
-										break;
+										case RasterizerCullMode_Front:
+											// TODO: graphics_rasterizerstate_bind(gfx.rs_front_culling, cmd);
+											break;
 
-									case RasterizerCullMode_None:
-										graphics_rasterizerstate_unbind(cmd);
-										break;
+										case RasterizerCullMode_None:
+											graphics_rasterizerstate_unbind(cmd);
+											break;
 					
+										}
 									}
+									else {
+
+										graphics_image_bind(gfx.image_white, 0u, ShaderType_Pixel, cmd);
+										graphics_image_bind(gfx.image_white, 1u, ShaderType_Pixel, cmd);
+										graphics_image_bind(gfx.image_white, 2u, ShaderType_Pixel, cmd);
+										graphics_image_bind(gfx.image_white, 3u, ShaderType_Pixel, cmd);
+
+										material_data.diffuse_color = color_to_vec3(Color::Gray(160u));
+										material_data.specular_color = color_to_vec3(Color::Gray(10u));
+										material_data.emissive_color = color_to_vec3(Color::Black());
+										material_data.shininess = 1.f;
+
+										graphics_rasterizerstate_bind(gfx.rs_back_culling, cmd);
+									}
+
+									graphics_buffer_update(material_buffer, &material_data, sizeof(GPU_MaterialData), 0u, cmd);
 								}
-								else {
 
-									graphics_image_bind(gfx.image_white, 0u, ShaderType_Pixel, cmd);
-									graphics_image_bind(gfx.image_white, 1u, ShaderType_Pixel, cmd);
-									graphics_image_bind(gfx.image_white, 2u, ShaderType_Pixel, cmd);
-									graphics_image_bind(gfx.image_white, 3u, ShaderType_Pixel, cmd);
-
-									material_data.diffuse_color = color_to_vec3(Color::Gray(160u));
-									material_data.specular_color = color_to_vec3(Color::Gray(10u));
-									material_data.emissive_color = color_to_vec3(Color::Black());
-									material_data.shininess = 1.f;
-
-									graphics_rasterizerstate_bind(gfx.rs_back_culling, cmd);
+								// Update instance data
+								{
+									GPU_MeshInstanceData data;
+									data.model_view_matrix = inst.world_matrix * camera_data.view_matrix;
+									data.inv_model_view_matrix = XMMatrixInverse(nullptr, data.model_view_matrix);
+									graphics_buffer_update(instance_buffer, &data, sizeof(GPU_MeshInstanceData), 0u, cmd);
 								}
 
-								graphics_buffer_update(material_buffer, &material_data, sizeof(GPU_MaterialData), 0u, cmd);
+								graphics_draw_indexed(u32(inst.mesh->indices.size()), 1u, 0u, 0u, 0u, cmd);
 							}
-
-							// Update instance data
-							{
-								GPU_MeshInstanceData data;
-								data.model_view_matrix = inst.world_matrix * camera_data.view_matrix;
-								data.inv_model_view_matrix = XMMatrixInverse(nullptr, data.model_view_matrix);
-								graphics_buffer_update(instance_buffer, &data, sizeof(GPU_MeshInstanceData), 0u, cmd);
-							}
-
-							graphics_draw_indexed(u32(inst.mesh->indices.size()), 1u, 0u, 0u, 0u, cmd);
 						}
 
 						graphics_renderpass_end(cmd);
@@ -2085,24 +2129,15 @@ namespace sv {
 			
 			// Shadow mapping info
 			if (gui_collapse("Shadow maps")) {
-				
-				ComponentIterator it;
-				CompView<LightComponent> v;
 
-				if (comp_it_begin(it, v)) {
+				for (ShadowMapRef ref : renderer->shadow_maps) {
 
-					do {
+					const char* name = entity_exist(ref.entity) ? get_entity_name(ref.entity) : "Not exist";
+					if (name == NULL || string_size(name) == 0u)
+						name = "Unnamed";
 
-						Entity entity = v.entity;
-						LightComponent& l = *v.comp;
-
-						if (l.shadow_map) {
-
-							gui_text(get_entity_name(entity));
-							gui_image_ex(l.shadow_map, GPUImageLayout_ShaderResource, 200.f, { 0.f, 0.f, 1.f, 1.f }, entity);
-						}
-					}
-					while(comp_it_next(it, v));
+					gui_text(get_entity_name(ref.entity));
+					gui_image_ex(ref.image, GPUImageLayout_DepthStencilReadOnly, 200.f, { 0.f, 0.f, 1.f, 1.f }, ref.entity);
 				}
 			}
 			gui_end_window();

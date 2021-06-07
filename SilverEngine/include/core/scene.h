@@ -526,9 +526,7 @@ namespace sv {
     struct LightComponent : public BaseComponent {
 
 		static CompID SV_API ID;
-		static constexpr u32 VERSION = 0u;
-
-		~LightComponent();
+		static constexpr u32 VERSION = 1u;
 	
 		LightType light_type = LightType_Point;
 		Color color = Color::White();
@@ -536,7 +534,7 @@ namespace sv {
 		f32 range = 5.f;
 		f32 smoothness = 0.5f;
 
-		GPUImage* shadow_map = NULL;
+		bool shadow_mapping_enabled = false;
 
 		void serialize(Serializer& s);
 		void deserialize(Deserializer& s, u32 version);

@@ -2,6 +2,7 @@
 
 #include "defines.h"
 #include "utils/serialize.h"
+#include "platform/os.h"
 
 namespace sv {
 
