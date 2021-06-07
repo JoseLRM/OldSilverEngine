@@ -95,8 +95,10 @@ struct Light {
 SV_CONSTANT_BUFFER(light_instances_buffer, b1) {
 	Light lights[LIGHT_COUNT];
 };
-
-SV_CONSTANT_BUFFER(environment_buffer, b2) {
+SV_CONSTANT_BUFFER(shadow_data_buffer, b2) {
+	matrix shadow_matrix;
+};
+SV_CONSTANT_BUFFER(environment_buffer, b3) {
 	Environment environment;
 };
 
@@ -104,8 +106,18 @@ SV_TEXTURE(diffuse_map, t0);
 SV_TEXTURE(normal_map, t1);
 SV_TEXTURE(specular_map, t2);
 SV_TEXTURE(emissive_map, t3);
+SV_TEXTURE(shadow_map, t4);
 
 SV_SAMPLER(sam, s0);
+
+f32 compute_shadows(float3 position)
+{
+    float4 light_space = mul(float4(position, 1.f), shadow_matrix);
+
+    f32 depth = shadow_map.Sample(sam, light_space.xy).r;
+    
+    return (light_space.z < (depth + 0.002f)) ? 1.f : 0.f;
+}
 
 Output main(Input input)
 {
@@ -191,8 +203,11 @@ Output main(Input input)
 		}
 	}
 
+	// Shadow mapping
+	f32 shadow_mult = compute_shadows(input.position);
+
 	// Ambient lighting
-	light_accumulation = max(environment.ambient_light, light_accumulation);
+	light_accumulation = max(environment.ambient_light, light_accumulation * shadow_mult);
 
 	output.color = float4(diffuse_color.rgb * light_accumulation, 1.f);
 	

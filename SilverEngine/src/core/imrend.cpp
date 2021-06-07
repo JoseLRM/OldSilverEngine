@@ -358,7 +358,8 @@ namespace sv {
 					if (draw_call == ImRendDrawCall_Quad || draw_call == ImRendDrawCall_Sprite) {
 
 						graphics_topology_set(GraphicsTopology_TriangleStrip, cmd);
-			
+
+						GPUImageLayout layout = GPUImageLayout_ShaderResource;
 						v3_f32 position = imrend_read<v3_f32>(it);
 						v2_f32 size = imrend_read<v2_f32>(it);
 						Color color = imrend_read<Color>(it);
@@ -367,7 +368,17 @@ namespace sv {
 
 						if (draw_call == ImRendDrawCall_Sprite) {
 							image = imrend_read<GPUImage*>(it);
+							layout = imrend_read<GPUImageLayout>(it);
 							tc = imrend_read<v4_f32>(it);
+							
+							if (layout != GPUImageLayout_ShaderResource) {
+
+								// TEMP
+								graphics_renderpass_end(cmd);
+								GPUBarrier barrier = GPUBarrier::Image(image, layout, GPUImageLayout_ShaderResource);
+								graphics_barrier(&barrier, 1u, cmd);
+								graphics_renderpass_begin(gfx.renderpass_off, att, cmd);
+							}
 						}
 
 						XMMATRIX m = XMMatrixScaling(size.x, size.y, 1.f) * XMMatrixTranslation(position.x, position.y, position.z);
@@ -390,6 +401,14 @@ namespace sv {
 						graphics_buffer_update(state.gfx.cbuffer_primitive, vertices, sizeof(ImRendVertex) * 4u, 0u, cmd);
 
 						graphics_draw(4u, 1u, 0u, 0u, cmd);
+
+						if (draw_call == ImRendDrawCall_Sprite && layout != GPUImageLayout_ShaderResource) {
+							GPUBarrier barrier = GPUBarrier::Image(image, GPUImageLayout_ShaderResource, layout);
+							// TEMP
+							graphics_renderpass_end(cmd);
+							graphics_barrier(&barrier, 1u, cmd);
+							graphics_renderpass_begin(gfx.renderpass_off, att, cmd);
+						}
 					}
 					else if (draw_call == ImRendDrawCall_Triangle) {
 
@@ -647,8 +666,8 @@ namespace sv {
 		imrend_write(state, size);
 		imrend_write(state, color);
 		imrend_write(state, image);
+		imrend_write(state, layout);
 		imrend_write(state, texcoord);
-		// TODO: Image layout
     }
 
     void imrend_draw_mesh_wireframe(Mesh* mesh, Color color, CommandList cmd)

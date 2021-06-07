@@ -88,7 +88,7 @@ namespace sv {
     SV_API void gui_text(const char* text, u64 id = u64_max);
 	SV_API bool gui_text_field(char* buff, size_t buff_size, u64 id, u32 flags = 0u);
     SV_API bool gui_collapse(const char* text, u64 id = u64_max);
-    SV_API void gui_image(GPUImage* image, f32 height, v4_f32 texcoord, u64 id, u32 flags = 0u);
+    SV_API void gui_image_ex(GPUImage* image, GPUImageLayout layout, f32 height, v4_f32 texcoord, u64 id, u32 flags = 0u);
     SV_API void gui_separator(f32 separation);
 
 	SV_API bool gui_begin_combobox(const char* preview, u64 id, u32 flags = 0u);
@@ -101,6 +101,11 @@ namespace sv {
     SV_API bool gui_asset_button(const char* text, GPUImage* image, v4_f32 texcoord, u64 id, u32 flags = 0u);
 
     // HELPERS
+
+	SV_INLINE void gui_image(GPUImage* image, f32 height, v4_f32 texcoord, u64 id, u32 flags = 0u)
+	{
+		gui_image_ex(image, GPUImageLayout_ShaderResource, height, texcoord, id, flags);
+	}
 
     SV_INLINE void gui_image(GPUImage* image, f32 height, u64 id, u32 flags = 0u) { gui_image(image, height, { 0.f, 0.f, 1.f, 1.f }, id, flags); }
 

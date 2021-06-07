@@ -144,5 +144,6 @@ popd
 pushd %origin_path%
 
 XCOPY %output_dir%SilverEngine.lib SilverEngine\system\bin /I /Q /Y > NUL
+XCOPY %output_dir%SilverEngine.exe SilverEngine\ /I /Q /Y > NUL
 
 popd

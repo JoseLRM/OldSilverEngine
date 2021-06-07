@@ -39,6 +39,8 @@ namespace sv {
 		COMPILE_PS(gfx.ps_bloom_threshold, "postprocessing/bloom_threshold.hlsl");
 		COMPILE_PS(gfx.ps_ssao, "postprocessing/ssao.hlsl");
 
+		COMPILE_VS(gfx.vs_shadow, "shadow_mapping.hlsl");
+
 		return true;
     }
 
@@ -67,6 +69,20 @@ namespace sv {
 
 		desc.attachmentCount = 1u;
 		CREATE_RENDERPASS("OffscreenRenderpass", gfx.renderpass_off);
+
+		// Shadow mapping pass
+		att[0].loadOp = AttachmentOperation_Load;
+		att[0].storeOp = AttachmentOperation_Store;
+		att[0].stencilLoadOp = AttachmentOperation_DontCare;
+		att[0].stencilStoreOp = AttachmentOperation_DontCare;
+		att[0].format = GBUFFER_DEPTH_FORMAT;
+		att[0].initialLayout = GPUImageLayout_DepthStencil;
+		att[0].layout = GPUImageLayout_DepthStencil;
+		att[0].finalLayout = GPUImageLayout_DepthStencil;
+		att[0].type = AttachmentType_DepthStencil;
+
+		desc.attachmentCount = 1u;
+		CREATE_RENDERPASS("DepthRenderpass", gfx.renderpass_shadow_mapping);
 		
 		// World
 		att[0].loadOp = AttachmentOperation_Load;
@@ -285,6 +301,20 @@ namespace sv {
 
 			desc.size = sizeof(GPU_LightData) * LIGHT_COUNT;
 			SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_light_instances));
+		}
+
+		// Shadow mapping
+		{
+			desc.pData = NULL;
+			desc.bufferType = GPUBufferType_Constant;
+			desc.usage = ResourceUsage_Dynamic;
+			desc.CPUAccess = CPUAccess_Write;
+			desc.size = sizeof(GPU_ShadowMappingData);
+
+			SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_shadow_mapping));
+
+			desc.size = sizeof(GPU_ShadowData);
+			SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_shadow_data));
 		}
 
 		// Sky box
@@ -613,6 +643,10 @@ namespace sv {
     bool _imrend_initialize();
     void _imrend_close();
 
+#if SV_EDITOR
+	void display_debug_renderer();
+#endif
+
     bool _renderer_initialize()
     {
 		renderer = SV_ALLOCATE_STRUCT(RendererState);
@@ -629,6 +663,10 @@ namespace sv {
 		// Create default fonts
 		SV_CHECK(font_create(renderer->font_opensans, "$system/fonts/OpenSans/OpenSans-Regular.ttf", 128.f, 0u));
 		SV_CHECK(font_create(renderer->font_console, "$system/fonts/Cousine/Cousine-Regular.ttf", 128.f, 0u));
+
+#if SV_EDITOR
+		event_register("display_gui", display_debug_renderer, 0u);
+#endif
 
 		return true;
     }
@@ -783,34 +821,30 @@ namespace sv {
 
     struct MeshInstance {
 
-		XMMATRIX transform_matrix;
+		XMMATRIX world_matrix;
 		Mesh* mesh;
 		Material* material;
-
-		MeshInstance(const XMMATRIX& transform_matrix, Mesh* mesh, Material* material)
-			: transform_matrix(transform_matrix), mesh(mesh), material(material) {}
 
     };
 
     struct LightInstance {
 
-		Color	     color;
-		LightType    type;
-		v3_f32	     position;
-		f32	     range;
-		f32	     intensity;
-		f32	     smoothness;
+		LightComponent* comp;
 
-		// None
-		LightInstance() = default;
+		union {
 
-		// Point
-		LightInstance(Color color, const v3_f32& position, f32 range, f32 intensity, f32 smoothness)
-			: color(color), type(LightType_Point), position(position), range(range), intensity(intensity), smoothness(smoothness) {}
+			struct {
+				v3_f32 position;
+			} point;
 
-		// Direction
-		LightInstance(Color color, const v3_f32& direction, f32 intensity)
-			: color(color), type(LightType_Direction), position(direction), intensity(intensity) {}
+			struct {
+				v3_f32 view_direction;
+				v4_f32 world_rotation;
+				XMMATRIX shadow_matrix;
+			} direction;
+		};
+
+		LightInstance() { point = {};}
     };
 
     SV_AUX void postprocessing_draw_call(CommandList cmd)
@@ -1069,41 +1103,6 @@ namespace sv {
 		}
     }
 
-    SV_AUX bool update_light_buffer(const GPU_CameraData& camera_data, u32 offset, CommandList cmd)
-    {
-		// Send light data
-		u32 light_count = SV_MIN(LIGHT_COUNT, u32(light_instances.size()) - offset);
-			    
-		GPU_LightData light_data[LIGHT_COUNT] = {};
-
-		foreach(i, light_count) {
-
-			GPU_LightData& l0 = light_data[i];
-			const LightInstance& l1 = light_instances[i + offset];
-
-			l0.type = l1.type;
-			l0.color = color_to_vec3(l1.color);
-			l0.intensity = l1.intensity;
-
-			switch (l1.type)
-			{
-			case LightType_Point:
-				l0.position = l1.position;
-				l0.range = l1.range;
-				l0.smoothness = l1.smoothness;
-				break;
-
-			case LightType_Direction:
-				l0.position = l1.position;
-				break;
-			}
-		}
-
-		graphics_buffer_update(renderer->gfx.cbuffer_light_instances, light_data, sizeof(GPU_LightData) * LIGHT_COUNT, 0u, cmd);
-
-		return light_count;
-    }
-
     void _draw_scene()
     {
 		if (!there_is_scene()) return;
@@ -1219,25 +1218,31 @@ namespace sv {
 							Entity entity = v.entity;
 							LightComponent& l = *v.comp;
 
+							LightInstance& inst = light_instances.emplace_back();
+							inst.comp = &l;
+
 							switch (l.light_type)
 							{
 							case LightType_Point:
 							{
 								XMVECTOR position = vec3_to_dx(get_entity_world_position(entity), 1.f);
 								position = XMVector4Transform(position, camera_data.view_matrix);
+
+								inst.point.position = position;
 								
-								light_instances.emplace_back(l.color, position, l.range, l.intensity, l.smoothness);
 								break;
 							}
 
 							case LightType_Direction:
 							{
+								inst.direction.world_rotation = get_entity_world_rotation(entity);
+								
 								XMVECTOR direction = XMVectorSet(0.f, 0.f, -1.f, 0.f);
-								quat = XMQuaternionMultiply(vec4_to_dx(get_entity_world_rotation(entity)), XMQuaternionInverse(camera_quat));
+								quat = XMQuaternionMultiply(vec4_to_dx(inst.direction.world_rotation), XMQuaternionInverse(camera_quat));
 
 								direction = XMVector3Transform(direction, XMMatrixRotationQuaternion(quat));
 
-								light_instances.emplace_back(l.color, v3_f32(direction), l.intensity);
+								inst.direction.view_direction = direction;
 							}
 							break;
 
@@ -1248,28 +1253,125 @@ namespace sv {
 					}
 				}
 
-				// DRAW MESHES
+				// GET MESHES
 				{
-					{
-						ComponentIterator it;
-						CompView<MeshComponent> view;
+					ComponentIterator it;
+					CompView<MeshComponent> view;
 
-						if (comp_it_begin(it, view)) {
+					if (comp_it_begin(it, view)) {
 
-							do {
+						do {
 
-								MeshComponent& mesh = *view.comp;
-								Entity entity = view.entity;
+							MeshComponent& mesh = *view.comp;
+							Entity entity = view.entity;
 
-								Mesh* m = mesh.mesh.get();
-								if (m == nullptr || m->vbuffer == nullptr || m->ibuffer == nullptr) continue;
+							Mesh* m = mesh.mesh.get();
+							if (m == nullptr || m->vbuffer == nullptr || m->ibuffer == nullptr) continue;
 
-								mesh_instances.emplace_back(get_entity_world_matrix(entity), m, mesh.material.get());
-							}
-							while (comp_it_next(it, view));
+							//XMMATRIX tm = get_entity_world_matrix(entity);
+
+							MeshInstance& inst = mesh_instances.emplace_back();
+							inst.world_matrix = get_entity_world_matrix(entity);
+							inst.mesh = m;
+							inst.material = mesh.material.get();
 						}
+						while (comp_it_next(it, view));
 					}
-		    
+				}
+
+				graphics_state_unbind(cmd);
+
+				// SHADOW MAPPING
+				if (light_instances.size()) {
+
+					graphics_event_begin("Shadow Mapping", cmd);
+
+					LightInstance& light = light_instances.back();
+
+					if (light.comp->light_type == LightType_Direction) {
+
+						GPUImage*& shadow_map = light.comp->shadow_map;
+						auto& l = light.direction;
+
+						if (shadow_map == NULL) {
+
+							GPUImageDesc desc;
+							desc.width = 1920u;
+							desc.height = 1920u;
+							desc.format = GBUFFER_DEPTH_FORMAT;
+							desc.layout = GPUImageLayout_DepthStencilReadOnly;
+							desc.type = GPUImageType_DepthStencil | GPUImageType_ShaderResource;
+
+							// TODO: Handle error
+							
+							graphics_image_create(&desc, &shadow_map);
+						}
+						
+						XMMATRIX vpm;
+						{
+							XMVECTOR dir = XMVectorSet(0.f, 0.f, 1.f, 0.f);
+							dir = XMVector3Transform(dir, XMMatrixRotationQuaternion(vec4_to_dx(l.world_rotation)));
+							dir = XMVector3Normalize(dir);
+
+							// TODO
+							//vpm = mat_view_from_direction(vec4_to_vec3(camera_data.position), dir, v3_f32::up());
+							constexpr f32 FAR = 100.f;
+							constexpr f32 NEAR = 0.03f;
+							
+							v3_f32 direction = dir;
+
+							v3_f32 pos = vec4_to_vec3(camera_data.position) - direction * FAR * 0.3f;
+							
+							XMMATRIX view = mat_view_from_quaternion(pos, l.world_rotation);
+							XMMATRIX projection = XMMatrixOrthographicLH(100.f, 100.f, NEAR, FAR);
+
+							vpm = view * projection;
+							
+							l.shadow_matrix = camera_data.inverse_view_matrix * vpm * XMMatrixScaling(0.5f, 0.5f, 1.f) * XMMatrixTranslation(0.5f, 0.5f, 0.f);
+						}
+
+						graphics_constantbuffer_bind(gfx.cbuffer_shadow_mapping, 0u, ShaderType_Vertex, cmd);
+						graphics_shader_unbind(ShaderType_Pixel, cmd);
+						graphics_shader_bind(gfx.vs_shadow, cmd);
+						graphics_depthstencilstate_bind(gfx.dss_default_depth, cmd);
+						graphics_inputlayoutstate_bind(gfx.ils_mesh, cmd);
+						graphics_blendstate_unbind(cmd);
+						graphics_rasterizerstate_unbind(cmd);
+
+						graphics_viewport_set(shadow_map, 0u, cmd);
+						graphics_scissor_set(shadow_map, 0u, cmd);
+						
+						GPUImage* att[1u];
+						att[0u] = shadow_map;
+						
+						// TODO: Use renderpass
+						graphics_image_clear(shadow_map, GPUImageLayout_DepthStencilReadOnly, GPUImageLayout_DepthStencil, Color::Black(), 1.f, 0u, cmd);
+
+						graphics_renderpass_begin(gfx.renderpass_shadow_mapping, att, cmd);
+
+						for (const MeshInstance& mesh : mesh_instances) {
+
+							GPU_ShadowMappingData data;
+							data.tm = mesh.world_matrix * vpm;
+
+							graphics_buffer_update(gfx.cbuffer_shadow_mapping, &data, sizeof(GPU_ShadowMappingData), 0u, cmd);
+							graphics_vertexbuffer_bind(mesh.mesh->vbuffer, 0u, 0u, cmd);
+							graphics_indexbuffer_bind(mesh.mesh->ibuffer, 0u, cmd);
+
+							graphics_draw_indexed(u32(mesh.mesh->indices.size()), 1u, 0u, 0u, 0u, cmd);
+						}
+						
+						graphics_renderpass_end(cmd);
+
+						GPUBarrier barrier = GPUBarrier::Image(shadow_map, GPUImageLayout_DepthStencil, GPUImageLayout_DepthStencilReadOnly);
+						graphics_barrier(&barrier, 1u, cmd);
+					}
+
+					graphics_event_end(cmd);
+				}
+
+				// DRAW MESHES
+				{		    
 					if (mesh_instances.size()) {
 
 						graphics_event_begin("MeshRendering", cmd);
@@ -1282,6 +1384,9 @@ namespace sv {
 						graphics_blendstate_bind(gfx.bs_mesh, cmd);
 						graphics_sampler_bind(gfx.sampler_def_linear, 0u, ShaderType_Pixel, cmd);
 
+						graphics_viewport_set(gfx.offscreen, 0u, cmd);
+						graphics_scissor_set(gfx.offscreen, 0u, cmd);
+
 						// Bind resources
 						GPUBuffer* instance_buffer = gfx.cbuffer_mesh_instance;
 						GPUBuffer* material_buffer = gfx.cbuffer_material;
@@ -1291,14 +1396,51 @@ namespace sv {
 						
 						graphics_constantbuffer_bind(material_buffer, 0u, ShaderType_Pixel, cmd);
 						graphics_constantbuffer_bind(gfx.cbuffer_light_instances, 1u, ShaderType_Pixel, cmd);
-						graphics_constantbuffer_bind(gfx.cbuffer_environment, 2u, ShaderType_Pixel, cmd);
+						graphics_constantbuffer_bind(gfx.cbuffer_shadow_data, 2u, ShaderType_Pixel, cmd);
+						graphics_constantbuffer_bind(gfx.cbuffer_environment, 3u, ShaderType_Pixel, cmd);
 
 						// Begin renderpass
 						GPUImage* att[] = { gfx.offscreen, gfx.gbuffer_normal, gfx.gbuffer_emission, gfx.gbuffer_depthstencil };
 						graphics_renderpass_begin(gfx.renderpass_gbuffer, att, cmd);
 
 						// TODO: Multiple lights
-						update_light_buffer(camera_data, 0u, cmd);
+						{
+							u32 offset = 0u;
+							
+							// Send light data
+							u32 light_count = SV_MIN(LIGHT_COUNT, u32(light_instances.size()) - offset);
+			    
+							GPU_LightData light_data[LIGHT_COUNT] = {};
+							GPU_ShadowData shadow_data;
+
+							foreach(i, light_count) {
+
+								GPU_LightData& l0 = light_data[i];
+								const LightInstance& l1 = light_instances[i + offset];
+
+								l0.type = l1.comp->light_type;
+								l0.color = color_to_vec3(l1.comp->color);
+								l0.intensity = l1.comp->intensity;
+
+								switch (l1.comp->light_type)
+								{
+								case LightType_Point:
+									l0.position = l1.point.position;
+									l0.range = l1.comp->range;
+									l0.smoothness = l1.comp->smoothness;
+									break;
+
+								case LightType_Direction:
+									l0.position = l1.direction.view_direction;
+									graphics_image_bind(l1.comp->shadow_map, 4u, ShaderType_Pixel, cmd);
+									shadow_data.shadow_matrix = l1.direction.shadow_matrix;
+									break;
+								}
+							}
+
+							graphics_buffer_update(gfx.cbuffer_light_instances, light_data, sizeof(GPU_LightData) * LIGHT_COUNT, 0u, cmd);
+							graphics_buffer_update(gfx.cbuffer_shadow_data, &shadow_data, sizeof(GPU_ShadowData), 0u, cmd);
+						}
 
 						foreach(i, mesh_instances.size()) {
 
@@ -1370,11 +1512,10 @@ namespace sv {
 
 							// Update instance data
 							{
-								GPU_MeshInstanceData mesh_data;
-								mesh_data.model_view_matrix = inst.transform_matrix * camera_data.view_matrix;
-								mesh_data.inv_model_view_matrix = XMMatrixInverse(nullptr, mesh_data.model_view_matrix);
-
-								graphics_buffer_update(instance_buffer, &mesh_data, sizeof(GPU_MeshInstanceData), 0u, cmd);
+								GPU_MeshInstanceData data;
+								data.model_view_matrix = inst.world_matrix * camera_data.view_matrix;
+								data.inv_model_view_matrix = XMMatrixInverse(nullptr, data.model_view_matrix);
+								graphics_buffer_update(instance_buffer, &data, sizeof(GPU_MeshInstanceData), 0u, cmd);
 							}
 
 							graphics_draw_indexed(u32(inst.mesh->indices.size()), 1u, 0u, 0u, 0u, cmd);
@@ -1933,4 +2074,40 @@ namespace sv {
 			graphics_barrier(barriers, barrier_count, cmd);
 		}
     }
+
+	// DEBUG
+
+#if SV_EDITOR
+
+	void display_debug_renderer()
+	{
+		if (gui_begin_window("Renderer Debug")) {
+			
+			// Shadow mapping info
+			if (gui_collapse("Shadow maps")) {
+				
+				ComponentIterator it;
+				CompView<LightComponent> v;
+
+				if (comp_it_begin(it, v)) {
+
+					do {
+
+						Entity entity = v.entity;
+						LightComponent& l = *v.comp;
+
+						if (l.shadow_map) {
+
+							gui_text(get_entity_name(entity));
+							gui_image_ex(l.shadow_map, GPUImageLayout_ShaderResource, 200.f, { 0.f, 0.f, 1.f, 1.f }, entity);
+						}
+					}
+					while(comp_it_next(it, v));
+				}
+			}
+			gui_end_window();
+		}
+	}
+	
+#endif
 }

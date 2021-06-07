@@ -814,7 +814,41 @@ namespace sv {
 
     // Matrix
 
-    XMMATRIX math_matrix_view(const v3_f32& position, const v4_f32& directionQuat);
+	SV_INLINE XMMATRIX mat_view_from_quaternion(v3_f32 position, v4_f32 quaternion)
+	{
+		XMMATRIX m = XMMatrixRotationQuaternion(vec4_to_dx(quaternion)) * XMMatrixTranslation(position.x, position.y, position.z);
+		
+		m = XMMatrixInverse(NULL, m);
+		return m;
+	}
+
+	SV_INLINE XMMATRIX mat_view_from_direction(v3_f32 position, v3_f32 direction, v3_f32 up)
+	{
+		v3_f32 cam_right = vec3_normalize(vec3_cross(direction, up));
+		v3_f32 cam_up = vec3_cross(cam_right, direction);
+
+		XMFLOAT4X4 mat;
+		mat(1, 1) = cam_right.x;
+		mat(2, 1) = cam_right.y;
+		mat(3, 1) = cam_right.z;
+		mat(4, 1) = 0.f;
+		mat(1, 2) = cam_up.x;
+		mat(2, 2) = cam_up.y;
+		mat(3, 2) = cam_up.z;
+		mat(4, 2) = 0.f;
+		mat(1, 3) = -direction.x;
+		mat(2, 3) = -direction.y;
+		mat(3, 3) = -direction.z;
+		mat(4, 3) = 0.f;
+		mat(1, 4) = position.x;
+		mat(2, 4) = position.y;
+		mat(3, 4) = position.z;
+		mat(4, 4) = 1.f;
+
+		// TODO: position
+
+		return XMMatrixInverse(NULL, XMMatrixTranspose(XMLoadFloat4x4(&mat)));
+	}
 
 	// Quaternion
 

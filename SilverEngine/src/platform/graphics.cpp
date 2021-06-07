@@ -1501,6 +1501,10 @@ namespace sv {
 			foreach(i, rp->info.attachments.size())
 				g_PipelineState.graphics[cmd].clearColors[i] = color_to_vec4(colors[i]);
 		}
+		else {
+			foreach(i, rp->info.attachments.size())
+				g_PipelineState.graphics[cmd].clearColors[i] = color_to_vec4(Color::Black());
+		}
 		g_PipelineState.graphics[cmd].clearDepthStencil = std::make_pair(depth, stencil);
 
 		g_Device.renderpass_begin(cmd);
@@ -1515,6 +1519,10 @@ namespace sv {
 		u32 attCount = u32(rp->info.attachments.size());
 		memcpy(state.attachments, attachments, sizeof(GPUImage*) * attCount);
 		g_PipelineState.graphics[cmd].flags |= GraphicsPipelineState_RenderPass;
+
+		foreach(i, rp->info.attachments.size())
+			g_PipelineState.graphics[cmd].clearColors[i] = color_to_vec4(Color::Black());
+		g_PipelineState.graphics[cmd].clearDepthStencil = std::make_pair(1.f, 0u);
 
 		g_Device.renderpass_begin(cmd);
     }

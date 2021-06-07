@@ -184,6 +184,7 @@ namespace sv {
 
 			struct {
 				GPUImage* image;
+				GPUImageLayout layout;
 				f32 height;
 				v4_f32 texcoord;
 			} image;
@@ -1080,6 +1081,7 @@ namespace sv {
 			auto& image = w.widget.image;
 			image.height = gui_read<f32>(it);
 			image.image = gui_read<GPUImage*>(it);
+			image.layout = gui_read<GPUImageLayout>(it);
 			image.texcoord = gui_read<v4_f32>(it);
 		}
 		break;
@@ -3184,13 +3186,14 @@ namespace sv {
 		return *active;
     }
 
-    void gui_image(GPUImage* image, f32 height, v4_f32 texcoord, u64 id, u32 flags)
+    void gui_image_ex(GPUImage* image, GPUImageLayout layout, f32 height, v4_f32 texcoord, u64 id, u32 flags)
     {
 		compute_id(id);
 	
 		write_widget(GuiWidgetType_Image, id, flags);
 		gui_write(height);
 		gui_write(image);
+		gui_write(layout);
 		gui_write(texcoord);
     }
 
@@ -3688,7 +3691,7 @@ namespace sv {
 					v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y);
 					v2_f32 size = v2_f32(w.bounds.z, w.bounds.w);
 	    
-					imrend_draw_sprite(vec2_to_vec3(pos), size, Color::White(), image.image ? image.image : renderer_white_image(), GPUImageLayout_ShaderResource, image.texcoord, cmd);
+					imrend_draw_sprite(vec2_to_vec3(pos), size, Color::White(), image.image ? image.image : renderer_white_image(), image.layout, image.texcoord, cmd);
 				}
 				break;
 

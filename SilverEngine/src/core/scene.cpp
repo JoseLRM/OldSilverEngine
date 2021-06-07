@@ -769,7 +769,7 @@ namespace sv {
     static void update_camera_matrices(CameraComponent& camera, const v3_f32& position, const v4_f32& rotation)
     {
 		// Compute view matrix
-		camera.view_matrix = math_matrix_view(position, rotation);
+		camera.view_matrix = mat_view_from_quaternion(position, rotation);
 
 		// Compute projection matrix
 		{
@@ -2360,6 +2360,11 @@ namespace sv {
 		deserialize_asset(d, mesh);
 		deserialize_asset(d, material);
     }
+
+	LightComponent::~LightComponent()
+	{
+		graphics_destroy(shadow_map);
+	}
 
     void LightComponent::serialize(Serializer& s)
     {
