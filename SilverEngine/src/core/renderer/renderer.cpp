@@ -1238,8 +1238,8 @@ namespace sv {
 
 				CameraComponent& camera = *camera_;
 
-				if (scene->skybox && camera.projection_type == ProjectionType_Perspective)
-					draw_sky(scene->skybox, camera_data.view_matrix, camera_data.projection_matrix, cmd);
+				if (scene->skybox.image.get() && camera.projection_type == ProjectionType_Perspective)
+					draw_sky(scene->skybox.image.get(), camera_data.view_matrix, camera_data.projection_matrix, cmd);
 
 				// GET LIGHTS
 				{
@@ -1351,12 +1351,12 @@ namespace sv {
 
 								// TODO
 								//vpm = mat_view_from_direction(vec4_to_vec3(camera_data.position), dir, v3_f32::up());
-								constexpr f32 FAR = 2000.f;
-								constexpr f32 NEAR = 0.03f;
+								constexpr f32 FAR = 100.f;
+								constexpr f32 NEAR = -100.f;
 							
 								v3_f32 direction = dir;
 
-								v3_f32 pos = vec4_to_vec3(camera_data.position) - direction * FAR * 0.3f;
+								v3_f32 pos = vec4_to_vec3(camera_data.position);
 							
 								XMMATRIX view = mat_view_from_quaternion(pos, l.world_rotation);
 								XMMATRIX projection = XMMatrixOrthographicLH(100.f, 100.f, NEAR, FAR);
@@ -1608,6 +1608,9 @@ namespace sv {
     void draw_sky(GPUImage* skymap, XMMATRIX view_matrix, const XMMATRIX& projection_matrix, CommandList cmd)
     {
 		auto& gfx = renderer->gfx;
+
+		graphics_viewport_set(gfx.offscreen, 0u, cmd);
+		graphics_scissor_set(gfx.offscreen, 0u, cmd);
 	
 		graphics_depthstencilstate_unbind(cmd);
 		graphics_blendstate_unbind(cmd);

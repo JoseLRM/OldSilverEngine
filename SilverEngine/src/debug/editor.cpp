@@ -1862,7 +1862,19 @@ namespace sv {
 				gui_show_window("Go to scene");
 
 			if (gui_collapse("Rendering")) {
+
 				gui_drag_color("Ambient Light", s.ambient_light);
+
+				// Skybox
+				{
+					gui_button("Skybox");
+
+					AssetPackage* package;
+					if (gui_recive_package((void**)&package, ASSET_BROWSER_PACKAGE_TEXTURE)) {
+
+						set_skybox(package->filepath);
+					}
+				}
 			}
 
 			if (gui_collapse("Physics")) {
@@ -2204,18 +2216,28 @@ namespace sv {
 				// Window management
 				if (gui_begin_window("Window Manager", GuiWindowFlag_NoClose)) {
 
-					if (gui_button("Hierarchy")) {
-						gui_show_window("Hierarchy");
+					const char* windows[] = {
+						"Hierarchy",
+						"Inspector",
+						"Asset Browser",
+						"Scene Settings",
+						"SpriteSheet Editor",
+					};
+
+					foreach(i, SV_ARRAY_SIZE(windows)) {
+
+						const char* name = windows[i];
+
+						if (!gui_showing_window(name)) {
+
+							if (gui_button(name, i)) {
+
+								gui_show_window(name);
+							}
+						}
 					}
-					if (gui_button("Inspector")) {
-						gui_show_window("Inspector");
-					}
-					if (gui_button("Asset Browser")) {
-						gui_show_window("Asset Browser");
-					}
-					if (gui_button("Scene Settings")) {
-						gui_show_window("Scene Settings");
-					}
+
+					gui_separator(10.f);
 
 					gui_checkbox("Colisions", dev.draw_collisions);
 					gui_checkbox("Postprocessing", dev.postprocessing);

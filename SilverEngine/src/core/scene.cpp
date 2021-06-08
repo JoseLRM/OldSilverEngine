@@ -116,7 +116,7 @@ namespace sv {
     
     struct SceneState {
 
-		static constexpr u32 VERSION = 1u;
+		static constexpr u32 VERSION = 3u;
 
 		char next_scene_name[SCENENAME_SIZE + 1u] = {};
 		Scene* scene = nullptr;
@@ -218,6 +218,8 @@ namespace sv {
 
 			event_dispatch("close_scene", nullptr);
 
+			free_skybox();
+
 			// TODO: Dispatch events at once
 			for (Entity entity : scene->entities) {
 
@@ -310,6 +312,18 @@ namespace sv {
 		    
 					deserialize_entity(d, scene.data.main_camera);
 					deserialize_entity(d, scene.data.player);
+
+					// Skybox
+					if (scene_version == 3u) {
+
+						char filepath[FILEPATH_SIZE + 1u] = "";
+						deserialize_string(d, filepath, FILEPATH_SIZE + 1u);
+
+						if (string_size(filepath)) {
+							
+							set_skybox(filepath);
+						}
+					}
 
 					if (scene_version == 0u) {
 						v2_f32 g;
@@ -592,6 +606,9 @@ namespace sv {
 
 		serialize_entity(s, scene.data.main_camera);
 		serialize_entity(s, scene.data.player);
+
+		// Skybox
+		serialize_string(s, scene.data.skybox.image.get() ? scene.data.skybox.filepath : "");
 
 		serialize_v3_f32(s, scene.data.physics.gravity);
 		serialize_f32(s, scene.data.physics.air_friction);
@@ -908,6 +925,40 @@ namespace sv {
 
 		return ray;
     }
+
+	void free_skybox()
+	{
+		SV_SCENE();
+		
+		if (scene.data.skybox.image.get()) {
+			unload_asset(scene.data.skybox.image);
+			string_copy(scene.data.skybox.filepath, "", FILEPATH_SIZE + 1u);
+		}
+	}
+
+	bool set_skybox(const char* filepath)
+	{
+		SV_SCENE();
+		
+		if (string_equals(filepath, scene.data.skybox.filepath))
+			return true;
+			
+		free_skybox();
+
+		// TODO: Use asset names
+		GPUImage* image;
+		bool res = load_skymap_image(filepath, &image);
+		
+		if (res) {
+			SV_LOG_INFO("Skybox '%s' loaded", filepath);
+			create_asset(scene.data.skybox.image, "Texture");
+			scene.data.skybox.image.set(image);
+			string_copy(scene.data.skybox.filepath, filepath, FILEPATH_SIZE + 1u);
+		}
+		else SV_LOG_ERROR("Can't load the skybox '%s'", filepath);
+
+		return res;
+	}
 
     ////////////////////////////////////////////////// ECS ////////////////////////////////////////////////////////
 

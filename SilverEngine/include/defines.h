@@ -9,8 +9,6 @@
 
 // TEMP
 #include <limits>
-#include <utility>
-#include <string.h>
 #include <atomic>
 #include <algorithm>
 
@@ -54,13 +52,6 @@ constexpr f64	f64_min = std::numeric_limits<f64>::min();
 constexpr f32	f32_max = std::numeric_limits<f32>::max();
 constexpr f64	f64_max = std::numeric_limits<f64>::max();
 
-static_assert(std::numeric_limits<f32>::is_iec559, "IEEE 754 required");
-constexpr f32	f32_inf = std::numeric_limits<f32>::infinity();
-constexpr f32	f32_ninf = -1.f * std::numeric_limits<f32>::infinity();
-static_assert(std::numeric_limits<f64>::is_iec559, "IEEE 754 required");
-constexpr f64	f64_inf = std::numeric_limits<f64>::infinity();
-constexpr f64	f64_ninf = -1.0 * std::numeric_limits<f64>::infinity();
-
 // Misc
 
 constexpr u32 FILEPATH_SIZE = 259u;
@@ -73,6 +64,7 @@ constexpr u32 SCENENAME_SIZE = 50u;
 #define foreach(_it, _end) for (u32 _it = 0u; _it < u32(_end); ++_it)
 #define SV_MIN(a, b) ((a < b) ? a : b)
 #define SV_MAX(a, b) ((a > b) ? a : b)
+#define SV_ARRAY_SIZE(x) (sizeof(x) / sizeof(*x))
 #define SV_AUX SV_INLINE static
 #define SV_INTERNAL static
 

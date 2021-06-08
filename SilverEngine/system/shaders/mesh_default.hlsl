@@ -115,7 +115,7 @@ f32 compute_shadows(float3 position)
 
     f32 depth = shadow_map.Sample(sam, light_space.xy).r;
     
-    return (light_space.z < (depth + 0.002f)) ? 1.f : 0.f;
+    return (light_space.z < (depth + 0.001f)) ? 1.f : 0.f;
 }
 
 float3 compute_light(float3 position, float3 normal, f32 specular_mul)

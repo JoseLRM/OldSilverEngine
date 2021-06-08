@@ -68,6 +68,7 @@ namespace sv {
     SV_API void gui_end_window();
     SV_API bool gui_show_window(const char* title);
     SV_API bool gui_hide_window(const char* title);
+	SV_API bool gui_showing_window(const char* title);
 
     SV_API bool gui_begin_popup(GuiPopupTrigger trigger);
     SV_API void gui_end_popup();

@@ -55,7 +55,13 @@ namespace sv {
 		TextureAsset normal_map;
 		TextureAsset specular_map;
 		TextureAsset emissive_map;
-    }; 
+    };
+
+	/*struct Terrain {
+		
+		GPUImage* height_map;
+		
+		};*/
 
     SV_DEFINE_ASSET(MeshAsset, Mesh);
     SV_DEFINE_ASSET(MaterialAsset, Material);

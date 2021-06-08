@@ -24,7 +24,12 @@ namespace sv {
 		Entity main_camera = SV_ENTITY_NULL;
 		Entity player = SV_ENTITY_NULL;
 
-		GPUImage* skybox = nullptr;
+		struct{
+			// This asset can't be attached to a image file because it has a different initialization
+			TextureAsset image;
+			char filepath[FILEPATH_SIZE + 1u] = "";
+		} skybox;
+		
 		Color ambient_light = Color::Gray(20u);
 
 		struct {
@@ -57,6 +62,9 @@ namespace sv {
     SV_API CameraComponent* get_main_camera();
 
     SV_API Ray screen_to_world_ray(v2_f32 position, const v3_f32& camera_position, const v4_f32& camera_rotation, CameraComponent* camera);
+
+	SV_API void free_skybox();
+	SV_API bool set_skybox(const char* filepath);
 	
     ////////////////////////////////////////// ECS ////////////////////////////////////////////////////////
 

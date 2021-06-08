@@ -2933,6 +2933,14 @@ namespace sv {
 		return true;
     }
 
+	bool gui_showing_window(const char* title)
+	{
+		u64 hash = hash_string(title);
+		GuiWindowState* state = gui->window_states.find(hash);
+		if (state == nullptr) return false;
+		return state->show;
+	}
+
     SV_AUX void update_id()
     {
 		gui->current_id = 0U;
