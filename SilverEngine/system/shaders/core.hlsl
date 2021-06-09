@@ -22,39 +22,11 @@
 #error "API NOT SUPPORTED"
 #endif
 
-// Types
 
-typedef unsigned int    u32;
-typedef int             i32;
-typedef float           f32;
-typedef double          f64;
 
-// Macros
+#include "shared_headers/core.h"
 
-#define foreach(_it, _end) for (u32 _it = 0u; _it < _end; ++_it)
-#define SV_BIT(x) (1ULL << x) 
-#define SV_GLOBAL static const
-
-SV_GLOBAL u32 u32_max = 0xFFFFFFFF;
-
-// Structs
-
-struct Camera {
-    matrix vm;
-    matrix pm;
-    matrix vpm;
-    matrix ivm;
-    matrix ipm;
-    matrix ivpm;
-    float2 screen_size;
-    float  near;
-    float  far;
-    float3 position;
-    float _padding0;
-    float4 direction;
-};
-
-#define SV_CAMERA_BUFFER(slot) SV_CONSTANT_BUFFER(camera_buffer, slot) { Camera camera; };
+SV_CONSTANT_BUFFER(camera_buffer, SV_SLOT_CAMERA) { GPU_CameraData camera; };
 
 struct Environment {
        float3 ambient_light;

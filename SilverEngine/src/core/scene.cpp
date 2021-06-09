@@ -18,9 +18,10 @@ namespace sv {
     CompID AnimatedSpriteComponent::ID = SV_COMPONENT_ID_INVALID;
     CompID CameraComponent::ID = SV_COMPONENT_ID_INVALID;
     CompID MeshComponent::ID = SV_COMPONENT_ID_INVALID;
+	CompID TerrainComponent::ID = SV_COMPONENT_ID_INVALID;
     CompID LightComponent::ID = SV_COMPONENT_ID_INVALID;
     CompID BodyComponent::ID = SV_COMPONENT_ID_INVALID;
-
+	
     
     struct EntityInternal {
 
@@ -2410,6 +2411,14 @@ namespace sv {
     {
 		deserialize_asset(d, mesh);
 		deserialize_asset(d, material);
+    }
+
+	void TerrainComponent::serialize(Serializer& s)
+    {
+    }
+
+    void TerrainComponent::deserialize(Deserializer& d, u32 version)
+    {
     }
 
     void LightComponent::serialize(Serializer& s)

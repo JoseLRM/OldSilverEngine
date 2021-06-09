@@ -843,6 +843,13 @@ namespace sv {
 					gui_material(*m.material.get());
 			}
 
+			if (TerrainComponent::ID == comp_id) {
+
+				TerrainComponent& t = *reinterpret_cast<TerrainComponent*>(comp);
+
+				egui_comp_texture("Albedo", 0u, &t.material.albedo_map);
+			}
+
 			if (CameraComponent::ID == comp_id) {
 
 				CameraComponent& cam = *reinterpret_cast<CameraComponent*>(comp);

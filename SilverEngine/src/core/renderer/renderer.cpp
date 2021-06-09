@@ -4,6 +4,8 @@
 #include "core/mesh.h"
 #include "debug/console.h"
 
+#include "shared_headers/lighting.h"
+
 namespace sv {
 
     RendererState* renderer = nullptr;
@@ -27,8 +29,11 @@ namespace sv {
 		COMPILE_VS(gfx.vs_sprite, "sprite/default.hlsl");
 		COMPILE_PS(gfx.ps_sprite, "sprite/default.hlsl");
 
-		COMPILE_VS_(gfx.vs_mesh_default, "mesh_default.hlsl");
-		COMPILE_PS_(gfx.ps_mesh_default, "mesh_default.hlsl");
+		COMPILE_VS_(gfx.vs_terrain, "terrain.hlsl");
+		COMPILE_PS_(gfx.ps_terrain, "terrain.hlsl");
+
+		COMPILE_VS(gfx.vs_mesh_default, "mesh_default.hlsl");
+		COMPILE_PS(gfx.ps_mesh_default, "mesh_default.hlsl");
 
 		COMPILE_VS(gfx.vs_sky, "skymapping.hlsl");
 		COMPILE_PS(gfx.ps_sky, "skymapping.hlsl");
@@ -303,6 +308,17 @@ namespace sv {
 			SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_light_instances));
 		}
 
+		// Mesh
+		{
+			desc.pData = nullptr;
+			desc.bufferType = GPUBufferType_Constant;
+			desc.usage = ResourceUsage_Dynamic;
+			desc.CPUAccess = CPUAccess_Write;
+
+			desc.size = sizeof(GPU_TerrainInstanceData);
+			SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_terrain_instance));
+		}
+
 		// Shadow mapping
 		{
 			desc.pData = NULL;
@@ -511,6 +527,18 @@ namespace sv {
 			desc.elementCount = 4u;
 			desc.slotCount = 1u;
 			SV_CHECK(graphics_inputlayoutstate_create(&desc, &gfx.ils_mesh));
+
+			// TERRAIN
+			slots[0] = { 0u, sizeof(TerrainVertex), false };
+
+			elements[0] = { "Height", 0u, 0u, 0u, Format_R32_FLOAT };
+			elements[1] = { "Normal", 0u, 0u, 1u * sizeof(f32), Format_R32G32B32_FLOAT };
+			elements[2] = { "Texcoord", 0u, 0u, 4u * sizeof(f32), Format_R32G32_FLOAT };
+			elements[3] = { "Color", 0u, 0u, 6u * sizeof(f32), Format_R8G8B8A8_UNORM };
+
+			desc.elementCount = 4u;
+			desc.slotCount = 1u;
+			SV_CHECK(graphics_inputlayoutstate_create(&desc, &gfx.ils_terrain));
 
 			// SKY BOX
 			slots[0] = { 0u, sizeof(v3_f32), false };
@@ -835,6 +863,14 @@ namespace sv {
 
     };
 
+	struct TerrainInstance {
+
+		XMMATRIX world_matrix;
+		Terrain* terrain;
+		TerrainMaterial* material;
+		
+	};
+
     struct LightInstance {
 
 		Entity entity;
@@ -849,7 +885,7 @@ namespace sv {
 			struct {
 				v3_f32 view_direction;
 				v4_f32 world_rotation;
-				XMMATRIX shadow_matrix;
+				XMMATRIX light_matrix;
 			} direction;
 		};
 
@@ -875,8 +911,6 @@ namespace sv {
 
 	  graphics_image_bind(gfx.gbuffer_normal, 0u, ShaderType_Pixel, cmd);
 	  graphics_image_bind(gfx.gbuffer_depthstencil, 1u, ShaderType_Pixel, cmd);
-
-	  graphics_constantbuffer_bind(gfx.cbuffer_camera, 0u, ShaderType_Pixel, cmd);
 	
 	  GPUImage* att[1];
 	  att[0] = gfx.gbuffer_ssao;
@@ -904,6 +938,7 @@ namespace sv {
     // TEMP
     static List<SpriteInstance> sprite_instances;
     static List<MeshInstance> mesh_instances;
+	static List<TerrainInstance> terrain_instances;
     static List<LightInstance> light_instances;
     
     SV_INTERNAL void draw_sprites(GPU_CameraData& camera_data, CommandList cmd)
@@ -1039,7 +1074,7 @@ namespace sv {
 
 					const SpriteInstance& spr = *it++;
 
-					matrix = XMMatrixMultiply(spr.tm, camera_data.view_projection_matrix);
+					matrix = XMMatrixMultiply(spr.tm, camera_data.vpm);
 
 					pos0 = XMVectorSet(-0.5f, 0.5f, 0.f, 1.f);
 					pos1 = XMVectorSet(0.5f, 0.5f, 0.f, 1.f);
@@ -1148,6 +1183,7 @@ namespace sv {
 		auto& gfx = renderer->gfx;
 	    
 		mesh_instances.reset();
+		terrain_instances.reset();
 		light_instances.reset();
 		sprite_instances.reset();
 
@@ -1192,16 +1228,16 @@ namespace sv {
 
 				if (camera_) {
 						
-					camera_data.projection_matrix = camera_->projection_matrix;
-					camera_data.position = vec3_to_vec4(cam_pos, 0.f);
+					camera_data.pm = camera_->projection_matrix;
+					camera_data.position = cam_pos;
 					camera_data.rotation = cam_rot;
-					camera_data.view_matrix = camera_->view_matrix;
-					camera_data.view_projection_matrix = camera_->view_projection_matrix;
-					camera_data.inverse_view_matrix = camera_->inverse_view_matrix;
-					camera_data.inverse_projection_matrix = camera_->inverse_projection_matrix;
-					camera_data.inverse_view_projection_matrix = camera_->inverse_view_projection_matrix;
-					camera_data.screen_width = 1920.f;
-					camera_data.screen_height = 1080.f;
+					camera_data.vm = camera_->view_matrix;
+					camera_data.vpm = camera_->view_projection_matrix;
+					camera_data.ivm = camera_->inverse_view_matrix;
+					camera_data.ipm = camera_->inverse_projection_matrix;
+					camera_data.ivpm = camera_->inverse_view_projection_matrix;
+					camera_data.screen_size.x = 1920.f;
+					camera_data.screen_size.y = 1080.f;
 					camera_data.near = camera_->near;
 					camera_data.far = camera_->far;
 		    
@@ -1216,16 +1252,16 @@ namespace sv {
 			if (camera_) {
 
 				Entity cam = get_scene_data()->main_camera;
-				camera_data.projection_matrix = camera_->projection_matrix;
-				camera_data.position = vec3_to_vec4(get_entity_world_position(cam));
+				camera_data.pm = camera_->projection_matrix;
+				camera_data.position = get_entity_world_position(cam);
 				camera_data.rotation = get_entity_world_rotation(cam);
-				camera_data.view_matrix = camera_->view_matrix;
-				camera_data.view_projection_matrix = camera_->view_projection_matrix;
-				camera_data.inverse_view_matrix = camera_->inverse_view_matrix;
-				camera_data.inverse_projection_matrix = camera_->inverse_projection_matrix;
-				camera_data.inverse_view_projection_matrix = camera_->inverse_view_projection_matrix;
-				camera_data.screen_width = 1920.f;
-				camera_data.screen_height = 1080.f;
+				camera_data.vm = camera_->view_matrix;
+				camera_data.vpm = camera_->view_projection_matrix;
+				camera_data.ivm = camera_->inverse_view_matrix;
+				camera_data.ipm = camera_->inverse_projection_matrix;
+				camera_data.ivpm = camera_->inverse_view_projection_matrix;
+				camera_data.screen_size.x = 1920.f;
+				camera_data.screen_size.y = 1080.f;
 				camera_data.near = camera_->near;
 				camera_data.far = camera_->far;
 		
@@ -1238,8 +1274,14 @@ namespace sv {
 
 				CameraComponent& camera = *camera_;
 
+				// BIND GLOBALS
+
+				foreach(shader, 2) {
+					graphics_constantbuffer_bind(gfx.cbuffer_camera, SV_SLOT_CAMERA, ShaderType(shader), cmd);
+				}
+
 				if (scene->skybox.image.get() && camera.projection_type == ProjectionType_Perspective)
-					draw_sky(scene->skybox.image.get(), camera_data.view_matrix, camera_data.projection_matrix, cmd);
+					draw_sky(scene->skybox.image.get(), camera_data.vm, camera_data.pm, cmd);
 
 				// GET LIGHTS
 				{
@@ -1265,7 +1307,7 @@ namespace sv {
 							case LightType_Point:
 							{
 								XMVECTOR position = vec3_to_dx(get_entity_world_position(entity), 1.f);
-								position = XMVector4Transform(position, camera_data.view_matrix);
+								position = XMVector4Transform(position, camera_data.vm);
 
 								inst.point.position = position;
 								
@@ -1289,6 +1331,51 @@ namespace sv {
 
 						}
 						while(comp_it_next(it, v));
+					}
+				}
+
+				// GET TERRAINS
+				{
+					ComponentIterator it;
+					CompView<TerrainComponent> view;
+
+					if (comp_it_begin(it, view)) {
+
+						do {
+
+							TerrainComponent& terrain = *view.comp;
+							Entity entity = view.entity;
+
+							// TEMP
+							if (terrain.terrain.vbuffer == NULL) {
+
+								constexpr u32 WIDTH = 100;
+								constexpr u32 HEIGHT = 100;
+
+								u8* map = (u8*)SV_ALLOCATE_MEMORY(WIDTH * HEIGHT);
+
+								foreach(z, HEIGHT) {
+									foreach(x, WIDTH) {
+										map[x + z * WIDTH] = u8((f32(x) / f32(WIDTH)) * 255.f);
+									}
+								}
+
+								terrain_apply_heightmap_image(terrain.terrain, "assets/images/height.png");
+
+								if (!terrain_create_buffers(terrain.terrain)) {
+									SV_LOG_ERROR("WTF :(");
+								}
+								else SV_LOG("ALL RIGHT");
+
+								SV_FREE_MEMORY(map);
+							}
+
+							TerrainInstance& inst = terrain_instances.emplace_back();
+							inst.world_matrix = get_entity_world_matrix(entity);
+							inst.terrain = &terrain.terrain;
+							inst.material = &terrain.material;
+						}
+						while (comp_it_next(it, view));
 					}
 				}
 
@@ -1351,19 +1438,19 @@ namespace sv {
 
 								// TODO
 								//vpm = mat_view_from_direction(vec4_to_vec3(camera_data.position), dir, v3_f32::up());
-								constexpr f32 FAR = 100.f;
-								constexpr f32 NEAR = -100.f;
+								constexpr f32 FAR = 2000.f;
+								constexpr f32 NEAR = -2000.f;
 							
 								v3_f32 direction = dir;
 
-								v3_f32 pos = vec4_to_vec3(camera_data.position);
+								v3_f32 pos = camera_data.position;
 							
 								XMMATRIX view = mat_view_from_quaternion(pos, l.world_rotation);
-								XMMATRIX projection = XMMatrixOrthographicLH(100.f, 100.f, NEAR, FAR);
+								XMMATRIX projection = XMMatrixOrthographicLH(1000.f, 1000.f, NEAR, FAR);
 
 								vpm = view * projection;
 							
-								l.shadow_matrix = camera_data.inverse_view_matrix * vpm * XMMatrixScaling(0.5f, 0.5f, 1.f) * XMMatrixTranslation(0.5f, 0.5f, 0.f);
+								l.light_matrix = camera_data.ivm * vpm * XMMatrixScaling(0.5f, 0.5f, 1.f) * XMMatrixTranslation(0.5f, 0.5f, 0.f);
 							}
 
 							graphics_constantbuffer_bind(gfx.cbuffer_shadow_mapping, 0u, ShaderType_Vertex, cmd);
@@ -1371,7 +1458,7 @@ namespace sv {
 							graphics_shader_bind(gfx.vs_shadow, cmd);
 							graphics_depthstencilstate_bind(gfx.dss_default_depth, cmd);
 							graphics_inputlayoutstate_bind(gfx.ils_mesh, cmd);
-							graphics_rasterizerstate_bind(gfx.rs_front_culling, cmd);
+							graphics_rasterizerstate_unbind(cmd);
 							graphics_blendstate_unbind(cmd);
 
 							graphics_viewport_set(shadow_map, 0u, cmd);
@@ -1409,81 +1496,84 @@ namespace sv {
 					}
 				}
 
-				// DRAW MESHES
+				// DRAW SCENE
 				{		    
-					if (mesh_instances.size()) {
+					graphics_event_begin("Scene Rendering", cmd);
 
-						graphics_event_begin("MeshRendering", cmd);
-			
-						// Prepare state
-						graphics_shader_bind(gfx.vs_mesh_default, cmd);
-						graphics_shader_bind(gfx.ps_mesh_default, cmd);
-						graphics_inputlayoutstate_bind(gfx.ils_mesh, cmd);
-						graphics_depthstencilstate_bind(gfx.dss_default_depth, cmd);
-						graphics_blendstate_bind(gfx.bs_mesh, cmd);
-						graphics_sampler_bind(gfx.sampler_def_linear, 0u, ShaderType_Pixel, cmd);
+					graphics_depthstencilstate_bind(gfx.dss_default_depth, cmd);
+					graphics_blendstate_bind(gfx.bs_mesh, cmd);
+					graphics_sampler_bind(gfx.sampler_def_linear, 0u, ShaderType_Pixel, cmd);
+							
+					graphics_viewport_set(gfx.offscreen, 0u, cmd);
+					graphics_scissor_set(gfx.offscreen, 0u, cmd);
 
-						graphics_viewport_set(gfx.offscreen, 0u, cmd);
-						graphics_scissor_set(gfx.offscreen, 0u, cmd);
+					// Begin renderpass
+					GPUImage* att[] = { gfx.offscreen, gfx.gbuffer_normal, gfx.gbuffer_emission, gfx.gbuffer_depthstencil };
+					graphics_renderpass_begin(gfx.renderpass_gbuffer, att, cmd);
 
-						// Bind resources
-						GPUBuffer* instance_buffer = gfx.cbuffer_mesh_instance;
-						GPUBuffer* material_buffer = gfx.cbuffer_material;
+					for (const LightInstance& light : light_instances) {
 
-						graphics_constantbuffer_bind(instance_buffer, 0u, ShaderType_Vertex, cmd);
-						graphics_constantbuffer_bind(gfx.cbuffer_camera, 1u, ShaderType_Vertex, cmd);
-						
-						graphics_constantbuffer_bind(material_buffer, 0u, ShaderType_Pixel, cmd);
+						// Send light data
+						{			    
+							GPU_LightData light_data = {};
+							GPU_ShadowData shadow_data;
+
+							graphics_image_bind(gfx.image_white, 4u, ShaderType_Pixel, cmd);
+
+							GPU_LightData& l0 = light_data;
+							const LightInstance& l1 = light;
+
+							l0.type = l1.comp->light_type;
+							l0.color = color_to_vec3(l1.comp->color);
+							l0.intensity = l1.comp->intensity;
+							l0.has_shadows = 0u;
+
+							switch (l1.comp->light_type)
+							{
+							case LightType_Point:
+								l0.position = l1.point.position;
+								l0.range = l1.comp->range;
+								l0.smoothness = l1.comp->smoothness;
+								break;
+
+							case LightType_Direction:
+								l0.position = l1.direction.view_direction;
+
+								if (l1.comp->shadow_mapping_enabled) {
+
+									GPUImage* shadow_map = get_shadow_map(l1.entity, l1.comp);
+										
+									graphics_image_bind(shadow_map, 4u, ShaderType_Pixel, cmd);
+									shadow_data.light_matrix = l1.direction.light_matrix;
+									l0.has_shadows = 1u;
+								}
+								break;
+							}
+
+							graphics_buffer_update(gfx.cbuffer_light_instances, &light_data, sizeof(GPU_LightData), 0u, cmd);
+							graphics_buffer_update(gfx.cbuffer_shadow_data, &shadow_data, sizeof(GPU_ShadowData), 0u, cmd);
+						}
+
 						graphics_constantbuffer_bind(gfx.cbuffer_light_instances, 1u, ShaderType_Pixel, cmd);
 						graphics_constantbuffer_bind(gfx.cbuffer_shadow_data, 2u, ShaderType_Pixel, cmd);
-						graphics_constantbuffer_bind(gfx.cbuffer_environment, 3u, ShaderType_Pixel, cmd);
 
-						// Begin renderpass
-						GPUImage* att[] = { gfx.offscreen, gfx.gbuffer_normal, gfx.gbuffer_emission, gfx.gbuffer_depthstencil };
-						graphics_renderpass_begin(gfx.renderpass_gbuffer, att, cmd);
+						if (mesh_instances.size()) {
 
-						for (const LightInstance& light : light_instances) {
-
-							// Send light data
-							{			    
-								GPU_LightData light_data = {};
-								GPU_ShadowData shadow_data;
-
-								graphics_image_bind(gfx.image_white, 4u, ShaderType_Pixel, cmd);
-
-								GPU_LightData& l0 = light_data;
-								const LightInstance& l1 = light;
-
-								l0.type = l1.comp->light_type;
-								l0.color = color_to_vec3(l1.comp->color);
-								l0.intensity = l1.comp->intensity;
-								l0.has_shadows = 0u;
-
-								switch (l1.comp->light_type)
-								{
-								case LightType_Point:
-									l0.position = l1.point.position;
-									l0.range = l1.comp->range;
-									l0.smoothness = l1.comp->smoothness;
-									break;
-
-								case LightType_Direction:
-									l0.position = l1.direction.view_direction;
-
-									if (l1.comp->shadow_mapping_enabled) {
-
-										GPUImage* shadow_map = get_shadow_map(l1.entity, l1.comp);
-										
-										graphics_image_bind(shadow_map, 4u, ShaderType_Pixel, cmd);
-										shadow_data.shadow_matrix = l1.direction.shadow_matrix;
-										l0.has_shadows = 1u;
-									}
-									break;
-								}
-
-								graphics_buffer_update(gfx.cbuffer_light_instances, &light_data, sizeof(GPU_LightData), 0u, cmd);
-								graphics_buffer_update(gfx.cbuffer_shadow_data, &shadow_data, sizeof(GPU_ShadowData), 0u, cmd);
-							}
+							graphics_event_begin("Mesh Rendering", cmd);
+								
+							// Prepare state
+							graphics_shader_bind(gfx.vs_mesh_default, cmd);
+							graphics_shader_bind(gfx.ps_mesh_default, cmd);
+							graphics_inputlayoutstate_bind(gfx.ils_mesh, cmd);
+							
+							// Bind resources
+							GPUBuffer* instance_buffer = gfx.cbuffer_mesh_instance;
+							GPUBuffer* material_buffer = gfx.cbuffer_material;
+						
+							graphics_constantbuffer_bind(instance_buffer, 0u, ShaderType_Vertex, cmd);
+						
+							graphics_constantbuffer_bind(material_buffer, 0u, ShaderType_Pixel, cmd);
+							graphics_constantbuffer_bind(gfx.cbuffer_environment, 3u, ShaderType_Pixel, cmd);
 
 							foreach(i, mesh_instances.size()) {
 
@@ -1526,7 +1616,7 @@ namespace sv {
 											break;
 					
 										case RasterizerCullMode_Front:
-											// TODO: graphics_rasterizerstate_bind(gfx.rs_front_culling, cmd);
+											graphics_rasterizerstate_bind(gfx.rs_front_culling, cmd);
 											break;
 
 										case RasterizerCullMode_None:
@@ -1556,19 +1646,67 @@ namespace sv {
 								// Update instance data
 								{
 									GPU_MeshInstanceData data;
-									data.model_view_matrix = inst.world_matrix * camera_data.view_matrix;
+									data.model_view_matrix = inst.world_matrix * camera_data.vm;
 									data.inv_model_view_matrix = XMMatrixInverse(nullptr, data.model_view_matrix);
 									graphics_buffer_update(instance_buffer, &data, sizeof(GPU_MeshInstanceData), 0u, cmd);
 								}
 
 								graphics_draw_indexed(u32(inst.mesh->indices.size()), 1u, 0u, 0u, 0u, cmd);
 							}
+
+							graphics_event_end(cmd);
 						}
 
-						graphics_renderpass_end(cmd);
+						if (terrain_instances.size()) {
 
-						graphics_event_end(cmd);
+							graphics_event_begin("Terrain Rendering", cmd);
+			
+							// Prepare state
+							graphics_shader_bind(gfx.vs_terrain, cmd);
+							graphics_shader_bind(gfx.ps_terrain, cmd);
+							graphics_inputlayoutstate_bind(gfx.ils_terrain, cmd);
+
+							graphics_constantbuffer_bind(gfx.cbuffer_terrain_instance, 1u, ShaderType_Vertex, cmd);
+							graphics_rasterizerstate_bind(gfx.rs_back_culling, cmd);
+
+							for (const TerrainInstance& inst : terrain_instances) {
+
+								graphics_vertexbuffer_bind(inst.terrain->vbuffer, 0u, 0u, cmd);
+								graphics_indexbuffer_bind(inst.terrain->ibuffer, 0u, cmd);
+
+								// Bind material
+								{
+									GPUImage* albedo = inst.material->albedo_map.get();
+							
+									if (albedo == NULL) {
+										albedo = gfx.image_white;
+									}
+
+									graphics_image_bind(albedo, 0u, ShaderType_Pixel, cmd);
+								}
+
+								// Update instance data
+								{
+									GPU_TerrainInstanceData data;
+									data.model_view_matrix = inst.world_matrix * camera_data.vm;
+									data.inv_model_view_matrix = XMMatrixInverse(nullptr, data.model_view_matrix);
+									data.resolution_width = inst.terrain->width;
+									data.resolution_height = inst.terrain->height;
+									graphics_buffer_update(gfx.cbuffer_terrain_instance, &data, sizeof(GPU_TerrainInstanceData), 0u, cmd);
+								}
+
+								graphics_draw_indexed(u32(inst.terrain->indices.size()), 1u, 0u, 0u, 0u, cmd);
+							}
+
+							graphics_event_end(cmd);
+					
+						}
+
 					}
+
+					graphics_renderpass_end(cmd);
+
+					graphics_event_end(cmd);
 
 					draw_sprites(camera_data, cmd);
 				}

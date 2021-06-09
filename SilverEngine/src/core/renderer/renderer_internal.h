@@ -2,26 +2,22 @@
 
 #include "core/renderer.h"
 
+#include "shared_headers/core.h"
+
 namespace sv {
-
-    struct GPU_LightData {
-		v3_f32	  position;
-		LightType type;
-		v3_f32	  color;
-		f32	      range;
-		f32	      intensity;
-		f32	      smoothness;
-		u32       has_shadows;
-		f32       padding0;
-    };
-
-	struct GPU_ShadowData {
-		XMMATRIX shadow_matrix;
-	};
 
     struct GPU_MeshInstanceData {
 		XMMATRIX model_view_matrix;
 		XMMATRIX inv_model_view_matrix;
+    };
+
+	struct GPU_TerrainInstanceData {
+		XMMATRIX model_view_matrix;
+		XMMATRIX inv_model_view_matrix;
+		u32 resolution_width;
+		u32 resolution_height;
+		f32 _padding0;
+		f32 _padding1;
     };
 
     struct GPU_MaterialData {
@@ -35,21 +31,6 @@ namespace sv {
 #define MAT_FLAG_NORMAL_MAPPING SV_BIT(0u)
 #define MAT_FLAG_SPECULAR_MAPPING SV_BIT(1u)
 #define MAT_FLAG_EMISSIVE_MAPPING SV_BIT(2u)
-
-    struct GPU_CameraData {
-		XMMATRIX view_matrix;
-		XMMATRIX projection_matrix;
-		XMMATRIX view_projection_matrix;
-		XMMATRIX inverse_view_matrix;
-		XMMATRIX inverse_projection_matrix;
-		XMMATRIX inverse_view_projection_matrix;
-		f32      screen_width;
-		f32      screen_height;
-		f32      near;
-		f32      far;
-		v4_f32	 position;
-		v4_f32	 rotation;
-    };
 
 	struct GPU_ShadowMappingData {
 		XMMATRIX tm;
@@ -141,6 +122,13 @@ namespace sv {
 		GPUBuffer* cbuffer_material;
 		GPUBuffer* cbuffer_mesh_instance;
 		GPUBuffer* cbuffer_light_instances;
+
+		// TERRAIN
+
+		Shader* vs_terrain;
+		Shader* ps_terrain;
+		InputLayoutState* ils_terrain;
+		GPUBuffer* cbuffer_terrain_instance;
 
 		// SHADOW MAPPING
 

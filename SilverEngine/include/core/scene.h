@@ -525,6 +525,19 @@ namespace sv {
 
     };
 
+	struct TerrainComponent : public BaseComponent {
+
+		static CompID SV_API ID;
+		static constexpr u32 VERSION = 0u;
+	
+		Terrain terrain;
+		TerrainMaterial material;
+
+		void serialize(Serializer& s);
+		void deserialize(Deserializer& s, u32 version);
+
+    };
+
     enum LightType : u32 {
 		LightType_Point,
 		LightType_Direction,

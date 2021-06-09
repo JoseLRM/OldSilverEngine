@@ -3,8 +3,6 @@
 
 #ifdef SV_PIXEL_SHADER
 
-SV_CAMERA_BUFFER(b0);
-
 SV_TEXTURE(normal_map, t0);
 SV_TEXTURE(depth_map, t1);
 
