@@ -237,7 +237,7 @@ namespace sv {
     SV_INTERNAL bool load_mesh_asset(void* asset, const char* filepath)
     {
 		Mesh& mesh = *new(asset) Mesh();
-		SV_CHECK(load_mesh(filepath, mesh));
+		SV_CHECK(load_mesh(mesh, filepath));
 		SV_CHECK(mesh_create_buffers(mesh));
 		return true;
     }
@@ -245,11 +245,7 @@ namespace sv {
     SV_INTERNAL bool free_mesh_asset(void* asset)
     {
 		Mesh& mesh = *reinterpret_cast<Mesh*>(asset);
-
-		graphics_destroy(mesh.vbuffer);
-		graphics_destroy(mesh.ibuffer);
-
-		mesh.~Mesh();
+		mesh_clear(mesh);
 		return true;
     }
 
@@ -262,7 +258,7 @@ namespace sv {
     SV_INTERNAL bool load_material_asset(void* asset, const char* filepath)
     {
 		Material& material = *new(asset) Material();
-		SV_CHECK(load_material(filepath, material));
+		SV_CHECK(load_material(material, filepath));
 		return true;
     }
 
@@ -342,6 +338,8 @@ namespace sv {
 			SV_LOG_ERROR("Can't initialize event system");
 			return false;
 		}
+
+		_terrain_register_events();
 	
 		if (_os_startup()) {
 			SV_LOG_INFO("OS layer initialized");

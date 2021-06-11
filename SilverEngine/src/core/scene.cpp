@@ -761,10 +761,10 @@ namespace sv {
 
 						set_entity_matrix(entity, m->model_transform_matrix);
 
-						if (m->model_material_filepath.size()) {
+						if (string_size(m->model_material_filepath)) {
 					
 							MaterialAsset mat;
-							res = load_asset_from_file(mat, m->model_material_filepath.c_str());
+							res = load_asset_from_file(mat, m->model_material_filepath);
 
 							if (res) {
 							
@@ -2411,14 +2411,6 @@ namespace sv {
     {
 		deserialize_asset(d, mesh);
 		deserialize_asset(d, material);
-    }
-
-	void TerrainComponent::serialize(Serializer& s)
-    {
-    }
-
-    void TerrainComponent::deserialize(Deserializer& d, u32 version)
-    {
     }
 
     void LightComponent::serialize(Serializer& s)

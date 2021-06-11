@@ -847,7 +847,16 @@ namespace sv {
 
 				TerrainComponent& t = *reinterpret_cast<TerrainComponent*>(comp);
 
-				egui_comp_texture("Albedo", 0u, &t.material.albedo_map);
+				if (t.material.get() == NULL) {
+					create_asset(t.material, "Material");
+				}
+
+				if (t.vbuffer == NULL || t.ibuffer == NULL) {
+					
+					terrain_set_flat(t, 0.f, 1000u, 1000u);
+				}
+
+				egui_comp_texture("Diffuse", 0u, &t.material->diffuse_map);
 			}
 
 			if (CameraComponent::ID == comp_id) {

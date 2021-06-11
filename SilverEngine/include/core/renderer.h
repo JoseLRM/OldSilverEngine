@@ -1,6 +1,7 @@
 #pragma once
 
 #include "scene.h"
+#include "terrain.h"
 #include "font.h"
 
 namespace sv {

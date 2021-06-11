@@ -534,9 +534,8 @@ namespace sv {
 			elements[0] = { "Height", 0u, 0u, 0u, Format_R32_FLOAT };
 			elements[1] = { "Normal", 0u, 0u, 1u * sizeof(f32), Format_R32G32B32_FLOAT };
 			elements[2] = { "Texcoord", 0u, 0u, 4u * sizeof(f32), Format_R32G32_FLOAT };
-			elements[3] = { "Color", 0u, 0u, 6u * sizeof(f32), Format_R8G8B8A8_UNORM };
 
-			desc.elementCount = 4u;
+			desc.elementCount = 3u;
 			desc.slotCount = 1u;
 			SV_CHECK(graphics_inputlayoutstate_create(&desc, &gfx.ils_terrain));
 
@@ -866,8 +865,8 @@ namespace sv {
 	struct TerrainInstance {
 
 		XMMATRIX world_matrix;
-		Terrain* terrain;
-		TerrainMaterial* material;
+		TerrainComponent* terrain;
+		Material* material;
 		
 	};
 
@@ -1176,9 +1175,74 @@ namespace sv {
 		return ref.image;
 	}
 
+	SV_INTERNAL void bind_material(Material* material, CommandList cmd)
+	{
+		auto& gfx = renderer->gfx;
+		
+		GPU_MaterialData material_data;
+		material_data.flags = 0u;
+
+		if (material) {
+
+			GPUImage* diffuse_map = material->diffuse_map.get();
+			GPUImage* normal_map = material->normal_map.get();
+			GPUImage* specular_map = material->specular_map.get();
+			GPUImage* emissive_map = material->emissive_map.get();
+
+			graphics_image_bind(diffuse_map ? diffuse_map : gfx.image_white, 0u, ShaderType_Pixel, cmd);
+			if (normal_map) { graphics_image_bind(normal_map, 1u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_NORMAL_MAPPING; }
+			else graphics_image_bind(gfx.image_white, 1u, ShaderType_Pixel, cmd);
+
+			if (specular_map) { graphics_image_bind(specular_map, 2u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_SPECULAR_MAPPING; }
+			else graphics_image_bind(gfx.image_white, 2u, ShaderType_Pixel, cmd);
+
+			if (emissive_map) { graphics_image_bind(emissive_map, 3u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_EMISSIVE_MAPPING; }
+			else graphics_image_bind(gfx.image_white, 3u, ShaderType_Pixel, cmd);
+
+			material_data.diffuse_color = color_to_vec3(material->diffuse_color);
+			material_data.specular_color = color_to_vec3(material->specular_color);
+			material_data.emissive_color = color_to_vec3(material->emissive_color);
+			material_data.shininess = material->shininess;
+
+			switch (material->culling) {
+
+			case RasterizerCullMode_Back:
+				graphics_rasterizerstate_bind(gfx.rs_back_culling, cmd);
+				break;
+					
+			case RasterizerCullMode_Front:
+				graphics_rasterizerstate_bind(gfx.rs_front_culling, cmd);
+				break;
+
+			case RasterizerCullMode_None:
+				graphics_rasterizerstate_unbind(cmd);
+				break;
+					
+			}
+		}
+		else {
+
+			graphics_image_bind(gfx.image_white, 0u, ShaderType_Pixel, cmd);
+			graphics_image_bind(gfx.image_white, 1u, ShaderType_Pixel, cmd);
+			graphics_image_bind(gfx.image_white, 2u, ShaderType_Pixel, cmd);
+			graphics_image_bind(gfx.image_white, 3u, ShaderType_Pixel, cmd);
+
+			material_data.diffuse_color = color_to_vec3(Color::Gray(160u));
+			material_data.specular_color = color_to_vec3(Color::Gray(10u));
+			material_data.emissive_color = color_to_vec3(Color::Black());
+			material_data.shininess = 1.f;
+
+			graphics_rasterizerstate_bind(gfx.rs_back_culling, cmd);
+		}
+
+		graphics_buffer_update(gfx.cbuffer_material, &material_data, sizeof(GPU_MaterialData), 0u, cmd);
+	}
+
     void _draw_scene()
     {
 		if (!there_is_scene()) return;
+
+		event_dispatch("pre_draw_scene", nullptr);
 	
 		auto& gfx = renderer->gfx;
 	    
@@ -1346,34 +1410,13 @@ namespace sv {
 							TerrainComponent& terrain = *view.comp;
 							Entity entity = view.entity;
 
-							// TEMP
-							if (terrain.terrain.vbuffer == NULL) {
-
-								constexpr u32 WIDTH = 100;
-								constexpr u32 HEIGHT = 100;
-
-								u8* map = (u8*)SV_ALLOCATE_MEMORY(WIDTH * HEIGHT);
-
-								foreach(z, HEIGHT) {
-									foreach(x, WIDTH) {
-										map[x + z * WIDTH] = u8((f32(x) / f32(WIDTH)) * 255.f);
-									}
-								}
-
-								terrain_apply_heightmap_image(terrain.terrain, "assets/images/height.png");
-
-								if (!terrain_create_buffers(terrain.terrain)) {
-									SV_LOG_ERROR("WTF :(");
-								}
-								else SV_LOG("ALL RIGHT");
-
-								SV_FREE_MEMORY(map);
-							}
-
+							if (!terrain_valid(terrain))
+								continue;
+							
 							TerrainInstance& inst = terrain_instances.emplace_back();
 							inst.world_matrix = get_entity_world_matrix(entity);
-							inst.terrain = &terrain.terrain;
-							inst.material = &terrain.material;
+							inst.terrain = &terrain;
+							inst.material = terrain.material.get();							
 						}
 						while (comp_it_next(it, view));
 					}
@@ -1578,70 +1621,11 @@ namespace sv {
 							foreach(i, mesh_instances.size()) {
 
 								const MeshInstance& inst = mesh_instances[i];
-
+								
 								graphics_vertexbuffer_bind(inst.mesh->vbuffer, 0u, 0u, cmd);
 								graphics_indexbuffer_bind(inst.mesh->ibuffer, 0u, cmd);
 
-								// Update material data
-								{
-									GPU_MaterialData material_data;
-									material_data.flags = 0u;
-
-									if (inst.material) {
-
-										GPUImage* diffuse_map = inst.material->diffuse_map.get();
-										GPUImage* normal_map = inst.material->normal_map.get();
-										GPUImage* specular_map = inst.material->specular_map.get();
-										GPUImage* emissive_map = inst.material->emissive_map.get();
-
-										graphics_image_bind(diffuse_map ? diffuse_map : gfx.image_white, 0u, ShaderType_Pixel, cmd);
-										if (normal_map) { graphics_image_bind(normal_map, 1u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_NORMAL_MAPPING; }
-										else graphics_image_bind(gfx.image_white, 1u, ShaderType_Pixel, cmd);
-
-										if (specular_map) { graphics_image_bind(specular_map, 2u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_SPECULAR_MAPPING; }
-										else graphics_image_bind(gfx.image_white, 2u, ShaderType_Pixel, cmd);
-
-										if (emissive_map) { graphics_image_bind(emissive_map, 3u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_EMISSIVE_MAPPING; }
-										else graphics_image_bind(gfx.image_white, 3u, ShaderType_Pixel, cmd);
-
-										material_data.diffuse_color = color_to_vec3(inst.material->diffuse_color);
-										material_data.specular_color = color_to_vec3(inst.material->specular_color);
-										material_data.emissive_color = color_to_vec3(inst.material->emissive_color);
-										material_data.shininess = inst.material->shininess;
-
-										switch (inst.material->culling) {
-
-										case RasterizerCullMode_Back:
-											graphics_rasterizerstate_bind(gfx.rs_back_culling, cmd);
-											break;
-					
-										case RasterizerCullMode_Front:
-											graphics_rasterizerstate_bind(gfx.rs_front_culling, cmd);
-											break;
-
-										case RasterizerCullMode_None:
-											graphics_rasterizerstate_unbind(cmd);
-											break;
-					
-										}
-									}
-									else {
-
-										graphics_image_bind(gfx.image_white, 0u, ShaderType_Pixel, cmd);
-										graphics_image_bind(gfx.image_white, 1u, ShaderType_Pixel, cmd);
-										graphics_image_bind(gfx.image_white, 2u, ShaderType_Pixel, cmd);
-										graphics_image_bind(gfx.image_white, 3u, ShaderType_Pixel, cmd);
-
-										material_data.diffuse_color = color_to_vec3(Color::Gray(160u));
-										material_data.specular_color = color_to_vec3(Color::Gray(10u));
-										material_data.emissive_color = color_to_vec3(Color::Black());
-										material_data.shininess = 1.f;
-
-										graphics_rasterizerstate_bind(gfx.rs_back_culling, cmd);
-									}
-
-									graphics_buffer_update(material_buffer, &material_data, sizeof(GPU_MaterialData), 0u, cmd);
-								}
+								bind_material(inst.material, cmd);
 
 								// Update instance data
 								{
@@ -1674,24 +1658,15 @@ namespace sv {
 								graphics_vertexbuffer_bind(inst.terrain->vbuffer, 0u, 0u, cmd);
 								graphics_indexbuffer_bind(inst.terrain->ibuffer, 0u, cmd);
 
-								// Bind material
-								{
-									GPUImage* albedo = inst.material->albedo_map.get();
-							
-									if (albedo == NULL) {
-										albedo = gfx.image_white;
-									}
-
-									graphics_image_bind(albedo, 0u, ShaderType_Pixel, cmd);
-								}
+								bind_material(inst.material, cmd);
 
 								// Update instance data
 								{
 									GPU_TerrainInstanceData data;
 									data.model_view_matrix = inst.world_matrix * camera_data.vm;
 									data.inv_model_view_matrix = XMMatrixInverse(nullptr, data.model_view_matrix);
-									data.resolution_width = inst.terrain->width;
-									data.resolution_height = inst.terrain->height;
+									data.size_x = inst.terrain->resolution.x;
+									data.size_z = inst.terrain->resolution.y;
 									graphics_buffer_update(gfx.cbuffer_terrain_instance, &data, sizeof(GPU_TerrainInstanceData), 0u, cmd);
 								}
 

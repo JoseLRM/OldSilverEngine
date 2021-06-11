@@ -14,8 +14,8 @@ namespace sv {
 	struct GPU_TerrainInstanceData {
 		XMMATRIX model_view_matrix;
 		XMMATRIX inv_model_view_matrix;
-		u32 resolution_width;
-		u32 resolution_height;
+		u32 size_x;
+		u32 size_z;
 		f32 _padding0;
 		f32 _padding1;
     };

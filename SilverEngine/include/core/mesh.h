@@ -32,7 +32,7 @@ namespace sv {
 		// Info about the importation of the 3D Model
 
 		XMMATRIX model_transform_matrix = XMMatrixIdentity();
-		String model_material_filepath;
+		char model_material_filepath[FILEPATH_SIZE + 1u] = "";
 
     };
 
@@ -43,6 +43,7 @@ namespace sv {
 		RasterizerCullMode culling = RasterizerCullMode_Back;
 	
 		// Values
+		
 		Color ambient_color;
 		Color diffuse_color;
 		Color specular_color;
@@ -56,39 +57,6 @@ namespace sv {
 		TextureAsset specular_map;
 		TextureAsset emissive_map;
     };
-
-	typedef u32 TerrainIndex;
-
-	struct TerrainVertex {
-		f32 height;
-		v3_f32 normal;
-		v2_f32 texcoord;
-		Color color;
-	};
-
-	struct Terrain {
-
-		GPUBuffer* vbuffer = NULL;
-		GPUBuffer* ibuffer = NULL;
-
-		// Thats the resolution of the height samples
-		u32 width = 0u;
-		u32 height = 0u;
-		
-		List<f32> heights;
-		List<v3_f32> normals;
-		List<v2_f32> texcoords;
-		List<Color>  colors;
-
-		List<TerrainIndex> indices;
-		
-	};
-
-	struct TerrainMaterial {
-
-		TextureAsset albedo_map;
-		
-	};
 
     SV_DEFINE_ASSET(MeshAsset, Mesh);
     SV_DEFINE_ASSET(MaterialAsset, Material);
@@ -107,15 +75,6 @@ namespace sv {
     SV_API bool mesh_update_buffers(Mesh& mesh, CommandList cmd);
 	SV_API void mesh_destroy_buffers(Mesh& mesh);
     SV_API void mesh_clear(Mesh& mesh);
-
-	
-	SV_API void terrain_apply_heightmap_u8(Terrain& terrain, const u8* heights, u32 width, u32 height, u32 stride);
-	SV_API bool terrain_apply_heightmap_image(Terrain& terrain, const char* filepath);
-	
-	SV_API bool terrain_create_buffers(Terrain& terrain, ResourceUsage usage = ResourceUsage_Static);
-	SV_API bool terrain_update_buffers(Terrain& terrain, CommandList cmd);
-	SV_API void terrain_destroy_buffers(Terrain& terrain);
-	SV_API void terrain_clear(Terrain& terrain);
 
     // Model loading
 
@@ -170,7 +129,10 @@ namespace sv {
     // Create asset files for the engine
     SV_API bool import_model(const char* filepath, const ModelInfo& model_info);
 
-    SV_API bool load_mesh(const char* filepath, Mesh& mesh);
-    SV_API bool load_material(const char* filepath, Material& material);
+	SV_API bool save_mesh(const Mesh& mesh, const char* filepath);
+    SV_API bool save_material(const Material& material, const char* filepath);
+
+    SV_API bool load_mesh(Mesh& mesh, const char* filepath);
+    SV_API bool load_material(Material& material, const char* filepath);
 
 }

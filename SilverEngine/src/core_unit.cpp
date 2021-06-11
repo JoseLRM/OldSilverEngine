@@ -13,6 +13,7 @@
 #include "core/scene.cpp"
 #include "core/physics.cpp"
 #include "core/mesh.cpp"
+#include "core/terrain.cpp"
 #include "core/asset_system.cpp"
 #include "core/event_system.cpp"
 

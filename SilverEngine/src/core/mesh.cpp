@@ -118,83 +118,6 @@ namespace sv {
 		}
     }
 
-	SV_AUX void construct_vertex_data(Terrain& terrain, List<TerrainVertex>& vertices)
-    {
-		vertices.resize(terrain.heights.size());
-
-		TerrainVertex* it;
-		TerrainVertex* end;
-		
-		// HEIGHTS
-		if (terrain.heights.size() == vertices.size()) {
-			
-			it = vertices.data();
-			end = vertices.data() + vertices.size();
-
-			const f32* heiIt = terrain.heights.data();
-
-			while (it != end)
-			{
-				it->height = *heiIt;
-
-				++heiIt;
-				++it;
-			}
-		}
-		
-		// NORMALS
-		if (terrain.normals.size() == vertices.size()) {
-			
-			it = vertices.data();
-			end = vertices.data() + vertices.size();
-
-			const v3_f32* norIt = terrain.normals.data();
-
-			while (it != end)
-			{
-				it->normal = *norIt;
-
-				++norIt;
-				++it;
-			}
-		}
-		
-		// COLORS
-		if (terrain.colors.size() == vertices.size()) {
-			
-			it = vertices.data();
-			end = vertices.data() + vertices.size();
-
-			const Color* colIt = terrain.colors.data();
-
-			while (it != end)
-			{
-				it->color = *colIt;
-
-				++colIt;
-				++it;
-			}
-		}
-		
-		// TEXCOORDS
-
-		if (terrain.texcoords.size() == vertices.size()) {
-			
-			it = vertices.data();
-			end = vertices.data() + vertices.size();
-
-			const v2_f32* texIt = terrain.texcoords.data();
-
-			while (it != end)
-			{
-				it->texcoord = *texIt;
-
-				++texIt;
-				++it;
-			}
-		}
-    }
-
     void mesh_apply_plane(Mesh& mesh, const XMMATRIX& transform)
     {
 		ASSERT_VERTICES();
@@ -350,56 +273,6 @@ namespace sv {
 		}
 	}
 
-	SV_AUX v3_f32 compute_position_from_height(f32 h, u32 index, u32 width, u32 height)
-	{
-		v3_f32 p;
-		p.y = h;
-	
-		p.x = f32(index % width) / f32(width) - 0.5f;
-		p.z = -(f32(index / width) / f32(height) - 0.5f);
-
-		return p;
-	}
-
-	SV_AUX void calculate_normals_with_heights(u32* indices, f32* heights, v3_f32* normals, u32 width, u32 height, u32 index_count)
-	{
-		// TODO: Optimize
-		
-		u32 i = 0u;
-		
-		while (i < index_count) {
-
-			u32 i0 = indices[i + 0];
-			u32 i1 = indices[i + 1];
-			u32 i2 = indices[i + 2];
-
-			v3_f32 p0 = compute_position_from_height(heights[i0], i0, width, height);
-			v3_f32 p1 = compute_position_from_height(heights[i1], i1, width, height);
-			v3_f32 p2 = compute_position_from_height(heights[i2], i2, width, height);
-
-			v3_f32 l0 = p1 - p0;
-			v3_f32 l1 = p2 - p0;
-
-			l0 = vec3_normalize(l0);
-			l1 = vec3_normalize(l1);
-
-			v3_f32 normal = vec3_cross(l0, l1);
-
-			normals[i0] += normal;
-			normals[i1] += normal;
-			normals[i2] += normal;
-
-			i += 3u;
-		}
-
-		u32 vertex_count = width * height;
-
-		foreach(i, vertex_count) {
-
-			normals[i] = vec3_normalize(normals[i]);
-		}
-	}
-
 	void mesh_calculate_normals(Mesh& mesh)
 	{
 		mesh.normals.resize(mesh.positions.size());
@@ -524,140 +397,6 @@ namespace sv {
 
 		mesh_destroy_buffers(mesh);
     }
-
-	void terrain_apply_heightmap_u8(Terrain& terrain, const u8* heights, u32 width, u32 height, u32 stride)
-	{
-		if (width <= 1u || height <= 1u) {
-			SV_LOG_ERROR("Can't apply a heightmap with dimensions smaller than 1");
-			return;
-		}
-		if (heights == NULL) {
-			SV_ASSERT(0);
-			return;
-		}
-		
-		u32 vertex_count = width * height;
-		u32 triangle_count = (width - 1u) * (height - 1u) * 2u;
-
-		terrain.heights.reserve(vertex_count);
-		terrain.normals.resize(vertex_count);
-		terrain.texcoords.reserve(vertex_count);
-		terrain.colors.resize(vertex_count);
-
-		terrain.indices.reserve(triangle_count * 3u);
-
-		// Positions
-
-		foreach(z, height) {
-			foreach(x, width) {
-
-				f32 h = (f32(heights[(x + z * width) * stride]) / 255.f - 0.5f);
-				terrain.heights.push_back(h);
-			}
-		}
-
-		// Texcoords
-		foreach(z, height) {
-			foreach(x, width) {
-
-				f32 u = f32(x) / f32(width);
-				f32 v = f32(z) / f32(height);
-				terrain.texcoords.emplace_back(u, v);
-			}
-		}
-
-		// Indices
-		foreach(z, height - 1u) {
-			foreach(x, width - 1u) {
-
-				u32 i0 = x + z * width;
-				u32 i1 = (x + 1u) + z * width;
-				u32 i2 = x + (z + 1u) * width;
-				u32 i3 = (x + 1u) + (z + 1u) * width;
-
-				terrain.indices.push_back(i0);
-				terrain.indices.push_back(i1);
-				terrain.indices.push_back(i2);
-
-				terrain.indices.push_back(i1);
-				terrain.indices.push_back(i3);
-				terrain.indices.push_back(i2);
-			}
-		}
-
-		calculate_normals_with_heights(terrain.indices.data(), terrain.heights.data(), terrain.normals.data(), width, height, triangle_count * 3u);
-
-		// Colors
-
-		foreach(i, vertex_count) {
-			terrain.colors[i] = Color::White();
-		}
-
-		terrain.width = width;
-		terrain.height = height;
-	}
-
-	bool terrain_apply_heightmap_image(Terrain& terrain, const char* filepath)
-	{
-		u8* data;
-		u32 width;
-		u32 height;
-		if (load_image(filepath, (void**)&data, &width, &height)) {
-
-			terrain_apply_heightmap_u8(terrain, data, width, height, sizeof(u8) * 4u);
-
-			SV_FREE_MEMORY(data);
-			return true;
-		}
-
-		return false;
-	}
-	
-	bool terrain_create_buffers(Terrain& terrain, ResourceUsage usage)
-	{
-		SV_ASSERT(usage != ResourceUsage_Staging);
-		if (terrain.vbuffer || terrain.ibuffer) return false;
-
-		List<TerrainVertex> vertex_data;
-		construct_vertex_data(terrain, vertex_data);
-
-		GPUBufferDesc desc;
-		desc.bufferType = GPUBufferType_Vertex;
-		desc.usage = usage;
-		desc.CPUAccess = (usage == ResourceUsage_Static) ? CPUAccess_None : CPUAccess_Write;
-		desc.size = u32(vertex_data.size() * sizeof(TerrainVertex));
-		desc.pData = vertex_data.data();
-
-		SV_CHECK(graphics_buffer_create(&desc, &terrain.vbuffer));
-
-		desc.indexType = IndexType_32;
-		desc.bufferType = GPUBufferType_Index;
-		desc.size = u32(terrain.indices.size() * sizeof(TerrainIndex));
-		desc.pData = terrain.indices.data();
-
-		SV_CHECK(graphics_buffer_create(&desc, &terrain.ibuffer));
-
-		graphics_name_set(terrain.vbuffer, "TerrainVertexBuffer");
-		graphics_name_set(terrain.ibuffer, "TerrainIndexBuffer");
-
-		return true;
-	}
-	
-	bool terrain_update_buffers(Terrain& terrain, CommandList cmd)
-	{
-		SV_LOG_ERROR("TODO");
-		return false;
-	}
-	
-	void terrain_destroy_buffers(Terrain& terrain)
-	{
-		SV_LOG_ERROR("TODO");
-	}
-	
-	void terrain_clear(Terrain& terrain)
-	{
-		SV_LOG_ERROR("TODO");
-	}
 
     SV_AUX void set_default_material(MaterialInfo* mat)
     {
@@ -1658,15 +1397,44 @@ namespace sv {
 			}
 			else {
 				SV_LOG_INFO("Material imported '%s'", matpath);
-			}
-
-	    
+			}	    
 		}
 	
 		return true;
     }
 
-    bool load_mesh(const char* filepath, Mesh& mesh)
+	bool save_mesh(const Mesh& mesh, const char* filepath)
+	{
+		Serializer s;
+		serialize_begin(s);
+
+		serialize_u32(s, 1u); // VERSION
+
+		serialize_v3_f32_array(s, mesh.positions);
+		serialize_v3_f32_array(s, mesh.normals);
+		serialize_v2_f32_array(s, mesh.texcoords);
+		serialize_u32_array(s, mesh.indices);
+
+		serialize_string(s, mesh.model_material_filepath);
+
+		serialize_xmmatrix(s, mesh.model_transform_matrix);
+
+		if (!serialize_end(s, filepath)) {
+			SV_LOG_ERROR("Can't save the mesh '%s'", filepath);
+			return false;
+		}
+		else SV_LOG_INFO("Mesh saved at '%s' filepath");
+
+		return true;
+	}
+	
+    bool save_material(const Material& material, const char* filepath)
+	{
+		SV_LOG_ERROR("TODO->save_material");
+		return false;
+	}
+
+    bool load_mesh(Mesh& mesh, const char* filepath)
     {
 		Deserializer d;
 
@@ -1698,7 +1466,7 @@ namespace sv {
 		
 				strcat(matpath, matname);
 
-				mesh.model_material_filepath.set(matpath);
+				string_copy(mesh.model_material_filepath, matpath, FILEPATH_SIZE + 1u);
 			}
 
 			if (version != 0) {
@@ -1717,7 +1485,7 @@ namespace sv {
 		return true;
     }
 
-    bool load_material(const char* filepath, Material& mat)
+    bool load_material(Material& mat, const char* filepath)
     {
 		Deserializer d;
 
