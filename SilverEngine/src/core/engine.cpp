@@ -2,6 +2,7 @@
 #include "core/scene.h"
 #include "core/asset_system.h"
 #include "core/renderer.h"
+#include "core/particles.h"
 #include "core/event_system.h"
 
 #include "platform/os.h"
@@ -340,6 +341,7 @@ namespace sv {
 		}
 
 		_terrain_register_events();
+		_particle_initialize();
 	
 		if (_os_startup()) {
 			SV_LOG_INFO("OS layer initialized");
@@ -398,6 +400,7 @@ namespace sv {
 			register_component<CameraComponent>("Camera");
 			register_component<MeshComponent>("Mesh");
 			register_component<TerrainComponent>("Terrain");
+			register_component<ParticleSystem>("Particle System");
 			register_component<LightComponent>("Light");
 
 			register_component<BodyComponent>("Body");
@@ -413,6 +416,8 @@ namespace sv {
 		SV_LOG_INFO("Closing SilverEngine");
 
 		close_user_callbacks();
+
+		_particle_close();
 
 		_scene_close();	
 

@@ -19,6 +19,7 @@ namespace sv {
     CompID CameraComponent::ID = SV_COMPONENT_ID_INVALID;
     CompID MeshComponent::ID = SV_COMPONENT_ID_INVALID;
 	CompID TerrainComponent::ID = SV_COMPONENT_ID_INVALID;
+	CompID ParticleSystem::ID = SV_COMPONENT_ID_INVALID;
     CompID LightComponent::ID = SV_COMPONENT_ID_INVALID;
     CompID BodyComponent::ID = SV_COMPONENT_ID_INVALID;
 	

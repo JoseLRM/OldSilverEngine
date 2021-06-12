@@ -57,6 +57,12 @@ namespace sv {
 		return math_clamp(0.f, n, 1.f);
     }
 
+	template<typename T>
+	SV_INLINE T math_lerp(const T& t0, const T& t1, f32 n)
+	{
+		return t0 * (1.f - n) + t1 * n;
+	}
+
     template<typename T>
 	constexpr T math_gauss(T x, T sigma) noexcept
     {
@@ -748,7 +754,6 @@ namespace sv {
     }
     SV_INLINE f32 math_random_f32(u32 seed, f32 min, f32 max)
     {
-		SV_ASSERT(min <= max);
 		return min + math_random_f32(seed) * (max - min);
     }
 

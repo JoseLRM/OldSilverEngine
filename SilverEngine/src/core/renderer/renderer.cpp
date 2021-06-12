@@ -1242,7 +1242,7 @@ namespace sv {
     {
 		if (!there_is_scene()) return;
 
-		event_dispatch("pre_draw_scene", nullptr);
+		event_dispatch("pre_draw_scene", NULL);
 	
 		auto& gfx = renderer->gfx;
 	    
@@ -1684,6 +1684,8 @@ namespace sv {
 					graphics_event_end(cmd);
 
 					draw_sprites(camera_data, cmd);
+
+					event_dispatch("update_and_draw_particles", NULL);
 				}
 
 				// Postprocessing

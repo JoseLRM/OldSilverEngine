@@ -14,6 +14,7 @@
 #include "core/physics.cpp"
 #include "core/mesh.cpp"
 #include "core/terrain.cpp"
+#include "core/particles.cpp"
 #include "core/asset_system.cpp"
 #include "core/event_system.cpp"
 

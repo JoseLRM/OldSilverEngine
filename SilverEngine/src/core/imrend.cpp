@@ -375,6 +375,9 @@ namespace sv {
 							image = imrend_read<GPUImage*>(it);
 							layout = imrend_read<GPUImageLayout>(it);
 							tc = imrend_read<v4_f32>(it);
+
+							if (image == NULL)
+								image = gfx.image_white;
 							
 							if (layout != GPUImageLayout_ShaderResource && layout != GPUImageLayout_DepthStencilReadOnly) {
 								

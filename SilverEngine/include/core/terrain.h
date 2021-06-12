@@ -11,7 +11,7 @@ namespace sv {
 	};
 
 	struct TerrainComponent : public BaseComponent {
-
+		
 		static CompID SV_API ID;
 		static constexpr u32 VERSION = 1u;
 
