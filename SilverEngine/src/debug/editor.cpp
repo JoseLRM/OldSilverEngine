@@ -843,22 +843,6 @@ namespace sv {
 					gui_material(*m.material.get());
 			}
 
-			if (TerrainComponent::ID == comp_id) {
-
-				TerrainComponent& t = *reinterpret_cast<TerrainComponent*>(comp);
-
-				if (t.material.get() == NULL) {
-					create_asset(t.material, "Material");
-				}
-
-				if (t.vbuffer == NULL || t.ibuffer == NULL) {
-					
-					terrain_set_flat(t, 0.f, 1000u, 1000u);
-				}
-
-				egui_comp_texture("Diffuse", 0u, &t.material->diffuse_map);
-			}
-
 			if (CameraComponent::ID == comp_id) {
 
 				CameraComponent& cam = *reinterpret_cast<CameraComponent*>(comp);
@@ -2731,6 +2715,11 @@ namespace sv {
 		if (dev.debug_draw)
 			_gui_draw(cmd);
     }
+
+	List<Entity>& editor_selected_entities()
+	{
+		return editor.selected_entities;
+	}
 
 }
 

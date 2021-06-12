@@ -5,7 +5,6 @@
 #include "core/scene.h"
 #include "core/engine.h"
 
-// TEMP
 #include "debug/gui.h"
 
 namespace sv {
@@ -54,6 +53,8 @@ namespace sv {
     struct ShowEntityEvent {
 		Entity entity;
     };
+
+	List<Entity>& editor_selected_entities();
 
     // EDITOR GUI
 

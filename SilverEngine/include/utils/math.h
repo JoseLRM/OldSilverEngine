@@ -249,6 +249,9 @@ namespace sv {
 
 		u32 x = 0u;
 		u32 y = 0u;
+
+		bool operator==(v2_u32 v) { return x == v.x && y == v.y; }
+		bool operator!=(v2_u32 v) { return x != v.x && y != v.y; }
 		
 	};
 

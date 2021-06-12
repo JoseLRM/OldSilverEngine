@@ -1,5 +1,7 @@
 #include "core/terrain.h"
 
+#include "debug/editor.h"
+
 namespace sv {
 
 	SV_AUX void construct_vertex_data(TerrainComponent& terrain, List<TerrainVertex>& vertices)
@@ -91,6 +93,17 @@ namespace sv {
 		return true;
 	}
 
+	SV_AUX void terrain_update_buffers(TerrainComponent& terrain, CommandList cmd)
+	{
+		if (terrain.vbuffer == NULL || terrain.ibuffer == NULL) return;
+
+		List<TerrainVertex> vertex_data;
+		construct_vertex_data(terrain, vertex_data);
+
+		graphics_buffer_update(terrain.vbuffer, vertex_data.data(), (u32)vertex_data.size() * sizeof(TerrainVertex), 0u, cmd);
+		graphics_buffer_update(terrain.ibuffer, terrain.indices.data(), (u32)terrain.indices.size() * sizeof(u32), 0u, cmd);
+	}
+
 	SV_AUX void terrain_destroy_buffers(TerrainComponent& terrain)
 	{
 		graphics_destroy(terrain.vbuffer);
@@ -115,7 +128,7 @@ namespace sv {
     }
 
     void TerrainComponent::deserialize(Deserializer& d, u32 version)
-    {
+    {		
 		if (version == 1u) {
 
 			terrain_clear(*this);
@@ -127,15 +140,64 @@ namespace sv {
 			deserialize_f32_array(d, heights);
 		
 			deserialize_asset(d, material);
+
+			dirty = true;
 		}
     }
 
+	void terrain_recreate(TerrainComponent& terrain, u32 size_x, u32 size_z)
+	{
+		if (size_x < 2 || size_z < 2) {
+			SV_LOG_ERROR("Can't resize the terrain with dimensions less than 2");
+			return;
+		}
+		
+		terrain.resolution.x = size_x;
+		terrain.resolution.y = size_z;
+		terrain.dirty = true;
+
+		terrain_set_flat(terrain, 0.f);
+		terrain_destroy_buffers(terrain);
+
+		terrain.size = { f32(size_x), f32(size_z) };
+	}
+
 	bool terrain_valid(TerrainComponent& terrain)
 	{
-		return terrain.heights.size() == (terrain.resolution.x * terrain.resolution.y) && terrain.vbuffer != NULL && terrain.ibuffer != NULL;
+		return !terrain.dirty && terrain.heights.size() == (terrain.resolution.x * terrain.resolution.y) && terrain.vbuffer != NULL && terrain.ibuffer != NULL;
+	}
+
+	SV_AUX u8 sample_image_linear(v2_f32 coord, const u8* buff, u32 width, u32 height, u32 stride)
+	{
+		i32 x0 = (i32)floor(coord.x * f32(width));
+		i32 x1 = x0 + 1;
+		i32 y0 = (i32)floor(coord.y * f32(height));
+		i32 y1 = y0 + 1;
+
+		f32 px = (coord.x * f32(width)) - f32(x0);
+		f32 py = (coord.y * f32(height)) - f32(y0);
+
+		// TODO: This can exceed the buffer
+		f32 s0 = f32(buff[(x0 + y0 * width) * stride]);
+		f32 s1 = f32(buff[(x1 + y0 * width) * stride]);
+		f32 s2 = f32(buff[(x0 + y1 * width) * stride]);
+		f32 s3 = f32(buff[(x1 + y1 * width) * stride]);
+
+		f32 v0 = s0 * (1.f - px) + s1 * px;
+		f32 v1 = s2 * (1.f - px) + s3 * px;
+
+		return u8(v0 * (1.f - py) + v1 * py);
+	}
+
+	SV_AUX u8 sample_image_nearest(v2_f32 coord, const u8* buff, u32 width, u32 height, u32 stride)
+	{
+		i32 x = (i32)floor(coord.x * f32(width));
+		i32 y = (i32)floor(coord.y * f32(height));
+
+		return buff[(x + y * width) * stride];
 	}
 	
-	void terrain_apply_heightmap_u8(TerrainComponent& terrain, const u8* heights, u32 size_x, u32 size_z, u32 stride)
+	void terrain_apply_heightmap_u8(TerrainComponent& terrain, const u8* heights, u32 size_x, u32 size_z, u32 stride, f32 height_mult)
 	{
 		if (size_x <= 1u || size_z <= 1u) {
 			SV_LOG_ERROR("Can't apply a heightmap with dimensions smaller than 1");
@@ -145,34 +207,35 @@ namespace sv {
 			SV_ASSERT(0);
 			return;
 		}
-		
-		u32 vertex_count = size_x * size_z;
-		terrain.heights.reserve(vertex_count);
+
+		terrain.heights.reset();
+		terrain.heights.reserve(terrain.resolution.x * terrain.resolution.y);
 
 		// Positions
 
-		foreach(z, size_z) {
-			foreach(x, size_x) {
+		foreach(z, terrain.resolution.y) {
+			foreach(x, terrain.resolution.x) {
 
-				f32 h = (f32(heights[(x + z * size_x) * stride]) / 255.f - 0.5f);
+				f32 u = f32(x) / (f32)terrain.resolution.x;
+				f32 v = f32(z) / (f32)terrain.resolution.y;
+
+				u8 sample = sample_image_linear({ u, v }, heights, size_x, size_z, stride);
+				f32 h = f32(sample) / 255.f * height_mult;
 				terrain.heights.push_back(h);
 			}
 		}
 
 		terrain.dirty = true;
-
-		terrain.resolution.x = size_x;
-		terrain.resolution.y = size_z;
 	}
 
-	bool terrain_apply_heightmap_image(TerrainComponent& terrain, const char* filepath)
+	bool terrain_apply_heightmap_image(TerrainComponent& terrain, const char* filepath, f32 height_mult)
 	{
 		u8* data;
 		u32 width;
 		u32 height;
 		if (load_image(filepath, (void**)&data, &width, &height)) {
 
-			terrain_apply_heightmap_u8(terrain, data, width, height, sizeof(u8) * 4u);
+			terrain_apply_heightmap_u8(terrain, data, width, height, sizeof(u8) * 4u, height_mult);
 
 			SV_FREE_MEMORY(data);
 			return true;
@@ -181,15 +244,11 @@ namespace sv {
 		return false;
 	}
 
-	void terrain_set_flat(TerrainComponent& terrain, f32 height, u32 size_x, u32 size_z)
+	void terrain_set_flat(TerrainComponent& terrain, f32 height)
 	{
-		terrain.resolution.x = size_x;
-		terrain.resolution.y = size_z;
-		u32 vertex_count = size_x * size_z;
-
+		u32 vertex_count = terrain.resolution.x * terrain.resolution.y;
 		terrain.heights.resize(vertex_count);
 		foreach(i, vertex_count) terrain.heights[i] = height;
-
 		terrain.dirty = true;
 	}
 
@@ -255,6 +314,7 @@ namespace sv {
 		u32 size_x = terrain.resolution.x;
 		u32 size_z = terrain.resolution.y;
 
+		terrain.normals.reset();
 		terrain.normals.resize(size_x * size_z);
 		
 		u32 i = 0u;
@@ -306,14 +366,23 @@ namespace sv {
 				if (terrain.dirty) {
 
 					terrain.dirty = false;
-				
-					terrain_calculate_texcoords(terrain);
-					terrain_calculate_indices(terrain);
-					terrain_calculate_normals(terrain);
 
-					terrain_destroy_buffers(terrain);
-			
-					terrain_create_buffers(terrain);
+					if (terrain.vbuffer == NULL || terrain.ibuffer == NULL) {
+						
+						terrain_calculate_texcoords(terrain);
+						terrain_calculate_indices(terrain);
+						terrain_calculate_normals(terrain);
+
+						terrain_create_buffers(terrain);
+					}
+					else {
+
+						terrain_calculate_normals(terrain);
+
+						CommandList cmd = graphics_commandlist_get();
+						
+						terrain_update_buffers(terrain, cmd);
+					}
 				}
 			}
 			while (comp_it_next(it, view));
@@ -332,9 +401,131 @@ namespace sv {
 		terrain_destroy_buffers(terrain);
 	}
 
+#if SV_EDITOR
+
+	SV_INTERNAL void show_terrain_component_info(ShowComponentEvent* e)
+	{
+		if (TerrainComponent::ID == e->comp_id) {
+				
+			TerrainComponent& t = *reinterpret_cast<TerrainComponent*>(e->comp);
+
+			if (t.material.get() == NULL) {
+				create_asset(t.material, "Material");
+			}
+
+			// TEMP
+			{
+				if (gui_button("Move")) {
+					
+					foreach(z, t.resolution.y) {
+						foreach(x, t.resolution.x) {
+							t.heights[x + z * t.resolution.x] = sin(f32(x) * 0.06f) * (f32(z) / f32(t.resolution.y)) * 0.1f;
+						}
+					}
+
+					t.dirty = true;
+				}
+				if (gui_button("Apply heightmap")) {
+
+					gui_show_window("Apply Heightmap");
+				}
+			}
+
+			egui_comp_texture("Diffuse", 0u, &t.material->diffuse_map);
+
+			if (gui_button("Recreate")) {
+
+				gui_show_window("Recreate Terrain");
+			}
+		}
+	}
+
+	SV_AUX TerrainComponent* get_selected_terrain()
+	{
+		List<Entity> entities = editor_selected_entities();
+		
+		if (entities.size() != 1u)
+			return NULL;
+		
+		Entity entity = entities.back();
+				
+		return get_component<TerrainComponent>(entity);
+	}
+
+	SV_INTERNAL void display_terrain_gui()
+	{
+		if (gui_begin_window("Recreate Terrain", GuiWindowFlag_Temporal)) {
+
+			static v2_u32 resolution = { 50u, 50u };
+
+			bool close = false;
+
+			TerrainComponent* terrain = get_selected_terrain();
+
+			if (terrain == NULL)
+				close = true;
+			else {
+				
+				gui_drag_u32("ResolutionX", resolution.x, 1u, 2u, 10000);
+				gui_drag_u32("ResolutionY", resolution.y, 1u, 2u, 10000);
+
+				if (gui_button("Recreate")) {
+
+					terrain_recreate(*terrain, resolution.x, resolution.y);
+					close = true;
+				}
+			}
+
+			if (close) {
+
+				resolution = { 50u, 50u };
+				gui_hide_window("Recreate Terrain");
+			}
+
+			gui_end_window();
+		}
+		
+		if (gui_begin_window("Apply Heightmap", GuiWindowFlag_Temporal)) {
+
+			// TODO: Filepath
+
+			static f32 height_mult = 10.f;
+
+			bool close = false;
+			TerrainComponent* t = get_selected_terrain();
+
+			if (t == NULL) close = true;
+			else {
+
+				gui_drag_f32("Height", height_mult, 0.1f, 0.f, f32_max);
+
+				if (gui_button("Apply")) {
+
+					terrain_apply_heightmap_image(*t, "assets/images/pene.JPG", height_mult);
+					close = true;
+				}
+			}
+
+			if (close) {
+
+				height_mult = 10.f;
+				gui_hide_window("Apply Heightmap");
+			}
+
+			gui_end_window();
+		}
+	}
+	
+#endif
+
 	void _terrain_register_events()
 	{
 		event_register("pre_draw_scene", update_terrains, 0);
+
+#if SV_EDITOR
+		event_register("show_component_info", show_terrain_component_info, 0);
+		event_register("display_gui", display_terrain_gui, 0);
+#endif
 	}
 	
 }
