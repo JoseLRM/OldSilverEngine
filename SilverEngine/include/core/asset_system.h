@@ -6,6 +6,7 @@
 
 #define SV_DEFINE_ASSET_PTR(name, ptr_type) struct name {				\
 		SV_INLINE ptr_type get() const noexcept { ptr_type* ptr = reinterpret_cast<ptr_type*>(sv::get_asset_content(asset_ptr)); return ptr ? *ptr : nullptr; } \
+		SV_INLINE const char* get_filepath() const noexcept { return sv::get_asset_filepath(asset_ptr); } \
 		SV_INLINE void set(void* ptr) const noexcept { ptr_type* p = reinterpret_cast<ptr_type*>(sv::get_asset_content(asset_ptr)); *p = (ptr_type)ptr; } \
 		SV_INLINE operator sv::AssetPtr& () { return asset_ptr; }		\
 		SV_INLINE operator const sv::AssetPtr& () const { return asset_ptr; } \

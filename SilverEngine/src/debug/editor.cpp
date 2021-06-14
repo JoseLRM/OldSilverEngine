@@ -50,6 +50,13 @@ namespace sv {
 		char filepath[FILEPATH_SIZE + 1] = {};
 		List<AssetElement> elements;
 		f64 last_update = 0.0;
+
+		struct {
+
+			char assetname[FILENAME_SIZE + 1u] = "";
+			u32 state = 0u;
+			
+		} create_asset_data;
     };
 
     struct EditorEntity {
@@ -88,6 +95,14 @@ namespace sv {
 		f32 simulation_time = 0.f;
     };
 
+	struct MaterialEditorData {
+		MaterialAsset material;
+	};
+
+	struct ImportModelData {
+		ModelInfo model_info;
+	};
+
     struct GlobalEditorData {
 
 		List<Entity> selected_entities;
@@ -103,6 +118,8 @@ namespace sv {
 		static constexpr v4_f32 TEXCOORD_LIGHT_PROBE = { 0.7f, 0.7f, 1.f, 1.f };
 
 		SpriteSheetEditorData sprite_sheet_editor_data;
+		MaterialEditorData material_editor_data;
+		ImportModelData import_model_data;
 
 		char next_scene_name[SCENENAME_SIZE + 1u] = "";
     };
@@ -767,29 +784,6 @@ namespace sv {
 		SV_CHECK(_gui_close());
 		return true;
     }
-
-    SV_AUX void gui_material(Material& mat)
-    {
-		gui_push_id("Material");
-	
-		u64 id = 0u;
-	
-		gui_text("Pipeline Settings", id++);
-		gui_separator(5.f);
-	
-		gui_checkbox("Transparent", mat.transparent, id++);
-
-		gui_text("Values", id++);
-		gui_separator(5.f);
-
-		gui_drag_color("Ambient Color", mat.ambient_color, id++);
-		gui_drag_color("Diffuse Color", mat.diffuse_color, id++);
-		gui_drag_color("Specular Color", mat.specular_color, id++);
-		gui_drag_color("Emissive Color", mat.emissive_color, id++);
-		gui_drag_f32("Shininess", mat.shininess, 0.01f, 0.f, 300.f, id++);
-	
-		gui_pop_id();
-    }
     
     SV_INTERNAL void show_component_info(Entity entity, CompID comp_id, BaseComponent* comp)
     {
@@ -838,9 +832,14 @@ namespace sv {
 				MeshComponent& m = *reinterpret_cast<MeshComponent*>(comp);
 
 				egui_comp_mesh("Mesh", 0u, &m.mesh);
-				//egui_comp_material("Material", 1u, &m.material);
-				if (m.material.get())
-					gui_material(*m.material.get());
+				egui_comp_material("Material", 1u, &m.material);
+
+				if (gui_button("Edit Material")) {
+
+					editor.material_editor_data.material = m.material;
+				}
+				/*if (m.material.get())
+				  gui_material(*m.material.get());*/
 			}
 
 			if (CameraComponent::ID == comp_id) {
@@ -1491,58 +1490,108 @@ namespace sv {
 			gui_end_window();
 		}
 
+		if (gui_begin_window("Create Asset", GuiWindowFlag_Temporal)) {
+
+			auto& data = info.create_asset_data;
+
+			switch (data.state) {
+
+			case 0:
+				if (gui_button("Create SpriteSheet")) {
+					data.state = 2u;
+				}
+
+				if (gui_button("Create Material")) {
+					data.state = 1u;
+				}
+				break;
+
+				// Create Material
+			case 1:
+			{
+				gui_text_field(data.assetname, FILENAME_SIZE + 1u, 0u);
+
+				if (gui_button("Create")) {
+
+					Material mat;
+
+					update_browser = true;
+
+					char filepath[FILEPATH_SIZE + 1u] = "assets/";
+					string_append(filepath, info.filepath, FILEPATH_SIZE + 1u);
+					string_append(filepath, data.assetname, FILEPATH_SIZE + 1u);
+
+					const char* extension = filepath_extension(data.assetname);
+					extension = extension ? extension : "";
+					
+					if (!string_equals(extension, ".mat")) {
+						string_append(filepath, ".mat", FILEPATH_SIZE + 1u);
+					}
+					
+					save_material(mat, filepath);
+
+					gui_hide_window("Create Asset");
+				}
+			}
+			break;
+			
+			// Create Sprite Sheet
+			case 2:
+			{
+				
+			}
+			break;
+			
+			}
+			
+			gui_end_window();
+		}
+
 		if (gui_begin_window("Import Model", GuiWindowFlag_Temporal)) {
 
-			static char foldername[FILENAME_SIZE + 1u] = "";
-			static bool create_folder = false;
+			auto& data = editor.import_model_data;
 
-			gui_checkbox("Create Folder", create_folder);
+			if (gui_collapse("Meshes")) {
 
-			if (create_folder) {
+				gui_push_id("Meshes");
 
-				gui_text_field(foldername, FILENAME_SIZE + 1u, 0u);
+				foreach(i, data.model_info.meshes.size()) {
+
+					MeshInfo& mesh = data.model_info.meshes[i];
+					gui_checkbox(mesh.name.c_str(), mesh.import, i);
+				}
+
+				gui_pop_id();
+			}
+
+			if (gui_collapse("Materials")) {
+
+				gui_push_id("Materials");
+
+				foreach(i, data.model_info.materials.size()) {
+
+					MaterialInfo& mat = data.model_info.materials[i];
+					gui_checkbox(mat.name.c_str(), mat.import, i);
+				}
+
+				gui_pop_id();
 			}
 
 			if (gui_button("Import")) {
 
-				if (string_size(foldername) == 0u)
-					create_folder = false;
-
-				char filepath[FILEPATH_SIZE + 1u] = "";
-
-				const char* filters[] = {
-					"Wavefront OBJ (.obj)", "*.obj",
-					"All", "*",
-					""
-				};
-			
-				if (file_dialog_open(filepath, 2u, filters, "")) {
-
-					ModelInfo model_info;
-			    
-					if (load_model(filepath, model_info)) {
-
-						char dst[FILEPATH_SIZE + 1u];
-						string_copy(dst, "assets/", FILEPATH_SIZE + 1u);
-						string_append(dst, info.filepath, FILEPATH_SIZE + 1u);
-						if (create_folder)
-							string_append(dst, foldername, FILEPATH_SIZE + 1u);
-
-						if (import_model(dst, model_info)) {
-							SV_LOG_INFO("Model imported '%s'", filepath);
-						}
-						else SV_LOG_ERROR("Can't import the model '%s' at '%s'", filepath, dst);
-					}
-					else {
-						SV_LOG_ERROR("Can't load the model '%s'", filepath);
-					}
+				char dst[FILEPATH_SIZE + 1u];
+				string_copy(dst, "assets/", FILEPATH_SIZE + 1u);
+				string_append(dst, info.filepath, FILEPATH_SIZE + 1u);
+				
+				if (import_model(dst, data.model_info)) {
+					SV_LOG_INFO("Model imported at '%s'", dst);
 				}
-
-				create_folder = false;
-				string_copy(foldername, "", FILENAME_SIZE + 1u);
+				else SV_LOG_ERROR("Can't import the model at '%s'", dst);
+				
 				gui_hide_window("Import Model");
+				data = {};
 			}
-
+			
 			gui_end_window();
 		}
 
@@ -1785,7 +1834,36 @@ namespace sv {
 
 				if (gui_button("Import Model", id++)) {
 
-					gui_show_window("Import Model");
+					auto& data = editor.import_model_data;
+					data.model_info = {};
+
+					char filepath[FILEPATH_SIZE + 1u] = "";
+
+					const char* filters[] = {
+						"Wavefront OBJ (.obj)", "*.obj",
+						"All", "*",
+						""
+					};
+			
+					if (file_dialog_open(filepath, 2u, filters, "")) {
+			    
+						if (load_model(filepath, data.model_info)) {
+
+							gui_show_window("Import Model");
+							gui_close_popup();
+						}
+						else {
+							SV_LOG_ERROR("Can't load the model '%s'", filepath);
+						}
+					}
+				}
+
+				if (gui_button("Create Asset", id++)) {
+
+					auto& data = info.create_asset_data;
+
+					data.state = 0u;
+					gui_show_window("Create Asset");
 					gui_close_popup();
 				}
 
@@ -2207,6 +2285,35 @@ namespace sv {
 		}
     }
 
+	SV_INTERNAL void display_material_editor()
+	{
+		if (gui_begin_window("Material Editor")) {
+
+			auto& data = editor.material_editor_data;
+
+			MaterialAsset& mat = data.material;
+
+			if (mat.get()) {
+	
+				gui_text("Pipeline Settings");
+				gui_separator(5.f);
+			
+				gui_checkbox("Transparent", mat->transparent);
+			
+				gui_text("Values");
+				gui_separator(5.f);
+			
+				gui_drag_color("Ambient Color", mat->ambient_color);
+				gui_drag_color("Diffuse Color", mat->diffuse_color);
+				gui_drag_color("Specular Color", mat->specular_color);
+				gui_drag_color("Emissive Color", mat->emissive_color);
+				gui_drag_f32("Shininess", mat->shininess, 0.01f, 0.f, 300.f);
+			}
+			
+			gui_end_window();
+		}
+	}
+
     SV_INTERNAL void display_gui()
     {
 		if (_gui_begin()) {
@@ -2222,6 +2329,7 @@ namespace sv {
 						"Asset Browser",
 						"Scene Settings",
 						"SpriteSheet Editor",
+						"Material Editor",
 					};
 
 					foreach(i, SV_ARRAY_SIZE(windows)) {
@@ -2253,6 +2361,7 @@ namespace sv {
 				display_asset_browser();
 				display_scene_settings();
 				display_spritesheet_editor();
+				display_material_editor();
 				gui_display_style_editor();
 
 				event_dispatch("display_gui", NULL);

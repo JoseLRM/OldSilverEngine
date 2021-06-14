@@ -91,6 +91,8 @@ namespace sv {
 		XMMATRIX transform_matrix;
 		u32 material_index = u32_max;
 
+		bool import = true;
+
     };
 
     struct MaterialInfo {
@@ -115,6 +117,8 @@ namespace sv {
 		String normal_map_path;
 		String specular_map_path;
 		String emissive_map_path;
+
+		bool import = true;
     };
 
     struct ModelInfo {

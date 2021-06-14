@@ -95,44 +95,42 @@ namespace sv {
 
     void egui_comp_mesh(const char* text, u64 id, MeshAsset* mesh)
     {
+		bool res = false;
+		
 		gui_push_id(id);
 
-		/*gui_same_line(2u);
-	
-		  gui_text(text, 0u);
-		  gui_button("TODO", 1u);
+		gui_button("TODO -> Mesh");
 
-		  AssetPackage* package;
-		  if (gui_recive_package((void**)&package, nullptr, ASSET_BROWSER_PACKAGE_MESH)) {
+		AssetPackage* package;
+		if (gui_recive_package((void**)&package, ASSET_BROWSER_PACKAGE_MESH)) {
 
-		  bool res = load_asset_from_file(*mesh, package->filepath);
-		  if (!res) {
+			res = load_asset_from_file(*mesh, package->filepath);
+			if (!res) {
 
-		  SV_LOG_ERROR("Can't load the mesh '%s'", package->filepath);
-		  }
-		  }*/
+				SV_LOG_ERROR("Can't load the mesh '%s'", package->filepath);
+			}
+		}
 
 		gui_pop_id();
     }
 
     void egui_comp_material(const char* text, u64 id, MaterialAsset* material)
     {
+		bool res = false;
+		
 		gui_push_id(id);
 
-		/*gui_same_line(2u);
-	
-		  gui_text(text, 0u);
-		  gui_button("TODO", 1u);
+		gui_button("TODO -> Material");
 
-		  AssetPackage* package;
-		  if (gui_recive_package((void**)&package, nullptr, ASSET_BROWSER_PACKAGE_MATERIAL)) {
+		AssetPackage* package;
+		if (gui_recive_package((void**)&package, ASSET_BROWSER_PACKAGE_MATERIAL)) {
 
-		  bool res = load_asset_from_file(*material, package->filepath);
-		  if (!res) {
+			res = load_asset_from_file(*material, package->filepath);
+			if (!res) {
 
-		  SV_LOG_ERROR("Can't load the material '%s'", package->filepath);
-		  }
-		  }*/
+				SV_LOG_ERROR("Can't load the material '%s'", package->filepath);
+			}
+		}
 
 		gui_pop_id();
     }

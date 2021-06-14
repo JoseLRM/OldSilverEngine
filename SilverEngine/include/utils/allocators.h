@@ -201,6 +201,12 @@ namespace sv {
 			_size = size;
 		}
 
+		void set_all(const T& t) {
+			foreach(i, _size) {
+				_data[i] = t;
+			}
+		}
+
 		ListIterator<T> erase(const ListIterator<T>& it_)
 		{
 			T* it = it_.ptr;

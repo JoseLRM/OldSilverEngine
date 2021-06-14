@@ -65,6 +65,11 @@ namespace sv {
 		RawList _buff;
     };
 
+	inline const char* string_validate(const char* str)
+	{
+		return str ? str : "";
+	}
+
     SV_INLINE size_t string_split(const char* line, char* delimiters, u32 count)
     {
 		const char* it = line;

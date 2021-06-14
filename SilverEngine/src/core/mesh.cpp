@@ -1323,6 +1323,9 @@ namespace sv {
 	
 		for (const MeshInfo& mesh : model_info.meshes) {
 
+			if (!mesh.import)
+				continue;
+
 			size_t meshpath_size = folderpath_size + mesh.name.size() + strlen(".mesh");
 			if (meshpath_size >= FILEPATH_SIZE) {
 				SV_LOG_ERROR("This filepath is too large '%s'", filepath);
@@ -1360,6 +1363,9 @@ namespace sv {
 		// Creating material files
 
 		for (const MaterialInfo& mat : model_info.materials) {
+
+			if (!mat.import)
+				continue;
 
 			size_t matpath_size = folderpath_size + mat.name.size() + strlen(".mat");
 			if (matpath_size >= FILEPATH_SIZE) {
@@ -1428,10 +1434,38 @@ namespace sv {
 		return true;
 	}
 	
-    bool save_material(const Material& material, const char* filepath)
+    bool save_material(const Material& mat, const char* filepath)
 	{
-		SV_LOG_ERROR("TODO->save_material");
-		return false;
+		Serializer s;
+		serialize_begin(s);
+
+		serialize_u32(s, 1u); // VERSION
+
+		// Renderer settings
+		{
+			serialize_bool(s, mat.transparent);
+			serialize_u32(s, mat.culling);
+		}
+
+		serialize_color(s, mat.ambient_color);
+		serialize_color(s, mat.diffuse_color);
+		serialize_color(s, mat.specular_color);
+		serialize_color(s, mat.emissive_color);
+		serialize_f32(s, mat.shininess);
+
+		serialize_string(s, string_validate(mat.diffuse_map.get_filepath()));
+		serialize_string(s, string_validate(mat.normal_map.get_filepath()));
+		serialize_string(s, string_validate(mat.specular_map.get_filepath()));
+		serialize_string(s, string_validate(mat.emissive_map.get_filepath()));
+
+		if (!serialize_end(s, filepath)) {
+			SV_LOG_ERROR("Can't save the material '%s'", filepath);
+			return false;
+		}
+		else {
+			SV_LOG_INFO("Material saved at '%s'", filepath);
+		}
+		return true;
 	}
 
     bool load_mesh(Mesh& mesh, const char* filepath)
