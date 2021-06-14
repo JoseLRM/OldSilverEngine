@@ -926,7 +926,7 @@ namespace sv {
 				gui_drag_f32("Range", l.range, 0.1f, 0.0f, f32_max);
 				gui_drag_f32("Smoothness", l.smoothness, 0.005f, 0.0f, 1.f);
 
-				gui_separator(5.f);
+				gui_separator(1);
 
 				gui_checkbox("Shadow Mapping", l.shadow_mapping_enabled);
 
@@ -1830,7 +1830,7 @@ namespace sv {
 					gui_close_popup();
 				}
 
-				gui_separator(10.f);
+				gui_separator(1);
 
 				if (gui_button("Import Model", id++)) {
 
@@ -1920,7 +1920,7 @@ namespace sv {
 		
 			gui_text_field(editor.next_scene_name, SCENENAME_SIZE + 1u, 0u);
 
-			gui_separator(10.f);
+			gui_separator(1);
 
 			if (gui_button("GO!")) {
 				set_scene(editor.next_scene_name);
@@ -2296,12 +2296,12 @@ namespace sv {
 			if (mat.get()) {
 	
 				gui_text("Pipeline Settings");
-				gui_separator(5.f);
+				gui_separator(1);
 			
 				gui_checkbox("Transparent", mat->transparent);
 			
 				gui_text("Values");
-				gui_separator(5.f);
+				gui_separator(1);
 			
 				gui_drag_color("Ambient Color", mat->ambient_color);
 				gui_drag_color("Diffuse Color", mat->diffuse_color);
@@ -2345,7 +2345,7 @@ namespace sv {
 						}
 					}
 
-					gui_separator(10.f);
+					gui_separator(3);
 
 					gui_checkbox("Colisions", dev.draw_collisions);
 					gui_checkbox("Postprocessing", dev.postprocessing);

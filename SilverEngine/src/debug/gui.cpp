@@ -2483,7 +2483,33 @@ namespace sv {
 
 			case GuiHeader_Separator:
 			{
-				f32 separation = gui_read<f32>(it);
+				u32 level = gui_read<u32>(it);
+
+				f32 separation = 0.f;
+
+				switch (level) {
+
+				case 1:
+					separation = 5.f;
+					break;
+					
+				case 2:
+					separation = 10.f;
+					break;
+					
+				case 3:
+					separation = 20.f;
+					break;
+					
+				case 4:
+					separation = 25.f;
+					break;
+					
+				case 5:
+					separation = 30.f;
+					break;
+					
+				}
 
 				GuiRootInfo* root = get_root_info(gui->root_stack.back());
 				SV_ASSERT(root);
@@ -3252,10 +3278,10 @@ namespace sv {
 		gui_write(texcoord);
     }
 
-    void gui_separator(f32 separation)
+    void gui_separator(u32 level)
     {
 		gui_write(GuiHeader_Separator);
-		gui_write(separation);
+		gui_write(level);
     }
 
 	bool gui_begin_combobox(const char* preview, u64 id, u32 flags)

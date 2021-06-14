@@ -220,7 +220,7 @@ namespace sv {
 				
 				gui_drag_u32("Show Emitter", show_emitter_index, 1u, 0u, p.emitter_count - 1u);
 
-				gui_separator(10.f);
+				gui_separator(1);
 
 				ParticleEmitter& e = p.emitters[show_emitter_index];
 
