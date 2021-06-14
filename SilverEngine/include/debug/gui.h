@@ -25,10 +25,13 @@ namespace sv {
 		Color widget_focused_color = Color::Red();
 		Color widget_text_color = Color::White();
 		Color check_color = Color::White();
-		Color root_background_color = Color::Gray(2u, 220u);
-		Color root_focused_background_color = Color::Gray(2u);
+		Color window_background_color = Color::Gray(2u);
+		Color window_focused_background_color = Color::Gray(4u);
 		Color window_decoration_color = Color::Gray(128u);
 		Color window_focused_decoration_color = { 180u, 128u, 128u, 255u };
+		Color popup_background_color = Color::Gray(5u);
+		Color popup_outline_color = Color::Gray(50u);
+		f32   popup_outline_size = 3.f;
 		Color docking_button_color = Color::Red();
 		Color docking_highlighted_button_color = Color::White();
 		f32 scale = 1.f;

@@ -2341,7 +2341,7 @@ namespace sv {
 		
 		reset_root(gui->popup.root);
 
-		bool close_popup_request = false;
+		bool close_popup_request = true;
 
 		// Read buffer
 		
@@ -2406,6 +2406,8 @@ namespace sv {
 				u64 id = gui_read<u64>(it);
 				v2_f32 origin = gui_read<v2_f32>(it);
 
+				close_popup_request = false;
+
 				if (id != gui->popup.id) {
 					gui->popup.origin = origin;
 					gui->popup.id = id;
@@ -2427,9 +2429,18 @@ namespace sv {
 					size.x = 200.f / gui->resolution.x * scale;
 					size.y = (gui->popup.root.yoff + 7.f) / gui->resolution.y * scale;
 
+					if (gui->popup.origin.x + size.x > 1.f) {
+						size.x = -size.x;
+					}
+					if (gui->popup.origin.y - size.y < 0.f) {
+						size.y = -size.y;
+					}
+
 					v2_f32 pos = gui->popup.origin;
-					// TODO: Check if the popup is outside the screen
 					pos += v2_f32(size.x, -size.y) * 0.5f;
+
+					size.x = abs(size.x);
+					size.y = abs(size.y);
 
 					gui->popup.root.widget_bounds = { pos.x, pos.y, size.x, size.y };
 				}
@@ -2799,15 +2810,24 @@ namespace sv {
 		}
 
 		bool show = false;
+		bool change_origin = false;
+		bool right_pressed = input.mouse_buttons[MouseButton_Right] == InputState_Pressed;
+		bool is_showing = gui->popup.id == id && !gui->popup_request;
 	
 		// Check if should show the popup
 
-		if (gui->popup.id == id && !gui->popup_request) {
+		if (is_showing) {
 
 			// Is showing right now
 			show = true;
+			
+			if (right_pressed && !mouse_in_bounds(gui->popup.root.widget_bounds)) {
+
+				change_origin = true;
+			}
 		}
-		else if (input.mouse_buttons[MouseButton_Right] == InputState_Pressed) {
+		
+		if (change_origin || (right_pressed && !is_showing)) {
 
 			switch (trigger) {
 
@@ -2829,6 +2849,10 @@ namespace sv {
 								break;
 							}
 						}
+
+						if (show && change_origin) {
+							gui->popup.origin = gui->mouse_position;
+						}
 					}
 				}
 			}
@@ -2840,6 +2864,10 @@ namespace sv {
 		
 				if (mouse_in_bounds(widget->bounds)) {
 					show = true;
+
+					if (change_origin) {
+						gui->popup.origin = gui->mouse_position;
+					}
 				}	
 			}
 			break;
@@ -3292,7 +3320,7 @@ namespace sv {
 	    
 			u32 last_win_id = gui->sorted_windows.size() ? gui->sorted_windows.front() : u32_max;
 
-			Color background_color = (last_win_id == root_index.index) ? style.root_focused_background_color : style.root_background_color;
+			Color background_color = (last_win_id == root_index.index) ? style.window_focused_background_color : style.window_background_color;
 			Color decoration_color = (last_win_id == root_index.index) ? style.window_focused_decoration_color : style.window_decoration_color;
 			Color closebutton_color = (last_win_id == root_index.index) ? Color::Red() : Color::Gray(200u);
 	    
@@ -3335,8 +3363,16 @@ namespace sv {
 
 		case GuiRootType_Popup:
 		{
-			const v4_f32& b = gui->popup.root.widget_bounds;
-			Color background_color = style.root_focused_background_color;;
+			v4_f32 b = gui->popup.root.widget_bounds;
+
+			Color background_color = style.popup_background_color;
+			Color outline_color = style.popup_outline_color;
+
+			imrend_draw_quad({ b.x, b.y, 0.f }, { b.z, b.w }, outline_color, cmd);
+
+			b.z -= style.popup_outline_size / gui->resolution.x;
+			b.w -= style.popup_outline_size / gui->resolution.y;
+			
 			imrend_draw_quad({ b.x, b.y, 0.f }, { b.z, b.w }, background_color, cmd);
 		}
 		break;
@@ -3874,20 +3910,22 @@ namespace sv {
 		if (gui_begin_window("Style Editor")) {
 
 			GuiStyle& s = gui->style;
-			u64 id = 0u;
 
-			gui_drag_color("Widget Primary Color", s.widget_primary_color, id++);
-			gui_drag_color("Widget Secondary Color", s.widget_secondary_color, id++);
-			gui_drag_color("Widget Highlighted Color", s.widget_highlighted_color, id++);
-			gui_drag_color("Widget Text Color", s.widget_text_color, id++);
-			gui_drag_color("Check Color", s.check_color, id++);
-			gui_drag_color("Root Background Color", s.root_background_color, id++);
-			gui_drag_color("Root Focused Background Color", s.root_focused_background_color, id++);
-			gui_drag_color("Window Decoration Color", s.window_decoration_color, id++);
-			gui_drag_color("Window Focused Decoration Color", s.window_focused_decoration_color, id++);
-			gui_drag_color("Docking Button Color", s.docking_button_color, id++);
-			gui_drag_color("Docking Highlighted Button Color", s.docking_highlighted_button_color, id++);
-			gui_drag_f32("Scale", s.scale, 0.001f, 0.01f, 10.f, id++);
+			gui_drag_color("Widget Primary Color", s.widget_primary_color);
+			gui_drag_color("Widget Secondary Color", s.widget_secondary_color);
+			gui_drag_color("Widget Highlighted Color", s.widget_highlighted_color);
+			gui_drag_color("Widget Text Color", s.widget_text_color);
+			gui_drag_color("Check Color", s.check_color);
+			gui_drag_color("Window Background Color", s.window_background_color);
+			gui_drag_color("Window Focused Background Color", s.window_focused_background_color);
+			gui_drag_color("Window Decoration Color", s.window_decoration_color);
+			gui_drag_color("Window Focused Decoration Color", s.window_focused_decoration_color);
+			gui_drag_color("Popup Background Color", s.popup_background_color);
+			gui_drag_color("Popup Outline Color", s.popup_outline_color);
+			gui_drag_f32("Popup Outline Size", s.popup_outline_size, 1.f, 0.f, 500.f);
+			gui_drag_color("Docking Button Color", s.docking_button_color);
+			gui_drag_color("Docking Highlighted Button Color", s.docking_highlighted_button_color);
+			gui_drag_f32("Scale", s.scale, 0.001f, 0.01f, 10.f);
 			
 			gui_end_window();
 		}
