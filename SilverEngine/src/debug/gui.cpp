@@ -610,6 +610,11 @@ namespace sv {
 		}
 	}
 
+	SV_AUX bool serializable_window_state(const GuiWindowState& state)
+	{
+		return !(state.flags & GuiWindowFlag_FocusMaster);
+	}
+
 	SV_INTERNAL void clean_up_gui()
 	{
 		// Save static state
@@ -621,14 +626,28 @@ namespace sv {
 			
 			// VERSION
 			serialize_u32(s, 4u);
-			
-			serialize_u32(s, u32(gui->window_states.size()));
 
-			for (const GuiWindowState& state : gui->window_states) {
+			// Window states
+			{
+				u32 state_count = 0u;
 
-				serialize_bool(s, state.show);
-				serialize_string(s, state.title);
-				serialize_u32(s, state.flags);
+				for (const GuiWindowState& state : gui->window_states) {
+				
+					if (serializable_window_state(state)) {
+						++state_count;
+					}
+				}
+				
+				serialize_u32(s, state_count);
+
+				for (const GuiWindowState& state : gui->window_states) {
+
+					if (serializable_window_state(state)) {
+						serialize_bool(s, state.show);
+						serialize_string(s, state.title);
+						serialize_u32(s, state.flags);
+					}
+				}
 			}
 
 			// Docking tree
