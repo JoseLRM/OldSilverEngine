@@ -131,13 +131,8 @@ namespace sv {
 
 							if (i != e.particle_count - 1u) {
 
-								// TODO: This has better performance but causes bad sorting
-								e.particles[i] = e.particles[e.particle_count - 1u];
-
-								/*foreach(j, e.particle_count - i - 1u)
-								  e.particles[j + i] = e.particles[j + i + 1u];*/
-								
-								//memcpy(e.particles + i, e.particles + i + 1u, sizeof(Particle) * (e.particle_count - i - 1u));
+								// TODO: Optimize								
+								memcpy(e.particles + i, e.particles + i + 1u, sizeof(Particle) * (e.particle_count - i - 1u));
 							}
 							
 							--e.particle_count;
@@ -190,6 +185,9 @@ namespace sv {
 									emit_particle(e, system_position);
 
 									e.emission.spawn_count -= frq;
+
+									if (e.particle_count == e.max_particles)
+										break;
 								}
 							}
 						}
