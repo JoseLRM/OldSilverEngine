@@ -59,21 +59,6 @@ namespace sv {
 		} create_asset_data;
     };
 
-    struct EditorEntity {
-		Entity handle;
-    };
-
-    struct HierarchyFolder {
-		char path[FILEPATH_SIZE + 1];
-		List<EditorEntity> entities;
-		List<HierarchyFolder> folders;
-		bool show;
-    };
-    
-    struct HierarchyData {
-		HierarchyFolder root;
-    };
-
 	enum SpriteSheetEditorState : u32 {
 		SpriteSheetEditorState_Main,
 		SpriteSheetEditorState_SpriteList,
@@ -110,8 +95,6 @@ namespace sv {
 
 		AssetBrowserInfo asset_browser;
 		GizmosInfo gizmos;
-
-		HierarchyData hierarchy;
 	
 		TextureAsset image;
 		static constexpr v4_f32 TEXCOORD_FOLDER = { 0.f, 0.f, 0.1f, 0.1f };
@@ -131,6 +114,25 @@ namespace sv {
 		for (Entity e : editor.selected_entities)
 			if (e == entity) return true;
 		return false;
+	}
+
+	SV_AUX void select_entity(Entity entity, bool unselect_all = false)
+	{
+		if (unselect_all || !input.keys[Key_Shift]) editor.selected_entities.reset();
+		else if (is_entity_selected(entity)) return;
+
+		if (entity_exist(entity))
+			editor.selected_entities.push_back(entity);
+	}
+
+	SV_AUX void unselect_entity(Entity entity)
+	{
+		foreach (i, editor.selected_entities.size()) {
+			if (editor.selected_entities[i] == entity) {
+				editor.selected_entities.erase(i);
+				break;
+			}
+		}
 	}
 
     SV_INTERNAL void show_reset_popup()
@@ -732,35 +734,6 @@ namespace sv {
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    void on_entity_create(EntityCreateEvent* event)
-    {
-		if (get_entity_parent(event->entity) != SV_ENTITY_NULL) return;
-		EditorEntity& e = editor.hierarchy.root.entities.emplace_back();
-		e.handle = event->entity;
-    }
-
-    SV_INTERNAL void remove_entity_from_hierarchy_folder(HierarchyFolder& folder, Entity entity)
-    {
-		foreach(i, folder.entities.size()) {
-
-			if (folder.entities[i].handle == entity) {
-				folder.entities.erase(i);
-				return;
-			}
-		}
-
-		for (HierarchyFolder& f : folder.folders) {
-			remove_entity_from_hierarchy_folder(f, entity);
-		}
-    }
-    
-    void on_entity_destroy(EntityDestroyEvent* event)
-    {
-		if (get_entity_parent(event->entity) != SV_ENTITY_NULL) return;
-	
-		remove_entity_from_hierarchy_folder(editor.hierarchy.root, event->entity);
-    }
     
     bool _editor_initialize()
     {
@@ -768,8 +741,6 @@ namespace sv {
 
 		load_asset_from_file(editor.image, "$system/images/editor.png");
 
-		event_register("on_entity_create", on_entity_create, 0u);
-		event_register("on_entity_destroy", on_entity_destroy, 0u);
 		event_register("user_callbacks_initialize", show_reset_popup, 0u);
 
 		dev.engine_state = EngineState_ProjectManagement;
@@ -1161,11 +1132,7 @@ namespace sv {
 			}
 		}
 
-		if (!input.keys[Key_Shift])
-			editor.selected_entities.reset();
-
-		if (selected != SV_ENTITY_NULL)
-			editor.selected_entities.push_back(selected);
+		select_entity(selected);
     }
     
     static void show_entity_popup(Entity entity, bool& destroy)
@@ -1196,24 +1163,40 @@ namespace sv {
 		gui_push_id(entity);
 
 		const char* name = get_entity_name(entity);
+		if (string_size(name) == 0u) name = "Unnamed";
 
 		u32 child_count = get_entity_childs_count(entity);
 
 		bool destroy = false;
 
 		if (child_count == 0u) {
-	    
-			if (gui_button(name, 0u)) {
 
-				editor.selected_entities.reset();
-				editor.selected_entities.push_back(entity);
+			u32 flags = 0u;
+			bool selected = is_entity_selected(entity);
+
+			if (selected) {
+				flags = GuiElementListFlag_Selected;
+			}
+	    
+			if (gui_element_list(name, entity, flags)) {
+
+				if (selected) {
+					if (editor.selected_entities.size() == 1u)
+						unselect_entity(entity);
+					else {
+						select_entity(entity, true);
+					}
+				}
+				else {
+					select_entity(entity);
+				}
 			}
 
 			show_entity_popup(entity, destroy);
 		}
 		else {
 	    
-			if (gui_button(name, 0u)) {
+			if (gui_element_list(name, 0u)) {
 		
 				editor.selected_entities.reset();
 				editor.selected_entities.push_back(entity);
@@ -1252,53 +1235,14 @@ namespace sv {
 		gui_pop_id();
     }
 
-    SV_INTERNAL void update_hierarchy_folder(HierarchyFolder& folder)
-    {
-		u32 i = 0u;
-	
-		while(i < folder.entities.size()) {
-
-			EditorEntity& entity = folder.entities[i];
-	    
-			if (!entity_exist(entity.handle)) {
-
-				folder.entities.erase(i);
-			}
-			else ++i;
-		}
-	
-		for (HierarchyFolder& f : folder.folders) {
-
-			update_hierarchy_folder(f);
-		}
-    }
-
     // Returns if the folder should be destroyed
-    SV_AUX bool display_create_popup(HierarchyFolder& folder)
+    SV_AUX bool display_create_popup()
     {
 		bool destroy = false;
 	
 		gui_push_id("Create Popup");
-
-		HierarchyFolder& root = editor.hierarchy.root;
-
-		GuiPopupTrigger trigger = (&root == &folder) ? GuiPopupTrigger_Root : GuiPopupTrigger_LastWidget;
 	
-		if (gui_begin_popup(trigger)) {
-
-			if (gui_button("Create Folder", 0u)) {
-				// TODO: do undo actions
-				HierarchyFolder& f = folder.folders.emplace_back();
-
-				if (&root == &folder)
-					strcpy(f.path, "Folder");
-				else
-					sprintf(f.path, "%s/Folder", folder.path);
-		
-				f.show = false;
-				// TODO: show in cascade
-				folder.show = true;
-			}
+		if (gui_begin_popup(GuiPopupTrigger_Root)) {
 		
 			if (gui_button("Create Entity", 1u)) {
 				editor_create_entity();
@@ -1314,14 +1258,6 @@ namespace sv {
 				editor_create_entity(SV_ENTITY_NULL, "Camera", construct_entity_2D_camera);
 			}
 
-			if (&root != &folder) {
-
-				if (gui_button("Destroy", 4u)) {
-
-					destroy = true;
-				}
-			}
-
 			gui_end_popup();
 		}
 
@@ -1329,44 +1265,31 @@ namespace sv {
 
 		return destroy;
     }
-
-    SV_INTERNAL void display_hierarchy_folder(HierarchyFolder& folder)
-    {
-		gui_push_id("Folders");
-
-		u32 id = 0u;
-	
-		for (HierarchyFolder& f : folder.folders) {
-
-			gui_checkbox(f.path, f.show, id++);
-
-			display_create_popup(f);
-
-			if (f.show) {
-				display_hierarchy_folder(f);
-			}
-		}
-
-		gui_pop_id();
-
-		for (EditorEntity& e : folder.entities) {
-
-			show_entity(e.handle);
-		}
-    }
     
     void display_entity_hierarchy()
-    {
-		auto& data = editor.hierarchy;
-	
-		// Asser that all the entities exists
-		update_hierarchy_folder(data.root);
-	
+    {	
 		if (gui_begin_window("Hierarchy")) {
 
-			display_hierarchy_folder(data.root);
+			u32 entity_count = get_entity_count();
 
-			display_create_popup(data.root);
+			gui_begin_list(69u);
+			
+			for (u32 i = 0u; i < entity_count;) {
+
+				Entity entity = get_entity_by_index(i);
+				
+				show_entity(entity);
+				entity_count = get_entity_count();
+	    
+				if (entity_exist(entity)) {
+
+					i += get_entity_childs_count(entity) + 1u;
+				}
+			}
+
+			gui_end_list();
+
+			display_create_popup();
 	    
 			gui_end_window();
 		}

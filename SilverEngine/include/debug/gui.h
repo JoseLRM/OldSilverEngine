@@ -20,8 +20,8 @@ namespace sv {
 
     struct GuiStyle {
 		Color widget_primary_color = { 30u, 0u, 0u, 255u };
-		Color widget_secondary_color = { 20u, 5u, 5u, 255u };
-		Color widget_highlighted_color = Color::LightSalmon();
+		Color widget_secondary_color = { 10u, 10u, 10u, 255u };
+		Color widget_highlighted_color = { 40u, 5u, 5u, 255u };
 		Color widget_focused_color = Color::Red();
 		Color widget_text_color = Color::White();
 		Color check_color = Color::White();
@@ -36,6 +36,10 @@ namespace sv {
 		Color docking_highlighted_button_color = Color::White();
 		f32 scale = 1.f;
     };
+
+	enum GuiElementListFlag : u32 {
+		GuiElementListFlag_Selected = SV_BIT(0),
+	};
 
     enum GuiDragFlag : u32 {
 		GuiDragFlag_Position = SV_BIT(0),
@@ -103,6 +107,12 @@ namespace sv {
 
     SV_API bool gui_select_filepath(const char* filepath, char* out, u64 id, u32 flags = 0u);
     SV_API bool gui_asset_button(const char* text, GPUImage* image, v4_f32 texcoord, u64 id, u32 flags = 0u);
+
+	// LISTS
+
+	SV_API void gui_begin_list(u64 id);
+	SV_API void gui_end_list();
+	SV_API bool gui_element_list(const char* text, u64 id, u32 flags = 0u);
 
     // HELPERS
 

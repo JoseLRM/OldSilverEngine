@@ -241,7 +241,7 @@ namespace sv {
 
 		void insert(const T& t, size_t index)
 		{
-			SV_ASSERT(index < _size);
+			SV_ASSERT(index <= _size);
 			_add();
 	    
 			T* it = _data + _size - 1u;
@@ -263,6 +263,24 @@ namespace sv {
 			for (size_t i = _size; i < (_size + list.size()); ++i) {
 
 				_data[i] = list[i - _size];
+			}
+	    
+			_size += list.size();
+		}
+
+		void insert(const List& list, size_t index)
+		{
+			reserve(_size + list.size());
+
+			size_t move = _size - index;
+			
+			for (i64 i = (i32(_size) - 1); i >= i32(index); --i) {
+				_data[i + move] = _data[i];
+			}
+
+			for (size_t i = index; i < (index + list.size()); ++i) {
+
+				_data[i] = list[i - index];
 			}
 	    
 			_size += list.size();
