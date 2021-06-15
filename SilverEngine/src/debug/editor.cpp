@@ -961,12 +961,12 @@ namespace sv {
 				}
 			}
 
-			ShowComponentEvent e;
+			DisplayComponentEvent e;
 			e.comp_id = comp_id;
 			e.comp = comp;
 
 			gui_push_id("User");
-			event_dispatch("show_component_info", &e);
+			event_dispatch("display_component_data", &e);
 			gui_pop_id();
 
 			egui_end_component();
@@ -1329,9 +1329,12 @@ namespace sv {
 					gui_pop_id();
 				}
 
-				// Misc
-				{
-					gui_push_id("Misc info");
+				// Entity Info
+				gui_separator(3);
+				
+				if (gui_collapse("Entity Data")) {
+					
+					gui_push_id("Entity Data");
 
 					SceneData* scene = get_scene_data();
 		    
@@ -1347,10 +1350,10 @@ namespace sv {
 
 					gui_push_id("User");
 
-					ShowEntityEvent event;
+					DisplayEntityEvent event;
 					event.entity = selected;
 
-					event_dispatch("show_entity_info", &event);
+					event_dispatch("display_entity_data", &event);
 		    
 					gui_pop_id(2u);
 				}

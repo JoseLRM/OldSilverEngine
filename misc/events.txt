@@ -27,7 +27,8 @@ close_scene
 ** EDITOR **
 
 display_gui
-show_component_info
+display_component_data
+display_entity_data
 
 ** PHYSICS **
 

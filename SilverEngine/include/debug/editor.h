@@ -46,11 +46,11 @@ namespace sv {
 
     extern GlobalDevData SV_API dev;
 
-    struct ShowComponentEvent {
+    struct DisplayComponentEvent {
 		CompID comp_id;
 		BaseComponent* comp;
     };
-    struct ShowEntityEvent {
+    struct DisplayEntityEvent {
 		Entity entity;
     };
 

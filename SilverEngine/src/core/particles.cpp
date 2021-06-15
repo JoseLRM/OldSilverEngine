@@ -202,7 +202,7 @@ namespace sv {
 
 #if SV_EDITOR
 
-	void show_particle_system_info(ShowComponentEvent* event)
+	void display_particle_system_data(DisplayComponentEvent* event)
 	{
 		if (event->comp_id == ParticleSystem::ID) {
 			
@@ -254,7 +254,7 @@ namespace sv {
 		event_register("update_and_draw_particles", update_and_draw_particles, 0);
 
 #if SV_EDITOR
-		event_register("show_component_info", show_particle_system_info, 0);
+		event_register("display_component_data", display_particle_system_data, 0);
 #endif
 	}
 	

@@ -403,7 +403,7 @@ namespace sv {
 
 #if SV_EDITOR
 
-	SV_INTERNAL void show_terrain_component_info(ShowComponentEvent* e)
+	SV_INTERNAL void display_terrain_component_data(DisplayComponentEvent* e)
 	{
 		if (TerrainComponent::ID == e->comp_id) {
 				
@@ -523,7 +523,7 @@ namespace sv {
 		event_register("pre_draw_scene", update_terrains, 0);
 
 #if SV_EDITOR
-		event_register("show_component_info", show_terrain_component_info, 0);
+		event_register("display_component_data", display_terrain_component_data, 0);
 		event_register("display_gui", display_terrain_gui, 0);
 #endif
 	}
