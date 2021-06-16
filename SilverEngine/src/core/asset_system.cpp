@@ -1,335 +1,486 @@
 #include "core/asset_system.h"
 #include "utils/allocators.h"
-
-// TODO TEMP
-#include <unordered_map>
+#include "utils/string.h"
 
 namespace sv {
 
     // Time to update one asset type, after this time will update the next type
     constexpr float UNUSED_CHECK_TIME = 1.f;
 
+	struct Asset_internal;
+
     struct AssetType_internal {
 
-	std::string	  name;
-	AssetCreateFn	  create;
-	AssetLoadFileFn	  load_file;
-	AssetFreeFn 	  free;
-	f32		  unused_time;
-	f64		  last_update = 0.0;
-	List<const char*> extensions;
+		char	          name[ASSET_TYPE_NAME_SIZE + 1u];
+		AssetCreateFn	  create;
+		AssetLoadFileFn	  load_file;
+		AssetFreeFn 	  free;
+		f32		          unused_time;
+		f64		          last_update = 0.0;
+		u32               extension_count;
+		char              extensions[ASSET_EXTENSION_NAME_SIZE + 1u][ASSET_TYPE_EXTENSION_MAX];
+		
+		ThickHashTable<Asset_internal*, 100u> name_table;
+		
+		SizedInstanceAllocator allocator;
 
-	SizedInstanceAllocator allocator;
-
-	AssetType_internal(u32 size) : allocator(size, 30u) {}
+		AssetType_internal(u32 size) : allocator(size, 30u) {}
 
     };
 
     struct Asset_internal {
 
-	std::atomic<i32>	ref_count = 0;
-	f32					unused_time = f32_max;
-	const char*			filepath = nullptr;
-	AssetType_internal* type = nullptr;
+		std::atomic<i32>	ref_count = 0;
+		f32					unused_time = f32_max;
+		// TODO: Move on
+		char			    filepath[FILEPATH_SIZE + 1u] = "";
+		char			    name[ASSET_NAME_SIZE + 1u] = "";
+		AssetType_internal* type = NULL;
 
     };
 
-    static List<AssetType_internal*> asset_types;
+	struct AssetSystemData {
+		
+		List<AssetType_internal*>             asset_types;
+		ThickHashTable<Asset_internal*, 2000> filepath_table;
+		ThickHashTable<AssetType_internal*, 100>   extension_table;
 
-    static std::unordered_map<std::string, Asset_internal*> filepath_map;
-    static std::unordered_map<std::string, AssetType_internal*> extension_map;
+		u32 check_type_index = 0u;
+		f32 check_time = 0.f;
+		List<Asset_internal*> free_assets_list;
+		
+	};
 
-    static u32 check_type_index = 0u;
-    static f32 check_time = 0.f;
-    static List<Asset_internal*> free_assets_list;
+    static AssetSystemData* asset_system = NULL;
 
-    SV_INLINE static bool destroy_asset(Asset_internal* asset, AssetType_internal* type)
+    SV_AUX bool destroy_asset(Asset_internal* asset, AssetType_internal* type)
     {
-	const char* filepath = asset->filepath;
+		bool res = type->free(asset + 1u);
+		type->allocator.free(asset);
 
-	bool res = type->free(asset + 1u);
-	type->allocator.free(asset);
+		bool log = false;
 
-	if (filepath) {
-	    SV_LOG_INFO("%s freed: %s", type->name.c_str(), filepath);
-	    filepath_map.erase(filepath);
-	}
-	else {
-	    SV_LOG_INFO("%s freed", type->name.c_str());
-	}
+		if (string_size(asset->name)) {
+			
+			if (!log) {
+				SV_LOG_INFO("%s freed: %s", type->name, asset->name);
+				log = true;
+			}
+			
+			asset_system->filepath_table.erase(asset->filepath);
+		}
+		
+		if (string_size(asset->filepath)) {
 
-	return res;
+			if (!log) {
+				SV_LOG_INFO("%s freed: %s", type->name, asset->filepath);
+				log = true;
+			}
+			
+			asset_system->filepath_table.erase(asset->filepath);
+		}
+
+		if (!log) {
+			SV_LOG_INFO("%s freed", type->name);
+			log = true;
+		}
+
+		return res;
     }
 
     void _update_assets()
     {
-	check_time += engine.deltatime;
+		asset_system->check_time += engine.deltatime;
 
-	if (check_time >= UNUSED_CHECK_TIME) {
+		if (asset_system->check_time >= UNUSED_CHECK_TIME) {
 
-	    AssetType_internal* type = asset_types[check_type_index];
-	    free_assets_list.reset();
+			AssetType_internal* type = asset_system->asset_types[asset_system->check_type_index];
+			asset_system->free_assets_list.reset();
 
-	    f64 now = timer_now();
-	    f32 elapsed_time = f32(now - type->last_update);
+			f64 now = timer_now();
+			f32 elapsed_time = f32(now - type->last_update);
 
-	    for (auto& pool : type->allocator) {
-		for (void* _ptr : pool) {
+			for (auto& pool : type->allocator) {
+				for (void* _ptr : pool) {
 
-		    Asset_internal* asset = reinterpret_cast<Asset_internal*>(_ptr);
+					Asset_internal* asset = reinterpret_cast<Asset_internal*>(_ptr);
 
-		    i32 ref_count = asset->ref_count.load();
+					i32 ref_count = asset->ref_count.load();
 
-		    if (ref_count <= 0) {
+					if (ref_count <= 0) {
 
-			if (asset->unused_time == f32_max) {
+						if (asset->unused_time == f32_max) {
 
-			    asset->unused_time = type->unused_time;
+							asset->unused_time = type->unused_time;
+						}
+
+						asset->unused_time -= elapsed_time;
+
+						if (asset->unused_time <= 0.f) {
+
+							asset_system->free_assets_list.push_back(asset);
+						}
+					}
+					else {
+						asset->unused_time = f32_max;
+					}
+				}
 			}
 
-			asset->unused_time -= elapsed_time;
+			// Free assets
+			for (Asset_internal* asset : asset_system->free_assets_list) {
 
-			if (asset->unused_time <= 0.f) {
-
-			    free_assets_list.push_back(asset);
+				destroy_asset(asset, type);
+				// TODO: this can fail...
 			}
-		    }
-		    else {
-			asset->unused_time = f32_max;
-		    }
+
+			type->last_update = now;
+			asset_system->check_type_index = (asset_system->check_type_index + 1u) % u32(asset_system->asset_types.size());
+			asset_system->check_time -= UNUSED_CHECK_TIME;
 		}
-	    }
-
-	    // Free assets
-	    for (Asset_internal* asset : free_assets_list) {
-
-		destroy_asset(asset, type);
-		// TODO: this can fail...
-	    }
-
-	    type->last_update = now;
-	    check_type_index = (check_type_index + 1u) % u32(asset_types.size());
-	    check_time -= UNUSED_CHECK_TIME;
-	}
     }
+
+	void _initialize_assets()
+	{
+		asset_system = SV_ALLOCATE_STRUCT(AssetSystemData);
+	}
 
     void _close_assets()
     {
-	free_unused_assets();
+		if (asset_system) {
+			
+			free_unused_assets();
 
-	for (AssetType_internal* type : asset_types) {
+			for (AssetType_internal* type : asset_system->asset_types) {
 
-	    type->allocator.clear();
-	    delete type;
-	}
-	asset_types.clear();
+				type->allocator.clear();
+				delete type;
+			}
+			asset_system->asset_types.clear();
 
-	filepath_map.clear();
-	extension_map.clear();
+			asset_system->filepath_table.clear();
+			asset_system->extension_table.clear();
 
-	free_assets_list.clear();
+			asset_system->free_assets_list.clear();
+
+			SV_FREE_STRUCT(asset_system);
+			asset_system = NULL;
+		}
     }
 
     SV_INLINE static AssetType_internal* get_type_from_filepath(size_t size, const char* filepath)
     {
-	const char* extension = nullptr;
+		const char* extension = nullptr;
 
-	const char* it = filepath + size;
-	const char* end = filepath - 1u;
+		const char* it = filepath + size;
+		const char* end = filepath - 1u;
 
-	while (it != end) {
+		while (it != end) {
 
-	    if (*it == '.') {
-		++it;
+			if (*it == '.') {
+				++it;
 
-		extension = it;
-		break;
-	    }
+				extension = it;
+				break;
+			}
 
-	    --it;
-	}
+			--it;
+		}
 
-	if (extension) {
+		if (extension) {
 			
-	    auto it = extension_map.find(extension);
+			AssetType_internal** type = asset_system->extension_table.find(extension);
 
-	    if (it == extension_map.end()) {
+			if (type == NULL) {
+				
+				SV_LOG_ERROR("Unknown extension '%s'", extension);
+			}
+			
+			return *type;
+		}
+		else {
 
-		SV_LOG_ERROR("Unknown extension '%s'", extension);
+			SV_LOG_ERROR("The filepath '%s' has no extension", filepath);
+			return nullptr;
+		}
+    }
+
+    SV_AUX AssetType_internal* get_type_from_typename(const char* name)
+    {
+		for (AssetType_internal* type : asset_system->asset_types) {
+			if (string_equals(type->name, name)) {
+				return type;
+			}
+		}
 		return nullptr;
-	    }
-	    else {
-		return it->second;
-	    }
-	}
-	else {
-
-	    SV_LOG_ERROR("The filepath '%s' has no extension", filepath);
-	    return nullptr;
-	}
     }
 
-    SV_INLINE static AssetType_internal* get_type_from_typename(const char* name)
-    {
-	for (AssetType_internal* type : asset_types) {
-	    if (strcmp(type->name.c_str(), name) == 0) {
-		return type;
-	    }
+	SV_AUX bool is_valid_asset_name(AssetType_internal* type, const char* name)
+	{
+		if (string_size(name) > ASSET_NAME_SIZE) {
+			SV_LOG_ERROR("The asset name '%s' is too large", name);
+			return false;
+		}
+
+		if (type->name_table.find(name)) {
+			SV_LOG_ERROR("The asset name '%s' is currently used", name);
+			return false;
+		}
+
+		return true;
 	}
-	return nullptr;
+
+    bool create_asset(AssetPtr& asset_ptr, const char* asset_type_name, const char* name)
+    {
+		AssetType_internal* type = get_type_from_typename(asset_type_name);
+		if (type == nullptr) {
+			SV_LOG_ERROR("Asset type '%s' not found", asset_type_name);
+			return false;
+		}
+
+		if (type->create == nullptr) {
+			SV_LOG_ERROR("The asset type '%s' can't create assets by default", asset_type_name);
+			return false;
+		}
+
+		name = string_validate(name);
+
+		if (!is_valid_asset_name(type, name)) {
+			return false;
+		}
+
+		Asset_internal* asset = new(type->allocator.alloc()) Asset_internal();
+		asset->type = type;
+		string_copy(asset->name, name, ASSET_NAME_SIZE + 1u);
+
+		if (!type->create(asset + 1u)) {
+
+			type->allocator.free(asset);
+			return false;
+		}
+
+		if (string_size(name))
+			type->name_table[name] = asset;
+
+		asset_ptr = AssetPtr(asset);
+
+		SV_LOG_INFO("%s created", type->name);
+
+		return true;
     }
 
-    bool create_asset(AssetPtr& asset_ptr, const char* asset_type_name)
-    {
-	AssetType_internal* type = get_type_from_typename(asset_type_name);
-	if (type == nullptr) {
-	    SV_LOG_ERROR("Asset type '%s' not found", asset_type_name);
-	    return false;
+	SV_AUX bool load_asset_right_now(AssetPtr& asset_ptr, const char* filepath)
+	{
+		Asset_internal** asset_ = asset_system->filepath_table.find(filepath);
+
+		if (asset_ == NULL) {
+
+			size_t size = string_size(filepath);
+			AssetType_internal* type = get_type_from_filepath(size, filepath);
+			if (type == NULL) return false;
+
+			Asset_internal* asset = new(type->allocator.alloc()) Asset_internal();
+			asset->type = type;
+
+			if (!type->load_file(asset + 1u, filepath)) {
+
+				SV_LOG_ERROR("Can't load the asset '%s'", filepath);
+
+				type->allocator.free(asset);
+				return false;
+			}
+
+			asset_system->filepath_table[filepath] = asset;
+			string_copy(asset->filepath, filepath, FILEPATH_SIZE + 1u);
+			asset_ptr = AssetPtr(asset);
+
+			SV_LOG_INFO("%s loaded: %s", type->name, filepath);
+		}
+		else {
+			asset_ptr = AssetPtr(*asset_);
+		}
+
+		return true;
 	}
 
-	if (type->create == nullptr) {
-	    SV_LOG_ERROR("The asset type '%s' can't create assets by default", asset_type_name);
-	    return false;
+	SV_AUX bool load_asset_keep_it_loading(AssetPtr& asset_ptr, const char* filepath)
+	{
+		// TODO
+		return load_asset_right_now(asset_ptr, filepath);
 	}
 
-	Asset_internal* asset = new(type->allocator.alloc()) Asset_internal();
-	asset->type = type;
+	SV_AUX bool load_asset_get_if_exists(AssetPtr& asset_ptr, const char* filepath)
+	{
+		Asset_internal** asset_ = asset_system->filepath_table.find(filepath);
 
-	if (!type->create(asset + 1u)) {
+		if (asset_) {
+			asset_ptr = AssetPtr(*asset_);
+			return true;
+		}
 
-	    type->allocator.free(asset);
-	    return false;
-	}
-
-	asset_ptr = AssetPtr(asset);
-
-	SV_LOG_INFO("%s created", type->name.c_str());
-
-	return true;
-    }
-
-    bool load_asset_from_file(AssetPtr& asset_ptr, const char* filepath)
-    {
-	if (filepath == nullptr) return false;
-
-	auto it = filepath_map.find(filepath);
-
-	if (it == filepath_map.end()) {
-
-	    size_t size = strlen(filepath);
-	    AssetType_internal* type = get_type_from_filepath(size, filepath);
-	    if (type == nullptr) return false;
-
-	    Asset_internal* asset = new(type->allocator.alloc()) Asset_internal();
-	    asset->type = type;
-
-	    if (!type->load_file(asset + 1u, filepath)) {
-
-		SV_LOG_ERROR("Can't load the asset '%s'", filepath);
-
-		type->allocator.free(asset);
 		return false;
-	    }
-
-	    filepath_map[filepath] = asset;
-	    asset->filepath = filepath_map.find(filepath)->first.c_str();
-	    asset_ptr = AssetPtr(asset);
-
-	    SV_LOG_INFO("%s loaded: %s", type->name.c_str(), filepath);
-	}
-	else {
-	    asset_ptr = AssetPtr(it->second);
 	}
 
-	return true;
-    }
-
-    bool get_asset_from_file(AssetPtr& asset_ptr, const char* filepath)
+    bool load_asset_from_file(AssetPtr& asset_ptr, const char* filepath, AssetLoadingPriority priority)
     {
-	if (filepath == nullptr) return false;
+		if (filepath == nullptr) return false;
 
-	auto it = filepath_map.find(filepath);
+		switch (priority) {
 
-	if (it != filepath_map.end()) {
-	    asset_ptr = AssetPtr(it->second);
-	    return true;
-	}
+		case AssetLoadingPriority_RightNow:
+			return load_asset_right_now(asset_ptr, filepath);
 
-	return false;
+		case AssetLoadingPriority_KeepItLoading:
+			return load_asset_keep_it_loading(asset_ptr, filepath);
+
+		case AssetLoadingPriority_GetIfExists:
+			return load_asset_get_if_exists(asset_ptr, filepath);
+			
+		}
+
+		return false;
     }
+
+	bool load_asset_from_name(AssetPtr& asset_ptr, const char* asset_type_name, const char* name, bool create_if_not_exists)
+	{
+		AssetType_internal* type = get_type_from_typename(asset_type_name);
+		if (type == NULL) {
+			SV_LOG_ERROR("Asset type '%s' not found", asset_type_name);
+			return false;
+		}
+
+		Asset_internal** asset_ = type->name_table.find(name);
+		
+		if (asset_) {
+
+			asset_ptr = AssetPtr(*asset_);
+			return true;
+		}
+		else if (create_if_not_exists) {
+
+			return create_asset(asset_ptr, asset_type_name, name);
+		}
+
+		return false;
+	}
 
     void unload_asset(AssetPtr& asset_ptr)
     {
-	asset_ptr.~AssetPtr();
+		asset_ptr.~AssetPtr();
     }
+
+	bool set_asset_name(AssetPtr& asset_ptr, const char* name)
+	{		
+		if (asset_ptr.ptr) {
+			
+			Asset_internal* asset = reinterpret_cast<Asset_internal*>(asset_ptr.ptr);
+
+			name = string_validate(name);
+
+			if (!is_valid_asset_name(asset->type, name)) {
+				return false;
+			}
+
+			if (asset->name[0]) {
+
+				asset->type->name_table.erase(asset->name);
+			}
+
+			asset->type->name_table[name] = asset;
+			string_copy(asset->name, name, ASSET_NAME_SIZE + 1u);
+
+			return true;
+		}
+		return false;
+	}
+	
+	const char* get_asset_name(const AssetPtr& asset_ptr)
+	{
+		if (asset_ptr.ptr) {
+			
+			const char* name = reinterpret_cast<Asset_internal*>(asset_ptr.ptr)->name;
+			if (name[0]) return name;
+			return NULL;
+		}
+		return NULL;
+	}
 
     void* get_asset_content(const AssetPtr& asset_ptr)
     {
-	if (asset_ptr.ptr) return reinterpret_cast<Asset_internal*>(asset_ptr.ptr) + 1u;
-	return nullptr;
+		if (asset_ptr.ptr) return reinterpret_cast<Asset_internal*>(asset_ptr.ptr) + 1u;
+		return nullptr;
     }
 
     const char* get_asset_filepath(const AssetPtr& asset_ptr)
     {
-	if (asset_ptr.ptr) return reinterpret_cast<Asset_internal*>(asset_ptr.ptr)->filepath;
-	return nullptr;
+		if (asset_ptr.ptr) {
+			
+			const char* filepath = reinterpret_cast<Asset_internal*>(asset_ptr.ptr)->filepath;
+			if (filepath[0]) return filepath;
+			return NULL;
+		}
+		return NULL;
     }
 
     bool register_asset_type(const AssetTypeDesc* desc)
     {
-	// TODO: Check if the extensions or the name is repeated
+		// TODO: Check if the extensions or the name is repeated or if the extension name is too large
 
-	AssetType_internal*& type = asset_types.emplace_back();
-	type = new AssetType_internal(desc->asset_size + sizeof(Asset_internal));
+		AssetType_internal*& type = asset_system->asset_types.emplace_back();
+		type = (AssetType_internal*)SV_ALLOCATE_MEMORY(sizeof(AssetType_internal));
+		new(type) AssetType_internal(desc->asset_size + sizeof(Asset_internal));
 
-	type->name = desc->name;
-	type->create = desc->create;
-	type->load_file = desc->load_file;
-	type->free = desc->free;
-	type->unused_time = desc->unused_time;
+		string_copy(type->name, desc->name, ASSET_TYPE_NAME_SIZE + 1u);
+		type->create = desc->create;
+		type->load_file = desc->load_file;
+		type->free = desc->free;
+		type->unused_time = desc->unused_time;
 
-	type->extensions.resize(desc->extension_count);
-	foreach(i, desc->extension_count) {
-	    extension_map[desc->extensions[i]] = type;
-	    type->extensions[i] = extension_map.find(desc->extensions[i])->first.c_str();
-	}
+		type->extension_count = desc->extension_count;
+		foreach(i, desc->extension_count) {
 
-	return true;
+			const char* ext = desc->extensions[i];
+			
+			asset_system->extension_table[ext] = type;
+			string_copy(type->extensions[i], ext, ASSET_EXTENSION_NAME_SIZE + 1u);
+		}
+
+		return true;
     }
 
     void update_asset_files()
     {
-	SV_LOG("TODO");
+		SV_LOG("TODO");
     }
 
     void free_unused_assets()
     {
-	foreach(i, 4u) {
+		foreach(i, 4u) {
 
-	    for (AssetType_internal* type : asset_types) {
+			for (AssetType_internal* type : asset_system->asset_types) {
 
-		free_assets_list.reset();
+				asset_system->free_assets_list.reset();
 
-		for (auto& pool : type->allocator) {
-		    for (void* _ptr : pool) {
+				for (auto& pool : type->allocator) {
+					for (void* _ptr : pool) {
 
-			Asset_internal* asset = reinterpret_cast<Asset_internal*>(_ptr);
+						Asset_internal* asset = reinterpret_cast<Asset_internal*>(_ptr);
 
-			if (asset->ref_count.load() <= 0) {
+						if (asset->ref_count.load() <= 0) {
 
-			    free_assets_list.push_back(asset);
+							asset_system->free_assets_list.push_back(asset);
+						}
+					}
+				}
+
+				// Free assets
+				for (Asset_internal* asset : asset_system->free_assets_list) {
+
+					destroy_asset(asset, type);
+					// TODO: this can fail...
+				}
 			}
-		    }
 		}
-
-		// Free assets
-		for (Asset_internal* asset : free_assets_list) {
-
-		    destroy_asset(asset, type);
-		    // TODO: this can fail...
-		}
-	    }
-	}
     }
 
 }

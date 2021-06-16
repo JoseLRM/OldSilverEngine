@@ -753,6 +753,9 @@ namespace sv {
     bool _editor_close()
     {
 		SV_CHECK(_gui_close());
+
+		unload_asset(editor.image);
+		
 		return true;
     }
     
@@ -1613,7 +1616,7 @@ namespace sv {
 
 							TextureAsset tex;
 
-							if (get_asset_from_file(tex, pack.filepath)) {
+							if (load_asset_from_file(tex, pack.filepath, AssetLoadingPriority_GetIfExists)) {
 
 								gui_asset_button(e.name, tex.get(), {0.f, 0.f, 1.f, 1.f}, 0u);
 							}

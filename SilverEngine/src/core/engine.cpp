@@ -340,6 +340,8 @@ namespace sv {
 			return false;
 		}
 
+		_initialize_assets();
+
 		_terrain_register_events();
 		_particle_initialize();
 	

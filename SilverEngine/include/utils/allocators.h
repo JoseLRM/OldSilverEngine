@@ -691,35 +691,25 @@ namespace sv {
 
 		bool erase(u64 hash) {
 
-			// TODO
-			SV_LOG_ERROR("TODO-> HashTable erase function");
-			return false;
-			/*
-			  Entry* entry;
-			  Entry* parent;
-			  _find_entry(hash, &entry, &parent);
+			Entry* entry;
+			Entry* parent;
+			_find_entry(hash, &entry, &parent);
 	    
-			  if (entry == nullptr) return false;
+			if (entry == nullptr) return false;
 
-			  // Is root
-			  if (parent == nullptr) {
+			// Is root
+			if (parent == nullptr) {
 
-			  entry->value.~T();
-			  entry->hash = 0u;
+				entry->value.~T();
+				entry->hash = 0u;
+			}
+			else {
 
-			  if (entry->next) {
+				parent->next = entry->next;
+				SV_FREE_STRUCT(entry);
+			}
 
-			  Entry* next = entry->next;
-			  *entry = *next;
-			  }
-			  }
-			  else {
-
-			  parent->next = entry->next;
-			  SV_FREE_STRUCT(entry);
-			  }
-
-			  return true;*/
+			return true;
 		}
 
 		bool erase(const char* str) {

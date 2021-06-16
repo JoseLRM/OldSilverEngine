@@ -947,7 +947,7 @@ namespace sv {
 			
 		free_skybox();
 
-		// TODO: Use asset names
+		// TODO: Use asset system features
 		GPUImage* image;
 		bool res = load_skymap_image(filepath, &image);
 		
