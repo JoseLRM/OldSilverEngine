@@ -394,19 +394,8 @@ namespace sv {
     SV_INLINE void initialize_game()
     {
 		set_scene("Main");
-	
-		// Register components
-		{
-			register_component<SpriteComponent>("Sprite");
-			register_component<AnimatedSpriteComponent>("Animated Sprite");
-			register_component<CameraComponent>("Camera");
-			register_component<MeshComponent>("Mesh");
-			register_component<TerrainComponent>("Terrain");
-			register_component<ParticleSystem>("Particle System");
-			register_component<LightComponent>("Light");
 
-			register_component<BodyComponent>("Body");
-		}
+		register_components();
 
 		event_dispatch("initialize_game", nullptr);
 

@@ -48,7 +48,7 @@ namespace sv {
 
     struct DisplayComponentEvent {
 		CompID comp_id;
-		BaseComponent* comp;
+		Component* comp;
     };
     struct DisplayEntityEvent {
 		Entity entity;
@@ -62,15 +62,21 @@ namespace sv {
     constexpr u32 ASSET_BROWSER_PACKAGE_MESH = 70u;
     constexpr u32 ASSET_BROWSER_PACKAGE_MATERIAL = 71u;
     constexpr u32 ASSET_BROWSER_PACKAGE_SPRITE_SHEET = 72u;
+
+	constexpr u32 ASSET_BROWSER_PREFAB = 73u;
 	
     struct AssetPackage {
+		char filepath[FILEPATH_SIZE + 1u];
+    };
+
+	struct PrefabPackage {
 		char filepath[FILEPATH_SIZE + 1u];
     };
 
     SV_API void egui_header(const char* text, u64 id);
     SV_API void egui_transform(Entity entity);
 
-    SV_API bool egui_begin_component(Entity entity, CompID comp_id, bool* remove);
+    SV_API bool egui_begin_component(CompID comp_id, bool* remove);
     SV_API void egui_end_component();
 
     SV_API bool egui_comp_texture(const char* text, u64 id, TextureAsset* texture);

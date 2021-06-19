@@ -946,82 +946,71 @@ namespace sv {
 
 		graphics_viewport_set(gfx.offscreen, 0u, cmd);
 		graphics_scissor_set(gfx.offscreen, 0u, cmd);
-	
+
+		CompID sprite_id = get_component_id("Sprite");
+		CompID animated_sprite_id = get_component_id("Animated Sprite");
+
+		for (CompIt it = comp_it_begin(sprite_id);
+			 it.has_next;
+			 comp_it_next(it))
 		{
-			ComponentIterator it;
-			CompView<SpriteComponent> view;
-	    
-			if (comp_it_begin(it, view)) {
-
-				do {
-
-					SpriteComponent& spr = *view.comp;
-					Entity entity = view.entity;
-
-					v3_f32 pos = get_entity_world_position(entity);
-
-					SpriteSheet* sprite_sheet = spr.sprite_sheet.get();
-
-					v4_f32 tc;
-					GPUImage* image = NULL;
-
-					if (sprite_sheet) {
+			SpriteComponent& spr = *(SpriteComponent*)it.comp;
+			Entity entity = it.entity;
+			
+			v3_f32 pos = get_entity_world_position(entity);
+			
+			SpriteSheet* sprite_sheet = spr.sprite_sheet.get();
+			
+			v4_f32 tc;
+			GPUImage* image = NULL;
+			
+			if (sprite_sheet) {
 				
-						tc = sprite_sheet->get_sprite_texcoord(spr.sprite_id);
-						image = sprite_sheet->texture.get();
-					}
-
-					if (spr.flags & SpriteComponentFlag_XFlip) std::swap(tc.x, tc.z);
-					if (spr.flags & SpriteComponentFlag_YFlip) std::swap(tc.y, tc.w);
-		    
-					sprite_instances.emplace_back(get_entity_world_matrix(entity), tc, image, spr.color);
-				}
-				while(comp_it_next(it, view));
+				tc = sprite_sheet->get_sprite_texcoord(spr.sprite_id);
+				image = sprite_sheet->texture.get();
 			}
+			
+			if (spr.flags & SpriteComponentFlag_XFlip) std::swap(tc.x, tc.z);
+			if (spr.flags & SpriteComponentFlag_YFlip) std::swap(tc.y, tc.w);
+		    
+			sprite_instances.emplace_back(get_entity_world_matrix(entity), tc, image, spr.color);
 		}
+		for (CompIt it = comp_it_begin(animated_sprite_id);
+			 it.has_next;
+			 comp_it_next(it))
 		{
-			ComponentIterator it;
-			CompView<AnimatedSpriteComponent> view;
-	    
-			if (comp_it_begin(it, view)) {
-
-				do {
-
-					AnimatedSpriteComponent& s = *view.comp;
-					Entity entity = view.entity;
-
-					v3_f32 pos = get_entity_world_position(entity);
-
-					SpriteSheet* sprite_sheet = s.sprite_sheet.get();
-					GPUImage* image = NULL;
-
-					v4_f32 tc;
-
-					if (sprite_sheet && sprite_sheet->sprite_animations.exists(s.animation_id)) {
-
-						SpriteAnimation& anim = sprite_sheet->sprite_animations[s.animation_id];
-
-						s.simulation_time += engine.deltatime * s.time_mult;
-
-						while (s.simulation_time >= anim.frame_time) {
-
-							s.simulation_time -= anim.frame_time;
-							++s.index;
-						}
-
-						s.index = s.index % anim.frames;
+			AnimatedSpriteComponent& s = *(AnimatedSpriteComponent*)it.comp;
+			Entity entity = it.entity;
+			
+			v3_f32 pos = get_entity_world_position(entity);
+			
+			SpriteSheet* sprite_sheet = s.sprite_sheet.get();
+			GPUImage* image = NULL;
+			
+			v4_f32 tc;
+			
+			if (sprite_sheet && sprite_sheet->sprite_animations.exists(s.animation_id)) {
 				
-						tc = sprite_sheet->get_sprite_texcoord(anim.sprites[s.index]);
-						image = sprite_sheet->texture.get();
-					}
-
-					if (s.flags & SpriteComponentFlag_XFlip) std::swap(tc.x, tc.z);
-					if (s.flags & SpriteComponentFlag_YFlip) std::swap(tc.y, tc.w);
-		    
-					sprite_instances.emplace_back(get_entity_world_matrix(entity), tc, image, s.color);
+				SpriteAnimation& anim = sprite_sheet->sprite_animations[s.animation_id];
+				
+				s.simulation_time += engine.deltatime * s.time_mult;
+				
+				while (s.simulation_time >= anim.frame_time) {
+					
+					s.simulation_time -= anim.frame_time;
+					++s.index;
 				}
-				while(comp_it_next(it, view));
+				
+				s.index = s.index % anim.frames;
+				
+				tc = sprite_sheet->get_sprite_texcoord(anim.sprites[s.index]);
+				image = sprite_sheet->texture.get();
 			}
+			
+			if (s.flags & SpriteComponentFlag_XFlip) std::swap(tc.x, tc.z);
+			if (s.flags & SpriteComponentFlag_YFlip) std::swap(tc.y, tc.w);
+		    
+			sprite_instances.emplace_back(get_entity_world_matrix(entity), tc, image, s.color);
 		}
 
 		if (sprite_instances.size()) {
@@ -1349,102 +1338,92 @@ namespace sv {
 
 				// GET LIGHTS
 				{
-					ComponentIterator it;
-					CompView<LightComponent> v;
-
 					XMVECTOR camera_quat = vec4_to_dx(camera_data.rotation);
 					XMVECTOR quat;
 
-					if (comp_it_begin(it, v)) {
+					CompID light_id = get_component_id("Light");
 
-						do {
+					for (CompIt it = comp_it_begin(light_id);
+						 it.has_next;
+						 comp_it_next(it))
+					{
+						Entity entity = it.entity;
+						LightComponent& l = *(LightComponent*)it.comp;
+						
+						LightInstance& inst = light_instances.emplace_back();
+						inst.entity = entity;
+						inst.comp = &l;
+						
+						switch (l.light_type)
+						{
+						case LightType_Point:
+						{
+							XMVECTOR position = vec3_to_dx(get_entity_world_position(entity), 1.f);
+							position = XMVector4Transform(position, camera_data.vm);
 
-							Entity entity = v.entity;
-							LightComponent& l = *v.comp;
-
-							LightInstance& inst = light_instances.emplace_back();
-							inst.entity = entity;
-							inst.comp = &l;
-
-							switch (l.light_type)
-							{
-							case LightType_Point:
-							{
-								XMVECTOR position = vec3_to_dx(get_entity_world_position(entity), 1.f);
-								position = XMVector4Transform(position, camera_data.vm);
-
-								inst.point.position = position;
+							inst.point.position = position;
 								
-								break;
-							}
-
-							case LightType_Direction:
-							{
-								inst.direction.world_rotation = get_entity_world_rotation(entity);
-								
-								XMVECTOR direction = XMVectorSet(0.f, 0.f, -1.f, 0.f);
-								quat = XMQuaternionMultiply(vec4_to_dx(inst.direction.world_rotation), XMQuaternionInverse(camera_quat));
-
-								direction = XMVector3Transform(direction, XMMatrixRotationQuaternion(quat));
-
-								inst.direction.view_direction = direction;
-							}
 							break;
+						}
 
-							}
+						case LightType_Direction:
+						{
+							inst.direction.world_rotation = get_entity_world_rotation(entity);
+								
+							XMVECTOR direction = XMVectorSet(0.f, 0.f, -1.f, 0.f);
+							quat = XMQuaternionMultiply(vec4_to_dx(inst.direction.world_rotation), XMQuaternionInverse(camera_quat));
+
+							direction = XMVector3Transform(direction, XMMatrixRotationQuaternion(quat));
+
+							inst.direction.view_direction = direction;
+						}
+						break;
 
 						}
-						while(comp_it_next(it, v));
 					}
 				}
 
 				// GET TERRAINS
 				{
-					ComponentIterator it;
-					CompView<TerrainComponent> view;
+					CompID terrain_id = get_component_id("Terrain");
 
-					if (comp_it_begin(it, view)) {
+					for (CompIt it = comp_it_begin(terrain_id);
+						 it.has_next;
+						 comp_it_next(it))
+					{
+						TerrainComponent& terrain = *(TerrainComponent*)it.comp;
+						Entity entity = it.entity;
 
-						do {
-
-							TerrainComponent& terrain = *view.comp;
-							Entity entity = view.entity;
-
-							if (!terrain_valid(terrain))
-								continue;
-							
-							TerrainInstance& inst = terrain_instances.emplace_back();
-							inst.world_matrix = XMMatrixScaling(terrain.size.x, 1.f, terrain.size.y) * get_entity_world_matrix(entity);
-							inst.terrain = &terrain;
-							inst.material = terrain.material.get();							
-						}
-						while (comp_it_next(it, view));
+						if (!terrain_valid(terrain))
+							continue;
+						
+						TerrainInstance& inst = terrain_instances.emplace_back();
+						inst.world_matrix = XMMatrixScaling(terrain.size.x, 1.f, terrain.size.y) * get_entity_world_matrix(entity);
+						inst.terrain = &terrain;
+						inst.material = terrain.material.get();							
 					}
 				}
 
 				// GET MESHES
 				{
-					ComponentIterator it;
-					CompView<MeshComponent> view;
+					CompID mesh_id = get_component_id("Mesh");
 
-					if (comp_it_begin(it, view)) {
-
-						do {
-
-							MeshComponent& mesh = *view.comp;
-							Entity entity = view.entity;
-
-							Mesh* m = mesh.mesh.get();
-							if (m == nullptr || m->vbuffer == nullptr || m->ibuffer == nullptr) continue;
-
-							//XMMATRIX tm = get_entity_world_matrix(entity);
-
-							MeshInstance& inst = mesh_instances.emplace_back();
-							inst.world_matrix = get_entity_world_matrix(entity);
-							inst.mesh = m;
-							inst.material = mesh.material.get();
-						}
-						while (comp_it_next(it, view));
+					for (CompIt it = comp_it_begin(mesh_id);
+						 it.has_next;
+						 comp_it_next(it))
+					{
+						MeshComponent& mesh = *(MeshComponent*)it.comp;
+						Entity entity = it.entity;
+						
+						Mesh* m = mesh.mesh.get();
+						if (m == nullptr || m->vbuffer == nullptr || m->ibuffer == nullptr) continue;
+						
+						//XMMATRIX tm = get_entity_world_matrix(entity);
+						
+						MeshInstance& inst = mesh_instances.emplace_back();
+						inst.world_matrix = get_entity_world_matrix(entity);
+						inst.mesh = m;
+						inst.material = mesh.material.get();
 					}
 				}
 
@@ -2250,7 +2229,7 @@ namespace sv {
 
 				for (ShadowMapRef ref : renderer->shadow_maps) {
 
-					const char* name = entity_exist(ref.entity) ? get_entity_name(ref.entity) : "Not exist";
+					const char* name = entity_exists(ref.entity) ? get_entity_name(ref.entity) : "Not exist";
 					if (name == NULL || string_size(name) == 0u)
 						name = "Unnamed";
 

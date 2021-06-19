@@ -545,6 +545,10 @@ namespace sv {
 			
 		}
 	}
+	SV_AUX u64 compute_root_hash(GuiRootIndex root)
+	{
+		return (u64)root.type | (u64)root.index << 32;
+	}
 
 	SV_INTERNAL void deserialize_node(Deserializer& d, u32& id, bool is_root)
 	{
@@ -1993,12 +1997,25 @@ namespace sv {
 
 					for (const GuiWidgetRef& ref : gui->package.recivers) {
 
-						GuiWidget* w = find_widget(ref.type, ref.id, ref.root);
+						if (ref.type == GuiWidgetType_Root) {
 
-						if (w && mouse_in_bounds(w->bounds)) {
-							gui->package.reciver_id = w->id;
-							gui->package.first_frame = true;
-							break;
+							GuiRootInfo* root = get_root_info(ref.root);
+
+							if (root && mouse_in_bounds(root->widget_bounds)) {
+								gui->package.reciver_id = compute_root_hash(ref.root);
+								gui->package.first_frame = true;
+								break;
+							}
+						}
+						else {
+							
+							GuiWidget* w = find_widget(ref.type, ref.id, ref.root);
+
+							if (w && mouse_in_bounds(w->bounds)) {
+								gui->package.reciver_id = w->id;
+								gui->package.first_frame = true;
+								break;
+							}
 						}
 					}
 					
@@ -3233,21 +3250,56 @@ namespace sv {
 		}
 	}
 	
-	bool gui_recive_package(void** dst, u64 package_id)
+	bool gui_recive_package(void** dst, u64 package_id, GuiReciverTrigger trigger)
 	{
 		bool write = false;
 		
 		if (gui->focus.type != GuiWidgetType_None && gui->focus.type != GuiWidgetType_Root && gui->focus.action == GuiWidgetAction_MovePackage) {
 
 			if (gui->current_focus && gui->current_focus->package_id == package_id) {
-				gui->package.recivers.push_back(gui->last_widget);
+
+				switch (trigger) {
+					
+				case GuiReciverTrigger_LastWidget:
+					gui->package.recivers.push_back(gui->last_widget);
+					break;
+
+				case GuiReciverTrigger_Root:
+				{
+					GuiWidgetRef ref;
+					ref.type = GuiWidgetType_Root;
+					ref.root = gui->root_stack.back();
+					gui->package.recivers.push_back(ref);
+				}
+				break;
+					
+				}
 			}
 		}
-		else if (gui->last_widget.id == gui->package.reciver_id) {
+		else {
 
-			if (gui->package.buffer.data()) {
-				*dst = gui->package.buffer.data();
-				write = true;
+			switch (trigger) {
+
+			case GuiReciverTrigger_LastWidget:
+				if (gui->last_widget.id == gui->package.reciver_id) {
+				
+					if (gui->package.buffer.data()) {
+						*dst = gui->package.buffer.data();
+						write = true;
+					}
+				}
+				break;
+
+			case GuiReciverTrigger_Root:
+				if (compute_root_hash(gui->root_stack.back()) == gui->package.reciver_id) {
+				
+					if (gui->package.buffer.data()) {
+						*dst = gui->package.buffer.data();
+						write = true;
+					}
+				}
+				break;
+				
 			}
 		}
 		
@@ -4284,12 +4336,25 @@ namespace sv {
 
 				for (const GuiWidgetRef& ref : gui->package.recivers) {
 
-					const GuiWidget* w = find_widget(ref.type, ref.id, ref.root);
-					if (w) {
+					v4_f32 b;
 
-						v4_f32 b = w->bounds;
-						imrend_draw_quad({ b.x, b.y, 0.f }, { b.z, b.w }, Color::Green(50u), cmd);
+					if (ref.type == GuiWidgetType_Root) {
+
+						GuiRootInfo* root = get_root_info(ref.root);
+						if (root) {
+
+							b = root->widget_bounds;
+						}
 					}
+					else {	
+						const GuiWidget* w = find_widget(ref.type, ref.id, ref.root);
+						if (w) {
+
+							b = w->bounds;
+						}
+					}
+					
+					imrend_draw_quad({ b.x, b.y, 0.f }, { b.z, b.w }, Color::Green(50u), cmd);
 				}
 			}
 		}

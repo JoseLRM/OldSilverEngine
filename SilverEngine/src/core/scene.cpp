@@ -1,109 +1,130 @@
 #include "core/scene.h"
-#include "core/renderer.h"
 
+#include "core/renderer.h"
 #include "debug/console.h"
 
 #include "user.h"
 
-#define PREFAB_COMPONENT_FLAG SV_BIT(31ULL)
-#define SV_SCENE() sv::Scene& scene = *scene_state->scene;
+#define SV_SCENE() sv::Scene& scene = *scene_state->scene
+#define SV_ECS() SV_SCENE(); sv::ECS& ecs = scene.ecs
 
 namespace sv {
+
+	struct PrefabInternal {
+		
+		u64 component_mask;
+		u32 component_count;
+		CompRef components[ENTITY_COMPONENTS_MAX];
+
+		bool valid;
+
+		List<Entity> entities;
+
+		char filepath[FILEPATH_SIZE + 1u];
+		char name[ENTITY_NAME_SIZE + 1u];
+	};
+
+	struct EntityInternal {
+
+		// TODO: Should move this to other pool??
+		u64 component_mask;
+		u32 component_count;
+		CompRef components[ENTITY_COMPONENTS_MAX];
+		
+		u32 hierarchy_index;
+		Entity parent;
+		u32 child_count;
+		Prefab prefab;
+		
+	};
+
+	struct EntityMisc {
+		
+		char name[ENTITY_NAME_SIZE + 1u];
+		u64 flags;
+		
+	};
+
+	struct EntityTransform {
+
+		// World space
+
+		XMFLOAT4X4 world_matrix;
+
+		// Local space
+		
+		v3_f32 position;
+		v3_f32 scale;
+		v4_f32 rotation;
+
+		bool dirty;
+		
+	};
+
+	struct ComponentPool {
+		u8* data;
+		u32 count;
+		u32 capacity;
+		u32 free_count;
+	};
+
+	struct ComponentAllocator {
+
+		ComponentPool* pools;
+		u32            pool_count;
+		
+	};
+
+	typedef void(*CreateComponentFunction)(Component*);
+    typedef void(*DestroyComponentFunction)(Component*);
+    typedef void(*MoveComponentFunction)(Component* from, Component* to);
+    typedef void(*CopyComponentFunction)(const Component* from, Component* to);
+    typedef void(*SerializeComponentFunction)(Component* comp, Serializer& serializer);
+    typedef void(*DeserializeComponentFunction)(Component* comp, Deserializer& deserializer, u32 version);
+
+	struct ComponentRegister {
+
+		char		                 name[COMPONENT_NAME_SIZE + 1u];
+		u32				             size;
+		u32                          version;
+		CreateComponentFunction		 create_fn;
+		DestroyComponentFunction	 destroy_fn;
+		MoveComponentFunction		 move_fn;
+		CopyComponentFunction		 copy_fn;
+		SerializeComponentFunction	 serialize_fn;
+		DeserializeComponentFunction deserialize_fn;
+
+    };
+	
+	struct ECS {
+
+		EntityInternal*  entity_internal = NULL;
+		EntityMisc*      entity_misc = NULL;
+		EntityTransform* entity_transform = NULL;
+		u32              entity_size = 0u;
+		u32              entity_capacity = 0u;
+
+		List<Entity>     entity_hierarchy;
+		List<Entity>     entity_free_list;
+		
+		List<PrefabInternal> prefabs;
+		u32                  prefab_free_count = 0u;
+
+		ComponentAllocator component_allocator[COMPONENT_MAX];
+		
+	};
 
 	bool physics_initialize();
 	void physics_close();
 	void physics_update();
-
-    CompID SpriteComponent::ID = SV_COMPONENT_ID_INVALID;
-    CompID AnimatedSpriteComponent::ID = SV_COMPONENT_ID_INVALID;
-    CompID CameraComponent::ID = SV_COMPONENT_ID_INVALID;
-    CompID MeshComponent::ID = SV_COMPONENT_ID_INVALID;
-	CompID TerrainComponent::ID = SV_COMPONENT_ID_INVALID;
-	CompID ParticleSystem::ID = SV_COMPONENT_ID_INVALID;
-    CompID LightComponent::ID = SV_COMPONENT_ID_INVALID;
-    CompID BodyComponent::ID = SV_COMPONENT_ID_INVALID;
-	
-    
-    struct EntityInternal {
-
-		size_t handleIndex = u64_max;
-		Entity parent = SV_ENTITY_NULL;
-		u32 childsCount = 0u;
-		List<CompRef> components;
-		u64 flags = 0u;
-		// TODO: Should move this to other pool
-		char name[ENTITY_NAME_SIZE + 1u] = "Unnamed";
-
-    };
-
-    struct EntityTransform {
-
-		// Local space
-	
-		v3_f32 position = { 0.f, 0.f, 0.f };
-		v4_f32 rotation = { 0.f, 0.f, 0.f, 1.f };
-		v3_f32 scale = { 1.f, 1.f, 1.f };
-
-		// World space
-	
-		XMFLOAT4X4 world_matrix;
-
-		bool _modified = true;
-
-    };
-
-    struct EntityDataAllocator {
-
-		EntityInternal* internal = nullptr;
-		EntityTransform* transforms = nullptr;
-
-		u32 size = 0u;
-		u32 capacity = 0u;
-		List<Entity> freelist;
-
-		EntityInternal& getInternal(Entity entity) { SV_ASSERT(entity != SV_ENTITY_NULL && entity <= size); return internal[entity - 1u]; }
-		EntityTransform& getTransform(Entity entity) { SV_ASSERT(entity != SV_ENTITY_NULL && entity <= size); return transforms[entity - 1u]; }
-    };
-
-    struct ComponentPool {
-
-		u8* data;
-		size_t		size;
-		size_t		freeCount;
-
-    };
-
-    struct ComponentAllocator {
-
-		List<ComponentPool> pools;
-
-    };
-
-    struct ComponentRegister {
-
-		char		                name[COMPONENT_NAME_SIZE + 1u];
-		u32				size;
-		u32                             version;
-		CreateComponentFunction		createFn = nullptr;
-		DestroyComponentFunction	destroyFn = nullptr;
-		MoveComponentFunction		moveFn = nullptr;
-		CopyComponentFunction		copyFn = nullptr;
-		SerializeComponentFunction	serializeFn = nullptr;
-		DeserializeComponentFunction	deserializeFn = nullptr;
-
-    };
 
     struct Scene {
 
 		SceneData data;
 	
 		char name[SCENENAME_SIZE + 1u] = {};
-
-		// ECS
-	
-		List<Entity>	         entities;
-		EntityDataAllocator	 entityData;
-		List<ComponentAllocator> components;
+		
+		ECS ecs;
 	
     };
 
@@ -123,33 +144,12 @@ namespace sv {
 		char next_scene_name[SCENENAME_SIZE + 1u] = {};
 		Scene* scene = nullptr;
 
-		List<ComponentRegister>     registers;
-		ThickHashTable<CompID, 50u> component_names;
+		ComponentRegister component_register[COMPONENT_MAX];
+		u32 component_register_count = 0u;
 		
     };
 
     static SceneState* scene_state = nullptr;
-
-    constexpr u32 ECS_COMPONENT_POOL_SIZE = 100u;
-    constexpr u32 ECS_ENTITY_ALLOC_SIZE = 100u;
-    
-    SV_INTERNAL void entity_clear(EntityDataAllocator& allocator);
-
-    void componentPoolAlloc(ComponentPool& pool, size_t compSize);             // Allocate components memory
-    void componentPoolFree(ComponentPool& pool);                               // Deallocate components memory
-    void* componentPoolGetPtr(ComponentPool& pool, size_t compSize);	       // Return new component
-    void componentPoolRmvPtr(ComponentPool& pool, size_t compSize, void* ptr); // Remove component
-    bool componentPoolFull(const ComponentPool& pool, size_t compSize);	       // Check if there are free space in the pool
-    bool componentPoolPtrExist(const ComponentPool& pool, void* ptr);	       // Check if the pool contains the ptr
-    u32	componentPoolCount(const ComponentPool& pool, size_t compSize);	       // Return the number of valid components allocated in this pool
-
-    void componentAllocatorCreate(CompID ID);						// Create the allocator
-    void componentAllocatorDestroy(CompID ID);						// Destroy the allocator
-    BaseComponent* componentAlloc(CompID compID, Entity entity, bool create = true);	// Allocate and create new component
-    BaseComponent* componentAlloc(CompID compID, BaseComponent* srcComp, Entity entity);// Allocate and copy new component
-    void componentFree(CompID compID, BaseComponent* comp);				// Free and destroy component
-    u32	componentAllocatorCount(CompID compId);						// Return the number of valid components in all the pools
-    bool componentAllocatorIsEmpty(CompID compID);					// Return if the allocator is empty
 
     SV_INTERNAL bool asset_create_spritesheet(void* ptr)
     {
@@ -182,11 +182,15 @@ namespace sv {
 		return true;
     }
 
+	SV_INTERNAL void initialize_ecs();
+	SV_INTERNAL void serialize_ecs(Serializer& s);
+	SV_INTERNAL bool deserialize_ecs(Deserializer& d);
+	SV_INTERNAL void clear_ecs();
+	SV_INTERNAL void close_ecs();
+
     bool _scene_initialize()
     {
 		scene_state = SV_ALLOCATE_STRUCT(SceneState);
-
-		// TODO register engine components
 
 		// Register assets
 		{
@@ -222,24 +226,7 @@ namespace sv {
 
 			free_skybox();
 
-			// TODO: Dispatch events at once
-			for (Entity entity : scene->entities) {
-
-				EntityDestroyEvent e;
-				e.entity = entity;
-				event_dispatch("on_entity_destroy", &e);
-			}
-
-			// Close ECS
-			{
-				for (CompID i = 0; i < get_component_register_count(); ++i) {
-					if (component_exist(i))
-						componentAllocatorDestroy(i);
-				}
-				scene->components.clear();
-				scene->entities.clear();
-				entity_clear(scene->entityData);
-			}
+			close_ecs();
 
 			scene = nullptr;
 		}
@@ -276,19 +263,9 @@ namespace sv {
 		scene_ptr = SV_ALLOCATE_STRUCT(Scene);
 
 		Scene& scene = *scene_ptr;
+		strcpy(scene.name, name);
 
-		// Init
-		{
-			// Allocate components
-			scene.components.resize(scene_state->registers.size());
-
-			for (CompID id = 0u; id < scene_state->registers.size(); ++id) {
-
-				componentAllocatorCreate(id);
-			}
-
-			strcpy(scene.name, name);
-		}
+		initialize_ecs();
 
 		bool deserialize = false;
 		Deserializer d;
@@ -340,200 +317,13 @@ namespace sv {
 					}
 
 					// ECS
-					{
-						scene.entities.clear();
-						entity_clear(scene.entityData);
-
-						struct Register {
-							char name[COMPONENT_NAME_SIZE + 1u];
-							u32 size;
-							u32 version;
-							CompID ID;
-						};
-
-						// Registers
-						List<Register> registers;
-
-						{
-							u32 registersCount;
-							deserialize_u32(d, registersCount);
-							registers.resize(registersCount);
-
-							for (auto it = registers.begin(); it != registers.end(); ++it) {
-
-								deserialize_string(d, it->name, COMPONENT_NAME_SIZE + 1u);			
-								deserialize_u32(d, it->size);
-								deserialize_u32(d, it->version);
-							}
-						}
-
-						// Registers ID
-						CompID invalidCompID = CompID(scene_state->registers.size());
-						for (u32 i = 0; i < registers.size(); ++i) {
-
-							Register& reg = registers[i];
-							reg.ID = invalidCompID;
-
-							CompID* id = scene_state->component_names.find(reg.name);
-							if (id) {
-								reg.ID = *id;
-							}
-
-							if (reg.ID == invalidCompID) {
-								SV_LOG_ERROR("Component '%s' doesn't exist", reg.name);
-								return false;
-							}
-
-						}
-
-						// Entity data
-						u32 entityCount;
-						u32 entityDataCount;
-
-						deserialize_u32(d, entityCount);
-						deserialize_u32(d, entityDataCount);
-
-						scene.entities.resize(entityCount);
-						EntityInternal* entity_internal = SV_ALLOCATE_STRUCT_ARRAY(EntityInternal, entityDataCount);
-						EntityTransform* entity_transform = SV_ALLOCATE_STRUCT_ARRAY(EntityTransform, entityDataCount);
-
-						for (u32 i = 0; i < entityCount; ++i) {
-
-							Entity entity;
-							deserialize_entity(d, entity);
-
-							EntityInternal& ed = entity_internal[entity];
-							EntityTransform& et = entity_transform[entity];
-
-							deserialize_string(d, ed.name, ENTITY_NAME_SIZE + 1u);
-							deserialize_u32(d, ed.childsCount);
-							deserialize_size_t(d, ed.handleIndex);
-							deserialize_u64(d, ed.flags);
-							deserialize_v3_f32(d, et.position);
-							deserialize_v4_f32(d, et.rotation);
-							deserialize_v3_f32(d, et.scale);
-						}
-
-						// Create entity list and free list
-						for (u32 i = 0u; i < entityDataCount; ++i) {
-
-							EntityInternal& ed = entity_internal[i];
-
-							if (ed.handleIndex != u64_max) {
-								scene.entities[ed.handleIndex] = i + 1u;
-							}
-							else scene.entityData.freelist.push_back(i + 1u);
-						}
-
-						// Set entity parents
-						{
-							EntityInternal* it = entity_internal;
-							EntityInternal* end = it + entityDataCount;
-
-							while (it != end) {
-
-								if (it->handleIndex != u64_max && it->childsCount) {
-
-									Entity* eIt = scene.entities.data() + it->handleIndex;
-									Entity* eEnd = eIt + it->childsCount;
-									Entity parent = *eIt++;
-
-									while (eIt <= eEnd) {
-
-										EntityInternal& ed = entity_internal[*eIt - 1u];
-										ed.parent = parent;
-										if (ed.childsCount) {
-											eIt += ed.childsCount + 1u;
-										}
-										else ++eIt;
-									}
-								}
-
-								++it;
-							}
-						}
-
-						// Set entity data
-						scene.entityData.internal = entity_internal;
-						scene.entityData.transforms = entity_transform;
-						scene.entityData.capacity = entityDataCount;
-						scene.entityData.size = entityDataCount;
-
-						// Components
-						{
-							for (auto it = registers.begin(); it != registers.end(); ++it) {
-
-								CompID compID = it->ID;
-								u32 version = it->version;
-								auto& compList = scene.components[compID];
-								u32 compSize = get_component_size(compID);
-								u32 compCount;
-								deserialize_u32(d, compCount);
-
-								if (compCount == 0u) continue;
-				
-								// Allocate component data
-								{
-									u32 poolCount = compCount / ECS_COMPONENT_POOL_SIZE + ((compCount % ECS_COMPONENT_POOL_SIZE == 0u) ? 0u : 1u);
-									u32 lastPoolCount = u32(compList.pools.size());
-
-									compList.pools.resize(poolCount);
-
-									if (poolCount > lastPoolCount) {
-										for (u32 j = lastPoolCount; j < poolCount; ++j) {
-											componentPoolAlloc(compList.pools[j], compSize);
-										}
-									}
-
-									for (u32 j = 0; j < lastPoolCount; ++j) {
-
-										ComponentPool& pool = compList.pools[j];
-										u8* it = pool.data;
-										u8* end = pool.data + pool.size;
-										while (it != end) {
-
-											BaseComponent* comp = reinterpret_cast<BaseComponent*>(it);
-											if (comp->_id != 0u) {
-												destroy_component(compID, comp);
-											}
-
-											it += compSize;
-										}
-
-										pool.size = 0u;
-										pool.freeCount = 0u;
-									}
-								}
-
-								while (compCount-- != 0u) {
-
-									Entity entity;
-									deserialize_entity(d, entity);
-
-									BaseComponent* comp = componentAlloc(compID, entity, false);
-									create_component(compID, comp, entity);
-									deserialize_component(compID, comp, d, version);
-
-									scene.entityData.getInternal(entity).components.push_back({compID, comp});
-								}
-							}
-						}
-					}
+					if (!deserialize_ecs(d)) return false;
 
 					deserialize_end(d);
 
 					deserialize = true;
 				}
 			}
-		}
-
-		// TODO: dispath all events at once
-		for (Entity entity : scene.entities) {
-
-			EntityCreateEvent e;
-			e.entity = entity;
-
-			event_dispatch("on_entity_create", &e);
 		}
 
 		event_dispatch("initialize_scene", nullptr);
@@ -615,82 +405,8 @@ namespace sv {
 		serialize_v3_f32(s, scene.data.physics.gravity);
 		serialize_f32(s, scene.data.physics.air_friction);
 		serialize_bool(s, scene.data.physics.in_3D);
-		
-		// ECS
-		{
-			// Registers
-			{
-				u32 registersCount = 0u;
-				for (CompID id = 0u; id < scene_state->registers.size(); ++id) {
-					if (component_exist(id))
-						++registersCount;
-				}
 
-				serialize_u32(s, registersCount);
-
-				for (CompID id = 0u; id < scene_state->registers.size(); ++id) {
-
-					if (component_exist(id)) {
-
-						serialize_string(s, get_component_name(id));
-						serialize_u32(s, get_component_size(id));
-						serialize_u32(s, get_component_version(id));
-					}
-
-				}
-			}
-
-			// Entity data
-			{
-				u32 entityCount = u32(scene.entities.size());
-				u32 entityDataCount = u32(scene.entityData.size);
-
-				serialize_u32(s, entityCount);
-				serialize_u32(s, entityDataCount);
-
-				for (u32 i = 0; i < entityDataCount; ++i) {
-
-					Entity entity = i + 1u;
-					EntityInternal& ed = scene.entityData.getInternal(entity);
-
-					if (ed.handleIndex != u64_max) {
-
-						EntityTransform& transform = scene.entityData.getTransform(entity);
-
-						serialize_entity(s, (Entity)i);
-						serialize_string(s, ed.name);
-						serialize_u32(s, ed.childsCount);
-						serialize_size_t(s, ed.handleIndex);
-						serialize_u64(s, ed.flags);
-						serialize_v3_f32(s, transform.position);
-						serialize_v4_f32(s, transform.rotation);
-						serialize_v3_f32(s, transform.scale);
-					}
-				}
-			}
-
-			// Components
-			{
-				for (CompID compID = 0u; compID < scene_state->registers.size(); ++compID) {
-
-					if (!component_exist(compID)) continue;
-
-					serialize_u32(s, componentAllocatorCount(compID));
-
-					BaseComponent* component;
-					Entity entity;
-					ComponentIterator it;
-		    
-					if (comp_it_begin(it, entity, component, compID)) {
-						do {
-							serialize_entity(s, entity);
-							serialize_component(compID, component, s);
-						}
-						while (comp_it_next(it, entity, component));
-					}
-				}
-			}
-		}
+		serialize_ecs(s);
 
 		event_dispatch("save_scene", nullptr);
 		
@@ -699,27 +415,9 @@ namespace sv {
 
     bool clear_scene()
     {
-		SV_SCENE();
+		//SV_SCENE();
 
-		// TODO: Dispatch events at once
-		for (Entity entity : scene.entities) {
-
-			EntityDestroyEvent e;
-			e.entity = entity;
-			event_dispatch("on_entity_destroy", &e);
-		}
-	
-		for (CompID i = 0; i < get_component_register_count(); ++i) {
-			if (component_exist(i))
-				componentAllocatorDestroy(i);
-		}
-		for (CompID id = 0u; id < scene_state->registers.size(); ++id) {
-
-			componentAllocatorCreate(id);
-		}
-
-		scene.entities.clear();
-		entity_clear(scene.entityData);
+		clear_ecs();
 
 		event_dispatch("initialize_scene", nullptr);
 
@@ -734,6 +432,8 @@ namespace sv {
 		FolderElement element;
 
 		bool res = folder_iterator_begin(folderpath, &it, &element);
+
+		CompID mesh_id = get_component_id("Mesh");
 
 		if (res) {
 	    
@@ -755,7 +455,9 @@ namespace sv {
 					if (res) {
 					
 						Entity entity = create_entity(parent);
-						MeshComponent* comp = add_component<MeshComponent>(entity);
+						MeshComponent* comp = (MeshComponent*)add_entity_component(entity, mesh_id);
+						SV_ASSERT(comp);
+						
 						comp->mesh = mesh;
 
 						Mesh* m = mesh.get();
@@ -842,8 +544,8 @@ namespace sv {
 		if (!there_is_scene())
 			return;
 
-		if (!entity_exist(scene.data.main_camera)) {
-			scene.data.main_camera = SV_ENTITY_NULL;
+		if (!entity_exists(scene.data.main_camera)) {
+			scene.data.main_camera = 0;
 		}
 
 		CameraComponent* camera = get_main_camera();
@@ -856,23 +558,21 @@ namespace sv {
 
 		// Update cameras matrices
 		{
-			ComponentIterator it;
-			CompView<CameraComponent> view;
+			CompID camera_id = get_component_id("Camera");
 
-			if (comp_it_begin(it, view)) {
-				do {
-
-					CameraComponent& camera = *view.comp;
-					Entity entity = view.entity;
-
-					v3_f32 position = get_entity_world_position(entity);
-					v4_f32 rotation = get_entity_world_rotation(entity);
-
-					update_camera_matrices(camera, position, rotation);
-				}
-				while (comp_it_next(it, view));
+			for (CompIt it = comp_it_begin(camera_id);
+				 it.has_next;
+				 comp_it_next(it))
+			{
+				CameraComponent& camera = *(CameraComponent*)it.comp;
+				Entity entity = it.entity;
+				
+				v3_f32 position = get_entity_world_position(entity);
+				v4_f32 rotation = get_entity_world_rotation(entity);
+				
+				update_camera_matrices(camera, position, rotation);
 			}
-
+			
 #if SV_EDITOR
 			update_camera_matrices(dev.camera, dev.camera.position, dev.camera.rotation);
 #endif
@@ -895,9 +595,9 @@ namespace sv {
     {
 		SV_SCENE();
 	
-		if (entity_exist(scene.data.main_camera))
-			return get_component<CameraComponent>(scene.data.main_camera);
-		return nullptr;
+		if (entity_exists(scene.data.main_camera))
+			return (CameraComponent*)get_entity_component(scene.data.main_camera, get_component_id("Camera"));
+		return NULL;
     }
 
     Ray screen_to_world_ray(v2_f32 position, const v3_f32& camera_position, const v4_f32& camera_rotation, CameraComponent* camera)
@@ -962,543 +662,717 @@ namespace sv {
 		return res;
 	}
 
-    ////////////////////////////////////////////////// ECS ////////////////////////////////////////////////////////
+	/////////////////////////////////////// ECS //////////////////////////////////////////////////////////
 
-    // MEMORY
-
-    static void entity_clear(EntityDataAllocator& a)
+	SV_AUX void create_entity_component(CompID comp_id, Component* ptr, Entity entity)
     {
-		if (a.internal) {
-			a.capacity = 0u;
-			delete[] a.internal;
-			a.internal = nullptr;
-			delete[] a.transforms;
-			a.transforms = nullptr;
-		}
-
-		a.size = 0u;
-		a.freelist.clear();
-    }
-
-    // ComponentPool
-
-    static void componentPoolAlloc(ComponentPool& pool, size_t compSize)
-    {
-		componentPoolFree(pool);
-		pool.data = new u8[compSize * ECS_COMPONENT_POOL_SIZE];
-		pool.freeCount = 0u;
-    }
-
-    static void componentPoolFree(ComponentPool& pool)
-    {
-		if (pool.data != nullptr) {
-			delete[] pool.data;
-			pool.data = nullptr;
-		}
-		pool.size = 0u;
-    }
-
-    static void* componentPoolGetPtr(ComponentPool& pool, size_t compSize)
-    {
-		u8* ptr = nullptr;
-
-		if (pool.freeCount) {
-
-			u8* it = pool.data;
-			u8* end = it + pool.size;
-
-			while (it != end) {
-
-				if (reinterpret_cast<BaseComponent*>(it)->_id == 0u) {
-					ptr = it;
-					break;
-				}
-				it += compSize;
-			}
-			SV_ASSERT(ptr != nullptr && "Free component not found!!");
-			--pool.freeCount;
-		}
-		else {
-			ptr = pool.data + pool.size;
-			pool.size += compSize;
-		}
-
-		return ptr;
-    }
-
-    static void componentPoolRmvPtr(ComponentPool& pool, size_t compSize, void* ptr)
-    {
-		if (ptr == pool.data + pool.size) {
-			pool.size -= compSize;
-		}
-		else {
-			++pool.freeCount;
-		}
-    }
-
-    static bool componentPoolFull(const ComponentPool& pool, size_t compSize)
-    {
-		return (pool.size == ECS_COMPONENT_POOL_SIZE * compSize) && pool.freeCount == 0u;
-    }
-
-    static bool componentPoolPtrExist(const ComponentPool& pool, void* ptr)
-    {
-		return ptr >= pool.data && ptr < (pool.data + pool.size);
-    }
-
-    static u32 componentPoolCount(const ComponentPool& pool, size_t compSize)
-    {
-		return u32(pool.size / compSize - pool.freeCount);
-    }
-
-    // ComponentAllocator
-
-    SV_AUX ComponentPool& componentAllocatorCreatePool(ComponentAllocator& a, size_t compSize)
-    {
-		ComponentPool& pool = a.pools.emplace_back();
-		componentPoolAlloc(pool, compSize);
-		return pool;
-    }
-
-    SV_AUX ComponentPool& componentAllocatorPreparePool(ComponentAllocator& a, size_t compSize)
-    {
-		if (componentPoolFull(a.pools.back(), compSize)) {
-			return componentAllocatorCreatePool(a, compSize);
-		}
-		return a.pools.back();
-    }
-
-    SV_INTERNAL void componentAllocatorCreate(CompID compID)
-    {
-		SV_SCENE();
-		componentAllocatorDestroy(compID);
-		componentAllocatorCreatePool(scene.components[compID], size_t(get_component_size(compID)));
-    }
-
-    SV_INTERNAL void componentAllocatorDestroy(CompID compID)
-    {
-		SV_SCENE();
-	
-		ComponentAllocator& a = scene.components[compID];
-		size_t compSize = size_t(get_component_size(compID));
-
-		for (auto it = a.pools.begin(); it != a.pools.end(); ++it) {
-
-			u8* ptr = it->data;
-			u8* endPtr = it->data + it->size;
-
-			while (ptr != endPtr) {
-
-				BaseComponent* comp = reinterpret_cast<BaseComponent*>(ptr);
-				if (comp->_id != 0u) {
-					destroy_component(compID, comp);
-				}
-
-				ptr += compSize;
-			}
-
-			componentPoolFree(*it);
-
-		}
-		a.pools.clear();
-    }
-
-    SV_INTERNAL BaseComponent* componentAlloc(CompID compID, Entity entity, bool create)
-    {
-		SV_SCENE();
-	
-		ComponentAllocator& a = scene.components[compID];
-		size_t compSize = size_t(get_component_size(compID));
-
-		ComponentPool& pool = componentAllocatorPreparePool(a, compSize);
-		BaseComponent* comp = reinterpret_cast<BaseComponent*>(componentPoolGetPtr(pool, compSize));
-
-		if (create) create_component(compID, comp, entity);
-
-		return comp;
-    }
-
-    SV_INTERNAL BaseComponent* componentAlloc(CompID compID, BaseComponent* srcComp, Entity entity)
-    {
-		SV_SCENE();
-	
-		ComponentAllocator& a = scene.components[compID];
-		size_t compSize = size_t(get_component_size(compID));
-
-		ComponentPool& pool = componentAllocatorPreparePool(a, compSize);
-		BaseComponent* comp = reinterpret_cast<BaseComponent*>(componentPoolGetPtr(pool, compSize));
-
-		create_component(compID, comp, entity);
-		copy_component(compID, srcComp, comp);
-
-		return comp;
-    }
-
-    SV_INTERNAL void componentFree(CompID compID, BaseComponent* comp)
-    {
-		SV_SCENE();
-	
-		SV_ASSERT(comp != nullptr);
-
-		ComponentAllocator& a = scene.components[compID];
-		size_t compSize = size_t(get_component_size(compID));
-
-		for (auto it = a.pools.begin(); it != a.pools.end(); ++it) {
-
-			if (componentPoolPtrExist(*it, comp)) {
-
-				destroy_component(compID, comp);
-				componentPoolRmvPtr(*it, compSize, comp);
-
-				break;
-			}
-		}
-    }
-
-    SV_INTERNAL u32 componentAllocatorCount(CompID compID)
-    {
-		SV_SCENE();
-	
-		const ComponentAllocator& a = scene.components[compID];
-		u32 compSize = get_component_size(compID);
-
-		u32 res = 0u;
-		for (const ComponentPool& pool : a.pools) {
-			res += componentPoolCount(pool, compSize);
-		}
-		return res;
-    }
-
-    SV_INTERNAL bool componentAllocatorIsEmpty(CompID compID)
-    {
-		SV_SCENE();
-	
-		const ComponentAllocator& a = scene.components[compID];
-		u32 compSize = get_component_size(compID);
-
-		for (const ComponentPool& pool : a.pools) {
-			if (componentPoolCount(pool, compSize) > 0u) return false;
-		}
-		return true;
-    }
-
-    ///////////////////////////////////// COMPONENTS REGISTER ////////////////////////////////////////
-
-    CompID register_component(const ComponentRegisterDesc* desc)
-    {
-		CompID id;
-		ComponentRegister* reg;
-
-		if (strlen(desc->name) > COMPONENT_NAME_SIZE) {
-			SV_LOG_ERROR("Can't register a component with the name '%s', too large", desc->name);
-			return SV_COMPONENT_ID_INVALID;
-		}
-	
-		// Check if is available
-		{	    
-			if (desc->componentSize < sizeof(u32)) {
-				SV_LOG_ERROR("Can't register a component type with size of %u", desc->componentSize);
-				return SV_COMPONENT_ID_INVALID;
-			}
-
-			CompID* id_ = scene_state->component_names.find(desc->name);
-
-			if (id_) {
-		
-				id = *id_;
-				reg = &scene_state->registers[id];
-
-				if (reg->size != desc->componentSize) {
-					SV_LOG_ERROR("Can't change the size of a component while the game in playing");
-					return SV_COMPONENT_ID_INVALID;
-				}
-			}
-			else {
-
-				if (there_is_scene()) {
-					SV_LOG_ERROR("Can't register component while a scene is running");
-					return SV_COMPONENT_ID_INVALID;
-				}
-		
-				id = CompID(scene_state->registers.size());
-				reg = &scene_state->registers.emplace_back();
-			}
-		}
-	
-		strcpy(reg->name, desc->name);
-		reg->size = desc->componentSize;
-		reg->version = desc->version;
-		reg->createFn = desc->createFn;
-		reg->destroyFn = desc->destroyFn;
-		reg->moveFn = desc->moveFn;
-		reg->copyFn = desc->copyFn;
-		reg->serializeFn = desc->serializeFn;
-		reg->deserializeFn = desc->deserializeFn;
-
-		scene_state->component_names[desc->name] = id;
-
-		SV_LOG_INFO("Component registred '%s'", desc->name);
-
-		return id;
-    }
-
-    void invalidate_component_callbacks(CompID id)
-    {
-		// NOTE: The game callbacks closes after the unregister of all the components callbacks
-		// so the game code will invalidate a component when none exists
-		if (scene_state->registers.size() == 0u)
-			return;
-	
-		if (id == SV_COMPONENT_ID_INVALID) {
-			SV_LOG_ERROR("Can't invalidate a invalid component ID");
-			return;
-		}
-
-		if (id >= scene_state->registers.size()) {
-			SV_LOG_ERROR("Can't invalidate the component with the ID: %u", id);
-			return;
-		}
-	
-		ComponentRegister& r = scene_state->registers[id];
-
-		r.createFn = nullptr;
-		r.destroyFn = nullptr;
-		r.moveFn = nullptr;
-		r.copyFn = nullptr;
-		r.serializeFn = nullptr;
-		r.deserializeFn = nullptr;
-    }
-
-    void unregister_components()
-    {
-		if (there_is_scene()) {
-			SV_LOG_ERROR("Can't unregister the components while there is scene");
-			return;
-		}
-
-		scene_state->registers.clear();
-		scene_state->component_names.clear();
-
-		SV_LOG_INFO("Components unregistred");
-    }
-
-    const char* get_component_name(CompID ID)
-    {
-		return scene_state->registers[ID].name;
-    }
-    u32 get_component_size(CompID ID)
-    {
-		return scene_state->registers[ID].size;
-    }
-    u32 get_component_version(CompID ID)
-    {
-		return scene_state->registers[ID].version;
-    }
-    CompID get_component_id(const char* name)
-    {
-		CompID* id = scene_state->component_names.find(name);
-		if (id == nullptr) return SV_COMPONENT_ID_INVALID;
-		return *id;
-    }
-    u32 get_component_register_count()
-    {
-		return u32(scene_state->registers.size());
-    }
-
-    void create_component(CompID ID, BaseComponent* ptr, Entity entity)
-    {
-		scene_state->registers[ID].createFn(ptr);
-		ptr->_id = Entity(entity);
-    }
-
-    void destroy_component(CompID ID, BaseComponent* ptr)
-    {
-		scene_state->registers[ID].destroyFn(ptr);
-		ptr->_id = 0u;
+		scene_state->component_register[comp_id].create_fn(ptr);
+		ptr->id = entity;
 		ptr->flags = 0u;
     }
-
-    void move_component(CompID ID, BaseComponent* from, BaseComponent* to)
+	SV_AUX void create_prefab_component(CompID comp_id, Component* ptr, Prefab prefab)
     {
-		scene_state->registers[ID].moveFn(from, to);
+		scene_state->component_register[comp_id].create_fn(ptr);
+		ptr->id = prefab | SV_BIT(31);
+		ptr->flags = 0u;
     }
-
-    void copy_component(CompID ID, const BaseComponent* from, BaseComponent* to)
+    SV_AUX void destroy_component(CompID comp_id, Component* ptr)
     {
-		scene_state->registers[ID].copyFn(from, to);
+		scene_state->component_register[comp_id].destroy_fn(ptr);
+		ptr->id = 0u;
+		ptr->flags = 0u;
     }
-
-    void serialize_component(CompID ID, BaseComponent* comp, Serializer& serializer)
+    SV_AUX void move_component(CompID comp_id, Component* from, Component* to)
+    {
+		scene_state->component_register[comp_id].move_fn(from, to);
+    }
+    SV_AUX void copy_component(CompID comp_id, const Component* from, Component* to)
+    {
+		scene_state->component_register[comp_id].copy_fn(from, to);
+    }
+    SV_AUX void serialize_component(CompID comp_id, Component* comp, Serializer& serializer)
     {
 		serialize_u32(serializer, comp->flags);
-		SerializeComponentFunction fn = scene_state->registers[ID].serializeFn;
+		SerializeComponentFunction fn = scene_state->component_register[comp_id].serialize_fn;
 		if (fn) fn(comp, serializer);
     }
-
-    void deserialize_component(CompID ID, BaseComponent* comp, Deserializer& deserializer, u32 version)
+    SV_AUX void deserialize_component(CompID comp_id, Component* comp, Deserializer& deserializer, u32 version)
     {
 		deserialize_u32(deserializer, comp->flags);
-		DeserializeComponentFunction fn = scene_state->registers[ID].deserializeFn;
+		DeserializeComponentFunction fn = scene_state->component_register[comp_id].deserialize_fn;
 		if (fn) fn(comp, deserializer, version);
     }
 
-    bool component_exist(CompID ID)
-    {
-		return scene_state->registers.size() > ID && scene_state->registers[ID].createFn != nullptr;
-    }
+	SV_AUX bool has_free_components(ComponentPool& pool)
+	{
+		return pool.count < pool.capacity || pool.free_count;
+	}
 
-    ///////////////////////////////////// HELPER FUNCTIONS ////////////////////////////////////////
+	SV_AUX Component* allocate_component(CompID comp_id)
+	{
+		SV_ECS();
 
-    void ecs_entitydata_index_add(EntityInternal& ed, CompID ID, BaseComponent* compPtr)
-    {
-		ed.components.push_back(CompRef{ ID, compPtr });
-    }
+		ComponentRegister& reg = scene_state->component_register[comp_id];
+		ComponentAllocator& alloc = ecs.component_allocator[comp_id];
 
-    void ecs_entitydata_index_set(EntityInternal& ed, CompID ID, BaseComponent* compPtr)
-    {
-		for (auto it = ed.components.begin(); it != ed.components.end(); ++it) {
-			if (it->id == ID) {
-				it->ptr = compPtr;
-				return;
+		ComponentPool* pool = NULL;
+
+		foreach(i, alloc.pool_count) {
+
+			if (has_free_components(alloc.pools[i])) {
+
+				pool = alloc.pools + i;
+				break;
 			}
 		}
-    }
 
-    BaseComponent* ecs_entitydata_index_get(EntityInternal& ed, CompID ID)
-    {
-		for (auto it = ed.components.begin(); it != ed.components.end(); ++it) {
-			if (it->id == ID) {
-				return it->ptr;
+		if (pool == NULL) {
+
+			ComponentPool* new_pools = (ComponentPool*) SV_ALLOCATE_MEMORY(sizeof(ComponentPool) * (alloc.pool_count + 1));
+
+			if (alloc.pools) {
+				memcpy(new_pools, alloc.pools, sizeof(ComponentPool) * alloc.pool_count);
+				SV_FREE_MEMORY(alloc.pools);
 			}
+
+			alloc.pools = new_pools;
+			pool = alloc.pools + alloc.pool_count++;
+
+			pool->count = 0u;
+			pool->capacity = 200u;
+			pool->free_count = 0u;
+			pool->data = (u8*)SV_ALLOCATE_MEMORY(reg.size * pool->capacity);
 		}
-		return nullptr;
-    }
 
-    void ecs_entitydata_index_remove(EntityInternal& ed, CompID ID)
-    {
-		for (auto it = ed.components.begin(); it != ed.components.end(); ++it) {
-			if (it->id == ID) {
-				ed.components.erase(it);
-				return;
-			}
-		}
-    }
+		Component* component = NULL;
 
-    SV_INLINE static void update_childs(Entity entity, i32 count)
-    {
-		SV_SCENE();
-	
-		Entity parent = entity;
+		if (pool->free_count) {
 
-		while (parent != SV_ENTITY_NULL) {
-			EntityInternal& parentToUpdate = scene.entityData.getInternal(parent);
-			parentToUpdate.childsCount += count;
-			parent = parentToUpdate.parent;
-		}
-    }
+			u8* it = pool->data;
+			u8* end = pool->data + pool->count * reg.size;
 
-    ///////////////////////////////////// ENTITIES ////////////////////////////////////////
+			while (it < end) {
 
-    Entity create_entity(Entity parent, const char* name)
-    {
-		SV_SCENE();
+				Component* comp = reinterpret_cast<Component*>(it);
 
-		Entity entity;
+				if (comp->id == 0u) {
 
-		{
-			auto& a = scene.entityData;
-	
-			if (a.freelist.empty()) {
-
-				if (a.size == a.capacity) {
-					EntityInternal* new_internal = SV_ALLOCATE_STRUCT_ARRAY(EntityInternal, a.capacity + ECS_ENTITY_ALLOC_SIZE);
-					EntityTransform* new_transforms = SV_ALLOCATE_STRUCT_ARRAY(EntityTransform, a.capacity + ECS_ENTITY_ALLOC_SIZE);
-
-					if (a.internal) {
-
-						{
-							EntityInternal* end = a.internal + a.capacity;
-							while (a.internal != end) {
-
-								*new_internal = std::move(*a.internal);
-
-								++new_internal;
-								++a.internal;
-							}
-						}
-			
-						memcpy(new_transforms, a.transforms, a.capacity * sizeof(EntityTransform));
-			
-						a.internal -= a.capacity;
-						new_internal -= a.capacity;
-						delete[] a.internal;
-						delete[] a.transforms;
-					}
-
-					a.capacity += ECS_ENTITY_ALLOC_SIZE;
-					a.internal = new_internal;
-					a.transforms = new_transforms;
+					component = comp;
+					break;
 				}
-
-				entity = ++a.size;
-
+				
+				it += reg.size;
 			}
-			else {
-				Entity result = a.freelist.back();
-				a.freelist.pop_back();
-				entity = result;
-			}
-		}
 
-		if (parent == SV_ENTITY_NULL) {
-			scene.entityData.getInternal(entity).handleIndex = scene.entities.size();
-			scene.entities.emplace_back(entity);
+			SV_ASSERT(component);
+			--pool->free_count;
 		}
 		else {
-			update_childs(parent, 1u);
 
-			// Set parent and handleIndex
-			EntityInternal& parentData = scene.entityData.getInternal(parent);
-			size_t index = parentData.handleIndex + size_t(parentData.childsCount);
+			SV_ASSERT(pool->count < pool->capacity);
 
-			EntityInternal& entityData = scene.entityData.getInternal(entity);
-			entityData.handleIndex = index;
-			entityData.parent = parent;
+			component = reinterpret_cast<Component*>(pool->data + (pool->count * reg.size));
+			++pool->count;
+		}
 
-			// Special case, the parent and childs are in back of the list
-			if (index == scene.entities.size()) {
-				scene.entities.emplace_back(entity);
+		SV_ASSERT(component);
+
+		return component;
+	}
+
+	SV_AUX void free_component(CompRef comp_ref)
+	{
+		SV_ECS();
+		
+		CompID comp_id = comp_ref.comp_id;
+		Component* comp = comp_ref.comp;
+		
+		ComponentRegister& reg = scene_state->component_register[comp_id];
+		ComponentAllocator& alloc = ecs.component_allocator[comp_id];
+
+		destroy_component(comp_id, comp);
+
+		ComponentPool* pool = NULL;
+
+		foreach(i, alloc.pool_count) {
+
+			ComponentPool* p = alloc.pools + i;
+
+			if (p->data <= (u8*)comp && p->data + p->count * reg.size > (u8*)comp) {
+				pool = p;
+				break;
 			}
-			else {
-				scene.entities.insert(entity, index);
+		}
 
-				for (size_t i = index + 1; i < scene.entities.size(); ++i) {
-					scene.entityData.getInternal(scene.entities[i]).handleIndex++;
+		SV_ASSERT(pool);
+
+		if (pool) {
+
+			++pool->free_count;
+		}
+
+		// TODO: Destroy pool
+	}
+	
+	constexpr u32 ENTITY_ALLOCATION_POOL = 100u;
+
+	void initialize_ecs()
+	{
+		SV_ECS();
+		
+		for (CompID id = 0u; id < COMPONENT_MAX; ++id) {
+			
+			ComponentAllocator& alloc = ecs.component_allocator[id];
+			alloc.pools = NULL;
+			alloc.pool_count = 0u;
+		}
+	}
+
+	void clear_ecs()
+	{
+		close_ecs();
+		initialize_ecs();
+	}
+
+	void close_ecs()
+	{
+		SV_ECS();
+		
+		// TODO: Dispatch events at once
+		for (Entity entity : ecs.entity_hierarchy) {
+			
+			EntityDestroyEvent e;
+			e.entity = entity;
+			event_dispatch("on_entity_destroy", &e);
+		}
+		
+		for (CompID id = 0; id < scene_state->component_register_count; ++id) {
+
+			ComponentAllocator& alloc = ecs.component_allocator[id];
+			ComponentRegister& reg = scene_state->component_register[id];
+
+			foreach(i, alloc.pool_count) {
+
+				ComponentPool* pool = alloc.pools + i;
+
+				if (pool->data) {
+					
+					u8* it = pool->data;
+					u8* end = it + pool->count * reg.size;
+
+					while (it != end) {
+
+						Component* comp = (Component*)it;
+
+						if (comp->id != 0) {
+							destroy_component(id, comp);
+						}
+					
+						it += reg.size;
+					}
+
+					SV_FREE_MEMORY(pool->data);
 				}
 			}
+
+			if (alloc.pools) {
+				SV_FREE_MEMORY(alloc.pools);
+			}
+		}
+		
+		if (ecs.entity_internal) {
+
+			SV_FREE_MEMORY(ecs.entity_internal);
+			SV_FREE_MEMORY(ecs.entity_misc);
+			SV_FREE_MEMORY(ecs.entity_transform);
+			ecs.entity_internal = NULL;
+			ecs.entity_misc = NULL;
+			ecs.entity_transform = NULL;
+
+			ecs.entity_size = 0u;
+			ecs.entity_capacity = 0u;
+			ecs.entity_hierarchy.clear();
+			ecs.entity_free_list.clear();
+		}
+
+		ecs.prefabs.clear();
+		ecs.prefab_free_count = 0u;
+	}
+
+	SV_AUX void initialize_entity_internal(EntityInternal& e)
+	{
+		e.component_mask = 0u;
+		e.component_count = 0u;
+		e.hierarchy_index = u32_max;
+		e.parent = 0u;
+		e.child_count = 0u;
+		e.prefab = 0u;
+	}
+
+	SV_AUX void initialize_entity_misc(EntityMisc& e)
+	{
+		e.name[0] = '\0';
+		e.flags = 0u;
+	}
+
+	SV_AUX void initialize_entity_transform(EntityTransform& e)
+	{
+		e.position = { 0.f, 0.f, 0.f };
+		e.scale    = { 1.f, 1.f, 1.f };
+		e.rotation = { 0.f, 0.f, 0.f, 1.f };
+		e.dirty    = true;
+	}
+
+	void serialize_ecs(Serializer& s)
+	{
+		SV_ECS();
+
+		constexpr u32 VERSION = 0u;
+		serialize_u32(s, VERSION);
+		
+		// Registers
+		{
+			serialize_u32(s, scene_state->component_register_count);
+
+			foreach(id, scene_state->component_register_count) {
+
+				serialize_string(s, get_component_name(id));
+				serialize_u32(s, get_component_size(id));
+				serialize_u32(s, get_component_version(id));
+			}
+		}
+
+		// Prefabs
+		{
+			serialize_u32(s, (u32)ecs.prefabs.size() - ecs.prefab_free_count);
+				
+			foreach(i, ecs.prefabs.size()) {
+
+				if (ecs.prefabs[i].valid) {
+				
+					serialize_u32(s, i + 1u);
+					serialize_string(s, ecs.prefabs[i].filepath);
+				}
+			}
+		}
+
+		// Entity data
+		{
+			u32 entity_count = u32(ecs.entity_hierarchy.size());
+			u32 entity_data_count = ecs.entity_size;
+
+			serialize_u32(s, entity_count);
+			serialize_u32(s, entity_data_count);
+
+			for (u32 i = 0; i < entity_data_count; ++i) {
+
+				Entity entity = i + 1u;
+				EntityInternal& internal = ecs.entity_internal[entity - 1u];
+
+				if (internal.hierarchy_index != u32_max) {
+
+					EntityMisc& misc = ecs.entity_misc[entity - 1u];
+					EntityTransform& transform = ecs.entity_transform[entity - 1u];
+
+					serialize_entity(s, entity);
+					serialize_u32(s, internal.child_count);
+					serialize_u32(s, internal.hierarchy_index);
+					serialize_u32(s, internal.prefab);
+					serialize_string(s, misc.name);
+					serialize_u64(s, misc.flags);
+					serialize_v3_f32(s, transform.position);
+					serialize_v4_f32(s, transform.rotation);
+					serialize_v3_f32(s, transform.scale);
+				}
+			}
+		}
+
+		// Components
+		{
+			foreach(id, scene_state->component_register_count) {
+
+				serialize_u32(s, get_component_count(id));
+
+				for (CompIt it = comp_it_begin(id, CompItFlag_Once);
+					 it.has_next;
+					 comp_it_next(it))
+				{
+					if (it.prefab == 0) {
+						serialize_entity(s, it.entity);
+						serialize_component(id, it.comp, s);
+					}
+					else serialize_entity(s, 0);
+				}
+			}
+		}
+	}
+
+	bool deserialize_ecs(Deserializer& d)
+	{
+		SV_ECS();
+
+		u32 version;
+		deserialize_u32(d, version);
+		
+		struct Register {
+			char name[COMPONENT_NAME_SIZE + 1u];
+			u32 size;
+			u32 version;
+			CompID id;
+		};
+		
+		// Registers
+		Register registers[COMPONENT_MAX];
+		u32 register_count = 0u;
+		
+		{
+			deserialize_u32(d, register_count);
+			
+			foreach(i, register_count) {
+
+				Register& reg = registers[i];
+				
+				deserialize_string(d, reg.name, COMPONENT_NAME_SIZE + 1u);			
+				deserialize_u32(d, reg.size);
+				deserialize_u32(d, reg.version);
+			}
+		}
+
+		// Registers ID
+		
+		foreach(i, register_count) {
+
+			Register& reg = registers[i];
+			reg.id = get_component_id(reg.name);
+
+			if (reg.id == INVALID_COMP_ID) {
+				SV_LOG_ERROR("Component '%s' doesn't exist", reg.name);
+				return false;
+			}
+		}
+
+		// Prefabs
+		struct PrefabRef {
+			Prefab old_prefab;
+			Prefab current_prefab;
+		};
+		
+		List<PrefabRef> prefabs;
+		{
+			u32 prefab_count;
+			deserialize_u32(d, prefab_count);
+
+			foreach(i, prefab_count) {
+
+				PrefabRef ref;
+				
+				deserialize_u32(d, ref.old_prefab);
+
+				if (ref.old_prefab) {
+					
+					char filepath[FILEPATH_SIZE + 1u];
+					deserialize_string(d, filepath, FILEPATH_SIZE + 1u);
+				
+					ref.current_prefab = load_prefab(filepath);
+
+					if (ref.current_prefab) {
+						prefabs.push_back(ref);
+					}
+				}
+			}
+		}
+
+		// Entity data
+		u32 entity_count;
+		u32 entity_data_count;
+
+		deserialize_u32(d, entity_count);
+		deserialize_u32(d, entity_data_count);
+
+		ecs.entity_hierarchy.resize(entity_count);
+		EntityInternal* entity_internal = (EntityInternal*)SV_ALLOCATE_MEMORY(sizeof(EntityInternal) * entity_data_count);
+		EntityMisc* entity_misc = (EntityMisc*)SV_ALLOCATE_MEMORY(sizeof(EntityMisc) * entity_data_count);
+		EntityTransform* entity_transform = (EntityTransform*)SV_ALLOCATE_MEMORY(sizeof(EntityTransform) * entity_data_count);
+
+		foreach(i, entity_data_count) initialize_entity_internal(entity_internal[i]);
+		foreach(i, entity_data_count) initialize_entity_misc(entity_misc[i]);
+		foreach(i, entity_data_count) initialize_entity_transform(entity_transform[i]);
+
+		foreach(i, entity_count) {
+
+			Entity entity;
+			deserialize_entity(d, entity);
+
+			EntityInternal& internal = entity_internal[entity - 1u];
+			EntityMisc& misc = entity_misc[entity - 1u];
+			EntityTransform& transform = entity_transform[entity - 1u];
+
+			deserialize_u32(d, internal.child_count);
+			deserialize_u32(d, internal.hierarchy_index);
+			deserialize_u32(d, internal.prefab);
+			internal.component_mask = 0u;
+			internal.component_count = 0u;
+			
+			deserialize_string(d, misc.name, ENTITY_NAME_SIZE + 1u);
+			deserialize_u64(d, misc.flags);
+			
+			deserialize_v3_f32(d, transform.position);
+			deserialize_v4_f32(d, transform.rotation);
+			deserialize_v3_f32(d, transform.scale);
+			transform.dirty = true;
+
+			// Find prefab
+			if (internal.prefab) {
+
+				for (PrefabRef ref : prefabs) {
+
+					if (ref.old_prefab == internal.prefab) {
+						internal.prefab = ref.current_prefab;
+						ecs.prefabs[internal.prefab - 1u].entities.push_back(entity);
+						break;
+					}
+				}
+			}
+		}
+
+		// Create entity list and free list
+		foreach(i, entity_data_count) {
+
+			EntityInternal& internal = entity_internal[i];
+
+			if (internal.hierarchy_index != u32_max) {
+				ecs.entity_hierarchy[internal.hierarchy_index] = i + 1u;
+			}
+			else ecs.entity_free_list.push_back(i + 1u);
+		}
+
+		// Set entity parents
+		{
+			EntityInternal* it = entity_internal;
+			EntityInternal* end = it + entity_data_count;
+
+			while (it != end) {
+
+				if (it->hierarchy_index != u32_max && it->child_count) {
+
+					Entity* eIt = ecs.entity_hierarchy.data() + it->hierarchy_index;
+					Entity* eEnd = eIt + it->child_count;
+					Entity parent = *eIt++;
+
+					while (eIt <= eEnd) {
+
+						EntityInternal& ed = entity_internal[*eIt - 1u];
+						ed.parent = parent;
+						if (ed.child_count) {
+							eIt += ed.child_count + 1u;
+						}
+						else ++eIt;
+					}
+				}
+
+				++it;
+			}
+		}
+
+		// Set entity data
+		SV_ASSERT(ecs.entity_internal == NULL);
+		ecs.entity_internal = entity_internal;
+		ecs.entity_misc = entity_misc;
+		ecs.entity_transform = entity_transform;
+		ecs.entity_capacity = entity_data_count;
+		ecs.entity_size = entity_data_count;
+
+		// Components
+		{
+			foreach(reg_index, register_count) {
+
+				Register& reg = registers[reg_index];
+				CompID comp_id = reg.id;
+				u32 version = reg.version;
+				u32 comp_count;
+				deserialize_u32(d, comp_count);
+
+				if (comp_count == 0u) continue;
+
+				while (comp_count-- != 0u) {
+
+					Entity entity;
+					deserialize_entity(d, entity);
+
+					if (entity == 0) continue;
+
+					Component* comp = allocate_component(comp_id);
+					create_entity_component(comp_id, comp, entity);
+					deserialize_component(comp_id, comp, d, version);
+
+					EntityInternal& internal = ecs.entity_internal[entity - 1u];
+
+					if (internal.component_count < ENTITY_COMPONENTS_MAX) {
+						
+						CompRef& ref = internal.components[internal.component_count++];
+						ref.comp_id = comp_id;
+						ref.comp = comp;
+						
+						internal.component_mask |= (1ULL << (u64)comp_id);
+					}
+					else {
+						SV_LOG_ERROR("A deserialized entity have more than %u components", ENTITY_COMPONENTS_MAX);
+						return false;
+					}
+				}
+			}
+		}
+
+		// TODO: dispath all events at once
+		for (Entity entity : ecs.entity_hierarchy) {
+
+			EntityCreateEvent e;
+			e.entity = entity;
+			
+			event_dispatch("on_entity_create", &e);
+		}
+
+		return true;
+	}
+
+	SV_AUX void allocate_entities()
+	{
+		SV_ECS();
+
+		u32 new_entity_capacity = ecs.entity_capacity + ENTITY_ALLOCATION_POOL;
+		
+		EntityInternal* new_internal = (EntityInternal*) SV_ALLOCATE_MEMORY(sizeof(EntityInternal) * new_entity_capacity);
+		EntityMisc* new_misc = (EntityMisc*) SV_ALLOCATE_MEMORY(sizeof(EntityMisc) * new_entity_capacity);
+		EntityTransform* new_transform = (EntityTransform*) SV_ALLOCATE_MEMORY(sizeof(EntityTransform) * new_entity_capacity);
+
+		if (ecs.entity_capacity) {
+
+			memcpy(new_internal, ecs.entity_internal, sizeof(EntityInternal) * ecs.entity_capacity);
+			memcpy(new_misc, ecs.entity_misc, sizeof(EntityMisc) * ecs.entity_capacity);
+			memcpy(new_transform, ecs.entity_transform, sizeof(EntityTransform) * ecs.entity_capacity);
+
+			SV_FREE_MEMORY(ecs.entity_internal);
+			SV_FREE_MEMORY(ecs.entity_misc);
+			SV_FREE_MEMORY(ecs.entity_transform);
+		}
+
+		foreach(i, ENTITY_ALLOCATION_POOL) {
+
+			EntityInternal& e = new_internal[i + ecs.entity_capacity];
+			initialize_entity_internal(e);
+		}
+		foreach(i, ENTITY_ALLOCATION_POOL) {
+
+			EntityMisc& e = new_misc[i + ecs.entity_capacity];
+			initialize_entity_misc(e);
+		}
+		foreach(i, ENTITY_ALLOCATION_POOL) {
+
+			EntityTransform& e = new_transform[i + ecs.entity_capacity];
+			initialize_entity_transform(e);
+		}
+
+		ecs.entity_capacity = new_entity_capacity;
+		
+		ecs.entity_internal = new_internal;
+		ecs.entity_misc = new_misc;
+		ecs.entity_transform = new_transform;
+	}
+
+	Entity create_entity(Entity parent, const char* name, Prefab prefab)
+	{
+		SV_ECS();
+
+		SV_ASSERT(parent == 0u || entity_exists(parent));
+
+		// Allocate entity
+		Entity entity;
+		
+		if (ecs.entity_free_list.size()) {
+
+			entity = ecs.entity_free_list.back() - 1u;
+			ecs.entity_free_list.pop_back();
+		}
+		else {
+
+			entity = ecs.entity_size;
+
+			if (ecs.entity_size == ecs.entity_capacity) {
+
+				allocate_entities();
+			}
+
+			++ecs.entity_size;
+		}
+		
+		EntityInternal& internal = ecs.entity_internal[entity];
+		++entity;
+
+		if (parent) {
+
+			// notify parents
+			{
+				Entity aux = parent;
+
+				while (aux != 0) {
+				
+					EntityInternal& parent_to_update = ecs.entity_internal[aux - 1u];
+					++parent_to_update.child_count;
+					aux = parent_to_update.parent;
+				}
+			}
+
+			EntityInternal& parent_internal = ecs.entity_internal[parent - 1u];
+
+			u32 index = parent_internal.hierarchy_index + parent_internal.child_count;
+			ecs.entity_hierarchy.insert(entity, index);
+
+			for (u32 i = index + 1u; i < ecs.entity_hierarchy.size(); ++i) {
+
+				Entity e = ecs.entity_hierarchy[i] - 1u;
+				++ecs.entity_internal[e].hierarchy_index;
+			}
+
+			internal.hierarchy_index = index;
+			internal.parent = parent;
+		}
+		else {
+
+			internal.hierarchy_index = u32(ecs.entity_hierarchy.size());
+			ecs.entity_hierarchy.push_back(entity);
 		}
 
 		if (name)
-			strcpy(scene.entityData.getInternal(entity).name, name);
+			string_copy(ecs.entity_misc[entity - 1u].name, name, ENTITY_NAME_SIZE + 1u);
+
+		if (prefab) {
+
+			internal.prefab = prefab;
+
+			PrefabInternal& p = ecs.prefabs[prefab - 1u];
+			p.entities.push_back(entity);
+		}
 
 		EntityCreateEvent e;
 		e.entity = entity;
 		event_dispatch("on_entity_create", &e);
 
 		return entity;
-    }
+	}
+	
+	void destroy_entity(Entity entity)
+	{
+		SV_ECS();
+		SV_ASSERT(entity_exists(entity));
 
-    void destroy_entity(Entity entity)
-    {
-		SV_SCENE();
+		EntityInternal& internal = ecs.entity_internal[entity - 1u];
 
-		EntityInternal& entityData = scene.entityData.getInternal(entity);
-		u32 count = entityData.childsCount + 1;
+		u32 count = internal.child_count + 1;
 
 		// data to remove entities
-		size_t indexBeginDest = entityData.handleIndex;
-		size_t indexBeginSrc = entityData.handleIndex + count;
-		size_t cpyCant = scene.entities.size() - indexBeginSrc;
+		size_t index_begin_dst = internal.hierarchy_index;
+		size_t index_begin_src= internal.hierarchy_index + count;
+		size_t cpy_cant = (u32)ecs.entity_hierarchy.size() - index_begin_src;
 
 		// Dispatch events
 		{
@@ -1506,354 +1380,1014 @@ namespace sv {
 
 			for (size_t i = 0; i < count; ++i) {
 		
-				Entity ent = scene.entities[indexBeginDest + i];
-				e.entity = ent;
+				e.entity = ecs.entity_hierarchy[index_begin_dst + i];
 				event_dispatch("on_entity_destroy", &e);
 			}
 		}
 
+		// remove prefab reference
+		if (internal.prefab) {
+			PrefabInternal& p = ecs.prefabs[internal.prefab - 1u];
+			u32 index = u32_max;
+
+			foreach(i, p.entities.size()) {
+				if (p.entities[i] == entity) {
+					index = i;
+					break;
+				}
+			}
+
+			SV_ASSERT(index != u32_max);
+			if (index != u32_max) {
+
+				p.entities.erase(index);
+			}
+		}
+
 		// notify parents
-		if (entityData.parent != SV_ENTITY_NULL) {
-			update_childs(entityData.parent, -i32(count));
+		{
+			Entity aux = internal.parent;
+
+			while (aux != 0) {
+				
+				EntityInternal& parent_to_update = ecs.entity_internal[aux - 1u];
+				parent_to_update.child_count -= count;
+				aux = parent_to_update.parent;
+			}
 		}
 
 		// remove components & entityData
 		for (size_t i = 0; i < count; i++) {
-			Entity e = scene.entities[indexBeginDest + i];
-			clear_entity(e);
+			
+			Entity e = ecs.entity_hierarchy[index_begin_dst + i];
+			EntityInternal& ed = ecs.entity_internal[e- 1u];
+			
+			foreach(j, ed.component_count) {
+				
+				CompRef comp = ed.components[j];					
+				free_component(comp);
+			}
 
-			{ // Free the entity memory
-				auto& a = scene.entityData;
-		
-				SV_ASSERT(a.size >= e);
-				a.getInternal(e) = EntityInternal();
-				a.getTransform(e) = EntityTransform();
+			initialize_entity_internal(ecs.entity_internal[e - 1u]);
+			initialize_entity_misc(ecs.entity_misc[e - 1u]);
+			initialize_entity_transform(ecs.entity_transform[e - 1u]);
 
-				if (e == a.size) {
-					a.size--;
-				}
-				else {
-					a.freelist.push_back(e);
-				}
+			if (e == ecs.entity_size) {
+				--ecs.entity_size;
+			}
+			else {
+				ecs.entity_free_list.push_back(e);
 			}
 		}
 
 		// remove from entities & update indices
-		if (cpyCant != 0) memcpy(&scene.entities[indexBeginDest], &scene.entities[indexBeginSrc], cpyCant * sizeof(Entity));
-		scene.entities.resize(scene.entities.size() - count);
-		for (size_t i = indexBeginDest; i < scene.entities.size(); ++i) {
-			scene.entityData.getInternal(scene.entities[i]).handleIndex = i;
+		if (cpy_cant != 0) memcpy(&ecs.entity_hierarchy[index_begin_dst], &ecs.entity_hierarchy[index_begin_src], cpy_cant * sizeof(Entity));
+		ecs.entity_hierarchy.resize((u32)ecs.entity_hierarchy.size() - count);
+		for (size_t i = index_begin_dst; i < ecs.entity_hierarchy.size(); ++i) {
+			ecs.entity_internal[ecs.entity_hierarchy[i] - 1u].hierarchy_index = (u32)i;
 		}
-    }
+	}
 
-    void clear_entity(Entity entity)
-    {
-		SV_SCENE();
+	Entity duplicate_entity(Entity entity)
+	{
+		// TODO
+		return 0;
+	}
 
-		EntityInternal& ed = scene.entityData.getInternal(entity);
-		while (!ed.components.empty()) {
-
-			CompRef ref = ed.components.back();
-			ed.components.pop_back();
-
-			componentFree(ref.id, ref.ptr);
+	bool entity_exists(Entity entity)
+	{
+		SV_ECS();
+		if (entity) {
+			--entity;
+			return ecs.entity_size > entity && ecs.entity_internal[entity].hierarchy_index != u32_max;
 		}
-    }
 
-    SV_INTERNAL Entity entity_duplicate_recursive(Entity duplicated, Entity parent)
-    {
-		SV_SCENE();
+		return false;
+	}
 	
-		Entity copy;
-
-		copy = create_entity(parent);
-
-		EntityInternal& duplicatedEd = scene.entityData.getInternal(duplicated);
-		EntityInternal& copyEd = scene.entityData.getInternal(copy);
-
-		strcpy(copyEd.name, duplicatedEd.name);
-
-		scene.entityData.getTransform(copy) = scene.entityData.getTransform(duplicated);
-		copyEd.flags = duplicatedEd.flags;
-
-		for (u32 i = 0; i < duplicatedEd.components.size(); ++i) {
-			CompID ID = duplicatedEd.components[i].id;
-
-			BaseComponent* comp = ecs_entitydata_index_get(duplicatedEd, ID);
-			BaseComponent* newComp = componentAlloc(ID, comp, copy);
-
-			ecs_entitydata_index_add(copyEd, ID, newComp);
-		}
-
-		for (u32 i = 0; i < scene.entityData.getInternal(duplicated).childsCount; ++i) {
-			Entity toCopy = scene.entities[scene.entityData.getInternal(duplicated).handleIndex + i + 1];
-			entity_duplicate_recursive(toCopy, copy);
-			i += scene.entityData.getInternal(toCopy).childsCount;
-		}
-
-		return copy;
-    }
-
-    Entity duplicate_entity(Entity entity)
-    {
-		SV_SCENE();
-
-		Entity res = entity_duplicate_recursive(entity, scene.entityData.getInternal(entity).parent);
-		return res;
-    }
-
-    bool entity_is_empty(Entity entity)
-    {
-		SV_SCENE();
-		return scene.entityData.getInternal(entity).components.empty();
-    }
-
-    bool entity_exist(Entity entity)
-    {
-		SV_SCENE();
-		if (entity == SV_ENTITY_NULL || entity > scene.entityData.size) return false;
-
-		EntityInternal& ed = scene.entityData.getInternal(entity);
-		return ed.handleIndex != u64_max;
-    }
-
-    const char* get_entity_name(Entity entity)
-    {
-		SV_SCENE();
-		SV_ASSERT(entity_exist(entity));
-		const char* name = scene.entityData.getInternal(entity).name;
-		return name;
-    }
-
-    void set_entity_name(Entity entity, const char* name)
-    {
-		SV_SCENE();
-		SV_ASSERT(entity_exist(entity));
-
-		if (strlen(name) > ENTITY_NAME_SIZE) {
-			SV_LOG_ERROR("Entity name '%s' is too large", name);
-			return;
-		}
+	const char* get_entity_name(Entity entity)
+	{
+		SV_ECS();
+		SV_ASSERT(entity_exists(entity));
+		return ecs.entity_misc[entity - 1u].name;
+	}
 	
-		strcpy(scene.entityData.getInternal(entity).name, name);
-    }
+	u64 get_entity_flags(Entity entity)
+	{
+		SV_ECS();
+		SV_ASSERT(entity_exists(entity));
+		return ecs.entity_misc[entity - 1u].flags;
+	}
 
+	void set_entity_name(Entity entity, const char* name)
+	{
+		SV_ECS();
+		SV_ASSERT(entity_exists(entity));
+		string_copy(ecs.entity_misc[entity - 1u].name, name, ENTITY_NAME_SIZE + 1u);
+	}
+	
     u32 get_entity_childs_count(Entity parent)
-    {
-		SV_SCENE();
-		return scene.entityData.getInternal(parent).childsCount;
-    }
-
-    void get_entity_childs(Entity parent, Entity const** childsArray)
-    {
-		SV_SCENE();
-
-		const EntityInternal& ed = scene.entityData.getInternal(parent);
-		if (childsArray && ed.childsCount != 0)* childsArray = &scene.entities[ed.handleIndex + 1];
-    }
-
-    Entity get_entity_parent(Entity entity)
-    {
-		SV_SCENE();
-		return scene.entityData.getInternal(entity).parent;
-    }
-
-    u64& get_entity_flags(Entity entity)
-    {
-		SV_SCENE();
-		return scene.entityData.getInternal(entity).flags;
-    }
-
-    u32 get_entity_component_count(Entity entity)
-    {
-		SV_SCENE();
-		return u32(scene.entityData.getInternal(entity).components.size());
-    }
-
-    u32 get_entity_count()
-    {
-		SV_SCENE();
-		return u32(scene.entities.size());
-    }
-
-    Entity get_entity_by_index(u32 index)
-    {
-		SV_SCENE();
-		return scene.entities[index];
-    }
-
-    /////////////////////////////// COMPONENTS /////////////////////////////////////
-
-    BaseComponent* add_component(Entity entity, BaseComponent* comp, CompID componentID, size_t componentSize)
-    {
-		SV_SCENE();
-
-		comp = componentAlloc(componentID, comp, Entity(entity));
-		ecs_entitydata_index_add(scene.entityData.getInternal(entity), componentID, comp);
-
-		return comp;
-    }
-
-    BaseComponent* add_component_by_id(Entity entity, CompID componentID)
-    {
-		SV_SCENE();
-
-		BaseComponent* comp = componentAlloc(componentID, entity);
-		ecs_entitydata_index_add(scene.entityData.getInternal(entity), componentID, comp);
-
-		return comp;
-    }
-
-    BaseComponent* get_component_by_id(Entity entity, CompID componentID)
-    {
-		SV_SCENE();
-
-		return ecs_entitydata_index_get(scene.entityData.getInternal(entity), componentID);
-    }
-
-    CompRef get_component_by_index(Entity entity, u32 index)
-    {
-		SV_SCENE();
-		return scene.entityData.getInternal(entity).components[index];
-    }
-
-    void remove_component_by_id(Entity entity, CompID componentID)
-    {
-		SV_SCENE();
-
-		EntityInternal& ed = scene.entityData.getInternal(entity);
-		BaseComponent* comp = ecs_entitydata_index_get(ed, componentID);
-
-		componentFree(componentID, comp);
-		ecs_entitydata_index_remove(ed, componentID);
-    }
-
-    u32 get_component_count(CompID ID)
-    {
-		return componentAllocatorCount(ID);
-    }
-
-    // Iterators
-
-    bool comp_it_begin(ComponentIterator& it, Entity& entity, BaseComponent*& comp, CompID comp_id)
-    {
-		SV_SCENE();
-
-		it._comp_id = comp_id;
-		it._it = nullptr;
-		it._end = nullptr;
-		it._pool = 0u;
+	{
+		SV_ECS();
+		SV_ASSERT(entity_exists(parent));
+		return ecs.entity_internal[parent - 1u].child_count;
+	}
 	
-		if (!componentAllocatorIsEmpty(comp_id)) {
+    void get_entity_childs(Entity parent, Entity const** childs)
+	{
+		SV_ECS();
+		SV_ASSERT(entity_exists(parent));
+		const EntityInternal& ed = ecs.entity_internal[parent - 1u];
+		if (childs && ed.child_count != 0)* childs = &ecs.entity_hierarchy[ed.hierarchy_index + 1];
+	}
+	
+    Entity get_entity_parent(Entity entity)
+	{
+		SV_ECS();
+		SV_ASSERT(entity_exists(entity));
+		return ecs.entity_internal[entity - 1u].parent;
+	}
+	
+    u32 get_entity_component_count(Entity entity)
+	{
+		SV_ECS();
+		SV_ASSERT(entity_exists(entity));
 
-			const ComponentAllocator& list = scene.components[comp_id];
-			size_t comp_size = size_t(get_component_size(comp_id));
+		const EntityInternal& internal = ecs.entity_internal[entity - 1u];
 
-			u32 pool = 0u;
-			u8* ptr = nullptr;
+		u32 count = internal.component_count;
 
-			// Finding the first component
-			{
-				while (componentPoolCount(list.pools[pool], comp_size) == 0u) pool++;
+		if (internal.prefab) {
 
-				ptr = list.pools[pool].data;
+			PrefabInternal& p = ecs.prefabs[internal.prefab - 1u];
+			count += p.component_count;
+		}
 
-				while (true) {
-					BaseComponent* c = reinterpret_cast<BaseComponent*>(ptr);
-					if (c->_id != 0u) {
-						break;
-					}
-					ptr += comp_size;
+		return count;
+	}
+	
+	CompRef get_entity_component_by_index(Entity entity, u32 index)
+	{
+		SV_ECS();
+		SV_ASSERT(entity_exists(entity));
+
+		const EntityInternal& internal = ecs.entity_internal[entity - 1u];
+
+		if (index < internal.component_count) {
+
+			return internal.components[index];
+		}
+		else if (internal.prefab) {
+
+			PrefabInternal& p = ecs.prefabs[internal.prefab - 1u];
+			index -= internal.component_count;
+
+			return p.components[index];
+		}
+
+		SV_ASSERT(0);
+		return {};
+	}
+	
+    u32 get_entity_count()
+	{
+		SV_ECS();
+		return (u32)ecs.entity_hierarchy.size();
+	}
+	
+    Entity get_entity_by_index(u32 index)
+	{
+		SV_ECS();
+		return ecs.entity_hierarchy[index];
+	}
+
+	bool has_entity_component(Entity entity, CompID comp_id)
+	{
+		SV_ECS();
+		SV_ASSERT(entity_exists(entity));
+		
+		EntityInternal& internal = ecs.entity_internal[entity - 1u];
+		if (internal.component_mask & (1ULL << (u64)comp_id)) return true;
+
+		else if (internal.prefab) {
+
+			return has_prefab_component(internal.prefab, comp_id);
+		}
+
+		return false;
+	}
+	
+	Component* add_entity_component(Entity entity, CompID comp_id)
+	{
+		SV_ECS();
+		SV_ASSERT(entity_exists(entity));
+
+		EntityInternal& internal = ecs.entity_internal[entity - 1u];
+
+		if (has_entity_component(entity, comp_id)) {
+			SV_LOG_ERROR("The entity component is repeated");
+			return NULL;
+		}
+
+		if (internal.component_count == ENTITY_COMPONENTS_MAX) {
+			SV_LOG_ERROR("A entity can't have more than %u components", ENTITY_COMPONENTS_MAX);
+			return NULL;
+		}
+
+		Component* component = allocate_component(comp_id);
+		
+		create_entity_component(comp_id, component, entity);
+
+		internal.components[internal.component_count].comp_id = comp_id;
+		internal.components[internal.component_count].comp = component;
+		
+		++internal.component_count;
+
+		internal.component_mask |= SV_BIT(comp_id);
+
+		return component;
+	}
+	
+	void remove_entity_component(Entity entity, CompID comp_id)
+	{
+		SV_ECS();
+		SV_ASSERT(entity_exists(entity));
+
+		EntityInternal& internal = ecs.entity_internal[entity - 1u];
+
+		if (internal.component_mask & SV_BIT(comp_id)) {
+
+			internal.component_mask &= ~SV_BIT(comp_id);
+
+			CompRef comp_ref;
+			comp_ref.comp = NULL;
+			u32 component_index = 0u;
+
+			foreach(i, internal.component_count) {
+				
+				const CompRef& c = internal.components[i];
+
+				if (c.comp_id == comp_id) {
+					comp_ref = c;
+					component_index = i;
+					break;
 				}
 			}
 
-			it._pool = pool;
-			it._it = reinterpret_cast<BaseComponent*>(ptr);
+			SV_ASSERT(comp_ref.comp);
 
-			// Find the end component
-			{
-				pool = u32(list.pools.size()) - 1u;
-		
-				while (componentPoolCount(list.pools[pool], comp_size) == 0u) pool--;
-				ptr = list.pools[pool].data + list.pools[pool].size;
-			}
+			if (comp_ref.comp) {
 
-			it._end = reinterpret_cast<BaseComponent*>(ptr);
+				for (u32 i = component_index + 1u; i < internal.component_count; ++i) {
+					internal.components[i - 1u] = internal.components[i];
+				}
+				--internal.component_count;
+
+				free_component(comp_ref);
+			}			
 		}
-
-		bool res = it._end != it._it;
-
-		if (res) {
-			// TODO: premakes
-			comp = it._it;
-			entity = Entity(it._it->_id);
-		}
-
-		return res;
-    }
-
-    
-    bool comp_it_next(ComponentIterator& it, Entity& entity, BaseComponent*& comp)
-    {
-		SV_SCENE();
-
-		BaseComponent*& _it = it._it;
-		u32& _pool = it._pool;
-		CompID comp_id = it._comp_id;
-
-		size_t comp_size = size_t(get_component_size(comp_id));
-		auto& list = scene.components[comp_id];
-		u8* ptr = reinterpret_cast<u8*>(_it);
-		u8* endPtr = list.pools[_pool].data + list.pools[_pool].size;
-
-		do {
-			ptr += comp_size;
-			if (ptr == endPtr) {
-				auto& list = scene.components[comp_id];
-
-				do {
-
-					if (++_pool == list.pools.size()) break;
-
-				} while (componentPoolCount(list.pools[_pool], comp_size) == 0u);
-
-				if (_pool == list.pools.size()) break;
-
-				ComponentPool& compPool = list.pools[_pool];
-
-				ptr = compPool.data;
-				endPtr = ptr + compPool.size;
-			}
-		} while (((BaseComponent*)(ptr))->_id == 0u);
-
-		_it = reinterpret_cast<BaseComponent*>(ptr);
-
-		bool res = _it != it._end;
-
-		if (res) {
-
-			// TODO: premakes
-			comp = _it;
-			entity = Entity(_it->_id);
-		}
-
-		return res;
-    }
-
-    //////////////////////////////////////////// TRANSFORM ///////////////////////////////////////////////////////////
-
-    SV_AUX void update_world_matrix(EntityTransform& t, Entity entity)
-    {
-		SV_SCENE();
+	}
 	
-		t._modified = false;
+	Component* get_entity_component(Entity entity, CompID comp_id)
+	{
+		SV_ECS();
+		SV_ASSERT(entity_exists(entity));
+
+		EntityInternal& internal = ecs.entity_internal[entity - 1u];
+
+		if (internal.component_mask & (1ULL << (u64)comp_id)) {
+
+			foreach(i, internal.component_count) {
+
+				if (internal.components[i].comp_id == comp_id) {
+					return internal.components[i].comp;
+				}
+			}
+
+			SV_ASSERT(0);
+			return NULL;
+		}
+		else if (internal.prefab) {
+			return get_prefab_component(internal.prefab, comp_id);
+		}
+
+		return NULL;
+	}
+
+	bool create_prefab_file(const char* name, const char* filepath)
+	{
+		name = string_validate(name);
+		size_t size = string_size(name);
+		if (size == 0u || size > ENTITY_NAME_SIZE) {
+			SV_LOG_ERROR("Invalid prefab name '%s'", name);
+			return false;
+		}
+		
+		Serializer s;
+		serialize_begin(s);
+		
+		serialize_u32(s, 0u); // VERSION
+
+		serialize_string(s, name);
+		
+		serialize_u32(s, 0u); // Component count
+		
+		return serialize_end(s, filepath);
+	}
+
+	SV_AUX bool is_valid_prefab_name(const char* name, Prefab prefab_filter)
+	{
+		name = string_validate(name);
+		size_t size = string_size(name);
+		if (size == 0u) {
+			SV_LOG_ERROR("The prefab name is empty");
+			return false;
+		}
+		if (size > ENTITY_NAME_SIZE) {
+			SV_LOG_ERROR("The prefab name is too long");
+			return false;
+		}
+
+		for (PrefabIt it = prefab_it_begin();
+			 it.has_next;
+			 prefab_it_next(it))
+		{
+			if (it.prefab == prefab_filter)
+				continue;
+			
+			if (string_equals(get_prefab_name(it.prefab), name)) {
+				SV_LOG_ERROR("Repeated prefab name '%s'", name);
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	SV_AUX Prefab allocate_prefab()
+	{
+		SV_ECS();
+
+		Prefab prefab = 0;
+
+		if (ecs.prefab_free_count) {
+
+			foreach(i, ecs.prefabs.size()) {
+				if (!ecs.prefabs[i].valid) {
+					prefab = i + 1u;
+					break;
+				}
+			}
+
+			--ecs.prefab_free_count;
+
+			if (prefab == 0)
+				SV_ASSERT(0);
+		}
+		else {
+
+			prefab = (u32)ecs.prefabs.size() + 1u;
+			ecs.prefabs.emplace_back();
+		}
+
+		ecs.prefabs[prefab - 1u].valid = true;
+		return prefab;
+	}
+
+	SV_AUX void free_prefab(Prefab prefab)
+	{
+		SV_ECS();
+
+		PrefabInternal& p = ecs.prefabs[prefab - 1u];
+		p.valid = false;
+		p.entities.clear();
+		p.component_count = 0u;
+		p.component_mask = 0u;
+
+		++ecs.prefab_free_count;
+	}
+	
+	Prefab load_prefab(const char* filepath)
+	{
+		SV_ECS();
+
+		Prefab prefab = 0;
+		
+		Deserializer d;
+		if (deserialize_begin(d, filepath)) {
+
+			u32 version;
+			deserialize_u32(d, version);
+
+			
+			prefab = allocate_prefab();
+			
+			PrefabInternal& p = ecs.prefabs[prefab - 1u];
+			p.component_mask = 0u;
+			
+			deserialize_string(d, p.name, ENTITY_NAME_SIZE + 1u);
+
+			if (!is_valid_prefab_name(p.name, prefab)) {
+				free_prefab(prefab);
+				return 0;
+			}
+			
+			deserialize_u32(d, p.component_count);
+
+			if (p.component_count > ENTITY_COMPONENTS_MAX) {
+				SV_LOG_ERROR("The prefab '%s' exceeds the component limit of %u", filepath, ENTITY_COMPONENTS_MAX);
+				free_prefab(prefab);
+				return 0;
+			}
+
+			foreach(i, p.component_count) {
+
+				CompRef& ref = p.components[i];
+
+				char comp_name[COMPONENT_NAME_SIZE + 1u];
+				u32 comp_version;
+
+				deserialize_string(d, comp_name, COMPONENT_NAME_SIZE + 1u);
+				deserialize_u32(d, comp_version);
+
+				ref.comp_id = get_component_id(comp_name);
+
+				if (ref.comp_id == INVALID_COMP_ID) {
+					SV_LOG_ERROR("Can't load the prefab '%s', the component '%s' doesn't exists", filepath, comp_name);
+					free_prefab(prefab);
+					return 0;
+				}
+				
+				ref.comp = allocate_component(ref.comp_id);
+				create_prefab_component(ref.comp_id, ref.comp, prefab);
+				deserialize_component(ref.comp_id, ref.comp, d, comp_version);
+
+				p.component_mask |= SV_BIT(ref.comp_id);
+				p.components[i] = ref;
+			}
+
+			string_copy(p.filepath, filepath, FILEPATH_SIZE + 1u);
+
+			deserialize_end(d);
+		}
+		else {
+			SV_LOG_ERROR("Can't load the prefab '%s'", filepath);
+			return 0;
+		}
+		
+		return prefab;
+	}
+
+	bool save_prefab(Prefab prefab)
+	{
+		SV_ECS();
+		SV_ASSERT(prefab_exists(prefab));
+
+		PrefabInternal& p = ecs.prefabs[prefab - 1u];
+		return save_prefab(prefab, p.filepath);
+	}
+	
+	bool save_prefab(Prefab prefab, const char* filepath)
+	{
+		SV_ECS();
+		SV_ASSERT(prefab_exists(prefab));
+
+		PrefabInternal& p = ecs.prefabs[prefab - 1u];
+		
+		Serializer s;
+		serialize_begin(s);
+
+		serialize_u32(s, 0u); // VERSION
+		serialize_string(s, p.name);
+		serialize_u32(s, p.component_count);
+
+		foreach(i, p.component_count) {
+
+			CompRef ref = p.components[i];
+			serialize_string(s, get_component_name(ref.comp_id));
+			serialize_u32(s, get_component_version(ref.comp_id));
+			serialize_component(ref.comp_id, ref.comp, s);
+		}
+		
+		return serialize_end(s, filepath);
+	}
+
+	bool prefab_exists(Prefab prefab)
+	{
+		SV_ECS();
+		
+		if (prefab) {
+
+			--prefab;
+
+			if (prefab < ecs.prefabs.size()) {
+
+				return ecs.prefabs[prefab].valid;
+			}
+			
+			return false;
+		}
+		return false;
+	}
+
+	const char* get_prefab_name(Prefab prefab)
+	{
+		SV_ECS();
+		SV_ASSERT(prefab_exists(prefab));
+
+		return ecs.prefabs[prefab - 1u].name;
+	}
+
+	bool has_prefab_component(Prefab prefab, CompID comp_id)
+	{
+		SV_ECS();
+		SV_ASSERT(prefab_exists(prefab));
+		
+		PrefabInternal& internal = ecs.prefabs[prefab - 1u];
+		return internal.component_mask & SV_BIT(comp_id);
+	}
+	
+	Component* add_prefab_component(Prefab prefab, CompID comp_id)
+	{
+		SV_ECS();
+		SV_ASSERT(prefab_exists(prefab));
+
+		PrefabInternal& internal = ecs.prefabs[prefab - 1u];
+
+		if (has_prefab_component(prefab, comp_id)) {
+			SV_LOG_ERROR("The prefab component is repeated");
+			return NULL;
+		}
+
+		if (internal.component_count == ENTITY_COMPONENTS_MAX) {
+			SV_LOG_ERROR("A prefab can't have more than %u components", ENTITY_COMPONENTS_MAX);
+			return NULL;
+		}
+
+		Component* component = allocate_component(comp_id);
+		
+		create_prefab_component(comp_id, component, prefab);
+
+		internal.components[internal.component_count].comp_id = comp_id;
+		internal.components[internal.component_count].comp = component;
+		
+		++internal.component_count;
+
+		internal.component_mask |= SV_BIT(comp_id);
+
+		// Remove repeated components
+		for (Entity entity : internal.entities) {
+
+			remove_entity_component(entity, comp_id);
+		}
+
+		return component;
+	}
+	
+	void remove_prefab_component(Prefab prefab, CompID comp_id)
+	{
+		SV_ECS();
+		SV_ASSERT(prefab_exists(prefab));
+
+		PrefabInternal& internal = ecs.prefabs[prefab - 1u];
+
+		if (internal.component_mask & SV_BIT(comp_id)) {
+
+			internal.component_mask &= ~SV_BIT(comp_id);
+
+			CompRef comp_ref;
+			comp_ref.comp = NULL;
+			u32 component_index = 0u;
+
+			foreach(i, internal.component_count) {
+				
+				const CompRef& c = internal.components[i];
+
+				if (c.comp_id == comp_id) {
+					comp_ref = c;
+					component_index = i;
+					break;
+				}
+			}
+
+			SV_ASSERT(comp_ref.comp);
+
+			if (comp_ref.comp) {
+
+				for (u32 i = component_index + 1u; i < internal.component_count; ++i) {
+					internal.components[i - 1u] = internal.components[i];
+				}
+				--internal.component_count;
+
+				free_component(comp_ref);
+			}			
+		}
+		else SV_ASSERT(0);
+	}
+	
+	Component* get_prefab_component(Prefab prefab, CompID comp_id)
+	{
+		SV_ECS();
+		SV_ASSERT(prefab_exists(prefab));
+
+		PrefabInternal& internal = ecs.prefabs[prefab - 1u];
+
+		if (internal.component_mask & SV_BIT(comp_id)) {
+
+			foreach(i, internal.component_count) {
+
+				if (internal.components[i].comp_id == comp_id) {
+					return internal.components[i].comp;
+				}
+			}
+
+			SV_ASSERT(0);
+			return NULL;
+		}
+
+		return NULL;
+	}
+
+	u32 get_prefab_component_count(Prefab prefab)
+	{
+		SV_ECS();
+		SV_ASSERT(prefab_exists(prefab));
+
+		PrefabInternal& internal = ecs.prefabs[prefab - 1u];
+		return internal.component_count;
+	}
+	
+	CompRef get_prefab_component_by_index(Prefab prefab, u32 index)
+	{
+		SV_ECS();
+		SV_ASSERT(prefab_exists(prefab));
+
+		PrefabInternal& internal = ecs.prefabs[prefab - 1u];
+		if (index < internal.component_count)
+			return internal.components[index];
+
+		SV_ASSERT(0);
+		return {};
+	}
+
+	CompIt comp_it_begin(CompID comp_id, u32 flags)
+	{
+		SV_ECS();
+		
+		CompIt it;
+		it.flags = flags;
+		it.comp_id = comp_id;
+		it.pool_index = u32_max;
+		it.comp = NULL;
+		it.entity = 0u;
+		it.prefab = 0;
+		it.entity_index = 0;
+
+		ComponentRegister& reg = scene_state->component_register[comp_id];
+		ComponentAllocator& alloc = ecs.component_allocator[comp_id];
+		
+		if (alloc.pool_count) {
+
+			foreach(i, alloc.pool_count) {
+
+				ComponentPool* pool = alloc.pools + i;
+				
+				if (pool->count && pool->free_count < pool->count) {
+					it.pool_index = i;
+					break;
+				}
+			}
+
+			if (it.pool_index != u32_max) {
+
+				ComponentPool* pool = alloc.pools + it.pool_index;
+
+				SV_ASSERT(alloc.pools);
+				it.comp = reinterpret_cast<Component*>(pool->data - reg.size);
+			}
+		}
+
+		it.has_next = it.comp != NULL;
+
+		if (it.has_next)
+			comp_it_next(it);
+
+		return it;
+	}
+	
+	void comp_it_next(CompIt& it)
+	{
+		SV_ECS();
+
+		bool next_component = true;
+
+		if (it.prefab) {
+
+			SV_ASSERT(prefab_exists(it.prefab));
+			PrefabInternal& internal = ecs.prefabs[it.prefab - 1u];
+
+			if (++it.entity_index < internal.entities.size() && !(it.flags & CompItFlag_Once)) {
+
+				next_component = false;
+				it.entity = internal.entities[it.entity_index];
+			}
+			else it.prefab = 0;
+		}
+
+		if (next_component) {
+			
+			CompID comp_id = it.comp_id;
+		
+			ComponentRegister& reg = scene_state->component_register[comp_id];
+			ComponentAllocator& alloc = ecs.component_allocator[comp_id];
+
+			u8* comp = (u8*)it.comp;
+			ComponentPool* pool = alloc.pools + it.pool_index;
+
+			do {
+
+				comp += reg.size;
+			
+				if (comp > pool->data + (pool->count * reg.size)) {
+
+					do {
+						++it.pool_index;
+
+						if (it.pool_index >= alloc.pool_count) {
+
+							it.has_next = false;
+							return;
+						}
+
+						pool = alloc.pools + it.pool_index;
+					}
+					while (pool->count == 0u);
+
+					comp = pool->data;
+				}
+
+				Component* c = reinterpret_cast<Component*>(comp);
+
+				if (c->id == 0) continue;
+				else if (c->id & SV_BIT(31)) {
+						
+					Prefab prefab = c->id & ~SV_BIT(31);
+					SV_ASSERT(prefab_exists(prefab));
+
+					List<Entity>& entities = ecs.prefabs[prefab - 1u].entities;
+
+					if (it.flags & CompItFlag_Once) {
+
+						it.comp = c;
+						it.entity = 0;
+						it.entity_index = 0u;
+						it.prefab = prefab;
+						break;
+					}
+					else if (entities.size()) {
+
+						it.comp = c;
+						it.entity = entities.front();
+						it.entity_index = 0u;
+						it.prefab = prefab;
+						break;
+					}
+				}
+				else {
+					it.comp = c;
+					it.entity = c->id;
+					break;
+				}
+			}
+			while(1);
+		}
+	}
+
+	PrefabIt prefab_it_begin()
+	{
+		SV_ECS();
+		
+		PrefabIt it;
+
+		if (ecs.prefabs.empty()) it.has_next = false;
+		else {
+
+			PrefabInternal* pre = ecs.prefabs.data();
+			PrefabInternal* end = pre + ecs.prefabs.size();
+
+			while (pre != end) {
+
+				if (pre->valid) {
+					break;
+				}
+				
+				++pre;
+			}
+
+			it.has_next = pre != end;
+
+			if (it.has_next) {
+
+				it.ptr = pre;
+				it.prefab = Prefab(pre - ecs.prefabs.data()) + 1u;
+			}
+		}
+
+		return it;
+	}
+	
+	void prefab_it_next(PrefabIt& it)
+	{
+		SV_ECS();
+
+		PrefabInternal* pre = (PrefabInternal*)it.ptr;
+		
+		do {
+			++pre;
+
+			if (pre >= ecs.prefabs.data() + ecs.prefabs.size()) {
+				it.has_next = false;
+				return;
+			}
+		}
+		while (!pre->valid);
+
+		it.ptr = pre;
+		it.prefab = Prefab(pre - ecs.prefabs.data()) + 1u;
+	}
+
+    struct ComponentRegisterDesc {
+
+		const char*                   name;
+		u32			                  size;
+		u32                           version;
+		CreateComponentFunction	      create_fn;
+		DestroyComponentFunction      destroy_fn;
+		MoveComponentFunction	      move_fn;
+		CopyComponentFunction	      copy_fn;
+		SerializeComponentFunction    serialize_fn;
+		DeserializeComponentFunction  deserialize_fn;
+
+    };
+
+	SV_AUX bool register_component(ComponentRegisterDesc desc)
+	{
+		ComponentRegister& reg = scene_state->component_register[scene_state->component_register_count++];
+		// TODO: Assert names, sizes and function pointers
+
+		string_copy(reg.name, desc.name, COMPONENT_NAME_SIZE + 1u);
+		reg.size = desc.size;
+		reg.version = desc.version;
+		reg.create_fn = desc.create_fn;
+		reg.destroy_fn = desc.destroy_fn;
+		reg.move_fn = desc.move_fn;
+		reg.copy_fn = desc.copy_fn;
+		reg.serialize_fn = desc.serialize_fn;
+		reg.deserialize_fn = desc.deserialize_fn;
+		
+		return true;
+	}
+
+	template<typename T>
+	SV_AUX bool register_component(const char* name)
+	{
+		ComponentRegisterDesc desc;
+		desc.name = name;
+		desc.size = sizeof(T);
+		desc.version = T::VERSION;
+
+		desc.create_fn = [](Component* comp)
+			{
+				new(comp) T();
+			};
+
+		desc.destroy_fn = [](Component* comp)
+			{
+				T* c = reinterpret_cast<T*>(comp);
+				c->~T();
+			};
+
+		desc.move_fn = [](Component* fromB, Component* toB)
+			{
+				T* from = reinterpret_cast<T*>(fromB);
+				T* to = reinterpret_cast<T*>(toB);
+				u32 id = to->id;
+				*to = std::move(*from);
+				to->id = id;
+			};
+
+		desc.copy_fn = [](const Component* fromB, Component* toB)
+			{
+				const T* from = reinterpret_cast<const T*>(fromB);
+				T* to = reinterpret_cast<T*>(toB);
+				u32 id = to->id;
+				*to = *from;
+				to->id = id;
+			};
+
+		desc.serialize_fn = [](Component* comp_, Serializer& s)
+			{
+				T* comp = reinterpret_cast<T*>(comp_);
+				comp->serialize(s);
+			};
+
+		desc.deserialize_fn = [](Component* comp_, Deserializer& d, u32 version)
+			{
+				T* comp = reinterpret_cast<T*>(comp_);
+				comp->deserialize(d, version);
+			};
+
+		return register_component(desc);
+	}
+
+	void register_components()
+	{
+		register_component<SpriteComponent>("Sprite");
+		register_component<AnimatedSpriteComponent>("Animated Sprite");
+		register_component<CameraComponent>("Camera");
+		register_component<MeshComponent>("Mesh");
+		register_component<TerrainComponent>("Terrain");
+		register_component<ParticleSystem>("Particle System");
+		register_component<LightComponent>("Light");
+
+		register_component<BodyComponent>("Body");
+	}
+	
+	void unregister_components()
+	{
+		scene_state->component_register_count = 0u;
+	}
+
+	const char* get_component_name(CompID ID)
+	{
+		ComponentRegister& reg = scene_state->component_register[ID];
+		return reg.name;
+	}
+	
+    u32 get_component_size(CompID ID)
+	{
+		ComponentRegister& reg = scene_state->component_register[ID];
+		return reg.size;
+	}
+	
+    u32 get_component_version(CompID ID)
+	{
+		ComponentRegister& reg = scene_state->component_register[ID];
+		return reg.version;
+	}
+	
+    CompID get_component_id(const char* name)
+	{
+		// TODO: Optimize
+
+		foreach(i, scene_state->component_register_count) {
+			
+			ComponentRegister& reg = scene_state->component_register[i];
+			if (string_equals(name, reg.name))
+				return i;
+		}
+		return INVALID_COMP_ID;
+	}
+	
+    u32 get_component_register_count()
+	{
+		return scene_state->component_register_count;
+	}
+
+	u32 get_component_count(CompID comp_id)
+	{
+		SV_ECS();
+
+		ComponentAllocator& alloc = ecs.component_allocator[comp_id];
+
+		u32 count = 0u;
+
+		foreach(i, alloc.pool_count) {
+
+			ComponentPool* pool = alloc.pools + i;
+			count += pool->count - pool->free_count;
+		}
+
+		return count;
+	}
+	
+    bool component_exists(CompID ID)
+	{
+		return ID < scene_state->component_register_count;
+	}
+
+	SV_AUX void update_world_matrix(EntityTransform& t, Entity entity)
+    {
+		SV_ECS();
+	
+		t.dirty = false;
 
 		XMMATRIX m = get_entity_matrix(entity);
 
-		EntityInternal& entityData = scene.entityData.getInternal(entity);
-		Entity parent = entityData.parent;
+		EntityInternal& internal = ecs.entity_internal[entity - 1u];
+		Entity parent = internal.parent;
 
-		if (parent != SV_ENTITY_NULL) {
+		if (parent != 0) {
 	    
 			XMMATRIX mp = get_entity_world_matrix(parent);
 			m = m * mp;
@@ -1864,29 +2398,28 @@ namespace sv {
 
     SV_AUX void notify_transform(EntityTransform& t, Entity entity)
     {
-		SV_SCENE();
+		SV_ECS();
 	
-		if (!t._modified) {
+		if (!t.dirty) {
 
-			t._modified = true;
+			t.dirty = true;
 
-			auto& list = scene.entityData;
-			EntityInternal& entityData = list.getInternal(entity);
+			EntityInternal& internal = ecs.entity_internal[entity - 1];
 
-			if (entityData.childsCount == 0) return;
+			if (internal.child_count == 0) return;
 
-			auto& entities = scene.entities;
-			for (u32 i = 0; i < entityData.childsCount; ++i) {
-				EntityTransform& et = list.getTransform(entities[entityData.handleIndex + 1 + i]);
-				et._modified = true;
+			for (u32 i = 0; i < internal.child_count; ++i) {
+				Entity e = ecs.entity_hierarchy[internal.hierarchy_index + 1 + i];
+				EntityTransform& et = ecs.entity_transform[e - 1u];
+				et.dirty = true;
 			}
 		}
     }
 
     void set_entity_transform(Entity entity, const Transform& transform)
     {
-		SV_SCENE();
-		EntityTransform& t = scene.entityData.getTransform(entity);
+		SV_ECS();
+		EntityTransform& t = ecs.entity_transform[entity - 1u];
 		t.position = transform.position;
 		t.rotation = transform.rotation;
 		t.scale = transform.scale;
@@ -1895,32 +2428,32 @@ namespace sv {
     
     void set_entity_position(Entity entity, const v3_f32& position)
     {
-		SV_SCENE();
-		EntityTransform& t = scene.entityData.getTransform(entity);
+		SV_ECS();
+		EntityTransform& t = ecs.entity_transform[entity - 1u];
 		t.position = position;
 		notify_transform(t, entity);
     }
     
     void set_entity_rotation(Entity entity, const v4_f32& rotation)
     {
-		SV_SCENE();
-		EntityTransform& t = scene.entityData.getTransform(entity);
+		SV_ECS();
+		EntityTransform& t = ecs.entity_transform[entity - 1u];
 		t.rotation = rotation;
 		notify_transform(t, entity);
     }
     
     void set_entity_scale(Entity entity, const v3_f32& scale)
     {
-		SV_SCENE();
-		EntityTransform& t = scene.entityData.getTransform(entity);
+		SV_ECS();
+		EntityTransform& t = ecs.entity_transform[entity - 1u];
 		t.scale = scale;
 		notify_transform(t, entity);
     }
     
     void set_entity_matrix(Entity entity, const XMMATRIX& matrix)
     {
-		SV_SCENE();
-		EntityTransform& t = scene.entityData.getTransform(entity);
+		SV_ECS();
+		EntityTransform& t = ecs.entity_transform[entity - 1u];
 	
 		notify_transform(t, entity);
 
@@ -1937,8 +2470,8 @@ namespace sv {
 
     void set_entity_position2D(Entity entity, const v2_f32& position)
     {
-		SV_SCENE();
-		EntityTransform& t = scene.entityData.getTransform(entity);
+		SV_ECS();
+		EntityTransform& t = ecs.entity_transform[entity - 1u];
 		t.position.x = position.x;
 		t.position.y = position.y;
 		notify_transform(t, entity);
@@ -1946,8 +2479,8 @@ namespace sv {
     
     Transform* get_entity_transform_ptr(Entity entity)
     {
-		SV_SCENE();
-		EntityTransform& t = scene.entityData.getTransform(entity);
+		SV_ECS();
+		EntityTransform& t = ecs.entity_transform[entity - 1u];
 		notify_transform(t, entity);
 
 		return reinterpret_cast<Transform*>(&t.position);
@@ -1955,8 +2488,8 @@ namespace sv {
     
     v3_f32* get_entity_position_ptr(Entity entity)
     {
-		SV_SCENE();
-		EntityTransform& t = scene.entityData.getTransform(entity);
+		SV_ECS();
+		EntityTransform& t = ecs.entity_transform[entity - 1u];
 		notify_transform(t, entity);
 
 		return &t.position;
@@ -1964,8 +2497,8 @@ namespace sv {
     
     v4_f32* get_entity_rotation_ptr(Entity entity)
     {
-		SV_SCENE();
-		EntityTransform& t = scene.entityData.getTransform(entity);
+		SV_ECS();
+		EntityTransform& t = ecs.entity_transform[entity - 1u];
 		notify_transform(t, entity);
 
 		return &t.rotation;
@@ -1973,8 +2506,8 @@ namespace sv {
     
     v3_f32* get_entity_scale_ptr(Entity entity)
     {
-		SV_SCENE();
-		EntityTransform& t = scene.entityData.getTransform(entity);
+		SV_ECS();
+		EntityTransform& t = ecs.entity_transform[entity - 1u];
 		notify_transform(t, entity);
 
 		return &t.scale;
@@ -1982,8 +2515,8 @@ namespace sv {
     
     v2_f32* get_entity_position2D_ptr(Entity entity)
     {
-		SV_SCENE();
-		EntityTransform& t = scene.entityData.getTransform(entity);
+		SV_ECS();
+		EntityTransform& t = ecs.entity_transform[entity - 1u];
 		notify_transform(t, entity);
 
 		return reinterpret_cast<v2_f32*>(&t.position);
@@ -1991,8 +2524,8 @@ namespace sv {
     
     v2_f32* get_entity_scale2D_ptr(Entity entity)
     {
-		SV_SCENE();
-		EntityTransform& t = scene.entityData.getTransform(entity);
+		SV_ECS();
+		EntityTransform& t = ecs.entity_transform[entity - 1u];
 		notify_transform(t, entity);
 
 		return reinterpret_cast<v2_f32*>(&t.scale);
@@ -2000,8 +2533,8 @@ namespace sv {
     
     Transform get_entity_transform(Entity entity)
     {
-		SV_SCENE();
-		EntityTransform& t = scene.entityData.getTransform(entity);
+		SV_ECS();
+		EntityTransform& t = ecs.entity_transform[entity - 1u];
 		Transform trans;
 		trans.position = t.position;
 		trans.rotation = t.rotation;
@@ -2011,54 +2544,54 @@ namespace sv {
     
     v3_f32 get_entity_position(Entity entity)
     {
-		SV_SCENE();
-		EntityTransform& t = scene.entityData.getTransform(entity);
+		SV_ECS();
+		EntityTransform& t = ecs.entity_transform[entity - 1u];
 		return t.position;
     }
     
     v4_f32 get_entity_rotation(Entity entity)
     {
-		SV_SCENE();
-		EntityTransform& t = scene.entityData.getTransform(entity);
+		SV_ECS();
+		EntityTransform& t = ecs.entity_transform[entity - 1u];
 		return t.rotation;
     }
     
     v3_f32 get_entity_scale(Entity entity)
     {
-		SV_SCENE();
-		EntityTransform& t = scene.entityData.getTransform(entity);
+		SV_ECS();
+		EntityTransform& t = ecs.entity_transform[entity - 1u];
 		return t.scale;
     }
     
     v2_f32 get_entity_position2D(Entity entity)
     {
-		SV_SCENE();
-		EntityTransform& t = scene.entityData.getTransform(entity);
+		SV_ECS();
+		EntityTransform& t = ecs.entity_transform[entity - 1u];
 		return vec3_to_vec2(t.position);
     }
     
     v2_f32 get_entity_scale2D(Entity entity)
     {
-		SV_SCENE();
-		EntityTransform& t = scene.entityData.getTransform(entity);
+		SV_ECS();
+		EntityTransform& t = ecs.entity_transform[entity - 1u];
 		return vec3_to_vec2(t.scale);
     }
 
     XMMATRIX get_entity_matrix(Entity entity)
     {
-		SV_SCENE();
-		EntityTransform& t = scene.entityData.getTransform(entity);
-
+		SV_ECS();
+		EntityTransform& t = ecs.entity_transform[entity - 1u];
+		
 		return XMMatrixScalingFromVector(vec3_to_dx(t.scale)) * XMMatrixRotationQuaternion(vec4_to_dx(t.rotation))
 			* XMMatrixTranslation(t.position.x, t.position.y, t.position.z);
     }
 
     Transform get_entity_world_transform(Entity entity)
     {
-		SV_SCENE();
-		EntityTransform& t = scene.entityData.getTransform(entity);
+		SV_ECS();
+		EntityTransform& t = ecs.entity_transform[entity - 1u];
 
-		if (t._modified) update_world_matrix(t, entity);
+		if (t.dirty) update_world_matrix(t, entity);
 		XMVECTOR scale;
 		XMVECTOR rotation;
 		XMVECTOR position;
@@ -2075,17 +2608,17 @@ namespace sv {
     
     v3_f32 get_entity_world_position(Entity entity)
     {
-		SV_SCENE();
-		EntityTransform& t = scene.entityData.getTransform(entity);
-		if (t._modified) update_world_matrix(t, entity);
+		SV_ECS();
+		EntityTransform& t = ecs.entity_transform[entity - 1u];
+		if (t.dirty) update_world_matrix(t, entity);
 		return *(v3_f32*) &t.world_matrix._41;
     }
     
     v4_f32 get_entity_world_rotation(Entity entity)
     {
-		SV_SCENE();
-		EntityTransform& t = scene.entityData.getTransform(entity);
-		if (t._modified) update_world_matrix(t, entity);
+		SV_ECS();
+		EntityTransform& t = ecs.entity_transform[entity - 1u];
+		if (t.dirty) update_world_matrix(t, entity);
 		XMVECTOR scale;
 		XMVECTOR rotation;
 		XMVECTOR position;
@@ -2097,21 +2630,21 @@ namespace sv {
     
     v3_f32 get_entity_world_scale(Entity entity)
     {
-		SV_SCENE();
-		EntityTransform& t = scene.entityData.getTransform(entity);
-		if (t._modified) update_world_matrix(t, entity);
+		SV_ECS();
+		EntityTransform& t = ecs.entity_transform[entity - 1u];
+		if (t.dirty) update_world_matrix(t, entity);
 		return { vec3_length(*(v3_f32*)& t.world_matrix._11), vec3_length(*(v3_f32*)& t.world_matrix._21), vec3_length(*(v3_f32*)& t.world_matrix._31) };
     }
     
     XMMATRIX get_entity_world_matrix(Entity entity)
     {
-		SV_SCENE();
-		EntityTransform& t = scene.entityData.getTransform(entity);
-		if (t._modified) update_world_matrix(t, entity);
+		SV_ECS();
+		EntityTransform& t = ecs.entity_transform[entity - 1u];
+		if (t.dirty) update_world_matrix(t, entity);
 		return XMLoadFloat4x4(&t.world_matrix);
     }
 
-    //////////////////////////////////////////// COMPONENTS ////////////////////////////////////////////////////////
+	//////////////////////////////////////////// COMPONENTS ////////////////////////////////////////////////////////
 
     bool SpriteSheet::add_sprite(u32* _id, const char* name, const v4_f32& texcoord)
     {

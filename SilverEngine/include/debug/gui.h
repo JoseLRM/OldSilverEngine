@@ -67,6 +67,11 @@ namespace sv {
 		GuiPopupTrigger_LastWidget
     };
 
+	enum GuiReciverTrigger : u32 {
+		GuiReciverTrigger_Root,
+		GuiReciverTrigger_LastWidget
+    };
+
     SV_API void gui_push_id(u64 id);
     SV_API void gui_push_id(const char* id);
     SV_API void gui_pop_id(u32 count = 1u);
@@ -82,7 +87,7 @@ namespace sv {
 	SV_API void gui_close_popup();
 
 	SV_API void gui_send_package(const void* data, size_t size, u64 package_id);
-	SV_API bool gui_recive_package(void** dst, u64 package_id);
+	SV_API bool gui_recive_package(void** dst, u64 package_id, GuiReciverTrigger trigger);
 
     SV_API bool gui_button(const char* text, u64 id = u64_max);
 	SV_API bool gui_image_button(const char* text, GPUImage* image, v4_f32 texcoord, u64 id = u64_max);
@@ -148,7 +153,7 @@ namespace sv {
 		
 		GuiSpritePackage* package;
 
-		if (gui_recive_package((void**)&package, GUI_PACKAGE_SPRITE)) {
+		if (gui_recive_package((void**)&package, GUI_PACKAGE_SPRITE, GuiReciverTrigger_LastWidget)) {
 
 			SpriteSheetAsset asset;
 
@@ -174,7 +179,7 @@ namespace sv {
 		
 		GuiSpriteAnimationPackage* package;
 
-		if (gui_recive_package((void**)&package, GUI_PACKAGE_SPRITE_ANIMATION)) {
+		if (gui_recive_package((void**)&package, GUI_PACKAGE_SPRITE_ANIMATION, GuiReciverTrigger_LastWidget)) {
 
 			SpriteSheetAsset asset;
 

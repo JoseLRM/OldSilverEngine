@@ -355,37 +355,39 @@ namespace sv {
 
 	void update_terrains()
 	{
-		ComponentIterator it;
-		CompView<TerrainComponent> view;
+		CompID terrain_id = get_component_id("Terrain");
 
-		if (comp_it_begin(it, view)) {
+		for (CompIt it = comp_it_begin(terrain_id);
+			 it.has_next;
+			 comp_it_next(it))
+		{
+			TerrainComponent& terrain = *(TerrainComponent*)it.comp;
 
-			do {
-				TerrainComponent& terrain = *view.comp;
+			if (terrain.dirty) {
+				
+				terrain.dirty = false;
 
-				if (terrain.dirty) {
+				if (terrain.vbuffer == NULL || terrain.ibuffer == NULL) {
 
-					terrain.dirty = false;
-
-					if (terrain.vbuffer == NULL || terrain.ibuffer == NULL) {
-						
-						terrain_calculate_texcoords(terrain);
-						terrain_calculate_indices(terrain);
-						terrain_calculate_normals(terrain);
-
-						terrain_create_buffers(terrain);
+					if (terrain.heights.size() != terrain.resolution.x * terrain.resolution.y) {
+						terrain_set_flat(terrain, 0.f);
 					}
-					else {
-
-						terrain_calculate_normals(terrain);
-
-						CommandList cmd = graphics_commandlist_get();
 						
-						terrain_update_buffers(terrain, cmd);
-					}
+					terrain_calculate_texcoords(terrain);
+					terrain_calculate_indices(terrain);
+					terrain_calculate_normals(terrain);
+
+					terrain_create_buffers(terrain);
+				}
+				else {
+
+					terrain_calculate_normals(terrain);
+
+					CommandList cmd = graphics_commandlist_get();
+						
+					terrain_update_buffers(terrain, cmd);
 				}
 			}
-			while (comp_it_next(it, view));
 		}
 	}
 	
@@ -405,7 +407,7 @@ namespace sv {
 
 	SV_INTERNAL void display_terrain_component_data(DisplayComponentEvent* e)
 	{
-		if (TerrainComponent::ID == e->comp_id) {
+		if (get_component_id("Terrain") == e->comp_id) {
 				
 			TerrainComponent& t = *reinterpret_cast<TerrainComponent*>(e->comp);
 
@@ -449,7 +451,7 @@ namespace sv {
 		
 		Entity entity = entities.back();
 				
-		return get_component<TerrainComponent>(entity);
+		return (TerrainComponent*)get_entity_component(entity, get_component_id("Terrain"));
 	}
 
 	SV_INTERNAL void display_terrain_gui()

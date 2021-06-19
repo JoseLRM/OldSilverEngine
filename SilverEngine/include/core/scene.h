@@ -3,16 +3,19 @@
 #include "platform/graphics.h"
 #include "core/mesh.h"
 
-#define SV_ENTITY_NULL 0u
-#define SV_COMPONENT_ID_INVALID std::numeric_limits<sv::CompID>::max()
-
 namespace sv {
 
+	constexpr u32 COMPONENT_MAX = 64u;
+	
     constexpr u32 ENTITY_NAME_SIZE = 30u;
+	constexpr u32 ENTITY_COMPONENTS_MAX = 10u;
     constexpr u32 COMPONENT_NAME_SIZE = 30u;
 
-    typedef u16 CompID;
+	constexpr u32 INVALID_COMP_ID = u32_max;
+
+    typedef u32 CompID;
     typedef u32 Entity;
+	typedef u32 Prefab;
 
     struct CameraComponent;
 
@@ -21,8 +24,8 @@ namespace sv {
 		void* user_ptr = nullptr;
 		u32 user_id = 0u;
 	
-		Entity main_camera = SV_ENTITY_NULL;
-		Entity player = SV_ENTITY_NULL;
+		Entity main_camera = 0;
+		Entity player = 0;
 
 		struct{
 			// This asset can't be attached to a image file because it has a different initialization
@@ -67,68 +70,99 @@ namespace sv {
 	SV_API bool set_skybox(const char* filepath);
 	
     ////////////////////////////////////////// ECS ////////////////////////////////////////////////////////
+	
+	struct Component {
+		u32 id;
+		u32 flags;
+	};
 
-    enum EntitySystemFlag : u64 {
-		EntitySystemFlag_None = 0u,
-		EntitySystemFlag_NoSerialize = SV_BIT(32)
-    };
-
-    struct BaseComponent {
-		u32 _id = 0u;
-		u32 flags = 0u;
-    };
-
-    struct CompRef {
-		CompID id;
-		BaseComponent* ptr;
-    };
-
-    template<typename Component>
-    struct CompView {
-		Entity entity;
+	struct CompRef {
+		CompID comp_id;
 		Component* comp;
-    };
+	};
 
-    typedef void(*CreateComponentFunction)(BaseComponent*);
-    typedef void(*DestroyComponentFunction)(BaseComponent*);
-    typedef void(*MoveComponentFunction)(BaseComponent* from, BaseComponent* to);
-    typedef void(*CopyComponentFunction)(const BaseComponent* from, BaseComponent* to);
-    typedef void(*SerializeComponentFunction)(BaseComponent* comp, Serializer& serializer);
-    typedef void(*DeserializeComponentFunction)(BaseComponent* comp, Deserializer& deserializer, u32 version);
+	// Entity
 
-    struct ComponentRegisterDesc {
+	SV_API Entity create_entity(Entity parent = 0, const char* name = NULL, Prefab prefab = 0);
+	SV_API void   destroy_entity(Entity entity);
+	SV_API Entity duplicate_entity(Entity entity);
 
-		const char*                   name;
-		u32			      componentSize;
-		u32                           version;
-		CreateComponentFunction	      createFn;
-		DestroyComponentFunction      destroyFn;
-		MoveComponentFunction	      moveFn;
-		CopyComponentFunction	      copyFn;
-		SerializeComponentFunction    serializeFn;
-		DeserializeComponentFunction  deserializeFn;
+	SV_API bool        entity_exists(Entity entity);
+	SV_API const char* get_entity_name(Entity entity);
+	SV_API u64         get_entity_flags(Entity entity);
+	SV_API void	       set_entity_name(Entity entity, const char* name);
+    SV_API u32	       get_entity_childs_count(Entity parent);
+    SV_API void	       get_entity_childs(Entity parent, Entity const** childsArray);
+    SV_API Entity      get_entity_parent(Entity entity);
+    SV_API u32	       get_entity_component_count(Entity entity);
+	SV_API CompRef     get_entity_component_by_index(Entity entity, u32 index);
+    SV_API u32	       get_entity_count();
+    SV_API Entity      get_entity_by_index(u32 index);
 
-    };
+	SV_API bool       has_entity_component(Entity entity, CompID comp_id);
+	SV_API Component* add_entity_component(Entity entity, CompID comp_id);
+	SV_API void       remove_entity_component(Entity entity, CompID comp_id);
+	SV_API Component* get_entity_component(Entity entity, CompID comp_id);
 
-    // Component Register
+	// Prefab
 
-    SV_API CompID register_component(const ComponentRegisterDesc* desc);
-    SV_API void   invalidate_component_callbacks(CompID id);
-    SV_API void   unregister_components();
+	SV_API bool   create_prefab_file(const char* name, const char* filepath);
+	SV_API Prefab load_prefab(const char* filepath);
+	SV_API bool   save_prefab(Prefab prefab);
+	SV_API bool   save_prefab(Prefab prefab, const char* filepath);
 
-    SV_API const char*  get_component_name(CompID ID);
-    SV_API u32		get_component_size(CompID ID);
-    SV_API u32		get_component_version(CompID ID);
-    SV_API CompID	get_component_id(const char* name);
-    SV_API u32		get_component_register_count();
+	SV_API bool        prefab_exists(Prefab prefab);
+	SV_API const char* get_prefab_name(Prefab prefab);
+	
+	SV_API bool       has_prefab_component(Prefab prefab, CompID comp_id);
+	SV_API Component* add_prefab_component(Prefab prefab, CompID comp_id);
+	SV_API void       remove_prefab_component(Prefab prefab, CompID comp_id);
+	SV_API Component* get_prefab_component(Prefab prefab, CompID comp_id);
+	SV_API u32	      get_prefab_component_count(Prefab prefab);
+	SV_API CompRef    get_prefab_component_by_index(Prefab prefab, u32 index);
 
-    SV_API void		create_component(CompID ID, BaseComponent* ptr, Entity entity);
-    SV_API void		destroy_component(CompID ID, BaseComponent* ptr);
-    SV_API void		move_component(CompID ID, BaseComponent* from, BaseComponent* to);
-    SV_API void		copy_component(CompID ID, const BaseComponent* from, BaseComponent* to);
-    SV_API void		serialize_component(CompID ID, BaseComponent* comp, Serializer& serializer);
-    SV_API void		deserialize_component(CompID ID, BaseComponent* comp, Deserializer& deserializer, u32 version);
-    SV_API bool		component_exist(CompID ID);
+	// Iterators
+	
+	struct CompIt {
+		u32 flags;
+		Prefab prefab;
+		u32 entity_index;
+		CompID comp_id;
+		u32 pool_index;
+		Component* comp;
+		Entity entity;
+		bool has_next;
+	};
+
+	enum CompItFlag : u32 {
+		CompItFlag_Once = SV_BIT(0),
+	};
+	
+	SV_API CompIt comp_it_begin(CompID comp_id, u32 flags = 0u);
+	SV_API void comp_it_next(CompIt& comp_it);
+
+	struct PrefabIt {
+		void* ptr;
+		bool has_next;
+		Prefab prefab;
+	};
+
+	SV_API PrefabIt prefab_it_begin();
+	SV_API void prefab_it_next(PrefabIt& prefab_it);
+
+	// Component register
+
+	void register_components();
+	void unregister_components();
+
+    SV_API const char* get_component_name(CompID comp_id);
+    SV_API u32		   get_component_size(CompID comp_id);
+    SV_API u32		   get_component_version(CompID comp_id);
+    SV_API CompID	   get_component_id(const char* name);
+    SV_API u32		   get_component_register_count();
+	SV_API u32         get_component_count(CompID comp_id);
+
+    SV_API bool	component_exists(CompID comp_id);
 
     struct Transform {
 
@@ -176,201 +210,6 @@ namespace sv {
     SV_API v3_f32 get_entity_world_scale(Entity entity);
     SV_API XMMATRIX get_entity_world_matrix(Entity entity);
 
-    // Entity
-
-    SV_API Entity       create_entity(Entity parent = SV_ENTITY_NULL, const char* name = nullptr);
-    SV_API void	        destroy_entity(Entity entity);
-    SV_API void	        clear_entity(Entity entity);
-    SV_API Entity       duplicate_entity(Entity entity);
-    SV_API bool	        entity_is_empty(Entity entity);
-    SV_API bool	        entity_exist(Entity entity);
-    SV_API const char*  get_entity_name(Entity entity);
-    SV_API void	        set_entity_name(Entity entity, const char* name);
-    SV_API u32	        get_entity_childs_count(Entity parent);
-    SV_API void		get_entity_childs(Entity parent, Entity const** childsArray);
-    SV_API Entity	get_entity_parent(Entity entity);
-    SV_API u64&		get_entity_flags(Entity entity);
-    SV_API u32		get_entity_component_count(Entity entity);
-    SV_API u32		get_entity_count();
-    SV_API Entity	get_entity_by_index(u32 index);
-
-    // Components
-
-    SV_API BaseComponent* add_component(Entity entity, BaseComponent* comp, CompID componentID, size_t componentSize);
-    SV_API BaseComponent* add_component_by_id(Entity entity, CompID componentID);
-    SV_API BaseComponent* get_component_by_id(Entity entity, CompID componentID);
-    SV_API CompRef        get_component_by_index(Entity entity, u32 index);
-    SV_API void		  remove_component_by_id(Entity entity, CompID componentID);
-    SV_API u32		  get_component_count(CompID ID);
-
-    // Iterators
-
-    struct ComponentIterator {
-		
-		BaseComponent* _it;
-		BaseComponent* _end;
-		u32 _pool;
-		CompID _comp_id;
-
-    };
-
-    SV_API bool comp_it_begin(ComponentIterator& it, Entity& entity, BaseComponent*& comp, CompID comp_id);
-    SV_API bool comp_it_next(ComponentIterator& it, Entity& entity, BaseComponent*& comp);
-
-    template<typename Component>
-    SV_INTERNAL bool comp_it_begin(ComponentIterator& it, CompView<Component>& view)
-    {
-		return comp_it_begin(it, view.entity, (BaseComponent*&)view.comp, Component::ID);
-    }
-    
-    template<typename Component>
-    SV_INTERNAL bool comp_it_next(ComponentIterator& it, CompView<Component>& view)
-    {
-		return comp_it_next(it, view.entity, (BaseComponent*&)view.comp);
-    }
-
-    template<typename Component, typename T>
-    SV_INTERNAL void for_each_comp(T fn)
-    {
-		ComponentIterator it;
-		CompView<Component> view;
-
-		if (comp_it_begin(it, view)) {
-	    
-			do {
-				if (!fn(view.entity, *view.comp))
-					break;
-			}
-			while (comp_it_next(it, view));
-		}
-    }
-
-    // TEMPLATES
-
-    template<typename Component>
-    void register_component_ex(const char* name)
-    {
-		ComponentRegisterDesc desc;
-		desc.componentSize = sizeof(Component);
-		desc.name = name;
-		desc.version = Component::VERSION;
-
-		desc.createFn = [](BaseComponent* comp_ptr)
-			{
-				Component* comp = new(comp_ptr) Component();
-				comp->create();
-			};
-
-		desc.destroyFn = [](BaseComponent* comp_ptr)
-			{
-				Component* comp = reinterpret_cast<Component*>(comp_ptr);
-				comp->destroy();
-				comp->~Component();
-			};
-
-		desc.moveFn = [](BaseComponent* from_ptr, BaseComponent* to_ptr)
-			{
-				Component* from = reinterpret_cast<Component*>(from_ptr);
-				Component* to = reinterpret_cast<Component*>(to_ptr);
-				to->move(from);
-			};
-
-		desc.copyFn = [](const BaseComponent* from_ptr, BaseComponent* to_ptr)
-			{
-				const Component* from = reinterpret_cast<const Component*>(from_ptr);
-				Component* to = reinterpret_cast<Component*>(to_ptr);
-				to->copy(from);
-			};
-
-		desc.serializeFn = [](BaseComponent* comp_, Serializer& s)
-			{
-				Component* comp = reinterpret_cast<Component*>(comp_);
-				comp->serialize(s);
-			};
-
-		desc.deserializeFn = [](BaseComponent* comp_, Deserializer& d, u32 version)
-			{
-				Component* comp = reinterpret_cast<Component*>(comp_);
-				comp->deserialize(d, version);
-			};
-
-		Component::ID = register_component(&desc);
-    }
-
-    template<typename Component>
-    void register_component(const char* name)
-    {
-		ComponentRegisterDesc desc;
-		desc.componentSize = sizeof(Component);
-		desc.name = name;
-		desc.version = Component::VERSION;
-
-		desc.createFn = [](BaseComponent* compPtr)
-			{
-				new(compPtr) Component();
-			};
-
-		desc.destroyFn = [](BaseComponent* compPtr)
-			{
-				Component* comp = reinterpret_cast<Component*>(compPtr);
-				comp->~Component();
-			};
-
-		desc.moveFn = [](BaseComponent* fromB, BaseComponent* toB)
-			{
-				Component* from = reinterpret_cast<Component*>(fromB);
-				Component* to = reinterpret_cast<Component*>(toB);
-				u32 id = to->_id;
-				*to = std::move(*from);
-				to->_id = id;
-			};
-
-		desc.copyFn = [](const BaseComponent* fromB, BaseComponent* toB)
-			{
-				const Component* from = reinterpret_cast<const Component*>(fromB);
-				Component* to = reinterpret_cast<Component*>(toB);
-				u32 id = to->_id;
-				*to = *from;
-				to->_id = id;
-			};
-
-		desc.serializeFn = [](BaseComponent* comp_, Serializer& s)
-			{
-				Component* comp = reinterpret_cast<Component*>(comp_);
-				comp->serialize(s);
-			};
-
-		desc.deserializeFn = [](BaseComponent* comp_, Deserializer& d, u32 version)
-			{
-				Component* comp = reinterpret_cast<Component*>(comp_);
-				comp->deserialize(d, version);
-			};
-
-		Component::ID = register_component(&desc);
-    }
-
-    template<typename Component, typename... Args>
-    Component* add_component(Entity entity, Args&& ... args) {
-		Component component(std::forward<Args>(args)...);
-		return reinterpret_cast<Component*>(add_component(entity, (BaseComponent*)& component, Component::ID, Component::SIZE));
-    }
-
-    template<typename Component>
-    Component* add_component(Entity entity) {
-		return reinterpret_cast<Component*>(add_component_by_id(entity, Component::ID));
-    }
-
-    template<typename Component>
-    Component* get_component(Entity entity)
-    {
-		return reinterpret_cast<Component*>(get_component_by_id(entity, Component::ID));
-    }
-
-    template<typename Component>
-    void remove_component(Entity entity) {
-		remove_component_by_id(entity, Component::ID);
-    }
-
     ///////////////////////////////////////////////////////// COMPONENTS /////////////////////////////////////////////////////////
     
     constexpr u32 SPRITE_NAME_SIZE = 15u;
@@ -416,9 +255,8 @@ namespace sv {
 		SpriteComponentFlag_YFlip = SV_BIT(1), // Reverse the sprite coordinates in the y axis
     };
 
-    struct SpriteComponent : public BaseComponent {
+    struct SpriteComponent : public Component {
 
-		static CompID SV_API ID;
 		static constexpr u32 VERSION = 1u;
 
 		SpriteSheetAsset sprite_sheet;
@@ -431,9 +269,8 @@ namespace sv {
 
     };
 
-    struct AnimatedSpriteComponent : public BaseComponent {
+    struct AnimatedSpriteComponent : public Component {
 
-		static CompID SV_API ID;
 		static constexpr u32 VERSION = 1u;
 	
 		SpriteSheetAsset sprite_sheet;
@@ -457,9 +294,8 @@ namespace sv {
 		ProjectionType_Perspective,
     };
 
-    struct CameraComponent : public BaseComponent {
+    struct CameraComponent : public Component {
 
-		static CompID SV_API ID;
 		static constexpr u32 VERSION = 1u;
 
 		ProjectionType projection_type = ProjectionType_Orthographic;
@@ -512,9 +348,8 @@ namespace sv {
 
     };
 
-    struct MeshComponent : public BaseComponent {
+    struct MeshComponent : public Component {
 
-		static CompID SV_API ID;
 		static constexpr u32 VERSION = 0u;
 	
 		MeshAsset		mesh;
@@ -531,9 +366,8 @@ namespace sv {
 		LightType_Spot,
     };
 
-    struct LightComponent : public BaseComponent {
+    struct LightComponent : public Component {
 
-		static CompID SV_API ID;
 		static constexpr u32 VERSION = 1u;
 	
 		LightType light_type = LightType_Point;
@@ -559,9 +393,8 @@ namespace sv {
 		BodyComponentFlag_Trigger = SV_BIT(0)
     };
 
-    struct BodyComponent : public BaseComponent {
+    struct BodyComponent : public Component {
 
-		static CompID SV_API ID;
 		static constexpr u32 VERSION = 2u;
 
 		BodyType body_type = BodyType_Static;
@@ -596,15 +429,19 @@ namespace sv {
     
     // on_body_collision
     struct BodyCollisionEvent {
-		CompView<BodyComponent> body0;
-		CompView<BodyComponent> body1;
+		BodyComponent* body0;
+		Entity entity0;
+		BodyComponent* body1;
+		Entity entity1;
 		CollisionState state;
     };
 
     // on_trigger_collision
     struct TriggerCollisionEvent {
-		CompView<BodyComponent> trigger;
-		CompView<BodyComponent> body;
+		BodyComponent* trigger_body;
+		Entity trigger_entity;
+		BodyComponent* body;
+		Entity entity;
 		CollisionState state;
     };
 }

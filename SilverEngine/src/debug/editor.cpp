@@ -38,6 +38,7 @@ namespace sv {
 		AssetElementType_Mesh,
 		AssetElementType_Material,
 		AssetElementType_SpriteSheet,
+		AssetElementType_Prefab,
 		AssetElementType_Directory,
     };
 
@@ -88,9 +89,14 @@ namespace sv {
 		ModelInfo model_info;
 	};
 
+	struct CreatePrefabData {
+		char name[FILENAME_SIZE + 1u] = "";
+	};
+
     struct GlobalEditorData {
 
 		List<Entity> selected_entities;
+		Prefab selected_prefab = 0;
 		bool camera_focus = false;
 
 		AssetBrowserInfo asset_browser;
@@ -103,6 +109,7 @@ namespace sv {
 		SpriteSheetEditorData sprite_sheet_editor_data;
 		MaterialEditorData material_editor_data;
 		ImportModelData import_model_data;
+		CreatePrefabData create_prefab_data;
 
 		char next_scene_name[SCENENAME_SIZE + 1u] = "";
     };
@@ -121,8 +128,10 @@ namespace sv {
 		if (unselect_all || !input.keys[Key_Shift]) editor.selected_entities.reset();
 		else if (is_entity_selected(entity)) return;
 
-		if (entity_exist(entity))
+		if (entity_exists(entity))
 			editor.selected_entities.push_back(entity);
+
+		editor.selected_prefab = 0;
 	}
 
 	SV_AUX void unselect_entity(Entity entity)
@@ -133,6 +142,12 @@ namespace sv {
 				break;
 			}
 		}
+	}
+
+	SV_AUX void select_prefab(Prefab prefab)
+	{
+		editor.selected_entities.reset();
+		editor.selected_prefab = prefab;
 	}
 
     SV_INTERNAL void show_reset_popup()
@@ -261,8 +276,8 @@ namespace sv {
 		EntityCreate_Action& data = *(EntityCreate_Action*)pdata;
 
 		Entity parent = data.parent;
-		if (!entity_exist(parent))
-			parent = SV_ENTITY_NULL;
+		if (!entity_exists(parent))
+			parent = 0;
 
 		const char* name = (const char*)(pdata) + sizeof(data);
 		if (*name == '\0')
@@ -281,18 +296,18 @@ namespace sv {
     SV_INTERNAL void undo_entity_create(void* pdata, void* preturn) {
 
 		EntityCreate_Action& data = *(EntityCreate_Action*)pdata;
-		if (entity_exist(data.entity))
+		if (entity_exists(data.entity))
 			destroy_entity(data.entity);
     }
     
     SV_INTERNAL void construct_entity_sprite(Entity entity) {
-		add_component<SpriteComponent>(entity);
+		add_entity_component(entity, get_component_id("Sprite"));
     }
     SV_INTERNAL void construct_entity_2D_camera(Entity entity) {
-		add_component<CameraComponent>(entity);
+		add_entity_component(entity, get_component_id("Camera"));
     }
     
-    SV_INTERNAL Entity editor_create_entity(Entity parent = SV_ENTITY_NULL, const char* name = nullptr, ConstructEntityActionFn construct_entity = nullptr)
+    SV_INTERNAL Entity editor_create_entity(Entity parent = 0, const char* name = nullptr, ConstructEntityActionFn construct_entity = nullptr)
     {
 		DoUndoStack& stack = dev.do_undo_stack;
 		stack.lock();
@@ -300,7 +315,7 @@ namespace sv {
 		stack.push_action(do_entity_create, undo_entity_create);
 	
 		EntityCreate_Action data;
-		data.entity = SV_ENTITY_NULL;
+		data.entity = 0;
 		data.parent = parent;
 		data.construct_entity = construct_entity;
 	
@@ -690,7 +705,7 @@ namespace sv {
 
 					Entity parent = get_entity_parent(e);
 
-					if (entity_exist(parent)) {
+					if (entity_exists(parent)) {
 
 						XMMATRIX wm = get_entity_world_matrix(parent);
 
@@ -759,13 +774,13 @@ namespace sv {
 		return true;
     }
     
-    SV_INTERNAL void show_component_info(Entity entity, CompID comp_id, BaseComponent* comp)
+    SV_INTERNAL bool show_component_info(CompID comp_id, Component* comp)
     {
 		bool remove;
 
-		if (egui_begin_component(entity, comp_id, &remove)) {
+		if (egui_begin_component(comp_id, &remove)) {
 
-			if (SpriteComponent::ID == comp_id) {
+			if (get_component_id("Sprite") == comp_id) {
 
 				SpriteComponent& spr = *reinterpret_cast<SpriteComponent*>(comp);
 
@@ -779,7 +794,7 @@ namespace sv {
 				if (gui_checkbox("YFlip", yflip, 4u)) spr.flags = spr.flags ^ SpriteComponentFlag_YFlip;
 			}
 
-			if (AnimatedSpriteComponent::ID == comp_id) {
+			if (get_component_id("Animated Sprite") == comp_id) {
 
 				AnimatedSpriteComponent& spr = *reinterpret_cast<AnimatedSpriteComponent*>(comp);
 
@@ -801,7 +816,7 @@ namespace sv {
 				if (gui_checkbox("YFlip", yflip, 10u)) spr.flags = spr.flags ^ SpriteComponentFlag_YFlip;
 			}
 	    
-			if (MeshComponent::ID == comp_id) {
+			if (get_component_id("Mesh") == comp_id) {
 
 				MeshComponent& m = *reinterpret_cast<MeshComponent*>(comp);
 
@@ -816,18 +831,9 @@ namespace sv {
 				  gui_material(*m.material.get());*/
 			}
 
-			if (CameraComponent::ID == comp_id) {
+			if (get_component_id("Camera") == comp_id) {
 
 				CameraComponent& cam = *reinterpret_cast<CameraComponent*>(comp);
-
-				SceneData& d = *get_scene_data();
-				bool main = d.main_camera == entity;
-
-				if (gui_checkbox("MainCamera", main, 0u)) {
-
-					if (main) d.main_camera = entity;
-					else d.main_camera = SV_ENTITY_NULL;
-				}
 
 				f32 dimension = SV_MIN(cam.width, cam.height);
 
@@ -885,7 +891,7 @@ namespace sv {
 				}
 			}
 
-			if (LightComponent::ID == comp_id) {
+			if (get_component_id("Light") == comp_id) {
 
 				LightComponent& l = *reinterpret_cast<LightComponent*>(comp);
 
@@ -909,7 +915,7 @@ namespace sv {
 				}
 			}
 
-			if (BodyComponent::ID == comp_id) {
+			if (get_component_id("Body") == comp_id) {
 
 				BodyComponent& b = *reinterpret_cast<BodyComponent*>(comp);
 				const SceneData& scene = *get_scene_data();
@@ -975,10 +981,7 @@ namespace sv {
 			egui_end_component();
 		}
 
-		if (remove) {
-
-			remove_component_by_id(entity, comp_id);
-		}
+		return remove;
     }
 
     SV_AUX void select_entity()
@@ -990,7 +993,7 @@ namespace sv {
 		XMVECTOR ray_origin = vec3_to_dx(ray.origin, 1.f);
 		XMVECTOR ray_direction = vec3_to_dx(ray.direction, 0.f);
 
-		Entity selected = SV_ENTITY_NULL;
+		Entity selected = 0;
 		f32 distance = f32_max;
 
 		XMVECTOR p0 = XMVectorSet(-0.5f, 0.5f, 0.f, 1.f);
@@ -1003,19 +1006,118 @@ namespace sv {
 		XMVECTOR v2;
 		XMVECTOR v3;
 
+		u32 light_id = get_component_id("Light");
+		u32 mesh_id = get_component_id("Mesh");
+		u32 sprite_id = get_component_id("Sprite");
+
 		// Select lights
+		for (CompIt it = comp_it_begin(light_id);
+			 it.has_next;
+			 comp_it_next(it))
 		{
-			for_each_comp<LightComponent>([&] (Entity entity, LightComponent& l)
+			Entity entity = it.entity;
+			
+			if (is_entity_selected(entity))
+				break;
+			
+			v3_f32 pos = get_entity_world_position(entity);
+			
+			f32 min_scale = relative_scalar(0.02f, pos);
+			f32 scale = SV_MAX(min_scale, 1.f);
+			
+			XMMATRIX tm = XMMatrixScaling(scale, scale, 1.f) * XMMatrixRotationQuaternion(vec4_to_dx(dev.camera.rotation)) * XMMatrixTranslation(pos.x, pos.y, pos.z);
+			
+			v0 = XMVector3Transform(p0, tm);
+			v1 = XMVector3Transform(p1, tm);
+			v2 = XMVector3Transform(p2, tm);
+			v3 = XMVector3Transform(p3, tm);
+			
+			f32 dis = f32_max;
+			
+			v3_f32 intersection;
+
+			// TODO: Ray vs Quad intersection
+			
+			if (intersect_ray_vs_traingle(ray, v3_f32(v0), v3_f32(v1), v3_f32(v2), intersection)) {
+				
+				dis = vec3_length(intersection);
+			}
+			else if (intersect_ray_vs_traingle(ray, v3_f32(v1), v3_f32(v3), v3_f32(v2), intersection)) {
+				
+				dis = SV_MIN(vec3_length(intersection), dis);
+			}
+			
+			if (dis < distance) {
+				distance = dis;
+				selected = entity;
+			}
+		}
+
+		if (selected == 0) {
+
+			// Select meshes
+			for (CompIt it = comp_it_begin(mesh_id);
+				 it.has_next;
+				 comp_it_next(it))
+			{
+				Entity entity = it.entity;
+				MeshComponent& m = *(MeshComponent*)it.comp;
+				
+				if (is_entity_selected(entity))
+					break;
+				
+				if (m.mesh.get() == nullptr) break;
+
+				XMMATRIX wm = get_entity_world_matrix(entity);
+
+				XMMATRIX itm = XMMatrixInverse(0, wm);
+
+				ray.origin = v3_f32(XMVector4Transform(ray_origin, itm));
+				ray.direction = v3_f32(XMVector4Transform(ray_direction, itm));
+
+				Mesh& mesh = *m.mesh.get();
+
+				u32 triangles = u32(mesh.indices.size()) / 3u;
+
+				for (u32 i = 0u; i < triangles; ++i) {
+
+					u32 i0 = mesh.indices[i * 3u + 0u];
+					u32 i1 = mesh.indices[i * 3u + 1u];
+					u32 i2 = mesh.indices[i * 3u + 2u];
+
+					v3_f32 p0 = mesh.positions[i0];
+					v3_f32 p1 = mesh.positions[i1];
+					v3_f32 p2 = mesh.positions[i2];
+
+					v3_f32 intersection;
+
+					if (intersect_ray_vs_traingle(ray, p0, p1, p2, intersection)) {
+
+						f32 dis = vec3_length(intersection);
+						if (dis < distance) {
+							distance = dis;
+							selected = entity;
+						}
+
+					}
+				}
+			}
+
+			// Select sprites
+			{
+				ray.origin = v3_f32(ray_origin);
+				ray.direction = v3_f32(ray_direction);
+
+				for (CompIt it = comp_it_begin(sprite_id);
+					 it.has_next;
+					 comp_it_next(it))	
 				{
+					Entity entity = it.entity;
+					
 					if (is_entity_selected(entity))
-						return true;
+						break;
 
-					v3_f32 pos = get_entity_world_position(entity);
-
-					f32 min_scale = relative_scalar(0.02f, pos);
-					f32 scale = SV_MAX(min_scale, 1.f);
-
-					XMMATRIX tm = XMMatrixScaling(scale, scale, 1.f) * XMMatrixRotationQuaternion(vec4_to_dx(dev.camera.rotation)) * XMMatrixTranslation(pos.x, pos.y, pos.z);
+					XMMATRIX tm = get_entity_world_matrix(entity);
 
 					v0 = XMVector3Transform(p0, tm);
 					v1 = XMVector3Transform(p1, tm);
@@ -1041,102 +1143,13 @@ namespace sv {
 						distance = dis;
 						selected = entity;
 					}
-					return true;
-				});
-		}
-
-		if (selected == SV_ENTITY_NULL) {
-
-			// Select meshes
-			{
-				for_each_comp<MeshComponent>([&] (Entity entity, MeshComponent& m)
-					{
-						if (is_entity_selected(entity))
-							return true;
-
-						if (m.mesh.get() == nullptr) return true;
-
-						XMMATRIX wm = get_entity_world_matrix(entity);
-
-						XMMATRIX itm = XMMatrixInverse(0, wm);
-
-						ray.origin = v3_f32(XMVector4Transform(ray_origin, itm));
-						ray.direction = v3_f32(XMVector4Transform(ray_direction, itm));
-
-						Mesh& mesh = *m.mesh.get();
-
-						u32 triangles = u32(mesh.indices.size()) / 3u;
-
-						for (u32 i = 0u; i < triangles; ++i) {
-
-							u32 i0 = mesh.indices[i * 3u + 0u];
-							u32 i1 = mesh.indices[i * 3u + 1u];
-							u32 i2 = mesh.indices[i * 3u + 2u];
-
-							v3_f32 p0 = mesh.positions[i0];
-							v3_f32 p1 = mesh.positions[i1];
-							v3_f32 p2 = mesh.positions[i2];
-
-							v3_f32 intersection;
-
-							if (intersect_ray_vs_traingle(ray, p0, p1, p2, intersection)) {
-
-								f32 dis = vec3_length(intersection);
-								if (dis < distance) {
-									distance = dis;
-									selected = entity;
-								}
-							}
-						}
-
-						return true;
-					});
-			}
-
-			// Select sprites
-			{
-				ray.origin = v3_f32(ray_origin);
-				ray.direction = v3_f32(ray_direction);
-
-				for_each_comp<SpriteComponent>([&] (Entity entity, SpriteComponent&)
-					{
-						if (is_entity_selected(entity))
-							return true;
-
-						XMMATRIX tm = get_entity_world_matrix(entity);
-
-						v0 = XMVector3Transform(p0, tm);
-						v1 = XMVector3Transform(p1, tm);
-						v2 = XMVector3Transform(p2, tm);
-						v3 = XMVector3Transform(p3, tm);
-
-						f32 dis = f32_max;
-
-						v3_f32 intersection;
-
-						// TODO: Ray vs Quad intersection
-
-						if (intersect_ray_vs_traingle(ray, v3_f32(v0), v3_f32(v1), v3_f32(v2), intersection)) {
-
-							dis = vec3_length(intersection);
-						}
-						else if (intersect_ray_vs_traingle(ray, v3_f32(v1), v3_f32(v3), v3_f32(v2), intersection)) {
-			
-							dis = SV_MIN(vec3_length(intersection), dis);
-						}
-
-						if (dis < distance) {
-							distance = dis;
-							selected = entity;
-						}
-
-						return true;
-					});
+					
+				}
 			}
 		}
-
+		
 		select_entity(selected);
-    }
+	}
     
     static void show_entity_popup(Entity entity, bool& destroy)
     {
@@ -1253,12 +1266,12 @@ namespace sv {
 		
 			if (gui_button("Create Sprite", 2u)) {
 
-				editor_create_entity(SV_ENTITY_NULL, "Sprite", construct_entity_sprite);
+				editor_create_entity(0, "Sprite", construct_entity_sprite);
 			}
 
 			if (gui_button("Create 2D Camera", 3u)) {
 
-				editor_create_entity(SV_ENTITY_NULL, "Camera", construct_entity_2D_camera);
+				editor_create_entity(0, "Camera", construct_entity_2D_camera);
 			}
 
 			gui_end_popup();
@@ -1284,13 +1297,51 @@ namespace sv {
 				show_entity(entity);
 				entity_count = get_entity_count();
 	    
-				if (entity_exist(entity)) {
+				if (entity_exists(entity)) {
 
 					i += get_entity_childs_count(entity) + 1u;
 				}
 			}
 
+			gui_push_id("Show Prefabs");
+			
+			for (PrefabIt it = prefab_it_begin();
+				 it.has_next;
+				 prefab_it_next(it))
+			{
+				Prefab prefab = it.prefab;
+
+				const char* name = get_prefab_name(prefab);
+
+				bool selected = editor.selected_prefab == prefab;
+				u32 flags = selected ? GuiElementListFlag_Selected : 0u;
+
+				if (gui_element_list(name, prefab, flags)) {
+
+					if (selected) editor.selected_prefab = 0;
+					else select_prefab(prefab);
+				}
+
+				if (gui_begin_popup(GuiPopupTrigger_LastWidget)) {
+
+					if (gui_button("Create Entity")) {
+
+						create_entity(0, "Pene", prefab);
+					}
+					
+					gui_end_popup();
+				}
+			}
+
+			gui_pop_id();
+
 			gui_end_list();
+
+			PrefabPackage* package;
+			if (gui_recive_package((void**)&package, ASSET_BROWSER_PREFAB, GuiReciverTrigger_Root)) {
+
+				load_prefab(package->filepath);
+			}
 
 			display_create_popup();
 	    
@@ -1300,11 +1351,11 @@ namespace sv {
 
     void display_entity_inspector()
     {
-		Entity selected = (editor.selected_entities.size() == 1u) ? editor.selected_entities.back() : SV_ENTITY_NULL;
+		Entity selected = (editor.selected_entities.size() == 1u) ? editor.selected_entities.back() : 0;
 
 		if (gui_begin_window("Inspector")) {
 
-			if (selected != SV_ENTITY_NULL) {
+			if (selected != 0) {
 
 				// Entity name
 				{
@@ -1323,10 +1374,13 @@ namespace sv {
 
 					foreach(comp_index, comp_count) {
 
-						CompRef ref = get_component_by_index(selected, comp_index);
+						CompRef ref = get_entity_component_by_index(selected, comp_index);
 
-						show_component_info(selected, ref.id, ref.ptr);
-						comp_count = get_entity_component_count(selected);
+						if (show_component_info(ref.comp_id, ref.comp)) {
+
+							remove_entity_component(selected, ref.comp_id);
+							comp_count = get_entity_component_count(selected);
+						}
 					}
 
 					gui_pop_id();
@@ -1348,7 +1402,17 @@ namespace sv {
 						if (is_player) {
 							scene->player = selected;
 						}
-						else scene->player = SV_ENTITY_NULL;
+						else scene->player = 0;
+					}
+
+					{
+						bool main = scene->main_camera == selected;
+
+						if (gui_checkbox("MainCamera", main, 0u)) {
+
+							if (main) scene->main_camera = selected;
+							else scene->main_camera = 0;
+						}
 					}
 
 					gui_push_id("User");
@@ -1368,16 +1432,69 @@ namespace sv {
 
 						CompID comp_id = CompID(i);
 
-						if (get_component_by_id(selected, comp_id))
+						if (has_entity_component(selected, comp_id))
 							continue;
 			
 						if (gui_button(get_component_name(comp_id), comp_id)) {
 			    
-							add_component_by_id(selected, comp_id);
+							add_entity_component(selected, comp_id);
 						}
 					}
 
 					gui_end_popup();
+				}
+			}
+			else if (editor.selected_prefab) {
+
+				Prefab prefab = editor.selected_prefab;
+				
+				// Entity name
+				{
+					const char* prefab_name = get_prefab_name(prefab);
+					egui_header(prefab_name, 0u);
+				}
+
+				// Prefab components
+				{
+					u32 comp_count = get_prefab_component_count(prefab);
+
+					gui_push_id("Prefab Components");
+
+					foreach(comp_index, comp_count) {
+
+						CompRef ref = get_prefab_component_by_index(prefab, comp_index);
+
+						if (show_component_info(ref.comp_id, ref.comp)) {
+
+							remove_prefab_component(prefab, ref.comp_id);
+							comp_count = get_prefab_component_count(prefab);
+						}
+					}
+
+					gui_pop_id();
+				}
+
+				if (gui_begin_popup(GuiPopupTrigger_Root)) {
+		    
+					u32 count = get_component_register_count();
+					foreach(i, count) {
+
+						CompID comp_id = CompID(i);
+
+						if (has_prefab_component(prefab, comp_id))
+							continue;
+			
+						if (gui_button(get_component_name(comp_id), comp_id)) {
+			    
+							add_prefab_component(prefab, comp_id);
+						}
+					}
+
+					gui_end_popup();
+				}
+
+				if (gui_button("Save")) {
+					save_prefab(prefab);
 				}
 			}
 
@@ -1416,6 +1533,34 @@ namespace sv {
 				string_copy(foldername, "", FILENAME_SIZE + 1u);
 			}
 
+			gui_end_window();
+		}
+
+		if (gui_begin_window("Create Prefab", GuiWindowFlag_Temporal)) {
+
+			CreatePrefabData& data = editor.create_prefab_data;
+
+			gui_text_field(data.name, FILENAME_SIZE + 1u, 0u);
+
+			if (gui_button("Create")) {
+
+				char filepath[FILEPATH_SIZE + 1u] = "assets/";
+				string_append(filepath, info.filepath, FILEPATH_SIZE + 1u);
+				string_append(filepath, data.name, FILEPATH_SIZE + 1u);
+
+				const char* extension = filepath_extension(data.name);
+					
+				if (!string_equals(string_validate(extension), ".prefab")) {
+					string_append(filepath, ".prefab", FILEPATH_SIZE + 1u);
+				}
+
+				create_prefab_file(data.name, filepath);
+
+				gui_hide_window("Create Prefab");
+				
+				data.name[0] = '\0';
+			}
+			
 			gui_end_window();
 		}
 
@@ -1599,16 +1744,23 @@ namespace sv {
 					}
 					break;
 
+					case AssetElementType_Prefab:
+					{
+						PrefabPackage pack;
+
+						sprintf(pack.filepath, "assets/%s%s", info.filepath, e.name);
+						
+						gui_asset_button(e.name, nullptr, {0.f, 0.f, 1.f, 1.f}, 0u);
+						gui_send_package(&pack, sizeof(PrefabPackage), ASSET_BROWSER_PREFAB);
+					}
+					break;
+
 					case AssetElementType_Texture:
 					case AssetElementType_Mesh:
 					case AssetElementType_Material:
 					case AssetElementType_SpriteSheet:
 					{
 						AssetPackage pack;
-						size_t filepath_size = strlen(info.filepath);
-						size_t size = filepath_size + strlen(e.name) + strlen("assets/");
-						SV_ASSERT(size <= FILEPATH_SIZE);
-						if (size > FILEPATH_SIZE) continue;
 
 						sprintf(pack.filepath, "assets/%s%s", info.filepath, e.name);
 
@@ -1724,6 +1876,7 @@ namespace sv {
 							else if (strcmp(e.extension, "mat") == 0) element.type = AssetElementType_Material;
 							else if (strcmp(e.extension, "png") == 0 || strcmp(e.extension, "jpg") == 0 || strcmp(e.extension, "gif") == 0 || strcmp(e.extension, "jpeg") == 0) element.type = AssetElementType_Texture;
 							else if (strcmp(e.extension, "sprites") == 0) element.type = AssetElementType_SpriteSheet;
+							else if (strcmp(e.extension, "prefab") == 0) element.type = AssetElementType_Prefab;
 							else element.type = AssetElementType_Unknown;
 						}
 						else {
@@ -1761,7 +1914,7 @@ namespace sv {
 
 				gui_separator(1);
 
-				if (gui_button("Import Model", id++)) {
+				if (gui_button("Import Model")) {
 
 					auto& data = editor.import_model_data;
 					data.model_info = {};
@@ -1787,7 +1940,12 @@ namespace sv {
 					}
 				}
 
-				if (gui_button("Create Asset", id++)) {
+				if (gui_button("Create Prefab")) {
+					gui_show_window("Create Prefab");
+					gui_close_popup();
+				}
+
+				if (gui_button("Create Asset")) {
 
 					auto& data = info.create_asset_data;
 
@@ -1796,7 +1954,7 @@ namespace sv {
 					gui_close_popup();
 				}
 
-				if (gui_button("Create Sprite Sheet", id++)) {
+				if (gui_button("Create Sprite Sheet")) {
 
 					char filepath[FILEPATH_SIZE + 1u] = "assets/";
 
@@ -1877,7 +2035,7 @@ namespace sv {
 					gui_button("Skybox");
 
 					AssetPackage* package;
-					if (gui_recive_package((void**)&package, ASSET_BROWSER_PACKAGE_TEXTURE)) {
+					if (gui_recive_package((void**)&package, ASSET_BROWSER_PACKAGE_TEXTURE, GuiReciverTrigger_LastWidget)) {
 
 						set_skybox(package->filepath);
 					}
@@ -2320,7 +2478,7 @@ namespace sv {
 
 		for (u32 i = 0u; i < editor.selected_entities.size();) {
 
-			if (!entity_exist(editor.selected_entities[i]))
+			if (!entity_exists(editor.selected_entities[i]))
 				editor.selected_entities.erase(i);
 			else ++i;
 		}
@@ -2522,11 +2680,16 @@ namespace sv {
 
 		imrend_camera(ImRendCamera_Editor, cmd);
 
+		u32 light_id = get_component_id("Light");
+		u32 mesh_id = get_component_id("Mesh");
+		u32 sprite_id = get_component_id("Sprite");
+		u32 body_id = get_component_id("Body");
+
 		// Draw selected entity
 		for (Entity entity : editor.selected_entities) {
 
-			MeshComponent* mesh_comp = get_component<MeshComponent>(entity);
-			SpriteComponent* sprite_comp = get_component<SpriteComponent>(entity);
+			MeshComponent* mesh_comp = (MeshComponent*)get_entity_component(entity, mesh_id);
+			SpriteComponent* sprite_comp = (SpriteComponent*)get_entity_component(entity, sprite_id);
 
 			if (mesh_comp && mesh_comp->mesh.get()) {
 
@@ -2605,39 +2768,42 @@ namespace sv {
 		{
 			XMMATRIX tm;
 			
-			for_each_comp<LightComponent>([&] (Entity entity, LightComponent& light)
-				{
-					v3_f32 pos = get_entity_world_position(entity);
+			for (CompIt it = comp_it_begin(light_id);
+				 it.has_next;
+				 comp_it_next(it))
+			{
+				Entity entity = it.entity;
+				LightComponent& light = *(LightComponent*)it.comp;
+				
+				v3_f32 pos = get_entity_world_position(entity);
 
-					f32 min_scale = relative_scalar(0.02f, pos);
-					f32 scale = SV_MAX(min_scale, 1.f);
+				f32 min_scale = relative_scalar(0.02f, pos);
+				f32 scale = SV_MAX(min_scale, 1.f);
 					
-					tm = XMMatrixScaling(scale, scale, 1.f) * XMMatrixRotationQuaternion(vec4_to_dx(dev.camera.rotation)) * XMMatrixTranslation(pos.x, pos.y, pos.z);
+				tm = XMMatrixScaling(scale, scale, 1.f) * XMMatrixRotationQuaternion(vec4_to_dx(dev.camera.rotation)) * XMMatrixTranslation(pos.x, pos.y, pos.z);
 
-					imrend_push_matrix(tm, cmd);
+				imrend_push_matrix(tm, cmd);
 
-					imrend_draw_sprite({}, { 1.f, 1.f }, Color::White(), editor.image.get(), GPUImageLayout_ShaderResource, editor.TEXCOORD_LIGHT_PROBE, cmd);
+				imrend_draw_sprite({}, { 1.f, 1.f }, Color::White(), editor.image.get(), GPUImageLayout_ShaderResource, editor.TEXCOORD_LIGHT_PROBE, cmd);
 
-					imrend_pop_matrix(cmd);
+				imrend_pop_matrix(cmd);
 
-					if (is_entity_selected(entity) && light.light_type == LightType_Direction) {
+				if (is_entity_selected(entity) && light.light_type == LightType_Direction) {
 
-						// Draw light direction
+					// Draw light direction
 
-						v3_f32 dir = v3_f32::forward();
+					v3_f32 dir = v3_f32::forward();
 
-						XMVECTOR quat = vec4_to_dx(get_entity_world_rotation(entity));
+					XMVECTOR quat = vec4_to_dx(get_entity_world_rotation(entity));
 
-						tm = XMMatrixRotationQuaternion(quat);
+					tm = XMMatrixRotationQuaternion(quat);
 
-						dir = XMVector3Transform(vec3_to_dx(dir), tm);
+					dir = XMVector3Transform(vec3_to_dx(dir), tm);
 
-						dir = vec3_normalize(dir) * scale * 1.5f;
-						imrend_draw_line(pos, pos + dir, light.color, cmd);
-					}
-
-					return true;
-				});
+					dir = vec3_normalize(dir) * scale * 1.5f;
+					imrend_draw_line(pos, pos + dir, light.color, cmd);
+				}	
+			}
 		}
 
 		// Draw collisions
@@ -2658,61 +2824,68 @@ namespace sv {
 
 			if (get_scene_data()->physics.in_3D) {
 		
-				for_each_comp<BodyComponent>([&] (Entity entity, BodyComponent& body)
-					{
-						v3_f32 pos = get_entity_world_position(entity) + body.offset;
-						v3_f32 scale = get_entity_world_scale(entity) * body.size;
+				for (CompIt it = comp_it_begin(body_id);
+					 it.has_next;
+					 comp_it_next(it))
+				{
+					BodyComponent& body = *(BodyComponent*)it.comp;
+					Entity entity = it.entity;
+					
+					v3_f32 pos = get_entity_world_position(entity) + body.offset;
+					v3_f32 scale = get_entity_world_scale(entity) * body.size;
 		    
-						tm = XMMatrixScalingFromVector(vec3_to_dx(scale)) * XMMatrixTranslation(pos.x, pos.y, pos.z);
+					tm = XMMatrixScalingFromVector(vec3_to_dx(scale)) * XMMatrixTranslation(pos.x, pos.y, pos.z);
 		    
-						v0 = XMVector3Transform(p0, tm);
-						v1 = XMVector3Transform(p1, tm);
-						v2 = XMVector3Transform(p2, tm);
-						v3 = XMVector3Transform(p3, tm);
-						v4 = XMVector3Transform(p4, tm);
-						v5 = XMVector3Transform(p5, tm);
-						v6 = XMVector3Transform(p6, tm);
-						v7 = XMVector3Transform(p7, tm);
+					v0 = XMVector3Transform(p0, tm);
+					v1 = XMVector3Transform(p1, tm);
+					v2 = XMVector3Transform(p2, tm);
+					v3 = XMVector3Transform(p3, tm);
+					v4 = XMVector3Transform(p4, tm);
+					v5 = XMVector3Transform(p5, tm);
+					v6 = XMVector3Transform(p6, tm);
+					v7 = XMVector3Transform(p7, tm);
 
-						imrend_draw_line(v3_f32(v0), v3_f32(v1), Color::Green(), cmd);
-						imrend_draw_line(v3_f32(v1), v3_f32(v3), Color::Green(), cmd);
-						imrend_draw_line(v3_f32(v3), v3_f32(v2), Color::Green(), cmd);
-						imrend_draw_line(v3_f32(v0), v3_f32(v2), Color::Green(), cmd);
+					imrend_draw_line(v3_f32(v0), v3_f32(v1), Color::Green(), cmd);
+					imrend_draw_line(v3_f32(v1), v3_f32(v3), Color::Green(), cmd);
+					imrend_draw_line(v3_f32(v3), v3_f32(v2), Color::Green(), cmd);
+					imrend_draw_line(v3_f32(v0), v3_f32(v2), Color::Green(), cmd);
 
-						imrend_draw_line(v3_f32(v4), v3_f32(v5), Color::Green(), cmd);
-						imrend_draw_line(v3_f32(v5), v3_f32(v7), Color::Green(), cmd);
-						imrend_draw_line(v3_f32(v7), v3_f32(v6), Color::Green(), cmd);
-						imrend_draw_line(v3_f32(v4), v3_f32(v6), Color::Green(), cmd);
+					imrend_draw_line(v3_f32(v4), v3_f32(v5), Color::Green(), cmd);
+					imrend_draw_line(v3_f32(v5), v3_f32(v7), Color::Green(), cmd);
+					imrend_draw_line(v3_f32(v7), v3_f32(v6), Color::Green(), cmd);
+					imrend_draw_line(v3_f32(v4), v3_f32(v6), Color::Green(), cmd);
 
-						imrend_draw_line(v3_f32(v0), v3_f32(v4), Color::Green(), cmd);
-						imrend_draw_line(v3_f32(v1), v3_f32(v5), Color::Green(), cmd);
-						imrend_draw_line(v3_f32(v2), v3_f32(v6), Color::Green(), cmd);
-						imrend_draw_line(v3_f32(v3), v3_f32(v7), Color::Green(), cmd);
-
-						return true;
-					});
+					imrend_draw_line(v3_f32(v0), v3_f32(v4), Color::Green(), cmd);
+					imrend_draw_line(v3_f32(v1), v3_f32(v5), Color::Green(), cmd);
+					imrend_draw_line(v3_f32(v2), v3_f32(v6), Color::Green(), cmd);
+					imrend_draw_line(v3_f32(v3), v3_f32(v7), Color::Green(), cmd);
+					
+				}
 			}
 			else {
-
-				for_each_comp<BodyComponent>([&] (Entity entity, BodyComponent& body)
-					{
-						v2_f32 pos = vec3_to_vec2(get_entity_world_position(entity)) + vec3_to_vec2(body.offset);
-						v2_f32 scale = vec3_to_vec2(get_entity_world_scale(entity)) * vec3_to_vec2(body.size);
+				
+				for (CompIt it = comp_it_begin(body_id);
+					 it.has_next;
+					 comp_it_next(it))
+				{
+					BodyComponent& body = *(BodyComponent*)it.comp;
+					Entity entity = it.entity;
+					
+					v2_f32 pos = vec3_to_vec2(get_entity_world_position(entity)) + vec3_to_vec2(body.offset);
+					v2_f32 scale = vec3_to_vec2(get_entity_world_scale(entity)) * vec3_to_vec2(body.size);
+					
+					tm = XMMatrixScalingFromVector(vec2_to_dx(scale)) * XMMatrixTranslation(pos.x, pos.y, 0.f);
 		    
-						tm = XMMatrixScalingFromVector(vec2_to_dx(scale)) * XMMatrixTranslation(pos.x, pos.y, 0.f);
-		    
-						v0 = XMVector3Transform(p0, tm);
-						v1 = XMVector3Transform(p1, tm);
-						v2 = XMVector3Transform(p2, tm);
-						v3 = XMVector3Transform(p3, tm);
+					v0 = XMVector3Transform(p0, tm);
+					v1 = XMVector3Transform(p1, tm);
+					v2 = XMVector3Transform(p2, tm);
+					v3 = XMVector3Transform(p3, tm);
 
-						imrend_draw_line(v3_f32(v0), v3_f32(v1), Color::Green(), cmd);
-						imrend_draw_line(v3_f32(v1), v3_f32(v3), Color::Green(), cmd);
-						imrend_draw_line(v3_f32(v3), v3_f32(v2), Color::Green(), cmd);
-						imrend_draw_line(v3_f32(v0), v3_f32(v2), Color::Green(), cmd);
-
-						return true;
-					});
+					imrend_draw_line(v3_f32(v0), v3_f32(v1), Color::Green(), cmd);
+					imrend_draw_line(v3_f32(v1), v3_f32(v3), Color::Green(), cmd);
+					imrend_draw_line(v3_f32(v3), v3_f32(v2), Color::Green(), cmd);
+					imrend_draw_line(v3_f32(v0), v3_f32(v2), Color::Green(), cmd);
+				}
 			}
 		}
 

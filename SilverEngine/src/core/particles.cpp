@@ -45,157 +45,157 @@ namespace sv {
 
 	SV_INTERNAL void update_and_draw_particles()
 	{
-		ComponentIterator it;
-		CompView<ParticleSystem> view;
+		XMMATRIX rm = dev.camera.inverse_view_matrix;
+		{
+			XMFLOAT3X3 m;
+			XMStoreFloat3x3(&m, rm);
+			rm = XMLoadFloat3x3(&m);
+		}
 
-		if (comp_it_begin(it, view)) {
+		f32 dt = engine.deltatime;
+		SceneData& scene = *get_scene_data();
+		CommandList cmd = graphics_commandlist_get();
 
-			XMMATRIX rm = dev.camera.inverse_view_matrix;
-			{
-				XMFLOAT3X3 m;
-				XMStoreFloat3x3(&m, rm);
-				rm = XMLoadFloat3x3(&m);
+		imrend_begin_batch(cmd);
+
+		// TODO
+		imrend_camera(ImRendCamera_Editor, cmd);
+			
+		CompID ps_id = get_component_id("Particle System");
+
+		for (CompIt it = comp_it_begin(ps_id);
+			 it.has_next;
+			 comp_it_next(it))
+		{
+			ParticleSystem& ps = *(ParticleSystem*)it.comp;
+			Entity entity = it.entity;
+			
+			if (ps.emitter_count > PARTICLE_EMITTER_MAX) {
+				SV_LOG_ERROR("The particle system can't have more than '%u' particle emitters", PARTICLE_EMITTER_MAX);
+				ps.emitter_count = PARTICLE_EMITTER_MAX;
 			}
 
-			f32 dt = engine.deltatime;
-			SceneData& scene = *get_scene_data();
-			CommandList cmd = graphics_commandlist_get();
+			// TODO: Free unused emitters memory
 
-			imrend_begin_batch(cmd);
+			bool emit;
+			bool reset = false;
 
-			// TODO
-			imrend_camera(ImRendCamera_Editor, cmd);
+			ps.time_count += dt;
 
-			do {
-				ParticleSystem& ps = *view.comp;
+			if (ps.time_count < ps.simulation_time) {
+				emit = true;
+			}
+			else {
+				emit = false;
 
-				if (ps.emitter_count > PARTICLE_EMITTER_MAX) {
-					SV_LOG_ERROR("The particle system can't have more than '%u' particle emitters", PARTICLE_EMITTER_MAX);
-					ps.emitter_count = PARTICLE_EMITTER_MAX;
+				f32 total_time = ps.simulation_time + ps.repeat_time;
+
+				// Reset
+				if (ps.repeat && ps.time_count > total_time) {
+						
+					ps.time_count -= total_time;
+					reset = true;
+				}
+			}
+
+			foreach(emitter_index, ps.emitter_count) {
+
+				ParticleEmitter& e = ps.emitters[emitter_index];
+
+				// Allocate particles memory
+					
+				if (e._last_max_particles != e.max_particles) {
+
+					if (e.particles) {
+						SV_FREE_MEMORY(e.particles);
+					}
+					e.particles = (Particle*)SV_ALLOCATE_MEMORY(e.max_particles * sizeof(Particle));
+					e._last_max_particles = e.max_particles;
+
+					// TODO: Save particle state
+					e.particle_count = 0u;
 				}
 
-				// TODO: Free unused emitters memory
+				// Update, erase and draw particles
 
-				bool emit;
-				bool reset = false;
+				GPUImage* image = e.texture.get();
+					
+				for (u32 i = 0u; i < e.particle_count;) {
 
-				ps.time_count += dt;
+					Particle& p = e.particles[i];
 
-				if (ps.time_count < ps.simulation_time) {
+					p.time_count += dt * p.time_mult;
+
+					// Erase
+						
+					if (p.time_count >= 1.f) {
+
+						if (i != e.particle_count - 1u) {
+
+							// TODO: Optimize								
+							memcpy(e.particles + i, e.particles + i + 1u, sizeof(Particle) * (e.particle_count - i - 1u));
+						}
+							
+						--e.particle_count;
+					}
+
+					// Update and draw
+						
+					else {
+
+						p.velocity += scene.physics.gravity * dt * e.gravity_mult;
+						p.position += p.velocity * dt;
+
+						Color color = color_interpolate(e.init_color, e.final_color, p.time_count);
+
+						imrend_push_matrix(rm * XMMatrixTranslation(p.position.x, p.position.y, p.position.z), cmd);
+						imrend_draw_sprite({}, { p.size, p.size }, color, image, GPUImageLayout_ShaderResource, e.texcoord, cmd);
+						imrend_pop_matrix(cmd);
+							
+						++i;
+					}
+				}
+
+				// Reset
+				if (reset) {
+
+					e.emission.count = 0.f;
+					e.emission.spawn_count = 0.f;
 					emit = true;
 				}
-				else {
-					emit = false;
 
-					f32 total_time = ps.simulation_time + ps.repeat_time;
+				// Emit
+				if (emit && e.particle_count < e.max_particles) {
 
-					// Reset
-					if (ps.repeat && ps.time_count > total_time) {
-						
-						ps.time_count -= total_time;
-						reset = true;
-					}
-				}
+					v3_f32 system_position = get_entity_world_position(entity);
 
-				foreach(emitter_index, ps.emitter_count) {
+					e.emission.count += dt;
 
-					ParticleEmitter& e = ps.emitters[emitter_index];
+					if (e.emission.count > e.emission.offset_time) {
 
-					// Allocate particles memory
-					
-					if (e._last_max_particles != e.max_particles) {
+						f32 end_time = e.emission.offset_time + e.emission.spawn_time;
 
-						if (e.particles) {
-							SV_FREE_MEMORY(e.particles);
-						}
-						e.particles = (Particle*)SV_ALLOCATE_MEMORY(e.max_particles * sizeof(Particle));
-						e._last_max_particles = e.max_particles;
+						if (e.emission.count < end_time) {
 
-						// TODO: Save particle state
-						e.particle_count = 0u;
-					}
-
-					// Update, erase and draw particles
-
-					GPUImage* image = e.texture.get();
-					
-					for (u32 i = 0u; i < e.particle_count;) {
-
-						Particle& p = e.particles[i];
-
-						p.time_count += dt * p.time_mult;
-
-						// Erase
-						
-						if (p.time_count >= 1.f) {
-
-							if (i != e.particle_count - 1u) {
-
-								// TODO: Optimize								
-								memcpy(e.particles + i, e.particles + i + 1u, sizeof(Particle) * (e.particle_count - i - 1u));
-							}
-							
-							--e.particle_count;
-						}
-
-						// Update and draw
-						
-						else {
-
-							p.velocity += scene.physics.gravity * dt * e.gravity_mult;
-							p.position += p.velocity * dt;
-
-							Color color = color_interpolate(e.init_color, e.final_color, p.time_count);
-
-							imrend_push_matrix(rm * XMMatrixTranslation(p.position.x, p.position.y, p.position.z), cmd);
-							imrend_draw_sprite({}, { p.size, p.size }, color, image, GPUImageLayout_ShaderResource, e.texcoord, cmd);
-							imrend_pop_matrix(cmd);
-							
-							++i;
-						}
-					}
-
-					// Reset
-					if (reset) {
-
-						e.emission.count = 0.f;
-						e.emission.spawn_count = 0.f;
-						emit = true;
-					}
-
-					// Emit
-					if (emit && e.particle_count < e.max_particles) {
-
-						v3_f32 system_position = get_entity_world_position(view.entity);
-
-						e.emission.count += dt;
-
-						if (e.emission.count > e.emission.offset_time) {
-
-							f32 end_time = e.emission.offset_time + e.emission.spawn_time;
-
-							if (e.emission.count < end_time) {
-
-								e.emission.spawn_count += dt;
+							e.emission.spawn_count += dt;
 								
-								f32 frq = 1.f / e.emission.rate;
+							f32 frq = 1.f / e.emission.rate;
 
-								while (e.emission.spawn_count > frq) {
+							while (e.emission.spawn_count > frq) {
 							
-									emit_particle(e, system_position);
+								emit_particle(e, system_position);
 
-									e.emission.spawn_count -= frq;
+								e.emission.spawn_count -= frq;
 
-									if (e.particle_count == e.max_particles)
-										break;
-								}
+								if (e.particle_count == e.max_particles)
+									break;
 							}
 						}
 					}
 				}
 			}
-			while (comp_it_next(it, view));
-
+			
+			
 			imrend_flush(cmd);
 		}
 	}
@@ -204,7 +204,7 @@ namespace sv {
 
 	void display_particle_system_data(DisplayComponentEvent* event)
 	{
-		if (event->comp_id == ParticleSystem::ID) {
+		if (event->comp_id == get_component_id("Particle System")) {
 			
 			ParticleSystem& p = *(ParticleSystem*)event->comp;
 

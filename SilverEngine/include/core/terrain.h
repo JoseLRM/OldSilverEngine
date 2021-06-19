@@ -10,9 +10,8 @@ namespace sv {
 		v2_f32 texcoord;
 	};
 
-	struct TerrainComponent : public BaseComponent {
+	struct TerrainComponent : public Component {
 		
-		static CompID SV_API ID;
 		static constexpr u32 VERSION = 1u;
 
 		~TerrainComponent();

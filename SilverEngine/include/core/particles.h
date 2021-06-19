@@ -65,9 +65,8 @@ namespace sv {
 		
 	};
 
-	struct ParticleSystem : public BaseComponent {
+	struct ParticleSystem : public Component {
 
-		static CompID SV_API ID;
 		static constexpr u32 VERSION = 0u;
 
 		f32 time_count = 0.f;

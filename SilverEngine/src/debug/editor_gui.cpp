@@ -38,9 +38,9 @@ namespace sv {
 		gui_pop_id();
     }
 
-    bool egui_begin_component(Entity entity, CompID comp_id, bool* remove)
+    bool egui_begin_component(CompID comp_id, bool* remove)
     {
-		u64 id = u64("SHOW COMPONENT") ^ u64((u64(comp_id) << 32u) + entity);
+		u64 id = u64("SHOW COMPONENT") ^ u64((u64(comp_id) << 32u));
 		gui_push_id(id);
 
 		*remove = false;
@@ -79,7 +79,7 @@ namespace sv {
 		gui_image(texture->get(), 50.f, 0u);
 
 		AssetPackage* package;
-		if (gui_recive_package((void**)&package, ASSET_BROWSER_PACKAGE_TEXTURE)) {
+		if (gui_recive_package((void**)&package, ASSET_BROWSER_PACKAGE_TEXTURE, GuiReciverTrigger_LastWidget)) {
 
 			res = load_asset_from_file(*texture, package->filepath);
 			if (!res) {
@@ -102,7 +102,7 @@ namespace sv {
 		gui_button("TODO -> Mesh");
 
 		AssetPackage* package;
-		if (gui_recive_package((void**)&package, ASSET_BROWSER_PACKAGE_MESH)) {
+		if (gui_recive_package((void**)&package, ASSET_BROWSER_PACKAGE_MESH, GuiReciverTrigger_LastWidget)) {
 
 			res = load_asset_from_file(*mesh, package->filepath);
 			if (!res) {
@@ -123,7 +123,7 @@ namespace sv {
 		gui_button("TODO -> Material");
 
 		AssetPackage* package;
-		if (gui_recive_package((void**)&package, ASSET_BROWSER_PACKAGE_MATERIAL)) {
+		if (gui_recive_package((void**)&package, ASSET_BROWSER_PACKAGE_MATERIAL, GuiReciverTrigger_LastWidget)) {
 
 			res = load_asset_from_file(*material, package->filepath);
 			if (!res) {

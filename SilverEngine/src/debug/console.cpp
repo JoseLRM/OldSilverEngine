@@ -228,7 +228,7 @@ namespace sv {
 			return false;
 		}
 
-		Entity parent = create_entity(SV_ENTITY_NULL, args[0]);
+		Entity parent = create_entity(0, args[0]);
 	
 		return create_entity_model(parent, args[0]);
     }

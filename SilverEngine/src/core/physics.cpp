@@ -29,13 +29,10 @@ namespace sv {
 
 	void physics_update()
     {
-		PhysicsState& state = *physics_state;
+		/*PhysicsState& state = *physics_state;
 		SceneData& scene = *get_scene_data();
 	
 		f32 dt = engine.deltatime;
-
-		ComponentIterator it;
-		CompView<BodyComponent> view;
 
 		List<BodyCollision>& last_collisions = state.last_collisions;
 		List<BodyCollision>& current_collisions = state.current_collisions;
@@ -46,17 +43,19 @@ namespace sv {
 	
 		current_collisions.reset();
 
-		if (comp_it_begin(it, view)) {
-	    
-			do {
+		CompID body_id = get_component_id("Body");
 
-				BodyComponent& body = *view.comp;
+		for (CompIt it = comp_it_begin(body_id);
+			 it.has_next;
+			 comp_it_next(it))
+		{
+			BodyComponent& body = *(BodyComponent*)it.comp;
 		
 				if (body.body_type == BodyType_Static)
 					continue;
 
-				v2_f32 position = get_entity_position2D(view.entity) + vec3_to_vec2(body.offset);
-				v2_f32 scale = get_entity_scale2D(view.entity) * vec3_to_vec2(body.size);
+				v2_f32 position = get_entity_position2D(it.entity) + vec3_to_vec2(body.offset);
+				v2_f32 scale = get_entity_scale2D(it.entity) * vec3_to_vec2(body.size);
 
 				// Reset values
 				body.in_ground = false;
@@ -65,7 +64,8 @@ namespace sv {
 				if (body.body_type == BodyType_Dynamic)
 					body.vel += scene.physics.gravity * dt;
 	
-				CompView<BodyComponent> vertical_collision = {};
+				BodyComponent* vertical_collision_body = NULL;
+				Entity vertical_collision_entity = 0;
 				f32 vertical_depth = f32_max;
 	
 				CompView<BodyComponent> horizontal_collision = {};
@@ -298,7 +298,7 @@ namespace sv {
 					}
 				}
 			}
-		}
-    }
+			}*/
+	}
 	
 }
