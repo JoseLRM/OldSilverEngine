@@ -3,8 +3,6 @@
 #include "core/renderer.h"
 #include "debug/console.h"
 
-#include "user.h"
-
 #define SV_SCENE() sv::Scene& scene = *scene_state->scene
 #define SV_ECS() SV_SCENE(); sv::ECS& ecs = scene.ecs
 
@@ -273,56 +271,53 @@ namespace sv {
 		// Deserialize
 		{
 			// Get filepath
-			char filepath[FILEPATH_SIZE];
+			char filepath[FILEPATH_SIZE] = "assets/scenes/";
+			string_append(filepath, name, FILEPATH_SIZE + 1u);
+			string_append(filepath, ".scene", FILEPATH_SIZE + 1u);
 
-			bool exist = _user_get_scene_filepath(name, filepath);
+			bool res = deserialize_begin(d, filepath);
 
-			if (exist) {
+			if (!res) {
 
-				bool res = deserialize_begin(d, filepath);
+				SV_LOG_ERROR("Can't deserialize the scene '%s' at '%s'", name, filepath);
+			}
+			else {
+				u32 scene_version;
+				deserialize_u32(d, scene_version);
+		    
+				deserialize_entity(d, scene.data.main_camera);
+				deserialize_entity(d, scene.data.player);
 
-				if (!res) {
+				// Skybox
+				if (scene_version == 3u) {
 
-					SV_LOG_ERROR("Can't deserialize the scene '%s' at '%s'", name, filepath);
+					char filepath[FILEPATH_SIZE + 1u] = "";
+					deserialize_string(d, filepath, FILEPATH_SIZE + 1u);
+
+					if (string_size(filepath)) {
+							
+						set_skybox(filepath);
+					}
+				}
+
+				if (scene_version == 0u) {
+					v2_f32 g;
+					deserialize_v2_f32(d, g);
+					scene.data.physics.gravity = vec2_to_vec3(g);
+					deserialize_f32(d, scene.data.physics.air_friction);
 				}
 				else {
-					u32 scene_version;
-					deserialize_u32(d, scene_version);
-		    
-					deserialize_entity(d, scene.data.main_camera);
-					deserialize_entity(d, scene.data.player);
-
-					// Skybox
-					if (scene_version == 3u) {
-
-						char filepath[FILEPATH_SIZE + 1u] = "";
-						deserialize_string(d, filepath, FILEPATH_SIZE + 1u);
-
-						if (string_size(filepath)) {
-							
-							set_skybox(filepath);
-						}
-					}
-
-					if (scene_version == 0u) {
-						v2_f32 g;
-						deserialize_v2_f32(d, g);
-						scene.data.physics.gravity = vec2_to_vec3(g);
-						deserialize_f32(d, scene.data.physics.air_friction);
-					}
-					else {
-						deserialize_v3_f32(d, scene.data.physics.gravity);
-						deserialize_f32(d, scene.data.physics.air_friction);
-						deserialize_bool(d, scene.data.physics.in_3D);
-					}
-
-					// ECS
-					if (!deserialize_ecs(d)) return false;
-
-					deserialize_end(d);
-
-					deserialize = true;
+					deserialize_v3_f32(d, scene.data.physics.gravity);
+					deserialize_f32(d, scene.data.physics.air_friction);
+					deserialize_bool(d, scene.data.physics.in_3D);
 				}
+
+				// ECS
+				if (!deserialize_ecs(d)) return false;
+
+				deserialize_end(d);
+
+				deserialize = true;
 			}
 		}
 
@@ -366,24 +361,19 @@ namespace sv {
 			return false;
 		}
 	
-		// validate scene
-		if (_user_validate_scene(name)) {
-			strcpy(scene_state->next_scene_name, name);
-			return true;
-		}
-		return false;
+		strcpy(scene_state->next_scene_name, name);
+		return true;
     }
 
     SV_API bool save_scene()
     {
 		SV_SCENE();
 	
-		char filepath[FILEPATH_SIZE];
-		if (_user_get_scene_filepath(scene.name, filepath)) {
-
-			return save_scene(filepath);
-		}
-		else return false;
+		char filepath[FILEPATH_SIZE + 1u] = "assets/scenes/";
+		string_append(filepath, scene.name, FILEPATH_SIZE + 1u);
+		string_append(filepath, ".scene", FILEPATH_SIZE + 1u);
+		
+		return save_scene(filepath);
     }
 
     bool save_scene(const char* filepath)

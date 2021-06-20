@@ -150,6 +150,17 @@ namespace sv {
 		editor.selected_prefab = prefab;
 	}
 
+	SV_AUX void edit_sprite_sheet(const char* filepath)
+	{
+		gui_show_window("SpriteSheet Editor");
+		SpriteSheetAsset& asset = editor.sprite_sheet_editor_data.current_sprite_sheet;
+		if (!load_asset_from_file(asset, filepath)) {
+
+			SV_LOG_ERROR("Unknown error loading '%s'", filepath);
+			gui_hide_window("SpriteSheet Editor");
+		}
+	}
+
     SV_INTERNAL void show_reset_popup()
     {
 		if (dev.engine_state == EngineState_ProjectManagement || dev.engine_state == EngineState_None) {
@@ -1811,6 +1822,28 @@ namespace sv {
 			    
 							gui_send_package(&pack, sizeof(AssetPackage), id);
 						}
+
+						if (gui_begin_popup(GuiPopupTrigger_LastWidget)) {
+
+							if (gui_button("Remove")) {
+								
+							}
+
+							if (id == ASSET_BROWSER_PACKAGE_SPRITE_SHEET) {
+
+								if (gui_button("Edit")) {
+
+									char filepath[FILEPATH_SIZE + 1u];
+									string_copy(filepath, "assets/", FILEPATH_SIZE + 1u);
+									string_append(filepath, info.filepath, FILEPATH_SIZE + 1u);
+									string_append(filepath, e.name, FILEPATH_SIZE + 1u);
+									
+									edit_sprite_sheet(filepath);
+								}
+							}
+							
+							gui_end_popup();
+						}
 					}
 					break;
 
@@ -1982,13 +2015,7 @@ namespace sv {
 
 					if (show_win) {
 
-						gui_show_window("SpriteSheet Editor");
-						SpriteSheetAsset& asset = editor.sprite_sheet_editor_data.current_sprite_sheet;
-						if (!load_asset_from_file(asset, filepath)) {
-
-							SV_LOG_ERROR("Unknown error loading '%s'", filepath);
-							gui_hide_window("SpriteSheet Editor");
-						}
+						edit_sprite_sheet(filepath);
 					}
 				}
 		

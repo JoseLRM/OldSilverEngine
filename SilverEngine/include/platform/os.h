@@ -42,6 +42,13 @@ namespace sv {
 				else if (second != other.second) return second <= other.second;
 				return milliseconds <= other.milliseconds;
 			}
+
+		SV_INLINE bool operator!=(const Date& other)
+			{
+				return (year != other.year || month != other.month || day != other.day ||
+						hour != other.hour || minute != other.minute || second != other.second ||
+						milliseconds != other.milliseconds);
+			}
     };
 
     SV_API f64 timer_now();
@@ -135,6 +142,14 @@ namespace sv {
 
 #define SV_LOCK_GUARD(mutex, name) _LockGuard name(&mutex);
 
+	// DYNAMIC LIBRARIES
+
+	typedef u64 Library;
+
+	Library library_load(const char* filepath);
+	void    library_free(Library library);
+	void*   library_address(Library library, const char* name);
+
     // INTERNAL
 
     bool _os_startup();
@@ -144,8 +159,5 @@ namespace sv {
 #if SV_EDITOR
     void _os_compile_gamecode();
 #endif
-    
-    bool _os_update_user_callbacks(const char* dll);
-    void _os_free_user_callbacks();
     
 }

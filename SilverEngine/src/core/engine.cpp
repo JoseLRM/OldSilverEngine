@@ -7,8 +7,6 @@
 
 #include "platform/os.h"
 
-#include "user.h"
-
 #include "debug/editor.h"
 #include "debug/console.h"
 
@@ -19,123 +17,9 @@ namespace sv {
 
 #if SV_EDITOR
     GlobalDevData dev;
-    static Date last_user_lib_write = {};
 
     static bool reset_game_request = false;
     static bool close_project_request = false;
-#endif
-
-    ////////////////////////////////////////////////////////////////// UPDATE DLL ////////////////////////////////////////////////////////////
-
-    SV_AUX void close_user_callbacks()
-    {
-		if (_user_connected()) {
-
-			_user_close();
-
-			event_unregister_flags(EventFlag_User);
-			_os_free_user_callbacks();
-			SV_LOG_INFO("User callbacks closed");
-
-			event_dispatch("user_callbacks_close", 0);
-		}
-    }
-    
-    SV_AUX bool recive_user_callbacks()
-    {
-		const char* filepath = "Game.dll";
-	
-#if SV_EDITOR
-	
-		close_user_callbacks();
-	
-		if (!file_copy(filepath, "int/GameTemp.dll")) {
-			SV_LOG_ERROR("Can't create temporal game dll");
-			return false;
-		}
-	
-		bool res = _os_update_user_callbacks("int/GameTemp.dll");
-
-		if (res) {
-	    
-			_user_initialize();
-		}
-
-		Date date;
-		if (file_date(filepath, nullptr, &date, nullptr)) {
-			last_user_lib_write = date;
-		}
-
-		if (res) {
-			SV_LOG_INFO("User callbacks loaded");
-			event_dispatch("user_callbacks_initialize", 0);
-		}
-
-		return res;
-#else
-		if ( _os_update_user_callbacks(filepath)) {
-
-			_user_initialize();
-	    
-			SV_LOG_INFO("User callbacks loaded");
-
-			event_dispatch("user_callbacks_initialize", 0);
-			return true;
-		}
-
-		SV_LOG_ERROR("Can't load the user callbacks");
-
-		return false;
-#endif
-    }
-    
-#if SV_EDITOR
-    
-    SV_INTERNAL void update_user_callbacks()
-    {
-		static f64 last_update = 0.0;
-		f64 now = timer_now();
-	
-		if (now - last_update > 1.0) {
-
-			last_update = now;
-			const char* filepath = "Game.dll";
-			const char* respath = "int/build_output.txt";
-
-			// Get compilation result
-			if (file_exists(respath)) {
-
-				char* str;
-				size_t size;
-				if (file_read_text(respath, &str, &size)) {
-
-					SV_LOG_INFO("Compilation result:\n");
-					SV_LOG("%s\n", str);
-					SV_FREE_MEMORY(str);
-
-					if (!file_remove(respath)) {
-						SV_LOG_ERROR("Can't delete the compilation result file");
-					}
-				}
-			}
-	    
-			// Check if the file is modified
-			Date date;
-			if (file_date(filepath, nullptr, &date, nullptr)) {
-		
-				if (date <= last_user_lib_write)
-					return;
-			}
-			else return;
-		}
-		else return;
-
-		// Reset the last update to get the compilation output in the next frame
-		last_update = 0.0;
-
-		recive_user_callbacks();
-    }
-
 #endif
 
     /////////////////////////////////////////////////////////////////// PROCESS INPUT /////////////////////////////////////////////////////////////
@@ -395,6 +279,8 @@ namespace sv {
     {
 		set_scene("Main");
 
+		register_plugin("Game", "Game.dll");
+
 		register_components();
 
 		event_dispatch("initialize_game", nullptr);
@@ -405,8 +291,6 @@ namespace sv {
     SV_AUX void close_engine()
     {
 		SV_LOG_INFO("Closing SilverEngine");
-
-		close_user_callbacks();
 
 		_particle_close();
 
@@ -437,6 +321,8 @@ namespace sv {
 	
 		free_unused_assets();
 
+		unregister_plugins();
+
 		SV_LOG_INFO("Game closed");
     }
 
@@ -451,7 +337,6 @@ namespace sv {
     SV_AUX void close_project()
     {
 		close_game();
-		close_user_callbacks();
 
 		strcpy(engine.project_path, "");
     }
@@ -498,8 +383,7 @@ namespace sv {
 			}
 
 #if SV_EDITOR
-			update_user_callbacks();
-
+			
 			if (close_project_request) {
 
 				close_project_request = false;
@@ -513,7 +397,7 @@ namespace sv {
 				reset_game();
 			}
 #endif
-	    
+			_event_update();
 			process_input(); 
 
 			if (engine.close_request) {
@@ -560,7 +444,6 @@ namespace sv {
     void _engine_initialize_project(const char* path)
     {
 		strcpy(engine.project_path, path);
-		recive_user_callbacks();
 		initialize_game();
     }
 

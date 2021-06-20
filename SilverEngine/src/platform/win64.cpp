@@ -8,7 +8,6 @@
 
 #include <iostream>
 
-#include "user.h"
 #include "core/engine.h"
 
 namespace sv {
@@ -970,56 +969,30 @@ namespace sv {
 		ReleaseMutex((HANDLE)mutex._handle);
     }
 
+	// DYNAMIC LIBRARIES
+
+	Library library_load(const char* filepath_)
+	{
+		char filepath[MAX_PATH];
+		filepath_resolve(filepath, filepath_);
+		return (Library) LoadLibrary(filepath);
+	}
+	
+	void library_free(Library library)
+	{
+		FreeLibrary((HINSTANCE)library);
+	}
+
+	void* library_address(Library library, const char* name)
+	{
+		return GetProcAddress((HINSTANCE)library, name);
+	}
+
     // INTERNAL
 
     void graphics_swapchain_resize();
 
     ////////////////////////////////////////////////////////////////// USER CALLBACKS /////////////////////////////////////////////////////////////
-
-    void _os_free_user_callbacks()
-    {
-		_user_callbacks_set({});
-
-		if (platform.user_lib) {
-			FreeLibrary(platform.user_lib);
-			platform.user_lib = 0;
-		}
-    }
-    
-    bool _os_update_user_callbacks(const char* dll_)
-    {
-		char dll[MAX_PATH];
-		filepath_resolve(dll, dll_);
-	
-		_os_free_user_callbacks();
-
-		platform.user_lib = LoadLibrary(dll);
-	
-		if (platform.user_lib) {
-
-			UserCallbacks c = {};
-
-			c.initialize = (UserInitializeFn)GetProcAddress(platform.user_lib, "user_initialize");
-			c.close = (UserCloseFn)GetProcAddress(platform.user_lib, "user_close");
-			c.validate_scene = (UserValidateSceneFn)GetProcAddress(platform.user_lib, "user_validate_scene");
-			c.get_scene_filepath = (UserGetSceneFilepathFn)GetProcAddress(platform.user_lib, "user_get_scene_filepath");
-
-			if (c.initialize == nullptr) {
-				SV_LOG_ERROR("Can't load game code: Initialize function not found");
-				return false;
-			}
-			if (c.close == nullptr) {
-				SV_LOG_ERROR("Can't load game code: Close function not found");
-				return false;
-			}
-	    
-			_user_callbacks_set(c);
-
-			return true;
-		}
-		else SV_LOG_ERROR("Can't find game code");
-		return false;
-    }
 
     // Memory
     

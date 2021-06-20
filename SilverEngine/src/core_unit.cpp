@@ -17,7 +17,3 @@
 #include "core/particles.cpp"
 #include "core/asset_system.cpp"
 #include "core/event_system.cpp"
-
-// USER
-
-#include "user.cpp"
