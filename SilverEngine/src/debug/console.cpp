@@ -587,7 +587,7 @@ namespace sv {
 				console.scroll_selected = false;
 			else {
 
-				f32 min = 0.5f - (CONSOLE_HEIGHT - renderer->font_console.vertical_offset * COMMAND_TEXT_SIZE) * 0.5f + SCROLL_HEIGHT * 0.25f;
+				f32 min = 0.5f - (CONSOLE_HEIGHT + renderer->font_console.vertical_offset * COMMAND_TEXT_SIZE) * 0.5f + SCROLL_HEIGHT * 0.25f;
 				f32 max = 0.5f - SCROLL_HEIGHT * 0.25f;
 				f32 value = (input.mouse_position.y - min) / (max - min);
 
@@ -616,8 +616,8 @@ namespace sv {
 			console.buff_flip = false;
 		}
 
-		f32 console_height = CONSOLE_HEIGHT - renderer->font_console.vertical_offset * COMMAND_TEXT_SIZE;
-		f32 command_height = COMMAND_TEXT_SIZE - renderer->font_console.vertical_offset * COMMAND_TEXT_SIZE;
+		f32 console_height = CONSOLE_HEIGHT + renderer->font_console.vertical_offset * COMMAND_TEXT_SIZE;
+		f32 command_height = COMMAND_TEXT_SIZE + renderer->font_console.vertical_offset * COMMAND_TEXT_SIZE;
 		f32 animation = (1.f - console.show_fade) * (console_height + COMMAND_TEXT_SIZE);
 
 		f32 window_width = (f32)os_window_size().x;
@@ -657,13 +657,17 @@ namespace sv {
 		f32 buffer_y = 1.f + animation;
 
 		if (console.current_command[0]) {
-			
-			imrend_draw_text(console.current_command, strlen(console.current_command), text_x, text_y, 2.f, 1u, COMMAND_TEXT_SIZE, aspect, TextAlignment_Left, &renderer->font_console, Color::White(), cmd);
+
+			imrend_push_matrix(XMMatrixTranslation(text_x + 1.f, text_y - command_height * 0.5f, 0.f), cmd);
+			imrend_draw_text_bounds(console.current_command, 2.f, 1u, COMMAND_TEXT_SIZE, aspect, TextAlignment_Left, &renderer->font_console, Color::White(), cmd);
+			imrend_pop_matrix(cmd);
 		}
 
 		if (console.buff_pos) {
 
-			imrend_draw_text_area(console.buff, console.buff_pos, buffer_x, buffer_y, console_width, LINE_COUNT, TEXT_SIZE, aspect, TextAlignment_Left, u32(console.text_offset), true, &renderer->font_console, Color::White(), cmd);
+			imrend_push_matrix(XMMatrixTranslation(buffer_x + console_width * 0.5f, buffer_y, 0.f), cmd);
+			imrend_draw_text_area(console.buff, console.buff_pos, console_width, LINE_COUNT, TEXT_SIZE, aspect, TextAlignment_Left, u32(console.text_offset), true, &renderer->font_console, Color::White(), cmd);
+			imrend_pop_matrix(cmd);
 		}
 
 		f32 width = compute_text_width(console.current_command, console.cursor_pos, COMMAND_TEXT_SIZE, aspect, &renderer->font_console);

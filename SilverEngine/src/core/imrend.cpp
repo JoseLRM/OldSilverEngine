@@ -151,6 +151,11 @@ namespace sv {
 		state.buffer.write_back(&t, sizeof(T));
     }
 
+    SV_AUX void imrend_write_text(ImRendState& state, const char* text)
+    {
+		state.buffer.write_back(text, string_size(string_validate(text)) + 1u);
+    }
+
     template<typename T>
     SV_AUX T imrend_read(u8*& it)
     {
@@ -504,70 +509,42 @@ namespace sv {
 		
 				case ImRendDrawCall_TextArea:
 				{
-					const char* text = (const char*)it;
-					it += strlen(text) + 1u;
-
-					size_t text_size = imrend_read<size_t>(it);
-					f32 x = imrend_read<f32>(it);
-					f32 y = imrend_read<f32>(it);
-					f32 max_line_width = imrend_read<f32>(it);
-					u32 max_lines = imrend_read<u32>(it);
-					f32 font_size = imrend_read<f32>(it);
-					f32 aspect = imrend_read<f32>(it);
-					TextAlignment alignment = imrend_read<TextAlignment>(it);
-					u32 line_offset = imrend_read<u32>(it);
-					bool bottom_top = imrend_read<bool>(it);
-					Font* pfont = imrend_read<Font*>(it);
-					Color color = imrend_read<Color>(it);
-		    
-					XMVECTOR pos = vec2_to_dx(v2_f32(x, y));
-					pos = XMVector3Transform(pos, state.current_matrix);
-					x = XMVectorGetX(pos);
-					y = XMVectorGetY(pos);
-
-					XMVECTOR rot, scale;
-		    
-					XMMatrixDecompose(&scale, &rot, &pos, state.current_matrix);
-		    
-					max_line_width *= XMVectorGetX(scale);
-					font_size *= XMVectorGetY(scale);
+					DrawTextAreaDesc desc;
+					desc.text = (const char*)it;
+					it += string_size(desc.text) + 1u;
+					desc.max_width = imrend_read<f32>(it);
+					desc.max_lines = imrend_read<u32>(it);
+					desc.font_size = imrend_read<f32>(it);
+					desc.aspect = imrend_read<f32>(it);
+					desc.alignment = imrend_read<TextAlignment>(it);
+					desc.line_offset = imrend_read<u32>(it);
+					desc.bottom_top = imrend_read<bool>(it);
+					desc.font = imrend_read<Font*>(it);
+					desc.color = imrend_read<Color>(it);
+					desc.transform_matrix = state.current_matrix;
 
 					graphics_renderpass_end(cmd);
-					draw_text_area(text, text_size, x, y, max_line_width, max_lines, font_size, aspect, alignment, line_offset, bottom_top, pfont, color, cmd);
+					draw_text_area(desc, cmd);
 					graphics_renderpass_begin(gfx.renderpass_off, att, cmd);
 		    
 				}break;
 
 				case ImRendDrawCall_Text:
 				{
-					const char* text = (const char*)it;
-					it += strlen(text) + 1u;
-
-					size_t text_size = imrend_read<size_t>(it);
-					f32 x = imrend_read<f32>(it);
-					f32 y = imrend_read<f32>(it);
-					f32 max_line_width = imrend_read<f32>(it);
-					u32 max_lines = imrend_read<u32>(it);
-					f32 font_size = imrend_read<f32>(it);
-					f32 aspect = imrend_read<f32>(it);
-					TextAlignment alignment = imrend_read<TextAlignment>(it);
-					Font* pfont = imrend_read<Font*>(it);
-					Color color = imrend_read<Color>(it);
-		    
-					XMVECTOR pos = vec2_to_dx(v2_f32(x, y));
-					pos = XMVector3Transform(pos, state.current_matrix);
-					x = XMVectorGetX(pos);
-					y = XMVectorGetY(pos);
-
-					XMVECTOR rot, scale;
-		    
-					XMMatrixDecompose(&scale, &rot, &pos, state.current_matrix);
-		    
-					max_line_width *= XMVectorGetX(scale);
-					font_size *= XMVectorGetY(scale);
-
+					DrawTextDesc desc;
+					desc.text = (const char*)it;
+					it += string_size(desc.text) + 1u;
+					desc.max_width = imrend_read<f32>(it);
+					desc.max_lines = imrend_read<u32>(it);
+					desc.font_size = imrend_read<f32>(it);
+					desc.aspect = imrend_read<f32>(it);
+					desc.alignment = imrend_read<TextAlignment>(it);
+					desc.font = imrend_read<Font*>(it);
+					desc.color = imrend_read<Color>(it);
+					desc.transform_matrix = state.current_matrix;
+					
 					graphics_renderpass_end(cmd);
-					draw_text(text, text_size, x, y, max_line_width, max_lines, font_size, aspect, alignment, pfont, color, cmd);
+					draw_text(desc, cmd);
 					graphics_renderpass_begin(gfx.renderpass_off, att, cmd);
 		    
 				}break;
@@ -694,49 +671,58 @@ namespace sv {
 		imrend_write(state, color);
     }
 
-    void imrend_draw_text(const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, Font* pfont, Color color, CommandList cmd)
-    {
+	SV_API void imrend_draw_text(const char* text, f32 font_size, f32 aspect, Font* font, Color color, CommandList cmd)
+	{
 		SV_IMREND();
 
 		imrend_write(state, ImRendHeader_DrawCall);
 		imrend_write(state, ImRendDrawCall_Text);
 
-		state.buffer.write_back(text, text_size);
-		imrend_write(state, '\0');
+		imrend_write_text(state, text);
+		imrend_write(state, f32_max);
+		imrend_write(state, u32_max);
+		imrend_write(state, font_size);
+		imrend_write(state, aspect);
+		imrend_write(state, TextAlignment_Center);
+		imrend_write(state, font);
+		imrend_write(state, color);
+	}
+	
+	SV_API void imrend_draw_text_bounds(const char* text, f32 max_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, Font* font, Color color, CommandList cmd)
+	{
+		SV_IMREND();
 
-		imrend_write(state, text_size);
-		imrend_write(state, x);
-		imrend_write(state, y);
-		imrend_write(state, max_line_width);
+		imrend_write(state, ImRendHeader_DrawCall);
+		imrend_write(state, ImRendDrawCall_Text);
+
+		imrend_write_text(state, text);
+		imrend_write(state, max_width);
 		imrend_write(state, max_lines);
 		imrend_write(state, font_size);
 		imrend_write(state, aspect);
 		imrend_write(state, alignment);
-		imrend_write(state, pfont);
+		imrend_write(state, font);
 		imrend_write(state, color);
-    }
+	}
 
-    void imrend_draw_text_area(const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, u32 line_offset, bool bottom_top, Font* pfont, Color color, CommandList cmd)
+	void imrend_draw_text_area(const char* text, size_t text_size, f32 max_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, u32 line_offset, bool bottom_top, Font* font, Color color, CommandList cmd)
     {
 		SV_IMREND();
-
+		
 		imrend_write(state, ImRendHeader_DrawCall);
 		imrend_write(state, ImRendDrawCall_TextArea);
 
 		state.buffer.write_back(text, text_size);
 		imrend_write(state, '\0');
-
-		imrend_write(state, text_size);
-		imrend_write(state, x);
-		imrend_write(state, y);
-		imrend_write(state, max_line_width);
+		
+		imrend_write(state, max_width);
 		imrend_write(state, max_lines);
 		imrend_write(state, font_size);
 		imrend_write(state, aspect);
 		imrend_write(state, alignment);
 		imrend_write(state, line_offset);
 		imrend_write(state, bottom_top);
-		imrend_write(state, pfont);
+		imrend_write(state, font);
 		imrend_write(state, color);
     }
     

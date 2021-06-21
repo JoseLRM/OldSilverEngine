@@ -5,41 +5,41 @@
 namespace sv {
 
     struct Glyph {
-	v4_f32 texCoord;
-	f32 advance;
-	f32 xoff, yoff;
-	f32 w, h;
-	f32 left_side_bearing;
+		v4_f32 texCoord;
+		f32 advance;
+		f32 xoff, yoff;
+		f32 w, h;
+		f32 left_side_bearing;
     };
 
     enum FontFlag : u32 {
-	FontFlag_None,
-	FontFlag_Monospaced,
+		FontFlag_None,
+		FontFlag_Monospaced,
     };
     typedef u32 FontFlags;
 
     struct Font {
 
-	static constexpr u32 CHAR_COUNT = u32('~') + 1u;
+		static constexpr u32 CHAR_COUNT = u32('~') + 1u;
 
-	Glyph* glyphs = nullptr;
-	GPUImage* image = nullptr;
-	f32 vertical_offset = 0.f;
-	f32 pixel_height = 0.f;
+		Glyph* glyphs = nullptr;
+		GPUImage* image = nullptr;
+		f32 vertical_offset = 0.f;
+		f32 pixel_height = 0.f;
 
-	Glyph* get(u32 index) {
-	    if (index < CHAR_COUNT)
-		return glyphs + index;
-	    return nullptr;
-	}
+		Glyph* get(u32 index) {
+			if (index < CHAR_COUNT)
+				return glyphs + index;
+			return nullptr;
+		}
 
     };
 
     enum TextAlignment : u32 {
-	TextAlignment_Left,
-	TextAlignment_Center,
-	TextAlignment_Right,
-	TextAlignment_Justified,
+		TextAlignment_Left,
+		TextAlignment_Center,
+		TextAlignment_Right,
+		TextAlignment_Justified,
     };
 
     bool font_create(Font& font, const char* filepath, f32 pixelHeight, FontFlags flags);

@@ -1692,7 +1692,14 @@ namespace sv {
 				
 				constexpr f32 SIZE = 0.4f;
 				constexpr const char* TEXT = "No Main Camera";
-				draw_text(TEXT, strlen(TEXT), -1.f, +SIZE * 0.5f, 2.f, 1u, SIZE, os_window_aspect(), TextAlignment_Center, nullptr, cmd);
+
+				DrawTextDesc desc;
+				desc.text = TEXT;
+				desc.max_lines = 1u;
+				desc.font_size = SIZE;
+				desc.alignment = TextAlignment_Center;
+				
+				draw_text(desc, cmd);
 			}
 
 			event_dispatch("draw_scene", nullptr);
@@ -1738,92 +1745,53 @@ namespace sv {
 		graphics_renderpass_end(cmd);
     }
 
-    SV_INLINE static void text_draw_call(GPUImage* offscreen, GPUBuffer* buffer, TextData& data, u32 vertex_count, CommandList cmd)
+    void draw_text(const DrawTextDesc& desc, CommandList cmd)
     {
-		if (vertex_count == 0u) return;
-
-		auto& gfx = renderer->gfx;
-	
-		graphics_buffer_update(buffer, data.vertices, vertex_count * sizeof(TextVertex), 0u, cmd);
-
-		GPUImage* att[1];
-		att[0] = offscreen;
-
-		graphics_renderpass_begin(gfx.renderpass_off, att, nullptr, 1.f, 0u, cmd);
-		graphics_draw_indexed(vertex_count / 4u * 6u, 1u, 0u, 0u, 0u, cmd);
-		graphics_renderpass_end(cmd);
-    }
-
-    u32 draw_text(const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, Font* pFont, Color color, CommandList cmd)
-    {
-		if (text == nullptr) return 0u;
-		if (text_size == 0u) return 0u;
+		if (desc.text == nullptr) return;
+		
+		size_t text_size = (desc.text_size == size_t_max) ? string_size(desc.text) : desc.text_size;
+		
+		if (text_size == 0u) return;
 
 		auto& gfx = renderer->gfx;
 	
 		// Select font
-		Font& font = pFont ? *pFont : renderer->font_opensans;
-		
-		// Prepare
-		graphics_rasterizerstate_unbind(cmd);
-		graphics_blendstate_unbind(cmd);
-		graphics_depthstencilstate_unbind(cmd);
-		graphics_topology_set(GraphicsTopology_Triangles, cmd);
+		Font& font = desc.font ? *desc.font : renderer->font_opensans;
 
-		graphics_shader_bind(gfx.vs_text, cmd);
-		graphics_shader_bind(gfx.ps_text, cmd);
-
-		GPUBuffer* buffer = get_batch_buffer(sizeof(TextData), cmd);
-		graphics_vertexbuffer_bind(buffer, 0u, 0u, cmd);
-		graphics_indexbuffer_bind(gfx.ibuffer_text, 0u, cmd);
-		graphics_image_bind(font.image, 0u, ShaderType_Pixel, cmd);
-		graphics_sampler_bind(gfx.sampler_def_linear, 0u, ShaderType_Pixel, cmd);
-
-		graphics_inputlayoutstate_bind(gfx.ils_text, cmd);
-
-		TextData& data = *reinterpret_cast<TextData*>(renderer->batch_data[cmd]);
+		f32 aspect = (desc.aspect == f32_max) ? os_window_aspect() : desc.aspect;
 
 		// Text space transformation
-		f32 xmult = font_size / aspect;
-		f32 ymult = font_size;
+		f32 xmult = desc.font_size / aspect;
+		f32 ymult = desc.font_size;
 
-		u32 vertex_count = 0u;
+		List<TextVertex>& vertices = renderer->text_vertices[cmd];
+		vertices.reset();
+		
 		f32 line_height = ymult;
 
-		const char* it = text;
+		const char* it = desc.text;
 		const char* end = it + text_size;
 
 		f32 xoff;
 		f32 yoff = 0.f;
 
-		u32 number_of_chars = 0u;
+		u32 max_lines = desc.max_lines;
 
 		while (it != end && max_lines--) {
 
 			xoff = 0.f;
 			yoff -= line_height;
-			u32 line_begin_index = vertex_count;
+			u32 line_begin_index = (u32)vertices.size();
 
 			// TODO: add first char offset to xoff
-			const char* line_end = process_text_line(it, u32(text_size - (it - text)), max_line_width / xmult, font);
+			const char* line_end = process_text_line(it, u32(text_size - (it - desc.text)), desc.max_width / xmult, font);
 			SV_ASSERT(line_end != it);
-
-			if (vertex_count + (line_end - it) > TEXT_BATCH_COUNT) {
-
-				text_draw_call(gfx.offscreen, buffer, data, vertex_count, cmd);
-				vertex_count = 0u;
-			}
-
-			if (yoff + y > 1.f || yoff + line_height + y < -1.f) {
-				it = line_end;
-				continue;
-			}
 
 			// Fill batch
 			while (it != line_end) {
 
 				Glyph* g_ = font.get(*it);
-
+				
 				if (g_) {
 
 					Glyph& g = *g_;
@@ -1831,15 +1799,15 @@ namespace sv {
 					f32 advance = g.advance * xmult;
 
 					if (*it != ' ') {
-						f32 xpos = xoff + g.xoff * xmult + x;
-						f32 ypos = yoff + g.yoff * ymult + y;
+						f32 xpos = xoff + g.xoff * xmult;
+						f32 ypos = yoff + g.yoff * ymult;
 						f32 width = g.w * xmult;
 						f32 height = g.h * ymult;
 			
-						data.vertices[vertex_count++] = { v4_f32{ xpos	        , ypos + height	, 0.f, 1.f }, v2_f32{ g.texCoord.x, g.texCoord.w }, color };
-						data.vertices[vertex_count++] = { v4_f32{ xpos + width	, ypos + height	, 0.f, 1.f }, v2_f32{ g.texCoord.z, g.texCoord.w }, color };
-						data.vertices[vertex_count++] = { v4_f32{ xpos		, ypos		, 0.f, 1.f }, v2_f32{ g.texCoord.x, g.texCoord.y }, color };
-						data.vertices[vertex_count++] = { v4_f32{ xpos + width	, ypos		, 0.f, 1.f }, v2_f32{ g.texCoord.z, g.texCoord.y }, color };
+						vertices.push_back({ v4_f32{ xpos	     , ypos + height, 0.f, 1.f }, v2_f32{ g.texCoord.x, g.texCoord.w }, desc.color });
+						vertices.push_back({ v4_f32{ xpos + width, ypos + height, 0.f, 1.f }, v2_f32{ g.texCoord.z, g.texCoord.w }, desc.color });
+						vertices.push_back({ v4_f32{ xpos		 , ypos		    , 0.f, 1.f }, v2_f32{ g.texCoord.x, g.texCoord.y }, desc.color });
+						vertices.push_back({ v4_f32{ xpos + width, ypos		    , 0.f, 1.f }, v2_f32{ g.texCoord.z, g.texCoord.y }, desc.color });
 					}
 
 					xoff += advance;
@@ -1849,20 +1817,19 @@ namespace sv {
 			}
 
 			// Alignment
-			if (vertex_count != line_begin_index) {
+			if (vertices.size() != line_begin_index) {
 
-				switch (alignment)
+				XMMATRIX matrix = XMMatrixIdentity();
+
+				f32 line_begin = (vertices[line_begin_index].position.x);
+				f32 line_end = (vertices.back().position.x);
+
+				switch (desc.alignment)
 				{
+					
 				case TextAlignment_Center:
-				{
-					f32 line_width = (data.vertices[vertex_count - 1u].position.x - x);
-					f32 displacement = (max_line_width - line_width) * 0.5f;
-
-					for (u32 i = line_begin_index; i < vertex_count; ++i) {
-
-						data.vertices[i].position.x += displacement;
-					}
-				} break;
+					matrix = XMMatrixTranslation((line_begin - line_end) * 0.5f, 0.f, 0.f);
+					break;
 
 				case TextAlignment_Right:
 					break;
@@ -1870,28 +1837,101 @@ namespace sv {
 					SV_LOG_ERROR("TODO-> Justified text rendering");
 					break;
 				}
+
+				XMVECTOR vec;
+				for (u32 i = line_begin_index; i < vertices.size(); ++i) {
+
+					vec = vec4_to_dx(vertices[i].position);
+					vec = XMVector4Transform(vec, matrix);
+					vertices[i].position = vec;
+				}
 			}
 		}
 
-		number_of_chars = u32(it - text);
+		// Transformation
+		if (vertices.size() >= 4u) {
+			
+			XMMATRIX matrix = desc.transform_matrix;
 
-		text_draw_call(gfx.offscreen, buffer, data, vertex_count, cmd);
+			f32 y = desc.centred ? (-yoff * 0.5f) : 0.f;
 
-		return number_of_chars;
+			switch (desc.alignment) {
+
+			case TextAlignment_Left:
+				matrix = XMMatrixTranslation(-desc.max_width * 0.5f, y, 0.f) * matrix;
+				break;
+
+			default:
+				matrix = XMMatrixTranslation(0.f, y, 0.f) * matrix;
+				
+			};
+
+			XMVECTOR vec;
+			foreach(i, vertices.size()) {
+				
+				vec = vec4_to_dx(vertices[i].position);
+				vec = XMVector4Transform(vec, matrix);
+				vertices[i].position = vec;
+			}
+		}
+
+		// Prepare
+		graphics_rasterizerstate_unbind(cmd);
+		graphics_blendstate_unbind(cmd);
+		graphics_depthstencilstate_unbind(cmd);
+		graphics_topology_set(GraphicsTopology_Triangles, cmd);
+
+		graphics_shader_bind(gfx.vs_text, cmd);
+		graphics_shader_bind(gfx.ps_text, cmd);
+
+		GPUBuffer* buffer = get_batch_buffer(sizeof(GPU_TextData), cmd);
+		graphics_vertexbuffer_bind(buffer, 0u, 0u, cmd);
+		graphics_indexbuffer_bind(gfx.ibuffer_text, 0u, cmd);
+		graphics_image_bind(font.image, 0u, ShaderType_Pixel, cmd);
+		graphics_sampler_bind(gfx.sampler_def_linear, 0u, ShaderType_Pixel, cmd);
+
+		graphics_inputlayoutstate_bind(gfx.ils_text, cmd);
+
+		if (vertices.size()) {
+
+			u32 vertex_offset = 0u;
+
+			while (vertex_offset < vertices.size()) {
+
+				u32 vertex_count = SV_MIN((u32)vertices.size() - vertex_offset, TEXT_BATCH_COUNT * 4u);
+				graphics_buffer_update(buffer, vertices.data() + vertex_offset, vertex_count * sizeof(TextVertex), 0u, cmd);
+				
+				GPUImage* att[1];
+				att[0] = gfx.offscreen;
+				
+				graphics_renderpass_begin(gfx.renderpass_off, att, nullptr, 1.f, 0u, cmd);
+				graphics_draw_indexed(vertex_count / 4u * 6u, 1u, 0u, 0u, 0u, cmd);
+				graphics_renderpass_end(cmd);
+
+				vertex_offset += vertex_count;
+			}
+		}
     }
 
-    void draw_text_area(const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, u32 line_offset, bool bottom_top, Font* pFont, Color color, CommandList cmd)
+    void draw_text_area(const DrawTextAreaDesc& desc, CommandList cmd)
     {
-		if (text == nullptr) return;
+		if (desc.text == nullptr) return;
+		
+		size_t text_size = (desc.text_size == size_t_max) ? string_size(desc.text) : desc.text_size;
+		
 		if (text_size == 0u) return;
-
+	
 		// Select font
-		Font& font = pFont ? *pFont : renderer->font_opensans;
+		Font& font = desc.font ? *desc.font : renderer->font_opensans;
 
-		f32 transformed_max_width = max_line_width / (font_size / aspect);
+		f32 aspect = (desc.aspect == f32_max) ? os_window_aspect() : desc.aspect;
+
+		f32 transformed_max_width = desc.max_width / (desc.font_size / aspect);
+
+		const char* text = desc.text;
 
 		// Select text to render
-		if (bottom_top) {
+		if (desc.bottom_top) {
 			
 			// Count lines
 			u32 lines = 0u;
@@ -1905,8 +1945,8 @@ namespace sv {
 				++lines;
 			}
 
-			u32 begin_line_index = lines - SV_MIN(max_lines, lines);
-			begin_line_index -= SV_MIN(begin_line_index, line_offset);
+			u32 begin_line_index = lines - SV_MIN(desc.max_lines, lines);
+			begin_line_index -= SV_MIN(begin_line_index, desc.line_offset);
 
 			it = text;
 			lines = 0u;
@@ -1920,14 +1960,14 @@ namespace sv {
 			text_size = text_size - (it - text);
 			text = it;
 		}
-		else if (line_offset) {
+		else if (desc.line_offset) {
 
 			const char* it = text;
 			const char* end = text + text_size;
 
-			foreach (i, line_offset) {
+			foreach (i, desc.line_offset) {
 
-				it = process_text_line(it, u32(text_size - (it - text)), max_line_width / font_size / aspect, font);
+				it = process_text_line(it, u32(text_size - (it - text)), desc.max_width / desc.font_size / aspect, font);
 				if (it == end) return;
 			}
 
@@ -1935,7 +1975,19 @@ namespace sv {
 			text = it;
 		}
 
-		draw_text(text, text_size, x, y, max_line_width, max_lines, font_size, aspect, alignment, &font, cmd);
+		DrawTextDesc desc0;
+		desc0.text = text;
+		desc0.text_size = text_size;
+		desc0.transform_matrix = desc.transform_matrix;
+		desc0.max_width = desc.max_width;
+		desc0.max_lines = desc.max_lines;
+		desc0.centred = false;
+		desc0.font_size = desc.font_size;
+		desc0.aspect = aspect;
+		desc0.alignment = desc.alignment;
+		desc0.font = &font;
+
+		draw_text(desc0, cmd);
     }
 
     Font& renderer_default_font()

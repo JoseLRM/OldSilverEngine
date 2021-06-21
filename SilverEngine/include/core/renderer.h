@@ -23,15 +23,42 @@ namespace sv {
 
     // TEXT RENDERING (Clip space rendering)
 
-    // Return the number of character rendered
-    u32 draw_text(const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, Font* pFont, Color color, CommandList cmd);
+	struct DrawTextDesc {
 
-    SV_INLINE u32 draw_text(const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, Font* pFont, CommandList cmd)
-    {
-	return draw_text(text, text_size, x, y, max_line_width, max_lines, font_size, aspect, alignment, pFont, Color::White(), cmd);
-    }
+		const char*   text = NULL;
+		size_t        text_size = size_t_max;
+		f32           max_width = f32_max;
+		u32           max_lines = u32_max;
+		bool          centred = true;
+		XMMATRIX      transform_matrix = XMMatrixIdentity();
+		TextAlignment alignment = TextAlignment_Center;
+		Font*         font = NULL;
+		f32           font_size = 0.1f;
+		f32           aspect = f32_max;
+		Color         color = Color::White();
+		
+	};
 
-    void draw_text_area(const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, u32 line_offset, bool bottom_top, Font* pFont, Color color, CommandList cmd);
+	SV_API void draw_text(const DrawTextDesc& desc, CommandList cmd);
+
+	struct DrawTextAreaDesc {
+		
+		const char*   text = NULL;
+		size_t        text_size = size_t_max;
+		f32           max_width = 2.f;
+		u32           max_lines = u32_max;
+		XMMATRIX      transform_matrix = XMMatrixIdentity();
+		f32           font_size = 0.1f;
+		f32           aspect = f32_max;
+		TextAlignment alignment = TextAlignment_Left;
+		u32           line_offset = 0u;
+		bool          bottom_top = true;
+		Font*         font = NULL;
+		Color         color = Color::White();
+		
+	};
+	
+    SV_API void draw_text_area(const DrawTextAreaDesc& desc, CommandList cmd);
 
     SV_API Font& renderer_default_font();
     SV_API GPUImage* renderer_white_image();
@@ -45,52 +72,52 @@ namespace sv {
     // POSTPROCESSING
 
     SV_API void postprocess_gaussian_blur(
-	    GPUImage* src, 
-	    GPUImageLayout src_layout0, 
-	    GPUImageLayout src_layout1, 
-	    GPUImage* aux, 
-	    GPUImageLayout aux_layout0, 
-	    GPUImageLayout aux_layout1,
-	    f32 intensity,
-	    f32 aspect,
-	    CommandList cmd,
-	    RenderPass* renderpass = nullptr // Is only used while the rendertarget is the src image
-	);
+			GPUImage* src, 
+			GPUImageLayout src_layout0, 
+			GPUImageLayout src_layout1, 
+			GPUImage* aux, 
+			GPUImageLayout aux_layout0, 
+			GPUImageLayout aux_layout1,
+			f32 intensity,
+			f32 aspect,
+			CommandList cmd,
+			RenderPass* renderpass = nullptr // Is only used while the rendertarget is the src image
+		);
 
     SV_API void postprocess_addition(
-	    GPUImage* src,
-	    GPUImage* dst,
-	    CommandList cmd
-	);
+			GPUImage* src,
+			GPUImage* dst,
+			CommandList cmd
+		);
 
     SV_API void postprocess_bloom(
-	    GPUImage* src, 
-	    GPUImageLayout src_layout0, 
-	    GPUImageLayout src_layout1, 
-	    GPUImage* aux0, // Used in threshold pass
-	    GPUImageLayout aux0_layout0, 
-	    GPUImageLayout aux0_layout1,
-	    GPUImage* aux1, // Used to blur the image
-	    GPUImageLayout aux1_layout0, 
-	    GPUImageLayout aux1_layout1,
-	    GPUImage* emission,
-	    GPUImageLayout emission_layout0, 
-	    GPUImageLayout emission_layout1,
-	    f32 threshold,
-	    f32 intensity,
-	    f32 aspect,
-	    CommandList cmd
-	);
+			GPUImage* src, 
+			GPUImageLayout src_layout0, 
+			GPUImageLayout src_layout1, 
+			GPUImage* aux0, // Used in threshold pass
+			GPUImageLayout aux0_layout0, 
+			GPUImageLayout aux0_layout1,
+			GPUImage* aux1, // Used to blur the image
+			GPUImageLayout aux1_layout0, 
+			GPUImageLayout aux1_layout1,
+			GPUImage* emission,
+			GPUImageLayout emission_layout0, 
+			GPUImageLayout emission_layout1,
+			f32 threshold,
+			f32 intensity,
+			f32 aspect,
+			CommandList cmd
+		);
 
     // IMMEDIATE MODE RENDERER
 
     enum ImRendCamera : u32 {
-	ImRendCamera_Clip, // Default
-	ImRendCamera_Scene,
-	ImRendCamera_Normal,
+		ImRendCamera_Clip, // Default
+		ImRendCamera_Scene,
+		ImRendCamera_Normal,
 
 #if SV_EDITOR
-	ImRendCamera_Editor,
+		ImRendCamera_Editor,
 #endif
     };
 
@@ -114,9 +141,11 @@ namespace sv {
 
     SV_API void imrend_draw_mesh_wireframe(Mesh* mesh, Color color, CommandList cmd);
 
-    // TODO: Change parameters
-    SV_API void imrend_draw_text(const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, Font* pFont, Color color, CommandList cmd);
-    SV_API void imrend_draw_text_area(const char* text, size_t text_size, f32 x, f32 y, f32 max_line_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, u32 line_offset, bool bottom_top, Font* pFont, Color color, CommandList cmd);
+    // TODO: Font, color and alignment in stack
+	
+    SV_API void imrend_draw_text(const char* text, f32 font_size, f32 aspect, Font* font, Color color, CommandList cmd);
+	SV_API void imrend_draw_text_bounds(const char* text, f32 max_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, Font* font, Color color, CommandList cmd);
+    SV_API void imrend_draw_text_area(const char* text, size_t text_size, f32 max_width, u32 max_lines, f32 font_size, f32 aspect, TextAlignment alignment, u32 line_offset, bool bottom_top, Font* font, Color color, CommandList cmd);
 
     // High level draw calls
 

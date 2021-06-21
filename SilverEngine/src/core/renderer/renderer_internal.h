@@ -35,7 +35,7 @@ namespace sv {
 	struct GPU_ShadowMappingData {
 		XMMATRIX tm;
 	};
-
+	
     constexpr u32 TEXT_BATCH_COUNT = 1000u; // Num of letters
     constexpr u32 SPRITE_BATCH_COUNT = 1000u;
 
@@ -45,7 +45,7 @@ namespace sv {
 		Color	color;
     };
 
-    struct TextData {
+    struct GPU_TextData {
 		TextVertex vertices[TEXT_BATCH_COUNT * 4u];
     };
 
@@ -169,6 +169,8 @@ namespace sv {
 		GraphicsObjects gfx = {};
 
 		u8* batch_data[GraphicsLimit_CommandList] = {};
+
+		List<TextVertex> text_vertices[GraphicsLimit_CommandList] = {};
 
 		Font font_opensans;
 		Font font_console;
