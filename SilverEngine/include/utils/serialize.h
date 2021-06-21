@@ -11,19 +11,21 @@ namespace sv {
     constexpr u32 VARVALUE_SIZE = 30u;
 
     enum VarType : u32 {
-		VarType_None,
+		VarType_Null,
 	    VarType_String,
 	    VarType_Integer,
 	    VarType_Real,
+		VarType_Boolean,
 	};
     
     struct Var {
-		char name[VARNAME_SIZE];
+		char name[VARNAME_SIZE + 1u];
 		VarType type;
 		union {
-			char string[VARVALUE_SIZE];
+			char string[VARVALUE_SIZE + 1u];
 			i64 integer;
 			f64 real;
+			bool boolean;
 		} value;
     };
 

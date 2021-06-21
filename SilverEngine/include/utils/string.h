@@ -468,6 +468,40 @@ namespace sv {
 		return true;
     }
 
+	SV_INLINE bool line_read_f64(const char*& line, f64& value)
+    {
+		value = 0.f;
+		line_jump_spaces(line);
+
+		const char* start = line;
+
+		if (*line == '-') ++line;
+
+		u32 dots = 0u;
+	
+		while (*line != '\0' && *line != ' ' && *line != '\n' && *line != '\r') {
+			if (!char_is_number(*line) && *line != '.')
+				return false;
+
+			if (*line == '.')
+				++dots;
+	    
+			++line;
+		}
+
+		if (line == start || dots > 1) return false;
+	
+		size_t size = line - start;	
+
+		char value_str[50u];
+		memcpy(value_str, start, size);
+		value_str[size] = '\0';
+		char* si;
+		value = (f64)strtod(value_str, &si);
+
+		return true;
+    }
+
     SV_INLINE bool line_read_i32(const char*& line, i32& value, const char* delimiters, u32 delimiter_count)
     {
 		value = 0;
@@ -500,6 +534,42 @@ namespace sv {
 		memcpy(value_str, start, size);
 		value_str[size] = '\0';
 		value = atoi(value_str);
+
+		return true;
+    }
+
+	SV_INLINE bool line_read_i64(const char*& line, i64& value, const char* delimiters, u32 delimiter_count)
+    {
+		value = 0;
+		line_jump_spaces(line);
+
+		const char* start = line;
+	
+		if (*line == '-') ++line;
+	
+		while (*line != '\0' && *line != '\n' && *line != '\r') {
+
+			bool end = false;
+
+			foreach(i, delimiter_count)
+				if (delimiters[i] == *line) end = true;
+
+			if (end)
+				break;
+	    
+			if (!char_is_number(*line))
+				return false;
+			++line;
+		}
+
+		if (line == start) return false;
+	
+		size_t size = line - start;	
+
+		char value_str[50u];
+		memcpy(value_str, start, size);
+		value_str[size] = '\0';
+		value = atol(value_str);
 
 		return true;
     }
