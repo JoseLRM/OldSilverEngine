@@ -874,7 +874,6 @@ namespace sv {
 				f32 far_min;
 				f32 far_max;
 				f32 far_adv;
-				const char* preview;
 
 				if (cam.projection_type == ProjectionType_Perspective) {
 					near_min = 0.001f;
@@ -883,7 +882,6 @@ namespace sv {
 					far_min = cam.near;
 					far_max = f32_max;
 					far_adv = 0.3f;
-					preview = "Orthographic";
 				}
 				else {
 					near_min = f32_min;
@@ -892,19 +890,26 @@ namespace sv {
 					far_min = cam.near;
 					far_max = f32_max;
 					far_adv = 0.3f;
-					preview = "Perspective";
 				}
 
-				if (gui_begin_combobox(preview, 0u)) {
+				bool perspective = cam.projection_type == ProjectionType_Perspective;
 
-					if (gui_button("Orthographic")) {
-						cam.projection_type = ProjectionType_Orthographic;
-					}
-					if (gui_button("Perspective")) {
+				if (gui_checkbox("Perspective", perspective)) {
+
+					if (perspective) {
 						cam.projection_type = ProjectionType_Perspective;
+						cam.near = 0.2f;
+						cam.far = 10000.f;
+						cam.width = 0.1f;
+						cam.height = 0.1f;
 					}
-
-					gui_end_combobox();
+					else {
+						cam.projection_type = ProjectionType_Orthographic;
+						cam.near = -1000.f;
+						cam.far = 1000.f;
+						cam.width = 100.f;
+						cam.height = 100.f;
+					}
 				}
 
 				gui_drag_f32("Near", cam.near, near_adv, near_min, near_max);

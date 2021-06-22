@@ -96,6 +96,8 @@ namespace sv {
 		GuiHeader_BeginPopup,
 		GuiHeader_EndPopup,
 		GuiHeader_ClosePopup,
+		GuiHeader_BeginCombobox,
+		GuiHeader_EndCombobox,
 		
 		GuiHeader_Widget,
 
@@ -221,7 +223,8 @@ namespace sv {
 		GuiRootType_Screen,
 		GuiRootType_Window,
 		GuiRootType_WindowNode,
-		GuiRootType_Popup
+		GuiRootType_Popup,
+		GuiRootType_Combobox
     };
 
     enum GuiReadWidgetState : u32 {
@@ -395,6 +398,14 @@ namespace sv {
 			v2_f32 origin;
 			u64 id = 0u;
 		} popup;
+
+		struct {
+			GuiRootInfo root;
+			u64 next_id = 0u;
+			u64 id = 0u;
+			GuiRootIndex parent_root;
+			u32 widget_id;
+		} combobox_root;
 
 		RawList text_field_buffer;
 		u32 text_field_cursor = 0u;
@@ -575,6 +586,9 @@ namespace sv {
 
 		case GuiRootType_Popup:
 			return &gui->popup.root;
+			
+		case GuiRootType_Combobox:
+			return &gui->combobox_root.root;
 			
 		default:
 			return NULL;
@@ -1264,6 +1278,34 @@ namespace sv {
 		}
     }
 
+	SV_AUX void update_combobox_bounds()
+	{
+		GuiRootInfo* root = get_root_info(gui->combobox_root.parent_root);
+		if (root) {
+
+			if (gui->combobox_root.widget_id < root->widgets.size()) {
+
+				GuiWidget& w = root->widgets[gui->combobox_root.widget_id];
+				if (w.type == GuiWidgetType_Combobox) {
+
+					v4_f32& b = gui->combobox_root.root.widget_bounds;
+					b.x = w.bounds.x;
+					b.z = w.bounds.z;
+
+					b.w = SV_MIN(100.f, gui->combobox_root.root.yoff) / gui->resolution.y;
+					b.y = w.bounds.y - w.bounds.w * 0.5f - b.w * 0.5f;
+
+					adjust_widget_bounds({ GuiRootType_Combobox, 0 });
+
+					return;
+				}
+			}
+		}
+		
+		gui->combobox_root.parent_root = { GuiRootType_None, 0 };
+		gui->combobox_root.widget_id = u32_max;
+	}
+
 	SV_AUX GuiWidget* find_widget(GuiWidgetType type, u64 id, GuiRootIndex root_index = {GuiRootType_None, 0u})
     {
 		// TODO: Optimize
@@ -1878,7 +1920,7 @@ namespace sv {
 					}
 				}
 				break;
-
+				
 				case GuiWidgetType_Checkbox:
 				{
 					InputState state = input.mouse_buttons[MouseButton_Left];
@@ -1890,6 +1932,21 @@ namespace sv {
 						if (mouse_in_bounds(button_bounds)) {
 							w.widget.checkbox.pressed = true;
 							w.widget.checkbox.value = !w.widget.checkbox.value;
+						}
+		    
+						free_focus();
+					}
+				}
+				break;
+
+				case GuiWidgetType_Combobox:
+				{
+					InputState state = input.mouse_buttons[MouseButton_Left];
+		
+					if (state == InputState_Released || state == InputState_None) {
+
+						if (mouse_in_bounds(w.bounds)) {
+							gui->combobox_root.next_id = w.id;
 						}
 		    
 						free_focus();
@@ -2077,6 +2134,7 @@ namespace sv {
 		case GuiWidgetType_Collapse:
 		case GuiWidgetType_TextField:
 		case GuiWidgetType_ElementList:
+		case GuiWidgetType_Combobox:
 		{
 			if (input.unused) {
 			
@@ -2322,11 +2380,13 @@ namespace sv {
 			break;
 
 			case GuiRootType_Popup:
+			case GuiRootType_Combobox:
 			{
 				if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
 
 					if (!mouse_in_bounds(root.widget_bounds)) {
 						gui->popup.id = 0u;
+						gui->combobox_root.id = 0u;
 						input.unused = false;
 					}
 				}
@@ -2492,8 +2552,14 @@ namespace sv {
 		gui->current_focus = nullptr;
 		
 		reset_root(gui->popup.root);
+		
+		reset_root(gui->combobox_root.root);
+		gui->combobox_root.widget_id = u32_max;
+		gui->combobox_root.parent_root = { GuiRootType_None, 0u };
+		gui->combobox_root.root.widget_bounds = {};
 
 		bool close_popup_request = true;
+		bool close_combobox_request = true;
 
 		// Read buffer
 		
@@ -2605,6 +2671,30 @@ namespace sv {
 			case GuiHeader_ClosePopup:
 			{
 				close_popup_request = true;
+			}
+			break;
+
+			case GuiHeader_BeginCombobox:
+			{
+				close_combobox_request = false;
+		
+				gui->root_stack.push_back({ GuiRootType_Combobox, 0u });
+			}
+			break;
+
+			case GuiHeader_EndCombobox:
+			{
+				SV_ASSERT(gui->root_stack.back().type == GuiRootType_Combobox);
+				SV_ASSERT(gui->root_stack.size() >= 2u);
+
+				gui->combobox_root.parent_root = gui->root_stack[gui->root_stack.size() - 2u];
+				GuiRootInfo* parent_root = get_root_info(gui->combobox_root.parent_root);
+				if (parent_root)
+					gui->combobox_root.widget_id = (u32)parent_root->widgets.size() - 1u;
+				else SV_ASSERT(0);
+
+				// Set new root
+				gui->root_stack.pop_back();
 			}
 			break;
 
@@ -2916,6 +3006,9 @@ namespace sv {
 
 				update_window_bounds(gui->windows[window_id]);
 			}
+			
+			if (gui->combobox_root.id != 0u)
+				update_combobox_bounds();
 		}
 
 		// Sort roots list
@@ -3040,6 +3133,10 @@ namespace sv {
 		if (gui->popup.id != 0u)
 			update_root({ GuiRootType_Popup, 0u });
 
+		// Update combobox
+		if (gui->combobox_root.id != 0u)
+			update_root({ GuiRootType_Combobox, 0u });
+
 		// Update windows
 		for (u32 id : gui->sorted_windows) {
 
@@ -3053,6 +3150,13 @@ namespace sv {
 
 		if (close_popup_request) {
 			gui->popup.id = 0u;
+		}
+		if (close_combobox_request) {
+			gui->combobox_root.id = 0u;
+		}
+		if (gui->combobox_root.next_id) {
+			gui->combobox_root.id = gui->combobox_root.next_id;
+			gui->combobox_root.next_id = 0;
 		}
     }
     
@@ -3649,16 +3753,24 @@ namespace sv {
 		write_widget(GuiWidgetType_Combobox, id, flags);
 		gui_write_text(preview);
 	
-		//GuiWidget* combo = find_widget(GuiWidgetType_Combobox, id);
+		GuiWidget* combo = find_widget(GuiWidgetType_Combobox, id);
 
+		if (combo && combo->id == gui->combobox_root.id) {
+
+			gui_write(GuiHeader_BeginCombobox);
+			
+			gui->root_stack.push_back({ GuiRootType_Combobox, 0u });
+			gui_push_id(id);
+			return true;
+		}
 		
-		// TODO
 		return false;
 	}
 
 	void gui_end_combobox()
 	{
-		// TODO
+		gui_pop_id();
+		gui_write(GuiHeader_EndCombobox);
 	}
 
     void gui_begin_grid(f32 width, f32 padding, u64 id)
@@ -3849,6 +3961,23 @@ namespace sv {
 		case GuiRootType_Popup:
 		{
 			v4_f32 b = gui->popup.root.widget_bounds;
+
+			Color background_color = style.popup_background_color;
+			Color outline_color = style.popup_outline_color;
+
+			imrend_draw_quad({ b.x, b.y, 0.f }, { b.z, b.w }, outline_color, cmd);
+
+			b.z -= style.popup_outline_size / gui->resolution.x;
+			b.w -= style.popup_outline_size / gui->resolution.y;
+			
+			imrend_draw_quad({ b.x, b.y, 0.f }, { b.z, b.w }, background_color, cmd);
+		}
+		break;
+
+		// TODO
+		case GuiRootType_Combobox:
+		{
+			v4_f32 b = gui->combobox_root.root.widget_bounds;
 
 			Color background_color = style.popup_background_color;
 			Color outline_color = style.popup_outline_color;
@@ -4315,6 +4444,10 @@ namespace sv {
 			
 			draw_root({ GuiRootType_Window, id }, cmd);
 		}
+
+		// Draw combobox
+		if (gui->combobox_root.id != 0u)
+			draw_root({ GuiRootType_Combobox, 0u }, cmd);
 
 		// Draw popup
 		if (gui->popup.id != 0u)
