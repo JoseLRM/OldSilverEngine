@@ -18,7 +18,7 @@ namespace sv {
     static constexpr u32 HISTORY_COUNT = 100u;
     static constexpr u32 CONSOLE_SIZE = 200000u;
     static constexpr f32 CONSOLE_HEIGHT = 1.7f;
-    static constexpr u32 LINE_COUNT = 40u;
+    static constexpr u32 LINE_COUNT = 60u;
     static constexpr f32 TEXT_SIZE = CONSOLE_HEIGHT / f32(LINE_COUNT);
     static constexpr f32 COMMAND_TEXT_SIZE = 0.06f;
     static constexpr f32 SCROLL_WIDTH = 0.03f;

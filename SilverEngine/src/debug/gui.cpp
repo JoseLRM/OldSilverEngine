@@ -495,7 +495,7 @@ namespace sv {
     }
     SV_AUX f32 compute_window_buttons_height(const GuiWindowNode& window)
     {
-		return 20.f / gui->resolution.y;
+		return 30.f / gui->resolution.y;
     }
     SV_AUX v4_f32 compute_window_buttons(const GuiWindowNode& window)
     {
@@ -505,17 +505,53 @@ namespace sv {
 		b.w = height;
 		return b;
     }
+	SV_AUX f32 get_font_size(u32 level)
+	{
+		f32 font_size;
+		
+		switch (level) {
+
+		case 1:
+			font_size = 20.f;
+			break;
+
+		case 2:
+			font_size = 24.f;
+			break;
+
+		default:
+			font_size = 16.f;
+			break;
+			
+		}
+
+		font_size /= gui->resolution.y;
+		return font_size;
+	}
+	SV_AUX f32 gui_compute_text_width(const char* text, u32 font_size_level)
+	{
+		Font& font = renderer_default_font();
+		f32 font_size = get_font_size(font_size_level);
+		
+		return compute_text_width(text, (u32)string_size(text), font_size, os_window_aspect(), &font);
+	}
     SV_AUX v4_f32 compute_window_button(const GuiWindowNode& window, v4_f32 buttons, u32 index)
     {
-		f32 width = 50.f / gui->resolution.x;
+		f32 margin = 7.f / gui->resolution.x;
 		f32 padding = 3.f / gui->resolution.x;
+		f32 x = margin;
+		f32 width = gui_compute_text_width(window.win.states[index]->title, 1u) + padding * 2.f;
+
+		foreach(i, index) {
+
+			x += gui_compute_text_width(window.win.states[i]->title, 1u) + padding * 2.f + margin;
+		}
 	
 		v4_f32 b;
+		b.x = (buttons.x - buttons.z * 0.5f) + x + width * 0.5f;
 		b.y = buttons.y;
 		b.w = buttons.w;
 		b.z = width;
-
-		b.x = (buttons.x - buttons.z * 0.5f) + f32(index) * (width + padding) + width * 0.5f;
 	
 		return b;
     }
@@ -961,15 +997,15 @@ namespace sv {
 			case GuiWidgetType_TextField:
 			case GuiWidgetType_SelectFilepath:
 			case GuiWidgetType_Combobox:
-				height = 25.f;
+				height = 20.f;
 				break;
 
 			case GuiWidgetType_Collapse:
-				height = 35.f;
+				height = 25.f;
 				break;
 
 			case GuiWidgetType_ImageButton:
-				height = 40.f;
+				height = 30.f;
 				break;
 
 			case GuiWidgetType_Image:
@@ -2728,7 +2764,7 @@ namespace sv {
 							}
 						}
 
-						f32 height = 25.f;
+						f32 height = 20.f;
 						f32 width = 0.9f;
 						f32 separation = 5.f;
 
@@ -3703,26 +3739,31 @@ namespace sv {
 		return pressed;
 	}
 
-	SV_AUX void gui_draw_text(const char* text, v2_f32 pos, v2_f32 size, Color color, CommandList cmd)
+	SV_AUX void gui_draw_text(const char* text, v2_f32 pos, v2_f32 size, bool left, u32 font_size_level, CommandList cmd)
 	{
 		if (text == NULL) return;
 		
 		Font& font = renderer_default_font();
-		f32 font_size = size.y;
+		f32 font_size = get_font_size(font_size_level);
 		
 		imrend_push_matrix(XMMatrixTranslation(pos.x, pos.y + font.vertical_offset * font_size, 0.f), cmd);
-		imrend_draw_text(text, font_size, gui->aspect, &font, color, cmd);
+		imrend_draw_text_bounds(text, size.x, 1u, font_size, gui->aspect, left ? TextAlignment_Left : TextAlignment_Center, &font, gui->style.widget_text_color, cmd);
 		imrend_pop_matrix(cmd);
 	}
 
-	SV_AUX void gui_draw_text_bounds(const char* text, v2_f32 pos, v2_f32 size, Color color, TextAlignment alignment, CommandList cmd)
+	SV_AUX void gui_draw_text(const char* text, v2_f32 pos, v2_f32 size, bool left, CommandList cmd)
 	{
-		Font& font = renderer_default_font();
-		f32 font_size = size.y;
-		
-		imrend_push_matrix(XMMatrixTranslation(pos.x, pos.y + font.vertical_offset * font_size, 0.f), cmd);
-		imrend_draw_text_bounds(text, size.x, 1u, font_size, gui->aspect, alignment, &font, color, cmd);
-		imrend_pop_matrix(cmd);
+		gui_draw_text(text, pos, size, left, 0, cmd);
+	}
+
+	SV_AUX void gui_draw_text_big(const char* text, v2_f32 pos, v2_f32 size, bool left, CommandList cmd)
+	{
+		gui_draw_text(text, pos, size, left, 1, cmd);
+	}
+
+	SV_AUX void gui_draw_text_thick(const char* text, v2_f32 pos, v2_f32 size, bool left, CommandList cmd)
+	{
+		gui_draw_text(text, pos, size, left, 2, cmd);
 	}
 
     SV_INTERNAL void draw_root(GuiRootIndex root_index, CommandList cmd)
@@ -3751,6 +3792,16 @@ namespace sv {
 			// TODO: !(window->current_state->flags & GuiWindowFlag_NoClose)) 
 			imrend_draw_quad({ closebutton.x, closebutton.y, 0.f }, { closebutton.z, closebutton.w }, closebutton_color, cmd);
 
+			GuiWindowNode& node = gui->window_nodes[window.root_id];
+			if (!node.is_node && node.win.states.size() == 1u) {
+
+				const char* title = node.win.states.back()->title;
+				v2_f32 size = { decoration.z, decoration.w };
+				size.x *= 0.9f;
+				
+				gui_draw_text_big(title, { decoration.x, decoration.y }, size, true, cmd);
+			}
+			
 			draw_root({ GuiRootType_WindowNode, window.root_id }, cmd);
 		}
 		break;
@@ -3766,12 +3817,24 @@ namespace sv {
 				if (!node.is_root || win.states.size() > 1u) {
 
 					v4_f32 node_buttons = compute_window_buttons(node);
-					imrend_draw_quad({ node_buttons.x, node_buttons.y, 0.f }, { node_buttons.z, node_buttons.w }, Color::Red(), cmd);
+					imrend_draw_quad({ node_buttons.x, node_buttons.y, 0.f }, { node_buttons.z, node_buttons.w }, style.window_background_color, cmd);
 
 					foreach (i, win.states.size()) {
 
 						v4_f32 button = compute_window_button(node, node_buttons, i);
-						imrend_draw_quad({ button.x, button.y, 0.f }, { button.z, button.w }, Color::Blue(), cmd);
+
+						Color color = style.window_button_color;
+
+						if (win.current_index == i) {
+							color = style.window_button_focused_color;
+						}
+						else if (mouse_in_bounds(button)) {
+							color = style.window_button_highlighted_color;
+						}
+						
+						imrend_draw_quad({ button.x, button.y, 0.f }, { button.z, button.w }, color, cmd);
+						const char* title = win.states[i]->title;
+						gui_draw_text_big(title, { button.x, button.y }, { button.z, button.w }, false, cmd);
 					}
 				}
 			}
@@ -3836,7 +3899,7 @@ namespace sv {
 		    
 					imrend_draw_quad(vec2_to_vec3(pos), size, color, cmd);
 
-					gui_draw_text(button.text, pos, size, style.widget_text_color, cmd);
+					gui_draw_text(button.text, pos, size, false, cmd);
 				}
 				break;
 
@@ -3879,7 +3942,7 @@ namespace sv {
 						size.x *= 0.97f;
 						size.y *= 0.6f;
 
-						gui_draw_text_bounds(button.text, pos, size, style.widget_text_color, TextAlignment_Left, cmd);
+						gui_draw_text(button.text, pos, size, true, cmd);
 					}
 				}
 				break;
@@ -3906,7 +3969,7 @@ namespace sv {
 					pos.x = w.bounds.x + w.bounds.z * 0.5f - size.x * 0.5f;
 	    
 					size.x -= 0.01f; // Minus some margin
-					gui_draw_text_bounds(cb.text, pos, size, style.widget_text_color, TextAlignment_Left, cmd);
+					gui_draw_text(cb.text, pos, size, true, cmd);
 				}
 				break;
 
@@ -3928,7 +3991,7 @@ namespace sv {
 					pos.x = w.bounds.x + w.bounds.z * 0.5f - size.x * 0.5f;
 
 					size.x -= 0.01f; // Minus some margin
-					gui_draw_text_bounds(cb.preview, pos, size, style.widget_text_color, TextAlignment_Left, cmd);
+					gui_draw_text(cb.preview, pos, size, true, cmd);
 				}
 				break;
 
@@ -3943,6 +4006,8 @@ namespace sv {
 					v4_f32 bounds;
 					u32 vector = vectorof_type(drag.type);
 					char strbuff[100u];
+
+					bool big_text = false;
 
 					foreach(i, vector) {
 		    
@@ -3968,11 +4033,11 @@ namespace sv {
 							default:
 								color = Color::Gray(150u);
 							}
+
+							big_text = true;
 						}
 		    
 						imrend_draw_quad(vec2_to_vec3(pos), size, color, cmd);
-
-						f32 font_size = size.y;
 
 						strcpy(strbuff, "\0");
 
@@ -4011,24 +4076,20 @@ namespace sv {
 		    
 						}
 
-						Font& font = renderer_default_font();
-
-						imrend_push_matrix(XMMatrixTranslation(pos.x, pos.y + font.vertical_offset * font_size, 0.f), cmd);
-						imrend_draw_text_bounds(strbuff, size.x, 1u, font_size, gui->aspect, TextAlignment_Center, &font, style.widget_text_color, cmd);
-						imrend_pop_matrix(cmd);
+						if (big_text)
+							gui_draw_text_big(strbuff, pos, size, false, cmd);
+						else
+							gui_draw_text(strbuff, pos, size, false, cmd);
 
 						if (drag.text) {
-
+							
 							v4_f32 text_bounds = compute_drag_text(w);
 							v2_f32 size = { text_bounds.z, text_bounds.w };
 							v2_f32 pos = { text_bounds.x, text_bounds.y };
 
 							size.x -= 0.01f; // Minus some margin
-							f32 font_size = size.y;							
-
-							imrend_push_matrix(XMMatrixTranslation(pos.x, pos.y + font.vertical_offset * font_size, 0.f), cmd);
-							imrend_draw_text_bounds(drag.text, size.x, 1u, font_size, gui->aspect, TextAlignment_Left, &font, style.widget_text_color, cmd);
-							imrend_pop_matrix(cmd);
+							
+							gui_draw_text(drag.text, pos, size, true, cmd);
 						}
 					}
 				}
@@ -4042,16 +4103,8 @@ namespace sv {
 					auto& text = w.widget.text;
 					pos = v2_f32{ w.bounds.x, w.bounds.y };
 					size = v2_f32{ w.bounds.z, w.bounds.w };
-	    
-					if (text.text) {
 
-						Font& font = renderer_default_font();
-						f32 font_size = size.y + size.y * font.vertical_offset;
-
-						imrend_push_matrix(XMMatrixTranslation(pos.x, pos.y + font.vertical_offset * font_size, 0.f), cmd);
-						imrend_draw_text(text.text, font_size, gui->aspect, &font, style.widget_text_color, cmd);
-						imrend_pop_matrix(cmd);
-					}
+					gui_draw_text(text.text, pos, size, false, cmd);
 				}
 				break;
 
@@ -4072,16 +4125,7 @@ namespace sv {
 						color = style.widget_secondary_color;
 
 					imrend_draw_quad(vec2_to_vec3(pos), size, color, cmd);
-	    
-					if (text.text) {
-
-						Font& font = renderer_default_font();
-						f32 font_size = size.y + size.y * font.vertical_offset;
-						
-						imrend_push_matrix(XMMatrixTranslation(pos.x, pos.y + font.vertical_offset * font_size, 0.f), cmd);
-						imrend_draw_text_bounds(text.text, size.x, 1u, font_size, gui->aspect, TextAlignment_Left, &font, style.widget_text_color, cmd);
-						imrend_pop_matrix(cmd);
-					}
+					gui_draw_text(text.text, pos, size, true, cmd);
 				}
 				break;
 
@@ -4100,7 +4144,7 @@ namespace sv {
 					// Arrow size
 					v4_f32 arrow_bounds = compute_collapse_button(w);
 					v2_f32 p = v2_f32(arrow_bounds.x, arrow_bounds.y);
-					v2_f32 s = v2_f32(arrow_bounds.z, arrow_bounds.w) * 0.7f;
+					v2_f32 s = v2_f32(arrow_bounds.z, arrow_bounds.w) * 0.55f;
 	    
 					if (collapse.active) {
 
@@ -4122,7 +4166,7 @@ namespace sv {
 					pos.x = w.bounds.x + w.bounds.z * 0.5f - size.x * 0.5f;
 	    
 					size.x -= 0.01f; // Minus some margin
-					gui_draw_text_bounds(collapse.text, pos, size, style.widget_text_color, TextAlignment_Left, cmd);
+					gui_draw_text_big(collapse.text, pos, size, true, cmd);
 				}
 				break;
 
@@ -4153,7 +4197,7 @@ namespace sv {
 
 					pos.y -= size.y * 0.35f;
 					size.y *= 0.35f;
-					gui_draw_text_bounds(asset.text, pos, size, style.widget_text_color, TextAlignment_Center, cmd);
+					gui_draw_text(asset.text, pos, size, false, cmd);
 				}
 				break;
 
@@ -4171,7 +4215,7 @@ namespace sv {
 					if (text == nullptr)
 						text = "";
 
-					gui_draw_text_bounds(text, pos, size, style.widget_text_color, TextAlignment_Left, cmd);
+					gui_draw_text(text, pos, size, true, cmd);
 				}
 				break;
 
@@ -4203,7 +4247,7 @@ namespace sv {
 		    
 					imrend_draw_quad(vec2_to_vec3(pos), size, color, cmd);
 
-					gui_draw_text_bounds(element.text, pos, size, style.widget_text_color, TextAlignment_Center, cmd);
+					gui_draw_text(element.text, pos, size, false, cmd);
 
 					if (moving)
 						// Push widget scissor
