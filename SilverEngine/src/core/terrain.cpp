@@ -85,7 +85,7 @@ namespace sv {
 		desc.size = u32(terrain.indices.size() * sizeof(u32));
 		desc.pData = terrain.indices.data();
 
-		SV_CHECK(graphics_buffer_create(&desc, &terrain.ibuffer));
+	SV_CHECK(graphics_buffer_create(&desc, &terrain.ibuffer));
 
 		graphics_name_set(terrain.vbuffer, "TerrainVertexBuffer");
 		graphics_name_set(terrain.ibuffer, "TerrainIndexBuffer");
@@ -336,7 +336,7 @@ namespace sv {
 			l0 = vec3_normalize(l0);
 			l1 = vec3_normalize(l1);
 
-			v3_f32 normal = vec3_cross(l0, l1);
+			v3_f32 normal = vec3_normalize(vec3_cross(l0, l1));
 
 			terrain.normals[i0] += normal;
 			terrain.normals[i1] += normal;
@@ -401,6 +401,54 @@ namespace sv {
 		terrain.resolution.y = 0u;
 
 		terrain_destroy_buffers(terrain);
+	}
+
+	bool terrain_intersect_ray(TerrainComponent& terrain, Entity entity, Ray ray, v3_f32& intersection)
+	{		
+		XMMATRIX matrix = XMMatrixScaling(terrain.size.x, 1.f, terrain.size.y) * get_entity_world_matrix(entity);
+		XMMATRIX inv_matrix = XMMatrixInverse(NULL, matrix);
+
+		Ray transformed_ray = ray;
+		transformed_ray.origin = XMVector4Transform(vec3_to_dx(ray.origin), inv_matrix);
+		transformed_ray.direction = XMVector4Transform(vec3_to_dx(ray.direction), inv_matrix);
+
+		f32 closest_distance = f32_max;
+		v3_f32 closest_pos;
+
+		u32 triangle_count = (terrain.resolution.x - 1u) * (terrain.resolution.y - 1u) * 2;
+
+		foreach(i, triangle_count) {
+
+			u32 i0 = terrain.indices[i * 3u + 0];
+			u32 i1 = terrain.indices[i * 3u + 1];
+			u32 i2 = terrain.indices[i * 3u + 2];
+
+			v3_f32 p0 = compute_position_from_height(terrain.heights[i0], i0, terrain.resolution.x, terrain.resolution.y);
+			v3_f32 p1 = compute_position_from_height(terrain.heights[i1], i1, terrain.resolution.x, terrain.resolution.y);
+			v3_f32 p2 = compute_position_from_height(terrain.heights[i2], i2, terrain.resolution.x, terrain.resolution.y);
+
+			v3_f32 inter;
+			
+			if (intersect_ray_vs_traingle(transformed_ray, p0, p1, p2, inter)) {
+
+				f32 distance = vec3_distance(transformed_ray.origin, inter);
+				if (distance < closest_distance) {
+
+					closest_distance = distance;
+					closest_pos = inter;
+				}
+			}
+		}
+
+		if (closest_distance != f32_max) {
+
+			closest_pos = XMVector4Transform(vec3_to_dx(closest_pos, 1.f), matrix);
+
+			intersection = closest_pos;
+			return true;
+		}
+
+		return false;
 	}
 
 #if SV_EDITOR

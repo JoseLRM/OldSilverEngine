@@ -6,11 +6,11 @@
 
 namespace sv {
 
-    enum GizmosTransformMode : u32 {
+	enum GizmosTransformMode : u32 {
 		GizmosTransformMode_None,
 		GizmosTransformMode_Position
     };
-
+	
     constexpr f32 GIZMOS_SIZE = 0.1f;
 
     enum GizmosObject : u32 {
@@ -20,7 +20,7 @@ namespace sv {
 		GizmosObject_AxisZ,
     };
 
-    struct GizmosInfo {
+    struct GizmosData {
 
 		GizmosTransformMode mode = GizmosTransformMode_Position;
 
@@ -31,6 +31,25 @@ namespace sv {
 		f32 axis_size;
 		f32 selection_size;
     };
+
+	struct TerrainBrushData {
+		f32 strength = 10.f;
+		f32 range = 10.f;
+		f32 min_height = 0.f;
+		f32 max_height = 1000.f;
+	};
+
+	enum EditorToolType : u32 {
+		EditorToolType_None,
+		EditorToolType_Gizmos,
+		EditorToolType_TerrainBrush,
+	};
+	
+	struct EditorToolData {
+		EditorToolType tool_type = EditorToolType_None;
+		GizmosData gizmos_data;
+		TerrainBrushData terrain_brush_data;
+	};
 
     enum AssetElementType : u32 {
 		AssetElementType_Unknown,
@@ -100,7 +119,8 @@ namespace sv {
 		bool camera_focus = false;
 
 		AssetBrowserInfo asset_browser;
-		GizmosInfo gizmos;
+
+		EditorToolData tool_data;
 	
 		TextureAsset image;
 		static constexpr v4_f32 TEXCOORD_FOLDER = { 0.f, 0.f, 0.1f, 0.1f };
@@ -553,7 +573,7 @@ namespace sv {
 
     SV_INTERNAL void update_gizmos()
     {
-		GizmosInfo& info = editor.gizmos;
+		GizmosData& info = editor.tool_data.gizmos_data;
 
 		if (!input.unused || editor.selected_entities.empty()) {
 			info.focus = false;
@@ -734,7 +754,7 @@ namespace sv {
     {
 		if (editor.selected_entities.empty()) return;
 
-		GizmosInfo& info = editor.gizmos;
+		GizmosData& info = editor.tool_data.gizmos_data;
 
 		v3_f32 position = compute_selected_entities_position();
 
@@ -1408,7 +1428,7 @@ namespace sv {
 		    
 					bool is_player = selected == scene->player;
 		    
-					if (gui_checkbox("Player", is_player, 0u)) {
+					if (gui_checkbox("Player", is_player)) {
 
 						if (is_player) {
 							scene->player = selected;
@@ -1419,7 +1439,7 @@ namespace sv {
 					{
 						bool main = scene->main_camera == selected;
 
-						if (gui_checkbox("MainCamera", main, 0u)) {
+						if (gui_checkbox("MainCamera", main)) {
 
 							if (main) scene->main_camera = selected;
 							else scene->main_camera = 0;
@@ -2467,6 +2487,34 @@ namespace sv {
 					if (gui_button("Exit Project")) {
 						dev.next_engine_state = EngineState_ProjectManagement;
 					}
+
+					// TEMP
+
+					gui_separator(2);
+
+					auto& type = editor.tool_data.tool_type;
+					bool gizmos = type == EditorToolType_Gizmos;
+					bool terrain_brush = type == EditorToolType_TerrainBrush;
+
+					if (gui_checkbox("Gizmos", gizmos)) {
+						if (gizmos) type = EditorToolType_Gizmos;
+						else type = EditorToolType_None;
+					}
+					if (gui_checkbox("Terrain Brush", terrain_brush)) {
+						if (terrain_brush) type = EditorToolType_TerrainBrush;
+						else type = EditorToolType_None;
+					}
+
+					// TEMP
+					gui_separator(2);
+					{
+						auto& data = editor.tool_data.terrain_brush_data;
+						gui_drag_f32("Strength", data.strength, 0.1f, 0.f, f32_max);
+						gui_drag_f32("Range", data.range, 0.1f, 0.f, f32_max);
+						gui_drag_f32("Min Height", data.min_height, 0.1f, 0.f, f32_max);
+						gui_drag_f32("Max Height", data.max_height, 0.1f, 0.f, f32_max);
+					}
+					
 					gui_end_window();
 				}
 		
@@ -2489,9 +2537,109 @@ namespace sv {
 		}
     }
 
+	SV_AUX v3_f32 compute_terrain_position(f32 h, u32 x, u32 z, u32 size_x, u32 size_z)
+	{
+		v3_f32 p;
+		p.y = h;
+	
+		p.x = f32(x) / f32(size_x) - 0.5f;
+		p.z = -(f32(z) / f32(size_z) - 0.5f);
+
+		return p;
+	}
+
+	SV_AUX void update_terrain_brush()
+	{
+		if (input.unused) {
+
+			bool left = input.mouse_buttons[MouseButton_Left];
+			bool right = input.mouse_buttons[MouseButton_Right];
+
+			if (left || right) {
+
+				input.unused = false;
+				
+				Ray ray = screen_to_world_ray(input.mouse_position, dev.camera.position, dev.camera.rotation, &dev.camera);
+
+				v3_f32 closest_pos;
+				TerrainComponent* terrain = NULL;
+				f32 closest_distance = f32_max;
+				Entity entity = 0;
+
+				for (CompIt it = comp_it_begin(get_component_id("Terrain"));
+					 it.has_next;
+					 comp_it_next(it))
+				{
+					TerrainComponent* t = (TerrainComponent*)it.comp;
+					v3_f32 pos;
+					
+					if (terrain_intersect_ray(*t, it.entity, ray, pos)) {
+
+						f32 distance = vec3_distance(pos, ray.origin);
+						
+						if (distance < closest_distance) {
+
+							closest_distance = distance;
+							terrain = t;
+							closest_pos = pos;
+							entity = it.entity;
+						}
+					}
+				}
+
+				if (terrain) {
+
+					TerrainBrushData& data = editor.tool_data.terrain_brush_data;
+					XMMATRIX matrix = XMMatrixScaling(terrain->size.x, 1.f, terrain->size.y) * get_entity_world_matrix(entity);
+
+					foreach(z, terrain->resolution.y) {
+						foreach(x, terrain->resolution.x) {
+
+							f32& height = terrain->heights[x + z * terrain->resolution.x];
+
+							v3_f32 pos = compute_terrain_position(height, x, z, terrain->resolution.x, terrain->resolution.y);
+							pos = XMVector4Transform(vec3_to_dx(pos, 1.f), matrix);
+
+							f32 distance = vec3_distance(pos, closest_pos);
+								
+							if (distance < data.range) {
+
+								f32 value = ((data.range - distance) / data.range) * engine.deltatime * data.strength;
+
+								if (left) height += value;
+								if (right) height -= value;
+								
+								height = SV_MAX(SV_MIN(height, data.max_height), data.min_height);
+							}
+						}
+					}
+
+					terrain->dirty = true;
+				}
+			}
+		}
+	}
+
+		
+
     SV_INTERNAL void do_picking_stuff()
     {
-		update_gizmos();
+		// Update tool
+		{
+			EditorToolData& data = editor.tool_data;
+			
+			switch (data.tool_type) {
+
+			case EditorToolType_TerrainBrush:
+				update_terrain_brush();
+				break;
+
+			case EditorToolType_Gizmos:
+				update_gizmos();
+				break;
+				
+			}
+		}
 	
 		// Entity selection
 		if (input.unused && input.mouse_buttons[MouseButton_Left] == InputState_Released)
@@ -2917,7 +3065,13 @@ namespace sv {
 		}
 
 		// Draw gizmos
-		draw_gizmos(renderer->gfx.offscreen, cmd);
+		switch (editor.tool_data.tool_type) {
+
+		case EditorToolType_Gizmos:
+			draw_gizmos(renderer->gfx.offscreen, cmd);
+			break;
+
+		}
 
 		XMMATRIX vpm = XMMatrixIdentity();
 

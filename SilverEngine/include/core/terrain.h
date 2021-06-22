@@ -49,6 +49,8 @@ namespace sv {
 
 	SV_API void terrain_clear(TerrainComponent& terrain);
 
+	SV_API bool terrain_intersect_ray(TerrainComponent& terrain, Entity entity, Ray ray, v3_f32& intersection);
+
 	void _terrain_register_events();
 	
 }
