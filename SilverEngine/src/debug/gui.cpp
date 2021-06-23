@@ -3245,7 +3245,7 @@ namespace sv {
 						break;
 
 					case GuiDockingLocation_Bottom:
-						b.w = 0.2f;
+						b.w = 0.3f;
 						b.y = bounds.y - bounds.w * 0.5f + b.w * 0.5f;
 						b.x = bounds.x;
 						b.z = bounds.z;
@@ -4048,7 +4048,7 @@ namespace sv {
 
 		case GuiRootType_Screen:
 		{
-			// TODO: imrend_draw_quad({0.5f, 0.5f, 0.f}, {1.f, 1.f}, style.screen_background_primary_color, cmd); 
+			imrend_draw_quad({0.5f, 0.5f, 0.f}, {1.f, 1.f}, style.screen_background_primary_color, cmd); 
 			f32 top = gui->top_offset / gui->resolution.y;
 			imrend_draw_quad({0.5f, 1.f - top * 0.5f, 0.f}, {1.f, top}, style.screen_background_secondary_color, cmd); 
 		}

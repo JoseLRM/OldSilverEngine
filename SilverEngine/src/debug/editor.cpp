@@ -121,6 +121,8 @@ namespace sv {
 		AssetBrowserInfo asset_browser;
 
 		EditorToolData tool_data;
+
+		GPUImage* offscreen = NULL;
 	
 		TextureAsset image;
 		static constexpr v4_f32 TEXCOORD_FOLDER = { 0.f, 0.f, 0.05989583333333f, 0.05989583333333f };
@@ -796,6 +798,17 @@ namespace sv {
 		_gui_load("PROJECT");
 		engine.update_scene = false;
 
+		// Create offscreen
+		GPUImageDesc desc;
+		desc.format = OFFSCREEN_FORMAT;
+		desc.layout = GPUImageLayout_ShaderResource;
+		desc.type = GPUImageType_ShaderResource;
+		// TODO
+		desc.width = 1920u;
+		desc.height = 1080u;
+
+		SV_CHECK(graphics_image_create(&desc, &editor.offscreen));
+
 		return true;
     }
 
@@ -804,6 +817,8 @@ namespace sv {
 		SV_CHECK(_gui_close());
 
 		unload_asset(editor.image);
+
+		graphics_destroy(editor.offscreen);
 		
 		return true;
     }
@@ -2474,6 +2489,13 @@ namespace sv {
 
 				gui_end_top();
 
+				if (gui_begin_window("Editor View")) {
+
+					gui_image(editor.offscreen, 0, 0, GuiImageFlag_Fullscreen);
+					
+					gui_end_window();
+				}
+
 				// Window management
 				if (gui_begin_window("Window Manager", GuiWindowFlag_NoClose)) {
 
@@ -3113,6 +3135,19 @@ namespace sv {
     void _editor_draw()
     {
 		CommandList cmd = graphics_commandlist_get();
+
+		{
+			GPUImage* off = renderer_offscreen();
+			const GPUImageInfo& info = graphics_image_info(off);
+			
+			GPUImageBlit blit;
+			blit.src_region.offset0 = { 0, (i32)info.height, 0 };
+			blit.src_region.offset1 = { (i32)info.width, 0, 1 };
+			blit.dst_region.offset0 = { 0, 0, 0 };
+			blit.dst_region.offset1 = { (i32)info.width, (i32)info.height, 1 };
+			
+			graphics_image_blit(off, editor.offscreen, GPUImageLayout_RenderTarget, GPUImageLayout_ShaderResource, 1u, &blit, SamplerFilter_Nearest, cmd);
+		}
 
 		switch (dev.engine_state) {
 

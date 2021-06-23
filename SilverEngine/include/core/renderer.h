@@ -62,6 +62,7 @@ namespace sv {
 
     SV_API Font& renderer_default_font();
     SV_API GPUImage* renderer_white_image();
+	SV_API GPUImage* renderer_offscreen();
 
     // SCENE
 

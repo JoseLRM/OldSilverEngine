@@ -2000,6 +2000,11 @@ namespace sv {
 		return renderer->gfx.image_white;
     }
 
+	GPUImage* renderer_offscreen()
+    {
+		return renderer->gfx.offscreen;
+    }
+
     // POSTPROCESSING
 
     void postprocess_gaussian_blur(
