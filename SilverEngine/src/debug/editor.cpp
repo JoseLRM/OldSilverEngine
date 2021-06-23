@@ -123,7 +123,10 @@ namespace sv {
 		EditorToolData tool_data;
 	
 		TextureAsset image;
-		static constexpr v4_f32 TEXCOORD_FOLDER = { 0.f, 0.f, 0.1f, 0.1f };
+		static constexpr v4_f32 TEXCOORD_FOLDER = { 0.f, 0.f, 0.05989583333333f, 0.05989583333333f };
+		static constexpr v4_f32 TEXCOORD_PLAY = { 141.f / 1920.f, 6.f / 1920.f, 264.f / 1920.f, 129.f / 1920.f };
+		static constexpr v4_f32 TEXCOORD_PAUSE = { 275.f / 1920.f, 5.f / 1920.f, 386.f / 1920.f, 116.f / 1920.f };
+		static constexpr v4_f32 TEXCOORD_STOP = { 275.f / 1920.f, 5.f / 1920.f, 386.f / 1920.f, 116.f / 1920.f };
 		static constexpr v4_f32 TEXCOORD_LIGHT_PROBE = { 0.7f, 0.7f, 1.f, 1.f };
 
 		SpriteSheetEditorData sprite_sheet_editor_data;
@@ -2458,6 +2461,18 @@ namespace sv {
 		if (_gui_begin()) {
 
 			if (!editor.camera_focus && there_is_scene() && dev.debug_draw) {
+
+				gui_begin_top(GuiTopLocation_Center);
+
+				if (gui_image_button(NULL, editor.image.get(), GlobalEditorData::TEXCOORD_PLAY, 324, GuiImageButtonFlag_NoBackground)) {
+					dev.next_engine_state = EngineState_Play;
+				}
+				u32 flags = (dev.engine_state == EngineState_Edit) ? GuiImageButtonFlag_Disabled : 0u;
+				if (gui_image_button(NULL, editor.image.get(), GlobalEditorData::TEXCOORD_PAUSE, 754, GuiImageButtonFlag_NoBackground | flags)) {
+					dev.next_engine_state = EngineState_Play;
+				}
+
+				gui_end_top();
 
 				// Window management
 				if (gui_begin_window("Window Manager", GuiWindowFlag_NoClose)) {

@@ -98,6 +98,9 @@ namespace sv {
 		GuiHeader_ClosePopup,
 		GuiHeader_BeginCombobox,
 		GuiHeader_EndCombobox,
+
+		GuiHeader_BeginTop,
+		GuiHeader_EndTop,
 		
 		GuiHeader_Widget,
 
@@ -231,6 +234,7 @@ namespace sv {
 		GuiReadWidgetState_None,
 		GuiReadWidgetState_Grid,
 		GuiReadWidgetState_List,
+		GuiReadWidgetState_Top,
     };
 
     struct GuiWindow;
@@ -249,6 +253,12 @@ namespace sv {
 		struct {
 			u64 hash;
 		} list_state_data;
+
+		struct {
+			GuiTopLocation location;
+			u32 begin_index;
+			f32 xoff;
+		} top_state_data;
 	
 		// Thats where the widgets are projected.
 		// the window has is own bounds
@@ -315,6 +325,9 @@ namespace sv {
 		u32 priority = 0u;
 		v4_f32 bounds = { 0.5f, 0.5f, 0.2f, 0.35f };
 
+		// Bounds before docking
+		v2_f32 last_size = {};
+
 		struct {
 			u32 selected_window_button = 0u;
 			v2_f32 selection_point;
@@ -369,6 +382,7 @@ namespace sv {
 		GuiStyle style;
 	
 		GuiRootInfo root_info;
+		f32 top_offset;
 		GuiScreenDocking screen_docking[5u];
 		u32 screen_docking_count = 0u;
 		List<GuiRootIndex> root_stack;
@@ -492,7 +506,7 @@ namespace sv {
 		bounds.x = b.x;
 		bounds.z = b.z;
 		bounds.w = compute_window_decoration_height();
-		bounds.y = b.y + b.w * 0.5f + bounds.w * 0.5f;
+		bounds.y = b.y + b.w * 0.5f - bounds.w * 0.5f;
 		return bounds;
     }
     SV_AUX v4_f32 compute_window_closebutton(const v4_f32& decoration)
@@ -599,56 +613,6 @@ namespace sv {
 	{
 		return (u64)root.type | (u64)root.index << 32;
 	}
-
-	SV_INTERNAL void deserialize_node(Deserializer& d, u32& id, bool is_root)
-	{
-		bool exists; 
-		deserialize_bool(d, exists);
-
-		if (exists) {
-
-			auto& nodes = gui->window_nodes;
-			id = gui->window_nodes.emplace();
-
-			deserialize_bool(d, nodes[id].is_node);
-			nodes[id].is_root = is_root;
-
-			if (nodes[id].is_node) {
-
-				deserialize_u32(d, (u32&)nodes[id].node.split);
-
-				u32 id0;
-				u32 id1;
-				
-				deserialize_node(d, id0, false);
-				deserialize_node(d, id1, false);
-
-				nodes[id].node.id0 = id0;
-				nodes[id].node.id1 = id1;
-			}
-			else {
-
-				u32 state_count;
-				deserialize_u32(d, state_count);
-
-				foreach(i, state_count) {
-
-					u64 hash;
-					deserialize_u64(d, hash);
-
-					GuiWindowState* state = gui->window_states.find(hash);
-					if (state) {
-						nodes[id].win.states.push_back(state);
-					}
-				}
-
-				deserialize_u32(d, nodes[id].win.current_index);
-				if (nodes[id].win.states.size())
-					nodes[id].win.current_index = SV_MIN(nodes[id].win.current_index, u32(nodes[id].win.states.size()) - 1u);
-			}
-		}
-		else id = u32_max;
-	}
     
     bool _gui_initialize()
     {
@@ -704,7 +668,7 @@ namespace sv {
 			serialize_begin(s);
 			
 			// VERSION
-			serialize_u32(s, 4u);
+			serialize_u32(s, 6u);
 
 			// Window states
 			{
@@ -740,6 +704,7 @@ namespace sv {
 			{
 				serialize_node(s, it->root_id);
 				serialize_v4_f32(s, it->bounds);
+				serialize_v2_f32(s, it->last_size);
 
 				// Screen docking
 
@@ -783,6 +748,56 @@ namespace sv {
 		return true;
     }
 
+	SV_INTERNAL void deserialize_node(Deserializer& d, u32& id, bool is_root)
+	{
+		bool exists; 
+		deserialize_bool(d, exists);
+
+		if (exists) {
+
+			auto& nodes = gui->window_nodes;
+			id = gui->window_nodes.emplace();
+
+			deserialize_bool(d, nodes[id].is_node);
+			nodes[id].is_root = is_root;
+
+			if (nodes[id].is_node) {
+
+				deserialize_u32(d, (u32&)nodes[id].node.split);
+
+				u32 id0;
+				u32 id1;
+				
+				deserialize_node(d, id0, false);
+				deserialize_node(d, id1, false);
+
+				nodes[id].node.id0 = id0;
+				nodes[id].node.id1 = id1;
+			}
+			else {
+
+				u32 state_count;
+				deserialize_u32(d, state_count);
+
+				foreach(i, state_count) {
+
+					u64 hash;
+					deserialize_u64(d, hash);
+
+					GuiWindowState* state = gui->window_states.find(hash);
+					if (state) {
+						nodes[id].win.states.push_back(state);
+					}
+				}
+
+				deserialize_u32(d, nodes[id].win.current_index);
+				if (nodes[id].win.states.size())
+					nodes[id].win.current_index = SV_MIN(nodes[id].win.current_index, u32(nodes[id].win.states.size()) - 1u);
+			}
+		}
+		else id = u32_max;
+	}
+
 	void _gui_load(const char* name)
 	{
 		u64 hash = hash_string(name);
@@ -802,7 +817,7 @@ namespace sv {
 				u32 version;
 				deserialize_u32(d, version);
 
-				if (version == 4u) {
+				if (version >= 4u) {
 
 					u32 window_state_count;
 					deserialize_u32(d, window_state_count);
@@ -832,6 +847,9 @@ namespace sv {
 
 						deserialize_node(d, window.root_id, true);
 						deserialize_v4_f32(d, window.bounds);
+						if (version == 6)
+							deserialize_v2_f32(d, window.last_size);
+						else window.last_size = { window.bounds.z, window.bounds.w };
 
 						u32 screen_docking_id;
 						deserialize_u32(d, screen_docking_id);
@@ -1019,8 +1037,15 @@ namespace sv {
 				break;
 
 			case GuiWidgetType_ImageButton:
-				height = 30.f;
-				break;
+			{
+				auto& image = w.widget.image_button;
+				if (image.text == NULL) {
+					height = 30.f;
+					width = height / root.widget_bounds.z / gui->resolution.x;
+				}
+				else height = 30.f;
+			}
+			break;
 
 			case GuiWidgetType_Image:
 			{
@@ -1033,7 +1058,7 @@ namespace sv {
 				else {
 
 					auto& image = w.widget.image;
-		
+					
 					height = image.height;
 					width = height / root.widget_bounds.z / gui->resolution.x;
 				}
@@ -1106,6 +1131,25 @@ namespace sv {
 				
 				element->selected = w.flags & GuiElementListFlag_Selected;
 			}
+		}
+		else if (read_state == GuiReadWidgetState_Top) {
+
+			auto& data = root.top_state_data;
+
+			f32 space = gui->top_offset;
+			f32 width = roundf(space * 0.6f);
+			f32 height = width;
+			f32 margin = 10.f;
+
+			margin /= gui->resolution.x;
+			width /= gui->resolution.x;
+			
+			w.bounds.x = data.xoff + width * 0.5f;
+			w.bounds.y = -space * 0.5f;
+			w.bounds.z = width;
+			w.bounds.w = height;
+			
+			data.xoff += width + margin;
 		}
     }
 
@@ -1340,13 +1384,15 @@ namespace sv {
 	    
 			b = parent_bounds;
 
+			f32 height = 0.f;
+
 			if (!root || win.states.size() > 1u) {
 
-				f32 height = compute_window_buttons_height(node);
-
-				b.y -= height * 0.5f;
-				b.w -= height;
+				height += compute_window_buttons_height(node);
 			}
+
+			b.y -= height * 0.5f;
+			b.w -= height;
 
 			adjust_widget_bounds({ GuiRootType_WindowNode, node_id });
 		}
@@ -1410,8 +1456,13 @@ namespace sv {
 			GuiWindowNode& node = gui->window_nodes[window.root_id];
 			window.bounds.w = node.win.root.yoff / gui->resolution.y;
 		}
+
+		f32 height = compute_window_decoration_height();
+		v4_f32 bounds = window.bounds;
+		bounds.y -= height * 0.5f;
+		bounds.w -= height;
 		
-		update_window_node_bounds(window.root_id, window.bounds, true);
+		update_window_node_bounds(window.root_id, bounds, true);
 	}
 
 	SV_INTERNAL void close_window_node(u32 node_id)
@@ -1695,6 +1746,8 @@ namespace sv {
 									doc.location = GuiDockingLocation(i);
 									doc.window_id = gui->focus.root.index;
 									doc.undock_request = false;
+
+									w.last_size = { w.bounds.z, w.bounds.w };
 								}
 								else SV_ASSERT(0);
 								
@@ -2129,7 +2182,6 @@ namespace sv {
 		switch (w.type) {
 
 		case GuiWidgetType_Button:
-		case GuiWidgetType_ImageButton:
 		case GuiWidgetType_AssetButton:
 		case GuiWidgetType_Collapse:
 		case GuiWidgetType_TextField:
@@ -2150,6 +2202,21 @@ namespace sv {
 				}
 			}
 		} break;
+
+		case GuiWidgetType_ImageButton:
+		{
+			if (input.unused) {
+				
+				if (!(w.flags & GuiImageButtonFlag_Disabled) && mouse_in_bounds(bounds)) {
+
+					if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
+						set_focus(root_index , w.type, w.id);
+						input.unused = true;
+					}
+				}
+			}
+		}
+		break;
 
 		case GuiWidgetType_Checkbox:
 		{
@@ -2264,19 +2331,25 @@ namespace sv {
 			    
 								set_focus(root_index, GuiWidgetType_Root, 0u, GuiWindowAction_Move);
 			    
-								v4_f32 b = window.bounds;
 								v2_f32& point = window.focus_data.selection_point;
-			    
-								point = v2_f32{ b.x, b.y } - gui->mouse_position;
 
 								// Check if it is docked in the screen
 								foreach (i, gui->screen_docking_count) {
 
 									if (gui->screen_docking[i].window_id == root_index.index) {
 										gui->screen_docking[i].undock_request = true;
+
+										window.bounds.x = gui->mouse_position.x;
+										window.bounds.y -= (window.last_size.y - window.bounds.w) * 0.5f;
+										
+										window.bounds.z = window.last_size.x;
+										window.bounds.w = window.last_size.y;
 										break;
 									}
 								}
+
+								v4_f32 b = window.bounds;
+								point = v2_f32{ b.x, b.y } - gui->mouse_position;
 							}
 		    
 							input.unused = false;
@@ -2329,8 +2402,8 @@ namespace sv {
 		else {
 
 			GuiRootInfo& root = *root_ptr;
-		
-			if (mouse_in_bounds(root.widget_bounds)) {
+
+			if (root_index.type == GuiRootType_Screen || mouse_in_bounds(root.widget_bounds)) {
 	    
 				for (GuiWidget& w : root.widgets) {
 		
@@ -2393,6 +2466,20 @@ namespace sv {
 
 				if (mouse_in_bounds(root.widget_bounds))
 					catch_input = true;
+			}
+			break;
+
+			case GuiRootType_Screen:
+			{
+				v4_f32 top_bounds;
+				top_bounds.w = gui->top_offset / gui->resolution.y;
+				top_bounds.x = 0.5f;
+				top_bounds.z = 1.f;
+				top_bounds.y = 1.f - top_bounds.w * 0.5f;
+
+				if (mouse_in_bounds(top_bounds)) {
+					catch_input = true;
+				}
 			}
 			break;
 	    
@@ -2549,6 +2636,8 @@ namespace sv {
 		gui->sorted_windows.reset();
 		
 		reset_root(gui->root_info);
+		gui->root_info.widget_bounds = { 0.5f, 0.5f, 1.f, 1.f };
+		gui->top_offset = 0.f;
 		gui->current_focus = nullptr;
 		
 		reset_root(gui->popup.root);
@@ -2758,6 +2847,60 @@ namespace sv {
 					else SV_ASSERT(0);
 				}
 				else SV_ASSERT(0);
+			}
+			break;
+
+			case GuiHeader_BeginTop:
+			{
+				gui->top_offset = 40.f;
+				gui->root_stack.push_back({ GuiRootType_Screen, 0u });
+				gui->root_info.read_widget_state = GuiReadWidgetState_Top;
+
+				auto& data = gui->root_info.top_state_data;
+				data.location = gui_read<GuiTopLocation>(it);
+				data.begin_index = (u32)gui->root_info.widgets.size();
+				data.xoff = 0.f;
+			}
+			break;
+
+			case GuiHeader_EndTop:
+			{
+				gui->root_stack.pop_back();
+				gui->root_info.read_widget_state = GuiReadWidgetState_None;
+
+				auto& data = gui->root_info.top_state_data;
+
+				if (data.begin_index != (u32)gui->root_info.widgets.size()) {
+
+					f32 move = 0.f;
+
+					switch (data.location) {
+
+					case GuiTopLocation_Left:
+						move = 30.f / gui->resolution.x;
+						break;
+
+					case GuiTopLocation_Right:
+					{
+						GuiWidget& w = gui->root_info.widgets.back(); 
+						move = 1.f - (w.bounds.x + w.bounds.z * 0.5f) - (30.f / gui->resolution.x);
+					}
+					break;
+
+					case GuiTopLocation_Center:
+					{
+						GuiWidget& w = gui->root_info.widgets.back(); 
+						move = 0.5f - (w.bounds.x + w.bounds.z * 0.5f) * 0.5f;
+					}
+					break;
+					
+					}
+
+					for (u32 i = data.begin_index; i < gui->root_info.widgets.size(); ++i) {
+						GuiWidget& w = gui->root_info.widgets[i];
+						w.bounds.x += move;
+					}
+				}
 			}
 			break;
 
@@ -2997,6 +3140,10 @@ namespace sv {
 
 		// Adjust bounds
 		{
+			f32 top_offset = gui->top_offset / gui->resolution.y;
+			gui->root_info.widget_bounds.w -= top_offset;
+			gui->root_info.widget_bounds.y -= top_offset * 0.5f;
+			
 			adjust_widget_bounds({ GuiRootType_Screen, 0u });
 
 			if (gui->popup.id != 0u)
@@ -3055,17 +3202,14 @@ namespace sv {
 		// Screen docking
 		{
 			
-			v4_f32 bounds = {0.5f, 0.5f, 1.f, 1.f};
-			f32 decoration_height = compute_window_decoration_height();
-			bounds.w -= decoration_height;
-			bounds.y -= decoration_height * 0.5f;
+			v4_f32 bounds = gui->root_info.widget_bounds;
 			
 			foreach(i, gui->screen_docking_count) {
 
 				GuiScreenDocking& doc = gui->screen_docking[i];
 
 				if (doc.undock_request || !gui->windows.exists(doc.window_id)) {
-
+					
 					for (u32 j = i + 1u; j < gui->screen_docking_count; ++j) {
 
 						gui->screen_docking[j - 1] = gui->screen_docking[j];
@@ -3081,7 +3225,7 @@ namespace sv {
 					switch (doc.location) {
 
 					case GuiDockingLocation_Left:
-						b.z = bounds.z * 0.3f;
+						b.z = 0.25f;
 						b.x = bounds.x - bounds.z * 0.5f + b.z * 0.5f;
 						b.y = bounds.y;
 						b.w = bounds.w;
@@ -3091,7 +3235,7 @@ namespace sv {
 						break;
 
 					case GuiDockingLocation_Right:
-						b.z = bounds.z * 0.3f;
+						b.z = 0.25f;
 						b.x = bounds.x + bounds.z * 0.5f - b.z * 0.5f;
 						b.y = bounds.y;
 						b.w = bounds.w;
@@ -3101,7 +3245,7 @@ namespace sv {
 						break;
 
 					case GuiDockingLocation_Bottom:
-						b.w = bounds.w * 0.2f;
+						b.w = 0.2f;
 						b.y = bounds.y - bounds.w * 0.5f + b.w * 0.5f;
 						b.x = bounds.x;
 						b.z = bounds.z;
@@ -3111,7 +3255,7 @@ namespace sv {
 						break;
 						
 					case GuiDockingLocation_Top:
-						b.w = bounds.w * 0.2f;
+						b.w = 0.2f;
 						b.y = bounds.y + bounds.w * 0.5f - b.w * 0.5f;
 						b.x = bounds.x;
 						b.z = bounds.z;
@@ -3168,6 +3312,7 @@ namespace sv {
 
     SV_AUX void gui_write_text(const char* text)
     {
+		text = string_validate(text);
 		gui->buffer.write_back(text, strlen(text) + 1u);
     }
 
@@ -3538,12 +3683,12 @@ namespace sv {
 		return pressed;
     }
 
-	bool gui_image_button(const char* text, GPUImage* image, v4_f32 texcoord, u64 id)
+	bool gui_image_button(const char* text, GPUImage* image, v4_f32 texcoord, u64 id, u32 flags)
     {
 		if (id == u64_max) id = (u64)text;
 		compute_id(id);
 	
-		write_widget(GuiWidgetType_ImageButton, id, 0u);
+		write_widget(GuiWidgetType_ImageButton, id, flags);
 		gui_write_text(text);
 		gui_write(image);
 		gui_write(texcoord);
@@ -3818,6 +3963,22 @@ namespace sv {
 		return pressed;
     }
 
+	void gui_begin_top(GuiTopLocation location)
+	{
+		gui_push_id((location + 1) * 0x32D5C43);
+		gui_write(GuiHeader_BeginTop);
+		gui_write(location);
+
+		gui->root_stack.push_back({ GuiRootType_Screen, 0u });
+	}
+	
+	void gui_end_top()
+	{
+		gui_write(GuiHeader_EndTop);
+		gui_pop_id();
+		gui->root_stack.pop_back();
+	}
+
 	void gui_begin_list(u64 id)
 	{
 		gui_push_id(id);
@@ -3884,6 +4045,14 @@ namespace sv {
 	
 		// Draw root
 		switch (root_index.type) {
+
+		case GuiRootType_Screen:
+		{
+			// TODO: imrend_draw_quad({0.5f, 0.5f, 0.f}, {1.f, 1.f}, style.screen_background_primary_color, cmd); 
+			f32 top = gui->top_offset / gui->resolution.y;
+			imrend_draw_quad({0.5f, 1.f - top * 0.5f, 0.f}, {1.f, top}, style.screen_background_secondary_color, cmd); 
+		}
+		break;
 
 		case GuiRootType_Window:
 		{
@@ -4000,7 +4169,7 @@ namespace sv {
 			const GuiRootInfo& root = *root_ptr;
 
 			// Push widget scissor
-			{
+			if (root_index.type != GuiRootType_Screen) {
 				const v4_f32& b = root.widget_bounds;
 				imrend_push_scissor(b.x, b.y, b.z, b.w, false, cmd);
 			}
@@ -4037,30 +4206,38 @@ namespace sv {
 					auto& button = w.widget.image_button;
 
 					const v4_f32& b = w.bounds;
-
 					v2_f32 pos = { b.x, b.y };
 					v2_f32 size = { b.z, b.w };
 
-					Color color = style.widget_primary_color;
+					bool background = !(w.flags & GuiImageButtonFlag_NoBackground);
 
-					if (gui->current_focus == &w)
+					Color color = background ? style.widget_primary_color : Color::White();
+
+					if (w.flags & GuiImageButtonFlag_Disabled)
+						color = Color::Gray(100);
+					else if (gui->current_focus == &w)
 						color = style.widget_focused_color;
 					else if (mouse_in_bounds(w.bounds))
-						color = style.widget_highlighted_color;
+						color = background ? style.widget_highlighted_color : Color::Gray(170);
+
+					if (background) {
 		    
-					imrend_draw_quad(vec2_to_vec3(pos), size, color, cmd);
+						imrend_draw_quad(vec2_to_vec3(pos), size, color, cmd);
+					}
 
 					constexpr f32 RELATIVE_HEIGHT = 0.95f;
 
-					v4_f32 image_bounds = w.bounds;
-					image_bounds.w *= RELATIVE_HEIGHT;
-					image_bounds.z = image_bounds.w / gui->aspect;
-					image_bounds.x = (image_bounds.x - w.bounds.z * 0.5f) + ((1.f - RELATIVE_HEIGHT) * image_bounds.w) / gui->aspect + image_bounds.z * 0.5f;
+					v4_f32 image_bounds = b;
+					if (button.text) {
+						image_bounds.w *= RELATIVE_HEIGHT;
+						image_bounds.z = image_bounds.w / gui->aspect;
+						image_bounds.x = (image_bounds.x - w.bounds.z * 0.5f) + ((1.f - RELATIVE_HEIGHT) * image_bounds.w) / gui->aspect + image_bounds.z * 0.5f;
+					}
 
 					size = { image_bounds.z, image_bounds.w };
 					pos = { image_bounds.x, image_bounds.y };
 
-					imrend_draw_sprite(vec2_to_vec3(pos), size, Color::White(), button.image ? button.image : renderer_white_image(), GPUImageLayout_ShaderResource, button.texcoord, cmd);
+					imrend_draw_sprite(vec2_to_vec3(pos), size, background ? Color::White() : color, button.image ? button.image : renderer_white_image(), GPUImageLayout_ShaderResource, button.texcoord, cmd);
 
 					if (button.text) {
 
@@ -4390,7 +4567,8 @@ namespace sv {
 				}
 			}
 
-			imrend_pop_scissor(cmd);
+			if (root_index.type != GuiRootType_Screen)
+				imrend_pop_scissor(cmd);
 				
 			// Draw scroll
 			if (root_has_scroll(root)) {
