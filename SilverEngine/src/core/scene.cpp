@@ -676,9 +676,10 @@ namespace sv {
     {
 		scene_state->component_register[comp_id].move_fn(from, to);
     }
-    SV_AUX void copy_component(CompID comp_id, const Component* from, Component* to)
+    SV_AUX void copy_component(CompID comp_id, const Component* from, Component* to, Entity entity)
     {
 		scene_state->component_register[comp_id].copy_fn(from, to);
+		to->id = entity;
     }
     SV_AUX void serialize_component(CompID comp_id, Component* comp, Serializer& serializer)
     {
@@ -1438,10 +1439,57 @@ namespace sv {
 		}
 	}
 
+	SV_INTERNAL Entity entity_duplicate_recursive(Entity duplicated, Entity parent)
+    {
+		SV_ECS();
+	
+		Entity copy;
+
+		copy = create_entity(parent);
+
+		EntityMisc& duplicated_misc = ecs.entity_misc[duplicated - 1u];
+		EntityMisc& copy_misc = ecs.entity_misc[copy - 1u];
+		strcpy(copy_misc.name, duplicated_misc.name);
+		copy_misc.flags = duplicated_misc.flags;
+
+		ecs.entity_transform[copy - 1u] = ecs.entity_transform[duplicated - 1u];
+		
+		EntityInternal& duplicated_internal = ecs.entity_internal[duplicated - 1u];
+		EntityInternal& copy_internal = ecs.entity_internal[copy - 1u];
+
+		if (duplicated_internal.prefab) {
+
+			copy_internal.prefab = duplicated_internal.prefab;
+
+			PrefabInternal& internal = ecs.prefabs[copy_internal.prefab - 1u];
+			internal.entities.push_back(copy);
+		}
+
+		foreach(i, duplicated_internal.component_count) {
+
+			CompID comp_id = duplicated_internal.components[i].comp_id;
+			Component* comp = duplicated_internal.components[i].comp;
+
+			CompRef& ref = copy_internal.components[copy_internal.component_count++];
+			ref.comp = allocate_component(comp_id);
+			copy_component(comp_id, comp, ref.comp, copy);
+			ref.comp_id = comp_id;
+		}
+
+		foreach(i, ecs.entity_internal[duplicated - 1u].child_count) {
+			Entity to_copy = ecs.entity_hierarchy[ecs.entity_internal[duplicated - 1].hierarchy_index + i + 1];
+			entity_duplicate_recursive(to_copy, copy);
+			i += ecs.entity_internal[to_copy - 1u].child_count;
+		}
+
+		return copy;
+    }
+
 	Entity duplicate_entity(Entity entity)
 	{
-		// TODO
-		return 0;
+		SV_ECS();
+		Entity res = entity_duplicate_recursive(entity, ecs.entity_internal[entity - 1u].parent);
+		return res;
 	}
 
 	bool entity_exists(Entity entity)
