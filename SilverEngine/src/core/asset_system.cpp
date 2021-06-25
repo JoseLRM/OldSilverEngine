@@ -12,9 +12,10 @@ namespace sv {
     struct AssetType_internal {
 
 		char	          name[ASSET_TYPE_NAME_SIZE + 1u];
-		AssetCreateFn	  create;
-		AssetLoadFileFn	  load_file;
-		AssetFreeFn 	  free;
+		AssetCreateFn	  create_fn;
+		AssetLoadFileFn	  load_file_fn;
+		AssetReloadFileFn reload_file_fn;
+		AssetFreeFn 	  free_fn;
 		f32		          unused_time;
 		f64		          last_update = 0.0;
 		u32               extension_count;
@@ -34,6 +35,7 @@ namespace sv {
 		f32					unused_time = f32_max;
 		// TODO: Move on
 		char			    filepath[FILEPATH_SIZE + 1u] = "";
+		Date                last_write_date;
 		char			    name[ASSET_NAME_SIZE + 1u] = "";
 		AssetType_internal* type = NULL;
 
@@ -55,7 +57,7 @@ namespace sv {
 
     SV_AUX bool destroy_asset(Asset_internal* asset, AssetType_internal* type)
     {
-		bool res = type->free(asset + 1u);
+		bool res = type->free_fn(asset + 1u);
 		type->allocator.free(asset);
 
 		bool log = false;
@@ -123,6 +125,27 @@ namespace sv {
 					}
 					else {
 						asset->unused_time = f32_max;
+
+#if SV_EDITOR
+						if (asset->filepath[0] && type->reload_file_fn) {
+
+							Date last_write;
+							if (file_date(asset->filepath, NULL, &last_write, NULL)) {
+
+								if (asset->last_write_date != last_write) {
+
+									if (type->reload_file_fn(asset + 1u, asset->filepath)) {
+										SV_LOG_INFO("%s asset reloaded: '%s'", type->name, asset->filepath);
+									}
+									else {
+										SV_LOG_ERROR("Can't reload the %s asset: '%s'", type->name, asset->filepath);
+									}
+
+									asset->last_write_date = last_write;
+								}
+							}
+						}
+#endif
 					}
 				}
 			}
@@ -238,7 +261,7 @@ namespace sv {
 			return false;
 		}
 
-		if (type->create == nullptr) {
+		if (type->create_fn == nullptr) {
 			SV_LOG_ERROR("The asset type '%s' can't create assets by default", asset_type_name);
 			return false;
 		}
@@ -253,7 +276,7 @@ namespace sv {
 		asset->type = type;
 		string_copy(asset->name, name, ASSET_NAME_SIZE + 1u);
 
-		if (!type->create(asset + 1u)) {
+		if (!type->create_fn(asset + 1u)) {
 
 			type->allocator.free(asset);
 			return false;
@@ -282,7 +305,7 @@ namespace sv {
 			Asset_internal* asset = new(type->allocator.alloc()) Asset_internal();
 			asset->type = type;
 
-			if (!type->load_file(asset + 1u, filepath)) {
+			if (!type->load_file_fn(asset + 1u, filepath)) {
 
 				SV_LOG_ERROR("Can't load the asset '%s'", filepath);
 
@@ -293,6 +316,8 @@ namespace sv {
 			asset_system->filepath_table[filepath] = asset;
 			string_copy(asset->filepath, filepath, FILEPATH_SIZE + 1u);
 			asset_ptr = AssetPtr(asset);
+
+			file_date(filepath, NULL, &asset->last_write_date, NULL);
 
 			SV_LOG_INFO("%s loaded: %s", type->name, filepath);
 		}
@@ -431,9 +456,10 @@ namespace sv {
 		new(type) AssetType_internal(desc->asset_size + sizeof(Asset_internal));
 
 		string_copy(type->name, desc->name, ASSET_TYPE_NAME_SIZE + 1u);
-		type->create = desc->create;
-		type->load_file = desc->load_file;
-		type->free = desc->free;
+		type->create_fn = desc->create_fn;
+		type->load_file_fn = desc->load_file_fn;
+		type->reload_file_fn = desc->reload_file_fn;
+		type->free_fn = desc->free_fn;
 		type->unused_time = desc->unused_time;
 
 		type->extension_count = desc->extension_count;

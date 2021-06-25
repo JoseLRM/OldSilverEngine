@@ -16,7 +16,7 @@ close_game
 
 initialize_scene
 pre_draw_scene
-draw_scene
+post_draw_scene
 save_scene
 update_scene
 update_physics

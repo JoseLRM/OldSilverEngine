@@ -139,10 +139,10 @@ namespace sv {
 		u32		          asset_size;
 		const char**      extensions;
 		u32		          extension_count;
-		AssetCreateFn     create;
-		AssetLoadFileFn	  load_file;
-		AssetReloadFileFn reload_file;
-		AssetFreeFn	      free;
+		AssetCreateFn     create_fn;
+		AssetLoadFileFn	  load_file_fn;
+		AssetReloadFileFn reload_file_fn;
+		AssetFreeFn	      free_fn;
 		f32		          unused_time;
 
     };

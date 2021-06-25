@@ -201,10 +201,10 @@ namespace sv {
 			desc.asset_size = sizeof(SpriteSheet);
 			desc.extensions = extensions;
 			desc.extension_count = 1u;
-			desc.create = asset_create_spritesheet;
-			desc.load_file = asset_load_spritesheet;
-			desc.reload_file = NULL;
-			desc.free = asset_free_spritesheet;
+			desc.create_fn = asset_create_spritesheet;
+			desc.load_file_fn = asset_load_spritesheet;
+			desc.reload_file_fn = NULL;
+			desc.free_fn = asset_free_spritesheet;
 			desc.unused_time = 2.f;
 
 			register_asset_type(&desc);

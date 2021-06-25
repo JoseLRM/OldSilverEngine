@@ -172,10 +172,10 @@ namespace sv {
 		desc.name = "Texture";
 		desc.asset_size = sizeof(GPUImage*);
 		desc.extension_count = 5u;
-		desc.create = create_image_asset;
-		desc.load_file = load_image_asset;
-		desc.free = destroy_image_asset;
-		desc.reload_file = reload_image_asset;
+		desc.create_fn = create_image_asset;
+		desc.load_file_fn = load_image_asset;
+		desc.free_fn = destroy_image_asset;
+		desc.reload_file_fn = reload_image_asset;
 		desc.unused_time = 3.f;
 
 		SV_CHECK(register_asset_type(&desc));
@@ -186,10 +186,10 @@ namespace sv {
 		desc.name = "Mesh";
 		desc.asset_size = sizeof(Mesh);
 		desc.extension_count = 1u;
-		desc.create = create_mesh_asset;
-		desc.load_file = load_mesh_asset;
-		desc.free = free_mesh_asset;
-		desc.reload_file = nullptr;
+		desc.create_fn = create_mesh_asset;
+		desc.load_file_fn = load_mesh_asset;
+		desc.free_fn = free_mesh_asset;
+		desc.reload_file_fn = nullptr;
 		desc.unused_time = 5.f;
 
 		SV_CHECK(register_asset_type(&desc));
@@ -200,10 +200,10 @@ namespace sv {
 		desc.name = "Material";
 		desc.asset_size = sizeof(Material);
 		desc.extension_count = 1u;
-		desc.create = create_material_asset;
-		desc.load_file = load_material_asset;
-		desc.free = free_material_asset;
-		desc.reload_file = nullptr;
+		desc.create_fn = create_material_asset;
+		desc.load_file_fn = load_material_asset;
+		desc.free_fn = free_material_asset;
+		desc.reload_file_fn = nullptr;
 		desc.unused_time = 2.5f;
 
 		SV_CHECK(register_asset_type(&desc));

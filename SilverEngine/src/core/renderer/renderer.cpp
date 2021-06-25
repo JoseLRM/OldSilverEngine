@@ -1702,7 +1702,7 @@ namespace sv {
 				draw_text(desc, cmd);
 			}
 
-			event_dispatch("draw_scene", nullptr);
+			event_dispatch("post_draw_scene", NULL);
 		}
     }
 
