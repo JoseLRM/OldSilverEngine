@@ -118,6 +118,14 @@ namespace sv {
 		Prefab selected_prefab = 0;
 		bool camera_focus = false;
 
+		v2_f32 absolute_mouse_position;
+		v2_f32 absolute_mouse_last_position;
+		v2_f32 absolute_mouse_dragged;
+		
+		v2_f32 editor_view_size;
+		v2_f32 editor_view_position;
+		bool in_editor_view;
+
 		AssetBrowserInfo asset_browser;
 
 		EditorToolData tool_data;
@@ -429,7 +437,7 @@ namespace sv {
 
 			if (editor.camera_focus && (input.mouse_dragged.x != 0.f || input.mouse_dragged.y != 0.f)) {
 
-				v2_f32 drag = input.mouse_dragged * 3.f;
+				v2_f32 drag = editor.absolute_mouse_dragged * 3.f;
 
 				// TODO: pitch limit
 				XMVECTOR pitch = XMQuaternionRotationAxis(XMVectorSet(1.f, 0.f, 0.f, 0.f), -drag.y);
@@ -456,7 +464,7 @@ namespace sv {
 
 			if (editor.camera_focus) {
 
-				v2_f32 drag = input.mouse_dragged;
+				v2_f32 drag = editor.absolute_mouse_dragged / editor.editor_view_size;
 
 				dev.camera.position -= vec2_to_vec3((drag * v2_f32{ dev.camera.width, dev.camera.height }));
 				input.unused = false;
@@ -2475,7 +2483,7 @@ namespace sv {
     {
 		if (_gui_begin()) {
 
-			if (!editor.camera_focus && there_is_scene() && dev.debug_draw) {
+			if (there_is_scene() && dev.debug_draw) {
 
 				gui_begin_top(GuiTopLocation_Center);
 
@@ -2492,6 +2500,10 @@ namespace sv {
 				if (gui_begin_window("Editor View")) {
 
 					gui_image(editor.offscreen, 0, 0, GuiImageFlag_Fullscreen);
+
+					editor.editor_view_size = gui_root_size();
+					editor.editor_view_position = gui_root_position();
+					editor.in_editor_view = gui_image_catch_input(0);
 					
 					gui_end_window();
 				}
@@ -2576,6 +2588,29 @@ namespace sv {
 			}
 
 			_gui_end();
+		}
+
+		// Change input and adjust cameras
+		{
+			f32 aspect = os_window_aspect() * (SV_MAX(editor.editor_view_size.x, 0.01f) / SV_MAX(editor.editor_view_size.y, 0.01f));
+			dev.camera.adjust(aspect);
+
+			editor.absolute_mouse_position = input.mouse_position;
+			editor.absolute_mouse_last_position = input.mouse_last_pos;
+			editor.absolute_mouse_dragged = input.mouse_dragged;
+
+			input.mouse_position = ((input.mouse_position + 0.5f) - (editor.editor_view_position - editor.editor_view_size * 0.5f)) / editor.editor_view_size;
+			input.mouse_position -= 0.5f;
+			
+			input.mouse_last_pos = ((input.mouse_last_pos + 0.5f) - (editor.editor_view_position - editor.editor_view_size * 0.5f)) / editor.editor_view_size;
+			input.mouse_last_pos -= 0.5f;
+
+			input.mouse_dragged *= editor.editor_view_size;
+
+			if (editor.in_editor_view || editor.camera_focus) {
+
+				input.unused = true;
+			}
 		}
     }
 
@@ -2689,10 +2724,7 @@ namespace sv {
     }
     
     SV_INTERNAL void update_edit_state()
-    {	
-		// Adjust camera
-		dev.camera.adjust(os_window_aspect());
-
+    {
 		for (u32 i = 0u; i < editor.selected_entities.size();) {
 
 			if (!entity_exists(editor.selected_entities[i]))
@@ -3136,6 +3168,15 @@ namespace sv {
     {
 		CommandList cmd = graphics_commandlist_get();
 
+		switch (dev.engine_state) {
+
+		case EngineState_Edit:
+		case EngineState_Play:
+			draw_edit_state(cmd);
+			break;
+    
+		}
+
 		{
 			GPUImage* off = renderer_offscreen();
 			const GPUImageInfo& info = graphics_image_info(off);
@@ -3147,15 +3188,6 @@ namespace sv {
 			blit.dst_region.offset1 = { (i32)info.width, (i32)info.height, 1 };
 			
 			graphics_image_blit(off, editor.offscreen, GPUImageLayout_RenderTarget, GPUImageLayout_ShaderResource, 1u, &blit, SamplerFilter_Nearest, cmd);
-		}
-
-		switch (dev.engine_state) {
-
-		case EngineState_Edit:
-		case EngineState_Play:
-			draw_edit_state(cmd);
-			break;
-    
 		}
 
 		// Draw gui

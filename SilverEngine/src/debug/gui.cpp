@@ -196,6 +196,7 @@ namespace sv {
 				GPUImageLayout layout;
 				f32 height;
 				v4_f32 texcoord;
+				bool catch_input;
 			} image;
 
 			struct {
@@ -583,7 +584,7 @@ namespace sv {
 
     SV_AUX bool root_has_scroll(const GuiRootInfo& root)
     {
-		return &root != &gui->root_info && (root.yoff > root.widget_bounds.w * gui->resolution.y);
+		return &root != &gui->root_info && (root.yoff - 4.f > root.widget_bounds.w * gui->resolution.y);
     }
 	SV_AUX GuiRootInfo* get_root_info(GuiRootIndex index)
 	{
@@ -1019,6 +1020,7 @@ namespace sv {
 	    
 			f32 height = 0.f;
 			f32 width = 0.9f;
+			bool add_offset = true;
 
 			switch (w.type) {
 		    
@@ -1054,6 +1056,7 @@ namespace sv {
 					root.yoff = 0.f;
 					width = 1.f;
 					height = root.widget_bounds.w * gui->resolution.y;
+					add_offset = false;
 				}
 				else {
 
@@ -1067,10 +1070,10 @@ namespace sv {
 		    
 			}
 			
-			f32 separation = 5.f;
+			f32 padding = 5.f;
 	
 			w.bounds = { 0.5f, root.yoff + height * 0.5f, width, height };
-			root.yoff += height + separation;
+			if (add_offset) root.yoff += height + padding;
 		}
 		else if (read_state == GuiReadWidgetState_Grid) {
 
@@ -1256,6 +1259,7 @@ namespace sv {
 			image.image = gui_read<GPUImage*>(it);
 			image.layout = gui_read<GPUImageLayout>(it);
 			image.texcoord = gui_read<v4_f32>(it);
+			image.catch_input = false;
 		}
 		break;
 
@@ -2194,7 +2198,7 @@ namespace sv {
 
 					if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
 						set_focus(root_index , w.type, w.id);
-						input.unused = true;
+						input.unused = false;
 						// TODO: WTF??
 						gui->text_field_cursor;
 						gui->text_field_buffer.clear();
@@ -2208,15 +2212,26 @@ namespace sv {
 			if (input.unused) {
 				
 				if (!(w.flags & GuiImageButtonFlag_Disabled) && mouse_in_bounds(bounds)) {
-
+					
 					if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
 						set_focus(root_index , w.type, w.id);
-						input.unused = true;
+						input.unused = false;
 					}
 				}
 			}
 		}
 		break;
+
+		case GuiWidgetType_Image:
+		{
+			if (input.unused) {
+
+				if (w.flags & GuiImageFlag_Fullscreen && mouse_in_bounds(bounds)) {
+					w.widget.image.catch_input = true;
+					input.unused = false;
+				}
+			}
+		}
 
 		case GuiWidgetType_Checkbox:
 		{
@@ -2228,7 +2243,7 @@ namespace sv {
 
 					if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
 						set_focus(root_index, w.type, w.id);
-						input.unused = true;
+						input.unused = false;
 					}
 				}
 			}
@@ -2253,7 +2268,7 @@ namespace sv {
 			    
 							set_focus(root_index, w.type, w.id);
 							drag.current_vector = i;
-							input.unused = true;
+							input.unused = false;
 							break;
 						}
 					}
@@ -2299,8 +2314,7 @@ namespace sv {
 
 				if (input.unused) {
 		
-					v4_f32 decoration = compute_window_decoration(window);
-					if (mouse_in_bounds(window.bounds) || mouse_in_bounds(decoration))
+					if (mouse_in_bounds(window.bounds))
 						catch_input = true;
 
 					// Limit bounds
@@ -2308,12 +2322,12 @@ namespace sv {
 						v4_f32& b = window.bounds;
 
 						b.z = math_clamp01(b.z);
-						b.w = math_clamp(0.f, b.w, 1.f - decoration.w);
+						b.w = math_clamp01(b.w);
 		    
 						f32 min_x = b.z * 0.5f;
 						f32 max_x = 1.f - min_x;
 						f32 min_y = b.w * 0.5f;
-						f32 max_y = 1.f - b.w * 0.5f - decoration.w;
+						f32 max_y = 1.f - b.w * 0.5f;
 
 						b.x = math_clamp(min_x, b.x, max_x);
 						b.y = math_clamp(min_y, b.y, max_y);
@@ -2321,6 +2335,8 @@ namespace sv {
 
 					if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
 
+						v4_f32 decoration = compute_window_decoration(window);
+						
 						if (mouse_in_bounds(decoration)) {
 
 							// TODO: !(window->current_state->flags & GuiWindowFlag_NoClose)
@@ -2420,6 +2436,7 @@ namespace sv {
 				if (!node.is_node) {
 
 					if (mouse_in_bounds(node.bounds)) {
+
 						catch_input = true;
 						
 						if (input.unused && input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
@@ -3520,6 +3537,50 @@ namespace sv {
 		gui_write(GuiHeader_ClosePopup);
 	}
 
+	v2_f32 gui_root_size()
+	{
+		GuiRootIndex index = gui->root_stack.back();
+
+		switch(index.type) {
+
+		case GuiRootType_Screen:
+			return { 1.f, 1.f };
+
+		default:
+		{
+			GuiRootInfo* root = get_root_info(index);
+
+			if (root) {
+				return { root->widget_bounds.z, root->widget_bounds.w };
+			}
+			else return { 0.f, 0.f };
+		}
+			
+		}
+	}
+
+	v2_f32 gui_root_position()
+	{
+		GuiRootIndex index = gui->root_stack.back();
+
+		switch(index.type) {
+
+		case GuiRootType_Screen:
+			return { 0.5f, 0.5f };
+
+		default:
+		{
+			GuiRootInfo* root = get_root_info(index);
+
+			if (root) {
+				return { root->widget_bounds.x, root->widget_bounds.y };
+			}
+			else return { 0.5f, 0.5f };
+		}
+			
+		}
+	}
+
 	void gui_send_package(const void* data, size_t size, u64 package_id)
 	{
 		gui_write(GuiHeader_SendPackage);
@@ -3884,6 +3945,16 @@ namespace sv {
 		gui_write(layout);
 		gui_write(texcoord);
     }
+
+	bool gui_image_catch_input(u64 id)
+	{
+		compute_id(id);
+
+		GuiWidget* w = find_widget(GuiWidgetType_Image, id);
+
+		if (w) return w->widget.image.catch_input;
+		return false;
+	}
 
     void gui_separator(u32 level)
     {

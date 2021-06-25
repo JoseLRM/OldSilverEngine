@@ -102,6 +102,11 @@ namespace sv {
     SV_API void gui_end_popup();
 	SV_API void gui_close_popup();
 
+	SV_API v2_f32 gui_root_size();
+	SV_API v2_f32 gui_root_position();
+
+	SV_API bool gui_image_catch_input(u64 id);
+
 	SV_API void gui_send_package(const void* data, size_t size, u64 package_id);
 	SV_API bool gui_recive_package(void** dst, u64 package_id, GuiReciverTrigger trigger);
 

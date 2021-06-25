@@ -53,7 +53,6 @@ namespace sv {
 			else if (input.mouse_buttons[i] == InputState_Released) input.mouse_buttons[i] = InputState_None;
 		}
 
-		input.mouse_last_pos = input.mouse_position;
 		input.mouse_wheel = 0.f;
 
 		_os_recive_input();

@@ -21,6 +21,8 @@ namespace sv {
 		bool resize;
 		WindowState state;
 
+		v2_f32 mouse_position;
+		v2_f32 mouse_last_pos;
 		bool resize_request;
 		v2_u32 new_size;
 		v2_u32 new_position;
@@ -226,8 +228,8 @@ namespace sv {
 			f32 w = f32(platform.size.x);
 			f32 h = f32(platform.size.y);
 
-			input.mouse_position.x = (f32(_x) / w) - 0.5f;
-			input.mouse_position.y = -(f32(_y) / h) + 0.5f;
+			platform.mouse_position.x = (f32(_x) / w) - 0.5f;
+			platform.mouse_position.y = -(f32(_y) / h) + 0.5f;
 
 			break;
 		}
@@ -1057,6 +1059,8 @@ namespace sv {
 			SetWindowLongPtrW(platform.handle, GWL_STYLE, (LONG_PTR)platform.new_style);
 			SetWindowPos(platform.handle, 0, platform.new_position.x, platform.new_position.y, platform.new_size.x, platform.new_size.y, 0);
 		}
+
+		platform.mouse_last_pos = platform.mouse_position;
 	
 		MSG msg;
 	
@@ -1064,6 +1068,9 @@ namespace sv {
 			TranslateMessage(&msg);
 			DispatchMessageW(&msg);
 		}
+
+		input.mouse_position = platform.mouse_position;
+		input.mouse_last_pos = platform.mouse_last_pos;
 
 		if (platform.resize) {
 			platform.resize = false;
