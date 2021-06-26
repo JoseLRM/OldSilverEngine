@@ -76,7 +76,7 @@ Output main(Input input)
 
     float3 lighting = compute_light(input.position, normal, 1.f, 1.f, float3(1.f, 1.f, 1.f));
 
-    output.color = diffuse_map.Sample(sam, input.texcoord * 50.f) * float4(lighting, 1.f);
+    output.color = diffuse_map.Sample(sam, input.texcoord * 30.f) * float4(lighting, 1.f);
     output.normal = float4(normal, 1.f);
     output.emission = float4(0.f, 0.f, 0.f, 1.f);
     return output;

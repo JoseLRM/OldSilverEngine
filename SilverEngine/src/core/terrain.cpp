@@ -119,8 +119,6 @@ namespace sv {
 	
 	void TerrainComponent::serialize(Serializer& s)
     {
-		serialize_u32(s, 0u); // VERSION
-
 		serialize_v2_u32(s, resolution);
 		serialize_f32_array(s, heights);
 		
@@ -129,12 +127,14 @@ namespace sv {
 
     void TerrainComponent::deserialize(Deserializer& d, u32 version)
     {		
-		if (version == 1u) {
+		if (version >= 1u) {
 
 			terrain_clear(*this);
-		
-			u32 terrain_version;
-			deserialize_u32(d, terrain_version); // VERSION
+
+			if (version == 1) {
+				u32 terrain_version;
+				deserialize_u32(d, terrain_version); // VERSION
+			}
 		
 			deserialize_v2_u32(d, resolution);
 			deserialize_f32_array(d, heights);
@@ -158,8 +158,6 @@ namespace sv {
 
 		terrain_set_flat(terrain, 0.f);
 		terrain_destroy_buffers(terrain);
-
-		terrain.size = { f32(size_x), f32(size_z) };
 	}
 
 	bool terrain_valid(TerrainComponent& terrain)
@@ -405,7 +403,7 @@ namespace sv {
 
 	bool terrain_intersect_ray(TerrainComponent& terrain, Entity entity, Ray ray, v3_f32& intersection)
 	{		
-		XMMATRIX matrix = XMMatrixScaling(terrain.size.x, 1.f, terrain.size.y) * get_entity_world_matrix(entity);
+		XMMATRIX matrix = get_entity_world_matrix(entity);
 		XMMATRIX inv_matrix = XMMatrixInverse(NULL, matrix);
 
 		Ray transformed_ray = ray;
@@ -551,7 +549,7 @@ namespace sv {
 
 				if (gui_button("Apply")) {
 
-					terrain_apply_heightmap_image(*t, "assets/images/pene.JPG", height_mult);
+					terrain_apply_heightmap_image(*t, "assets/images/heightmap.png", height_mult);
 					close = true;
 				}
 			}

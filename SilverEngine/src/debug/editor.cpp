@@ -1425,6 +1425,20 @@ namespace sv {
 					egui_header(entity_name, 0u);
 				}
 
+				// Entity flag
+				{
+					gui_text("Tag");
+
+					char tag_name[TAG_NAME_SIZE + 1u];
+					const char* tag = string_validate(get_entity_tag(selected));
+					
+					string_copy(tag_name, tag, TAG_NAME_SIZE + 1u);
+
+					if (gui_text_field(tag_name, TAG_NAME_SIZE + 1u, 324894)) {
+						set_entity_tag(selected, tag_name);
+					}
+				}
+
 				// Entity transform
 				egui_transform(selected);
 
@@ -1456,21 +1470,11 @@ namespace sv {
 					gui_push_id("Entity Data");
 
 					SceneData* scene = get_scene_data();
-		    
-					bool is_player = selected == scene->player;
-		    
-					if (gui_checkbox("Player", is_player)) {
-
-						if (is_player) {
-							scene->player = selected;
-						}
-						else scene->player = 0;
-					}
 
 					{
 						bool main = scene->main_camera == selected;
 
-						if (gui_checkbox("MainCamera", main)) {
+						if (gui_checkbox("Main Camera", main)) {
 
 							if (main) scene->main_camera = selected;
 							else scene->main_camera = 0;
@@ -2685,7 +2689,7 @@ namespace sv {
 				if (terrain) {
 
 					TerrainBrushData& data = editor.tool_data.terrain_brush_data;
-					XMMATRIX matrix = XMMatrixScaling(terrain->size.x, 1.f, terrain->size.y) * get_entity_world_matrix(entity);
+					XMMATRIX matrix = get_entity_world_matrix(entity);
 
 					foreach(z, terrain->resolution.y) {
 						foreach(x, terrain->resolution.x) {

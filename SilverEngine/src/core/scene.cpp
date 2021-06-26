@@ -8,6 +8,12 @@
 
 namespace sv {
 
+	struct EntityTag {
+		char name[TAG_NAME_SIZE + 1u];
+		u64 hash;
+		List<Entity> entities;
+	};
+
 	struct PrefabInternal {
 		
 		u64 component_mask;
@@ -39,6 +45,7 @@ namespace sv {
 	struct EntityMisc {
 		
 		char name[ENTITY_NAME_SIZE + 1u];
+		u64 tag;
 		u64 flags;
 		
 	};
@@ -108,6 +115,8 @@ namespace sv {
 		List<PrefabInternal> prefabs;
 		u32                  prefab_free_count = 0u;
 
+		ThickHashTable<EntityTag, 100> tags;
+
 		ComponentAllocator component_allocator[COMPONENT_MAX];
 		
 	};
@@ -137,7 +146,7 @@ namespace sv {
     
     struct SceneState {
 
-		static constexpr u32 VERSION = 3u;
+		static constexpr u32 VERSION = 4u;
 
 		char next_scene_name[SCENENAME_SIZE + 1u] = {};
 		Scene* scene = nullptr;
@@ -286,10 +295,14 @@ namespace sv {
 				deserialize_u32(d, scene_version);
 		    
 				deserialize_entity(d, scene.data.main_camera);
-				deserialize_entity(d, scene.data.player);
+
+				if (scene_version <= 3) {
+					Entity e ;
+					deserialize_entity(d, e);
+				}
 
 				// Skybox
-				if (scene_version == 3u) {
+				if (scene_version >= 3u) {
 
 					char filepath[FILEPATH_SIZE + 1u] = "";
 					deserialize_string(d, filepath, FILEPATH_SIZE + 1u);
@@ -387,7 +400,6 @@ namespace sv {
 		serialize_u32(s, SceneState::VERSION);
 
 		serialize_entity(s, scene.data.main_camera);
-		serialize_entity(s, scene.data.player);
 
 		// Skybox
 		serialize_string(s, scene.data.skybox.image.get() ? scene.data.skybox.filepath : "");
@@ -903,6 +915,7 @@ namespace sv {
 	SV_AUX void initialize_entity_misc(EntityMisc& e)
 	{
 		e.name[0] = '\0';
+		e.tag = 0u;
 		e.flags = 0u;
 	}
 
@@ -914,11 +927,31 @@ namespace sv {
 		e.dirty    = true;
 	}
 
+	SV_AUX EntityTag* get_tag(const char* name)
+	{
+		SV_ASSERT(name && name[0]);
+		SV_ECS();
+		EntityTag* tag = ecs.tags.find(name);
+		if (tag == NULL) {
+			u64 hash = hash_string(name);
+			tag = &ecs.tags[hash];
+			tag->hash = hash;
+			string_copy(tag->name, name, TAG_NAME_SIZE + 1u);
+		}
+		return tag;
+	}
+
+	SV_AUX EntityTag* get_tag(u64 hash)
+	{
+		SV_ECS();
+		return ecs.tags.find(hash);
+	}
+
 	void serialize_ecs(Serializer& s)
 	{
 		SV_ECS();
 
-		constexpr u32 VERSION = 0u;
+		constexpr u32 VERSION = 1u;
 		serialize_u32(s, VERSION);
 		
 		// Registers
@@ -974,6 +1007,8 @@ namespace sv {
 					serialize_v3_f32(s, transform.position);
 					serialize_v4_f32(s, transform.rotation);
 					serialize_v3_f32(s, transform.scale);
+
+					serialize_string(s, string_validate(get_entity_tag(entity)));
 				}
 			}
 		}
@@ -1111,6 +1146,19 @@ namespace sv {
 			deserialize_v4_f32(d, transform.rotation);
 			deserialize_v3_f32(d, transform.scale);
 			transform.dirty = true;
+
+			if (version == 1u) {
+
+				char tag_name[TAG_NAME_SIZE + 1u];
+				deserialize_string(d, tag_name, TAG_NAME_SIZE + 1u);
+
+				if (tag_name[0]) {
+
+					EntityTag* tag = get_tag(tag_name);
+					misc.tag = tag->hash;
+					tag->entities.push_back(entity);
+				}
+			}
 
 			// Find prefab
 			if (internal.prefab) {
@@ -2066,6 +2114,72 @@ namespace sv {
 
 		SV_ASSERT(0);
 		return {};
+	}
+
+	void set_entity_tag(Entity entity, const char* tag_name)
+	{
+		SV_ECS();
+		SV_ASSERT(entity_exists(entity));
+
+		EntityMisc& misc = ecs.entity_misc[entity - 1u];
+		if (misc.tag) {
+
+			EntityTag* tag = get_tag(misc.tag);
+			if (tag) {
+
+				foreach(i, tag->entities.size()) {
+
+					if (tag->entities[i] == entity) {
+						tag->entities.erase(i);
+						break;
+					}
+				}
+			}
+			else SV_ASSERT(0);
+
+			misc.tag = 0u;
+		}
+
+		tag_name = string_validate(tag_name);
+
+		if (tag_name[0]) {
+
+			EntityTag* tag = get_tag(tag_name);
+			if (tag) {
+
+				tag->entities.push_back(entity);
+
+				misc.tag = tag->hash;
+			}
+			else SV_ASSERT(0);
+		}
+	}
+	
+	const char* get_entity_tag(Entity entity)
+	{
+		SV_ECS();
+		SV_ASSERT(entity_exists(entity));
+
+		EntityMisc& misc = ecs.entity_misc[entity - 1u];
+		if (misc.tag) {
+
+			EntityTag* tag = get_tag(misc.tag);
+			if (tag) {
+
+				return tag->name;
+			}
+			else SV_ASSERT(0);
+		}
+
+		return NULL;
+	}
+
+	Entity get_tag_entity(const char* tag_name)
+	{
+		EntityTag* tag = get_tag(tag_name);
+		if (tag->entities.size())
+			return tag->entities[0];
+		return 0;
 	}
 
 	CompIt comp_it_begin(CompID comp_id, u32 flags)

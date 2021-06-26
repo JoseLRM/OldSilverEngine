@@ -1398,7 +1398,7 @@ namespace sv {
 							continue;
 						
 						TerrainInstance& inst = terrain_instances.emplace_back();
-						inst.world_matrix = XMMatrixScaling(terrain.size.x, 1.f, terrain.size.y) * get_entity_world_matrix(entity);
+						inst.world_matrix = get_entity_world_matrix(entity);
 						inst.terrain = &terrain;
 						inst.material = terrain.material.get();							
 					}
@@ -1689,6 +1689,9 @@ namespace sv {
 				}
 			}
 			else {
+
+				graphics_viewport_set(gfx.offscreen, 0u, cmd);
+				graphics_scissor_set(gfx.offscreen, 0u, cmd);
 				
 				constexpr f32 SIZE = 0.4f;
 				constexpr const char* TEXT = "No Main Camera";

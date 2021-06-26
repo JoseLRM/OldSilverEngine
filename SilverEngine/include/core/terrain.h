@@ -12,7 +12,7 @@ namespace sv {
 
 	struct TerrainComponent : public Component {
 		
-		static constexpr u32 VERSION = 1u;
+		static constexpr u32 VERSION = 2u;
 
 		~TerrainComponent();
 
@@ -29,8 +29,6 @@ namespace sv {
 		List<v2_f32> texcoords;
 
 		List<u32> indices;
-
-		v2_f32 size = { 50.f, 50.f };
 		
 		MaterialAsset material;
 
