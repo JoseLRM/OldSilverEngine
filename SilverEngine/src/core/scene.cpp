@@ -730,7 +730,7 @@ namespace sv {
 			pool = alloc.pools + alloc.pool_count++;
 
 			pool->count = 0u;
-			pool->capacity = 200u;
+			pool->capacity = 3u;
 			pool->free_count = 0u;
 			pool->data = (u8*)SV_ALLOCATE_MEMORY(reg.size * pool->capacity);
 		}
@@ -2146,7 +2146,7 @@ namespace sv {
 
 				comp += reg.size;
 			
-				if (comp > pool->data + (pool->count * reg.size)) {
+				if (comp >= pool->data + (pool->count * reg.size)) {
 
 					do {
 						++it.pool_index;

@@ -1756,7 +1756,7 @@ namespace sv {
 			}
 	    
 			{
-				gui_begin_grid(85.f, 3.f, 1u);
+				gui_begin_grid(85.f, 10.f, 1u);
 
 				foreach(i, info.elements.size()) {
 
@@ -2036,6 +2036,24 @@ namespace sv {
 					data.state = 0u;
 					gui_show_window("Create Asset");
 					gui_close_popup();
+				}
+
+				if (gui_button("Create Entity Model")) {
+
+					char filepath[FILEPATH_SIZE + 1u] = "assets/";
+					string_append(filepath, info.filepath, FILEPATH_SIZE + 1u);
+
+					Entity parent = create_entity(0, filepath_name(filepath));
+
+					if (parent) {
+
+						if (create_entity_model(parent, filepath)) {
+							SV_LOG_INFO("Entity model created: '%s'", filepath);
+						}
+						else {
+							SV_LOG_ERROR("Can't create entity model: '%s'", filepath);
+						}
+					}
 				}
 
 				if (gui_button("Create Sprite Sheet")) {

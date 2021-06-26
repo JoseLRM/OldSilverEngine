@@ -1455,13 +1455,14 @@ namespace sv {
 	// Updates all the container hierarchy
 	SV_AUX void update_window_bounds(GuiWindow& window)
 	{
+		f32 height = compute_window_decoration_height();
+		
 		if (get_window_flags(window) & GuiWindowFlag_AutoResize) {
 
 			GuiWindowNode& node = gui->window_nodes[window.root_id];
-			window.bounds.w = node.win.root.yoff / gui->resolution.y;
+			window.bounds.w = SV_MIN(height + (node.win.root.yoff / gui->resolution.y), 0.8f);
 		}
 
-		f32 height = compute_window_decoration_height();
 		v4_f32 bounds = window.bounds;
 		bounds.y -= height * 0.5f;
 		bounds.w -= height;
@@ -4572,8 +4573,8 @@ namespace sv {
 	    
 					imrend_draw_sprite(vec2_to_vec3(pos), size, color, asset.image ? asset.image : renderer_white_image(), GPUImageLayout_ShaderResource, asset.texcoord, cmd);
 
-					pos.y -= size.y * 0.35f;
-					size.y *= 0.35f;
+					pos.y -= size.y * 0.5f;
+					size.y *= 0.5f;
 					gui_draw_text(asset.text, pos, size, false, cmd);
 				}
 				break;
