@@ -1,0 +1,6 @@
+** EXTERNAL RESOURCES LIST **
+- DXCompiler
+- SPRV
+- STB truetype
+- STB lib
+- Vulkan Memory Allocator
