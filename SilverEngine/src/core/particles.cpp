@@ -24,12 +24,47 @@ namespace sv {
 	SV_AUX void emit_particle(ParticleEmitter& e, v3_f32 system_position)
 	{
 		Particle& p = e.particles[e.particle_count++];
-							
-		p.position.x = math_random_f32(e.seed++, -1.f, 1.f);
-		p.position.y = math_random_f32(e.seed++, -1.f, 1.f);
-		p.position.z = math_random_f32(e.seed++, -1.f, 1.f);
 
-		p.position = vec3_normalize(p.position) * e.radius;
+		switch (e.shape.type) {
+
+		case ParticleShapeType_Point:
+		{
+			p.position = {};
+		}
+		break;
+
+		case ParticleShapeType_Cube:
+		{
+			// TODO: Fill
+			p.position.x = math_random_f32(e.seed++, -0.5f, 0.5f) * e.shape.cube.size.x;
+			p.position.y = math_random_f32(e.seed++, -0.5f, 0.5f) * e.shape.cube.size.y; 
+			p.position.z = math_random_f32(e.seed++, -0.5f, 0.5f) * e.shape.cube.size.z;
+		}
+		break;
+
+		case ParticleShapeType_Plane:
+		{
+			p.position.x = math_random_f32(e.seed++, -0.5f, 0.5f) * e.shape.plane.size.x;
+			p.position.y = math_random_f32(e.seed++, -0.5f, 0.5f) * e.shape.plane.size.y;
+			p.position.z = 0.f;
+		}
+		break;
+
+		case ParticleShapeType_Sphere:
+		{
+			p.position.x = math_random_f32(e.seed++, -0.5f, 0.5f);
+			p.position.y = math_random_f32(e.seed++, -0.5f, 0.5f);
+			p.position.z = math_random_f32(e.seed++, -0.5f, 0.5f);
+
+			if (e.shape.fill)
+				p.position = vec3_normalize(p.position);
+			
+			p.position *= e.shape.sphere.radius;
+		}
+		break;
+			
+		}
+
 		p.position += system_position;
 
 		p.velocity.x = math_random_f32(e.seed++, e.min_velocity.x, e.max_velocity.x);
@@ -238,7 +273,57 @@ namespace sv {
 				gui_drag_color("Final color", e.final_color);
 				gui_drag_f32("Gravity Mult", e.gravity_mult, 0.001f, -f32_max, f32_max);
 
-				gui_drag_f32("Radius", e.radius, 0.01f, 0.f, f32_max);
+				gui_separator(1);
+
+				const char* preview = "";
+				switch (e.shape.type) {
+					
+				case ParticleShapeType_Point:
+					preview = "Point";
+					break;
+					
+				case ParticleShapeType_Cube:
+					preview = "Cube";
+					break;
+					
+				case ParticleShapeType_Sphere:
+					preview = "Sphere";
+					break;
+
+				case ParticleShapeType_Plane:
+					preview = "Plane";
+					break;
+					
+				}
+
+				if (gui_begin_combobox(preview, 345345)) {
+
+					if (e.shape.type != ParticleShapeType_Point && gui_button("Point")) {
+						e.shape.type = ParticleShapeType_Point;
+					}
+
+					if (e.shape.type != ParticleShapeType_Sphere && gui_button("Sphere")) {
+						e.shape.type = ParticleShapeType_Sphere;
+						e.shape.sphere.radius = 1.f;
+					}
+
+					if (e.shape.type != ParticleShapeType_Cube && gui_button("Cube")) {
+						e.shape.type = ParticleShapeType_Cube;
+						e.shape.cube.size.x = 1.f;
+						e.shape.cube.size.y = 1.f;
+						e.shape.cube.size.z = 1.f;
+					}
+					
+					if (e.shape.type != ParticleShapeType_Plane && gui_button("Plane")) {
+						e.shape.type = ParticleShapeType_Plane;
+						e.shape.plane.size.x = 1.f;
+						e.shape.plane.size.y = 1.f;
+					}
+					
+					gui_end_combobox();
+				}
+				
+				
 
 				gui_drag_f32("Emission Rate", e.emission.rate, 0.1f, 0.f, f32_max);
 				gui_drag_f32("Emission Offset Time", e.emission.offset_time, 0.01f, 0.f, f32_max);

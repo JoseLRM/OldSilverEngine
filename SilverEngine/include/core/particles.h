@@ -18,6 +18,13 @@ namespace sv {
 		f32    time_count;
 	};
 
+	enum ParticleShapeType : u32 {
+		ParticleShapeType_Sphere,
+		ParticleShapeType_Cube,
+		ParticleShapeType_Plane,
+		ParticleShapeType_Point,
+	};
+
 	struct ParticleEmitter {
 
 		~ParticleEmitter();
@@ -45,13 +52,29 @@ namespace sv {
 		// GLOBALS
 		
 		Color init_color = Color::Yellow();
-		Color final_color = Color::Red();
+		Color final_color = Color::Red(0);
 
 		f32 gravity_mult = 0.f;
 
 		// SHAPE
-		
-		f32 radius = 1.f;
+
+		struct {
+			
+			ParticleShapeType type = ParticleShapeType_Sphere;
+			bool fill = true;
+			
+			struct {
+				f32 radius;	
+			} sphere;
+			
+			struct {
+				v3_f32 size;
+			} cube;
+
+			struct {
+				v2_f32 size;
+			} plane;
+		} shape;
 
 		// EMISSION
 
