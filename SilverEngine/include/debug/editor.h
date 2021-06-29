@@ -37,6 +37,7 @@ namespace sv {
 		bool debug_draw = true;
 		bool postprocessing = true;
 		bool draw_collisions = false;
+		bool draw_cameras = false;
 	
 		DebugCamera camera;
 

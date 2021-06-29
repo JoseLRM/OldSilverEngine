@@ -138,7 +138,8 @@ namespace sv {
 		static constexpr v4_f32 TEXCOORD_PLAY = { 141.f / 1920.f, 6.f / 1920.f, 264.f / 1920.f, 129.f / 1920.f };
 		static constexpr v4_f32 TEXCOORD_PAUSE = { 275.f / 1920.f, 5.f / 1920.f, 386.f / 1920.f, 116.f / 1920.f };
 		static constexpr v4_f32 TEXCOORD_STOP = { 275.f / 1920.f, 5.f / 1920.f, 386.f / 1920.f, 116.f / 1920.f };
-		static constexpr v4_f32 TEXCOORD_LIGHT_PROBE = { 0.7f, 0.7f, 1.f, 1.f };
+		static constexpr v4_f32 TEXCOORD_LIGHT_PROBE = { 1402.f / 1920.f, 1402.f / 1920.f, 1.f, 1.f };
+		static constexpr v4_f32 TEXCOORD_CAMERA_PROBE = { 784.f / 1920.f, 1320.f / 1920.f, 1338.f / 1920.f, 1874 / 1920.f };
 
 		SpriteSheetEditorData sprite_sheet_editor_data;
 		MaterialEditorData material_editor_data;
@@ -2563,7 +2564,8 @@ namespace sv {
 
 					gui_separator(3);
 
-					gui_checkbox("Colisions", dev.draw_collisions);
+					gui_checkbox("Show Colisions", dev.draw_collisions);
+					gui_checkbox("Show Cameras", dev.draw_cameras);
 					gui_checkbox("Postprocessing", dev.postprocessing);
 
 					if (gui_button("Exit Project")) {
@@ -2912,6 +2914,7 @@ namespace sv {
 
 					dev.debug_draw = false;
 					dev.draw_collisions = false;
+					dev.draw_cameras = false;
 					editor.selected_entities.reset();
 				}
 			} break;
@@ -2964,6 +2967,7 @@ namespace sv {
 		u32 body_id = get_component_id("Body");
 		u32 box_id = get_component_id("Box Collider");
 		u32 sphere_id = get_component_id("Sphere Collider");
+		u32 camera_id = get_component_id("Camera");
 
 		// Draw selected entity
 		for (Entity entity : editor.selected_entities) {
@@ -3056,7 +3060,7 @@ namespace sv {
 				LightComponent& light = *(LightComponent*)it.comp;
 				
 				v3_f32 pos = get_entity_world_position(entity);
-
+				
 				f32 min_scale = relative_scalar(0.02f, pos);
 				f32 scale = SV_MAX(min_scale, 1.f);
 					
@@ -3126,6 +3130,77 @@ namespace sv {
 
 				imrend_push_matrix(tm, cmd);
 				imrend_draw_sphere_wireframe(10u, 10u, Color::Green(), cmd);
+				imrend_pop_matrix(cmd);
+			}
+		}
+
+		if (dev.draw_cameras) {
+
+			XMMATRIX tm;
+
+			for (CompIt it = comp_it_begin(camera_id);
+				 it.has_next;
+				 comp_it_next(it))
+			{
+				CameraComponent& camera = *(CameraComponent*)it.comp;
+
+				imrend_push_matrix(camera.inverse_view_matrix, cmd);
+
+				v3_f32 b0 = { -camera.width * 0.5f, camera.height * 0.5f, camera.near };
+				v3_f32 b1 = { camera.width * 0.5f, camera.height * 0.5f, camera.near };
+				v3_f32 b2 = { -camera.width * 0.5f, -camera.height * 0.5f, camera.near };
+				v3_f32 b3 = { camera.width * 0.5f, -camera.height * 0.5f, camera.near };
+
+				v3_f32 e0;
+				v3_f32 e1;
+				v3_f32 e2;
+				v3_f32 e3;
+
+				if (camera.projection_type == ProjectionType_Orthographic) {
+
+					e0 = { b0.x, b0.y, camera.far };
+					e1 = { b1.x, b1.y, camera.far };
+					e2 = { b2.x, b2.y, camera.far };
+					e3 = { b3.x, b3.y, camera.far };
+				}
+				if (camera.projection_type == ProjectionType_Perspective) {
+
+					f32 distance = vec3_length(b0);
+					
+					e0 = vec3_normalize(b0) * (distance + camera.far);
+					e1 = vec3_normalize(b1) * (distance + camera.far);
+					e2 = vec3_normalize(b2) * (distance + camera.far);
+					e3 = vec3_normalize(b3) * (distance + camera.far);
+				}
+
+				imrend_draw_line(b0, e0, Color::Red(), cmd);
+				imrend_draw_line(b1, e1, Color::Red(), cmd);
+				imrend_draw_line(b2, e2, Color::Red(), cmd);
+				imrend_draw_line(b3, e3, Color::Red(), cmd);
+
+				imrend_draw_line(b0, b1, Color::Red(), cmd);
+				imrend_draw_line(b1, b3, Color::Red(), cmd);
+				imrend_draw_line(b3, b2, Color::Red(), cmd);
+				imrend_draw_line(b2, b0, Color::Red(), cmd);
+
+				imrend_draw_line(e0, e1, Color::Red(), cmd);
+				imrend_draw_line(e1, e3, Color::Red(), cmd);
+				imrend_draw_line(e3, e2, Color::Red(), cmd);
+				imrend_draw_line(e2, e0, Color::Red(), cmd);
+
+				imrend_pop_matrix(cmd);
+
+				v3_f32 pos = get_entity_world_position(it.entity);
+				
+				f32 min_scale = relative_scalar(0.03f, pos);
+				f32 scale = SV_MAX(min_scale, 1.f);
+					
+				tm = XMMatrixScaling(scale, scale, 1.f) * XMMatrixRotationQuaternion(vec4_to_dx(dev.camera.rotation)) * XMMatrixTranslation(pos.x, pos.y, pos.z);
+
+				imrend_push_matrix(tm, cmd);
+
+				imrend_draw_sprite({}, { 1.f, 1.f }, Color::White(), editor.image.get(), GPUImageLayout_ShaderResource, editor.TEXCOORD_CAMERA_PROBE, cmd);
+
 				imrend_pop_matrix(cmd);
 			}
 		}
