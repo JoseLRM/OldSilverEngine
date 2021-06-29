@@ -63,7 +63,7 @@ namespace sv {
 
     SV_API void mesh_apply_plane(Mesh& mesh, const XMMATRIX& transform = XMMatrixIdentity());
     SV_API void mesh_apply_cube(Mesh& mesh, const XMMATRIX& transform = XMMatrixIdentity());
-    SV_API void mesh_apply_sphere(Mesh& mesh, const XMMATRIX& transform = XMMatrixIdentity());
+    SV_API void mesh_apply_sphere(Mesh& mesh, u32 resolution, const XMMATRIX& transform = XMMatrixIdentity());
 
     SV_API void mesh_set_scale(Mesh& mesh, f32 scale, bool center = false);
     SV_API void mesh_optimize(Mesh& mesh);

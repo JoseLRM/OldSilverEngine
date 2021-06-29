@@ -184,9 +184,92 @@ namespace sv {
 		computePlane(mesh, faceTransform, quat, vertexOffset + 4u * 5u, indexOffset + 6 * 5u);
     }
 
-    void mesh_apply_sphere(Mesh& mesh, const XMMATRIX& transform)
+    void mesh_apply_sphere(Mesh& mesh, u32 resolution, const XMMATRIX& transform)
     {
-		SV_LOG_ERROR("TODO");
+		u32 begin_vertex = (u32)mesh.positions.size();
+		u32 begin_index = (u32)mesh.indices.size();
+		
+		f32 res_mult = 1.f / (resolution - 1u);
+
+		u32 vertex_count = resolution * resolution;
+		u32 index_count = (resolution - 1u) * (resolution - 1u) * 2u * 3u;
+
+		mesh.positions.resize(begin_vertex + vertex_count * 6u);
+		mesh.normals.resize(begin_vertex + vertex_count * 6u);
+
+		mesh.indices.resize(begin_index + index_count * 6u);
+
+		XMMATRIX matrix = XMMatrixIdentity();
+
+		v3_f32 center = XMVector4Transform(XMVectorSet(0.f, 0.f, 0.f, 1.f), transform);
+
+		foreach(face, 6u) {
+
+			u32 vertex_offset = begin_vertex + (vertex_count * face);
+			u32 index_offset = begin_index + (index_count * face);
+
+			switch (face) {
+
+			case 0: // UP
+				matrix = XMMatrixTranslation(0.f, 0.5f, 0.f) * XMMatrixRotationRollPitchYaw(0.f, 0.f, 0.f) * transform;
+				break;
+
+			case 1: // DOWN
+				matrix = XMMatrixTranslation(0.f, 0.5f, 0.f) * XMMatrixRotationRollPitchYaw(0.f, 0.f, ToRadians(180.f)) * transform;
+				break;
+
+			case 2: // LEFT
+				matrix = XMMatrixTranslation(0.f, 0.5f, 0.f) * XMMatrixRotationRollPitchYaw(0.f, 0.f, ToRadians(-90.f)) * transform;
+				break;
+
+			case 3: // RIGHT
+				matrix = XMMatrixTranslation(0.f, 0.5f, 0.f) * XMMatrixRotationRollPitchYaw(0.f, 0.f, ToRadians(90.f)) * transform;
+				break;
+
+			case 4: // FRONT
+				matrix = XMMatrixTranslation(0.f, 0.5f, 0.f) * XMMatrixRotationRollPitchYaw(ToRadians(-90.f), 0.f, 0.f) * transform;
+				break;
+
+			case 5: // BACK
+				matrix = XMMatrixTranslation(0.f, 0.5f, 0.f) * XMMatrixRotationRollPitchYaw(ToRadians(90.f), 0.f, 0.f) * transform;
+				break;
+				
+			}
+			
+			foreach(y, resolution) {
+				foreach(x, resolution) {
+
+					u32 index = vertex_offset + x + (y * resolution);
+					v3_f32& pos = mesh.positions[index];
+					v3_f32& nor = mesh.normals[index];
+					
+					pos.x = f32(x) * res_mult - 0.5f;
+					pos.y = 0.f;
+					pos.z = f32(y) * res_mult - 0.5f;
+					
+					pos = XMVector4Transform(vec3_to_dx(pos, 1.f), matrix);
+					nor = vec3_normalize(pos - center);
+					pos = center + nor * 0.5f;
+				}
+			}
+
+			foreach(y, resolution - 1u) {
+				foreach(x, resolution - 1u) {
+
+					u32 i0 = vertex_offset + (x + 0) + (y + 1) * resolution;
+					u32 i1 = vertex_offset + (x + 1) + (y + 1) * resolution;
+					u32 i2 = vertex_offset + (x + 0) + (y + 0) * resolution;
+					u32 i3 = vertex_offset + (x + 1) + (y + 0) * resolution;
+
+					mesh.indices[index_offset++] = i0;
+					mesh.indices[index_offset++] = i1;
+					mesh.indices[index_offset++] = i2;
+					mesh.indices[index_offset++] = i1;
+					mesh.indices[index_offset++] = i3;
+					mesh.indices[index_offset++] = i2;
+				}
+			}
+		}
     }
 
     void mesh_set_scale(Mesh& mesh, f32 scale, bool center)

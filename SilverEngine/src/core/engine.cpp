@@ -122,12 +122,23 @@ namespace sv {
 			mesh_apply_cube(*mesh);
 			return mesh_create_buffers(*mesh);
 		}
+
+		if (string_equals(name, "Sphere")) {
+
+			mesh_apply_sphere(*mesh, 30u);
+			return mesh_create_buffers(*mesh);
+		}
 		
 		return true;
     }
 
     SV_INTERNAL bool load_mesh_asset(void* asset, const char* name, const char* filepath)
     {
+		if (string_equals(name, "Cube") || string_equals(name, "Sphere")) {
+			SV_LOG_ERROR("Reserved mesh asset name: '%s'", name);
+			return false;
+		}
+			
 		Mesh& mesh = *new(asset) Mesh();
 		SV_CHECK(load_mesh(mesh, filepath));
 		SV_CHECK(mesh_create_buffers(mesh));

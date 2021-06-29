@@ -890,6 +890,10 @@ namespace sv {
 
 					create_asset_from_name(m.mesh, "Mesh", "Cube");
 				}
+				if (gui_button("Set shpere")) {
+
+					create_asset_from_name(m.mesh, "Mesh", "Sphere");
+				}
 				/*if (m.material.get())
 				  gui_material(*m.material.get());*/
 			}
