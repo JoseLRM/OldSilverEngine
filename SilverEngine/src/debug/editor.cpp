@@ -2959,6 +2959,7 @@ namespace sv {
 		u32 sprite_id = get_component_id("Sprite");
 		u32 body_id = get_component_id("Body");
 		u32 box_id = get_component_id("Box Collider");
+		u32 sphere_id = get_component_id("Sphere Collider");
 
 		// Draw selected entity
 		for (Entity entity : editor.selected_entities) {
@@ -3083,20 +3084,8 @@ namespace sv {
 
 		// Draw collisions
 		if (dev.draw_collisions) {
-			
-			XMVECTOR p0 = XMVectorSet(-0.5f, 0.5f, 0.5f, 1.f);
-			XMVECTOR p1 = XMVectorSet(0.5f, 0.5f, 0.5f, 1.f);
-			XMVECTOR p2 = XMVectorSet(-0.5f, -0.5f, 0.5f, 1.f);
-			XMVECTOR p3 = XMVectorSet(0.5f, -0.5f, 0.5f, 1.f);
-			XMVECTOR p4 = XMVectorSet(-0.5f, 0.5f, -0.5f, 1.f);
-			XMVECTOR p5 = XMVectorSet(0.5f, 0.5f, -0.5f, 1.f);
-			XMVECTOR p6 = XMVectorSet(-0.5f, -0.5f, -0.5f, 1.f);
-			XMVECTOR p7 = XMVectorSet(0.5f, -0.5f, -0.5f, 1.f);
-
-			XMVECTOR v0, v1, v2, v3, v4, v5, v6, v7;
 
 			XMMATRIX tm;
-			XMMATRIX m;
 
 			for (CompIt it = comp_it_begin(box_id);
 				 it.has_next;
@@ -3107,33 +3096,33 @@ namespace sv {
 				if (!has_entity_component(it.entity, body_id))
 					continue;
 					
-				tm = get_entity_world_matrix(it.entity);
+				tm = XMMatrixScalingFromVector(vec3_to_dx(box.size)) * get_entity_world_matrix(it.entity);
 
-				m = XMMatrixScalingFromVector(vec3_to_dx(box.size)) * tm;
-		    
-				v0 = XMVector3Transform(p0, m);
-				v1 = XMVector3Transform(p1, m);
-				v2 = XMVector3Transform(p2, m);
-				v3 = XMVector3Transform(p3, m);
-				v4 = XMVector3Transform(p4, m);
-				v5 = XMVector3Transform(p5, m);
-				v6 = XMVector3Transform(p6, m);
-				v7 = XMVector3Transform(p7, m);
+				imrend_push_matrix(tm, cmd);
+				imrend_draw_cube_wireframe(Color::Green(), cmd);
+				imrend_pop_matrix(cmd);
+			}
 
-				imrend_draw_line(v3_f32(v0), v3_f32(v1), Color::Green(), cmd);
-				imrend_draw_line(v3_f32(v1), v3_f32(v3), Color::Green(), cmd);
-				imrend_draw_line(v3_f32(v3), v3_f32(v2), Color::Green(), cmd);
-				imrend_draw_line(v3_f32(v0), v3_f32(v2), Color::Green(), cmd);
+			for (CompIt it = comp_it_begin(sphere_id);
+				 it.has_next;
+				 comp_it_next(it))
+			{
+				SphereCollider& sphere = *(SphereCollider*)it.comp;
 
-				imrend_draw_line(v3_f32(v4), v3_f32(v5), Color::Green(), cmd);
-				imrend_draw_line(v3_f32(v5), v3_f32(v7), Color::Green(), cmd);
-				imrend_draw_line(v3_f32(v7), v3_f32(v6), Color::Green(), cmd);
-				imrend_draw_line(v3_f32(v4), v3_f32(v6), Color::Green(), cmd);
+				if (!has_entity_component(it.entity, body_id))
+					continue;
 
-				imrend_draw_line(v3_f32(v0), v3_f32(v4), Color::Green(), cmd);
-				imrend_draw_line(v3_f32(v1), v3_f32(v5), Color::Green(), cmd);
-				imrend_draw_line(v3_f32(v2), v3_f32(v6), Color::Green(), cmd);
-				imrend_draw_line(v3_f32(v3), v3_f32(v7), Color::Green(), cmd);
+				Transform trans = get_entity_world_transform(it.entity);
+
+				f32 radius = sphere.radius * SV_MAX(SV_MAX(trans.scale.x, trans.scale.y), trans.scale.z);
+				
+				tm = XMMatrixScaling(radius, radius, radius) *
+					XMMatrixRotationQuaternion(vec4_to_dx(trans.rotation)) *
+					XMMatrixTranslationFromVector(vec3_to_dx(trans.position));
+
+				imrend_push_matrix(tm, cmd);
+				imrend_draw_sphere_wireframe(10u, 10u, Color::Green(), cmd);
+				imrend_pop_matrix(cmd);
 			}
 		}
 

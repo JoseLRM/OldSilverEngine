@@ -7,6 +7,7 @@
 #define ToRadians(x) x * 0.0174533f
 #define ToDegrees(x) x / 0.0174533f
 #define PI 3.14159f
+#define TAU (2.f*PI)
 
 namespace sv {
 

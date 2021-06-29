@@ -150,6 +150,9 @@ namespace sv {
 
     // High level draw calls
 
+	SV_API void imrend_draw_cube_wireframe(Color color, CommandList cmd);
+	SV_API void imrend_draw_sphere_wireframe(u32 vertical_segments, u32 horizontal_segments, Color color, CommandList cmd);
+
     SV_API void imrend_draw_orthographic_grip(const v2_f32& position, const v2_f32& offset, const v2_f32& size, const v2_f32& gridSize, Color color, CommandList cmd);
 
 }

@@ -725,6 +725,77 @@ namespace sv {
 		imrend_write(state, font);
 		imrend_write(state, color);
     }
+
+	void imrend_draw_cube_wireframe(Color color, CommandList cmd)
+	{
+		v3_f32 v0 = { -0.5f,  0.5f,  0.5f };
+		v3_f32 v1 = {  0.5f,  0.5f,  0.5f };
+		v3_f32 v2 = { -0.5f, -0.5f,  0.5f };
+		v3_f32 v3 = {  0.5f, -0.5f,  0.5f };
+		v3_f32 v4 = { -0.5f,  0.5f, -0.5f };
+		v3_f32 v5 = {  0.5f,  0.5f, -0.5f };
+		v3_f32 v6 = { -0.5f, -0.5f, -0.5f };
+		v3_f32 v7 = {  0.5f, -0.5f, -0.5f };
+			
+		imrend_draw_line(v0, v1, color, cmd);
+		imrend_draw_line(v1, v3, color, cmd);
+		imrend_draw_line(v3, v2, color, cmd);
+		imrend_draw_line(v0, v2, color, cmd);
+
+		imrend_draw_line(v4, v5, color, cmd);
+		imrend_draw_line(v5, v7, color, cmd);
+		imrend_draw_line(v7, v6, color, cmd);
+		imrend_draw_line(v4, v6, color, cmd);
+
+		imrend_draw_line(v0, v4, color, cmd);
+		imrend_draw_line(v1, v5, color, cmd);
+		imrend_draw_line(v2, v6, color, cmd);
+		imrend_draw_line(v3, v7, color, cmd);
+	}
+
+	void imrend_draw_sphere_wireframe(u32 vertical_segments, u32 horizontal_segments, Color color, CommandList cmd)
+	{
+		foreach(x, horizontal_segments) {
+
+			f32 a0 = (x + 1) * PI / (horizontal_segments + 1u);
+			f32 a1 = (x + 2) * PI / (horizontal_segments + 1u);
+			
+			foreach(y, vertical_segments) {
+
+				f32 b0 = (y + 0) * TAU / vertical_segments;
+				f32 b1 = (y + 1) * TAU / vertical_segments;
+
+				f32 sin_a0 = sinf(a0);
+				f32 sin_a1 = sinf(a1);
+				f32 sin_b0 = sinf(b0);
+				f32 sin_b1 = sinf(b1);
+				f32 cos_a0 = cosf(a0);
+				f32 cos_a1 = cosf(a1);
+				f32 cos_b0 = cosf(b0);
+				f32 cos_b1 = cosf(b1);
+
+				f32 x0 = sin_a0 * cos_b0 * 0.5f;
+				f32 y0 = cos_a0 * 0.5f;
+				f32 z0 = sin_a0 * sin_b0 * 0.5f;
+
+				f32 x1 = sin_a1 * cos_b0 * 0.5f;
+				f32 y1 = cos_a1 * 0.5f;
+				f32 z1 = sin_a1 * sin_b0 * 0.5f;
+
+				f32 x2 = sin_a0 * cos_b1 * 0.5f;
+				f32 y2 = cos_a0 * 0.5f;
+				f32 z2 = sin_a0 * sin_b1 * 0.5f;
+
+				f32 x3 = sin_a1 * cos_b1 * 0.5f;
+				f32 y3 = cos_a1 * 0.5f;
+				f32 z3 = sin_a1 * sin_b1 * 0.5f;
+
+				imrend_draw_line({ x0, y0, z0 }, { x1, y1, z1 }, color, cmd);
+				imrend_draw_line({ x0, y0, z0 }, { x2, y2, z2 }, color, cmd);
+				imrend_draw_line({ x0, y0, z0 }, { x3, y3, z3 }, color, cmd);
+			}
+		}
+	}
     
     void imrend_draw_orthographic_grip(const v2_f32& position, const v2_f32& offset, const v2_f32& size, const v2_f32& gridSize, Color color, CommandList cmd)
     {
