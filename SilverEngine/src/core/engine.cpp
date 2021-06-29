@@ -4,6 +4,7 @@
 #include "core/renderer.h"
 #include "core/particles.h"
 #include "core/event_system.h"
+#include "core/physics3D.h"
 
 #include "platform/os.h"
 
@@ -62,14 +63,14 @@ namespace sv {
     
     //////////////////////////////////////////////////////////////////// ASSET FUNCTIONS //////////////////////////////////////////////////////////
 
-    SV_INTERNAL bool create_image_asset(void* asset)
+    SV_INTERNAL bool create_image_asset(void* asset, const char* name)
     {
 		GPUImage*& image = *reinterpret_cast<GPUImage**>(asset);
 		image = nullptr;
 		return true;
     }
 
-    SV_INTERNAL bool load_image_asset(void* asset, const char* filepath)
+    SV_INTERNAL bool load_image_asset(void* asset, const char* name, const char* filepath)
     {
 		GPUImage*& image = *reinterpret_cast<GPUImage**>(asset);
 
@@ -98,7 +99,7 @@ namespace sv {
 		return res;
     }
 
-    SV_INTERNAL bool destroy_image_asset(void* asset)
+    SV_INTERNAL bool destroy_image_asset(void* asset, const char* name)
     {
 		GPUImage*& image = *reinterpret_cast<GPUImage**>(asset);
 		graphics_destroy(image);
@@ -106,19 +107,26 @@ namespace sv {
 		return true;
     }
 
-    SV_INTERNAL bool reload_image_asset(void* asset, const char* filepath)
+    SV_INTERNAL bool reload_image_asset(void* asset, const char* name, const char* filepath)
     {
-		SV_CHECK(destroy_image_asset(asset));
-		return load_image_asset(asset, filepath);
+		SV_CHECK(destroy_image_asset(asset, name));
+		return load_image_asset(asset, name, filepath);
     }
 
-    SV_INTERNAL bool create_mesh_asset(void* asset)
+    SV_INTERNAL bool create_mesh_asset(void* asset, const char* name)
     {
-		new(asset) Mesh();
+		Mesh* mesh = new(asset) Mesh();
+
+		if (string_equals(name, "Cube")) {
+
+			mesh_apply_cube(*mesh);
+			return mesh_create_buffers(*mesh);
+		}
+		
 		return true;
     }
 
-    SV_INTERNAL bool load_mesh_asset(void* asset, const char* filepath)
+    SV_INTERNAL bool load_mesh_asset(void* asset, const char* name, const char* filepath)
     {
 		Mesh& mesh = *new(asset) Mesh();
 		SV_CHECK(load_mesh(mesh, filepath));
@@ -126,27 +134,27 @@ namespace sv {
 		return true;
     }
 
-    SV_INTERNAL bool free_mesh_asset(void* asset)
+    SV_INTERNAL bool free_mesh_asset(void* asset, const char* name)
     {
 		Mesh& mesh = *reinterpret_cast<Mesh*>(asset);
 		mesh_clear(mesh);
 		return true;
     }
 
-    SV_INTERNAL bool create_material_asset(void* asset)
+    SV_INTERNAL bool create_material_asset(void* asset, const char* name)
     {
 		new(asset) Material();
 		return true;
     }
 
-    SV_INTERNAL bool load_material_asset(void* asset, const char* filepath)
+    SV_INTERNAL bool load_material_asset(void* asset, const char* name, const char* filepath)
     {
 		Material& material = *new(asset) Material();
 		SV_CHECK(load_material(material, filepath));
 		return true;
     }
 
-    SV_INTERNAL bool free_material_asset(void* asset)
+    SV_INTERNAL bool free_material_asset(void* asset, const char* name)
     {
 		Material& mat = *reinterpret_cast<Material*>(asset);
 		mat.~Material();
@@ -262,6 +270,11 @@ namespace sv {
 			return false;
 		}
 
+		if (!_physics3D_initialize()) {
+			SV_LOG_ERROR("Can't initialize physics3D");
+			return false;
+		}
+
 		if (!register_assets()) {
 			SV_LOG_ERROR("Can't register default assets");
 			return false;
@@ -293,6 +306,7 @@ namespace sv {
 
 		_particle_close();
 
+		_physics3D_close();
 		_scene_close();	
 
 #if SV_EDITOR

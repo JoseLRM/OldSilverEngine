@@ -399,34 +399,6 @@ namespace sv {
 
     };
 
-    enum BodyType : u32 {
-		BodyType_Static,
-		BodyType_Dynamic,
-		BodyType_Projectile,
-    };
-
-    enum BodyComponentFlag : u32 {
-		BodyComponentFlag_Trigger = SV_BIT(0)
-    };
-
-    struct BodyComponent : public Component {
-
-		static constexpr u32 VERSION = 2u;
-
-		BodyType body_type = BodyType_Static;
-		v3_f32 vel;
-		v3_f32 size = { 1.f, 1.f, 1.f };
-		v3_f32 offset = { 0.f, 0.f, 0.f };
-		bool in_ground = false;
-		f32 mass = 1.f;
-		f32 friction = 0.99f;
-		f32 bounciness = 0.f;
-
-		void serialize(Serializer& s);
-		void deserialize(Deserializer& s, u32 version);
-	
-    };
-
     // EVENTS
 
     struct EntityCreateEvent {
@@ -437,27 +409,4 @@ namespace sv {
 		Entity entity;
     };
     
-    enum CollisionState : u32 {
-		CollisionState_Enter,
-		CollisionState_Stay,
-		CollisionState_Leave,
-    };
-    
-    // on_body_collision
-    struct BodyCollisionEvent {
-		BodyComponent* body0;
-		Entity entity0;
-		BodyComponent* body1;
-		Entity entity1;
-		CollisionState state;
-    };
-
-    // on_trigger_collision
-    struct TriggerCollisionEvent {
-		BodyComponent* trigger_body;
-		Entity trigger_entity;
-		BodyComponent* body;
-		Entity entity;
-		CollisionState state;
-    };
 }

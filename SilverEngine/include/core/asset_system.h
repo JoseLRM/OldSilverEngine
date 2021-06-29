@@ -107,6 +107,7 @@ namespace sv {
     void _update_assets();
 
     SV_API bool create_asset(AssetPtr& asset_ptr, const char* type, const char* name = NULL);
+	SV_API bool create_asset_from_name(AssetPtr& asset_ptr, const char* type, const char* name);
 
 	enum AssetLoadingPriority : u32 {
 		AssetLoadingPriority_RightNow,
@@ -118,8 +119,6 @@ namespace sv {
     // If it is in use simply get the existing asset
     SV_API bool load_asset_from_file(AssetPtr& asset_ptr, const char* filepath, AssetLoadingPriority priority = AssetLoadingPriority_KeepItLoading);
 
-	SV_API bool load_asset_from_name(AssetPtr& asset_ptr, const char* type, const char* name, bool create_if_not_exists = true);
-
 	SV_API bool        set_asset_name(AssetPtr& asset_ptr, const char* name);
 	SV_API const char* get_asset_name(const AssetPtr& asset_ptr);
 
@@ -127,11 +126,13 @@ namespace sv {
 
     SV_API void* get_asset_content(const AssetPtr& asset_ptr);
     SV_API const char* get_asset_filepath(const AssetPtr& asset_ptr);
+	SV_API const char* get_asset_type(const AssetPtr& asset_ptr);
+	SV_API bool is_asset_created_from_name(const AssetPtr& asset_ptr);
 
-    typedef bool(*AssetCreateFn)(void* asset);
-    typedef bool(*AssetLoadFileFn)(void* asset, const char* filepath);
-    typedef bool(*AssetReloadFileFn)(void* asset, const char* filepath);
-    typedef bool(*AssetFreeFn)(void* asset);
+    typedef bool(*AssetCreateFn)(void* asset, const char* name);
+    typedef bool(*AssetLoadFileFn)(void* asset, const char* name, const char* filepath);
+    typedef bool(*AssetReloadFileFn)(void* asset, const char* name, const char* filepath);
+    typedef bool(*AssetFreeFn)(void* asset, const char* name);
 
     struct AssetTypeDesc {
 	
@@ -154,29 +155,52 @@ namespace sv {
 
     SV_INLINE void serialize_asset(Serializer& s, const AssetPtr& asset_ptr)
     {
-		constexpr u32 VERSION = 0u;
+		constexpr u32 VERSION = 1u;
 
 		serialize_u32(s, VERSION);
 		
 		if (asset_ptr.ptr == nullptr) serialize_bool(s, false);
 		else {
+			
+			serialize_bool(s, true);
+			
 			const char* filepath = get_asset_filepath(asset_ptr);
 
-			if (filepath == NULL) {
-				serialize_bool(s, false);
-			}
-			else {
+			u32 type = 0u;
 
-				serialize_bool(s, true);
+			if (filepath != NULL) type = 1u;
+			if (is_asset_created_from_name(asset_ptr)) type = 2u;
+
+			serialize_u32(s, type);
+
+			switch (type) {
+
+			case 1:
+			{
 				serialize_string(s, filepath);
 
 				const char* name = get_asset_name(asset_ptr);
+				
 				if (name == NULL) {
 					serialize_bool(s, false);
 				}
 				else {
+					serialize_bool(s, true);
 					serialize_string(s, name);
 				}
+			}
+			break;
+
+			case 2:
+			{
+				const char* name = get_asset_name(asset_ptr);
+				const char* type_name = get_asset_type(asset_ptr);
+				
+				serialize_string(s, name);
+				serialize_string(s, type_name);
+			}
+			break;
+			
 			}
 		}
     }
@@ -224,6 +248,65 @@ namespace sv {
 					if (!set_asset_name(asset_ptr, name)) {
 						SV_LOG_ERROR("Can't set the asset name '%s'", name);
 					}
+				}
+			}
+		}
+		else if (version == 1u) {
+
+			bool exists;
+			deserialize_bool(d, exists);
+
+			if (exists) {
+
+				u32 type;
+				deserialize_u32(d, type);
+
+				switch (type) {
+
+				case 1:
+				{
+					char filepath[FILEPATH_SIZE + 1u];
+					deserialize_string(d, filepath, FILEPATH_SIZE + 1u);
+
+					if (!load_asset_from_file(asset_ptr, filepath, priority)) {
+						SV_LOG_ERROR("Can't load the asset '%s'", filepath);
+					}
+
+					bool has_name;
+					deserialize_bool(d, has_name);
+
+					if (has_name) {
+						char name[ASSET_NAME_SIZE + 1u];
+
+						size_t size = deserialize_string_size(d);
+
+						if (size > ASSET_NAME_SIZE) {
+							SV_LOG_ERROR("The asset name size of %ul exceeds the size limit of %ul", size, ASSET_NAME_SIZE);
+						}
+
+						deserialize_string(d, name, ASSET_NAME_SIZE + 1u);
+
+						if (!set_asset_name(asset_ptr, name)) {
+							SV_LOG_ERROR("Can't set the asset name '%s'", name);
+						}
+					}
+				}
+				break;
+
+				case 2:
+				{
+					char name[ASSET_NAME_SIZE + 1u];
+					char type[ASSET_TYPE_NAME_SIZE + 1u];
+
+					deserialize_string(d, name, ASSET_NAME_SIZE + 1u);
+					deserialize_string(d, type, ASSET_TYPE_NAME_SIZE + 1u);
+
+					if (!create_asset_from_name(asset_ptr, type, name)) {
+						SV_LOG_ERROR("Can't create asset from name '%s'", name);
+					}
+				}
+				break;
+				
 				}
 			}
 		}

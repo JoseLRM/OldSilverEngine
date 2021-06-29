@@ -33,6 +33,7 @@ namespace sv {
 
 		std::atomic<i32>	ref_count = 0;
 		f32					unused_time = f32_max;
+		bool                created_from_name = false;
 		// TODO: Move on
 		char			    filepath[FILEPATH_SIZE + 1u] = "";
 		Date                last_write_date;
@@ -57,22 +58,22 @@ namespace sv {
 
     SV_AUX bool destroy_asset(Asset_internal* asset, AssetType_internal* type)
     {
-		bool res = type->free_fn(asset + 1u);
+		bool res = type->free_fn(asset + 1u, asset->name);
 		type->allocator.free(asset);
 
 		bool log = false;
 
-		if (string_size(asset->name)) {
+		if (asset->name[0]) {
 			
 			if (!log) {
 				SV_LOG_INFO("%s freed: %s", type->name, asset->name);
 				log = true;
 			}
 			
-			asset_system->filepath_table.erase(asset->filepath);
+			asset->type->name_table.erase(asset->name);
 		}
 		
-		if (string_size(asset->filepath)) {
+		if (asset->filepath[0]) {
 
 			if (!log) {
 				SV_LOG_INFO("%s freed: %s", type->name, asset->filepath);
@@ -134,7 +135,7 @@ namespace sv {
 
 								if (asset->last_write_date != last_write) {
 
-									if (type->reload_file_fn(asset + 1u, asset->filepath)) {
+									if (type->reload_file_fn(asset + 1u, asset->name, asset->filepath)) {
 										SV_LOG_INFO("%s asset reloaded: '%s'", type->name, asset->filepath);
 									}
 									else {
@@ -276,7 +277,7 @@ namespace sv {
 		asset->type = type;
 		string_copy(asset->name, name, ASSET_NAME_SIZE + 1u);
 
-		if (!type->create_fn(asset + 1u)) {
+		if (!type->create_fn(asset + 1u, name)) {
 
 			type->allocator.free(asset);
 			return false;
@@ -292,6 +293,33 @@ namespace sv {
 		return true;
     }
 
+	bool create_asset_from_name(AssetPtr& asset_ptr, const char* asset_type_name, const char* name)
+	{
+		AssetType_internal* type = get_type_from_typename(asset_type_name);
+		if (type == NULL) {
+			SV_LOG_ERROR("Asset type '%s' not found", asset_type_name);
+			return false;
+		}
+
+		Asset_internal** asset_ = type->name_table.find(name);
+		
+		if (asset_) {
+
+			asset_ptr = AssetPtr(*asset_);
+			return true;
+		}
+		else {
+			if (create_asset(asset_ptr, asset_type_name, name)) {
+
+				Asset_internal* asset = reinterpret_cast<Asset_internal*>(asset_ptr.ptr);
+				asset->created_from_name = true;
+				return true;
+			}
+
+			return false;
+		}
+	}
+
 	SV_AUX bool load_asset_right_now(AssetPtr& asset_ptr, const char* filepath)
 	{
 		Asset_internal** asset_ = asset_system->filepath_table.find(filepath);
@@ -305,7 +333,7 @@ namespace sv {
 			Asset_internal* asset = new(type->allocator.alloc()) Asset_internal();
 			asset->type = type;
 
-			if (!type->load_file_fn(asset + 1u, filepath)) {
+			if (!type->load_file_fn(asset + 1u, asset->name, filepath)) {
 
 				SV_LOG_ERROR("Can't load the asset '%s'", filepath);
 
@@ -366,29 +394,6 @@ namespace sv {
 		return false;
     }
 
-	bool load_asset_from_name(AssetPtr& asset_ptr, const char* asset_type_name, const char* name, bool create_if_not_exists)
-	{
-		AssetType_internal* type = get_type_from_typename(asset_type_name);
-		if (type == NULL) {
-			SV_LOG_ERROR("Asset type '%s' not found", asset_type_name);
-			return false;
-		}
-
-		Asset_internal** asset_ = type->name_table.find(name);
-		
-		if (asset_) {
-
-			asset_ptr = AssetPtr(*asset_);
-			return true;
-		}
-		else if (create_if_not_exists) {
-
-			return create_asset(asset_ptr, asset_type_name, name);
-		}
-
-		return false;
-	}
-
     void unload_asset(AssetPtr& asset_ptr)
     {
 		asset_ptr.~AssetPtr();
@@ -446,6 +451,26 @@ namespace sv {
 		}
 		return NULL;
     }
+
+	const char* get_asset_type(const AssetPtr& asset_ptr)
+	{
+		if (asset_ptr.ptr) {
+			
+			const char* name = reinterpret_cast<Asset_internal*>(asset_ptr.ptr)->type->name;
+			if (name[0]) return name;
+			return NULL;
+		}
+		return NULL;
+	}
+	
+	bool is_asset_created_from_name(const AssetPtr& asset_ptr)
+	{
+		if (asset_ptr.ptr) {
+			
+			return reinterpret_cast<Asset_internal*>(asset_ptr.ptr)->created_from_name;
+		}
+		return false;
+	}
 
     bool register_asset_type(const AssetTypeDesc* desc)
     {

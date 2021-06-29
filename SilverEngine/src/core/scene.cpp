@@ -1,6 +1,7 @@
 #include "core/scene.h"
 
 #include "core/renderer.h"
+#include "core/physics3D.h"
 #include "debug/console.h"
 
 #define SV_SCENE() sv::Scene& scene = *scene_state->scene
@@ -63,6 +64,9 @@ namespace sv {
 		v4_f32 rotation;
 
 		bool dirty;
+
+		// Used to know if the physics engine should update the transform
+		bool dirty_physics;
 		
 	};
 
@@ -80,24 +84,22 @@ namespace sv {
 		
 	};
 
-	typedef void(*CreateComponentFunction)(Component*);
-    typedef void(*DestroyComponentFunction)(Component*);
-    typedef void(*MoveComponentFunction)(Component* from, Component* to);
-    typedef void(*CopyComponentFunction)(const Component* from, Component* to);
-    typedef void(*SerializeComponentFunction)(Component* comp, Serializer& serializer);
-    typedef void(*DeserializeComponentFunction)(Component* comp, Deserializer& deserializer, u32 version);
+	typedef void(*CreateComponentFn)(Component*, Entity entity);
+    typedef void(*DestroyComponentFn)(Component*, Entity entity);
+    typedef void(*CopyComponentFn)(Component* dst, const Component* src, Entity entity);
+    typedef void(*SerializeComponentFn)(Component* comp, Serializer& serializer);
+    typedef void(*DeserializeComponentFn)(Component* comp, Deserializer& deserializer, u32 version);
 
 	struct ComponentRegister {
 
-		char		                 name[COMPONENT_NAME_SIZE + 1u];
-		u32				             size;
-		u32                          version;
-		CreateComponentFunction		 create_fn;
-		DestroyComponentFunction	 destroy_fn;
-		MoveComponentFunction		 move_fn;
-		CopyComponentFunction		 copy_fn;
-		SerializeComponentFunction	 serialize_fn;
-		DeserializeComponentFunction deserialize_fn;
+		char		           name[COMPONENT_NAME_SIZE + 1u];
+		u32				       size;
+		u32                    version;
+		CreateComponentFn	   create_fn;
+		DestroyComponentFn	   destroy_fn;
+		CopyComponentFn		   copy_fn;
+		SerializeComponentFn   serialize_fn;
+		DeserializeComponentFn deserialize_fn;
 
     };
 	
@@ -121,10 +123,6 @@ namespace sv {
 		
 	};
 
-	bool physics_initialize();
-	void physics_close();
-	void physics_update();
-
     struct Scene {
 
 		SceneData data;
@@ -135,15 +133,6 @@ namespace sv {
 	
     };
 
-    struct BodyCollision {
-		BodyComponent* b0;
-		BodyComponent* b1;
-		Entity e0;
-		Entity e1;
-		bool leave;
-		bool trigger;
-    };
-    
     struct SceneState {
 
 		static constexpr u32 VERSION = 4u;
@@ -158,13 +147,13 @@ namespace sv {
 
     static SceneState* scene_state = nullptr;
 
-    SV_INTERNAL bool asset_create_spritesheet(void* ptr)
+    SV_INTERNAL bool asset_create_spritesheet(void* ptr, const char* name)
     {
 		new(ptr) SpriteSheet();
 		return true;
     }
 
-    SV_INTERNAL bool asset_load_spritesheet(void* ptr, const char* filepath)
+    SV_INTERNAL bool asset_load_spritesheet(void* ptr, const char* name, const char* filepath)
     {
 		SpriteSheet& sheet = *new(ptr) SpriteSheet();
 
@@ -182,7 +171,7 @@ namespace sv {
 		return res;
     }
 
-    SV_INTERNAL bool asset_free_spritesheet(void* ptr)
+    SV_INTERNAL bool asset_free_spritesheet(void* ptr, const char* name)
     {
 		SpriteSheet* sheet = reinterpret_cast<SpriteSheet*>(ptr);
 		sheet->~SpriteSheet();
@@ -219,7 +208,6 @@ namespace sv {
 			register_asset_type(&desc);
 		}
 
-		SV_CHECK(physics_initialize());
 		return true;
     }
 
@@ -586,9 +574,9 @@ namespace sv {
 #endif
 	
 		event_dispatch("update_scene", NULL);
-		
+
+		_physics3D_update();
 		event_dispatch("update_physics", NULL);
-		physics_update();
 		
 		event_dispatch("late_update_scene", NULL);
     }
@@ -668,41 +656,38 @@ namespace sv {
 
 	SV_AUX void create_entity_component(CompID comp_id, Component* ptr, Entity entity)
     {
-		scene_state->component_register[comp_id].create_fn(ptr);
+		scene_state->component_register[comp_id].create_fn(ptr, entity);
 		ptr->id = entity;
 		ptr->flags = 0u;
     }
 	SV_AUX void create_prefab_component(CompID comp_id, Component* ptr, Prefab prefab)
     {
-		scene_state->component_register[comp_id].create_fn(ptr);
+		scene_state->component_register[comp_id].create_fn(ptr, 0);
 		ptr->id = prefab | SV_BIT(31);
 		ptr->flags = 0u;
     }
     SV_AUX void destroy_component(CompID comp_id, Component* ptr)
     {
-		scene_state->component_register[comp_id].destroy_fn(ptr);
+		Entity entity = (ptr->id & SV_BIT(31)) ? 0 : ptr->id;
+		scene_state->component_register[comp_id].destroy_fn(ptr, entity);
 		ptr->id = 0u;
 		ptr->flags = 0u;
     }
-    SV_AUX void move_component(CompID comp_id, Component* from, Component* to)
+    SV_AUX void copy_component(CompID comp_id, Component* dst, const Component* src, Entity entity)
     {
-		scene_state->component_register[comp_id].move_fn(from, to);
-    }
-    SV_AUX void copy_component(CompID comp_id, const Component* from, Component* to, Entity entity)
-    {
-		scene_state->component_register[comp_id].copy_fn(from, to);
-		to->id = entity;
+		scene_state->component_register[comp_id].copy_fn(dst, src, entity);
+		dst->id = entity;
     }
     SV_AUX void serialize_component(CompID comp_id, Component* comp, Serializer& serializer)
     {
 		serialize_u32(serializer, comp->flags);
-		SerializeComponentFunction fn = scene_state->component_register[comp_id].serialize_fn;
+		SerializeComponentFn fn = scene_state->component_register[comp_id].serialize_fn;
 		if (fn) fn(comp, serializer);
     }
     SV_AUX void deserialize_component(CompID comp_id, Component* comp, Deserializer& deserializer, u32 version)
     {
 		deserialize_u32(deserializer, comp->flags);
-		DeserializeComponentFunction fn = scene_state->component_register[comp_id].deserialize_fn;
+		DeserializeComponentFn fn = scene_state->component_register[comp_id].deserialize_fn;
 		if (fn) fn(comp, deserializer, version);
     }
 
@@ -921,10 +906,11 @@ namespace sv {
 
 	SV_AUX void initialize_entity_transform(EntityTransform& e)
 	{
-		e.position = { 0.f, 0.f, 0.f };
-		e.scale    = { 1.f, 1.f, 1.f };
-		e.rotation = { 0.f, 0.f, 0.f, 1.f };
-		e.dirty    = true;
+		e.position      = { 0.f, 0.f, 0.f };
+		e.scale         = { 1.f, 1.f, 1.f };
+		e.rotation      = { 0.f, 0.f, 0.f, 1.f };
+		e.dirty         = true;
+		e.dirty_physics = true;
 	}
 
 	SV_AUX EntityTag* get_tag(const char* name)
@@ -1146,6 +1132,7 @@ namespace sv {
 			deserialize_v4_f32(d, transform.rotation);
 			deserialize_v3_f32(d, transform.scale);
 			transform.dirty = true;
+			transform.dirty_physics = true;
 
 			if (version == 1u) {
 
@@ -1520,7 +1507,7 @@ namespace sv {
 
 			CompRef& ref = copy_internal.components[copy_internal.component_count++];
 			ref.comp = allocate_component(comp_id);
-			copy_component(comp_id, comp, ref.comp, copy);
+			copy_component(comp_id, ref.comp, comp, copy);
 			ref.comp_id = comp_id;
 		}
 
@@ -2370,15 +2357,14 @@ namespace sv {
 
     struct ComponentRegisterDesc {
 
-		const char*                   name;
-		u32			                  size;
-		u32                           version;
-		CreateComponentFunction	      create_fn;
-		DestroyComponentFunction      destroy_fn;
-		MoveComponentFunction	      move_fn;
-		CopyComponentFunction	      copy_fn;
-		SerializeComponentFunction    serialize_fn;
-		DeserializeComponentFunction  deserialize_fn;
+		const char*            name;
+		u32			           size;
+		u32                    version;
+		CreateComponentFn	   create_fn;
+		DestroyComponentFn     destroy_fn;
+		CopyComponentFn	       copy_fn;
+		SerializeComponentFn   serialize_fn;
+		DeserializeComponentFn deserialize_fn;
 
     };
 
@@ -2392,7 +2378,6 @@ namespace sv {
 		reg.version = desc.version;
 		reg.create_fn = desc.create_fn;
 		reg.destroy_fn = desc.destroy_fn;
-		reg.move_fn = desc.move_fn;
 		reg.copy_fn = desc.copy_fn;
 		reg.serialize_fn = desc.serialize_fn;
 		reg.deserialize_fn = desc.deserialize_fn;
@@ -2408,30 +2393,21 @@ namespace sv {
 		desc.size = sizeof(T);
 		desc.version = T::VERSION;
 
-		desc.create_fn = [](Component* comp)
+		desc.create_fn = [](Component* comp, Entity entity)
 			{
 				new(comp) T();
 			};
 
-		desc.destroy_fn = [](Component* comp)
+		desc.destroy_fn = [](Component* comp, Entity entity)
 			{
 				T* c = reinterpret_cast<T*>(comp);
 				c->~T();
 			};
 
-		desc.move_fn = [](Component* fromB, Component* toB)
+		desc.copy_fn = [](Component* dst, const Component* src, Entity entity)
 			{
-				T* from = reinterpret_cast<T*>(fromB);
-				T* to = reinterpret_cast<T*>(toB);
-				u32 id = to->id;
-				*to = std::move(*from);
-				to->id = id;
-			};
-
-		desc.copy_fn = [](const Component* fromB, Component* toB)
-			{
-				const T* from = reinterpret_cast<const T*>(fromB);
-				T* to = reinterpret_cast<T*>(toB);
+				const T* from = reinterpret_cast<const T*>(src);
+				T* to = reinterpret_cast<T*>(dst);
 				u32 id = to->id;
 				*to = *from;
 				to->id = id;
@@ -2462,7 +2438,39 @@ namespace sv {
 		register_component<ParticleSystem>("Particle System");
 		register_component<LightComponent>("Light");
 
-		register_component<BodyComponent>("Body");
+		ComponentRegisterDesc desc;
+		desc.name = "Body";
+		desc.size = sizeof(BodyComponent);
+		desc.version = BodyComponent::VERSION;
+		desc.create_fn = (CreateComponentFn)BodyComponent_create;
+		desc.destroy_fn = (DestroyComponentFn)BodyComponent_destroy;
+		desc.copy_fn = (CopyComponentFn)BodyComponent_copy;
+		desc.serialize_fn = (SerializeComponentFn)BodyComponent_serialize;
+		desc.deserialize_fn = (DeserializeComponentFn)BodyComponent_deserialize;
+
+		register_component(desc);
+		
+		desc.name = "Box Collider";
+		desc.size = sizeof(BoxCollider);
+		desc.version = BoxCollider::VERSION;
+		desc.create_fn = (CreateComponentFn)BoxCollider_create;
+		desc.destroy_fn = (DestroyComponentFn)BoxCollider_destroy;
+		desc.copy_fn = (CopyComponentFn)BoxCollider_copy;
+		desc.serialize_fn = (SerializeComponentFn)BoxCollider_serialize;
+		desc.deserialize_fn = (DeserializeComponentFn)BoxCollider_deserialize;
+
+		register_component(desc);
+
+		desc.name = "Sphere Collider";
+		desc.size = sizeof(SphereCollider);
+		desc.version = SphereCollider::VERSION;
+		desc.create_fn = (CreateComponentFn)SphereCollider_create;
+		desc.destroy_fn = (DestroyComponentFn)SphereCollider_destroy;
+		desc.copy_fn = (CopyComponentFn)SphereCollider_copy;
+		desc.serialize_fn = (SerializeComponentFn)SphereCollider_serialize;
+		desc.deserialize_fn = (DeserializeComponentFn)SphereCollider_deserialize;
+
+		register_component(desc);
 	}
 	
 	void unregister_components()
@@ -2555,6 +2563,7 @@ namespace sv {
 		if (!t.dirty) {
 
 			t.dirty = true;
+			t.dirty_physics = true;
 
 			EntityInternal& internal = ecs.entity_internal[entity - 1];
 
@@ -2564,6 +2573,7 @@ namespace sv {
 				Entity e = ecs.entity_hierarchy[internal.hierarchy_index + 1 + i];
 				EntityTransform& et = ecs.entity_transform[e - 1u];
 				et.dirty = true;
+				et.dirty_physics = true;
 			}
 		}
     }
@@ -3132,54 +3142,5 @@ namespace sv {
 			
 		}
     }
-
-    void BodyComponent::serialize(Serializer& s)
-    {
-		serialize_u32(s, body_type);
-		serialize_v3_f32(s, size);
-		serialize_v3_f32(s, offset);
-		serialize_v3_f32(s, vel);
-		serialize_f32(s, mass);
-		serialize_f32(s, friction);
-		serialize_f32(s, bounciness);
-    }
-
-    void BodyComponent::deserialize(Deserializer& d, u32 version)
-    {
-		switch (version) {
-	    
-		case 0:
-			return;
-
-		case 1:
-		{
-			v2_f32 v2;
-			deserialize_u32(d, (u32&)body_type);
-
-			deserialize_v2_f32(d, v2);
-			size = vec2_to_vec3(v2, 1.f);
-			
-			deserialize_v2_f32(d, v2);
-			offset = vec2_to_vec3(v2);
-			
-			deserialize_v2_f32(d, v2);
-			vel = vec2_to_vec3(v2);
-			
-			deserialize_f32(d, mass);
-			deserialize_f32(d, friction);
-			deserialize_f32(d, bounciness);
-		}
-		break;
-
-		case 2:
-			deserialize_u32(d, (u32&)body_type);
-			deserialize_v3_f32(d, size);
-			deserialize_v3_f32(d, offset);
-			deserialize_v3_f32(d, vel);
-			deserialize_f32(d, mass);
-			deserialize_f32(d, friction);
-			deserialize_f32(d, bounciness);
-			break;
-		}
-    }
+	
 }

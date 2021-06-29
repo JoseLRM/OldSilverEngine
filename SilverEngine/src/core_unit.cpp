@@ -11,7 +11,7 @@
 #include "core/renderer/font.cpp"
 #include "core/imrend.cpp"
 #include "core/scene.cpp"
-#include "core/physics.cpp"
+#include "core/physics3D.cpp"
 #include "core/mesh.cpp"
 #include "core/terrain.cpp"
 #include "core/particles.cpp"

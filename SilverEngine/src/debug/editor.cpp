@@ -3,6 +3,7 @@
 #include "core/renderer.h"
 #include "debug/console.h"
 #include "core/event_system.h"
+#include "core/physics3D.h"
 
 namespace sv {
 
@@ -884,6 +885,11 @@ namespace sv {
 
 					editor.material_editor_data.material = m.material;
 				}
+
+				if (gui_button("Set cube")) {
+
+					create_asset_from_name(m.mesh, "Mesh", "Cube");
+				}
 				/*if (m.material.get())
 				  gui_material(*m.material.get());*/
 			}
@@ -979,57 +985,53 @@ namespace sv {
 
 			if (get_component_id("Body") == comp_id) {
 
-				BodyComponent& b = *reinterpret_cast<BodyComponent*>(comp);
-				const SceneData& scene = *get_scene_data();
+				BodyComponent& body = *(BodyComponent*)comp;
 
-				// TODO: Use combobox
-				bool static_ = b.body_type == BodyType_Static;
-				bool dynamic = b.body_type == BodyType_Dynamic;
-				bool projectile = b.body_type == BodyType_Projectile;
+				bool dynamic = body_type_get(body) == BodyType_Dynamic;
 
-				if (gui_checkbox("Static", static_)) {
-					b.body_type = static_ ? BodyType_Static : BodyType_Dynamic;
-				}
 				if (gui_checkbox("Dynamic", dynamic)) {
-					b.body_type = dynamic ? BodyType_Dynamic : BodyType_Static;
-				}
-				if (gui_checkbox("Projectile", projectile)) {
-					b.body_type = projectile ? BodyType_Projectile : BodyType_Static;
+					if (dynamic) body_type_set(body, BodyType_Dynamic);
+					else body_type_set(body, BodyType_Static);
 				}
 
-				if (scene.physics.in_3D) {
-					gui_drag_v3_f32("Size", b.size, 0.005f, 0.f);
-					gui_drag_v3_f32("Offset", b.offset, 0.005f);
-					gui_drag_v3_f32("Velocity", b.vel, 0.01f);
+				if (dynamic) {
+
+					f32 linear_damping = body_linear_damping_get(body);
+					f32 angular_damping = body_angular_damping_get(body);
+					v3_f32 velocity = body_velocity_get(body);
+					v3_f32 angular_velocity = body_angular_velocity_get(body);
+					f32 mass = body_mass_get(body);
+
+					if (gui_drag_f32("Linear Damping", linear_damping, 0.01f, 0.f, f32_max)) {
+						body_linear_damping_set(body, linear_damping);
+					}
+					if (gui_drag_f32("Angular Damping", angular_damping)) {
+						body_angular_damping_set(body, angular_damping);
+					}
+					if (gui_drag_f32("Mass", mass)) {
+						body_mass_set(body, mass);
+					}
+					if (gui_drag_v3_f32("Velocity", velocity)) {
+						body_velocity_set(body, velocity);
+					}
+					if (gui_drag_v3_f32("Angular Velocity", angular_velocity)) {
+						body_angular_velocity_set(body, angular_velocity);
+					}
 				}
-				else {
-					v2_f32 v2;
+			}
 
-					v2 = vec3_to_vec2(b.size);
-					if (gui_drag_v2_f32("Size", v2, 0.005f, 0.f))
-						b.size = vec2_to_vec3(v2);
+			if (get_component_id("Box Collider") == comp_id) {
 
-					v2 = vec3_to_vec2(b.offset);
-					if (gui_drag_v2_f32("Offset", v2, 0.005f))
-						b.offset = vec2_to_vec3(v2);
+				BoxCollider& box = *(BoxCollider*)comp;
 
-					v2 = vec3_to_vec2(b.vel);
-					if (gui_drag_v2_f32("Velocity", v2, 0.01f))
-						b.vel = vec2_to_vec3(v2);
-				}
-				
-				gui_drag_f32("Mass", b.mass, 0.1f, 0.0f);
-				gui_drag_f32("Friction", b.friction, 0.001f, 0.0f, 1.f);
-				gui_drag_f32("Bounciness", b.bounciness, 0.005f, 0.0f, 1.f);
+				gui_drag_v3_f32("Size", box.size, 0.01f, 0.00001f, f32_max);
+			}
 
-				bool is_trigger = b.flags & BodyComponentFlag_Trigger;
+			if (get_component_id("Sphere Collider") == comp_id) {
 
-				if (gui_checkbox("Trigger", is_trigger)) {
-					if (is_trigger)
-						b.flags |= BodyComponentFlag_Trigger;
-					else
-						b.flags = b.flags & (~BodyComponentFlag_Trigger);
-				}
+				SphereCollider& sphere = *(SphereCollider*)comp;
+
+				gui_drag_f32("Radius", sphere.radius, 0.01f, 0.00001f, f32_max);
 			}
 
 			DisplayComponentEvent e;
@@ -2902,6 +2904,7 @@ namespace sv {
 
 					// TODO: handle error
 					save_scene();
+					_start_scene(get_scene_name());
 
 					dev.debug_draw = false;
 					dev.draw_collisions = false;
@@ -2955,6 +2958,7 @@ namespace sv {
 		u32 mesh_id = get_component_id("Mesh");
 		u32 sprite_id = get_component_id("Sprite");
 		u32 body_id = get_component_id("Body");
+		u32 box_id = get_component_id("Box Collider");
 
 		// Draw selected entity
 		for (Entity entity : editor.selected_entities) {
@@ -3079,7 +3083,7 @@ namespace sv {
 
 		// Draw collisions
 		if (dev.draw_collisions) {
-
+			
 			XMVECTOR p0 = XMVectorSet(-0.5f, 0.5f, 0.5f, 1.f);
 			XMVECTOR p1 = XMVectorSet(0.5f, 0.5f, 0.5f, 1.f);
 			XMVECTOR p2 = XMVectorSet(-0.5f, -0.5f, 0.5f, 1.f);
@@ -3092,71 +3096,44 @@ namespace sv {
 			XMVECTOR v0, v1, v2, v3, v4, v5, v6, v7;
 
 			XMMATRIX tm;
+			XMMATRIX m;
 
-			if (get_scene_data()->physics.in_3D) {
-		
-				for (CompIt it = comp_it_begin(body_id);
-					 it.has_next;
-					 comp_it_next(it))
-				{
-					BodyComponent& body = *(BodyComponent*)it.comp;
-					Entity entity = it.entity;
+			for (CompIt it = comp_it_begin(box_id);
+				 it.has_next;
+				 comp_it_next(it))
+			{
+				BoxCollider& box = *(BoxCollider*)it.comp;
+
+				if (!has_entity_component(it.entity, body_id))
+					continue;
 					
-					v3_f32 pos = get_entity_world_position(entity) + body.offset;
-					v3_f32 scale = get_entity_world_scale(entity) * body.size;
+				tm = get_entity_world_matrix(it.entity);
+
+				m = XMMatrixScalingFromVector(vec3_to_dx(box.size)) * tm;
 		    
-					tm = XMMatrixScalingFromVector(vec3_to_dx(scale)) * XMMatrixTranslation(pos.x, pos.y, pos.z);
-		    
-					v0 = XMVector3Transform(p0, tm);
-					v1 = XMVector3Transform(p1, tm);
-					v2 = XMVector3Transform(p2, tm);
-					v3 = XMVector3Transform(p3, tm);
-					v4 = XMVector3Transform(p4, tm);
-					v5 = XMVector3Transform(p5, tm);
-					v6 = XMVector3Transform(p6, tm);
-					v7 = XMVector3Transform(p7, tm);
+				v0 = XMVector3Transform(p0, m);
+				v1 = XMVector3Transform(p1, m);
+				v2 = XMVector3Transform(p2, m);
+				v3 = XMVector3Transform(p3, m);
+				v4 = XMVector3Transform(p4, m);
+				v5 = XMVector3Transform(p5, m);
+				v6 = XMVector3Transform(p6, m);
+				v7 = XMVector3Transform(p7, m);
 
-					imrend_draw_line(v3_f32(v0), v3_f32(v1), Color::Green(), cmd);
-					imrend_draw_line(v3_f32(v1), v3_f32(v3), Color::Green(), cmd);
-					imrend_draw_line(v3_f32(v3), v3_f32(v2), Color::Green(), cmd);
-					imrend_draw_line(v3_f32(v0), v3_f32(v2), Color::Green(), cmd);
+				imrend_draw_line(v3_f32(v0), v3_f32(v1), Color::Green(), cmd);
+				imrend_draw_line(v3_f32(v1), v3_f32(v3), Color::Green(), cmd);
+				imrend_draw_line(v3_f32(v3), v3_f32(v2), Color::Green(), cmd);
+				imrend_draw_line(v3_f32(v0), v3_f32(v2), Color::Green(), cmd);
 
-					imrend_draw_line(v3_f32(v4), v3_f32(v5), Color::Green(), cmd);
-					imrend_draw_line(v3_f32(v5), v3_f32(v7), Color::Green(), cmd);
-					imrend_draw_line(v3_f32(v7), v3_f32(v6), Color::Green(), cmd);
-					imrend_draw_line(v3_f32(v4), v3_f32(v6), Color::Green(), cmd);
+				imrend_draw_line(v3_f32(v4), v3_f32(v5), Color::Green(), cmd);
+				imrend_draw_line(v3_f32(v5), v3_f32(v7), Color::Green(), cmd);
+				imrend_draw_line(v3_f32(v7), v3_f32(v6), Color::Green(), cmd);
+				imrend_draw_line(v3_f32(v4), v3_f32(v6), Color::Green(), cmd);
 
-					imrend_draw_line(v3_f32(v0), v3_f32(v4), Color::Green(), cmd);
-					imrend_draw_line(v3_f32(v1), v3_f32(v5), Color::Green(), cmd);
-					imrend_draw_line(v3_f32(v2), v3_f32(v6), Color::Green(), cmd);
-					imrend_draw_line(v3_f32(v3), v3_f32(v7), Color::Green(), cmd);
-					
-				}
-			}
-			else {
-				
-				for (CompIt it = comp_it_begin(body_id);
-					 it.has_next;
-					 comp_it_next(it))
-				{
-					BodyComponent& body = *(BodyComponent*)it.comp;
-					Entity entity = it.entity;
-					
-					v2_f32 pos = vec3_to_vec2(get_entity_world_position(entity)) + vec3_to_vec2(body.offset);
-					v2_f32 scale = vec3_to_vec2(get_entity_world_scale(entity)) * vec3_to_vec2(body.size);
-					
-					tm = XMMatrixScalingFromVector(vec2_to_dx(scale)) * XMMatrixTranslation(pos.x, pos.y, 0.f);
-		    
-					v0 = XMVector3Transform(p0, tm);
-					v1 = XMVector3Transform(p1, tm);
-					v2 = XMVector3Transform(p2, tm);
-					v3 = XMVector3Transform(p3, tm);
-
-					imrend_draw_line(v3_f32(v0), v3_f32(v1), Color::Green(), cmd);
-					imrend_draw_line(v3_f32(v1), v3_f32(v3), Color::Green(), cmd);
-					imrend_draw_line(v3_f32(v3), v3_f32(v2), Color::Green(), cmd);
-					imrend_draw_line(v3_f32(v0), v3_f32(v2), Color::Green(), cmd);
-				}
+				imrend_draw_line(v3_f32(v0), v3_f32(v4), Color::Green(), cmd);
+				imrend_draw_line(v3_f32(v1), v3_f32(v5), Color::Green(), cmd);
+				imrend_draw_line(v3_f32(v2), v3_f32(v6), Color::Green(), cmd);
+				imrend_draw_line(v3_f32(v3), v3_f32(v7), Color::Green(), cmd);
 			}
 		}
 

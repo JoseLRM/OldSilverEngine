@@ -55,6 +55,8 @@ IF "%module_debug%"=="false" (
 SET common_compiler_flags= -MP -nologo -EHa- -GR- -Oi -WX -W4 -wd4390 -wd4201 -wd4127 -wd4211 -wd4238 -wd4459 -wd4996 -wd4456 -wd4281 -wd4100 -wd4530 -FC /std:c++14
 
 SET common_defines=
+SET physx_option=
+SET lib_option=
 
 SET output_dir=%origin_path%build\
 
@@ -66,11 +68,15 @@ IF "%platform%"=="win64" (
 )
 
 IF "%option_slow%"=="true" (
-   SET common_defines=%common_defines% -DSV_SLOW=1
+   SET common_defines=%common_defines% -DSV_SLOW=1 -DNDEBUG
    SET common_compiler_flags= %common_compiler_flags% -Z7 -Od
+   SET physx_option=checked
+   SET lib_option=debug
 ) ELSE (
    SET common_defines=%common_defines% -DSV_SLOW=0 -DNDEBUG
    SET common_compiler_flags= %common_compiler_flags% -GL -Ox
+   SET physx_option=release
+   SET lib_option=release
 )
 
 IF "%option_editor%"=="true" (
@@ -104,9 +110,9 @@ SET SVP= %origin_path%\SilverEngine\
 
 SET sv_defines= -DSV_SILVER_ENGINE=1 %common_defines%
 SET sv_compiler_flags= %common_compiler_flags%
-SET sv_include_paths= /I %SVP%include /I %SVP%src\ /I %SVP%system\shaders\ /I %SVP%src\external\ /I %VULKAN_SDK%\Include\
-SET sv_link_libs= user32.lib Comdlg32.lib Shell32.lib %VULKAN_SDK%\Lib\vulkan-1.lib sprv.lib
-SET sv_link_flags= %common_linker_flags% /LIBPATH:"%origin_path%\SilverEngine\lib\" /out:..\SilverEngine.exe /PDB:SilverEngine.pdb /LTCG
+SET sv_include_paths= /I %SVP%include /I %SVP%src\ /I %SVP%system\shaders\ /I %SVP%src\external\ /I %VULKAN_SDK%\Include\ /I C:\physx\physx\include\ /I C:\physx\pxshared\include\
+SET sv_link_libs= user32.lib Comdlg32.lib Shell32.lib %VULKAN_SDK%\Lib\vulkan-1.lib sprv.lib PhysXCommon_64.lib PhysXFoundation_64.lib PhysX_64.lib PhysXExtensions_static_64.lib
+SET sv_link_flags= %common_linker_flags% /LIBPATH:"C:\physx\physx\bin\win.x86_64.vc142.mt\%physx_option%\" /LIBPATH:"%origin_path%\SilverEngine\lib\" /out:..\SilverEngine.exe /PDB:SilverEngine.pdb /LTCG
 SET sv_build_units=
 
 IF "%module_platform%"=="true" (
@@ -147,6 +153,9 @@ XCOPY %output_dir%SilverEngine.lib SilverEngine\system\bin /I /Q /Y > NUL
 XCOPY %output_dir%SilverEngine.exe SilverEngine\ /I /Q /Y > NUL
 
 pushd SilverEngine
+
+XCOPY lib\%lib_option%\*.dll . /I /Q /Y > NUL
+
 IF "%run%"=="true" CALL SilverEngine.exe
 popd
 popd
