@@ -3117,6 +3117,10 @@ namespace sv {
 		serialize_f32(s, range);
 		serialize_f32(s, smoothness);
 		serialize_bool(s, shadow_mapping_enabled);
+		serialize_f32(s, cascade_distance[0]);
+		serialize_f32(s, cascade_distance[1]);
+		serialize_f32(s, cascade_distance[2]);
+		serialize_f32(s, shadow_bias);
     }
     
     void LightComponent::deserialize(Deserializer& d, u32 version)
@@ -3138,6 +3142,31 @@ namespace sv {
 			deserialize_f32(d, range);
 			deserialize_f32(d, smoothness);
 			deserialize_bool(d, shadow_mapping_enabled);
+			break;
+
+		case 2:
+			deserialize_u32(d, (u32&)light_type);
+			deserialize_color(d, color);
+			deserialize_f32(d, intensity);
+			deserialize_f32(d, range);
+			deserialize_f32(d, smoothness);
+			deserialize_bool(d, shadow_mapping_enabled);
+			deserialize_f32(d, cascade_distance[0]);
+			deserialize_f32(d, cascade_distance[1]);
+			deserialize_f32(d, cascade_distance[2]);
+			break;
+
+		case 3:
+			deserialize_u32(d, (u32&)light_type);
+			deserialize_color(d, color);
+			deserialize_f32(d, intensity);
+			deserialize_f32(d, range);
+			deserialize_f32(d, smoothness);
+			deserialize_bool(d, shadow_mapping_enabled);
+			deserialize_f32(d, cascade_distance[0]);
+			deserialize_f32(d, cascade_distance[1]);
+			deserialize_f32(d, cascade_distance[2]);
+			deserialize_f32(d, shadow_bias);
 			break;
 			
 		}

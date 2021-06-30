@@ -13,7 +13,14 @@ struct GPU_LightData {
 };
 
 struct GPU_ShadowData {
-	XMMATRIX light_matrix;
+	XMMATRIX light_matrix0;
+	XMMATRIX light_matrix1;
+	XMMATRIX light_matrix2;
+	XMMATRIX light_matrix3;
+	f32 cascade_far0;
+	f32 cascade_far1;
+	f32 cascade_far2;
+	f32 bias;
 };
 
 #ifndef __cplusplus
@@ -25,16 +32,39 @@ SV_CONSTANT_BUFFER(shadow_data_buffer, b2) {
 	GPU_ShadowData shadow_data;
 };
 
-SV_TEXTURE(shadow_map, t4);
+SV_TEXTURE(shadow_map0, t4);
+SV_TEXTURE(shadow_map1, t5);
+SV_TEXTURE(shadow_map2, t6);
+SV_TEXTURE(shadow_map3, t7);
 SV_SAMPLER(sam, s0);
 
 f32 compute_shadows(float3 position)
 {
-    float4 light_space = mul(float4(position, 1.f), shadow_data.light_matrix);
+	float4 light_space;
+	f32 depth_sample;
+	
+	if (position.z < shadow_data.cascade_far0) {
 
-    f32 depth = shadow_map.Sample(sam, light_space.xy).r;
+		light_space = mul(float4(position, 1.f), shadow_data.light_matrix0);
+		depth_sample = shadow_map0.Sample(sam, light_space.xy).r;
+	}
+	else if (position.z < shadow_data.cascade_far1) {
 
-    return (light_space.z < (depth + 0.001f)) ? 1.f : 0.f;
+		light_space = mul(float4(position, 1.f), shadow_data.light_matrix1);
+		depth_sample = shadow_map1.Sample(sam, light_space.xy).r;
+	}
+	else if (position.z < shadow_data.cascade_far2) {
+
+		light_space = mul(float4(position, 1.f), shadow_data.light_matrix2);
+		depth_sample = shadow_map2.Sample(sam, light_space.xy).r;
+	}
+	else {
+
+		light_space = mul(float4(position, 1.f), shadow_data.light_matrix3);
+		depth_sample = shadow_map3.Sample(sam, light_space.xy).r;
+	}
+
+	return (light_space.z < (depth_sample + shadow_data.bias)) ? 1.f : 0.f;
 }
 
 float3 compute_light(float3 position, float3 normal, f32 specular_mul, f32 shininess, float3 specular_color)

@@ -54,12 +54,15 @@ struct GPU_CameraData {
     XMMATRIX ivm;
     XMMATRIX ipm;
     XMMATRIX ivpm;
-    v2_f32   screen_size;
     f32      near;
     f32      far;
+	f32      width;
+	f32      height;
     v3_f32   position;
     f32      _padding0;
     v4_f32   rotation;
+	v2_f32   screen_size;
+	v2_f32   _padding1;
 };
 
 #endif

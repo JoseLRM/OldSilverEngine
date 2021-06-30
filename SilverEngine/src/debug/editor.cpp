@@ -968,23 +968,53 @@ namespace sv {
 
 				LightComponent& l = *reinterpret_cast<LightComponent*>(comp);
 
-				bool direction = l.light_type == LightType_Direction;
-				if (gui_checkbox("Directional", direction, 10u)) {
-					if (direction) l.light_type = LightType_Direction;
-					else l.light_type = LightType_Point;
+				const char* preview = "None";
+
+				switch (l.light_type) {
+
+				case LightType_Point:
+					preview = "Point";
+					break;
+
+				case LightType_Direction:
+					preview = "Direction";
+					break;
+					
+				}
+
+				if (gui_begin_combobox(preview, 32544)) {
+
+					if (l.light_type != LightType_Point && gui_button("Point")) {
+						l.light_type = LightType_Point;
+					}
+
+					if (l.light_type != LightType_Direction && gui_button("Direction")) {
+						l.light_type = LightType_Direction;
+					}
+					
+					gui_end_combobox();
 				}
 
 				gui_drag_color("Color", l.color);
 				gui_drag_f32("Intensity", l.intensity, 0.05f, 0.0f, f32_max);
-				gui_drag_f32("Range", l.range, 0.1f, 0.0f, f32_max);
-				gui_drag_f32("Smoothness", l.smoothness, 0.005f, 0.0f, 1.f);
+
+				if (l.light_type == LightType_Point) {
+					
+					gui_drag_f32("Range", l.range, 0.1f, 0.0f, f32_max);
+					gui_drag_f32("Smoothness", l.smoothness, 0.005f, 0.0f, 1.f);
+				}
 
 				gui_separator(1);
 
 				gui_checkbox("Shadow Mapping", l.shadow_mapping_enabled);
 
-				if (l.shadow_mapping_enabled) {
-					// TODO
+				if (l.shadow_mapping_enabled && l.light_type == LightType_Direction) {
+
+					gui_drag_f32("Shadow Bias", l.shadow_bias, 0.01f, 0.f, f32_max);
+
+					gui_drag_f32("Cascade 0", l.cascade_distance[0], 0.1f, 0.f, f32_max);
+					gui_drag_f32("Cascade 1", l.cascade_distance[1], 0.1f, 0.f, f32_max);
+					gui_drag_f32("Cascade 2", l.cascade_distance[2], 0.1f, 0.f, f32_max);
 				}
 			}
 
@@ -3166,7 +3196,8 @@ namespace sv {
 				if (camera.projection_type == ProjectionType_Perspective) {
 
 					f32 distance = vec3_length(b0);
-					
+
+					// TODO: Thats wrong
 					e0 = vec3_normalize(b0) * (distance + camera.far);
 					e1 = vec3_normalize(b1) * (distance + camera.far);
 					e2 = vec3_normalize(b2) * (distance + camera.far);

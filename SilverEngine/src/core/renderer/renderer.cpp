@@ -29,11 +29,11 @@ namespace sv {
 		COMPILE_VS(gfx.vs_sprite, "sprite/default.hlsl");
 		COMPILE_PS(gfx.ps_sprite, "sprite/default.hlsl");
 
-		COMPILE_VS_(gfx.vs_terrain, "terrain.hlsl");
-		COMPILE_PS_(gfx.ps_terrain, "terrain.hlsl");
+		COMPILE_VS(gfx.vs_terrain, "terrain.hlsl");
+		COMPILE_PS(gfx.ps_terrain, "terrain.hlsl");
 
-		COMPILE_VS(gfx.vs_mesh_default, "mesh_default.hlsl");
-		COMPILE_PS(gfx.ps_mesh_default, "mesh_default.hlsl");
+		COMPILE_VS_(gfx.vs_mesh_default, "mesh_default.hlsl");
+		COMPILE_PS_(gfx.ps_mesh_default, "mesh_default.hlsl");
 
 		COMPILE_VS(gfx.vs_sky, "skymapping.hlsl");
 		COMPILE_PS(gfx.ps_sky, "skymapping.hlsl");
@@ -724,7 +724,8 @@ namespace sv {
 
 			// Free shadow maps
 			for (ShadowMapRef ref : renderer->shadow_maps) {
-				graphics_destroy(ref.image);
+				foreach(i, 4)
+					graphics_destroy(ref.image[i]);
 			}
 			renderer->shadow_maps.clear();
 
@@ -882,9 +883,12 @@ namespace sv {
 			} point;
 
 			struct {
+				f32 cascade_distance[3u];
 				v3_f32 view_direction;
 				v4_f32 world_rotation;
-				XMMATRIX light_matrix;
+				f32 cascade_far[3u];
+				f32 shadow_bias;
+				XMMATRIX light_matrix[4u];
 			} direction;
 		};
 
@@ -1138,7 +1142,7 @@ namespace sv {
 		}
     }
 
-	SV_AUX GPUImage* get_shadow_map(Entity entity, LightComponent* light)
+	SV_AUX GPUImage* const* get_shadow_map(Entity entity, LightComponent* light)
 	{
 		for (const ShadowMapRef& ref : renderer->shadow_maps) {
 			if (ref.entity == entity)
@@ -1158,8 +1162,9 @@ namespace sv {
 		desc.type = GPUImageType_DepthStencil | GPUImageType_ShaderResource;
 
 		// TODO: Handle error
-							
-		graphics_image_create(&desc, &ref.image);
+
+		foreach(i, 4u)
+			graphics_image_create(&desc, &ref.image[i]);
 
 		return ref.image;
 	}
@@ -1293,6 +1298,8 @@ namespace sv {
 					camera_data.screen_size.y = 1080.f;
 					camera_data.near = camera_->near;
 					camera_data.far = camera_->far;
+					camera_data.width = camera_->width;
+					camera_data.height = camera_->height;
 		    
 					graphics_buffer_update(gfx.cbuffer_camera, &camera_data, sizeof(GPU_CameraData), 0u, cmd);
 				}
@@ -1317,6 +1324,8 @@ namespace sv {
 				camera_data.screen_size.y = 1080.f;
 				camera_data.near = camera_->near;
 				camera_data.far = camera_->far;
+				camera_data.width = camera_->width;
+				camera_data.height = camera_->height;
 		
 				graphics_buffer_update(gfx.cbuffer_camera, &camera_data, sizeof(GPU_CameraData), 0u, cmd);
 			}
@@ -1369,6 +1378,10 @@ namespace sv {
 						case LightType_Direction:
 						{
 							inst.direction.world_rotation = get_entity_world_rotation(entity);
+							inst.direction.cascade_distance[0] = l.cascade_distance[0];
+							inst.direction.cascade_distance[1] = l.cascade_distance[1];
+							inst.direction.cascade_distance[2] = l.cascade_distance[2];
+							inst.direction.shadow_bias = l.shadow_bias;
 								
 							XMVECTOR direction = XMVectorSet(0.f, 0.f, -1.f, 0.f);
 							quat = XMQuaternionMultiply(vec4_to_dx(inst.direction.world_rotation), XMQuaternionInverse(camera_quat));
@@ -1449,67 +1462,126 @@ namespace sv {
 
 						if (light.comp->light_type == LightType_Direction) {
 
-							GPUImage* shadow_map = get_shadow_map(light.entity, light.comp);
 							auto& l = light.direction;
 
-							XMMATRIX vpm;
-							{
-								XMVECTOR dir = XMVectorSet(0.f, 0.f, 1.f, 0.f);
-								dir = XMVector3Transform(dir, XMMatrixRotationQuaternion(vec4_to_dx(l.world_rotation)));
-								dir = XMVector3Normalize(dir);
+							f32 width = camera_data.width * 0.5f;
+							f32 height = camera_data.height * 0.5f;
 
-								// TODO
-								//vpm = mat_view_from_direction(vec4_to_vec3(camera_data.position), dir, v3_f32::up());
-								constexpr f32 FAR = 2000.f;
-								constexpr f32 NEAR = -2000.f;
-							
-								v3_f32 direction = dir;
+							f32 near = camera_data.near;
+							f32 far = 0.f;
 
-								v3_f32 pos = camera_data.position;
-							
-								XMMATRIX view = mat_view_from_quaternion(pos, l.world_rotation);
-								XMMATRIX projection = XMMatrixOrthographicLH(1000.f, 1000.f, NEAR, FAR);
+							// TODO: WTF
+							f32 tan_xfov = tanf(atan2f(width, near));
+							f32 tan_yfov = tanf(atan2f(height, near));
 
-								vpm = view * projection;
-							
-								l.light_matrix = camera_data.ivm * vpm * XMMatrixScaling(0.5f, 0.5f, 1.f) * XMMatrixTranslation(0.5f, 0.5f, 0.f);
+							GPUImage* const* shadow_maps = get_shadow_map(light.entity, light.comp);
+
+							XMMATRIX light_view = mat_view_from_quaternion(camera_data.position, l.world_rotation);
+
+							foreach(cascade_index, 4u) {
+
+								if (far >= camera_data.far)
+									break;
+								
+								GPUImage* shadow_map = shadow_maps[cascade_index];
+
+								// Compute frustum
+								near = SV_MAX(far, camera_data.near);
+
+								if (cascade_index == 3u) {
+
+									far = camera_data.far;
+								}
+								else far += l.cascade_distance[cascade_index];
+									
+								f32 x0 = tan_xfov * near;
+								f32 x1 = tan_xfov * far;
+								f32 y0 = tan_yfov * near;
+								f32 y1 = tan_yfov * far;
+
+								v3_f32 p[8u];
+								p[0] = { -x0,  y0, near };
+								p[1] = {  x0,  y0, near };
+								p[2] = { -x0, -y0, near };
+								p[3] = {  x0, -y0, near };
+									
+								p[4] = { -x1,  y1, far };
+								p[5] = {  x1,  y1, far };
+								p[6] = { -x1, -y1, far };
+								p[7] = {  x1, -y1, far };
+
+								// View space -> world space -> light view space
+
+								XMMATRIX matrix = camera_data.ivm * light_view;
+
+								foreach(i, 8)
+									p[i] = XMVector4Transform(vec3_to_dx(p[i], 1.f), matrix);
+
+								f32 min_x = f32_max;
+								f32 max_x = -f32_max;
+								f32 min_y = f32_max;
+								f32 max_y = -f32_max;
+								f32 min_z = f32_max;
+								f32 max_z = -f32_max;
+
+								foreach(i, 8) {
+									min_x = SV_MIN(min_x, p[i].x);
+									max_x = SV_MAX(max_x, p[i].x);
+									min_y = SV_MIN(min_y, p[i].y);
+									max_y = SV_MAX(max_y, p[i].y);
+									min_z = SV_MIN(min_z, p[i].z);
+									max_z = SV_MAX(max_z, p[i].z);
+								}
+
+								f32 z_center = min_z + (max_z - min_z) * 0.5f;
+								min_z = SV_MIN(min_z, z_center - 1000.f);
+								max_z = SV_MAX(max_z, z_center + 1000.f);
+								
+								XMMATRIX projection = XMMatrixOrthographicOffCenterLH(min_x, max_x, min_y, max_y, min_z, max_z);
+
+								XMMATRIX vpm = light_view * projection;
+
+								if (cascade_index != 3u)
+									l.cascade_far[cascade_index] = far;
+								
+								l.light_matrix[cascade_index] = camera_data.ivm * vpm * XMMatrixScaling(0.5f, 0.5f, 1.f) * XMMatrixTranslation(0.5f, 0.5f, 0.f);
+
+								graphics_constantbuffer_bind(gfx.cbuffer_shadow_mapping, 0u, ShaderType_Vertex, cmd);
+								graphics_shader_unbind(ShaderType_Pixel, cmd);
+								graphics_shader_bind(gfx.vs_shadow, cmd);
+								graphics_depthstencilstate_bind(gfx.dss_default_depth, cmd);
+								graphics_inputlayoutstate_bind(gfx.ils_mesh, cmd);
+								graphics_rasterizerstate_unbind(cmd);
+								graphics_blendstate_unbind(cmd);
+
+								graphics_viewport_set(shadow_map, 0u, cmd);
+								graphics_scissor_set(shadow_map, 0u, cmd);
+						
+								GPUImage* att[1u];
+								att[0u] = shadow_map;
+						
+								// TODO: Use renderpass
+								graphics_image_clear(shadow_map, GPUImageLayout_DepthStencilReadOnly, GPUImageLayout_DepthStencil, Color::Black(), 1.f, 0u, cmd);
+
+								graphics_renderpass_begin(gfx.renderpass_shadow_mapping, att, cmd);
+
+								for (const MeshInstance& mesh : mesh_instances) {
+
+									GPU_ShadowMappingData data;
+									data.tm = mesh.world_matrix * vpm;
+
+									graphics_buffer_update(gfx.cbuffer_shadow_mapping, &data, sizeof(GPU_ShadowMappingData), 0u, cmd);
+									graphics_vertexbuffer_bind(mesh.mesh->vbuffer, 0u, 0u, cmd);
+									graphics_indexbuffer_bind(mesh.mesh->ibuffer, 0u, cmd);
+
+									graphics_draw_indexed(u32(mesh.mesh->indices.size()), 1u, 0u, 0u, 0u, cmd);
+								}
+						
+								graphics_renderpass_end(cmd);
+
+								GPUBarrier barrier = GPUBarrier::Image(shadow_map, GPUImageLayout_DepthStencil, GPUImageLayout_DepthStencilReadOnly);
+								graphics_barrier(&barrier, 1u, cmd);
 							}
-
-							graphics_constantbuffer_bind(gfx.cbuffer_shadow_mapping, 0u, ShaderType_Vertex, cmd);
-							graphics_shader_unbind(ShaderType_Pixel, cmd);
-							graphics_shader_bind(gfx.vs_shadow, cmd);
-							graphics_depthstencilstate_bind(gfx.dss_default_depth, cmd);
-							graphics_inputlayoutstate_bind(gfx.ils_mesh, cmd);
-							graphics_rasterizerstate_unbind(cmd);
-							graphics_blendstate_unbind(cmd);
-
-							graphics_viewport_set(shadow_map, 0u, cmd);
-							graphics_scissor_set(shadow_map, 0u, cmd);
-						
-							GPUImage* att[1u];
-							att[0u] = shadow_map;
-						
-							// TODO: Use renderpass
-							graphics_image_clear(shadow_map, GPUImageLayout_DepthStencilReadOnly, GPUImageLayout_DepthStencil, Color::Black(), 1.f, 0u, cmd);
-
-							graphics_renderpass_begin(gfx.renderpass_shadow_mapping, att, cmd);
-
-							for (const MeshInstance& mesh : mesh_instances) {
-
-								GPU_ShadowMappingData data;
-								data.tm = mesh.world_matrix * vpm;
-
-								graphics_buffer_update(gfx.cbuffer_shadow_mapping, &data, sizeof(GPU_ShadowMappingData), 0u, cmd);
-								graphics_vertexbuffer_bind(mesh.mesh->vbuffer, 0u, 0u, cmd);
-								graphics_indexbuffer_bind(mesh.mesh->ibuffer, 0u, cmd);
-
-								graphics_draw_indexed(u32(mesh.mesh->indices.size()), 1u, 0u, 0u, 0u, cmd);
-							}
-						
-							graphics_renderpass_end(cmd);
-
-							GPUBarrier barrier = GPUBarrier::Image(shadow_map, GPUImageLayout_DepthStencil, GPUImageLayout_DepthStencilReadOnly);
-							graphics_barrier(&barrier, 1u, cmd);
 						}
 
 						graphics_event_end(cmd);
@@ -1541,6 +1613,9 @@ namespace sv {
 							GPU_ShadowData shadow_data;
 
 							graphics_image_bind(gfx.image_white, 4u, ShaderType_Pixel, cmd);
+							graphics_image_bind(gfx.image_white, 5u, ShaderType_Pixel, cmd);
+							graphics_image_bind(gfx.image_white, 6u, ShaderType_Pixel, cmd);
+							graphics_image_bind(gfx.image_white, 7u, ShaderType_Pixel, cmd);
 
 							GPU_LightData& l0 = light_data;
 							const LightInstance& l1 = light;
@@ -1562,11 +1637,25 @@ namespace sv {
 								l0.position = l1.direction.view_direction;
 
 								if (l1.comp->shadow_mapping_enabled) {
+									
+									GPUImage* const* shadow_maps = get_shadow_map(l1.entity, l1.comp);
 
-									GPUImage* shadow_map = get_shadow_map(l1.entity, l1.comp);
-										
-									graphics_image_bind(shadow_map, 4u, ShaderType_Pixel, cmd);
-									shadow_data.light_matrix = l1.direction.light_matrix;
+									foreach(i, 4u)
+										graphics_image_bind(shadow_maps[i], 4u + i, ShaderType_Pixel, cmd);
+									
+									shadow_data.light_matrix0 = l1.direction.light_matrix[0];
+									shadow_data.light_matrix1 = l1.direction.light_matrix[1];
+									shadow_data.light_matrix2 = l1.direction.light_matrix[2];
+									shadow_data.light_matrix3 = l1.direction.light_matrix[3];
+									
+									shadow_data.cascade_far0 = l1.direction.cascade_far[0];
+									shadow_data.cascade_far1 = l1.direction.cascade_far[1];
+									shadow_data.cascade_far2 = l1.direction.cascade_far[2];
+
+									f32 resolution = (f32)graphics_image_info(shadow_maps[0]).width;
+									
+									shadow_data.bias = l1.direction.shadow_bias / resolution;
+									
 									l0.has_shadows = 1u;
 								}
 								break;
@@ -2294,7 +2383,8 @@ namespace sv {
 						name = "Unnamed";
 
 					gui_text(get_entity_name(ref.entity));
-					gui_image_ex(ref.image, GPUImageLayout_DepthStencilReadOnly, 200.f, { 0.f, 0.f, 1.f, 1.f }, ref.entity);
+					foreach(i, 4u)
+						gui_image_ex(ref.image[i], GPUImageLayout_DepthStencilReadOnly, 200.f, { 0.f, 0.f, 1.f, 1.f }, ref.entity);
 				}
 			}
 			gui_end_window();

@@ -161,7 +161,7 @@ namespace sv {
 
 	struct ShadowMapRef {
 		Entity entity;
-		GPUImage* image;
+		GPUImage* image[4u];
 	};
     
     struct RendererState {

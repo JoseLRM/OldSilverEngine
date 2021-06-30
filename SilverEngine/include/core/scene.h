@@ -384,7 +384,7 @@ namespace sv {
 
     struct LightComponent : public Component {
 
-		static constexpr u32 VERSION = 1u;
+		static constexpr u32 VERSION = 3u;
 	
 		LightType light_type = LightType_Point;
 		Color color = Color::White();
@@ -393,6 +393,8 @@ namespace sv {
 		f32 smoothness = 0.5f;
 
 		bool shadow_mapping_enabled = false;
+		f32 cascade_distance[3u] = { 20.f, 100.f, 500.f };
+		f32 shadow_bias = 2.f;
 
 		void serialize(Serializer& s);
 		void deserialize(Deserializer& s, u32 version);
