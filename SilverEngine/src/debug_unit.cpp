@@ -2,3 +2,4 @@
 #include "debug/editor.cpp"
 #include "debug/editor_gui.cpp"
 #include "debug/gui.cpp"
+#include "debug/compiler.cpp"

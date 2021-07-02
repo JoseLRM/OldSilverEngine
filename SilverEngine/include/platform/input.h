@@ -1,5 +1,7 @@
 #pragma once
 
+#include "utils/math.h"
+
 namespace sv {
 
 	enum MouseButton : u32 {

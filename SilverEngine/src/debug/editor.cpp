@@ -256,8 +256,17 @@ namespace sv {
 		}
 	
 		// Compile game code
-		if (input.keys[Key_F5] == InputState_Pressed)
-			_os_compile_gamecode();
+		if (input.keys[Key_F5] == InputState_Pressed) {
+
+			char path[FILEPATH_SIZE + 1u];
+			string_copy(path, engine.project_path, FILEPATH_SIZE + 1u);
+			
+			CompilePluginDesc desc;
+			desc.plugin_path = path;
+			
+			if (!compile_plugin(desc)) {
+			}
+		}
 	
 		if (dev.engine_state != EngineState_Play) {
 
@@ -349,6 +358,20 @@ namespace sv {
     
     SV_INTERNAL void construct_entity_sprite(Entity entity) {
 		add_entity_component(entity, get_component_id("Sprite"));
+    }
+	SV_INTERNAL void construct_entity_cube(Entity entity) {
+		MeshComponent* mesh = (MeshComponent*)add_entity_component(entity, get_component_id("Mesh"));
+
+		if (mesh) {
+			create_asset_from_name(mesh->mesh, "Mesh", "Cube");
+		}
+    }
+	SV_INTERNAL void construct_entity_sphere(Entity entity) {
+		MeshComponent* mesh = (MeshComponent*)add_entity_component(entity, get_component_id("Mesh"));
+
+		if (mesh) {
+			create_asset_from_name(mesh->mesh, "Mesh", "Sphere");
+		}
     }
     SV_INTERNAL void construct_entity_camera(Entity entity) {
 		CameraComponent* camera = (CameraComponent*)add_entity_component(entity, get_component_id("Camera"));

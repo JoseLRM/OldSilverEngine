@@ -1010,29 +1010,6 @@ namespace sv {
     {
 		free(ptr);
     }
-
-#if SV_EDITOR
-
-    void _os_compile_gamecode()
-    {
-		char project_path[MAX_PATH + 100];
-		strcpy(project_path, engine.project_path);
-
-		foreach (i, strlen(project_path)) {
-
-			char& c = project_path[i];
-			if (c == '/')
-				c = '\\';
-		}
-
-#if SV_EDITOR
-		strcat(project_path, " shell");
-#endif
-	
-		ShellExecute(NULL, "open", "system\\build_game.bat", project_path, NULL, SW_HIDE);
-    }
-
-#endif
     
     bool _os_startup()
     {

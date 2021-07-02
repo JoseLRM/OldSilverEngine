@@ -57,6 +57,14 @@ namespace sv {
 
 	List<Entity>& editor_selected_entities();
 
+	// COMPILER
+
+	struct CompilePluginDesc {
+		const char* plugin_path;
+	};
+	
+	bool compile_plugin(const CompilePluginDesc& desc);
+
     // EDITOR GUI
 
     constexpr u32 ASSET_BROWSER_PACKAGE_TEXTURE = 69u;

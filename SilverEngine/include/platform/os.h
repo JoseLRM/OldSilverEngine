@@ -155,9 +155,5 @@ namespace sv {
     bool _os_startup();
     void _os_recive_input();
     bool _os_shutdown();
-
-#if SV_EDITOR
-    void _os_compile_gamecode();
-#endif
     
 }
