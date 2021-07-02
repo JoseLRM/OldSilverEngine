@@ -2519,7 +2519,7 @@ namespace sv {
 
 					GuiRootInfo& root = *root_ptr;
 					
-					root.vertical_offset -= input.mouse_wheel / gui->resolution.y * 8.f;
+					root.vertical_offset -= input.mouse_wheel / gui->resolution.y * 30.f;
 
 					f32 max = root.yoff / gui->resolution.y - root.widget_bounds.w;
 					root.vertical_offset = math_clamp(0.f, root.vertical_offset, max);
@@ -4647,8 +4647,8 @@ namespace sv {
 
 				f32 width = GUI_SCROLL_SIZE / gui->resolution.x;
 
-				Color color = Color::Green();
-				Color button_color = Color::Blue();
+				Color button_color = style.window_button_color;
+				Color color = style.window_background_color;
 
 				f32 x = root.widget_bounds.x + root.widget_bounds.z * 0.5f - width * 0.5f;
 
@@ -4740,7 +4740,7 @@ namespace sv {
 		{
 			if (gui->focus.type != GuiWidgetType_Root && gui->focus.type != GuiWidgetType_None && gui->focus.action == GuiWidgetAction_MovePackage) {
 
-				imrend_draw_quad(vec2_to_vec3(gui->mouse_position), {0.02f, 0.02f}, Color::Red(), cmd);
+				imrend_draw_quad(vec2_to_vec3(gui->mouse_position), {0.01f, 0.01f * gui->aspect}, Color::Red(), cmd);
 
 				for (const GuiWidgetRef& ref : gui->package.recivers) {
 

@@ -27,8 +27,8 @@ namespace sv {
 		Color check_color = Color::White();
 		Color window_background_color = Color::Gray(4u);
 		Color window_focused_background_color = Color::Gray(6u);
-		Color window_decoration_color = Color::Gray(128u);
-		Color window_focused_decoration_color = { 180u, 128u, 128u, 255u };
+		Color window_decoration_color = Color::Gray(20u);
+		Color window_focused_decoration_color = Color::Gray(5);
 		Color window_button_color = { 30u, 0u, 0u, 255u };
 		Color window_button_highlighted_color = { 40u, 5u, 5u, 255u };
 		Color window_button_focused_color = { 10u, 10u, 10u, 255u };

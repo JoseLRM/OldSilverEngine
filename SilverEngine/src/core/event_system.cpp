@@ -156,19 +156,16 @@ namespace sv {
 					const char* respath = "int/build_output.txt";
 
 					// Get compilation result
-					if (file_exists(respath)) {
+					char* str;
+					size_t size;
+					if (file_read_text(respath, &str, &size)) {
 
-						char* str;
-						size_t size;
-						if (file_read_text(respath, &str, &size)) {
+						SV_LOG_INFO("Compilation result:\n");
+						SV_LOG("%s\n", str);
+						SV_FREE_MEMORY(str);
 
-							SV_LOG_INFO("Compilation result:\n");
-							SV_LOG("%s\n", str);
-							SV_FREE_MEMORY(str);
-
-							if (!file_remove(respath)) {
-								SV_LOG_ERROR("Can't delete the compilation result file");
-							}
+						if (!file_remove(respath)) {
+							SV_LOG_ERROR("Can't delete the compilation result file");
 						}
 					}
 				}

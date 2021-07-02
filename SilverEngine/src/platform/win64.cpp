@@ -1025,7 +1025,7 @@ namespace sv {
 				c = '\\';
 		}
 
-#if SV_SLOW
+#if SV_EDITOR
 		strcat(project_path, " shell");
 #endif
 	

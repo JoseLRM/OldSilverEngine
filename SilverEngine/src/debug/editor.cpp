@@ -135,6 +135,7 @@ namespace sv {
 	
 		TextureAsset image;
 		static constexpr v4_f32 TEXCOORD_FOLDER = { 0.f, 0.f, 0.05989583333333f, 0.05989583333333f };
+		static constexpr v4_f32 TEXCOORD_FILE = { 2.f / 1920.f, 105.f / 1920.f, 109.f / 1920.f, 212.f / 1920.f };
 		static constexpr v4_f32 TEXCOORD_PLAY = { 141.f / 1920.f, 6.f / 1920.f, 264.f / 1920.f, 129.f / 1920.f };
 		static constexpr v4_f32 TEXCOORD_PAUSE = { 275.f / 1920.f, 5.f / 1920.f, 386.f / 1920.f, 116.f / 1920.f };
 		static constexpr v4_f32 TEXCOORD_STOP = { 275.f / 1920.f, 5.f / 1920.f, 386.f / 1920.f, 116.f / 1920.f };
@@ -349,7 +350,17 @@ namespace sv {
     SV_INTERNAL void construct_entity_sprite(Entity entity) {
 		add_entity_component(entity, get_component_id("Sprite"));
     }
-    SV_INTERNAL void construct_entity_2D_camera(Entity entity) {
+    SV_INTERNAL void construct_entity_camera(Entity entity) {
+		CameraComponent* camera = (CameraComponent*)add_entity_component(entity, get_component_id("Camera"));
+		if (camera){
+			camera->projection_type = ProjectionType_Perspective;
+			camera->near = 0.2f;
+			camera->far = 10000.f;
+			camera->width = 0.9f;
+			camera->height = 0.9f;
+		}
+    }
+	SV_INTERNAL void construct_entity_2D_camera(Entity entity) {
 		add_entity_component(entity, get_component_id("Camera"));
     }
     
@@ -937,8 +948,8 @@ namespace sv {
 						cam.projection_type = ProjectionType_Perspective;
 						cam.near = 0.2f;
 						cam.far = 10000.f;
-						cam.width = 0.1f;
-						cam.height = 0.1f;
+						cam.width = 0.9f;
+						cam.height = 0.9f;
 					}
 					else {
 						cam.projection_type = ProjectionType_Orthographic;
@@ -1192,7 +1203,9 @@ namespace sv {
 
 					if (intersect_ray_vs_traingle(ray, p0, p1, p2, intersection)) {
 
-						f32 dis = vec3_length(intersection);
+						intersection = XMVector4Transform(vec3_to_dx(intersection, 1.f), wm);
+
+						f32 dis = vec3_distance(intersection, ray_origin);
 						if (dis < distance) {
 							distance = dis;
 							selected = entity;
@@ -1359,18 +1372,33 @@ namespace sv {
 	
 		if (gui_begin_popup(GuiPopupTrigger_Root)) {
 		
-			if (gui_button("Create Entity", 1u)) {
+			if (gui_button("Create Entity")) {
 				editor_create_entity();
 			}
-		
-			if (gui_button("Create Sprite", 2u)) {
+
+			if (gui_button("Create Sprite")) {
 
 				editor_create_entity(0, "Sprite", construct_entity_sprite);
 			}
 
-			if (gui_button("Create 2D Camera", 3u)) {
+			if (gui_button("Create Cube")) {
 
-				editor_create_entity(0, "Camera", construct_entity_2D_camera);
+				editor_create_entity(0, "Cube", construct_entity_cube);
+			}
+
+			if (gui_button("Create Sphere")) {
+
+				editor_create_entity(0, "Sphere", construct_entity_sphere);
+			}
+
+			if (gui_button("Create Camera")) {
+
+				editor_create_entity(0, "Camera", construct_entity_camera);
+			}
+
+			if (gui_button("Create 2D Camera")) {
+
+				editor_create_entity(0, "Camera 2D", construct_entity_2D_camera);
 			}
 
 			gui_end_popup();
@@ -1853,7 +1881,7 @@ namespace sv {
 
 						sprintf(pack.filepath, "assets/%s%s", info.filepath, e.name);
 						
-						gui_asset_button(e.name, nullptr, {0.f, 0.f, 1.f, 1.f}, 0u);
+						gui_asset_button(e.name, editor.image.get(), editor.TEXCOORD_FILE, 0u);
 						gui_send_package(&pack, sizeof(PrefabPackage), ASSET_BROWSER_PREFAB);
 					}
 					break;
@@ -1873,16 +1901,16 @@ namespace sv {
 
 							if (load_asset_from_file(tex, pack.filepath, AssetLoadingPriority_GetIfExists)) {
 
-								gui_asset_button(e.name, tex.get(), {0.f, 0.f, 1.f, 1.f}, 0u);
+								gui_asset_button(e.name, editor.image.get(), editor.TEXCOORD_FILE, 0u);
 							}
 							// TODO: Set default image
 							else {
-								gui_asset_button(e.name, nullptr, {0.f, 0.f, 1.f, 1.f}, 0u);
+								gui_asset_button(e.name, editor.image.get(), editor.TEXCOORD_FILE, 0u);
 							}
 						}
 						else {
 
-							gui_asset_button(e.name, nullptr, {0.f, 0.f, 1.f, 1.f}, 0u);
+							gui_asset_button(e.name, editor.image.get(), editor.TEXCOORD_FILE, 0u);
 						}
 
 						u32 id;
@@ -2943,8 +2971,6 @@ namespace sv {
 					_start_scene(get_scene_name());
 
 					dev.debug_draw = false;
-					dev.draw_collisions = false;
-					dev.draw_cameras = false;
 					editor.selected_entities.reset();
 				}
 			} break;
