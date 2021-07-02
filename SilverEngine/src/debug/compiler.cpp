@@ -37,6 +37,41 @@ namespace sv {
 		// Defines		
 		buffer_write(buffer, "-DSV_PLATFORM_WIN=1 -DSV_SLOW=0 -DSV_EDITOR=1 -DSV_GFX=0 ");
 
+		// ECS macros
+		{
+			// Tags			
+			foreach(i, TAG_MAX) {
+
+				if (tag_exists(i)) {
+
+					const char* name = get_tag_name(i);
+
+					buffer_write(buffer, "-DTag_");
+					buffer_write(buffer, name);
+					buffer_write(buffer, "=\"");
+					buffer_write(buffer, "__TAG(");
+					buffer_write(buffer, name);
+					buffer_write(buffer, ")\" ");
+				}
+			}
+			// TODO: For release
+			/*foreach(i, TAG_MAX) {
+
+				if (tag_exists(i)) {
+
+					const char* name = get_tag_name(i);
+					char num[20];
+					sprintf(num, "%u", i);
+
+					buffer_write(buffer, "-DTag_");
+					buffer_write(buffer, name);
+					buffer_write(buffer, "=");
+					buffer_write(buffer, num);
+					buffer_write(buffer, " ");
+				}
+				}*/
+		}
+
 		// Include Paths
 		buffer_write(buffer, "/I include\\ ");
 

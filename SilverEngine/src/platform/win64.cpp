@@ -583,7 +583,6 @@ namespace sv {
 		DWORD size;
 		size = GetFileSize(file, NULL);
 
-		if (size == 0u) return false;
 		data.resize(size_t(size));
 	
 		SetFilePointer(file, NULL, NULL, FILE_BEGIN);
@@ -606,8 +605,6 @@ namespace sv {
 
 		DWORD size;
 		size = GetFileSize(file, NULL);
-
-		if (size == 0u) return false;
 	
 		*psize = (size_t)size;
 		*pstr = (char*)SV_ALLOCATE_MEMORY(size + 1u);

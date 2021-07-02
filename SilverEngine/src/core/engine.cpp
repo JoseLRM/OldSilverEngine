@@ -95,7 +95,7 @@ namespace sv {
 
 		bool res = graphics_image_create(&desc, &image);
 
-		delete[] data;
+		SV_FREE_MEMORY(data);
 		return res;
     }
 

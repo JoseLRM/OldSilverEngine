@@ -937,7 +937,7 @@ namespace sv {
 
 				CameraComponent& cam = *reinterpret_cast<CameraComponent*>(comp);
 
-				f32 dimension = SV_MIN(cam.width, cam.height);
+				f32 dimension = cam.getProjectionLength();
 
 				f32 near_min;
 				f32 near_max;
@@ -986,8 +986,7 @@ namespace sv {
 				gui_drag_f32("Near", cam.near, near_adv, near_min, near_max);
 				gui_drag_f32("Far", cam.far, far_adv, far_min, far_max);
 				if (gui_drag_f32("Dimension", dimension, 0.01f, 0.01f, f32_max)) {
-					cam.width = dimension;
-					cam.height = dimension;
+					cam.setProjectionLength(dimension);
 				}
 
 				gui_checkbox("Bloom", cam.bloom.active);
@@ -1513,20 +1512,6 @@ namespace sv {
 					egui_header(entity_name, 0u);
 				}
 
-				// Entity flag
-				{
-					gui_text("Tag");
-
-					char tag_name[TAG_NAME_SIZE + 1u];
-					const char* tag = string_validate(get_entity_tag(selected));
-					
-					string_copy(tag_name, tag, TAG_NAME_SIZE + 1u);
-
-					if (gui_text_field(tag_name, TAG_NAME_SIZE + 1u, 324894)) {
-						set_entity_tag(selected, tag_name);
-					}
-				}
-
 				// Entity transform
 				egui_transform(selected);
 
@@ -1548,6 +1533,43 @@ namespace sv {
 					}
 
 					gui_pop_id();
+				}
+
+				gui_separator(3);
+				// Entity Tags
+				{
+					if (gui_collapse("Tags")) {
+
+						foreach(tag, TAG_MAX) {
+
+							if (has_entity_tag(selected, tag)) {
+
+								if (gui_button(get_tag_name(tag)))
+									remove_entity_tag(selected, tag);
+							}
+						}
+
+						gui_separator(1);
+
+						gui_button("Add Tag");
+						
+						if (gui_begin_popup(GuiPopupTrigger_LastWidget)) {
+
+							foreach(tag, TAG_MAX) {
+
+								if (tag_exists(tag) && !has_entity_tag(selected, tag)) {
+
+									if (gui_button(get_tag_name(tag))) {
+
+										add_entity_tag(selected, tag);
+										gui_close_popup();
+									}
+								}
+							}
+									
+							gui_end_popup();
+						}
+					}
 				}
 
 				// Entity Info

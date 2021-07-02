@@ -6,6 +6,7 @@
 namespace sv {
 
 	constexpr u32 COMPONENT_MAX = 64u;
+	constexpr u32 TAG_MAX = 64u;
 	
     constexpr u32 ENTITY_NAME_SIZE = 30u;
 	constexpr u32 ENTITY_COMPONENTS_MAX = 10u;
@@ -14,10 +15,12 @@ namespace sv {
 	constexpr u32 TAG_NAME_SIZE = 30u;
 
 	constexpr u32 INVALID_COMP_ID = u32_max;
+	constexpr u32 TAG_INVALID = u32_max;
 
     typedef u32 CompID;
     typedef u32 Entity;
 	typedef u32 Prefab;
+	typedef u32 Tag;
 
     struct CameraComponent;
 
@@ -105,6 +108,10 @@ namespace sv {
 	SV_API void       remove_entity_component(Entity entity, CompID comp_id);
 	SV_API Component* get_entity_component(Entity entity, CompID comp_id);
 
+	SV_API bool has_entity_tag(Entity entity, Tag tag);
+	SV_API void add_entity_tag(Entity entity, Tag tag);
+	SV_API void remove_entity_tag(Entity entity, Tag tag);
+
 	// Prefab
 
 	SV_API bool   create_prefab_file(const char* name, const char* filepath);
@@ -121,13 +128,6 @@ namespace sv {
 	SV_API Component* get_prefab_component(Prefab prefab, CompID comp_id);
 	SV_API u32	      get_prefab_component_count(Prefab prefab);
 	SV_API CompRef    get_prefab_component_by_index(Prefab prefab, u32 index);
-
-	// Tags
-
-	SV_API void        set_entity_tag(Entity entity, const char* tag);
-	SV_API const char* get_entity_tag(Entity entity);
-
-	SV_API Entity get_tag_entity(const char* tag);
 
 	// Iterators
 	
@@ -159,14 +159,23 @@ namespace sv {
 	SV_API void prefab_it_next(PrefabIt& prefab_it);
 
 	struct TagIt {
-		void* internal;
+		Tag tag;
+		u32 _index;
+		bool has_next;
 		Entity entity;
 	};
-	//TODO
-	SV_API TagIt tag_it_begin(const char* tag);
+	
+	SV_API TagIt tag_it_begin(Tag tag);
 	SV_API void tag_it_next(TagIt& tag_it);
 
-	// Component register
+	// Tags
+
+	SV_API Tag         get_tag_id(const char* name);
+	SV_API const char* get_tag_name(Tag tag);
+	SV_API bool        tag_exists(Tag tag);
+	SV_API Entity      get_tag_entity(Tag tag);
+	
+	// Components
 
 	void register_components();
 	void unregister_components();
@@ -412,3 +421,7 @@ namespace sv {
     };
     
 }
+
+#if SV_EDITOR
+#define __TAG(name) sv::get_tag_id(#name)
+#endif

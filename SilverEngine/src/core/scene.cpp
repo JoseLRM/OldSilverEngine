@@ -9,10 +9,12 @@
 
 namespace sv {
 
-	struct EntityTag {
-		char name[TAG_NAME_SIZE + 1u];
-		u64 hash;
+	struct TagInternal {
 		List<Entity> entities;
+	};
+
+	struct TagRegister {
+		char name[TAG_NAME_SIZE + 1u];
 	};
 
 	struct PrefabInternal {
@@ -35,6 +37,7 @@ namespace sv {
 		u64 component_mask;
 		u32 component_count;
 		CompRef components[ENTITY_COMPONENTS_MAX];
+		u64 tag_mask;
 		
 		u32 hierarchy_index;
 		Entity parent;
@@ -117,7 +120,7 @@ namespace sv {
 		List<PrefabInternal> prefabs;
 		u32                  prefab_free_count = 0u;
 
-		ThickHashTable<EntityTag, 100> tags;
+		TagInternal tags[TAG_MAX];
 
 		ComponentAllocator component_allocator[COMPONENT_MAX];
 		
@@ -142,6 +145,8 @@ namespace sv {
 
 		ComponentRegister component_register[COMPONENT_MAX];
 		u32 component_register_count = 0u;
+
+		TagRegister tag_register[TAG_MAX];
 		
     };
 
@@ -891,6 +896,7 @@ namespace sv {
 	{
 		e.component_mask = 0u;
 		e.component_count = 0u;
+		e.tag_mask = 0u;
 		e.hierarchy_index = u32_max;
 		e.parent = 0u;
 		e.child_count = 0u;
@@ -913,31 +919,11 @@ namespace sv {
 		e.dirty_physics = true;
 	}
 
-	SV_AUX EntityTag* get_tag(const char* name)
-	{
-		SV_ASSERT(name && name[0]);
-		SV_ECS();
-		EntityTag* tag = ecs.tags.find(name);
-		if (tag == NULL) {
-			u64 hash = hash_string(name);
-			tag = &ecs.tags[hash];
-			tag->hash = hash;
-			string_copy(tag->name, name, TAG_NAME_SIZE + 1u);
-		}
-		return tag;
-	}
-
-	SV_AUX EntityTag* get_tag(u64 hash)
-	{
-		SV_ECS();
-		return ecs.tags.find(hash);
-	}
-
 	void serialize_ecs(Serializer& s)
 	{
 		SV_ECS();
 
-		constexpr u32 VERSION = 1u;
+		constexpr u32 VERSION = 2u;
 		serialize_u32(s, VERSION);
 		
 		// Registers
@@ -949,6 +935,22 @@ namespace sv {
 				serialize_string(s, get_component_name(id));
 				serialize_u32(s, get_component_size(id));
 				serialize_u32(s, get_component_version(id));
+			}
+
+			u32 tag_count = 0u;
+			
+			foreach(tag, TAG_MAX) {
+				if (scene_state->tag_register[tag].name[0])
+					++tag_count;
+			}
+
+			serialize_u32(s, tag_count);
+
+			foreach(tag, tag_count) {
+				if (scene_state->tag_register[tag].name[0]) {
+					serialize_u32(s, tag);
+					serialize_string(s, scene_state->tag_register[tag].name);
+				}
 			}
 		}
 
@@ -985,6 +987,7 @@ namespace sv {
 					EntityTransform& transform = ecs.entity_transform[entity - 1u];
 
 					serialize_entity(s, entity);
+					serialize_u64(s, internal.tag_mask);
 					serialize_u32(s, internal.child_count);
 					serialize_u32(s, internal.hierarchy_index);
 					serialize_u32(s, internal.prefab);
@@ -993,8 +996,6 @@ namespace sv {
 					serialize_v3_f32(s, transform.position);
 					serialize_v4_f32(s, transform.rotation);
 					serialize_v3_f32(s, transform.scale);
-
-					serialize_string(s, string_validate(get_entity_tag(entity)));
 				}
 			}
 		}
@@ -1025,36 +1026,62 @@ namespace sv {
 
 		u32 version;
 		deserialize_u32(d, version);
+
+		if (version <= 0) {
+
+			SV_LOG_ERROR("ECS version %u not supported", version);
+			return false;
+		}
 		
-		struct Register {
+		struct TempComponentRegister {
 			char name[COMPONENT_NAME_SIZE + 1u];
 			u32 size;
 			u32 version;
 			CompID id;
 		};
+
+		struct TempTagRegister {
+			char name[COMPONENT_NAME_SIZE + 1u];
+			u32 id;
+		};
 		
 		// Registers
-		Register registers[COMPONENT_MAX];
-		u32 register_count = 0u;
+		List<TempComponentRegister> component_registers;
+		List<TempTagRegister> tag_registers;
 		
 		{
+			u32 register_count = 0u;
 			deserialize_u32(d, register_count);
 			
 			foreach(i, register_count) {
 
-				Register& reg = registers[i];
+				TempComponentRegister& reg = component_registers.emplace_back();
 				
 				deserialize_string(d, reg.name, COMPONENT_NAME_SIZE + 1u);			
 				deserialize_u32(d, reg.size);
 				deserialize_u32(d, reg.version);
 			}
+
+			if (version >= 2u) {
+
+				u32 tag_count = 0u;
+				deserialize_u32(d, tag_count);
+
+				foreach(i, tag_count) {
+
+					TempTagRegister& reg = tag_registers.emplace_back();
+
+					deserialize_u32(d, reg.id);
+					deserialize_string(d, reg.name, TAG_NAME_SIZE + 1u);
+				}
+			}
 		}
 
 		// Registers ID
 		
-		foreach(i, register_count) {
+		foreach(i, component_registers.size()) {
 
-			Register& reg = registers[i];
+			TempComponentRegister& reg = component_registers[i];
 			reg.id = get_component_id(reg.name);
 
 			if (reg.id == INVALID_COMP_ID) {
@@ -1119,6 +1146,9 @@ namespace sv {
 			EntityMisc& misc = entity_misc[entity - 1u];
 			EntityTransform& transform = entity_transform[entity - 1u];
 
+			if (version >= 2)
+				deserialize_u64(d, internal.tag_mask);
+
 			deserialize_u32(d, internal.child_count);
 			deserialize_u32(d, internal.hierarchy_index);
 			deserialize_u32(d, internal.prefab);
@@ -1138,13 +1168,31 @@ namespace sv {
 
 				char tag_name[TAG_NAME_SIZE + 1u];
 				deserialize_string(d, tag_name, TAG_NAME_SIZE + 1u);
+			}
 
-				if (tag_name[0]) {
+			// Notify tags
+			if (internal.tag_mask) {
 
-					EntityTag* tag = get_tag(tag_name);
-					misc.tag = tag->hash;
-					tag->entities.push_back(entity);
+				u64 mask = 0u;
+
+				foreach(tag, tag_registers.size()) {
+
+					TempTagRegister& reg = tag_registers[tag];
+					
+					if (internal.tag_mask & SV_BIT(reg.id)) {
+
+						foreach(i, TAG_MAX) {
+
+							if (string_equals(scene_state->tag_register[i].name, reg.name)) {
+								mask |= SV_BIT(i);
+								ecs.tags[i].entities.push_back(entity);
+								break;
+							}
+						}
+					}
 				}
+
+				internal.tag_mask = mask;
 			}
 
 			// Find prefab
@@ -1210,9 +1258,9 @@ namespace sv {
 
 		// Components
 		{
-			foreach(reg_index, register_count) {
+			foreach(reg_index, component_registers.size()) {
 
-				Register& reg = registers[reg_index];
+				TempComponentRegister& reg = component_registers[reg_index];
 				CompID comp_id = reg.id;
 				u32 version = reg.version;
 				u32 comp_count;
@@ -1492,6 +1540,20 @@ namespace sv {
 		EntityInternal& duplicated_internal = ecs.entity_internal[duplicated - 1u];
 		EntityInternal& copy_internal = ecs.entity_internal[copy - 1u];
 
+		if (duplicated_internal.tag_mask) {
+
+			foreach(i, TAG_MAX) {
+
+				if (duplicated_internal.tag_mask & SV_BIT(i)) {
+
+					TagInternal& tag = ecs.tags[i];
+					tag.entities.push_back(copy);
+				}
+			}
+
+			copy_internal.tag_mask = duplicated_internal.tag_mask;
+		}
+
 		if (duplicated_internal.prefab) {
 
 			copy_internal.prefab = duplicated_internal.prefab;
@@ -1745,6 +1807,59 @@ namespace sv {
 		}
 
 		return NULL;
+	}
+
+	bool has_entity_tag(Entity entity, Tag tag)
+	{
+		SV_ECS();
+		SV_ASSERT(entity_exists(entity));
+
+		EntityInternal& internal = ecs.entity_internal[entity - 1u];
+		return internal.tag_mask & SV_BIT(tag);
+	}
+	
+	void add_entity_tag(Entity entity, Tag tag)
+	{
+		if (!tag_exists(tag)) return;
+		
+		SV_ECS();
+		SV_ASSERT(entity_exists(entity));
+
+		EntityInternal& internal = ecs.entity_internal[entity - 1u];
+
+		if (!(internal.tag_mask & SV_BIT(tag))) {
+
+			internal.tag_mask |= SV_BIT(tag);
+
+			TagInternal& tag_internal = ecs.tags[tag];
+			tag_internal.entities.push_back(entity);
+		}
+	}
+	
+	void remove_entity_tag(Entity entity, Tag tag)
+	{
+		if (!tag_exists(tag)) return;
+		
+		SV_ECS();
+		SV_ASSERT(entity_exists(entity));
+
+		EntityInternal& internal = ecs.entity_internal[entity - 1u];
+
+		if (internal.tag_mask & SV_BIT(tag)) {
+
+			internal.tag_mask = internal.tag_mask & ~SV_BIT(tag);
+
+			TagInternal& tag_internal = ecs.tags[tag];
+
+			foreach(i, tag_internal.entities.size()) {
+				if (tag_internal.entities[i] == entity) {
+					tag_internal.entities.erase(i);
+					return;
+				}
+			}
+
+			SV_ASSERT(0);
+		}
 	}
 
 	bool create_prefab_file(const char* name, const char* filepath)
@@ -2103,72 +2218,6 @@ namespace sv {
 		return {};
 	}
 
-	void set_entity_tag(Entity entity, const char* tag_name)
-	{
-		SV_ECS();
-		SV_ASSERT(entity_exists(entity));
-
-		EntityMisc& misc = ecs.entity_misc[entity - 1u];
-		if (misc.tag) {
-
-			EntityTag* tag = get_tag(misc.tag);
-			if (tag) {
-
-				foreach(i, tag->entities.size()) {
-
-					if (tag->entities[i] == entity) {
-						tag->entities.erase(i);
-						break;
-					}
-				}
-			}
-			else SV_ASSERT(0);
-
-			misc.tag = 0u;
-		}
-
-		tag_name = string_validate(tag_name);
-
-		if (tag_name[0]) {
-
-			EntityTag* tag = get_tag(tag_name);
-			if (tag) {
-
-				tag->entities.push_back(entity);
-
-				misc.tag = tag->hash;
-			}
-			else SV_ASSERT(0);
-		}
-	}
-	
-	const char* get_entity_tag(Entity entity)
-	{
-		SV_ECS();
-		SV_ASSERT(entity_exists(entity));
-
-		EntityMisc& misc = ecs.entity_misc[entity - 1u];
-		if (misc.tag) {
-
-			EntityTag* tag = get_tag(misc.tag);
-			if (tag) {
-
-				return tag->name;
-			}
-			else SV_ASSERT(0);
-		}
-
-		return NULL;
-	}
-
-	Entity get_tag_entity(const char* tag_name)
-	{
-		EntityTag* tag = get_tag(tag_name);
-		if (tag->entities.size())
-			return tag->entities[0];
-		return 0;
-	}
-
 	CompIt comp_it_begin(CompID comp_id, u32 flags)
 	{
 		SV_ECS();
@@ -2355,6 +2404,71 @@ namespace sv {
 		it.prefab = Prefab(pre - ecs.prefabs.data()) + 1u;
 	}
 
+	TagIt tag_it_begin(Tag tag)
+	{
+		SV_ECS();
+		TagIt it;
+		
+		if (tag_exists(tag)) {
+
+			TagInternal& internal = ecs.tags[tag];
+
+			if (internal.entities.size()) {
+
+				it.tag = tag;
+				it._index = 0u;
+				it.entity = internal.entities.front();
+				it.has_next = true;
+			}
+			else it.has_next = false;
+		}
+		else it.has_next = false;
+		return it;
+	}
+	
+	void tag_it_next(TagIt& it)
+	{
+		SV_ECS();
+		++it._index;
+
+		TagInternal& internal = ecs.tags[it.tag];
+		
+		if (it._index >= internal.entities.size())
+			it.has_next = false;
+		else {
+			it.entity = internal.entities[it._index];
+		}
+	}
+
+	Tag get_tag_id(const char* name)
+	{
+		foreach(tag, TAG_MAX) {
+			if (string_equals(scene_state->tag_register[tag].name, name))
+				return tag;
+		}
+
+		return TAG_INVALID;
+	}
+
+	const char* get_tag_name(Tag tag)
+	{
+		SV_ASSERT(tag < TAG_MAX);
+		return scene_state->tag_register[tag].name;
+	}
+
+	bool tag_exists(Tag tag)
+	{
+		if (tag < TAG_MAX) return scene_state->tag_register[tag].name[0] != '\0';
+		return false;
+	}
+
+	Entity get_tag_entity(Tag tag)
+	{
+		SV_ECS();
+		Entity entity = ecs.tags[tag].entities.empty() ? 0 : ecs.tags[tag].entities.front();
+		return entity;
+	}
+
     struct ComponentRegisterDesc {
 
 		const char*            name;
@@ -2471,6 +2585,21 @@ namespace sv {
 		desc.deserialize_fn = (DeserializeComponentFn)SphereCollider_deserialize;
 
 		register_component(desc);
+
+		foreach(i, TAG_MAX)
+			scene_state->tag_register[i].name[0] = '\0';
+
+		// TEMP
+
+		List<Var> vars;
+		
+		if (read_var_file("tags.txt", vars)) {
+
+			foreach(i, SV_MIN(vars.size(), TAG_MAX)) {
+
+				string_copy(scene_state->tag_register[i].name, vars[i].name, TAG_NAME_SIZE + 1u);
+			}
+		}
 	}
 	
 	void unregister_components()
