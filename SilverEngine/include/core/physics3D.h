@@ -53,6 +53,13 @@ namespace sv {
 	SV_API v3_f32   body_angular_velocity_get(const BodyComponent& body);
 	SV_API f32      body_mass_get(const BodyComponent& body);
 
+	struct OnBodyCollisionEvent {
+		Entity entity0;
+		Entity entity1;
+		BodyComponent* body0;
+		BodyComponent* body1;
+	};
+
 	bool _physics3D_initialize();
 	void _physics3D_close();
 	void _physics3D_update();

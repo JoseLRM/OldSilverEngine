@@ -147,7 +147,7 @@ namespace sv {
 		ImportModelData import_model_data;
 		CreatePrefabData create_prefab_data;
 
-		char next_scene_name[SCENENAME_SIZE + 1u] = "";
+		char next_scene_name[SCENE_NAME_SIZE + 1u] = "";
     };
 
     GlobalEditorData editor;
@@ -2215,13 +2215,13 @@ namespace sv {
 
 		if (gui_begin_window("Go to scene", GuiWindowFlag_Temporal)) {
 		
-			gui_text_field(editor.next_scene_name, SCENENAME_SIZE + 1u, 0u);
+			gui_text_field(editor.next_scene_name, SCENE_NAME_SIZE + 1u, 0u);
 
 			gui_separator(1);
 
 			if (gui_button("GO!")) {
 				set_scene(editor.next_scene_name);
-				string_copy(editor.next_scene_name, "", SCENENAME_SIZE + 1u);
+				string_copy(editor.next_scene_name, "", SCENE_NAME_SIZE + 1u);
 
 				gui_hide_window("Go to scene");
 			}
@@ -2996,8 +2996,9 @@ namespace sv {
 			{
 				SV_LOG_INFO("Starting edit state");
 				// TODO: Handle error
-				_start_scene(get_scene_name());
-		
+				if (dev.engine_state != EngineState_ProjectManagement)
+					_start_scene(get_scene_name());
+				
 				dev.debug_draw = true;
 				engine.update_scene = false;
 				_gui_load(engine.project_path);

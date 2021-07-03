@@ -24,6 +24,11 @@ namespace sv {
 		// TODO
 		const char* name = "Game";
 
+		char int_path[FILEPATH_SIZE + 1u];
+		string_copy(int_path, desc.plugin_path, FILEPATH_SIZE + 1u);
+		string_append(int_path, "int/", FILEPATH_SIZE + 1u);
+		parse_path(int_path);
+
 		//buffer_write(buffer, "CALL system\\shell.bat\n");
 		
 		buffer_write(buffer, "CALL cl ");
@@ -75,6 +80,13 @@ namespace sv {
 		// Include Paths
 		buffer_write(buffer, "/I include\\ ");
 
+		// .obj output
+		{// TODO
+			//buffer_write(buffer, "/Fo\"");
+			//buffer_write(buffer, int_path);
+			//buffer_write(buffer, "\" ");
+		}
+
 		// Src path
 		{
 			char srcpath[FILEPATH_SIZE + 1u];
@@ -110,20 +122,14 @@ namespace sv {
 		}
 
 		// Output
-		{
-			char dst[FILEPATH_SIZE + 1u];
-			string_copy(dst, desc.plugin_path, FILEPATH_SIZE + 1u);
-			string_append(dst, "int/", FILEPATH_SIZE + 1u);
-			
-			parse_path(dst);
-
+		{			
 			buffer_write(buffer, "/PDB:");
-			buffer_write(buffer, dst);
+			buffer_write(buffer, int_path);
 			buffer_write(buffer, name);
 			buffer_write(buffer, ".pdb ");
 			
 			buffer_write(buffer, " > ");
-			buffer_write(buffer, dst);
+			buffer_write(buffer, int_path);
 			buffer_write(buffer, "build_output.txt");
 		}
 

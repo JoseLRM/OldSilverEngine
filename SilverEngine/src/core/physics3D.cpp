@@ -37,9 +37,73 @@ namespace sv {
 		
 	};
 
+	struct PhysxSimulationCallback : public PxSimulationEventCallback {
+
+		void onConstraintBreak(PxConstraintInfo *constraints, PxU32 count) override {}
+		void onWake(PxActor **actors, PxU32 count) override {}
+		void onSleep(PxActor **actors, PxU32 count) override {}
+			
+		
+		void onContact(const PxContactPairHeader &pairHeader, const PxContactPair *pairs, PxU32 nbPairs) override {
+
+			foreach(i, nbPairs) {
+
+				const PxContactPair& pair = pairs[i];
+
+				if (pair.events & PxPairFlag::eNOTIFY_TOUCH_FOUND) {
+
+					PxActor* a0 = pairHeader.actors[0];
+					PxActor* a1 = pairHeader.actors[1];
+
+					BodyComponent* b0 = (BodyComponent*)a0->userData;
+					BodyComponent* b1 = (BodyComponent*)a1->userData;
+
+					OnBodyCollisionEvent e;
+					e.body0 = b0;
+					e.body1 = b1;
+
+					// TODO:
+					e.entity0 = (Entity)e.body0->id;
+					e.entity1 = (Entity)e.body1->id;
+					
+					event_dispatch("on_body_collision", &e);
+				}
+			}
+		}
+
+		void onTrigger(PxTriggerPair *pairs, PxU32 count) override {
+			SV_LOG_INFO("Trigger");
+		}
+
+		void onAdvance(const PxRigidBody *const *bodyBuffer, const PxTransform *poseBuffer, const PxU32 count) override {
+			SV_LOG_INFO("Advance");
+		}
+		
+	};
+
+	physx::PxFilterFlags contactReportFilterShader(physx::PxFilterObjectAttributes attributes0,
+												   physx::PxFilterData filterData0,
+												   physx::PxFilterObjectAttributes attributes1,
+												   physx::PxFilterData filterData1,
+												   physx::PxPairFlags& pairFlags,
+												   const void* constantBlock,
+												   physx::PxU32 constantBlockSize)
+	{
+		if(PxFilterObjectIsTrigger(attributes0) || PxFilterObjectIsTrigger(attributes1)) {
+			pairFlags = PxPairFlag::eTRIGGER_DEFAULT;
+			return PxFilterFlag::eDEFAULT;
+		}
+		
+		pairFlags = PxPairFlag::eCONTACT_DEFAULT;
+		pairFlags |= PxPairFlag::eNOTIFY_TOUCH_FOUND;
+
+		return PxFilterFlag::eDEFAULT;
+	}
+
 	struct Physics3DData {
 		PhysxErrorCallback error_callback;
 		PhysxAllocatorCallback allocator;
+		PhysxSimulationCallback simulation_callback;
 
 		PxFoundation* foundation = NULL;
 		PxPhysics* engine = NULL;
@@ -80,6 +144,11 @@ namespace sv {
 		desc.gravity = { 0.f, -9.81f, 0.f };
 
 		desc.flags |= PxSceneFlag::eENABLE_ACTIVE_ACTORS;
+		
+		desc.simulationEventCallback = &physics->simulation_callback;
+		desc.kineKineFilteringMode = physx::PxPairFilteringMode::eKEEP;
+		desc.staticKineFilteringMode = physx::PxPairFilteringMode::eKEEP;
+		desc.filterShader = contactReportFilterShader;
 
 		if(!desc.cpuDispatcher)
 		{

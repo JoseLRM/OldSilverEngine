@@ -8,6 +8,7 @@
 #include "core/scene.h"
 #include "core/renderer.h"
 #include "core/engine.h"
+#include "core/physics3D.h"
 #include "core/event_system.h"
 
 #include "debug/console.h"

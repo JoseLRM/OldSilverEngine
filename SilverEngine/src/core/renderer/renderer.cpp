@@ -1154,8 +1154,8 @@ namespace sv {
 		ref.entity = entity;
 
 		GPUImageDesc desc;
-		desc.width = 4000u;
-		desc.height = 4000u;
+		desc.width = 1000u;
+		desc.height = 1000u;
 		desc.format = GBUFFER_DEPTH_FORMAT;
 		desc.layout = GPUImageLayout_DepthStencilReadOnly;
 		desc.type = GPUImageType_DepthStencil | GPUImageType_ShaderResource;

@@ -130,7 +130,7 @@ namespace sv {
 
 		SceneData data;
 	
-		char name[SCENENAME_SIZE + 1u] = {};
+		char name[SCENE_NAME_SIZE + 1u] = {};
 		
 		ECS ecs;
 	
@@ -140,7 +140,7 @@ namespace sv {
 
 		static constexpr u32 VERSION = 4u;
 
-		char next_scene_name[SCENENAME_SIZE + 1u] = {};
+		char next_scene_name[SCENE_NAME_SIZE + 1u] = {};
 		Scene* scene = nullptr;
 
 		ComponentRegister component_register[COMPONENT_MAX];
@@ -251,16 +251,21 @@ namespace sv {
 		deserialize_u32(d, entity);
     }
 
-    bool _start_scene(const char* name)
+    bool _start_scene(const char* name_)
     {
 		Scene*& scene_ptr = scene_state->scene;
+
+		name_ = string_validate(name_);
+
+		char name[SCENE_NAME_SIZE + 1];
+		string_copy(name, name_, SCENE_NAME_SIZE + 1u);
 	
 		// Close last scene
 		destroy_current_scene();
 
-		if (name == nullptr)
+		if (name[0] == '\0')
 			return true;
-	
+		
 		scene_ptr = SV_ALLOCATE_STRUCT(Scene, "Scene");
 
 		Scene& scene = *scene_ptr;
@@ -363,8 +368,8 @@ namespace sv {
     {
 		size_t name_size = strlen(name);
 
-		if (name_size > SCENENAME_SIZE) {
-			SV_LOG_ERROR("The scene name '%s' is to long, max chars = %u", name, SCENENAME_SIZE);
+		if (name_size > SCENE_NAME_SIZE) {
+			SV_LOG_ERROR("The scene name '%s' is to long, max chars = %u", name, SCENE_NAME_SIZE);
 			return false;
 		}
 	

@@ -56,7 +56,6 @@ constexpr f64	f64_max = std::numeric_limits<f64>::max();
 
 constexpr u32 FILEPATH_SIZE = 259u;
 constexpr u32 FILENAME_SIZE = 50u;
-constexpr u32 SCENENAME_SIZE = 50u;
 
 #define SV_CHECK(exp) if ((exp) == false) return false;
 #define SV_ZERO_MEMORY(dest, size) memset(dest, 0, size)

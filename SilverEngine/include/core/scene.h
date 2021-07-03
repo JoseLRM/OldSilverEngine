@@ -5,6 +5,8 @@
 
 namespace sv {
 
+	constexpr u32 SCENE_NAME_SIZE = 50u;
+
 	constexpr u32 COMPONENT_MAX = 64u;
 	constexpr u32 TAG_MAX = 64u;
 	
