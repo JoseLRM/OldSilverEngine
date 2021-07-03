@@ -166,7 +166,7 @@ namespace sv {
 
 	void _initialize_assets()
 	{
-		asset_system = SV_ALLOCATE_STRUCT(AssetSystemData);
+		asset_system = SV_ALLOCATE_STRUCT(AssetSystemData, "AssetSystem");
 	}
 
     void _close_assets()
@@ -178,7 +178,7 @@ namespace sv {
 			for (AssetType_internal* type : asset_system->asset_types) {
 
 				type->allocator.clear();
-				delete type;
+				SV_FREE_MEMORY(type);
 			}
 			asset_system->asset_types.clear();
 
@@ -477,7 +477,7 @@ namespace sv {
 		// TODO: Check if the extensions or the name is repeated or if the extension name is too large
 
 		AssetType_internal*& type = asset_system->asset_types.emplace_back();
-		type = (AssetType_internal*)SV_ALLOCATE_MEMORY(sizeof(AssetType_internal));
+		type = (AssetType_internal*)SV_ALLOCATE_MEMORY(sizeof(AssetType_internal), "AssetSystem");
 		new(type) AssetType_internal(desc->asset_size + sizeof(Asset_internal));
 
 		string_copy(type->name, desc->name, ASSET_TYPE_NAME_SIZE + 1u);

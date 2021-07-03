@@ -235,7 +235,7 @@ namespace sv {
 
     void _console_initialize()
     {
-		console.buff = (char*)SV_ALLOCATE_MEMORY(CONSOLE_SIZE);
+		console.buff = (char*)SV_ALLOCATE_MEMORY(CONSOLE_SIZE, "Console");
 		console.buff_pos = 0U;
 		console.buff_flip = false;
 
@@ -288,7 +288,7 @@ namespace sv {
     {
 		if (console.buff) {
 
-			free(console.buff);
+			SV_FREE_MEMORY(console.buff);
 			console.buff = nullptr;
 		}
 
@@ -386,7 +386,7 @@ namespace sv {
 
 			size_t arg_size = command - name;
 			char*& arg = args.emplace_back();
-			arg = (char*)SV_ALLOCATE_MEMORY(arg_size + 1u);
+			arg = (char*)SV_ALLOCATE_MEMORY(arg_size + 1u, "Console");
 			memcpy(arg, name, arg_size);
 			arg[arg_size] = '\0';
 
@@ -399,7 +399,7 @@ namespace sv {
 
 		// Free
 		for (char* arg : args)
-			free(arg);
+			SV_FREE_MEMORY(arg);
 
 		return res;
     }
@@ -605,7 +605,7 @@ namespace sv {
 		// Flip console
 		if (console.buff_flip && console.buff_pos) {
 
-			char* aux = (char*)SV_ALLOCATE_MEMORY(console.buff_pos);
+			char* aux = (char*)SV_ALLOCATE_MEMORY(console.buff_pos, "Console");
 			memcpy(aux, console.buff, console.buff_pos);
 
 			memcpy(console.buff, console.buff + console.buff_pos, CONSOLE_SIZE - console.buff_pos);

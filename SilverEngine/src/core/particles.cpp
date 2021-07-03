@@ -144,7 +144,7 @@ namespace sv {
 					if (e.particles) {
 						SV_FREE_MEMORY(e.particles);
 					}
-					e.particles = (Particle*)SV_ALLOCATE_MEMORY(e.max_particles * sizeof(Particle));
+					e.particles = (Particle*)SV_ALLOCATE_MEMORY(e.max_particles * sizeof(Particle), "Particle");
 					e._last_max_particles = e.max_particles;
 
 					// TODO: Save particle state

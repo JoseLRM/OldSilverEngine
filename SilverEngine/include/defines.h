@@ -85,15 +85,33 @@ constexpr u32 SCENENAME_SIZE = 50u;
 namespace sv {
 
     // Memory (Platform specific)
-    
-    SV_API void* _allocate_memory(size_t size);
+
+	SV_API void* _reallocate_memory(void* ptr, size_t size);
+
+#if SV_EDITOR
+	
+    SV_API void* _allocate_memory(size_t size, const char* module, const char* file, u32 line);
     SV_API void _free_memory(void* ptr);
 
-#define SV_ALLOCATE_MEMORY(size) sv::_allocate_memory(size)
+#define SV_ALLOCATE_MEMORY(size, module) sv::_allocate_memory(size, module, __FILE__, __LINE__)
 #define SV_FREE_MEMORY(ptr) sv::_free_memory(ptr)
-    
-#define SV_ALLOCATE_STRUCT(type) new(SV_ALLOCATE_MEMORY(sizeof(type))) type()
-#define SV_ALLOCATE_STRUCT_ARRAY(type, count) new(SV_ALLOCATE_MEMORY(sizeof(type) * size_t(count))) type[size_t(count)]
+
+	void _initialize_memory_profiler();
+	void _close_memory_profiler();
+
+#else
+
+	SV_API void* _allocate_memory(size_t size);
+    SV_API void _free_memory(void* ptr);
+
+#define SV_ALLOCATE_MEMORY(size, module) sv::_allocate_memory(size)
+#define SV_FREE_MEMORY(ptr) sv::_free_memory(ptr)
+	
+#endif
+
+#define SV_REALLOCATE_MEMORY(ptr, size) sv::_reallocate_memory(ptr, size)
+#define SV_ALLOCATE_STRUCT(type, module) new(SV_ALLOCATE_MEMORY(sizeof(type), module)) type()
+#define SV_ALLOCATE_STRUCT_ARRAY(type, count, module) new(SV_ALLOCATE_MEMORY(sizeof(type) * size_t(count), module)) type[size_t(count)]
 
     template <typename T>
     SV_INLINE void destruct(T& t) { t.~T(); }

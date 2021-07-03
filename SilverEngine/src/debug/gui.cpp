@@ -617,7 +617,7 @@ namespace sv {
     
     bool _gui_initialize()
     {
-		gui = SV_ALLOCATE_STRUCT(GUI);
+		gui = SV_ALLOCATE_STRUCT(GUI, "GUI");
 
 		return true;
     }

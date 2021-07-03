@@ -561,7 +561,7 @@ namespace sv {
 
 		if (*psize == 0u) return false;
 	
-		*pdata = (u8*)SV_ALLOCATE_MEMORY(*psize);
+		*pdata = (u8*)SV_ALLOCATE_MEMORY(*psize, "Unknown");
 		SetFilePointer(file, NULL, NULL, FILE_BEGIN);
 		ReadFile(file, (void*)*pdata, size, NULL, NULL);
 	
@@ -607,7 +607,7 @@ namespace sv {
 		size = GetFileSize(file, NULL);
 	
 		*psize = (size_t)size;
-		*pstr = (char*)SV_ALLOCATE_MEMORY(size + 1u);
+		*pstr = (char*)SV_ALLOCATE_MEMORY(size + 1u, "Unknown");
 		SetFilePointer(file, NULL, NULL, FILE_BEGIN);
 		ReadFile(file, *pstr, size, NULL, NULL);
 		(*pstr)[*psize] = '\0';
@@ -990,23 +990,6 @@ namespace sv {
     // INTERNAL
 
     void graphics_swapchain_resize();
-
-    ////////////////////////////////////////////////////////////////// USER CALLBACKS /////////////////////////////////////////////////////////////
-
-    // Memory
-    
-    void* _allocate_memory(size_t size)
-    {
-		void* ptr = nullptr;
-		while (ptr == nullptr) ptr = malloc(size);
-		memset(ptr, 0, size);
-		return ptr;
-    }
-    
-    void _free_memory(void* ptr)
-    {
-		free(ptr);
-    }
     
     bool _os_startup()
     {
@@ -1059,5 +1042,23 @@ namespace sv {
 			return DestroyWindow(platform.handle);
 		return true;
     }
+	
+    void* _os_allocate_memory(size_t size)
+    {
+		void* ptr = nullptr;
+		while (ptr == nullptr) ptr = malloc(size);
+		memset(ptr, 0, size);
+		return ptr;
+    }
+
+	void* _os_reallocate_memory(void* ptr, size_t size)
+	{
+		return realloc(ptr, size);
+	}
     
+    void _os_free_memory(void* ptr)
+    {
+		free(ptr);
+    }
+	
 }

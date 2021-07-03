@@ -155,5 +155,9 @@ namespace sv {
     bool _os_startup();
     void _os_recive_input();
     bool _os_shutdown();
+
+	void* _os_allocate_memory(size_t size);
+	void* _os_reallocate_memory(void* ptr, size_t size);
+	void  _os_free_memory(void* ptr);
     
 }

@@ -78,7 +78,7 @@ namespace sv {
 
     void RawList::_reallocate(size_t size)
     {
-		u8* new_data = (u8*)SV_ALLOCATE_MEMORY(size);
+		u8* new_data = (u8*)SV_ALLOCATE_MEMORY(size, "RawList");
 		
 		if (_data) {
 

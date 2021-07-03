@@ -202,7 +202,7 @@ namespace sv {
 			graphics_buffer_create(&desc, &buffer);
 			graphics_name_set(buffer, "BatchBuffer");
 
-			renderer->batch_data[cmd] = (u8*)SV_ALLOCATE_MEMORY(size);
+			renderer->batch_data[cmd] = (u8*)SV_ALLOCATE_MEMORY(size, "Renderer");
 		}
 
 		return buffer;

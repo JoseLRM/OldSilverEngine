@@ -679,7 +679,7 @@ namespace sv {
 
     bool _renderer_initialize()
     {
-		renderer = SV_ALLOCATE_STRUCT(RendererState);
+		renderer = SV_ALLOCATE_STRUCT(RendererState, "Renderer");
 	
 		SV_CHECK(compile_shaders());
 		SV_CHECK(create_renderpasses());
@@ -766,12 +766,11 @@ namespace sv {
 		u32 w, h;
 		SV_CHECK(load_image(filepath, (void**)& data, &w, &h));
 
-
 		u32 image_width = w / 4u;
 		u32 image_height = h / 3u;
 
 		Color* images[6u] = {};
-		Color* mem = (Color*)SV_ALLOCATE_MEMORY(image_width * image_height * 4u * 6u);
+		Color* mem = (Color*)SV_ALLOCATE_MEMORY(image_width * image_height * 4u * 6u, "Renderer");
 
 		foreach(i, 6u) {
 
@@ -838,8 +837,8 @@ namespace sv {
 
 		bool res = graphics_image_create(&desc, pimage);
 
-		free(mem);
-		delete[] data;
+		SV_FREE_MEMORY(mem);
+		SV_FREE_MEMORY(data);
 
 		return res;
     }

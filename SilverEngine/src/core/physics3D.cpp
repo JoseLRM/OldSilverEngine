@@ -29,7 +29,7 @@ namespace sv {
 
 		void* allocate(size_t size, const char* typeName, const char* filename, int line) override {
 			// TODO
-			return SV_ALLOCATE_MEMORY(size);
+			return SV_ALLOCATE_MEMORY(size, "Physx");
 		}
 		void deallocate(void* ptr) override {
 			return SV_FREE_MEMORY(ptr);
@@ -52,7 +52,7 @@ namespace sv {
 	
 	bool _physics3D_initialize()
 	{
-		physics = SV_ALLOCATE_STRUCT(Physics3DData);
+		physics = SV_ALLOCATE_STRUCT(Physics3DData, "Physx");
 		
 		physics->foundation = PxCreateFoundation(PX_PHYSICS_VERSION, physics->allocator, physics->error_callback);
 

@@ -1,9 +1,8 @@
 #include "platform/os.h"
 
 #define STBI_ASSERT(x) SV_ASSERT(x)
-#define STBI_MALLOC(size) SV_ALLOCATE_MEMORY(size)
-// TODO
-#define STBI_REALLOC(ptr, size) realloc(ptr, size)
+#define STBI_MALLOC(size) SV_ALLOCATE_MEMORY(size, "STB")
+#define STBI_REALLOC(ptr, size) SV_REALLOCATE_MEMORY(ptr, size)
 #define STBI_FREE(ptr) SV_FREE_MEMORY(ptr)
 #define STB_IMAGE_IMPLEMENTATION
 

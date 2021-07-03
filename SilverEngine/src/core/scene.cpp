@@ -191,7 +191,7 @@ namespace sv {
 
     bool _scene_initialize()
     {
-		scene_state = SV_ALLOCATE_STRUCT(SceneState);
+		scene_state = SV_ALLOCATE_STRUCT(SceneState, "Scene");
 
 		// Register assets
 		{
@@ -228,6 +228,7 @@ namespace sv {
 
 			close_ecs();
 
+			SV_FREE_STRUCT(scene);
 			scene = nullptr;
 		}
     }
@@ -260,7 +261,7 @@ namespace sv {
 		if (name == nullptr)
 			return true;
 	
-		scene_ptr = SV_ALLOCATE_STRUCT(Scene);
+		scene_ptr = SV_ALLOCATE_STRUCT(Scene, "Scene");
 
 		Scene& scene = *scene_ptr;
 		strcpy(scene.name, name);
@@ -721,7 +722,7 @@ namespace sv {
 
 		if (pool == NULL) {
 
-			ComponentPool* new_pools = (ComponentPool*) SV_ALLOCATE_MEMORY(sizeof(ComponentPool) * (alloc.pool_count + 1));
+			ComponentPool* new_pools = (ComponentPool*) SV_ALLOCATE_MEMORY(sizeof(ComponentPool) * (alloc.pool_count + 1), "Scene");
 
 			if (alloc.pools) {
 				memcpy(new_pools, alloc.pools, sizeof(ComponentPool) * alloc.pool_count);
@@ -734,7 +735,7 @@ namespace sv {
 			pool->count = 0u;
 			pool->capacity = 3u;
 			pool->free_count = 0u;
-			pool->data = (u8*)SV_ALLOCATE_MEMORY(reg.size * pool->capacity);
+			pool->data = (u8*)SV_ALLOCATE_MEMORY(reg.size * pool->capacity, "Scene");
 		}
 
 		Component* component = NULL;
@@ -1129,9 +1130,9 @@ namespace sv {
 		deserialize_u32(d, entity_data_count);
 
 		ecs.entity_hierarchy.resize(entity_count);
-		EntityInternal* entity_internal = (EntityInternal*)SV_ALLOCATE_MEMORY(sizeof(EntityInternal) * entity_data_count);
-		EntityMisc* entity_misc = (EntityMisc*)SV_ALLOCATE_MEMORY(sizeof(EntityMisc) * entity_data_count);
-		EntityTransform* entity_transform = (EntityTransform*)SV_ALLOCATE_MEMORY(sizeof(EntityTransform) * entity_data_count);
+		EntityInternal* entity_internal = (EntityInternal*)SV_ALLOCATE_MEMORY(sizeof(EntityInternal) * entity_data_count, "Scene");
+		EntityMisc* entity_misc = (EntityMisc*)SV_ALLOCATE_MEMORY(sizeof(EntityMisc) * entity_data_count, "Scene");
+		EntityTransform* entity_transform = (EntityTransform*)SV_ALLOCATE_MEMORY(sizeof(EntityTransform) * entity_data_count, "Scene");
 
 		foreach(i, entity_data_count) initialize_entity_internal(entity_internal[i]);
 		foreach(i, entity_data_count) initialize_entity_misc(entity_misc[i]);
@@ -1315,9 +1316,9 @@ namespace sv {
 
 		u32 new_entity_capacity = ecs.entity_capacity + ENTITY_ALLOCATION_POOL;
 		
-		EntityInternal* new_internal = (EntityInternal*) SV_ALLOCATE_MEMORY(sizeof(EntityInternal) * new_entity_capacity);
-		EntityMisc* new_misc = (EntityMisc*) SV_ALLOCATE_MEMORY(sizeof(EntityMisc) * new_entity_capacity);
-		EntityTransform* new_transform = (EntityTransform*) SV_ALLOCATE_MEMORY(sizeof(EntityTransform) * new_entity_capacity);
+		EntityInternal* new_internal = (EntityInternal*) SV_ALLOCATE_MEMORY(sizeof(EntityInternal) * new_entity_capacity, "Scene");
+		EntityMisc* new_misc = (EntityMisc*) SV_ALLOCATE_MEMORY(sizeof(EntityMisc) * new_entity_capacity, "Scene");
+		EntityTransform* new_transform = (EntityTransform*) SV_ALLOCATE_MEMORY(sizeof(EntityTransform) * new_entity_capacity, "Scene");
 
 		if (ecs.entity_capacity) {
 

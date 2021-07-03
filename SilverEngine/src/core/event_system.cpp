@@ -49,7 +49,7 @@ namespace sv {
 
     bool _event_initialize()
     {
-		event_system = SV_ALLOCATE_STRUCT(EventSystemState);
+		event_system = SV_ALLOCATE_STRUCT(EventSystemState, "EventSystem");
 		
 		SV_CHECK(mutex_create(event_system->global_mutex));
 		event_system->update_plugins_time = 0.f;

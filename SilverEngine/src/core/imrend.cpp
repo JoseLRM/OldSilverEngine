@@ -86,7 +86,7 @@ namespace sv {
 
     bool _imrend_initialize()
     {
-		imrend_state = SV_ALLOCATE_STRUCT(ImRendGlobalState);
+		imrend_state = SV_ALLOCATE_STRUCT(ImRendGlobalState, "Renderer");
 	
 		auto& imgfx = imrend_state->gfx;
 	

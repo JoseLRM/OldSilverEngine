@@ -70,7 +70,7 @@ namespace sv {
 		{
 			if (other._data) {
 
-				_data = (T*)SV_ALLOCATE_MEMORY(sizeof(T) * other._size);
+				_data = (T*)SV_ALLOCATE_MEMORY(sizeof(T) * other._size, "List");
 				
 				foreach(i, other._size) {
 					new(_data + i) T(other._data[i]);
@@ -101,7 +101,7 @@ namespace sv {
 
 			if (other._data) {
 
-				_data = (T*)SV_ALLOCATE_MEMORY(sizeof(T) * other._size);
+				_data = (T*)SV_ALLOCATE_MEMORY(sizeof(T) * other._size, "List");
 
 				foreach(i, other._size) {
 					_data[i] = other._data[i];
@@ -373,7 +373,7 @@ namespace sv {
 
 		SV_INLINE void _reallocate(size_t size)
 		{
-			T* newData = reinterpret_cast<T*>(SV_ALLOCATE_MEMORY(size * sizeof(T)));
+			T* newData = reinterpret_cast<T*>(SV_ALLOCATE_MEMORY(size * sizeof(T), "List"));
 
 			if (_data) {
 				if (size < _size) {
@@ -617,7 +617,7 @@ namespace sv {
 				else {
 
 					if (next->next == nullptr)
-						next->next = SV_ALLOCATE_STRUCT(Entry);
+						next->next = SV_ALLOCATE_STRUCT(Entry, "HastTable");
 
 					next = next->next;
 				}
@@ -1294,7 +1294,7 @@ namespace sv {
 	    
 			if (other._data) {
 
-				_data = (Entry*)SV_ALLOCATE_MEMORY(sizeof(Entry) * other._size);
+				_data = (Entry*)SV_ALLOCATE_MEMORY(sizeof(Entry) * other._size, "IndexedList");
 				
 				foreach(i, other._size) {
 
@@ -1329,7 +1329,7 @@ namespace sv {
 
 				if (other._data) {
 
-					_data = (Entry*)SV_ALLOCATE_MEMORY(sizeof(Entry) * other._size);
+					_data = (Entry*)SV_ALLOCATE_MEMORY(sizeof(Entry) * other._size, "IndexedList");
 				
 					foreach(i, other._size) {
 
@@ -1565,7 +1565,7 @@ namespace sv {
 
 		SV_INLINE void _reallocate(size_t size) {
 	    
-			Entry* new_data = reinterpret_cast<Entry*>(SV_ALLOCATE_MEMORY(size * sizeof(Entry)));
+			Entry* new_data = reinterpret_cast<Entry*>(SV_ALLOCATE_MEMORY(size * sizeof(Entry), "IndexedList"));
 
 			if (size > _size) {
 

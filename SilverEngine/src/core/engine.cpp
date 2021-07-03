@@ -232,7 +232,8 @@ namespace sv {
 
     SV_INTERNAL bool initialize_engine()
     {
-#if SV_EDITOR	
+#if SV_EDITOR
+		_initialize_memory_profiler();
 		_console_initialize();
 #endif
 	
@@ -334,6 +335,7 @@ namespace sv {
 
 #if SV_EDITOR
 		_console_close();
+		_close_memory_profiler();
 #endif
     }
     
