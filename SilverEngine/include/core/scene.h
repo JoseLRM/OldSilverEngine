@@ -63,7 +63,7 @@ namespace sv {
     void _manage_scenes();
     void _scene_close();
     void _update_scene();
-    void _draw_scene();
+    void _draw_scene(CameraComponent& camera, v3_f32 position, v4_f32 rotation);
     bool _start_scene(const char* name);
 
     SV_API bool create_entity_model(Entity parent, const char* filepath);

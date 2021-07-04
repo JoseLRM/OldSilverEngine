@@ -445,15 +445,14 @@ namespace sv {
 #else
 			_update_scene();
 #endif
-    
-	    
-            // Draw scene
-			_draw_scene();
 	    
 			// Draw editor and the console	    
 #if SV_EDITOR
-			_editor_draw();
+			_editor_draw(); 
 			_console_draw();
+#else
+			// TODO: Draw scene
+			_draw_scene();
 #endif
 
 			_renderer_end();

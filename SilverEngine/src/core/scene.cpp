@@ -549,13 +549,16 @@ namespace sv {
 			scene.data.main_camera = 0;
 		}
 
+#if !(SV_EDITOR)
+		
 		CameraComponent* camera = get_main_camera();
-
+		
 		// Adjust camera
 		if (camera) {
 			v2_u32 size = os_window_size();
 			camera->adjust(f32(size.x) / f32(size.y));
 		}
+#endif
 
 		// Update cameras matrices
 		{

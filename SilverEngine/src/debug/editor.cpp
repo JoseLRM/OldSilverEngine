@@ -118,27 +118,33 @@ namespace sv {
 		List<Entity> selected_entities;
 		Prefab selected_prefab = 0;
 		bool camera_focus = false;
+		bool debug_draw = true;
 
 		v2_f32 absolute_mouse_position;
 		v2_f32 absolute_mouse_last_position;
 		v2_f32 absolute_mouse_dragged;
 		
 		v2_f32 editor_view_size;
-		v2_f32 editor_view_position;
 		bool in_editor_view;
+		v2_f32 game_view_size;
+		bool in_game_view;
+		v2_f32 view_position;
 
 		AssetBrowserInfo asset_browser;
 
 		EditorToolData tool_data;
 
-		GPUImage* offscreen = NULL;
+		bool show_editor = false;
+		bool show_game = false;
+		GPUImage* offscreen_editor = NULL;
+		GPUImage* offscreen_game = NULL;
 	
 		TextureAsset image;
 		static constexpr v4_f32 TEXCOORD_FOLDER = { 0.f, 0.f, 0.05989583333333f, 0.05989583333333f };
 		static constexpr v4_f32 TEXCOORD_FILE = { 2.f / 1920.f, 105.f / 1920.f, 109.f / 1920.f, 212.f / 1920.f };
 		static constexpr v4_f32 TEXCOORD_PLAY = { 141.f / 1920.f, 6.f / 1920.f, 264.f / 1920.f, 129.f / 1920.f };
 		static constexpr v4_f32 TEXCOORD_PAUSE = { 275.f / 1920.f, 5.f / 1920.f, 386.f / 1920.f, 116.f / 1920.f };
-		static constexpr v4_f32 TEXCOORD_STOP = { 275.f / 1920.f, 5.f / 1920.f, 386.f / 1920.f, 116.f / 1920.f };
+		static constexpr v4_f32 TEXCOORD_STOP = { 405.f / 1920.f, 6.f / 1920.f, 514.f / 1920.f, 115.f / 1920.f };
 		static constexpr v4_f32 TEXCOORD_LIGHT_PROBE = { 1402.f / 1920.f, 1402.f / 1920.f, 1.f, 1.f };
 		static constexpr v4_f32 TEXCOORD_CAMERA_PROBE = { 784.f / 1920.f, 1320.f / 1920.f, 1338.f / 1920.f, 1874 / 1920.f };
 
@@ -222,7 +228,7 @@ namespace sv {
 
 		// Debug rendering
 		if (input.keys[Key_F1] == InputState_Pressed) {
-			dev.debug_draw = !dev.debug_draw;
+			editor.debug_draw = !editor.debug_draw;
 		}
 
 		// Console show - hide
@@ -437,6 +443,9 @@ namespace sv {
 		if (!input.unused)
 			return;
 
+		if (!editor.in_editor_view)
+			return;
+
 		if (dev.camera.projection_type == ProjectionType_Perspective) {
 
 			XMVECTOR rotation = vec4_to_dx(dev.camera.rotation);
@@ -500,6 +509,7 @@ namespace sv {
 
 			if (editor.camera_focus) {
 
+				// TODO
 				v2_f32 drag = editor.absolute_mouse_dragged / editor.editor_view_size;
 
 				dev.camera.position -= vec2_to_vec3((drag * v2_f32{ dev.camera.width, dev.camera.height }));
@@ -851,7 +861,8 @@ namespace sv {
 		desc.width = 1920u;
 		desc.height = 1080u;
 
-		SV_CHECK(graphics_image_create(&desc, &editor.offscreen));
+		SV_CHECK(graphics_image_create(&desc, &editor.offscreen_editor));
+		SV_CHECK(graphics_image_create(&desc, &editor.offscreen_game));
 
 		return true;
     }
@@ -862,7 +873,8 @@ namespace sv {
 
 		unload_asset(editor.image);
 
-		graphics_destroy(editor.offscreen);
+		graphics_destroy(editor.offscreen_editor);
+		graphics_destroy(editor.offscreen_game);
 		
 		return true;
     }
@@ -2615,30 +2627,61 @@ namespace sv {
     {
 		if (_gui_begin()) {
 
-			if (there_is_scene() && dev.debug_draw) {
+			if (there_is_scene() && editor.debug_draw) {
 
 				gui_begin_top(GuiTopLocation_Center);
 
-				if (gui_image_button(NULL, editor.image.get(), GlobalEditorData::TEXCOORD_PLAY, 324, GuiImageButtonFlag_NoBackground)) {
-					dev.next_engine_state = EngineState_Play;
+				if (dev.engine_state == EngineState_Play) {
+
+					if (gui_image_button(NULL, editor.image.get(), engine.update_scene ? GlobalEditorData::TEXCOORD_PAUSE : GlobalEditorData::TEXCOORD_PLAY, 754, GuiImageButtonFlag_NoBackground)) {
+						engine.update_scene = !engine.update_scene;
+					}
+					if (gui_image_button(NULL, editor.image.get(), GlobalEditorData::TEXCOORD_STOP, 324, GuiImageButtonFlag_NoBackground)) {
+						dev.next_engine_state = EngineState_Edit;
+					}
 				}
-				u32 flags = (dev.engine_state == EngineState_Edit) ? GuiImageButtonFlag_Disabled : 0u;
-				if (gui_image_button(NULL, editor.image.get(), GlobalEditorData::TEXCOORD_PAUSE, 754, GuiImageButtonFlag_NoBackground | flags)) {
-					dev.next_engine_state = EngineState_Play;
+				else {
+
+					if (gui_image_button(NULL, editor.image.get(), GlobalEditorData::TEXCOORD_PLAY, 324, GuiImageButtonFlag_NoBackground)) {
+						dev.next_engine_state = EngineState_Play;
+					}
 				}
 
 				gui_end_top();
 
 				if (gui_begin_window("Editor View")) {
 
-					gui_image(editor.offscreen, 0, 0, GuiImageFlag_Fullscreen);
+					gui_image(editor.offscreen_editor, 0, 0, GuiImageFlag_Fullscreen);
 
 					editor.editor_view_size = gui_root_size();
-					editor.editor_view_position = gui_root_position();
 					editor.in_editor_view = gui_image_catch_input(0);
+
+					if (editor.in_editor_view) {
+						editor.view_position = gui_root_position();
+					}
+
+					editor.show_editor = true;
 					
 					gui_end_window();
 				}
+				else editor.show_editor = false;
+
+				if (gui_begin_window("Game View")) {
+
+					gui_image(editor.offscreen_game, 0, 0, GuiImageFlag_Fullscreen);
+
+					editor.game_view_size = gui_root_size();
+					editor.in_game_view = gui_image_catch_input(0);
+
+					if (editor.in_game_view) {
+						editor.view_position = gui_root_position();
+					}
+
+					editor.show_game = true;
+					
+					gui_end_window();
+				}
+				else editor.show_game = false;
 
 				// Window management
 				if (gui_begin_window("Window Manager", GuiWindowFlag_NoClose)) {
@@ -2728,14 +2771,24 @@ namespace sv {
 			f32 aspect = os_window_aspect() * (SV_MAX(editor.editor_view_size.x, 0.01f) / SV_MAX(editor.editor_view_size.y, 0.01f));
 			dev.camera.adjust(aspect);
 
+			CameraComponent* camera = get_main_camera();
+			if (camera) {
+				aspect = os_window_aspect() * (SV_MAX(editor.game_view_size.x, 0.01f) / SV_MAX(editor.game_view_size.y, 0.01f));
+				camera->adjust(aspect);
+			}
+
 			editor.absolute_mouse_position = input.mouse_position;
 			editor.absolute_mouse_last_position = input.mouse_last_pos;
 			editor.absolute_mouse_dragged = input.mouse_dragged;
 
-			input.mouse_position = ((input.mouse_position + 0.5f) - (editor.editor_view_position - editor.editor_view_size * 0.5f)) / editor.editor_view_size;
+			v2_f32 view_size = editor.editor_view_size;
+			
+			if (editor.in_game_view) view_size = editor.game_view_size;
+			
+			input.mouse_position = ((input.mouse_position + 0.5f) - (editor.view_position - view_size * 0.5f)) / view_size;
 			input.mouse_position -= 0.5f;
 			
-			input.mouse_last_pos = ((input.mouse_last_pos + 0.5f) - (editor.editor_view_position - editor.editor_view_size * 0.5f)) / editor.editor_view_size;
+			input.mouse_last_pos = ((input.mouse_last_pos + 0.5f) - (editor.view_position - view_size * 0.5f)) / view_size;
 			input.mouse_last_pos -= 0.5f;
 
 			input.mouse_dragged *= editor.editor_view_size;
@@ -2856,7 +2909,7 @@ namespace sv {
 			select_entity();
     }
     
-    SV_INTERNAL void update_edit_state()
+    SV_INTERNAL void update_editor_stuff()
     {
 		for (u32 i = 0u; i < editor.selected_entities.size();) {
 
@@ -2867,25 +2920,13 @@ namespace sv {
 	
 		display_gui();
 
-		if (dev.debug_draw && there_is_scene()) {
+		if (there_is_scene()) {
 
 			control_camera();
 		}
 
 		if (there_is_scene())
 			do_picking_stuff();
-    }
-
-    SV_INTERNAL void update_play_state()
-    {
-		if (dev.debug_draw) {
-			display_gui();
-
-			if (there_is_scene()) {
-				control_camera();
-				do_picking_stuff();
-			}
-		}
     }
 
     void update_project_state()
@@ -2999,7 +3040,8 @@ namespace sv {
 				if (dev.engine_state != EngineState_ProjectManagement)
 					_start_scene(get_scene_name());
 				
-				dev.debug_draw = true;
+				//dev.draw_debug_camera = true;
+				editor.debug_draw = true;
 				engine.update_scene = false;
 				_gui_load(engine.project_path);
 			} break;
@@ -3016,7 +3058,7 @@ namespace sv {
 					save_scene();
 					_start_scene(get_scene_name());
 
-					dev.debug_draw = false;
+					//dev.draw_debug_camera = false;
 					editor.selected_entities.reset();
 				}
 			} break;
@@ -3041,11 +3083,8 @@ namespace sv {
 		switch (dev.engine_state) {
 
 		case EngineState_Edit:
-			update_edit_state();
-			break;
-
 		case EngineState_Play:
-			update_play_state();
+			update_editor_stuff();
 			break;
 
 		case EngineState_ProjectManagement:
@@ -3057,7 +3096,7 @@ namespace sv {
 
     SV_INTERNAL void draw_edit_state(CommandList cmd)
     {
-		if (!dev.debug_draw) return;
+		//if (!dev.debug_draw) return;
 	
 		imrend_begin_batch(cmd);
 
@@ -3111,7 +3150,7 @@ namespace sv {
 		}
 
 		// Draw 2D grid
-		if (dev.camera.projection_type == ProjectionType_Orthographic && dev.debug_draw) {
+		if (dev.camera.projection_type == ProjectionType_Orthographic) {
 
 			f32 width = dev.camera.width;
 			f32 height = dev.camera.height;
@@ -3317,20 +3356,6 @@ namespace sv {
 
 		}
 
-		XMMATRIX vpm = XMMatrixIdentity();
-
-		if (dev.debug_draw)
-			vpm = dev.camera.view_projection_matrix;
-		else {
-
-			CameraComponent* cam = get_main_camera();
-		
-			if (cam) {
-
-				vpm = cam->view_projection_matrix;
-			}
-		}
-
 		imrend_flush(cmd);
     }
 
@@ -3338,16 +3363,11 @@ namespace sv {
     {
 		CommandList cmd = graphics_commandlist_get();
 
-		switch (dev.engine_state) {
+		if (editor.show_editor) {
 
-		case EngineState_Edit:
-		case EngineState_Play:
+			_draw_scene(dev.camera, dev.camera.position, dev.camera.rotation);
 			draw_edit_state(cmd);
-			break;
-    
-		}
 
-		{
 			GPUImage* off = renderer_offscreen();
 			const GPUImageInfo& info = graphics_image_info(off);
 			
@@ -3357,11 +3377,39 @@ namespace sv {
 			blit.dst_region.offset0 = { 0, 0, 0 };
 			blit.dst_region.offset1 = { (i32)info.width, (i32)info.height, 1 };
 			
-			graphics_image_blit(off, editor.offscreen, GPUImageLayout_RenderTarget, GPUImageLayout_ShaderResource, 1u, &blit, SamplerFilter_Nearest, cmd);
+			graphics_image_blit(off, editor.offscreen_editor, GPUImageLayout_RenderTarget, GPUImageLayout_ShaderResource, 1u, &blit, SamplerFilter_Nearest, cmd);
+		}
+
+		if (editor.show_game) {
+
+			CameraComponent* camera = get_main_camera();
+
+			if (camera) {
+
+				// TODO
+				Entity entity = camera->id;
+				
+				v3_f32 position = get_entity_world_position(entity);
+				v4_f32 rotation = get_entity_world_rotation(entity);
+				
+				_draw_scene(*camera, position, rotation);
+				
+				GPUImage* off = renderer_offscreen();
+				const GPUImageInfo& info = graphics_image_info(off);
+			
+				GPUImageBlit blit;
+				blit.src_region.offset0 = { 0, (i32)info.height, 0 };
+				blit.src_region.offset1 = { (i32)info.width, 0, 1 };
+				blit.dst_region.offset0 = { 0, 0, 0 };
+				blit.dst_region.offset1 = { (i32)info.width, (i32)info.height, 1 };
+			
+				graphics_image_blit(off, editor.offscreen_game, GPUImageLayout_RenderTarget, GPUImageLayout_ShaderResource, 1u, &blit, SamplerFilter_Nearest, cmd);
+			}
+			
 		}
 
 		// Draw gui
-		if (dev.debug_draw)
+		if (editor.debug_draw)
 			_gui_draw(cmd);
     }
 
