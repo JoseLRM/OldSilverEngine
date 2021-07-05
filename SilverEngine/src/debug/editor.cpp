@@ -118,6 +118,7 @@ namespace sv {
 		List<Entity> selected_entities;
 		Prefab selected_prefab = 0;
 		bool camera_focus = false;
+		bool entity_viewer = false;
 		bool debug_draw = true;
 
 		v2_f32 absolute_mouse_position;
@@ -221,7 +222,7 @@ namespace sv {
     SV_AUX void update_key_shortcuts()
     {
 		// Fullscreen
-		if (input.keys[Key_F10] == InputState_Pressed) {
+		if (input.keys[Key_F11] == InputState_Pressed) {
 			
 			os_window_set_fullscreen(os_window_state() != WindowState_Fullscreen);
 		}
@@ -237,6 +238,10 @@ namespace sv {
 			if (console_is_open())
 				console_close();
 			else console_open();
+		}
+
+		if (input.keys[Key_F2] == InputState_Pressed && editor.selected_entities.size()) {
+			editor.entity_viewer = true;
 		}
 
 		// Change debug camera projection
@@ -315,11 +320,6 @@ namespace sv {
 			}
 		}
 		else {
-
-			// Editor mode
-			if (input.keys[Key_F11] == InputState_Pressed) {
-				dev.next_engine_state = EngineState_Edit;
-			}
 		}
     }
 
@@ -446,73 +446,99 @@ namespace sv {
 		if (!editor.in_editor_view)
 			return;
 
-		if (dev.camera.projection_type == ProjectionType_Perspective) {
+		if (editor.entity_viewer) {
 
-			XMVECTOR rotation = vec4_to_dx(dev.camera.rotation);
+			v3_f32 position;
 
-			XMVECTOR direction;
-			XMMATRIX rotation_matrix;
+			for (Entity e : editor.selected_entities) {
 
-			// Rotation matrix
-			rotation_matrix = XMMatrixRotationQuaternion(rotation);
-
-			// Camera direction
-			direction = XMVectorSet(0.f, 0.f, 1.f, 0.f);
-			direction = XMVector3Transform(direction, rotation_matrix);
-
-			// Zoom
-			if (input.mouse_wheel != 0.f) {
-
-				f32 force = dev.camera.velocity;
-				if (input.keys[Key_Shift] == InputState_Hold)
-					force *= 3.f;
-
-				dev.camera.position += v3_f32(direction) * input.mouse_wheel * force;
-				input.unused = false;
+				position += get_entity_world_position(e);
 			}
+			position /= (f32)editor.selected_entities.size();
 
-			// Camera rotation
-			if (input.mouse_buttons[MouseButton_Center] == InputState_Pressed) {
-
-				editor.camera_focus = true;
+			if (dev.camera.projection_type == ProjectionType_Perspective) {
+				
+				dev.camera.position = position;
+				dev.camera.position += v3_f32(0.f, 0.f, -3.f);
 			}
-			else if (input.mouse_buttons[MouseButton_Center] == InputState_Released) {
-				editor.camera_focus = false;
+			else if (dev.camera.projection_type == ProjectionType_Orthographic) {
+
+				dev.camera.position = position;
 			}
-
-			if (editor.camera_focus && (input.mouse_dragged.x != 0.f || input.mouse_dragged.y != 0.f)) {
-
-				v2_f32 drag = editor.absolute_mouse_dragged * 3.f;
-
-				dev.camera.pitch = SV_MIN(SV_MAX(dev.camera.pitch - drag.y, -PI/2), PI/2);
-				dev.camera.yaw += drag.x;
-
-				rotation = XMQuaternionRotationRollPitchYaw(dev.camera.pitch, dev.camera.yaw, 0.f);
-				input.unused = false;
-			}
-
-			dev.camera.rotation = v4_f32(rotation);
 		}
 		else {
+			
+			if (dev.camera.projection_type == ProjectionType_Perspective) {
 
-			InputState button_state = input.mouse_buttons[MouseButton_Center];
+				XMVECTOR rotation = vec4_to_dx(dev.camera.rotation);
 
-			if (button_state == InputState_Pressed) {
-				editor.camera_focus = true;
+				XMVECTOR direction;
+				XMMATRIX rotation_matrix;
+
+				// Rotation matrix
+				rotation_matrix = XMMatrixRotationQuaternion(rotation);
+
+				// Camera direction
+				direction = XMVectorSet(0.f, 0.f, 1.f, 0.f);
+				direction = XMVector3Transform(direction, rotation_matrix);
+
+				// Zoom
+				if (input.mouse_wheel != 0.f) {
+
+					f32 force = dev.camera.velocity;
+					if (input.keys[Key_Shift] == InputState_Hold)
+						force *= 3.f;
+
+					dev.camera.position += v3_f32(direction) * input.mouse_wheel * force;
+					input.unused = false;
+				}
+
+				// Camera rotation
+				if (input.mouse_buttons[MouseButton_Center] == InputState_Pressed) {
+
+					editor.camera_focus = true;
+				}
+				else if (input.mouse_buttons[MouseButton_Center] == InputState_Released) {
+					editor.camera_focus = false;
+				}
+
+				if (editor.camera_focus && (input.mouse_dragged.x != 0.f || input.mouse_dragged.y != 0.f)) {
+
+					v2_f32 drag = editor.absolute_mouse_dragged * 3.f;
+
+					dev.camera.pitch = SV_MIN(SV_MAX(dev.camera.pitch - drag.y, -PI/2), PI/2);
+					dev.camera.yaw += drag.x;
+
+					rotation = XMQuaternionRotationRollPitchYaw(dev.camera.pitch, dev.camera.yaw, 0.f);
+					input.unused = false;
+				}
+
+				dev.camera.rotation = v4_f32(rotation);
 			}
-			else if (button_state == InputState_Released) {
-				editor.camera_focus = false;
+			else {
+
+				InputState button_state = input.mouse_buttons[MouseButton_Center];
+
+				if (button_state == InputState_Pressed) {
+					editor.camera_focus = true;
+				}
+				else if (button_state == InputState_Released) {
+					editor.camera_focus = false;
+				}
+
+				if (editor.camera_focus) {
+
+					// TODO
+					v2_f32 drag = editor.absolute_mouse_dragged / editor.editor_view_size;
+
+					dev.camera.position -= vec2_to_vec3((drag * v2_f32{ dev.camera.width, dev.camera.height }));
+					input.unused = false;
+				}
+				else editor.camera_focus = false;
 			}
+		}
 
-			if (editor.camera_focus) {
-
-				// TODO
-				v2_f32 drag = editor.absolute_mouse_dragged / editor.editor_view_size;
-
-				dev.camera.position -= vec2_to_vec3((drag * v2_f32{ dev.camera.width, dev.camera.height }));
-				input.unused = false;
-			}
-			else editor.camera_focus = false;
+		if (dev.camera.projection_type == ProjectionType_Orthographic) {
 
 			if (input.mouse_wheel != 0.f) {
 
@@ -2917,6 +2943,9 @@ namespace sv {
 				editor.selected_entities.erase(i);
 			else ++i;
 		}
+
+		if (editor.selected_entities.empty())
+			editor.entity_viewer = false;
 	
 		display_gui();
 
