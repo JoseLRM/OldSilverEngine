@@ -484,13 +484,10 @@ namespace sv {
 
 				v2_f32 drag = editor.absolute_mouse_dragged * 3.f;
 
-				// TODO: pitch limit
-				XMVECTOR pitch = XMQuaternionRotationAxis(XMVectorSet(1.f, 0.f, 0.f, 0.f), -drag.y);
-				XMVECTOR yaw = XMQuaternionRotationAxis(XMVectorSet(0.f, 1.f, 0.f, 0.f), drag.x);
+				dev.camera.pitch = SV_MIN(SV_MAX(dev.camera.pitch - drag.y, -PI/2), PI/2);
+				dev.camera.yaw += drag.x;
 
-				rotation = XMQuaternionMultiply(pitch, rotation);
-				rotation = XMQuaternionMultiply(rotation, yaw);
-				rotation = XMQuaternionNormalize(rotation);
+				rotation = XMQuaternionRotationRollPitchYaw(dev.camera.pitch, dev.camera.yaw, 0.f);
 				input.unused = false;
 			}
 

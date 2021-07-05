@@ -18,6 +18,9 @@ namespace sv {
 		v3_f32 position;
 		v4_f32 rotation = { 0.f, 0.f, 0.f, 1.f }; // TODO: Use pitch and yaw
 		f32 velocity = 0.45f;
+
+		f32 pitch = 0.f;
+		f32 yaw = 0.f;
     };
 
     enum EngineState : u32 {
