@@ -1330,13 +1330,15 @@ namespace sv {
 				}
 
 				v3_f32 center = v3_f32(min_x + (max_x - min_x) * 0.5f, min_y + (max_y - min_y) * 0.5f, min_z + (max_z - min_z) * 0.5f);
+				f32 dim = SV_MAX(SV_MAX(max_x - min_x, max_y - min_y), max_z - min_z);
 
 				for (v3_f32& pos : mesh.positions) {
 
 					pos -= center;
+					pos /= dim;
 				}
 
-				mesh.transform_matrix = XMMatrixTranslation(center.x, center.y, center.z);
+				mesh.transform_matrix = XMMatrixScaling(dim, dim, dim) * XMMatrixTranslation(center.x, center.y, center.z);
 			}
 		}
 		else {

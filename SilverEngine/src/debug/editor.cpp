@@ -1812,6 +1812,8 @@ namespace sv {
 		if (gui_begin_window("Import Model", GuiWindowFlag_Temporal)) {
 
 			auto& data = editor.import_model_data;
+			
+			gui_separator(1);
 
 			if (gui_collapse("Meshes")) {
 
@@ -2629,6 +2631,24 @@ namespace sv {
 
 			if (there_is_scene() && editor.debug_draw) {
 
+				gui_begin_top(GuiTopLocation_Left);
+				{
+					auto& data = editor.tool_data;
+
+					u32 flags = (data.tool_type == EditorToolType_Gizmos) ? GuiImageButtonFlag_Disabled : 0;
+					
+					if (gui_image_button(NULL, NULL, {0.f, 0.f, 1.f, 1.f}, 209846, GuiImageButtonFlag_NoBackground | flags)) {
+						data.tool_type = EditorToolType_Gizmos;
+					}
+
+					flags = (data.tool_type == EditorToolType_TerrainBrush) ? GuiImageButtonFlag_Disabled : 0;
+					
+					if (gui_image_button(NULL, NULL, {0.f, 0.f, 1.f, 1.f}, 43645, GuiImageButtonFlag_NoBackground | flags)) {
+						data.tool_type = EditorToolType_TerrainBrush;
+					}
+				}
+				gui_end_top();
+
 				gui_begin_top(GuiTopLocation_Center);
 
 				if (dev.engine_state == EngineState_Play) {
@@ -2716,23 +2736,6 @@ namespace sv {
 
 					if (gui_button("Exit Project")) {
 						dev.next_engine_state = EngineState_ProjectManagement;
-					}
-
-					// TEMP
-
-					gui_separator(2);
-
-					auto& type = editor.tool_data.tool_type;
-					bool gizmos = type == EditorToolType_Gizmos;
-					bool terrain_brush = type == EditorToolType_TerrainBrush;
-
-					if (gui_checkbox("Gizmos", gizmos)) {
-						if (gizmos) type = EditorToolType_Gizmos;
-						else type = EditorToolType_None;
-					}
-					if (gui_checkbox("Terrain Brush", terrain_brush)) {
-						if (terrain_brush) type = EditorToolType_TerrainBrush;
-						else type = EditorToolType_None;
 					}
 
 					// TEMP
