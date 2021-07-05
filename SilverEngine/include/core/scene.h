@@ -424,6 +424,10 @@ namespace sv {
     
 }
 
+#define foreach_component(comp_id, it, flags) for (CompIt it = comp_it_begin(comp_id); it.has_next; comp_it_next(it))
+#define foreach_tag(tag_id, it, flags) for (TagIt it = tag_it_begin(tag_id); it.has_next; tag_it_next(it))
+
 #if SV_EDITOR
 #define __TAG(name) sv::get_tag_id(#name)
+#define __COMPONENT(name) sv::get_component_id(#name)
 #endif

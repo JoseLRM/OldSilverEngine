@@ -59,6 +59,28 @@ namespace sv {
 					buffer_write(buffer, ")\" ");
 				}
 			}
+			// Tags
+			u32 component_count = get_component_register_count();
+			foreach(i, component_count) {
+
+				const char* comp_name = get_component_name(CompID(i));
+				
+				char name[COMPONENT_NAME_SIZE + 1];
+				string_copy(name, comp_name, COMPONENT_NAME_SIZE + 1u);
+				
+				foreach(i, string_size(name)) {
+					if (name[i] == ' ') {
+						name[i] = '_';
+					}
+				}
+
+				buffer_write(buffer, "-D");
+				buffer_write(buffer, name);
+				buffer_write(buffer, "_ID=\"");
+				buffer_write(buffer, "__COMPONENT(");
+				buffer_write(buffer, comp_name);
+				buffer_write(buffer, ")\" ");
+			}
 			// TODO: For release
 			/*foreach(i, TAG_MAX) {
 
