@@ -342,6 +342,8 @@ namespace sv {
 	struct GuiScreenDocking {
 		u32 window_id;
 		GuiDockingLocation location;
+		f32 close_value;
+		bool closed;
 		bool undock_request;
 	};
 
@@ -669,7 +671,7 @@ namespace sv {
 			serialize_begin(s);
 			
 			// VERSION
-			serialize_u32(s, 6u);
+			serialize_u32(s, 8u);
 
 			// Window states
 			{
@@ -723,8 +725,12 @@ namespace sv {
 				serialize_u32(s, docking_id);
 
 				if (docking_id != u32_max) {
+
+					GuiScreenDocking& doc = gui->screen_docking[docking_id];
 					
-					serialize_u32(s, gui->screen_docking[docking_id].location);
+					serialize_u32(s, doc.location);
+					serialize_bool(s, doc.closed);
+					serialize_f32(s, doc.close_value);
 				}
 			}	
 			
@@ -848,7 +854,7 @@ namespace sv {
 
 						deserialize_node(d, window.root_id, true);
 						deserialize_v4_f32(d, window.bounds);
-						if (version == 6)
+						if (version >= 6)
 							deserialize_v2_f32(d, window.last_size);
 						else window.last_size = { window.bounds.z, window.bounds.w };
 
@@ -856,9 +862,15 @@ namespace sv {
 						deserialize_u32(d, screen_docking_id);
 
 						if (screen_docking_id < 5u) {
+
+							GuiScreenDocking& doc = gui->screen_docking[screen_docking_id];
 							
-							deserialize_u32(d, (u32&)gui->screen_docking[screen_docking_id].location);
-							gui->screen_docking[screen_docking_id].window_id = window_id;
+							deserialize_u32(d, (u32&)doc.location);
+							doc.window_id = window_id;
+							if (version >= 7)
+								deserialize_bool(d, doc.closed);
+							if (version >= 8)
+								deserialize_f32(d, doc.close_value);
 						}
 					}
 				}
@@ -1750,6 +1762,8 @@ namespace sv {
 									GuiScreenDocking& doc = gui->screen_docking[gui->screen_docking_count++];
 									doc.location = GuiDockingLocation(i);
 									doc.window_id = gui->focus.root.index;
+									doc.close_value = 0.f;
+									doc.closed = false;
 									doc.undock_request = false;
 
 									w.last_size = { w.bounds.z, w.bounds.w };
@@ -3236,15 +3250,35 @@ namespace sv {
 			}
 		}
 
+		if (input.unused && input.keys[Key_W] && input.keys[Key_Control]) {
+
+			input.unused = false;
+
+			foreach(i, gui->screen_docking_count) {
+				
+				GuiScreenDocking& doc = gui->screen_docking[i];
+
+				if (doc.location == GuiDockingLocation_Center)
+					continue;
+
+				v4_f32 b = compute_docking_button({ 0.5f, 0.5f, 1.f, 1.f }, doc.location, true);
+				
+				if (mouse_in_bounds(b)) {
+					if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
+						doc.closed = !doc.closed;
+					}
+				}
+			}
+		}
+
 		update_focus();
 
 		// Screen docking
-		{
-			
-			v4_f32 bounds = gui->root_info.widget_bounds;
+		{			
+			v4_f32 bounds = gui->root_info.widget_bounds;			
 			
 			foreach(i, gui->screen_docking_count) {
-
+				
 				GuiScreenDocking& doc = gui->screen_docking[i];
 
 				if (doc.undock_request || !gui->windows.exists(doc.window_id)) {
@@ -3261,10 +3295,22 @@ namespace sv {
 					GuiWindow& window = gui->windows[doc.window_id];
 					v4_f32& b = window.bounds;
 
+					// Update close animation
+					{
+						if (doc.closed && doc.close_value > 0.f) {
+							doc.close_value -= engine.deltatime * 2.5f;
+							doc.close_value = SV_MAX(doc.close_value, 0.f);
+						}
+						else if (!doc.closed && doc.close_value < 1.f) {
+							doc.close_value += engine.deltatime * 2.5f;
+							doc.close_value = SV_MIN(doc.close_value, 1.f);
+						}
+					}
+
 					switch (doc.location) {
 
 					case GuiDockingLocation_Left:
-						b.z = 0.25f;
+						b.z = 0.25f * doc.close_value;
 						b.x = bounds.x - bounds.z * 0.5f + b.z * 0.5f;
 						b.y = bounds.y;
 						b.w = bounds.w;
@@ -3274,7 +3320,7 @@ namespace sv {
 						break;
 
 					case GuiDockingLocation_Right:
-						b.z = 0.25f;
+						b.z = 0.25f * doc.close_value;
 						b.x = bounds.x + bounds.z * 0.5f - b.z * 0.5f;
 						b.y = bounds.y;
 						b.w = bounds.w;
@@ -3284,7 +3330,7 @@ namespace sv {
 						break;
 
 					case GuiDockingLocation_Bottom:
-						b.w = 0.3f;
+						b.w = 0.3f * doc.close_value;
 						b.y = bounds.y - bounds.w * 0.5f + b.w * 0.5f;
 						b.x = bounds.x;
 						b.z = bounds.z;
@@ -3294,7 +3340,7 @@ namespace sv {
 						break;
 						
 					case GuiDockingLocation_Top:
-						b.w = 0.2f;
+						b.w = 0.2f * doc.close_value;
 						b.y = bounds.y + bounds.w * 0.5f - b.w * 0.5f;
 						b.x = bounds.x;
 						b.z = bounds.z;
@@ -4723,6 +4769,39 @@ namespace sv {
 		// Draw popup
 		if (gui->popup.id != 0u)
 			draw_root({ GuiRootType_Popup, 0u }, cmd);
+
+		// Close docking effects
+		{
+			if (input.keys[Key_W] && input.keys[Key_Control]) {
+
+				foreach(i, GuiDockingLocation_MaxEnum) {
+
+					if (i == GuiDockingLocation_Center)
+						continue;
+					
+					v4_f32 b = compute_docking_button({ 0.5f, 0.5f, 1.f, 1.f }, (GuiDockingLocation)i, true);
+					imrend_draw_quad({b.x, b.y, 0.f}, {b.z, b.w}, Color::Gray(150,20), cmd);
+				}
+
+				foreach(i, gui->screen_docking_count) {
+
+					GuiScreenDocking& doc = gui->screen_docking[i];
+
+					if (doc.location == GuiDockingLocation_Center)
+						continue;
+
+					v4_f32 b = compute_docking_button({ 0.5f, 0.5f, 1.f, 1.f }, doc.location, true);
+					Color color = doc.closed ? Color::Red() : Color::Green();
+
+					if (mouse_in_bounds(b)) {
+						b.z *= 1.3f;
+						b.w *= 1.3f;
+					}
+						
+					imrend_draw_quad({b.x, b.y, 0.f}, {b.z, b.w}, color, cmd);
+				}
+			}
+		}
 
 		// Docking effects
 		{

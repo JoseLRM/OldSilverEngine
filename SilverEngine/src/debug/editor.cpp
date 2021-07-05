@@ -2736,6 +2736,9 @@ namespace sv {
 						"Scene Settings",
 						"SpriteSheet Editor",
 						"Material Editor",
+						"Editor View",
+						"Game View",
+						"Renderer Debug",
 					};
 
 					foreach(i, SV_ARRAY_SIZE(windows)) {
