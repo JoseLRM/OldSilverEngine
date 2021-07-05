@@ -1120,6 +1120,41 @@ namespace sv {
 					if (gui_drag_v3_f32("Angular Velocity", angular_velocity)) {
 						body_angular_velocity_set(body, angular_velocity);
 					}
+
+					gui_separator(1);
+
+					bool lock_position_x = body_is_locked(body, BodyLock_PositionX);
+					bool lock_position_y = body_is_locked(body, BodyLock_PositionY);
+					bool lock_position_z = body_is_locked(body, BodyLock_PositionZ);
+
+					bool lock_rotation_x = body_is_locked(body, BodyLock_RotationX);
+					bool lock_rotation_y = body_is_locked(body, BodyLock_RotationY);
+					bool lock_rotation_z = body_is_locked(body, BodyLock_RotationZ);
+
+					if (gui_checkbox("Position X", lock_position_x)) {
+						if (lock_position_x) body_lock(body, BodyLock_PositionX);
+						else body_unlock(body, BodyLock_PositionX);
+					}
+					if (gui_checkbox("Position Y", lock_position_y)) {
+						if (lock_position_y) body_lock(body, BodyLock_PositionY);
+						else body_unlock(body, BodyLock_PositionY);
+					}
+					if (gui_checkbox("Position Z", lock_position_z)) {
+						if (lock_position_z) body_lock(body, BodyLock_PositionZ);
+						else body_unlock(body, BodyLock_PositionZ);
+					}
+					if (gui_checkbox("Rotation X", lock_rotation_x)) {
+						if (lock_rotation_x) body_lock(body, BodyLock_RotationX);
+						else body_unlock(body, BodyLock_RotationX);
+					}
+					if (gui_checkbox("Rotation Y", lock_rotation_y)) {
+						if (lock_rotation_y) body_lock(body, BodyLock_RotationY);
+						else body_unlock(body, BodyLock_RotationY);
+					}
+					if (gui_checkbox("Rotation Z", lock_rotation_z)) {
+						if (lock_rotation_z) body_lock(body, BodyLock_RotationZ);
+						else body_unlock(body, BodyLock_RotationZ);
+					}
 				}
 			}
 

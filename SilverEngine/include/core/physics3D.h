@@ -11,6 +11,15 @@ namespace sv {
 		ForceType_Acceleration
 	};
 
+	enum BodyLock : u32 {
+		BodyLock_PositionX,
+		BodyLock_PositionY,
+		BodyLock_PositionZ,
+		BodyLock_RotationX,
+		BodyLock_RotationY,
+		BodyLock_RotationZ,
+	};
+
 	enum BodyType : u32 {
 		BodyType_Static,
 		BodyType_Dynamic,
@@ -19,7 +28,7 @@ namespace sv {
 
 	struct BodyComponent : public Component {
 
-		static constexpr u32 VERSION = 1u;
+		static constexpr u32 VERSION = 2u;
 
 		void* _internal;
 		BodyType _type;
@@ -61,6 +70,10 @@ namespace sv {
 	SV_API f32      body_mass_get(const BodyComponent& body);
 
 	SV_API void body_apply_force(BodyComponent& body, v3_f32 force, ForceType force_type);
+
+	SV_API void body_lock(BodyComponent& body, BodyLock lock);
+	SV_API void body_unlock(BodyComponent& body, BodyLock lock);
+	SV_API bool body_is_locked(const BodyComponent& body, BodyLock lock);
 
 	struct OnBodyCollisionEvent {
 		Entity entity0;

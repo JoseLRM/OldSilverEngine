@@ -258,7 +258,7 @@ namespace sv {
 			rigid->userData = &body;
 
 			scene->addActor(*rigid);
-			
+
 			body._internal = rigid;
 		}
 		break;
@@ -334,6 +334,21 @@ namespace sv {
 			serialize_v3_f32(s, px_to_vec3(rigid.getLinearVelocity()));
 			serialize_v3_f32(s, px_to_vec3(rigid.getAngularVelocity()));
 			serialize_f32(s, rigid.getMass());
+
+			u32 lock_flags = rigid.getRigidDynamicLockFlags();
+			bool lock_position_x = lock_flags & PxRigidDynamicLockFlag::Enum::eLOCK_LINEAR_X;
+			bool lock_position_y = lock_flags & PxRigidDynamicLockFlag::Enum::eLOCK_LINEAR_Y;
+			bool lock_position_z = lock_flags & PxRigidDynamicLockFlag::Enum::eLOCK_LINEAR_Z;
+			bool lock_rotation_x = lock_flags & PxRigidDynamicLockFlag::Enum::eLOCK_ANGULAR_X;
+			bool lock_rotation_y = lock_flags & PxRigidDynamicLockFlag::Enum::eLOCK_ANGULAR_Y;
+			bool lock_rotation_z = lock_flags & PxRigidDynamicLockFlag::Enum::eLOCK_ANGULAR_Z;
+
+			serialize_bool(s, lock_position_x);
+			serialize_bool(s, lock_position_y);
+			serialize_bool(s, lock_position_z);
+			serialize_bool(s, lock_rotation_x);
+			serialize_bool(s, lock_rotation_y);
+			serialize_bool(s, lock_rotation_z);
 		}
 	}
 	
@@ -369,6 +384,30 @@ namespace sv {
 				rigid.setLinearVelocity(vec3_to_px(velocity));
 				rigid.setAngularVelocity(vec3_to_px(angular_velocity));
 				rigid.setMass(mass);
+
+				if (version >= 2) {
+
+					bool lock_position_x;
+					bool lock_position_y;
+					bool lock_position_z;
+					bool lock_rotation_x;
+					bool lock_rotation_y;
+					bool lock_rotation_z;
+
+					deserialize_bool(d, lock_position_x);
+					deserialize_bool(d, lock_position_y);
+					deserialize_bool(d, lock_position_z);
+					deserialize_bool(d, lock_rotation_x);
+					deserialize_bool(d, lock_rotation_y);
+					deserialize_bool(d, lock_rotation_z);
+
+					rigid.setRigidDynamicLockFlag(PxRigidDynamicLockFlag::Enum::eLOCK_LINEAR_X, lock_position_x);
+					rigid.setRigidDynamicLockFlag(PxRigidDynamicLockFlag::Enum::eLOCK_LINEAR_Y, lock_position_y);
+					rigid.setRigidDynamicLockFlag(PxRigidDynamicLockFlag::Enum::eLOCK_LINEAR_Z, lock_position_z);
+					rigid.setRigidDynamicLockFlag(PxRigidDynamicLockFlag::Enum::eLOCK_ANGULAR_X, lock_rotation_x);
+					rigid.setRigidDynamicLockFlag(PxRigidDynamicLockFlag::Enum::eLOCK_ANGULAR_Y, lock_rotation_y);
+					rigid.setRigidDynamicLockFlag(PxRigidDynamicLockFlag::Enum::eLOCK_ANGULAR_Z, lock_rotation_z);
+				}
 			}
 		}
 	}
@@ -612,6 +651,130 @@ namespace sv {
 			
 			rigid.addForce(vec3_to_px(force), mode);
 		}
+	}
+
+	void body_lock(BodyComponent& body, BodyLock lock)
+	{
+		if (body._type != BodyType_Static) {
+
+			PxRigidDynamic& rigid = *(PxRigidDynamic*)body._internal;
+
+			PxRigidDynamicLockFlag::Enum flag;
+
+			switch(lock) {
+
+			case BodyLock_PositionX:
+				flag = PxRigidDynamicLockFlag::Enum::eLOCK_LINEAR_X;
+				break;
+				
+			case BodyLock_PositionY:
+				flag = PxRigidDynamicLockFlag::Enum::eLOCK_LINEAR_Y;
+				break;
+				
+			case BodyLock_PositionZ:
+				flag = PxRigidDynamicLockFlag::Enum::eLOCK_LINEAR_Z;
+				break;
+				
+			case BodyLock_RotationX:
+				flag = PxRigidDynamicLockFlag::Enum::eLOCK_ANGULAR_X;
+				break;
+				
+			case BodyLock_RotationY:
+				flag = PxRigidDynamicLockFlag::Enum::eLOCK_ANGULAR_Y;
+				break;
+
+			default:
+			case BodyLock_RotationZ:
+				flag = PxRigidDynamicLockFlag::Enum::eLOCK_ANGULAR_Z;
+				break;
+				
+			}
+
+			rigid.setRigidDynamicLockFlag(flag, true);
+		}
+	}
+	
+	void body_unlock(BodyComponent& body, BodyLock lock)
+	{
+		if (body._type != BodyType_Static) {
+
+			PxRigidDynamic& rigid = *(PxRigidDynamic*)body._internal;
+
+			PxRigidDynamicLockFlag::Enum flag;
+
+			switch(lock) {
+
+			case BodyLock_PositionX:
+				flag = PxRigidDynamicLockFlag::Enum::eLOCK_LINEAR_X;
+				break;
+				
+			case BodyLock_PositionY:
+				flag = PxRigidDynamicLockFlag::Enum::eLOCK_LINEAR_Y;
+				break;
+				
+			case BodyLock_PositionZ:
+				flag = PxRigidDynamicLockFlag::Enum::eLOCK_LINEAR_Z;
+				break;
+				
+			case BodyLock_RotationX:
+				flag = PxRigidDynamicLockFlag::Enum::eLOCK_ANGULAR_X;
+				break;
+				
+			case BodyLock_RotationY:
+				flag = PxRigidDynamicLockFlag::Enum::eLOCK_ANGULAR_Y;
+				break;
+
+			default:
+			case BodyLock_RotationZ:
+				flag = PxRigidDynamicLockFlag::Enum::eLOCK_ANGULAR_Z;
+				break;
+				
+			}
+
+			rigid.setRigidDynamicLockFlag(flag, false);
+		}
+	}
+	
+	bool body_is_locked(const BodyComponent& body, BodyLock lock)
+	{
+		if (body._type != BodyType_Static) {
+
+			const PxRigidDynamic& rigid = *(const PxRigidDynamic*)body._internal;
+			
+			PxRigidDynamicLockFlags flags;
+
+			switch(lock) {
+
+			case BodyLock_PositionX:
+				flags |= PxRigidDynamicLockFlag::Enum::eLOCK_LINEAR_X;
+				break;
+				
+			case BodyLock_PositionY:
+				flags |= PxRigidDynamicLockFlag::Enum::eLOCK_LINEAR_Y;
+				break;
+				
+			case BodyLock_PositionZ:
+				flags |= PxRigidDynamicLockFlag::Enum::eLOCK_LINEAR_Z;
+				break;
+				
+			case BodyLock_RotationX:
+				flags |= PxRigidDynamicLockFlag::Enum::eLOCK_ANGULAR_X;
+				break;
+				
+			case BodyLock_RotationY:
+				flags |= PxRigidDynamicLockFlag::Enum::eLOCK_ANGULAR_Y;
+				break;
+				
+			case BodyLock_RotationZ:
+				flags |= PxRigidDynamicLockFlag::Enum::eLOCK_ANGULAR_Z;
+				break;
+				
+			}
+
+			return flags & rigid.getRigidDynamicLockFlags();
+		}
+
+		return false;
 	}
 
 	void _physics3D_update()
