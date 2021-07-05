@@ -3181,9 +3181,30 @@ namespace sv {
 
 				GuiWindow& w0 = gui->windows[i0];
 				GuiWindow& w1 = gui->windows[i1];
-
+				
 				u32 p0 = (get_window_flags(w0) & GuiWindowFlag_FocusMaster) ? (gui->priority_count + w0.priority) : w0.priority;
 				u32 p1 = (get_window_flags(w1) & GuiWindowFlag_FocusMaster) ? (gui->priority_count + w1.priority) : w1.priority;
+
+				bool docked0 = false;
+				bool docked1 = false;
+
+				foreach(i, 5) {
+
+					GuiScreenDocking& dock = gui->screen_docking[i];
+					if (dock.window_id == i0) {
+						docked0 = true; 
+					}
+					if (dock.window_id == i1) {
+						docked1 = true; 
+					}
+				}
+
+				if (docked0 && !docked1) {
+					p0 = 0u;
+				}
+				else if (!docked0 && docked1) {
+					p1 = 0u;
+				}
 				
 				return p0 > p1;
 			});
