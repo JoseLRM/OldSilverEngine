@@ -407,8 +407,8 @@ namespace sv {
 		XMMATRIX inv_matrix = XMMatrixInverse(NULL, matrix);
 
 		Ray transformed_ray = ray;
-		transformed_ray.origin = XMVector4Transform(vec3_to_dx(ray.origin), inv_matrix);
-		transformed_ray.direction = XMVector4Transform(vec3_to_dx(ray.direction), inv_matrix);
+		transformed_ray.origin = XMVector4Transform(vec3_to_dx(ray.origin, 1.f), inv_matrix);
+		transformed_ray.direction = XMVector4Transform(vec3_to_dx(ray.direction, 0.f), inv_matrix);
 
 		f32 closest_distance = f32_max;
 		v3_f32 closest_pos;

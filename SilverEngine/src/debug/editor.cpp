@@ -2893,7 +2893,7 @@ namespace sv {
 							pos = XMVector4Transform(vec3_to_dx(pos, 1.f), matrix);
 
 							f32 distance = vec3_distance(pos, closest_pos);
-								
+							
 							if (distance < data.range) {
 
 								f32 value = ((data.range - distance) / data.range) * engine.deltatime * data.strength;
