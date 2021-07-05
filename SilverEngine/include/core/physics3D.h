@@ -4,6 +4,13 @@
 
 namespace sv {
 
+	enum ForceType : u32 {
+		ForceType_Force,
+		ForceType_Impulse,
+		ForceType_VelocityChange,
+		ForceType_Acceleration
+	};
+
 	enum BodyType : u32 {
 		BodyType_Static,
 		BodyType_Dynamic,
@@ -52,6 +59,8 @@ namespace sv {
 	SV_API v3_f32   body_velocity_get(const BodyComponent& body);
 	SV_API v3_f32   body_angular_velocity_get(const BodyComponent& body);
 	SV_API f32      body_mass_get(const BodyComponent& body);
+
+	SV_API void body_apply_force(BodyComponent& body, v3_f32 force, ForceType force_type);
 
 	struct OnBodyCollisionEvent {
 		Entity entity0;

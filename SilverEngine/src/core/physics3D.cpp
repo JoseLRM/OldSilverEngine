@@ -578,6 +578,42 @@ namespace sv {
 		return 0.f;
 	}
 
+	void body_apply_force(BodyComponent& body, v3_f32 force, ForceType force_type)
+	{
+		if (body._type != BodyType_Static) {
+
+			PxRigidDynamic& rigid = *(PxRigidDynamic*)body._internal;
+
+			PxForceMode::Enum mode;
+
+			switch (force_type) {
+
+			case ForceType_Force:
+				mode = PxForceMode::Enum::eFORCE;
+				break;
+
+			case ForceType_Impulse:
+				mode = PxForceMode::Enum::eIMPULSE;
+				break;
+
+			case ForceType_VelocityChange:
+				mode = PxForceMode::Enum::eVELOCITY_CHANGE;
+				break;
+
+			case ForceType_Acceleration:
+				mode = PxForceMode::Enum::eACCELERATION;
+				break;
+
+			default:
+				mode = PxForceMode::Enum::eFORCE;
+				SV_ASSERT(0);
+				
+			}
+			
+			rigid.addForce(vec3_to_px(force), mode);
+		}
+	}
+
 	void _physics3D_update()
 	{
 		f32 dt = engine.deltatime;
