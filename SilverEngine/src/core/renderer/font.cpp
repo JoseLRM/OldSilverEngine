@@ -223,13 +223,13 @@ namespace sv {
 		font.vertical_offset = -font.vertical_offset;
 
 		GPUImageDesc desc;
-		desc.pData = atlas;
+		desc.data = atlas;
 		desc.size = sizeof(u8) * atlas_width * atlas_height;
 		desc.format = Format_R8_UNORM;
 		desc.layout = GPUImageLayout_ShaderResource;
 		desc.type = GPUImageType_ShaderResource;
 		desc.usage = ResourceUsage_Static;
-		desc.CPUAccess = CPUAccess_None;
+		desc.cpu_access = CPUAccess_None;
 		desc.width = atlas_width;
 		desc.height = atlas_height;
 		

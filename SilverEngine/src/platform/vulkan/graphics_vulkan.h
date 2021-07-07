@@ -32,10 +32,11 @@ namespace sv {
 
     void graphics_vulkan_draw(u32, u32, u32, u32, CommandList);
     void graphics_vulkan_draw_indexed(u32, u32, u32, u32, u32, CommandList);
+	void graphics_vulkan_dispatch(u32, u32, u32, CommandList);
 
     void graphics_vulkan_image_clear(GPUImage*, GPUImageLayout, GPUImageLayout, Color, float, u32, CommandList);
     void graphics_vulkan_image_blit(GPUImage*, GPUImage*, GPUImageLayout, GPUImageLayout, u32, const GPUImageBlit*, SamplerFilter, CommandList);
-    void graphics_vulkan_buffer_update(GPUBuffer*, const void*, u32, u32, CommandList);
+    void graphics_vulkan_buffer_update(GPUBuffer*, GPUBufferState, const void*, u32, u32, CommandList);
     void graphics_vulkan_barrier(const GPUBarrier*, u32, CommandList);
 
     void graphics_vulkan_event_begin(const char* name, CommandList cmd);
@@ -104,85 +105,87 @@ namespace sv {
     // MEMORY
 
     struct StagingBuffer {
-	VkBuffer buffer = VK_NULL_HANDLE;
-	VmaAllocation allocation = VK_NULL_HANDLE;
-	void* data = nullptr;
+		VkBuffer buffer = VK_NULL_HANDLE;
+		VmaAllocation allocation = VK_NULL_HANDLE;
+		void* data = nullptr;
     };
 
     struct VulkanGPUAllocator {
 		
-	struct Buffer {
-	    StagingBuffer staging_buffer;
-	    u8* current = nullptr;
-	    u8* end = nullptr;
-	};
+		struct Buffer {
+			StagingBuffer staging_buffer;
+			u8* current = nullptr;
+			u8* end = nullptr;
+		};
 
-	List<Buffer> buffers;
+		List<Buffer> buffers;
     };
 
     struct DynamicAllocation {
-	VkBuffer buffer = VK_NULL_HANDLE;
-	void* data = nullptr;
-	u32 offset = 0u;
+		VkBuffer buffer = VK_NULL_HANDLE;
+		void* data = nullptr;
+		u32 offset = 0u;
 
-	SV_INLINE bool isValid() const noexcept { return buffer != VK_NULL_HANDLE && data != nullptr; }
+		SV_INLINE bool isValid() const noexcept { return buffer != VK_NULL_HANDLE && data != nullptr; }
     };
 
     // DESCRIPTORS
 
+	enum VulkanDescriptorType : u32 {
+		VulkanDescriptorType_UniformBuffer,
+		VulkanDescriptorType_SampledImage,
+		VulkanDescriptorType_StorageBuffer,
+		VulkanDescriptorType_StorageImage,
+		VulkanDescriptorType_StorageTexelBuffer,
+		VulkanDescriptorType_Sampler,
+		VulkanDescriptorType_MaxEnum
+	};
+
     struct VulkanDescriptorPool {
-	VkDescriptorPool pool;
-	u32 count[3];
-	u32 sets;
+		VkDescriptorPool pool;
+		u32 count[VulkanDescriptorType_MaxEnum];
+		u32 sets;
     };
 
     struct VulkanDescriptorSet {
-	List<VkDescriptorSet>	sets;
-	u32			used = 0u;
+		List<VkDescriptorSet>	sets;
+		u32			used = 0u;
     };
 
     struct DescriptorPool {
-	List<VulkanDescriptorPool>			     pools;
-	// TODO: Get out of here
-	std::map<VkDescriptorSetLayout, VulkanDescriptorSet> sets;
+		List<VulkanDescriptorPool>			     pools;
+		// TODO: Get out of here
+		std::map<VkDescriptorSetLayout, VulkanDescriptorSet> sets;
     };
 
     struct ShaderResourceBinding {
-	u32				vulkanBinding;
-	u32				userBinding;
+		VkDescriptorType descriptor_type;
+		u32				 vulkanBinding;
+		u32				 userBinding;
     };
     struct ShaderDescriptorSetLayout {
-	VkDescriptorSetLayout setLayout;
-	List<ShaderResourceBinding> bindings;
-	u32 count[3];
+		VkDescriptorSetLayout setLayout;
+		List<ShaderResourceBinding> bindings;
+		u32 count[VulkanDescriptorType_MaxEnum];
     };
 
     // PIPELINE
 
-    struct PipelineDescriptorSetLayout {
-	ShaderDescriptorSetLayout layouts[ShaderType_GraphicsCount];
-    };
-
     struct VulkanPipeline {
-	VulkanPipeline& operator=(const VulkanPipeline& other)
-	    {
-		semanticNames = other.semanticNames;
-		layout = other.layout;
-		pipelines = other.pipelines;
-		setLayout = other.setLayout;
-		return *this;
-	    }
+		VulkanPipeline& operator=(const VulkanPipeline& other)
+			{
+				layout = other.layout;
+				pipelines = other.pipelines;
+				return *this;
+			}
 
-	Mutex mutex;
-	Mutex creationMutex;
+		Mutex mutex;
+		Mutex creationMutex;
 
-	ThickHashTable<u32, 10u>   semanticNames;
-
-	VkPipelineLayout	     layout = VK_NULL_HANDLE;
-	ThickHashTable<VkPipeline, 100u> pipelines;
-	PipelineDescriptorSetLayout  setLayout;
-	VkDescriptorSet		     descriptorSets[ShaderType_GraphicsCount] = {};
-	f64			     lastUsage;
+		VkPipelineLayout	             layout = VK_NULL_HANDLE;
+		ThickHashTable<VkPipeline, 100u> pipelines;
+		VkDescriptorSet		             descriptorSets[ShaderType_GraphicsCount] = {};
+		f64			                     lastUsage;
     };
 
     struct Shader_vk;
@@ -196,155 +199,163 @@ namespace sv {
 
     // Buffer
     struct Buffer_vk : public GPUBuffer_internal {
-	VkBuffer				buffer;
-	VmaAllocation			allocation;
-	VkDescriptorBufferInfo	buffer_info;
-	DynamicAllocation		dynamic_allocation[GraphicsLimit_CommandList];
+		VkBuffer				buffer;
+		VmaAllocation			allocation;
+		VkDescriptorBufferInfo	buffer_info;
+		VkBufferView            texel_buffer_view;
+		DynamicAllocation		dynamic_allocation[GraphicsLimit_CommandList];
     };
     // Image
     struct Image_vk : public GPUImage_internal {
-	VmaAllocation			allocation;
-	VkImage					image = VK_NULL_HANDLE;
-	VkImageView				renderTargetView = VK_NULL_HANDLE;
-	VkImageView				depthStencilView = VK_NULL_HANDLE;
-	VkImageView				shaderResouceView = VK_NULL_HANDLE;
-	u32						layers = 1u;
-	u64						ID;
-	VkDescriptorImageInfo	image_info;
+		VmaAllocation			allocation;
+		VkImage					image = VK_NULL_HANDLE;
+		VkImageView				render_target_view = VK_NULL_HANDLE;
+		VkImageView				depth_stencil_view = VK_NULL_HANDLE;
+		VkDescriptorImageInfo	shader_resource_view = {};
+		VkDescriptorImageInfo	unordered_access_view = {};
+		u32						layers = 1u;
+		u64						ID;
     };
     // Sampler
     struct Sampler_vk : public Sampler_internal {
-	VkSampler				sampler = VK_NULL_HANDLE;
-	VkDescriptorImageInfo	image_info;
+		VkSampler				sampler = VK_NULL_HANDLE;
+		VkDescriptorImageInfo	image_info;
     };
     // Shader
     struct Shader_vk : public Shader_internal {
-	VkShaderModule		  module = VK_NULL_HANDLE;
-	ThickHashTable<u32, 10u>  semanticNames;
-	ShaderDescriptorSetLayout layout;
-	u64			  ID;
+		VkShaderModule		      module = VK_NULL_HANDLE;
+		ThickHashTable<u32, 10u>  semanticNames;
+		ShaderDescriptorSetLayout layout;
+		u64			              ID;
+
+		struct {
+			VkPipelineLayout pipeline_layout;
+			VkPipeline       pipeline;
+			f64 last_usage;
+		} compute;
     };
     // RenderPass
     struct RenderPass_vk : public RenderPass_internal {
-	VkRenderPass				renderPass;
-	List<std::pair<size_t, VkFramebuffer>>	frameBuffers;
-	VkRenderPassBeginInfo			beginInfo;
-	Mutex					mutex;
+		VkRenderPass				renderPass;
+		List<std::pair<size_t, VkFramebuffer>>	frameBuffers;
+		VkRenderPassBeginInfo			beginInfo;
+		Mutex					mutex;
     };
     // InputLayoutState
     struct InputLayoutState_vk : public InputLayoutState_internal {
-	size_t hash;
+		size_t hash;
     };
     // BlendState
     struct BlendState_vk : public BlendState_internal {
-	size_t hash;
+		size_t hash;
     };
     // DepthStencilState
     struct DepthStencilState_vk : public DepthStencilState_internal {
-	size_t hash;
+		size_t hash;
     };
     // RasterizerState
     struct RasterizerState_vk : public RasterizerState_internal {
-	size_t hash;
+		size_t hash;
     };
 
     // API STRUCTS
 
     struct Frame {
-	VkCommandPool		commandPool;
-	VkCommandBuffer		commandBuffers[GraphicsLimit_CommandList];
-	VkCommandPool		transientCommandPool;
-	VkFence				fence;
-	DescriptorPool		descPool[GraphicsLimit_CommandList];
-	VulkanGPUAllocator	allocator[GraphicsLimit_CommandList];
+		VkCommandPool		commandPool;
+		VkCommandBuffer		commandBuffers[GraphicsLimit_CommandList];
+		VkCommandPool		transientCommandPool;
+		VkFence				fence;
+		DescriptorPool		descPool[GraphicsLimit_CommandList];
+		VulkanGPUAllocator	allocator[GraphicsLimit_CommandList];
     };
 
     struct SwapChain_vk {
 	    
-	VkSurfaceKHR						surface = VK_NULL_HANDLE;
-	VkSwapchainKHR						swapChain = VK_NULL_HANDLE;
+		VkSurfaceKHR						surface = VK_NULL_HANDLE;
+		VkSwapchainKHR						swapChain = VK_NULL_HANDLE;
 
-	VkSemaphore							semAcquireImage = VK_NULL_HANDLE;
-	VkSemaphore							semPresent = VK_NULL_HANDLE;
+		VkSemaphore							semAcquireImage = VK_NULL_HANDLE;
+		VkSemaphore							semPresent = VK_NULL_HANDLE;
 
-	VkSurfaceCapabilitiesKHR			capabilities;
-	List<VkPresentModeKHR>		presentModes;
-	List<VkSurfaceFormatKHR>		formats;
+		VkSurfaceCapabilitiesKHR			capabilities;
+		List<VkPresentModeKHR>		presentModes;
+		List<VkSurfaceFormatKHR>		formats;
 
-	VkFormat							currentFormat;
-	VkColorSpaceKHR						currentColorSpace;
-	VkPresentModeKHR					currentPresentMode;
-	VkExtent2D							currentExtent;
+		VkFormat							currentFormat;
+		VkColorSpaceKHR						currentColorSpace;
+		VkPresentModeKHR					currentPresentMode;
+		VkExtent2D							currentExtent;
 
-	List<VkFence>				imageFences;
-	u32									imageIndex;
+		List<VkFence>				imageFences;
+		u32									imageIndex;
 
-	struct Image {
-	    VkImage image;
-	    VkImageView view;
-	};
-	List<Image> images;
+		struct Image {
+			VkImage image;
+			VkImageView view;
+		};
+		List<Image> images;
     };
 
     struct Graphics_vk {
 
-	struct {
+		struct {
 			
-	    VkPhysicalDevice		     physicalDevice = VK_NULL_HANDLE;
-	    VkPhysicalDeviceProperties	     properties;
-	    VkPhysicalDeviceFeatures	     features;
-	    VkPhysicalDeviceMemoryProperties memoryProps;
+			VkPhysicalDevice		         physicalDevice = VK_NULL_HANDLE;
+			VkPhysicalDeviceProperties	     properties;
+			VkPhysicalDeviceFeatures	     features;
+			VkPhysicalDeviceMemoryProperties memoryProps;
 
-	    struct {
-		u32 graphics = UINT32_MAX;
+			struct {
+				u32 graphics = UINT32_MAX;
 
-		SV_INLINE bool IsComplete() const noexcept { return graphics != u32_max; }
+				SV_INLINE bool IsComplete() const noexcept { return graphics != u32_max; }
 
-	    } familyIndex;
+			} familyIndex;
 
-	} card;
+		} card;
 
-	VkInstance   instance = VK_NULL_HANDLE;
-	VkDevice     device = VK_NULL_HANDLE;
-	VmaAllocator allocator;
+		VkInstance   instance = VK_NULL_HANDLE;
+		VkDevice     device = VK_NULL_HANDLE;
+		VmaAllocator allocator;
 
-	SwapChain_vk swapchain;
+		SwapChain_vk swapchain;
 
 #if SV_GFX
-	VkDebugUtilsMessengerEXT	debug = VK_NULL_HANDLE;
+		VkDebugUtilsMessengerEXT	debug = VK_NULL_HANDLE;
 #endif
 
-	List<const char*> extensions;
-	List<const char*> validationLayers;
-	List<const char*> deviceExtensions;
-	List<const char*> deviceValidationLayers;
+		List<const char*> extensions;
+		List<const char*> validationLayers;
+		List<const char*> deviceExtensions;
+		List<const char*> deviceValidationLayers;
 
-	VkQueue queueGraphics = VK_NULL_HANDLE;
+		VkQueue queueGraphics = VK_NULL_HANDLE;
 	
-	f64 lastTime = 0.0;
+		f64 lastTime = 0.0;
 
-	// Frame Members
+		// Frame Members
 
-	List<Frame> frames;
-	u32	    frameCount;
-	u32	    currentFrame = 0u;
-	Mutex       mutexCMD;
-	u32	    activeCMDCount = 0u;
+		List<Frame> frames;
+		u32	    frameCount;
+		u32	    currentFrame = 0u;
+		Mutex       mutexCMD;
+		u32	    activeCMDCount = 0u;
 
-	SV_INLINE Frame& GetFrame() noexcept { return frames[currentFrame]; }
-	SV_INLINE VkCommandBuffer GetCMD(CommandList cmd) { return frames[currentFrame].commandBuffers[cmd]; }
+		SV_INLINE Frame& GetFrame() noexcept { return frames[currentFrame]; }
+		SV_INLINE VkCommandBuffer GetCMD(CommandList cmd) { return frames[currentFrame].commandBuffers[cmd]; }
 
-	// Binding Members
+		// Binding Members
 
-	VkRenderPass                         activeRenderPass[GraphicsLimit_CommandList];
-	// TODO
-	std::unordered_map<u64, VulkanPipeline> pipelines;
-	Mutex			             pipelinesMutex;
+		VkRenderPass activeRenderPass[GraphicsLimit_CommandList];
 
-	u64 IDCount = 0u;
-	Mutex IDMutex;
+		// TODO
+		std::unordered_map<u64, VulkanPipeline>        pipelines;
+		Mutex			                               pipeline_mutex;
+
+		u64 IDCount = 0u;
+		Mutex IDMutex;
 	
-	SV_INLINE u64 GetID() noexcept { SV_LOCK_GUARD(IDMutex, lock); return IDCount++; }
+		SV_INLINE u64 GetID() noexcept { SV_LOCK_GUARD(IDMutex, lock); return IDCount++; }
 
     };
 

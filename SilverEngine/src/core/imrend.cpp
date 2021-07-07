@@ -102,19 +102,19 @@ namespace sv {
 			{
 				GPUBufferDesc desc;
 
-				desc.bufferType = GPUBufferType_Constant;
+				desc.buffer_type = GPUBufferType_Constant;
 				desc.usage = ResourceUsage_Dynamic;
-				desc.CPUAccess = CPUAccess_Write;
+				desc.cpu_access = CPUAccess_Write;
 				desc.size = sizeof(ImRendVertex) * 4u;
-				desc.pData = nullptr;
+				desc.data = nullptr;
 
 				SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_primitive));
 
-				desc.bufferType = GPUBufferType_Constant;
+				desc.buffer_type = GPUBufferType_Constant;
 				desc.usage = ResourceUsage_Dynamic;
-				desc.CPUAccess = CPUAccess_Write;
+				desc.cpu_access = CPUAccess_Write;
 				desc.size = sizeof(XMMATRIX) + sizeof(v4_f32);
-				desc.pData = nullptr;
+				desc.data = nullptr;
 
 				SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_mesh));
 			}
@@ -353,7 +353,7 @@ namespace sv {
 				case ImRendDrawCall_Triangle:
 				case ImRendDrawCall_Line:
 				{
-					graphics_constantbuffer_bind(state.gfx.cbuffer_primitive, 0u, ShaderType_Vertex, cmd);
+					graphics_constant_buffer_bind(state.gfx.cbuffer_primitive, 0u, ShaderType_Vertex, cmd);
 
 					graphics_blendstate_bind(gfx.bs_transparent, cmd);
 					graphics_depthstencilstate_unbind(cmd);
@@ -411,9 +411,9 @@ namespace sv {
 						vertices[2u] = { v4_f32(v2), v2_f32{tc.x, tc.w}, color };
 						vertices[3u] = { v4_f32(v3), v2_f32{tc.z, tc.w}, color };
 
-						graphics_image_bind(image, 0u, ShaderType_Pixel, cmd);
+						graphics_shader_resource_bind(image, 0u, ShaderType_Pixel, cmd);
 
-						graphics_buffer_update(state.gfx.cbuffer_primitive, vertices, sizeof(ImRendVertex) * 4u, 0u, cmd);
+						graphics_buffer_update(state.gfx.cbuffer_primitive, GPUBufferState_Constant, vertices, sizeof(ImRendVertex) * 4u, 0u, cmd);
 
 						graphics_draw(4u, 1u, 0u, 0u, cmd);
 
@@ -445,9 +445,9 @@ namespace sv {
 						vertices[1u] = { v4_f32(v1), v2_f32{}, color };
 						vertices[2u] = { v4_f32(v2), v2_f32{}, color };
 
-						graphics_image_bind(gfx.image_white, 0u, ShaderType_Pixel, cmd);
+						graphics_shader_resource_bind(gfx.image_white, 0u, ShaderType_Pixel, cmd);
 
-						graphics_buffer_update(state.gfx.cbuffer_primitive, vertices, sizeof(ImRendVertex) * 3u, 0u, cmd);
+						graphics_buffer_update(state.gfx.cbuffer_primitive, GPUBufferState_Constant, vertices, sizeof(ImRendVertex) * 3u, 0u, cmd);
 
 						graphics_draw(3u, 1u, 0u, 0u, cmd);
 					}
@@ -468,9 +468,9 @@ namespace sv {
 						vertices[0u] = { v4_f32(v0), v2_f32{}, color };
 						vertices[1u] = { v4_f32(v1), v2_f32{}, color };
 
-						graphics_image_bind(gfx.image_white, 0u, ShaderType_Pixel, cmd);
+						graphics_shader_resource_bind(gfx.image_white, 0u, ShaderType_Pixel, cmd);
 
-						graphics_buffer_update(state.gfx.cbuffer_primitive, vertices, sizeof(ImRendVertex) * 2u, 0u, cmd);
+						graphics_buffer_update(state.gfx.cbuffer_primitive, GPUBufferState_Constant, vertices, sizeof(ImRendVertex) * 2u, 0u, cmd);
 
 						graphics_draw(3u, 1u, 0u, 0u, cmd);
 					}
@@ -479,20 +479,20 @@ namespace sv {
 
 				case ImRendDrawCall_MeshWireframe:
 				{
-					graphics_image_bind(gfx.image_white, 0u, ShaderType_Pixel, cmd);
+					graphics_shader_resource_bind(gfx.image_white, 0u, ShaderType_Pixel, cmd);
 					graphics_inputlayoutstate_bind(gfx.ils_mesh, cmd);
 					graphics_shader_bind(imgfx.vs_mesh_wireframe, cmd);
 					graphics_shader_bind(imgfx.ps_primitive, cmd);
 					graphics_topology_set(GraphicsTopology_Triangles, cmd);
-					graphics_constantbuffer_bind(state.gfx.cbuffer_mesh, 0u, ShaderType_Vertex, cmd);
+					graphics_constant_buffer_bind(state.gfx.cbuffer_mesh, 0u, ShaderType_Vertex, cmd);
 					graphics_rasterizerstate_bind(gfx.rs_wireframe, cmd);
 					graphics_blendstate_bind(gfx.bs_transparent, cmd);
 
 					Mesh* mesh = imrend_read<Mesh*>(it);
 					Color color = imrend_read<Color>(it);
 
-					graphics_vertexbuffer_bind(mesh->vbuffer, 0u, 0u, cmd);
-					graphics_indexbuffer_bind(mesh->ibuffer, 0u, cmd);
+					graphics_vertex_buffer_bind(mesh->vbuffer, 0u, 0u, cmd);
+					graphics_index_buffer_bind(mesh->ibuffer, 0u, cmd);
 
 					struct {
 						XMMATRIX matrix;
@@ -502,7 +502,7 @@ namespace sv {
 					data.matrix = state.current_matrix;
 					data.color = color_to_vec4(color);
 
-					graphics_buffer_update(state.gfx.cbuffer_mesh, &data, sizeof(data), 0u, cmd);
+					graphics_buffer_update(state.gfx.cbuffer_mesh, GPUBufferState_Constant, &data, sizeof(data), 0u, cmd);
 					graphics_draw_indexed((u32)mesh->indices.size(), 1u, 0u, 0u, 0u, cmd);
 				}
 				break;

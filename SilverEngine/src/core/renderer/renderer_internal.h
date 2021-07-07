@@ -71,6 +71,9 @@ namespace sv {
 
     struct GraphicsObjects {
 
+		// TEMP
+		Shader* compute_shader;
+
 		GPUImage* image_white;
 		GPUImage* image_aux0;
 		GPUImage* image_aux1;
@@ -193,11 +196,11 @@ namespace sv {
 			}
 			
 			GPUBufferDesc desc;
-			desc.bufferType = GPUBufferType_Vertex;
+			desc.buffer_type = GPUBufferType_Vertex;
 			desc.usage = ResourceUsage_Default;
-			desc.CPUAccess = CPUAccess_Write;
+			desc.cpu_access = CPUAccess_Write;
 			desc.size = size;
-			desc.pData = nullptr;
+			desc.data = nullptr;
 
 			graphics_buffer_create(&desc, &buffer);
 			graphics_name_set(buffer, "BatchBuffer");

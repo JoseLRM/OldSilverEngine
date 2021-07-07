@@ -27,7 +27,8 @@ namespace sv {
 		GraphicsLimit_CommandList = 32,
 		GraphicsLimit_VertexBuffer = 32,
 		GraphicsLimit_ConstantBuffer = 32u,
-		GraphicsLimit_GPUImage = 32u,
+		GraphicsLimit_ShaderResource = 32u,
+		GraphicsLimit_UnorderedAccessView = 32u,
 		GraphicsLimit_Sampler = 16u,
 		GraphicsLimit_Viewport = 16u,
 		GraphicsLimit_Scissor = 16u,
@@ -51,16 +52,22 @@ namespace sv {
 		GraphicsPrimitiveType_RasterizerState,
     };
 
-    enum GraphicsPipelineMode : u8 {
-		GraphicsPipelineMode_Graphics,
-		GraphicsPipelineMode_Compute,
+    enum GPUBufferType : u8 {
+		GPUBufferType_Invalid = 0,
+		GPUBufferType_Vertex = SV_BIT(0),
+		GPUBufferType_Index = SV_BIT(1),
+		GPUBufferType_Constant = SV_BIT(2),
+		GPUBufferType_ShaderResource = SV_BIT(3),
+		GPUBufferType_UnorderedAccessView = SV_BIT(4),
     };
 
-    enum GPUBufferType : u8 {
-		GPUBufferType_Invalid,
-		GPUBufferType_Vertex,
-		GPUBufferType_Index,
-		GPUBufferType_Constant,
+	enum GPUBufferState : u8 {
+		GPUBufferState_Undefined,
+		GPUBufferState_Vertex,
+		GPUBufferState_Index,
+		GPUBufferState_Constant,
+		GPUBufferState_ShaderResource,
+		GPUBufferState_UnorderedAccessView,
     };
 
     enum ShaderType : u32 {
@@ -101,8 +108,9 @@ namespace sv {
     enum GPUImageType : u8 {
 		GPUImageType_RenderTarget	= SV_BIT(0),
 		GPUImageType_ShaderResource = SV_BIT(1),
-		GPUImageType_DepthStencil	= SV_BIT(2),
-		GPUImageType_CubeMap		= SV_BIT(3),
+		GPUImageType_UnorderedAccessView = SV_BIT(2),
+		GPUImageType_DepthStencil	= SV_BIT(3),
+		GPUImageType_CubeMap		= SV_BIT(4),
     };
     typedef u8 GPUImageTypeFlags;
 
@@ -128,6 +136,7 @@ namespace sv {
 		GPUImageLayout_DepthStencil,
 		GPUImageLayout_DepthStencilReadOnly,
 		GPUImageLayout_ShaderResource,
+		GPUImageLayout_UnorderedAccessView,
 		GPUImageLayout_Present,
     };
 	
@@ -362,30 +371,32 @@ namespace sv {
     // Primitive Descriptors
 
     struct GPUBufferDesc {
-		GPUBufferType	bufferType;
+		u32	            buffer_type = 0u;
 		ResourceUsage	usage		= ResourceUsage_Static;
-		CPUAccessFlags	CPUAccess	= CPUAccess_None;
+		CPUAccessFlags	cpu_access	= CPUAccess_None;
 		u32				size		= 0u;
-		IndexType		indexType	= IndexType_32;
-		void*			pData		= nullptr;
+		IndexType		index_type	= IndexType_32;
+		void*			data		= nullptr;
+		Format          format      = Format_Unknown;
     };
 
     struct GPUBufferInfo {
-		GPUBufferType	bufferType;
+		u32	            buffer_type;
 		ResourceUsage	usage;
-		CPUAccessFlags	CPUAccess;
+		CPUAccessFlags	cpu_access;
 		u32				size;
-		IndexType		indexType;
+		IndexType		index_type;
+		Format          format;
     };
 
     struct GPUImageDesc {
-		void*				pData		= nullptr;
+		void*				data		= nullptr;
 		u32					size		= 0u;
 		Format				format;
 		GPUImageLayout		layout;
 		GPUImageTypeFlags	type;
 		ResourceUsage		usage		= ResourceUsage_Static;
-		CPUAccessFlags		CPUAccess	= CPUAccess_None;
+		CPUAccessFlags		cpu_access	= CPUAccess_None;
 		u32					width;
 		u32					height;
     };
@@ -430,15 +441,16 @@ namespace sv {
 		};
 
 		struct ResourceBuffer {
-			String name;
-			u32			  binding_slot;
+			String                name;
+			u32			          binding_slot;
 			List<ShaderAttribute> attributes;
-			u32			  size;
+			u32			          size;
 		};
 
 		List<ResourceImage>   images;
 		List<ResourceSampler> samplers;
 		List<ResourceBuffer>  constant_buffers;
+		List<ResourceBuffer>  storage_buffers; // Both UA and SR
 
 		List<ShaderAttribute> input;
     };
@@ -607,25 +619,43 @@ namespace sv {
 
     SV_API void graphics_resources_unbind(CommandList cmd);
 
-    SV_API void graphics_vertexbuffer_bind_array(GPUBuffer** buffers, u32* offsets, u32 count, u32 beginSlot, CommandList cmd);
-    SV_API void graphics_vertexbuffer_bind(GPUBuffer* buffer, u32 offset, u32 slot, CommandList cmd);
-    SV_API void graphics_vertexbuffer_unbind(u32 slot, CommandList cmd);
-    SV_API void graphics_vertexbuffer_unbind_commandlist(CommandList cmd);
+    SV_API void graphics_vertex_buffer_bind_array(GPUBuffer** buffers, u32* offsets, u32 count, u32 beginSlot, CommandList cmd);
+    SV_API void graphics_vertex_buffer_bind(GPUBuffer* buffer, u32 offset, u32 slot, CommandList cmd);
+    SV_API void graphics_vertex_buffer_unbind(u32 slot, CommandList cmd);
+    SV_API void graphics_vertex_buffer_unbind_commandlist(CommandList cmd);
 	
-    SV_API void graphics_indexbuffer_bind(GPUBuffer* buffer, u32 offset, CommandList cmd);
-    SV_API void graphics_indexbuffer_unbind(CommandList cmd);
+    SV_API void graphics_index_buffer_bind(GPUBuffer* buffer, u32 offset, CommandList cmd);
+    SV_API void graphics_index_buffer_unbind(CommandList cmd);
 
-    SV_API void graphics_constantbuffer_bind_array(GPUBuffer** buffers, u32 count, u32 beginSlot, ShaderType shaderType, CommandList cmd);
-    SV_API void graphics_constantbuffer_bind(GPUBuffer* buffer, u32 slot, ShaderType shaderType, CommandList cmd);
-    SV_API void graphics_constantbuffer_unbind(u32 slot, ShaderType shaderType, CommandList cmd);
-    SV_API void graphics_constantbuffer_unbind_shader(ShaderType shaderType, CommandList cmd);
-    SV_API void graphics_constantbuffer_unbind_commandlist(CommandList cmd);
+	// Constant Buffers
 
-    SV_API void graphics_image_bind_array(GPUImage** images, u32 count, u32 beginSlot, ShaderType shaderType, CommandList cmd);
-    SV_API void graphics_image_bind(GPUImage* image, u32 slot, ShaderType shaderType, CommandList cmd);
-    SV_API void graphics_image_unbind(u32 slot, ShaderType shaderType, CommandList cmd);
-    SV_API void graphics_image_unbind_shader(ShaderType shaderType, CommandList cmd);
-    SV_API void graphics_image_unbind_commandlist(CommandList cmd);
+    SV_API void graphics_constant_buffer_bind_array(GPUBuffer** buffers, u32 count, u32 beginSlot, ShaderType shaderType, CommandList cmd);
+    SV_API void graphics_constant_buffer_bind(GPUBuffer* buffer, u32 slot, ShaderType shaderType, CommandList cmd);
+    SV_API void graphics_constant_buffer_unbind(u32 slot, ShaderType shaderType, CommandList cmd);
+    SV_API void graphics_constant_buffer_unbind_shader(ShaderType shaderType, CommandList cmd);
+    SV_API void graphics_constant_buffer_unbind_commandlist(CommandList cmd);
+
+	// Shader Resources
+
+	SV_API void graphics_shader_resource_bind_array(GPUBuffer** buffers, u32 count, u32 beginSlot, ShaderType shaderType, CommandList cmd);
+    SV_API void graphics_shader_resource_bind(GPUBuffer* buffer, u32 slot, ShaderType shaderType, CommandList cmd);
+	SV_API void graphics_shader_resource_bind_array(GPUImage** images, u32 count, u32 beginSlot, ShaderType shaderType, CommandList cmd);
+    SV_API void graphics_shader_resource_bind(GPUImage* image, u32 slot, ShaderType shaderType, CommandList cmd);
+    SV_API void graphics_shader_resource_unbind(u32 slot, ShaderType shaderType, CommandList cmd);
+    SV_API void graphics_shader_resource_unbind_shader(ShaderType shaderType, CommandList cmd);
+    SV_API void graphics_shader_resource_unbind_commandlist(CommandList cmd);
+
+    // Unordered Access Views
+
+	SV_API void graphics_unordered_access_view_bind_array(GPUBuffer** buffers, u32 count, u32 beginSlot, ShaderType shaderType, CommandList cmd);
+    SV_API void graphics_unordered_access_view_bind(GPUBuffer* buffer, u32 slot, ShaderType shaderType, CommandList cmd);
+	SV_API void graphics_unordered_access_view_bind_array(GPUImage** images, u32 count, u32 beginSlot, ShaderType shaderType, CommandList cmd);
+    SV_API void graphics_unordered_access_view_bind(GPUImage* image, u32 slot, ShaderType shaderType, CommandList cmd);
+    SV_API void graphics_unordered_access_view_unbind(u32 slot, ShaderType shaderType, CommandList cmd);
+    SV_API void graphics_unordered_access_view_unbind_shader(ShaderType shaderType, CommandList cmd);
+    SV_API void graphics_unordered_access_view_unbind_commandlist(CommandList cmd);
+
+	// Samplers
 
     SV_API void graphics_sampler_bind_array(Sampler** samplers, u32 count, u32 beginSlot, ShaderType shaderType, CommandList cmd);
     SV_API void graphics_sampler_bind(Sampler* sampler, u32 slot, ShaderType shaderType, CommandList cmd);
@@ -650,15 +680,13 @@ namespace sv {
     SV_API void graphics_depthstencilstate_unbind(CommandList cmd);
     SV_API void graphics_rasterizerstate_unbind(CommandList cmd);
 
-    SV_API void graphics_mode_set(GraphicsPipelineMode mode, CommandList cmd);
     SV_API void graphics_topology_set(GraphicsTopology topology, CommandList cmd);
     SV_API void graphics_stencil_reference_set(u32 ref, CommandList cmd);
     SV_API void graphics_line_width_set(float lineWidth, CommandList cmd);
 
-    SV_API GraphicsPipelineMode graphics_mode_get(CommandList cmd);
-    GraphicsTopology		graphics_topology_get(CommandList cmd);
-    u32				graphics_stencil_reference_get(CommandList cmd);
-    float			graphics_line_width_get(CommandList cmd);
+    GraphicsTopology graphics_topology_get(CommandList cmd);
+    u32				 graphics_stencil_reference_get(CommandList cmd);
+    float			 graphics_line_width_get(CommandList cmd);
 
     SV_API void graphics_viewport_set(const Viewport* viewports, u32 count, CommandList cmd);
     SV_API void graphics_viewport_set(const Viewport& viewport, u32 slot, CommandList cmd);
@@ -700,9 +728,11 @@ namespace sv {
     SV_API void graphics_draw(u32 vertexCount, u32 instanceCount, u32 startVertex, u32 startInstance, CommandList cmd);
     SV_API void graphics_draw_indexed(u32 indexCount, u32 instanceCount, u32 startIndex, u32 startVertex, u32 startInstance, CommandList cmd);
 
+	SV_API void graphics_dispatch(u32 group_count_x, u32 group_count_y, u32 group_count_z, CommandList cmd);
+
     // Memory
 
-    SV_API void graphics_buffer_update(GPUBuffer* buffer, const void* pData, u32 size, u32 offset, CommandList cmd);
+    SV_API void graphics_buffer_update(GPUBuffer* buffer, GPUBufferState buffer_state, const void* data, u32 size, u32 offset, CommandList cmd);
     SV_API void graphics_barrier(const GPUBarrier* barriers, u32 count, CommandList cmd);
     SV_API void graphics_image_blit(GPUImage* src, GPUImage* dst, GPUImageLayout srcLayout, GPUImageLayout dstLayout, u32 count, const GPUImageBlit* imageBlit, SamplerFilter filter, CommandList cmd);
     SV_API void graphics_image_clear(GPUImage* image, GPUImageLayout oldLayout, GPUImageLayout newLayout, Color clearColor, float depth, u32 stencil, CommandList cmd); // Not use if necessary, renderpasses have best performance!!

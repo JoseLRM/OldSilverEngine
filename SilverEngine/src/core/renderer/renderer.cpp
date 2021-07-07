@@ -184,44 +184,44 @@ namespace sv {
 
 		// Environment
 		{
-			desc.bufferType = GPUBufferType_Constant;
+			desc.buffer_type = GPUBufferType_Constant;
 			desc.usage = ResourceUsage_Default;
-			desc.CPUAccess = CPUAccess_Write;
+			desc.cpu_access = CPUAccess_Write;
 			desc.size = sizeof(EnvironmentData);
-			desc.pData = nullptr;
+			desc.data = nullptr;
 
 			SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_environment));
 		}
 
 		// Gaussian blur
 		{
-			desc.bufferType = GPUBufferType_Constant;
+			desc.buffer_type = GPUBufferType_Constant;
 			desc.usage = ResourceUsage_Default;
-			desc.CPUAccess = CPUAccess_Write;
+			desc.cpu_access = CPUAccess_Write;
 			desc.size = sizeof(GaussianBlurData);
-			desc.pData = nullptr;
+			desc.data = nullptr;
 
 			SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_gaussian_blur));
 		}
 
 		// Bloom threshold
 		{
-			desc.bufferType = GPUBufferType_Constant;
+			desc.buffer_type = GPUBufferType_Constant;
 			desc.usage = ResourceUsage_Default;
-			desc.CPUAccess = CPUAccess_Write;
+			desc.cpu_access = CPUAccess_Write;
 			desc.size = sizeof(v4_f32);
-			desc.pData = nullptr;
+			desc.data = nullptr;
 
 			SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_bloom_threshold));
 		}
 
 		// Camera buffer
 		{
-			desc.bufferType = GPUBufferType_Constant;
+			desc.buffer_type = GPUBufferType_Constant;
 			desc.usage = ResourceUsage_Default;
-			desc.CPUAccess = CPUAccess_Write;
+			desc.cpu_access = CPUAccess_Write;
 			desc.size = sizeof(GPU_CameraData);
-			desc.pData = nullptr;
+			desc.data = nullptr;
 
 			SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_camera));
 		}
@@ -229,7 +229,7 @@ namespace sv {
 		// set text index data
 		{
 			constexpr u32 index_count = TEXT_BATCH_COUNT * 6u;
-			u16* index_data = new u16[index_count];
+			u16* index_data = (u16*)SV_ALLOCATE_MEMORY(sizeof(u16) * index_count, "Renderer");
 
 			for (u32 i = 0u; i < TEXT_BATCH_COUNT; ++i) {
 
@@ -246,22 +246,22 @@ namespace sv {
 			}
 
 			// 10.922 characters
-			desc.indexType = IndexType_16;
-			desc.bufferType = GPUBufferType_Index;
+			desc.index_type = IndexType_16;
+			desc.buffer_type = GPUBufferType_Index;
 			desc.usage = ResourceUsage_Static;
-			desc.CPUAccess = CPUAccess_None;
+			desc.cpu_access = CPUAccess_None;
 			desc.size = sizeof(u16) * index_count;
-			desc.pData = index_data;
+			desc.data = index_data;
 
 			SV_CHECK(graphics_buffer_create(&desc, &gfx.ibuffer_text));
 			graphics_name_set(gfx.ibuffer_text, "Text_IndexBuffer");
 
-			delete[] index_data;
+			SV_FREE_MEMORY(index_data);
 		}
 
 		// Sprite index buffer
 		{
-			u32* index_data = new u32[SPRITE_BATCH_COUNT * 6u];
+			u32* index_data = (u32*)SV_ALLOCATE_MEMORY(sizeof(u32) * SPRITE_BATCH_COUNT * 6u, "Renderer");
 			{
 				u32 indexCount = SPRITE_BATCH_COUNT * 6u;
 				u32 index = 0u;
@@ -278,25 +278,25 @@ namespace sv {
 				}
 			}
 
-			desc.bufferType = GPUBufferType_Index;
-			desc.CPUAccess = CPUAccess_None;
+			desc.buffer_type = GPUBufferType_Index;
+			desc.cpu_access = CPUAccess_None;
 			desc.usage = ResourceUsage_Static;
-			desc.pData = index_data;
+			desc.data = index_data;
 			desc.size = SPRITE_BATCH_COUNT * 6u * sizeof(u32);
-			desc.indexType = IndexType_32;
+			desc.index_type = IndexType_32;
 
 			SV_CHECK(graphics_buffer_create(&desc, &gfx.ibuffer_sprite));
-			delete[] index_data;
+			SV_FREE_MEMORY(index_data);
 
 			graphics_name_set(gfx.ibuffer_sprite, "Sprite_IndexBuffer");
 		}
 
 		// Mesh
 		{
-			desc.pData = nullptr;
-			desc.bufferType = GPUBufferType_Constant;
+			desc.data = nullptr;
+			desc.buffer_type = GPUBufferType_Constant;
 			desc.usage = ResourceUsage_Dynamic;
-			desc.CPUAccess = CPUAccess_Write;
+			desc.cpu_access = CPUAccess_Write;
 
 			desc.size = sizeof(GPU_MeshInstanceData);
 			SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_mesh_instance));
@@ -310,10 +310,10 @@ namespace sv {
 
 		// Mesh
 		{
-			desc.pData = nullptr;
-			desc.bufferType = GPUBufferType_Constant;
+			desc.data = nullptr;
+			desc.buffer_type = GPUBufferType_Constant;
 			desc.usage = ResourceUsage_Dynamic;
-			desc.CPUAccess = CPUAccess_Write;
+			desc.cpu_access = CPUAccess_Write;
 
 			desc.size = sizeof(GPU_TerrainInstanceData);
 			SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_terrain_instance));
@@ -321,10 +321,10 @@ namespace sv {
 
 		// Shadow mapping
 		{
-			desc.pData = NULL;
-			desc.bufferType = GPUBufferType_Constant;
+			desc.data = NULL;
+			desc.buffer_type = GPUBufferType_Constant;
 			desc.usage = ResourceUsage_Dynamic;
-			desc.CPUAccess = CPUAccess_Write;
+			desc.cpu_access = CPUAccess_Write;
 			desc.size = sizeof(GPU_ShadowMappingData);
 
 			SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_shadow_mapping));
@@ -380,19 +380,19 @@ namespace sv {
 			};
 
 
-			desc.pData = box;
-			desc.bufferType = GPUBufferType_Vertex;
+			desc.data = box;
+			desc.buffer_type = GPUBufferType_Vertex;
 			desc.size = sizeof(v3_f32) * 36u;
 			desc.usage = ResourceUsage_Static;
-			desc.CPUAccess = CPUAccess_None;
+			desc.cpu_access = CPUAccess_None;
 
 			SV_CHECK(graphics_buffer_create(&desc, &gfx.vbuffer_skybox));
 
-			desc.pData = nullptr;
-			desc.bufferType = GPUBufferType_Constant;
+			desc.data = nullptr;
+			desc.buffer_type = GPUBufferType_Constant;
 			desc.size = sizeof(XMMATRIX);
 			desc.usage = ResourceUsage_Default;
-			desc.CPUAccess = CPUAccess_Write;
+			desc.cpu_access = CPUAccess_Write;
 
 			SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_skybox));
 		}
@@ -438,20 +438,21 @@ namespace sv {
 			SV_CHECK(graphics_image_create(&desc, &gfx.gbuffer_emission));
 
 			desc.format = GBUFFER_SSAO_FORMAT;
-			desc.layout = GPUImageLayout_RenderTarget;
-			desc.type = GPUImageType_RenderTarget | GPUImageType_ShaderResource;
+			desc.layout = GPUImageLayout_ShaderResource;
+			// TODO: Remove RenderTarget
+			desc.type = GPUImageType_UnorderedAccessView | GPUImageType_ShaderResource | GPUImageType_RenderTarget;
 			SV_CHECK(graphics_image_create(&desc, &gfx.gbuffer_ssao));
 		}
 	
 		// Aux Image
 		{
-			desc.pData = nullptr;
+			desc.data = nullptr;
 			desc.size = 0u;
 			desc.format = OFFSCREEN_FORMAT;
 			desc.layout = GPUImageLayout_ShaderResource;
 			desc.type = GPUImageType_RenderTarget | GPUImageType_ShaderResource;
 			desc.usage = ResourceUsage_Static;
-			desc.CPUAccess = CPUAccess_None;
+			desc.cpu_access = CPUAccess_None;
 			desc.width = 1920u / 2u;
 			desc.height = 1080u / 2u;
 
@@ -464,13 +465,13 @@ namespace sv {
 			u8 bytes[4];
 			for (u32 i = 0; i < 4; ++i) bytes[i] = 255u;
 
-			desc.pData = bytes;
+			desc.data = bytes;
 			desc.size = sizeof(u8) * 4u;
 			desc.format = Format_R8G8B8A8_UNORM;
 			desc.layout = GPUImageLayout_ShaderResource;
 			desc.type = GPUImageType_ShaderResource;
 			desc.usage = ResourceUsage_Static;
-			desc.CPUAccess = CPUAccess_None;
+			desc.cpu_access = CPUAccess_None;
 			desc.width = 1u;
 			desc.height = 1u;
 
@@ -698,6 +699,31 @@ namespace sv {
 		event_register("display_gui", display_debug_renderer, 0u);
 #endif
 
+		{
+			ShaderCompileDesc compile_desc;
+			compile_desc.api = graphics_api_get();
+			compile_desc.shaderType = ShaderType_Compute;
+			compile_desc.majorVersion = 6u;
+			compile_desc.minorVersion = 0u;
+			compile_desc.entryPoint = "main";
+
+			RawList data;
+			if (graphics_shader_compile_file(&compile_desc, "$system/shaders/compute_shader.hlsl", data)) {
+
+				SV_LOG_INFO("Compiled");
+			}
+			else SV_LOG_ERROR("Can't compile compute shader");
+
+			{
+				ShaderDesc desc;
+				desc.pBinData = data.data();
+				desc.binDataSize = data.size();
+				desc.shaderType = ShaderType_Compute;
+				
+				SV_CHECK(graphics_shader_create(&desc, &renderer->gfx.compute_shader));
+			}
+		}
+
 		return true;
     }
 
@@ -817,13 +843,13 @@ namespace sv {
 		}
 
 		GPUImageDesc desc;
-		desc.pData = images;
+		desc.data = images;
 		desc.size = image_width * image_height * 4u;
 		desc.format = Format_R8G8B8A8_UNORM;
 		desc.layout = GPUImageLayout_ShaderResource;
 		desc.type = GPUImageType_ShaderResource | GPUImageType_CubeMap;
 		desc.usage = ResourceUsage_Static;
-		desc.CPUAccess = CPUAccess_None;
+		desc.cpu_access = CPUAccess_None;
 		desc.width = image_width;
 		desc.height = image_height;
 
@@ -891,43 +917,42 @@ namespace sv {
 		graphics_draw(4u, 1u, 0u, 0u, cmd);
     }
 
-    /*SV_INTERNAL void screenspace_ambient_occlusion(CommandList cmd)
-	  {
-	  auto& gfx = renderer->gfx;
-	
-	  graphics_event_begin("SSAO", cmd);
-	
-	  graphics_topology_set(GraphicsTopology_TriangleStrip, cmd);
-	  graphics_shader_bind(gfx.vs_default_postprocess, cmd);
-	  graphics_shader_bind(gfx.ps_ssao, cmd);
-	  graphics_inputlayoutstate_unbind(cmd);
-	  graphics_blendstate_unbind(cmd);
+    SV_INTERNAL void screenspace_ambient_occlusion(CommandList cmd)
+	{
+		auto& gfx = renderer->gfx;
+		
+		graphics_event_begin("SSAO", cmd);
 
-	  graphics_image_bind(gfx.gbuffer_normal, 0u, ShaderType_Pixel, cmd);
-	  graphics_image_bind(gfx.gbuffer_depthstencil, 1u, ShaderType_Pixel, cmd);
-	
-	  GPUImage* att[1];
-	  att[0] = gfx.gbuffer_ssao;
+		GPUBarrier barriers[1];
+		barriers[0] = GPUBarrier::Image(gfx.gbuffer_ssao, GPUImageLayout_ShaderResource, GPUImageLayout_UnorderedAccessView);
 
-	  graphics_renderpass_begin(gfx.renderpass_ssao, att, cmd);
-	  postprocessing_draw_call(cmd);
-	  graphics_renderpass_end(cmd);
+		graphics_barrier(barriers, 1, cmd);
 
-	  postprocess_gaussian_blur(
-	  gfx.gbuffer_ssao,
-	  GPUImageLayout_RenderTarget,
-	  GPUImageLayout_ShaderResource,
-	  gfx.image_aux0,
-	  GPUImageLayout_ShaderResource,
-	  GPUImageLayout_ShaderResource,
-	  0.03f,
-	  os_window_aspect(),
-	  cmd,
-	  gfx.renderpass_ssao
-	  );
+		graphics_shader_bind(gfx.compute_shader, cmd);
 
-	  graphics_event_end(cmd);
-	  }*/
+		graphics_shader_resource_bind(gfx.gbuffer_normal, 0u, ShaderType_Compute, cmd);
+		graphics_shader_resource_bind(gfx.gbuffer_depthstencil, 1u, ShaderType_Compute, cmd);
+		graphics_unordered_access_view_bind(gfx.gbuffer_ssao, 0u, ShaderType_Compute, cmd);
+
+		const GPUImageInfo& info = graphics_image_info(gfx.gbuffer_ssao);
+
+		graphics_dispatch((info.width / 16) + 1, (info.height/16) + 1, 1, cmd);
+		
+		postprocess_gaussian_blur(
+				gfx.gbuffer_ssao,
+				GPUImageLayout_UnorderedAccessView,
+				GPUImageLayout_ShaderResource,
+				gfx.image_aux0,
+				GPUImageLayout_ShaderResource,
+				GPUImageLayout_ShaderResource,
+				0.03f,
+				os_window_aspect(),
+				cmd,
+				gfx.renderpass_ssao
+			);
+
+		graphics_event_end(cmd);
+	}
 
     // TEMP
     static List<SpriteInstance> sprite_instances;
@@ -1017,8 +1042,8 @@ namespace sv {
 			graphics_event_begin("Sprite_GeometryPass", cmd);
 
 			graphics_topology_set(GraphicsTopology_Triangles, cmd);
-			graphics_vertexbuffer_bind(batch_buffer, 0u, 0u, cmd);
-			graphics_indexbuffer_bind(gfx.ibuffer_sprite, 0u, cmd);
+			graphics_vertex_buffer_bind(batch_buffer, 0u, 0u, cmd);
+			graphics_index_buffer_bind(gfx.ibuffer_sprite, 0u, cmd);
 			graphics_inputlayoutstate_bind(gfx.ils_sprite, cmd);
 			graphics_sampler_bind(gfx.sampler_def_nearest, 0u, ShaderType_Pixel, cmd);
 			graphics_shader_bind(gfx.vs_sprite, cmd);
@@ -1084,7 +1109,7 @@ namespace sv {
 
 				// Draw
 
-				graphics_buffer_update(batch_buffer, data.data, instanceCount * 4u * sizeof(SpriteVertex), 0u, cmd);
+				graphics_buffer_update(batch_buffer, GPUBufferState_Vertex, data.data, instanceCount * 4u * sizeof(SpriteVertex), 0u, cmd);
 
 				graphics_renderpass_begin(gfx.renderpass_world, att, nullptr, 1.f, 0u, cmd);
 
@@ -1094,7 +1119,7 @@ namespace sv {
 				const SpriteInstance* begin = it;
 				const SpriteInstance* last = it;
 
-				graphics_image_bind(it->image ? it->image : gfx.image_white, 0u, ShaderType_Pixel, cmd);
+				graphics_shader_resource_bind(it->image ? it->image : gfx.image_white, 0u, ShaderType_Pixel, cmd);
 
 				while (it != end) {
 
@@ -1106,7 +1131,7 @@ namespace sv {
 						graphics_draw_indexed(spriteCount * 6u, 1u, 0u, startVertex, 0u, cmd);
 
 						if (it->image != last->image) {
-							graphics_image_bind(it->image ? it->image : gfx.image_white, 0u, ShaderType_Pixel, cmd);
+							graphics_shader_resource_bind(it->image ? it->image : gfx.image_white, 0u, ShaderType_Pixel, cmd);
 						}
 
 						last = it;
@@ -1174,15 +1199,15 @@ namespace sv {
 			GPUImage* specular_map = material->specular_map.get();
 			GPUImage* emissive_map = material->emissive_map.get();
 
-			graphics_image_bind(diffuse_map ? diffuse_map : gfx.image_white, 0u, ShaderType_Pixel, cmd);
-			if (normal_map) { graphics_image_bind(normal_map, 1u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_NORMAL_MAPPING; }
-			else graphics_image_bind(gfx.image_white, 1u, ShaderType_Pixel, cmd);
+			graphics_shader_resource_bind(diffuse_map ? diffuse_map : gfx.image_white, 0u, ShaderType_Pixel, cmd);
+			if (normal_map) { graphics_shader_resource_bind(normal_map, 1u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_NORMAL_MAPPING; }
+			else graphics_shader_resource_bind(gfx.image_white, 1u, ShaderType_Pixel, cmd);
 
-			if (specular_map) { graphics_image_bind(specular_map, 2u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_SPECULAR_MAPPING; }
-			else graphics_image_bind(gfx.image_white, 2u, ShaderType_Pixel, cmd);
+			if (specular_map) { graphics_shader_resource_bind(specular_map, 2u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_SPECULAR_MAPPING; }
+			else graphics_shader_resource_bind(gfx.image_white, 2u, ShaderType_Pixel, cmd);
 
-			if (emissive_map) { graphics_image_bind(emissive_map, 3u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_EMISSIVE_MAPPING; }
-			else graphics_image_bind(gfx.image_white, 3u, ShaderType_Pixel, cmd);
+			if (emissive_map) { graphics_shader_resource_bind(emissive_map, 3u, ShaderType_Pixel, cmd); material_data.flags |= MAT_FLAG_EMISSIVE_MAPPING; }
+			else graphics_shader_resource_bind(gfx.image_white, 3u, ShaderType_Pixel, cmd);
 
 			material_data.diffuse_color = color_to_vec3(material->diffuse_color);
 			material_data.specular_color = color_to_vec3(material->specular_color);
@@ -1207,10 +1232,10 @@ namespace sv {
 		}
 		else {
 
-			graphics_image_bind(gfx.image_white, 0u, ShaderType_Pixel, cmd);
-			graphics_image_bind(gfx.image_white, 1u, ShaderType_Pixel, cmd);
-			graphics_image_bind(gfx.image_white, 2u, ShaderType_Pixel, cmd);
-			graphics_image_bind(gfx.image_white, 3u, ShaderType_Pixel, cmd);
+			graphics_shader_resource_bind(gfx.image_white, 0u, ShaderType_Pixel, cmd);
+			graphics_shader_resource_bind(gfx.image_white, 1u, ShaderType_Pixel, cmd);
+			graphics_shader_resource_bind(gfx.image_white, 2u, ShaderType_Pixel, cmd);
+			graphics_shader_resource_bind(gfx.image_white, 3u, ShaderType_Pixel, cmd);
 
 			material_data.diffuse_color = color_to_vec3(Color::Gray(160u));
 			material_data.specular_color = color_to_vec3(Color::Gray(10u));
@@ -1220,7 +1245,7 @@ namespace sv {
 			graphics_rasterizerstate_bind(gfx.rs_back_culling, cmd);
 		}
 
-		graphics_buffer_update(gfx.cbuffer_material, &material_data, sizeof(GPU_MaterialData), 0u, cmd);
+		graphics_buffer_update(gfx.cbuffer_material, GPUBufferState_Constant, &material_data, sizeof(GPU_MaterialData), 0u, cmd);
 	}
 
     void _draw_scene(CameraComponent& camera, v3_f32 camera_position, v4_f32 camera_rotation)
@@ -1241,7 +1266,7 @@ namespace sv {
 		graphics_image_clear(gfx.offscreen, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, Color::Black(), 1.f, 0u, cmd);
 		graphics_image_clear(gfx.gbuffer_normal, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, Color::Transparent(), 1.f, 0u, cmd);
 		graphics_image_clear(gfx.gbuffer_emission, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, Color::Black(), 1.f, 0u, cmd);
-		graphics_image_clear(gfx.gbuffer_ssao, GPUImageLayout_RenderTarget, GPUImageLayout_RenderTarget, Color::Red(), 1.f, 0u, cmd);
+		graphics_image_clear(gfx.gbuffer_ssao, GPUImageLayout_ShaderResource, GPUImageLayout_ShaderResource, Color::Red(), 1.f, 0u, cmd);
 		graphics_image_clear(gfx.gbuffer_depthstencil, GPUImageLayout_DepthStencil, GPUImageLayout_DepthStencil, Color::Black(), 1.f, 0u, cmd);
 
 		SceneData* scene = get_scene_data();
@@ -1250,7 +1275,7 @@ namespace sv {
 		{
 			EnvironmentData data;
 			data.ambient_light = color_to_vec3(scene->ambient_light);
-			graphics_buffer_update(gfx.cbuffer_environment, &data, sizeof(EnvironmentData), 0u, cmd);
+			graphics_buffer_update(gfx.cbuffer_environment, GPUBufferState_Constant, &data, sizeof(EnvironmentData), 0u, cmd);
 		}
 
 		// Draw cameras
@@ -1273,13 +1298,14 @@ namespace sv {
 			camera_data.width = camera.width;
 			camera_data.height = camera.height;
 		    
-			graphics_buffer_update(gfx.cbuffer_camera, &camera_data, sizeof(GPU_CameraData), 0u, cmd);
+			graphics_buffer_update(gfx.cbuffer_camera, GPUBufferState_Constant, &camera_data, sizeof(GPU_CameraData), 0u, cmd);
 
 			// BIND GLOBALS
 
 			foreach(shader, 2) {
-				graphics_constantbuffer_bind(gfx.cbuffer_camera, SV_SLOT_CAMERA, ShaderType(shader), cmd);
+				graphics_constant_buffer_bind(gfx.cbuffer_camera, SV_SLOT_CAMERA, ShaderType(shader), cmd);
 			}
+			graphics_constant_buffer_bind(gfx.cbuffer_camera, SV_SLOT_CAMERA, ShaderType_Compute, cmd);
 
 			if (scene->skybox.image.get() && camera.projection_type == ProjectionType_Perspective)
 				draw_sky(scene->skybox.image.get(), camera_data.vm, camera_data.pm, cmd);
@@ -1485,7 +1511,7 @@ namespace sv {
 								
 							l.light_matrix[cascade_index] = camera_data.ivm * vpm * XMMatrixScaling(0.5f, 0.5f, 1.f) * XMMatrixTranslation(0.5f, 0.5f, 0.f);
 
-							graphics_constantbuffer_bind(gfx.cbuffer_shadow_mapping, 0u, ShaderType_Vertex, cmd);
+							graphics_constant_buffer_bind(gfx.cbuffer_shadow_mapping, 0u, ShaderType_Vertex, cmd);
 							graphics_shader_unbind(ShaderType_Pixel, cmd);
 							graphics_shader_bind(gfx.vs_shadow, cmd);
 							graphics_depthstencilstate_bind(gfx.dss_default_depth, cmd);
@@ -1509,9 +1535,9 @@ namespace sv {
 								GPU_ShadowMappingData data;
 								data.tm = mesh.world_matrix * vpm;
 
-								graphics_buffer_update(gfx.cbuffer_shadow_mapping, &data, sizeof(GPU_ShadowMappingData), 0u, cmd);
-								graphics_vertexbuffer_bind(mesh.mesh->vbuffer, 0u, 0u, cmd);
-								graphics_indexbuffer_bind(mesh.mesh->ibuffer, 0u, cmd);
+								graphics_buffer_update(gfx.cbuffer_shadow_mapping, GPUBufferState_Constant, &data, sizeof(GPU_ShadowMappingData), 0u, cmd);
+								graphics_vertex_buffer_bind(mesh.mesh->vbuffer, 0u, 0u, cmd);
+								graphics_index_buffer_bind(mesh.mesh->ibuffer, 0u, cmd);
 
 								graphics_draw_indexed(u32(mesh.mesh->indices.size()), 1u, 0u, 0u, 0u, cmd);
 							}
@@ -1551,10 +1577,10 @@ namespace sv {
 						GPU_LightData light_data = {};
 						GPU_ShadowData shadow_data;
 
-						graphics_image_bind(gfx.image_white, 4u, ShaderType_Pixel, cmd);
-						graphics_image_bind(gfx.image_white, 5u, ShaderType_Pixel, cmd);
-						graphics_image_bind(gfx.image_white, 6u, ShaderType_Pixel, cmd);
-						graphics_image_bind(gfx.image_white, 7u, ShaderType_Pixel, cmd);
+						graphics_shader_resource_bind(gfx.image_white, 4u, ShaderType_Pixel, cmd);
+						graphics_shader_resource_bind(gfx.image_white, 5u, ShaderType_Pixel, cmd);
+						graphics_shader_resource_bind(gfx.image_white, 6u, ShaderType_Pixel, cmd);
+						graphics_shader_resource_bind(gfx.image_white, 7u, ShaderType_Pixel, cmd);
 
 						GPU_LightData& l0 = light_data;
 						const LightInstance& l1 = light;
@@ -1580,7 +1606,7 @@ namespace sv {
 								GPUImage* const* shadow_maps = get_shadow_map(l1.entity, l1.comp);
 
 								foreach(i, 4u)
-									graphics_image_bind(shadow_maps[i], 4u + i, ShaderType_Pixel, cmd);
+									graphics_shader_resource_bind(shadow_maps[i], 4u + i, ShaderType_Pixel, cmd);
 									
 								shadow_data.light_matrix0 = l1.direction.light_matrix[0];
 								shadow_data.light_matrix1 = l1.direction.light_matrix[1];
@@ -1600,12 +1626,12 @@ namespace sv {
 							break;
 						}
 
-						graphics_buffer_update(gfx.cbuffer_light_instances, &light_data, sizeof(GPU_LightData), 0u, cmd);
-						graphics_buffer_update(gfx.cbuffer_shadow_data, &shadow_data, sizeof(GPU_ShadowData), 0u, cmd);
+						graphics_buffer_update(gfx.cbuffer_light_instances, GPUBufferState_Constant, &light_data, sizeof(GPU_LightData), 0u, cmd);
+						graphics_buffer_update(gfx.cbuffer_shadow_data, GPUBufferState_Constant, &shadow_data, sizeof(GPU_ShadowData), 0u, cmd);
 					}
 
-					graphics_constantbuffer_bind(gfx.cbuffer_light_instances, 1u, ShaderType_Pixel, cmd);
-					graphics_constantbuffer_bind(gfx.cbuffer_shadow_data, 2u, ShaderType_Pixel, cmd);
+					graphics_constant_buffer_bind(gfx.cbuffer_light_instances, 1u, ShaderType_Pixel, cmd);
+					graphics_constant_buffer_bind(gfx.cbuffer_shadow_data, 2u, ShaderType_Pixel, cmd);
 
 					if (mesh_instances.size()) {
 
@@ -1620,17 +1646,17 @@ namespace sv {
 						GPUBuffer* instance_buffer = gfx.cbuffer_mesh_instance;
 						GPUBuffer* material_buffer = gfx.cbuffer_material;
 						
-						graphics_constantbuffer_bind(instance_buffer, 0u, ShaderType_Vertex, cmd);
+						graphics_constant_buffer_bind(instance_buffer, 0u, ShaderType_Vertex, cmd);
 						
-						graphics_constantbuffer_bind(material_buffer, 0u, ShaderType_Pixel, cmd);
-						graphics_constantbuffer_bind(gfx.cbuffer_environment, 3u, ShaderType_Pixel, cmd);
+						graphics_constant_buffer_bind(material_buffer, 0u, ShaderType_Pixel, cmd);
+						graphics_constant_buffer_bind(gfx.cbuffer_environment, 3u, ShaderType_Pixel, cmd);
 
 						foreach(i, mesh_instances.size()) {
 
 							const MeshInstance& inst = mesh_instances[i];
 								
-							graphics_vertexbuffer_bind(inst.mesh->vbuffer, 0u, 0u, cmd);
-							graphics_indexbuffer_bind(inst.mesh->ibuffer, 0u, cmd);
+							graphics_vertex_buffer_bind(inst.mesh->vbuffer, 0u, 0u, cmd);
+							graphics_index_buffer_bind(inst.mesh->ibuffer, 0u, cmd);
 
 							bind_material(inst.material, cmd);
 
@@ -1639,7 +1665,7 @@ namespace sv {
 								GPU_MeshInstanceData data;
 								data.model_view_matrix = inst.world_matrix * camera_data.vm;
 								data.inv_model_view_matrix = XMMatrixInverse(nullptr, data.model_view_matrix);
-								graphics_buffer_update(instance_buffer, &data, sizeof(GPU_MeshInstanceData), 0u, cmd);
+								graphics_buffer_update(instance_buffer, GPUBufferState_Constant, &data, sizeof(GPU_MeshInstanceData), 0u, cmd);
 							}
 
 							graphics_draw_indexed(u32(inst.mesh->indices.size()), 1u, 0u, 0u, 0u, cmd);
@@ -1657,13 +1683,13 @@ namespace sv {
 						graphics_shader_bind(gfx.ps_terrain, cmd);
 						graphics_inputlayoutstate_bind(gfx.ils_terrain, cmd);
 
-						graphics_constantbuffer_bind(gfx.cbuffer_terrain_instance, 1u, ShaderType_Vertex, cmd);
+						graphics_constant_buffer_bind(gfx.cbuffer_terrain_instance, 1u, ShaderType_Vertex, cmd);
 						graphics_rasterizerstate_bind(gfx.rs_back_culling, cmd);
 
 						for (const TerrainInstance& inst : terrain_instances) {
 
-							graphics_vertexbuffer_bind(inst.terrain->vbuffer, 0u, 0u, cmd);
-							graphics_indexbuffer_bind(inst.terrain->ibuffer, 0u, cmd);
+							graphics_vertex_buffer_bind(inst.terrain->vbuffer, 0u, 0u, cmd);
+							graphics_index_buffer_bind(inst.terrain->ibuffer, 0u, cmd);
 
 							bind_material(inst.material, cmd);
 
@@ -1674,7 +1700,7 @@ namespace sv {
 								data.inv_model_view_matrix = XMMatrixInverse(nullptr, data.model_view_matrix);
 								data.size_x = inst.terrain->resolution.x;
 								data.size_z = inst.terrain->resolution.y;
-								graphics_buffer_update(gfx.cbuffer_terrain_instance, &data, sizeof(GPU_TerrainInstanceData), 0u, cmd);
+								graphics_buffer_update(gfx.cbuffer_terrain_instance, GPUBufferState_Constant, &data, sizeof(GPU_TerrainInstanceData), 0u, cmd);
 							}
 
 							graphics_draw_indexed(u32(inst.terrain->indices.size()), 1u, 0u, 0u, 0u, cmd);
@@ -1696,6 +1722,12 @@ namespace sv {
 			}
 
 			// Postprocessing
+
+			GPUBarrier barriers[3];
+			barriers[0] = GPUBarrier::Image(gfx.gbuffer_normal, GPUImageLayout_RenderTarget, GPUImageLayout_ShaderResource);
+			barriers[1] = GPUBarrier::Image(gfx.gbuffer_depthstencil, GPUImageLayout_DepthStencil, GPUImageLayout_DepthStencilReadOnly);
+
+			graphics_barrier(barriers, 2u, cmd);
 		
 			if (camera.bloom.active) {
 		    
@@ -1716,6 +1748,13 @@ namespace sv {
 
 			}
 
+			screenspace_ambient_occlusion(cmd);
+
+			barriers[0] = GPUBarrier::Image(gfx.gbuffer_normal, GPUImageLayout_ShaderResource, GPUImageLayout_RenderTarget);
+			barriers[1] = GPUBarrier::Image(gfx.gbuffer_depthstencil, GPUImageLayout_DepthStencilReadOnly, GPUImageLayout_DepthStencil);
+
+			graphics_barrier(barriers, 2u, cmd);
+
 			event_dispatch("post_draw_scene", NULL);
 		}
     }
@@ -1733,9 +1772,9 @@ namespace sv {
 		graphics_rasterizerstate_unbind(cmd);
 		graphics_topology_set(GraphicsTopology_Triangles, cmd);
 
-		graphics_vertexbuffer_bind(gfx.vbuffer_skybox, 0u, 0u, cmd);
-		graphics_constantbuffer_bind(gfx.cbuffer_skybox, 0u, ShaderType_Vertex, cmd);
-		graphics_image_bind(skymap, 0u, ShaderType_Pixel, cmd);
+		graphics_vertex_buffer_bind(gfx.vbuffer_skybox, 0u, 0u, cmd);
+		graphics_constant_buffer_bind(gfx.cbuffer_skybox, 0u, ShaderType_Vertex, cmd);
+		graphics_shader_resource_bind(skymap, 0u, ShaderType_Pixel, cmd);
 		graphics_sampler_bind(gfx.sampler_def_linear, 0u, ShaderType_Pixel, cmd);
 
 		XMFLOAT4X4 vm;
@@ -1748,7 +1787,7 @@ namespace sv {
 		view_matrix = XMLoadFloat4x4(&vm);
 		view_matrix = view_matrix * projection_matrix;
 
-		graphics_buffer_update(gfx.cbuffer_skybox, &view_matrix, sizeof(XMMATRIX), 0u, cmd);
+		graphics_buffer_update(gfx.cbuffer_skybox, GPUBufferState_Constant, &view_matrix, sizeof(XMMATRIX), 0u, cmd);
 
 		graphics_shader_bind(gfx.vs_sky, cmd);
 		graphics_shader_bind(gfx.ps_sky, cmd);
@@ -1899,9 +1938,9 @@ namespace sv {
 		graphics_shader_bind(gfx.ps_text, cmd);
 
 		GPUBuffer* buffer = get_batch_buffer(sizeof(GPU_TextData), cmd);
-		graphics_vertexbuffer_bind(buffer, 0u, 0u, cmd);
-		graphics_indexbuffer_bind(gfx.ibuffer_text, 0u, cmd);
-		graphics_image_bind(font.image, 0u, ShaderType_Pixel, cmd);
+		graphics_vertex_buffer_bind(buffer, 0u, 0u, cmd);
+		graphics_index_buffer_bind(gfx.ibuffer_text, 0u, cmd);
+		graphics_shader_resource_bind(font.image, 0u, ShaderType_Pixel, cmd);
 		graphics_sampler_bind(gfx.sampler_def_linear, 0u, ShaderType_Pixel, cmd);
 
 		graphics_inputlayoutstate_bind(gfx.ils_text, cmd);
@@ -1913,7 +1952,7 @@ namespace sv {
 			while (vertex_offset < vertices.size()) {
 
 				u32 vertex_count = SV_MIN((u32)vertices.size() - vertex_offset, TEXT_BATCH_COUNT * 4u);
-				graphics_buffer_update(buffer, vertices.data() + vertex_offset, vertex_count * sizeof(TextVertex), 0u, cmd);
+				graphics_buffer_update(buffer, GPUBufferState_Vertex, vertices.data() + vertex_offset, vertex_count * sizeof(TextVertex), 0u, cmd);
 				
 				GPUImage* att[1];
 				att[0] = gfx.offscreen;
@@ -2074,13 +2113,13 @@ namespace sv {
 			graphics_shader_bind(gfx.vs_default_postprocess, cmd);
 			graphics_shader_bind(gfx.ps_gaussian_blur, cmd);
 
-			graphics_constantbuffer_bind(gfx.cbuffer_gaussian_blur, 0u, ShaderType_Pixel, cmd);
+			graphics_constant_buffer_bind(gfx.cbuffer_gaussian_blur, 0u, ShaderType_Pixel, cmd);
 			graphics_sampler_bind(gfx.sampler_blur, 0u, ShaderType_Pixel, cmd);
 		}
 	
 		// Horizontal blur
 		{
-			graphics_image_bind(src, 0u, ShaderType_Pixel, cmd);
+			graphics_shader_resource_bind(src, 0u, ShaderType_Pixel, cmd);
 			graphics_viewport_set(aux, 0u, cmd);
 			graphics_scissor_set(aux, 0u, cmd);
 
@@ -2092,7 +2131,7 @@ namespace sv {
 			}
 
 			data.horizontal = 1u;
-			graphics_buffer_update(gfx.cbuffer_gaussian_blur, &data, sizeof(GaussianBlurData), 0u, cmd);
+			graphics_buffer_update(gfx.cbuffer_gaussian_blur, GPUBufferState_Constant, &data, sizeof(GaussianBlurData), 0u, cmd);
 
 			graphics_renderpass_begin(gfx.renderpass_off, att, cmd);
 			postprocessing_draw_call(cmd);
@@ -2105,7 +2144,7 @@ namespace sv {
 			barriers[1u] = GPUBarrier::Image(aux, GPUImageLayout_RenderTarget, GPUImageLayout_ShaderResource);
 			graphics_barrier(barriers, 2u, cmd);
 
-			graphics_image_bind(aux, 0u, ShaderType_Pixel, cmd);
+			graphics_shader_resource_bind(aux, 0u, ShaderType_Pixel, cmd);
 			graphics_viewport_set(src, 0u, cmd);
 			graphics_scissor_set(src, 0u, cmd);
 
@@ -2117,7 +2156,7 @@ namespace sv {
 			}
 
 			data.horizontal = 0u;
-			graphics_buffer_update(gfx.cbuffer_gaussian_blur, &data, sizeof(GaussianBlurData), 0u, cmd);
+			graphics_buffer_update(gfx.cbuffer_gaussian_blur, GPUBufferState_Constant, &data, sizeof(GaussianBlurData), 0u, cmd);
 			
 			graphics_renderpass_begin(renderpass, att, cmd);
 			postprocessing_draw_call(cmd);
@@ -2165,7 +2204,7 @@ namespace sv {
 		GPUImage* att[1u];
 		att[0u] = dst;
 
-		graphics_image_bind(src, 0u, ShaderType_Pixel, cmd);
+		graphics_shader_resource_bind(src, 0u, ShaderType_Pixel, cmd);
 		graphics_sampler_bind(gfx.sampler_def_linear, 0u, ShaderType_Pixel, cmd);
 		
 		graphics_renderpass_begin(gfx.renderpass_off, att, cmd);
@@ -2226,14 +2265,14 @@ namespace sv {
 				graphics_barrier(barriers, barrier_count, cmd);
 			}
 			
-			graphics_image_bind(src, 0u, ShaderType_Pixel, cmd);
+			graphics_shader_resource_bind(src, 0u, ShaderType_Pixel, cmd);
 			graphics_sampler_bind(gfx.sampler_blur, 0u, ShaderType_Pixel, cmd);
-			graphics_constantbuffer_bind(gfx.cbuffer_bloom_threshold, 0u, ShaderType_Pixel, cmd);
+			graphics_constant_buffer_bind(gfx.cbuffer_bloom_threshold, 0u, ShaderType_Pixel, cmd);
 			graphics_shader_bind(gfx.ps_bloom_threshold, cmd);
 			graphics_viewport_set(aux0, 0u, cmd);
 			graphics_scissor_set(aux0, 0u, cmd);
 
-			graphics_buffer_update(gfx.cbuffer_bloom_threshold, &threshold, sizeof(f32), 0u, cmd);
+			graphics_buffer_update(gfx.cbuffer_bloom_threshold, GPUBufferState_Constant, &threshold, sizeof(f32), 0u, cmd);
 			
 			att[0u] = aux0;
 			

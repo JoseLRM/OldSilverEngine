@@ -9,12 +9,15 @@
 #define SV_VK_RESOUCE_SET space1
 #elif SV_GEOMETRY_SHADER
 #define SV_VK_RESOUCE_SET space2
+#elif SV_COMPUTE_SHADER
+#define SV_VK_RESOUCE_SET space0
 #else
 #error "SHADER NOT SUPPORTED"
 #endif
 
 #define SV_CONSTANT_BUFFER(name, binding) cbuffer name : register(binding, SV_VK_RESOUCE_SET)
 #define SV_TEXTURE(name, binding) Texture2D name : register(binding, SV_VK_RESOUCE_SET)
+#define SV_UAV_TEXTURE(name, temp, binding) RWTexture2D<temp> name : register(binding, SV_VK_RESOUCE_SET)
 #define SV_CUBE_TEXTURE(name, binding) TextureCube name : register(binding, SV_VK_RESOUCE_SET)
 #define SV_SAMPLER(name, binding) SamplerState name : register(binding, SV_VK_RESOUCE_SET)
 

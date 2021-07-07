@@ -72,18 +72,20 @@ namespace sv {
 		construct_vertex_data(terrain, vertex_data);
 
 		GPUBufferDesc desc;
-		desc.bufferType = GPUBufferType_Vertex;
+		desc.buffer_type = GPUBufferType_Vertex;
 		desc.usage = ResourceUsage_Default;
-		desc.CPUAccess = CPUAccess_Write;
+		desc.cpu_access = CPUAccess_Write;
 		desc.size = u32(vertex_data.size() * sizeof(TerrainVertex));
-		desc.pData = vertex_data.data();
+		desc.data = vertex_data.data();
 
 		SV_CHECK(graphics_buffer_create(&desc, &terrain.vbuffer));
 
-		desc.indexType = IndexType_32;
-		desc.bufferType = GPUBufferType_Index;
+		desc.index_type = IndexType_32;
+		desc.buffer_type = GPUBufferType_Index;
 		desc.size = u32(terrain.indices.size() * sizeof(u32));
-		desc.pData = terrain.indices.data();
+		desc.data = terrain.indices.data();
+		desc.usage = ResourceUsage_Static;
+		desc.cpu_access = CPUAccess_None;
 
 	SV_CHECK(graphics_buffer_create(&desc, &terrain.ibuffer));
 
@@ -100,8 +102,7 @@ namespace sv {
 		List<TerrainVertex> vertex_data;
 		construct_vertex_data(terrain, vertex_data);
 
-		graphics_buffer_update(terrain.vbuffer, vertex_data.data(), (u32)vertex_data.size() * sizeof(TerrainVertex), 0u, cmd);
-		graphics_buffer_update(terrain.ibuffer, terrain.indices.data(), (u32)terrain.indices.size() * sizeof(u32), 0u, cmd);
+		graphics_buffer_update(terrain.vbuffer, GPUBufferState_Vertex, vertex_data.data(), (u32)vertex_data.size() * sizeof(TerrainVertex), 0u, cmd);
 	}
 
 	SV_AUX void terrain_destroy_buffers(TerrainComponent& terrain)

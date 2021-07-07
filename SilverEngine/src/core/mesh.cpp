@@ -426,18 +426,18 @@ namespace sv {
 		construct_vertex_data(mesh, vertex_data);
 
 		GPUBufferDesc desc;
-		desc.bufferType = GPUBufferType_Vertex;
+		desc.buffer_type = GPUBufferType_Vertex;
 		desc.usage = usage;
-		desc.CPUAccess = (usage == ResourceUsage_Static) ? CPUAccess_None : CPUAccess_Write;
+		desc.cpu_access = (usage == ResourceUsage_Static) ? CPUAccess_None : CPUAccess_Write;
 		desc.size = u32(vertex_data.size() * sizeof(MeshVertex));
-		desc.pData = vertex_data.data();
+		desc.data = vertex_data.data();
 
 		SV_CHECK(graphics_buffer_create(&desc, &mesh.vbuffer));
 
-		desc.indexType = IndexType_32;
-		desc.bufferType = GPUBufferType_Index;
+		desc.index_type = IndexType_32;
+		desc.buffer_type = GPUBufferType_Index;
 		desc.size = u32(mesh.indices.size() * sizeof(MeshIndex));
-		desc.pData = mesh.indices.data();
+		desc.data = mesh.indices.data();
 
 		SV_CHECK(graphics_buffer_create(&desc, &mesh.ibuffer));
 
@@ -457,8 +457,8 @@ namespace sv {
 		List<MeshVertex> vertex_data;
 		construct_vertex_data(mesh, vertex_data);
 
-		graphics_buffer_update(mesh.vbuffer, vertex_data.data(), (u32)vertex_data.size() * sizeof(MeshVertex), 0u, cmd);
-		graphics_buffer_update(mesh.ibuffer, mesh.indices.data(), (u32)mesh.indices.size() * sizeof(MeshIndex), 0u, cmd);
+		graphics_buffer_update(mesh.vbuffer, GPUBufferState_Vertex, vertex_data.data(), (u32)vertex_data.size() * sizeof(MeshVertex), 0u, cmd);
+		graphics_buffer_update(mesh.ibuffer, GPUBufferState_Index, mesh.indices.data(), (u32)mesh.indices.size() * sizeof(MeshIndex), 0u, cmd);
 		
 		return true;
     }

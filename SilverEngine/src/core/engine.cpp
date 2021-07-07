@@ -83,13 +83,13 @@ namespace sv {
 		// Create Image
 		GPUImageDesc desc;
 
-		desc.pData = data;
+		desc.data = data;
 		desc.size = width * height * 4u;
 		desc.format = Format_R8G8B8A8_UNORM;
 		desc.layout = GPUImageLayout_ShaderResource;
 		desc.type = GPUImageType_ShaderResource;
 		desc.usage = ResourceUsage_Static;
-		desc.CPUAccess = CPUAccess_None;
+		desc.cpu_access = CPUAccess_None;
 		desc.width = width;
 		desc.height = height;
 

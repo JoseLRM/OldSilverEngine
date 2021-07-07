@@ -64,31 +64,17 @@ namespace sv {
 		GraphicsPipelineState_IndexBuffer = SV_BIT(1),
 
 		GraphicsPipelineState_ConstantBuffer = SV_BIT(2),
-		GraphicsPipelineState_ConstantBuffer_VS = SV_BIT(3),
-		GraphicsPipelineState_ConstantBuffer_PS = SV_BIT(4),
-		GraphicsPipelineState_ConstantBuffer_GS = SV_BIT(5),
-		GraphicsPipelineState_ConstantBuffer_HS = SV_BIT(6),
-		GraphicsPipelineState_ConstantBuffer_DS = SV_BIT(7),
-		GraphicsPipelineState_ConstantBuffer_MS = SV_BIT(8),
-		GraphicsPipelineState_ConstantBuffer_TS = SV_BIT(9),
-
-		GraphicsPipelineState_Image = SV_BIT(10),
-		GraphicsPipelineState_Image_VS = SV_BIT(11),
-		GraphicsPipelineState_Image_PS = SV_BIT(12),
-		GraphicsPipelineState_Image_GS = SV_BIT(13),
-		GraphicsPipelineState_Image_HS = SV_BIT(14),
-		GraphicsPipelineState_Image_DS = SV_BIT(15),
-		GraphicsPipelineState_Image_MS = SV_BIT(16),
-		GraphicsPipelineState_Image_TS = SV_BIT(17),
-
-		GraphicsPipelineState_Sampler = SV_BIT(18),
-		GraphicsPipelineState_Sampler_VS = SV_BIT(19),
-		GraphicsPipelineState_Sampler_PS = SV_BIT(20),
-		GraphicsPipelineState_Sampler_GS = SV_BIT(21),
-		GraphicsPipelineState_Sampler_HS = SV_BIT(22),
-		GraphicsPipelineState_Sampler_DS = SV_BIT(23),
-		GraphicsPipelineState_Sampler_MS = SV_BIT(24),
-		GraphicsPipelineState_Sampler_TS = SV_BIT(25),
+		GraphicsPipelineState_ShaderResource = SV_BIT(2),
+		GraphicsPipelineState_UnorderedAccessView = SV_BIT(2),
+		GraphicsPipelineState_Sampler = SV_BIT(2),
+		
+		GraphicsPipelineState_Resource_VS = SV_BIT(3),
+		GraphicsPipelineState_Resource_PS = SV_BIT(4),
+		GraphicsPipelineState_Resource_GS = SV_BIT(5),
+		GraphicsPipelineState_Resource_HS = SV_BIT(6),
+		GraphicsPipelineState_Resource_DS = SV_BIT(7),
+		GraphicsPipelineState_Resource_MS = SV_BIT(8),
+		GraphicsPipelineState_Resource_TS = SV_BIT(9),
 
 		GraphicsPipelineState_Shader	= SV_BIT(26),
 		GraphicsPipelineState_Shader_VS = SV_BIT(27),
@@ -113,8 +99,6 @@ namespace sv {
 		GraphicsPipelineState_LineWidth		= SV_BIT(43),
     };
 
-    typedef u64 GraphicsPipelineStateFlags;
-
     struct GraphicsState {
 		GPUBuffer_internal*				vertexBuffers[GraphicsLimit_VertexBuffer];
 		u32								vertexBufferOffsets[GraphicsLimit_VertexBuffer];
@@ -123,11 +107,14 @@ namespace sv {
 		GPUBuffer_internal*				indexBuffer;
 		u32								indexBufferOffset;
 
-		GPUBuffer_internal*				constantBuffers[ShaderType_GraphicsCount][GraphicsLimit_ConstantBuffer];
-		u32								constantBuffersCount[ShaderType_GraphicsCount];
+		void*				            shader_resources[ShaderType_GraphicsCount][GraphicsLimit_ShaderResource];
+		u32								shader_resource_count[ShaderType_GraphicsCount];
 
-		GPUImage_internal*				images[ShaderType_GraphicsCount][GraphicsLimit_GPUImage];
-		u32								imagesCount[ShaderType_GraphicsCount];
+		GPUBuffer_internal*				constant_buffers[ShaderType_GraphicsCount][GraphicsLimit_ConstantBuffer];
+		u32								constant_buffer_count[ShaderType_GraphicsCount];
+		
+		void*				            unordered_access_views[ShaderType_GraphicsCount][GraphicsLimit_UnorderedAccessView];
+		u32								unordered_access_view_count[ShaderType_GraphicsCount];
 
 		Sampler_internal*				samplers[ShaderType_GraphicsCount][GraphicsLimit_Sampler];
 		u32								samplersCount[ShaderType_GraphicsCount];
@@ -154,17 +141,27 @@ namespace sv {
 		v4_f32						clearColors[GraphicsLimit_Attachment];
 		std::pair<float, u32>			clearDepthStencil;
 
-		GraphicsPipelineStateFlags		flags;
+		u64 flags;
     };
 
     struct ComputeState {
+		Shader_internal* compute_shader;
 
+		void*               shader_resources[GraphicsLimit_ShaderResource];
+		u32		            shader_resource_count;
+
+		GPUBuffer_internal*	constant_buffers[GraphicsLimit_ConstantBuffer];
+		u32					constant_buffer_count;
+		
+		void*			    unordered_access_views[GraphicsLimit_UnorderedAccessView];
+		u32					unordered_access_view_count;
+
+		bool update_resources;
     };
 
     struct PipelineState {
 		GraphicsState			graphics[GraphicsLimit_CommandList];
 		ComputeState			compute[GraphicsLimit_CommandList];
-		GraphicsPipelineMode	mode[GraphicsLimit_CommandList];
 
 		GPUImage* present_image;
 		GPUImageLayout present_image_layout;
@@ -195,10 +192,11 @@ namespace sv {
 
     typedef void(*FNP_graphics_api_draw)(u32, u32, u32, u32, CommandList);
     typedef void(*FNP_graphics_api_draw_indexed)(u32, u32, u32, u32, u32, CommandList);
+	typedef void(*FNP_graphics_api_dispatch)(u32, u32, u32, CommandList);
 
     typedef void(*FNP_graphics_api_image_clear)(GPUImage*, GPUImageLayout, GPUImageLayout, Color, float, u32, CommandList);
     typedef void(*FNP_graphics_api_image_blit)(GPUImage*, GPUImage*, GPUImageLayout, GPUImageLayout, u32, const GPUImageBlit*, SamplerFilter, CommandList);
-    typedef void(*FNP_graphics_api_buffer_update)(GPUBuffer*, const void*, u32, u32, CommandList);
+    typedef void(*FNP_graphics_api_buffer_update)(GPUBuffer*, GPUBufferState, const void*, u32, u32, CommandList);
     typedef void(*FNP_graphics_api_barrier)(const GPUBarrier*, u32, CommandList);
 
     typedef void(*FNP_graphics_api_event_begin)(const char*, CommandList);
@@ -228,9 +226,10 @@ namespace sv {
 		FNP_graphics_api_frame_begin		frame_begin;
 		FNP_graphics_api_frame_begin		frame_end;
 
-		FNP_graphics_api_draw		draw;
-		FNP_graphics_api_draw_indexed	draw_indexed;
-
+		FNP_graphics_api_draw		  draw;
+		FNP_graphics_api_draw_indexed draw_indexed;
+		FNP_graphics_api_dispatch     dispatch;
+		
 		FNP_graphics_api_image_clear	image_clear;
 		FNP_graphics_api_image_blit	image_blit;
 		FNP_graphics_api_buffer_update	buffer_update;

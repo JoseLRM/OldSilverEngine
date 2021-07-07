@@ -74,12 +74,12 @@ namespace sv {
 			bat << "-spirv ";
 
 			// Shift resources
-			u32 shift = GraphicsLimit_Sampler;
+			u32 shift = GraphicsLimit_ConstantBuffer;
 			bat << "-fvk-t-shift " << shift << " all ";
-			shift += GraphicsLimit_GPUImage;
-			bat << "-fvk-b-shift " << shift << " all ";
-			shift += GraphicsLimit_ConstantBuffer;
+			shift += GraphicsLimit_ShaderResource;
 			bat << "-fvk-u-shift " << shift << " all ";
+			shift += GraphicsLimit_UnorderedAccessView;
+			bat << "-fvk-s-shift " << shift << " all ";
 		}
 		break;
 		}
@@ -96,6 +96,10 @@ namespace sv {
 			break;
 		case ShaderType_Geometry:
 			bat << "gs_";
+			break;
+
+		case ShaderType_Compute:
+			bat << "cs_";
 			break;
 		}
 

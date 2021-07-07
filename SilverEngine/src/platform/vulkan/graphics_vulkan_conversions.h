@@ -445,6 +445,8 @@ namespace sv {
 
 		case GPUImageLayout_ShaderResource:
 			return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		case GPUImageLayout_UnorderedAccessView:
+			return VK_IMAGE_LAYOUT_GENERAL;
 		case GPUImageLayout_RenderTarget:
 			return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		case GPUImageLayout_Present:
@@ -730,6 +732,10 @@ namespace sv {
 		case GPUImageLayout_ShaderResource:
 			flags |= VK_ACCESS_SHADER_READ_BIT;
 			break;
+		case GPUImageLayout_UnorderedAccessView:
+			flags |= VK_ACCESS_SHADER_WRITE_BIT;
+			flags |= VK_ACCESS_SHADER_READ_BIT;
+			break;
 		case GPUImageLayout_Present:
 			flags |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 			break;
@@ -760,6 +766,7 @@ namespace sv {
 		case GPUImageLayout_General:
 		case GPUImageLayout_DepthStencilReadOnly:
 		case GPUImageLayout_ShaderResource:
+		case GPUImageLayout_UnorderedAccessView:
 			flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 			break;
 		default:
@@ -783,6 +790,7 @@ namespace sv {
 		case GPUImageLayout_RenderTarget:
 		case GPUImageLayout_Present:
 		case GPUImageLayout_ShaderResource:
+		case GPUImageLayout_UnorderedAccessView:
 			flags |= VK_IMAGE_ASPECT_COLOR_BIT;
 			break;
 		case GPUImageLayout_DepthStencil:
