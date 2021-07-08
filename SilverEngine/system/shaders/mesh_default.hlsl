@@ -104,7 +104,7 @@ Output main(Input input)
 		float3x3 TBN = transpose(float3x3(normalize(input.tangent), normalize(input.bitangent), normalize(input.normal)));
 
 		normal = normal_map.Sample(sam, input.texcoord).xyz * 2.f - 1.f;
-		normal = mul(TBN, normal);
+		normal = normalize(mul(TBN, normal));
 	}
 	else
 		normal = normalize(input.normal);

@@ -262,7 +262,7 @@ namespace sv {
 				dev.camera.width = 0.1f;
 				dev.camera.height = 0.1f;
 				dev.camera.near = 0.03f;
-				dev.camera.far = 100000.f;
+				dev.camera.far = 3000.f;
 			}
 		}
 	
@@ -433,11 +433,13 @@ namespace sv {
 
 			if (cam) {
 				dev.camera.bloom = cam->bloom;
+				dev.camera.ssao = cam->ssao;
 			}
 			else dev.postprocessing = false;
 		}
 		else {
 			dev.camera.bloom = {};
+			dev.camera.ssao = {};
 		}
 	
 		if (!input.unused)
@@ -1027,8 +1029,16 @@ namespace sv {
 				gui_checkbox("Bloom", cam.bloom.active);
 				if (cam.bloom.active) {
 
-					gui_drag_f32("Threshold", cam.bloom.threshold, 0.001f, 0.f, 1.f);
+					gui_drag_f32("Threshold", cam.bloom.threshold, 0.001f, 0.f, 10.f);
 					gui_drag_f32("Intensity", cam.bloom.intensity, 0.001f, 0.f, 1.f);
+				}
+
+				gui_checkbox("SSAO", cam.ssao.active);
+				if (cam.ssao.active) {
+
+					gui_drag_u32("Samples", cam.ssao.samples, 1u, 5, 128);
+					gui_drag_f32("Radius", cam.ssao.radius, 0.001f, 0.001f, 100.f);
+					gui_drag_f32("Bias", cam.ssao.bias, 0.0001f, 0.f, 10.f);
 				}
 			}
 

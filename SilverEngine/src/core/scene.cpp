@@ -3207,6 +3207,11 @@ namespace sv {
 		serialize_bool(s, bloom.active);
 		serialize_f32(s, bloom.threshold);
 		serialize_f32(s, bloom.intensity);
+
+		serialize_bool(s, ssao.active);
+		serialize_u32(s, ssao.samples);
+		serialize_f32(s, ssao.radius);
+		serialize_f32(s, ssao.bias);
     }
 
     void CameraComponent::deserialize(Deserializer& d, u32 version)
@@ -3230,6 +3235,33 @@ namespace sv {
 			deserialize_bool(d, bloom.active);
 			deserialize_f32(d, bloom.threshold);
 			deserialize_f32(d, bloom.intensity);
+			break;
+
+		case 2:
+			deserialize_u32(d, (u32&)projection_type);
+			deserialize_f32(d, near);
+			deserialize_f32(d, far);
+			deserialize_f32(d, width);
+			deserialize_f32(d, height);
+			deserialize_bool(d, bloom.active);
+			deserialize_f32(d, bloom.threshold);
+			deserialize_f32(d, bloom.intensity);
+			deserialize_bool(d, ssao.active);
+			break;
+
+		case 3:
+			deserialize_u32(d, (u32&)projection_type);
+			deserialize_f32(d, near);
+			deserialize_f32(d, far);
+			deserialize_f32(d, width);
+			deserialize_f32(d, height);
+			deserialize_bool(d, bloom.active);
+			deserialize_f32(d, bloom.threshold);
+			deserialize_f32(d, bloom.intensity);
+			deserialize_bool(d, ssao.active);
+			deserialize_u32(d, ssao.samples);
+			deserialize_f32(d, ssao.radius);
+			deserialize_f32(d, ssao.bias);
 			break;
 
 		}

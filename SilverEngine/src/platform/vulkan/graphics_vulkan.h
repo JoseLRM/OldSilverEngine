@@ -133,6 +133,7 @@ namespace sv {
 
 	enum VulkanDescriptorType : u32 {
 		VulkanDescriptorType_UniformBuffer,
+		VulkanDescriptorType_UniformTexelBuffer,
 		VulkanDescriptorType_SampledImage,
 		VulkanDescriptorType_StorageBuffer,
 		VulkanDescriptorType_StorageImage,
@@ -202,7 +203,8 @@ namespace sv {
 		VkBuffer				buffer;
 		VmaAllocation			allocation;
 		VkDescriptorBufferInfo	buffer_info;
-		VkBufferView            texel_buffer_view;
+		VkBufferView            srv_texel_buffer_view;
+		VkBufferView            uav_texel_buffer_view;
 		DynamicAllocation		dynamic_allocation[GraphicsLimit_CommandList];
     };
     // Image

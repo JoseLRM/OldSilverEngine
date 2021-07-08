@@ -16,6 +16,7 @@
 #endif
 
 #define SV_CONSTANT_BUFFER(name, binding) cbuffer name : register(binding, SV_VK_RESOUCE_SET)
+#define SV_BUFFER(name, temp, binding) Buffer<temp> name : register(binding, SV_VK_RESOUCE_SET)
 #define SV_TEXTURE(name, binding) Texture2D name : register(binding, SV_VK_RESOUCE_SET)
 #define SV_UAV_TEXTURE(name, temp, binding) RWTexture2D<temp> name : register(binding, SV_VK_RESOUCE_SET)
 #define SV_CUBE_TEXTURE(name, binding) TextureCube name : register(binding, SV_VK_RESOUCE_SET)

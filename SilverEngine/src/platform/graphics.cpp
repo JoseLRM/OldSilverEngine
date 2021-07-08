@@ -1128,6 +1128,46 @@ namespace sv {
 		}
     }
 
+	void graphics_shader_resource_bind_array(GPUBuffer** buffers, u32 count, u32 beginSlot, ShaderType shader_type, CommandList cmd)
+    {
+		if (shader_type == ShaderType_Compute) {
+			auto& state = g_PipelineState.compute[cmd];
+
+			state.shader_resource_count = SV_MAX(state.shader_resource_count, beginSlot + count);
+
+			memcpy(state.shader_resources + beginSlot, buffers, sizeof(GPUBuffer*) * count);
+			state.update_resources = true;
+		}
+		else {
+			auto& state = g_PipelineState.graphics[cmd];
+
+			state.shader_resource_count[shader_type] = SV_MAX(state.shader_resource_count[shader_type], beginSlot + count);
+
+			memcpy(state.shader_resources[shader_type] + beginSlot, buffers, sizeof(GPUBuffer*) * count);
+			state.flags |= GraphicsPipelineState_ShaderResource;
+			state.flags |= get_resource_shader_flag(shader_type);
+		}
+    }
+
+    void graphics_shader_resource_bind(GPUBuffer* buffer, u32 slot, ShaderType shader_type, CommandList cmd)
+    {
+		if (shader_type == ShaderType_Compute) {
+			auto& state = g_PipelineState.compute[cmd];
+
+			state.shader_resources[slot] = buffer;
+			state.shader_resource_count = SV_MAX(state.shader_resource_count, slot + 1u);
+			state.update_resources = true;
+		}
+		else {
+			auto& state = g_PipelineState.graphics[cmd];
+
+			state.shader_resources[shader_type][slot] = buffer;
+			state.shader_resource_count[shader_type] = SV_MAX(state.shader_resource_count[shader_type], slot + 1u);
+			state.flags |= GraphicsPipelineState_ShaderResource;
+			state.flags |= get_resource_shader_flag(shader_type);
+		}
+    }
+
     void graphics_shader_resource_unbind(u32 slot, ShaderType shaderType, CommandList cmd)
     {
 		auto& state = g_PipelineState.graphics[cmd];

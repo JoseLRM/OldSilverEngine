@@ -1,69 +1,97 @@
 #include "core.hlsl"
-#include "utils/random.hlsl"
-
-#ifdef SV_PIXEL_SHADER
+#include "shared_headers/ssao.h"
 
 SV_TEXTURE(normal_map, t0);
 SV_TEXTURE(depth_map, t1);
+SV_UAV_TEXTURE(output, float, u0);
 
-SV_GLOBAL u32 NUM_SAMPLES = 64u;
-SV_GLOBAL f32 RADIUS = 0.5f;
+SV_CONSTANT_BUFFER(ssao_buffer, b0) {
+GPU_SSAOData data;
+};
 
-float main(float2 texcoord : FragTexcoord) : SV_Target0
+[numthreads(16,16,1)]
+void main(uint3 dispatch_id : SV_DispatchThreadID)
 {
-	int2 screen_pos = (int2)(camera.screen_size * texcoord);
-
+	float2 output_dimension;
+	output.GetDimensions(output_dimension.x, output_dimension.y);
+	
+	int2 screen_pos = dispatch_id.xy;	
 
 	f32 depth = depth_map.Load(int3(screen_pos.x, screen_pos.y, 0)).r;
-	if (depth >= 0.99999f)
-	   discard;
+	if (depth >= 0.999999f) {
+	   output[screen_pos] = 1.f;
+	   return;
+	}
 
 	float3 normal = normal_map.Load(int3(screen_pos.x, screen_pos.y, 0)).xyz;
-	float3 position = compute_fragment_position(depth, texcoord, camera.ipm);
+	float3 position = compute_fragment_position(depth, (float2(screen_pos) + 0.5f) / output_dimension, camera.ipm);
 
 	f32 occlusion = 0.f;
 
-	[unroll]
-	foreach(i, NUM_SAMPLES) {
+	u32 seed = (screen_pos.x << 16) | screen_pos.y;
+
+	u32 samples = data.samples;
+
+	// TODO: Adjust
+	if (depth >= 0.9) {
+	   samples *= 4;
+	}
+	else if (depth >= 0.9999) {
+	   samples *= 2;
+	}
+	else if (depth < 0.999999) {
+	   samples /= 2;
+	}
+
+	foreach(i, samples) {
 
 		   // Compute random hemisphere position in view space
 
-		   f32 scale = f32(i) / 64.f;
+		   f32 scale = f32(i) / (f32)data.samples;
 		   scale = lerp(0.1f, 1.f, scale * scale);
 
+		   u32 i0 = (seed * (i + 1) * 9853454);
+		   u32 i1 = (seed * (i + 1) * 4748245);
+		   u32 i2 = (seed * (i + 1) * 8734542);
+
 		   float3 sample;
+		   sample.x = (f32(i0 % 10000) / 10000.f) * 2.f - 1.f;
+		   sample.y = (f32(i1 % 10000) / 10000.f) * 2.f - 1.f;
+		   sample.z = (f32(i2 % 10000) / 10000.f) * 2.f - 1.f;
 
-		   sample.x = (f32(i * 0xFF32A323 % 5484u) / f32(5484u) * 2.f - 1.f) * scale;
-		   sample.y = (f32(i * 0x43F32B32 % 5484u) / f32(5484u) * 2.f - 1.f) * scale;
-		   sample.z = (f32(i * 0x3254ADFF % 5484u) / f32(5484u) * 2.f - 1.f) * scale;
+		   f32 len = length(sample);
+		   sample /= len;
 
-		   if (dot(normal, sample) < 0.f) {
+		   if (dot(normal, sample) < 0.0f) {
 
 		      sample = -sample;
-		   }
+		   };
 
-		   sample = sample * RADIUS + position;
+		   sample = (sample * len * data.radius) + position;
 
 		   // Project sample in clip space
 
 		   float4 sample_projection = mul(float4(sample, 1.f), camera.pm);
-		   float2 offset = sample_projection.xy / sample_projection.w;
+		   sample_projection.xyz /= sample_projection.w;
+		   float2 offset = sample_projection.xy  * 0.5f + 0.5f;
 
 		   // Compute sample position
 
-		   int2 sample_screen = int2((offset.xy * 0.5f + 0.5f) * camera.screen_size);
-		   f32 sample_depth = depth_map.Load(int3(sample_screen.x, sample_screen.y, 0)).r;
+		   int2 sample_screen = int2(offset * output_dimension);
 
-		   sample_projection = mul(float4(offset.x, offset.y, sample_depth, 1.f), camera.ipm);
+		   if (sample_screen.x >= 0 && sample_screen.x <= output_dimension.x &&
+		      sample_screen.y >= 0 && sample_screen.y <= output_dimension.y &&
+		      (sample_screen.x != screen_pos.x || sample_screen.y != screen_pos.y)) {
 
-		   float3 sample_position = float3(sample_projection.xyz / sample_projection.w);
+		      f32 sample_depth = depth_map.Load(int3(sample_screen.x, sample_screen.y, 0)).r;
 
-		   f32 range = smoothstep(0.f, 1.f, RADIUS / abs(position.z - sample_position.z));
+		      float3 sampled_point = compute_fragment_position(sample_depth, offset, camera.ipm);
 
-		   occlusion += ((dot(sample_position - position, normal) > 0.1f) ? range : 0.f);
+		      f32 range = smoothstep(0.f, 1.f, data.radius / abs(sample.z - sampled_point.z));
+
+		      occlusion += ((sample.z - data.bias >= sampled_point.z) ? 1.5f : 0.f) * range;  
+		   }
 	}
 
-	return 1.f - (occlusion / f32(NUM_SAMPLES));
+	output[screen_pos] = 1.f - (occlusion / f32(samples));
 }
-
-#endif

@@ -323,7 +323,7 @@ namespace sv {
 
     struct CameraComponent : public Component {
 
-		static constexpr u32 VERSION = 1u;
+		static constexpr u32 VERSION = 3u;
 
 		ProjectionType projection_type = ProjectionType_Orthographic;
 		f32 near = -1000.f;
@@ -343,6 +343,13 @@ namespace sv {
 			f32 threshold = 0.6f;
 			f32 intensity = 0.03f;
 		} bloom;
+
+		struct {
+			bool active = false;
+			u32 samples = 32u;
+			f32 radius = 0.5f;
+			f32 bias = 0.025f;
+		} ssao;
 
 		void serialize(Serializer& s);
 		void deserialize(Deserializer& s, u32 version);

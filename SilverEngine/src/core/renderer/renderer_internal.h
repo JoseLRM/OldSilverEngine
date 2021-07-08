@@ -71,9 +71,6 @@ namespace sv {
 
     struct GraphicsObjects {
 
-		// TEMP
-		Shader* compute_shader;
-
 		GPUImage* image_white;
 		GPUImage* image_aux0;
 		GPUImage* image_aux1;
@@ -150,7 +147,9 @@ namespace sv {
 		Sampler* sampler_blur;
 		Shader* ps_bloom_threshold;
 		BlendState* bs_addition;
-		Shader* ps_ssao;
+		Shader* cs_ssao;
+		Shader* cs_ssao_add;
+		GPUBuffer* cbuffer_ssao;
 
 		// SKY
 

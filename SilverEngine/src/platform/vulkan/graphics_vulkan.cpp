@@ -227,9 +227,13 @@ namespace sv {
 				sizes[i].descriptorCount = VULKAN_MAX_DESCRIPTOR_TYPES * VULKAN_MAX_DESCRIPTOR_SETS;
 
 				switch (i) {
-
+					
 				case VulkanDescriptorType_UniformBuffer:
 					sizes[i].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+					break;
+
+				case VulkanDescriptorType_UniformTexelBuffer:
+					sizes[i].type = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
 					break;
 					
 				case VulkanDescriptorType_SampledImage:
@@ -2007,6 +2011,27 @@ namespace sv {
 				}
 				break;
 
+			case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+				if (!shader_resources) continue;
+				else {
+
+					Buffer_vk* buffer = NULL;
+
+					if (shader_type == ShaderType_Compute) {
+						buffer = reinterpret_cast<Buffer_vk*>(state.compute[cmd_].shader_resources[binding.userBinding]);
+					}
+					else {
+						buffer = reinterpret_cast<Buffer_vk*>(state.graphics[cmd_].shader_resources[shader_type][binding.userBinding]);
+					}
+
+					if (buffer == NULL) continue;
+					
+					write_desc[write_count].pImageInfo = NULL;
+					write_desc[write_count].pTexelBufferView = &buffer->srv_texel_buffer_view;
+					write_desc[write_count].pBufferInfo = NULL;
+				}
+				break;
+
 			case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
 				if (!unordered_access_views) continue;
 				else {
@@ -2023,7 +2048,7 @@ namespace sv {
 					if (buffer == NULL) continue;
 					
 					write_desc[write_count].pImageInfo = NULL;
-					write_desc[write_count].pTexelBufferView = &buffer->texel_buffer_view;
+					write_desc[write_count].pTexelBufferView = &buffer->uav_texel_buffer_view;
 					write_desc[write_count].pBufferInfo = NULL;
 				}
 				break;
@@ -2324,10 +2349,18 @@ namespace sv {
 			bufferUsage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 		}
 		if (desc.buffer_type & GPUBufferType_ShaderResource) {
-			bufferUsage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+
+			if (desc.format == Format_Unknown) {
+				bufferUsage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+			}
+			else bufferUsage |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
 		}
 		if (desc.buffer_type & GPUBufferType_UnorderedAccessView) {
-			bufferUsage |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
+
+			if (desc.format == Format_Unknown) {
+				bufferUsage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+			}
+			else bufferUsage |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
 		}
 
 		bufferUsage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
@@ -2421,19 +2454,33 @@ namespace sv {
 		}
 
 		// Buffer View
-		if (desc.buffer_type & GPUBufferType_UnorderedAccessView) {
+		{
+			buffer.srv_texel_buffer_view = VK_NULL_HANDLE;
+			buffer.uav_texel_buffer_view = VK_NULL_HANDLE;
+			
+			if (desc.buffer_type & GPUBufferType_ShaderResource) {
 
-			VkBufferViewCreateInfo view_info = {};
-			view_info.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
-			view_info.buffer = buffer.buffer;
-			view_info.format = graphics_vulkan_parse_format(desc.format);
-			view_info.offset = 0u;
-			view_info.range = VK_WHOLE_SIZE;
+				VkBufferViewCreateInfo view_info = {};
+				view_info.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
+				view_info.buffer = buffer.buffer;
+				view_info.format = graphics_vulkan_parse_format(desc.format);
+				view_info.offset = 0u;
+				view_info.range = VK_WHOLE_SIZE;
 
-			vkCheck(vkCreateBufferView(g_API->device, &view_info, NULL, &buffer.texel_buffer_view));
-		}
-		else {
-			buffer.texel_buffer_view = NULL;
+				vkCheck(vkCreateBufferView(g_API->device, &view_info, NULL, &buffer.srv_texel_buffer_view));
+			}
+
+			if (desc.buffer_type & GPUBufferType_UnorderedAccessView) {
+
+				VkBufferViewCreateInfo view_info = {};
+				view_info.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
+				view_info.buffer = buffer.buffer;
+				view_info.format = graphics_vulkan_parse_format(desc.format);
+				view_info.offset = 0u;
+				view_info.range = VK_WHOLE_SIZE;
+
+				vkCheck(vkCreateBufferView(g_API->device, &view_info, NULL, &buffer.uav_texel_buffer_view));
+			}
 		}
 
 		// Desc
@@ -2822,8 +2869,6 @@ namespace sv {
 			auto& storages = sr.storage_buffers;
 
 			SV_ASSERT(images.size() + storages.size() <= GraphicsLimit_ShaderResource);
-
-			u32 last_index = (u32)bindings.size();
 			
 			if (!images.empty()) {
 
@@ -2834,10 +2879,20 @@ namespace sv {
 					auto& image = images[i];
 					VkDescriptorSetLayoutBinding& binding = bindings[i + initialIndex];
 					binding.binding = comp.get_decoration(image.id, spv::Decoration::DecorationBinding);
-					binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 					binding.descriptorCount = 1u;
 					binding.stageFlags = graphics_vulkan_parse_shadertype(desc.shaderType);
 					binding.pImmutableSamplers = nullptr;
+
+					spirv_cross::SPIRType type = comp.get_type(image.type_id);
+
+					if (type.image.dim == spv::Dim::Dim2D || type.image.dim == spv::Dim::DimCube) {
+						++shader.layout.count[VulkanDescriptorType_SampledImage];
+						binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+					}
+					else {
+						++shader.layout.count[VulkanDescriptorType_UniformTexelBuffer];
+						binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+					}
 
 					// Add image to shader info
 					shader.info.images.emplace_back();
@@ -2846,9 +2901,8 @@ namespace sv {
 					res.binding_slot = binding.binding - GraphicsLimit_ConstantBuffer;
 				}
 			}
-			shader.layout.count[VulkanDescriptorType_SampledImage] = u32(bindings.size()) - last_index;
 
-			last_index = (u32)bindings.size();
+			u32 last_index = (u32)bindings.size();
 			
 			if (!storages.empty()) {
 
@@ -2961,6 +3015,7 @@ namespace sv {
 
 			case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
 			case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+			case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
 				srb.userBinding -= GraphicsLimit_ConstantBuffer;
 				break;
 
@@ -3131,8 +3186,11 @@ namespace sv {
     bool graphics_vulkan_buffer_destroy(Buffer_vk& buffer)
     {
 		vmaDestroyBuffer(g_API->allocator, buffer.buffer, buffer.allocation);
-		if (buffer.texel_buffer_view) {
-			vkDestroyBufferView(g_API->device, buffer.texel_buffer_view, NULL);
+		if (buffer.srv_texel_buffer_view) {
+			vkDestroyBufferView(g_API->device, buffer.srv_texel_buffer_view, NULL);
+		}
+		if (buffer.uav_texel_buffer_view) {
+			vkDestroyBufferView(g_API->device, buffer.uav_texel_buffer_view, NULL);
 		}
 		return true;
     }

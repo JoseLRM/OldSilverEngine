@@ -5,6 +5,7 @@
 #include "debug/console.h"
 
 #include "shared_headers/lighting.h"
+#include "shared_headers/ssao.h"
 
 namespace sv {
 
@@ -15,9 +16,11 @@ namespace sv {
 #define COMPILE_SHADER(type, shader, path, alwais_compile) SV_CHECK(graphics_shader_compile_fastbin_from_file(path, type, &shader, "$system/shaders/" path, alwais_compile));
 #define COMPILE_VS(shader, path) COMPILE_SHADER(ShaderType_Vertex, shader, path, false)
 #define COMPILE_PS(shader, path) COMPILE_SHADER(ShaderType_Pixel, shader, path, false)
+#define COMPILE_CS(shader, path) COMPILE_SHADER(ShaderType_Compute, shader, path, false)
 
 #define COMPILE_VS_(shader, path) COMPILE_SHADER(ShaderType_Vertex, shader, path, true)
 #define COMPILE_PS_(shader, path) COMPILE_SHADER(ShaderType_Pixel, shader, path, true)
+#define COMPILE_CS_(shader, path) COMPILE_SHADER(ShaderType_Compute, shader, path, true)
 
     static bool compile_shaders()
     {
@@ -32,8 +35,8 @@ namespace sv {
 		COMPILE_VS(gfx.vs_terrain, "terrain.hlsl");
 		COMPILE_PS(gfx.ps_terrain, "terrain.hlsl");
 
-		COMPILE_VS_(gfx.vs_mesh_default, "mesh_default.hlsl");
-		COMPILE_PS_(gfx.ps_mesh_default, "mesh_default.hlsl");
+		COMPILE_VS(gfx.vs_mesh_default, "mesh_default.hlsl");
+		COMPILE_PS(gfx.ps_mesh_default, "mesh_default.hlsl");
 
 		COMPILE_VS(gfx.vs_sky, "skymapping.hlsl");
 		COMPILE_PS(gfx.ps_sky, "skymapping.hlsl");
@@ -42,7 +45,8 @@ namespace sv {
 		COMPILE_PS(gfx.ps_default_postprocess, "postprocessing/default.hlsl");
 		COMPILE_PS(gfx.ps_gaussian_blur, "postprocessing/gaussian_blur.hlsl");
 		COMPILE_PS(gfx.ps_bloom_threshold, "postprocessing/bloom_threshold.hlsl");
-		COMPILE_PS(gfx.ps_ssao, "postprocessing/ssao.hlsl");
+		COMPILE_CS_(gfx.cs_ssao, "postprocessing/ssao.hlsl");
+		COMPILE_CS_(gfx.cs_ssao_add, "postprocessing/ssao_add.hlsl");
 
 		COMPILE_VS(gfx.vs_shadow, "shadow_mapping.hlsl");
 
@@ -191,6 +195,17 @@ namespace sv {
 			desc.data = nullptr;
 
 			SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_environment));
+		}
+
+		// SSAO
+		{
+			desc.buffer_type = GPUBufferType_Constant;
+			desc.usage = ResourceUsage_Default;
+			desc.cpu_access = CPUAccess_Write;
+			desc.size = sizeof(GPU_SSAOData);
+			desc.data = nullptr;
+
+			SV_CHECK(graphics_buffer_create(&desc, &gfx.cbuffer_ssao));
 		}
 
 		// Gaussian blur
@@ -419,7 +434,7 @@ namespace sv {
 	    
 			desc.format = OFFSCREEN_FORMAT;
 			desc.layout = GPUImageLayout_RenderTarget;
-			desc.type = GPUImageType_RenderTarget | GPUImageType_ShaderResource;
+			desc.type = GPUImageType_RenderTarget | GPUImageType_ShaderResource | GPUImageType_UnorderedAccessView;
 			SV_CHECK(graphics_image_create(&desc, &gfx.offscreen));
 
 			desc.format = GBUFFER_DEPTH_FORMAT;
@@ -699,31 +714,6 @@ namespace sv {
 		event_register("display_gui", display_debug_renderer, 0u);
 #endif
 
-		{
-			ShaderCompileDesc compile_desc;
-			compile_desc.api = graphics_api_get();
-			compile_desc.shaderType = ShaderType_Compute;
-			compile_desc.majorVersion = 6u;
-			compile_desc.minorVersion = 0u;
-			compile_desc.entryPoint = "main";
-
-			RawList data;
-			if (graphics_shader_compile_file(&compile_desc, "$system/shaders/compute_shader.hlsl", data)) {
-
-				SV_LOG_INFO("Compiled");
-			}
-			else SV_LOG_ERROR("Can't compile compute shader");
-
-			{
-				ShaderDesc desc;
-				desc.pBinData = data.data();
-				desc.binDataSize = data.size();
-				desc.shaderType = ShaderType_Compute;
-				
-				SV_CHECK(graphics_shader_create(&desc, &renderer->gfx.compute_shader));
-			}
-		}
-
 		return true;
     }
 
@@ -917,26 +907,34 @@ namespace sv {
 		graphics_draw(4u, 1u, 0u, 0u, cmd);
     }
 
-    SV_INTERNAL void screenspace_ambient_occlusion(CommandList cmd)
+    SV_INTERNAL void screenspace_ambient_occlusion(u32 samples, f32 radius, f32 bias, CommandList cmd)
 	{
 		auto& gfx = renderer->gfx;
 		
 		graphics_event_begin("SSAO", cmd);
+
+		GPU_SSAOData data;
+		data.samples = samples;
+		data.radius = radius;
+		data.bias = bias;
+
+		graphics_buffer_update(gfx.cbuffer_ssao, GPUBufferState_Constant, &data, sizeof(GPU_SSAOData), 0u, cmd);
 
 		GPUBarrier barriers[1];
 		barriers[0] = GPUBarrier::Image(gfx.gbuffer_ssao, GPUImageLayout_ShaderResource, GPUImageLayout_UnorderedAccessView);
 
 		graphics_barrier(barriers, 1, cmd);
 
-		graphics_shader_bind(gfx.compute_shader, cmd);
+		graphics_shader_bind(gfx.cs_ssao, cmd);
 
+		graphics_constant_buffer_bind(gfx.cbuffer_ssao, 0u, ShaderType_Compute, cmd);
 		graphics_shader_resource_bind(gfx.gbuffer_normal, 0u, ShaderType_Compute, cmd);
 		graphics_shader_resource_bind(gfx.gbuffer_depthstencil, 1u, ShaderType_Compute, cmd);
 		graphics_unordered_access_view_bind(gfx.gbuffer_ssao, 0u, ShaderType_Compute, cmd);
 
 		const GPUImageInfo& info = graphics_image_info(gfx.gbuffer_ssao);
 
-		graphics_dispatch((info.width / 16) + 1, (info.height/16) + 1, 1, cmd);
+		graphics_dispatch((info.width / 16) + 1, (info.height / 16) + 1, 1, cmd);
 		
 		postprocess_gaussian_blur(
 				gfx.gbuffer_ssao,
@@ -945,11 +943,24 @@ namespace sv {
 				gfx.image_aux0,
 				GPUImageLayout_ShaderResource,
 				GPUImageLayout_ShaderResource,
-				0.03f,
+				0.025f,
 				os_window_aspect(),
 				cmd,
 				gfx.renderpass_ssao
 			);
+
+		barriers[0] = GPUBarrier::Image(gfx.offscreen, GPUImageLayout_RenderTarget, GPUImageLayout_UnorderedAccessView);
+		graphics_barrier(barriers, 1, cmd);
+
+		graphics_shader_bind(gfx.cs_ssao_add, cmd);
+
+		graphics_shader_resource_bind(gfx.gbuffer_ssao, 0u, ShaderType_Compute, cmd);
+		graphics_unordered_access_view_bind(gfx.offscreen, 0u, ShaderType_Compute, cmd);
+
+		graphics_dispatch((info.width / 16) + 1, (info.height/16) + 1, 1, cmd);
+
+		barriers[0] = GPUBarrier::Image(gfx.offscreen, GPUImageLayout_UnorderedAccessView, GPUImageLayout_RenderTarget);
+		graphics_barrier(barriers, 1, cmd);
 
 		graphics_event_end(cmd);
 	}
@@ -1748,7 +1759,9 @@ namespace sv {
 
 			}
 
-			screenspace_ambient_occlusion(cmd);
+			if (camera.ssao.active) {
+				screenspace_ambient_occlusion(camera.ssao.samples, camera.ssao.radius, camera.ssao.bias, cmd);
+			}
 
 			barriers[0] = GPUBarrier::Image(gfx.gbuffer_normal, GPUImageLayout_ShaderResource, GPUImageLayout_RenderTarget);
 			barriers[1] = GPUBarrier::Image(gfx.gbuffer_depthstencil, GPUImageLayout_DepthStencilReadOnly, GPUImageLayout_DepthStencil);
@@ -2347,6 +2360,11 @@ namespace sv {
 					foreach(i, 4u)
 						gui_image_ex(ref.image[i], GPUImageLayout_DepthStencilReadOnly, 200.f, { 0.f, 0.f, 1.f, 1.f }, ref.entity);
 				}
+			}
+
+			if (gui_collapse("SSAO")) {
+
+				gui_image_ex(renderer->gfx.gbuffer_ssao, GPUImageLayout_ShaderResource, 400.f, { 0.f, 1.f, 1.f, 0.f }, 93842);
 			}
 			gui_end_window();
 		}
