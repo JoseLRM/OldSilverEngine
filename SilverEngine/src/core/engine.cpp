@@ -7,6 +7,7 @@
 #include "core/physics3D.h"
 
 #include "platform/os.h"
+#include "platform/audio.h"
 
 #include "debug/editor.h"
 #include "debug/console.h"
@@ -243,6 +244,8 @@ namespace sv {
 			return false;
 		}
 
+		_audio_initialize();
+
 		_initialize_assets();
 
 		_terrain_register_events();
@@ -330,6 +333,8 @@ namespace sv {
 		if (!_os_shutdown()) { SV_LOG_ERROR("Can't shutdown OS layer properly"); }
 		_close_assets();
 		// if (result_fail(task_close())) { SV_LOG_ERROR("Can't close the task system"); }
+
+		_audio_close();
 
 		_event_close();
 

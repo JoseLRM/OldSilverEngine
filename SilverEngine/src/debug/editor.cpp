@@ -4,6 +4,7 @@
 #include "debug/console.h"
 #include "core/event_system.h"
 #include "core/physics3D.h"
+#include "platform/audio.h"
 
 namespace sv {
 
@@ -867,6 +868,18 @@ namespace sv {
     
     bool _editor_initialize()
     {
+		// TEMP
+		{
+			static Sound* sound;
+			static AudioSource* source;
+
+			audio_sound_load(&sound, "$system/Prisoner of Your Eyes.wav");
+
+			audio_source_create(&source, sound);
+
+			audio_play(source);
+		}
+		
 		SV_CHECK(_gui_initialize());
 
 		load_asset_from_file(editor.image, "$system/images/editor.png");
