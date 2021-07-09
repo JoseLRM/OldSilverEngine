@@ -11,14 +11,21 @@
 
 namespace sv {
 
-	struct Sound {
+	struct SoundInternal {
 		RawList data;
 		WAVEFORMATEX wave_format;
 	};
 
+	static bool create_sound_asset(void* asset, const char* name);
+    static bool load_sound_asset(void* asset, const char* name, const char* filepath);
+    static bool destroy_sound_asset(void* asset, const char* name);
+    static bool reload_sound_asset(void* asset, const char* name, const char* filepath);
+
 	struct AudioSource {
 		IXAudio2SourceVoice* source;
 		XAUDIO2_BUFFER buffer;
+
+		Sound sound;
 	};
 
 	struct AudioState {
@@ -27,7 +34,6 @@ namespace sv {
 		IXAudio2MasteringVoice* mastering_voice;
 		IXAudio2SubmixVoice* submix;
 
-		InstanceAllocator<Sound, 100u> sound_allocator;
 		InstanceAllocator<AudioSource, 30u> source_allocator;
 
 	};
@@ -129,61 +135,107 @@ namespace sv {
 		if (FAILED(res)) 
 			return false;
 
+		// Register sound asset
+
+		AssetTypeDesc desc;
+		const char* extensions[5u];
+		desc.extensions = extensions;
+		
+		extensions[0] = "wav";
+
+		desc.name = "Sound";
+		desc.asset_size = sizeof(SoundInternal);
+		desc.extension_count = 1u;
+		desc.create_fn = create_sound_asset;
+		desc.load_file_fn = load_sound_asset;
+		desc.free_fn = destroy_sound_asset;
+		desc.reload_file_fn = reload_sound_asset;
+		desc.unused_time = 3.f;
+
+		SV_CHECK(register_asset_type(&desc));
+
 		return true;
 	}
 	
 	void _audio_close()
 	{
-		audio->source_allocator.clear();
-		audio->submix->DestroyVoice();
-		
-		audio->sound_allocator.clear();
+		if (audio) {
+			audio->source_allocator.clear();
+			audio->submix->DestroyVoice();
 
-		if (audio->mastering_voice)
-			audio->mastering_voice->DestroyVoice();
+			if (audio->mastering_voice)
+				audio->mastering_voice->DestroyVoice();
 
-		if (audio->engine)
-			audio->engine->StopEngine();
+			if (audio->engine)
+				audio->engine->StopEngine();
 
-		CoUninitialize();
+			CoUninitialize();
+			SV_FREE_STRUCT(audio);
+			audio = NULL;
+		}
 	}
 
-	bool audio_source_create(AudioSource** source_, Sound* sound)
+	void audio_source_create(AudioSource** source_)
 	{
 		AudioSource& source = audio->source_allocator.create();
-		// TODO: Handle memory if fails the creation
-
-		XAUDIO2_SEND_DESCRIPTOR send_descriptor = { 0, audio->submix };
-		XAUDIO2_VOICE_SENDS send_list = { 1, &send_descriptor };
-
-		HRESULT res = audio->engine->CreateSourceVoice(&source.source, &sound->wave_format, 0U, XAUDIO2_DEFAULT_FREQ_RATIO, nullptr, &send_list, nullptr);
-		if (FAILED(res)) {
-			return false;
-		}
-
-		source.buffer.pAudioData = sound->data.data();
-		source.buffer.AudioBytes = (u32)sound->data.size();
-		source.buffer.LoopCount = XAUDIO2_LOOP_INFINITE;
-		source.buffer.Flags = XAUDIO2_END_OF_STREAM;
-
-		res = source.source->SubmitSourceBuffer(&source.buffer, nullptr);
-		if (FAILED(res)) {
-			return false;
-		}
-
+		source.source = NULL;
 		*source_ = &source;
-		return true;
 	}
 	
 	void audio_source_destroy(AudioSource* source)
 	{
-		source->source->DestroyVoice();
+		if (source->source)
+			source->source->DestroyVoice();
+		
 		audio->source_allocator.destroy(*source);
 	}
 
-	bool audio_sound_load(Sound** sound_, const char* filepath)
+	SV_AUX SoundInternal* get_sound(Sound& asset)
 	{
-		Sound& sound = audio->sound_allocator.create();
+		void* ptr = get_asset_content(asset);
+		return reinterpret_cast<SoundInternal*>(ptr);
+	}
+
+	void audio_source_set(AudioSource* source, Sound& sound_asset)
+	{
+		if (source->source) {
+			source->source->DestroyVoice();
+		}
+
+		SoundInternal* sound = get_sound(sound_asset);
+
+		if (sound == NULL) return;
+		
+		XAUDIO2_SEND_DESCRIPTOR send_descriptor = { 0, audio->submix };
+		XAUDIO2_VOICE_SENDS send_list = { 1, &send_descriptor };
+
+		HRESULT res = audio->engine->CreateSourceVoice(&source->source, &sound->wave_format, 0U, XAUDIO2_DEFAULT_FREQ_RATIO, nullptr, &send_list, nullptr);
+		if (FAILED(res)) {
+			return;
+		}
+
+		source->buffer.pAudioData = sound->data.data();
+		source->buffer.AudioBytes = (u32)sound->data.size();
+		source->buffer.LoopCount = XAUDIO2_LOOP_INFINITE;
+		source->buffer.Flags = XAUDIO2_END_OF_STREAM;
+
+		res = source->source->SubmitSourceBuffer(&source->buffer, nullptr);
+		if (FAILED(res)) {
+			return;
+		}
+
+		source->sound = sound_asset;
+	}
+
+	static bool create_sound_asset(void* asset, const char* name)
+    {
+		new(asset) SoundInternal();
+		return true;
+    }
+
+    static bool load_sound_asset(void* asset, const char* name, const char* filepath)
+    {
+		SoundInternal& sound = *new(asset) SoundInternal();
 
 		RawList data;
 		SV_CHECK(file_read_binary(filepath, data));
@@ -232,19 +284,39 @@ namespace sv {
 			return false;
 		}
 
-		*sound_ = &sound;
 		return true;
-	}
-	
-	void audio_sound_destroy(Sound* sound)
-	{
-		audio->sound_allocator.destroy(*sound);
-	}
+    }
+
+    static bool destroy_sound_asset(void* asset, const char* name)
+    {
+		SoundInternal& sound = *reinterpret_cast<SoundInternal*>(asset);
+		sound.~SoundInternal();
+		return true;
+    }
+
+    static bool reload_sound_asset(void* asset, const char* name, const char* filepath)
+    {
+		SV_CHECK(destroy_sound_asset(asset, name));
+		return load_sound_asset(asset, name, filepath);
+    }
 
 	void audio_play(AudioSource* source)
 	{
 		if (source->source) {
 			source->source->Start();
+		}
+	}
+
+	void audio_pause(AudioSource* source)
+	{
+		if (source->source) {
+			source->source->Stop();
+		}
+	}
+	void audio_stop(AudioSource* source)
+	{
+		if (source->source) {
+			//source->source->SubmitSource();
 		}
 	}
 

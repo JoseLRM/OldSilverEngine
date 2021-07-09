@@ -668,7 +668,7 @@ namespace sv {
 		char filepath[MAX_PATH];
 		filepath_resolve(filepath, filepath_);
 	
-		HANDLE file = CreateFile(filepath, GENERIC_WRITE, FILE_SHARE_READ, NULL, append ? CREATE_NEW : CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+		HANDLE file = CreateFile(filepath, GENERIC_WRITE, FILE_SHARE_READ, NULL, append ? OPEN_ALWAYS : CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	
 		if (file == INVALID_HANDLE_VALUE) {
 	    
@@ -676,12 +676,15 @@ namespace sv {
 		
 				if (!create_path(filepath)) return false;
 
-				file = CreateFile(filepath, GENERIC_WRITE, FILE_SHARE_READ, NULL, append ? CREATE_NEW : CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+				file = CreateFile(filepath, GENERIC_WRITE, FILE_SHARE_READ, NULL, append ? OPEN_ALWAYS : CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 				if (file == INVALID_HANDLE_VALUE) return false;
 			}
 			else return false;
 		}
 
+		if (append)
+			SetFilePointer(file, NULL, NULL, FILE_END);
+		
 		WriteFile(file, data, (DWORD)size, NULL, NULL);
 	
 		CloseHandle(file);
@@ -693,19 +696,22 @@ namespace sv {
 		char filepath[MAX_PATH];
 		filepath_resolve(filepath, filepath_);
 	
-		HANDLE file = CreateFile(filepath, GENERIC_WRITE, FILE_SHARE_READ, NULL, append ? CREATE_NEW : CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+		HANDLE file = CreateFile(filepath, GENERIC_WRITE, FILE_SHARE_READ, NULL, append ? OPEN_ALWAYS : CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	
 		if (file == INVALID_HANDLE_VALUE) {
 			if (recursive) {
 		
 				if (!create_path(filepath)) return false;
 
-				file = CreateFile(filepath, GENERIC_WRITE, FILE_SHARE_READ, NULL, append ? CREATE_NEW : CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+				file = CreateFile(filepath, GENERIC_WRITE, FILE_SHARE_READ, NULL, append ? OPEN_ALWAYS : CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 				if (file == INVALID_HANDLE_VALUE) return false;
 			}
 			else return false;
 		}
 
+		if (append)
+			SetFilePointer(file, NULL, NULL, FILE_END);
+		
 		WriteFile(file, str, (DWORD)size, NULL, NULL);
 	
 		CloseHandle(file);

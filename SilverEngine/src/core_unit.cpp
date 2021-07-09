@@ -15,5 +15,6 @@
 #include "core/mesh.cpp"
 #include "core/terrain.cpp"
 #include "core/particles.cpp"
+#include "core/sound_system.cpp"
 #include "core/asset_system.cpp"
 #include "core/event_system.cpp"

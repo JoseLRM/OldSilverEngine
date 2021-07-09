@@ -244,12 +244,7 @@ namespace sv {
 			return false;
 		}
 
-		_audio_initialize();
-
 		_initialize_assets();
-
-		_terrain_register_events();
-		_particle_initialize();
 	
 		if (_os_startup()) {
 			SV_LOG_INFO("OS layer initialized");
@@ -259,7 +254,10 @@ namespace sv {
 			return false;
 		}
 
-		// TODO initialize_audio());
+		_audio_initialize();
+		
+		_terrain_register_events();
+		_particle_initialize();
 		// TODO task_initialize();
 
 		// Initialize Graphics API
@@ -330,11 +328,10 @@ namespace sv {
 
 		if (!_renderer_close()) { SV_LOG_ERROR("Can't close render utils"); }
 		if (!_graphics_close()) { SV_LOG_ERROR("Can't close graphicsAPI"); }
+		_audio_close();
 		if (!_os_shutdown()) { SV_LOG_ERROR("Can't shutdown OS layer properly"); }
 		_close_assets();
 		// if (result_fail(task_close())) { SV_LOG_ERROR("Can't close the task system"); }
-
-		_audio_close();
 
 		_event_close();
 

@@ -1,19 +1,20 @@
 #pragma once
 
-#include "defines.h"
+#include "core/asset_system.h"
 
 namespace sv {
 
-	struct Sound;
+	SV_DEFINE_ASSET_PTR(Sound, void*);
 	struct AudioSource;
 
-	SV_API bool audio_source_create(AudioSource** source, Sound* sound);
+	SV_API void audio_source_create(AudioSource** source);
 	SV_API void audio_source_destroy(AudioSource* source);
 
-	SV_API bool audio_sound_load(Sound** sound, const char* filepath);
-	SV_API void audio_sound_destroy(Sound* sound);
+	SV_API void audio_source_set(AudioSource* source, Sound& sound);
 
 	SV_API void audio_play(AudioSource* source);
+	SV_API void audio_pause(AudioSource* source);
+	SV_API void audio_stop(AudioSource* source);
 
 	SV_API void audio_global_volume_set(f32 volume);
 	SV_API void audio_volume_set(AudioSource* source, f32 volume);

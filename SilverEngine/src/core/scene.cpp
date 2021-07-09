@@ -2,6 +2,7 @@
 
 #include "core/renderer.h"
 #include "core/physics3D.h"
+#include "core/sound_system.h"
 #include "debug/console.h"
 
 #define SV_SCENE() sv::Scene& scene = *scene_state->scene
@@ -2478,6 +2479,47 @@ namespace sv {
 		return entity;
 	}
 
+	bool create_tag(const char* name)
+	{
+		if (name[0] == '\0') {
+			SV_LOG_ERROR("Invalid tag name '%s'", name);
+			return false;
+		}
+		
+		Tag tag = get_tag_id(name);
+
+		if (tag_exists(tag)) {
+			SV_LOG_ERROR("The tag name '%s' is duplicated", name);
+			return false;
+		}
+
+		tag = TAG_INVALID;
+		
+		foreach(i, TAG_MAX) {
+			if (scene_state->tag_register[i].name[0] == '\0') {
+				tag = Tag(i);
+				break;
+			}
+		}
+
+		if (tag == TAG_INVALID) {
+			SV_LOG_ERROR("Can't add more tags, exceeds the limits (%u)", TAG_MAX);
+			return false;
+		}
+
+		char str[TAG_NAME_SIZE + 2u] = "\n";
+		string_append(str, name, TAG_NAME_SIZE + 2u);
+
+		if (file_write_text("tags.txt", str, string_size(str), true)) {
+			SV_LOG_INFO("Tag '%s' created", name);
+			string_copy(scene_state->tag_register[tag].name, name, TAG_NAME_SIZE + 1u);
+			return true;
+		}
+
+		SV_LOG_ERROR("Can't create the tag '%s'", name);
+		return false;
+	}
+
     struct ComponentRegisterDesc {
 
 		const char*            name;
@@ -2592,6 +2634,17 @@ namespace sv {
 		desc.copy_fn = (CopyComponentFn)SphereCollider_copy;
 		desc.serialize_fn = (SerializeComponentFn)SphereCollider_serialize;
 		desc.deserialize_fn = (DeserializeComponentFn)SphereCollider_deserialize;
+
+		register_component(desc);
+
+		desc.name = "Audio Source";
+		desc.size = sizeof(AudioSourceComponent);
+		desc.version = AudioSourceComponent::VERSION;
+		desc.create_fn = (CreateComponentFn)AudioSourceComponent_create;
+		desc.destroy_fn = (DestroyComponentFn)AudioSourceComponent_destroy;
+		desc.copy_fn = (CopyComponentFn)AudioSourceComponent_copy;
+		desc.serialize_fn = (SerializeComponentFn)AudioSourceComponent_serialize;
+		desc.deserialize_fn = (DeserializeComponentFn)AudioSourceComponent_deserialize;
 
 		register_component(desc);
 

@@ -176,6 +176,8 @@ namespace sv {
 	SV_API const char* get_tag_name(Tag tag);
 	SV_API bool        tag_exists(Tag tag);
 	SV_API Entity      get_tag_entity(Tag tag);
+
+	bool create_tag(const char* name);
 	
 	// Components
 

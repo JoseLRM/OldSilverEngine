@@ -42,13 +42,12 @@ namespace sv {
 	};
 
 	enum EditorToolType : u32 {
-		EditorToolType_None,
 		EditorToolType_Gizmos,
 		EditorToolType_TerrainBrush,
 	};
 	
 	struct EditorToolData {
-		EditorToolType tool_type = EditorToolType_None;
+		EditorToolType tool_type = EditorToolType_Gizmos;
 		GizmosData gizmos_data;
 		TerrainBrushData terrain_brush_data;
 	};
@@ -114,6 +113,10 @@ namespace sv {
 		char name[FILENAME_SIZE + 1u] = "";
 	};
 
+	struct CreateTagData {
+		char name[TAG_NAME_SIZE + 1u] = "";
+	};
+
     struct GlobalEditorData {
 
 		List<Entity> selected_entities;
@@ -154,6 +157,7 @@ namespace sv {
 		MaterialEditorData material_editor_data;
 		ImportModelData import_model_data;
 		CreatePrefabData create_prefab_data;
+		CreateTagData create_tag_data;
 
 		char next_scene_name[SCENE_NAME_SIZE + 1u] = "";
     };
@@ -867,19 +871,7 @@ namespace sv {
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     
     bool _editor_initialize()
-    {
-		// TEMP
-		{
-			static Sound* sound;
-			static AudioSource* source;
-
-			audio_sound_load(&sound, "$system/Prisoner of Your Eyes.wav");
-
-			audio_source_create(&source, sound);
-
-			audio_play(source);
-		}
-		
+    {		
 		SV_CHECK(_gui_initialize());
 
 		load_asset_from_file(editor.image, "$system/images/editor.png");
@@ -1595,6 +1587,26 @@ namespace sv {
     {
 		Entity selected = (editor.selected_entities.size() == 1u) ? editor.selected_entities.back() : 0;
 
+		if (gui_begin_window("Create Tag", GuiWindowFlag_Temporal)) {
+
+			auto& data = editor.create_tag_data;
+			
+			gui_text_field(data.name, TAG_NAME_SIZE + 1u, 73982);
+
+			if (data.name[0]) {
+				
+				if (gui_button("Create")) {
+				
+					create_tag(data.name);
+
+					gui_hide_window("Create Tag");
+					data.name[0] = '\0';
+				}
+			}
+			
+			gui_end_window();
+		}
+
 		if (gui_begin_window("Inspector")) {
 
 			if (selected != 0) {
@@ -1658,6 +1670,13 @@ namespace sv {
 										gui_close_popup();
 									}
 								}
+							}
+
+							gui_separator(1);
+
+							if (gui_button("Create Tag")) {
+								gui_show_window("Create Tag");
+								gui_close_popup();
 							}
 									
 							gui_end_popup();
@@ -3106,6 +3125,20 @@ namespace sv {
     
     void _editor_update()
     {
+		// TEMP
+		if (input.keys[Key_Space] == InputState_Pressed) {
+			static Sound sound;
+			static AudioSource* source;
+
+			if (load_asset_from_file(sound, "assets/audio/Prisoner of Your Eyes.wav")) {
+
+				audio_source_create(&source);
+				audio_source_set(source, sound);
+
+				audio_play(source);
+			}
+		}
+		
 		bool exit = false;
 	
 		// CHANGE EDITOR MODE
