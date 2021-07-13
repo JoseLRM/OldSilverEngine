@@ -5,11 +5,14 @@
 
 namespace sv {
 
-	struct AudioSourceComponent : public Component {
+	struct SV_API AudioSourceComponent : public Component {
 
-		static constexpr u32 VERSION = 0u;
+		static constexpr u32 VERSION = 1u;
 		
 		AudioSource* source;
+
+		void play();
+		void stop();
 		
 	};
 

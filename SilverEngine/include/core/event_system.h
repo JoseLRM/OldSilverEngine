@@ -18,6 +18,19 @@ namespace sv {
 	bool register_plugin(const char* name, const char* filepath);
 	void unregister_plugins();
 
+#if SV_EDITOR
+	
+	struct ReloadPluginEvent {
+		char name[PLUGIN_NAME_SIZE + 1u];
+		Library library;
+	};
+	
+#endif
+
+	SV_API u32  get_plugin_count();
+	SV_API void get_plugin(char* name, Library* library, u32 index);
+	SV_API bool get_plugin_by_name(const char* name, Library* library);
+
     typedef void(*EventFn)(void* event_data, void* register_data);
 
     SV_API bool _event_register(const char* event_name, EventFn event, u32 flags, void* data, u32 data_size);

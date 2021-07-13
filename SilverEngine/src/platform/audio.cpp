@@ -26,6 +26,7 @@ namespace sv {
 		XAUDIO2_BUFFER buffer;
 
 		Sound sound;
+		u32 loop_count;
 	};
 
 	struct AudioState {
@@ -196,37 +197,6 @@ namespace sv {
 		return reinterpret_cast<SoundInternal*>(ptr);
 	}
 
-	void audio_source_set(AudioSource* source, Sound& sound_asset)
-	{
-		if (source->source) {
-			source->source->DestroyVoice();
-		}
-
-		SoundInternal* sound = get_sound(sound_asset);
-
-		if (sound == NULL) return;
-		
-		XAUDIO2_SEND_DESCRIPTOR send_descriptor = { 0, audio->submix };
-		XAUDIO2_VOICE_SENDS send_list = { 1, &send_descriptor };
-
-		HRESULT res = audio->engine->CreateSourceVoice(&source->source, &sound->wave_format, 0U, XAUDIO2_DEFAULT_FREQ_RATIO, nullptr, &send_list, nullptr);
-		if (FAILED(res)) {
-			return;
-		}
-
-		source->buffer.pAudioData = sound->data.data();
-		source->buffer.AudioBytes = (u32)sound->data.size();
-		source->buffer.LoopCount = XAUDIO2_LOOP_INFINITE;
-		source->buffer.Flags = XAUDIO2_END_OF_STREAM;
-
-		res = source->source->SubmitSourceBuffer(&source->buffer, nullptr);
-		if (FAILED(res)) {
-			return;
-		}
-
-		source->sound = sound_asset;
-	}
-
 	static bool create_sound_asset(void* asset, const char* name)
     {
 		new(asset) SoundInternal();
@@ -316,7 +286,7 @@ namespace sv {
 	void audio_stop(AudioSource* source)
 	{
 		if (source->source) {
-			//source->source->SubmitSource();
+			source->source->Stop();
 		}
 	}
 
@@ -325,16 +295,60 @@ namespace sv {
 		audio->submix->SetVolume(volume);
 	}
 	
-	void audio_volume_set(AudioSource* source, f32 volume)
-	{
-		source->source->SetVolume(volume);
-	}
-
 	f32 audio_global_volume_get()
 	{
 		f32 volume;
 		audio->submix->GetVolume(&volume);
 		return volume;
+	}
+
+	void audio_sound_set(AudioSource* source, Sound& sound_asset, u32 loop_count)
+	{		
+		if (source->source) {
+			source->source->DestroyVoice();
+			source->source = NULL;
+			unload_asset(source->sound);
+			source->loop_count = 0u;
+		}
+
+		SoundInternal* sound = get_sound(sound_asset);
+
+		if (sound == NULL || loop_count == 0u)
+			return;
+		
+		XAUDIO2_SEND_DESCRIPTOR send_descriptor = { 0, audio->submix };
+		XAUDIO2_VOICE_SENDS send_list = { 1, &send_descriptor };
+
+		HRESULT res = audio->engine->CreateSourceVoice(&source->source, &sound->wave_format, 0U, XAUDIO2_DEFAULT_FREQ_RATIO, nullptr, &send_list, nullptr);
+		if (FAILED(res)) {
+			return;
+		}
+
+		source->buffer.pAudioData = sound->data.data();
+		source->buffer.AudioBytes = (u32)sound->data.size();
+		source->buffer.LoopCount = (loop_count == u32_max) ? XAUDIO2_LOOP_INFINITE : (loop_count - 1u);
+		source->buffer.Flags = XAUDIO2_END_OF_STREAM;
+
+		res = source->source->SubmitSourceBuffer(&source->buffer, nullptr);
+		if (FAILED(res)) {
+			return;
+		}
+
+		source->sound = sound_asset;
+		source->loop_count = loop_count;
+	}
+	
+	void audio_volume_set(AudioSource* source, f32 volume)
+	{
+		source->source->SetVolume(volume);
+	}
+
+	void audio_sound_get(AudioSource* source, Sound& sound, u32& loop_count)
+	{
+		sound = source->sound;
+		if (sound.get())
+			loop_count = source->loop_count;
+		else loop_count = 0u;
 	}
 	
 	f32 audio_volume_get(AudioSource* source)

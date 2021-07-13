@@ -35,5 +35,8 @@ display_entity_data
 on_body_collision
 on_trigger_collision
 
+** PLUGINS **
+
+reload_plugin
 
 

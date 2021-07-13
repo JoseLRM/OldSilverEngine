@@ -577,7 +577,7 @@ namespace sv {
 			att[0].dstColorBlendFactor = BlendFactor_OneMinusSrcAlpha;
 			att[0].colorBlendOp = BlendOperation_Add;
 			att[0].srcAlphaBlendFactor = BlendFactor_One;
-			att[0].dstAlphaBlendFactor = BlendFactor_One;
+			att[0].dstAlphaBlendFactor = BlendFactor_Zero;
 			att[0].alphaBlendOp = BlendOperation_Add;
 			att[0].colorWriteMask = ColorComponent_All;
 
@@ -1259,12 +1259,8 @@ namespace sv {
 		graphics_buffer_update(gfx.cbuffer_material, GPUBufferState_Constant, &material_data, sizeof(GPU_MaterialData), 0u, cmd);
 	}
 
-    void _draw_scene(CameraComponent& camera, v3_f32 camera_position, v4_f32 camera_rotation)
-    {
-		if (!there_is_scene()) return;
-
-		event_dispatch("pre_draw_scene", NULL);
-	
+	static void draw_scene(CameraComponent& camera, v3_f32 camera_position, v4_f32 camera_rotation)
+	{
 		auto& gfx = renderer->gfx;
 	    
 		mesh_instances.reset();
@@ -1766,11 +1762,35 @@ namespace sv {
 			barriers[0] = GPUBarrier::Image(gfx.gbuffer_normal, GPUImageLayout_ShaderResource, GPUImageLayout_RenderTarget);
 			barriers[1] = GPUBarrier::Image(gfx.gbuffer_depthstencil, GPUImageLayout_DepthStencilReadOnly, GPUImageLayout_DepthStencil);
 
-			graphics_barrier(barriers, 2u, cmd);
-
-			event_dispatch("post_draw_scene", NULL);
+			graphics_barrier(barriers, 2u, cmd);			
 		}
+	}
+
+    void _draw_scene(CameraComponent& camera, v3_f32 camera_position, v4_f32 camera_rotation)
+    {
+		if (!there_is_scene()) return;
+
+		event_dispatch("pre_draw_scene", NULL);
+		draw_scene(camera, camera_position, camera_rotation);
+		event_dispatch("post_draw_scene", NULL);
     }
+
+	void _draw_scene()
+	{
+		event_dispatch("pre_draw_scene", NULL);
+		
+		CameraComponent* camera = get_main_camera();
+
+		if (camera) {
+			Entity entity = camera->id;
+			
+			v3_f32 position = get_entity_world_position(entity);
+			v4_f32 rotation = get_entity_world_rotation(entity);
+			draw_scene(*camera, position, rotation);
+		}
+		
+		event_dispatch("post_draw_scene", NULL);
+	}
 
     void draw_sky(GPUImage* skymap, XMMATRIX view_matrix, const XMMATRIX& projection_matrix, CommandList cmd)
     {

@@ -146,6 +146,12 @@ namespace sv {
 						
 							reg.last_write = last_write;
 							update_plugin_functions(&reg, last_library);
+
+							ReloadPluginEvent e;
+							string_copy(e.name, reg.name, PLUGIN_NAME_SIZE + 1u);
+							e.library = reg.library;
+
+							event_dispatch("reload_plugin", &e);
 						}
 					}
 				}
@@ -228,6 +234,33 @@ namespace sv {
 		event_system->plugins.clear();
 		
 		mutex_unlock(event_system->global_mutex);
+	}
+
+	u32 get_plugin_count()
+	{
+		return (u32)event_system->plugins.size();
+	}
+	
+	void get_plugin(char* name, Library* library, u32 index)
+	{
+		const PluginRegister& p = event_system->plugins[index];
+		
+		if (name) string_copy(name, p.name, PLUGIN_NAME_SIZE + 1u);
+		if (library) *library = p.library;
+	}
+
+	bool get_plugin_by_name(const char* name, Library* library)
+	{
+		foreach(i, event_system->plugins.size()) {
+			
+			const PluginRegister& p = event_system->plugins[i];
+			if (string_equals(p.name, name)) {
+				*library = p.library;
+				return true;
+			}
+		}
+
+		return false;
 	}
 
     SV_AUX EventType* find_type(const char* event_name, bool log_not_found)

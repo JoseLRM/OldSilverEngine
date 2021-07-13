@@ -64,6 +64,7 @@ namespace sv {
     void _scene_close();
     void _update_scene();
     void _draw_scene(CameraComponent& camera, v3_f32 position, v4_f32 rotation);
+	void _draw_scene();
     bool _start_scene(const char* name);
 
     SV_API bool create_entity_model(Entity parent, const char* filepath);
@@ -212,6 +213,11 @@ namespace sv {
     SV_API void set_entity_position2D(Entity entity, const v2_f32& position);
     SV_API void set_entity_scale2D(Entity entity, const v2_f32& scale);
 
+	SV_API void set_entity_euler_rotation(Entity entity, v3_f32 euler_angles);
+	SV_API void set_entity_euler_rotationX(Entity entity, f32 rotation);
+	SV_API void set_entity_euler_rotationY(Entity entity, f32 rotation);
+	SV_API void set_entity_euler_rotationZ(Entity entity, f32 rotation);
+
     // Local space getters
     
     SV_API Transform* get_entity_transform_ptr(Entity entity);
@@ -220,16 +226,21 @@ namespace sv {
     SV_API v3_f32*    get_entity_scale_ptr(Entity entity);
     SV_API v2_f32*    get_entity_position2D_ptr(Entity entity);
     SV_API v2_f32*    get_entity_scale2D_ptr(Entity entity);
-    SV_API XMMATRIX   get_entity_matrix(Entity entity);
 
     // Local space const getters
     
     SV_API Transform get_entity_transform(Entity entity);
-    SV_API v3_f32 get_entity_position(Entity entity);
-    SV_API v4_f32 get_entity_rotation(Entity entity);
-    SV_API v3_f32 get_entity_scale(Entity entity);
-    SV_API v2_f32 get_entity_position2D(Entity entity);
-    SV_API v2_f32 get_entity_scale2D(Entity entity);
+    SV_API v3_f32    get_entity_position(Entity entity);
+    SV_API v4_f32    get_entity_rotation(Entity entity);
+    SV_API v3_f32    get_entity_scale(Entity entity);
+    SV_API v2_f32    get_entity_position2D(Entity entity);
+    SV_API v2_f32    get_entity_scale2D(Entity entity);
+	SV_API XMMATRIX  get_entity_matrix(Entity entity);
+	
+	SV_API v3_f32 get_entity_euler_rotation(Entity entity);
+	SV_API f32 get_entity_euler_rotationX(Entity entity);
+	SV_API f32 get_entity_euler_rotationY(Entity entity);
+	SV_API f32 get_entity_euler_rotationZ(Entity entity);
 
     // World space getters
 
@@ -273,6 +284,8 @@ namespace sv {
 		v4_f32 get_sprite_texcoord(u32 id);
 	
     };
+
+	SV_API u32 get_sprite_id(SpriteSheet* sheet, const char* name);
 
     SV_API void serialize_sprite_sheet(Serializer& s, const SpriteSheet& sheet);
     SV_API void deserialize_sprite_sheet(Deserializer& d, SpriteSheet& sheet);
@@ -325,8 +338,10 @@ namespace sv {
 
     struct CameraComponent : public Component {
 
-		static constexpr u32 VERSION = 3u;
+		static constexpr u32 VERSION = 4u;
 
+		bool adjust_width = true;
+		
 		ProjectionType projection_type = ProjectionType_Orthographic;
 		f32 near = -1000.f;
 		f32 far = 1000.f;
@@ -359,10 +374,20 @@ namespace sv {
 		SV_INLINE void adjust(f32 aspect)
 			{
 				if (width / height == aspect) return;
+
 				v2_f32 res = { width, height };
 				f32 mag = vec2_length(res);
-				res.x = aspect;
-				res.y = 1.f;
+
+				if (adjust_width) {
+
+					res.x = aspect;
+					res.y = 1.f;
+				}
+				else {
+					res.x = 1.f;
+					res.y = 1.f / aspect;
+				}
+				
 				res = vec2_normalize(res);
 				res *= mag;
 				width = res.x;
@@ -440,3 +465,36 @@ namespace sv {
 #define __TAG(name) sv::get_tag_id(#name)
 #define __COMPONENT(name) sv::get_component_id(#name)
 #endif
+
+#define SV_DEFINE_COMPONENT(struct_name, name, version)					\
+	SV_USER void _##struct_name##_create(struct_name* comp, Entity entity) \
+	{																	\
+		new (comp) struct_name();										\
+	}																	\
+	SV_USER void _##struct_name##_destroy(struct_name* comp, Entity entity) \
+	{																	\
+		comp->~struct_name();											\
+	}																	\
+	SV_USER void _##struct_name##_copy(struct_name* dst, const struct_name* src, Entity entity) \
+	{																	\
+		*dst = *src;													\
+	}																	\
+	SV_USER void _##struct_name##_serialize(struct_name* comp, Serializer& s) \
+	{																	\
+		comp->serialize(s);												\
+	}																	\
+	SV_USER void _##struct_name##_deserialize(struct_name* comp, Deserializer& d, u32 version_) \
+	{																	\
+		comp->deserialize(d, version_);									\
+	}																	\
+	SV_USER void _define_##struct_name##(void** create_fn, void** destroy_fn, void** copy_fn, void** serialize_fn, void** deserialize_fn, u32* version_, u32* size_, char* name_) \
+	{																	\
+		*create_fn = _##struct_name##_create;							\
+		*destroy_fn = _##struct_name##_destroy;							\
+		*copy_fn = _##struct_name##_copy;								\
+		*serialize_fn = _##struct_name##_serialize;						\
+		*deserialize_fn = _##struct_name##_deserialize;					\
+		*version_ = version;											\
+		*size_ = sizeof(struct_name);									\
+		string_copy(name_, #name, COMPONENT_NAME_SIZE + 1u);			\
+	}																	

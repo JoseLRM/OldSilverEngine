@@ -4,6 +4,7 @@
 
 #include "core/scene.h"
 #include "core/engine.h"
+#include "core/sound_system.h"
 
 #include "debug/gui.h"
 
@@ -73,8 +74,9 @@ namespace sv {
     constexpr u32 ASSET_BROWSER_PACKAGE_MESH = 70u;
     constexpr u32 ASSET_BROWSER_PACKAGE_MATERIAL = 71u;
     constexpr u32 ASSET_BROWSER_PACKAGE_SPRITE_SHEET = 72u;
+	constexpr u32 ASSET_BROWSER_PACKAGE_SOUND = 73u;
 
-	constexpr u32 ASSET_BROWSER_PREFAB = 73u;
+	constexpr u32 ASSET_BROWSER_PREFAB = 150u;
 	
     struct AssetPackage {
 		char filepath[FILEPATH_SIZE + 1u];
@@ -91,6 +93,7 @@ namespace sv {
     SV_API void egui_end_component();
 
     SV_API bool egui_comp_texture(const char* text, u64 id, TextureAsset* texture);
+	SV_API bool gui_sound_asset(const char* text, Sound& sound, u64 id = u64_max);
     SV_API void egui_comp_mesh(const char* text, u64 id, MeshAsset* mesh);
     SV_API void egui_comp_material(const char* text, u64 id, MaterialAsset* material);
 

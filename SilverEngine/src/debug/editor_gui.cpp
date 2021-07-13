@@ -93,6 +93,43 @@ namespace sv {
 		return res;
     }
 
+	bool gui_sound_asset(const char* text, Sound& sound, u64 id)
+    {
+		bool res = false;
+		
+		gui_push_id(id);
+
+		const char* filepath = sound.get_filepath();
+		if (filepath == NULL) filepath = "None";
+		
+		gui_text(filepath);
+
+		AssetPackage* package;
+		if (gui_recive_package((void**)&package, ASSET_BROWSER_PACKAGE_SOUND, GuiReciverTrigger_LastWidget)) {
+
+			res = load_asset_from_file(sound, package->filepath);
+			if (!res) {
+
+				SV_LOG_ERROR("Can't load the sound '%s'", package->filepath);
+			}
+		}
+
+		if (gui_begin_popup(GuiPopupTrigger_LastWidget)) {
+
+			if (gui_button("Remove")) {
+				unload_asset(sound);
+				gui_close_popup();
+				res = true;
+			}
+			
+			gui_end_popup();
+		}
+
+		gui_pop_id();
+
+		return res;
+    }
+
     void egui_comp_mesh(const char* text, u64 id, MeshAsset* mesh)
     {
 		bool res = false;

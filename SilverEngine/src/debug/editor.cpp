@@ -25,6 +25,9 @@ namespace sv {
     struct GizmosData {
 
 		GizmosTransformMode mode = GizmosTransformMode_Position;
+		f32 position_advance = 0.5f;
+		f32 scale_advance = 0.5f;
+		f32 rotation_advance = PI / 4.f;
 
 		GizmosObject object = GizmosObject_None;
 		bool focus = false;
@@ -58,6 +61,7 @@ namespace sv {
 		AssetElementType_Mesh,
 		AssetElementType_Material,
 		AssetElementType_SpriteSheet,
+		AssetElementType_Sound,
 		AssetElementType_Prefab,
 		AssetElementType_Directory,
     };
@@ -804,16 +808,34 @@ namespace sv {
 
 					v3_f32 p0, p1;
 					closest_points_between_two_lines(ray.origin, ray.direction, position, axis, p0, p1);
-					position = p1 - info.start_offset;
+
+					v3_f32 move = p1 - info.start_offset;
+
+					if (input.keys[Key_Shift]) {
+
+						move.x = i32(move.x / info.position_advance) * info.position_advance;
+						move.y = i32(move.y / info.position_advance) * info.position_advance;
+						move.z = i32(move.z / info.position_advance) * info.position_advance;
+					}
+					
+					position = move;
 				}
 				else {
 
 					v2_f32 mouse = input.mouse_position * v2_f32(dev.camera.width, dev.camera.height) + vec3_to_vec2(dev.camera.position);
+
+					v2_f32 move = mouse - vec3_to_vec2(info.start_offset);
+
+					if (input.keys[Key_Shift]) {
+
+						move.x = i32(move.x / info.position_advance) * info.position_advance;
+						move.y = i32(move.y / info.position_advance) * info.position_advance;
+					}
 		
 					if (info.object == GizmosObject_AxisX)
-						position.x = mouse.x - info.start_offset.x;
+						position.x = move.x;
 					else if (info.object == GizmosObject_AxisY)
-						position.y = mouse.y - info.start_offset.y;
+						position.y = move.y;
 				}
 
 				// Set new position
@@ -1005,6 +1027,8 @@ namespace sv {
 					far_adv = 0.3f;
 				}
 
+				gui_checkbox("Adjust Width", cam.adjust_width);
+
 				bool perspective = cam.projection_type == ProjectionType_Perspective;
 
 				if (gui_checkbox("Perspective", perspective)) {
@@ -1098,6 +1122,26 @@ namespace sv {
 					gui_drag_f32("Cascade 0", l.cascade_distance[0], 0.1f, 0.f, f32_max);
 					gui_drag_f32("Cascade 1", l.cascade_distance[1], 0.1f, 0.f, f32_max);
 					gui_drag_f32("Cascade 2", l.cascade_distance[2], 0.1f, 0.f, f32_max);
+				}
+			}
+
+			if (get_component_id("Audio Source") == comp_id) {
+
+				AudioSourceComponent& s = *reinterpret_cast<AudioSourceComponent*>(comp);
+
+				Sound sound;
+				u32 loop_count;
+				audio_sound_get(s.source, sound, loop_count);
+				
+				if (gui_sound_asset("Sound", sound)) {
+					audio_sound_set(s.source, sound, SV_MAX(loop_count, 1u));
+				}
+
+				if (gui_button("Play")) {
+					s.play();
+				}
+				if (gui_button("Stop")) {
+					s.stop();
 				}
 			}
 
@@ -2049,6 +2093,7 @@ namespace sv {
 					case AssetElementType_Mesh:
 					case AssetElementType_Material:
 					case AssetElementType_SpriteSheet:
+					case AssetElementType_Sound:
 					{
 						AssetPackage pack;
 
@@ -2090,6 +2135,10 @@ namespace sv {
 
 						case AssetElementType_SpriteSheet:
 							id = ASSET_BROWSER_PACKAGE_SPRITE_SHEET;
+							break;
+
+						case AssetElementType_Sound:
+							id = ASSET_BROWSER_PACKAGE_SOUND;
 							break;
 
 						default:
@@ -2188,6 +2237,7 @@ namespace sv {
 							else if (strcmp(e.extension, "mat") == 0) element.type = AssetElementType_Material;
 							else if (strcmp(e.extension, "png") == 0 || strcmp(e.extension, "jpg") == 0 || strcmp(e.extension, "gif") == 0 || strcmp(e.extension, "jpeg") == 0) element.type = AssetElementType_Texture;
 							else if (strcmp(e.extension, "sprites") == 0) element.type = AssetElementType_SpriteSheet;
+							else if (strcmp(e.extension, "wav") == 0) element.type = AssetElementType_Sound;
 							else if (strcmp(e.extension, "prefab") == 0) element.type = AssetElementType_Prefab;
 							else element.type = AssetElementType_Unknown;
 						}
@@ -3133,7 +3183,7 @@ namespace sv {
 			if (load_asset_from_file(sound, "assets/audio/Prisoner of Your Eyes.wav")) {
 
 				audio_source_create(&source);
-				audio_source_set(source, sound);
+				audio_sound_set(source, sound, 1u);
 
 				audio_play(source);
 			}
@@ -3152,6 +3202,8 @@ namespace sv {
 				editor.selected_entities.reset();
 				exit = true;
 				engine.update_scene = false;
+				editor.debug_draw = true;
+				editor.show_editor = false;
 				_gui_load("PROJECT");
 			}
 			break;
@@ -3161,7 +3213,7 @@ namespace sv {
 				SV_LOG_INFO("Starting edit state");
 				// TODO: Handle error
 				if (dev.engine_state != EngineState_ProjectManagement)
-					_start_scene(get_scene_name());
+					_engine_reset_game();
 				
 				//dev.draw_debug_camera = true;
 				editor.debug_draw = true;
@@ -3179,7 +3231,7 @@ namespace sv {
 
 					// TODO: handle error
 					save_scene();
-					_start_scene(get_scene_name());
+					_engine_reset_game();
 
 					//dev.draw_debug_camera = false;
 					editor.selected_entities.reset();
@@ -3505,30 +3557,18 @@ namespace sv {
 
 		if (editor.show_game) {
 
-			CameraComponent* camera = get_main_camera();
-
-			if (camera) {
-
-				// TODO
-				Entity entity = camera->id;
-				
-				v3_f32 position = get_entity_world_position(entity);
-				v4_f32 rotation = get_entity_world_rotation(entity);
-				
-				_draw_scene(*camera, position, rotation);
-				
-				GPUImage* off = renderer_offscreen();
-				const GPUImageInfo& info = graphics_image_info(off);
+			_draw_scene();
 			
-				GPUImageBlit blit;
-				blit.src_region.offset0 = { 0, (i32)info.height, 0 };
-				blit.src_region.offset1 = { (i32)info.width, 0, 1 };
-				blit.dst_region.offset0 = { 0, 0, 0 };
-				blit.dst_region.offset1 = { (i32)info.width, (i32)info.height, 1 };
+			GPUImage* off = renderer_offscreen();
+			const GPUImageInfo& info = graphics_image_info(off);
 			
-				graphics_image_blit(off, editor.offscreen_game, GPUImageLayout_RenderTarget, GPUImageLayout_ShaderResource, 1u, &blit, SamplerFilter_Nearest, cmd);
-			}
+			GPUImageBlit blit;
+			blit.src_region.offset0 = { 0, (i32)info.height, 0 };
+			blit.src_region.offset1 = { (i32)info.width, 0, 1 };
+			blit.dst_region.offset0 = { 0, 0, 0 };
+			blit.dst_region.offset1 = { (i32)info.width, (i32)info.height, 1 };
 			
+			graphics_image_blit(off, editor.offscreen_game, GPUImageLayout_RenderTarget, GPUImageLayout_ShaderResource, 1u, &blit, SamplerFilter_Nearest, cmd);
 		}
 
 		// Draw gui

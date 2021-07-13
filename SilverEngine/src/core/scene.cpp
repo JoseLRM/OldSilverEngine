@@ -104,6 +104,8 @@ namespace sv {
 		CopyComponentFn		   copy_fn;
 		SerializeComponentFn   serialize_fn;
 		DeserializeComponentFn deserialize_fn;
+		Library                library;
+		char		           struct_name[COMPONENT_NAME_SIZE + 1u];
 
     };
 	
@@ -190,6 +192,10 @@ namespace sv {
 	SV_INTERNAL void clear_ecs();
 	SV_INTERNAL void close_ecs();
 
+#if SV_EDITOR
+	void reload_component(ReloadPluginEvent* e);
+#endif
+
     bool _scene_initialize()
     {
 		scene_state = SV_ALLOCATE_STRUCT(SceneState, "Scene");
@@ -213,6 +219,10 @@ namespace sv {
 
 			register_asset_type(&desc);
 		}
+
+#if SV_EDITOR
+		event_register("reload_plugin", reload_component, 0);
+#endif
 
 		return true;
     }
@@ -367,7 +377,7 @@ namespace sv {
 
     bool set_scene(const char* name)
     {
-		size_t name_size = strlen(name);
+		size_t name_size = string_size(name);
 
 		if (name_size > SCENE_NAME_SIZE) {
 			SV_LOG_ERROR("The scene name '%s' is to long, max chars = %u", name, SCENE_NAME_SIZE);
@@ -550,6 +560,19 @@ namespace sv {
 			scene.data.main_camera = 0;
 		}
 
+#if SV_EDITOR
+		if (engine.update_scene) {
+#endif
+			event_dispatch("update_scene", NULL);
+
+			_physics3D_update();
+			event_dispatch("update_physics", NULL);
+		
+			event_dispatch("late_update_scene", NULL);
+#if SV_EDITOR
+		}
+#endif
+
 #if !(SV_EDITOR)
 		
 		CameraComponent* camera = get_main_camera();
@@ -582,18 +605,6 @@ namespace sv {
 			update_camera_matrices(dev.camera, dev.camera.position, dev.camera.rotation);
 #endif
 		}
-
-#if SV_EDITOR
-		if (!engine.update_scene)
-			return;
-#endif
-	
-		event_dispatch("update_scene", NULL);
-
-		_physics3D_update();
-		event_dispatch("update_physics", NULL);
-		
-		event_dispatch("late_update_scene", NULL);
     }
 
     CameraComponent* get_main_camera()
@@ -1469,6 +1480,29 @@ namespace sv {
 			}
 		}
 
+		// Remove tag reference
+		if (internal.tag_mask) {
+
+			foreach(i, TAG_MAX) {
+
+				if (internal.tag_mask & SV_BIT(i)) {
+
+					TagInternal& tag = ecs.tags[i];
+
+					u32 index = u32_max;
+					foreach(j, tag.entities.size())
+						if (tag.entities[j] == entity) {
+							index = j;
+							break;
+						}
+
+					if (index != u32_max)
+						tag.entities.erase(index);
+					else SV_ASSERT(0);
+				}
+			}
+		}
+
 		// remove prefab reference
 		if (internal.prefab) {
 			PrefabInternal& p = ecs.prefabs[internal.prefab - 1u];
@@ -1726,6 +1760,9 @@ namespace sv {
 	{
 		SV_ECS();
 		SV_ASSERT(entity_exists(entity));
+
+		if (!component_exists(comp_id))
+			return NULL;
 
 		EntityInternal& internal = ecs.entity_internal[entity - 1u];
 
@@ -2530,6 +2567,8 @@ namespace sv {
 		CopyComponentFn	       copy_fn;
 		SerializeComponentFn   serialize_fn;
 		DeserializeComponentFn deserialize_fn;
+		Library                library;
+		const char*            struct_name;
 
     };
 
@@ -2546,9 +2585,70 @@ namespace sv {
 		reg.copy_fn = desc.copy_fn;
 		reg.serialize_fn = desc.serialize_fn;
 		reg.deserialize_fn = desc.deserialize_fn;
+		reg.library = desc.library;
+		string_copy(reg.struct_name, desc.struct_name, COMPONENT_NAME_SIZE + 1u);
 		
 		return true;
 	}
+
+	typedef void(*RegisterComponentFn)(void**, void**, void**, void**, void**, u32*, u32*, char*);
+
+#if SV_EDITOR
+
+	void reload_component(ReloadPluginEvent* e) {
+
+		List<Var> vars;
+		
+		if (read_var_file("components.txt", vars)) {
+
+			foreach(i, SV_MIN(vars.size(), COMPONENT_MAX)) {
+
+				Var& var = vars[i];
+
+				if (var.type != VarType_String) {
+					SV_LOG_ERROR("Invalid var type '%s'", var.name);
+					continue;
+				}
+
+				if (string_equals(e->name, var.value.string)) {
+
+					Library lib = e->library;
+
+					constexpr size_t s = COMPONENT_NAME_SIZE + 9;
+					char name[s] = "_define_";
+					string_append(name, var.name, s);
+					
+					RegisterComponentFn reg_fn = (RegisterComponentFn)os_library_proc_address(lib, name);
+					if (reg_fn) {
+
+						CompID id = INVALID_COMP_ID;
+
+						foreach(i, scene_state->component_register_count) {
+
+							ComponentRegister& reg = scene_state->component_register[i];
+							if (string_equals(reg.struct_name, var.name)) {
+								id = (CompID)i;
+								break;
+							}
+						}
+
+						if (component_exists(id)) {
+							
+							ComponentRegister& reg = scene_state->component_register[id];
+							reg.name[0] = '\0';
+							
+							reg_fn((void**)&reg.create_fn, (void**)&reg.destroy_fn, (void**)&reg.copy_fn, (void**)&reg.serialize_fn, (void**)&reg.deserialize_fn, &reg.version, &reg.size, reg.name);
+						}
+					}
+					else {
+						SV_LOG_ERROR("Component '%s' not defined in '%s'", var.name, var.value.string);
+					}
+				}
+			}
+		}
+	}
+	
+#endif
 
 	template<typename T>
 	SV_AUX bool register_component(const char* name)
@@ -2557,6 +2657,8 @@ namespace sv {
 		desc.name = name;
 		desc.size = sizeof(T);
 		desc.version = T::VERSION;
+		desc.library = 0;
+		desc.struct_name = "";
 
 		desc.create_fn = [](Component* comp, Entity entity)
 			{
@@ -2604,6 +2706,9 @@ namespace sv {
 		register_component<LightComponent>("Light");
 
 		ComponentRegisterDesc desc;
+		desc.library = 0;
+		desc.struct_name = "";
+		
 		desc.name = "Body";
 		desc.size = sizeof(BodyComponent);
 		desc.version = BodyComponent::VERSION;
@@ -2648,12 +2753,67 @@ namespace sv {
 
 		register_component(desc);
 
+		// Register user components
+
+		List<Var> vars;
+		
+		if (read_var_file("components.txt", vars)) {
+
+			foreach(i, SV_MIN(vars.size(), COMPONENT_MAX)) {
+
+				Var& var = vars[i];
+
+				if (var.type != VarType_String) {
+					SV_LOG_ERROR("Invalid var type '%s'", var.name);
+					continue;
+				}
+
+				Library lib;
+				
+				if (get_plugin_by_name(var.value.string, &lib)) {
+
+					constexpr size_t s = COMPONENT_NAME_SIZE + 9;
+					char name[s] = "_define_";
+					string_append(name, var.name, s);
+					
+					RegisterComponentFn reg_fn = (RegisterComponentFn)os_library_proc_address(lib, name);
+					if (reg_fn) {
+
+						char struct_name[COMPONENT_NAME_SIZE + 1u];
+						desc.struct_name = struct_name;
+
+						string_copy(struct_name, var.name, COMPONENT_NAME_SIZE + 1u);
+
+						name[0] = '\0';
+						desc.size = 0;
+						desc.version = 0;
+						desc.create_fn = NULL;
+						desc.destroy_fn = NULL;
+						desc.copy_fn = NULL;
+						desc.serialize_fn = NULL;
+						desc.deserialize_fn = NULL;
+						desc.library = lib;
+
+						reg_fn((void**)&desc.create_fn, (void**)&desc.destroy_fn, (void**)&desc.copy_fn, (void**)&desc.serialize_fn, (void**)&desc.deserialize_fn, &desc.version, &desc.size, name);
+
+						desc.name = name;
+
+						register_component(desc);
+					}
+					else {
+						SV_LOG_ERROR("Component '%s' not defined in '%s'", var.name, var.value.string);
+					}
+				}
+				else SV_LOG_ERROR("Plugin '%s' not found", var.value.string);
+			}
+		}
+
 		foreach(i, TAG_MAX)
 			scene_state->tag_register[i].name[0] = '\0';
 
 		// TEMP
 
-		List<Var> vars;
+		vars.reset();
 		
 		if (read_var_file("tags.txt", vars)) {
 
@@ -2829,6 +2989,42 @@ namespace sv {
 		t.position.y = position.y;
 		notify_transform(t, entity);
     }
+
+	void set_entity_scale2D(Entity entity, const v2_f32& scale)
+    {
+		SV_ECS();
+		EntityTransform& t = ecs.entity_transform[entity - 1u];
+		t.scale.x = scale.x;
+		t.scale.y = scale.y;
+		notify_transform(t, entity);
+    }
+
+	void set_entity_euler_rotation(Entity entity, v3_f32 euler_angles)
+	{
+		SV_ECS();
+		EntityTransform& t = ecs.entity_transform[entity - 1u];
+
+		t.rotation = XMQuaternionRotationRollPitchYaw(euler_angles.x, euler_angles.y, euler_angles.z);
+		notify_transform(t, entity);
+	}
+	
+	void set_entity_euler_rotationX(Entity entity, f32 rotation)
+	{
+		SV_ECS();
+		EntityTransform& t = ecs.entity_transform[entity - 1u];
+		
+		//TODO t.rotation = XMQuaternionRotationRollPitchYaw(euler_angles.x, euler_angles.y, euler_angles.z);
+		notify_transform(t, entity);
+	}
+	
+	void set_entity_euler_rotationY(Entity entity, f32 rotation)
+	{
+	}
+	
+	void set_entity_euler_rotationZ(Entity entity, f32 rotation)
+	{
+
+	}
     
     Transform* get_entity_transform_ptr(Entity entity)
     {
@@ -2939,6 +3135,105 @@ namespace sv {
 			* XMMatrixTranslation(t.position.x, t.position.y, t.position.z);
     }
 
+	v3_f32 get_entity_euler_rotation(Entity entity)
+	{
+		SV_ECS();
+		EntityTransform& t = ecs.entity_transform[entity - 1u];
+		
+		v3_f32 euler;
+
+		// roll (x-axis rotation)
+		
+		v4_f32 q = t.rotation;
+		
+		f32 sinr_cosp = 2.f * (q.w * q.x + q.y * q.z);
+		f32 cosr_cosp = 1.f - 2.f * (q.x * q.x + q.y * q.y);
+		euler.x = atan2f(sinr_cosp, cosr_cosp);
+
+		// pitch (y-axis rotation)
+		float sinp = 2.f * (q.w * q.y - q.z * q.x);
+		if (abs(sinp) >= 1.f)
+			euler.y = copysignf(PI / 2.f, sinp); // use 90 degrees if out of range
+		else
+			euler.y = asinf(sinp);
+
+		// yaw (z-axis rotation)
+		f32 siny_cosp = 2 * (q.w * q.z + q.x * q.y);
+		f32 cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z);
+		euler.z = atan2f(siny_cosp, cosy_cosp);
+
+		if (euler.x < 0.f) {
+			euler.x = 2.f * PI + euler.x;
+		}
+		if (euler.y < 0.f) {
+			euler.y = 2.f * PI + euler.y;
+		}
+		if (euler.z < 0.f) {
+			euler.z = 2.f * PI + euler.z;
+		}
+
+		return euler;
+	}
+	
+	f32 get_entity_euler_rotationX(Entity entity)
+	{
+		SV_ECS();
+		EntityTransform& t = ecs.entity_transform[entity - 1u];
+		
+		f32 euler;
+		v4_f32 q = t.rotation;
+		
+		f32 sinr_cosp = 2.f * (q.w * q.x + q.y * q.z);
+		f32 cosr_cosp = 1.f - 2.f * (q.x * q.x + q.y * q.y);
+		euler = atan2f(sinr_cosp, cosr_cosp);
+
+		if (euler < 0.f) {
+			euler = 2.f * PI + euler;
+		}
+
+		return euler;
+	}
+	
+	f32 get_entity_euler_rotationY(Entity entity)
+	{
+		SV_ECS();
+		EntityTransform& t = ecs.entity_transform[entity - 1u];
+		
+		f32 euler;
+		v4_f32 q = t.rotation;
+
+		float sinp = 2.f * (q.w * q.y - q.z * q.x);
+		if (abs(sinp) >= 1.f)
+			euler = copysignf(PI / 2.f, sinp); // use 90 degrees if out of range
+		else
+			euler = asinf(sinp);
+		
+		if (euler < 0.f) {
+			euler = 2.f * PI + euler;
+		}
+
+		return euler;
+	}
+	
+	f32 get_entity_euler_rotationZ(Entity entity)
+	{
+		SV_ECS();
+		EntityTransform& t = ecs.entity_transform[entity - 1u];
+		
+		f32 euler;
+		v4_f32 q = t.rotation;
+		
+		f32 siny_cosp = 2 * (q.w * q.z + q.x * q.y);
+		f32 cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z);
+		euler = atan2f(siny_cosp, cosy_cosp);
+		
+		if (euler < 0.f) {
+			euler = 2.f * PI + euler;
+		}
+
+		return euler;
+	}
+
     Transform get_entity_world_transform(Entity entity)
     {
 		SV_ECS();
@@ -3032,7 +3327,7 @@ namespace sv {
 
 		return true;
     }
-
+	
 	bool SpriteSheet::modify_sprite(u32 id, const char* name, const v4_f32& texcoord)
 	{
 		if (name == nullptr) name = "Unnamed";
@@ -3069,6 +3364,20 @@ namespace sv {
 
 		return true;
     }
+
+	u32 get_sprite_id(SpriteSheet* sheet, const char* name)
+	{
+		for (auto it = sheet->sprites.begin();
+			 it.has_next();
+			 ++it)
+		{
+			if (string_equals(it->name, name)) {
+				return it.get_index();
+			}
+		}
+
+		return u32_max;
+	}
     
     bool SpriteSheet::add_sprite_animation(u32* _id, const char* name, u32* sprites_ptr, u32 frames, f32 frame_time)
     {
@@ -3251,6 +3560,8 @@ namespace sv {
 
     void CameraComponent::serialize(Serializer& s)
     {
+		serialize_bool(s, adjust_width);
+		
 		serialize_u32(s, projection_type);
 		serialize_f32(s, near);
 		serialize_f32(s, far);
@@ -3303,6 +3614,22 @@ namespace sv {
 			break;
 
 		case 3:
+			deserialize_u32(d, (u32&)projection_type);
+			deserialize_f32(d, near);
+			deserialize_f32(d, far);
+			deserialize_f32(d, width);
+			deserialize_f32(d, height);
+			deserialize_bool(d, bloom.active);
+			deserialize_f32(d, bloom.threshold);
+			deserialize_f32(d, bloom.intensity);
+			deserialize_bool(d, ssao.active);
+			deserialize_u32(d, ssao.samples);
+			deserialize_f32(d, ssao.radius);
+			deserialize_f32(d, ssao.bias);
+			break;
+
+		case 4:
+			deserialize_bool(d, adjust_width);
 			deserialize_u32(d, (u32&)projection_type);
 			deserialize_f32(d, near);
 			deserialize_f32(d, far);

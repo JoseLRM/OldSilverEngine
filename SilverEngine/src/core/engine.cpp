@@ -432,12 +432,12 @@ namespace sv {
 				break;
 			}
 
+			_manage_scenes();
+
 			_update_assets();
 	    
 			_graphics_begin();
 			_renderer_begin();
-
-			_manage_scenes();
 	    
 #if SV_EDITOR
 			_console_update();

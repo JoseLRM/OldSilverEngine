@@ -21,7 +21,7 @@ namespace sv {
 
 				line_jump_spaces(p.line);
 
-				if (p.line[0] == '\0') {
+				if (p.line[0] == '\0' || p.line[0] == '\n' || p.line[0] == '\r') {
 					continue;
 				}
 
