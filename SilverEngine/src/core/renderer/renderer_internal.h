@@ -78,6 +78,8 @@ namespace sv {
 		Sampler* sampler_def_nearest;
 		GPUBuffer* vbuffer_batch[GraphicsLimit_CommandList];
 		DepthStencilState* dss_default_depth;
+		DepthStencilState* dss_read_depth;
+		DepthStencilState* dss_write_depth;
 		RasterizerState* rs_back_culling;
 		RasterizerState* rs_front_culling;
 		RasterizerState* rs_wireframe;

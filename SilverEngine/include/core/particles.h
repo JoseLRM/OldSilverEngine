@@ -25,14 +25,9 @@ namespace sv {
 		ParticleShapeType_Point,
 	};
 
-	struct ParticleEmitter {
-
-		~ParticleEmitter();
+	struct ParticleEmitterModel {
 
 		u32 max_particles = 1000u;
-		u32 _last_max_particles = u32_max;
-		Particle* particles = NULL; // TODO: Move on
-		u32 particle_count = 0u;
 		u32 seed = 6969u; // uwu
 
 		// RENDERING
@@ -64,7 +59,7 @@ namespace sv {
 			bool fill = true;
 			
 			struct {
-				f32 radius;	
+				f32 radius;
 			} sphere;
 			
 			struct {
@@ -82,28 +77,117 @@ namespace sv {
 			f32 rate = 30.f;
 			f32 offset_time = 0.f;
 			f32 spawn_time = 0.5f;
+		} emission;
+		
+	};
+
+	struct ParticleSystemModel : public Component {
+
+		static constexpr u32 VERSION = 1u;
+		
+		f32 simulation_time = 1.f;
+		f32 repeat_time = 1.f;
+		bool repeat = true;
+
+		u32 emitter_count = 1u;
+		ParticleEmitterModel emitters[PARTICLE_EMITTER_MAX];
+
+		void serialize(Serializer& s);
+		void deserialize(Deserializer& d, u32 version);
+		
+	};
+
+	struct ParticleEmitter {
+
+		~ParticleEmitter();
+
+		u32 _last_max_particles = u32_max;
+		Particle* particles = NULL; // TODO: Move on
+		u32 particle_count = 0u;
+
+		struct {
 			f32 count = 0.f;
 			f32 spawn_count = 0.f;
 		} emission;
 		
 	};
 
+	enum ParticleSystemState : u32 {
+		ParticleSystemState_None,
+		ParticleSystemState_Running,
+		ParticleSystemState_Paused,
+	};
+
 	struct ParticleSystem : public Component {
 
 		static constexpr u32 VERSION = 0u;
 
+		ParticleSystemState state = ParticleSystemState_None;
+		u32 layer = RENDER_LAYER_COUNT / 2u;
+
+		u64 last_update_frame = u32_max;
 		f32 time_count = 0.f;
-		f32 simulation_time = 1.f;
-		f32 repeat_time = 1.f;
-		bool repeat = true;
 
 		u32 emitter_count = 1u;
 		ParticleEmitter emitters[PARTICLE_EMITTER_MAX];
 
 		void serialize(Serializer& s);
 		void deserialize(Deserializer& d, u32 version);
-		
+
+		inline void reset() {
+
+			state = ParticleSystemState_None;
+			time_count = 0.f;
+
+			foreach(i, PARTICLE_EMITTER_MAX) {
+				emitters[i].emission.count = 0.f;
+				emitters[i].emission.spawn_count = 0.f;
+			}
+		}
+
+		inline void run() {
+			state = ParticleSystemState_Running;
+		}
+
+		inline void pause() {
+
+			if (state == ParticleSystemState_Running) {
+				state = ParticleSystemState_Paused;
+			}
+		}
+
+		inline bool is_running() {
+			return state == ParticleSystemState_Running;
+		}
+
 	};
+
+	SV_API void draw_particles(ParticleSystem& particles, ParticleSystemModel& model, v3_f32 position, const XMMATRIX& ivm, const XMMATRIX& vm, const XMMATRIX& pm, CommandList cmd);
+
+	inline Entity create_particles(const char* filepath, u32 layer = RENDER_LAYER_COUNT / 2)
+	{
+		Prefab p = load_prefab(filepath);
+
+		if (p) {
+
+			Entity entity = create_entity(0, NULL, p);
+
+			if (entity) {
+
+				// TODO
+				CompID comp_id = get_component_id("Particle System");
+				ParticleSystem* ps = (ParticleSystem*)add_entity_component(entity, comp_id);
+				if (ps) {
+					ps->run();
+				}
+				else return 0;
+			}
+
+			return entity;
+		}
+
+		return 0;
+	}
 
 	void _particle_initialize();
 	void _particle_close();

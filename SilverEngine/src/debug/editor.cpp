@@ -4,7 +4,6 @@
 #include "debug/console.h"
 #include "core/event_system.h"
 #include "core/physics3D.h"
-#include "platform/audio.h"
 
 namespace sv {
 
@@ -63,6 +62,7 @@ namespace sv {
 		AssetElementType_SpriteSheet,
 		AssetElementType_Sound,
 		AssetElementType_Prefab,
+		AssetElementType_Entity,
 		AssetElementType_Directory,
     };
 
@@ -325,6 +325,19 @@ namespace sv {
 					for (Entity e : editor.selected_entities) {
 						duplicate_entity(e);
 					}
+				}
+			}
+
+			if (input.unused) {
+
+				// Remove
+				if (input.keys[Key_Supr] == InputState_Pressed) {
+
+					for (Entity e : editor.selected_entities) {
+						destroy_entity(e);
+					}
+
+					editor.selected_entities.reset();
 				}
 			}
 		}
@@ -943,6 +956,7 @@ namespace sv {
 
 				gui_sprite("Sprite", spr.sprite_sheet, spr.sprite_id, 0u);
 				gui_drag_color("Color", spr.color, 1u);
+				gui_drag_u32("Layer", spr.layer, 1u, 0u, RENDER_LAYER_COUNT);
 
 				bool xflip = spr.flags & SpriteComponentFlag_XFlip;
 				bool yflip = spr.flags & SpriteComponentFlag_YFlip;
@@ -1001,8 +1015,6 @@ namespace sv {
 
 				CameraComponent& cam = *reinterpret_cast<CameraComponent*>(comp);
 
-				f32 dimension = cam.getProjectionLength();
-
 				f32 near_min;
 				f32 near_max;
 				f32 near_adv;
@@ -1051,9 +1063,7 @@ namespace sv {
 
 				gui_drag_f32("Near", cam.near, near_adv, near_min, near_max);
 				gui_drag_f32("Far", cam.far, far_adv, far_min, far_max);
-				if (gui_drag_f32("Dimension", dimension, 0.01f, 0.01f, f32_max)) {
-					cam.setProjectionLength(dimension);
-				}
+				gui_drag_f32(cam.adjust_width ? "Height" : "Width", cam.adjust_width ? cam.height : cam.width, 0.01f, 0.01f, f32_max);
 
 				gui_checkbox("Bloom", cam.bloom.active);
 				if (cam.bloom.active) {
@@ -1417,20 +1427,33 @@ namespace sv {
     static void show_entity_popup(Entity entity, bool& destroy)
     {
 		if (gui_begin_popup(GuiPopupTrigger_LastWidget)) {
-
-			f32 y = 0.f;
-			constexpr f32 H = 20.f;
 	    
-			destroy = gui_button("Destroy", 0u);
-			y += H;
+			destroy = gui_button("Destroy");
 	    
-			if (gui_button("Duplicate", 1u)) {
+			if (gui_button("Duplicate")) {
 				duplicate_entity(entity);
 			}
-			y += H;
 	    
-			if (gui_button("Create Child", 2u)) {
+			if (gui_button("Create Child")) {
 				editor_create_entity(entity);
+			}
+
+			gui_separator(1);
+
+			if (gui_button("Save In File")) {
+
+				char path[FILEPATH_SIZE + 1u] = "";
+		    
+				if (file_dialog_save(path, 0u, nullptr, "")) {
+
+					char* extension = filepath_extension(path);
+					if (extension != nullptr) {
+						*extension = '\0';
+					}
+					string_append(path, ".entity", FILEPATH_SIZE + 1u);
+
+					save_entity_file(entity, path);
+				}
 			}
 
 			gui_end_popup();
@@ -1514,11 +1537,8 @@ namespace sv {
 		gui_pop_id();
     }
 
-    // Returns if the folder should be destroyed
-    SV_AUX bool display_create_popup()
-    {
-		bool destroy = false;
-	
+    SV_AUX void display_create_popup()
+    {	
 		gui_push_id("Create Popup");
 	
 		if (gui_begin_popup(GuiPopupTrigger_Root)) {
@@ -1556,72 +1576,104 @@ namespace sv {
 		}
 
 		gui_pop_id();
-
-		return destroy;
     }
     
     void display_entity_hierarchy()
-    {	
+    {
 		if (gui_begin_window("Hierarchy")) {
 
-			u32 entity_count = get_entity_count();
+			// TODO: Move on
+			static u32 mode = 0;
 
-			gui_begin_list(69u);
-			
-			for (u32 i = 0u; i < entity_count;) {
+			const char* modes[] = {
+				"Entities",
+				"Prefabs"
+			};
 
-				Entity entity = get_entity_by_index(i);
-				
-				show_entity(entity);
-				entity_count = get_entity_count();
-	    
-				if (entity_exists(entity)) {
+			const char* preview = modes[mode];
 
-					i += get_entity_childs_count(entity) + 1u;
-				}
-			}
+			if (gui_begin_combobox(preview, 354329)) {
 
-			gui_push_id("Show Prefabs");
-			
-			for (PrefabIt it = prefab_it_begin();
-				 it.has_next;
-				 prefab_it_next(it))
-			{
-				Prefab prefab = it.prefab;
+				foreach(i, SV_ARRAY_SIZE(modes)) {
 
-				const char* name = get_prefab_name(prefab);
-
-				bool selected = editor.selected_prefab == prefab;
-				u32 flags = selected ? GuiElementListFlag_Selected : 0u;
-
-				if (gui_element_list(name, prefab, flags)) {
-
-					if (selected) editor.selected_prefab = 0;
-					else select_prefab(prefab);
-				}
-
-				if (gui_begin_popup(GuiPopupTrigger_LastWidget)) {
-
-					if (gui_button("Create Entity")) {
-
-						create_entity(0, "Pene", prefab);
+					if (gui_button(modes[i])) {
+						mode = i;
 					}
+				}
+			
+				gui_end_combobox();
+			}
+
+			switch (mode) {
+
+			case 0:
+			{
+				u32 entity_count = get_entity_count();
+
+				gui_begin_list(69u);
+			
+				for (u32 i = 0u; i < entity_count;) {
+
+					Entity entity = get_entity_by_index(i);
+				
+					show_entity(entity);
+					entity_count = get_entity_count();
+	    
+					if (entity_exists(entity)) {
+
+						i += get_entity_childs_count(entity) + 1u;
+					}
+				}
+
+				gui_end_list();
+
+				display_create_popup();
+			}
+			break;
+
+			case 1:
+			{
+				gui_begin_list(96u);
+				
+				for (PrefabIt it = prefab_it_begin();
+					 it.has_next;
+					 prefab_it_next(it))
+				{
+					Prefab prefab = it.prefab;
+
+					const char* filepath = get_prefab_filepath(prefab);
+
+					bool selected = editor.selected_prefab == prefab;
+					u32 flags = selected ? GuiElementListFlag_Selected : 0u;
+
+					if (gui_element_list(filepath, prefab, flags)) {
+
+						if (selected) editor.selected_prefab = 0;
+						else select_prefab(prefab);
+					}
+
+					if (gui_begin_popup(GuiPopupTrigger_LastWidget)) {
+
+						if (gui_button("Create Entity")) {
+
+							create_entity(0, "Pene", prefab);
+						}
 					
-					gui_end_popup();
+						gui_end_popup();
+					}
+				}
+
+				gui_end_list();
+
+				PrefabPackage* package;
+				if (gui_recive_package((void**)&package, ASSET_BROWSER_PREFAB, GuiReciverTrigger_Root)) {
+
+					load_prefab(package->filepath);
 				}
 			}
+			break;
 
-			gui_pop_id();
-
-			gui_end_list();
-
-			PrefabPackage* package;
-			if (gui_recive_package((void**)&package, ASSET_BROWSER_PREFAB, GuiReciverTrigger_Root)) {
-
-				load_prefab(package->filepath);
 			}
-
-			display_create_popup();
 	    
 			gui_end_window();
 		}
@@ -1780,9 +1832,9 @@ namespace sv {
 
 				Prefab prefab = editor.selected_prefab;
 				
-				// Entity name
+				// Prefab name
 				{
-					const char* prefab_name = get_prefab_name(prefab);
+					const char* prefab_name = get_prefab_filepath(prefab);
 					egui_header(prefab_name, 0u);
 				}
 
@@ -2089,6 +2141,17 @@ namespace sv {
 					}
 					break;
 
+					case AssetElementType_Entity:
+					{
+						EntityPackage pack;
+
+						sprintf(pack.filepath, "assets/%s%s", info.filepath, e.name);
+						
+						gui_asset_button(e.name, editor.image.get(), editor.TEXCOORD_FILE, 0u);
+						gui_send_package(&pack, sizeof(EntityPackage), ASSET_BROWSER_ENTITY);
+					}
+					break;
+
 					case AssetElementType_Texture:
 					case AssetElementType_Mesh:
 					case AssetElementType_Material:
@@ -2239,6 +2302,7 @@ namespace sv {
 							else if (strcmp(e.extension, "sprites") == 0) element.type = AssetElementType_SpriteSheet;
 							else if (strcmp(e.extension, "wav") == 0) element.type = AssetElementType_Sound;
 							else if (strcmp(e.extension, "prefab") == 0) element.type = AssetElementType_Prefab;
+							else if (strcmp(e.extension, "entity") == 0) element.type = AssetElementType_Entity;
 							else element.type = AssetElementType_Unknown;
 						}
 						else {
@@ -2831,6 +2895,12 @@ namespace sv {
 					}
 
 					editor.show_editor = true;
+
+					EntityPackage* package;
+					if (gui_recive_package((void**)&package, ASSET_BROWSER_ENTITY, GuiReciverTrigger_Root)) {
+
+						create_entity_file(package->filepath);
+					}
 					
 					gui_end_window();
 				}
@@ -3106,7 +3176,7 @@ namespace sv {
 			}
 
 			if (gui_button("New project", 0u)) {
-		
+				
 				char path[FILEPATH_SIZE + 1u] = "";
 		    
 				if (file_dialog_save(path, 0u, nullptr, "")) {
@@ -3115,7 +3185,7 @@ namespace sv {
 					if (extension != nullptr) {
 						*extension = '\0';
 					}
-					strcat(path, ".silver");
+					string_append(path, ".silver", FILEPATH_SIZE + 1u);
 
 					const char* content = "test";
 					bool res = file_write_text(path, content, strlen(content));
@@ -3175,20 +3245,6 @@ namespace sv {
     
     void _editor_update()
     {
-		// TEMP
-		if (input.keys[Key_Space] == InputState_Pressed) {
-			static Sound sound;
-			static AudioSource* source;
-
-			if (load_asset_from_file(sound, "assets/audio/Prisoner of Your Eyes.wav")) {
-
-				audio_source_create(&source);
-				audio_sound_set(source, sound, 1u);
-
-				audio_play(source);
-			}
-		}
-		
 		bool exit = false;
 	
 		// CHANGE EDITOR MODE

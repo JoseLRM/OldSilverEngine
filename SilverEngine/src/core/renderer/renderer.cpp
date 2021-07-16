@@ -617,8 +617,15 @@ namespace sv {
 			desc.depthWriteEnabled = true;
 			desc.depthCompareOp = CompareOperation_Less;
 			desc.stencilTestEnabled = false;
-
+			
 			graphics_depthstencilstate_create(&desc, &gfx.dss_default_depth);
+
+			desc.depthWriteEnabled = false;
+			graphics_depthstencilstate_create(&desc, &gfx.dss_read_depth);
+			
+			desc.depthWriteEnabled = true;
+			desc.depthCompareOp = CompareOperation_Never;
+			graphics_depthstencilstate_create(&desc, &gfx.dss_write_depth);
 		}
 
 		// Create RasterizerStates
@@ -856,10 +863,7 @@ namespace sv {
 		v4_f32	  texcoord;
 		GPUImage* image;
 		Color	  color;
-
-		SpriteInstance() = default;
-		SpriteInstance(const XMMATRIX& m, const v4_f32& texcoord, GPUImage* image, Color color)
-			: tm(m), texcoord(texcoord), image(image), color(color) {}
+		u32       layer;
     };
 
     struct MeshInstance {
@@ -901,6 +905,16 @@ namespace sv {
 
 		LightInstance() { point = {};}
     };
+
+	struct ParticlesInstance {
+
+		v3_f32 position;
+		ParticleSystem* particles;
+		ParticleSystemModel* model;
+		u32 layer;
+		//Material* material;
+		
+	};
 
     SV_AUX void postprocessing_draw_call(CommandList cmd)
     {
@@ -970,79 +984,16 @@ namespace sv {
     static List<MeshInstance> mesh_instances;
 	static List<TerrainInstance> terrain_instances;
     static List<LightInstance> light_instances;
+	static List<ParticlesInstance> particles_instances;
     
-    SV_INTERNAL void draw_sprites(GPU_CameraData& camera_data, CommandList cmd)
+    SV_INTERNAL void draw_sprites(GPU_CameraData& camera_data, u32 offset, u32 count, CommandList cmd)
     {
 		auto& gfx = renderer->gfx;
 
 		graphics_viewport_set(gfx.offscreen, 0u, cmd);
 		graphics_scissor_set(gfx.offscreen, 0u, cmd);
 
-		CompID sprite_id = get_component_id("Sprite");
-		CompID animated_sprite_id = get_component_id("Animated Sprite");
-
-		for (CompIt it = comp_it_begin(sprite_id);
-			 it.has_next;
-			 comp_it_next(it))
-		{
-			SpriteComponent& spr = *(SpriteComponent*)it.comp;
-			Entity entity = it.entity;
-			
-			v3_f32 pos = get_entity_world_position(entity);
-			
-			SpriteSheet* sprite_sheet = spr.sprite_sheet.get();
-			
-			v4_f32 tc;
-			GPUImage* image = NULL;
-			
-			if (sprite_sheet) {
-				
-				tc = sprite_sheet->get_sprite_texcoord(spr.sprite_id);
-				image = sprite_sheet->texture.get();
-			}
-			
-			if (spr.flags & SpriteComponentFlag_XFlip) std::swap(tc.x, tc.z);
-			if (spr.flags & SpriteComponentFlag_YFlip) std::swap(tc.y, tc.w);
-		    
-			sprite_instances.emplace_back(get_entity_world_matrix(entity), tc, image, spr.color);
-		}
-		for (CompIt it = comp_it_begin(animated_sprite_id);
-			 it.has_next;
-			 comp_it_next(it))
-		{
-			AnimatedSpriteComponent& s = *(AnimatedSpriteComponent*)it.comp;
-			Entity entity = it.entity;
-			
-			v3_f32 pos = get_entity_world_position(entity);
-			
-			SpriteSheet* sprite_sheet = s.sprite_sheet.get();
-			GPUImage* image = NULL;
-			
-			v4_f32 tc;
-			
-			if (sprite_sheet && sprite_sheet->sprite_animations.exists(s.animation_id)) {
-				
-				SpriteAnimation& anim = sprite_sheet->sprite_animations[s.animation_id];
-				
-				s.simulation_time += engine.deltatime * s.time_mult;
-				
-				while (s.simulation_time >= anim.frame_time) {
-					
-					s.simulation_time -= anim.frame_time;
-					++s.index;
-				}
-				
-				s.index = s.index % anim.frames;
-				
-				tc = sprite_sheet->get_sprite_texcoord(anim.sprites[s.index]);
-				image = sprite_sheet->texture.get();
-			}
-			
-			if (s.flags & SpriteComponentFlag_XFlip) std::swap(tc.x, tc.z);
-			if (s.flags & SpriteComponentFlag_YFlip) std::swap(tc.y, tc.w);
-		    
-			sprite_instances.emplace_back(get_entity_world_matrix(entity), tc, image, s.color);
-		}
+		// TODO: Sort
 
 		if (sprite_instances.size()) {
 
@@ -1056,11 +1007,11 @@ namespace sv {
 			graphics_vertex_buffer_bind(batch_buffer, 0u, 0u, cmd);
 			graphics_index_buffer_bind(gfx.ibuffer_sprite, 0u, cmd);
 			graphics_inputlayoutstate_bind(gfx.ils_sprite, cmd);
-			graphics_sampler_bind(gfx.sampler_def_nearest, 0u, ShaderType_Pixel, cmd);
+			graphics_sampler_bind(gfx.sampler_def_linear, 0u, ShaderType_Pixel, cmd);
 			graphics_shader_bind(gfx.vs_sprite, cmd);
 			graphics_shader_bind(gfx.ps_sprite, cmd);
 			graphics_blendstate_bind(gfx.bs_transparent, cmd);
-			graphics_depthstencilstate_bind(gfx.dss_default_depth, cmd);
+			graphics_depthstencilstate_bind(gfx.dss_read_depth, cmd);
 
 			GPUImage* att[2];
 			att[0] = gfx.offscreen;
@@ -1075,8 +1026,8 @@ namespace sv {
 			// Used to draw
 			u32 instanceCount;
 
-			const SpriteInstance* it = sprite_instances.data();
-			const SpriteInstance* end = it + sprite_instances.size();
+			const SpriteInstance* it = sprite_instances.data() + size_t(offset);
+			const SpriteInstance* end = it + size_t(count);
 
 			while (it != end) {
 
@@ -1161,7 +1112,7 @@ namespace sv {
 
 				graphics_renderpass_end(cmd);
 
-				end = sprite_instances.data() + sprite_instances.size();
+				end = sprite_instances.data() + size_t(offset) + size_t(count);
 				batchIt = data.data;
 
 				graphics_event_end(cmd);
@@ -1267,6 +1218,7 @@ namespace sv {
 		terrain_instances.reset();
 		light_instances.reset();
 		sprite_instances.reset();
+		particles_instances.reset();
 
 		CommandList cmd = graphics_commandlist_get();
 
@@ -1317,6 +1269,85 @@ namespace sv {
 			if (scene->skybox.image.get() && camera.projection_type == ProjectionType_Perspective)
 				draw_sky(scene->skybox.image.get(), camera_data.vm, camera_data.pm, cmd);
 
+			// GET SPRITES
+			{
+				CompID sprite_id = get_component_id("Sprite");
+				CompID animated_sprite_id = get_component_id("Animated Sprite");
+		
+				foreach_component(sprite_id, it, 0) {
+			
+					SpriteComponent& spr = *(SpriteComponent*)it.comp;
+					Entity entity = it.entity;
+			
+					v3_f32 pos = get_entity_world_position(entity);
+			
+					SpriteSheet* sprite_sheet = spr.sprite_sheet.get();
+			
+					v4_f32 tc;
+					GPUImage* image = NULL;
+			
+					if (sprite_sheet) {
+				
+						tc = sprite_sheet->get_sprite_texcoord(spr.sprite_id);
+						image = sprite_sheet->texture.get();
+					}
+			
+					if (spr.flags & SpriteComponentFlag_XFlip) std::swap(tc.x, tc.z);
+					if (spr.flags & SpriteComponentFlag_YFlip) std::swap(tc.y, tc.w);
+		    
+					SpriteInstance& inst = sprite_instances.emplace_back();
+					inst.tm = get_entity_world_matrix(entity);
+					inst.texcoord = tc;
+					inst.image = image;
+					inst.color = spr.color;
+					inst.layer = spr.layer;
+				}
+				foreach_component(animated_sprite_id, it, 0) {
+			
+					AnimatedSpriteComponent& s = *(AnimatedSpriteComponent*)it.comp;
+					Entity entity = it.entity;
+			
+					v3_f32 pos = get_entity_world_position(entity);
+			
+					SpriteSheet* sprite_sheet = s.sprite_sheet.get();
+					GPUImage* image = NULL;
+			
+					v4_f32 tc;
+			
+					if (sprite_sheet && sprite_sheet->sprite_animations.exists(s.animation_id)) {
+				
+						SpriteAnimation& anim = sprite_sheet->sprite_animations[s.animation_id];
+				
+						s.simulation_time += engine.deltatime * s.time_mult;
+				
+						while (s.simulation_time >= anim.frame_time) {
+					
+							s.simulation_time -= anim.frame_time;
+							++s.index;
+						}
+				
+						s.index = s.index % anim.frames;
+				
+						tc = sprite_sheet->get_sprite_texcoord(anim.sprites[s.index]);
+						image = sprite_sheet->texture.get();
+					}
+			
+					if (s.flags & SpriteComponentFlag_XFlip) std::swap(tc.x, tc.z);
+					if (s.flags & SpriteComponentFlag_YFlip) std::swap(tc.y, tc.w);
+		    
+					SpriteInstance& inst = sprite_instances.emplace_back();
+					inst.tm = get_entity_world_matrix(entity);
+					inst.texcoord = tc;
+					inst.image = image;
+					inst.color = s.color;
+					inst.layer = s.layer;
+				}
+
+				std::sort(sprite_instances.data(), sprite_instances.data() + sprite_instances.size(), [](SpriteInstance& s0, SpriteInstance& s1){
+					return s0.layer < s1.layer;
+				});
+			}
+
 			// GET LIGHTS
 			{
 				XMVECTOR camera_quat = vec4_to_dx(camera_data.rotation);
@@ -1324,10 +1355,8 @@ namespace sv {
 
 				CompID light_id = get_component_id("Light");
 
-				for (CompIt it = comp_it_begin(light_id);
-					 it.has_next;
-					 comp_it_next(it))
-				{
+				foreach_component(light_id, it, 0) {
+					
 					Entity entity = it.entity;
 					LightComponent& l = *(LightComponent*)it.comp;
 						
@@ -1365,6 +1394,26 @@ namespace sv {
 					break;
 
 					}
+				}
+			}
+
+			// GET PARTICLES
+			{
+				CompID ps_model_id = get_component_id("Particle System Model");
+				CompID ps_id = get_component_id("Particle System");
+				
+				foreach_component(ps_model_id, it, 0) {
+					
+					ParticleSystemModel& psm = *(ParticleSystemModel*)it.comp;
+					ParticleSystem* ps = (ParticleSystem*)get_entity_component(it.entity, ps_id);
+
+					if (ps == NULL) continue;
+
+					ParticlesInstance& inst = particles_instances.emplace_back();
+					inst.position = get_entity_world_position(it.entity);
+					inst.particles = ps;
+					inst.model = &psm;
+					inst.layer = ps->layer;
 				}
 			}
 
@@ -1723,9 +1772,30 @@ namespace sv {
 
 				graphics_event_end(cmd);
 
-				draw_sprites(camera_data, cmd);
+				// TODO: Optimize
 
-				event_dispatch("update_and_draw_particles", NULL);
+				u32 sprite_offset = 0u;
+				
+				foreach(i, RENDER_LAYER_COUNT) {
+
+					u32 sprite_end = (u32)sprite_instances.size();
+					for (u32 j = sprite_offset; j < sprite_instances.size(); ++j) {
+						if (sprite_instances[j].layer != i) {
+							sprite_end = j;
+							break;
+						}
+					}
+
+					if (sprite_end != sprite_offset) {
+						draw_sprites(camera_data, sprite_offset, sprite_end - sprite_offset, cmd);
+						sprite_offset = sprite_end;
+					}
+
+					for (const ParticlesInstance& p : particles_instances) {
+						if (p.layer == i)
+							draw_particles(*p.particles, *p.model, p.position, camera_data.ivm, camera_data.vm, camera_data.pm, cmd);
+					}
+				}
 			}
 
 			// Postprocessing

@@ -132,6 +132,7 @@ namespace sv {
     SV_API void imrend_pop_scissor(CommandList cmd);
 
     SV_API void imrend_camera(ImRendCamera camera, CommandList cmd);
+	SV_API void imrend_camera(const XMMATRIX& view_matrix, const XMMATRIX& projection_matrix, CommandList cmd);
 
     // Draw calls
 

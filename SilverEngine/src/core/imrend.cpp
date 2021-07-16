@@ -21,7 +21,14 @@ namespace sv {
 		List<ImRendScissor> scissor_stack;
 	
 		XMMATRIX current_matrix;
-		ImRendCamera current_camera;
+
+		struct {
+			ImRendCamera current;
+			bool is_custom;
+			XMMATRIX view_matrix;
+			XMMATRIX projection_matrix;
+		} camera;
+		
 
 		struct {
 
@@ -55,6 +62,7 @@ namespace sv {
 		ImRendHeader_PopScissor,
 
 		ImRendHeader_Camera,
+		ImRendHeader_CustomCamera,
 
 		ImRendHeader_DrawCall,
     };
@@ -175,23 +183,30 @@ namespace sv {
 		}
 
 		XMMATRIX vpm;
-	
-		switch (state.current_camera)
-		{
-		case ImRendCamera_Normal:
-			vpm = XMMatrixScaling(2.f, 2.f, 1.f) * XMMatrixTranslation(-1.f, -1.f, 0.f);
-			break;
+
+		if (state.camera.is_custom) {
+
+			vpm = state.camera.view_matrix * state.camera.projection_matrix;
+		}
+		else {
+			
+			switch (state.camera.current)
+			{
+			case ImRendCamera_Normal:
+				vpm = XMMatrixScaling(2.f, 2.f, 1.f) * XMMatrixTranslation(-1.f, -1.f, 0.f);
+				break;
 
 #if SV_EDITOR
-		case ImRendCamera_Editor:
-			vpm = dev.camera.view_projection_matrix;
-			break;
+			case ImRendCamera_Editor:
+				vpm = dev.camera.view_projection_matrix;
+				break;
 #endif
 
-		case ImRendCamera_Clip:
-		default:
-			vpm = XMMatrixIdentity();
+			case ImRendCamera_Clip:
+			default:
+				vpm = XMMatrixIdentity();
 	    
+			}
 		}
 
 		state.current_matrix = matrix * vpm;
@@ -291,7 +306,8 @@ namespace sv {
 		state.current_matrix = XMMatrixIdentity();
 		state.matrix_stack.reset();
 		state.scissor_stack.reset();
-		state.current_camera = ImRendCamera_Clip;
+		state.camera.current = ImRendCamera_Clip;
+		state.camera.is_custom = false;
 
 		u8* it = (u8*)state.buffer.data();
 		u8* end = (u8*)state.buffer.data() + state.buffer.size();
@@ -337,7 +353,17 @@ namespace sv {
 
 			case ImRendHeader_Camera:
 			{
-				state.current_camera = imrend_read<ImRendCamera>(it);
+				state.camera.current = imrend_read<ImRendCamera>(it);
+				state.camera.is_custom = false;
+				update_current_matrix(state);
+			}
+			break;
+
+			case ImRendHeader_CustomCamera:
+			{
+				state.camera.view_matrix = imrend_read<XMMATRIX>(it);
+				state.camera.projection_matrix = imrend_read<XMMATRIX>(it);
+				state.camera.is_custom = true;
 				update_current_matrix(state);
 			}
 			break;
@@ -604,6 +630,15 @@ namespace sv {
 		imrend_write(state, ImRendHeader_Camera);
 		imrend_write(state, camera);
     }
+
+	void imrend_camera(const XMMATRIX& view_matrix, const XMMATRIX& projection_matrix, CommandList cmd)
+	{
+		SV_IMREND();
+	
+		imrend_write(state, ImRendHeader_CustomCamera);
+		imrend_write(state, view_matrix);
+		imrend_write(state, projection_matrix);
+	}
 
     void imrend_draw_quad(const v3_f32& position, const v2_f32& size, Color color, CommandList cmd)
     {

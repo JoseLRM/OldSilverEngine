@@ -29,7 +29,6 @@ namespace sv {
 		List<Entity> entities;
 
 		char filepath[FILEPATH_SIZE + 1u];
-		char name[ENTITY_NAME_SIZE + 1u];
 	};
 
 	struct EntityInternal {
@@ -121,6 +120,7 @@ namespace sv {
 		List<Entity>     entity_free_list;
 		
 		List<PrefabInternal> prefabs;
+		ThickHashTable<Prefab, 100> prefab_table;
 		u32                  prefab_free_count = 0u;
 
 		TagInternal tags[TAG_MAX];
@@ -1616,6 +1616,7 @@ namespace sv {
 			copy_component(comp_id, ref.comp, comp, copy);
 			ref.comp_id = comp_id;
 		}
+		copy_internal.component_mask = duplicated_internal.component_mask;
 
 		foreach(i, ecs.entity_internal[duplicated - 1u].child_count) {
 			Entity to_copy = ecs.entity_hierarchy[ecs.entity_internal[duplicated - 1].hierarchy_index + i + 1];
@@ -1738,6 +1739,14 @@ namespace sv {
 	{
 		SV_ECS();
 		return ecs.entity_hierarchy[index];
+	}
+
+	void set_entity_flags(Entity entity, u64 flags)
+	{
+		SV_ECS();
+		SV_ASSERT(entity_exists(entity));
+		EntityMisc& misc = ecs.entity_misc[entity - 1u];
+		misc.flags = flags;
 	}
 
 	bool has_entity_component(Entity entity, CompID comp_id)
@@ -1909,6 +1918,249 @@ namespace sv {
 		}
 	}
 
+	SV_AUX bool deserialize_components(Deserializer& d, u32& component_count, u64& component_mask, CompRef* components, bool is_entity, u32 handle)
+	{
+		u32 version;
+		deserialize_u32(d, version);
+		
+		deserialize_u32(d, component_count);
+
+		if (component_count > ENTITY_COMPONENTS_MAX) {
+			SV_LOG_ERROR("Exceeds the component limit of %u", ENTITY_COMPONENTS_MAX);
+			return false;
+		}
+
+		foreach(i, component_count) {
+
+			CompRef& ref = components[i];
+
+			char comp_name[COMPONENT_NAME_SIZE + 1u];
+			u32 comp_version;
+
+			deserialize_string(d, comp_name, COMPONENT_NAME_SIZE + 1u);
+			deserialize_u32(d, comp_version);
+
+			ref.comp_id = get_component_id(comp_name);
+
+			if (ref.comp_id == INVALID_COMP_ID) {
+				SV_LOG_ERROR("The component '%s' doesn't exists", comp_name);
+				return false;
+			}
+				
+			ref.comp = allocate_component(ref.comp_id);
+			if (is_entity)
+				create_entity_component(ref.comp_id, ref.comp, handle);
+			else
+				create_prefab_component(ref.comp_id, ref.comp, handle);
+			
+			deserialize_component(ref.comp_id, ref.comp, d, comp_version);
+
+			component_mask |= SV_BIT(ref.comp_id);
+			components[i] = ref;
+		}
+
+		return true;
+	}
+
+	SV_AUX void serialize_components(Serializer& s, u32 component_count, const CompRef* components)
+	{
+		serialize_u32(s, 0u); // VERSION
+		
+		serialize_u32(s, component_count);
+
+		foreach(i, component_count) {
+
+			CompRef ref = components[i];
+			serialize_string(s, get_component_name(ref.comp_id));
+			serialize_u32(s, get_component_version(ref.comp_id));
+			serialize_component(ref.comp_id, ref.comp, s);
+		}
+	}
+
+	static void serialize_entity_internal(Serializer& s, Entity entity)
+	{
+		SV_ECS();
+
+		const EntityInternal& internal = ecs.entity_internal[entity - 1u];
+		const EntityMisc& misc = ecs.entity_misc[entity - 1u];
+		const EntityTransform& transform = ecs.entity_transform[entity - 1u];
+
+		// Prefab
+		if (internal.prefab) {
+
+			const PrefabInternal& prefab = ecs.prefabs[internal.prefab - 1];
+			serialize_string(s, prefab.filepath);
+		}
+		else serialize_string(s, "");
+		
+		// Tags
+		if (internal.tag_mask) {
+
+			u32 tag_count = 0u;
+
+			foreach(i, TAG_MAX) {
+
+				if (internal.tag_mask & SV_BIT(i)) {
+					++tag_count;
+				}
+			}
+
+			serialize_u32(s, tag_count);
+
+			foreach(i, TAG_MAX) {
+
+				if (internal.tag_mask & SV_BIT(i)) {
+
+					const TagRegister& tag = scene_state->tag_register[i];
+					serialize_string(s, tag.name);
+				}
+			}
+		}
+		else serialize_u32(s, 0u);
+		
+		serialize_u32(s, internal.child_count);
+		serialize_string(s, misc.name);
+		serialize_u64(s, misc.flags);
+		serialize_v3_f32(s, transform.position);
+		serialize_v4_f32(s, transform.rotation);
+		serialize_v3_f32(s, transform.scale);
+
+		// Components
+		{
+			serialize_components(s, internal.component_count, internal.components);
+		}
+
+		for (u32 i = 0u; i < internal.child_count; ++i) {
+
+			Entity child_handle = ecs.entity_hierarchy[internal.hierarchy_index + 1 + i];
+			serialize_entity_internal(s, child_handle);
+
+			const EntityInternal& child = ecs.entity_internal[child_handle - 1u];
+			i += child.child_count;
+		}
+	}
+
+	static Entity deserialize_entity_internal(Deserializer& s, Entity parent)
+	{
+		SV_ECS();
+
+		// Prefab
+		Prefab prefab = 0;
+		{
+			char filepath[FILEPATH_SIZE + 1];
+			deserialize_string(s, filepath, FILEPATH_SIZE + 1);
+
+			prefab = load_prefab(filepath);
+		}
+
+		Entity entity = create_entity(parent, NULL, prefab);
+		
+		// Tags
+		u32 tag_count;
+		deserialize_u32(s, tag_count);
+
+		foreach(i, tag_count) {
+
+			char name[TAG_NAME_SIZE + 1];
+			deserialize_string(s, name, TAG_NAME_SIZE + 1);
+
+			Tag tag = get_tag_id(name);
+
+			if (tag_exists(tag))
+				add_entity_tag(entity, tag);
+			else {
+				SV_LOG_ERROR("Unknown tag '%s'", name);
+			}
+		}
+
+		u32 child_count;
+		deserialize_u32(s, child_count);
+
+		char name[ENTITY_NAME_SIZE + 1];
+		deserialize_string(s, name, ENTITY_NAME_SIZE + 1);
+		set_entity_name(entity, name);
+
+		u64 flags;
+		deserialize_u64(s, flags);
+		set_entity_flags(entity, flags);
+
+		Transform transform;
+		deserialize_v3_f32(s, transform.position);
+		deserialize_v4_f32(s, transform.rotation);
+		deserialize_v3_f32(s, transform.scale);
+
+		set_entity_transform(entity, transform);
+
+		// Components
+		{
+			EntityInternal& internal = ecs.entity_internal[entity - 1];
+			deserialize_components(s, internal.component_count, internal.component_mask, internal.components, true, entity);
+		}
+
+		for (u32 i = 0u; i < child_count; ++i) {
+
+			Entity child_handle = deserialize_entity_internal(s, entity);
+
+			if (entity_exists(child_handle)) {
+
+				const EntityInternal& child = ecs.entity_internal[child_handle - 1u];
+				i += child.child_count;
+			}
+		}
+
+		return entity;
+	}
+
+	bool save_entity_file(Entity entity, const char* filepath)
+	{
+		if (!entity_exists(entity)) {
+			SV_LOG_ERROR("Can't save the entity in file '%s', the entity doesn't exists", filepath);
+			return false;
+		}
+
+		Serializer s;
+
+		serialize_begin(s);
+
+		serialize_u32(s, 0); // VERSION
+
+		serialize_entity_internal(s, entity);
+
+		if (serialize_end(s, filepath)) {
+
+			SV_LOG_INFO("Entity saved in '%s'", filepath);
+		}
+		else {
+
+			SV_LOG_ERROR("Can't save the entity in file '%s'", filepath);
+			return false;
+		}
+
+		return true;
+	}
+	
+	Entity create_entity_file(const char* filepath)
+	{
+		Deserializer s;
+		Entity entity = 0;
+
+		if (deserialize_begin(s, filepath)) {
+
+			u32 version;
+			deserialize_u32(s, version); // VERSION
+
+			entity = deserialize_entity_internal(s, 0);
+
+			deserialize_end(s);
+		}
+		else {
+			SV_LOG_ERROR("Can't load the file '%s'", filepath);
+		}
+
+		
+		return entity;
+	}
+
 	bool create_prefab_file(const char* name, const char* filepath)
 	{
 		name = string_validate(name);
@@ -1928,35 +2180,6 @@ namespace sv {
 		serialize_u32(s, 0u); // Component count
 		
 		return serialize_end(s, filepath);
-	}
-
-	SV_AUX bool is_valid_prefab_name(const char* name, Prefab prefab_filter)
-	{
-		name = string_validate(name);
-		size_t size = string_size(name);
-		if (size == 0u) {
-			SV_LOG_ERROR("The prefab name is empty");
-			return false;
-		}
-		if (size > ENTITY_NAME_SIZE) {
-			SV_LOG_ERROR("The prefab name is too long");
-			return false;
-		}
-
-		for (PrefabIt it = prefab_it_begin();
-			 it.has_next;
-			 prefab_it_next(it))
-		{
-			if (it.prefab == prefab_filter)
-				continue;
-			
-			if (string_equals(get_prefab_name(it.prefab), name)) {
-				SV_LOG_ERROR("Repeated prefab name '%s'", name);
-				return false;
-			}
-		}
-
-		return true;
 	}
 
 	SV_AUX Prefab allocate_prefab()
@@ -2006,6 +2229,13 @@ namespace sv {
 	{
 		SV_ECS();
 
+		Prefab* p = ecs.prefab_table.find(filepath);
+
+		if (p != NULL) {
+
+			return *p;
+		}
+
 		Prefab prefab = 0;
 		
 		Deserializer d;
@@ -2019,46 +2249,53 @@ namespace sv {
 			
 			PrefabInternal& p = ecs.prefabs[prefab - 1u];
 			p.component_mask = 0u;
-			
-			deserialize_string(d, p.name, ENTITY_NAME_SIZE + 1u);
 
-			if (!is_valid_prefab_name(p.name, prefab)) {
-				free_prefab(prefab);
-				return 0;
-			}
-			
-			deserialize_u32(d, p.component_count);
-
-			if (p.component_count > ENTITY_COMPONENTS_MAX) {
-				SV_LOG_ERROR("The prefab '%s' exceeds the component limit of %u", filepath, ENTITY_COMPONENTS_MAX);
-				free_prefab(prefab);
-				return 0;
+			if (version == 0) {
+				char name[ENTITY_NAME_SIZE + 1];
+				deserialize_string(d, name, ENTITY_NAME_SIZE + 1u);
 			}
 
-			foreach(i, p.component_count) {
+			if (version <= 1) {
+			
+				deserialize_u32(d, p.component_count);
 
-				CompRef& ref = p.components[i];
-
-				char comp_name[COMPONENT_NAME_SIZE + 1u];
-				u32 comp_version;
-
-				deserialize_string(d, comp_name, COMPONENT_NAME_SIZE + 1u);
-				deserialize_u32(d, comp_version);
-
-				ref.comp_id = get_component_id(comp_name);
-
-				if (ref.comp_id == INVALID_COMP_ID) {
-					SV_LOG_ERROR("Can't load the prefab '%s', the component '%s' doesn't exists", filepath, comp_name);
+				if (p.component_count > ENTITY_COMPONENTS_MAX) {
+					SV_LOG_ERROR("The prefab '%s' exceeds the component limit of %u", filepath, ENTITY_COMPONENTS_MAX);
 					free_prefab(prefab);
 					return 0;
 				}
-				
-				ref.comp = allocate_component(ref.comp_id);
-				create_prefab_component(ref.comp_id, ref.comp, prefab);
-				deserialize_component(ref.comp_id, ref.comp, d, comp_version);
 
-				p.component_mask |= SV_BIT(ref.comp_id);
-				p.components[i] = ref;
+				foreach(i, p.component_count) {
+
+					CompRef& ref = p.components[i];
+
+					char comp_name[COMPONENT_NAME_SIZE + 1u];
+					u32 comp_version;
+
+					deserialize_string(d, comp_name, COMPONENT_NAME_SIZE + 1u);
+					deserialize_u32(d, comp_version);
+
+					ref.comp_id = get_component_id(comp_name);
+
+					if (ref.comp_id == INVALID_COMP_ID) {
+						SV_LOG_ERROR("Can't load the prefab '%s', the component '%s' doesn't exists", filepath, comp_name);
+						free_prefab(prefab);
+						return 0;
+					}
+				
+					ref.comp = allocate_component(ref.comp_id);
+					create_prefab_component(ref.comp_id, ref.comp, prefab);
+					deserialize_component(ref.comp_id, ref.comp, d, comp_version);
+
+					p.component_mask |= SV_BIT(ref.comp_id);
+					p.components[i] = ref;
+				}
+			}
+			else {
+				if (!deserialize_components(d, p.component_count, p.component_mask, p.components, false, prefab)) {
+					free_prefab(prefab);
+					return 0;
+				}
 			}
 
 			string_copy(p.filepath, filepath, FILEPATH_SIZE + 1u);
@@ -2069,6 +2306,8 @@ namespace sv {
 			SV_LOG_ERROR("Can't load the prefab '%s'", filepath);
 			return 0;
 		}
+
+		ecs.prefab_table[filepath] = prefab;
 		
 		return prefab;
 	}
@@ -2092,17 +2331,8 @@ namespace sv {
 		Serializer s;
 		serialize_begin(s);
 
-		serialize_u32(s, 0u); // VERSION
-		serialize_string(s, p.name);
-		serialize_u32(s, p.component_count);
-
-		foreach(i, p.component_count) {
-
-			CompRef ref = p.components[i];
-			serialize_string(s, get_component_name(ref.comp_id));
-			serialize_u32(s, get_component_version(ref.comp_id));
-			serialize_component(ref.comp_id, ref.comp, s);
-		}
+		serialize_u32(s, 2u); // VERSION
+		serialize_components(s, p.component_count, p.components);
 		
 		return serialize_end(s, filepath);
 	}
@@ -2125,12 +2355,13 @@ namespace sv {
 		return false;
 	}
 
-	const char* get_prefab_name(Prefab prefab)
+	const char* get_prefab_filepath(Prefab prefab)
 	{
 		SV_ECS();
 		SV_ASSERT(prefab_exists(prefab));
-
-		return ecs.prefabs[prefab - 1u].name;
+		
+		PrefabInternal& internal = ecs.prefabs[prefab - 1u];
+		return internal.filepath;
 	}
 
 	bool has_prefab_component(Prefab prefab, CompID comp_id)
@@ -2703,6 +2934,7 @@ namespace sv {
 		register_component<MeshComponent>("Mesh");
 		register_component<TerrainComponent>("Terrain");
 		register_component<ParticleSystem>("Particle System");
+		register_component<ParticleSystemModel>("Particle System Model");
 		register_component<LightComponent>("Light");
 
 		ComponentRegisterDesc desc;

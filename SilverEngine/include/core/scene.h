@@ -5,6 +5,9 @@
 
 namespace sv {
 
+	// TODO: Move on
+	constexpr u32 RENDER_LAYER_COUNT = 30;
+
 	constexpr u32 SCENE_NAME_SIZE = 50u;
 
 	constexpr u32 COMPONENT_MAX = 64u;
@@ -106,6 +109,7 @@ namespace sv {
     SV_API u32	       get_entity_count();
     SV_API Entity      get_entity_by_index(u32 index);
 
+	SV_API void       set_entity_flags(Entity entity, u64 flags);
 	SV_API bool       has_entity_component(Entity entity, CompID comp_id);
 	SV_API Component* add_entity_component(Entity entity, CompID comp_id);
 	SV_API void       remove_entity_component(Entity entity, CompID comp_id);
@@ -115,6 +119,9 @@ namespace sv {
 	SV_API void add_entity_tag(Entity entity, Tag tag);
 	SV_API void remove_entity_tag(Entity entity, Tag tag);
 
+	SV_API bool save_entity_file(Entity entity, const char* filepath);
+	SV_API Entity create_entity_file(const char* filepath);
+
 	// Prefab
 
 	SV_API bool   create_prefab_file(const char* name, const char* filepath);
@@ -123,7 +130,7 @@ namespace sv {
 	SV_API bool   save_prefab(Prefab prefab, const char* filepath);
 
 	SV_API bool        prefab_exists(Prefab prefab);
-	SV_API const char* get_prefab_name(Prefab prefab);
+	SV_API const char* get_prefab_filepath(Prefab prefab);
 	
 	SV_API bool       has_prefab_component(Prefab prefab, CompID comp_id);
 	SV_API Component* add_prefab_component(Prefab prefab, CompID comp_id);
@@ -304,7 +311,7 @@ namespace sv {
 		SpriteSheetAsset sprite_sheet;
 		u32              sprite_id = 0u;
 		Color	         color = Color::White();
-		u32	             layer = 0u;
+		u32	             layer = RENDER_LAYER_COUNT / 2u;
 
 		void serialize(Serializer& s);
 		void deserialize(Deserializer& s, u32 version);

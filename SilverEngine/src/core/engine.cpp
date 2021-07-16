@@ -389,6 +389,8 @@ namespace sv {
 	
 		while (engine.running) {
 
+			++engine.frame_count;
+
 			// Calculate DeltaTime
 			f64 actualTime = timer_now();
 			engine.deltatime = f32(actualTime - lastTime);

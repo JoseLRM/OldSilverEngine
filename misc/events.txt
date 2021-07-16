@@ -21,7 +21,6 @@ save_scene
 update_scene
 update_physics
 late_update_scene
-update_and_draw_particles
 close_scene
 
 ** EDITOR **

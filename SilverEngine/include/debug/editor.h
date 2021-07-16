@@ -77,12 +77,17 @@ namespace sv {
 	constexpr u32 ASSET_BROWSER_PACKAGE_SOUND = 73u;
 
 	constexpr u32 ASSET_BROWSER_PREFAB = 150u;
+	constexpr u32 ASSET_BROWSER_ENTITY = 151u;
 	
     struct AssetPackage {
 		char filepath[FILEPATH_SIZE + 1u];
     };
 
 	struct PrefabPackage {
+		char filepath[FILEPATH_SIZE + 1u];
+    };
+
+	struct EntityPackage {
 		char filepath[FILEPATH_SIZE + 1u];
     };
 

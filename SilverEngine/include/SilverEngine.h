@@ -9,6 +9,7 @@
 #include "core/renderer.h"
 #include "core/engine.h"
 #include "core/physics3D.h"
+#include "core/particles.h"
 #include "core/event_system.h"
 
 #include "debug/console.h"
