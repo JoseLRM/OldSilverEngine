@@ -40,6 +40,7 @@ namespace sv {
 			serialize_color(s, e.final_color);
 
 			serialize_f32(s, e.gravity_mult);
+			serialize_bool(s, e.relative_space);
 
 			serialize_u32(s, e.shape.type);
 			serialize_bool(s, e.shape.fill);
@@ -95,6 +96,9 @@ namespace sv {
 				deserialize_color(s, e.final_color);
 
 				deserialize_f32(s, e.gravity_mult);
+				if (version > 1) {
+					deserialize_bool(s, e.relative_space);
+				}
 
 				deserialize_u32(s, (u32&)e.shape.type);
 				deserialize_bool(s, e.shape.fill);
@@ -299,6 +303,9 @@ namespace sv {
 				
 			GPUImage* image = em.texture.get();
 
+			if (em.relative_space)
+				imrend_push_matrix(XMMatrixTranslation(system_position.x, system_position.y, system_position.z), cmd);
+			
 			foreach(i, e.particle_count) {
 
 				const Particle& p = e.particles[i];
@@ -309,6 +316,9 @@ namespace sv {
 				imrend_draw_sprite({}, { p.size, p.size }, color, image, GPUImageLayout_ShaderResource, em.texcoord, cmd);
 				imrend_pop_matrix(cmd);
 			}
+
+			if (em.relative_space)
+				imrend_pop_matrix(cmd);
 				
 			// Reset
 			if (reset) {
@@ -322,6 +332,8 @@ namespace sv {
 			if (emit && e.particle_count < em.max_particles) {
 				
 				e.emission.count += dt;
+
+				v3_f32 emit_position = em.relative_space ? v3_f32{} : system_position;
 				
 				if (e.emission.count > em.emission.offset_time) {
 
@@ -335,7 +347,7 @@ namespace sv {
 
 						while (e.emission.spawn_count > frq) {
 							
-							emit_particle(e, em, system_position);
+							emit_particle(e, em, emit_position);
 
 							e.emission.spawn_count -= frq;
 
@@ -395,6 +407,7 @@ namespace sv {
 				gui_drag_color("Init color", e.init_color);
 				gui_drag_color("Final color", e.final_color);
 				gui_drag_f32("Gravity Mult", e.gravity_mult, 0.001f, -f32_max, f32_max);
+				gui_checkbox("Relative Space", e.relative_space);
 
 				gui_separator(1);
 
@@ -445,8 +458,24 @@ namespace sv {
 					
 					gui_end_combobox();
 				}
+
+				gui_checkbox("Fill", e.shape.fill);
 				
-				
+				switch (e.shape.type) {
+
+				case ParticleShapeType_Sphere:
+					gui_drag_f32("Sphere", e.shape.sphere.radius, 0.01f, 0.f, f32_max);
+					break;
+
+				case ParticleShapeType_Cube:
+					gui_drag_v3_f32("Size", e.shape.cube.size, 0.01f, 0.f, f32_max);
+					break;
+
+				case ParticleShapeType_Plane:
+					gui_drag_v2_f32("Size", e.shape.plane.size, 0.01f, 0.f, f32_max);
+					break;
+					
+				}
 
 				gui_drag_f32("Emission Rate", e.emission.rate, 0.1f, 0.f, f32_max);
 				gui_drag_f32("Emission Offset Time", e.emission.offset_time, 0.01f, 0.f, f32_max);

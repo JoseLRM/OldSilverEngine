@@ -50,6 +50,7 @@ namespace sv {
 		Color final_color = Color::Red(0);
 
 		f32 gravity_mult = 0.f;
+		bool relative_space = false;
 
 		// SHAPE
 
@@ -83,7 +84,7 @@ namespace sv {
 
 	struct ParticleSystemModel : public Component {
 
-		static constexpr u32 VERSION = 1u;
+		static constexpr u32 VERSION = 2u;
 		
 		f32 simulation_time = 1.f;
 		f32 repeat_time = 1.f;
@@ -179,6 +180,7 @@ namespace sv {
 				ParticleSystem* ps = (ParticleSystem*)add_entity_component(entity, comp_id);
 				if (ps) {
 					ps->run();
+					ps->layer = layer;
 				}
 				else return 0;
 			}

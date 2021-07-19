@@ -93,6 +93,10 @@ namespace sv {
 
 	// Entity
 
+	enum EntityFlag : u32 {
+		EntityFlag_NoSerialize = SV_BIT(0),
+	};
+
 	SV_API Entity create_entity(Entity parent = 0, const char* name = NULL, Prefab prefab = 0);
 	SV_API void   destroy_entity(Entity entity);
 	SV_API Entity duplicate_entity(Entity entity);
