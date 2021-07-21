@@ -53,7 +53,10 @@ SV_SAMPLER(sam, s0);
 
 float4 main(Input input) : SV_Target0
 {
-	return tex.Sample(sam, input.texcoord) * input.color;
+	float4 color = tex.Sample(sam, input.texcoord) * input.color;
+	if (color.a < 0.0001f)
+	   discard;
+	return color;
 }
 
 

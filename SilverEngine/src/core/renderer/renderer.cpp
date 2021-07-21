@@ -579,7 +579,7 @@ namespace sv {
 			att[0].srcAlphaBlendFactor = BlendFactor_One;
 			att[0].dstAlphaBlendFactor = BlendFactor_Zero;
 			att[0].alphaBlendOp = BlendOperation_Add;
-			att[0].colorWriteMask = ColorComponent_All;
+			att[0].colorWriteMask = ColorComponent_RGB;
 
 			desc.attachmentCount = 1u;
 			desc.blendConstants = { 0.f, 0.f, 0.f, 0.f };

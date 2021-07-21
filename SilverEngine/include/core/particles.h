@@ -8,6 +8,8 @@ namespace sv {
 
 	struct Particle {
 		v3_f32 position;
+		v3_f32 rotation;
+		v3_f32 angular_velocity;
 		v3_f32 velocity;
 		f32 size;
 		
@@ -29,6 +31,8 @@ namespace sv {
 
 		u32 max_particles = 1000u;
 		u32 seed = 6969u; // uwu
+		u32 sort_value = 0u;
+		bool show = true;
 
 		// RENDERING
 
@@ -37,6 +41,10 @@ namespace sv {
 
 		// INITIAL VALUES
 
+		v3_f32 min_rotation = { 0.f };
+		v3_f32 max_rotation = { PI * 2.f };
+		v3_f32 min_angular_velocity = { -0.4f, 0.5f, -0.4f };
+		v3_f32 max_angular_velocity = { 0.4f, 2.5f, 0.4f };
 		v3_f32 min_velocity = { -0.4f, 0.5f, -0.4f };
 		v3_f32 max_velocity = { 0.4f, 2.5f, 0.4f };
 		f32 min_lifetime = 0.8f;
@@ -84,7 +92,7 @@ namespace sv {
 
 	struct ParticleSystemModel : public Component {
 
-		static constexpr u32 VERSION = 2u;
+		static constexpr u32 VERSION = 4u;
 		
 		f32 simulation_time = 1.f;
 		f32 repeat_time = 1.f;
@@ -129,7 +137,6 @@ namespace sv {
 		u64 last_update_frame = u32_max;
 		f32 time_count = 0.f;
 
-		u32 emitter_count = 1u;
 		ParticleEmitter emitters[PARTICLE_EMITTER_MAX];
 
 		void serialize(Serializer& s);

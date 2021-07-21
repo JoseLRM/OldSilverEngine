@@ -56,7 +56,7 @@ namespace sv {
     void _engine_initialize_project(const char* project_path);
     void _engine_close_project();
     
-    void _engine_reset_game();
+    void _engine_reset_game(const char* scene = "");
 #endif
     
 }

@@ -21,6 +21,7 @@ namespace sv {
     GlobalDevData dev;
 
     static bool reset_game_request = false;
+	static char reset_game_scene_name[SCENE_NAME_SIZE + 1u] = "";
     static bool close_project_request = false;
 #endif
 
@@ -310,6 +311,12 @@ namespace sv {
 
 		event_dispatch("initialize_game", nullptr);
 
+#if SV_EDITOR
+		if (reset_game_scene_name[0]) {
+			set_scene(reset_game_scene_name);
+		}
+#endif
+
 		SV_LOG_INFO("Game initialized");
     }
 
@@ -481,9 +488,10 @@ namespace sv {
 		close_project_request = true;
     }
     
-    void _engine_reset_game()
+    void _engine_reset_game(const char* scene)
     {
 		reset_game_request = true;
+		string_copy(reset_game_scene_name, string_validate(scene), SCENE_NAME_SIZE + 1); 
     }
     
 #endif

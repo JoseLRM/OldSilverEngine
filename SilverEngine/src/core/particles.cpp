@@ -25,10 +25,16 @@ namespace sv {
 			ParticleEmitterModel& e = emitters[i];
 			serialize_u32(s, e.max_particles);
 			serialize_u32(s, e.seed);
+			serialize_u32(s, e.sort_value);
+			serialize_bool(s, e.show);
 			
 			serialize_asset(s, e.texture);
 			serialize_v4_f32(s, e.texcoord);
 
+			serialize_v3_f32(s, e.min_rotation);
+			serialize_v3_f32(s, e.max_rotation);
+			serialize_v3_f32(s, e.min_angular_velocity);
+			serialize_v3_f32(s, e.max_angular_velocity);
 			serialize_v3_f32(s, e.min_velocity);
 			serialize_v3_f32(s, e.max_velocity);
 			serialize_f32(s, e.min_lifetime);
@@ -81,10 +87,20 @@ namespace sv {
 				ParticleEmitterModel& e = emitters[i];
 				deserialize_u32(s, e.max_particles);
 				deserialize_u32(s, e.seed);
+				if (version >= 3)
+					deserialize_u32(s, e.sort_value);
+				if (version >= 4)
+					deserialize_bool(s, e.show);
 			
 				deserialize_asset(s, e.texture);
 				deserialize_v4_f32(s, e.texcoord);
 
+				if (version >= 4) {
+					deserialize_v3_f32(s, e.min_rotation);
+					deserialize_v3_f32(s, e.max_rotation);
+					deserialize_v3_f32(s, e.min_angular_velocity);
+					deserialize_v3_f32(s, e.max_angular_velocity);
+				}
 				deserialize_v3_f32(s, e.min_velocity);
 				deserialize_v3_f32(s, e.max_velocity);
 				deserialize_f32(s, e.min_lifetime);
@@ -180,6 +196,14 @@ namespace sv {
 
 		p.position += system_position;
 
+		p.rotation.x = math_random_f32(e.seed++, e.min_rotation.x, e.max_rotation.x);
+		p.rotation.y = math_random_f32(e.seed++, e.min_rotation.y, e.max_rotation.y);
+		p.rotation.z = math_random_f32(e.seed++, e.min_rotation.z, e.max_rotation.z);
+
+		p.angular_velocity.x = math_random_f32(e.seed++, e.min_angular_velocity.x, e.max_angular_velocity.x);
+		p.angular_velocity.y = math_random_f32(e.seed++, e.min_angular_velocity.y, e.max_angular_velocity.y);
+		p.angular_velocity.z = math_random_f32(e.seed++, e.min_angular_velocity.z, e.max_angular_velocity.z);
+
 		p.velocity.x = math_random_f32(e.seed++, e.min_velocity.x, e.max_velocity.x);
 		p.velocity.y = math_random_f32(e.seed++, e.min_velocity.y, e.max_velocity.y);
 		p.velocity.z = math_random_f32(e.seed++, e.min_velocity.z, e.max_velocity.z);
@@ -203,15 +227,28 @@ namespace sv {
 		f32 dt = engine.deltatime;
 		SceneData& scene = *get_scene_data();
 
+		if (model.emitter_count > PARTICLE_EMITTER_MAX) {
+			SV_LOG_ERROR("The particle system can't have more than '%u' particle emitters", PARTICLE_EMITTER_MAX);
+			model.emitter_count = PARTICLE_EMITTER_MAX;
+		}
+
+		u32 emitter_indices[PARTICLE_EMITTER_MAX];
+
+		foreach(i, model.emitter_count) {
+			emitter_indices[i] = i;
+		}
+
+		std::sort(emitter_indices, emitter_indices + model.emitter_count, [&](u32 i0, u32 i1){
+
+			ParticleEmitterModel& m0 = model.emitters[i0];
+			ParticleEmitterModel& m1 = model.emitters[i1];
+
+			return m0.sort_value < m1.sort_value;
+		});
+
 		imrend_begin_batch(cmd);
 
-		// TODO
 		imrend_camera(vm, pm, cmd);
-			
-		if (ps.emitter_count > PARTICLE_EMITTER_MAX) {
-			SV_LOG_ERROR("The particle system can't have more than '%u' particle emitters", PARTICLE_EMITTER_MAX);
-			ps.emitter_count = PARTICLE_EMITTER_MAX;
-		}
 		
 		// TODO: Free unused emitters memory
 
@@ -245,8 +282,9 @@ namespace sv {
 			}
 		}
 
-		foreach(emitter_index, ps.emitter_count) {
+		foreach(i, model.emitter_count) {
 
+			u32 emitter_index = emitter_indices[i];
 			ParticleEmitter& e = ps.emitters[emitter_index];
 			ParticleEmitterModel& em = model.emitters[emitter_index];
 
@@ -293,6 +331,8 @@ namespace sv {
 				else {
 
 					p.velocity += scene.physics.gravity * dt * em.gravity_mult;
+					// TODO: 3 euler angles in mesh rendering
+					p.rotation.z += p.velocity.z * dt;
 					p.position += p.velocity * dt;
 							
 					++i;
@@ -300,25 +340,29 @@ namespace sv {
 			}
 
 			// Draw particles
-				
-			GPUImage* image = em.texture.get();
 
-			if (em.relative_space)
-				imrend_push_matrix(XMMatrixTranslation(system_position.x, system_position.y, system_position.z), cmd);
+			if (em.show) {
+				
+				GPUImage* image = em.texture.get();
 			
-			foreach(i, e.particle_count) {
+				foreach(i, e.particle_count) {
 
-				const Particle& p = e.particles[i];
+					const Particle& p = e.particles[i];
 				
-				Color color = color_interpolate(em.init_color, em.final_color, p.time_count);
-					
-				imrend_push_matrix(rm * XMMatrixTranslation(p.position.x, p.position.y, p.position.z), cmd);
-				imrend_draw_sprite({}, { p.size, p.size }, color, image, GPUImageLayout_ShaderResource, em.texcoord, cmd);
-				imrend_pop_matrix(cmd);
-			}
+					Color color = color_interpolate(em.init_color, em.final_color, p.time_count);
 
-			if (em.relative_space)
-				imrend_pop_matrix(cmd);
+					v3_f32 pos = p.position;
+					if (em.relative_space)
+						pos += system_position;
+
+					// TODO: For now using only roll rotation for sprites alwais facing to the camera
+					XMMATRIX m = XMMatrixRotationRollPitchYaw(0.f, 0.f, p.rotation.z) * rm * XMMatrixTranslation(pos.x, pos.y, pos.z);
+					
+					imrend_push_matrix(m, cmd);
+					imrend_draw_sprite({}, { p.size, p.size }, color, image, GPUImageLayout_ShaderResource, em.texcoord, cmd);
+					imrend_pop_matrix(cmd);
+				}
+			}
 				
 			// Reset
 			if (reset) {
@@ -394,10 +438,28 @@ namespace sv {
 
 				ParticleEmitterModel& e = p.emitters[show_emitter_index];
 
+				gui_checkbox("Show", e.show);
+				gui_drag_u32("Sort Value", e.sort_value, 1u, 0u, u32_max);
 				egui_comp_texture("Texture", 69u, &e.texture);
 				gui_drag_v4_f32("Texcoord", e.texcoord, 0.001f, 0.f, 1.f);
 
 				gui_drag_u32("Max Particles", e.max_particles, 1u, 0u, 100000u);
+
+				v3_f32 min_rotation = ToDegrees(e.min_rotation);
+				v3_f32 max_rotation = ToDegrees(e.max_rotation);
+				v3_f32 min_angular_velocity = ToDegrees(e.min_angular_velocity);
+				v3_f32 max_angular_velocity = ToDegrees(e.max_angular_velocity);
+				
+				gui_drag_v3_f32("Min Rotation", min_rotation, 0.1f, -f32_max, f32_max);
+				gui_drag_v3_f32("Max Rotation", max_rotation, 0.1f, -f32_max, f32_max);
+				gui_drag_v3_f32("Min Angular Velocity", min_angular_velocity, 0.1f, -f32_max, f32_max);
+				gui_drag_v3_f32("Max Angular Velocity", max_angular_velocity, 0.1f, -f32_max, f32_max);
+
+				e.min_rotation = ToRadians(min_rotation);
+				e.max_rotation = ToRadians(max_rotation);
+				e.min_angular_velocity = ToRadians(min_angular_velocity);
+				e.max_angular_velocity = ToRadians(max_angular_velocity);
+				
 				gui_drag_v3_f32("Min Velocity", e.min_velocity, 0.01f, -f32_max, f32_max);
 				gui_drag_v3_f32("Max Velocity", e.max_velocity, 0.01f, -f32_max, f32_max);
 				gui_drag_f32("Min Lifetime", e.min_lifetime, 0.01f, 0.f, f32_max);

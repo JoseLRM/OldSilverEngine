@@ -3269,7 +3269,7 @@ namespace sv {
 				SV_LOG_INFO("Starting edit state");
 				// TODO: Handle error
 				if (dev.engine_state != EngineState_ProjectManagement)
-					_engine_reset_game();
+					_engine_reset_game(get_scene_name());
 				
 				//dev.draw_debug_camera = true;
 				editor.debug_draw = true;
@@ -3287,7 +3287,7 @@ namespace sv {
 
 					// TODO: handle error
 					save_scene();
-					_engine_reset_game();
+					_engine_reset_game(get_scene_name());
 
 					//dev.draw_debug_camera = false;
 					editor.selected_entities.reset();
