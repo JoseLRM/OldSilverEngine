@@ -174,7 +174,7 @@ namespace sv {
 
 	inline Entity create_particles(const char* filepath, u32 layer = RENDER_LAYER_COUNT / 2)
 	{
-		Prefab p = load_prefab(filepath);
+		Entity p = load_prefab(filepath);
 
 		if (p) {
 

@@ -697,6 +697,7 @@ namespace sv {
 
 		snprintf(text, 500, "'%s', file: '%s', line: %u", content, file, line);
 
+		_CrtDbgBreak();
 		show_message("ASSERTION!!", text, true);
     }
     

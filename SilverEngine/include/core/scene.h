@@ -12,6 +12,8 @@ namespace sv {
 
 	constexpr u32 COMPONENT_MAX = 64u;
 	constexpr u32 TAG_MAX = 64u;
+
+	constexpr u32 PREFAB_MAX = 256u;
 	
     constexpr u32 ENTITY_NAME_SIZE = 30u;
 	constexpr u32 ENTITY_COMPONENTS_MAX = 10u;
@@ -24,7 +26,6 @@ namespace sv {
 
     typedef u32 CompID;
     typedef u32 Entity;
-	typedef u32 Prefab;
 	typedef u32 Tag;
 
     struct CameraComponent;
@@ -93,11 +94,12 @@ namespace sv {
 
 	// Entity
 
-	enum EntityFlag : u32 {
-		EntityFlag_NoSerialize = SV_BIT(0),
+	enum EntityFlag : u64 {
+		EntityFlag_NoSerialize = SV_BIT(32),
+		EntityFlag_PrefabChild = SV_BIT(33),
 	};
 
-	SV_API Entity create_entity(Entity parent = 0, const char* name = NULL, Prefab prefab = 0);
+	SV_API Entity create_entity(Entity parent = 0, const char* name = NULL, Entity prefab = 0);
 	SV_API void   destroy_entity(Entity entity);
 	SV_API Entity duplicate_entity(Entity entity);
 
@@ -106,13 +108,14 @@ namespace sv {
 	SV_API u64         get_entity_flags(Entity entity);
 	SV_API void	       set_entity_name(Entity entity, const char* name);
     SV_API u32	       get_entity_childs_count(Entity parent);
-    SV_API void	       get_entity_childs(Entity parent, Entity const** childsArray);
+    SV_API Entity	   get_entity_child(Entity parent, u32 index);
     SV_API Entity      get_entity_parent(Entity entity);
     SV_API u32	       get_entity_component_count(Entity entity);
 	SV_API CompRef     get_entity_component_by_index(Entity entity, u32 index);
     SV_API u32	       get_entity_count();
     SV_API Entity      get_entity_by_index(u32 index);
 
+	// TODO: Thats dangerous
 	SV_API void       set_entity_flags(Entity entity, u64 flags);
 	SV_API bool       has_entity_component(Entity entity, CompID comp_id);
 	SV_API Component* add_entity_component(Entity entity, CompID comp_id);
@@ -123,32 +126,25 @@ namespace sv {
 	SV_API void add_entity_tag(Entity entity, Tag tag);
 	SV_API void remove_entity_tag(Entity entity, Tag tag);
 
-	SV_API bool save_entity_file(Entity entity, const char* filepath);
-	SV_API Entity create_entity_file(const char* filepath);
-
 	// Prefab
 
-	SV_API bool   create_prefab_file(const char* name, const char* filepath);
-	SV_API Prefab load_prefab(const char* filepath);
-	SV_API bool   save_prefab(Prefab prefab);
-	SV_API bool   save_prefab(Prefab prefab, const char* filepath);
+	SV_API Entity load_prefab(const char* filepath);
+	SV_API bool   save_prefab(Entity prefab);
+	SV_API bool   save_prefab(Entity prefab, const char* filepath);
+	SV_API bool   set_prefab(Entity entity, const char* filepath);
 
-	SV_API bool        prefab_exists(Prefab prefab);
-	SV_API const char* get_prefab_filepath(Prefab prefab);
-	
-	SV_API bool       has_prefab_component(Prefab prefab, CompID comp_id);
-	SV_API Component* add_prefab_component(Prefab prefab, CompID comp_id);
-	SV_API void       remove_prefab_component(Prefab prefab, CompID comp_id);
-	SV_API Component* get_prefab_component(Prefab prefab, CompID comp_id);
-	SV_API u32	      get_prefab_component_count(Prefab prefab);
-	SV_API CompRef    get_prefab_component_by_index(Prefab prefab, u32 index);
+	SV_API const char* get_prefab_filepath(Entity prefab);
+	SV_API bool        is_prefab(Entity entity);
+	SV_API bool        is_mirror(Entity entity);
+	SV_API Entity      get_entity_mirror(Entity entity, u32 index);
 
 	// Iterators
 	
 	struct CompIt {
 		u32 flags;
-		Prefab prefab;
+		Entity prefab;
 		u32 entity_index;
+		u32 prefab_index;
 		CompID comp_id;
 		u32 pool_index;
 		Component* comp;
@@ -162,15 +158,6 @@ namespace sv {
 	
 	SV_API CompIt comp_it_begin(CompID comp_id, u32 flags = 0u);
 	SV_API void comp_it_next(CompIt& comp_it);
-
-	struct PrefabIt {
-		void* ptr;
-		bool has_next;
-		Prefab prefab;
-	};
-
-	SV_API PrefabIt prefab_it_begin();
-	SV_API void prefab_it_next(PrefabIt& prefab_it);
 
 	struct TagIt {
 		Tag tag;

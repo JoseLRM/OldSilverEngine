@@ -7,6 +7,16 @@
 
 namespace sv {
 
+	enum EntityHierarchyState : u32 {
+		EntityHierarchyState_ShowEntities,
+		EntityHierarchyState_ShowPrefabs,
+		EntityHierarchyState_MaxEnum,
+	};
+
+	struct EntityHierarchyData {
+		EntityHierarchyState state = EntityHierarchyState_ShowEntities;
+	};
+
 	enum GizmosTransformMode : u32 {
 		GizmosTransformMode_None,
 		GizmosTransformMode_Position
@@ -113,10 +123,6 @@ namespace sv {
 		ModelInfo model_info;
 	};
 
-	struct CreatePrefabData {
-		char name[FILENAME_SIZE + 1u] = "";
-	};
-
 	struct CreateTagData {
 		char name[TAG_NAME_SIZE + 1u] = "";
 	};
@@ -124,7 +130,6 @@ namespace sv {
     struct GlobalEditorData {
 
 		List<Entity> selected_entities;
-		Prefab selected_prefab = 0;
 		bool camera_focus = false;
 		bool entity_viewer = false;
 		bool debug_draw = true;
@@ -157,10 +162,10 @@ namespace sv {
 		static constexpr v4_f32 TEXCOORD_LIGHT_PROBE = { 1402.f / 1920.f, 1402.f / 1920.f, 1.f, 1.f };
 		static constexpr v4_f32 TEXCOORD_CAMERA_PROBE = { 784.f / 1920.f, 1320.f / 1920.f, 1338.f / 1920.f, 1874 / 1920.f };
 
+		EntityHierarchyData entity_hierarchy_data;
 		SpriteSheetEditorData sprite_sheet_editor_data;
 		MaterialEditorData material_editor_data;
 		ImportModelData import_model_data;
-		CreatePrefabData create_prefab_data;
 		CreateTagData create_tag_data;
 
 		char next_scene_name[SCENE_NAME_SIZE + 1u] = "";
@@ -182,8 +187,6 @@ namespace sv {
 
 		if (entity_exists(entity))
 			editor.selected_entities.push_back(entity);
-
-		editor.selected_prefab = 0;
 	}
 
 	SV_AUX void unselect_entity(Entity entity)
@@ -194,12 +197,6 @@ namespace sv {
 				break;
 			}
 		}
-	}
-
-	SV_AUX void select_prefab(Prefab prefab)
-	{
-		editor.selected_entities.reset();
-		editor.selected_prefab = prefab;
 	}
 
 	SV_AUX void edit_sprite_sheet(const char* filepath)
@@ -1429,7 +1426,7 @@ namespace sv {
 		if (gui_begin_popup(GuiPopupTrigger_LastWidget)) {
 	    
 			destroy = gui_button("Destroy");
-	    
+
 			if (gui_button("Duplicate")) {
 				duplicate_entity(entity);
 			}
@@ -1438,21 +1435,34 @@ namespace sv {
 				editor_create_entity(entity);
 			}
 
-			gui_separator(1);
+			if (!is_prefab(entity)) {
 
-			if (gui_button("Save In File")) {
+				gui_separator(1);
 
-				char path[FILEPATH_SIZE + 1u] = "";
+				if (gui_button("Save Prefab")) {
+				
+					char path[FILEPATH_SIZE + 1u] = "";
 		    
-				if (file_dialog_save(path, 0u, nullptr, "")) {
+					if (file_dialog_save(path, 0u, nullptr, "")) {
 
-					char* extension = filepath_extension(path);
-					if (extension != nullptr) {
-						*extension = '\0';
+						char* extension = filepath_extension(path);
+						if (extension != nullptr) {
+							*extension = '\0';
+						}
+						string_append(path, ".prefab", FILEPATH_SIZE + 1u);
+
+						save_prefab(entity, path);
 					}
-					string_append(path, ".entity", FILEPATH_SIZE + 1u);
+				}
+			}
+			else {
 
-					save_entity_file(entity, path);
+				if (gui_button("Create Entity")) {
+
+					Entity created = create_entity(0, NULL, entity);
+
+					select_entity(created);
+					editor.entity_hierarchy_data.state = EntityHierarchyState_ShowEntities;
 				}
 			}
 
@@ -1506,19 +1516,18 @@ namespace sv {
 
 			show_entity_popup(entity, destroy);
 
-			const Entity* childs;
 			child_count = get_entity_childs_count(entity);
-			get_entity_childs(entity, &childs);
 
 			foreach(i, child_count) {
 
-				show_entity(childs[i]);
+				Entity child = get_entity_child(entity, i);
+				
+				show_entity(child);
 
-				get_entity_childs(entity, &childs);
 				child_count = get_entity_childs_count(entity);
 
 				if (i < child_count)
-					i += get_entity_childs_count(childs[i]);
+					i += get_entity_childs_count(child);
 			}
 		}
 
@@ -1577,104 +1586,74 @@ namespace sv {
 
 		gui_pop_id();
     }
+
+	SV_AUX const char* get_entity_hierarchy_state_string(EntityHierarchyState state)
+	{
+		switch (state) {
+
+		case EntityHierarchyState_ShowEntities:
+			return "Show Entities";
+
+		case EntityHierarchyState_ShowPrefabs:
+			return "Show Prefabs";
+
+		default:
+			return "Unknown";
+			
+		}
+	}
     
     void display_entity_hierarchy()
     {
+		auto& data = editor.entity_hierarchy_data;
+		
 		if (gui_begin_window("Hierarchy")) {
 
-			// TODO: Move on
-			static u32 mode = 0;
+			if (gui_begin_combobox(get_entity_hierarchy_state_string(data.state), 423478234)) {
 
-			const char* modes[] = {
-				"Entities",
-				"Prefabs"
-			};
+				foreach(i, EntityHierarchyState_MaxEnum) {
 
-			const char* preview = modes[mode];
-
-			if (gui_begin_combobox(preview, 354329)) {
-
-				foreach(i, SV_ARRAY_SIZE(modes)) {
-
-					if (gui_button(modes[i])) {
-						mode = i;
+					EntityHierarchyState state = (EntityHierarchyState)i;
+					if (gui_button(get_entity_hierarchy_state_string(state))) {
+						data.state = state;
 					}
 				}
-			
+
 				gui_end_combobox();
 			}
 
-			switch (mode) {
+			u32 entity_count = get_entity_count();
 
-			case 0:
-			{
-				u32 entity_count = get_entity_count();
-
-				gui_begin_list(69u);
+			gui_begin_list(69u);
 			
-				for (u32 i = 0u; i < entity_count;) {
+			for (u32 i = 0u; i < entity_count;) {
 
-					Entity entity = get_entity_by_index(i);
+				Entity entity = get_entity_by_index(i);
+
+				EntityHierarchyState state = is_prefab(entity) ? EntityHierarchyState_ShowPrefabs : EntityHierarchyState_ShowEntities;
+
+				if (data.state == state) {
 				
 					show_entity(entity);
 					entity_count = get_entity_count();
-	    
-					if (entity_exists(entity)) {
-
-						i += get_entity_childs_count(entity) + 1u;
-					}
 				}
+	    
+				if (entity_exists(entity)) {
 
-				gui_end_list();
-
-				display_create_popup();
+					i += get_entity_childs_count(entity) + 1u;
+				}
 			}
-			break;
 
-			case 1:
-			{
-				gui_begin_list(96u);
+			gui_end_list();
+
+			display_create_popup();
+
+			PrefabPackage* package;
+			if (gui_recive_package((void**)&package, ASSET_BROWSER_PREFAB, GuiReciverTrigger_Root)) {
 				
-				for (PrefabIt it = prefab_it_begin();
-					 it.has_next;
-					 prefab_it_next(it))
-				{
-					Prefab prefab = it.prefab;
-
-					const char* filepath = get_prefab_filepath(prefab);
-
-					bool selected = editor.selected_prefab == prefab;
-					u32 flags = selected ? GuiElementListFlag_Selected : 0u;
-
-					if (gui_element_list(filepath, prefab, flags)) {
-
-						if (selected) editor.selected_prefab = 0;
-						else select_prefab(prefab);
-					}
-
-					if (gui_begin_popup(GuiPopupTrigger_LastWidget)) {
-
-						if (gui_button("Create Entity")) {
-
-							create_entity(0, "Pene", prefab);
-						}
-					
-						gui_end_popup();
-					}
-				}
-
-				gui_end_list();
-
-				PrefabPackage* package;
-				if (gui_recive_package((void**)&package, ASSET_BROWSER_PREFAB, GuiReciverTrigger_Root)) {
-
-					load_prefab(package->filepath);
-				}
+				load_prefab(package->filepath);
 			}
-			break;
-
-			}
-	    
+			
 			gui_end_window();
 		}
     }
@@ -1709,8 +1688,12 @@ namespace sv {
 
 				// Entity name
 				{
-					const char* entity_name = get_entity_name(selected);
-					egui_header(entity_name, 0u);
+					char entity_name[ENTITY_NAME_SIZE + 1];
+					string_copy(entity_name, get_entity_name(selected), ENTITY_NAME_SIZE + 1);;
+					
+					if (gui_text_field(entity_name, ENTITY_NAME_SIZE + 1, 32498234)) {
+						set_entity_name(selected, entity_name);
+					}
 				}
 
 				// Entity transform
@@ -1828,59 +1811,6 @@ namespace sv {
 					gui_end_popup();
 				}
 			}
-			else if (editor.selected_prefab) {
-
-				Prefab prefab = editor.selected_prefab;
-				
-				// Prefab name
-				{
-					const char* prefab_name = get_prefab_filepath(prefab);
-					egui_header(prefab_name, 0u);
-				}
-
-				// Prefab components
-				{
-					u32 comp_count = get_prefab_component_count(prefab);
-
-					gui_push_id("Prefab Components");
-
-					foreach(comp_index, comp_count) {
-
-						CompRef ref = get_prefab_component_by_index(prefab, comp_index);
-
-						if (show_component_info(ref.comp_id, ref.comp)) {
-
-							remove_prefab_component(prefab, ref.comp_id);
-							comp_count = get_prefab_component_count(prefab);
-						}
-					}
-
-					gui_pop_id();
-				}
-
-				if (gui_begin_popup(GuiPopupTrigger_Root)) {
-		    
-					u32 count = get_component_register_count();
-					foreach(i, count) {
-
-						CompID comp_id = CompID(i);
-
-						if (has_prefab_component(prefab, comp_id))
-							continue;
-			
-						if (gui_button(get_component_name(comp_id), comp_id)) {
-			    
-							add_prefab_component(prefab, comp_id);
-						}
-					}
-
-					gui_end_popup();
-				}
-
-				if (gui_button("Save")) {
-					save_prefab(prefab);
-				}
-			}
 
 			gui_end_window();
 		}
@@ -1917,34 +1847,6 @@ namespace sv {
 				string_copy(foldername, "", FILENAME_SIZE + 1u);
 			}
 
-			gui_end_window();
-		}
-
-		if (gui_begin_window("Create Prefab", GuiWindowFlag_Temporal)) {
-
-			CreatePrefabData& data = editor.create_prefab_data;
-
-			gui_text_field(data.name, FILENAME_SIZE + 1u, 0u);
-
-			if (gui_button("Create")) {
-
-				char filepath[FILEPATH_SIZE + 1u] = "assets/";
-				string_append(filepath, info.filepath, FILEPATH_SIZE + 1u);
-				string_append(filepath, data.name, FILEPATH_SIZE + 1u);
-
-				const char* extension = filepath_extension(data.name);
-					
-				if (!string_equals(string_validate(extension), ".prefab")) {
-					string_append(filepath, ".prefab", FILEPATH_SIZE + 1u);
-				}
-
-				create_prefab_file(data.name, filepath);
-
-				gui_hide_window("Create Prefab");
-				
-				data.name[0] = '\0';
-			}
-			
 			gui_end_window();
 		}
 
@@ -2364,11 +2266,6 @@ namespace sv {
 							SV_LOG_ERROR("Can't load the model '%s'", filepath);
 						}
 					}
-				}
-
-				if (gui_button("Create Prefab")) {
-					gui_show_window("Create Prefab");
-					gui_close_popup();
 				}
 
 				if (gui_button("Create Asset")) {
@@ -2899,7 +2796,7 @@ namespace sv {
 					EntityPackage* package;
 					if (gui_recive_package((void**)&package, ASSET_BROWSER_ENTITY, GuiReciverTrigger_Root)) {
 
-						create_entity_file(package->filepath);
+						load_prefab(package->filepath);
 					}
 					
 					gui_end_window();
