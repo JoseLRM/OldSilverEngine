@@ -1477,60 +1477,55 @@ namespace sv {
 		const char* name = get_entity_name(entity);
 		if (string_size(name) == 0u) name = "Unnamed";
 
-		u32 child_count = get_entity_childs_count(entity);
-
 		bool destroy = false;
 
-		if (child_count == 0u) {
+		u32 flags = 0u;
+		bool selected = is_entity_selected(entity);
+		u32 child_count = get_entity_childs_count(entity);
 
-			u32 flags = 0u;
-			bool selected = is_entity_selected(entity);
-
-			if (selected) {
-				flags = GuiElementListFlag_Selected;
-			}
+		if (child_count != 0)
+			flags |= GuiElementListFlag_Parent;
 	    
-			if (gui_element_list(name, entity, flags)) {
-
-				if (selected) {
-					if (editor.selected_entities.size() == 1u)
-						unselect_entity(entity);
-					else {
-						select_entity(entity, true);
-					}
-				}
-				else {
-					select_entity(entity);
-				}
-			}
-
-			show_entity_popup(entity, destroy);
-		}
-		else {
-	    
-			if (gui_element_list(name, 0u)) {
+		bool begin = gui_begin_element_list(name, entity, selected, flags);
 		
-				editor.selected_entities.reset();
-				editor.selected_entities.push_back(entity);
-			}
-
-			show_entity_popup(entity, destroy);
-
-			child_count = get_entity_childs_count(entity);
-
-			foreach(i, child_count) {
-
-				Entity child = get_entity_child(entity, i);
+		if (gui_element_pressed()) {
 				
-				show_entity(child);
-
-				child_count = get_entity_childs_count(entity);
-
-				if (i < child_count)
-					i += get_entity_childs_count(child);
+			if (selected) {
+				if (editor.selected_entities.size() == 1u)
+					unselect_entity(entity);
+				else {
+					select_entity(entity, true);
+				}
+			}
+			else {
+				select_entity(entity);
 			}
 		}
 
+		show_entity_popup(entity, destroy);
+
+		if (begin) {
+
+			if (!destroy) {
+				
+				child_count = get_entity_childs_count(entity);
+			
+				foreach(i, child_count) {
+				
+					Entity child = get_entity_child(entity, i);
+				
+					show_entity(child);
+				
+					child_count = get_entity_childs_count(entity);
+				
+					if (entity_exists(child))
+						i += get_entity_childs_count(child);
+				}
+			}
+			
+			gui_end_element_list();
+		}
+		
 		if (destroy) {
 			destroy_entity(entity);
 			

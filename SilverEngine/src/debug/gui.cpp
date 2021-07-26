@@ -61,7 +61,11 @@ namespace sv {
     }
 
 	enum GuiWidgetAction : u32 {
-		GuiWidgetAction_None,
+		GuiWidgetAction_Action0,
+		GuiWidgetAction_Action1,
+		GuiWidgetAction_Action2,
+		GuiWidgetAction_Action3,
+		GuiWidgetAction_Action4,
 		GuiWidgetAction_MovePackage,
 	};
 
@@ -110,6 +114,8 @@ namespace sv {
 		GuiHeader_BeginGrid,
 		GuiHeader_EndGrid,
 
+		GuiHeader_BeginElementList,
+		GuiHeader_EndElementList,
 		GuiHeader_BeginList,
 		GuiHeader_EndList,
     };
@@ -212,8 +218,10 @@ namespace sv {
 
 			struct {
 				const char* text;
+				bool selected;
 				bool pressed;
-				u64 state_hash;
+				bool show;
+				bool show_childs;
 			} element_list;
 	    
 		} widget;
@@ -252,7 +260,7 @@ namespace sv {
 		} grid_state_data;
 
 		struct {
-			u64 hash;
+			List<u32> parent_indices_stack;
 		} list_state_data;
 
 		struct {
@@ -353,19 +361,6 @@ namespace sv {
 		GuiRootIndex root;
 	};
 
-	struct GuiListElement {
-		u64 id;
-		u32 widget_index;
-		bool selected;
-	};
-
-	struct GuiListState {
-		List<GuiListElement> elements;
-		List<GuiListElement> aux;
-		bool moving = false;
-		u32 moving_count = 0u;
-	};
-
     struct GUI {
 
 		// CONTEXT
@@ -408,7 +403,6 @@ namespace sv {
 
 		ThickHashTable<GuiWindowState, 50u> window_states;
 		ThickHashTable<bool, 100u> bools;
-		ThickHashTable<GuiListState, 5u> list_states;
 
 		struct  {
 			GuiRootInfo root;
@@ -498,6 +492,19 @@ namespace sv {
 		b.x += b.z * 0.5f;
 		return b;
     }
+	SV_AUX v4_f32 compute_element_button(v4_f32 bounds)
+	{
+		v2_f32 size = { bounds.z, bounds.w };
+		v2_f32 pos = { bounds.x, bounds.y };
+		
+		v4_f32 b;
+		b.w = size.y * 0.7f;
+		b.z = b.w / gui->aspect;
+		
+		b.x = pos.x - size.x * 0.5f + b.z * 0.6f;
+		b.y = pos.y;
+		return b;
+	}
 	SV_AUX f32 compute_window_decoration_height()
 	{
 		return 25.f / gui->resolution.y;
@@ -1123,28 +1130,27 @@ namespace sv {
 
 			if (w.type == GuiWidgetType_ElementList) {
 				
-				GuiListState& state = gui->list_states[root.list_state_data.hash];
+				v4_f32 b = { 0.5f,  };
 
-				u32 index = u32(root.widgets.size()) - 1u;
-				GuiListElement* element = NULL;
+				u32 hierarchy_depth = (u32)root.list_state_data.parent_indices_stack.size();
+				f32 padding = (f32(hierarchy_depth) * 7.f) / gui->resolution.x / root.widget_bounds.z;
+				f32 height = 15.f;
 
-				for (GuiListElement& e : state.elements) {
+				w.bounds.x = 0.5f + padding;
+				w.bounds.y = root.yoff + height * 0.5f;
+				w.bounds.z = 0.9f - padding * 2.f;
+				w.bounds.w = height;
 
-					if (e.id == w.id) {
-						e.widget_index = index;
-						element = &e;
-						break;
-					}
+				if (hierarchy_depth != 0) {
+
+					GuiWidget& parent = root.widgets[root.list_state_data.parent_indices_stack.back()];
+
+					w.widget.element_list.show = parent.widget.element_list.show_childs;
 				}
+				else w.widget.element_list.show = true;
 
-				if (element == NULL) {
-					GuiListElement& e = state.elements.emplace_back();
-					e.id = w.id;
-					e.widget_index = index;
-					element = &e;
-				}
-				
-				element->selected = w.flags & GuiElementListFlag_Selected;
+				if (w.widget.element_list.show)
+					root.yoff += height + 5.f;
 			}
 		}
 		else if (read_state == GuiReadWidgetState_Top) {
@@ -1295,8 +1301,10 @@ namespace sv {
 		{
 			auto& element = w.widget.element_list;
 			element.text = gui_read_text(it);
-			
+			element.selected = gui_read<bool>(it);
+			element.show_childs = gui_read<bool>(it);
 			element.pressed = false;
+			element.show = false;
 		}
 		break;
 		    
@@ -1936,8 +1944,40 @@ namespace sv {
 	    
 			GuiWidget& w = *gui->current_focus;
 
-			if (gui->focus.action == GuiWidgetAction_None) {
+			if (gui->focus.action == GuiWidgetAction_MovePackage) {
 
+				InputState state = input.mouse_buttons[MouseButton_Left];
+				
+				if (state == InputState_Released || state == InputState_None) {
+
+					for (const GuiWidgetRef& ref : gui->package.recivers) {
+
+						if (ref.type == GuiWidgetType_Root) {
+
+							GuiRootInfo* root = get_root_info(ref.root);
+
+							if (root && mouse_in_bounds(root->widget_bounds)) {
+								gui->package.reciver_id = compute_root_hash(ref.root);
+								gui->package.first_frame = true;
+								break;
+							}
+						}
+						else {
+							
+							GuiWidget* w = find_widget(ref.type, ref.id, ref.root);
+
+							if (w && mouse_in_bounds(w->bounds)) {
+								gui->package.reciver_id = w->id;
+								gui->package.first_frame = true;
+								break;
+							}
+						}
+					}
+					
+					free_focus();
+				}
+			}
+			else {
 				switch (w.type) {
 		    
 				case GuiWidgetType_Button:
@@ -2136,8 +2176,17 @@ namespace sv {
 		
 					if (state == InputState_Released || state == InputState_None) {
 
-						if (mouse_in_bounds(w.bounds))
-							w.widget.element_list.pressed = true;
+						if (mouse_in_bounds(w.bounds)) {;
+							
+							if (gui->focus.action == GuiWidgetAction_Action1 && mouse_in_bounds(compute_element_button(w.bounds))) {
+
+								bool& show_childs = w.widget.element_list.show_childs;
+								show_childs = !show_childs;
+							}
+							else if (gui->focus.action == GuiWidgetAction_Action0) {
+								w.widget.element_list.pressed = true;
+							}
+						}
 		    
 						free_focus();
 					}
@@ -2152,39 +2201,6 @@ namespace sv {
 					if (vec2_length(gui->mouse_position - gui->focus.start_mouse_position) > 0.03f) {
 						set_focus(gui->focus.root, w.type, w.id, GuiWidgetAction_MovePackage);
 					}
-				}
-			}
-			else if (gui->focus.action == GuiWidgetAction_MovePackage) {
-
-				InputState state = input.mouse_buttons[MouseButton_Left];
-				
-				if (state == InputState_Released || state == InputState_None) {
-
-					for (const GuiWidgetRef& ref : gui->package.recivers) {
-
-						if (ref.type == GuiWidgetType_Root) {
-
-							GuiRootInfo* root = get_root_info(ref.root);
-
-							if (root && mouse_in_bounds(root->widget_bounds)) {
-								gui->package.reciver_id = compute_root_hash(ref.root);
-								gui->package.first_frame = true;
-								break;
-							}
-						}
-						else {
-							
-							GuiWidget* w = find_widget(ref.type, ref.id, ref.root);
-
-							if (w && mouse_in_bounds(w->bounds)) {
-								gui->package.reciver_id = w->id;
-								gui->package.first_frame = true;
-								break;
-							}
-						}
-					}
-					
-					free_focus();
 				}
 			}
 		}
@@ -2204,19 +2220,37 @@ namespace sv {
 		case GuiWidgetType_AssetButton:
 		case GuiWidgetType_Collapse:
 		case GuiWidgetType_TextField:
-		case GuiWidgetType_ElementList:
 		case GuiWidgetType_Combobox:
 		{
 			if (input.unused) {
 			
-				if (mouse_in_bounds(bounds)) {
+				if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed && mouse_in_bounds(bounds)) {
+					
+					set_focus(root_index , w.type, w.id);
+					input.unused = false;
+					// TODO: WTF??
+					gui->text_field_cursor;
+					gui->text_field_buffer.clear();
+				}
+			}
+		} break;
 
-					if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
-						set_focus(root_index , w.type, w.id);
+		case GuiWidgetType_ElementList:
+		{
+			if (input.unused) {
+
+				if (w.widget.element_list.show) {
+				
+					if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed && mouse_in_bounds(bounds)) {
+
 						input.unused = false;
-						// TODO: WTF??
-						gui->text_field_cursor;
-						gui->text_field_buffer.clear();
+					
+						if (w.flags && GuiElementListFlag_Parent && mouse_in_bounds(compute_element_button(bounds))) {
+							set_focus(root_index, w.type, w.id, GuiWidgetAction_Action1);
+						}
+						else {
+							set_focus(root_index, w.type, w.id, GuiWidgetAction_Action0);
+						}
 					}
 				}
 			}
@@ -2978,6 +3012,36 @@ namespace sv {
 			}
 			break;
 
+			case GuiHeader_BeginElementList:
+			{
+				GuiRootInfo* root = get_root_info(gui->root_stack.back());
+				SV_ASSERT(root);
+				
+				if (root) {
+
+					SV_ASSERT(root->read_widget_state == GuiReadWidgetState_List);
+
+					auto& data = root->list_state_data;
+					data.parent_indices_stack.push_back((u32)root->widgets.size() - 1);
+				}
+			}
+			break;
+
+			case GuiHeader_EndElementList:
+			{
+				GuiRootInfo* root = get_root_info(gui->root_stack.back());
+				SV_ASSERT(root);
+				
+				if (root) {
+
+					SV_ASSERT(root->read_widget_state == GuiReadWidgetState_List);
+
+					auto& data = root->list_state_data;
+					data.parent_indices_stack.pop_back();
+				}
+			}
+			break;
+
 			case GuiHeader_BeginList:
 			{
 				GuiRootInfo* root = get_root_info(gui->root_stack.back());
@@ -2990,14 +3054,7 @@ namespace sv {
 					root->read_widget_state = GuiReadWidgetState_List;
 
 					auto& data = root->list_state_data;
-					data.hash = gui_read<u64>(it);
-
-					// Reset state data
-					GuiListState& state = gui->list_states[data.hash];
-
-					for (GuiListElement& e : state.elements) {
-						e.widget_index = u32_max;
-					}
+					data.parent_indices_stack.reset();
 				}
 			}
 			break;
@@ -3011,155 +3068,7 @@ namespace sv {
 		
 					if (root->read_widget_state == GuiReadWidgetState_List) {
 
-						auto& data = root->list_state_data;
-
-						GuiListState& state = gui->list_states[data.hash];
-						
-						// Remove unused elements and reset the hash state for the new elements
-						for (u32 i = 0u; i < state.elements.size();) {
-
-							GuiListElement& e = state.elements[i];
-
-							if (e.widget_index == u32_max) {
-								state.elements.erase(i);
-							}
-							else {
-								++i;
-								root->widgets[e.widget_index].widget.element_list.state_hash = data.hash;
-							}
-						}
-
-						f32 height = 20.f;
-						f32 width = 0.9f;
-						f32 separation = 5.f;
-
-						u32 move_index = u32_max;
-
-						u64 focus_id = (gui->focus.type == GuiWidgetType_ElementList) ? gui->focus.id : u64_max;
-
-						f32 selection_y = (1.f - gui->mouse_position.y - (1.f - (root->widget_bounds.y + root->widget_bounds.w * 0.5f))) * gui->resolution.y;
-						bool no_selected_moved = false;
-
-						// Set the element bounds
-						foreach(i, state.elements.size()) {
-
-							GuiListElement element = state.elements[i];
-
-							GuiWidget& w = root->widgets[element.widget_index];
-							SV_ASSERT(w.type == GuiWidgetType_ElementList);
-
-							if (focus_id == w.id) {
-								
-								if (!state.moving && vec2_distance(gui->mouse_position, gui->focus.start_mouse_position) > 0.01f) {
-
-									state.moving = true;
-								}
-
-								if (state.moving) {
-
-									if (input.mouse_buttons[MouseButton_Left] == InputState_Released) {
-										state.moving = false;
-										free_focus();
-									}
-									else {
-										
-										move_index = i;
-									}
-								}
-							}
-
-							if (state.moving) {
-
-								if (!element.selected) {
-
-									if (!no_selected_moved && root->yoff + height > selection_y) {
-
-										root->yoff += (height + separation) * state.moving_count;
-										no_selected_moved = true;
-									}
-								
-									w.bounds = { 0.5f, root->yoff + height * 0.5f, width, height };								
-									root->yoff += height + separation;
-								}
-							}
-							else {
-								w.bounds = { 0.5f, root->yoff + height * 0.5f, width, height };								
-								root->yoff += height + separation;
-							}
-						}
-
-						if (move_index != u32_max) {
-
-							GuiListElement& element = state.elements[move_index];
-							element.selected = true;
-
-							state.moving_count = 0u;
-							f32 yoff = selection_y;
-							for (GuiListElement e : state.elements) {
-								
-								if (e.selected) {
-									++state.moving_count;
-
-									GuiWidget& w0 = root->widgets[e.widget_index];
-
-									w0.bounds = { 0.5f, yoff + height * 0.5f, width, height };
-									yoff += height + separation;
-								}
-							}
-
-							// Erase selection
-							state.aux.reset();
-							for (u32 i = 0u; i < state.elements.size();) {
-
-								if (state.elements[i].selected) {
-									state.aux.push_back(state.elements[i]);
-									state.elements.erase(i);
-								}
-								else ++i;
-							}
-
-							u32 move_into = 0u;
-
-							foreach(i, state.elements.size()) {
-
-								if (i == 0u) {
-
-									GuiListElement e0 = state.elements[i];
-									GuiWidget& w0 = root->widgets[e0.widget_index];
-
-									if (w0.bounds.y > selection_y) {
-										move_into = 0u;
-										break;
-									}
-								}
-
-								if (i == state.elements.size() - 1u) {
-
-									GuiListElement e0 = state.elements[i];
-									GuiWidget& w0 = root->widgets[e0.widget_index];
-
-									if (w0.bounds.y < selection_y) {
-										move_into = (u32)state.elements.size();
-										break;
-									}
-								}
-								else {
-									
-									GuiListElement e0 = state.elements[i];
-									GuiListElement e1 = state.elements[i + 1u];
-									GuiWidget& w0 = root->widgets[e0.widget_index];
-									GuiWidget& w1 = root->widgets[e1.widget_index];
-
-									if (w0.bounds.y < selection_y && w1.bounds.y > selection_y) {
-										move_into = i + 1u;
-										break;
-									}
-								}
-							}
-
-							state.elements.insert(state.aux, move_into);
-						}
-		    
+						//auto& data = root->list_state_data;
 						root->read_widget_state = GuiReadWidgetState_None;
 					}
 					else SV_ASSERT(0);
@@ -4131,23 +4040,52 @@ namespace sv {
 		gui_pop_id();
 	}
 	
-	bool gui_element_list(const char* text, u64 id, u32 flags)
+	bool gui_begin_element_list(const char* text, u64 id, bool selected, u32 flags)
 	{
 		if (id == u64_max) id = (u64)text;
 		compute_id(id);
 	
 		write_widget(GuiWidgetType_ElementList, id, flags);
 		gui_write_text(text);
-	
-		GuiWidget* element = find_widget(GuiWidgetType_ElementList, id);
+		gui_write(selected);
 
-		bool pressed = false;
+		GuiWidget* element = find_widget(GuiWidgetType_ElementList, id);
+		bool begin = false;
 
 		if (element) {
-
-			pressed = element->widget.element_list.pressed;
+			gui_write(element->widget.element_list.show_childs);
+			begin = element->widget.element_list.show_childs;
 		}
-	
+		else gui_write(false);
+
+		if (begin) {
+			gui_write(GuiHeader_BeginElementList);
+			gui_push_id(id);
+		}
+
+		return begin;
+	}
+
+	void gui_end_element_list()
+	{
+		gui_pop_id();
+		gui_write(GuiHeader_EndElementList);
+	}
+
+	SV_API bool gui_element_pressed()
+	{
+		bool pressed = false;
+		
+		if (gui->last_widget.type == GuiWidgetType_ElementList) {
+
+			GuiWidget* element = find_widget(GuiWidgetType_ElementList, gui->last_widget.id);
+
+			if (element) {
+
+				pressed = element->widget.element_list.pressed;
+			}
+		}
+
 		return pressed;
 	}
 
@@ -4668,38 +4606,47 @@ namespace sv {
 				{
 					auto& element = w.widget.element_list;
 
-					bool moving = gui->list_states[element.state_hash].moving;
+					if (element.show) {
+						
+						const v4_f32& bounds = w.bounds;
 
-					if (moving)
-						imrend_pop_scissor(cmd);
+						v2_f32 pos = { bounds.x, bounds.y };
+						v2_f32 size = { bounds.z, bounds.w };
 
-					const v4_f32& b = w.bounds;
+						Color color = style.widget_primary_color;
 
-					v2_f32 pos = { b.x, b.y };
-					v2_f32 size = { b.z, b.w };
-
-					Color color = style.widget_primary_color;
-
-					if (w.flags & GuiElementListFlag_Selected)
-						color = style.widget_secondary_color;
-					else if (gui->current_focus == &w) {
-						if (moving)
+						if (element.selected)
 							color = style.widget_secondary_color;
-						else color = style.widget_focused_color;
-					}
-					else if (mouse_in_bounds(w.bounds))
-						color = style.widget_highlighted_color;
+						else if (gui->current_focus == &w)
+							color = style.widget_focused_color;
+						else if (mouse_in_bounds(bounds))
+							color = style.widget_highlighted_color;
 		    
-					imrend_draw_quad(vec2_to_vec3(pos), size, color, cmd);
+						imrend_draw_quad(vec2_to_vec3(pos), size, color, cmd);
 
-					gui_draw_text(element.text, pos, size, false, cmd);
+						if (w.flags && GuiElementListFlag_Parent) {
 
-					if (moving)
-						// Push widget scissor
-					{
-						const v4_f32& b = root.widget_bounds;
-						imrend_push_scissor(b.x, b.y, b.z, b.w, false, cmd);
-					}	
+							v4_f32 b = compute_element_button(bounds);
+
+							if (element.show_childs) {
+
+								imrend_draw_triangle(
+										{ b.x - b.z * 0.5f, b.y + b.w * 0.5f, 0.f },
+										{ b.x + b.z * 0.5f, b.y + b.w * 0.5f, 0.f },
+										{ b.x, b.y - b.w * 0.5f, 0.f }
+										, Color::White(), cmd);
+							}
+							else {
+								imrend_draw_triangle(
+										{ b.x - b.z * 0.5f, b.y + b.w * 0.5f, 0.f },
+										{ b.x - b.z * 0.5f, b.y - b.w * 0.5f, 0.f },
+										{ b.x + b.z * 0.5f, b.y, 0.f }
+										, Color::White(), cmd);
+							}
+						}
+
+						gui_draw_text(element.text, pos, size, false, cmd);
+					}
 				}
 				break;
 		    

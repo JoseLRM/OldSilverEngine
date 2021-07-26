@@ -43,7 +43,8 @@ namespace sv {
     };
 
 	enum GuiElementListFlag : u32 {
-		GuiElementListFlag_Selected = SV_BIT(0),
+		GuiElementListFlag_ShowDefault, // TODO
+		GuiElementListFlag_Parent
 	};
 
     enum GuiDragFlag : u32 {
@@ -141,7 +142,9 @@ namespace sv {
 
 	SV_API void gui_begin_list(u64 id);
 	SV_API void gui_end_list();
-	SV_API bool gui_element_list(const char* text, u64 id, u32 flags = 0u);
+	SV_API bool gui_begin_element_list(const char* text, u64 id, bool selected, u32 flags = 0u);
+	SV_API void gui_end_element_list();
+	SV_API bool gui_element_pressed();
 
     // HELPERS
 
