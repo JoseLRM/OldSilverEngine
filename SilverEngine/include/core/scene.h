@@ -164,6 +164,8 @@ namespace sv {
 		u32 _index;
 		bool has_next;
 		Entity entity;
+		Entity prefab;
+		u32 _prefab_index;
 	};
 	
 	SV_API TagIt tag_it_begin(Tag tag);

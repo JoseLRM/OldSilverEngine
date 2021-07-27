@@ -2012,7 +2012,13 @@ namespace sv {
 		entity = get_reflected_entity(entity);
 
 		EntityInternal& internal = ecs.entity_internal[entity - 1u];
-		return internal.tag_mask & SV_BIT(tag);
+		if (internal.tag_mask & SV_BIT(tag)) return true;
+
+		if (is_prefab(internal.prefab)) {
+			return has_entity_tag(internal.prefab, tag);
+		}
+
+		return false;
 	}
 	
 	void add_entity_tag(Entity entity, Tag tag)
@@ -2024,14 +2030,20 @@ namespace sv {
 
 		entity = get_reflected_entity(entity);
 
-		EntityInternal& internal = ecs.entity_internal[entity - 1u];
+		if (entity_exists(entity)) {
 
-		if (!(internal.tag_mask & SV_BIT(tag))) {
+			if (!has_entity_tag(entity, tag)) {
+				
+				EntityInternal& internal = ecs.entity_internal[entity - 1u];
 
-			internal.tag_mask |= SV_BIT(tag);
+				if (!(internal.tag_mask & SV_BIT(tag))) {
 
-			TagInternal& tag_internal = ecs.tags[tag];
-			tag_internal.entities.push_back(entity);
+					internal.tag_mask |= SV_BIT(tag);
+
+					TagInternal& tag_internal = ecs.tags[tag];
+					tag_internal.entities.push_back(entity);
+				}
+			}
 		}
 	}
 	
@@ -2629,6 +2641,7 @@ namespace sv {
 				it._index = 0u;
 				it.entity = internal.entities.front();
 				it.has_next = true;
+				it.prefab = 0;
 			}
 			else it.has_next = false;
 		}
@@ -2639,14 +2652,35 @@ namespace sv {
 	void tag_it_next(TagIt& it)
 	{
 		SV_ECS();
-		++it._index;
 
 		TagInternal& internal = ecs.tags[it.tag];
+
+		if (it.prefab) {
+
+			EntityPrefab& prefab = *ecs.entity_internal[it.prefab - 1].own_prefab;
+			if (it._prefab_index < prefab.entities.size()) {
+
+				it.entity = prefab.entities[it._prefab_index++];
+				return;
+			}
+			else {
+				it.prefab = 0;
+			}
+		}
+
+		++it._index;
 		
 		if (it._index >= internal.entities.size())
 			it.has_next = false;
 		else {
 			it.entity = internal.entities[it._index];
+			if (is_prefab(it.entity)) {
+
+				it.prefab = it.entity;
+				it.entity = 0;
+				it._prefab_index = 0;
+				tag_it_next(it);
+			}
 		}
 	}
 
