@@ -70,18 +70,18 @@ namespace sv {
     }
    
 
-    bool egui_comp_texture(const char* text, u64 id, TextureAsset* texture)
+    bool gui_texture_asset(const char* text, TextureAsset& texture, u64 id)
     {
 		bool res = false;
 		
-		gui_push_id(id);
+		gui_push_id(id == u64_max ? (u64)text : id);
 
-		gui_image(texture->get(), 50.f, 0u);
+		gui_image(texture.get(), 50.f, 0u);
 
 		AssetPackage* package;
 		if (gui_recive_package((void**)&package, ASSET_BROWSER_PACKAGE_TEXTURE, GuiReciverTrigger_LastWidget)) {
 
-			res = load_asset_from_file(*texture, package->filepath);
+			res = load_asset_from_file(texture, package->filepath);
 			if (!res) {
 
 				SV_LOG_ERROR("Can't load the texture '%s'", package->filepath);
@@ -97,7 +97,7 @@ namespace sv {
     {
 		bool res = false;
 		
-		gui_push_id(id);
+		gui_push_id(id == u64_max ? (u64)text : id);
 
 		const char* filepath = sound.get_filepath();
 		if (filepath == NULL) filepath = "None";

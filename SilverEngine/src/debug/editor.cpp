@@ -147,7 +147,7 @@ namespace sv {
 		AssetBrowserInfo asset_browser;
 
 		EditorToolData tool_data;
-
+		
 		bool show_editor = false;
 		bool show_game = false;
 		GPUImage* offscreen_editor = NULL;
@@ -227,14 +227,23 @@ namespace sv {
 
     SV_AUX void update_key_shortcuts()
     {
+		bool control = input.keys[Key_Control];
+		bool alt = input.keys[Key_Alt];
+		//bool shift = input.keys[Key_Shift];
+			
 		// Fullscreen
 		if (input.keys[Key_F11] == InputState_Pressed) {
 			
 			os_window_set_fullscreen(os_window_state() != WindowState_Fullscreen);
 		}
 
+		if (alt && input.keys[Key_F4] == InputState_Pressed) {
+			
+			engine.close_request = true;
+		}
+
 		// Debug rendering
-		if (input.keys[Key_F1] == InputState_Pressed) {
+		if (dev.engine_state == EngineState_Play && input.keys[Key_F1] == InputState_Pressed) {
 			editor.debug_draw = !editor.debug_draw;
 		}
 
@@ -251,7 +260,7 @@ namespace sv {
 		}
 
 		// Change debug camera projection
-		if (input.keys[Key_F4] == InputState_Pressed) {
+		if (editor.show_editor && !alt && input.keys[Key_F4] == InputState_Pressed) {
 
 			dev.camera.projection_type = (dev.camera.projection_type == ProjectionType_Orthographic) ? ProjectionType_Perspective : ProjectionType_Orthographic;
 
@@ -285,18 +294,9 @@ namespace sv {
 			}
 		}
 	
-		if (dev.engine_state != EngineState_Play) {
-
-			// Close engine or play game
-			if (input.keys[Key_F11] == InputState_Pressed) {
-
-				if (input.keys[Key_Control] && input.keys[Key_Alt])
-					engine.close_request = true;
-				else
-					dev.next_engine_state = EngineState_Play;
-			}
+		if (editor.in_editor_view) {
 	    
-			if (input.unused && input.keys[Key_Control]) {
+			if (input.unused && control) {
 
 				// Undo
 				if (input.keys[Key_Z] == InputState_Pressed) {
@@ -962,6 +962,22 @@ namespace sv {
 				if (gui_checkbox("YFlip", yflip, 4u)) spr.flags = spr.flags ^ SpriteComponentFlag_YFlip;
 			}
 
+			if (get_component_id("Textured Sprite") == comp_id) {
+
+				TexturedSpriteComponent& spr = *reinterpret_cast<TexturedSpriteComponent*>(comp);
+
+				gui_texture_asset("Texture", spr.texture);
+				gui_drag_v4_f32("Texcoord", spr.texcoord, 0.01f);
+				gui_drag_color("Color", spr.color, 1u);
+				gui_drag_u32("Layer", spr.layer, 1u, 0u, RENDER_LAYER_COUNT);
+
+				bool xflip = spr.flags & SpriteComponentFlag_XFlip;
+				bool yflip = spr.flags & SpriteComponentFlag_YFlip;
+
+				if (gui_checkbox("XFlip", xflip, 3u)) spr.flags = spr.flags ^ SpriteComponentFlag_XFlip;
+				if (gui_checkbox("YFlip", yflip, 4u)) spr.flags = spr.flags ^ SpriteComponentFlag_YFlip;
+			}
+
 			if (get_component_id("Animated Sprite") == comp_id) {
 
 				AnimatedSpriteComponent& spr = *reinterpret_cast<AnimatedSpriteComponent*>(comp);
@@ -1277,12 +1293,12 @@ namespace sv {
 		u32 light_id = get_component_id("Light");
 		u32 mesh_id = get_component_id("Mesh");
 		u32 sprite_id = get_component_id("Sprite");
-
+		u32 textured_sprite_id = get_component_id("Textured Sprite");
+		u32 animated_sprite_id = get_component_id("Animated Sprite");
+		
 		// Select lights
-		for (CompIt it = comp_it_begin(light_id);
-			 it.has_next;
-			 comp_it_next(it))
-		{
+		foreach_component(light_id, it, 0) {
+			
 			Entity entity = it.entity;
 			
 			if (is_entity_selected(entity))
@@ -1324,10 +1340,8 @@ namespace sv {
 		if (selected == 0) {
 
 			// Select meshes
-			for (CompIt it = comp_it_begin(mesh_id);
-				 it.has_next;
-				 comp_it_next(it))
-			{
+			foreach_component(mesh_id, it, 0) {
+				
 				Entity entity = it.entity;
 				MeshComponent& m = *(MeshComponent*)it.comp;
 				
@@ -1378,14 +1392,10 @@ namespace sv {
 				ray.origin = v3_f32(ray_origin);
 				ray.direction = v3_f32(ray_direction);
 
-				for (CompIt it = comp_it_begin(sprite_id);
-					 it.has_next;
-					 comp_it_next(it))	
-				{
-					Entity entity = it.entity;
+				auto sprite_intersect = [&](Entity entity) {
 					
 					if (is_entity_selected(entity))
-						break;
+						return;
 
 					XMMATRIX tm = get_entity_world_matrix(entity);
 
@@ -1413,8 +1423,16 @@ namespace sv {
 						distance = dis;
 						selected = entity;
 					}
-					
-				}
+				};
+
+				foreach_component(sprite_id, it, 0)
+					sprite_intersect(it.entity);
+				
+				foreach_component(textured_sprite_id, it, 0)
+					sprite_intersect(it.entity);
+				
+				foreach_component(animated_sprite_id, it, 0)
+					sprite_intersect(it.entity);
 			}
 		}
 		
@@ -2425,7 +2443,7 @@ namespace sv {
 				{
 					u64 id = 0u;
 
-					if (egui_comp_texture("Texture", id++, &sheet->texture))
+					if (gui_texture_asset("Texture", sheet->texture))
 						save = true;
 					
 					if (gui_button("New Sprite", id++)) {
@@ -2733,159 +2751,163 @@ namespace sv {
 
     SV_INTERNAL void display_gui()
     {
-		if (_gui_begin()) {
+		if (editor.debug_draw) {
+			
+			if (_gui_begin()) {
 
-			if (there_is_scene() && editor.debug_draw) {
+				if (there_is_scene()) {
 
-				gui_begin_top(GuiTopLocation_Left);
-				{
-					auto& data = editor.tool_data;
+					gui_begin_top(GuiTopLocation_Left);
+					{
+						auto& data = editor.tool_data;
 
-					u32 flags = (data.tool_type == EditorToolType_Gizmos) ? GuiImageButtonFlag_Disabled : 0;
+						u32 flags = (data.tool_type == EditorToolType_Gizmos) ? GuiImageButtonFlag_Disabled : 0;
 					
-					if (gui_image_button(NULL, NULL, {0.f, 0.f, 1.f, 1.f}, 209846, GuiImageButtonFlag_NoBackground | flags)) {
-						data.tool_type = EditorToolType_Gizmos;
-					}
+						if (gui_image_button(NULL, NULL, {0.f, 0.f, 1.f, 1.f}, 209846, GuiImageButtonFlag_NoBackground | flags)) {
+							data.tool_type = EditorToolType_Gizmos;
+						}
 
-					flags = (data.tool_type == EditorToolType_TerrainBrush) ? GuiImageButtonFlag_Disabled : 0;
+						flags = (data.tool_type == EditorToolType_TerrainBrush) ? GuiImageButtonFlag_Disabled : 0;
 					
-					if (gui_image_button(NULL, NULL, {0.f, 0.f, 1.f, 1.f}, 43645, GuiImageButtonFlag_NoBackground | flags)) {
-						data.tool_type = EditorToolType_TerrainBrush;
+						if (gui_image_button(NULL, NULL, {0.f, 0.f, 1.f, 1.f}, 43645, GuiImageButtonFlag_NoBackground | flags)) {
+							data.tool_type = EditorToolType_TerrainBrush;
+						}
 					}
-				}
-				gui_end_top();
+					gui_end_top();
 
-				gui_begin_top(GuiTopLocation_Center);
+					gui_begin_top(GuiTopLocation_Center);
 
-				if (dev.engine_state == EngineState_Play) {
+					if (dev.engine_state == EngineState_Play) {
 
-					if (gui_image_button(NULL, editor.image.get(), engine.update_scene ? GlobalEditorData::TEXCOORD_PAUSE : GlobalEditorData::TEXCOORD_PLAY, 754, GuiImageButtonFlag_NoBackground)) {
-						engine.update_scene = !engine.update_scene;
+						if (gui_image_button(NULL, editor.image.get(), engine.update_scene ? GlobalEditorData::TEXCOORD_PAUSE : GlobalEditorData::TEXCOORD_PLAY, 754, GuiImageButtonFlag_NoBackground)) {
+							engine.update_scene = !engine.update_scene;
+						}
+						if (gui_image_button(NULL, editor.image.get(), GlobalEditorData::TEXCOORD_STOP, 324, GuiImageButtonFlag_NoBackground)) {
+							dev.next_engine_state = EngineState_Edit;
+						}
 					}
-					if (gui_image_button(NULL, editor.image.get(), GlobalEditorData::TEXCOORD_STOP, 324, GuiImageButtonFlag_NoBackground)) {
-						dev.next_engine_state = EngineState_Edit;
-					}
-				}
-				else {
+					else {
 
-					if (gui_image_button(NULL, editor.image.get(), GlobalEditorData::TEXCOORD_PLAY, 324, GuiImageButtonFlag_NoBackground)) {
-						dev.next_engine_state = EngineState_Play;
-					}
-				}
-
-				gui_end_top();
-
-				if (gui_begin_window("Editor View")) {
-
-					gui_image(editor.offscreen_editor, 0, 0, GuiImageFlag_Fullscreen);
-
-					editor.editor_view_size = gui_root_size();
-					editor.in_editor_view = gui_image_catch_input(0);
-
-					if (editor.in_editor_view) {
-						editor.view_position = gui_root_position();
-					}
-
-					editor.show_editor = true;
-
-					EntityPackage* package;
-					if (gui_recive_package((void**)&package, ASSET_BROWSER_ENTITY, GuiReciverTrigger_Root)) {
-
-						load_prefab(package->filepath);
-					}
-					
-					gui_end_window();
-				}
-				else editor.show_editor = false;
-
-				if (gui_begin_window("Game View")) {
-
-					gui_image(editor.offscreen_game, 0, 0, GuiImageFlag_Fullscreen);
-
-					editor.game_view_size = gui_root_size();
-					editor.in_game_view = gui_image_catch_input(0);
-
-					if (editor.in_game_view) {
-						editor.view_position = gui_root_position();
-					}
-
-					editor.show_game = true;
-					
-					gui_end_window();
-				}
-				else editor.show_game = false;
-
-				// Window management
-				if (gui_begin_window("Window Manager", GuiWindowFlag_NoClose)) {
-
-					const char* windows[] = {
-						"Hierarchy",
-						"Inspector",
-						"Asset Browser",
-						"Scene Settings",
-						"SpriteSheet Editor",
-						"Material Editor",
-						"Editor View",
-						"Game View",
-						"Renderer Debug",
-					};
-
-					foreach(i, SV_ARRAY_SIZE(windows)) {
-
-						const char* name = windows[i];
-
-						if (!gui_showing_window(name)) {
-
-							if (gui_button(name, i)) {
-
-								gui_show_window(name);
-							}
+						if (gui_image_button(NULL, editor.image.get(), GlobalEditorData::TEXCOORD_PLAY, 324, GuiImageButtonFlag_NoBackground)) {
+							dev.next_engine_state = EngineState_Play;
 						}
 					}
 
-					gui_separator(3);
+					gui_end_top();
 
-					gui_checkbox("Show Colisions", dev.draw_collisions);
-					gui_checkbox("Show Cameras", dev.draw_cameras);
-					gui_checkbox("Postprocessing", dev.postprocessing);
+					if (gui_begin_window("Editor View")) {
 
-					if (gui_button("Exit Project")) {
-						dev.next_engine_state = EngineState_ProjectManagement;
-					}
+						gui_image(editor.offscreen_editor, 0, 0, GuiImageFlag_Fullscreen);
 
-					// TEMP
-					gui_separator(2);
-					{
-						auto& data = editor.tool_data.terrain_brush_data;
-						gui_drag_f32("Strength", data.strength, 0.1f, 0.f, f32_max);
-						gui_drag_f32("Range", data.range, 0.1f, 0.f, f32_max);
-						gui_drag_f32("Min Height", data.min_height, 0.1f, 0.f, f32_max);
-						gui_drag_f32("Max Height", data.max_height, 0.1f, 0.f, f32_max);
-					}
+						editor.editor_view_size = gui_root_size();
+						editor.in_editor_view = gui_image_catch_input(0);
+
+						if (editor.in_editor_view) {
+							editor.view_position = gui_root_position();
+						}
+
+						editor.show_editor = true;
+
+						EntityPackage* package;
+						if (gui_recive_package((void**)&package, ASSET_BROWSER_ENTITY, GuiReciverTrigger_Root)) {
+
+							load_prefab(package->filepath);
+						}
 					
-					gui_end_window();
-				}
+						gui_end_window();
+					}
+					else editor.show_editor = false;
+
+					if (gui_begin_window("Game View")) {
+
+						gui_image(editor.offscreen_game, 0, 0, GuiImageFlag_Fullscreen);
+
+						editor.game_view_size = gui_root_size();
+						editor.in_game_view = gui_image_catch_input(0);
+
+						if (editor.in_game_view) {
+							editor.view_position = gui_root_position();
+						}
+
+						editor.show_game = true;
+					
+						gui_end_window();
+					}
+					else editor.show_game = false;
+
+					// Window management
+					if (gui_begin_window("Window Manager", GuiWindowFlag_NoClose)) {
+
+						const char* windows[] = {
+							"Hierarchy",
+							"Inspector",
+							"Asset Browser",
+							"Scene Settings",
+							"SpriteSheet Editor",
+							"Material Editor",
+							"Editor View",
+							"Game View",
+							"Renderer Debug",
+						};
+
+						foreach(i, SV_ARRAY_SIZE(windows)) {
+
+							const char* name = windows[i];
+
+							if (!gui_showing_window(name)) {
+
+								if (gui_button(name, i)) {
+
+									gui_show_window(name);
+								}
+							}
+						}
+
+						gui_separator(3);
+
+						gui_checkbox("Show Colisions", dev.draw_collisions);
+						gui_checkbox("Show Cameras", dev.draw_cameras);
+						gui_checkbox("Postprocessing", dev.postprocessing);
+
+						if (gui_button("Exit Project")) {
+							dev.next_engine_state = EngineState_ProjectManagement;
+						}
+
+						// TEMP
+						gui_separator(2);
+						{
+							auto& data = editor.tool_data.terrain_brush_data;
+							gui_drag_f32("Strength", data.strength, 0.1f, 0.f, f32_max);
+							gui_drag_f32("Range", data.range, 0.1f, 0.f, f32_max);
+							gui_drag_f32("Min Height", data.min_height, 0.1f, 0.f, f32_max);
+							gui_drag_f32("Max Height", data.max_height, 0.1f, 0.f, f32_max);
+						}
+					
+						gui_end_window();
+					}
 		
-				display_entity_hierarchy();
-				display_entity_inspector();
-				display_asset_browser();
-				display_scene_settings();
-				display_spritesheet_editor();
-				display_material_editor();
-				gui_display_style_editor();
+					display_entity_hierarchy();
+					display_entity_inspector();
+					display_asset_browser();
+					display_scene_settings();
+					display_spritesheet_editor();
+					display_material_editor();
+					gui_display_style_editor();
 
-				event_dispatch("display_gui", NULL);
+					event_dispatch("display_gui", NULL);
 
+				}
+				else {
+					// TODO
+				}
+
+				_gui_end();
 			}
-			else {
-				// TODO
-			}
-
-			_gui_end();
 		}
 
 		// Change input and adjust cameras
-		{
+		if (editor.debug_draw) {
+			
 			f32 aspect = os_window_aspect() * (SV_MAX(editor.editor_view_size.x, 0.01f) / SV_MAX(editor.editor_view_size.y, 0.01f));
 			dev.camera.adjust(aspect);
 
@@ -2914,6 +2936,15 @@ namespace sv {
 			if (editor.in_editor_view || editor.camera_focus) {
 
 				input.unused = true;
+			}
+		}
+		else {
+			
+			f32 aspect = os_window_aspect();
+
+			CameraComponent* camera = get_main_camera();
+			if (camera) {
+				camera->adjust(aspect);
 			}
 		}
     }
@@ -3486,42 +3517,44 @@ namespace sv {
     {
 		CommandList cmd = graphics_commandlist_get();
 
-		if (editor.show_editor) {
+		if (editor.debug_draw) {
 
-			_draw_scene(dev.camera, dev.camera.position, dev.camera.rotation);
-			draw_edit_state(cmd);
+			if (editor.show_editor) {
 
-			GPUImage* off = renderer_offscreen();
-			const GPUImageInfo& info = graphics_image_info(off);
-			
-			GPUImageBlit blit;
-			blit.src_region.offset0 = { 0, (i32)info.height, 0 };
-			blit.src_region.offset1 = { (i32)info.width, 0, 1 };
-			blit.dst_region.offset0 = { 0, 0, 0 };
-			blit.dst_region.offset1 = { (i32)info.width, (i32)info.height, 1 };
-			
-			graphics_image_blit(off, editor.offscreen_editor, GPUImageLayout_RenderTarget, GPUImageLayout_ShaderResource, 1u, &blit, SamplerFilter_Nearest, cmd);
-		}
+				_draw_scene(dev.camera, dev.camera.position, dev.camera.rotation);
+				draw_edit_state(cmd);
 
-		if (editor.show_game) {
+				GPUImage* off = renderer_offscreen();
+				const GPUImageInfo& info = graphics_image_info(off);
+			
+				GPUImageBlit blit;
+				blit.src_region.offset0 = { 0, (i32)info.height, 0 };
+				blit.src_region.offset1 = { (i32)info.width, 0, 1 };
+				blit.dst_region.offset0 = { 0, 0, 0 };
+				blit.dst_region.offset1 = { (i32)info.width, (i32)info.height, 1 };
+			
+				graphics_image_blit(off, editor.offscreen_editor, GPUImageLayout_RenderTarget, GPUImageLayout_ShaderResource, 1u, &blit, SamplerFilter_Nearest, cmd);
+			}
 
-			_draw_scene();
-			
-			GPUImage* off = renderer_offscreen();
-			const GPUImageInfo& info = graphics_image_info(off);
-			
-			GPUImageBlit blit;
-			blit.src_region.offset0 = { 0, (i32)info.height, 0 };
-			blit.src_region.offset1 = { (i32)info.width, 0, 1 };
-			blit.dst_region.offset0 = { 0, 0, 0 };
-			blit.dst_region.offset1 = { (i32)info.width, (i32)info.height, 1 };
-			
-			graphics_image_blit(off, editor.offscreen_game, GPUImageLayout_RenderTarget, GPUImageLayout_ShaderResource, 1u, &blit, SamplerFilter_Nearest, cmd);
-		}
+			if (editor.show_game) {
 
-		// Draw gui
-		if (editor.debug_draw)
+				_draw_scene();
+			
+				GPUImage* off = renderer_offscreen();
+				const GPUImageInfo& info = graphics_image_info(off);
+			
+				GPUImageBlit blit;
+				blit.src_region.offset0 = { 0, (i32)info.height, 0 };
+				blit.src_region.offset1 = { (i32)info.width, 0, 1 };
+				blit.dst_region.offset0 = { 0, 0, 0 };
+				blit.dst_region.offset1 = { (i32)info.width, (i32)info.height, 1 };
+			
+				graphics_image_blit(off, editor.offscreen_game, GPUImageLayout_RenderTarget, GPUImageLayout_ShaderResource, 1u, &blit, SamplerFilter_Nearest, cmd);
+			}
+
 			_gui_draw(cmd);
+		}
+		else _draw_scene();
     }
 
 	List<Entity>& editor_selected_entities()

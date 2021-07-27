@@ -309,6 +309,20 @@ namespace sv {
 
     };
 
+	struct TexturedSpriteComponent : public Component {
+
+		static constexpr u32 VERSION = 0u;
+
+		TextureAsset     texture;
+		v4_f32           texcoord = { 0.f, 0.f, 1.f, 1.f };
+		Color	         color = Color::White();
+		u32	             layer = RENDER_LAYER_COUNT / 2u;
+
+		void serialize(Serializer& s);
+		void deserialize(Deserializer& s, u32 version);
+
+    };
+
     struct AnimatedSpriteComponent : public Component {
 
 		static constexpr u32 VERSION = 1u;

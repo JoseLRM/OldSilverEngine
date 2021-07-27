@@ -97,7 +97,7 @@ namespace sv {
     SV_API bool egui_begin_component(CompID comp_id, bool* remove);
     SV_API void egui_end_component();
 
-    SV_API bool egui_comp_texture(const char* text, u64 id, TextureAsset* texture);
+    SV_API bool gui_texture_asset(const char* text, TextureAsset& texture, u64 id = u64_max);
 	SV_API bool gui_sound_asset(const char* text, Sound& sound, u64 id = u64_max);
     SV_API void egui_comp_mesh(const char* text, u64 id, MeshAsset* mesh);
     SV_API void egui_comp_material(const char* text, u64 id, MaterialAsset* material);

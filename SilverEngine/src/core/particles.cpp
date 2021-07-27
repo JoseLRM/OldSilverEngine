@@ -440,7 +440,7 @@ namespace sv {
 
 				gui_checkbox("Show", e.show);
 				gui_drag_u32("Sort Value", e.sort_value, 1u, 0u, u32_max);
-				egui_comp_texture("Texture", 69u, &e.texture);
+				gui_texture_asset("Texture", e.texture);
 				gui_drag_v4_f32("Texcoord", e.texcoord, 0.001f, 0.f, 1.f);
 
 				gui_drag_u32("Max Particles", e.max_particles, 1u, 0u, 100000u);

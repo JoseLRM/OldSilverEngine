@@ -1272,14 +1272,13 @@ namespace sv {
 			// GET SPRITES
 			{
 				CompID sprite_id = get_component_id("Sprite");
+				CompID textured_sprite_id = get_component_id("Textured Sprite");
 				CompID animated_sprite_id = get_component_id("Animated Sprite");
 		
 				foreach_component(sprite_id, it, 0) {
 			
 					SpriteComponent& spr = *(SpriteComponent*)it.comp;
 					Entity entity = it.entity;
-			
-					v3_f32 pos = get_entity_world_position(entity);
 			
 					SpriteSheet* sprite_sheet = spr.sprite_sheet.get();
 			
@@ -1302,12 +1301,28 @@ namespace sv {
 					inst.color = spr.color;
 					inst.layer = spr.layer;
 				}
+				foreach_component(textured_sprite_id, it, 0) {
+			
+					TexturedSpriteComponent& spr = *(TexturedSpriteComponent*)it.comp;
+					Entity entity = it.entity;
+			
+					GPUImage* image = spr.texture.get();
+					v4_f32 tc = spr.texcoord;
+			
+					if (spr.flags & SpriteComponentFlag_XFlip) std::swap(tc.x, tc.z);
+					if (spr.flags & SpriteComponentFlag_YFlip) std::swap(tc.y, tc.w);
+		    
+					SpriteInstance& inst = sprite_instances.emplace_back();
+					inst.tm = get_entity_world_matrix(entity);
+					inst.texcoord = tc;
+					inst.image = image;
+					inst.color = spr.color;
+					inst.layer = spr.layer;
+				}
 				foreach_component(animated_sprite_id, it, 0) {
 			
 					AnimatedSpriteComponent& s = *(AnimatedSpriteComponent*)it.comp;
 					Entity entity = it.entity;
-			
-					v3_f32 pos = get_entity_world_position(entity);
 			
 					SpriteSheet* sprite_sheet = s.sprite_sheet.get();
 					GPUImage* image = NULL;

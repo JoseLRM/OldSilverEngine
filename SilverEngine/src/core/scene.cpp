@@ -2861,6 +2861,7 @@ namespace sv {
 	void register_components()
 	{
 		register_component<SpriteComponent>("Sprite");
+		register_component<TexturedSpriteComponent>("Textured Sprite");
 		register_component<AnimatedSpriteComponent>("Animated Sprite");
 		register_component<CameraComponent>("Camera");
 		register_component<MeshComponent>("Mesh");
@@ -3775,6 +3776,22 @@ namespace sv {
 			deserialize_color(d, color);
 			deserialize_u32(d, layer);
 		}
+    }
+
+	void TexturedSpriteComponent::serialize(Serializer& s)
+    {
+		serialize_asset(s, texture);
+		serialize_v4_f32(s, texcoord);
+		serialize_color(s, color);
+		serialize_u32(s, layer);
+    }
+
+    void TexturedSpriteComponent::deserialize(Deserializer& d, u32 version)
+    {
+		deserialize_asset(d, texture);
+		deserialize_v4_f32(d, texcoord);
+		deserialize_color(d, color);
+		deserialize_u32(d, layer);
     }
 
     void AnimatedSpriteComponent::serialize(Serializer& s)

@@ -4177,6 +4177,8 @@ namespace sv {
 					v4_f32 node_buttons = compute_window_buttons(node);
 					imrend_draw_quad({ node_buttons.x, node_buttons.y, 0.f }, { node_buttons.z, node_buttons.w }, style.window_background_color, cmd);
 
+					imrend_push_scissor(node_buttons.x, node_buttons.y, node_buttons.z, node_buttons.w, false, cmd);
+
 					foreach (i, win.states.size()) {
 
 						v4_f32 button = compute_window_button(node, node_buttons, i);
@@ -4194,6 +4196,8 @@ namespace sv {
 						const char* title = win.states[i]->title;
 						gui_draw_text_big(title, { button.x, button.y }, { button.z, button.w }, false, cmd);
 					}
+
+					imrend_pop_scissor(cmd);
 				}
 			}
 			else {

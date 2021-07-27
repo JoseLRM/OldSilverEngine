@@ -480,7 +480,7 @@ namespace sv {
 				}
 			}
 
-			egui_comp_texture("Diffuse", 0u, &t.material->diffuse_map);
+			gui_texture_asset("Diffuse", t.material->diffuse_map);
 
 			if (gui_button("Recreate")) {
 
