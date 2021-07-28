@@ -184,7 +184,7 @@ namespace sv {
 
 			while (ref && ref->ptr != ptr) {
 				
-				SV_ASSERT(ref->next != NULL);
+				//SV_ASSERT(ref->next != NULL);
 				ref_parent = ref;
 				ref = ref->next;
 			}
@@ -264,7 +264,7 @@ namespace sv {
 
 		while (ref && ref->ptr != ptr) {
 				
-			SV_ASSERT(ref->next != NULL);
+			//SV_ASSERT(ref->next != NULL);
 			ref = ref->next;
 		}
 

@@ -540,6 +540,10 @@ namespace sv {
 		b.w = height;
 		return b;
     }
+	SV_AUX f32 compute_window_outline_size()
+	{
+		return 2.f;
+	}
 	SV_AUX f32 get_font_size(u32 level)
 	{
 		f32 font_size;
@@ -1408,6 +1412,7 @@ namespace sv {
 	    
 			b = parent_bounds;
 
+			f32 width = 0.f;
 			f32 height = 0.f;
 
 			if (!root || win.states.size() > 1u) {
@@ -1415,6 +1420,8 @@ namespace sv {
 				height += compute_window_buttons_height(node);
 			}
 
+			b.x -= width * 0.5f;
+			b.z -= width;
 			b.y -= height * 0.5f;
 			b.w -= height;
 
@@ -4161,6 +4168,29 @@ namespace sv {
 			}
 			
 			draw_root({ GuiRootType_WindowNode, window.root_id }, cmd);
+
+			// Draw docking outline
+			{
+				u32 docking_index = u32_max;
+				foreach(i, gui->screen_docking_count) {
+
+					if (gui->screen_docking[i].window_id == root_index.index) {
+						docking_index = i;
+						break;
+					}
+				}
+
+				if (docking_index != u32_max) {
+					
+					f32 outline_size = compute_window_outline_size() / gui->resolution.x;
+					Color color = Color::Gray(170);
+
+					imrend_draw_quad({ b.x - b.z * 0.5f, b.y, 0.f }, { outline_size, b.w }, color, cmd);
+					imrend_draw_quad({ b.x + b.z * 0.5f, b.y, 0.f }, { outline_size, b.w }, color, cmd);
+					imrend_draw_quad({ b.x, b.y - b.w * 0.5f, 0.f }, { b.z, outline_size }, color, cmd);
+					imrend_draw_quad({ b.x, b.y + b.w * 0.5f, 0.f }, { b.z, outline_size }, color, cmd);
+				}
+			}
 		}
 		break;
 
@@ -4171,8 +4201,10 @@ namespace sv {
 			if (!node.is_node) {
 
 				auto& win = node.win;
+
+				bool has_buttons = !node.is_root || win.states.size() > 1u;
 				
-				if (!node.is_root || win.states.size() > 1u) {
+				if (has_buttons) {
 
 					v4_f32 node_buttons = compute_window_buttons(node);
 					imrend_draw_quad({ node_buttons.x, node_buttons.y, 0.f }, { node_buttons.z, node_buttons.w }, style.window_background_color, cmd);
@@ -4204,6 +4236,22 @@ namespace sv {
 				
 				if (node.node.id0 != u32_max) draw_root({ GuiRootType_WindowNode, node.node.id0 }, cmd);
 				if (node.node.id1 != u32_max) draw_root({ GuiRootType_WindowNode, node.node.id1 }, cmd);
+
+				// Draw outline
+				if (node.node.id0 != u32_max && node.node.id1 != u32_max) {
+
+					f32 outline_size = compute_window_outline_size() / gui->resolution.x;
+					v4_f32 b = node.bounds;
+					Color color = Color::Gray(170);
+
+					if (node.node.split == GuiDockingSplit_Vertical) {
+						
+						imrend_draw_quad({ b.x, b.y, 0.f }, { b.z, outline_size }, color, cmd);
+					}
+					else {
+						imrend_draw_quad({ b.x, b.y, 0.f }, { outline_size, b.w }, color, cmd);
+					}
+				}
 			}
 		}
 		break;
