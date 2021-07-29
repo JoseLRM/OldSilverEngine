@@ -74,6 +74,7 @@ namespace sv {
 		GPUImage* image_white;
 		GPUImage* image_aux0;
 		GPUImage* image_aux1;
+		GPUImage* image_ssao_aux;
 		Sampler* sampler_def_linear;
 		Sampler* sampler_def_nearest;
 		GPUBuffer* vbuffer_batch[GraphicsLimit_CommandList];
@@ -90,7 +91,6 @@ namespace sv {
 		RenderPass* renderpass_off;
 		RenderPass* renderpass_world;
 		RenderPass* renderpass_gbuffer;
-		RenderPass* renderpass_ssao;
 		BlendState* bs_transparent;
 
 		// GBUFFER
@@ -141,13 +141,13 @@ namespace sv {
 
 		// PP
 
-		Shader* vs_default_postprocess;
-		Shader* ps_default_postprocess;
-		Shader* ps_gaussian_blur;
+		Shader* cs_addition;
+		Shader* cs_gaussian_blur_float4;
+		Shader* cs_gaussian_blur_float;
 		GPUBuffer* cbuffer_gaussian_blur;
 		GPUBuffer* cbuffer_bloom_threshold;
 		Sampler* sampler_blur;
-		Shader* ps_bloom_threshold;
+		Shader* cs_bloom_threshold;
 		BlendState* bs_addition;
 		Shader* cs_ssao;
 		Shader* cs_ssao_add;

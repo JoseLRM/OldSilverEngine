@@ -1375,53 +1375,73 @@ namespace sv {
 
     void graphics_sampler_bind_array(Sampler** samplers, u32 count, u32 beginSlot, ShaderType shaderType, CommandList cmd)
     {
-		auto& state = g_PipelineState.graphics[cmd];
+		if (shaderType == ShaderType_Compute) {
+			SV_LOG_ERROR("TODO: Bind Samplers in CS");
+		}
+		else {
+			auto& state = g_PipelineState.graphics[cmd];
 
-		state.samplersCount[shaderType] = SV_MAX(state.samplersCount[shaderType], beginSlot + count);
+			state.samplersCount[shaderType] = SV_MAX(state.samplersCount[shaderType], beginSlot + count);
 
-		memcpy(state.samplers, samplers, sizeof(Sampler*) * count);
-		state.flags |= GraphicsPipelineState_Sampler;
-		state.flags |= get_resource_shader_flag(shaderType);
+			memcpy(state.samplers, samplers, sizeof(Sampler*) * count);
+			state.flags |= GraphicsPipelineState_Sampler;
+			state.flags |= get_resource_shader_flag(shaderType);
+		}
     }
 
     void graphics_sampler_bind(Sampler* sampler, u32 slot, ShaderType shaderType, CommandList cmd)
     {
-		auto& state = g_PipelineState.graphics[cmd];
-
-		state.samplers[shaderType][slot] = reinterpret_cast<Sampler_internal*>(sampler);
-		state.samplersCount[shaderType] = SV_MAX(state.samplersCount[shaderType], slot + 1u);
-		state.flags |= GraphicsPipelineState_Sampler;
-		state.flags |= get_resource_shader_flag(shaderType);
+		if (shaderType == ShaderType_Compute) {
+			SV_LOG_ERROR("TODO: Bind Samplers in CS");
+		}
+		else {
+			auto& state = g_PipelineState.graphics[cmd];
+			
+			state.samplers[shaderType][slot] = reinterpret_cast<Sampler_internal*>(sampler);
+			state.samplersCount[shaderType] = SV_MAX(state.samplersCount[shaderType], slot + 1u);
+			state.flags |= GraphicsPipelineState_Sampler;
+			state.flags |= get_resource_shader_flag(shaderType);
+		}
     }
 
     void graphics_sampler_unbind(u32 slot, ShaderType shaderType, CommandList cmd)
     {
-		auto& state = g_PipelineState.graphics[cmd];
-
-		state.samplers[shaderType][slot] = nullptr;
-
-		// Compute Images Count
-		u32& count = state.samplersCount[shaderType];
-
-		for (i32 i = i32(count) - 1; i >= 0; --i) {
-			if (state.samplers[shaderType][i] != nullptr) {
-				count = i + 1;
-				break;
-			}
+		if (shaderType == ShaderType_Compute) {
+			SV_LOG_ERROR("TODO: Unbind Samplers in CS");
 		}
+		else {
+			auto& state = g_PipelineState.graphics[cmd];
+			
+			state.samplers[shaderType][slot] = nullptr;
+			
+			// Compute Images Count
+			u32& count = state.samplersCount[shaderType];
+			
+			for (i32 i = i32(count) - 1; i >= 0; --i) {
+				if (state.samplers[shaderType][i] != nullptr) {
+					count = i + 1;
+					break;
+				}
+			}
 
-		state.flags |= GraphicsPipelineState_Sampler;
-		state.flags |= get_resource_shader_flag(shaderType);
+			state.flags |= GraphicsPipelineState_Sampler;
+			state.flags |= get_resource_shader_flag(shaderType);
+		}
     }
 
     void graphics_sampler_unbind_shader(ShaderType shaderType, CommandList cmd)
     {
-		auto& state = g_PipelineState.graphics[cmd];
-
-		state.samplersCount[shaderType] = 0u;
-
-		state.flags |= GraphicsPipelineState_Sampler;
-		state.flags |= get_resource_shader_flag(shaderType);
+		if (shaderType == ShaderType_Compute) {
+			SV_LOG_ERROR("TODO: Unbind Samplers in CS");
+		}
+		else {
+			auto& state = g_PipelineState.graphics[cmd];
+			
+			state.samplersCount[shaderType] = 0u;
+			
+			state.flags |= GraphicsPipelineState_Sampler;
+			state.flags |= get_resource_shader_flag(shaderType);
+		}
     }
 
     void graphics_sampler_unbind_commandlist(CommandList cmd)

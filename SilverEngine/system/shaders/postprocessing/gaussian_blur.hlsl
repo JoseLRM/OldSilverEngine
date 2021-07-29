@@ -1,15 +1,5 @@
 #include "core.hlsl"
 
-#ifdef SV_PIXEL_SHADER
-
-struct Input {
-	float2 texcoord : FragTexcoord;
-};
-
-struct Output {
-	float4 color : SV_Target0;
-};
-
 SV_GLOBAL u32 GAUSS_KERNEL = 33u;
 
 SV_GLOBAL f32 WEIGHTS[GAUSS_KERNEL] = {
@@ -48,36 +38,55 @@ SV_GLOBAL f32 WEIGHTS[GAUSS_KERNEL] = {
 	0.004013
 };
 
-SV_TEXTURE(tex, t0);
-SV_SAMPLER(sam, s0);
+#if TYPE == 0
+SV_UAV_TEXTURE(dst_tex, float4, u0);
+SV_TEXTURE(src_tex, t0);
+#elif TYPE == 1
+SV_UAV_TEXTURE(dst_tex, float, u0);
+SV_TEXTURE(src_tex, t0);
+#endif
 
 SV_CONSTANT_BUFFER(gauss_buffer, b0) {
 	f32 intensity;
 	u32 horizontal;
 };
 
-float4 main(float2 texcoord : FragTexcoord) : SV_Target0
+[numthreads(16,16,1)]
+void main(uint3 dispatch_id : SV_DispatchThreadID)
 {
-	float4 color = float4(0.f, 0.f, 0.f, 1.f);
+    float2 output_dimension;
+    dst_tex.GetDimensions(output_dimension.x, output_dimension.y);
 
-	float2 begin = texcoord;
-	float2 adv;
+    int2 screen_pos = dispatch_id.xy;
+    
+    float2 texcoord = (float2(screen_pos) + 0.5f) / output_dimension;
 
-	if (horizontal) {
-		begin.x -= intensity * 0.5f;
-		adv = float2(intensity / f32(GAUSS_KERNEL), 0.f);
-	}
-	else {
-		begin.y -= intensity * 0.5f;
-		adv = float2(0.f, intensity / f32(GAUSS_KERNEL));
-	}
-
-	foreach(i, GAUSS_KERNEL) {
-
-		color.xyz += tex.Sample(sam, begin + adv * i).xyz * WEIGHTS[i];
-	}
-
-	return color;
-}
-
+#if TYPE == 0
+    float4 color = float4(0.f, 0.f, 0.f, 1.f);
+#elif TYPE == 1
+    float color = 0.f;
 #endif
+
+    float2 begin = texcoord;
+    float2 adv;
+
+    if (horizontal) {
+    	begin.x -= intensity * 0.5f;
+	adv = float2(intensity / f32(GAUSS_KERNEL), 0.f);
+    }
+    else {
+	begin.y -= intensity * 0.5f;
+	adv = float2(0.f, intensity / f32(GAUSS_KERNEL));
+    }
+
+    foreach(i, GAUSS_KERNEL) {
+    	int2 s = int2((begin + adv * i) * output_dimension);
+#if TYPE == 0
+	color.xyz += src_tex[s].xyz * WEIGHTS[i];
+#elif TYPE == 1
+      	color += src_tex[s].r * WEIGHTS[i];
+#endif
+    }
+
+    dst_tex[screen_pos] = color;
+}

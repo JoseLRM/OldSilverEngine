@@ -16,7 +16,7 @@ namespace sv {
     constexpr Format GBUFFER_NORMAL_FORMAT = Format_R16G16B16A16_FLOAT;
     constexpr Format GBUFFER_EMISSION_FORMAT = Format_R16G16B16A16_FLOAT;
     constexpr Format GBUFFER_SSAO_FORMAT = Format_R32_FLOAT;
-
+	
     // Functions
 
     bool load_skymap_image(const char* filepath, GPUImage** pimage);
@@ -72,7 +72,13 @@ namespace sv {
 
     // POSTPROCESSING
 
-    SV_API void postprocess_gaussian_blur(
+	enum BlurType : u32 {
+		BlurType_GaussianFloat4,
+		BlurType_GaussianFloat,
+	};
+
+    SV_API void postprocess_blur(
+			BlurType blur_type,
 			GPUImage* src, 
 			GPUImageLayout src_layout0, 
 			GPUImageLayout src_layout1, 
@@ -81,8 +87,7 @@ namespace sv {
 			GPUImageLayout aux_layout1,
 			f32 intensity,
 			f32 aspect,
-			CommandList cmd,
-			RenderPass* renderpass = nullptr // Is only used while the rendertarget is the src image
+			CommandList cmd
 		);
 
     SV_API void postprocess_addition(

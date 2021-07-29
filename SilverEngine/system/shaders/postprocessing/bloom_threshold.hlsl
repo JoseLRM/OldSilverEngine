@@ -1,27 +1,27 @@
 #include "core.hlsl"
 
-#ifdef SV_PIXEL_SHADER
-
-SV_TEXTURE(tex, t0);
-SV_SAMPLER(sam, s0);
+SV_UAV_TEXTURE(dst, float4, u0);
+SV_TEXTURE(src, t0);
 
 SV_CONSTANT_BUFFER(bloom_threshold_buffer, b0) {
        f32 threshold;
 };
 
-float4 main(float2 texcoord : FragTexcoord) : SV_Target0
+[numthreads(16, 16, 1)]
+void main(uint3 dispatch_id : SV_DispatchThreadID)
 {
-	float3 color;
+    int2 screen_pos = dispatch_id.xy;
 
-	float3 tex_color = tex.Sample(sam, texcoord).rgb;
-	f32 brightness = dot(tex_color, float3(0.2126, 0.7152, 0.0722));
+    float3 color;
 
-	if (brightness >= threshold) {
+    float3 tex_color = src[screen_pos].rgb;
+    f32 brightness = dot(tex_color, float3(0.2126, 0.7152, 0.0722));
 
-		return float4(tex_color, 1.f);
-	}
+    if (brightness >= threshold) {
 
-	return float4(0.f, 0.f, 0.f, 1.f); 
+	color = tex_color;
+    }
+    else color = float3(0.f, 0.f, 0.f);
+
+    dst[screen_pos] = float4(color, 1.f);
 }
-
-#endif
