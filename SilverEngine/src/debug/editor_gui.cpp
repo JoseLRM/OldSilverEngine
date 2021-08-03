@@ -76,7 +76,9 @@ namespace sv {
 		
 		gui_push_id(id == u64_max ? (u64)text : id);
 
-		gui_image(texture.get(), 50.f, 0u);
+		gui_push_image(GuiImageType_Background, texture.get());
+		gui_image(50.f, 0u);
+		gui_pop_image();
 
 		AssetPackage* package;
 		if (gui_recive_package((void**)&package, ASSET_BROWSER_PACKAGE_TEXTURE, GuiReciverTrigger_LastWidget)) {

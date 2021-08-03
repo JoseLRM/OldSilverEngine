@@ -24,6 +24,7 @@ namespace sv {
 		Color widget_highlighted_color = { 40u, 5u, 5u, 255u };
 		Color widget_focused_color = Color::Red();
 		Color widget_text_color = Color::White();
+		Color widget_selected_color = { 50u, 50u, 50u, 255u };
 		Color check_color = Color::White();
 		Color window_background_color = Color::Gray(4u);
 		Color window_focused_background_color = Color::Gray(6u);
@@ -42,9 +43,15 @@ namespace sv {
 		f32 scale = 1.f;
     };
 
-	enum GuiElementListFlag : u32 {
-		GuiElementListFlag_ShowDefault, // TODO
-		GuiElementListFlag_Parent
+	enum GuiImageType : u32 {
+		GuiImageType_Icon,
+		GuiImageType_Background,
+	};
+
+	enum GuiTreeFlag : u32 {
+		GuiTreeFlag_ShowDefault, // TODO
+		GuiTreeFlag_Parent,
+		GuiTreeFlag_Selected
 	};
 
     enum GuiDragFlag : u32 {
@@ -57,9 +64,9 @@ namespace sv {
 		GuiImageFlag_Fullscreen = SV_BIT(0)
     };
 
-	enum GuiImageButtonFlag : u32 {
-		GuiImageButtonFlag_NoBackground = SV_BIT(0),
-		GuiImageButtonFlag_Disabled = SV_BIT(1),
+	enum GuiButtonFlag : u32 {
+		GuiButtonFlag_NoBackground = SV_BIT(0),
+		GuiButtonFlag_Disabled = SV_BIT(1),
     };
 
     enum GuiWindowFlag : u32 {
@@ -83,6 +90,13 @@ namespace sv {
 		GuiReciverTrigger_LastWidget
     };
 
+	enum GuiReciverStyle : u32 {
+		GuiReciverStyle_None,
+		GuiReciverStyle_Red,
+		GuiReciverStyle_Green,
+		GuiReciverStyle_Blue
+	};
+
 	enum GuiTopLocation : u32 {
 		GuiTopLocation_Left,
 		GuiTopLocation_Center,
@@ -92,6 +106,9 @@ namespace sv {
     SV_API void gui_push_id(u64 id);
     SV_API void gui_push_id(const char* id);
     SV_API void gui_pop_id(u32 count = 1u);
+
+	SV_API void gui_push_image(GuiImageType type, GPUImage* image, const v4_f32& texcoord = { 0.f, 0.f, 1.f, 1.f }, GPUImageLayout layout = GPUImageLayout_ShaderResource);
+	SV_API void gui_pop_image(u32 count = 1u);
 	
     SV_API bool gui_begin_window(const char* title, u32 flags = 0u);
     SV_API void gui_end_window();
@@ -109,10 +126,9 @@ namespace sv {
 	SV_API bool gui_image_catch_input(u64 id);
 
 	SV_API void gui_send_package(const void* data, size_t size, u64 package_id);
-	SV_API bool gui_recive_package(void** dst, u64 package_id, GuiReciverTrigger trigger);
+	SV_API bool gui_recive_package(void** dst, u64 package_id, GuiReciverTrigger trigger, GuiReciverStyle style = GuiReciverStyle_Green);
 
-    SV_API bool gui_button(const char* text, u64 id = u64_max);
-	SV_API bool gui_image_button(const char* text, GPUImage* image, v4_f32 texcoord, u64 id = u64_max, u32 flags = 0u);
+    SV_API bool gui_button(const char* text, u64 id = u64_max, u32 flags = 0u);
     SV_API bool gui_checkbox(const char* text, bool& value, u64 id = u64_max);
     SV_API bool gui_checkbox(const char* text, u64 id = u64_max);
     SV_API bool gui_drag_f32(const char* text, f32& value, f32 adv = 0.1f, f32 min = -f32_max, f32 max = f32_max, u64 id = u64_max, u32 flags = 0u);
@@ -123,7 +139,7 @@ namespace sv {
     SV_API void gui_text(const char* text, u64 id = u64_max);
 	SV_API bool gui_text_field(char* buff, size_t buff_size, u64 id, u32 flags = 0u);
     SV_API bool gui_collapse(const char* text, u64 id = u64_max);
-    SV_API void gui_image_ex(GPUImage* image, GPUImageLayout layout, f32 height, v4_f32 texcoord, u64 id, u32 flags = 0u);
+    SV_API void gui_image(f32 height, u64 id, u32 flags = 0u);
     SV_API void gui_separator(u32 level);
 
 	SV_API bool gui_begin_combobox(const char* preview, u64 id, u32 flags = 0u);
@@ -133,27 +149,15 @@ namespace sv {
     SV_API void gui_end_grid();
 
     SV_API bool gui_select_filepath(const char* filepath, char* out, u64 id, u32 flags = 0u);
+	// TODO: refactor
     SV_API bool gui_asset_button(const char* text, GPUImage* image, v4_f32 texcoord, u64 id, u32 flags = 0u);
 
 	SV_API void gui_begin_top(GuiTopLocation location);
 	SV_API void gui_end_top();
 
-	// LISTS
-
-	SV_API void gui_begin_list(u64 id);
-	SV_API void gui_end_list();
-	SV_API bool gui_begin_element_list(const char* text, u64 id, bool selected, u32 flags = 0u);
-	SV_API void gui_end_element_list();
-	SV_API bool gui_element_pressed();
-
-    // HELPERS
-
-	SV_INLINE void gui_image(GPUImage* image, f32 height, v4_f32 texcoord, u64 id, u32 flags = 0u)
-	{
-		gui_image_ex(image, GPUImageLayout_ShaderResource, height, texcoord, id, flags);
-	}
-
-    SV_INLINE void gui_image(GPUImage* image, f32 height, u64 id, u32 flags = 0u) { gui_image(image, height, { 0.f, 0.f, 1.f, 1.f }, id, flags); }
+	SV_API bool gui_begin_tree(const char* text, u64 id = u64_max, u32 flags = 0u);
+	SV_API void gui_end_tree();
+	SV_API bool gui_tree_pressed();
 
 	// HIGH LEVEL
 
@@ -175,8 +179,10 @@ namespace sv {
 		SpriteSheet* sheet = sprite_sheet.get();
 		GPUImage* image = sheet ? sprite_sheet->texture.get() : NULL;
 		v4_f32 texcoord = sheet ? sheet->get_sprite_texcoord(sprite_id) : v4_f32{};
-		
-		gui_image(image, 70.f, texcoord, id);
+
+		gui_push_image(GuiImageType_Background, image, texcoord);
+		gui_image(70.f, id);
+		gui_pop_image();
 		
 		GuiSpritePackage* package;
 
@@ -201,8 +207,10 @@ namespace sv {
 		GPUImage* image = sheet ? sprite_sheet->texture.get() : NULL;
 		// TODO
 		v4_f32 texcoord = sheet ? sheet->get_sprite_texcoord(animation_id) : v4_f32{};
-		
-		gui_image(image, 70.f, texcoord, id);
+
+		gui_push_image(GuiImageType_Background, image, texcoord);
+		gui_image(70.f, id);
+		gui_pop_image();
 		
 		GuiSpriteAnimationPackage* package;
 

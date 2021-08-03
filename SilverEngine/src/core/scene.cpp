@@ -246,7 +246,10 @@ namespace sv {
 
 			Scene*& scene = scene_state->scene;
 
-			event_dispatch("close_scene", nullptr);
+			CloseSceneEvent e;
+			string_copy(e.name, scene->name, SCENE_NAME_SIZE + 1);
+
+			event_dispatch("close_scene", &e);
 
 			free_skybox();
 
@@ -347,7 +350,10 @@ namespace sv {
 			}
 		}
 
-		event_dispatch("initialize_scene", nullptr);
+		InitializeSceneEvent e;
+		string_copy(e.name, scene.name, SCENE_NAME_SIZE + 1);
+		
+		event_dispatch("initialize_scene", &e);
 	
 		return true;
     }
@@ -1288,8 +1294,6 @@ namespace sv {
 
 	bool deserialize_ecs(Deserializer& d)
 	{
-		SV_ECS();
-
 		u32 version;
 		deserialize_u32(d, version);
 		
@@ -1352,15 +1356,6 @@ namespace sv {
 				deserialize_string(d, filepath, FILEPATH_SIZE + 1);
 				load_prefab(filepath);
 			}
-		}
-
-		// TODO: dispath all events at once
-		for (Entity entity : ecs.entity_hierarchy) {
-
-			EntityCreateEvent e;
-			e.entity = entity;
-			
-			event_dispatch("on_entity_create", &e);
 		}
 
 		return true;

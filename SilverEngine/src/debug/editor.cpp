@@ -7,19 +7,33 @@
 
 namespace sv {
 
-	enum EntityHierarchyState : u32 {
-		EntityHierarchyState_ShowEntities,
-		EntityHierarchyState_ShowPrefabs,
-		EntityHierarchyState_MaxEnum,
+	enum HierarchyElementType : u32 {
+		HierarchyElementType_Entity,
+		HierarchyElementType_Folder,
+		HierarchyElementType_Root,
+	};
+
+	struct HierarchyElement {
+		HierarchyElementType type;
+		List<HierarchyElement> elements;
+
+		Entity entity;
+		char folder_name[ENTITY_NAME_SIZE + 1];
+		u32 folder_id;
 	};
 
 	struct EntityHierarchyData {
-		EntityHierarchyState state = EntityHierarchyState_ShowEntities;
+		HierarchyElement root;
+		u32 folder_id_count;
+		
+		u32 package_folder_id = 0;
+		HierarchyElementPackage package;
 	};
 
 	enum GizmosTransformMode : u32 {
 		GizmosTransformMode_None,
-		GizmosTransformMode_Position
+		GizmosTransformMode_Position,
+		GizmosTransformMode_Scale
     };
 	
     constexpr f32 GIZMOS_SIZE = 0.1f;
@@ -42,6 +56,7 @@ namespace sv {
 		bool focus = false;
 	
 		v3_f32 start_offset;
+		v3_f32 start_scale;
 		f32 axis_size;
 		f32 selection_size;
     };
@@ -173,6 +188,108 @@ namespace sv {
 
     GlobalEditorData editor;
 
+	/////////////////////////////////////////////// DO UNDO ACTIONS ////////////////////////////////////
+    
+    typedef void(*ConstructEntityActionFn)(Entity entity);
+    
+    struct EntityCreate_Action {
+		Entity entity;
+		Entity parent;
+		ConstructEntityActionFn construct_entity;
+    };
+    
+    SV_INTERNAL void do_entity_create(void* pdata, void* preturn) {
+
+		EntityCreate_Action& data = *(EntityCreate_Action*)pdata;
+
+		Entity parent = data.parent;
+		if (!entity_exists(parent))
+			parent = 0;
+
+		const char* name = (const char*)(pdata) + sizeof(data);
+		if (*name == '\0')
+			name = nullptr;
+	
+		data.entity = create_entity(parent, name);
+
+		if (preturn) {
+			memcpy(preturn, &data.entity, sizeof(Entity));
+		}
+
+		if (data.construct_entity) {
+			data.construct_entity(data.entity);
+		}
+    }
+    SV_INTERNAL void undo_entity_create(void* pdata, void* preturn) {
+
+		EntityCreate_Action& data = *(EntityCreate_Action*)pdata;
+		if (entity_exists(data.entity))
+			destroy_entity(data.entity);
+    }
+    
+    SV_INTERNAL void construct_entity_sprite(Entity entity) {
+		add_entity_component(entity, get_component_id("Sprite"));
+    }
+	SV_INTERNAL void construct_entity_cube(Entity entity) {
+		MeshComponent* mesh = (MeshComponent*)add_entity_component(entity, get_component_id("Mesh"));
+
+		if (mesh) {
+			create_asset_from_name(mesh->mesh, "Mesh", "Cube");
+		}
+    }
+	SV_INTERNAL void construct_entity_sphere(Entity entity) {
+		MeshComponent* mesh = (MeshComponent*)add_entity_component(entity, get_component_id("Mesh"));
+
+		if (mesh) {
+			create_asset_from_name(mesh->mesh, "Mesh", "Sphere");
+		}
+    }
+    SV_INTERNAL void construct_entity_camera(Entity entity) {
+		CameraComponent* camera = (CameraComponent*)add_entity_component(entity, get_component_id("Camera"));
+		if (camera){
+			camera->projection_type = ProjectionType_Perspective;
+			camera->near = 0.2f;
+			camera->far = 10000.f;
+			camera->width = 0.9f;
+			camera->height = 0.9f;
+		}
+    }
+	SV_INTERNAL void construct_entity_2D_camera(Entity entity) {
+		add_entity_component(entity, get_component_id("Camera"));
+    }
+    
+    SV_INTERNAL Entity editor_create_entity(Entity parent = 0, const char* name = nullptr, ConstructEntityActionFn construct_entity = nullptr)
+    {
+		DoUndoStack& stack = dev.do_undo_stack;
+		stack.lock();
+
+		stack.push_action(do_entity_create, undo_entity_create);
+	
+		EntityCreate_Action data;
+		data.entity = 0;
+		data.parent = parent;
+		data.construct_entity = construct_entity;
+	
+		stack.push_data(&data, sizeof(data));
+
+		size_t name_size = name ? strlen(name) : 0u;
+		if (name_size)
+			stack.push_data(name, name_size + 1u);
+		else {
+			char c = '\0';
+			stack.push_data(&c, 1u);
+		}
+
+		Entity res;
+		stack.do_action(&res);
+	
+		stack.unlock();
+
+		return res;
+    }
+
+	/////////////////// ENTITY SELECTION ///////////////////
+
 	SV_AUX bool is_entity_selected(Entity entity)
 	{
 		for (Entity e : editor.selected_entities)
@@ -180,9 +297,14 @@ namespace sv {
 		return false;
 	}
 
-	SV_AUX void select_entity(Entity entity, bool unselect_all = false)
+	SV_AUX void unselect_entities()
 	{
-		if (unselect_all || !input.keys[Key_Shift]) editor.selected_entities.reset();
+		editor.selected_entities.reset();
+	}
+
+	SV_AUX void select_entity(Entity entity, bool unselect_all)
+	{
+		if (unselect_all) unselect_entities();
 		else if (is_entity_selected(entity)) return;
 
 		if (entity_exists(entity))
@@ -209,6 +331,750 @@ namespace sv {
 			gui_hide_window("SpriteSheet Editor");
 		}
 	}
+
+	/////////////////// ENTITY HIERARCHY ///////////////////
+
+	inline u64 compute_hierarchy_state_hash(const char* scene_name)
+	{
+		u64 hash = 93742934789123;
+		hash_combine(hash, hash_string(scene_name));
+		return hash;
+	}
+
+	static void deserialize_element(Deserializer& s, HierarchyElement& element)
+	{
+		deserialize_u32(s, (u32&)element.type);
+
+		if (element.type == HierarchyElementType_Entity) {
+			deserialize_u32(s, element.entity);
+		}
+		else if (element.type == HierarchyElementType_Folder) {
+			deserialize_u32(s, element.folder_id);
+			deserialize_string(s, element.folder_name, ENTITY_NAME_SIZE + 1);
+		}
+
+		u32 element_count;
+		deserialize_u32(s, element_count);
+
+		element.elements.resize(element_count);
+
+		foreach(i, element_count) {
+			deserialize_element(s, element.elements[i]);
+		}
+
+		for(u32 i = 0u; i < element.elements.size();) {
+
+			auto& e = element.elements[i];
+			
+			if (e.type == HierarchyElementType_Entity && !entity_exists(e.entity)) {
+				element.elements.erase(i);
+			}
+			else ++i;
+		}
+	}
+
+	static void load_hierarchy_state(InitializeSceneEvent* e)
+	{
+		u64 hash = compute_hierarchy_state_hash(e->name);
+		auto& data = editor.entity_hierarchy_data;
+
+		Deserializer s;
+
+		if (bin_read(hash, s)) {
+
+			u32 version;
+			deserialize_u32(s, version);
+
+			deserialize_element(s, data.root);
+
+			deserialize_u32(s, data.folder_id_count);
+
+			deserialize_end(s);
+		}
+		else {
+			SV_LOG_WARNING("Entity Hierarchy state not found");
+		}
+	}
+
+	static void serialize_element(Serializer& s, const HierarchyElement& element)
+	{
+		serialize_u32(s, element.type);
+
+		if (element.type == HierarchyElementType_Entity) {
+			serialize_u32(s, element.entity);
+		}
+		else if (element.type == HierarchyElementType_Folder) {
+			serialize_u32(s, element.folder_id);
+			serialize_string(s, element.folder_name);
+		}
+		
+		serialize_u32(s, (u32)element.elements.size());
+
+		for (const HierarchyElement& e : element.elements) {
+			serialize_element(s, e);
+		}
+	}
+
+	static void save_hierarchy_state(CloseSceneEvent* e)
+	{
+		u64 hash = compute_hierarchy_state_hash(e->name);
+		auto& data = editor.entity_hierarchy_data;
+
+		Serializer s;
+
+		serialize_begin(s);
+
+		serialize_u32(s, 0);
+
+		serialize_element(s, data.root);
+
+		serialize_u32(s, data.folder_id_count);
+
+		if(!bin_write(hash, s)) {
+
+			SV_LOG_ERROR("Can't save the entity hierarchy state");
+		}
+	}
+	
+	static HierarchyElement* find_hierarchy_element_with_entity(HierarchyElement& element, Entity entity, bool parent)
+	{
+		for (HierarchyElement& e : element.elements) {
+
+			if (e.entity == entity) {
+				if (parent)
+					return &element;
+				else
+					return &e;
+			}
+
+			HierarchyElement* res = find_hierarchy_element_with_entity(e, entity, parent);
+			if (res)
+				return res;
+		}
+
+		return NULL;
+	}
+
+	static HierarchyElement* find_hierarchy_element_with_folder(HierarchyElement& element, u32 folder_id, bool parent)
+	{
+		for (HierarchyElement& e : element.elements) {
+
+			if (e.folder_id == folder_id) {
+				if (parent)
+					return &element;
+				else
+					return &e;
+			}
+
+			HierarchyElement* res = find_hierarchy_element_with_folder(e, folder_id, parent);
+			if (res)
+				return res;
+		}
+
+		return NULL;
+	}
+
+	static HierarchyElement* find_hierarchy_element_with_child(HierarchyElement& element, HierarchyElement* child)
+	{
+		for (HierarchyElement& e : element.elements) {
+			
+			if (&e == child) {
+				return &element;
+			}
+
+			HierarchyElement* res = find_hierarchy_element_with_child(e, child);
+			if (res)
+				return res;
+		}
+
+		return NULL;
+	}
+
+	static void create_entity_element(EntityCreateEvent* e)
+	{
+		auto& data = editor.entity_hierarchy_data;
+
+		if (find_hierarchy_element_with_entity(data.root, e->entity, false))
+			return;
+
+		Entity parent = get_entity_parent(e->entity);
+
+		HierarchyElement* element = NULL;
+		
+		if (parent == 0) {
+			
+			element = &data.root.elements.emplace_back();
+		}
+		else {
+			
+			HierarchyElement* parent_element = find_hierarchy_element_with_entity(data.root, parent, false);
+			if (parent_element) {
+
+				element = &parent_element->elements.emplace_back();
+			}
+			else SV_ASSERT(0);
+		}
+
+		if (element) {
+			element->type = HierarchyElementType_Entity;
+			element->entity = e->entity;
+			element->folder_name[0] = '\0';
+		}
+		else SV_ASSERT(0);
+	}
+
+	static void destroy_entity_element(EntityDestroyEvent* e)
+	{
+		auto& data = editor.entity_hierarchy_data;
+
+		HierarchyElement* parent_element = find_hierarchy_element_with_entity(data.root, e->entity, true);
+
+		if (parent_element) {
+
+			u32 index = u32_max;
+
+			foreach(i, parent_element->elements.size()) {
+
+				HierarchyElement& el = parent_element->elements[i];
+				
+				if (el.entity == e->entity) {
+					index = i;
+					break;
+				}
+			}
+
+			if (index != u32_max) {
+
+				parent_element->elements.erase(index);
+			}
+		}
+	}
+
+	inline void create_editor_folder(HierarchyElement& parent, const char* name)
+	{
+		HierarchyElement& e = parent.elements.emplace_back();
+		e.type = HierarchyElementType_Folder;
+		string_copy(e.folder_name, name, ENTITY_NAME_SIZE + 1);
+		e.entity = 0;
+		e.folder_id = ++editor.entity_hierarchy_data.folder_id_count;
+	}
+
+	static void destroy_editor_folder(HierarchyElement& folder)
+	{
+		SV_ASSERT(folder.type == HierarchyElementType_Folder);
+
+		if (folder.type == HierarchyElementType_Folder) {
+
+			while (folder.elements.size()) {
+
+				HierarchyElement& element = folder.elements.back();
+
+				if (element.type == HierarchyElementType_Folder) {
+					destroy_editor_folder(element);
+				}
+				else if (element.type == HierarchyElementType_Entity) {
+
+					destroy_entity(element.entity);
+				}
+			}
+
+			HierarchyElement* parent = find_hierarchy_element_with_child(editor.entity_hierarchy_data.root, &folder);
+
+			if (parent) {
+
+				u32 index = u32_max;
+
+				foreach(i, parent->elements.size()) {
+
+					if (parent->elements.data() + i == &folder) {
+						index = i;
+						break;
+					}
+				}
+
+				if (index != u32_max) {
+
+					parent->elements.erase(index);
+				}
+				else SV_ASSERT(0);
+			}
+			else SV_ASSERT(0);
+		}
+	}
+
+	static void move_entity_into_folder(u32 folder_id, Entity entity)
+	{
+		auto& data = editor.entity_hierarchy_data;
+		
+		if (get_entity_parent(entity) != 0)
+			return;
+
+		HierarchyElement* _element = find_hierarchy_element_with_folder(data.root, folder_id, false);
+		if (_element == NULL) return;
+		
+		HierarchyElement& element = *_element;
+		
+		if (element.type == HierarchyElementType_Folder) {
+			
+			HierarchyElement* parent_element = find_hierarchy_element_with_entity(data.root, entity, true);
+
+			if (parent_element) {
+
+				u32 index = u32_max;
+
+				foreach(i, parent_element->elements.size()) {
+
+					if (parent_element->elements[i].entity == entity) {
+						index = i;
+						break;
+					}
+				}
+
+				if (index != u32_max) {
+
+					element.elements.emplace_back(std::move(parent_element->elements[index]));
+					parent_element->elements.erase(index);
+				}
+			}
+		}
+	}
+
+	static void move_folder_into_folder(u32 dst_folder_id, u32 folder_id)
+	{
+		auto& data = editor.entity_hierarchy_data;
+		
+		HierarchyElement* _element = find_hierarchy_element_with_folder(data.root, dst_folder_id, false);
+		if (_element == NULL) return;
+		
+		HierarchyElement& element = *_element;
+		
+		if (element.type == HierarchyElementType_Folder) {
+
+			HierarchyElement* parent_element = find_hierarchy_element_with_folder(data.root, folder_id, true);
+
+			if (parent_element) {
+
+				u32 index = u32_max;
+
+				foreach(i, parent_element->elements.size()) {
+
+					if (parent_element->elements[i].folder_id == folder_id) {
+						index = i;
+						break;
+					}
+				}
+
+				if (index != u32_max) {
+
+					element.elements.emplace_back(std::move(parent_element->elements[index]));
+					parent_element->elements.erase(index);
+				}
+			}
+		}
+	}
+
+	static void move_folder_into_root(u32 folder_id)
+	{
+		auto& data = editor.entity_hierarchy_data;
+		
+		HierarchyElement& element = data.root;
+		
+		if (element.type == HierarchyElementType_Root) {
+
+			HierarchyElement* parent_element = find_hierarchy_element_with_folder(data.root, folder_id, true);
+
+			if (parent_element) {
+
+				u32 index = u32_max;
+
+				foreach(i, parent_element->elements.size()) {
+
+					if (parent_element->elements[i].folder_id == folder_id) {
+						index = i;
+						break;
+					}
+				}
+
+				if (index != u32_max) {
+
+					element.elements.emplace_back(std::move(parent_element->elements[index]));
+					parent_element->elements.erase(index);
+				}
+			}
+		}
+	}
+
+	static void move_entity_into_root(Entity entity)
+	{
+		auto& data = editor.entity_hierarchy_data;
+		
+		HierarchyElement& element = data.root;
+		
+		if (element.type == HierarchyElementType_Root) {
+			
+			HierarchyElement* parent_element = find_hierarchy_element_with_entity(data.root, entity, true);
+
+			if (parent_element) {
+
+				u32 index = u32_max;
+
+				foreach(i, parent_element->elements.size()) {
+
+					if (parent_element->elements[i].entity == entity) {
+						index = i;
+						break;
+					}
+				}
+
+				if (index != u32_max) {
+
+					element.elements.emplace_back(std::move(parent_element->elements[index]));
+					parent_element->elements.erase(index);
+				}
+			}
+		}
+	}
+
+	static void select_folder_entities(HierarchyElement& element)
+	{
+		if (element.type == HierarchyElementType_Folder) {
+
+			for (HierarchyElement& e : element.elements) {
+
+				if (e.type == HierarchyElementType_Entity) {
+					select_entity(e.entity, false);
+				}
+				else if (e.type == HierarchyElementType_Folder) {
+					select_folder_entities(e);
+				}
+			}
+		}
+	}
+
+	static void show_element_popup(HierarchyElement& element, bool& destroy)
+    {
+		if (element.type == HierarchyElementType_Entity) {
+
+			Entity entity = element.entity;
+			
+			if (gui_begin_popup(GuiPopupTrigger_LastWidget)) {
+	    
+				if (gui_button("Destroy")) {
+					destroy = true;
+					gui_close_popup();
+				}
+
+				if (gui_button("Duplicate")) {
+					duplicate_entity(entity);
+				}
+	    
+				if (gui_button("Create Child")) {
+					editor_create_entity(entity);
+				}
+
+				if (!is_prefab(entity)) {
+
+					gui_separator(1);
+
+					if (gui_button("Save Prefab")) {
+				
+						char path[FILEPATH_SIZE + 1u] = "";
+		    
+						if (file_dialog_save(path, 0u, nullptr, "")) {
+
+							char* extension = filepath_extension(path);
+							if (extension != nullptr) {
+								*extension = '\0';
+							}
+							string_append(path, ".prefab", FILEPATH_SIZE + 1u);
+
+							save_prefab(entity, path);
+						}
+					}
+				}
+				else {
+
+					if (gui_button("Create Entity")) {
+
+						Entity created = create_entity(0, NULL, entity);
+
+						select_entity(created, true);
+					}
+				}
+
+				gui_end_popup();
+			}
+		}
+		else if (element.type == HierarchyElementType_Folder) {
+			
+			if (gui_begin_popup(GuiPopupTrigger_LastWidget)) {
+	    
+				if (gui_button("Destroy")) {
+					destroy = true;
+					gui_close_popup();
+				}
+
+				if (gui_button("Create Folder")) {
+					create_editor_folder(element, "Folder");
+				}
+
+				gui_end_popup();
+			}
+		}
+    }
+
+    static void show_element(HierarchyElement& element)
+    {
+		auto& data = editor.entity_hierarchy_data;
+		const char* name = "";
+		bool selected = false;
+		u64 id = u64_max;
+		
+		if (element.type == HierarchyElementType_Entity) {
+
+			id = (u64)element.entity;
+
+			name = get_entity_name(element.entity);
+			if (string_size(name) == 0u) name = "Unnamed";
+
+			selected = is_entity_selected(element.entity);
+		}
+		else if (element.type == HierarchyElementType_Folder) {
+			
+			id = (u64)(element.folder_id | 0xFF000000);
+
+			name = element.folder_name;
+			if (string_size(name) == 0u) name = "Unnamed";
+
+			selected = false; // TODO
+		}
+		else if (element.type == HierarchyElementType_Root) {
+
+			foreach(i, element.elements.size()) {
+
+				HierarchyElement& e = element.elements[i];
+				show_element(e);
+			}
+			return;
+		}
+		else return;
+
+		bool destroy = false;
+
+		u32 flags = 0u;
+		bool has_childs = element.elements.size() != 0;
+
+		if (selected) flags |= GuiTreeFlag_Selected;
+
+		if (has_childs != 0)
+			flags |= GuiTreeFlag_Parent;
+
+		if (element.type == HierarchyElementType_Folder)
+			gui_push_image(GuiImageType_Icon, editor.image.get(), editor.TEXCOORD_FOLDER);
+		bool begin = gui_begin_tree(name, id, flags);
+		if (element.type == HierarchyElementType_Folder)
+			gui_pop_image();
+
+		HierarchyElementPackage package;
+
+		if (element.type == HierarchyElementType_Entity) {
+			
+			package.entity = (editor.selected_entities.size() > 1) ? 0 : element.entity;
+			package.folder_id = 0;
+		}
+		else if (element.type == HierarchyElementType_Folder) {
+			package.entity = 0;
+			package.folder_id = element.folder_id;
+		}
+
+		package.type = element.type;
+		gui_send_package(&package, sizeof(HierarchyElementPackage), HIERARCHY_ELEMENT_PACKAGE);
+
+		if (element.type == HierarchyElementType_Folder) {
+
+			HierarchyElementPackage* package;
+			if (gui_recive_package((void**)&package, HIERARCHY_ELEMENT_PACKAGE, GuiReciverTrigger_LastWidget)) {
+
+				data.package = *package;
+				data.package_folder_id = element.folder_id;
+			}
+		}
+		
+		if (gui_tree_pressed()) {
+
+			if (element.type == HierarchyElementType_Entity) {
+
+				Entity entity = element.entity;
+				
+				if (selected) {
+					if (editor.selected_entities.size() == 1u)
+						unselect_entity(entity);
+					else {
+						select_entity(entity, true);
+					}
+				}
+				else {
+					select_entity(entity, !input.keys[Key_Shift]);
+				}
+			}
+			else if (element.type == HierarchyElementType_Folder) {
+
+				if (!input.keys[Key_Shift])
+					unselect_entities();
+
+				select_folder_entities(element);
+			}
+		}
+
+		show_element_popup(element, destroy);
+
+		if (begin) {
+
+			if (!destroy) {
+					
+				foreach(i, element.elements.size()) {
+
+					HierarchyElement& e = element.elements[i];
+					show_element(e);
+				}
+			}
+			
+			gui_end_tree();
+		}
+		
+		if (destroy) {
+
+			if (element.type == HierarchyElementType_Entity) {
+
+				Entity entity = element.entity;
+				destroy_entity(entity);
+			
+				foreach(i, editor.selected_entities.size()) {
+				
+					if (editor.selected_entities[i] == entity) {
+						editor.selected_entities.erase(i);
+						break;
+					}
+				}
+			}
+			else if (element.type == HierarchyElementType_Folder) {
+
+				destroy_editor_folder(element);
+			}
+		}
+    }
+
+    inline void display_create_popup()
+    {	
+		gui_push_id("Create Popup");
+	
+		if (gui_begin_popup(GuiPopupTrigger_Root)) {
+		
+			if (gui_button("Create Entity")) {
+				editor_create_entity();
+			}
+
+			if (gui_button("Create Sprite")) {
+
+				editor_create_entity(0, "Sprite", construct_entity_sprite);
+			}
+
+			if (gui_button("Create Cube")) {
+
+				editor_create_entity(0, "Cube", construct_entity_cube);
+			}
+
+			if (gui_button("Create Sphere")) {
+
+				editor_create_entity(0, "Sphere", construct_entity_sphere);
+			}
+
+			if (gui_button("Create Camera")) {
+
+				editor_create_entity(0, "Camera", construct_entity_camera);
+			}
+
+			if (gui_button("Create 2D Camera")) {
+
+				editor_create_entity(0, "Camera 2D", construct_entity_2D_camera);
+			}
+
+			gui_separator(2);
+
+			if (gui_button("Create Folder")) {
+
+				create_editor_folder(editor.entity_hierarchy_data.root, "Folder");
+			}
+
+			gui_end_popup();
+		}
+
+		gui_pop_id();
+    }
+    
+    void display_entity_hierarchy()
+    {
+		auto& data = editor.entity_hierarchy_data;
+		
+		if (gui_begin_window("Hierarchy")) {
+
+			show_element(data.root);
+
+			display_create_popup();
+
+			// Recive prefabs
+			{
+				PrefabPackage* package;
+				if (gui_recive_package((void**)&package, ASSET_BROWSER_PREFAB, GuiReciverTrigger_Root, GuiReciverStyle_None)) {
+				
+					load_prefab(package->filepath);
+				}
+			}
+
+			// Recive hierarchy elements
+			{
+				HierarchyElementPackage* package;
+				if (gui_recive_package((void**)&package, HIERARCHY_ELEMENT_PACKAGE, GuiReciverTrigger_Root, GuiReciverStyle_None)) {
+					
+					if (package->folder_id != 0) {
+						move_folder_into_root(package->folder_id);
+					}
+					else if (package->entity == 0 || entity_exists(package->entity)) {
+
+						if (package->entity == 0) {
+
+							for (Entity e : editor.selected_entities)
+								move_entity_into_root(e);
+						}
+						else move_entity_into_root(package->entity);
+					}
+				}
+			}
+			
+			gui_end_window();
+		}
+
+		if (data.package_folder_id != 0) {
+
+			if (data.package.folder_id != 0) {
+
+				move_folder_into_folder(data.package_folder_id, data.package.folder_id);
+			}
+			else if (data.package.entity == 0 || entity_exists(data.package.entity)) {
+
+				if (data.package.entity == 0) {
+
+					for (Entity e : editor.selected_entities)
+						move_entity_into_folder(data.package_folder_id, e);
+				}
+				else move_entity_into_folder(data.package_folder_id, data.package.entity);
+			}
+
+			data.package_folder_id = 0;
+		}
+    }
+
+	///////////////////	///////////////////
 
     SV_INTERNAL void show_reset_popup()
     {
@@ -340,106 +1206,6 @@ namespace sv {
 		}
 		else {
 		}
-    }
-
-    /////////////////////////////////////////////// DO UNDO ACTIONS ////////////////////////////////////
-    
-    typedef void(*ConstructEntityActionFn)(Entity entity);
-    
-    struct EntityCreate_Action {
-		Entity entity;
-		Entity parent;
-		ConstructEntityActionFn construct_entity;
-    };
-    
-    SV_INTERNAL void do_entity_create(void* pdata, void* preturn) {
-
-		EntityCreate_Action& data = *(EntityCreate_Action*)pdata;
-
-		Entity parent = data.parent;
-		if (!entity_exists(parent))
-			parent = 0;
-
-		const char* name = (const char*)(pdata) + sizeof(data);
-		if (*name == '\0')
-			name = nullptr;
-	
-		data.entity = create_entity(parent, name);
-
-		if (preturn) {
-			memcpy(preturn, &data.entity, sizeof(Entity));
-		}
-
-		if (data.construct_entity) {
-			data.construct_entity(data.entity);
-		}
-    }
-    SV_INTERNAL void undo_entity_create(void* pdata, void* preturn) {
-
-		EntityCreate_Action& data = *(EntityCreate_Action*)pdata;
-		if (entity_exists(data.entity))
-			destroy_entity(data.entity);
-    }
-    
-    SV_INTERNAL void construct_entity_sprite(Entity entity) {
-		add_entity_component(entity, get_component_id("Sprite"));
-    }
-	SV_INTERNAL void construct_entity_cube(Entity entity) {
-		MeshComponent* mesh = (MeshComponent*)add_entity_component(entity, get_component_id("Mesh"));
-
-		if (mesh) {
-			create_asset_from_name(mesh->mesh, "Mesh", "Cube");
-		}
-    }
-	SV_INTERNAL void construct_entity_sphere(Entity entity) {
-		MeshComponent* mesh = (MeshComponent*)add_entity_component(entity, get_component_id("Mesh"));
-
-		if (mesh) {
-			create_asset_from_name(mesh->mesh, "Mesh", "Sphere");
-		}
-    }
-    SV_INTERNAL void construct_entity_camera(Entity entity) {
-		CameraComponent* camera = (CameraComponent*)add_entity_component(entity, get_component_id("Camera"));
-		if (camera){
-			camera->projection_type = ProjectionType_Perspective;
-			camera->near = 0.2f;
-			camera->far = 10000.f;
-			camera->width = 0.9f;
-			camera->height = 0.9f;
-		}
-    }
-	SV_INTERNAL void construct_entity_2D_camera(Entity entity) {
-		add_entity_component(entity, get_component_id("Camera"));
-    }
-    
-    SV_INTERNAL Entity editor_create_entity(Entity parent = 0, const char* name = nullptr, ConstructEntityActionFn construct_entity = nullptr)
-    {
-		DoUndoStack& stack = dev.do_undo_stack;
-		stack.lock();
-
-		stack.push_action(do_entity_create, undo_entity_create);
-	
-		EntityCreate_Action data;
-		data.entity = 0;
-		data.parent = parent;
-		data.construct_entity = construct_entity;
-	
-		stack.push_data(&data, sizeof(data));
-
-		size_t name_size = name ? strlen(name) : 0u;
-		if (name_size)
-			stack.push_data(name, name_size + 1u);
-		else {
-			char c = '\0';
-			stack.push_data(&c, 1u);
-		}
-
-		Entity res;
-		stack.do_action(&res);
-	
-		stack.unlock();
-
-		return res;
     }
 
     /////////////////////////////////////////////// CAMERA ///////////////////////////////////////
@@ -674,14 +1440,22 @@ namespace sv {
 		return position;
 	}
 
+	SV_AUX v3_f32 compute_selected_entities_scale()
+	{
+		v3_f32 scale;
+		
+		f32 mult = 1.f / f32(editor.selected_entities.size());
+		for (Entity e : editor.selected_entities) {
+
+			scale += get_entity_world_scale(e) * mult;
+		}
+
+		return scale;
+	}
+
     SV_INTERNAL void update_gizmos()
     {
 		GizmosData& info = editor.tool_data.gizmos_data;
-
-		if (!input.unused || editor.selected_entities.empty()) {
-			info.focus = false;
-			return;
-		}
 
 		v3_f32 position = compute_selected_entities_position();
 		
@@ -691,6 +1465,13 @@ namespace sv {
 			info.selection_size = relative_scalar(0.008f, position);
 		}
 
+		if (!input.unused || editor.selected_entities.empty()) {
+			info.focus = false;
+			return;
+		}
+
+		v3_f32 scale = compute_selected_entities_scale();
+
 		if (!info.focus) {
 
 			info.object = GizmosObject_None;
@@ -699,8 +1480,9 @@ namespace sv {
 
 			switch (info.mode)
 			{
-
+				
 			case GizmosTransformMode_Position:
+			case GizmosTransformMode_Scale:
 			{
 				GizmosObject obj[] = {
 					GizmosObject_AxisX,
@@ -745,6 +1527,7 @@ namespace sv {
 						if (dist0 < info.selection_size && dist1 > 0.f && dist1 <= info.axis_size) {
 							info.object = obj[i];
 							info.start_offset = p1 - position;
+							info.start_scale = scale;
 						}
 					}
 				}
@@ -793,6 +1576,7 @@ namespace sv {
 			else {
 
 				v3_f32 init_pos = position;
+				v3_f32 init_scale = scale;
 
 				if (dev.camera.projection_type == ProjectionType_Perspective) {
 
@@ -819,16 +1603,43 @@ namespace sv {
 					v3_f32 p0, p1;
 					closest_points_between_two_lines(ray.origin, ray.direction, position, axis, p0, p1);
 
-					v3_f32 move = p1 - info.start_offset;
+					if (info.mode == GizmosTransformMode_Position) {
 
-					if (input.keys[Key_Shift]) {
+						v3_f32 move = p1 - info.start_offset;
 
-						move.x = i32(move.x / info.position_advance) * info.position_advance;
-						move.y = i32(move.y / info.position_advance) * info.position_advance;
-						move.z = i32(move.z / info.position_advance) * info.position_advance;
-					}
+						if (input.keys[Key_Shift]) {
+
+							move.x = i32(move.x / info.position_advance) * info.position_advance;
+							move.y = i32(move.y / info.position_advance) * info.position_advance;
+							move.z = i32(move.z / info.position_advance) * info.position_advance;
+						}
+
 					
-					position = move;
+						position = move;
+					}
+					else if (info.mode == GizmosTransformMode_Scale) {
+						
+						scale = info.start_scale + (p1 - info.start_offset) - position;
+
+						switch (info.object) {
+
+						case GizmosObject_AxisX:
+							scale.y = init_scale.y;
+							scale.z = init_scale.z;
+							break;
+
+						case GizmosObject_AxisY:
+							scale.x = init_scale.x;
+							scale.z = init_scale.z;
+							break;
+
+						case GizmosObject_AxisZ:
+							scale.x = init_scale.x;
+							scale.y = init_scale.y;
+							break;
+							
+						}
+					}
 				}
 				else {
 
@@ -849,11 +1660,13 @@ namespace sv {
 				}
 
 				// Set new position
-				v3_f32 move = position - init_pos;
+				v3_f32 move_position = position - init_pos;
+				v3_f32 move_scale = scale - init_scale;
 				
 				for (Entity e : editor.selected_entities) {
 
-					v3_f32& pos = *get_entity_position_ptr(e);
+					v3_f32& entity_position = *get_entity_position_ptr(e);
+					v3_f32& entity_scale = *get_entity_scale_ptr(e);
 
 					Entity parent = get_entity_parent(e);
 
@@ -863,9 +1676,13 @@ namespace sv {
 
 						wm = XMMatrixInverse(NULL, wm);
 						
-						pos += (v3_f32)XMVector4Transform(vec3_to_dx(move), wm);
+						entity_position += (v3_f32)XMVector4Transform(vec3_to_dx(move_position), wm);
+						entity_scale += (v3_f32)XMVector4Transform(vec3_to_dx(move_scale), wm);
 					}
-					else pos += move;
+					else {
+						entity_position += move_position;
+						entity_scale += move_scale;
+					}
 				}
 			}
 		}
@@ -897,6 +1714,22 @@ namespace sv {
 		}
 		break;
 
+		case GizmosTransformMode_Scale:
+		{
+			Color color = ((info.object == GizmosObject_AxisX) ? (info.focus ? Color::Silver() : Color{255u, 50u, 50u, 255u}) : Color::Red());
+			imrend_draw_line(position, position + v3_f32::right() * axis_size, color, cmd);
+			imrend_draw_quad(position + v3_f32::right() * axis_size, { axis_size * 0.1f }, color, cmd);
+
+			color = ((info.object == GizmosObject_AxisY) ? (info.focus ? Color::Silver() : Color::Lime()) : Color::Green());
+			imrend_draw_line(position, position + v3_f32::up() * axis_size, color, cmd);
+			imrend_draw_quad(position + v3_f32::up() * axis_size, { axis_size * 0.1f }, color, cmd);
+
+			color = ((info.object == GizmosObject_AxisZ) ? (info.focus ? Color::Silver() : Color{50u, 50u, 255u, 255u}) : Color::Blue());
+			imrend_draw_line(position, position + v3_f32::forward() * axis_size, color, cmd);
+			imrend_draw_quad(position + v3_f32::forward() * axis_size, { axis_size * 0.1f }, color, cmd);
+		}
+		break;
+
 		}
     }
 
@@ -909,6 +1742,21 @@ namespace sv {
 		load_asset_from_file(editor.image, "$system/images/editor.png");
 
 		event_register("user_callbacks_initialize", show_reset_popup, 0u);
+
+		// Entity Hierarchy
+		{
+			event_register("on_entity_create", create_entity_element, 0u);
+			event_register("on_entity_destroy", destroy_entity_element, 0u);
+
+			event_register("initialize_scene", load_hierarchy_state, 0u);
+			event_register("close_scene", save_hierarchy_state, 0u);
+
+			auto& data = editor.entity_hierarchy_data;
+			data.root.type = HierarchyElementType_Root;
+			data.root.entity = 0;
+			data.root.folder_name[0] = '\0';
+			data.folder_id_count = 0;
+		}
 
 		dev.engine_state = EngineState_ProjectManagement;
 		_gui_load("PROJECT");
@@ -1436,240 +2284,8 @@ namespace sv {
 			}
 		}
 		
-		select_entity(selected);
+		select_entity(selected, !input.keys[Key_Shift]);
 	}
-    
-    static void show_entity_popup(Entity entity, bool& destroy)
-    {
-		if (gui_begin_popup(GuiPopupTrigger_LastWidget)) {
-	    
-			destroy = gui_button("Destroy");
-
-			if (gui_button("Duplicate")) {
-				duplicate_entity(entity);
-			}
-	    
-			if (gui_button("Create Child")) {
-				editor_create_entity(entity);
-			}
-
-			if (!is_prefab(entity)) {
-
-				gui_separator(1);
-
-				if (gui_button("Save Prefab")) {
-				
-					char path[FILEPATH_SIZE + 1u] = "";
-		    
-					if (file_dialog_save(path, 0u, nullptr, "")) {
-
-						char* extension = filepath_extension(path);
-						if (extension != nullptr) {
-							*extension = '\0';
-						}
-						string_append(path, ".prefab", FILEPATH_SIZE + 1u);
-
-						save_prefab(entity, path);
-					}
-				}
-			}
-			else {
-
-				if (gui_button("Create Entity")) {
-
-					Entity created = create_entity(0, NULL, entity);
-
-					select_entity(created);
-					editor.entity_hierarchy_data.state = EntityHierarchyState_ShowEntities;
-				}
-			}
-
-			gui_end_popup();
-		}
-    }
-
-    SV_INTERNAL void show_entity(Entity entity)
-    {
-		gui_push_id(entity);
-
-		const char* name = get_entity_name(entity);
-		if (string_size(name) == 0u) name = "Unnamed";
-
-		bool destroy = false;
-
-		u32 flags = 0u;
-		bool selected = is_entity_selected(entity);
-		u32 child_count = get_entity_childs_count(entity);
-
-		if (child_count != 0)
-			flags |= GuiElementListFlag_Parent;
-	    
-		bool begin = gui_begin_element_list(name, entity, selected, flags);
-		
-		if (gui_element_pressed()) {
-				
-			if (selected) {
-				if (editor.selected_entities.size() == 1u)
-					unselect_entity(entity);
-				else {
-					select_entity(entity, true);
-				}
-			}
-			else {
-				select_entity(entity);
-			}
-		}
-
-		show_entity_popup(entity, destroy);
-
-		if (begin) {
-
-			if (!destroy) {
-				
-				child_count = get_entity_childs_count(entity);
-			
-				foreach(i, child_count) {
-				
-					Entity child = get_entity_child(entity, i);
-				
-					show_entity(child);
-				
-					child_count = get_entity_childs_count(entity);
-				
-					if (entity_exists(child))
-						i += get_entity_childs_count(child);
-				}
-			}
-			
-			gui_end_element_list();
-		}
-		
-		if (destroy) {
-			destroy_entity(entity);
-			
-			foreach(i, editor.selected_entities.size()) {
-				
-				if (editor.selected_entities[i] == entity) {
-					editor.selected_entities.erase(i);
-					break;
-				}
-			}
-		}
-
-		gui_pop_id();
-    }
-
-    SV_AUX void display_create_popup()
-    {	
-		gui_push_id("Create Popup");
-	
-		if (gui_begin_popup(GuiPopupTrigger_Root)) {
-		
-			if (gui_button("Create Entity")) {
-				editor_create_entity();
-			}
-
-			if (gui_button("Create Sprite")) {
-
-				editor_create_entity(0, "Sprite", construct_entity_sprite);
-			}
-
-			if (gui_button("Create Cube")) {
-
-				editor_create_entity(0, "Cube", construct_entity_cube);
-			}
-
-			if (gui_button("Create Sphere")) {
-
-				editor_create_entity(0, "Sphere", construct_entity_sphere);
-			}
-
-			if (gui_button("Create Camera")) {
-
-				editor_create_entity(0, "Camera", construct_entity_camera);
-			}
-
-			if (gui_button("Create 2D Camera")) {
-
-				editor_create_entity(0, "Camera 2D", construct_entity_2D_camera);
-			}
-
-			gui_end_popup();
-		}
-
-		gui_pop_id();
-    }
-
-	SV_AUX const char* get_entity_hierarchy_state_string(EntityHierarchyState state)
-	{
-		switch (state) {
-
-		case EntityHierarchyState_ShowEntities:
-			return "Show Entities";
-
-		case EntityHierarchyState_ShowPrefabs:
-			return "Show Prefabs";
-
-		default:
-			return "Unknown";
-			
-		}
-	}
-    
-    void display_entity_hierarchy()
-    {
-		auto& data = editor.entity_hierarchy_data;
-		
-		if (gui_begin_window("Hierarchy")) {
-
-			if (gui_begin_combobox(get_entity_hierarchy_state_string(data.state), 423478234)) {
-
-				foreach(i, EntityHierarchyState_MaxEnum) {
-
-					EntityHierarchyState state = (EntityHierarchyState)i;
-					if (gui_button(get_entity_hierarchy_state_string(state))) {
-						data.state = state;
-					}
-				}
-
-				gui_end_combobox();
-			}
-
-			u32 entity_count = get_entity_count();
-
-			gui_begin_list(69u);
-			
-			for (u32 i = 0u; i < entity_count;) {
-
-				Entity entity = get_entity_by_index(i);
-
-				EntityHierarchyState state = is_prefab(entity) ? EntityHierarchyState_ShowPrefabs : EntityHierarchyState_ShowEntities;
-
-				if (data.state == state) {
-				
-					show_entity(entity);
-					entity_count = get_entity_count();
-				}
-	    
-				if (entity_exists(entity)) {
-
-					i += get_entity_childs_count(entity) + 1u;
-				}
-			}
-
-			gui_end_list();
-
-			display_create_popup();
-
-			PrefabPackage* package;
-			if (gui_recive_package((void**)&package, ASSET_BROWSER_PREFAB, GuiReciverTrigger_Root)) {
-				
-				load_prefab(package->filepath);
-			}
-			
-			gui_end_window();
-		}
-    }
 
     void display_entity_inspector()
     {
@@ -2460,13 +3076,17 @@ namespace sv {
 						 ++it)
 					{
 						u32 index = it.get_index();
-						
 						Sprite& sprite = *it;
-						if (gui_image_button(sprite.name, image, sprite.texcoord, index + 28349u)) {
+
+						gui_push_image(GuiImageType_Background, image, sprite.texcoord);
+						
+						if (gui_button(sprite.name, index + 28349u)) {
 
 							data.modifying_id = index;
 							data.next_state = SpriteSheetEditorState_ModifySprite;
 						}
+
+						gui_pop_image();
 
 						package.sprite_id = it.get_index();
 						gui_send_package(&package, sizeof(GuiSpritePackage), GUI_PACKAGE_SPRITE);
@@ -2493,8 +3113,10 @@ namespace sv {
 				case SpriteSheetEditorState_NewSprite:
 				{
 					Sprite& sprite = data.temp_sprite;
-					
-					gui_image(image, 80.f, sprite.texcoord, 0u);
+
+					gui_push_image(GuiImageType_Background, image, sprite.texcoord);
+					gui_image(80.f, 0u);
+					gui_pop_image();
 
 					gui_text_field(sprite.name, SPRITE_NAME_SIZE + 1u, 1u);
 
@@ -2518,8 +3140,10 @@ namespace sv {
 					else {
 						
 						Sprite& sprite = data.temp_sprite;
-					
-						gui_image(image, 80.f, sprite.texcoord, 0u);
+
+						gui_push_image(GuiImageType_Background, image, sprite.texcoord);
+						gui_image(80.f, 0u);
+						gui_pop_image();
 
 						gui_text_field(sprite.name, SPRITE_NAME_SIZE + 1u, 1u);
 
@@ -2561,12 +3185,16 @@ namespace sv {
 
 						u32 current_sprite = u32(data.simulation_time / anim.frame_time) % anim.frames;
 						v4_f32 texcoord = sheet->get_sprite_texcoord(anim.sprites[current_sprite]);
+
+						gui_push_image(GuiImageType_Background, image, texcoord);
 						
-						if (gui_image_button(anim.name, image, texcoord, index + 28349u)) {
+						if (gui_button(anim.name, index + 28349u)) {
 
 							data.modifying_id = index;
 							data.next_state = SpriteSheetEditorState_ModifyAnimation;
 						}
+
+						gui_pop_image();
 
 						package.animation_id = it.get_index();
 
@@ -2601,10 +3229,12 @@ namespace sv {
 						
 						u32 current_spr = u32(data.simulation_time / anim.frame_time) % anim.frames;
 						v4_f32 texcoord = sheet->get_sprite_texcoord(anim.sprites[current_spr]);
-					
-						gui_image(image, 80.f, texcoord, 0u);
+
+						gui_push_image(GuiImageType_Background, image, texcoord);
+						gui_image(80.f, 0u);
+						gui_pop_image();
 					}
-					else gui_image(NULL, 80.f, {}, 0u);
+					else gui_image(80.f, 0u);
 
 					gui_text_field(anim.name, SPRITE_NAME_SIZE + 1u, 1u);
 					
@@ -2616,9 +3246,13 @@ namespace sv {
 
 							const Sprite& spr = sheet->sprites[spr_id];
 
-							if (gui_image_button(spr.name, image, spr.texcoord, spr_id + 84390u)) {
+							gui_push_image(GuiImageType_Background, image, spr.texcoord);
+
+							if (gui_button(spr.name, spr_id + 84390u)) {
 								
 							}
+
+							gui_pop_image();
 						}
 						else {
 							// TODO
@@ -2646,12 +3280,16 @@ namespace sv {
 						 it.has_next();
 						 ++it)
 					{
-						if (gui_image_button(it->name, image, it->texcoord, it.get_index() + 38543u)) {
+						gui_push_image(GuiImageType_Background, image, it->texcoord);
+						
+						if (gui_button(it->name, it.get_index() + 38543u)) {
 
 							data.next_state = SpriteSheetEditorState_NewAnimation;
 							u32& spr = data.temp_anim.sprites[data.temp_anim.frames++];
 							spr = it.get_index();
 						}
+
+						gui_pop_image();
 					}
 				}
 				break;
@@ -2761,16 +3399,26 @@ namespace sv {
 					{
 						auto& data = editor.tool_data;
 
-						u32 flags = (data.tool_type == EditorToolType_Gizmos) ? GuiImageButtonFlag_Disabled : 0;
+						u32 flags = (data.tool_type == EditorToolType_Gizmos) ? GuiButtonFlag_Disabled : 0;
 					
-						if (gui_image_button(NULL, NULL, {0.f, 0.f, 1.f, 1.f}, 209846, GuiImageButtonFlag_NoBackground | flags)) {
+						if (gui_button(NULL, 209846, GuiButtonFlag_NoBackground | flags)) {
 							data.tool_type = EditorToolType_Gizmos;
 						}
 
-						flags = (data.tool_type == EditorToolType_TerrainBrush) ? GuiImageButtonFlag_Disabled : 0;
+						flags = (data.tool_type == EditorToolType_TerrainBrush) ? GuiButtonFlag_Disabled : 0;
 					
-						if (gui_image_button(NULL, NULL, {0.f, 0.f, 1.f, 1.f}, 43645, GuiImageButtonFlag_NoBackground | flags)) {
+						if (gui_button(NULL, 43645, GuiButtonFlag_NoBackground | flags)) {
 							data.tool_type = EditorToolType_TerrainBrush;
+						}
+
+						if (data.tool_type == EditorToolType_Gizmos) {
+							
+							if (gui_button(NULL, 9829344, GuiButtonFlag_NoBackground | flags)) {
+								data.gizmos_data.mode = GizmosTransformMode_Position;
+							}
+							if (gui_button(NULL, 92745734, GuiButtonFlag_NoBackground | flags)) {
+								data.gizmos_data.mode = GizmosTransformMode_Scale;
+							}
 						}
 					}
 					gui_end_top();
@@ -2779,25 +3427,40 @@ namespace sv {
 
 					if (dev.engine_state == EngineState_Play) {
 
-						if (gui_image_button(NULL, editor.image.get(), engine.update_scene ? GlobalEditorData::TEXCOORD_PAUSE : GlobalEditorData::TEXCOORD_PLAY, 754, GuiImageButtonFlag_NoBackground)) {
+						gui_push_image(GuiImageType_Background, editor.image.get(), engine.update_scene ? GlobalEditorData::TEXCOORD_PAUSE : GlobalEditorData::TEXCOORD_PLAY);
+
+						if (gui_button(NULL, 754, GuiButtonFlag_NoBackground)) {
 							engine.update_scene = !engine.update_scene;
 						}
-						if (gui_image_button(NULL, editor.image.get(), GlobalEditorData::TEXCOORD_STOP, 324, GuiImageButtonFlag_NoBackground)) {
+
+						gui_pop_image();
+
+						gui_push_image(GuiImageType_Background, editor.image.get(), GlobalEditorData::TEXCOORD_STOP);
+						
+						if (gui_button(NULL, 324, GuiButtonFlag_NoBackground)) {
 							dev.next_engine_state = EngineState_Edit;
 						}
+
+						gui_pop_image();
 					}
 					else {
 
-						if (gui_image_button(NULL, editor.image.get(), GlobalEditorData::TEXCOORD_PLAY, 324, GuiImageButtonFlag_NoBackground)) {
+						gui_push_image(GuiImageType_Background, editor.image.get(), GlobalEditorData::TEXCOORD_PLAY);
+
+						if (gui_button(NULL, 324, GuiButtonFlag_NoBackground)) {
 							dev.next_engine_state = EngineState_Play;
 						}
+
+						gui_pop_image();
 					}
 
 					gui_end_top();
 
 					if (gui_begin_window("Editor View")) {
 
-						gui_image(editor.offscreen_editor, 0, 0, GuiImageFlag_Fullscreen);
+						gui_push_image(GuiImageType_Background, editor.offscreen_editor, { 0.f, 0.f, 1.f, 1.f });
+						gui_image(0.f, 0, GuiImageFlag_Fullscreen);
+						gui_pop_image();
 
 						editor.editor_view_size = gui_root_size();
 						editor.in_editor_view = gui_image_catch_input(0);
@@ -2820,7 +3483,9 @@ namespace sv {
 
 					if (gui_begin_window("Game View")) {
 
-						gui_image(editor.offscreen_game, 0, 0, GuiImageFlag_Fullscreen);
+						gui_push_image(GuiImageType_Background, editor.offscreen_game, { 0.f, 0.f, 1.f, 1.f });
+						gui_image(0.f, 0, GuiImageFlag_Fullscreen);
+						gui_pop_image();
 
 						editor.game_view_size = gui_root_size();
 						editor.in_game_view = gui_image_catch_input(0);
@@ -3091,8 +3756,10 @@ namespace sv {
 
 					TextureAsset tex;
 
-					if (load_asset_from_file(tex, "$system/images/skymap.jpeg"))
-						gui_image(tex.get(), 0.f, 0u, GuiImageFlag_Fullscreen);
+					if (load_asset_from_file(tex, "$system/images/skymap.jpeg")) {
+						gui_push_image(GuiImageType_Background, tex.get(), { 0.f, 0.f, 1.f, 1.f });
+						gui_image(0.f, 0u, GuiImageFlag_Fullscreen);
+					}
 		    
 					gui_end_window();
 				}

@@ -462,6 +462,14 @@ namespace sv {
 
     // EVENTS
 
+	struct InitializeSceneEvent {
+		char name[SCENE_NAME_SIZE + 1];
+	};
+
+	struct CloseSceneEvent {
+		char name[SCENE_NAME_SIZE + 1];
+	};
+
     struct EntityCreateEvent {
 		Entity entity;
     };

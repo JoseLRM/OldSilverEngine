@@ -2406,14 +2406,20 @@ namespace sv {
 						name = "Unnamed";
 
 					gui_text(get_entity_name(ref.entity));
-					foreach(i, 4u)
-						gui_image_ex(ref.image[i], GPUImageLayout_DepthStencilReadOnly, 200.f, { 0.f, 0.f, 1.f, 1.f }, ref.entity);
+					foreach(i, 4u) {
+
+						gui_push_image(GuiImageType_Background, ref.image[i], { 0.f, 0.f, 1.f, 1.f }, GPUImageLayout_DepthStencilReadOnly);
+						gui_image(200.f, ref.entity);
+						gui_pop_image();
+					}
 				}
 			}
 
 			if (gui_collapse("SSAO")) {
 
-				gui_image_ex(renderer->gfx.gbuffer_ssao, GPUImageLayout_ShaderResource, 400.f, { 0.f, 1.f, 1.f, 0.f }, 93842);
+				gui_push_image(GuiImageType_Background, renderer->gfx.gbuffer_ssao, { 0.f, 0.f, 1.f, 1.f }, GPUImageLayout_ShaderResource);
+				gui_image(400.f, 93842);
+				gui_pop_image();
 			}
 			gui_end_window();
 		}

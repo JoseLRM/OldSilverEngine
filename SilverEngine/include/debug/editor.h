@@ -64,6 +64,7 @@ namespace sv {
 
 	struct CompilePluginDesc {
 		const char* plugin_path;
+		const char* name;
 	};
 	
 	bool compile_plugin(const CompilePluginDesc& desc);
@@ -90,6 +91,14 @@ namespace sv {
 	struct EntityPackage {
 		char filepath[FILEPATH_SIZE + 1u];
     };
+
+	constexpr u32 HIERARCHY_ELEMENT_PACKAGE = 4378923;
+
+	struct HierarchyElementPackage {
+		u32 type;
+		Entity entity;
+		u32 folder_id;
+	};
 
     SV_API void egui_header(const char* text, u64 id);
     SV_API void egui_transform(Entity entity);

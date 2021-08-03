@@ -94,6 +94,9 @@ namespace sv {
     };
 
     enum GuiHeader : u32 {
+
+		GuiHeader_PushImage,
+		GuiHeader_PopImage,
 	
 		GuiHeader_BeginWindow,
 		GuiHeader_EndWindow,
@@ -114,17 +117,14 @@ namespace sv {
 		GuiHeader_BeginGrid,
 		GuiHeader_EndGrid,
 
-		GuiHeader_BeginElementList,
-		GuiHeader_EndElementList,
-		GuiHeader_BeginList,
-		GuiHeader_EndList,
+		GuiHeader_BeginTree,
+		GuiHeader_EndTree,
     };
     
     enum GuiWidgetType : u32 {
 		GuiWidgetType_None,
 		GuiWidgetType_Root, // Special value, is used to save the focus of the root
 		GuiWidgetType_Button,
-		GuiWidgetType_ImageButton,
 		GuiWidgetType_Checkbox,
 		GuiWidgetType_Combobox,
 		GuiWidgetType_Drag,
@@ -134,8 +134,16 @@ namespace sv {
 		GuiWidgetType_Image,
 		GuiWidgetType_SelectFilepath,
 		GuiWidgetType_AssetButton,
-		GuiWidgetType_ElementList,
+		GuiWidgetType_Tree,
     };
+
+	struct GuiImage {
+		GPUImage* image;
+		v4_f32 texcoord;
+		GPUImageLayout layout;
+		GuiImageType type;
+		bool valid;
+	};
 
     struct GuiWidget {
 
@@ -154,14 +162,8 @@ namespace sv {
 			struct {
 				const char* text;
 				bool pressed;
+				GuiImage background;
 			} button;
-
-			struct {
-				const char* text;
-				GPUImage* image;
-				v4_f32 texcoord;
-				bool pressed;
-			} image_button;
 
 			struct {
 				const char* text;
@@ -198,11 +200,9 @@ namespace sv {
 			} collapse;
 
 			struct {
-				GPUImage* image;
-				GPUImageLayout layout;
 				f32 height;
-				v4_f32 texcoord;
 				bool catch_input;
+				GuiImage background;
 			} image;
 
 			struct {
@@ -218,11 +218,10 @@ namespace sv {
 
 			struct {
 				const char* text;
-				bool selected;
 				bool pressed;
-				bool show;
 				bool show_childs;
-			} element_list;
+				GuiImage icon;
+			} tree;
 	    
 		} widget;
 
@@ -242,7 +241,6 @@ namespace sv {
     enum GuiReadWidgetState : u32 {
 		GuiReadWidgetState_None,
 		GuiReadWidgetState_Grid,
-		GuiReadWidgetState_List,
 		GuiReadWidgetState_Top,
     };
 
@@ -260,10 +258,6 @@ namespace sv {
 		} grid_state_data;
 
 		struct {
-			List<u32> parent_indices_stack;
-		} list_state_data;
-
-		struct {
 			GuiTopLocation location;
 			u32 begin_index;
 			f32 xoff;
@@ -272,7 +266,8 @@ namespace sv {
 		// Thats where the widgets are projected.
 		// the window has is own bounds
 		v4_f32 widget_bounds = { 0.5f, 0.5f, 1.f, 1.f };
-	
+
+		f32 xoff = 0.f;
 		f32 yoff = 0.f;
 		f32 vertical_offset = 0.f;
 	
@@ -361,6 +356,11 @@ namespace sv {
 		GuiRootIndex root;
 	};
 
+	struct GuiReciver {
+		GuiWidgetRef ref;
+		GuiReciverStyle style;
+	};
+
     struct GUI {
 
 		// CONTEXT
@@ -384,6 +384,8 @@ namespace sv {
 		GuiScreenDocking screen_docking[5u];
 		u32 screen_docking_count = 0u;
 		List<GuiRootIndex> root_stack;
+
+		List<GuiImage> image_stack;
 		
 		IndexedList<GuiWindow> windows;
 		IndexedList<GuiWindowNode> window_nodes;
@@ -423,7 +425,7 @@ namespace sv {
 
 		struct {
 			RawList buffer;
-			List<GuiWidgetRef> recivers;
+			List<GuiReciver> recivers;
 			u64 reciver_id;
 			bool first_frame; // Used to not remove the data for one frame
 		} package;
@@ -445,6 +447,25 @@ namespace sv {
 		return abs(gui->mouse_position.x - bounds.x) < bounds.z * 0.5f &&
 			abs(gui->mouse_position.y - bounds.y) < bounds.w * 0.5f;
     }
+
+	inline GuiImage get_image(GuiImageType type)
+	{
+		for (i32 i = i32(gui->image_stack.size()) - 1; i >= 0; --i) {
+
+			if (gui->image_stack[i].type == type)
+				return gui->image_stack[i];
+		}
+
+		
+		GuiImage image;
+		image.type = type;
+		image.image = NULL;
+		image.layout = GPUImageLayout_ShaderResource;
+		image.texcoord = { 0.f, 0.f, 1.f, 1.f };
+		image.valid = false;
+
+		return image;
+	}
 
     SV_AUX v4_f32 compute_checkbox_button(const GuiWidget& w)
     {
@@ -492,17 +513,39 @@ namespace sv {
 		b.x += b.z * 0.5f;
 		return b;
     }
-	SV_AUX v4_f32 compute_element_button(v4_f32 bounds)
+	SV_AUX v4_f32 compute_tree_collapse(const GuiWidget& tree)
 	{
+		const v4_f32& bounds = tree.bounds;
+		
 		v2_f32 size = { bounds.z, bounds.w };
 		v2_f32 pos = { bounds.x, bounds.y };
 		
 		v4_f32 b;
-		b.w = size.y * 0.7f;
+		b.w = size.y * 0.5f;
+		b.z = b.w / gui->aspect;
+		
+		b.x = pos.x - size.x * 0.5f + b.z * 0.8f;
+		b.y = pos.y;
+		return b;
+	}
+	SV_AUX v4_f32 compute_tree_icon(const GuiWidget& tree)
+	{
+		const v4_f32& bounds = tree.bounds;
+		
+		v2_f32 size = { bounds.z, bounds.w };
+		v2_f32 pos = { bounds.x, bounds.y };
+		
+		v4_f32 b;
+		b.w = size.y * 1.f;
 		b.z = b.w / gui->aspect;
 		
 		b.x = pos.x - size.x * 0.5f + b.z * 0.6f;
 		b.y = pos.y;
+		
+		if (tree.flags & GuiTreeFlag_Parent) {
+			b.x += b.z * 1.1f;
+		}
+
 		return b;
 	}
 	SV_AUX f32 compute_window_decoration_height()
@@ -912,6 +955,8 @@ namespace sv {
 		gui->root_stack.reset();
 		gui->root_stack.push_back({ GuiRootType_Screen, 0u });
 
+		gui->image_stack.reset();
+
 		gui->last_widget.id = 0u;
 		gui->last_widget.type = GuiWidgetType_None;
 		gui->last_widget.root = { GuiRootType_None, 0u };
@@ -963,6 +1008,7 @@ namespace sv {
     {
 		root.widgets.reset();
 		root.read_widget_state = GuiReadWidgetState_None;
+		root.xoff = 0.f;
 		root.yoff = 7.f;
     }
 
@@ -1043,11 +1089,11 @@ namespace sv {
 	    
 			f32 height = 0.f;
 			f32 width = 0.9f;
-			bool add_offset = true;
+			bool add_y_offset = true;
+			bool add_x_offset = true;
 
 			switch (w.type) {
 		    
-			case GuiWidgetType_Button:
 			case GuiWidgetType_Checkbox:		
 			case GuiWidgetType_Drag:
 			case GuiWidgetType_Text:
@@ -1061,14 +1107,10 @@ namespace sv {
 				height = 25.f;
 				break;
 
-			case GuiWidgetType_ImageButton:
+			case GuiWidgetType_Button:
 			{
-				auto& image = w.widget.image_button;
-				if (image.text == NULL) {
-					height = 30.f;
-					width = height / root.widget_bounds.z / gui->resolution.x;
-				}
-				else height = 30.f;
+				//auto& button = w.widget.button;
+				height = 20.f;
 			}
 			break;
 
@@ -1079,7 +1121,8 @@ namespace sv {
 					root.yoff = 0.f;
 					width = 1.f;
 					height = root.widget_bounds.w * gui->resolution.y;
-					add_offset = false;
+					add_y_offset = false;
+					add_x_offset = false;
 				}
 				else {
 
@@ -1090,13 +1133,26 @@ namespace sv {
 				}
 			}
 			break;
+
+			case GuiWidgetType_Tree:
+			{
+				height = 20.f;
+			}
+			break;
 		    
 			}
 			
 			f32 padding = 5.f;
+
+			f32 x = 0.5f;
+			if (add_x_offset) {
+				x += root.xoff * 0.5f;
+				f32 max_width = SV_MAX(0.9f - root.xoff, 0.f);
+				width = SV_MIN(width, max_width);
+			}
 	
-			w.bounds = { 0.5f, root.yoff + height * 0.5f, width, height };
-			if (add_offset) root.yoff += height + padding;
+			w.bounds = { x, root.yoff + height * 0.5f, width, height };
+			if (add_y_offset) root.yoff += height + padding;
 		}
 		else if (read_state == GuiReadWidgetState_Grid) {
 
@@ -1127,35 +1183,6 @@ namespace sv {
 			w.bounds.x = x0 + w.bounds.z * 0.5f;
 			w.bounds.y = root.yoff + data.width * 0.5f;
 			w.bounds.w = data.width;
-		}
-		else if (read_state == GuiReadWidgetState_List) {
-
-			SV_ASSERT(w.type == GuiWidgetType_ElementList);
-
-			if (w.type == GuiWidgetType_ElementList) {
-				
-				v4_f32 b = { 0.5f,  };
-
-				u32 hierarchy_depth = (u32)root.list_state_data.parent_indices_stack.size();
-				f32 padding = (f32(hierarchy_depth) * 7.f) / gui->resolution.x / root.widget_bounds.z;
-				f32 height = 15.f;
-
-				w.bounds.x = 0.5f + padding;
-				w.bounds.y = root.yoff + height * 0.5f;
-				w.bounds.z = 0.9f - padding * 2.f;
-				w.bounds.w = height;
-
-				if (hierarchy_depth != 0) {
-
-					GuiWidget& parent = root.widgets[root.list_state_data.parent_indices_stack.back()];
-
-					w.widget.element_list.show = parent.widget.element_list.show_childs;
-				}
-				else w.widget.element_list.show = true;
-
-				if (w.widget.element_list.show)
-					root.yoff += height + 5.f;
-			}
 		}
 		else if (read_state == GuiReadWidgetState_Top) {
 
@@ -1195,17 +1222,7 @@ namespace sv {
 		{
 			auto& button = w.widget.button;
 			button.text = gui_read_text(it);
-
-			button.pressed = false;
-		}
-		break;
-
-		case GuiWidgetType_ImageButton:
-		{
-			auto& button = w.widget.image_button;
-			button.text = gui_read_text(it);
-			button.image = gui_read<GPUImage*>(it);
-			button.texcoord = gui_read<v4_f32>(it);
+			button.background = get_image(GuiImageType_Background);
 
 			button.pressed = false;
 		}
@@ -1278,9 +1295,7 @@ namespace sv {
 		{
 			auto& image = w.widget.image;
 			image.height = gui_read<f32>(it);
-			image.image = gui_read<GPUImage*>(it);
-			image.layout = gui_read<GPUImageLayout>(it);
-			image.texcoord = gui_read<v4_f32>(it);
+			image.background = get_image(GuiImageType_Background);
 			image.catch_input = false;
 		}
 		break;
@@ -1301,14 +1316,13 @@ namespace sv {
 		}
 		break;
 
-		case GuiWidgetType_ElementList:
+		case GuiWidgetType_Tree:
 		{
-			auto& element = w.widget.element_list;
-			element.text = gui_read_text(it);
-			element.selected = gui_read<bool>(it);
-			element.show_childs = gui_read<bool>(it);
-			element.pressed = false;
-			element.show = false;
+			auto& tree = w.widget.tree;
+			tree.text = gui_read_text(it);
+			tree.show_childs = gui_read<bool>(it);
+			tree.pressed = false;
+			tree.icon = get_image(GuiImageType_Icon);
 		}
 		break;
 		    
@@ -1673,86 +1687,99 @@ namespace sv {
 
 			case GuiWindowAction_Move:
 			{
-				if (input.mouse_buttons[MouseButton_Left] == InputState_Released && input.keys[Key_Control] && !(get_window_flags(w) & GuiWindowFlag_NoDocking)) {
+				if (input.mouse_buttons[MouseButton_Left] == InputState_Released && !(get_window_flags(w) & GuiWindowFlag_NoDocking)) {
 
-					u32 window_id;
-					u32 node_id;
-					if (find_selected_window(window_id, node_id, gui->focus.root.index, true)) {
+					if (input.keys[Key_Control]) {
+						
+						u32 window_id;
+						u32 node_id;
+						if (find_selected_window(window_id, node_id, gui->focus.root.index, true)) {
 
-						IndexedList<GuiWindowNode>& nodes = gui->window_nodes;
+							IndexedList<GuiWindowNode>& nodes = gui->window_nodes;
 
-						foreach(i, GuiDockingLocation_MaxEnum) {
+							foreach(i, GuiDockingLocation_MaxEnum) {
 
-							v4_f32 b = compute_docking_button(nodes[node_id].bounds, (GuiDockingLocation)i, false);
+								v4_f32 b = compute_docking_button(nodes[node_id].bounds, (GuiDockingLocation)i, false);
 
-							if (mouse_in_bounds(b)) {
+								if (mouse_in_bounds(b)) {
 
-								GuiDockingSplit split;
-								bool left = false;
+									GuiDockingSplit split;
+									bool left = false;
 
-								switch(i) {
+									switch(i) {
 
-								case GuiDockingLocation_Left:
-									split = GuiDockingSplit_Horizontal;
-									left = true;
-									break;
+									case GuiDockingLocation_Left:
+										split = GuiDockingSplit_Horizontal;
+										left = true;
+										break;
 
-								case GuiDockingLocation_Right:
-									split = GuiDockingSplit_Horizontal;
-									break;
+									case GuiDockingLocation_Right:
+										split = GuiDockingSplit_Horizontal;
+										break;
 
-								case GuiDockingLocation_Bottom:
-									split = GuiDockingSplit_Vertical;
-									left = true;
-									break;
+									case GuiDockingLocation_Bottom:
+										split = GuiDockingSplit_Vertical;
+										left = true;
+										break;
 
-								case GuiDockingLocation_Top:
-									split = GuiDockingSplit_Vertical;
-									break;
+									case GuiDockingLocation_Top:
+										split = GuiDockingSplit_Vertical;
+										break;
 
-								default:
-									split = GuiDockingSplit_None;
-									break;
+									default:
+										split = GuiDockingSplit_None;
+										break;
 									
-								}
-
-								if (!nodes[node_id].is_node) {
-
-									if (split == GuiDockingSplit_None) {
-
-										insert_node_states(nodes[node_id].win.states, gui->windows[gui->focus.root.index].root_id);
 									}
-									else {
-										
-										u32 new_node_id = gui->window_nodes.emplace();
-										GuiWindowNode& new_node = gui->window_nodes[new_node_id];
-										new_node.is_node = false;
-										new_node.win.states.insert(nodes[node_id].win.states);
 
-										nodes[node_id].is_node = true;
+									if (!nodes[node_id].is_node) {
 
-										nodes[node_id].node.split = split;
+										if (split == GuiDockingSplit_None) {
 
-										if (left) {
-											nodes[node_id].node.id1 = new_node_id;
-											nodes[node_id].node.id0 = w.root_id;
+											insert_node_states(nodes[node_id].win.states, gui->windows[gui->focus.root.index].root_id);
 										}
 										else {
-											nodes[node_id].node.id0 = new_node_id;
-											nodes[node_id].node.id1 = w.root_id;
-										}
 										
-										nodes[node_id].win.states.clear();
+											u32 new_node_id = gui->window_nodes.emplace();
+											GuiWindowNode& new_node = gui->window_nodes[new_node_id];
+											new_node.is_node = false;
+											new_node.win.states.insert(nodes[node_id].win.states);
 
-										gui->windows.erase(gui->focus.root.index);
+											nodes[node_id].is_node = true;
+
+											nodes[node_id].node.split = split;
+
+											if (left) {
+												nodes[node_id].node.id1 = new_node_id;
+												nodes[node_id].node.id0 = w.root_id;
+											}
+											else {
+												nodes[node_id].node.id0 = new_node_id;
+												nodes[node_id].node.id1 = w.root_id;
+											}
+										
+											nodes[node_id].win.states.clear();
+
+											gui->windows.erase(gui->focus.root.index);
+										}
 									}
-								}
 
-								break;
+									break;
+								}
 							}
 						}
 					}
 					else {
+
+						GuiScreenDocking* center = NULL;
+
+						foreach(i, gui->screen_docking_count) {
+
+							if (gui->screen_docking[i].location == GuiDockingLocation_Center) {
+								center = gui->screen_docking + i;
+								break;
+							}
+						}
 						
 						foreach(i, GuiDockingLocation_MaxEnum) {
 
@@ -1773,13 +1800,22 @@ namespace sv {
 							if (mouse_in_bounds(b)) {
 
 								if (gui->screen_docking_count < 5u) {
+									
+									GuiScreenDocking* doc;
 
-									GuiScreenDocking& doc = gui->screen_docking[gui->screen_docking_count++];
-									doc.location = GuiDockingLocation(i);
-									doc.window_id = gui->focus.root.index;
-									doc.close_value = 0.f;
-									doc.closed = false;
-									doc.undock_request = false;
+									if (center) {
+
+										doc = center;
+										center = &gui->screen_docking[gui->screen_docking_count++];
+										*center = *doc;
+									}
+									else doc = &gui->screen_docking[gui->screen_docking_count++];
+									
+									doc->location = GuiDockingLocation(i);
+									doc->window_id = gui->focus.root.index;
+									doc->close_value = 0.f;
+									doc->closed = false;
+									doc->undock_request = false;
 
 									w.last_size = { w.bounds.z, w.bounds.w };
 								}
@@ -1957,21 +1993,24 @@ namespace sv {
 				
 				if (state == InputState_Released || state == InputState_None) {
 
-					for (const GuiWidgetRef& ref : gui->package.recivers) {
+					for (const GuiReciver& r : gui->package.recivers) {
 
-						if (ref.type == GuiWidgetType_Root) {
+						if (r.ref.type == GuiWidgetType_Root) {
 
-							GuiRootInfo* root = get_root_info(ref.root);
+							GuiRootInfo* root = get_root_info(r.ref.root);
 
 							if (root && mouse_in_bounds(root->widget_bounds)) {
-								gui->package.reciver_id = compute_root_hash(ref.root);
+								gui->package.reciver_id = compute_root_hash(r.ref.root);
 								gui->package.first_frame = true;
 								break;
 							}
 						}
 						else {
+
+							if (w.type == r.ref.type && w.id == r.ref.id)
+								continue;
 							
-							GuiWidget* w = find_widget(ref.type, ref.id, ref.root);
+							GuiWidget* w = find_widget(r.ref.type, r.ref.id, r.ref.root);
 
 							if (w && mouse_in_bounds(w->bounds)) {
 								gui->package.reciver_id = w->id;
@@ -2022,20 +2061,6 @@ namespace sv {
 						}
 					
 						string_modify((char*)gui->text_field_buffer.data(), field.buff_size, gui->text_field_cursor, NULL);
-					}
-				}
-				break;
-
-				case GuiWidgetType_ImageButton:
-				{
-					InputState state = input.mouse_buttons[MouseButton_Left];
-		
-					if (state == InputState_Released || state == InputState_None) {
-
-						if (mouse_in_bounds(w.bounds))
-							w.widget.image_button.pressed = true;
-		    
-						free_focus();
 					}
 				}
 				break;
@@ -2177,21 +2202,21 @@ namespace sv {
 				}
 				break;
 
-				case GuiWidgetType_ElementList:
+				case GuiWidgetType_Tree:
 				{
 					InputState state = input.mouse_buttons[MouseButton_Left];
 		
 					if (state == InputState_Released || state == InputState_None) {
 
-						if (mouse_in_bounds(w.bounds)) {;
+						if (mouse_in_bounds(w.bounds)) {
 							
-							if (gui->focus.action == GuiWidgetAction_Action1 && mouse_in_bounds(compute_element_button(w.bounds))) {
+							if (gui->focus.action == GuiWidgetAction_Action1 && mouse_in_bounds(compute_tree_collapse(w))) {
 
-								bool& show_childs = w.widget.element_list.show_childs;
+								bool& show_childs = w.widget.tree.show_childs;
 								show_childs = !show_childs;
 							}
 							else if (gui->focus.action == GuiWidgetAction_Action0) {
-								w.widget.element_list.pressed = true;
+								w.widget.tree.pressed = true;
 							}
 						}
 		    
@@ -2223,7 +2248,6 @@ namespace sv {
 
 		switch (w.type) {
 
-		case GuiWidgetType_Button:
 		case GuiWidgetType_AssetButton:
 		case GuiWidgetType_Collapse:
 		case GuiWidgetType_TextField:
@@ -2242,32 +2266,29 @@ namespace sv {
 			}
 		} break;
 
-		case GuiWidgetType_ElementList:
+		case GuiWidgetType_Tree:
 		{
 			if (input.unused) {
 
-				if (w.widget.element_list.show) {
-				
-					if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed && mouse_in_bounds(bounds)) {
+				if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed && mouse_in_bounds(bounds)) {
 
-						input.unused = false;
+					input.unused = false;
 					
-						if (w.flags && GuiElementListFlag_Parent && mouse_in_bounds(compute_element_button(bounds))) {
-							set_focus(root_index, w.type, w.id, GuiWidgetAction_Action1);
-						}
-						else {
-							set_focus(root_index, w.type, w.id, GuiWidgetAction_Action0);
-						}
+					if (w.flags && GuiTreeFlag_Parent && mouse_in_bounds(compute_tree_collapse(w))) {
+						set_focus(root_index, w.type, w.id, GuiWidgetAction_Action1);
+					}
+					else {
+						set_focus(root_index, w.type, w.id, GuiWidgetAction_Action0);
 					}
 				}
 			}
 		} break;
 
-		case GuiWidgetType_ImageButton:
+		case GuiWidgetType_Button:
 		{
 			if (input.unused) {
 				
-				if (!(w.flags & GuiImageButtonFlag_Disabled) && mouse_in_bounds(bounds)) {
+				if (!(w.flags & GuiButtonFlag_Disabled) && mouse_in_bounds(bounds)) {
 					
 					if (input.mouse_buttons[MouseButton_Left] == InputState_Pressed) {
 						set_focus(root_index , w.type, w.id);
@@ -2737,6 +2758,30 @@ namespace sv {
 
 			switch (header) {
 
+			case GuiHeader_PushImage:
+			{
+				GuiImage& img = gui->image_stack.emplace_back();
+				img.type = gui_read<GuiImageType>(it);
+				img.image = gui_read<GPUImage*>(it);
+				img.texcoord = gui_read<v4_f32>(it);
+				img.layout = gui_read<GPUImageLayout>(it);
+				img.valid = true;
+			}
+			break;
+			
+			case GuiHeader_PopImage:
+			{
+				u32 count = gui_read<u32>(it);
+
+				if (gui->image_stack.size() >= count) {
+					
+					foreach(i, count)
+						gui->image_stack.pop_back();
+				}
+				else SV_ASSERT(0);
+			}
+			break;
+
 			case GuiHeader_BeginWindow:
 			{
 				SV_ASSERT(gui->root_stack.back().type == GuiRootType_Screen);
@@ -3019,66 +3064,26 @@ namespace sv {
 			}
 			break;
 
-			case GuiHeader_BeginElementList:
+			case GuiHeader_BeginTree:
 			{
 				GuiRootInfo* root = get_root_info(gui->root_stack.back());
 				SV_ASSERT(root);
 				
 				if (root) {
 
-					SV_ASSERT(root->read_widget_state == GuiReadWidgetState_List);
-
-					auto& data = root->list_state_data;
-					data.parent_indices_stack.push_back((u32)root->widgets.size() - 1);
+					root->xoff += 7.f / gui->resolution.x / root->widget_bounds.x;
 				}
 			}
 			break;
 
-			case GuiHeader_EndElementList:
+			case GuiHeader_EndTree:
 			{
 				GuiRootInfo* root = get_root_info(gui->root_stack.back());
 				SV_ASSERT(root);
 				
 				if (root) {
 
-					SV_ASSERT(root->read_widget_state == GuiReadWidgetState_List);
-
-					auto& data = root->list_state_data;
-					data.parent_indices_stack.pop_back();
-				}
-			}
-			break;
-
-			case GuiHeader_BeginList:
-			{
-				GuiRootInfo* root = get_root_info(gui->root_stack.back());
-				SV_ASSERT(root);
-				
-				if (root) {
-
-					SV_ASSERT(root->read_widget_state == GuiReadWidgetState_None);
-					
-					root->read_widget_state = GuiReadWidgetState_List;
-
-					auto& data = root->list_state_data;
-					data.parent_indices_stack.reset();
-				}
-			}
-			break;
-
-			case GuiHeader_EndList:
-			{
-				GuiRootInfo* root = get_root_info(gui->root_stack.back());
-				SV_ASSERT(root);
-				
-				if (root) {
-		
-					if (root->read_widget_state == GuiReadWidgetState_List) {
-
-						//auto& data = root->list_state_data;
-						root->read_widget_state = GuiReadWidgetState_None;
-					}
-					else SV_ASSERT(0);
+					root->xoff -= 7.f / gui->resolution.x / root->widget_bounds.x;
 				}
 			}
 			break;
@@ -3580,7 +3585,7 @@ namespace sv {
 		}
 	}
 	
-	bool gui_recive_package(void** dst, u64 package_id, GuiReciverTrigger trigger)
+	bool gui_recive_package(void** dst, u64 package_id, GuiReciverTrigger trigger, GuiReciverStyle style)
 	{
 		bool write = false;
 		
@@ -3588,18 +3593,21 @@ namespace sv {
 
 			if (gui->current_focus && gui->current_focus->package_id == package_id) {
 
+				GuiReciver r;
+				r.style = style;
+
 				switch (trigger) {
 					
 				case GuiReciverTrigger_LastWidget:
-					gui->package.recivers.push_back(gui->last_widget);
+					r.ref = gui->last_widget;
+					gui->package.recivers.push_back(r);
 					break;
 
 				case GuiReciverTrigger_Root:
 				{
-					GuiWidgetRef ref;
-					ref.type = GuiWidgetType_Root;
-					ref.root = gui->root_stack.back();
-					gui->package.recivers.push_back(ref);
+					r.ref.type = GuiWidgetType_Root;
+					r.ref.root = gui->root_stack.back();
+					gui->package.recivers.push_back(r);
 				}
 				break;
 					
@@ -3691,7 +3699,22 @@ namespace sv {
 		update_id();
     }
 
-    SV_AUX void compute_id(u64& id)
+	void gui_push_image(GuiImageType type, GPUImage* image, const v4_f32& texcoord, GPUImageLayout layout)
+	{
+		gui_write(GuiHeader_PushImage);
+		gui_write(type);
+		gui_write(image);
+		gui_write(texcoord);
+		gui_write(layout);
+	}
+	
+	void gui_pop_image(u32 count)
+	{
+		gui_write(GuiHeader_PopImage);
+		gui_write(count);
+	}
+
+    inline void compute_id(u64& id)
     {
 		hash_combine(id, gui->current_id);
     }
@@ -3708,12 +3731,12 @@ namespace sv {
 		gui->last_widget.root = gui->root_stack.back();
     }
 
-    bool gui_button(const char* text, u64 id)
+    bool gui_button(const char* text, u64 id, u32 flags)
     {
 		if (id == u64_max) id = (u64)text;
 		compute_id(id);
 	
-		write_widget(GuiWidgetType_Button, id, 0u);
+		write_widget(GuiWidgetType_Button, id, flags);
 		gui_write_text(text);
 	
 		GuiWidget* button = find_widget(GuiWidgetType_Button, id);
@@ -3723,28 +3746,6 @@ namespace sv {
 		if (button) {
 
 			pressed = button->widget.button.pressed;
-		}
-	
-		return pressed;
-    }
-
-	bool gui_image_button(const char* text, GPUImage* image, v4_f32 texcoord, u64 id, u32 flags)
-    {
-		if (id == u64_max) id = (u64)text;
-		compute_id(id);
-	
-		write_widget(GuiWidgetType_ImageButton, id, flags);
-		gui_write_text(text);
-		gui_write(image);
-		gui_write(texcoord);
-	
-		GuiWidget* button = find_widget(GuiWidgetType_ImageButton, id);
-
-		bool pressed = false;
-
-		if (button) {
-
-			pressed = button->widget.image_button.pressed;
 		}
 	
 		return pressed;
@@ -3919,15 +3920,12 @@ namespace sv {
 		return *active;
     }
 
-    void gui_image_ex(GPUImage* image, GPUImageLayout layout, f32 height, v4_f32 texcoord, u64 id, u32 flags)
+    void gui_image(f32 height, u64 id, u32 flags)
     {
 		compute_id(id);
 	
 		write_widget(GuiWidgetType_Image, id, flags);
 		gui_write(height);
-		gui_write(image);
-		gui_write(layout);
-		gui_write(texcoord);
     }
 
 	bool gui_image_catch_input(u64 id)
@@ -4033,63 +4031,49 @@ namespace sv {
 		gui_pop_id();
 		gui->root_stack.pop_back();
 	}
-
-	void gui_begin_list(u64 id)
-	{
-		gui_push_id(id);
-		gui_write(GuiHeader_BeginList);
-		gui_write(gui->current_id);
-	}
 	
-	void gui_end_list()
-	{
-		gui_write(GuiHeader_EndList);
-		gui_pop_id();
-	}
-	
-	bool gui_begin_element_list(const char* text, u64 id, bool selected, u32 flags)
+	bool gui_begin_tree(const char* text, u64 id, u32 flags)
 	{
 		if (id == u64_max) id = (u64)text;
 		compute_id(id);
 	
-		write_widget(GuiWidgetType_ElementList, id, flags);
+		write_widget(GuiWidgetType_Tree, id, flags);
 		gui_write_text(text);
-		gui_write(selected);
 
-		GuiWidget* element = find_widget(GuiWidgetType_ElementList, id);
+		GuiWidget* tree = find_widget(GuiWidgetType_Tree, id);
 		bool begin = false;
 
-		if (element) {
-			gui_write(element->widget.element_list.show_childs);
-			begin = element->widget.element_list.show_childs;
+		if (tree) {
+			gui_write(tree->widget.tree.show_childs);
+			begin = tree->widget.tree.show_childs;
 		}
 		else gui_write(false);
 
 		if (begin) {
-			gui_write(GuiHeader_BeginElementList);
+			gui_write(GuiHeader_BeginTree);
 			gui_push_id(id);
 		}
 
 		return begin;
 	}
 
-	void gui_end_element_list()
+	void gui_end_tree()
 	{
 		gui_pop_id();
-		gui_write(GuiHeader_EndElementList);
+		gui_write(GuiHeader_EndTree);
 	}
 
-	SV_API bool gui_element_pressed()
+	SV_API bool gui_tree_pressed()
 	{
 		bool pressed = false;
 		
-		if (gui->last_widget.type == GuiWidgetType_ElementList) {
+		if (gui->last_widget.type == GuiWidgetType_Tree) {
 
-			GuiWidget* element = find_widget(GuiWidgetType_ElementList, gui->last_widget.id);
+			GuiWidget* tree = find_widget(GuiWidgetType_Tree, gui->last_widget.id);
 
-			if (element) {
+			if (tree) {
 
-				pressed = element->widget.element_list.pressed;
+				pressed = tree->widget.tree.pressed;
 			}
 		}
 
@@ -4121,6 +4105,11 @@ namespace sv {
 	SV_AUX void gui_draw_text_thick(const char* text, v2_f32 pos, v2_f32 size, bool left, CommandList cmd)
 	{
 		gui_draw_text(text, pos, size, left, 2, cmd);
+	}
+
+	inline void gui_draw_image(v2_f32 pos, v2_f32 size, Color color, GuiImage image, CommandList cmd)
+	{
+		imrend_draw_sprite(vec2_to_vec3(pos), size, color, image.image, image.layout, image.texcoord, cmd);
 	}
 
     SV_INTERNAL void draw_root(GuiRootIndex root_index, CommandList cmd)
@@ -4323,62 +4312,13 @@ namespace sv {
 						color = style.widget_focused_color;
 					else if (mouse_in_bounds(w.bounds))
 						color = style.widget_highlighted_color;
-		    
-					imrend_draw_quad(vec2_to_vec3(pos), size, color, cmd);
+
+					if (button.background.valid)
+						gui_draw_image(pos, size, Color::White(), button.background, cmd);
+					else
+						imrend_draw_quad(vec2_to_vec3(pos), size, color, cmd);
 
 					gui_draw_text(button.text, pos, size, false, cmd);
-				}
-				break;
-
-				case GuiWidgetType_ImageButton:
-				{
-					auto& button = w.widget.image_button;
-
-					const v4_f32& b = w.bounds;
-					v2_f32 pos = { b.x, b.y };
-					v2_f32 size = { b.z, b.w };
-
-					bool background = !(w.flags & GuiImageButtonFlag_NoBackground);
-
-					Color color = background ? style.widget_primary_color : Color::White();
-
-					if (w.flags & GuiImageButtonFlag_Disabled)
-						color = Color::Gray(100);
-					else if (gui->current_focus == &w)
-						color = style.widget_focused_color;
-					else if (mouse_in_bounds(w.bounds))
-						color = background ? style.widget_highlighted_color : Color::Gray(170);
-
-					if (background) {
-		    
-						imrend_draw_quad(vec2_to_vec3(pos), size, color, cmd);
-					}
-
-					constexpr f32 RELATIVE_HEIGHT = 0.95f;
-
-					v4_f32 image_bounds = b;
-					if (button.text) {
-						image_bounds.w *= RELATIVE_HEIGHT;
-						image_bounds.z = image_bounds.w / gui->aspect;
-						image_bounds.x = (image_bounds.x - w.bounds.z * 0.5f) + ((1.f - RELATIVE_HEIGHT) * image_bounds.w) / gui->aspect + image_bounds.z * 0.5f;
-					}
-
-					size = { image_bounds.z, image_bounds.w };
-					pos = { image_bounds.x, image_bounds.y };
-
-					imrend_draw_sprite(vec2_to_vec3(pos), size, background ? Color::White() : color, button.image ? button.image : renderer_white_image(), GPUImageLayout_ShaderResource, button.texcoord, cmd);
-
-					if (button.text) {
-
-						size.y = w.bounds.w;
-						size.x = w.bounds.z - image_bounds.z - ((1.f - RELATIVE_HEIGHT) * image_bounds.w) / gui->aspect;
-						pos.x = image_bounds.x + image_bounds.z * 0.5f + size.x * 0.5f;
-						pos.x += size.x * 0.5f * 0.03f;
-						size.x *= 0.97f;
-						size.y *= 0.6f;
-
-						gui_draw_text(button.text, pos, size, true, cmd);
-					}
 				}
 				break;
 
@@ -4612,7 +4552,7 @@ namespace sv {
 					v2_f32 pos = v2_f32(w.bounds.x, w.bounds.y);
 					v2_f32 size = v2_f32(w.bounds.z, w.bounds.w);
 	    
-					imrend_draw_sprite(vec2_to_vec3(pos), size, Color::White(), image.image ? image.image : renderer_white_image(), image.layout, image.texcoord, cmd);
+					gui_draw_image(pos, size, Color::White(), image.background, cmd);
 				}
 				break;
 
@@ -4654,51 +4594,53 @@ namespace sv {
 				}
 				break;
 
-				case GuiWidgetType_ElementList:
+				case GuiWidgetType_Tree:
 				{
-					auto& element = w.widget.element_list;
+					auto& tree = w.widget.tree;
 
-					if (element.show) {
-						
-						const v4_f32& bounds = w.bounds;
+					const v4_f32& bounds = w.bounds;
 
-						v2_f32 pos = { bounds.x, bounds.y };
-						v2_f32 size = { bounds.z, bounds.w };
+					v2_f32 pos = { bounds.x, bounds.y };
+					v2_f32 size = { bounds.z, bounds.w };
 
-						Color color = style.widget_primary_color;
+					Color color = style.widget_secondary_color;
 
-						if (element.selected)
-							color = style.widget_secondary_color;
-						else if (gui->current_focus == &w)
-							color = style.widget_focused_color;
-						else if (mouse_in_bounds(bounds))
-							color = style.widget_highlighted_color;
+					if (w.flags & GuiTreeFlag_Selected)
+						color = style.widget_selected_color;
+					else if (gui->current_focus == &w)
+						color = style.widget_highlighted_color;
 		    
-						imrend_draw_quad(vec2_to_vec3(pos), size, color, cmd);
+					imrend_draw_quad(vec2_to_vec3(pos), size, color, cmd);
 
-						if (w.flags && GuiElementListFlag_Parent) {
+					if (w.flags & GuiTreeFlag_Parent) {
 
-							v4_f32 b = compute_element_button(bounds);
+						v4_f32 b = compute_tree_collapse(w);
 
-							if (element.show_childs) {
+						if (tree.show_childs) {
 
-								imrend_draw_triangle(
-										{ b.x - b.z * 0.5f, b.y + b.w * 0.5f, 0.f },
-										{ b.x + b.z * 0.5f, b.y + b.w * 0.5f, 0.f },
-										{ b.x, b.y - b.w * 0.5f, 0.f }
-										, Color::White(), cmd);
-							}
-							else {
-								imrend_draw_triangle(
-										{ b.x - b.z * 0.5f, b.y + b.w * 0.5f, 0.f },
-										{ b.x - b.z * 0.5f, b.y - b.w * 0.5f, 0.f },
-										{ b.x + b.z * 0.5f, b.y, 0.f }
-										, Color::White(), cmd);
-							}
+							imrend_draw_triangle(
+									{ b.x - b.z * 0.5f, b.y + b.w * 0.5f, 0.f },
+									{ b.x + b.z * 0.5f, b.y + b.w * 0.5f, 0.f },
+									{ b.x, b.y - b.w * 0.5f, 0.f }
+									, Color::White(), cmd);
 						}
-
-						gui_draw_text(element.text, pos, size, false, cmd);
+						else {
+							imrend_draw_triangle(
+									{ b.x - b.z * 0.5f, b.y + b.w * 0.5f, 0.f },
+									{ b.x - b.z * 0.5f, b.y - b.w * 0.5f, 0.f },
+									{ b.x + b.z * 0.5f, b.y, 0.f }
+									, Color::White(), cmd);
+						}
 					}
+
+					// Draw Icon
+					if (tree.icon.valid) {
+						
+						v4_f32 b = compute_tree_icon(w);
+						gui_draw_image({b.x, b.y}, {b.z,b.w}, Color::White(), tree.icon, cmd);
+					}
+
+					gui_draw_text(tree.text, pos, size, false, cmd);
 				}
 				break;
 		    
@@ -4804,14 +4746,14 @@ namespace sv {
 
 		// Docking effects
 		{
-			if (gui->focus.type == GuiWidgetType_Root && gui->focus.root.type == GuiRootType_Window && gui->focus.action == GuiWindowAction_Move && input.keys[Key_Control]) {
+			if (gui->focus.type == GuiWidgetType_Root && gui->focus.root.type == GuiRootType_Window && gui->focus.action == GuiWindowAction_Move) {
 
 				if (gui->windows.exists(gui->focus.root.index) && !(get_window_flags(gui->windows[gui->focus.root.index]) & GuiWindowFlag_NoDocking)) { 
 
-					u32 window_id, node_id;
+					u32 window_id = 0, node_id = 0;
 
 					v4_f32 bounds = { 0.5f, 0.5f, 1.f, 1.f };
-					bool screen = !find_selected_window(window_id, node_id, gui->focus.root.index, true);
+					bool screen = input.keys[Key_Control] ? (!find_selected_window(window_id, node_id, gui->focus.root.index, true)) : true;
 
 					if (!screen) {
 						GuiWindowNode& node = gui->window_nodes[node_id];
@@ -4841,27 +4783,45 @@ namespace sv {
 
 				imrend_draw_quad(vec2_to_vec3(gui->mouse_position), {0.01f, 0.01f * gui->aspect}, Color::Red(), cmd);
 
-				for (const GuiWidgetRef& ref : gui->package.recivers) {
+				for (const GuiReciver& r : gui->package.recivers) {
 
 					v4_f32 b;
 
-					if (ref.type == GuiWidgetType_Root) {
+					if (r.ref.type == GuiWidgetType_Root) {
 
-						GuiRootInfo* root = get_root_info(ref.root);
+						GuiRootInfo* root = get_root_info(r.ref.root);
 						if (root) {
 
 							b = root->widget_bounds;
 						}
 					}
-					else {	
-						const GuiWidget* w = find_widget(ref.type, ref.id, ref.root);
+					else {
+
+						if (gui->focus.type == r.ref.type && gui->focus.id == r.ref.id)
+							continue;
+						
+						const GuiWidget* w = find_widget(r.ref.type, r.ref.id, r.ref.root);
 						if (w) {
 
 							b = w->bounds;
 						}
 					}
-					
-					imrend_draw_quad({ b.x, b.y, 0.f }, { b.z, b.w }, Color::Green(50u), cmd);
+
+					switch (r.style) {
+
+					case GuiReciverStyle_Green:
+						imrend_draw_quad({ b.x, b.y, 0.f }, { b.z, b.w }, Color::Green(50u), cmd);
+						break;
+
+					case GuiReciverStyle_Red:
+						imrend_draw_quad({ b.x, b.y, 0.f }, { b.z, b.w }, Color::Red(50u), cmd);
+						break;
+
+					case GuiReciverStyle_Blue:
+						imrend_draw_quad({ b.x, b.y, 0.f }, { b.z, b.w }, Color::Blue(50u), cmd);
+						break;
+						
+					}
 				}
 			}
 		}
