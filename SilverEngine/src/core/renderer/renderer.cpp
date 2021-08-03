@@ -29,8 +29,8 @@ namespace sv {
 		COMPILE_VS(gfx.vs_text, "text.hlsl");
 		COMPILE_PS(gfx.ps_text, "text.hlsl");
 
-		COMPILE_VS(gfx.vs_sprite, "sprite/default.hlsl");
-		COMPILE_PS(gfx.ps_sprite, "sprite/default.hlsl");
+		COMPILE_VS_(gfx.vs_sprite, "sprite/default.hlsl");
+		COMPILE_PS_(gfx.ps_sprite, "sprite/default.hlsl");
 
 		COMPILE_VS(gfx.vs_terrain, "terrain.hlsl");
 		COMPILE_PS(gfx.ps_terrain, "terrain.hlsl");
@@ -41,12 +41,12 @@ namespace sv {
 		COMPILE_VS(gfx.vs_sky, "skymapping.hlsl");
 		COMPILE_PS(gfx.ps_sky, "skymapping.hlsl");
 
-		COMPILE_CS_(gfx.cs_gaussian_blur_float4, "postprocessing/gaussian_blur_float4.hlsl");
-		COMPILE_CS_(gfx.cs_gaussian_blur_float, "postprocessing/gaussian_blur_float.hlsl");
-		COMPILE_CS_(gfx.cs_bloom_threshold, "postprocessing/bloom_threshold.hlsl");
-		COMPILE_CS_(gfx.cs_addition, "postprocessing/addition.hlsl");
-		COMPILE_CS_(gfx.cs_ssao, "postprocessing/ssao.hlsl");
-		COMPILE_CS_(gfx.cs_ssao_add, "postprocessing/ssao_add.hlsl");
+		COMPILE_CS(gfx.cs_gaussian_blur_float4, "postprocessing/gaussian_blur_float4.hlsl");
+		COMPILE_CS(gfx.cs_gaussian_blur_float, "postprocessing/gaussian_blur_float.hlsl");
+		COMPILE_CS(gfx.cs_bloom_threshold, "postprocessing/bloom_threshold.hlsl");
+		COMPILE_CS(gfx.cs_addition, "postprocessing/addition.hlsl");
+		COMPILE_CS(gfx.cs_ssao, "postprocessing/ssao.hlsl");
+		COMPILE_CS(gfx.cs_ssao_add, "postprocessing/ssao_add.hlsl");
 
 		COMPILE_VS(gfx.vs_shadow, "shadow_mapping.hlsl");
 
@@ -519,8 +519,9 @@ namespace sv {
 			elements[0] = { "Position", 0u, 0u, 0u, Format_R32G32B32A32_FLOAT };
 			elements[1] = { "TexCoord", 0u, 0u, 4u * sizeof(f32), Format_R32G32_FLOAT };
 			elements[2] = { "Color", 0u, 0u, 6u * sizeof(f32), Format_R8G8B8A8_UNORM };
+			elements[3] = { "EmissiveColor", 0u, 0u, 7u * sizeof(f32), Format_R8G8B8A8_UNORM };
 
-			desc.elementCount = 3u;
+			desc.elementCount = 4u;
 			desc.slotCount = 1u;
 			SV_CHECK(graphics_inputlayoutstate_create(&desc, &gfx.ils_sprite));
 
@@ -572,8 +573,10 @@ namespace sv {
 			att[0].dstAlphaBlendFactor = BlendFactor_Zero;
 			att[0].alphaBlendOp = BlendOperation_Add;
 			att[0].colorWriteMask = ColorComponent_RGB;
+			att[1] = att[0];
+			att[2] = att[0];
 
-			desc.attachmentCount = 1u;
+			desc.attachmentCount = 3u;
 			desc.blendConstants = { 0.f, 0.f, 0.f, 0.f };
 			SV_CHECK(graphics_blendstate_create(&desc, &gfx.bs_transparent));
 
@@ -855,6 +858,7 @@ namespace sv {
 		v4_f32	  texcoord;
 		GPUImage* image;
 		Color	  color;
+		Color	  emissive_color;
 		u32       layer;
     };
 
@@ -907,11 +911,6 @@ namespace sv {
 		//Material* material;
 		
 	};
-
-    SV_AUX void postprocessing_draw_call(CommandList cmd)
-    {
-		graphics_draw(4u, 1u, 0u, 0u, cmd);
-    }
 
     SV_INTERNAL void screenspace_ambient_occlusion(u32 samples, f32 radius, f32 bias, CommandList cmd)
 	{
@@ -1005,9 +1004,11 @@ namespace sv {
 			graphics_blendstate_bind(gfx.bs_transparent, cmd);
 			graphics_depthstencilstate_bind(gfx.dss_read_depth, cmd);
 
-			GPUImage* att[2];
+			GPUImage* att[4];
 			att[0] = gfx.offscreen;
-			att[1] = gfx.gbuffer_depthstencil;
+			att[1] = gfx.gbuffer_normal;
+			att[2] = gfx.gbuffer_emission;
+			att[3] = gfx.gbuffer_depthstencil;
 
 			XMMATRIX matrix;
 			XMVECTOR pos0, pos1, pos2, pos3;
@@ -1048,16 +1049,16 @@ namespace sv {
 					pos2 = XMVector4Transform(pos2, matrix);
 					pos3 = XMVector4Transform(pos3, matrix);
 
-					*batchIt = { v4_f32(pos0), {spr.texcoord.x, spr.texcoord.y}, spr.color };
+					*batchIt = { v4_f32(pos0), {spr.texcoord.x, spr.texcoord.y}, spr.color, spr.emissive_color };
 					++batchIt;
 
-					*batchIt = { v4_f32(pos1), {spr.texcoord.z, spr.texcoord.y}, spr.color };
+					*batchIt = { v4_f32(pos1), {spr.texcoord.z, spr.texcoord.y}, spr.color, spr.emissive_color };
 					++batchIt;
 
-					*batchIt = { v4_f32(pos2), {spr.texcoord.x, spr.texcoord.w}, spr.color };
+					*batchIt = { v4_f32(pos2), {spr.texcoord.x, spr.texcoord.w}, spr.color, spr.emissive_color };
 					++batchIt;
 
-					*batchIt = { v4_f32(pos3), {spr.texcoord.z, spr.texcoord.w}, spr.color };
+					*batchIt = { v4_f32(pos3), {spr.texcoord.z, spr.texcoord.w}, spr.color, spr.emissive_color };
 					++batchIt;
 				}
 
@@ -1065,7 +1066,7 @@ namespace sv {
 
 				graphics_buffer_update(batch_buffer, GPUBufferState_Vertex, data.data, instanceCount * 4u * sizeof(SpriteVertex), 0u, cmd);
 
-				graphics_renderpass_begin(gfx.renderpass_world, att, nullptr, 1.f, 0u, cmd);
+				graphics_renderpass_begin(gfx.renderpass_gbuffer, att, nullptr, 1.f, 0u, cmd);
 
 				end = it;
 				it -= instanceCount;
@@ -1291,6 +1292,7 @@ namespace sv {
 					inst.texcoord = tc;
 					inst.image = image;
 					inst.color = spr.color;
+					inst.emissive_color = spr.emissive_color;
 					inst.layer = spr.layer;
 				}
 				foreach_component(textured_sprite_id, it, 0) {
@@ -1309,6 +1311,7 @@ namespace sv {
 					inst.texcoord = tc;
 					inst.image = image;
 					inst.color = spr.color;
+					inst.emissive_color = Color::Black();
 					inst.layer = spr.layer;
 				}
 				foreach_component(animated_sprite_id, it, 0) {
@@ -1347,6 +1350,7 @@ namespace sv {
 					inst.texcoord = tc;
 					inst.image = image;
 					inst.color = s.color;
+					inst.emissive_color = Color::Black();
 					inst.layer = s.layer;
 				}
 

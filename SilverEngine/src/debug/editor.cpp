@@ -361,16 +361,6 @@ namespace sv {
 		foreach(i, element_count) {
 			deserialize_element(s, element.elements[i]);
 		}
-
-		for(u32 i = 0u; i < element.elements.size();) {
-
-			auto& e = element.elements[i];
-			
-			if (e.type == HierarchyElementType_Entity && !entity_exists(e.entity)) {
-				element.elements.erase(i);
-			}
-			else ++i;
-		}
 	}
 
 	static void load_hierarchy_state(InitializeSceneEvent* e)
@@ -394,6 +384,30 @@ namespace sv {
 		else {
 			SV_LOG_WARNING("Entity Hierarchy state not found");
 		}
+	}
+
+	static void validate_element(HierarchyElement& element)
+	{
+		for(u32 i = 0u; i < element.elements.size();) {
+
+			auto& e = element.elements[i];
+			
+			if (e.type == HierarchyElementType_Entity && !entity_exists(e.entity)) {
+				element.elements.erase(i);
+			}
+			else {
+				++i;
+			}
+		}
+
+		for (HierarchyElement& e : element.elements) {
+			validate_element(e);
+		}
+	}
+
+	static void validate_hierarchy()
+	{
+		validate_element(editor.entity_hierarchy_data.root);
 	}
 
 	static void serialize_element(Serializer& s, const HierarchyElement& element)
@@ -1748,7 +1762,8 @@ namespace sv {
 			event_register("on_entity_create", create_entity_element, 0u);
 			event_register("on_entity_destroy", destroy_entity_element, 0u);
 
-			event_register("initialize_scene", load_hierarchy_state, 0u);
+			event_register("pre_initialize_scene", load_hierarchy_state, 0u);
+			event_register("initialize_scene", validate_hierarchy, 0u);
 			event_register("close_scene", save_hierarchy_state, 0u);
 
 			auto& data = editor.entity_hierarchy_data;
@@ -1799,8 +1814,9 @@ namespace sv {
 
 				SpriteComponent& spr = *reinterpret_cast<SpriteComponent*>(comp);
 
-				gui_sprite("Sprite", spr.sprite_sheet, spr.sprite_id, 0u);
-				gui_drag_color("Color", spr.color, 1u);
+				gui_sprite("Sprite", spr.sprite_sheet, spr.sprite_id);
+				gui_drag_color("Color", spr.color);
+				gui_drag_color("Emissive Color", spr.emissive_color);
 				gui_drag_u32("Layer", spr.layer, 1u, 0u, RENDER_LAYER_COUNT);
 
 				bool xflip = spr.flags & SpriteComponentFlag_XFlip;

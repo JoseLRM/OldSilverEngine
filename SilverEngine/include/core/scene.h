@@ -299,11 +299,12 @@ namespace sv {
 
     struct SpriteComponent : public Component {
 
-		static constexpr u32 VERSION = 1u;
+		static constexpr u32 VERSION = 2u;
 
 		SpriteSheetAsset sprite_sheet;
 		u32              sprite_id = 0u;
 		Color	         color = Color::White();
+		Color	         emissive_color = Color::Black();
 		u32	             layer = RENDER_LAYER_COUNT / 2u;
 
 		void serialize(Serializer& s);

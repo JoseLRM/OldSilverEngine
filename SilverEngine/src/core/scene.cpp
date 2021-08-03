@@ -290,6 +290,11 @@ namespace sv {
 
 		initialize_ecs();
 
+		InitializeSceneEvent e;
+		string_copy(e.name, scene.name, SCENE_NAME_SIZE + 1);
+		
+		event_dispatch("pre_initialize_scene", &e);
+
 		bool deserialize = false;
 		Deserializer d;
 
@@ -349,9 +354,6 @@ namespace sv {
 				deserialize = true;
 			}
 		}
-
-		InitializeSceneEvent e;
-		string_copy(e.name, scene.name, SCENE_NAME_SIZE + 1);
 		
 		event_dispatch("initialize_scene", &e);
 	
@@ -3785,13 +3787,16 @@ namespace sv {
 		serialize_asset(s, sprite_sheet);
 		serialize_u32(s, sprite_id);
 		serialize_color(s, color);
+		serialize_color(s, emissive_color);
 		serialize_u32(s, layer);
     }
 
     void SpriteComponent::deserialize(Deserializer& d, u32 version)
     {
-		// TODO: Deprecated
-		if (version == 0u) {
+		switch (version) {
+
+		case 0:
+		{// TODO: Deprecated
 			TextureAsset tex;
 			v4_f32 texcoord;
 			deserialize_asset(d, tex);
@@ -3799,11 +3804,27 @@ namespace sv {
 			deserialize_color(d, color);
 			deserialize_u32(d, layer);
 		}
-		else {
+		break;
+
+		case 1:
+		{
 			deserialize_asset(d, sprite_sheet);
 			deserialize_u32(d, sprite_id);
 			deserialize_color(d, color);
 			deserialize_u32(d, layer);
+		}
+		break;
+
+		case 2:
+		{
+			deserialize_asset(d, sprite_sheet);
+			deserialize_u32(d, sprite_id);
+			deserialize_color(d, color);
+			deserialize_color(d, emissive_color);
+			deserialize_u32(d, layer);
+		}
+		break;
+			
 		}
     }
 

@@ -53,6 +53,7 @@ namespace sv {
 		v4_f32 position;
 		v2_f32 texCoord;
 		Color color;
+		Color emissive_color;
     };
 
     struct SpriteData {
