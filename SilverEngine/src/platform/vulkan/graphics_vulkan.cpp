@@ -2060,7 +2060,7 @@ namespace sv {
 					Sampler_vk* sampler = NULL;
 
 					if (shader_type == ShaderType_Compute) {
-						SV_ASSERT(0);
+						sampler = reinterpret_cast<Sampler_vk*>(state.compute[cmd_].samplers[binding.userBinding]);
 					}
 					else {
 						sampler = reinterpret_cast<Sampler_vk*>(state.graphics[cmd_].samplers[shader_type][binding.userBinding]);
@@ -2118,7 +2118,7 @@ namespace sv {
 
 			state.update_resources = false;
 
-			VkDescriptorSet desc_set = update_descriptors(shader->layout, ShaderType_Compute, true, true, true, false, cmd_);
+			VkDescriptorSet desc_set = update_descriptors(shader->layout, ShaderType_Compute, true, true, true, true, cmd_);
 
 			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, shader->compute.pipeline_layout, 0u, 1u, &desc_set, 0u, nullptr);
 		}

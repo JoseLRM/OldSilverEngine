@@ -39,12 +39,14 @@ SV_GLOBAL f32 WEIGHTS[GAUSS_KERNEL] = {
 };
 
 #if TYPE == 0
-SV_UAV_TEXTURE(dst_tex, float4, u0);
-SV_TEXTURE(src_tex, t0);
+SV_UAV_TEXTURE(dst, float4, u0);
+SV_TEXTURE(src, t0);
 #elif TYPE == 1
-SV_UAV_TEXTURE(dst_tex, float, u0);
-SV_TEXTURE(src_tex, t0);
+SV_UAV_TEXTURE(dst, float, u0);
+SV_TEXTURE(src, t0);
 #endif
+
+SV_SAMPLER(sam, s0);
 
 SV_CONSTANT_BUFFER(gauss_buffer, b0) {
 	f32 intensity;
@@ -55,7 +57,7 @@ SV_CONSTANT_BUFFER(gauss_buffer, b0) {
 void main(uint3 dispatch_id : SV_DispatchThreadID)
 {
     float2 output_dimension;
-    dst_tex.GetDimensions(output_dimension.x, output_dimension.y);
+    dst.GetDimensions(output_dimension.x, output_dimension.y);
 
     int2 screen_pos = dispatch_id.xy;
     
@@ -80,13 +82,12 @@ void main(uint3 dispatch_id : SV_DispatchThreadID)
     }
 
     foreach(i, GAUSS_KERNEL) {
-    	int2 s = int2((begin + adv * i) * output_dimension);
 #if TYPE == 0
-	color.xyz += src_tex[s].xyz * WEIGHTS[i];
+	color.xyz += src.SampleLevel(sam, begin + adv * i, 0).xyz * WEIGHTS[i];
 #elif TYPE == 1
-      	color += src_tex[s].r * WEIGHTS[i];
+      	color += src.SampleLevel(sam, begin + adv * i, 0).r * WEIGHTS[i];
 #endif
     }
 
-    dst_tex[screen_pos] = color;
+    dst[screen_pos] = color;
 }

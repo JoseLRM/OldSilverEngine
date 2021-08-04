@@ -11,7 +11,7 @@
 
 namespace sv {
 
-    SV_INLINE f32 math_sqrt(f32 n)
+    inline f32 math_sqrt(f32 n)
     {
 		i32 i;
 		f32 x, y;
@@ -25,7 +25,7 @@ namespace sv {
 		return n * y;
     }
 
-    SV_INLINE f64 math_sqrt(f64 n)
+    inline f64 math_sqrt(f64 n)
     {
 		i64 i;
 		f64 x, y;
@@ -39,27 +39,27 @@ namespace sv {
 		return n * y;
     }
 
-    SV_INLINE f32 math_clamp(f32 min, f32 n, f32 max)
+    inline f32 math_clamp(f32 min, f32 n, f32 max)
     {
 		if (n < min) n = min;
 		else if (n > max) n = max;
 		return n;
     }
 
-    SV_INLINE u32 math_clamp(u32 min, u32 n, u32 max)
+    inline u32 math_clamp(u32 min, u32 n, u32 max)
     {
 		if (n < min) n = min;
 		else if (n > max) n = max;
 		return n;
     }
 
-    SV_INLINE f32 math_clamp01(f32 n)
+    inline f32 math_clamp01(f32 n)
     {
 		return math_clamp(0.f, n, 1.f);
     }
 
 	template<typename T>
-	SV_INLINE T math_lerp(const T& t0, const T& t1, f32 n)
+	inline T math_lerp(const T& t0, const T& t1, f32 n)
 	{
 		return t0 * (1.f - n) + t1 * n;
 	}
@@ -69,6 +69,18 @@ namespace sv {
     {
 		return ((T)1.f / math_sqrt((T)2.f * (T)PI * sigma * sigma)) * exp(-(x * x) / ((T)2.f * sigma * sigma));
     }
+
+	inline f32 math_truncate_high(f32 x)
+	{
+		f32 integer = (f32)((i32)x);
+		f32 decimal = x - integer;
+
+		if (decimal > 0.0000001f) {
+			++integer;
+		}
+
+		return integer;
+	}
 
     // Vector Structs
 

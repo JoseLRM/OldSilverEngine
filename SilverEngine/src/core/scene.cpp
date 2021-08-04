@@ -3897,6 +3897,8 @@ namespace sv {
 		serialize_bool(s, bloom.active);
 		serialize_f32(s, bloom.threshold);
 		serialize_f32(s, bloom.intensity);
+		serialize_f32(s, bloom.strength);
+		serialize_u32(s, bloom.iterations);
 
 		serialize_bool(s, ssao.active);
 		serialize_u32(s, ssao.samples);
@@ -3964,6 +3966,24 @@ namespace sv {
 			deserialize_bool(d, bloom.active);
 			deserialize_f32(d, bloom.threshold);
 			deserialize_f32(d, bloom.intensity);
+			deserialize_bool(d, ssao.active);
+			deserialize_u32(d, ssao.samples);
+			deserialize_f32(d, ssao.radius);
+			deserialize_f32(d, ssao.bias);
+			break;
+
+		case 5:
+			deserialize_bool(d, adjust_width);
+			deserialize_u32(d, (u32&)projection_type);
+			deserialize_f32(d, near);
+			deserialize_f32(d, far);
+			deserialize_f32(d, width);
+			deserialize_f32(d, height);
+			deserialize_bool(d, bloom.active);
+			deserialize_f32(d, bloom.threshold);
+			deserialize_f32(d, bloom.intensity);
+			deserialize_f32(d, bloom.strength);
+			deserialize_u32(d, bloom.iterations);
 			deserialize_bool(d, ssao.active);
 			deserialize_u32(d, ssao.samples);
 			deserialize_f32(d, ssao.radius);

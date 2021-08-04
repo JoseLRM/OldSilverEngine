@@ -1376,7 +1376,13 @@ namespace sv {
     void graphics_sampler_bind_array(Sampler** samplers, u32 count, u32 beginSlot, ShaderType shaderType, CommandList cmd)
     {
 		if (shaderType == ShaderType_Compute) {
-			SV_LOG_ERROR("TODO: Bind Samplers in CS");
+
+			auto& state = g_PipelineState.compute[cmd];
+
+			state.sampler_count = SV_MAX(state.sampler_count, beginSlot + count);
+
+			memcpy(state.samplers, samplers, sizeof(Sampler*) * count);
+			state.update_resources = true;
 		}
 		else {
 			auto& state = g_PipelineState.graphics[cmd];
@@ -1392,7 +1398,13 @@ namespace sv {
     void graphics_sampler_bind(Sampler* sampler, u32 slot, ShaderType shaderType, CommandList cmd)
     {
 		if (shaderType == ShaderType_Compute) {
-			SV_LOG_ERROR("TODO: Bind Samplers in CS");
+
+			auto& state = g_PipelineState.compute[cmd];
+
+			state.samplers[slot] = reinterpret_cast<Sampler_internal*>(sampler);
+			state.sampler_count = SV_MAX(state.sampler_count, slot + 1u);
+		   
+			state.update_resources = true;
 		}
 		else {
 			auto& state = g_PipelineState.graphics[cmd];
@@ -1407,7 +1419,22 @@ namespace sv {
     void graphics_sampler_unbind(u32 slot, ShaderType shaderType, CommandList cmd)
     {
 		if (shaderType == ShaderType_Compute) {
-			SV_LOG_ERROR("TODO: Unbind Samplers in CS");
+
+			auto& state = g_PipelineState.compute[cmd];
+
+			state.samplers[slot] = NULL;
+
+			// Compute Constant Buffer Count
+			u32& count = state.sampler_count;
+
+			for (i32 i = i32(count) - 1; i >= 0; --i) {
+				if (state.samplers[i] != NULL) {
+					count = i + 1;
+					break;
+				}
+			}
+
+			state.update_resources = true;
 		}
 		else {
 			auto& state = g_PipelineState.graphics[cmd];
@@ -1432,7 +1459,10 @@ namespace sv {
     void graphics_sampler_unbind_shader(ShaderType shaderType, CommandList cmd)
     {
 		if (shaderType == ShaderType_Compute) {
-			SV_LOG_ERROR("TODO: Unbind Samplers in CS");
+
+			auto& state = g_PipelineState.compute[cmd];
+			state.sampler_count = 0u;
+			state.update_resources = true;
 		}
 		else {
 			auto& state = g_PipelineState.graphics[cmd];
@@ -1446,13 +1476,20 @@ namespace sv {
 
     void graphics_sampler_unbind_commandlist(CommandList cmd)
     {
-		auto& state = g_PipelineState.graphics[cmd];
+		{
+			auto& state = g_PipelineState.graphics[cmd];
 
-		for (u32 i = 0; i < ShaderType_GraphicsCount; ++i) {
-			state.samplersCount[i] = 0u;
-			state.flags |= get_resource_shader_flag((ShaderType)i);
+			for (u32 i = 0; i < ShaderType_GraphicsCount; ++i) {
+				state.samplersCount[i] = 0u;
+				state.flags |= get_resource_shader_flag((ShaderType)i);
+			}
+			state.flags |= GraphicsPipelineState_Sampler;
 		}
-		state.flags |= GraphicsPipelineState_Sampler;
+		{
+			auto& state = g_PipelineState.compute[cmd];
+			state.sampler_count = 0u;
+			state.update_resources = true;
+		}
     }
 
     ////////////////////////////////////////////// STATE //////////////////////////////////////////////////
@@ -1810,6 +1847,15 @@ namespace sv {
 	void graphics_dispatch(u32 group_count_x, u32 group_count_y, u32 group_count_z, CommandList cmd)
 	{
 		g_Device.dispatch(group_count_x, group_count_y, group_count_z, cmd);
+	}
+	void graphics_dispatch_image(GPUImage* image, u32 group_size_x, u32 group_size_y, CommandList cmd)
+	{
+		const GPUImageInfo& info = graphics_image_info(image);
+
+		u32 x_group = (u32)math_truncate_high((f32)info.width / (f32)group_size_x);
+		u32 y_group = (u32)math_truncate_high((f32)info.height / (f32)group_size_y);
+
+		graphics_dispatch(x_group, y_group, 1, cmd);
 	}
 
     ////////////////////////////////////////// MEMORY /////////////////////////////////////////

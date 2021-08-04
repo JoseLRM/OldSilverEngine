@@ -56,19 +56,24 @@ namespace sv {
 		Color emissive_color;
     };
 
-    struct SpriteData {
+    struct GPU_SpriteData {
 		SpriteVertex data[SPRITE_BATCH_COUNT * 4u];
     };
 
-    struct GaussianBlurData {
+    struct GPU_GaussianBlurData {
 		f32 intensity;
 		u32 horizontal;
 		v2_f32 padding;
     };
 
-    struct EnvironmentData {
+    struct GPU_EnvironmentData {
 		v3_f32 ambient_light;
     };
+
+	struct GPU_BloomThresholdData {
+		f32 threshold;
+		f32 strength;
+	};
 
     struct GraphicsObjects {
 
@@ -78,6 +83,8 @@ namespace sv {
 		GPUImage* image_ssao_aux;
 		Sampler* sampler_def_linear;
 		Sampler* sampler_def_nearest;
+		Sampler* sampler_linear_mirror;
+		Sampler* sampler_linear_clamp;
 		GPUBuffer* vbuffer_batch[GraphicsLimit_CommandList];
 		DepthStencilState* dss_default_depth;
 		DepthStencilState* dss_read_depth;
@@ -142,16 +149,14 @@ namespace sv {
 
 		// PP
 
-		Shader* cs_addition;
-		Shader* cs_gaussian_blur_float4;
-		Shader* cs_gaussian_blur_float;
+		Shader*    cs_gaussian_blur_float4;
+		Shader*    cs_gaussian_blur_float;
 		GPUBuffer* cbuffer_gaussian_blur;
 		GPUBuffer* cbuffer_bloom_threshold;
-		Sampler* sampler_blur;
-		Shader* cs_bloom_threshold;
-		BlendState* bs_addition;
-		Shader* cs_ssao;
-		Shader* cs_ssao_add;
+		Shader*    cs_bloom_threshold;
+		Shader*    cs_bloom_addition;
+		Shader*    cs_ssao;
+		Shader*    cs_ssao_addition;
 		GPUBuffer* cbuffer_ssao;
 
 		// SKY

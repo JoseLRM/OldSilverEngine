@@ -729,6 +729,7 @@ namespace sv {
     SV_API void graphics_draw_indexed(u32 indexCount, u32 instanceCount, u32 startIndex, u32 startVertex, u32 startInstance, CommandList cmd);
 
 	SV_API void graphics_dispatch(u32 group_count_x, u32 group_count_y, u32 group_count_z, CommandList cmd);
+	SV_API void graphics_dispatch_image(GPUImage* image, u32 group_size_x, u32 group_size_y, CommandList cmd);
 
     // Memory
 

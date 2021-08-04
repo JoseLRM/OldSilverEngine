@@ -1947,6 +1947,8 @@ namespace sv {
 
 					gui_drag_f32("Threshold", cam.bloom.threshold, 0.001f, 0.f, 10.f);
 					gui_drag_f32("Intensity", cam.bloom.intensity, 0.001f, 0.f, 1.f);
+					gui_drag_f32("Strength", cam.bloom.strength, 0.001f, 0.f, f32_max);
+					gui_drag_u32("Iterations", cam.bloom.iterations, 1u, 1u, 100u);
 				}
 
 				gui_checkbox("SSAO", cam.ssao.active);

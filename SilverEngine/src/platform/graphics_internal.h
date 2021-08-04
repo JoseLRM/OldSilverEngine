@@ -156,6 +156,9 @@ namespace sv {
 		void*			    unordered_access_views[GraphicsLimit_UnorderedAccessView];
 		u32					unordered_access_view_count;
 
+		Sampler_internal*	samplers[GraphicsLimit_Sampler];
+		u32					sampler_count;
+
 		bool update_resources;
     };
 

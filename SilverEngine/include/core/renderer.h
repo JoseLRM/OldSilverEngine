@@ -90,12 +90,6 @@ namespace sv {
 			CommandList cmd
 		);
 
-    SV_API void postprocess_addition(
-			GPUImage* src,
-			GPUImage* dst,
-			CommandList cmd
-		);
-
     SV_API void postprocess_bloom(
 			GPUImage* src, 
 			GPUImageLayout src_layout0, 
@@ -111,6 +105,8 @@ namespace sv {
 			GPUImageLayout emission_layout1,
 			f32 threshold,
 			f32 intensity,
+			f32 strength,
+			u32 iterations,
 			f32 aspect,
 			CommandList cmd
 		);

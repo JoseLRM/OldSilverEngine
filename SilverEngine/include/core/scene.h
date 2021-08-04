@@ -353,7 +353,7 @@ namespace sv {
 
     struct CameraComponent : public Component {
 
-		static constexpr u32 VERSION = 4u;
+		static constexpr u32 VERSION = 5u;
 
 		bool adjust_width = true;
 		
@@ -374,6 +374,8 @@ namespace sv {
 			bool active = false;
 			f32 threshold = 0.6f;
 			f32 intensity = 0.03f;
+			f32 strength = 1.f;
+			u32 iterations = 3u;
 		} bloom;
 
 		struct {
