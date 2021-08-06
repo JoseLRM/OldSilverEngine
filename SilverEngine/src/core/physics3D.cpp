@@ -779,7 +779,7 @@ namespace sv {
 
 	void _physics3D_update()
 	{
-		f32 dt = engine.deltatime;
+		f32 dt = engine.deltatime * engine.timestep;
 		PxScene* scene = physics->scene;
 
 		// Update actors transforms

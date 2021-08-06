@@ -224,7 +224,7 @@ namespace sv {
 			rm = XMLoadFloat3x3(&m);
 		}
 
-		f32 dt = engine.deltatime;
+		f32 dt = engine.deltatime * engine.timestep;
 		SceneData& scene = *get_scene_data();
 
 		if (model.emitter_count > PARTICLE_EMITTER_MAX) {
@@ -271,10 +271,12 @@ namespace sv {
 				f32 total_time = model.simulation_time + model.repeat_time;
 
 				// Reset
-				if (model.repeat && ps.time_count > total_time) {
-						
-					ps.time_count -= total_time;
-					reset = true;
+				if (model.repeat) {
+
+					if (ps.time_count > total_time) {
+						ps.time_count -= total_time;
+						reset = true;
+					}
 				}
 				else {
 					ps.state = ParticleSystemState_None;
